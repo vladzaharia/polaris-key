@@ -12211,9 +12211,9 @@ paths:
         sign-in or a free auto-issue, with its store grants. A product the library holds as an
         entry only (PS-04, `kind: entry`) answers with no licences. `404` when the account holds
         neither a licence nor an entry for the product, or the developer has the portal off for
-        it. `supportCode` is the person's pairwise id for the product, the one thing the console's
-        relink accepts to name a target: `null` until one exists, which a licence or a sign-in
-        creates and so does the person's own ask (`POST /api/products/{product}/support-code`).
+        it. `supportCode` is the person's readable code for the product (`XXX-XXX-XXX`), which the
+        product's support asks for and the console searches by: `null` until the person asks for
+        one (`POST /api/products/{product}/support-code`).
         Session-authenticated by the portal cookie; `cache-control: no-store`.
       parameters: [{ $ref: "#/components/parameters/Product" }]
       responses:
@@ -12244,7 +12244,7 @@ paths:
                       identity: false
                     status: active
                     addedAt: 1790000000
-                    supportCode: ps_Vq3nT8uB1xYk0LpR4sZ7cA
+                    supportCode: K7M-4QX-9TB
                     returnTo:
                       { origins: [https://app.tidewater.example], schemes: [] }
                     licenses:
@@ -12449,15 +12449,17 @@ paths:
       tags: [portal]
       summary: Get the signed-in account's support code for one product
       description: >
-        I-11 (S-16 §5.2, §5.7). "Get a support code" on the product's page: the person's pairwise
-        id for THIS product (`ps_` and 22 base64url characters). It is the same id the product page
-        carries as `supportCode` and the product export as `subject`, and the one thing the
-        console's relink accepts to name a target (never an email). It is created on the first ask,
-        the way a licence attach or a sign-in creates it, and every ask after answers the same one,
-        so the route is idempotent. A subject made only by this ask is not listed on the console's
-        Users page until it holds a licence, a signed-in device or a sign-in. Removing the person's
-        data from the product (`DELETE /api/products/{product}/data`) ends the code, and the next
-        ask makes a new one. The answer is the code and nothing else: never the account id, a
+        I-11 (S-16 §5.2, §5.7), readable since I-41. "Get a support code" on the product's page: a
+        short code for the person at THIS product, nine characters from an alphabet without
+        lookalikes, shown as `XXX-XXX-XXX`. The product page carries the same string as
+        `supportCode`. It names the person to that product's support, who find them in the
+        console by it; it is an identifier, not a credential, and not the pairwise `subject` the
+        product export and the signed licence carry. It is created on the first ask and every ask
+        after answers the same one, so the route is idempotent. A person who only asked is not
+        listed on the console's Users page until they hold a licence, a signed-in device or a
+        sign-in, though a search by the code finds them. Removing the person's data from the
+        product (`DELETE /api/products/{product}/data`) ends the code, and the next ask makes a
+        new one. The answer is the code and nothing else: never the account id, a
         licence, a key or another product's id. The request has no body and names no account.
         Needs the `X-PKey-Portal-CSRF` header and is rate-limited to 10 a minute per account,
         network and product, charged after the account is proven to hold the product. It needs no
@@ -12476,7 +12478,7 @@ paths:
               schema: { $ref: "#/components/schemas/PortalSupportCode" }
               examples:
                 code:
-                  value: { supportCode: ps_Vq3nT8uB1xYk0LpR4sZ7cA }
+                  value: { supportCode: K7M-4QX-9TB }
         "401":
           description: No portal session, or the account's erasure has already begun.
           content:
@@ -15519,6 +15521,43 @@ paths:
               schema: { $ref: "#/components/schemas/AdminAttention" }
         "401": { $ref: "#/components/responses/AdminUnauthorized" }
         "403": { $ref: "#/components/responses/AdminForbidden" }
+  /manage/api/support-codes/{code}:
+    get:
+      operationId: getAdminSupportCode
+      tags: [admin]
+      summary: Resolve a support code a customer read out to its product and user
+      description: >
+        I-41. The code is the one the customer reads on their product page (`XXX-XXX-XXX`; case,
+        spaces, dashes and dots are ignored). The answer is the product's slug and the pairwise
+        subject its Users page opens, and only for a caller who may read that product's users: a
+        code of a product the caller cannot read, an unknown code and a malformed one all answer the
+        same `404`, so the route is no way to learn another product's customers. An absorbed
+        subject answers with the survivor's. Rate-limited per operator (30 a minute). Admin
+        session cookie.
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: The product and the user.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [product, subject]
+                properties:
+                  product: { type: string }
+                  subject: { type: string }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429":
+          description: "`rate_limited`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
   /manage/api/platform/ready:
     get:
       operationId: getAdminPlatformReady
@@ -22621,12 +22660,11 @@ components:
             addedAt: { type: [integer, "null"] }
             supportCode:
               type: [string, "null"]
-              pattern: "^ps_[A-Za-z0-9_-]{22}$"
+              pattern: "^[2-9A-HJKMNP-TV-Z]{3}-[2-9A-HJKMNP-TV-Z]{3}-[2-9A-HJKMNP-TV-Z]{3}$"
               description: >
-                The person's pairwise id for this product, which is their support code; `null`
-                until one exists. A licence or a sign-in creates it, and so does the person's own
-                ask (`POST /api/products/{product}/support-code`). Absent from a Worker that
-                predates it.
+                The person's readable support code for this product (`XXX-XXX-XXX`); `null` until
+                the person asks for one (`POST /api/products/{product}/support-code`). Absent
+                from a Worker that predates it.
             returnTo:
               type: object
               description: >
@@ -22699,10 +22737,10 @@ components:
       properties:
         supportCode:
           type: string
-          pattern: "^ps_[A-Za-z0-9_-]{22}$"
+          pattern: "^[2-9A-HJKMNP-TV-Z]{3}-[2-9A-HJKMNP-TV-Z]{3}-[2-9A-HJKMNP-TV-Z]{3}$"
           description: >
-            The person's pairwise id for this product, which the console's relink accepts to name
-            them. Never the account id.
+            The person's readable code for this product, `XXX-XXX-XXX`. Never the pairwise
+            subject or the account id.
     # ── The person's own data (I-11): `GET /api/me/export`, `GET /api/products/{product}/export`.
     # Every object declares `additionalProperties: false`: the schema is the allow-list, and
     # `test/portalDataExport.test.ts` validates real documents against it, so a column nobody chose

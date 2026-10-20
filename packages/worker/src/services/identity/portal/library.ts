@@ -55,6 +55,7 @@ import {
   type ProductPublic,
 } from "../../../core/products.js";
 import { existingSubjectFor } from "../../../core/accounts/accountSubjects.js";
+import { existingSupportCode } from "../../../core/accounts/supportCodes.js";
 import { licenseDeviceLimit } from "../../../core/licensing/authz.js";
 import { seatActiveSince } from "../../../core/devices/store.js";
 import type { DeviceRow } from "../../../core/repo.js";
@@ -340,6 +341,16 @@ async function groupedLicenses(
   return out;
 }
 
+/** The person's readable support code (`XXX-XXX-XXX`) for the product, or `null` before they ask. */
+async function readableSupportCode(
+  db: Db,
+  accountId: string,
+  slug: string,
+): Promise<string | null> {
+  const subject = await existingSubjectFor(db, accountId, slug);
+  return subject ? existingSupportCode(db, slug, subject) : null;
+}
+
 /**
  * When the account first got this product (for "Recently added"): its first contact with the
  * product, which is when the pairwise subject was created (I-05; a licence attach creates it).
@@ -552,7 +563,7 @@ export async function productView(
     services: serviceToggles(product),
     status: shaped[0]!.status,
     addedAt: await addedAt(db, accountId, slug),
-    supportCode: await existingSubjectFor(db, accountId, slug),
+    supportCode: await readableSupportCode(db, accountId, slug),
     returnTo: returnTo(product),
     licenses,
   };
@@ -595,7 +606,7 @@ async function entryProductView(
     ...(await presentationFor(env, db, product, hooksFor, now, "product")),
     services: serviceToggles(product),
     ...entryFields(entry),
-    supportCode: await existingSubjectFor(db, accountId, slug),
+    supportCode: await readableSupportCode(db, accountId, slug),
     returnTo: returnTo(product),
     licenses: [],
   };

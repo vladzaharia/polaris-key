@@ -163,6 +163,8 @@ export const TABLE_OWNERS: Readonly<Record<string, readonly string[]>> = {
     "accounts",
     "account_links",
     "account_product_subjects",
+    // I-41: the readable support code of a (product, person), the subject's spoken name.
+    "support_codes",
     "account_product_subject_aliases",
     "account_tombstones",
     // SEC-WP-04: the progress record of an account erasure that has not finished.

@@ -25,9 +25,13 @@ export const YOUR_DATA_COPY = {
   "yourData.product.remove.title": "Remove my data",
   "yourData.product.remove.body": `Polaris Locker deletes your settings and activity here. This can't be undone.`,
   "yourData.product.support.title": "Support code",
-  "yourData.product.support.body": "Read it to the app's support team.",
   "yourData.remove.keep": "Keep my data",
 } as const;
+
+/** The support code's one-line hint (I-41): said to the app's support, so it names the app. */
+export function supportCodeHint(name: string): string {
+  return `Give this code to ${name}'s support.`;
+}
 
 /** What a product's file holds: its licenses only when the person has one. */
 export function productCopyBody(licenses: number): string {

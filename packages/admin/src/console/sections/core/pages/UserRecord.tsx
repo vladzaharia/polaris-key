@@ -34,7 +34,7 @@ import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
 import { DescriptionList } from "../../../../ui/DescriptionList.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
-import { IdChip } from "../../../../ui/IdChip.js";
+import { IdChip, ValueCopyButton } from "../../../../ui/IdChip.js";
 import { PageSkeleton } from "../../../../ui/Skeleton.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
 import { Timestamp } from "../../../../ui/Timestamp.js";
@@ -238,6 +238,21 @@ function UserRecordBody({
         }
         meta={
           <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            {user.supportCode ? (
+              <span className="inline-flex items-center gap-1">
+                Support code
+                <span
+                  aria-label="Support code"
+                  className="rounded-sm bg-surface-sunken px-1.5 font-mono text-xs tracking-wider text-fg-strong"
+                >
+                  {user.supportCode}
+                </span>
+                <ValueCopyButton
+                  value={user.supportCode}
+                  label="Copy support code"
+                />
+              </span>
+            ) : null}
             <IdChip value={user.subject} noun="user id" />
             <span>
               First seen <Timestamp at={fromSeconds(user.createdAt)} />

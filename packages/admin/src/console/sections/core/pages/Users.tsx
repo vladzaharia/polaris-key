@@ -6,7 +6,8 @@
  *   sends the account id, the account's sign-in methods, or anything of another product.
  * - With Identity on the table adds the sign-in columns (signed-in devices, last sign-in); with it
  *   off they are absent, not empty.
- * - Search is the server's: a subject prefix, a licence id, or a buyer email prefix (the
+ * - Search is the server's: a support code (the readable `XXX-XXX-XXX` a customer reads out, dashes
+ *   optional), a subject prefix, a licence id, or a buyer email prefix (the
  *   developer's own records), never the account's own email.
  * - The record is a page (`users/:subject[/:tab]`, `UserRecord`).
  */
@@ -94,6 +95,20 @@ function UsersCollection({ slug }: { slug: string }): React.ReactElement {
             {row.original.subject}
           </span>
         ),
+      },
+      {
+        id: "supportCode",
+        header: "Support code",
+        accessorFn: (u) => u.supportCode ?? "",
+        meta: { priority: 1, mono: true },
+        cell: ({ row }) =>
+          row.original.supportCode ? (
+            <span className="whitespace-nowrap font-mono text-xs tracking-wider">
+              {row.original.supportCode}
+            </span>
+          ) : (
+            <span className="text-fg-muted">None yet</span>
+          ),
       },
       {
         id: "contact",
@@ -192,8 +207,8 @@ function UsersCollection({ slug }: { slug: string }): React.ReactElement {
           ] satisfies RowActionItem[]
         }
         search={{
-          placeholder: "User id, license id or email starts with…",
-          columns: ["subject", "contact"],
+          placeholder: "Support code, user id, license id or email…",
+          columns: ["supportCode", "subject", "contact"],
         }}
         state={state}
         onStateChange={setState}

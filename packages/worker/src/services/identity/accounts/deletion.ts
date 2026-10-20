@@ -57,6 +57,13 @@ function stmtsEndSubject(
   subject: string,
 ): DbStatement[] {
   return [
+    // I-41: the readable support code goes with the subject (and with any subject it absorbed).
+    {
+      sql: `DELETE FROM support_codes WHERE product = ?
+              AND (subject = ? OR subject IN (SELECT alias FROM account_product_subject_aliases
+                                               WHERE product = ? AND subject = ?))`,
+      params: [product, subject, product, subject],
+    },
     {
       sql: "DELETE FROM account_product_subject_aliases WHERE product = ? AND subject = ?",
       params: [product, subject],
@@ -474,6 +481,17 @@ function commitStatements(
     );
   }
   stmts.push(
+    // I-41: every support code of the account's subjects, and of the subjects they absorbed.
+    {
+      sql: `DELETE FROM support_codes
+             WHERE EXISTS (SELECT 1 FROM account_product_subjects s
+                            WHERE s.account_id = ? AND s.product = support_codes.product
+                              AND (s.subject = support_codes.subject
+                                   OR EXISTS (SELECT 1 FROM account_product_subject_aliases x
+                                               WHERE x.product = s.product AND x.subject = s.subject
+                                                 AND x.alias = support_codes.subject)))`,
+      params: [accountId],
+    },
     // Every alias and every subject row of the account, including one minted since
     // the list above was read.
     {

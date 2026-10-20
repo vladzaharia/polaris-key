@@ -3,9 +3,9 @@
  * this product, and undo it within 72 hours. Relink is the recovery path Polaris offers instead of
  * a recovery desk, so every control the threat model lists is here or on the server:
  *
- *   - the target is named ONLY by its pairwise subject for this product, never by an email (no
- *     cross-tenant oracle). The person gets one by signing in to the product, or with "Get a
- *     support code" on the product's page in their Polaris Key account;
+ *   - the target is named ONLY by its pairwise subject for this product or the readable support
+ *     code that names it (I-41), never by an email (no cross-tenant oracle). The person finds the
+ *     code with "Get a support code" on the product's page in their Polaris Locker account;
  *   - a step-up: the operator's last interactive sign-in no older than five minutes. The console
  *     checks it from `me` before the form and the server checks it again (403 `step_up_required`);
  *   - a mandatory reason, up to 500 characters;
@@ -13,6 +13,7 @@
  *   - a 72-hour undo, with the same step-up and a reason.
  */
 
+import { normalizeSupportCode } from "../../../../lib/supportCode.js";
 import * as React from "react";
 import {
   ApiError,
@@ -145,7 +146,9 @@ export function RelinkDialog({
       setReason("");
     }
   }, [open]);
-  const targetOk = SUBJECT_PATTERN.test(target.trim());
+  const targetOk =
+    SUBJECT_PATTERN.test(target.trim()) ||
+    normalizeSupportCode(target.trim()) !== null;
   const reasonOk = reason.trim().length > 0;
   const hash = r.user(slug, subject, "licenses");
 
@@ -196,7 +199,7 @@ export function RelinkDialog({
             id="relink-target"
             mono
             value={target}
-            placeholder="ps_…"
+            placeholder="Support code or ps_…"
             autoComplete="off"
             spellCheck={false}
             aria-describedby="relink-target-help"
@@ -204,9 +207,8 @@ export function RelinkDialog({
             onChange={(e) => setTarget(e.target.value)}
           />
           <p id="relink-target-help" className="text-xs text-fg-muted">
-            Their user id for this product. They get it by signing in to the
-            product, or with Get a support code on the product's page in their
-            Polaris Locker account.
+            Their support code or user id for this product. They find the code
+            on the product's page in their Polaris Locker account.
           </p>
         </div>
         <ReasonField id="relink-reason" value={reason} onChange={setReason} />

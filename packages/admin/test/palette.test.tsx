@@ -253,6 +253,59 @@ describe("the palette in the console", () => {
     await waitFor(() => expect(window.location.hash).toBe("#/p/acme"));
   });
 
+  it("offers to open a support code, typed with or without dashes, and jumps to that user (I-41)", async () => {
+    const SUBJECT = `ps_${"A".repeat(22)}`;
+    const log = boot("#/p/djdl", {
+      services: ALL_ON,
+      extra: {
+        "/manage/api/support-codes/K7M4QX9TB": {
+          product: "acme",
+          subject: SUBJECT,
+        },
+        "/manage/api/support-codes/222222222": () =>
+          new Response(JSON.stringify({ error: "not_found" }), { status: 404 }),
+      },
+    });
+    await screen.findByRole("navigation", { name: "Console" });
+    const dialog = await openPalette();
+    const input = within(dialog).getByRole("combobox", {
+      name: "Search or jump to",
+    });
+    // Nothing is asked for a query that is no code.
+    await userEvent.type(input, "tiers");
+    expect(log.calls.some((c) => c.path.includes("support-codes"))).toBe(false);
+    await userEvent.clear(input);
+    await userEvent.type(input, "k7m 4qx.9tb");
+    const row = await within(dialog).findByRole("option", {
+      name: /Open support code K7M-4QX-9TB/,
+    });
+    await userEvent.click(row);
+    await waitFor(() =>
+      expect(window.location.hash).toBe(`#/p/acme/users/${SUBJECT}`),
+    );
+  });
+
+  it("offers nothing for a code the Worker does not resolve (unknown, or another product's)", async () => {
+    boot("#/p/djdl", {
+      services: ALL_ON,
+      extra: {
+        "/manage/api/support-codes/222222222": () =>
+          new Response(JSON.stringify({ error: "not_found" }), { status: 404 }),
+      },
+    });
+    await screen.findByRole("navigation", { name: "Console" });
+    const dialog = await openPalette();
+    await userEvent.type(
+      within(dialog).getByRole("combobox", { name: "Search or jump to" }),
+      "222-222-222",
+    );
+    await waitFor(() =>
+      expect(
+        within(dialog).getByText("Nothing matches “222-222-222”."),
+      ).toBeTruthy(),
+    );
+  });
+
   it("pins recent commands first, and remembers them", async () => {
     boot("#/p/djdl", { services: ALL_ON });
     await screen.findByRole("navigation", { name: "Console" });

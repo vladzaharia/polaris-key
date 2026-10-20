@@ -4,7 +4,11 @@ import { KeyRound, Trash2 } from "lucide-react";
 import { Button } from "../../../ui/Button.js";
 import { CopyButton } from "../../../ui/CopyButton.js";
 import { PortalApiError } from "../../api.js";
-import { YOUR_DATA_COPY, productCopyBody } from "../../copy/yourData.js";
+import {
+  YOUR_DATA_COPY,
+  productCopyBody,
+  supportCodeHint,
+} from "../../copy/yourData.js";
 import {
   useCreateSupportCode,
   useExportProductData,
@@ -66,7 +70,7 @@ export function ProductDataCard({
           </DataRow>
         </div>
         <div className="border-t border-border pt-5">
-          <SupportCodeRow slug={product.slug} />
+          <SupportCodeRow slug={product.slug} name={name} />
         </div>
       </div>
       <RemoveProductDataDialog
@@ -79,8 +83,17 @@ export function ProductDataCard({
   );
 }
 
-/** The person's support code for this product: shown with Copy once it exists, else asked for. */
-function SupportCodeRow({ slug }: { slug: string }): React.ReactElement {
+/**
+ * The person's support code for this product (I-41: `XXX-XXX-XXX`, in the mono font): shown with
+ * Copy once it exists, else asked for. Copy puts the dashed form on the clipboard.
+ */
+function SupportCodeRow({
+  slug,
+  name,
+}: {
+  slug: string;
+  name: string;
+}): React.ReactElement {
   const view = useProduct(slug);
   const create = useCreateSupportCode(slug);
   const code = view.data?.supportCode ?? create.data?.supportCode ?? null;
@@ -95,7 +108,7 @@ function SupportCodeRow({ slug }: { slug: string }): React.ReactElement {
     <DataRow
       icon={<KeyRound aria-hidden />}
       title={YOUR_DATA_COPY["yourData.product.support.title"]}
-      description={YOUR_DATA_COPY["yourData.product.support.body"]}
+      description={supportCodeHint(name)}
       below={
         failure ? (
           <p role="alert" className="text-sm text-danger">
@@ -108,7 +121,7 @@ function SupportCodeRow({ slug }: { slug: string }): React.ReactElement {
         <div className="flex flex-wrap items-center gap-2">
           <code
             aria-label="Support code"
-            className="break-all rounded-md bg-surface-sunken px-2 py-1 font-mono text-sm text-fg-strong"
+            className="select-all whitespace-nowrap rounded-md bg-surface-sunken px-3 py-1.5 font-mono text-base tracking-widest text-fg-strong"
           >
             {code}
           </code>

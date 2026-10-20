@@ -13,6 +13,7 @@ import {
   navigationPaletteSource,
   productsPaletteSource,
 } from "./navigation.js";
+import { supportCodePaletteSource } from "./supportCode.js";
 import { dedupe, type PaletteGroupSpec } from "./rank.js";
 import type { PaletteContext, PaletteItem, PaletteSource } from "./types.js";
 
@@ -24,6 +25,8 @@ import type { PaletteContext, PaletteItem, PaletteSource } from "./types.js";
  */
 export const PALETTE_GROUPS: readonly PaletteGroupSpec[] = [
   { heading: "Recent", order: 5 },
+  // I-41: a support code typed into the palette, resolved by the Worker.
+  { heading: "Support code", order: 10 },
   { heading: "Pages", order: 20 },
   { heading: "Actions", order: 40 },
   { heading: "Products", order: 60 },
@@ -32,6 +35,7 @@ export const PALETTE_GROUPS: readonly PaletteGroupSpec[] = [
 
 /** The sources, in the order their rows are merged. A module constant: see `PaletteSource`. */
 export const PALETTE_SOURCES: readonly PaletteSource[] = [
+  supportCodePaletteSource,
   navigationPaletteSource,
   actionsPaletteSource,
   productsPaletteSource,
