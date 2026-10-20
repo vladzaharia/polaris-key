@@ -92,6 +92,8 @@ export const ACCOUNT_DISABLED_MESSAGE = `${ACCOUNT_DISABLED_HEADING}.`;
  */
 export function accountDisabledPage(
   opts: {
+    /** The app the sign-in was for, drawn as the card's header (a product's own sign-in). */
+    app?: { name: string; iconUrl?: string | null } | null;
     signInHref?: string | null;
     back?: { href: string; productName: string } | null;
   } = {},
@@ -105,6 +107,7 @@ export function accountDisabledPage(
     {
       title: "Sign in",
       heading: ACCOUNT_DISABLED_HEADING,
+      ...(opts.app ? { app: opts.app } : {}),
       body:
         `<p class="actions stack"><a class="button" href="${escapeHtml(opts.signInHref || "/")}">Sign in with another account</a>` + // signin.disabled.another
         `${back}</p>`,

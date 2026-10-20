@@ -49,6 +49,7 @@ import {
   tierFingerprintMode,
 } from "../../core/licensing/authz.js";
 import { escapeHtml } from "../../platform/html.js";
+import { callout, icon } from "../../core/brandHtml.js";
 import type { Db } from "../../db/types.js";
 import type { Product } from "../../core/products.js";
 import type { PurchaseSourceKind, ServiceHooks } from "../../core/hooks.js";
@@ -429,7 +430,8 @@ function lastUsedText(at: number, now: number): string {
 /** A one-line notice above the rows, set by the previous POST. */
 export type ChoiceNotice =
   | { kind: "rate_limited"; retryAfter: number }
-  | { kind: "unavailable" };
+  | { kind: "unavailable" }
+  | { kind: "pick_device" };
 
 function noticeHtml(notice: ChoiceNotice | null | undefined): string {
   if (!notice) return "";
@@ -437,11 +439,16 @@ function noticeHtml(notice: ChoiceNotice | null | undefined): string {
     case "rate_limited": {
       // signin.replace.rateLimited
       const wait = Math.max(1, Math.floor(notice.retryAfter));
-      return `<p class="alert" role="alert">Too many device changes. Try again in ${wait} second${wait === 1 ? "" : "s"}.</p>`;
+      return callout(
+        "clock",
+        `Too many device changes. Try again in ${wait} second${wait === 1 ? "" : "s"}.`,
+      );
     }
     case "unavailable":
       // signin.choice.raced
-      return `<p class="alert" role="alert">That seat was just taken. Choose again.</p>`;
+      return callout("info", "That seat was just taken. Choose again.");
+    case "pick_device":
+      return "";
   }
 }
 
@@ -548,13 +555,17 @@ export function chooserBody(input: {
   namedByDevice?: boolean;
   /** The developer's name from the product's listing, when it has one (§5.2 `{developer}`). */
   developerName?: string | null;
+  /** Where the flow's own "Use a license key instead" goes, when the flow has one; none: omitted. */
+  keyHref?: string | null;
 }): string {
   const { view } = input;
   // signin.choice.noneReplaceable
   const dev = input.developerName?.trim() || null;
-  const noneReplaceable = `<p class="notice">${escapeHtml(
-    `${dev ?? "The developer"} manages devices for these licenses. Ask ${dev ?? "the developer"} to free one, or use another license.`,
-  )}</p>`;
+  const noneReplaceable = callout(
+    "devices",
+    `${dev ?? "The developer"} manages devices for these licenses.`,
+    `Ask ${dev ?? "the developer"} to free one, or use another license.`,
+  );
   const ctx = {
     productName: input.productName,
     hideCounter: view.rows.some((r) => r.fromSignIn),
@@ -576,28 +587,26 @@ export function chooserBody(input: {
   const allFull =
     view.rows.length > 0 && view.rows.every((r) => r.state === "full");
   const replaceable = view.rows.some((r) => r.replace && r.replace.length > 0);
+  if (allFull && replaceable && !view.create) {
+    return replaceGroupBody(input, ctx.thisDevice);
+  }
   // signin.choice.allFull / allFullCreate, or noneReplaceable when no row offers Replace.
   const fullNotice = !allFull
     ? ""
     : replaceable
-      ? `<p class="notice">${
+      ? callout(
+          "devices",
+          "Your licenses are on all their devices.",
           view.create
-            ? "Your licenses are on all their devices. Replace a device, or create a new free license."
-            : "Your licenses are on all their devices. Replace a device to use one here."
-        }</p>`
+            ? "Replace a device, or create a new free license."
+            : "Replace a device to use one here.",
+        )
       : view.create
         ? ""
         : noneReplaceable;
   const empty = view.rows.length === 0 && !view.create ? noneReplaceable : "";
-  // signin.choice.lede / signin.choice.ledeBrowser
-  const lede = input.namedByDevice
-    ? `${input.productName} will use it on ${input.deviceLabel}.`
-    : `${input.productName} will use it in this browser.`;
+  // The device is named once, in the header strip (identity.refusals).
   return (
-    `<p class="muted">${escapeHtml(lede)}</p>` +
-    (input.namedByDevice
-      ? `<dl><dt>Device</dt><dd>${escapeHtml(input.deviceLabel)}<span class="hint">Named by the device</span></dd></dl>`
-      : "") +
     noticeHtml(input.notice) +
     fullNotice +
     `<form method="post" action="${escapeHtml(input.action)}">` +
@@ -609,6 +618,73 @@ export function chooserBody(input: {
     (canContinue
       ? `<button class="button" type="submit" name="action" value="use">Use this license and continue</button>` // signin.choice.continue
       : "") +
+    keyLink(input.keyHref) +
+    `<button class="button secondary" type="submit" name="action" value="cancel" formnovalidate>Cancel</button>` +
+    `</div></form>`
+  );
+}
+
+/** "Use a license key instead", only when the flow has somewhere to send it. */
+function keyLink(href: string | null | undefined): string {
+  return href
+    ? `<a class="button secondary" href="${escapeHtml(href)}">Use a license key instead</a>`
+    : "";
+}
+
+/**
+ * Every licence is on all its devices and some can be replaced (identity.refusals, frame 2; a
+ * lead decision of 2026-10-20 over SIGN-IN §3.14): the devices are one radio group with nothing
+ * preselected, and **Replace and sign in** is the one primary. Submitting with no choice names
+ * the problem under the group; the button is never disabled.
+ */
+function replaceGroupBody(
+  input: Parameters<typeof chooserBody>[0],
+  thisDevice: string,
+): string {
+  const rows = input.view.rows.filter((r) => r.replace && r.replace.length > 0);
+  const many = rows.length > 1;
+  const items = rows
+    .flatMap((r) =>
+      (r.replace ?? []).map((d) => {
+        const tags = [
+          d.leastRecent ? "Least recent" : null,
+          d.activeNow ? "Active now" : null,
+        ]
+          .filter((t): t is string => t !== null)
+          .map((t) => `<span class="tag">${t}</span>`)
+          .join("");
+        return (
+          `<li><label class="choice"><input type="radio" name="replaceDevice" value="${escapeHtml(`${r.id}|${d.id}`)}" aria-describedby="rg-err">` +
+          `<span class="choice-body"><span class="choice-title"><bdi>${escapeHtml(d.label)}</bdi>${tags}</span>` +
+          meta([
+            ...(many ? [r.tierName] : []),
+            ...(d.platform ? [d.platform] : []),
+            lastUsedText(d.lastSeen, input.now),
+          ]) +
+          `</span></label></li>`
+        );
+      }),
+    )
+    .join("");
+  const err =
+    input.notice?.kind === "pick_device"
+      ? `<p class="field-err" id="rg-err">${icon("x-circle", true)}<span>Choose a device to replace.</span></p>`
+      : `<p class="sr-only" id="rg-err"></p>`;
+  const other =
+    input.notice?.kind === "pick_device" ? "" : noticeHtml(input.notice);
+  return (
+    callout(
+      "devices",
+      "Your licenses are on all their devices.",
+      `Choose one to sign out. ${thisDevice} takes its seat.`,
+    ) +
+    other +
+    `<form method="post" action="${escapeHtml(input.action)}">` +
+    `<input type="hidden" name="choice" value="${escapeHtml(input.token)}">` +
+    `<div class="field"><fieldset class="choices"><legend class="sr-only">Devices to replace</legend><ul class="choices">${items}</ul></fieldset>${err}</div>` +
+    `<div class="actions stack">` +
+    `<button class="button" type="submit" name="action" value="replace-pick">Replace and sign in</button>` +
+    keyLink(input.keyHref) +
     `<button class="button secondary" type="submit" name="action" value="cancel" formnovalidate>Cancel</button>` +
     `</div></form>`
   );

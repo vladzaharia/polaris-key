@@ -264,6 +264,11 @@ const LOCKER_PAGE_CSS_TAIL = [
   `.ac-head-text p{margin:0}`,
   `.ac-head-title{color:var(--strong);font-size:1rem;line-height:1.5rem}`,
   `.ac-head-sub{color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
+  `.ac-dev{display:flex;gap:.375rem;align-items:center}`,
+  `.ac-dev .ic{margin:0}`,
+  `.ac-brand.quiet{opacity:.8}`,
+  `.ac-brand.quiet svg{height:24px;width:auto}`,
+  `.ac-passport{display:none}`,
   `.ac-body{display:grid;gap:1.25rem;min-width:0;padding:2rem 1.75rem;overflow-wrap:anywhere}`,
   `.ac-body>*{margin:0;min-width:0}`,
   `.ac-body h1{font-size:1.5rem;line-height:2rem;letter-spacing:0}`,
@@ -292,7 +297,7 @@ const LOCKER_PAGE_CSS_TAIL = [
   // The code field: big mono caps, centred; its error sits under it, never above the form.
   `.field{display:grid;gap:.5rem;min-width:0}`,
   `.field label,.field input{margin:0}`,
-  `.ac-body input[type=text]{margin:0;min-height:3.5rem;text-align:center;font-size:1.5rem}`,
+  `.ac-body input[type=text]{margin:0;min-height:3.5rem;text-align:center;font-size:min(1.5rem,6vw);letter-spacing:.04em}`,
   `.ac-body input[type=text][aria-invalid=true]{border-color:var(--danger-edge)}`,
   `.field-err{display:flex;gap:.5rem;align-items:flex-start;color:var(--danger);font-size:.875rem;line-height:1.25rem}`,
   `.field-err .ic{margin-top:.125rem}`,
@@ -304,6 +309,9 @@ const LOCKER_PAGE_CSS_TAIL = [
   `[data-brand=locker] ul.choices a{display:inline-flex;align-items:center;min-height:2.75rem}`,
   `[data-brand=locker] details.replace summary{display:flex;align-items:center;min-height:2.75rem}`,
   `@media (max-width: 30rem){[data-brand=locker] body{padding:0 0 2rem}.ac-brand{height:3.5rem;align-items:center;margin:0;border-bottom:1px solid var(--rule)}main.ac{max-width:none;border-width:0 0 1px;border-radius:0;box-shadow:none;background:var(--page)}.ac-head,.ac-body,.ac-foot{padding-left:1.25rem;padding-right:1.25rem}.ac-body{padding-top:1.5rem;padding-bottom:1.5rem}}`,
+  // The hosted passport: at 960 px and wider in landscape the app sits beside the step, with art,
+  // its icon, developer and device each on their own line; narrower, the header strip is shown.
+  `@media (min-width: 60rem) and (orientation: landscape){main.ac-wide{max-width:46rem;display:grid;grid-template-columns:minmax(0,17.5rem) minmax(0,1fr)}main.ac-wide .ac-head{display:none}main.ac-wide .ac-passport{display:block;grid-column:1;grid-row:1;border-right:1px solid var(--rule);background:var(--sunken)}main.ac-wide .ac-body{grid-column:2;grid-row:1;align-content:start}main.ac-wide .ac-foot{grid-column:1 / -1;grid-row:2}.ac-art{height:8rem;background:linear-gradient(160deg,color-mix(in srgb,var(--mb) 45%,var(--raised)),var(--sunken))}.ac-pass-body{display:grid;gap:.75rem;padding:0 1.5rem 1.5rem}.ac-pass-body img,.ac-pass-body .ac-mono{width:72px;height:72px;margin-top:-2.25rem;border:3px solid var(--sunken);border-radius:16px;background:var(--raised)}.ac-pass-text{display:grid;gap:.25rem;overflow-wrap:anywhere}.ac-pass-text p{margin:0}.ac-pass-text .ac-head-title{font-size:1.25rem;line-height:1.75rem}}`,
   // The TV variant (`/tv`): read from a sofa, typed with a remote. Large type and targets, the
   // same card.
   `.tv main.ac{max-width:46rem}`,
@@ -312,11 +320,11 @@ const LOCKER_PAGE_CSS_TAIL = [
   `.tv .ac-body h1+p,.tv .note,.tv .callout-text p,.tv .field-err,.tv .ac-foot{font-size:1.5rem;line-height:2rem}`,
   `.tv .callout-text .callout-title{font-size:1.75rem;line-height:2.25rem}`,
   `.tv .ac-body label{font-size:1.5rem;line-height:2rem}`,
-  `.tv .ac-body input[type=text]{min-height:5.5rem;font-size:3rem}`,
+  `.tv .ac-body input[type=text]{min-height:5.5rem;font-size:min(3rem,8vw)}`,
   `[data-brand=locker] .tv .button{min-height:4.5rem;font-size:1.75rem;line-height:2rem}`,
   `.tv .ic{width:2rem;height:2rem}`,
   `.tv .ac-foot,.tv .ac-head{padding-left:3rem;padding-right:3rem}`,
-  `@media (max-width: 30rem){.tv .ac-body{padding:1.5rem}.tv .ac-body h1{font-size:2rem;line-height:2.5rem}.tv .ac-body input[type=text]{font-size:2rem}.tv .ac-foot,.tv .ac-head{padding-left:1.25rem;padding-right:1.25rem}}`,
+  `@media (max-width: 30rem){.tv .ac-body{padding:1.5rem}.tv .ac-body h1{font-size:2rem;line-height:2.5rem}.tv .ac-body input[type=text]{font-size:min(2rem,7vw)}.tv .ac-foot,.tv .ac-head{padding-left:1.25rem;padding-right:1.25rem}}`,
 ].join("");
 
 /** The stylesheet of a Locker page: `BRAND_PAGE_CSS` and its tail. */
@@ -367,6 +375,23 @@ export interface BrandPageOptions {
   header?: string;
   /** Locker only: the card's footer line, plain text beside an icon. */
   footer?: { icon: IconName; text: string };
+  /**
+   * Locker only: the hosted passport (identity.device-confirm). At 960 px and wider in landscape
+   * the app's art, icon, developer and device sit beside the step; narrower, `header` is the
+   * strip. Not drawn for `variant: "tv"`.
+   */
+  passport?: AppFacts;
+}
+
+/** What a page may say about the app that is asking (display data; every value plain text). */
+export interface AppFacts {
+  name: string;
+  iconUrl?: string | null;
+  developer?: string | null;
+  /** The device label the app named. */
+  device?: string | null;
+  /** What follows the name ("wants you to sign in"). */
+  action?: string;
 }
 
 export type AuthCardOptions = Omit<
@@ -388,6 +413,8 @@ const ICON_PATHS = {
   monitor:
     '<rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/>',
   at: '<circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/>',
+  devices:
+    '<path d="M18 8V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h8"/><path d="M10 19v-3.96 3.15"/><path d="M7 19h5"/><rect width="6" height="10" x="16" y="12" rx="2"/>',
   "arrow-right": '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
 } as const;
 export type IconName = keyof typeof ICON_PATHS;
@@ -423,17 +450,44 @@ export function appHeader(opts: {
   iconUrl?: string | null;
   /** What follows the name in the title line ("wants you to sign in"); none: the name alone. */
   action?: string;
-  /** The muted line below (developer, device); plain text. */
+  /** The muted line below (the developer); plain text. */
   sub?: string;
+  /** The device the app named: its own line, with a device glyph. */
+  device?: string | null;
 }): string {
-  const art = opts.iconUrl
-    ? `<img src="${escapeHtml(opts.iconUrl)}" alt="" width="48" height="48">`
-    : `<span class="ac-mono" aria-hidden="true">${escapeHtml([...opts.name][0]?.toUpperCase() ?? "")}</span>`;
-  return `<div class="ac-head">${art}<div class="ac-head-text"><p class="ac-head-title"><strong>${escapeHtml(opts.name)}</strong>${opts.action ? ` ${escapeHtml(opts.action)}` : ""}</p>${opts.sub ? `<p class="ac-head-sub">${escapeHtml(opts.sub)}</p>` : ""}</div></div>`;
+  return `<div class="ac-head">${appArt(opts.name, opts.iconUrl)}<div class="ac-head-text">${appLines(opts)}</div></div>`;
+}
+
+function appArt(name: string, iconUrl?: string | null): string {
+  return iconUrl
+    ? `<img src="${escapeHtml(iconUrl)}" alt="" width="48" height="48">`
+    : `<span class="ac-mono" aria-hidden="true">${escapeHtml([...name][0]?.toUpperCase() ?? "")}</span>`;
+}
+
+/** The lines beside an app's icon: name and action, developer, device (names are `<bdi>`). */
+function appLines(opts: {
+  name: string;
+  action?: string;
+  sub?: string;
+  device?: string | null;
+}): string {
+  return (
+    `<p class="ac-head-title"><strong><bdi>${escapeHtml(opts.name)}</bdi></strong>${opts.action ? ` ${escapeHtml(opts.action)}` : ""}</p>` +
+    (opts.sub ? `<p class="ac-head-sub">${escapeHtml(opts.sub)}</p>` : "") +
+    (opts.device
+      ? `<p class="ac-head-sub ac-dev">${icon("monitor", true)}<span>on <bdi>${escapeHtml(opts.device)}</bdi></span></p>`
+      : "")
+  );
+}
+
+/** The passport pane: art, the app's icon, developer and device, each on its own line. */
+function passportPane(f: AppFacts): string {
+  return `<aside class="ac-passport"><div class="ac-art" aria-hidden="true"></div><div class="ac-pass-body">${appArt(f.name, f.iconUrl)}<div class="ac-pass-text">${appLines({ name: f.name, ...(f.action ? { action: f.action } : {}), ...(f.developer ? { sub: f.developer } : {}), device: f.device ?? null })}</div></div></aside>`;
 }
 
 let mark: string | null = null;
 let lockerLockup: string | null = null;
+let lockerLockupSmall: string | null = null;
 
 /**
  * The brand block above the card. `surface` is the already-escaped surface label, or "". Key:
@@ -519,11 +573,26 @@ export function renderBrandPage(opts: BrandPageOptions): string {
  */
 export function renderAuthCard(opts: AuthCardOptions): string {
   lockerLockup ??= themedLockup("locker", "horizontal", 48, "mark");
+  lockerLockupSmall ??= themedLockup("locker", "horizontal", 24, "mark");
   const header =
     opts.header ??
     (opts.app
       ? appHeader({ name: opts.app.name, iconUrl: opts.app.iconUrl })
-      : "");
+      : opts.passport
+        ? appHeader({
+            name: opts.passport.name,
+            iconUrl: opts.passport.iconUrl,
+            ...(opts.passport.action ? { action: opts.passport.action } : {}),
+            ...(opts.passport.developer
+              ? { sub: opts.passport.developer }
+              : {}),
+            device: opts.passport.device ?? null,
+          })
+        : "");
+  // In an app's context (SIGN-IN.md §3.1) the brand row is the quiet 18 px one; the full lockup
+  // is for pages with no app.
+  const inApp = header !== "" || opts.passport !== undefined;
+  const wide = opts.passport !== undefined && opts.variant !== "tv";
   const dark = THEME_TOKENS.dark.surface.page;
   const light = THEME_TOKENS.light.surface.page;
   return [
@@ -541,9 +610,10 @@ export function renderAuthCard(opts: AuthCardOptions): string {
     `<style>${BRAND_PAGE_CSS_LOCKER}</style>`,
     `</head>`,
     opts.variant === "tv" ? `<body class="tv">` : `<body>`,
-    `<header class="ac-brand"><div role="img" aria-label="Polaris Locker">${lockerLockup}</div></header>`,
-    `<main class="ac">`,
+    `<header class="${inApp ? "ac-brand quiet" : "ac-brand"}"><div role="img" aria-label="Polaris Locker">${inApp ? lockerLockupSmall : lockerLockup}</div></header>`,
+    wide ? `<main class="ac ac-wide">` : `<main class="ac">`,
     header,
+    wide ? passportPane(opts.passport!) : "",
     `<div class="ac-body">`,
     `<h1>${escapeHtml(opts.heading)}</h1>`,
     opts.body ?? "",

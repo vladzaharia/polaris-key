@@ -149,10 +149,13 @@ describe("the confirm step", () => {
   it("offers Sign in on the device and Deny, with the static expiry", async () => {
     const { userCode } = await start();
     const { html } = await confirmPage(userCode);
-    expect(html).toContain("Sign in on Living room PC?");
+    expect(html).toContain("Sign in on \u2068Living room PC\u2069?");
     expect(html).toContain('name="decision" value="approve" autofocus');
     expect(html).toContain('name="decision" value="deny">Deny</button>');
     expect(html).toContain("wants you to sign in");
+    // The passport pane (shown at 960 px landscape) and the strip (narrower) name the device.
+    expect(html).toContain('class="ac-passport"');
+    expect(html).toContain("on <bdi>Living room PC</bdi>");
     expect(html).toMatch(/Expires \d\d:\d\d UTC\./);
     expect(html).toContain("never sees your codes or passkeys.");
     expect(html).not.toMatch(/<script|\sstyle=/i);

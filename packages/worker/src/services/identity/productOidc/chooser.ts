@@ -332,8 +332,18 @@ export async function handleAuthChoose(
     return redirectToChooser(req, product);
   }
 
-  if (action === "replace") {
-    const pending = flow.choiceReplace;
+  if (action === "replace" || action === "replace-pick") {
+    let pending = flow.choiceReplace;
+    if (action === "replace-pick") {
+      // The all-full group: one press picks the device and replaces it (no second step).
+      const raw = form.get("replaceDevice") ?? "";
+      if (!raw) return notice({ kind: "pick_device" });
+      const [licenseId = "", deviceId = ""] = raw.split("|");
+      const picked = view.rows.find((r) => r.id === licenseId);
+      if (!picked?.replace?.some((d) => d.id === deviceId))
+        return notice({ kind: "unavailable" });
+      pending = { licenseId, deviceId };
+    }
     if (!pending) return redirectToChooser(req, product);
     const row = view.rows.find((r) => r.id === pending.licenseId);
     if (!row) return notice({ kind: "unavailable" });
@@ -412,12 +422,8 @@ export async function renderChooser(
     name: product.name,
     iconUrl: shown.app.iconUrl,
     action: "wants you to sign in",
-    sub: [
-      developer,
-      c.flow.viaDeviceCode ? `on ${c.deviceLabel}` : "in this browser",
-    ]
-      .filter(Boolean)
-      .join(" · "),
+    ...(developer ? { sub: developer } : {}),
+    device: c.flow.viaDeviceCode ? c.deviceLabel : "this browser",
   });
   const pending = c.flow.choiceReplace;
   if (pending) {

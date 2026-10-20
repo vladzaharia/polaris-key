@@ -114,7 +114,9 @@ describe("the platform device-code entry pages", () => {
       for (const path of ["/device", "/tv"]) {
         const res = await get(`${path}?user_code=${encodeURIComponent(raw)}`);
         expect(res.status).toBe(302);
-        expect(res.headers.get("location")).toBe(target);
+        expect(res.headers.get("location")).toBe(
+          path === "/tv" ? `${target}&tv=1` : target,
+        );
         expect(res.headers.get("cache-control")).toBe("no-store");
         expect(res.headers.get("referrer-policy")).toBe("no-referrer");
       }

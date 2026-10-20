@@ -96,6 +96,11 @@ export function deviceHtmlHeaders(
  *  product, the device label and the user code, and one button. `hidden` are the extra fields
  *  the form posts back alongside `csrf` — the user code on `/device`, nothing on `/verify`
  *  (whose action URL already carries the device code). */
+/** A name inside a sentence, isolated so a right-to-left label cannot scramble the line. */
+function isolate(name: string): string {
+  return `\u2068${name}\u2069`;
+}
+
 export async function renderDeviceConfirmation(
   req: Request,
   env: Env,
@@ -107,6 +112,7 @@ export async function renderDeviceConfirmation(
   now: number,
   /** The app's display data (`appForPage`): its icon and the developer's name. */
   app?: { name: string; iconUrl?: string | null; developer?: string | null },
+  tv = false,
 ): Promise<Response> {
   const shown = pageApp(app ?? { name: product.name });
   const csrf = randomToken(16);
@@ -117,7 +123,7 @@ export async function renderDeviceConfirmation(
     await deviceFlowKey(env, product.slug, deviceCode),
     { set: { csrf } },
   );
-  if (!minted.ok) return errorResponse(404, "not_found", "device code expired");
+  if (!minted.ok) return deviceGonePage(product, 404, "expired", tv);
   // Never the raw device id: with `state` it was half of what the retired `/identity/auth/poll`
   // checked, and it is a device identifier the user-code holder has no need for (R8-02, P1-06).
   // §12.7.1: the label is stored normalised at `/device/start`; it is normalised again here so a
@@ -152,25 +158,29 @@ export async function renderDeviceConfirmation(
       : "";
   // The explicit step (SIGN-IN.md §4.2, identity.device-confirm): the person decides here, and
   // both buttons post the same form. The decision is read in one place (`decideDeviceFlow`).
+  const who = app?.developer?.trim() || product.name;
+  const dev = isolate(deviceLabel);
   const html = renderAuthCard({
-    title: `Sign in on ${deviceLabel}?`,
-    heading: `Sign in on ${deviceLabel}?`,
-    header: appHeader({
+    title: `Sign in on ${dev}?`,
+    heading: `Sign in on ${dev}?`,
+    ...(tv ? { variant: "tv" as const } : {}),
+    passport: {
       name: product.name,
       iconUrl: shown.app.iconUrl,
+      developer: app?.developer ?? null,
+      device: deviceLabel,
       action: "wants you to sign in",
-      sub: [app?.developer, `on ${deviceLabel}`].filter(Boolean).join(" · "),
-    }),
+    },
     body:
       `<p>It showed the code <span class="code">${escapeHtml(record.userCode)}</span>.${expiry}</p>` +
       `<form method="post" action="${escapeHtml(action)}" data-request="${escapeHtml(signInRequest.handle)}">${hiddenInputs}` +
       `<input type="hidden" name="csrf" value="${escapeHtml(csrf)}">` +
-      `<div class="stack"><button class="button" type="submit" name="decision" value="approve" autofocus>Sign in on ${escapeHtml(deviceLabel)}</button>` +
+      `<div class="stack"><button class="button" type="submit" name="decision" value="approve" autofocus><span>Sign in on <bdi>${escapeHtml(deviceLabel)}</bdi></span></button>` +
       `<button class="button secondary" type="submit" name="decision" value="deny">Deny</button></div></form>` +
       note("info", "Didn't start this? Deny, and nothing signs in."),
     footer: {
       icon: "lock",
-      text: `Polaris Locker signs you in for ${product.name}. ${product.name} never sees your codes or passkeys.`,
+      text: `Polaris Locker signs you in for ${isolate(product.name)}. ${isolate(who)} never sees your codes or passkeys.`,
     },
   });
   const headers = deviceHtmlHeaders(record.authorizeUrl, shown.imgOrigin);
@@ -187,11 +197,15 @@ export function renderDeviceEntry(
   action: string,
   status: 200 | 404 | 429,
   typed?: string | null,
+  app?: { name: string; iconUrl?: string | null },
+  tv = false,
 ): Response {
+  const shown = pageApp(app ?? { name: product.name });
   const html = renderAuthCard({
     title: "Enter your code",
     heading: "Enter the code from your device",
-    header: appHeader({ name: product.name }),
+    ...(tv ? { variant: "tv" as const } : {}),
+    header: appHeader({ name: product.name, iconUrl: shown.app.iconUrl }),
     body:
       status === 429
         ? tooManyBody(action)
@@ -203,7 +217,7 @@ export function renderDeviceEntry(
           }),
     footer: ENTRY_FOOTER,
   });
-  const headers = deviceHtmlHeaders();
+  const headers = deviceHtmlHeaders(undefined, shown.imgOrigin);
   if (status === 429) headers.set("retry-after", "60");
   return new Response(html, { status, headers });
 }
@@ -215,9 +229,11 @@ export function deviceGonePage(
   product: Product | null,
   status: 403 | 404,
   kind: "expired" | "stale" = "expired",
+  tv = false,
 ): Response {
   const expired = kind === "expired";
   const html = renderAuthCard({
+    ...(tv ? { variant: "tv" as const } : {}),
     title: expired ? "That code expired" : "This page is out of date",
     heading: expired ? "That code expired" : "This page is out of date",
     ...(product ? { header: appHeader({ name: product.name }) } : {}),
@@ -236,8 +252,9 @@ export function deviceGonePage(
 }
 
 /** Deny: the code no longer works here and nothing signed in. */
-export function deviceDeniedPage(product: Product): Response {
+export function deviceDeniedPage(product: Product, tv = false): Response {
   const html = renderAuthCard({
+    ...(tv ? { variant: "tv" as const } : {}),
     title: "Nothing was signed in",
     heading: "Nothing was signed in",
     header: appHeader({ name: product.name }),
@@ -267,7 +284,7 @@ export function signInRefusalPage(heading: string, body: string): Response {
 export function platformSignInEndedPage(): Response {
   return signInRefusalPage(
     PLATFORM_SIGNIN_ENDED.heading,
-    `<p>${escapeHtml(PLATFORM_SIGNIN_ENDED.body)}</p><p class="actions"><a class="button" href="/">${escapeHtml(PLATFORM_SIGNIN_ENDED.action)}</a></p>`,
+    `<p>${escapeHtml(PLATFORM_SIGNIN_ENDED.body)}</p><p class="actions"><a class="button" href="/login">${escapeHtml(PLATFORM_SIGNIN_ENDED.action)}</a></p>`,
   );
 }
 
@@ -275,11 +292,11 @@ export function platformSignInEndedPage(): Response {
  * "This account can't sign in" (SIGN-IN.md §3.13, Account disabled): the page the portal and the
  * login card give a disabled account, on a product's sign-in (N9). 403, names nothing.
  *
- * **Sign in with another account** goes to Polaris Key's sign-in page, not back into this
- * product's sign-in: that would go straight back to the platform IdP, whose own session (the
- * authorize request asks for no `prompt`) signs the same subject in again and is refused again.
- * Polaris Key's sign-in is where another account can be chosen, as "Single sign-on ended" sends
- * people there too. **Back to <Product>** returns to the app's page when the flow came from one
+ * **Sign in with another account** goes to Polaris Locker's sign-in (`/login`, which the API host
+ * redirects to the customer host), not back into this product's sign-in: that would go straight
+ * back to the platform IdP, whose own session (the authorize request asks for no `prompt`) signs
+ * the same subject in again and is refused again. Polaris Locker's sign-in is where another
+ * account can be chosen, as "Single sign-on ended" sends people there too. **Back to <Product>** returns to the app's page when the flow came from one
  * (`returnTo`, checked same-origin at the start); a device-code flow has none.
  */
 export function productAccountDisabledPage(
@@ -287,7 +304,8 @@ export function productAccountDisabledPage(
   flow: FlowRecord,
 ): Response {
   return accountDisabledPage({
-    signInHref: "/",
+    app: { name: product.name },
+    signInHref: "/login",
     back: flow.returnTo
       ? { href: flow.returnTo, productName: product.name }
       : null,

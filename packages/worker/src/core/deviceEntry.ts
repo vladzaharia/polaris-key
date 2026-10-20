@@ -39,10 +39,12 @@ const SLUG = /^[a-z0-9][a-z0-9-]{0,63}$/;
 
 /** What a person typed, kept for the form when the code misses: code characters only. */
 export function typedCode(raw: string | null | undefined): string {
-  return (raw ?? "")
+  const t = (raw ?? "")
     .toUpperCase()
     .replace(/[^A-Z0-9-]/g, "")
     .slice(0, 32);
+  // Eight characters read as the code's own shape.
+  return /^[A-Z0-9]{8}$/.test(t) ? `${t.slice(0, 4)}-${t.slice(4)}` : t;
 }
 
 /** The footer of every code-entry page. */
@@ -91,6 +93,7 @@ function page(
   tv: boolean,
   status: 200 | 404 | 429,
   typed: string | null = null,
+  productOrigin: string | null = null,
 ): Response {
   const path = tv ? "/tv" : "/device";
   const html = renderAuthCard({
@@ -115,6 +118,20 @@ function page(
       "referrer-policy": "no-referrer",
     }),
   );
+  // On the customer host a found code redirects to the API host's product page; browsers apply
+  // `form-action` to every redirect a submission follows, so name that one origin (configuration,
+  // never the request), as the product device page does for its IdP.
+  if (productOrigin) {
+    const csp = headers.get("content-security-policy");
+    if (csp)
+      headers.set(
+        "content-security-policy",
+        csp.replace(
+          "form-action 'self'",
+          `form-action 'self' ${productOrigin}`,
+        ),
+      );
+  }
   if (status === 429) headers.set("retry-after", "60");
   return new Response(html, { status, headers });
 }
@@ -128,7 +145,7 @@ export async function handleDeviceEntry(
 ): Promise<Response> {
   if (req.method !== "GET" && req.method !== "HEAD") return methodNotAllowed();
   const raw = new URL(req.url).searchParams.get("user_code");
-  if (!raw?.trim()) return page(tv, 200);
+  if (!raw?.trim()) return page(tv, 200, null, productOrigin);
 
   const ok = await rateLimitOk(
     env,
@@ -142,11 +159,12 @@ export async function handleDeviceEntry(
     },
     now,
   );
-  if (!ok) return page(tv, 429);
+  if (!ok) return page(tv, 429, null, productOrigin);
 
   const code = normalizeUserCode(raw);
   const slug = await lookupDeviceCode(env, code ?? DUMMY_CODE);
-  if (!code || !slug || !SLUG.test(slug)) return page(tv, 404, typedCode(raw));
+  if (!code || !slug || !SLUG.test(slug))
+    return page(tv, 404, typedCode(raw), productOrigin);
 
   return new Response(null, {
     status: 302,
@@ -154,7 +172,7 @@ export async function handleDeviceEntry(
       // Relative: the same host the visitor is on, whatever it is called. On the customer host
       // the product's page is on the API host, so `productOrigin` (configuration, never the
       // request) names it (LK-03).
-      location: `${productOrigin ?? ""}/${slug}/identity/auth/device?user_code=${formatUserCode(code)}`,
+      location: `${productOrigin ?? ""}/${slug}/identity/auth/device?user_code=${formatUserCode(code)}${tv ? "&tv=1" : ""}`,
       "cache-control": "no-store",
       "referrer-policy": "no-referrer",
     },

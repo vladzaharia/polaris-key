@@ -6,6 +6,7 @@ import { HEADER_DEVICE } from "@polaris-key/protocol/core";
 import { hashKey } from "../../../platform/crypto.js";
 import { type Env } from "../../../platform/env.js";
 import { hostOrigin } from "../../../core/hosts.js";
+import { typedCode } from "../../../core/deviceEntry.js";
 import { appForPage } from "../../../core/brandPage.js";
 import type { ServiceHooks } from "../../../core/hooks.js";
 import { randomToken } from "../../../platform/random.js";
@@ -207,8 +208,9 @@ function gone(
   status: 403 | 404,
   kind: "expired" | "stale",
   fallback: Response,
+  tv = false,
 ): Response {
-  return wantsJson(req) ? fallback : deviceGonePage(product, status, kind);
+  return wantsJson(req) ? fallback : deviceGonePage(product, status, kind, tv);
 }
 
 /** POST half of device verification: mark the flow user-confirmed and hand the browser on to
@@ -224,12 +226,13 @@ export async function confirmDeviceFlow(
   token: string | null,
   now: number,
   decision: DeviceDecision = "approve",
+  tv = false,
 ): Promise<Response> {
   if (!sameOriginPost(req))
     return errorResponse(403, "forbidden", "confirmation failed");
   const refused = errorResponse(403, "forbidden", "confirmation failed");
   if (!record.csrf || !token || !constantTimeEqual(token, record.csrf))
-    return gone(req, product, 403, "stale", refused);
+    return gone(req, product, 403, "stale", refused, tv);
 
   // THE decision (identity.device-confirm: Sign in on <device> / Deny). I-37 adds the approval
   // marker here, in the one branch each outcome takes.
@@ -240,9 +243,9 @@ export async function confirmDeviceFlow(
       await deviceFlowKey(env, product.slug, deviceCode),
       { expect: { csrf: token }, unset: ["csrf"] },
     );
-    if (!spentDeny.ok) return gone(req, product, 403, "stale", refused);
+    if (!spentDeny.ok) return gone(req, product, 403, "stale", refused, tv);
     await deleteUserCodeIndex(env, product.slug, record.userCode);
-    return deviceDeniedPage(product);
+    return deviceDeniedPage(product, tv);
   }
 
   // The confirmation is an authorization input for the poll, so it is recorded on
@@ -259,6 +262,7 @@ export async function confirmDeviceFlow(
       404,
       "expired",
       errorResponse(404, "not_found", "device code expired"),
+      tv,
     );
   // Spend the CSRF token atomically (single-use): of two racing POSTs carrying it, one
   // confirms and the other is refused like any stale token.
@@ -267,7 +271,7 @@ export async function confirmDeviceFlow(
     set: { confirmedAt: now },
     unset: ["csrf"],
   });
-  if (!spent.ok) return gone(req, product, 403, "stale", refused);
+  if (!spent.ok) return gone(req, product, 403, "stale", refused, tv);
   // I-26: the confirming browser is the one the licence chooser will answer (delegated decision
   // 13). Minted here, never at `/device/start`: that request comes from the device, not from
   // the browser that signs in.
@@ -287,6 +291,7 @@ export async function confirmDeviceFlow(
       404,
       "expired",
       errorResponse(404, "not_found", "device code expired"),
+      tv,
     );
   // A confirmed flow is done with its user code: nobody else who learns the code (a stream, a
   // photographed QR code, a guess) can re-render the page, re-mint the CSRF token or read the
@@ -397,9 +402,13 @@ export async function handleAuthDeviceEntry(
     windowSec: 60,
   });
   const url = new URL(req.url);
-  const action = `${url.origin}/${product.slug}/identity/auth/device`;
+  // `/tv` carries its large-type variant through the redirect and every step after it.
+  const tv = url.searchParams.get("tv") === "1";
+  const action = `${url.origin}/${product.slug}/identity/auth/device${tv ? "?tv=1" : ""}`;
   if (limited)
-    return wantsJson(req) ? limited : renderDeviceEntry(product, action, 429);
+    return wantsJson(req)
+      ? limited
+      : renderDeviceEntry(product, action, 429, null, undefined, tv);
 
   let rawCode: string | null;
   let csrf: string | undefined;
@@ -415,7 +424,14 @@ export async function handleAuthDeviceEntry(
     rawCode = url.searchParams.get("user_code");
   }
   if (!rawCode?.trim() && csrf === undefined)
-    return renderDeviceEntry(product, action, 200);
+    return renderDeviceEntry(
+      product,
+      action,
+      200,
+      null,
+      await appFor(env, product, ctx),
+      tv,
+    );
 
   const userCode = normalizeUserCode(rawCode);
   const deviceCode = userCode
@@ -437,8 +453,16 @@ export async function handleAuthDeviceEntry(
         403,
         "expired",
         errorResponse(403, "forbidden", "confirmation failed"),
+        tv,
       );
-    return renderDeviceEntry(product, action, 404, rawCode);
+    return renderDeviceEntry(
+      product,
+      action,
+      404,
+      typedCode(rawCode),
+      await appFor(env, product, ctx),
+      tv,
+    );
   }
 
   if (csrf !== undefined)
@@ -451,6 +475,7 @@ export async function handleAuthDeviceEntry(
       csrf,
       now,
       decision,
+      tv,
     );
   return renderDeviceConfirmation(
     req,
@@ -462,6 +487,7 @@ export async function handleAuthDeviceEntry(
     { user_code: formatUserCode(userCode) },
     now,
     await appFor(env, product, ctx),
+    tv,
   );
 }
 
@@ -496,7 +522,14 @@ export async function handleAuthDeviceVerify(
           429,
         );
   const deviceCode = url.searchParams.get("device_code");
-  if (!deviceCode) return errorResponse(400, "bad_request", "missing code");
+  if (!deviceCode)
+    return gone(
+      req,
+      product,
+      404,
+      "expired",
+      errorResponse(400, "bad_request", "missing code"),
+    );
   const deviceKey = await deviceFlowKey(env, product.slug, deviceCode);
   const raw = await getArtefact(env, deviceKey);
   const record = raw ? parseFlowRecord<DeviceFlowRecord>(raw) : null;

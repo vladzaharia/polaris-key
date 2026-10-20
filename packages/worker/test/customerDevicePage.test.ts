@@ -88,7 +88,8 @@ describe("the device entry on the customer host", () => {
       );
       expect(res.status).toBe(302);
       expect(res.headers.get("location")).toBe(
-        `${API}/djdl/identity/auth/device?user_code=${f.userCode}`,
+        // `/tv` keeps its large-type variant through the redirect (`tv=1`).
+        `${API}/djdl/identity/auth/device?user_code=${f.userCode}${path === "/tv" ? "&tv=1" : ""}`,
       );
       expect(res.headers.get("set-cookie")).toBeNull();
     }
@@ -109,6 +110,18 @@ describe("the device entry on the customer host", () => {
         })
       ).status,
     ).toBe(405);
+  });
+
+  it("lets the form submit to the API host its code redirects to", async () => {
+    await start();
+    // Browsers apply `form-action` to every redirect a submission follows, so the customer page
+    // must name the API host or a found code goes nowhere.
+    for (const path of ["/device", "/tv", "/device?user_code=BBBBBBBB"]) {
+      const res = await send(`${CUSTOMER}${path}`);
+      expect(res.headers.get("content-security-policy")).toContain(
+        `form-action 'self' ${API};`,
+      );
+    }
   });
 
   it("the product path stays unreachable on the customer host", async () => {
@@ -160,6 +173,10 @@ describe("the device entry on the customer host", () => {
     expect(res.status).toBe(302);
     expect(res.headers.get("location")).toBe(
       `/djdl/identity/auth/device?user_code=${f.userCode}`,
+    );
+    const form = await send(`${API}/device`);
+    expect(form.headers.get("content-security-policy")).toContain(
+      "form-action 'self';",
     );
   });
 });

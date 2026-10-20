@@ -27,7 +27,7 @@ describe("brandPageResponse app strip", () => {
     });
     const html = await res.text();
     expect(html).not.toContain("<img");
-    expect(html).toContain("<strong>Tide</strong>");
+    expect(html).toContain("<strong><bdi>Tide</bdi></strong>");
     expect(res.headers.get("content-security-policy")).toContain(
       "img-src 'self' data:;",
     );
