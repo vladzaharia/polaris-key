@@ -117,12 +117,23 @@ export const KEY_NAMESPACES = [
   "common",
   "a11y",
   "signin",
+  // The customer portal's License and Get it sections (PX-28a, P0-36): not a kit component.
+  "license",
+  "getIt",
   // The terminal kits' own strings: help, key hints, status rows (UK-14, UK-13).
   "cli",
 ] as const;
 
 /** Namespaces whose keys need not be listed by a component state (parts and shared groups). */
-const SHARED_NAMESPACES = new Set(["part", "common", "a11y", "signin", "cli"]);
+const SHARED_NAMESPACES = new Set([
+  "part",
+  "common",
+  "a11y",
+  "signin",
+  "cli",
+  "license",
+  "getIt",
+]);
 
 /** The §4.1 component names, exactly. */
 export const COMPONENTS = [

@@ -1,5 +1,6 @@
 import * as React from "react";
-import { Info } from "lucide-react";
+import { ExternalLink, Info, Mail } from "lucide-react";
+import { Button } from "../../../ui/Button.js";
 import { Skeleton } from "../../../ui/Skeleton.js";
 import type { PortalLicenseDetail } from "../../api.js";
 import type { LibraryProduct } from "../../model/library.js";
@@ -18,6 +19,7 @@ import { KeyMask } from "../KeyMask.js";
 import { isIssueStatus, ProductStatusPill } from "../ProductStatus.js";
 import { ErrorPanel } from "../States.js";
 import { SectionCard } from "./Card.js";
+import { LicenseTerm } from "./LicenseTerm.js";
 import { t } from "../../../lib/copy.js";
 
 /**
@@ -36,9 +38,13 @@ import { t } from "../../../lib/copy.js";
  * line: "Access" already says it (owner, 2026-10-06). Every licence is account-bound, so none is
  * labelled by type (owner decision, 2026-10-05). Get a new key waits for G7.
  *
- * "Access" says what the Worker does today (P0-47): a licence works until its end date and then
- * stops, so the card never promises "Updates included" or newer versions on renewal. LX-41's
- * "keeps the last version" brings that wording back for the licences it covers.
+ * The term leads (`LicenseTerm`, PX-28a): the end as words and, with a start and an end, a
+ * timeline. It says what the Worker does today (P0-47): a licence works until its end date and
+ * then stops, so the card never promises "Updates included" or newer versions on renewal. LX-41's
+ * "keeps the last version" brings that wording back for the licences it covers. **Renew** lives
+ * here and nowhere else on the page: an outlined link to the developer's own page for a license
+ * that has ended or ends soon, and absent (never disabled) when the developer left no link. The
+ * duration, add-ons and subscription lines are PX-28b's. Every string is a catalog key.
  */
 export function LicenseCard({
   product,
@@ -77,9 +83,8 @@ export function LicenseCard({
   return (
     <SectionCard
       id="license"
-      // The last word of the name stays with "license" (a narrow or zoomed heading never leaves
-      // "license" alone on its own line); the text, and so the accessible name, is unchanged.
-      title={<LicenseTitle name={product.name} />}
+      // The page's h1 already names the product (the mockup's card says only "License").
+      title={t("license.title")}
       aside={
         selected || ownIssue ? (
           <div
@@ -97,13 +102,14 @@ export function LicenseCard({
           </div>
         ) : undefined
       }
-      subtitle={detail?.email ? `Licensed to ${detail.email}` : undefined}
     >
       {multiple ? (
         <div className="mb-4 space-y-1">
           <label htmlFor={switcherId} className="text-sm text-fg-muted">
-            {product.licenses.length} licenses ·{" "}
-            {product.licenses.map((l) => tierName(l)).join(", ")}
+            {t("license.switcher", {
+              count: product.licenses.length,
+              tier: product.licenses.map((l) => tierName(l)).join(", "),
+            })}
           </label>
           <select
             id={switcherId}
@@ -163,68 +169,91 @@ function LicenseFacts({
     store,
     developer: product.presentation.developer,
   });
-  const access =
-    detail.expiresAt === null
-      ? t("signin.term.lifetime")
-      : detail.expiresAt <= now
-        ? `Ended ${formatDay(detail.expiresAt)}`
-        : t("signin.term.until", { date: formatDay(detail.expiresAt) });
   const key = detail.keys.find((k) => k.status === "active") ?? detail.keys[0];
   const includes = detail.entitlements.filter((e) => e.key !== "channels");
   const channels = detail.channels;
   const includedId = React.useId();
+  const developer = product.presentation.developer;
+  const { supportUrl, supportEmail, website } = product.presentation;
+  const renewHref =
+    status.kind === "expired" || status.kind === "expiresSoon"
+      ? (supportUrl ?? (supportEmail ? `mailto:${supportEmail}` : website))
+      : null;
+  const renewing = status.kind === "expired" || status.kind === "expiresSoon";
+  const charted = detail.expiresAt !== null && detail.activatedAt !== null;
   return (
     <div className="space-y-5">
-      {status.kind === "expired" || status.kind === "suspended" ? (
+      {status.kind === "suspended" ? (
         <p className="rounded-lg border border-danger-border bg-danger-subtle p-3 text-sm text-fg">
-          {status.kind === "expired"
-            ? `${status.note}. Renew with ${product.presentation.developer ?? "the developer"} to use it again.`
-            : `${product.presentation.developer ?? "The developer"} suspended this license. Contact them to find out why.`}
+          {t("license.suspended", { developer: developer ?? "The developer" })}
         </p>
-      ) : null}
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-4 text-sm">
-        <div>
-          <dt className="text-xs text-fg-muted">Access</dt>
-          <dd className="mt-0.5 text-fg-strong">{access}</dd>
-        </div>
-        <div>
-          <dt className="text-xs text-fg-muted">Covers versions</dt>
-          <dd
+      ) : (
+        <LicenseTerm
+          activatedAt={detail.activatedAt}
+          expiresAt={detail.expiresAt}
+          now={now}
+        >
+          {renewing ? (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              {status.kind === "expired" ? (
+                <p className="text-sm text-fg-muted">{t("license.expired")}</p>
+              ) : null}
+              {renewHref ? (
+                <Button asChild variant="quiet">
+                  <a
+                    href={renewHref}
+                    {...(renewHref.startsWith("mailto:")
+                      ? {}
+                      : { target: "_blank", rel: "noreferrer" })}
+                  >
+                    {renewHref.startsWith("mailto:") ? (
+                      <Mail aria-hidden />
+                    ) : (
+                      <ExternalLink aria-hidden />
+                    )}
+                    {t("license.renew", {
+                      developer: developer ?? "the developer",
+                    })}
+                    {renewHref.startsWith("mailto:") ? null : (
+                      <span className="sr-only">{t("getIt.newTab")}</span>
+                    )}
+                  </a>
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
+        </LicenseTerm>
+      )}
+      <dl className="grid grid-cols-1 gap-x-4 gap-y-4 text-sm min-[22rem]:grid-cols-2">
+        <Fact term={t("license.fact.versions")}>
+          <span
             className={
-              detail.minVersion || detail.maxVersion
-                ? "mt-0.5 font-mono text-fg-strong"
-                : "mt-0.5 text-fg-strong"
+              detail.minVersion || detail.maxVersion ? "font-mono" : undefined
             }
           >
             {coversVersions(detail)}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-xs text-fg-muted">Activated</dt>
-          <dd className="mt-0.5 text-fg-strong">
+          </span>
+        </Fact>
+        {/* With no chart the start day is not on the page yet: say it (a lifetime license). */}
+        {!charted ? (
+          <Fact term={t("core.activation.ok.title")}>
             {formatDay(detail.activatedAt)}
-          </dd>
-        </div>
+          </Fact>
+        ) : null}
         {/* How the licence reached the person, never a type (owner, 2026-10-05 and 2026-10-06). */}
-        <div>
-          <dt className="text-xs text-fg-muted">License source</dt>
-          <dd className="mt-0.5 text-fg-strong">{origin}</dd>
-        </div>
+        <Fact term={t("license.fact.source")}>{origin}</Fact>
         {detail.maxOfflineDays !== null ? (
-          <div>
-            <dt className="text-xs text-fg-muted">Works offline for</dt>
-            <dd className="mt-0.5 text-fg-strong">
-              {detail.maxOfflineDays === 1
-                ? "1 day"
-                : `${detail.maxOfflineDays} days`}
-            </dd>
-          </div>
+          <Fact term={t("license.fact.offline")}>
+            {t("license.offline", { days: detail.maxOfflineDays })}
+          </Fact>
         ) : null}
         {channels.length ? (
-          <div className="col-span-2">
-            <dt className="text-xs text-fg-muted">Release channels</dt>
-            <dd className="mt-0.5 text-fg-strong">{channels.join(", ")}</dd>
-          </div>
+          <Fact
+            term={t("license.fact.tracks", { count: channels.length })}
+            wide
+          >
+            {channels.join(", ")}
+          </Fact>
         ) : null}
       </dl>
       {key ? (
@@ -235,16 +264,14 @@ function LicenseFacts({
           </div>
           <p className="flex gap-2 text-sm text-fg-muted">
             <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
-            {key.last4
-              ? "Only the last 4 characters are kept, so a key can’t be shown in full."
-              : `Polaris Locker keeps only a fingerprint of your key, so it can’t be shown again. Keep the copy from your email or store.`}
+            {key.last4 ? t("license.key.last4") : t("license.key.fingerprint")}
           </p>
         </div>
       ) : null}
       {includes.length ? (
         <div className="space-y-1 text-sm">
           <p id={includedId} className="text-xs text-fg-muted">
-            Included
+            {t("license.fact.included")}
           </p>
           <ul aria-labelledby={includedId} className="space-y-1 text-fg-strong">
             {includes.map((e) => (
@@ -257,14 +284,22 @@ function LicenseFacts({
   );
 }
 
-/** "<name> license", its last two words held together. */
-function LicenseTitle({ name }: { name: string }): React.ReactElement {
-  const at = name.lastIndexOf(" ");
-  if (at < 0) return <>{`${name} license`}</>;
+/** One fact: its label over its value (the two columns fall to one at 320 px or 200 % text). */
+function Fact({
+  term,
+  wide = false,
+  children,
+}: {
+  term: string;
+  wide?: boolean;
+  children: React.ReactNode;
+}): React.ReactElement {
   return (
-    <>
-      {name.slice(0, at + 1)}
-      <span className="whitespace-nowrap">{`${name.slice(at + 1)} license`}</span>
-    </>
+    <div className={wide ? "min-[22rem]:col-span-2" : undefined}>
+      <dt className="text-xs text-fg-muted">{term}</dt>
+      <dd className="mt-0.5 min-w-0 text-fg-strong [overflow-wrap:anywhere]">
+        {children}
+      </dd>
+    </div>
   );
 }

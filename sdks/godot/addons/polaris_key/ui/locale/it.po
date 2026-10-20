@@ -4212,6 +4212,383 @@ msgstr "Troppi codici. Riprova tra qualche minuto."
 msgid "signin.code.emailInUse"
 msgstr "Un altro account Polaris Locker usa questa email. Accedi come prima."
 
+#. License
+#. The customer portal's License section on a product page (PX-28a). The card's heading; the page already names the product.
+msgid "license.title"
+msgstr "Licenza"
+
+#. Ended {date}
+#. The customer portal's License section on a product page (PX-28a). The term line of a license that has ended. Arguments: {date} = a date already formatted by the platform.
+msgid "license.term.ended"
+msgstr "Terminata il {date}"
+
+#. From {min} to {max}. Today is {date}.
+#. The customer portal's License section on a product page (PX-28a). The text alternative of the term timeline. Arguments: {min} = the start date, {max} = the end date, {date} = today, all already formatted by the platform.
+msgid "license.timeline.alt"
+msgstr "Dal {min} al {max}. Oggi è il {date}."
+
+#. Today, {date}
+#. The customer portal's License section on a product page (PX-28a). The label over the timeline's today marker. Arguments: {date} = a date already formatted by the platform.
+msgid "license.timeline.today"
+msgstr "Oggi, {date}"
+
+#. Covers versions
+#. The customer portal's License section on a product page (PX-28a). A fact's label: which versions the license covers.
+msgid "license.fact.versions"
+msgstr "Versioni coperte"
+
+#. License source
+#. The customer portal's License section on a product page (PX-28a). A fact's label: how the license reached the person (the value is one of the signin.choice.origin.* strings).
+msgid "license.fact.source"
+msgstr "Origine della licenza"
+
+#. Works offline for
+#. The customer portal's License section on a product page (PX-28a). A fact's label: how long the license works without a connection.
+msgid "license.fact.offline"
+msgstr "Funziona offline per"
+
+#. {count, plural, one {Release track} other {Release tracks}}
+#. The customer portal's License section on a product page (PX-28a). A fact's label: the release tracks (channels) the license gets. Arguments: {count} = how many.
+#. Plural on {count}.
+msgid "license.fact.tracks"
+msgid_plural "license.fact.tracks"
+msgstr[0] "Canale di rilascio"
+msgstr[1] "Canali di rilascio"
+msgstr[2] "Canali di rilascio"
+
+#. Included
+#. The customer portal's License section on a product page (PX-28a). A fact's label: what the license includes.
+msgid "license.fact.included"
+msgstr "Incluso"
+
+#. {days, plural, one {# day} other {# days}}
+#. The customer portal's License section on a product page (PX-28a). A fact's value: the offline allowance. Arguments: {days} = the number of days.
+#. Plural on {days}.
+msgid "license.offline"
+msgid_plural "license.offline"
+msgstr[0] "{days} giorno"
+msgstr[1] "{days} giorni"
+msgstr[2] "{days} giorni"
+
+#. Only the last 4 characters are kept, so a key can’t be shown in full.
+#. The customer portal's License section on a product page (PX-28a). Under the masked key when the Worker kept its last 4 characters.
+msgid "license.key.last4"
+msgstr "Vengono conservati solo gli ultimi 4 caratteri, quindi una chiave non può essere mostrata per intero."
+
+#. Polaris Locker keeps only a fingerprint of your key, so it can’t be shown again. Keep the copy from your email or store.
+#. The customer portal's License section on a product page (PX-28a). Under the masked key when only a fingerprint of the key is kept.
+msgid "license.key.fingerprint"
+msgstr "Polaris Locker conserva solo un’impronta della tua chiave, quindi non può essere mostrata di nuovo. Tieni la copia ricevuta via e-mail o dallo store."
+
+#. Renew to use it again.
+#. The customer portal's License section on a product page (PX-28a). Beside Renew when the license has ended.
+msgid "license.expired"
+msgstr "Rinnovala per usarla di nuovo."
+
+#. Renew with {developer}
+#. The customer portal's License section on a product page (PX-28a). Renew, an outlined link to the developer's own page (never a primary). Arguments: {developer} = the developer's name.
+msgid "license.renew"
+msgstr "Rinnova con {developer}"
+
+#. {developer} suspended this license. Contact them to find out why.
+#. The customer portal's License section on a product page (PX-28a). Shown when the developer suspended the license. Arguments: {developer} = the developer's name (or “The developer”).
+msgid "license.suspended"
+msgstr "{developer} ha sospeso questa licenza. Contattali per saperne il motivo."
+
+#. {count, plural, one {# license} other {# licenses}} · {tier}
+#. The customer portal's License section on a product page (PX-28a). The label of the picker when a product has several licenses. Arguments: {count} = how many; {tier} = the tier names, comma separated.
+#. Plural on {count}.
+msgid "license.switcher"
+msgid_plural "license.switcher"
+msgstr[0] "{count} licenza · {tier}"
+msgstr[1] "{count} licenze · {tier}"
+msgstr[2] "{count} licenze · {tier}"
+
+#. Also yours on
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Heading over the stores where the person also owns the product.
+msgid "getIt.alsoYoursOn"
+msgstr "Tuo anche su"
+
+#. Other ways to install
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Heading over a platform's install sources.
+msgid "getIt.otherWays"
+msgstr "Altri modi per installare"
+
+#. (opens in a new tab)
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Added after a link's name for screen readers.
+msgid "getIt.newTab"
+msgstr "(si apre in una nuova scheda)"
+
+#. Source URL
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Label of an install source's address.
+msgid "getIt.sourceUrl"
+msgstr "URL della sorgente"
+
+#. Repository URL
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Label of a package repository's address.
+msgid "getIt.repositoryUrl"
+msgstr "URL del repository"
+
+#. Repository fingerprint (SHA-256)
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Label of a repository's SHA-256 fingerprint.
+msgid "getIt.fingerprint"
+msgstr "Impronta del repository (SHA-256)"
+
+#. No repository fingerprint is published. Check it with the developer before you trust the repository.
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Shown when a repository publishes no fingerprint.
+msgid "getIt.noFingerprint"
+msgstr "Non è pubblicata alcuna impronta del repository. Verificala con lo sviluppatore prima di fidarti del repository."
+
+#. Open via obtainium.imranr.dev
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Link text: open an Obtainium source from the web.
+msgid "getIt.obtainiumWeb"
+msgstr "Apri tramite obtainium.imranr.dev"
+
+#. To download the files, open this page on your computer.
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Shown on a phone that has an install source of its own.
+msgid "getIt.otherFiles"
+msgstr "Per scaricare i file, apri questa pagina sul computer."
+
+#. Other ways to install it are below.
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Under a build on the download step.
+msgid "getIt.flow.sourcesBelow"
+msgstr "Altri modi per installarlo sono più sotto."
+
+#. You're viewing desktop builds.
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Shown when a phone views the desktop builds.
+msgid "getIt.flow.desktopBuilds"
+msgstr "Stai vedendo le versioni desktop."
+
+#. Email me the download
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The phone's primary action: email the download link.
+msgid "getIt.flow.emailMe"
+msgstr "Inviami il download via e-mail"
+
+#. macos: Email Me the Download
+msgctxt "macos"
+msgid "getIt.flow.emailMe"
+msgstr "Inviami il download via e-mail"
+
+#. Other platforms and architectures
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Disclosure label over the other builds.
+msgid "getIt.flow.otherBuilds"
+msgstr "Altre piattaforme e architetture"
+
+#. Channel
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Label of a build's release channel.
+msgid "getIt.flow.channel"
+msgstr "Canale"
+
+#. SHA-256
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Label of a file's SHA-256 checksum (a technical name, kept as is).
+msgid "getIt.flow.sha256"
+msgstr "SHA-256"
+
+#. Full SHA-256
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Title of the popover that shows the whole checksum.
+msgid "getIt.flow.fullSha256"
+msgstr "SHA-256 completo"
+
+#. Copy SHA-256
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The Copy button next to a checksum.
+msgid "getIt.flow.copySha256"
+msgstr "Copia SHA-256"
+
+#. Open the .pkg and follow the installer.
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The step that opens a .pkg.
+msgid "getIt.flow.hint.pkg"
+msgstr "Apri il .pkg e segui l’installer."
+
+#. Run the installer and follow the steps.
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The step that runs a Windows installer.
+msgid "getIt.flow.hint.installer"
+msgstr "Avvia l’installer e segui i passaggi."
+
+#. Make it executable, then run it.
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The step that runs an AppImage.
+msgid "getIt.flow.hint.appimage"
+msgstr "Rendilo eseguibile, poi avvialo."
+
+#. Install it with your package manager.
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The step that installs a .deb or .rpm.
+msgid "getIt.flow.hint.package"
+msgstr "Installalo con il gestore di pacchetti."
+
+#. Open the .apk on your Android device to install it.
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The step that installs an .apk.
+msgid "getIt.flow.hint.apk"
+msgstr "Apri l’.apk sul tuo dispositivo Android per installarlo."
+
+#. Install it with Flatpak.
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The step that installs a Flatpak.
+msgid "getIt.flow.hint.flatpak"
+msgstr "Installalo con Flatpak."
+
+#. Open the .dmg and drag {product} to Applications.
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The step that opens a .dmg. Arguments: {product} = the product's name.
+msgid "getIt.flow.hint.dmg"
+msgstr "Apri il .dmg e trascina {product} in Applicazioni."
+
+#. Unzip it and open {product}.
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The step that opens a zip or tarball. Arguments: {product} = the product's name.
+msgid "getIt.flow.hint.zip"
+msgstr "Decomprimilo e apri {product}."
+
+#. Version {version}
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). A version line. Arguments: {version} = the version.
+msgid "getIt.version"
+msgstr "Versione {version}"
+
+#. Open this page on your computer to download {product}.
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Shown on a phone with nothing to install. Arguments: {product} = the product's name.
+msgid "getIt.openOnComputer"
+msgstr "Apri questa pagina sul computer per scaricare {product}."
+
+#. Install on this iPad
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The phone lead's heading on an iPad.
+msgid "getIt.installOn.ipad"
+msgstr "Installa su questo iPad"
+
+#. Install on this iPhone
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The phone lead's heading on an iPhone.
+msgid "getIt.installOn.iphone"
+msgstr "Installa su questo iPhone"
+
+#. Install on this Android device
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The phone lead's heading on an Android device.
+msgid "getIt.installOn.android"
+msgstr "Installa su questo dispositivo Android"
+
+#. Install on this device
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The phone lead's heading on any other device.
+msgid "getIt.installOn.device"
+msgstr "Installa su questo dispositivo"
+
+#. Copy {name} command
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). A copy button's name. Arguments: {name} = the install source's name.
+msgid "getIt.copy.command"
+msgstr "Copia il comando di {name}"
+
+#. Copy source URL
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). A copy button's name.
+msgid "getIt.copy.source"
+msgstr "Copia l’URL della sorgente"
+
+#. Copy repository URL
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). A copy button's name.
+msgid "getIt.copy.repository"
+msgstr "Copia l’URL del repository"
+
+#. Copy repository fingerprint
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). A copy button's name.
+msgid "getIt.copy.fingerprint"
+msgstr "Copia l’impronta del repository"
+
+#. Scan with your iPhone or iPad to add it in {app}.
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Under a QR code for an Apple device. Arguments: {app} = the app that opens it.
+msgid "getIt.scan.apple"
+msgstr "Inquadra con iPhone o iPad per aggiungerlo in {app}."
+
+#. Scan with your Android device to add it in {app}.
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Under a QR code for an Android device. Arguments: {app} = the app that opens it.
+msgid "getIt.scan.android"
+msgstr "Inquadra con il tuo dispositivo Android per aggiungerlo in {app}."
+
+#. Scan with your phone to add it in {app}.
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Under a QR code for any other phone. Arguments: {app} = the app that opens it.
+msgid "getIt.scan.phone"
+msgstr "Inquadra con il telefono per aggiungerlo in {app}."
+
+#. QR code: {name}
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). A QR image's text alternative. Arguments: {name} = what the code opens.
+msgid "getIt.qrAlt"
+msgstr "Codice QR: {name}"
+
+#. Other ways to install on {platform}
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). A list's accessible name. Arguments: {platform} = the platform's name.
+msgid "getIt.otherWaysOn"
+msgstr "Altri modi per installare su {platform}"
+
+#. Download for {platform}
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The download primary on a computer. Arguments: {platform} = the platform's name.
+msgid "getIt.downloadFor"
+msgstr "Scarica per {platform}"
+
+#. Download for {platform}: {product} {version}, {name}
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The primary's accessible name; it begins with the visible words. Arguments: {platform}, {product}, {version}, {name} = the build's architecture.
+msgid "getIt.downloadName"
+msgstr "Scarica per {platform}: {product} {version}, {name}"
+
+#. Email me the download: {product} for {platform}
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The phone primary's accessible name. Arguments: {product}, {platform}.
+msgid "getIt.flow.emailName"
+msgstr "Inviami il download via e-mail: {product} per {platform}"
+
+#. We sent you the link to download {product} for {platform}.
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The toast after the email is sent. Arguments: {product}, {platform}.
+msgid "getIt.flow.emailSent"
+msgstr "Ti abbiamo inviato il link per scaricare {product} per {platform}."
+
+#. This is the last version your license covers. Version {version} isn't included.
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Under the title when the license's last covered version isn't the newest. Arguments: {version} = the newest version.
+msgid "getIt.lastCovered"
+msgstr "Questa è l’ultima versione coperta dalla tua licenza. La versione {version} non è inclusa."
+
+#. Get it
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The product page card's heading.
+msgid "getIt.heading"
+msgstr "Ottieni"
+
+#. {version} · {date}
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The card's head aside: the newest version and its day. Arguments: {version}, {date}.
+msgid "getIt.latest"
+msgstr "{version} · {date}"
+
+#. Downloads
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The downloads table's accessible name.
+msgid "getIt.table"
+msgstr "Download"
+
+#. Platform
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The downloads table's first column.
+msgid "getIt.col.platform"
+msgstr "Piattaforma"
+
+#. Action
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The downloads table's last column, which has no visible heading.
+msgid "getIt.col.action"
+msgstr "Azione"
+
+#. For your {device}
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Under the build for the device in hand. Arguments: {device} = the device's noun (Mac, PC).
+msgid "getIt.forYour"
+msgstr "Per il tuo {device}"
+
+#. Version {version} isn't included in your license. It covers {max}, below.
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Over the table when the newest version is outside the license. Arguments: {version} = the newest version; {max} = the version the license covers.
+msgid "getIt.notCovered"
+msgstr "La versione {version} non è inclusa nella tua licenza. Copre {max}, qui sotto."
+
+#. Download links are made fresh when you click, so they never go stale.
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Under the downloads table.
+msgid "getIt.fresh"
+msgstr "I link di download vengono creati al clic, quindi non scadono mai."
+
+#. Downloading {product} {version} for {platform}
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Announced when a download starts. Arguments: {product}, {version}, {platform} = the build's description.
+msgid "getIt.downloading"
+msgstr "Download di {product} {version} per {platform}"
+
+#. The download didn't start
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Toast title when a download didn't start.
+msgid "getIt.downloadFailed"
+msgstr "Il download non è partito"
+
+#. {name} {product} {version} for {platform}
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). A download button's accessible name; it begins with the button's visible words. Arguments: {name} = the visible label, {product}, {version}, {platform} = what the file is for.
+msgid "getIt.downloadAria"
+msgstr "{name} {product} {version} per {platform}"
+
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).
 msgid "core.fallback.title"

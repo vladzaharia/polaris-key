@@ -44,7 +44,12 @@ export function DownloadButton({
       iconStart={<Download aria-hidden />}
       aria-label={
         ariaLabel ??
-        `${label} ${productName} ${release.version} for ${describe}`
+        t("getIt.downloadAria", {
+          name: label,
+          product: productName,
+          version: release.version,
+          platform: describe,
+        })
       }
       onClick={() =>
         start.mutate(
@@ -56,10 +61,14 @@ export function DownloadButton({
           {
             onSuccess: () =>
               announce(
-                `Downloading ${productName} ${release.version} for ${describe}`,
+                t("getIt.downloading", {
+                  product: productName,
+                  version: release.version,
+                  platform: describe,
+                }),
               ),
             onError: (err) =>
-              toast.error("The download didn't start", {
+              toast.error(t("getIt.downloadFailed"), {
                 description: portalErrorCopy(err).description,
               }),
           },

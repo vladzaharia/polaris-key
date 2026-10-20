@@ -842,7 +842,7 @@ describe("open products in the Library (PS-05)", () => {
     ).toBeTruthy();
     // The licence's page: its License card arrives, the URL never left, and its h1 has focus.
     expect(
-      await screen.findByRole("region", { name: "Driftwood Notes license" }),
+      await screen.findByRole("region", { name: "License" }),
     ).toBeTruthy();
     expect(window.location.hash).toBe("#/p/driftwood");
     await waitFor(() =>

@@ -587,6 +587,11 @@ const DEVICE_NOUN: Record<PlatformKey, string> = {
   web: "browser",
 };
 
+/** "Mac", "Windows PC": what the device in hand is called next to its build ("For your Mac"). */
+export function deviceNoun(os: PlatformKey): string {
+  return DEVICE_NOUN[os];
+}
+
 /** "Recommended for your Mac": the label names the same OS the build is for. */
 export function recommendedLabel(os: PlatformKey): string {
   return `Recommended for your ${DEVICE_NOUN[os]}`;
