@@ -179,7 +179,8 @@ async function activateWithKey(
       waitUntil,
     );
     // I-09 (§12.2 step 3): a licence in an account is reached by signing in, never by its key.
-    if (gate.kind === "owned") return licenseOwnedResponse(env, req, product);
+    if (gate.kind === "owned")
+      return licenseOwnedResponse(env, db, req, product);
     return keyEntryLimitResponse(env, db, req, product, gate.keyEntries);
   }
 

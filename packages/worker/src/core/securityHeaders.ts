@@ -25,7 +25,7 @@
  */
 
 import { ADMIN_SCRIPT_HASHES } from "./adminCsp.js";
-import { brandPageStyleSource } from "./brandHtml.js";
+import { brandPageStyleSource, type BrandPageBrand } from "./brandHtml.js";
 
 /**
  * SPA + JSON policy: the admin/portal bundles execute their own scripts, plus the shells' one
@@ -81,6 +81,12 @@ export interface AppSecurityOptions {
    * Omitted, `null` or not a bare origin (`cspImageOrigin`), the policy is unchanged.
    */
   imgOrigin?: string | null;
+  /**
+   * The identity of a branded page: Polaris Locker by default (LK-07), its stylesheet the Key
+   * one plus a constant tail with its own hash (`BRAND_PAGE_CSS_LOCKER`); `"key"` for the
+   * console's own pages. Only `brandedHtmlSecurityHeaders` reads it.
+   */
+  brand?: BrandPageBrand;
 }
 
 /**
@@ -100,16 +106,20 @@ const STATIC_HTML_CSP = [
 /**
  * Branded-page policy: the static-page policy with the inline-style allowance replaced by the
  * one stylesheet's hash, plus the brand font from this origin. `form-action 'self'` stays a
- * literal token: the device pages widen it by one IdP origin (`oidc.ts`).
+ * literal token: the device pages widen it by one origin (the IdP in `oidc.ts`, the API host in
+ * `deviceEntry.ts`).
  */
-function brandedHtmlCsp(imgOrigin: string | null = null): string {
+function brandedHtmlCsp(
+  imgOrigin: string | null = null,
+  brand?: BrandPageBrand,
+): string {
   return [
     "default-src 'none'",
     "base-uri 'none'",
     "frame-ancestors 'none'",
     "form-action 'self'",
     `img-src 'self' data:${imgOrigin ? ` ${imgOrigin}` : ""}`,
-    `style-src ${brandPageStyleSource()}`,
+    `style-src ${brandPageStyleSource(brand)}`,
     "font-src 'self'",
   ].join("; ");
 }
@@ -168,7 +178,7 @@ export function brandedHtmlSecurityHeaders(
   commonHeaders(headers);
   headers.set(
     "content-security-policy",
-    brandedHtmlCsp(cspImageOrigin(opts.imgOrigin)),
+    brandedHtmlCsp(cspImageOrigin(opts.imgOrigin), opts.brand),
   );
   return headers;
 }

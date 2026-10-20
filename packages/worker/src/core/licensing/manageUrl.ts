@@ -35,6 +35,7 @@ import {
 } from "@polaris-key/protocol/license";
 import type { Db } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
+import { consoleOrigin, customerOrigin } from "../hosts.js";
 import {
   normalizeArchHeader,
   normalizePlatformHeader,
@@ -115,26 +116,7 @@ export function portalOriginOf(env: Env, req: Request): string | null {
  * configured origin, else `fallback` (an absolute URL or origin the Worker was reached on).
  */
 export function portalOriginFor(env: Env, fallback: string): string | null {
-  const usable = (raw: string): string | null => {
-    try {
-      const u = new URL(raw);
-      if (u.username !== "" || u.password !== "") return null;
-      if (u.protocol === "https:") return u.origin;
-      if (
-        u.protocol === "http:" &&
-        (u.hostname === "localhost" || u.hostname === "127.0.0.1")
-      )
-        return u.origin;
-      return null;
-    } catch {
-      return null;
-    }
-  };
-  const configured =
-    typeof env.CONSOLE_ORIGIN === "string" && env.CONSOLE_ORIGIN.trim() !== ""
-      ? usable(env.CONSOLE_ORIGIN.trim())
-      : null;
-  return configured ?? usable(fallback);
+  return consoleOrigin(env, fallback);
 }
 
 /**
@@ -165,7 +147,7 @@ export async function buildManageUrl(
   ctx: ManageContext,
 ): Promise<string | undefined> {
   if (!(await portalEnabled(db, product.slug))) return undefined;
-  const origin = portalOriginOf(env, req);
+  const origin = customerOrigin(env, req);
   if (!origin) return undefined;
   const slug = encode(product.slug);
 
@@ -190,12 +172,13 @@ export async function buildManageUrl(
  * every product), so the link does not depend on the product's portal settings. It carries no
  * key, account or holder hint: the card explains how to sign in on the device.
  */
-export function buildSignInUrl(
+export async function buildSignInUrl(
   env: Env,
+  db: Db,
   req: Request,
   product: { slug: string },
-): string {
-  const origin = portalOriginOf(env, req) ?? new URL(req.url).origin;
+): Promise<string> {
+  const origin = customerOrigin(env, req) ?? new URL(req.url).origin;
   return `${origin}/signin?product=${encode(product.slug)}`;
 }
 
@@ -203,11 +186,12 @@ export function buildSignInUrl(
  * The account portal's page for a product, `<portal>/#/p/<slug>` (I-09, §12.6 `accountPortal`):
  * where `openAccount()` sends the person. `null` when no usable origin exists.
  */
-export function accountPortalUrl(
+export async function accountPortalUrl(
   env: Env,
+  db: Db,
   fallbackOrigin: string,
   product: { slug: string },
-): string | null {
-  const origin = portalOriginFor(env, fallbackOrigin);
+): Promise<string | null> {
+  const origin = customerOrigin(env, fallbackOrigin);
   return origin ? `${origin}/#/p/${encode(product.slug)}` : null;
 }

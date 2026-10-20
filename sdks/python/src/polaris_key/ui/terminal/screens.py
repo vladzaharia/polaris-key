@@ -12,6 +12,7 @@ from dataclasses import replace
 from typing import Any, List, Optional, Sequence, Tuple
 from urllib.parse import quote
 
+from ...constants_generated import DEVICE_CODE_PAGE
 from ..core.models import (
     BOOT_STAGE_COPY,
     ActivateView,
@@ -49,7 +50,7 @@ __all__ = [
 ]
 
 #: The device-code page when the product sets none (SIGN-IN.md D-16).
-DEVICE_CODE_URL = "https://key.plrs.im/device"
+DEVICE_CODE_URL = DEVICE_CODE_PAGE
 
 Lines = List[Line]
 

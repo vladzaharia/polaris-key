@@ -5,7 +5,7 @@
 | Phase       | LK: Polaris Locker                                                     |
 | Size        | 0.75–1 engineer-weeks                                                  |
 | Depends on  | [LK-01](LK-01-brand-locker-kit.md), [LK-13](LK-13-locker-words-v13.md) |
-| Unblocks    | none                                                                   |
+| Unblocks    | [LK-11](LK-11-cutover.md)                                              |
 | Role        | `pkey-implementer`                                                     |
 | Plan mode   | no                                                                     |
 | Gates       | docs-links, docs-generated, drift-gate                                 |
@@ -15,6 +15,8 @@
 ## Goal
 
 Developer docs on the Locker identity: Starlight chrome, the split stated once on the landing and concepts pages, the 26 pages, the prose sweep, and package READMEs. Executes `plans/LK-00.md` §14.1, §14.2, §14.6; do not restate the plan.
+
+Amendment A4 (`plans/LK-00.md` §15) re-scopes this package: the developer docs stay Polaris Key ("Polaris Key docs"); only customer-site words say Locker.
 
 ## Read first
 

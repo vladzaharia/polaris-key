@@ -305,7 +305,7 @@ function AccessSection({
         {chosen !== "public" ? (
           <SettingsRow
             label="Registry tokens"
-            help="Clients authenticate with a registry token, minted on the Tokens page, or by a licensee in the portal."
+            help="Clients authenticate with a registry token, minted on the Tokens page, or by a licensee in Polaris Locker."
           >
             <Link
               to={tokensHref(scope)}

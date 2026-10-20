@@ -271,6 +271,7 @@ export const NOT_A_SETTING: readonly NotASetting[] = [
         "env:BLOB_ORIGIN",
         "env:PKG_ORIGIN",
         "env:IMG_ORIGIN",
+        "env:CUSTOMER_ORIGIN",
       ],
     },
   },
@@ -377,6 +378,15 @@ export const NOT_A_SETTING: readonly NotASetting[] = [
     },
   },
   {
+    thing: "Old lazy-delta and sign-in mail cap tables",
+    reason:
+      "ST-11 copied both into product settings rows once (deltas.lazy.enabled, deltas.lazy.hotDevices, deltas.lazy.dailyCap, email.dailyCap). Nothing reads the old tables; ST-25 drops them.",
+    shows: "Product → Settings",
+    covers: {
+      ids: ["table:lazy_delta_settings", "table:email_product_caps"],
+    },
+  },
+  {
     thing: "Connection records (where a connection row came from)",
     reason:
       "A record of how a connection was created: env for the seeded platform sign-in, console or manifest later. The connection itself is configured as a whole, not as a setting.",
@@ -386,7 +396,7 @@ export const NOT_A_SETTING: readonly NotASetting[] = [
   {
     thing: "Customer licence links",
     reason:
-      "Customer data: how a portal account came to hold a licence, not Polaris behaviour.",
+      "Customer data: how a Polaris Locker account came to hold a license, not Polaris behaviour.",
     shows: "License → Licenses",
     covers: { ids: ["column:portal_license_links.source"] },
   },
@@ -394,7 +404,7 @@ export const NOT_A_SETTING: readonly NotASetting[] = [
     thing: "An account's birth date and where it came from (I-33)",
     reason:
       "Personal data the person keeps on their own account (typed by them, or accepted from a connection's claim), not Polaris behaviour. No operator sees it.",
-    shows: "The customer portal's Account → Profile, to that person only",
+    shows: "Polaris Locker's Account → Profile, to that person only",
     covers: { ids: ["column:accounts.birthdate_source"] },
   },
   {
@@ -448,14 +458,6 @@ export const NOT_A_SETTING: readonly NotASetting[] = [
  * lands (lower `PENDING_CEILING` with every removal).
  */
 export const PENDING: readonly PendingEntry[] = [
-  // SQL-only stores (S-18 §2.2).
-  { target: "table:lazy_delta_settings", owner: "ST-11" },
-  { target: "table:email_product_caps", owner: "ST-11" },
-  {
-    target: "env:EMAIL_PRODUCT_DAILY_CAP",
-    owner: "ST-11",
-    note: "email.dailyCapDefault",
-  },
   // API-only stores (S-18 §2.2).
   { target: "table:platform_store_settings", owner: "ST-12" },
   { target: "table:platform_credentials", owner: "ST-12" },
@@ -478,7 +480,7 @@ export const PENDING: readonly PendingEntry[] = [
 ];
 
 /** `PENDING.length`, written down: lower it with every removal; raising it needs a review. */
-export const PENDING_CEILING = 16;
+export const PENDING_CEILING = 13;
 
 export interface CoverageInputs {
   targets: readonly CoverageTarget[];

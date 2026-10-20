@@ -170,8 +170,11 @@ describe("Keys & secrets → Secrets", () => {
   it("a required row's Set… preselects its name (SEC-4)", async () => {
     mount();
     await screen.findByText("OIDC_CLIENT_SECRET");
-    const user = await openRowMenu("Actions for OIDC_CLIENT_SECRET");
-    await user.click(await screen.findByRole("menuitem", { name: "Set…" }));
+    await userEvent.setup().click(
+      await screen.findByRole("button", {
+        name: "Set value for OIDC_CLIENT_SECRET",
+      }),
+    );
     const drawer = await screen.findByRole("dialog");
     expect(
       (within(drawer).getByLabelText(/^Name/) as HTMLInputElement).value,
@@ -304,7 +307,7 @@ describe("Keys & secrets → Signing keys (A-4)", () => {
     expect(steps[1]!.getAttribute("aria-current")).toBe("step");
     expect(within(steps[1]!).getByText("4:00")).toBeTruthy();
     expect(within(steps[3]!).getByText("djdl-a")).toBeTruthy();
-    const activate = screen.getByRole("button", { name: "Activate djdl-b…" });
+    const activate = screen.getByRole("button", { name: /^Activate on / });
     expect(activate.getAttribute("aria-disabled")).toBe("true");
     // The staged row carries no controls of its own: the strip owns the rotation.
     expect(
@@ -610,7 +613,7 @@ describe("Keys & secrets → the page", () => {
     await screen.findAllByText("djdl-a");
     expect(
       screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent),
-    ).toEqual(["Signing keys", "Secrets", "CI publishing"]);
+    ).toEqual(["Verification", "Signing keys", "Secrets", "CI publishing"]);
     expect(screen.queryByText("Edge-mint recipes")).toBeNull();
     expect(screen.queryByText("Outlet credentials")).toBeNull();
   });

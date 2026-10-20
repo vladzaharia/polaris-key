@@ -5,6 +5,7 @@ import {
   Cloud,
   KeyRound,
   Package,
+  ShoppingBag,
   SlidersHorizontal,
   UserRound,
   type LucideIcon,
@@ -30,6 +31,7 @@ const LUCIDE: Record<string, LucideIcon> = {
   update: CircleArrowUp,
   identity: UserRound,
   sync: Cloud,
+  commerce: ShoppingBag,
 };
 
 const STAR_CUT = new Set(["distribution"]);

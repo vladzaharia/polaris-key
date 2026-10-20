@@ -139,12 +139,9 @@ The routes, for scripts that use the admin session:
 
 ## Sign-in settings
 
-With Identity on, **Identity → Sign-in** has a **Sign-in through this product** section:
-
-- **App name**: the name in "_App_ wants you to sign in" when your app sends someone to sign in
-  with their Polaris Key account, and in the sender of that sign-in mail. Empty uses the product's
-  name. A name containing "Polaris" or "plrs", or one like "Support", "Security" or "Admin", is
-  refused.
-- **Add by key without the purchase email**: shown here, changed on **Identity → Portal**.
-- **App Review guideline 4.8**: a warning while iPhone or iPad devices use the product and it
-  offers no native Sign in with Apple.
+With Sign-in on, **Sign-in → App sign-in** is the one page for them. The name in "_App_ wants you
+to sign in" and in the sender of that sign-in mail is the product's name, set under **Settings →
+Presentation**; a name containing "Polaris" or "plrs", or one like "Support", "Security" or
+"Admin", is refused. **App Review guideline 4.8** shows on the page as a warning while iPhone or
+iPad devices use the product and it offers no native Sign in with Apple. **Add by key without the
+purchase email** is a row of **License keys** on the same page.

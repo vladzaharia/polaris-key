@@ -17,10 +17,12 @@ describe("status vocabulary (components.md §6.4)", () => {
         "fingerprint",
         "key",
         "license",
+        "purchase",
         "readiness",
         "rollout",
         "secret",
         "source",
+        "storefront",
       ].sort(),
     );
   });

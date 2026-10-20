@@ -6,6 +6,7 @@ import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, mkReq, NOW, seedProduct, seedTier } from "./seed.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
+import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
 import { handleAdmin } from "../src/console/index.js";
 import {
@@ -17,10 +18,35 @@ import { getLicense } from "../src/core/licensing/store.js";
 import {
   suppressEmail,
   unsuppressEmail,
-  setProductDailyEmailCap,
 } from "../src/core/notify/emailDelivery.js";
 import { listAudit } from "../src/core/audit.js";
 import { licenseKeyEmail } from "../src/core/notify/templates.js";
+
+/** ST-11: a product's own cap is the `email.dailyCap` `product_settings` row. */
+async function setProductDailyEmailCap(
+  db: Db,
+  product: string,
+  cap: number | null,
+  now: number,
+): Promise<void> {
+  if (cap === null) {
+    await db.run(
+      "DELETE FROM product_settings WHERE product = ? AND key = 'email.dailyCap'",
+      product,
+    );
+    return;
+  }
+  if (!Number.isInteger(cap) || cap <= 0)
+    throw new Error("a daily cap is a positive integer");
+  await db.run(
+    `INSERT INTO product_settings (product, key, value_json, source, version, updated_at, updated_by)
+     VALUES (?, 'email.dailyCap', ?, 'console', 1, ?, 'test')
+     ON CONFLICT(product, key) DO UPDATE SET value_json = excluded.value_json`,
+    product,
+    JSON.stringify(cap),
+    now,
+  );
+}
 
 const PLATFORM_GROUP = "admins";
 
@@ -110,7 +136,7 @@ describe("create with deviceLimit and delivery, and send-key (LX-27)", () => {
     }
   });
 
-  it("delivery.email sends exactly one email with the key, via Polaris Key", async () => {
+  it("delivery.email sends exactly one email with the key, via Polaris Locker", async () => {
     const res = await create({
       email: "holder@example.com",
       name: "Grace",
@@ -122,14 +148,14 @@ describe("create with deviceLimit and delivery, and send-key (LX-27)", () => {
     expect(sent).toHaveLength(1);
     const m = sent[0]!;
     expect(m.to).toBe("holder@example.com");
-    expect(m.from.name).toBe("Mossgarden via Polaris Key");
+    expect(m.from.name).toBe("Mossgarden via Polaris Locker");
     expect(m.subject).toBe("Your Mossgarden license");
     expect(m.subject).not.toContain(body.key);
     expect(m.text).toContain(body.key);
     expect(m.html.replaceAll("<wbr>", "")).toContain(body.key);
     expect(m.text).toContain("Hi Grace,");
     expect(m.text).toMatch(
-      /Open in Polaris Key: https?:\/\/[^\s]+\/signin\?product=djdl/,
+      /Open in Polaris Locker: https?:\/\/[^\s]+\/signin\?product=djdl/,
     );
   });
 

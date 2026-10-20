@@ -543,7 +543,9 @@ describe("the page on the bytes host", () => {
     expect(res.headers.get("referrer-policy")).toBe("no-referrer");
     expect(res.headers.get("vary")).toContain("Sec-CH-UA-Platform");
     const html = await res.text();
-    expect(html).not.toMatch(
+    // The one <link> is the Locker favicon, a data: URI (`core/assets/lockerShell.ts`).
+    expect(html).toContain('<link rel="icon" type="image/svg+xml" href="data:');
+    expect(html.replace(/<link rel="icon"[^>]*>/, "")).not.toMatch(
       /<script|<iframe|<object|<embed|<form|<link|<img|\son\w+=/i,
     );
     expect(html).not.toContain("stolen");
@@ -703,9 +705,9 @@ describe("the page on the bytes host", () => {
         .map((a) => a.kind)
         .sort(),
     ).toEqual(["altstore", "altstore-pal", "fdroid", "sidestore"]);
-    // Four QR codes, plus the footer's Polaris Key Delivery mark (the one other inline SVG).
+    // Four QR codes, plus the footer's Locker lockup and the Star Cut Delivery symbol.
     expect((html.match(/<svg [^>]*class="qr"/g) ?? []).length).toBe(4);
-    expect((html.match(/<svg /g) ?? []).length).toBe(5);
+    expect((html.match(/<svg /g) ?? []).length).toBe(6);
     for (const needle of [
       "altstore://source?url=",
       "sidestore://source?url=",
@@ -721,14 +723,14 @@ describe("the page on the bytes host", () => {
     expect(html).toContain("What&#39;s new in 1.2.0.");
   });
 
-  it("the direct outlet's builds read Polaris Key, never Direct download (S-21 §6.8)", async () => {
+  it("the direct outlet's builds read Polaris Locker, never Direct download (S-21 §6.8)", async () => {
     const w = await setup();
     for (const ua of [UA.bot, UA.windows, UA.linux]) {
       const html = await (
         await onBytes(w, `/${SLUG}`, { headers: { "user-agent": ua } })
       ).text();
       expect(html).toContain(
-        '<span class="way-head">Download from Polaris Key</span>',
+        '<span class="way-head">Download from Polaris Locker</span>',
       );
       expect(html).not.toMatch(/direct download/i);
     }

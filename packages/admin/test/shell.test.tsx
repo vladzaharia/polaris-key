@@ -487,7 +487,9 @@ describe("accents and the section bit (BRAND.md §6)", () => {
     // The display cut's terminal bit (the kit's "gold" path).
     const BIT_D = "M70 85 L84 71 L90 77 L76 91 Z";
     boot("#/p/djdl", { services: ALL_ON });
-    const brand = await screen.findByRole("link", { name: "Polaris Key home" });
+    const brand = await screen.findByRole("link", {
+      name: "Polaris Key Console home",
+    });
     expect(brand.querySelector("svg")!.getAttribute("width")).toBe("48");
     const theme = (): "dark" | "light" =>
       document.documentElement.classList.contains("light") ? "light" : "dark";
@@ -777,7 +779,7 @@ describe("state pages (T8)", () => {
     expect(window.location.hash).toBe("#/p/djdl/licenses?status=disabled");
     expect(replace).not.toHaveBeenCalled();
     await waitFor(() =>
-      expect(document.title).toBe("Page moved · DJDL · Polaris Key"),
+      expect(document.title).toBe("Page moved · DJDL · Polaris Key Console"),
     );
     // The product's chrome stays.
     expect(
@@ -810,7 +812,7 @@ describe("state pages (T8)", () => {
       ],
       [
         "#/p/djdl/secrets",
-        "This page moved to Core\u00a0→\u00a0Keys & secrets",
+        "This page moved to Settings\u00a0→\u00a0Keys & secrets",
         "Go to Keys & secrets",
         "#/p/djdl/settings/keys",
       ],
@@ -895,22 +897,24 @@ describe("page heading, title and focus", () => {
       name: "Profiles",
     });
     const topBar = screen
-      .getByRole("link", { name: "Polaris Key home" })
+      .getByRole("link", { name: "Polaris Key Console home" })
       .closest("header")!;
     expect(within(topBar).queryAllByRole("heading")).toEqual([]);
     expect(h1.closest("main")).not.toBeNull();
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
   });
 
-  it("sets document.title to page · product · Polaris Key", async () => {
+  it("sets document.title to page · product · Polaris Key Console", async () => {
     boot("#/p/djdl/license/tiers", { services: ALL_ON });
     await waitFor(() =>
-      expect(document.title).toBe("Tiers · DJDL · Polaris Key"),
+      expect(document.title).toBe("Tiers · DJDL · Polaris Key Console"),
     );
     act(() => {
       window.location.hash = "#/products";
     });
-    await waitFor(() => expect(document.title).toBe("Products · Polaris Key"));
+    await waitFor(() =>
+      expect(document.title).toBe("Products · Polaris Key Console"),
+    );
   });
 
   it("moves focus to the new page's h1 and announces it", async () => {

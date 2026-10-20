@@ -38,6 +38,7 @@ function page(
   tv: boolean,
   status: 200 | 404 | 429,
   note: string | null,
+  productOrigin: string | null,
 ): Response {
   const path = tv ? "/tv" : "/device";
   const html = renderBrandPage({
@@ -60,6 +61,20 @@ function page(
       "referrer-policy": "no-referrer",
     }),
   );
+  // On the customer host a found code redirects to the API host's product page; browsers apply
+  // `form-action` to every redirect a submission follows, so name that one origin (configuration,
+  // never the request), as the product device page does for its IdP.
+  if (productOrigin) {
+    const csp = headers.get("content-security-policy");
+    if (csp)
+      headers.set(
+        "content-security-policy",
+        csp.replace(
+          "form-action 'self'",
+          `form-action 'self' ${productOrigin}`,
+        ),
+      );
+  }
   if (status === 429) headers.set("retry-after", "60");
   return new Response(html, { status, headers });
 }
@@ -69,10 +84,11 @@ export async function handleDeviceEntry(
   env: Env,
   tv: boolean,
   now: number = Math.floor(Date.now() / 1000),
+  productOrigin: string | null = null,
 ): Promise<Response> {
   if (req.method !== "GET" && req.method !== "HEAD") return methodNotAllowed();
   const raw = new URL(req.url).searchParams.get("user_code");
-  if (!raw?.trim()) return page(tv, 200, null);
+  if (!raw?.trim()) return page(tv, 200, null, productOrigin);
 
   const ok = await rateLimitOk(
     env,
@@ -86,17 +102,20 @@ export async function handleDeviceEntry(
     },
     now,
   );
-  if (!ok) return page(tv, 429, LIMITED);
+  if (!ok) return page(tv, 429, LIMITED, productOrigin);
 
   const code = normalizeUserCode(raw);
   const slug = await lookupDeviceCode(env, code ?? DUMMY_CODE);
-  if (!code || !slug || !SLUG.test(slug)) return page(tv, 404, MISS);
+  if (!code || !slug || !SLUG.test(slug))
+    return page(tv, 404, MISS, productOrigin);
 
   return new Response(null, {
     status: 302,
     headers: {
-      // Relative: the same host the visitor is on, whatever it is called.
-      location: `/${slug}/identity/auth/device?user_code=${formatUserCode(code)}`,
+      // Relative: the same host the visitor is on, whatever it is called. On the customer host
+      // the product's page is on the API host, so `productOrigin` (configuration, never the
+      // request) names it (LK-03).
+      location: `${productOrigin ?? ""}/${slug}/identity/auth/device?user_code=${formatUserCode(code)}`,
       "cache-control": "no-store",
       "referrer-policy": "no-referrer",
     },

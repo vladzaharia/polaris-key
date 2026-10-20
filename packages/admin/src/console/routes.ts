@@ -117,6 +117,13 @@ export const MOVED_TABS: ReadonlyMap<string, ProductPageId> = new Map<
 
 /** An old tab, or an old tab and a record id when its page has records; anything else is not. */
 function movedFrom(rest: string[]): MovedTo | undefined {
+  // I-29: Identity → Portal and Identity → Sign-in became the one App sign-in page.
+  if (
+    rest.length === 2 &&
+    rest[0] === "identity" &&
+    (rest[1] === "portal" || rest[1] === "sign-in")
+  )
+    return { page: "app-sign-in" };
   const page = rest[0] === undefined ? undefined : MOVED_TABS.get(rest[0]);
   if (!page) return undefined;
   if (rest.length === 1) return { page };
@@ -450,6 +457,12 @@ export const r = {
   platformDeployment: () => globalPage("platform-deployment"),
   platformOperations: () => globalPage("platform-operations"),
   platformStores: () => globalPage("platform-stores"),
+  platformConnections: (query?: QueryInit) =>
+    globalPage("platform-connections", query),
+  platformConnection: (id: string, query?: QueryInit) =>
+    globalPage("platform-connections", query, { id }),
+  platformConnectionNew: (query?: QueryInit) =>
+    globalPage("platform-connections", query, { id: "new" }),
   platformFeeds: () => globalPage("platform-feeds"),
   platformOverrideMigration: () => globalPage("platform-override-migration"),
   platformFeed: (eco: string, tab?: string) =>
@@ -537,6 +550,7 @@ export const r = {
   appStore: (slug: string, query?: QueryInit) =>
     productPage(slug, "app-store", { query }),
   commerce: (slug: string) => productPage(slug, "commerce"),
+  commerceOverview: (slug: string) => productPage(slug, "commerce-overview"),
   access: (slug: string) => productPage(slug, "access"),
   health: (slug: string, query?: QueryInit) =>
     productPage(slug, "health", { query }),
@@ -550,8 +564,7 @@ export const r = {
       child: { ids: [name], tab },
     }),
   feed: (slug: string) => productPage(slug, "feed"),
-  portal: (slug: string) => productPage(slug, "portal"),
-  signIn: (slug: string) => productPage(slug, "sign-in"),
+  appSignIn: (slug: string) => productPage(slug, "app-sign-in"),
   syncData: (slug: string) => productPage(slug, "sync-data"),
 };
 

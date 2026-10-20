@@ -26,13 +26,11 @@ Exactly `plans/LK-00.md` §3, §5, §6. Anything else is another package's row i
 
 Re-scoped by Amendment A3: all 14 en keys, both core "Can't reach" messages, the terminal kit's strings, and a `ui:lint` strings rule; see `plans/LK-00.md` §14.6.
 
-Deferred until: customer.host is on in prod.
-
 ## Acceptance criteria
 
-- [ ] `pnpm gen --check` brand, constants, ui-matrix, corpus clean; the ui-matrix row is added
-- [ ] generator goldens and modernity lint pass
-- [ ] The relevant `plans/LK-00.md` §13 commands pass; the green gate passes (AGENTS.md).
+- [x] `pnpm gen --check` brand, constants, ui-matrix, corpus clean; the ui-matrix row is added
+- [x] generator goldens and modernity lint pass
+- [x] The relevant `plans/LK-00.md` §13 commands pass; the green gate passes (AGENTS.md).
 
 ## Hand-off
 

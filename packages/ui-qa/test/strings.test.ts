@@ -139,3 +139,30 @@ describe("the string lint's catalog matcher", () => {
       expect(a.reason.length).toBeGreaterThan(10);
   });
 });
+
+describe("the brand-name rule", () => {
+  it("finds no Polaris Key in kit or core copy", async () => {
+    const { lintBrandName } = await import("../src/strings.ts");
+    expect(lintBrandName(REPO_ROOT)).toEqual([]);
+  });
+  it("reports a string that names Polaris Key and ignores notes", async () => {
+    const { lintBrandName } = await import("../src/strings.ts");
+    const { mkdtempSync, writeFileSync, mkdirSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const dir = mkdtempSync(resolve(tmpdir(), "brand-"));
+    mkdirSync(resolve(dir, "c"));
+    writeFileSync(
+      resolve(dir, "c/en.json"),
+      JSON.stringify({
+        $comment: "Polaris Key",
+        messages: {
+          a: { value: "Open Polaris Key", note: "Polaris Key" },
+          b: { value: "Open Polaris Locker" },
+        },
+      }),
+    );
+    const found = lintBrandName(dir, ["c"]);
+    expect(found).toHaveLength(1);
+    expect(found[0]!.state).toContain("messages.a.value");
+  });
+});

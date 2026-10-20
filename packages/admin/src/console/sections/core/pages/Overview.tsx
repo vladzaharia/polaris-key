@@ -83,6 +83,7 @@ const SERVICE_ORDER: ServiceSlug[] = [
   "update",
   "identity",
   "sync",
+  "commerce",
 ];
 
 /** The licenses query, made once by the page and shared with the License tile. */
@@ -775,29 +776,19 @@ function IdentityTile({ slug }: { slug: string }): React.ReactElement {
     queryFn: () => api.portalSettings(slug).then((r) => r.settings),
   });
   const s = portal.data;
-  const methods = s
-    ? [
-        s.oidcEnabled ? "single sign-on" : null,
-        s.magicEnabled ? "email link" : null,
-      ]
-        .filter(Boolean)
-        .join(" and ")
-    : "";
   return (
     <TileFrame
       service="identity"
-      href={r.portal(slug)}
-      linkLabel="Portal"
+      href={r.appSignIn(slug)}
+      linkLabel="App sign-in"
       loading={portal.isPending}
       error={portal.isError ? portal.error : undefined}
       onRetry={() => void portal.refetch()}
     >
       {s ? (
         <>
-          <Big>Portal {s.portalEnabled ? "on" : "off"}</Big>
-          <Line>
-            {methods ? `Sign-in by ${methods}` : "No sign-in method on"}
-          </Line>
+          <Big>Locker {s.portalEnabled ? "on" : "off"}</Big>
+          <Line>Sign-in by email code and passkeys</Line>
         </>
       ) : null}
     </TileFrame>

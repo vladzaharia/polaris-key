@@ -305,7 +305,7 @@ export async function handleSigninEmailStart(
   );
   if (!allowed) return cardJson({ error: "rate_limited" }, 429);
   const caps = await portalAuthCapabilities(db);
-  if (!caps.portalEnabled || !caps.magicEnabled) {
+  if (!caps.portalEnabled) {
     return cardJson(
       { error: "auth_method_disabled", message: "email sign-in is disabled" },
       404,
@@ -505,7 +505,7 @@ export async function handleSigninEmailResend(
   );
   if (!allowed) return resendLater(60);
   const caps = await portalAuthCapabilities(db);
-  if (!caps.portalEnabled || !caps.magicEnabled) {
+  if (!caps.portalEnabled) {
     return cardJson(
       { error: "auth_method_disabled", message: "email sign-in is disabled" },
       404,
@@ -694,7 +694,7 @@ async function completeEmailSignIn(
   if (result.status !== "signed_in" || result.account.status !== "active") {
     const inUse = result.status === "join_offer";
     const message = inUse
-      ? "A Polaris Key account already uses this email address, but not as a way to sign in. Sign in with the method you used before; you can add this email to that account afterwards."
+      ? "A Polaris Locker account already uses this email address, but not as a way to sign in. Sign in with the method you used before; you can add this email to that account afterwards."
       : ACCOUNT_DISABLED_MESSAGE;
     return answer === "json"
       ? cardJson(
@@ -772,7 +772,7 @@ export async function handleMagicLanding(
   const token = new URL(req.url).searchParams.get("token");
   if (!token) return expiredLinkPage();
   const caps = await portalAuthCapabilities(db);
-  if (!caps.portalEnabled || !caps.magicEnabled) {
+  if (!caps.portalEnabled) {
     return signInOffPage();
   }
   const magicRef = await portalMagicKey(env, token);
@@ -787,7 +787,7 @@ export async function handleMagicLanding(
   if (await isAskingBrowser(env, req, record.flow)) {
     return cardPage(200, {
       title: "Sign in",
-      heading: "Sign in to Polaris Key",
+      heading: "Sign in to Polaris Locker",
       body: `<p>Continue as ${escapeHtml(record.email)}.</p>${form("Sign in")}`,
     });
   }
@@ -800,7 +800,7 @@ export async function handleMagicLanding(
     // signin.confirmLink.title
     heading: `Confirm sign-in, requested at ${when} from ${record.place ?? "an unknown location"}`,
     body:
-      `<p>Polaris Key account ${escapeHtml(record.email)}. Confirm only if you started it.</p>` +
+      `<p>Polaris Locker account ${escapeHtml(record.email)}. Confirm only if you started it.</p>` +
       `<p>The device that asked signs in, not this one.</p>` + // signin.confirmLink.note
       form("Confirm"),
   });
@@ -814,7 +814,7 @@ export async function handleMagicConfirm(
   now: number,
 ): Promise<Response> {
   const caps = await portalAuthCapabilities(db);
-  if (!caps.portalEnabled || !caps.magicEnabled) {
+  if (!caps.portalEnabled) {
     return signInOffPage();
   }
   let token: string | null = null;

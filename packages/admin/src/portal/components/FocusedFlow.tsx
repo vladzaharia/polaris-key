@@ -55,7 +55,7 @@ export function FocusedFlow({
         <div className="mx-auto flex h-14 w-full max-w-[82rem] items-center justify-between gap-4 px-4 desk:h-16 desk:px-8">
           <a
             href={href.library()}
-            aria-label="Polaris Key: your library"
+            aria-label="Polaris Locker: your library"
             className="flex shrink-0 items-center rounded-md"
           >
             <Lockup height={64} className="hidden desk:block" />

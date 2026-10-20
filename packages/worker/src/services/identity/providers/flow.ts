@@ -82,6 +82,7 @@ import {
 import {
   isSignInProviderKind,
   resolveSignInClient,
+  signInCallbackPath,
   type SignInProviderKind,
 } from "./config.js";
 import { discoverProvider, ProviderVerifyError } from "./discovery.js";
@@ -264,7 +265,7 @@ async function buildProviderFlow(
         },
       };
     }
-    const redirectUri = `${origin}/login/${kind}/callback`;
+    const redirectUri = `${origin}${signInCallbackPath(client.kind)}`;
     const discovered = await discoverProvider(client.kind, {
       fetch: opts.fetch,
     });

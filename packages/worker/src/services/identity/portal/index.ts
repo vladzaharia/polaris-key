@@ -58,7 +58,7 @@ async function portalSecurityOptions(
 async function portalShell(env: Env, db: Db): Promise<Response> {
   const options = await portalSecurityOptions(env, db);
   return new Response(
-    `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Polaris Key</title></head><body><div id="root"></div><script type="module" src="/assets/portal.js"></script></body></html>`,
+    `<!doctype html><html lang="en" data-brand="locker"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Polaris Locker</title></head><body><div id="root"></div><script type="module" src="/assets/portal.js"></script></body></html>`,
     {
       status: 200,
       headers: {

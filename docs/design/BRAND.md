@@ -422,6 +422,10 @@ the shopping-bag icon and the Pinned K (it requires License), never the Star Cut
 re-scoped to exactly that. Distribution and Commerce never sit side by side as one identity: the
 data-service decides, and the icon tells them apart.
 
+Kit rule (B1): a link inside Commerce is strong text, underlined, never the accent, because green
+reads close to success and the accent never encodes status. `tokens.css` carries it as a rule on
+`main [data-service="commerce"] a`, so only a Commerce page's content is affected (not dialogs or the sidebar); a link styled as a button keeps its own colours.
+
 `on` is `#060912` on every dark solid (5.1–14.7:1) and on the light chartreuse and cyan solids
 (4.8 and 5.0:1); `#ffffff` on the other light solids (4.7–7.2:1). The full set (subtle values, bit colours) is in
 `tokens.json` and the preview.
@@ -600,14 +604,14 @@ consistent with the ¼-glyph rule for the outward edges).
 
 ### 7.1 Which mark
 
-| Surface                                                                                                                                                    | Mark                                                                  | Favicon / PWA identity            |
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | --------------------------------- |
-| Admin console, docs site, operator emails (public identity becomes Locker with LK-14, LK-15 and LK-07, LK-00 §14.2; Pinned K stays the platform reference) | Pinned K                                                              | `web/key/`                        |
-| Customer portal, licence card, Worker customer pages, customer emails (once the customer host moves, LK-00)                                                | Bookends (Polaris Locker, §15)                                        | `web/locker/`                     |
-| Delivery surfaces: dl.plrs.im (and dl-staging, dl-dev), updater prompts, feed pages, the Distribution and Update console sections' empty states            | Star Cut                                                              | `web/update/` (on the bytes host) |
-| Console header (service sections, including Distribution/Update; core pages show no bit)                                                                   | Pinned K with the section bit                                         | `web/key/`                        |
-| Service navigation, diagrams, marketing menus                                                                                                              | Service icon in the section accent (`fg`), beside the name (§1.1)     | n/a                               |
-| SDK UI kits (every screen)                                                                                                                                 | None: the product's identity ([UI-KITS.md §1.6](UI-KITS.md#16-marks)) | n/a                               |
+| Surface                                                                                                                                         | Mark                                                                  | Favicon / PWA identity            |
+| ----------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | --------------------------------- |
+| Admin console, docs site, operator emails (stay Key, LK-00 §15; customer-site words say Locker)                                                 | Pinned K                                                              | `web/key/`                        |
+| Customer portal, licence card, Worker customer pages, customer emails (once the customer host moves, LK-00)                                     | Bookends (Polaris Locker, §15)                                        | `web/locker/`                     |
+| Delivery surfaces: dl.plrs.im (and dl-staging, dl-dev), updater prompts, feed pages, the Distribution and Update console sections' empty states | Star Cut                                                              | `web/update/` (on the bytes host) |
+| Console header (service sections, including Distribution/Update; core pages show no bit)                                                        | Pinned K with the section bit                                         | `web/key/`                        |
+| Service navigation, diagrams, marketing menus                                                                                                   | Service icon in the section accent (`fg`), beside the name (§1.1)     | n/a                               |
+| SDK UI kits (every screen)                                                                                                                      | None: the product's identity ([UI-KITS.md §1.6](UI-KITS.md#16-marks)) | n/a                               |
 
 SDK UI kit screens show **no Polaris Key mark**; the Pinned K appears only inside the optional
 Powered-by line or badge, and the Star Cut not at all (UI-KITS.md §1.6, superseding this table's
@@ -1133,7 +1137,7 @@ entry points; body copy uses glossary words, and no marketing name becomes a pro
 | Packs (update) | none: a capability of Update | none: under Releases            | Content Packs         |
 | Locker         | none: a subbrand, not a slug | none: the customer-facing brand | Polaris Locker        |
 
-**Polaris Locker** is not a service slug. It is the customer site (Library, Discover, Account, the sign-in card, the device page), a destination with its own `locker` brand namespace (D8). Polaris Locker is the public brand on every surface people read (console, docs, mail, badges, kit attribution); the customer site shows it once `customer.host` is on. Polaris Key is the platform under it, named only where a sentence explains it (LK-00 §14.1). The words "portal" and "customer portal" are internal and leave every string.
+**Polaris Locker** is not a service slug. It is the customer site (Library, Discover, Account, the sign-in card, the device page), a destination with its own `locker` brand namespace (D8). Polaris Locker is the brand customers see (the customer site, customer mail, Help, SDK presentation, badges); the customer site shows it once `CUSTOMER_ORIGIN` is set. Polaris Key is the platform and its backend: the Polaris Key Console at `key.plrs.im`, the developer docs, the CLI and the API (LK-00 §15). The words "portal" and "customer portal" are internal and leave every string.
 
 Eight slugs, nine marketing entry points, six console features. Ship builds is one console
 identity (Package glyph, Release cyan); the marketing identities (Delivery, Update tangerine, Packs
@@ -1175,9 +1179,9 @@ renderings (about 13 MB; the SVGs, `badges/index.json` and the README stay). Its
 `locker-kit/docs/Polaris-Locker-Brand-Guide-v1.pdf`, the badge catalogue
 `docs/Polaris-Locker-Badge-Catalogue-v1.pdf`, the family spec `docs/brand-alignment.md`.
 
-**Public brand architecture (kit v1.3, stated by the kit).** Locker is the public identity on every
-public surface (marketing, docs, console, sign-in, downloads, emails, SDK presentation and partner
-badges), the attribution is "Powered by Polaris Locker", and Polaris Key is the underlying platform
+**Public brand architecture (kit v1.3, stated by the kit).** Locker is the identity on every
+customer-facing surface (marketing, sign-in, downloads, customer emails, SDK presentation and partner
+badges; the console and developer docs stay Key, LK-00 §15), the attribution is "Powered by Polaris Locker", and Polaris Key is the underlying platform
 with its own guide. The kit does not rename live systems; the programme plan decides what moves
 (this package only imports the assets and tokens).
 

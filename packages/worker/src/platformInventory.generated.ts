@@ -168,6 +168,13 @@ export const PLATFORM_INVENTORY: readonly PlatformInventoryEntry[] = [
     editable: null,
   },
   {
+    name: "CUSTOMER_ORIGIN",
+    kind: "var",
+    area: "delivery",
+    optional: true,
+    editable: null,
+  },
+  {
     name: "BLOBS_BUCKET_NAME",
     kind: "var",
     area: "delivery",
@@ -452,7 +459,7 @@ export const PLATFORM_INVENTORY: readonly PlatformInventoryEntry[] = [
     kind: "var",
     area: "email",
     optional: true,
-    editable: null,
+    editable: "EMAIL_PRODUCT_DAILY_CAP",
   },
   {
     name: "EMAIL_APPLE_RELAY",

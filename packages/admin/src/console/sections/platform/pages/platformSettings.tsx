@@ -108,7 +108,7 @@ const WARNING_TITLES: Record<string, string> = {
   kek_id_set: "PLATFORM_KEK_ID is set",
   kek_keyring_unusable: "The KEK keyring does not load",
   kek_legacy_open_only: "PLATFORM_KEK is kept as a legacy key",
-  portal_session_secret_unset: "Customer portal sessions cannot be signed",
+  portal_session_secret_unset: "Polaris Locker sessions cannot be signed",
 };
 
 /** Where each Worker warning is fixed. */
@@ -414,7 +414,7 @@ export function PlatformSettingsPage(): React.ReactElement {
             id="platform-identity"
             headingLevel={3}
             title="Identity provider"
-            description="Deploy-time, read-only: the console's own client above the platform client the portal and products use."
+            description="Deploy-time, read-only: the console's own client above the platform client Polaris Locker and products use."
           >
             {IDENTITY_VARS.map((n) => (
               <DeployRow key={n} item={deploy.get(n)} />

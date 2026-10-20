@@ -109,7 +109,7 @@ export function AccessPage({ slug }: { slug: string }): React.ReactElement {
       header={
         <PageHeader
           title="Access"
-          description="The appcast, the download routes and the customer portal all use this."
+          description="The appcast, the download routes and Polaris Locker all use this."
           refetching={access.isFetching && !access.isPending}
         />
       }

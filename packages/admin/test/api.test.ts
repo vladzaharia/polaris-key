@@ -122,6 +122,7 @@ describe("api — request shaping", () => {
           licensing: { tiers: 0, licenses: 0 },
           managedConfig: { catalogVersion: null },
           shipBuilds: { latest: null },
+          commerce: { storefronts: 0, storeGrants: 0 },
         },
       }),
     );

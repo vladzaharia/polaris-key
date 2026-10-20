@@ -1,16 +1,16 @@
-# LK-11 Cutover: wrangler routes and vars, old-URL redirects, cookie expiry, RUNBOOK, smoke
+# LK-11 Cutover: wiring done; the cutover deploy and smoke
 
-| Field       | Value                                                                                                                                                                                                                                                     |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | LK: Polaris Locker                                                                                                                                                                                                                                        |
-| Size        | 0.5 engineer-weeks                                                                                                                                                                                                                                        |
-| Depends on  | [LK-03](LK-03-customer-host-and-origin.md), [LK-04](LK-04-cross-host-sign-in.md), [LK-05](LK-05-passkeys-related-origins.md), [LK-06](LK-06-locker-shell-portal-card.md), [LK-07](LK-07-worker-pages-and-mail.md), [LK-10](LK-10-console-locker-words.md) |
-| Unblocks    | [LK-12](LK-12-locker-badges-in-use.md)                                                                                                                                                                                                                    |
-| Role        | `pkey-implementer`                                                                                                                                                                                                                                        |
-| Plan mode   | no                                                                                                                                                                                                                                                        |
-| Gates       | wrangler, workerd, threat-model                                                                                                                                                                                                                           |
-| Human input | Owner steps O2–O10 (plans/LK-00.md §12)                                                                                                                                                                                                                   |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                 |
+| Field       | Value                                                                                                                                                                                                                                                                                                                                                                        |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | LK: Polaris Locker                                                                                                                                                                                                                                                                                                                                                           |
+| Size        | 0.5 engineer-weeks                                                                                                                                                                                                                                                                                                                                                           |
+| Depends on  | [LK-03](LK-03-customer-host-and-origin.md), [LK-04](LK-04-cross-host-sign-in.md), [LK-05](LK-05-passkeys-related-origins.md), [LK-06](LK-06-locker-shell-portal-card.md), [LK-07](LK-07-worker-pages-and-mail.md), [LK-10](LK-10-console-locker-words.md), [LK-14](LK-14-console-locker-identity.md), [LK-15](LK-15-docs-locker-identity.md), [LK-17](LK-17-hard-cutover.md) |
+| Unblocks    | [LK-12](LK-12-locker-badges-in-use.md)                                                                                                                                                                                                                                                                                                                                       |
+| Role        | `pkey-implementer`                                                                                                                                                                                                                                                                                                                                                           |
+| Plan mode   | no                                                                                                                                                                                                                                                                                                                                                                           |
+| Gates       | wrangler, workerd, threat-model                                                                                                                                                                                                                                                                                                                                              |
+| Human input | Owner steps O5, O6, O8, O9, O10 (plans/LK-00.md §16)                                                                                                                                                                                                                                                                                                                         |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                                                                                                    |
 
 ## Goal
 
@@ -24,7 +24,9 @@ Cutover: wrangler routes and vars, old-URL redirects, cookie expiry, RUNBOOK, sm
 
 Exactly `plans/LK-00.md` §7.10, §10, §12. Anything else is another package's row in §9.
 
-Deferred until: O2–O10 done.
+Amendment A5 (`plans/LK-00.md` §16): no switch. The cutover release is LK-03 + LK-04 + LK-05 + LK-06 + LK-07 + LK-14 + LK-15 + LK-17 + this package's slice 1 wiring (`CUSTOMER_ORIGIN` set), in one deploy. Slice 1 wiring is done; what remains is the deploy and the smoke.
+
+Deferred until: O5, O6, O8, O9, O10 done.
 
 ## Acceptance criteria
 
@@ -34,3 +36,20 @@ Deferred until: O2–O10 done.
 ## Hand-off
 
 The role agent sets `--set LK-11 in-review` when it hands off; the lead sets `done` after review.
+
+## Progress and continuation
+
+2026-10-19, slice 1 (wiring) done; the switch stays off. The `polaris.locker` zone is Active in the Worker's account.
+
+- `wrangler.toml`: custom-domain routes `polaris.locker`, `staging.polaris.locker`, `dev.polaris.locker` and `CUSTOMER_ORIGIN` in each env's `[vars]`; `CUSTOMER_HOST` stays unset.
+- `CUSTOMER_ORIGIN` joins the https-origin checks (`scripts/check-config.mjs`, `core/configGuard.ts`).
+- `deploy.yml` smoke (prod, the only environment the workflow deploys): polls the customer host up to about 5 minutes for first-certificate issuance; checks `/` 200 with a CSP and no cookie, `polaris-host.json`, `/manage` 404 and the API host's `/.well-known/webauthn`. Pinned in `packages/cli/test/releaseWorkflows.test.ts`.
+- `docs/DEPLOYMENT.md` and `docs/RUNBOOK.md`: attached and inert, the rollback floor (never below LK-03 while the domain exists), emergency detach.
+
+Remaining LK-11: old-URL redirects, cookie expiry, the switch steps, and the `/activate` 302 smoke line, after LK-04, LK-06, LK-07, LK-10 and O5-O10. Status stays in-progress.
+
+## LK-17 note (2026-10-19)
+
+The hard cutover (no `customer.host` switch; old-URL redirects; console hash hand-off) is LK-17.
+Left for LK-14: add `https://key.plrs.im/` answering 302 to `/manage` to the deploy smoke once
+LK-14's `/` redirect is merged. `/` is not redirected by LK-17.

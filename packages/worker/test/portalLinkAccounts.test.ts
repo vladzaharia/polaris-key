@@ -246,7 +246,7 @@ describe("joining needs proof of both accounts in one browser", () => {
       "mara@fennick.studio",
     ]);
     for (const m of w.mail) {
-      expect(m.subject).toBe("Two Polaris Key accounts were joined");
+      expect(m.subject).toBe("Two Polaris Locker accounts were joined");
       expect(m.text).toContain("You can separate them again until");
     }
   });
@@ -591,8 +591,8 @@ describe("undo within 72 hours", () => {
     expect(await audit(w, b0.accountId)).toContain("account.merge.undo");
     const notices = w.mail.filter((m) => !m.subject.includes("code"));
     expect(notices.map((m) => [m.to, m.subject]).sort()).toEqual([
-      ["a@example.com", "Your Polaris Key accounts were separated"],
-      ["mara@fennick.studio", "Your Polaris Key accounts were separated"],
+      ["a@example.com", "Your Polaris Locker accounts were separated"],
+      ["mara@fennick.studio", "Your Polaris Locker accounts were separated"],
     ]);
     // Once only; and the snapshot is gone.
     const again = await d.send(

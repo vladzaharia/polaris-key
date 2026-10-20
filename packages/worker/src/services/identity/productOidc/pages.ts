@@ -166,7 +166,7 @@ export function signInRefusalPage(heading: string, body: string): Response {
 export function platformSignInEndedPage(): Response {
   return signInRefusalPage(
     PLATFORM_SIGNIN_ENDED.heading,
-    `<p>${escapeHtml(PLATFORM_SIGNIN_ENDED.body)}</p><p class="actions"><a class="button" href="/">${escapeHtml(PLATFORM_SIGNIN_ENDED.action)}</a></p>`,
+    `<p>${escapeHtml(PLATFORM_SIGNIN_ENDED.body)}</p><p class="actions"><a class="button" href="/login">${escapeHtml(PLATFORM_SIGNIN_ENDED.action)}</a></p>`,
   );
 }
 
@@ -174,11 +174,11 @@ export function platformSignInEndedPage(): Response {
  * "This account can't sign in" (SIGN-IN.md §3.13, Account disabled): the page the portal and the
  * login card give a disabled account, on a product's sign-in (N9). 403, names nothing.
  *
- * **Sign in with another account** goes to Polaris Key's sign-in page, not back into this
- * product's sign-in: that would go straight back to the platform IdP, whose own session (the
- * authorize request asks for no `prompt`) signs the same subject in again and is refused again.
- * Polaris Key's sign-in is where another account can be chosen, as "Single sign-on ended" sends
- * people there too. **Back to <Product>** returns to the app's page when the flow came from one
+ * **Sign in with another account** goes to Polaris Locker's sign-in (`/login`, which the API host
+ * redirects to the customer host), not back into this product's sign-in: that would go straight
+ * back to the platform IdP, whose own session (the authorize request asks for no `prompt`) signs
+ * the same subject in again and is refused again. Polaris Locker's sign-in is where another
+ * account can be chosen, as "Single sign-on ended" sends people there too. **Back to <Product>** returns to the app's page when the flow came from one
  * (`returnTo`, checked same-origin at the start); a device-code flow has none.
  */
 export function productAccountDisabledPage(
@@ -186,7 +186,7 @@ export function productAccountDisabledPage(
   flow: FlowRecord,
 ): Response {
   return accountDisabledPage({
-    signInHref: "/",
+    signInHref: "/login",
     back: flow.returnTo
       ? { href: flow.returnTo, productName: product.name }
       : null,
@@ -196,7 +196,7 @@ export function productAccountDisabledPage(
 /** The signed-in page's join offer (I-17): the address is the one the person's own IdP just
  *  asserted, so it names nothing they did not already prove. Nothing has joined. */
 export function joinOfferNotice(email: string): string {
-  return `<p>A Polaris Key account already uses ${escapeHtml(email)}. To add this sign-in to it, <a href="/login">continue with single sign-on on Polaris Key</a>, then sign in to that account when asked.</p>`;
+  return `<p>A Polaris Locker account already uses ${escapeHtml(email)}. To add this sign-in to it, <a href="/login">continue with single sign-on on Polaris Locker</a>, then sign in to that account when asked.</p>`;
 }
 
 /** The callback's "return to the app" page. `notice` is TRUSTED markup (I-17's join offer). */

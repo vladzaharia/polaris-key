@@ -28,11 +28,9 @@ import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
 import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import {
-  artefactRef,
   consumeArtefact,
   getArtefact,
   putArtefact,
-  type ArtefactRef,
 } from "../../../core/singleUse.js";
 import {
   portalIdentityIssuerKey,
@@ -49,6 +47,10 @@ import {
 import { beginProviderSignIn } from "../card/gate.js";
 import { connectionIdentity } from "../connections/claims.js";
 import { autoLinkThroughDomain } from "../connections/autoLink.js";
+import {
+  completeConnectionTest,
+  testFlowOf,
+} from "../connections/testSignIn.js";
 import {
   PLATFORM_ENV_CONNECTION_ID,
   platformEnvConnection,
@@ -76,25 +78,8 @@ import {
 
 const FLOW_TTL_SECONDS = 600;
 
-/**
- * Single-use store address (`core/singleUse.ts`, I-02) of an in-flight portal OIDC sign-in,
- * by its `state`. Both portal credentials live there rather than in KV because KV `get` then
- * `delete` is not atomic (G15): two racing callbacks, or two clicks on one magic link, could
- * both be served. The store's `consume` hands a record out at most once.
- *
- * R12-04: both portal credentials (the OIDC `state` and the magic-link token) used to be the
- * key name verbatim, so a listing alone was a credential dump: a live `state` beside its PKCE
- * `verifier`, and a working magic-link token beside the victim's email. The address is the
- * secret's hash under `KEY_HASH_PEPPER`, so a listing stays inert.
- *
- * Exported for tests that plant or inspect a flow record.
- */
-export async function portalFlowKey(
-  env: Env,
-  state: string,
-): Promise<ArtefactRef> {
-  return artefactRef("portal-flow", await hashKey(state, env.KEY_HASH_PEPPER));
-}
+export { portalFlowKey } from "./flowKey.js";
+import { portalFlowKey } from "./flowKey.js";
 
 interface FlowRecord {
   verifier: string;
@@ -278,7 +263,7 @@ export async function handleConnectionLogin(
   );
   if (!ok) return signInPage.tooMany();
   const caps = await portalAuthCapabilities(db);
-  if (!caps.portalEnabled || !caps.oidcEnabled) {
+  if (!caps.portalEnabled) {
     return signInPage.off();
   }
   const conn = await customerConnection(env, db, connectionId, now);
@@ -373,7 +358,10 @@ export async function handlePortalCallback(
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
-  if (!code || !state) return htmlError(400, "Missing authorization code.");
+  // I-31: a connection test comes back with `error` instead of `code` when the provider refuses.
+  if (!state || (!code && !url.searchParams.get("error"))) {
+    return htmlError(400, "Missing authorization code.");
+  }
   // The callback runs a token exchange and an ID-token verification for anyone who names a
   // `state`, and had no budget while `/login` next door did. Fails CLOSED (`core/rateLimit.ts`):
   // losing the limiter must not silently unmeter a session-minting leg.
@@ -389,14 +377,20 @@ export async function handlePortalCallback(
     now,
   );
   if (!ok) return signInPage.tooMany();
-  const caps = await portalAuthCapabilities(db);
-  if (!caps.portalEnabled || !caps.oidcEnabled) {
-    return signInPage.off();
-  }
   // The binding is checked on a read, BEFORE the atomic single-use consume, so a
   // callback from another browser cannot burn the flow of the one that started it.
   const flowKey = await portalFlowKey(env, state);
   const peeked = await getArtefact(env, flowKey);
+  // A console connection test runs whether or not the portal is on (the operator is adding the
+  // first connection); an ordinary sign-in needs the portal and single sign-on enabled.
+  const isTest =
+    peeked !== null && testFlowOf(parseFlowRecord<FlowRecord>(peeked)) !== null;
+  if (!isTest) {
+    const caps = await portalAuthCapabilities(db);
+    if (!caps.portalEnabled) {
+      return signInPage.off();
+    }
+  }
   if (!peeked) return signInPage.tookTooLong();
   // A stored value that does not parse to an object (`null`, a number, garbage) is the same
   // as an expired flow; reading `flow.bindingHash` off it would be a TypeError (500).
@@ -417,6 +411,18 @@ export async function handlePortalCallback(
   }
   // Atomic and single-use: of two racing callbacks for one `state`, one gets the flow.
   if (!(await consumeArtefact(env, flowKey))) return signInPage.tookTooLong();
+  const testFlow = testFlowOf(flow);
+  if (testFlow) {
+    return clearingBinding(
+      await completeConnectionTest(env, db, flow, testFlow, {
+        code,
+        iss: url.searchParams.get("iss"),
+        error: url.searchParams.get("error"),
+        errorDescription: url.searchParams.get("error_description"),
+      }),
+    );
+  }
+  if (!code) return htmlError(400, "Missing authorization code.");
   return clearingBinding(
     await completeConnectionCallback(
       req,
@@ -553,7 +559,7 @@ async function completeConnectionCallback(
 function emailInUsePage(): Response {
   return htmlError(
     409,
-    "A Polaris Key account already uses this email address. Sign in with the method you used before. Adding another sign-in method to an account is not available yet; until it is, contact the product's support if you can no longer use that method.",
+    "A Polaris Locker account already uses this email address. Sign in with the method you used before. Adding another sign-in method to an account is not available yet; until it is, contact the product's support if you can no longer use that method.",
   );
 }
 

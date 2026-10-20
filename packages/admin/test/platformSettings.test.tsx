@@ -464,7 +464,7 @@ describe("the Settings page in the Platform section", () => {
     expect(link.getAttribute("href")).toBe("#/platform/settings");
     expect(link.getAttribute("aria-current")).toBe("page");
     expect(link.querySelector("svg[data-nav-icon]")).not.toBeNull();
-    expect(document.title).toBe("Settings · Polaris Key");
+    expect(document.title).toBe("Settings · Polaris Key Console");
   });
 
   it("shows a skeleton while loading, then a retryable error", async () => {
@@ -1144,7 +1144,7 @@ describe("the read-only inventory", () => {
       within(warnings).getByRole("button", { name: /^Show all/ }),
     );
     expect(
-      within(warnings).getByText("Customer portal sessions cannot be signed"),
+      within(warnings).getByText("Polaris Locker sessions cannot be signed"),
     ).toBeTruthy();
     expect(
       within(warnings).getByText(/The console shares the customer sign-in/),
@@ -2531,6 +2531,26 @@ describe("A product's alert routing (ST-27)", () => {
         stepUpMaxAgeSeconds: 300,
       },
       extra: {
+        // The product's own settings unfold under Features, which reads the services first.
+        "/manage/api/products/djdl/services": {
+          services: {},
+          effectiveRegistration: "requires-license",
+          source: "manifest",
+          facts: {
+            licensing: { tiers: 0, licenses: 0 },
+            managedConfig: { catalogVersion: null },
+            shipBuilds: { latest: null },
+            commerce: { storefronts: 0, storeGrants: 0 },
+          },
+        },
+        "/manage/api/products/djdl/blob-gc": {
+          enabled: false,
+          graceSeconds: 0,
+          lockAgeSeconds: 0,
+          drops: { packObject: 0, packUpload: 0, truncated: false, listed: [] },
+          restores: { count: 0, listed: [] },
+          earliestDeletion: null,
+        },
         "/manage/api/products/djdl/alerts": {
           ...ALERTS_NONE,
           destinations: [

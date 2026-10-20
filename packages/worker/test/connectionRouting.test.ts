@@ -179,6 +179,36 @@ describe("enforce", () => {
     expect(w.mail).toEqual([]);
   });
 
+  it("a product that had magic link off keeps SSO-only sign-in through an enforced domain (I-29)", async () => {
+    // Before I-29 a product could turn email magic links off (`magic_enabled = 0`) to force
+    // SSO. The column is no longer read: the same control is the domain's `enforce`, and an
+    // address outside it signs in by email whatever that old row says.
+    const w = await seededWorld();
+    await w.db.run(
+      `INSERT INTO portal_product_settings
+         (product, portal_enabled, oidc_enabled, magic_enabled, license_key_claim_enabled,
+          releases_enabled, created_at, modified_at)
+       VALUES ('acme', 1, 1, 0, 0, 0, ?, ?)`,
+      NOW,
+      NOW,
+    );
+    await connectionWith(w, { domain: "acme.example", enforce: true });
+
+    const enforced = new Device(w, "198.51.100.1");
+    const res = await enforced.send("POST", START, {
+      email: "ada@acme.example",
+    });
+    expect(await res.json()).toMatchObject({ next: ssoNext(true) });
+    expect(w.mail).toEqual([]);
+
+    const other = new Device(w, "198.51.100.2");
+    const open = await other.send("POST", START, {
+      email: "bob@other.example",
+    });
+    expect(open.status).toBe(200);
+    expect(w.mail).toHaveLength(1);
+  });
+
   it("a domain enforced after the start: resend and an earlier code are refused", async () => {
     const w = await seededWorld();
     await connectionWith(w, { domain: "acme.example" });

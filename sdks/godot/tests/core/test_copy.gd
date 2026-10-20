@@ -61,9 +61,9 @@ func _fallback(t: PKeyTestContext, copy: PKeyCopy) -> void:
 ## without ".0", an unfilled placeholder dropped with the space before it.
 func _placeholders(t: PKeyTestContext, copy: PKeyCopy) -> void:
 	var owned := copy.message("license_owned", {"product": "Diceroll"})
-	t.check("copy: {product} is filled", owned == "This Diceroll license is already in another Polaris Key account. A license never moves by its key.", owned)
+	t.check("copy: {product} is filled", owned == "This Diceroll license is already in another Polaris Locker account. A license never moves by its key.", owned)
 	var dropped := copy.message("license_owned")
-	t.check("copy: an unfilled placeholder is dropped with its space", dropped == "This license is already in another Polaris Key account. A license never moves by its key.", dropped)
+	t.check("copy: an unfilled placeholder is dropped with its space", dropped == "This license is already in another Polaris Locker account. A license never moves by its key.", dropped)
 	t.check("copy: {code} defaults to the code", copy.activation_message("refused", "registration_closed") == "Activation was refused (registration_closed).")
 	t.check("copy: a {code} param wins", PKeyCopy.fill("({code})", "a", {"code": "b"}) == "(b)")
 	t.check("copy: a camelCase placeholder takes a snake_case param", PKeyCopy.fill("{deviceCount} of {limit}", "x", {"device_count": 2.0, "limit": 3}) == "2 of 3")

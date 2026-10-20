@@ -109,7 +109,8 @@ These steps are browser/provider tasks. Complete them before deploying.
 2. Confirm `key.plrs.im` is available for a Worker custom domain, and so are the bytes hosts
    (`dl.plrs.im`, `dl-staging.plrs.im`, `dl-dev.plrs.im`), the registry hosts
    (`pkg.plrs.im`, `pkg-staging.plrs.im`, `pkg-dev.plrs.im`, F-02) and the image hosts
-   (`img.plrs.im`, `img-staging.plrs.im`, `img-dev.plrs.im`, HA-02). `wrangler deploy` attaches
+   (`img.plrs.im`, `img-staging.plrs.im`, `img-dev.plrs.im`, HA-02) and the customer hosts
+   (`polaris.locker`, `staging.polaris.locker`, `dev.polaris.locker`, LK-11). `wrangler deploy` attaches
    each `custom_domain = true` route in `wrangler.toml` and creates its DNS record and
    certificate; a name that already has a DNS record outside the Worker must be cleared first.
 3. Onboard the auth sending subdomain `auth.plrs.im` on Cloudflare Email Sending, add its
@@ -650,6 +651,32 @@ curl -sI https://img.plrs.im/<slug>/icon | grep -iE '^(HTTP|location|cache-contr
 curl -s -o /dev/null -w '%{http_code}\n' -X POST https://img.plrs.im/<slug>/icon
 # 405
 ```
+
+### Customer host (Polaris Locker)
+
+The Worker answers a fifth host, `CUSTOMER_ORIGIN` (`https://polaris.locker`; `staging.polaris.locker`
+and `dev.polaris.locker` elsewhere), confined to the customer routes (`src/core/customerHost.ts`).
+The `polaris.locker` zone is active in the same Cloudflare account as the Worker, with no other
+DNS record on those names. Since LK-11 `wrangler.toml` attaches the three custom domains and sets
+`CUSTOMER_ORIGIN` in each `[vars]`; `wrangler deploy` creates the DNS record and certificate (the
+first certificate can take minutes). There is no switch (LK-17): a usable `CUSTOMER_ORIGIN` is the
+cutover. The deploy that carries it moves every customer link to the customer host, and the old
+customer pages on the API host (`/activate`, `/signin` but for `?request=`, `/device`, `/tv`,
+`/login[/…]`, `/callback`, `/logout`, `/magic/verify`, `/download/<token>`) redirect
+to the same path and query there.
+
+The deploy's smoke check polls the host (up to about 5 minutes): `/` answers 200 with a
+Content-Security-Policy and no cookie, `/.well-known/polaris-host.json` is `{"host":"customer"}`,
+`/manage` is 404, `https://key.plrs.im/.well-known/webauthn` lists the customer origin, and
+`https://key.plrs.im/activate` answers `301` to `https://polaris.locker/activate`. Owner steps
+before the deploy (RUNBOOK "Customer host"): register the customer host's sign-in callbacks with
+each provider. **Roll back** by removing `CUSTOMER_ORIGIN` and the customer routes and redeploying;
+links return to the console origin, but a browser keeps a `301` it has already seen.
+
+**Emergency detach.** Remove the three `[[env.<env>.routes]]` entries for the customer domain
+and redeploy, or delete the Worker custom domain `polaris.locker` under the Worker's Settings →
+Domains & Routes in the dashboard. Do the first only with the switch `off`; links to the host stop
+working at once. A redeploy that still lists `CUSTOMER_ORIGIN` is harmless without the route.
 
 ### Trusted publishing: the R2 parent token
 

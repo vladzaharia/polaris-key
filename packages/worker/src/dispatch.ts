@@ -58,7 +58,11 @@ import { handleAssetsPush } from "./core/assets/hostedAssetUploads.js";
 // HA-06: a CI push into a listing-model slot also writes Distribution's listing row; Core takes
 // the writer from here rather than importing the service.
 import { listingSlotMirror } from "./services/distribution/api.js";
-import { handleSignInEntry } from "./core/signInEntry.js";
+import {
+  handleSignInBind,
+  handleSignInEntry,
+  isBindHop,
+} from "./core/signInEntry.js";
 import { handleDeviceEntry } from "./core/deviceEntry.js";
 import { dispatchBytesHost, isBytesHost } from "./core/assets/bytesHost.js";
 import {
@@ -66,6 +70,15 @@ import {
   isRegistryHost,
 } from "./core/registry/registryHost.js";
 import { dispatchImgHost, isImgHost } from "./core/assets/imgHost.js";
+import {
+  CUSTOMER_ROUTE_KINDS,
+  apiOrigin,
+  customerHostOwnResponse,
+  isCustomerHostOwnPath,
+  oldCustomerUrlRedirect,
+} from "./core/customerHost.js";
+import { customerHostname, isCustomerHost } from "./core/hosts.js";
+import { relatedOriginsResponse } from "./core/customerHost.js";
 import {
   drainRenderQueue,
   watchRenderEnqueues,
@@ -180,7 +193,34 @@ async function routeRequest(
   // `IMG_ORIGIN` unset (or equal to the bytes or registry host, checked above) this is always
   // false, and routing is exactly what it was before the image host existed.
   if (isImgHost(url, env)) return dispatchImgHost(req, env, db, now, exec);
+  // The customer host (LK-03) reaches ONLY the customer routes (`core/customerHost.ts`). With
+  // `CUSTOMER_ORIGIN` unset (or naming the console or an earlier host) this is always false, and
+  // routing is exactly what it was before the customer host existed.
+  const onCustomerHost = isCustomerHost(url, env);
+  if (onCustomerHost && isCustomerHostOwnPath(url.pathname))
+    return customerHostOwnResponse(req, env, url.pathname);
   const route = matchRoute(url.pathname);
+  if (onCustomerHost && !CUSTOMER_ROUTE_KINDS.has(route.kind))
+    return notFound();
+  // The API host's root is the console's front door once `CUSTOMER_ORIGIN` is set (hard cutover: the
+  // customer site lives on its own host then, no switch). Unset, `/` is still the customer portal. A hash route
+  // (`/#/library`) never reaches the Worker; those old bookmarks need LK-11's client redirect.
+  if (
+    !onCustomerHost &&
+    route.kind === "portalSpa" &&
+    (url.pathname === "/" || url.pathname === "/index.html") &&
+    (req.method === "GET" || req.method === "HEAD") &&
+    customerHostname(env) !== null
+  )
+    return new Response(null, {
+      status: 302,
+      headers: { location: "/manage", "cache-control": "no-store" },
+    });
+  // LK-17: with a usable customer host, the old customer URLs on the console host redirect to it.
+  if (!onCustomerHost) {
+    const moved = oldCustomerUrlRedirect(req, env, route, url);
+    if (moved) return moved;
+  }
   // The portal is one account across every product, so it has no product to dispatch on; when
   // it reaches a product's downloads it asks for that product's hooks (P2b-04: the delivery
   // access every download surface reads), built here from the composition root's registry under
@@ -231,11 +271,37 @@ async function routeRequest(
     // under the prefix — assets and machine-readable artifacts included.
     case "docs":
       return handleDocs(req, env, now);
+    // WebAuthn Related Origin Requests (LK-05): the customer origin may use this host's RP id.
+    // `/help` → the public Help; no session, no database.
+    case "helpAlias":
+      return req.method === "GET" || req.method === "HEAD"
+        ? new Response(null, {
+            status: 302,
+            headers: { location: "/docs/help/", "cache-control": "no-store" },
+          })
+        : new Response(null, {
+            status: 405,
+            headers: { allow: "GET, HEAD", "cache-control": "no-store" },
+          });
+    case "webauthnOrigins":
+      return relatedOriginsResponse(req, env);
     // The platform device-code entry pages: no product, no session, no database.
     case "signInEntry":
-      return handleSignInEntry(req);
+      return onCustomerHost && isBindHop(req)
+        ? handleSignInBind(req, env)
+        : handleSignInEntry(req);
     case "deviceEntry":
-      return handleDeviceEntry(req, env, route.tv, now);
+      return handleDeviceEntry(
+        req,
+        env,
+        route.tv,
+        now,
+        // On the customer host the product's page lives on the API host: a fixed origin from
+        // configuration, never from the request. The confirmation, the IdP leg and the callback
+        // stay in one browser on one host, so the flow's binder is set by the confirming browser
+        // (R1-07; LK-04 security review).
+        onCustomerHost ? apiOrigin(env) : null,
+      );
     case "portalSpa":
     case "portalApi":
     case "portalLogin":
@@ -364,7 +430,13 @@ async function routeProduct(
     // friendly card instead of a JSON 404. Core code, before dispatch, so no Identity code runs;
     // every non-navigation caller falls through to `dispatchService`'s `404 not_found`.
     if (route.slug === "identity") {
-      const redirect = identityNavigationRedirect(req, product, route.rest);
+      const redirect = await identityNavigationRedirect(
+        req,
+        env,
+        db,
+        product,
+        route.rest,
+      );
       if (redirect) return redirect;
     }
     return dispatchService(SERVICES, route.slug, product.services, {

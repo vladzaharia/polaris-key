@@ -38,3 +38,26 @@ export { storefrontAnalytics } from "./portal/store/analytics.js";
 export { type Persona, previewPersona } from "./portal/store/obtain.js";
 export { polarisKeyStatus } from "./portal/store/panelStatus.js";
 export { SIGNIN_ENV } from "./providers/config.js";
+// I-31: Platform → Connections (the operator's side of `identity_connections`).
+export {
+  changeDomain,
+  connectionView,
+  createConnection,
+  deleteConnection,
+  listConnectionViews,
+  previewDiscovery,
+  updateConnection,
+  type ConnectionView,
+  type DomainAction,
+  type Refusal as ConnectionRefusal,
+} from "./connections/admin.js";
+export {
+  startConnectionTest,
+  takeTestResult,
+} from "./connections/testSignIn.js";
+export {
+  SIGNIN_PROVIDER_KINDS,
+  signInProviderConfigured,
+  signInRegistration,
+} from "./providers/config.js";
+export { turnstileEnabled } from "./card/turnstile.js";

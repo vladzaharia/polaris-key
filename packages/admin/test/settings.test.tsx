@@ -81,7 +81,7 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("Core → Settings", () => {
-  it("keeps the rail as it was: no pills or picker, and a jump with unsaved edits asks nothing (ST-09)", async () => {
+  it("has no section rail, pills or picker inside the hub", async () => {
     const user = userEvent.setup();
     HTMLElement.prototype.scrollIntoView = vi.fn();
     mount();
@@ -94,11 +94,9 @@ describe("Core → Settings", () => {
     expect(
       screen.queryByRole("navigation", { name: "Jump to section" }),
     ).toBeNull();
-    const rail = screen.getByRole("navigation", { name: "On this page" });
-    const hash = window.location.hash;
-    await user.click(within(rail).getAllByRole("link").at(-1)!);
-    expect(screen.queryByRole("alertdialog")).toBeNull();
-    expect(window.location.hash).toBe(hash);
+    expect(
+      screen.queryByRole("navigation", { name: "On this page" }),
+    ).toBeNull();
     expect((name as HTMLInputElement).value).toBe("DJDL Pro");
   });
 

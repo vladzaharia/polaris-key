@@ -39,10 +39,10 @@ import { useAccessAdmins } from "./useCan.js";
 /** The page an area opens on, for "You can open". */
 const AREA_LANDING: Partial<Record<AreaId, ProductPageId>> = {
   ship: "releases",
-  commerce: "commerce",
+  commerce: "commerce-overview",
   license: "licenses",
   config: "catalog",
-  signin: "sign-in",
+  signin: "app-sign-in",
   sync: "sync-data",
   keys: "keys",
   core: "overview",

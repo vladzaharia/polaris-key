@@ -1,10 +1,7 @@
 /**
- * The Platform section's pages (notes/S-13 §9.1): instance-wide, product-less. One lazy chunk,
- * loaded when the operator opens the section. Deployment is built here (A-11's identity and deploy
- * history, A-12's platform activity), Settings in `platformSettings.tsx` (4P-1, on A-13),
- * Operations in `platformOperations.tsx` (4P-3, on A-14) and Store connections in
- * `platformStores.tsx` (A-16), Package feeds in `../areas/feeds/` (F-11, shared with the
- * product scope) and Override migration in `platformOverrideMigration.tsx` (U-03).
+ * The Platform section's pages (notes/S-13 §9.1): instance-wide, product-less. One lazy chunk.
+ * Deployment is built here; Settings, Operations, Store connections, Connections (I-31), Package
+ * feeds and Override migration live in `pages/` and `../feeds/`.
  */
 
 import * as React from "react";
@@ -39,6 +36,7 @@ import { PageHeader } from "../../../ui/PageHeader.js";
 import { PlatformSettingsPage } from "./pages/platformSettings.js";
 import { qk } from "../../data/queries.js";
 import { StoreConnections } from "./pages/platformStores.js";
+import { ConnectionsRoute } from "./pages/platformConnections.js";
 import type { GlobalPageId } from "../../nav.js";
 import type { Route } from "../../routes.js";
 import { FeedsArea } from "../feeds/pages/FeedsArea.js";
@@ -81,6 +79,8 @@ export default function PlatformPages({
   if (page === "platform-settings") return <PlatformSettingsPage />;
   if (page === "platform-operations") return <Operations />;
   if (page === "platform-stores") return <StoreConnections />;
+  if (page === "platform-connections")
+    return <ConnectionsRoute id={route?.id} />;
   if (page === "platform-override-migration") return <OverrideMigrationPage />;
   return null;
 }

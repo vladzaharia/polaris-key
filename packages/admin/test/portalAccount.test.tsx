@@ -123,7 +123,7 @@ describe("Account v1 (PX-07)", () => {
       within(data).getByRole("button", { name: "Delete account" }),
     );
     const heading = within(data).getByRole("heading", {
-      name: "Schedule your Polaris Key account for deletion?",
+      name: "Schedule your Polaris Locker account for deletion?",
     });
     await waitFor(() => expect(document.activeElement).toBe(heading));
     const confirm = within(data).getByRole("button", {
@@ -337,7 +337,7 @@ describe("Your data: Download my data (I-11)", () => {
     [
       "a dropped connection",
       "network",
-      "Can't reach Polaris Key. Check your connection, then try again.",
+      "Can't reach Polaris Locker. Check your connection, then try again.",
     ],
     [
       "an error from the Worker",

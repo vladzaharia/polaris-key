@@ -5,11 +5,12 @@
  * Every path has one access tier, from the directory it lives in (`DOCS_TIERS`, which mirrors the
  * docs site's own `TIER_PREFIXES` in `packages/docs/src/lib/doors.ts`; a test pins the two):
  *
- *   - **public**: the landing page, the access page and the developer sections (`start/`,
- *     `build/`, `features/`, `reference/`), plus the site's shared assets. No session.
- *   - **member**: Operate → Console (and Help, until D4; see `HELP_TIER`). Any console member:
+ *   - **public**: the landing page, the access page, Help (`help/`) and the developer sections
+ *     (`start/`, `build/`, `features/`, `reference/`), plus the site's shared assets and the
+ *     public search bundle. No session.
+ *   - **member**: Operate → Console, and its search bundle. Any console member:
  *     `can(principal, platform, "console", "view")`.
- *   - **admin**: Operate → Platform (the runbook included), Contribute, the search index, and every
+ *   - **admin**: Operate → Platform (the runbook included), Contribute, the full search bundle, and every
  *     path no row names (deny by default): `can(principal, platform, "docs", "view")`, which is
  *     Superadmin and Platform admin.
  *
@@ -20,10 +21,9 @@
  * `__Host-` prefix REQUIRES `Path=/` (R1-08) — every request to this origin carries it, so
  * the gate needs no path co-location with `/manage`.
  *
- * A sessionless request for a gated path 302s into the normal admin sign-in with a `returnTo`
- * back to the page it wanted (validated by `console/auth.ts`; anything suspicious falls back to
- * `/manage/`). DOC-03b replaces that redirect with the public access page, splits the search
- * index per tier and flips Help public once the owner's support address exists (D4).
+ * A sessionless request for a gated path 302s to the public access page (`/docs/access/`), which
+ * says who may read it and links to sign-in. Search has one Pagefind bundle per tier
+ * (`SEARCH_BUNDLES`), so a bundle never holds text its reader may not open.
  *
  * Serving mirrors `serveAdminAsset` (`console/index.ts`): extension-less paths resolve to the
  * directory's `index.html` (Starlight builds with `format: "directory"`), unsafe paths are
@@ -93,15 +93,11 @@ function docsShell(): Response {
   );
 }
 
-/** 302 into the admin sign-in, carrying the requested path for the post-login redirect. */
-function loginRedirect(pathname: string): Response {
-  const returnTo = encodeURIComponent(pathname);
+/** 302 to the public access page, which says who may read the page and links to sign-in. */
+function accessRedirect(): Response {
   return new Response(null, {
     status: 302,
-    headers: {
-      location: `/manage/login?returnTo=${returnTo}`,
-      "cache-control": "no-store",
-    },
+    headers: { location: "/docs/access/", "cache-control": "no-store" },
   });
 }
 
@@ -139,19 +135,29 @@ export function docsAssetPath(pathname: string): string | null {
 function isImmutableAsset(assetPath: string): boolean {
   return (
     assetPath.startsWith("/docs/_astro/") ||
-    assetPath.startsWith("/docs/pagefind/fragment/") ||
-    assetPath.startsWith("/docs/pagefind/index/")
+    SEARCH_BUNDLES.some(
+      ([dir]) =>
+        assetPath.startsWith(`${dir}fragment/`) ||
+        assetPath.startsWith(`${dir}index/`),
+    )
   );
 }
 
 export type DocsTier = "public" | "member" | "admin";
 
 /**
- * Help's tier. The docs plan makes Help public (D1), but only once the owner has given Polaris
- * Key's support and privacy addresses (D4): until then a locked-out reader has nobody to write
- * to, so Help stays member-only. DOC-03b's public switch changes this one value.
+ * One Pagefind bundle per tier, so a search never returns text the reader may not open. Each
+ * bundle holds its tier's pages and those of every tier below it (`public` ⊂ `member` ⊂
+ * `admin`); `packages/docs/scripts/build-search-bundles.ts` builds them and a test pins this table
+ * to the build.
  */
-export const HELP_TIER: DocsTier = "member";
+export const SEARCH_BUNDLES: ReadonlyArray<
+  readonly [dir: string, tier: DocsTier]
+> = [
+  ["/docs/pagefind/", "public"],
+  ["/docs/pagefind-member/", "member"],
+  ["/docs/pagefind-admin/", "admin"],
+];
 
 /**
  * The tier of each resolved docs path (ST-29; docs plan §3.1, D2). A prefix ends in `/`; any other
@@ -162,12 +168,12 @@ export const HELP_TIER: DocsTier = "member";
 export const DOCS_TIERS: ReadonlyArray<
   readonly [path: string, tier: DocsTier]
 > = [
-  // Pages, by door.
+  // Pages, by door. (SEARCH_BUNDLES is declared above this table.)
   ["/docs/index.html", "public"],
   // The site's own "page not found", served for a miss in any tier the reader passed.
   ["/docs/404.html", "public"],
   ["/docs/access/", "public"],
-  ["/docs/help/", HELP_TIER],
+  ["/docs/help/", "public"],
   ["/docs/start/", "public"],
   ["/docs/build/", "public"],
   ["/docs/features/", "public"],
@@ -181,8 +187,8 @@ export const DOCS_TIERS: ReadonlyArray<
   ["/docs/branding/", "public"],
   ["/docs/schemas/", "public"],
   ["/docs/openapi/", "public"],
-  // One search index holds every tier's text until DOC-03b builds one bundle per tier.
-  ["/docs/pagefind/", "admin"],
+  // One search bundle per tier (SEARCH_BUNDLES).
+  ...SEARCH_BUNDLES,
 ];
 
 /** The tier of a resolved asset path (`docsAssetPath`'s output); `null` (unsafe) is `admin`. */
@@ -240,7 +246,7 @@ export async function handleDocs(
   const tier = docsTierOf(assetPath);
   if (tier !== "public") {
     const caller = await resolveConsoleCaller(env, null, req, now);
-    if (!caller) return loginRedirect(url.pathname);
+    if (!caller) return accessRedirect();
     // The principal is resolved from the current platform group, not the groups the cookie was
     // minted with.
     if (!docsAllows(caller.principal, tier))

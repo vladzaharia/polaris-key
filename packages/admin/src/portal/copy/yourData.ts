@@ -23,8 +23,7 @@ export const YOUR_DATA_COPY = {
   "yourData.copy.started": "Your download has started",
   "yourData.product.copy.title": "Download my data",
   "yourData.product.remove.title": "Remove my data",
-  "yourData.product.remove.body":
-    "Polaris Key deletes your settings and activity here. This can't be undone.",
+  "yourData.product.remove.body": `Polaris Locker deletes your settings and activity here. This can't be undone.`,
   "yourData.product.support.title": "Support code",
   "yourData.product.support.body": "Read it to the app's support team.",
   "yourData.remove.keep": "Keep my data",
@@ -50,7 +49,7 @@ export function removeConsequences(o: {
   alsoRemoveLicense: boolean;
 }): string[] {
   const list = [
-    `Polaris Key deletes your settings and activity for ${o.name}. This can't be undone.`,
+    `Polaris Locker deletes your settings and activity for ${o.name}. This can't be undone.`,
     `${o.developer ?? "The developer"} is told, so they can delete their own copy.`,
   ];
   if (o.licenses === 0) list.push(`${o.name} stays in your library.`);

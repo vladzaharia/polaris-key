@@ -239,6 +239,51 @@
       "verdict": "pass",
       "date": "2026-10-20",
       "evidence": "Brand review 2026-10-19 (_mockups/review/LK-01/): kit fidelity PASS; colour-state FAIL fixed by D9a (9b124751f, neutral states; ΔE00 vs danger 6.7–48); v1.3 re-import 45ec070d6; lead-verified preview _scratch/LK-01/locker-light-1440.png."
+    },
+    "CM-29": {
+      "verdict": "pass",
+      "date": "2026-10-20",
+      "evidence": "Built review 2026-10-19 (_mockups/review/CM-29/): FAIL B1 ready-count mismatch, B2 tile missing -> fixed 9074d769b with tests; notes 1,2,4,6–10 fixed; lead-verified overview 1440 light (_scratch/CM-29/); layout e2e 0 violations over 60 loads."
+    },
+    "I-31": {
+      "verdict": "pass",
+      "date": "2026-10-20",
+      "evidence": "Re-review 2026-10-19 (_mockups/review/I-31/rr/): first-round B1–B4 fixed; new PageHeader blocker + majors 1–9 fixed in the lead round (470710fe6): layout e2e 0 violations at 768x1024, 1280x800 and zoom rows."
+    },
+    "MK-L1": {
+      "verdict": "pass",
+      "date": "2026-10-20",
+      "evidence": "Lead-verified MOCKUP pass 2026-10-19: identity.* + portal.signin re-skinned (Locker lockup, D9a neutral ink, coral identity only, no star field); screenshots _scratch/MK-L1/."
+    },
+    "LK-06": {
+      "verdict": "pass",
+      "date": "2026-10-20",
+      "evidence": "UX review FAIL B1–B3/M1/M2 fixed (ff070dcea; hard cutover: always Locker); lead-verified library-12 baseline; card heading follows LK-08a."
+    },
+    "MK-L2": {
+      "verdict": "pass",
+      "date": "2026-10-20",
+      "evidence": "Lead-verified MOCKUP pass (portal.library Locker re-skin)."
+    },
+    "LK-15": {
+      "verdict": "pass",
+      "date": "2026-10-20",
+      "evidence": "UX review PASS-WITH-NOTES 2026-10-19 (_mockups/review/LK-15/); notes fixed (8bd71e72b); A4 re-scope to Key chrome (f5936e16d, chrome = main); switch notes dropped (4f7a06bcd)."
+    },
+    "LK-07b": {
+      "verdict": "pass",
+      "date": "2026-10-20",
+      "evidence": "Lead-verified BUILT emails (26 messages × 600/390 × light/dark/no-style; _scratch/LK-07b/shots/; e.g. deletion-scheduled 600-light): Locker lockup, ink action, neutral callouts, no Polaris Key, axe contrast clean."
+    },
+    "I-29": {
+      "verdict": "pass",
+      "date": "2026-10-20",
+      "evidence": "UX review FAIL B1–B5 + majors + frontend mockup gaps fixed in one round (ba98b6c44; layout e2e incl. zoom rows); security PASS; prod has no toggled product."
+    },
+    "ST-08": {
+      "verdict": "pass",
+      "date": "2026-10-20",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/ST-08/rebuild/ (built re-check 2026-10-20 after one fix round; notes are ST-08n follow-ups)"
     }
   }
 }

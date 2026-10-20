@@ -105,6 +105,8 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | POST | `/{product}/devices/register` | core | Keyless device registration (policy-gated) |
 | POST | `/{product}/devices/report` | core | Report device facts (software snapshot + declared probes) |
 | GET | `/{product}/devices` | core | List the devices sharing this device's seat pool |
+| GET | `https://polaris.locker/.well-known/polaris-host.json` | customer | Customer host health check (customer host only) |
+| HEAD | `https://polaris.locker/.well-known/polaris-host.json` | customer | Customer host health check, headers only (customer host only) |
 | GET | `/{product}/distribution/altstore-pal/{channel}/source.json` | distribution | AltStore PAL source for one channel |
 | GET | `/{product}/distribution/altstore/{channel}/source.json` | distribution | AltStore Classic / SideStore source for one channel |
 | GET | `/{product}/distribution/blobs/sha256/{sha256}` | distribution | Download a content-addressed object |
@@ -171,6 +173,8 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/{product}/license/document` | license | The signed license document (pkey-license+jws) |
 | POST | `/{product}/license/enroll` | license | Keyless enrollment (auto-issue policy) |
 | POST | `/{product}/license/token` | license | Rotate/re-acquire the device token |
+| GET | `/.well-known/webauthn` | portal | WebAuthn related origins (console host) |
+| HEAD | `/.well-known/webauthn` | portal | WebAuthn related origins, headers only |
 | GET | `/api/device-login/{requestId}` | portal | Wait for the other device to approve this one |
 | POST | `/api/device-login/approve` | portal | Approve or deny a device asking to sign in |
 | POST | `/api/device-login/lookup` | portal | See what is asking to sign in, before deciding |
@@ -233,6 +237,8 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/api/signin/requests/{request}/licenses` | portal | The licence choice for the signed-in account (the card's step) |
 | GET | `/api/signin/requests/{request}` | portal | One app sign-in request, as the sign-in card renders it |
 | GET | `/device` | portal | Device-code entry page (HTML) |
+| GET | `/help` | portal | Help (alias) |
+| HEAD | `/help` | portal | Help (alias), headers only |
 | GET | `/media/{product}/{asset}` | portal | A product's art, as a redirect to its hosted copy |
 | GET | `/media/avatar/{asset}` | portal | An account picture, re-encoded and served same-origin |
 | GET | `/signin` | portal | Sign-in entry (redirect) |

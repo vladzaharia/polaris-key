@@ -46,6 +46,7 @@ export function servicesResponse(
       licensing: { tiers: 0, licenses: 0 },
       managedConfig: { catalogVersion: null },
       shipBuilds: { latest: null },
+      commerce: { storefronts: 0, storeGrants: 0 },
     },
   };
 }
@@ -283,8 +284,6 @@ export function boot(hash: string, opts: BootOptions = {}): FetchLog {
     "/manage/api/products/djdl/identity/portal": {
       settings: {
         portalEnabled: false,
-        oidcEnabled: false,
-        magicEnabled: false,
       },
     },
     ...opts.extra,

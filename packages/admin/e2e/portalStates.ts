@@ -1132,7 +1132,7 @@ export const SHIPPED: ShippedState[] = [
       await p.getByRole("button", { name: "Delete account" }).click();
       await p
         .getByRole("heading", {
-          name: "Schedule your Polaris Key account for deletion?",
+          name: "Schedule your Polaris Locker account for deletion?",
         })
         .waitFor();
     },

@@ -358,14 +358,16 @@ async function handleSettings(
       );
     // Its own event, not folded into `update.settings.update`: the signature requirement is a
     // security control, and switching it off must be findable in the audit log by action alone.
+    const merged = mergeOperatorPolicy(cfg.operator_policy_json, {
+      ...(requireSparkleSignature !== undefined
+        ? { requireSparkleSignature }
+        : {}),
+      ...(minimumSystemVersion !== undefined ? { minimumSystemVersion } : {}),
+    });
     writes.push({
       key: "update.operatorPolicy",
-      value: mergeOperatorPolicy(cfg.operator_policy_json, {
-        ...(requireSparkleSignature !== undefined
-          ? { requireSparkleSignature }
-          : {}),
-        ...(minimumSystemVersion !== undefined ? { minimumSystemVersion } : {}),
-      }),
+      // Nothing left to store: drop the row (no row reads the fail-safe defaults).
+      ...(merged === null ? { op: "reset" as const } : { value: merged }),
       audit: {
         action: "release.policy.update",
         target,

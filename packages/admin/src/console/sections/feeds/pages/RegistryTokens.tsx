@@ -93,7 +93,7 @@ const STATUS_PILL: Record<
 /** Who minted a token, in words: an operator's address, or "Portal" for a licensee. */
 function creatorOf(t: RegistryTokenDto): string {
   if (t.createdBy.startsWith("admin:")) return t.createdBy.slice(6);
-  if (t.createdBy.startsWith("portal:")) return "Licensee, in the portal";
+  if (t.createdBy.startsWith("portal:")) return "Licensee, in Polaris Locker";
   return t.createdBy;
 }
 
@@ -340,7 +340,7 @@ function TokensTable({
             : "Revoke every registry token?"
         }
         consequences={[
-          `${live.length} active token${live.length === 1 ? "" : "s"} stop${live.length === 1 ? "s" : ""} working within 30 seconds, including those licensees minted in the portal.`,
+          `${live.length} active token${live.length === 1 ? "" : "s"} stop${live.length === 1 ? "s" : ""} working within 30 seconds, including those licensees minted in Polaris Locker.`,
           "Clients of feeds that are not public need a new token.",
         ]}
         confirmLabel="Revoke all"

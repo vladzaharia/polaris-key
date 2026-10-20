@@ -355,7 +355,10 @@ function scaleVars(): [string, string][] {
  */
 const lockerScope = `/* Polaris Locker (BRAND.md §15, D9a): coral is identity only: the mark, the 3 px selected-nav
    marker, a 2 px link underline and the context edge. Selection, hover, focus, links and checked
-   controls are neutral ink. --pk-action stays neutral ink. */
+   controls are neutral ink. --pk-action stays neutral ink. The \`:root\` form matches the
+   specificity of the core block's light values (\`:root:not([data-theme="dark"])\`), which would
+   otherwise win in light and leave the focus ring violet. */
+:root[data-brand="locker"],
 [data-brand="locker"] {
   --pk-accent: var(--pk-locker-accent);
   --pk-accent-fg: var(--pk-text-strong);
@@ -451,6 +454,15 @@ ${SERVICE_IDS.filter((id) => id !== "core")
       `\n[data-service="${id}"] {\n${sectionDecl(SERVICE_ALIAS[id] ?? id)}\n}`,
   )
   .join("\n")}
+
+/*
+ * Kit rule (B1, CM-29b): Commerce shares Distribution's green, which reads close to success, so a
+ * link in a Commerce page's content (inside main, so dialogs, the sidebar and other sections are untouched) is strong text (underlined by the kit), never the accent. The accent never
+ * encodes status. A link styled as a button (a background utility) keeps its own colours.
+ */
+main [data-service="commerce"] a:not([class*="bg-"]) {
+  color: var(--pk-text-strong);
+}
 
 /* Where linear() is unsupported, the spring easing falls back to standard. */
 @supports not (transition-timing-function: linear(0, 1)) {

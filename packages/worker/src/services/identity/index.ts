@@ -138,7 +138,7 @@ export const identityService: ServiceDescriptor = {
     settings,
   }: DiscoveryContext) => {
     const accountPortal = (await portalEnabled(db, product.slug))
-      ? accountPortalUrl(env, base, product)
+      ? await accountPortalUrl(env, db, base, product)
       : null;
     const fragment: IdentityDiscovery = {
       enabled: true,

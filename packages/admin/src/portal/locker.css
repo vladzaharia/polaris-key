@@ -1,0 +1,23 @@
+/*
+ * Polaris Locker on the customer site (LK-06, plans/LK-00.md D9a). `index.html` sets
+ * `data-brand="locker"` on <html> (the customer site is Polaris Locker, LK-00 D1); brand tokens.css
+ * re-points the core accent to coral. Coral is IDENTITY only here: the mark, the selected-nav
+ * marker (3 px) and the link underline (2 px). Everything the portal draws with `accent` as a
+ * state or an action (the primary fill, rings, checked borders) goes back to neutral ink, because
+ * coral states read as errors (ΔE00 0.6 to 2.8 against the danger tokens).
+ */
+/* :root[...] to match the brand scope's specificity; this file loads after it. */
+:root[data-brand="locker"] {
+  --pk-accent: var(--pk-action);
+  --pk-accent-on: var(--pk-action-on);
+}
+
+[data-brand="locker"] .underline {
+  text-decoration-color: var(--pk-locker-accent);
+  text-decoration-thickness: 2px;
+}
+
+/* A status banner (the deletion warning) keeps its own colour: coral there would read as an error. */
+[data-brand="locker"] [role="status"] .underline {
+  text-decoration-color: currentColor;
+}

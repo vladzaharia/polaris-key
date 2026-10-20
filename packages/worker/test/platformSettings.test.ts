@@ -213,11 +213,12 @@ function countingDb(inner: Db): { db: Db; count: () => number } {
 // ── The registry ─────────────────────────────────────────────────────────────────────────────
 
 describe("PLATFORM_SETTINGS", () => {
-  it("declares exactly the four background-job settings, the two reserved-names severities, the key-entry refusal switch and the hosted-asset switch", () => {
+  it("declares exactly the four background-job settings, the two reserved-names severities, the key-entry refusal switch, the hosted-asset switch and the sign-in mail cap default", () => {
     expect(PLATFORM_SETTINGS.map(rowKeyOf).sort()).toEqual([
       "ASSET_HOSTING",
       "BLOB_GC_GRACE_DAYS",
       "BLOB_GC_MODE",
+      "EMAIL_PRODUCT_DAILY_CAP",
       "IDENTITY_RESERVED_DISPLAY_NAMES",
       "KEYENTRY_REFUSALS",
       "LAZY_DELTAS",
@@ -242,6 +243,8 @@ describe("PLATFORM_SETTINGS", () => {
       // HA-10 (notes/S-20 §6.10): the hosted-asset rollback switch. Not a security gate (off only
       // restores the pre-HA-07 behaviour), so `runtime`: an unreadable store is not an off.
       ASSET_HOSTING: "runtime",
+      // ST-11: the deploy-wide default of the per-product sign-in mail cap; a tunable.
+      EMAIL_PRODUCT_DAILY_CAP: "runtime",
     });
   });
 
@@ -355,7 +358,7 @@ describe("PLATFORM_SETTINGS", () => {
     expect(
       settingConfirmLevel(def("LAZY_DELTA_MAX_BYTES"), 33_554_432, 2_097_152),
     ).toBe("L0");
-    // None of the five is L2+: the `{ confirm }` echo is reserved for future settings.
+    // None is L2+ (LK-17 removed the customer-host switch): the `{ confirm }` echo is reserved for future settings.
     for (const d of PLATFORM_SETTINGS)
       expect(
         Object.values(d.confirm).every((l) => l === "L0" || l === "L1"),
@@ -626,7 +629,7 @@ describe("GET /manage/api/platform/settings", () => {
   it("ST-02: reports every inventory var and secret, and never a secret's value", async () => {
     const env = adminEnv({
       PKG_ORIGIN: "https://pkg.example",
-      EMAIL_PRODUCT_DAILY_CAP: "250",
+      EMAIL_SENDER_ADDRESS: "mail@auth.plrs.im",
       PLATFORM_REPOSITORY: "owner/repo",
       REGISTRY_TOKEN_KEY: "registry-SENTINEL",
       PLATFORM_ASC_API_KEY: '{"p8":"SENTINEL"}',
@@ -658,7 +661,7 @@ describe("GET /manage/api/platform/settings", () => {
       area: "delivery",
       value: "https://pkg.example",
     });
-    expect(deploy.EMAIL_PRODUCT_DAILY_CAP.value).toBe("250");
+    expect(deploy.EMAIL_SENDER_ADDRESS.value).toBe("mail@auth.plrs.im");
     expect(deploy.PLATFORM_REPOSITORY.area).toBe("deployment");
     const secrets = Object.fromEntries(
       (body.secrets as any[]).map((s) => [s.name, s.set]),

@@ -4184,7 +4184,7 @@
       }
     },
     "cli.activate.unauthorized": {
-      "comment": "Terminal activate: the server did not accept the license key, under the title 'Key not accepted'. It answers the same for a wrong key and for one that expired or was turned off, so the text covers both. It ends in a colon: the product's account page on Polaris Key follows on its own line, as a link.",
+      "comment": "Terminal activate: the server did not accept the license key, under the title 'Key not accepted'. It answers the same for a wrong key and for one that expired or was turned off, so the text covers both. It ends in a colon: the product's account page on Polaris Locker follows on its own line, as a link.",
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -8864,7 +8864,7 @@
       }
     },
     "cli.status.keyRevoked.message": {
-      "comment": "Terminal status, under the title above. It ends in a colon: the product's account page on Polaris Key follows on its own line, as a link.",
+      "comment": "Terminal status, under the title above. It ends in a colon: the product's account page on Polaris Locker follows on its own line, as a link.",
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -12776,7 +12776,7 @@
       }
     },
     "common.manage": {
-      "comment": "Shared verb used across the kit's screens. Opens the person's Polaris Key account in the browser.",
+      "comment": "Shared verb used across the kit's screens. Opens the person's Polaris Locker account in the browser.",
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -14978,55 +14978,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign in to your Polaris Key account on this device, then try again."
+            "value": "Sign in to your Polaris Locker account on this device, then try again."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Melden Sie sich auf diesem Gerät bei Ihrem Polaris Key-Konto an und versuchen Sie es dann erneut."
+            "value": "Melden Sie sich auf diesem Gerät bei Ihrem Polaris Locker-Konto an und versuchen Sie es dann erneut."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign in to your Polaris Key account on this device, then try again."
+            "value": "Sign in to your Polaris Locker account on this device, then try again."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Inicia sesión en tu cuenta de Polaris Key en este dispositivo y vuelve a intentarlo."
+            "value": "Inicia sesión en tu cuenta de Polaris Locker en este dispositivo y vuelve a intentarlo."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Entre na sua conta do Polaris Key neste dispositivo e tente novamente."
+            "value": "Entre na sua conta do Polaris Locker neste dispositivo e tente novamente."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Accedi al tuo account Polaris Key su questo dispositivo, poi riprova."
+            "value": "Accedi al tuo account Polaris Locker su questo dispositivo, poi riprova."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "このデバイスでPolaris Keyアカウントにサインインしてから、もう一度お試しください。"
+            "value": "このデバイスでPolaris Lockerアカウントにサインインしてから、もう一度お試しください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이 기기에서 Polaris Key 계정에 로그인한 후 다시 시도하세요."
+            "value": "이 기기에서 Polaris Locker 계정에 로그인한 후 다시 시도하세요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "请在此设备上登录你的Polaris Key账户，然后重试。"
+            "value": "请在此设备上登录你的Polaris Locker账户，然后重试。"
           }
         }
       }
@@ -20738,55 +20738,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Another Polaris Key account already uses this email. Join this sign-in to that account, or use a different email."
+            "value": "Another Polaris Locker account already uses this email. Join this sign-in to that account, or use a different email."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ein anderes Polaris Key-Konto verwendet diese E-Mail-Adresse bereits. Verbinden Sie diese Anmeldung mit jenem Konto, oder verwenden Sie eine andere E-Mail-Adresse."
+            "value": "Ein anderes Polaris Locker-Konto verwendet diese E-Mail-Adresse bereits. Verbinden Sie diese Anmeldung mit jenem Konto, oder verwenden Sie eine andere E-Mail-Adresse."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Another Polaris Key account already uses this email. Join this sign-in to that account, or use a different email."
+            "value": "Another Polaris Locker account already uses this email. Join this sign-in to that account, or use a different email."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Otra cuenta de Polaris Key ya usa este correo. Une este inicio de sesión a esa cuenta o usa otro correo."
+            "value": "Otra cuenta de Polaris Locker ya usa este correo. Une este inicio de sesión a esa cuenta o usa otro correo."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Outra conta do Polaris Key já usa este e-mail. Junte este acesso a essa conta ou use outro e-mail."
+            "value": "Outra conta do Polaris Locker já usa este e-mail. Junte este acesso a essa conta ou use outro e-mail."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Un altro account Polaris Key usa già questa email. Unisci questo accesso a quell'account oppure usa un'altra email."
+            "value": "Un altro account Polaris Locker usa già questa email. Unisci questo accesso a quell'account oppure usa un'altra email."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "別のPolaris Keyアカウントがすでにこのメールアドレスを使用しています。このサインインをそのアカウントに統合するか、別のメールアドレスを使用してください。"
+            "value": "別のPolaris Lockerアカウントがすでにこのメールアドレスを使用しています。このサインインをそのアカウントに統合するか、別のメールアドレスを使用してください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "다른 Polaris Key 계정이 이미 이 이메일을 사용하고 있어요. 이 로그인을 그 계정에 연결하거나 다른 이메일을 사용하세요."
+            "value": "다른 Polaris Locker 계정이 이미 이 이메일을 사용하고 있어요. 이 로그인을 그 계정에 연결하거나 다른 이메일을 사용하세요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "另一个Polaris Key账户已在使用此电子邮件。请将此次登录合并到该账户，或使用其他电子邮件。"
+            "value": "另一个Polaris Locker账户已在使用此电子邮件。请将此次登录合并到该账户，或使用其他电子邮件。"
           }
         }
       }
@@ -25658,55 +25658,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "This license belongs to an email address your Polaris Key account hasn't verified. Verify that email in your account, then try again."
+            "value": "This license belongs to an email address your Polaris Locker account hasn't verified. Verify that email in your account, then try again."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diese Lizenz gehört zu einer E-Mail-Adresse, die Ihr Polaris Key-Konto nicht bestätigt hat. Bestätigen Sie diese E-Mail-Adresse in Ihrem Konto und versuchen Sie es dann erneut."
+            "value": "Diese Lizenz gehört zu einer E-Mail-Adresse, die Ihr Polaris Locker-Konto nicht bestätigt hat. Bestätigen Sie diese E-Mail-Adresse in Ihrem Konto und versuchen Sie es dann erneut."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This license belongs to an email address your Polaris Key account hasn't verified. Verify that email in your account, then try again."
+            "value": "This license belongs to an email address your Polaris Locker account hasn't verified. Verify that email in your account, then try again."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Esta licencia pertenece a una dirección de correo que tu cuenta de Polaris Key no ha verificado. Verifica ese correo en tu cuenta y vuelve a intentarlo."
+            "value": "Esta licencia pertenece a una dirección de correo que tu cuenta de Polaris Locker no ha verificado. Verifica ese correo en tu cuenta y vuelve a intentarlo."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Esta licença pertence a um endereço de e-mail que sua conta do Polaris Key não verificou. Verifique esse e-mail na sua conta e tente novamente."
+            "value": "Esta licença pertence a um endereço de e-mail que sua conta do Polaris Locker não verificou. Verifique esse e-mail na sua conta e tente novamente."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Questa licenza appartiene a un indirizzo email che il tuo account Polaris Key non ha verificato. Verifica quell'email nel tuo account, poi riprova."
+            "value": "Questa licenza appartiene a un indirizzo email che il tuo account Polaris Locker non ha verificato. Verifica quell'email nel tuo account, poi riprova."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "このライセンスは、お使いのPolaris Keyアカウントで確認されていないメールアドレスに紐付いています。アカウントでそのメールアドレスを確認してから、もう一度お試しください。"
+            "value": "このライセンスは、お使いのPolaris Lockerアカウントで確認されていないメールアドレスに紐付いています。アカウントでそのメールアドレスを確認してから、もう一度お試しください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이 라이선스는 회원님의 Polaris Key 계정에서 인증하지 않은 이메일 주소에 속해 있어요. 계정에서 해당 이메일을 인증한 후 다시 시도하세요."
+            "value": "이 라이선스는 회원님의 Polaris Locker 계정에서 인증하지 않은 이메일 주소에 속해 있어요. 계정에서 해당 이메일을 인증한 후 다시 시도하세요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "此许可证属于你的Polaris Key账户尚未验证的电子邮件地址。请在账户中验证该电子邮件，然后重试。"
+            "value": "此许可证属于你的Polaris Locker账户尚未验证的电子邮件地址。请在账户中验证该电子邮件，然后重试。"
           }
         }
       }
@@ -26018,55 +26018,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "This %1$@ license is already in another Polaris Key account. A license never moves by its key."
+            "value": "This %1$@ license is already in another Polaris Locker account. A license never moves by its key."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diese Lizenz für %1$@ befindet sich bereits in einem anderen Polaris Key-Konto. Eine Lizenz wird nie über ihren Schlüssel übertragen."
+            "value": "Diese Lizenz für %1$@ befindet sich bereits in einem anderen Polaris Locker-Konto. Eine Lizenz wird nie über ihren Schlüssel übertragen."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This %1$@ license is already in another Polaris Key account. A license never moves by its key."
+            "value": "This %1$@ license is already in another Polaris Locker account. A license never moves by its key."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Esta licencia de %1$@ ya está en otra cuenta de Polaris Key. Una licencia nunca se transfiere con su clave."
+            "value": "Esta licencia de %1$@ ya está en otra cuenta de Polaris Locker. Una licencia nunca se transfiere con su clave."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Esta licença de %1$@ já está em outra conta do Polaris Key. Uma licença nunca é transferida pela chave."
+            "value": "Esta licença de %1$@ já está em outra conta do Polaris Locker. Uma licença nunca é transferida pela chave."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Questa licenza di %1$@ è già in un altro account Polaris Key. Una licenza non si sposta mai tramite la sua chiave."
+            "value": "Questa licenza di %1$@ è già in un altro account Polaris Locker. Una licenza non si sposta mai tramite la sua chiave."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "この%1$@のライセンスは、すでに別のPolaris Keyアカウントにあります。ライセンスがキーによって移動することはありません。"
+            "value": "この%1$@のライセンスは、すでに別のPolaris Lockerアカウントにあります。ライセンスがキーによって移動することはありません。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이 %1$@ 라이선스는 이미 다른 Polaris Key 계정에 있어요. 라이선스는 키로 옮겨지지 않아요."
+            "value": "이 %1$@ 라이선스는 이미 다른 Polaris Locker 계정에 있어요. 라이선스는 키로 옮겨지지 않아요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "此%1$@许可证已在另一个Polaris Key账户中。许可证不会通过密钥转移。"
+            "value": "此%1$@许可证已在另一个Polaris Locker账户中。许可证不会通过密钥转移。"
           }
         }
       }
@@ -26498,55 +26498,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "That sign-in method belongs to another Polaris Key account. Sign in to that account, or join the two accounts."
+            "value": "That sign-in method belongs to another Polaris Locker account. Sign in to that account, or join the two accounts."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diese Anmeldemethode gehört zu einem anderen Polaris Key-Konto. Melden Sie sich bei diesem Konto an oder führen Sie die beiden Konten zusammen."
+            "value": "Diese Anmeldemethode gehört zu einem anderen Polaris Locker-Konto. Melden Sie sich bei diesem Konto an oder führen Sie die beiden Konten zusammen."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "That sign-in method belongs to another Polaris Key account. Sign in to that account, or join the two accounts."
+            "value": "That sign-in method belongs to another Polaris Locker account. Sign in to that account, or join the two accounts."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ese método de inicio de sesión pertenece a otra cuenta de Polaris Key. Inicia sesión en esa cuenta o une las dos cuentas."
+            "value": "Ese método de inicio de sesión pertenece a otra cuenta de Polaris Locker. Inicia sesión en esa cuenta o une las dos cuentas."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Esse método de acesso pertence a outra conta do Polaris Key. Entre nessa conta ou una as duas contas."
+            "value": "Esse método de acesso pertence a outra conta do Polaris Locker. Entre nessa conta ou una as duas contas."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Questo metodo di accesso appartiene a un altro account Polaris Key. Accedi a quell'account o unisci i due account."
+            "value": "Questo metodo di accesso appartiene a un altro account Polaris Locker. Accedi a quell'account o unisci i due account."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "このサインイン方法は別のPolaris Keyアカウントに連携されています。そのアカウントにサインインするか、2つのアカウントを統合してください。"
+            "value": "このサインイン方法は別のPolaris Lockerアカウントに連携されています。そのアカウントにサインインするか、2つのアカウントを統合してください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "해당 로그인 방법은 다른 Polaris Key 계정에 속해 있어요. 그 계정으로 로그인하거나 두 계정을 합치세요."
+            "value": "해당 로그인 방법은 다른 Polaris Locker 계정에 속해 있어요. 그 계정으로 로그인하거나 두 계정을 합치세요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "该登录方式属于另一个Polaris Key账户。请登录那个账户，或将两个账户合并。"
+            "value": "该登录方式属于另一个Polaris Locker账户。请登录那个账户，或将两个账户合并。"
           }
         }
       }
@@ -27338,55 +27338,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Can't reach Polaris Key. Check your connection and try again."
+            "value": "Can't reach Polaris Locker. Check your connection and try again."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Polaris Key ist nicht erreichbar. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut."
+            "value": "Polaris Locker ist nicht erreichbar. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Can't reach Polaris Key. Check your connection and try again."
+            "value": "Can't reach Polaris Locker. Check your connection and try again."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se puede conectar con Polaris Key. Revisa tu conexión y vuelve a intentarlo."
+            "value": "No se puede conectar con Polaris Locker. Revisa tu conexión y vuelve a intentarlo."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Não foi possível acessar o Polaris Key. Verifique sua conexão e tente novamente."
+            "value": "Não foi possível acessar o Polaris Locker. Verifique sua conexão e tente novamente."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossibile raggiungere Polaris Key. Controlla la connessione e riprova."
+            "value": "Impossibile raggiungere Polaris Locker. Controlla la connessione e riprova."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "Polaris Keyに接続できません。接続を確認して、もう一度お試しください。"
+            "value": "Polaris Lockerに接続できません。接続を確認して、もう一度お試しください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "Polaris Key에 연결할 수 없어요. 연결 상태를 확인하고 다시 시도하세요."
+            "value": "Polaris Locker에 연결할 수 없어요. 연결 상태를 확인하고 다시 시도하세요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "无法连接到Polaris Key。请检查网络连接后重试。"
+            "value": "无法连接到Polaris Locker。请检查网络连接后重试。"
           }
         }
       }
@@ -27458,55 +27458,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Can't reach Polaris Key. Check your connection and try again."
+            "value": "Can't reach Polaris Locker. Check your connection and try again."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Polaris Key ist nicht erreichbar. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut."
+            "value": "Polaris Locker ist nicht erreichbar. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Can't reach Polaris Key. Check your connection and try again."
+            "value": "Can't reach Polaris Locker. Check your connection and try again."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se puede conectar con Polaris Key. Revisa tu conexión y vuelve a intentarlo."
+            "value": "No se puede conectar con Polaris Locker. Revisa tu conexión y vuelve a intentarlo."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Não foi possível acessar o Polaris Key. Verifique sua conexão e tente novamente."
+            "value": "Não foi possível acessar o Polaris Locker. Verifique sua conexão e tente novamente."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossibile raggiungere Polaris Key. Controlla la connessione e riprova."
+            "value": "Impossibile raggiungere Polaris Locker. Controlla la connessione e riprova."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "Polaris Keyに接続できません。接続を確認して、もう一度お試しください。"
+            "value": "Polaris Lockerに接続できません。接続を確認して、もう一度お試しください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "Polaris Key에 연결할 수 없어요. 연결 상태를 확인하고 다시 시도하세요."
+            "value": "Polaris Locker에 연결할 수 없어요. 연결 상태를 확인하고 다시 시도하세요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "无法连接到Polaris Key。请检查网络连接后重试。"
+            "value": "无法连接到Polaris Locker。请检查网络连接后重试。"
           }
         }
       }
@@ -32858,55 +32858,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign in to your Polaris Key account in the app, then try again."
+            "value": "Sign in to your Polaris Locker account in the app, then try again."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Melden Sie sich in der App bei Ihrem Polaris Key-Konto an und versuchen Sie es dann erneut."
+            "value": "Melden Sie sich in der App bei Ihrem Polaris Locker-Konto an und versuchen Sie es dann erneut."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign in to your Polaris Key account in the app, then try again."
+            "value": "Sign in to your Polaris Locker account in the app, then try again."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Inicia sesión en tu cuenta de Polaris Key en la app y vuelve a intentarlo."
+            "value": "Inicia sesión en tu cuenta de Polaris Locker en la app y vuelve a intentarlo."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Entre na sua conta do Polaris Key no app e tente novamente."
+            "value": "Entre na sua conta do Polaris Locker no app e tente novamente."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Accedi al tuo account Polaris Key nell'app, poi riprova."
+            "value": "Accedi al tuo account Polaris Locker nell'app, poi riprova."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "アプリでPolaris Keyアカウントにサインインしてから、もう一度お試しください。"
+            "value": "アプリでPolaris Lockerアカウントにサインインしてから、もう一度お試しください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "앱에서 Polaris Key 계정에 로그인한 후 다시 시도하세요."
+            "value": "앱에서 Polaris Locker 계정에 로그인한 후 다시 시도하세요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "请在应用中登录你的Polaris Key账户，然后重试。"
+            "value": "请在应用中登录你的Polaris Locker账户，然后重试。"
           }
         }
       }
@@ -41750,61 +41750,61 @@
       }
     },
     "part.poweredBy": {
-      "comment": "Optional footer line. Polaris Key is never translated.",
+      "comment": "Optional footer line. Polaris Locker is never translated.",
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Powered by Polaris Key"
+            "value": "Powered by Polaris Locker"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bereitgestellt von Polaris Key"
+            "value": "Bereitgestellt von Polaris Locker"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Propulsé par Polaris Key"
+            "value": "Propulsé par Polaris Locker"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Con la tecnología de Polaris Key"
+            "value": "Con la tecnología de Polaris Locker"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Com tecnologia Polaris Key"
+            "value": "Com tecnologia Polaris Locker"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Con tecnologia Polaris Key"
+            "value": "Con tecnologia Polaris Locker"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "Powered by Polaris Key"
+            "value": "Powered by Polaris Locker"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "Polaris Key 제공"
+            "value": "Polaris Locker 제공"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "由Polaris Key提供支持"
+            "value": "由Polaris Locker提供支持"
           }
         }
       }
@@ -46256,55 +46256,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Only approve if you started this yourself, on a device in front of you. Nobody from Polaris Key or a developer will ever ask you for this."
+            "value": "Only approve if you started this yourself, on a device in front of you. Nobody from Polaris Locker or a developer will ever ask you for this."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bestätigen Sie nur, wenn Sie dies selbst auf einem Gerät vor Ihnen gestartet haben. Niemand von Polaris Key oder einem Entwickler wird Sie jemals danach fragen."
+            "value": "Bestätigen Sie nur, wenn Sie dies selbst auf einem Gerät vor Ihnen gestartet haben. Niemand von Polaris Locker oder einem Entwickler wird Sie jemals danach fragen."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "N’approuvez que si vous êtes à l’origine de cette demande, sur un appareil qui se trouve devant vous. Personne chez Polaris Key ni aucun développeur ne vous le demandera jamais."
+            "value": "N’approuvez que si vous êtes à l’origine de cette demande, sur un appareil qui se trouve devant vous. Personne chez Polaris Locker ni aucun développeur ne vous le demandera jamais."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apruébalo solo si lo iniciaste tú, en un dispositivo que tienes delante. Nadie de Polaris Key ni ningún desarrollador te lo pedirá nunca."
+            "value": "Apruébalo solo si lo iniciaste tú, en un dispositivo que tienes delante. Nadie de Polaris Locker ni ningún desarrollador te lo pedirá nunca."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Só aprove se foi você que iniciou isto, em um dispositivo à sua frente. Ninguém do Polaris Key nem nenhum desenvolvedor vai pedir isso a você."
+            "value": "Só aprove se foi você que iniciou isto, em um dispositivo à sua frente. Ninguém do Polaris Locker nem nenhum desenvolvedor vai pedir isso a você."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Approva solo se hai avviato tu questa operazione, su un dispositivo che hai davanti. Nessuno di Polaris Key o di uno sviluppatore te lo chiederà mai."
+            "value": "Approva solo se hai avviato tu questa operazione, su un dispositivo che hai davanti. Nessuno di Polaris Locker o di uno sviluppatore te lo chiederà mai."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ご自身が目の前のデバイスで開始した場合にのみ承認してください。Polaris Keyや開発者がこれを求めることは絶対にありません。"
+            "value": "ご自身が目の前のデバイスで開始した場合にのみ承認してください。Polaris Lockerや開発者がこれを求めることは絶対にありません。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "직접 시작했고 기기가 눈앞에 있을 때만 승인하세요. Polaris Key나 개발자는 절대 이것을 요청하지 않아요."
+            "value": "직접 시작했고 기기가 눈앞에 있을 때만 승인하세요. Polaris Locker나 개발자는 절대 이것을 요청하지 않아요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "仅当是你本人在面前的设备上发起时才批准。Polaris Key或任何开发者都不会向你索要此信息。"
+            "value": "仅当是你本人在面前的设备上发起时才批准。Polaris Locker或任何开发者都不会向你索要此信息。"
           }
         }
       }
@@ -52808,55 +52808,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your Polaris Key code: %1$@"
+            "value": "Your Polaris Locker code: %1$@"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ihr Polaris Key-Code: %1$@"
+            "value": "Ihr Polaris Locker-Code: %1$@"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Votre code Polaris Key : %1$@"
+            "value": "Votre code Polaris Locker : %1$@"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tu código de Polaris Key: %1$@"
+            "value": "Tu código de Polaris Locker: %1$@"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Seu código do Polaris Key: %1$@"
+            "value": "Seu código do Polaris Locker: %1$@"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Il tuo codice Polaris Key: %1$@"
+            "value": "Il tuo codice Polaris Locker: %1$@"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "Polaris Keyのコード：%1$@"
+            "value": "Polaris Lockerのコード：%1$@"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "Polaris Key 코드: %1$@"
+            "value": "Polaris Locker 코드: %1$@"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "你的Polaris Key验证码：%1$@"
+            "value": "你的Polaris Locker验证码：%1$@"
           }
         }
       }
@@ -53048,55 +53048,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Polaris Key signs you in for %1$@. %2$@ never sees your codes or passkeys."
+            "value": "Polaris Locker signs you in for %1$@. %2$@ never sees your codes or passkeys."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Polaris Key meldet Sie bei %1$@ an. %2$@ sieht Ihre Codes oder Passkeys nie."
+            "value": "Polaris Locker meldet Sie bei %1$@ an. %2$@ sieht Ihre Codes oder Passkeys nie."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Polaris Key vous connecte à %1$@. %2$@ ne voit jamais vos codes ni vos clés d’accès."
+            "value": "Polaris Locker vous connecte à %1$@. %2$@ ne voit jamais vos codes ni vos clés d’accès."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Polaris Key inicia tu sesión en %1$@. %2$@ nunca ve tus códigos ni tus llaves de acceso."
+            "value": "Polaris Locker inicia tu sesión en %1$@. %2$@ nunca ve tus códigos ni tus llaves de acceso."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "O Polaris Key faz seu acesso ao %1$@. %2$@ nunca vê seus códigos nem suas chaves de acesso."
+            "value": "O Polaris Locker faz seu acesso ao %1$@. %2$@ nunca vê seus códigos nem suas chaves de acesso."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Polaris Key gestisce il tuo accesso a %1$@. %2$@ non vede mai i tuoi codici o le tue passkey."
+            "value": "Polaris Locker gestisce il tuo accesso a %1$@. %2$@ non vede mai i tuoi codici o le tue passkey."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "Polaris Keyが%1$@へのサインインを行います。%2$@にコードやパスキーが知られることはありません。"
+            "value": "Polaris Lockerが%1$@へのサインインを行います。%2$@にコードやパスキーが知られることはありません。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "Polaris Key가 %1$@ 로그인을 처리해요. %2$@에게는 코드나 패스키가 절대 공개되지 않아요."
+            "value": "Polaris Locker가 %1$@ 로그인을 처리해요. %2$@에게는 코드나 패스키가 절대 공개되지 않아요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "Polaris Key为%1$@提供登录服务。%2$@永远不会看到你的验证码或通行密钥。"
+            "value": "Polaris Locker为%1$@提供登录服务。%2$@永远不会看到你的验证码或通行密钥。"
           }
         }
       }
@@ -53708,55 +53708,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "We opened Polaris Key in your browser. Sign in there and %1$@ continues by itself."
+            "value": "We opened Polaris Locker in your browser. Sign in there and %1$@ continues by itself."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wir haben Polaris Key in Ihrem Browser geöffnet. Melden Sie sich dort an, dann fährt %1$@ automatisch fort."
+            "value": "Wir haben Polaris Locker in Ihrem Browser geöffnet. Melden Sie sich dort an, dann fährt %1$@ automatisch fort."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nous avons ouvert Polaris Key dans votre navigateur. Connectez-vous-y et %1$@ continuera tout seul."
+            "value": "Nous avons ouvert Polaris Locker dans votre navigateur. Connectez-vous-y et %1$@ continuera tout seul."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Abrimos Polaris Key en tu navegador. Inicia sesión allí y %1$@ continuará solo."
+            "value": "Abrimos Polaris Locker en tu navegador. Inicia sesión allí y %1$@ continuará solo."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Abrimos o Polaris Key no seu navegador. Entre por lá e %1$@ continua sozinho."
+            "value": "Abrimos o Polaris Locker no seu navegador. Entre por lá e %1$@ continua sozinho."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Abbiamo aperto Polaris Key nel browser. Accedi lì e %1$@ continuerà da solo."
+            "value": "Abbiamo aperto Polaris Locker nel browser. Accedi lì e %1$@ continuerà da solo."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ブラウザでPolaris Keyを開きました。そこでサインインすると、%1$@が自動的に続行します。"
+            "value": "ブラウザでPolaris Lockerを開きました。そこでサインインすると、%1$@が自動的に続行します。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "브라우저에서 Polaris Key를 열었어요. 거기서 로그인하면 %1$@에서 자동으로 계속 진행돼요."
+            "value": "브라우저에서 Polaris Locker를 열었어요. 거기서 로그인하면 %1$@에서 자동으로 계속 진행돼요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "我们已在你的浏览器中打开Polaris Key。在那里登录后，%1$@会自动继续。"
+            "value": "我们已在你的浏览器中打开Polaris Locker。在那里登录后，%1$@会自动继续。"
           }
         }
       }
@@ -55202,7 +55202,7 @@
       }
     },
     "signin.identityOff.lede": {
-      "comment": "The product doesn't use Polaris Key sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product.",
+      "comment": "The product doesn't use Polaris Locker sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product.",
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -55262,61 +55262,61 @@
       }
     },
     "signin.identityOff.notice": {
-      "comment": "The product doesn't use Polaris Key sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product.",
+      "comment": "The product doesn't use Polaris Locker sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product.",
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ doesn't use Polaris Key sign-in. Open %1$@ and enter your license key there."
+            "value": "%1$@ doesn't use Polaris Locker sign-in. Open %1$@ and enter your license key there."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ verwendet keine Anmeldung über Polaris Key. Öffnen Sie %1$@ und geben Sie dort Ihren Lizenzschlüssel ein."
+            "value": "%1$@ verwendet keine Anmeldung über Polaris Locker. Öffnen Sie %1$@ und geben Sie dort Ihren Lizenzschlüssel ein."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ n’utilise pas la connexion Polaris Key. Ouvrez %1$@ et saisissez-y votre clé de licence."
+            "value": "%1$@ n’utilise pas la connexion Polaris Locker. Ouvrez %1$@ et saisissez-y votre clé de licence."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ no usa el inicio de sesión de Polaris Key. Abre %1$@ y escribe allí tu clave de licencia."
+            "value": "%1$@ no usa el inicio de sesión de Polaris Locker. Abre %1$@ y escribe allí tu clave de licencia."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ não usa o acesso do Polaris Key. Abra %1$@ e digite sua chave de licença nele."
+            "value": "%1$@ não usa o acesso do Polaris Locker. Abra %1$@ e digite sua chave de licença nele."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ non usa l'accesso Polaris Key. Apri %1$@ e inserisci lì la tua chiave di licenza."
+            "value": "%1$@ non usa l'accesso Polaris Locker. Apri %1$@ e inserisci lì la tua chiave di licenza."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@はPolaris Keyのサインインを使用しません。%1$@を開いて、そこでライセンスキーを入力してください。"
+            "value": "%1$@はPolaris Lockerのサインインを使用しません。%1$@を開いて、そこでライセンスキーを入力してください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@에서는 Polaris Key 로그인을 사용하지 않아요. %1$@을(를) 열어 라이선스 키를 입력하세요."
+            "value": "%1$@에서는 Polaris Locker 로그인을 사용하지 않아요. %1$@을(를) 열어 라이선스 키를 입력하세요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@不使用Polaris Key登录。请打开%1$@并在其中输入你的许可证密钥。"
+            "value": "%1$@不使用Polaris Locker登录。请打开%1$@并在其中输入你的许可证密钥。"
           }
         }
       }
@@ -56348,55 +56348,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ signed in on %2$@ from %3$@. If this wasn't you, sign it out in Polaris Key under Where you're signed in."
+            "value": "%1$@ signed in on %2$@ from %3$@. If this wasn't you, sign it out in Polaris Locker under Where you're signed in."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ hat sich am %2$@ von %3$@ aus angemeldet. Falls Sie das nicht waren, melden Sie es in Polaris Key unter „Wo Sie angemeldet sind“ ab."
+            "value": "%1$@ hat sich am %2$@ von %3$@ aus angemeldet. Falls Sie das nicht waren, melden Sie es in Polaris Locker unter „Wo Sie angemeldet sind“ ab."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ s’est connecté le %2$@ depuis %3$@. Si ce n’était pas vous, déconnectez-le dans Polaris Key, section Où vous êtes connecté."
+            "value": "%1$@ s’est connecté le %2$@ depuis %3$@. Si ce n’était pas vous, déconnectez-le dans Polaris Locker, section Où vous êtes connecté."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ inició sesión el %2$@ desde %3$@. Si no fuiste tú, cierra su sesión en Polaris Key, en Dónde has iniciado sesión."
+            "value": "%1$@ inició sesión el %2$@ desde %3$@. Si no fuiste tú, cierra su sesión en Polaris Locker, en Dónde has iniciado sesión."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ entrou em %2$@ de %3$@. Se não foi você, desconecte-o no Polaris Key em Onde você está conectado."
+            "value": "%1$@ entrou em %2$@ de %3$@. Se não foi você, desconecte-o no Polaris Locker em Onde você está conectado."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ ha effettuato l'accesso il %2$@ da %3$@. Se non sei stato tu, disconnettilo in Polaris Key nella sezione Dove hai effettuato l'accesso."
+            "value": "%1$@ ha effettuato l'accesso il %2$@ da %3$@. Se non sei stato tu, disconnettilo in Polaris Locker nella sezione Dove hai effettuato l'accesso."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%2$@に%3$@から%1$@がサインインしました。心当たりがない場合は、Polaris Keyの「サインイン中のデバイス」からサインアウトしてください。"
+            "value": "%2$@に%3$@から%1$@がサインインしました。心当たりがない場合は、Polaris Lockerの「サインイン中のデバイス」からサインアウトしてください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%2$@에 %3$@에서 %1$@에 로그인했어요. 본인이 아니라면 Polaris Key의 “로그인된 위치”에서 해당 기기를 로그아웃하세요."
+            "value": "%2$@에 %3$@에서 %1$@에 로그인했어요. 본인이 아니라면 Polaris Locker의 “로그인된 위치”에서 해당 기기를 로그아웃하세요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@于%2$@从%3$@登录。如果这不是你本人操作，请在Polaris Key的“你的登录位置”中将其退出登录。"
+            "value": "%1$@于%2$@从%3$@登录。如果这不是你本人操作，请在Polaris Locker的“你的登录位置”中将其退出登录。"
           }
         }
       }
@@ -56408,55 +56408,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "A new device signed in to your Polaris Key account"
+            "value": "A new device signed in to your Polaris Locker account"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ein neues Gerät hat sich bei Ihrem Polaris Key-Konto angemeldet"
+            "value": "Ein neues Gerät hat sich bei Ihrem Polaris Locker-Konto angemeldet"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Un nouvel appareil s’est connecté à votre compte Polaris Key"
+            "value": "Un nouvel appareil s’est connecté à votre compte Polaris Locker"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Un dispositivo nuevo inició sesión en tu cuenta de Polaris Key"
+            "value": "Un dispositivo nuevo inició sesión en tu cuenta de Polaris Locker"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Um novo dispositivo entrou na sua conta do Polaris Key"
+            "value": "Um novo dispositivo entrou na sua conta do Polaris Locker"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Un nuovo dispositivo ha effettuato l'accesso al tuo account Polaris Key"
+            "value": "Un nuovo dispositivo ha effettuato l'accesso al tuo account Polaris Locker"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "Polaris Keyアカウントに新しいデバイスがサインインしました"
+            "value": "Polaris Lockerアカウントに新しいデバイスがサインインしました"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "Polaris Key 계정에 새 기기가 로그인했어요"
+            "value": "Polaris Locker 계정에 새 기기가 로그인했어요"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "有新设备登录了你的Polaris Key账户"
+            "value": "有新设备登录了你的Polaris Locker账户"
           }
         }
       }
@@ -56468,55 +56468,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Open Polaris Key"
+            "value": "Open Polaris Locker"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Polaris Key öffnen"
+            "value": "Polaris Locker öffnen"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ouvrir Polaris Key"
+            "value": "Ouvrir Polaris Locker"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Abrir Polaris Key"
+            "value": "Abrir Polaris Locker"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Abrir o Polaris Key"
+            "value": "Abrir o Polaris Locker"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apri Polaris Key"
+            "value": "Apri Polaris Locker"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "Polaris Keyを開く"
+            "value": "Polaris Lockerを開く"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "Polaris Key 열기"
+            "value": "Polaris Locker 열기"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "打开Polaris Key"
+            "value": "打开Polaris Locker"
           }
         }
       }
@@ -56528,55 +56528,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ was replaced by %2$@ when you signed in to %3$@ on %4$@. It can sign in again later if a seat is free. If this wasn't you, open Polaris Key and check your devices."
+            "value": "%1$@ was replaced by %2$@ when you signed in to %3$@ on %4$@. It can sign in again later if a seat is free. If this wasn't you, open Polaris Locker and check your devices."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ wurde durch %2$@ ersetzt, als Sie sich am %4$@ bei %3$@ angemeldet haben. Es kann sich später wieder anmelden, wenn ein Platz frei ist. Falls Sie das nicht waren, öffnen Sie Polaris Key und prüfen Sie Ihre Geräte."
+            "value": "%1$@ wurde durch %2$@ ersetzt, als Sie sich am %4$@ bei %3$@ angemeldet haben. Es kann sich später wieder anmelden, wenn ein Platz frei ist. Falls Sie das nicht waren, öffnen Sie Polaris Locker und prüfen Sie Ihre Geräte."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ a été remplacé par %2$@ lorsque vous vous êtes connecté à %3$@ le %4$@. Il pourra se reconnecter plus tard si une place se libère. Si ce n’était pas vous, ouvrez Polaris Key et vérifiez vos appareils."
+            "value": "%1$@ a été remplacé par %2$@ lorsque vous vous êtes connecté à %3$@ le %4$@. Il pourra se reconnecter plus tard si une place se libère. Si ce n’était pas vous, ouvrez Polaris Locker et vérifiez vos appareils."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%2$@ reemplazó a %1$@ cuando iniciaste sesión en %3$@ el %4$@. %1$@ podrá volver a iniciar sesión más tarde si hay una plaza libre. Si no fuiste tú, abre Polaris Key y revisa tus dispositivos."
+            "value": "%2$@ reemplazó a %1$@ cuando iniciaste sesión en %3$@ el %4$@. %1$@ podrá volver a iniciar sesión más tarde si hay una plaza libre. Si no fuiste tú, abre Polaris Locker y revisa tus dispositivos."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ foi substituído por %2$@ quando você entrou no %3$@ em %4$@. Ele poderá entrar novamente depois, se houver uma vaga livre. Se não foi você, abra o Polaris Key e verifique seus dispositivos."
+            "value": "%1$@ foi substituído por %2$@ quando você entrou no %3$@ em %4$@. Ele poderá entrar novamente depois, se houver uma vaga livre. Se não foi você, abra o Polaris Locker e verifique seus dispositivos."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ è stato sostituito da %2$@ quando hai effettuato l'accesso a %3$@ il %4$@. Potrà accedere di nuovo in seguito se si libera un posto. Se non sei stato tu, apri Polaris Key e controlla i tuoi dispositivi."
+            "value": "%1$@ è stato sostituito da %2$@ quando hai effettuato l'accesso a %3$@ il %4$@. Potrà accedere di nuovo in seguito se si libera un posto. Se non sei stato tu, apri Polaris Locker e controlla i tuoi dispositivi."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%4$@に%3$@にサインインした際、%1$@は%2$@に置き換えられました。枠が空けば、後で再びサインインできます。心当たりがない場合は、Polaris Keyを開いてデバイスを確認してください。"
+            "value": "%4$@に%3$@にサインインした際、%1$@は%2$@に置き換えられました。枠が空けば、後で再びサインインできます。心当たりがない場合は、Polaris Lockerを開いてデバイスを確認してください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%4$@에 %3$@에 로그인하면서 %1$@ 대신 %2$@ 기기가 등록됐어요. 자리가 비면 나중에 다시 로그인할 수 있어요. 본인이 아니라면 Polaris Key를 열고 기기를 확인하세요."
+            "value": "%4$@에 %3$@에 로그인하면서 %1$@ 대신 %2$@ 기기가 등록됐어요. 자리가 비면 나중에 다시 로그인할 수 있어요. 본인이 아니라면 Polaris Locker를 열고 기기를 확인하세요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "你于%4$@登录%3$@时，%1$@被%2$@替换。如有空余席位，它之后可以重新登录。如果这不是你本人操作，请打开Polaris Key检查你的设备。"
+            "value": "你于%4$@登录%3$@时，%1$@被%2$@替换。如有空余席位，它之后可以重新登录。如果这不是你本人操作，请打开Polaris Locker检查你的设备。"
           }
         }
       }
@@ -56780,55 +56780,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign in to Polaris Key"
+            "value": "Sign in to Polaris Locker"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bei Polaris Key anmelden"
+            "value": "Bei Polaris Locker anmelden"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Se connecter à Polaris Key"
+            "value": "Se connecter à Polaris Locker"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Inicia sesión en Polaris Key"
+            "value": "Inicia sesión en Polaris Locker"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Entrar no Polaris Key"
+            "value": "Entrar no Polaris Locker"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Accedi a Polaris Key"
+            "value": "Accedi a Polaris Locker"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "Polaris Keyにサインイン"
+            "value": "Polaris Lockerにサインイン"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "Polaris Key에 로그인"
+            "value": "Polaris Locker에 로그인"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "登录Polaris Key"
+            "value": "登录Polaris Locker"
           }
         }
       }
@@ -56900,55 +56900,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Can't reach Polaris Key"
+            "value": "Can't reach Polaris Locker"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Polaris Key ist nicht erreichbar"
+            "value": "Polaris Locker ist nicht erreichbar"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossible de joindre Polaris Key"
+            "value": "Impossible de joindre Polaris Locker"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se puede conectar con Polaris Key"
+            "value": "No se puede conectar con Polaris Locker"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Não foi possível acessar o Polaris Key"
+            "value": "Não foi possível acessar o Polaris Locker"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossibile raggiungere Polaris Key"
+            "value": "Impossibile raggiungere Polaris Locker"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "Polaris Keyに接続できません"
+            "value": "Polaris Lockerに接続できません"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "Polaris Key에 연결할 수 없어요"
+            "value": "Polaris Locker에 연결할 수 없어요"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "无法连接到Polaris Key"
+            "value": "无法连接到Polaris Locker"
           }
         }
       }
@@ -57923,13 +57923,13 @@
               "mac": {
                 "stringUnit": {
                   "state": "translated",
-                  "value": "Manage Sign-In Methods in Polaris Key"
+                  "value": "Manage Sign-In Methods in Polaris Locker"
                 }
               },
               "other": {
                 "stringUnit": {
                   "state": "translated",
-                  "value": "Manage sign-in methods in Polaris Key"
+                  "value": "Manage sign-in methods in Polaris Locker"
                 }
               }
             }
@@ -57938,49 +57938,49 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Anmeldemethoden in Polaris Key verwalten"
+            "value": "Anmeldemethoden in Polaris Locker verwalten"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Gérer les méthodes de connexion dans Polaris Key"
+            "value": "Gérer les méthodes de connexion dans Polaris Locker"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Administrar métodos de inicio de sesión en Polaris Key"
+            "value": "Administrar métodos de inicio de sesión en Polaris Locker"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Gerenciar métodos de acesso no Polaris Key"
+            "value": "Gerenciar métodos de acesso no Polaris Locker"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Gestisci i metodi di accesso in Polaris Key"
+            "value": "Gestisci i metodi di accesso in Polaris Locker"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "Polaris Keyでサインイン方法を管理"
+            "value": "Polaris Lockerでサインイン方法を管理"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "Polaris Key에서 로그인 방법 관리"
+            "value": "Polaris Locker에서 로그인 방법 관리"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "在Polaris Key中管理登录方式"
+            "value": "在Polaris Locker中管理登录方式"
           }
         }
       }
@@ -59060,55 +59060,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Opens Polaris Key in your browser"
+            "value": "Opens Polaris Locker in your browser"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Öffnet Polaris Key in Ihrem Browser"
+            "value": "Öffnet Polaris Locker in Ihrem Browser"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ouvre Polaris Key dans votre navigateur"
+            "value": "Ouvre Polaris Locker dans votre navigateur"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Abre Polaris Key en tu navegador"
+            "value": "Abre Polaris Locker en tu navegador"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Abre o Polaris Key no navegador"
+            "value": "Abre o Polaris Locker no navegador"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apre Polaris Key nel browser"
+            "value": "Apre Polaris Locker nel browser"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ブラウザでPolaris Keyが開きます"
+            "value": "ブラウザでPolaris Lockerが開きます"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "브라우저에서 Polaris Key가 열려요"
+            "value": "브라우저에서 Polaris Locker가 열려요"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "在浏览器中打开Polaris Key"
+            "value": "在浏览器中打开Polaris Locker"
           }
         }
       }

@@ -1595,12 +1595,7 @@ describe("R12-04 credentials are KV key names, so a KV LIST is a credential dump
       },
     } as never;
     await seedProduct(db, "acme");
-    await upsertPortalProductSettings(
-      db,
-      "acme",
-      { portalEnabled: true, magicEnabled: true },
-      NOW,
-    );
+    await upsertPortalProductSettings(db, "acme", { portalEnabled: true }, NOW);
 
     const req = new Request("https://portal.plrs.im/api/magic/start", {
       method: "POST",

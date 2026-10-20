@@ -32,7 +32,7 @@ import {
 } from "../../../../api.js";
 import { cn } from "../../../../lib/cn.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
-import { formatSpan, fromSeconds } from "../../../../lib/format.js";
+import { formatDate, formatSpan, fromSeconds } from "../../../../lib/format.js";
 import {
   CountUp,
   setMeter,
@@ -53,16 +53,12 @@ import { StatusPill } from "../../../../ui/StatusPill.js";
 import { Timestamp } from "../../../../ui/Timestamp.js";
 import { toast } from "../../../../ui/toast.js";
 import { useLoadingAnnouncement } from "../../../../ui/loading.js";
-import { PageHeader } from "../../../../ui/PageHeader.js";
 import { useProduct } from "../../../data/hooks.js";
 import { mutate } from "../../../data/mutations.js";
 import { qk } from "../../../data/queries.js";
 import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
-import {
-  SettingsSection,
-  SettingsTemplate,
-} from "../../../templates/Settings.js";
+import { SettingsSection } from "../../../templates/Settings.js";
 import { intentOf } from "./confirmGate.js";
 import { CiPublishingSection } from "./KeysCi.js";
 import { SecretsSection } from "./KeysSecrets.js";
@@ -74,46 +70,77 @@ export function fetchSigningKeys(slug: string): Promise<SigningKeysResponse> {
 export function KeysPage({ slug }: { slug: string }): React.ReactElement {
   const product = useProduct(slug);
   useLoadingAnnouncement("keys and secrets", product.isPending);
-  const name = product.data?.name ?? slug;
-  const header = (
-    <PageHeader
-      title="Keys & secrets"
-      refetching={product.isFetching && !product.isPending}
-    />
-  );
-  if (product.isPending) {
+  if (product.isPending)
+    return <PageSkeleton template="form" label="keys and secrets" />;
+  if (product.isError)
     return (
-      <div className="space-y-6">
-        {header}
-        <PageSkeleton template="form" label="keys and secrets" />
-      </div>
+      <ErrorState
+        error={product.error}
+        onRetry={() => void product.refetch()}
+      />
     );
-  }
-  if (product.isError) {
-    return (
-      <div className="space-y-6">
-        {header}
-        <ErrorState
-          error={product.error}
-          onRetry={() => void product.refetch()}
-        />
-      </div>
-    );
-  }
   const p = product.data;
   return (
-    <SettingsTemplate
-      header={header}
-      sections={[
-        { id: "keys-signing", title: "Signing keys" },
-        { id: "keys-secrets", title: "Secrets" },
-        { id: "keys-ci", title: "CI publishing" },
-      ]}
-    >
+    <div className="space-y-6" data-template="keys">
+      <VerificationSection product={p} />
       <SigningKeysSection slug={slug} product={p} />
       <SecretsSection slug={slug} product={p} />
       <CiPublishingSection slug={slug} />
-    </SettingsTemplate>
+      {p.services?.release?.enabled ? <ContentKeysSection slug={slug} /> : null}
+    </div>
+  );
+}
+
+/** The key set verifiers fetch, first on the page: where an app checks what this product signs. */
+function VerificationSection({
+  product,
+}: {
+  product: ProductDetail;
+}): React.ReactElement | null {
+  const jwks =
+    typeof window !== "undefined" && product.jwksUrl
+      ? new URL(product.jwksUrl, window.location.origin).toString()
+      : product.jwksUrl;
+  if (!jwks) return null;
+  return (
+    <SettingsSection id="keys-verification" title="Verification">
+      <div className="flex items-center justify-between gap-4 px-5 py-4 max-sm:flex-wrap">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-fg-strong">Key set (JWKS)</p>
+          <code className="block break-all font-mono text-sm text-fg-muted">
+            {jwks}
+          </code>
+        </div>
+        <CopyButton
+          value={jwks}
+          label="Copy the JWKS URL"
+          showLabel
+          text="Copy URL"
+        />
+      </div>
+    </SettingsSection>
+  );
+}
+
+/** Content keys are set by the release pipeline: this section only points at them. */
+function ContentKeysSection({ slug }: { slug: string }): React.ReactElement {
+  return (
+    <SettingsSection
+      id="keys-content"
+      title="Content keys"
+      description="Set by the release pipeline. App release records are signed by your CI release key."
+    >
+      <div className="flex items-center justify-between gap-4 px-5 py-4">
+        <p className="text-sm text-fg-muted">Read-only here.</p>
+        <Link
+          to={r.contentKeys(slug)}
+          className="inline-flex items-center gap-1 text-sm text-accent-fg underline-offset-4 hover:underline"
+        >
+          Content keys
+          <ArrowRight aria-hidden className="size-3.5" />
+        </Link>
+      </div>
+    </SettingsSection>
   );
 }
 
@@ -160,11 +187,6 @@ function SigningKeysSection({
     kind: KeyAction;
     key: SigningKeyDto;
   } | null>(null);
-  const jwks =
-    typeof window !== "undefined" && product.jwksUrl
-      ? new URL(product.jwksUrl, window.location.origin).toString()
-      : product.jwksUrl;
-  const releaseOn = product.services?.release?.enabled ?? false;
   // The list is ordered active → staged → retired, newest first: the first staged key is the
   // rotation in progress.
   const staged = keys.data?.keys.find((k) => k.status === "staged");
@@ -181,9 +203,11 @@ function SigningKeysSection({
           size="sm"
           iconStart={<Plus aria-hidden />}
           disabledReason={
-            staged
-              ? `A rotation is in progress. Activate or retire ${staged.kid} first.`
-              : undefined
+            keys.isError
+              ? "The signing keys could not be read. Try again first."
+              : staged
+                ? `A rotation is in progress. Activate or retire ${staged.kid} first.`
+                : undefined
           }
           onClick={() => setPrepare(true)}
         >
@@ -233,33 +257,6 @@ function SigningKeysSection({
           </ul>
         )}
       </div>
-      <div className="space-y-2 px-5 py-4 text-sm">
-        {jwks ? (
-          <p className="flex items-center gap-2">
-            <span className="shrink-0 text-fg-muted">JWKS</span>
-            <code className="min-w-0 flex-1 break-all font-mono text-xs text-fg-strong">
-              {jwks}
-            </code>
-            <span className="shrink-0">
-              <CopyButton value={jwks} label="Copy the JWKS URL" />
-            </span>
-          </p>
-        ) : null}
-        {releaseOn ? (
-          <p className="text-fg-muted">
-            App release records are signed by your CI release key, and content
-            keys are delegated per pack.{" "}
-            <Link
-              to={r.contentKeys(slug)}
-              className="inline-flex items-center gap-1 text-accent-fg underline-offset-4 hover:underline"
-            >
-              Content keys
-              <ArrowRight aria-hidden className="size-3.5" />
-            </Link>
-          </p>
-        ) : null}
-      </div>
-
       <ConfirmDialog
         open={prepare}
         onOpenChange={setPrepare}
@@ -428,6 +425,7 @@ function RotationStrip({
       <div className="flex flex-wrap items-center justify-end gap-2">
         <Button
           size="sm"
+          variant="outline"
           disabledReason={
             ready
               ? undefined
@@ -435,7 +433,9 @@ function RotationStrip({
           }
           onClick={() => onAction("activate")}
         >
-          Activate {staged.kid}…
+          {ready || staged.activateAfter === null
+            ? `Activate ${staged.kid}…`
+            : `Activate on ${formatDate(fromSeconds(staged.activateAfter))}`}
         </Button>
         <ActionMenu
           label="More rotation actions"

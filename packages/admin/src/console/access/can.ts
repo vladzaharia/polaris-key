@@ -83,9 +83,9 @@ const PRODUCT_PAGE_AREAS: Record<ProductPageId, AreaId> = {
   health: "ship",
   credentials: "keys",
   commerce: "commerce",
+  "commerce-overview": "commerce",
   feed: "ship",
-  portal: "signin",
-  "sign-in": "signin",
+  "app-sign-in": "signin",
   "sync-data": "sync",
 };
 
@@ -100,6 +100,7 @@ const GLOBAL_PAGE_AREAS: Record<GlobalPageId, AreaId> = {
   "platform-deployment": "platform",
   "platform-operations": "platform",
   "platform-stores": "platform",
+  "platform-connections": "platform",
   "platform-feeds": "platform",
   "platform-override-migration": "platform",
 };

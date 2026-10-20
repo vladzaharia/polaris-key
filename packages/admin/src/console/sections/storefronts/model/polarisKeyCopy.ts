@@ -44,7 +44,7 @@ export const LISTED_CHOICES: readonly ChoiceCopy<PolarisKeyListed>[] = [
     value: "unlisted",
     label: "Not listed",
     description:
-      "Shown to no one in the portal. Sign-in, auto-issue and every licence keep working.",
+      "Shown to no one in Polaris Locker. Sign-in, auto-issue and every license keep working.",
   },
 ];
 
@@ -73,7 +73,7 @@ export const PATH_COPY: Readonly<
   },
   auto_issue: {
     label: "Free with an account",
-    help: "Everyone signed in with the Polaris Key sign-in gets the auto-issue tier.",
+    help: "Everyone signed in with the Polaris Locker sign-in gets the auto-issue tier.",
   },
   open: {
     label: "Free to use",
@@ -122,7 +122,7 @@ export function reasonLine(path: PolarisKeyTilePath): string {
       const days = path.terms?.expiryDays ?? null;
       return days !== null
         ? `Free trial · ${days} ${days === 1 ? "day" : "days"}`
-        : "Free with a Polaris Key account";
+        : "Free with a Polaris Locker account";
     }
     case "group":
       return path.label
@@ -169,9 +169,9 @@ export function hiddenCopy(
 ): string {
   switch (hidden) {
     case "storefront_off":
-      return "The Polaris Key storefront is off for this deployment, so no one sees any product.";
+      return "The Polaris Locker storefront is off for this deployment, so no one sees any product.";
     case "not_candidate":
-      return "The product is not listed, or its customer portal is off, so no one sees it.";
+      return "The product is not listed, or its Polaris Locker listing is off, so no one sees it.";
     case "holds":
       return "This person already has it: it is in their Library, not on Discover.";
     case "no_path":
@@ -192,15 +192,15 @@ export function whoLines(status: PolarisKeyStatusResponse): string[] {
       for (const g of status.groups)
         lines.push(
           g.label
-            ? `Members of ${g.group} at the Polaris Key sign-in, shown “Included with ${g.label}”`
-            : `Members of ${g.group} at the Polaris Key sign-in`,
+            ? `Members of ${g.group} at the Polaris Locker sign-in, shown “Included with ${g.label}”`
+            : `Members of ${g.group} at the Polaris Locker sign-in`,
         );
     else if (kind === "auto_issue") {
       const days = status.autoIssue?.expiryDays ?? null;
       lines.push(
         days !== null
-          ? `Everyone with a Polaris Key account, as a ${days}-day free trial`
-          : "Everyone with a Polaris Key account",
+          ? `Everyone with a Polaris Locker account, as a ${days}-day free trial`
+          : "Everyone with a Polaris Locker account",
       );
     } else if (kind === "open")
       lines.push("Everyone signed in: it is free to use");
@@ -218,9 +218,9 @@ export function whoLines(status: PolarisKeyStatusResponse): string[] {
 /** Why "Who can see this?" is empty. */
 export function nobodyCopy(status: PolarisKeyStatusResponse): string {
   if (!status.enabled)
-    return "No one: the Polaris Key storefront is off for this deployment.";
+    return "No one: the Polaris Locker storefront is off for this deployment.";
   if (!status.portalEnabled)
-    return "No one: the customer portal is off for this product.";
+    return "No one: Polaris Locker is off for this product.";
   if (status.listing.listed === "unlisted")
     return "No one: the product is not listed.";
   if (status.listing.listed === "auto" && status.available.length > 0)

@@ -25,7 +25,7 @@ import {
   stmtUpsertBuild,
 } from "../src/services/release/model.js";
 import { KvMock } from "./kvMock.js";
-import { makeEnv, NOW, seedProduct } from "./seed.js";
+import { makeEnv, NOW, seedOperatorPolicy, seedProduct } from "./seed.js";
 import { TEST_RSA_PKCS8 } from "./releaseFixtures.js";
 import { seedDeliveryAccess } from "./releaseSurface.js";
 
@@ -256,6 +256,7 @@ export async function seedReleaseProduct(
   // P2b-04: the artifacts mode is Distribution's `dist_access` (0038 backfilled it from this
   // column), so the fixture seeds the row the migration would have.
   await seedDeliveryAccess(db, slug, row.artifacts_access as string);
+  await seedOperatorPolicy(db, slug, row.operator_policy_json as string);
 }
 
 /**

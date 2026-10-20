@@ -27,13 +27,28 @@ export const TIER_PREFIXES: ReadonlyArray<
   ["contribute/", "operate", "admin"],
 ];
 
+/**
+ * The Pagefind bundles, lowest tier first: each holds its tier's pages and every tier below it.
+ * `scripts/build-search-bundles.ts` builds them; the worker serves each at its tier
+ * (`SEARCH_BUNDLES`, `packages/worker/src/docs.ts`, pinned by `docsGate.test.ts`).
+ */
+export const SEARCH_BUNDLES: ReadonlyArray<readonly [dir: string, tier: Tier]> =
+  [
+    ["pagefind", "public"],
+    ["pagefind-member", "member"],
+    ["pagefind-admin", "admin"],
+  ];
+
 /** The door and tier of a content id such as `help/activate`. Null for a path no door owns. */
 export function doorOf(
   id: string,
 ): { door: DoorId; tier: Tier; prefix: string } | null {
   let best: (typeof TIER_PREFIXES)[number] | null = null;
   for (const row of TIER_PREFIXES) {
-    const hit = row[0].endsWith("/") ? id.startsWith(row[0]) : id === row[0];
+    // A section's own page (`help` for help/index) belongs to the section.
+    const hit = row[0].endsWith("/")
+      ? id.startsWith(row[0]) || `${id}/` === row[0]
+      : id === row[0];
     if (hit && (best === null || row[0].length > best[0].length)) best = row;
   }
   return best === null
@@ -466,6 +481,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
           "operate/platform/settings",
           "operate/platform/jobs",
           "operate/platform/connections",
+          "operate/platform/sign-in-connections",
           "operate/platform/outlet-credentials",
         ),
       },

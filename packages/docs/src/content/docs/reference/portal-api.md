@@ -142,7 +142,7 @@ Every answer carries `product` (`null` for `unknown`, so a guess never reveals a
 | `GET` `/api/products/<product>/downloads?channel=<channel>` | One product's files, store links and install sources |
 | `POST` `/api/products/<product>/email-download` | Emails the account a link to the download for a platform |
 
-Downloads are gated by three things at once: the product's `releasesEnabled` Locker setting, the Release service being on, and, for a `licensed` artifact, a usable license linked to the account. A refusal for an account with no linked license is `404`. An owner is told why: `404 file_not_found`, `403 license_inactive`, `403 not_entitled` or `409 not_hosted`.
+Downloads are gated by three things at once: the product's Locker being on, the Release service being on, and, for a `licensed` artifact, a usable license linked to the account. A refusal for an account with no linked license is `404`. An owner is told why: `404 file_not_found`, `403 license_inactive`, `403 not_entitled` or `409 not_hosted`.
 
 Redemption re-runs every check and spends the token with a single conditional update, so two concurrent redemptions can't both win. A `public` file redirects to the bytes host. A non-public file redirects there with a download ticket bound to that file's name and SHA-256, valid 120 seconds, which needs the Worker secret `DOWNLOAD_TICKET_KEY`. Without it such files read `not_hosted`.
 

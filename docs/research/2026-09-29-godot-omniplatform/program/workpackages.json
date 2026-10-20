@@ -114,6 +114,10 @@
     {
       "id": "LK",
       "title": "Polaris Locker"
+    },
+    {
+      "id": "MK",
+      "title": "Locker mockup re-skins"
     }
   ],
   "roles": [
@@ -1452,7 +1456,6 @@
         "LX-23",
         "LX-13",
         "LX-14",
-        "LX-15",
         "LX-27",
         "LX-29",
         "LX-31",
@@ -1471,7 +1474,6 @@
         "I-35",
         "I-34",
         "PX-12",
-        "PX-14",
         "PX-15",
         "PX-21",
         "PX-W13b",
@@ -1638,7 +1640,10 @@
         "AX-12",
         "AX-14",
         "AX-16",
-        "SP-54b"
+        "SP-54b",
+        "PX-14a",
+        "PX-14b",
+        "PX-28b"
       ],
       "planMode": false,
       "gates": ["docs-links"],
@@ -4899,7 +4904,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/identity.md"
       ],
       "brief": "wp/I-29-retire-product-account-toggles-one-app.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "I-30",
@@ -4950,7 +4955,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/identity.md"
       ],
       "brief": "wp/I-31-platform-connections-setup-wizards.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "I-32",
@@ -5129,7 +5134,7 @@
       "lane": "worker",
       "role": "pkey-implementer",
       "estimateWeeks": [0.6, 1],
-      "deps": ["I-08", "I-15"],
+      "deps": ["I-08"],
       "planMode": true,
       "gates": [
         "plan-mode",
@@ -5154,12 +5159,12 @@
     },
     {
       "id": "I-38",
-      "title": "Hosted passport and Worker CSP image origin",
+      "title": "Dropped (widened 2026-10-19 into I-38a): Hosted passport and Worker CSP image origin",
       "phase": "I",
       "lane": "worker",
       "role": "pkey-implementer",
       "estimateWeeks": [0.4, 0.8],
-      "deps": ["P0-38", "I-37"],
+      "deps": [],
       "planMode": false,
       "gates": ["ui-snapshots", "console-csp-parity"],
       "humanInputs": [],
@@ -5170,17 +5175,41 @@
         "section changes auth-01, auth-08, auth-14"
       ],
       "brief": "wp/I-38-hosted-passport-worker-csp.md",
+      "status": "dropped",
+      "stage": "dropped"
+    },
+    {
+      "id": "I-38a",
+      "title": "Hosted Worker sign-in pages on the Locker identity: device-code and device-confirm pages, DL6 refusals, magic-link cards, passport and CSP image origin (I-38 widened)",
+      "phase": "I",
+      "stage": "Locker UX waves (2026-10-19)",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.8, 1.2],
+      "deps": ["P0-38", "LK-04", "LK-07", "MK-L1"],
+      "planMode": false,
+      "gates": ["ui-snapshots", "console-csp-parity", "workerd"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "Brand transition B8 (program/BRAND-TRANSITION.md)",
+        "section changes auth-01, auth-08, auth-12, auth-14",
+        "design/SIGN-IN §3.13, §4.2, §4.12",
+        "docs/research/2026-09-29-godot-omniplatform/program/locker-ux-waves.md §1"
+      ],
+      "brief": "wp/I-38a-hosted-worker-pages-locker.md",
       "status": "todo"
     },
     {
       "id": "I-39",
-      "title": "Transactional emails on brand v2: ink action button, neutral callouts, lockup, HTML snapshots for every template",
+      "title": "Dropped (folded 2026-10-19 into LK-07b): Transactional emails on brand v2: ink action button, neutral callouts, lockup, HTML snapshots for every template",
       "phase": "I",
-      "stage": "UX coverage (2026-10-09)",
+      "stage": "dropped",
       "lane": "worker",
       "role": "pkey-implementer",
       "estimateWeeks": [0.6, 1],
-      "deps": ["UK-58", "I-38"],
+      "deps": [],
       "planMode": false,
       "gates": ["email-snapshots", "ui-snapshots"],
       "humanInputs": [],
@@ -5192,7 +5221,7 @@
         "Brand transition B2, B8"
       ],
       "brief": "wp/I-39-emails-brand-v2.md",
-      "status": "todo"
+      "status": "dropped"
     },
     {
       "id": "I-40",
@@ -8664,13 +8693,13 @@
     },
     {
       "id": "PX-14",
-      "title": "Passthrough card header and scoped consent",
+      "title": "Dropped (split 2026-10-19 into PX-14a and PX-14b): Passthrough card header and scoped consent",
       "phase": "PX",
-      "stage": "phase B: new API, S-16, S-17",
+      "stage": "dropped",
       "lane": "portal",
       "role": "pkey-implementer",
       "estimateWeeks": [0.4, 0.8],
-      "deps": ["PX-12", "PX-W13", "I-08", "I-15", "P0-38", "UK-02b", "I-37"],
+      "deps": [],
       "planMode": false,
       "gates": ["console-csp-parity", "portal-e2e"],
       "humanInputs": [],
@@ -8685,6 +8714,61 @@
         "DX consolidation 2026-10-07: edit (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/PX-14-passthrough-header.md",
+      "status": "dropped"
+    },
+    {
+      "id": "PX-14a",
+      "title": "Card header, licence choice, replace device, consent (no toggles), key confirm, web return and the passport pane (split of PX-14)",
+      "phase": "PX",
+      "stage": "Locker UX waves (2026-10-19)",
+      "lane": "portal",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.8],
+      "deps": [
+        "PX-12",
+        "PX-W13",
+        "I-08",
+        "P0-38",
+        "UK-02b",
+        "LK-04",
+        "LK-06",
+        "LK-07",
+        "MK-L1"
+      ],
+      "planMode": false,
+      "gates": ["console-csp-parity", "portal-e2e", "ui-snapshots"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "design/PORTAL §4.7–§4.9",
+        "design/SIGN-IN §3.1, §3.6–§3.9, §3.10 (web), §3.18, §4.16",
+        "docs/research/2026-09-29-godot-omniplatform/program/locker-ux-waves.md §1",
+        "wp/PX-14-passthrough-header.md (full original spec)"
+      ],
+      "brief": "wp/PX-14a-card-header-licence-consent.md",
+      "status": "todo"
+    },
+    {
+      "id": "PX-14b",
+      "title": "Native return variants and per-claim consent toggles (split of PX-14)",
+      "phase": "PX",
+      "stage": "Locker UX waves (2026-10-19)",
+      "lane": "portal",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.2, 0.4],
+      "deps": ["PX-14a", "I-15", "I-34"],
+      "planMode": false,
+      "gates": ["portal-e2e", "ui-snapshots"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "design/SIGN-IN §3.8, §3.10 (native), §4.4, §6.4",
+        "docs/research/2026-09-29-godot-omniplatform/program/locker-ux-waves.md §4",
+        "wp/PX-14-passthrough-header.md"
+      ],
+      "brief": "wp/PX-14b-native-return-consent-toggles.md",
       "status": "todo"
     },
     {
@@ -9109,7 +9193,7 @@
         "DX consolidation 2026-10-07: edit (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/ST-08-product-settings-hub.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "ST-09",
@@ -9176,7 +9260,7 @@
         "DX consolidation 2026-10-07: keep (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/ST-11-sql-only-settings.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "ST-12",
@@ -10590,13 +10674,13 @@
     },
     {
       "id": "LX-15",
-      "title": "Portal licensing: duration line, add-ons and Automatic grant",
+      "title": "Dropped (portal UI absorbed 2026-10-19 by PX-28b): Portal licensing: duration line, add-ons and Automatic grant",
       "phase": "LX",
-      "stage": "phase B: the model, server-only",
+      "stage": "dropped",
       "lane": "portal",
       "role": "pkey-implementer",
       "estimateWeeks": [0.5, 0.7],
-      "deps": ["LX-09", "LX-10", "PX-W6", "LX-41", "P0-36"],
+      "deps": [],
       "planMode": false,
       "gates": ["portal-e2e"],
       "humanInputs": [],
@@ -10608,7 +10692,7 @@
         "DX consolidation 2026-10-07: edit (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/LX-15-portal-licensing.md",
-      "status": "todo"
+      "status": "dropped"
     },
     {
       "id": "LX-16",
@@ -14620,7 +14704,7 @@
       "lane": "portal",
       "role": "pkey-implementer",
       "estimateWeeks": [1.2, 1.6],
-      "deps": ["CM-08", "LX-15", "CM-26"],
+      "deps": ["CM-08", "CM-26", "PX-28b"],
       "planMode": false,
       "gates": [
         "portal-e2e",
@@ -14999,7 +15083,7 @@
       "lane": "portal",
       "role": "pkey-implementer",
       "estimateWeeks": [0.6, 0.9],
-      "deps": ["CM-22", "LX-15", "CM-29"],
+      "deps": ["CM-22", "CM-29", "PX-28b"],
       "planMode": false,
       "gates": ["portal-e2e", "console-csp-parity"],
       "humanInputs": [],
@@ -15085,7 +15169,7 @@
         "consolidation alias CQW-14"
       ],
       "brief": "wp/CM-29-commerce-service.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "CM-29b",
@@ -15108,7 +15192,7 @@
         "section changes brand-01, admin-3-01, site-01, overview-01"
       ],
       "brief": "wp/CM-29b-commerce-accent.md",
-      "status": "todo",
+      "status": "done",
       "planRef": "CM-29"
     },
     {
@@ -15250,7 +15334,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-03b-public-access.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "DOC-04a",
@@ -16899,12 +16983,12 @@
     },
     {
       "id": "PX-28",
-      "title": "License page v2",
+      "title": "Dropped (split 2026-10-19 into PX-28a and PX-28b): License page v2",
       "phase": "PX",
       "lane": "portal",
       "role": "pkey-implementer",
       "estimateWeeks": [0.5, 0.8],
-      "deps": ["LX-15", "LX-41", "P2-13"],
+      "deps": [],
       "planMode": false,
       "gates": ["portal-e2e", "ui-snapshots"],
       "humanInputs": [],
@@ -16915,6 +16999,52 @@
         "section change portal-07"
       ],
       "brief": "wp/PX-28-license-page-v2.md",
+      "status": "dropped",
+      "stage": "dropped"
+    },
+    {
+      "id": "PX-28a",
+      "title": "License page v2 on today's data: term timeline, one downloads table, Renew only in the License card (split of PX-28)",
+      "phase": "PX",
+      "stage": "Locker UX waves (2026-10-19)",
+      "lane": "portal",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.3, 0.5],
+      "deps": ["LK-06", "P0-36", "MK-L2"],
+      "planMode": false,
+      "gates": ["portal-e2e", "ui-snapshots"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "design/PORTAL §4.4",
+        "section change portal-07",
+        "docs/research/2026-09-29-godot-omniplatform/program/locker-ux-waves.md §2 (PX-28a)"
+      ],
+      "brief": "wp/PX-28a-license-page-v2.md",
+      "status": "todo"
+    },
+    {
+      "id": "PX-28b",
+      "title": "License page and Library duration line, add-ons, Automatic grant, subscription and renew (split of PX-28; absorbs LX-15's portal UI)",
+      "phase": "PX",
+      "stage": "Locker UX waves (2026-10-19)",
+      "lane": "portal",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.5, 0.8],
+      "deps": ["PX-28a", "LX-09", "LX-10", "PX-W6", "LX-41", "P2-13"],
+      "planMode": false,
+      "gates": ["portal-e2e", "ui-snapshots"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-19 §7.11, §9 LX-15",
+        "section change portal-07",
+        "docs/research/2026-09-29-godot-omniplatform/program/locker-ux-waves.md §4",
+        "wp/LX-15-portal-licensing.md (original LX-15 scope)"
+      ],
+      "brief": "wp/PX-28b-license-duration-addons.md",
       "status": "todo"
     },
     {
@@ -16959,12 +17089,12 @@
     },
     {
       "id": "PX-31",
-      "title": "Account composition v3",
+      "title": "Dropped (split 2026-10-19 into PX-31a and PX-31b): Account composition v3",
       "phase": "PX",
       "lane": "portal",
       "role": "pkey-implementer",
       "estimateWeeks": [0.2, 0.4],
-      "deps": ["I-34", "F-33", "PX-W19"],
+      "deps": [],
       "planMode": false,
       "gates": ["portal-e2e", "ui-snapshots"],
       "humanInputs": [],
@@ -16975,16 +17105,61 @@
         "section change portal-18"
       ],
       "brief": "wp/PX-31-account-composition-v3.md",
+      "status": "dropped",
+      "stage": "dropped"
+    },
+    {
+      "id": "PX-31a",
+      "title": "Account v3 shell: canonical nav, masthead, Profile identity row, methods, sessions, Your data, delete (split of PX-31)",
+      "phase": "PX",
+      "stage": "Locker UX waves (2026-10-19)",
+      "lane": "portal",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.2, 0.3],
+      "deps": ["PX-W19", "LK-06", "P0-36", "MK-L2"],
+      "planMode": false,
+      "gates": ["portal-e2e", "ui-snapshots"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "design/PORTAL §4.6",
+        "section change portal-18",
+        "docs/research/2026-09-29-godot-omniplatform/program/locker-ux-waves.md §2 (PX-31a)"
+      ],
+      "brief": "wp/PX-31a-account-v3-shell.md",
+      "status": "todo"
+    },
+    {
+      "id": "PX-31b",
+      "title": "Account Packages section and Connected apps with disconnect (split of PX-31)",
+      "phase": "PX",
+      "stage": "Locker UX waves (2026-10-19)",
+      "lane": "portal",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.2, 0.3],
+      "deps": ["PX-31a", "I-34", "F-33"],
+      "planMode": false,
+      "gates": ["portal-e2e", "ui-snapshots"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "design/PORTAL §4.6",
+        "section change portal-18",
+        "docs/research/2026-09-29-godot-omniplatform/program/locker-ux-waves.md §4"
+      ],
+      "brief": "wp/PX-31b-account-packages-connected-apps.md",
       "status": "todo"
     },
     {
       "id": "PX-32",
-      "title": "Storefront decision panel",
+      "title": "Dropped (split 2026-10-19 into PX-32a and PX-32b): Storefront decision panel",
       "phase": "PX",
       "lane": "portal",
       "role": "pkey-implementer",
       "estimateWeeks": [0.2, 0.3],
-      "deps": ["PS-05b", "PS-12"],
+      "deps": [],
       "planMode": false,
       "gates": ["portal-e2e", "ui-snapshots"],
       "humanInputs": [],
@@ -16995,6 +17170,49 @@
         "section change portal-19"
       ],
       "brief": "wp/PX-32-storefront-decision-panel.md",
+      "status": "dropped",
+      "stage": "dropped"
+    },
+    {
+      "id": "PX-32a",
+      "title": "Storefront decision panel on the listing the Worker already serves (split of PX-32)",
+      "phase": "PX",
+      "stage": "Locker UX waves (2026-10-19)",
+      "lane": "portal",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.2, 0.3],
+      "deps": ["LK-06", "P0-36", "MK-L2"],
+      "planMode": false,
+      "gates": ["portal-e2e", "ui-snapshots"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "section change portal-19",
+        "docs/research/2026-09-29-godot-omniplatform/program/locker-ux-waves.md §2 (PX-32a)"
+      ],
+      "brief": "wp/PX-32a-storefront-decision-panel.md",
+      "status": "todo"
+    },
+    {
+      "id": "PX-32b",
+      "title": "Storefront panel downloads, listing entries and Discover visibility (split of PX-32)",
+      "phase": "PX",
+      "stage": "Locker UX waves (2026-10-19)",
+      "lane": "portal",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.1, 0.2],
+      "deps": ["PX-32a", "PS-05b", "PS-12"],
+      "planMode": false,
+      "gates": ["portal-e2e", "ui-snapshots"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "section change portal-19",
+        "docs/research/2026-09-29-godot-omniplatform/program/locker-ux-waves.md §4"
+      ],
+      "brief": "wp/PX-32b-storefront-downloads-visibility.md",
       "status": "todo"
     },
     {
@@ -17004,7 +17222,7 @@
       "lane": "portal",
       "role": "pkey-implementer",
       "estimateWeeks": [0.2, 0.4],
-      "deps": ["PX-14"],
+      "deps": ["PX-14a"],
       "planMode": false,
       "gates": ["portal-e2e", "ui-snapshots"],
       "humanInputs": ["Owner asks for it (portal Q3 = yes)"],
@@ -17017,6 +17235,28 @@
       "brief": "wp/PX-33-signin-product-cover.md",
       "status": "todo",
       "deferred": "parked 2026-10-09: only if the owner asks for the app-context cover beside the sign-in card (B12)."
+    },
+    {
+      "id": "PX-34",
+      "title": "Library and Discover adopted to the Locker mockups",
+      "phase": "PX",
+      "stage": "Locker UX waves (2026-10-19)",
+      "lane": "portal",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.5, 0.8],
+      "deps": ["LK-06", "P0-36", "PX-08", "PX-27", "PX-W10", "MK-L2"],
+      "planMode": false,
+      "gates": ["portal-e2e", "ui-snapshots"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "design/PORTAL §4.2, §4.3",
+        "portal-14, portal-17, portal-23 (PS-11)",
+        "docs/research/2026-09-29-godot-omniplatform/program/locker-ux-waves.md §2 (PX-34)"
+      ],
+      "brief": "wp/PX-34-library-discover-locker.md",
+      "status": "todo"
     },
     {
       "id": "AX-01",
@@ -17558,7 +17798,7 @@
       "optional": false,
       "refs": ["plans/LK-00.md §4, §7.1–7.5, §7.13"],
       "brief": "wp/LK-03-customer-host-and-origin.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "LK-04",
@@ -17583,7 +17823,7 @@
       "optional": false,
       "refs": ["plans/LK-00.md §3, §5, §7.8–7.9"],
       "brief": "wp/LK-04-cross-host-sign-in.md",
-      "status": "todo",
+      "status": "done",
       "planRef": "LK-00"
     },
     {
@@ -17602,7 +17842,7 @@
       "optional": false,
       "refs": ["plans/LK-00.md §7.7"],
       "brief": "wp/LK-05-passkeys-related-origins.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "LK-06",
@@ -17620,7 +17860,7 @@
       "optional": false,
       "refs": ["plans/LK-00.md §2, §7.6, §8"],
       "brief": "wp/LK-06-locker-shell-portal-card.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "LK-07",
@@ -17638,7 +17878,30 @@
       "optional": false,
       "refs": ["plans/LK-00.md §7.11–7.12"],
       "brief": "wp/LK-07-worker-pages-and-mail.md",
-      "status": "todo"
+      "status": "in-review"
+    },
+    {
+      "id": "LK-07b",
+      "title": "Customer emails on the Locker identity: ink button, neutral callouts, lockup, HTML snapshots for every template (I-39 folded onto LK-07's templates)",
+      "phase": "LK",
+      "stage": "Locker UX waves (2026-10-19)",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.5, 0.8],
+      "deps": ["LK-07", "UK-58"],
+      "planMode": false,
+      "gates": ["email-snapshots", "ui-snapshots"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "plans/LK-00.md §7.11",
+        "design/SIGN-IN §3.15",
+        "docs/research/2026-09-29-godot-omniplatform/program/locker-ux-waves.md §1",
+        "wp/I-39-emails-brand-v2.md (original I-39 scope)"
+      ],
+      "brief": "wp/LK-07b-locker-customer-emails.md",
+      "status": "done"
     },
     {
       "id": "LK-08a",
@@ -17661,9 +17924,8 @@
       "optional": false,
       "refs": ["plans/LK-00.md §3, §5, §6"],
       "brief": "wp/LK-08a-locker-copy-constants.md",
-      "status": "todo",
-      "planRef": "LK-00",
-      "deferred": "customer.host is on in prod"
+      "status": "done",
+      "planRef": "LK-00"
     },
     {
       "id": "LK-08b",
@@ -17681,8 +17943,7 @@
       "optional": false,
       "refs": ["plans/LK-00.md §6"],
       "brief": "wp/LK-08b-locker-copy-native.md",
-      "status": "todo",
-      "deferred": "customer.host is on in prod"
+      "status": "done"
     },
     {
       "id": "LK-09",
@@ -17704,7 +17965,7 @@
     },
     {
       "id": "LK-10",
-      "title": "Console: Locker words and links, the switch with its preflight, Connections callbacks, \"Get a badge\"",
+      "title": "Console: Locker words and links, Connections callbacks, \"Get a badge\"",
       "phase": "LK",
       "stage": "Polaris Locker",
       "lane": "console",
@@ -17716,28 +17977,38 @@
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["plans/LK-00.md §7, §10"],
+      "refs": ["plans/LK-00.md §7, §10, §16"],
       "brief": "wp/LK-10-console-locker-words.md",
       "status": "todo"
     },
     {
       "id": "LK-11",
-      "title": "Cutover: wrangler routes and vars, old-URL redirects, cookie expiry, RUNBOOK, smoke",
+      "title": "Cutover: wiring done; the cutover deploy and smoke",
       "phase": "LK",
       "stage": "Polaris Locker",
       "lane": "worker",
       "role": "pkey-implementer",
       "estimateWeeks": [0.5, 0.5],
-      "deps": ["LK-03", "LK-04", "LK-05", "LK-06", "LK-07", "LK-10"],
+      "deps": [
+        "LK-03",
+        "LK-04",
+        "LK-05",
+        "LK-06",
+        "LK-07",
+        "LK-10",
+        "LK-14",
+        "LK-15",
+        "LK-17"
+      ],
       "planMode": false,
       "gates": ["wrangler", "workerd", "threat-model"],
-      "humanInputs": ["Owner steps O2–O10 (plans/LK-00.md §12)"],
+      "humanInputs": ["Owner steps O5, O6, O8, O9, O10 (plans/LK-00.md §16)"],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["plans/LK-00.md §7.10, §10, §12"],
+      "refs": ["plans/LK-00.md §7.10, §10, §12, §16"],
       "brief": "wp/LK-11-cutover.md",
       "status": "todo",
-      "deferred": "O2–O10 done"
+      "deferred": "O5, O6, O8, O9, O10 done"
     },
     {
       "id": "LK-12",
@@ -17778,7 +18049,7 @@
     },
     {
       "id": "LK-14",
-      "title": "Console on the Locker identity: shell, titles, sign-in moment, data-brand, copy sweep",
+      "title": "Polaris Key Console: identity, customer-site words, root front door",
       "phase": "LK",
       "stage": "Polaris Locker",
       "lane": "console",
@@ -17792,11 +18063,11 @@
       "optional": false,
       "refs": ["plans/LK-00.md §14"],
       "brief": "wp/LK-14-console-locker-identity.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "LK-15",
-      "title": "Developer docs on the Locker identity: chrome, the split, the prose sweep, READMEs",
+      "title": "Developer docs: Polaris Key, customer-site words to Locker",
       "phase": "LK",
       "stage": "Polaris Locker",
       "lane": "docs",
@@ -17810,7 +18081,7 @@
       "optional": false,
       "refs": ["plans/LK-00.md §14"],
       "brief": "wp/LK-15-docs-locker-identity.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "LK-16",
@@ -17828,8 +18099,68 @@
       "optional": false,
       "refs": ["plans/LK-00.md §14"],
       "brief": "wp/LK-16-locker-powered-by.md",
-      "status": "todo",
-      "deferred": "customer.host is on in prod"
+      "status": "todo"
+    },
+    {
+      "id": "LK-17",
+      "title": "Hard cutover: remove the customer.host switch, 301 old customer URLs, console hash hand-off",
+      "phase": "LK",
+      "stage": "Polaris Locker",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.5, 0.75],
+      "deps": ["LK-03"],
+      "planMode": false,
+      "gates": ["rule-9", "rule-10", "drift-gate", "workerd", "threat-model"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["plans/LK-00.md §16"],
+      "brief": "wp/LK-17-hard-cutover.md",
+      "status": "done"
+    },
+    {
+      "id": "MK-L1",
+      "title": "Locker auth mockups: re-skin the identity and portal.signin mockups to Polaris Locker and apply the SIGN-IN.md wording fixes",
+      "phase": "MK",
+      "stage": "Locker UX waves (2026-10-19)",
+      "lane": "docs",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.7],
+      "deps": [],
+      "planMode": false,
+      "gates": ["docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-09-29-godot-omniplatform/program/locker-ux-waves.md §1 (P1-W1), §5",
+        "docs/design/LK-00 §15–§16 (plans/LK-00.md)",
+        "docs/design/SIGN-IN.md"
+      ],
+      "brief": "wp/MK-L1-locker-auth-mockups.md",
+      "status": "done"
+    },
+    {
+      "id": "MK-L2",
+      "title": "Locker portal mockups: re-skin the 13 portal mockups to Polaris Locker",
+      "phase": "MK",
+      "stage": "Locker UX waves (2026-10-19)",
+      "lane": "docs",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.3, 0.5],
+      "deps": [],
+      "planMode": false,
+      "gates": ["docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-09-29-godot-omniplatform/program/locker-ux-waves.md §2 (P2-W1), §5",
+        "plans/LK-00.md §15–§16"
+      ],
+      "brief": "wp/MK-L2-locker-portal-mockups.md",
+      "status": "done"
     }
   ]
 }

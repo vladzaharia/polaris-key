@@ -75,6 +75,10 @@ export type Route =
    *  route reserved ahead of product slugs, like `/manage`: the gate + asset serving live in
    *  `docs.ts`, and the slug `docs` is on the reserved list so a product can never take it. */
   | { kind: "docs" }
+  /** `/help` — a short alias that redirects to the public Help at `/docs/help/` (DOC-03b). */
+  | { kind: "helpAlias" }
+  /** `GET /.well-known/webauthn` — the WebAuthn Related Origin Requests list (LK-05). */
+  | { kind: "webauthnOrigins" }
   | { kind: "githubWebhook" }
   | { kind: "deployHook" }
   | { kind: "discovery"; product: string }
@@ -162,6 +166,7 @@ export function matchRoute(pathname: string): Route {
     path.startsWith("/manage/api/products/")
   )
     return { kind: "products" };
+  if (path === "/.well-known/webauthn") return { kind: "webauthnOrigins" };
   if (path === "/webhooks/github") return { kind: "githubWebhook" };
   if (path === "/webhooks/deploy") return { kind: "deployHook" };
   if (path === "/manage/login") return { kind: "adminLogin" };
@@ -172,6 +177,9 @@ export function matchRoute(pathname: string): Route {
     return { kind: "adminSpa" };
   // The gated docs site — reserved before product slugs, same as /manage.
   if (path === "/docs" || path.startsWith("/docs/")) return { kind: "docs" };
+
+  // `/help` is reserved as a product slug (RESERVED_PRODUCT_SLUGS) and answers a redirect.
+  if (path === "/help" || path === "/help/") return { kind: "helpAlias" };
 
   // Root customer portal. These are reserved before product slugs.
   // `/activate` is the Activate license deep link (PORTAL.md §3.3). The key rides in the fragment

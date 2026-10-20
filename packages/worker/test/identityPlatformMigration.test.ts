@@ -556,7 +556,7 @@ describe("claim at next sign-in through a provider: platform product", () => {
     expect(res.status).toBe(200);
     const html = await res.text();
     // The offer: the address the person's own IdP just asserted, and where to join.
-    expect(html).toContain(`A Polaris Key account already uses ${ADA}.`);
+    expect(html).toContain(`A Polaris Locker account already uses ${ADA}.`);
     expect(html).toContain('href="/login"');
     // Nothing joined: no second account, no new method on the other one, the licence floats.
     expect(await count(db, "SELECT COUNT(*) AS n FROM accounts")).toBe(1);
@@ -823,7 +823,7 @@ describe("claim at next sign-in through a provider: platform product", () => {
     }
 
     /** SIGN-IN.md §3.13's Account disabled page: never a dead end. **Sign in with another
-     *  account** goes to Polaris Key's sign-in (not back into the IdP that just signed the same
+     *  account** goes to Polaris Locker's sign-in (not back into the IdP that just signed the same
      *  subject in); **Back to <Product>** only when the flow came from an app page. */
     async function expectRefusedPage(
       res: Response,
@@ -833,9 +833,9 @@ describe("claim at next sign-in through a provider: platform product", () => {
       expect(res.headers.get("location")).toBeNull();
       const html = await res.text();
       expect(html).toMatch(/This account can(&#39;|&#x27;|')t sign in/);
-      expect(html).not.toContain("Polaris Key support");
+      expect(html).not.toContain("Polaris Locker support");
       expect(html).toContain(
-        '<a class="button" href="/">Sign in with another account</a>',
+        '<a class="button" href="/login">Sign in with another account</a>',
       );
       if (back)
         expect(html).toContain(

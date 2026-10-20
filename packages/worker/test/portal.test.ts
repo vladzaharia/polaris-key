@@ -237,7 +237,7 @@ describe("customer portal", () => {
     expect(JSON.stringify(body)).not.toContain(key);
   });
 
-  it("hides and rejects license-key claim when the module is disabled", async () => {
+  it("hides and rejects license-key claim when the portal is off", async () => {
     const db = makeTestDb();
     const env = portalEnv();
     await seedProduct(db, "djdl");
@@ -248,10 +248,10 @@ describe("customer portal", () => {
           license_key_claim_enabled, releases_enabled, branding_json, created_at, modified_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       "djdl",
-      1,
-      1,
-      1,
       0,
+      1,
+      1,
+      1,
       1,
       null,
       NOW,
@@ -898,7 +898,7 @@ describe("portal account deletion scheduling (DELETE /api/me)", () => {
     expect(sent.map(({ to, subject }) => ({ to, subject }))).toEqual([
       {
         to: "ada@example.com",
-        subject: "Your Polaris Key account is scheduled for deletion",
+        subject: "Your Polaris Locker account is scheduled for deletion",
       },
     ]);
     const audits = await db.all<{
@@ -978,8 +978,8 @@ describe("portal account deletion scheduling (DELETE /api/me)", () => {
     );
     expect(await me.json()).toMatchObject({ account: { deletion: null } });
     expect(sent.map((message) => message.subject)).toEqual([
-      "Your Polaris Key account is scheduled for deletion",
-      "Your Polaris Key account deletion was cancelled",
+      "Your Polaris Locker account is scheduled for deletion",
+      "Your Polaris Locker account deletion was cancelled",
     ]);
     const audits = await db.all<{ action: string }>(
       `SELECT action FROM portal_audit

@@ -1,16 +1,18 @@
-# PX-32 Storefront decision panel
+# PX-32 Dropped (split 2026-10-19 into PX-32a and PX-32b): Storefront decision panel
 
-| Field       | Value                                                                                          |
-| ----------- | ---------------------------------------------------------------------------------------------- |
-| Phase       | PX: Customer portal (docs/design/PORTAL.md)                                                    |
-| Size        | 0.2–0.3 engineer-weeks                                                                         |
-| Depends on  | [PS-05b](PS-05b-library-entry-downloads.md), [PS-12](PS-12-discover-visibility-one-setting.md) |
-| Unblocks    | none                                                                                           |
-| Role        | `pkey-implementer`                                                                             |
-| Plan mode   | no (no wire change)                                                                            |
-| Gates       | portal-e2e, ui-snapshots                                                                       |
-| Human input | none                                                                                           |
-| Repo        | `vladzaharia/polaris-key`                                                                      |
+| Field       | Value                                       |
+| ----------- | ------------------------------------------- |
+| Phase       | PX: Customer portal (docs/design/PORTAL.md) |
+| Size        | 0.2–0.3 engineer-weeks                      |
+| Depends on  | none                                        |
+| Unblocks    | none                                        |
+| Role        | `pkey-implementer`                          |
+| Plan mode   | no (no wire change)                         |
+| Gates       | portal-e2e, ui-snapshots                    |
+| Human input | none                                        |
+| Repo        | `vladzaharia/polaris-key`                   |
+
+> **Superseded 2026-10-19 by [PX-32a](PX-32a-storefront-decision-panel.md) and [PX-32b](PX-32b-storefront-downloads-visibility.md). This brief stays as the original spec.**
 
 ## Goal
 

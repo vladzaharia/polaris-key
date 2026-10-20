@@ -71,7 +71,6 @@ import {
   CLAIM_LABELS,
   RevertClaimDialog,
 } from "../../../components/RevertClaimDialog.js";
-import { PageHeader } from "../../../../ui/PageHeader.js";
 import { useProduct } from "../../../data/hooks.js";
 import { mutate } from "../../../data/mutations.js";
 import { Link } from "../../../router.js";
@@ -127,45 +126,30 @@ export function validateSettings(v: Draft): Record<string, string> {
   return out;
 }
 
+/** The product's own settings. Unfolded from Features' last row, so it has no header of its own. */
 export function SettingsPage({ slug }: { slug: string }): React.ReactElement {
   const product = useProduct(slug);
   useLoadingAnnouncement("settings", product.isPending);
-  const header = (
-    <PageHeader
-      title="General"
-      refetching={product.isFetching && !product.isPending}
-    />
-  );
   if (product.isPending) {
-    return (
-      <div className="space-y-6">
-        {header}
-        <PageSkeleton template="form" label="settings" />
-      </div>
-    );
+    return <PageSkeleton template="form" label="settings" />;
   }
   if (product.isError) {
     return (
-      <div className="space-y-6">
-        {header}
-        <ErrorState
-          error={product.error}
-          onRetry={() => void product.refetch()}
-        />
-      </div>
+      <ErrorState
+        error={product.error}
+        onRetry={() => void product.refetch()}
+      />
     );
   }
-  return <SettingsBody slug={slug} product={product.data} header={header} />;
+  return <SettingsBody slug={slug} product={product.data} />;
 }
 
 function SettingsBody({
   slug,
   product,
-  header,
 }: {
   slug: string;
   product: ProductDetail;
-  header: React.ReactNode;
 }): React.ReactElement {
   const licenseOn = product.services?.license?.enabled ?? true;
   const linked = product.releaseSource === "github";
@@ -261,17 +245,6 @@ function SettingsBody({
     return fallback;
   };
 
-  const sections = [
-    { id: "settings-general", title: "General" },
-    ...(licenseOn
-      ? [{ id: "settings-license", title: "License defaults" }]
-      : []),
-    { id: "settings-origins", title: "Web origins" },
-    { id: "settings-repository", title: "Repository" },
-    { id: "settings-storage", title: "Storage" },
-    { id: "settings-alerts", title: "Alerts" },
-    { id: "danger-zone", title: "Danger zone" },
-  ];
   const nonFieldError =
     form.submitError &&
     !(form.submitError instanceof SaveCancelled) &&
@@ -280,7 +253,7 @@ function SettingsBody({
       : null;
 
   return (
-    <SettingsTemplate header={header} sections={sections}>
+    <SettingsTemplate header={null} sections={[]}>
       <Form form={form} aria-label="Product settings" className="space-y-6">
         <SettingsSection id="settings-general" title="General">
           <SettingsRow

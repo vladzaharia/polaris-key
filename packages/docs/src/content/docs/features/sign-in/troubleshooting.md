@@ -53,7 +53,7 @@ Entries are ordered by how often they happen. Every code is in the [error codes]
 
 **Cause** A custom issuer isn't on the Worker's `OIDC_ISSUER_ALLOWLIST`, or the product has no usable provider configuration. The Worker fails closed before it opens the client secret.
 
-**Fix** Ask the platform operator to add the issuer's host to the allowlist, or fix the `oidc:` block and select **Resync from repo** on **Identity → Sign-in**.
+**Fix** Ask the platform operator to add the issuer's host to the allowlist, or fix the `oidc:` block and select **Resync from repo** on **App sign-in**.
 
 **Check it works** The sign-in redirects to the provider.
 
@@ -117,6 +117,6 @@ Entries are ordered by how often they happen. Every code is in the [error codes]
 
 **Cause** The requested method is off: Locker's sign-in method for the product, or email codes for an enforced single sign-on domain.
 
-**Fix** Turn the method on under **Identity → Portal**, or sign in through the organization's connection.
+**Fix** Email codes and passkeys are always on; a domain that is enforced to single sign-on gets only its connection. Sign in through the organization's connection, or ask its owner to lift the enforcement under **Platform → Connections**.
 
 **Check it works** The method works on the login card.

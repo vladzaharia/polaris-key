@@ -4,7 +4,7 @@
 | ----------- | --------------------------------------------------- |
 | Phase       | PX: Customer portal (docs/design/PORTAL.md) (could) |
 | Size        | 0.2–0.4 engineer-weeks                              |
-| Depends on  | [PX-14](PX-14-passthrough-header.md)                |
+| Depends on  | [PX-14a](PX-14a-card-header-licence-consent.md)     |
 | Unblocks    | none                                                |
 | Role        | `pkey-implementer`                                  |
 | Plan mode   | no (no wire change)                                 |

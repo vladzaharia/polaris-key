@@ -1781,6 +1781,56 @@ const POLARIS_KEY_ROUTES: Record<string, unknown> = {
 
 export const DATA_ROUTES: Record<string, unknown> = {
   ...POLARIS_KEY_ROUTES,
+  // CM-29: Commerce's overview read.
+  [`${PROD}/commerce`]: {
+    licenseEnabled: true,
+    setup: {
+      "app-store": { configured: true, credential: "cred_asc", reason: null },
+      play: {
+        configured: false,
+        credential: null,
+        reason: "no settings for this store",
+      },
+      steam: {
+        configured: false,
+        credential: null,
+        reason:
+          "no active steam-publisher-key credential pinned to the configured app",
+      },
+    },
+    products: [
+      {
+        store: "app-store",
+        productId: "com.djdl.app.pro",
+        deliverable: "app",
+        flag: "pro",
+      },
+    ],
+    purchases: [
+      {
+        store: "app-store",
+        purchase: "a1b2c3d4e5f60718",
+        storeProductId: "com.djdl.app.pro",
+        licenseId: "lic_1",
+        state: "active",
+        environment: "Production",
+        firstSeen: GENERATED - 90000,
+        lastVerified: GENERATED - 3600,
+      },
+      {
+        store: "app-store",
+        purchase: "b1b2c3d4e5f60719",
+        storeProductId:
+          "com.djdl.app.pro.with.a.very.long.identifier.for.wrapping",
+        licenseId: "lic_2",
+        state: "revoked",
+        environment: "Sandbox",
+        firstSeen: GENERATED - 900000,
+        lastVerified: GENERATED - 90000,
+      },
+    ],
+    events: [],
+  },
   "/manage/api/platform/version": IDENTITY,
   "/manage/api/platform/deployment": deployment({
     deploys: {

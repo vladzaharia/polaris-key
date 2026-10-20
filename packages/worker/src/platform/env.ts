@@ -126,7 +126,7 @@ export interface Env {
   KEYENTRY_REFUSALS?: string;
   /**
    * Lazy hot-pair deltas (P4-17, `core/assets/deltaDemand.ts`, `services/release/packs/deltas/`): the
-   * deployment's kill switch. On lets an opted-in product (`lazy_delta_settings`) count demand
+   * deployment's kill switch. On lets an opted-in product (`deltas.lazy.enabled`) count demand
    * and generate deltas. A `[vars]` value, read only through the platform settings store (A-13,
    * `core/platformSettings.ts`, `ceiling`): `off` is a hard off; `runtime` (committed in every
    * environment) lets the console decide, default off; `on` means on unless the console says off.
@@ -216,6 +216,17 @@ export interface Env {
    * @inventory var delivery
    */
   CONSOLE_ORIGIN?: string;
+  /**
+   * The customer site's origin, e.g. `https://polaris.locker` (Polaris Locker, LK-03). A second
+   * host on THIS Worker: a request whose host is this origin's host reaches ONLY the customer
+   * routes (`core/customerHost.ts`); everything else answers not-found. Customer links, discovery's
+   * `accountPortal` and the old-URL redirects use it whenever it is usable (`core/hosts.ts`
+   * `customerOrigin()`); setting it IS the cutover (LK-17: no switch). Unset (or unparsable, or the console or an earlier
+   * auxiliary host) ⇒ there is no customer host and every URL is what it was. Deploy-time only
+   * (never a console value).
+   * @inventory var delivery
+   */
+  CUSTOMER_ORIGIN?: string;
   /**
    * Trusted publishing (P2-02, `core/publisher.ts`): the bucket name the upload tickets' R2
    * temporary credentials are scoped to (the same bucket as `BLOBS`; the S3 API names buckets,
@@ -493,8 +504,10 @@ export interface Env {
   EMAIL_SENDER_ADDRESS?: string;
   /**
    * I-18: the deploy-wide daily cap on one product's passthrough sign-in mail (a positive
-   * integer). A product's `email_product_caps` row wins; unset = the code default (500).
+   * integer). A product's own `email.dailyCap` wins; unset = the code default (500). ST-11: a
+   * console value (`email.dailyCapDefault`) wins over this `[vars]` value.
    * @inventory var email
+   * @editable EMAIL_PRODUCT_DAILY_CAP
    */
   EMAIL_PRODUCT_DAILY_CAP?: string;
   /**

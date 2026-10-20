@@ -60,7 +60,7 @@ describe("the sources", () => {
     );
     expect(labels).not.toContain("Releases");
     // Sign-in is built (chunk 10); not-built pages are not offered: they would only redirect.
-    expect(labels).toContain("Sign-in");
+    expect(labels).toContain("App sign-in");
     // F-11: Distribution → Package feeds is offered while the product has package feeds on.
     const off = navigationSource(
       "djdl",
@@ -91,6 +91,7 @@ describe("the sources", () => {
       "Settings",
       "Deployment",
       "Operations",
+      "Connections",
       "Store connections",
       "Package feeds",
     ]);

@@ -174,6 +174,32 @@ describe("admin api", () => {
     expect(sessionExpiresAt).toBe(NOW + 8 * 60 * 60);
   });
 
+  it("/api/me names the customer origin only while the customer host is usable (LK-17)", async () => {
+    const customerOrigin = async (
+      set: boolean,
+    ): Promise<string | null | undefined> => {
+      const env = adminEnv(new KvMock(), []);
+      env.CONSOLE_ORIGIN = "https://key.plrs.im";
+      if (set) env.CUSTOMER_ORIGIN = "https://polaris.locker";
+      const { cookie } = await sessionCookie(env, {
+        sub: "u1",
+        name: "Ada",
+        email: "ada@x.io",
+        groups: [PLATFORM_GROUP],
+      });
+      const res = await dispatch(
+        mkReq("GET", "/api/me", { cookie }),
+        env,
+        makeTestDb(),
+        "/api/me",
+      );
+      return ((await res.json()) as { customerOrigin?: string | null })
+        .customerOrigin;
+    };
+    expect(await customerOrigin(true)).toBe("https://polaris.locker");
+    expect(await customerOrigin(false)).toBeNull();
+  });
+
   it("every deployment in wrangler.toml names itself to the console", async () => {
     const { readFileSync } = await import("node:fs");
     const toml = readFileSync(
@@ -352,6 +378,39 @@ describe("admin api", () => {
     expect(djdl!.signing).toBeNull();
   });
 
+  it("refuses the retired per-product toggles with 422, naming each (I-29)", async () => {
+    const db = makeTestDb();
+    const env = adminEnv(new KvMock(), ["djdl"]);
+    await seedProduct(db, "djdl");
+    const { cookie, csrf } = await sessionCookie(env, {
+      sub: "u1",
+      name: "Ada",
+      email: "ada@x.io",
+      groups: [PLATFORM_GROUP],
+    });
+    const retired = [
+      "oidcEnabled",
+      "magicEnabled",
+      "licenseKeyClaimEnabled",
+      "releasesEnabled",
+      "autoLinkEnabled",
+    ];
+    for (const key of retired) {
+      const res = await dispatch(
+        mkReq("PATCH", "/api/products/djdl/identity/portal", {
+          cookie,
+          csrf,
+          body: { [key]: false },
+        }),
+        env,
+        db,
+        "/api/products/djdl/identity/portal",
+      );
+      expect(res.status, key).toBe(422);
+      expect(JSON.stringify(await res.json())).toContain(key);
+    }
+  });
+
   it("reads and updates per-product customer portal settings", async () => {
     const db = makeTestDb();
     const env = adminEnv(new KvMock(), ["djdl"]);
@@ -369,10 +428,7 @@ describe("admin api", () => {
         csrf,
         body: {
           portalEnabled: true,
-          oidcEnabled: false,
-          magicEnabled: true,
-          licenseKeyClaimEnabled: false,
-          releasesEnabled: false,
+          keyReissueEnabled: true,
         },
       }),
       env,
@@ -383,19 +439,16 @@ describe("admin api", () => {
     const settingsBody = (await updated.json()) as {
       settings: {
         portalEnabled: boolean;
-        oidcEnabled: boolean;
-        magicEnabled: boolean;
-        licenseKeyClaimEnabled: boolean;
-        releasesEnabled: boolean;
+        keyReissueEnabled: boolean;
       };
     };
     expect(settingsBody.settings).toMatchObject({
       portalEnabled: true,
-      oidcEnabled: false,
-      magicEnabled: true,
-      licenseKeyClaimEnabled: false,
-      releasesEnabled: false,
+      keyReissueEnabled: true,
     });
+    // I-29: the retired toggles are not part of the settings at all.
+    expect(settingsBody.settings).not.toHaveProperty("oidcEnabled");
+    expect(settingsBody.settings).not.toHaveProperty("magicEnabled");
 
     const detail = await dispatch(
       mkReq("GET", "/api/products/djdl", { cookie }),
@@ -1428,6 +1481,7 @@ describe("admin services enablement", () => {
       licensing: { tiers: 2, licenses: 3 },
       managedConfig: { catalogVersion: 1 },
       shipBuilds: { latest: { version: "2.4.0", channel: "beta" } },
+      commerce: { storefronts: 0, storeGrants: 0 },
     };
 
     expect((await call(w, "GET")).body.facts).toEqual(expected);
@@ -1466,6 +1520,7 @@ describe("admin services enablement", () => {
       licensing: { tiers: 0, licenses: 0 },
       managedConfig: { catalogVersion: 1 },
       shipBuilds: { latest: null },
+      commerce: { storefronts: 0, storeGrants: 0 },
     });
     expect(body.services).toEqual({
       license: { enabled: true },
@@ -1771,6 +1826,7 @@ describe("admin services enablement", () => {
       licensing: { tiers: 0, licenses: 0 },
       managedConfig: { catalogVersion: 1 },
       shipBuilds: { latest: null },
+      commerce: { storefronts: 0, storeGrants: 0 },
     });
 
     // …and now a resync is permitted to write again.
