@@ -4192,6 +4192,376 @@ msgstr "코드가 너무 많습니다. 몇 분 후 다시 시도하세요."
 msgid "signin.code.emailInUse"
 msgstr "다른 Polaris Locker 계정이 이 이메일을 사용하고 있습니다. 이전에 쓰던 방법으로 로그인하세요."
 
+#. Profile
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.title"
+msgstr "프로필"
+
+#. How you appear in Polaris Locker, and to an app once you agree to share it.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.subtitle"
+msgstr "Polaris Locker에서 보이는 모습이며, 동의하면 앱에도 표시됩니다."
+
+#. Edit profile
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.edit"
+msgstr "프로필 편집"
+
+#. macos: Edit Profile
+msgctxt "macos"
+msgid "profile.edit"
+msgstr "프로필 편집"
+
+#. Edit
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.editShort"
+msgstr "편집"
+
+#. Add a picture
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.addPicture"
+msgstr "사진 추가"
+
+#. macos: Add a Picture
+msgctxt "macos"
+msgid "profile.addPicture"
+msgstr "사진 추가"
+
+#. Preview
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.preview"
+msgstr "미리보기"
+
+#. Screen name
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.name.label"
+msgstr "표시 이름"
+
+#. Your choice
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.name.yourChoice"
+msgstr "직접 입력"
+
+#. Use a name from
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.name.useFrom"
+msgstr "다음의 이름 사용"
+
+#. Enter a name.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.name.required"
+msgstr "이름을 입력하세요."
+
+#. Picture
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.picture.label"
+msgstr "사진"
+
+#. In use
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.picture.inUse"
+msgstr "사용 중"
+
+#. Initials
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.picture.initials"
+msgstr "이니셜"
+
+#. No picture
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.picture.initialsNote"
+msgstr "사진 없음"
+
+#. Upload
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.picture.upload"
+msgstr "업로드"
+
+#. PNG or JPEG, up to 5 MB
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.picture.uploadNote"
+msgstr "PNG 또는 JPEG, 최대 5MB"
+
+#. Uploading…
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.picture.uploading"
+msgstr "업로드 중…"
+
+#. Picture uploaded. Save your profile to use it.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.picture.uploaded"
+msgstr "사진을 업로드했습니다. 사용하려면 프로필을 저장하세요."
+
+#. Your upload
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.picture.yourUpload"
+msgstr "내가 올린 사진"
+
+#. Cropped to a square
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.picture.yourUploadNote"
+msgstr "정사각형으로 잘림"
+
+#. Current picture
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.picture.current"
+msgstr "현재 사진"
+
+#. From a sign-in method you removed
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.picture.currentNote"
+msgstr "삭제한 로그인 방법의 사진"
+
+#. Birth date
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.birthdate.label"
+msgstr "생년월일"
+
+#. Optional
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.birthdate.optional"
+msgstr "선택 사항"
+
+#. Private to you. Apps never receive it.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.birthdate.hint"
+msgstr "나만 볼 수 있으며 앱에는 전달되지 않습니다."
+
+#. Remove birth date
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.birthdate.remove"
+msgstr "생년월일 삭제"
+
+#. macos: Remove Birth Date
+msgctxt "macos"
+msgid "profile.birthdate.remove"
+msgstr "생년월일 삭제"
+
+#. Remove
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.birthdate.removeShort"
+msgstr "삭제"
+
+#. Pictures are copied to Polaris Locker, so neither this page nor any app loads them from the provider. An imported name or picture follows its provider until you pick one yourself; after that, your choice stays.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.note"
+msgstr "사진은 Polaris Locker에 복사되므로 이 페이지와 앱은 제공업체에서 사진을 불러오지 않습니다. 가져온 이름이나 사진은 직접 선택하기 전까지 제공업체를 따르며, 선택한 후에는 선택이 유지됩니다."
+
+#. Save profile
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.save"
+msgstr "프로필 저장"
+
+#. macos: Save Profile
+msgctxt "macos"
+msgid "profile.save"
+msgstr "프로필 저장"
+
+#. Profile saved
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.saved"
+msgstr "프로필을 저장했습니다"
+
+#. Your profile didn't load
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.loadError"
+msgstr "프로필을 불러오지 못했습니다"
+
+#. a sign-in method you removed
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.removedMethod"
+msgstr "삭제한 로그인 방법"
+
+#. Enter a name.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.error.invalidName"
+msgstr "이름을 입력하세요."
+
+#. Enter a date from 1900 to today.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.error.invalidBirthdate"
+msgstr "1900년부터 오늘까지의 날짜를 입력하세요."
+
+#. That sign-in method isn't on this account anymore. Choose again.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.error.unknownSource"
+msgstr "이 로그인 방법은 더 이상 이 계정에 없습니다. 다시 선택하세요."
+
+#. That sign-in method didn't share a name. Choose another or type one.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.error.noName"
+msgstr "이 로그인 방법은 이름을 공유하지 않았습니다. 다른 방법을 선택하거나 직접 입력하세요."
+
+#. That sign-in method didn't share a picture. Choose another picture.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.error.noPicture"
+msgstr "이 로그인 방법은 사진을 공유하지 않았습니다. 다른 사진을 선택하세요."
+
+#. That upload has expired. Upload the picture again.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.error.unknownUpload"
+msgstr "업로드가 만료되었습니다. 사진을 다시 업로드하세요."
+
+#. Use a picture of 5 MB or less.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.error.tooLarge"
+msgstr "5MB 이하의 사진을 사용하세요."
+
+#. Use a PNG or JPEG picture.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.error.unsupportedType"
+msgstr "PNG 또는 JPEG 사진을 사용하세요."
+
+#. We couldn't read that picture. Try another PNG or JPEG.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.error.unreadableImage"
+msgstr "사진을 읽을 수 없습니다. 다른 PNG 또는 JPEG를 사용해 보세요."
+
+#. You can upload 10 pictures an hour. Try again later.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.error.uploadLimit"
+msgstr "한 시간에 사진을 10장까지 올릴 수 있습니다. 나중에 다시 시도하세요."
+
+#. Picture uploads aren't available right now. Try again later.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.error.uploadUnavailable"
+msgstr "지금은 사진을 업로드할 수 없습니다. 나중에 다시 시도하세요."
+
+#. You typed this name, so signing in with {provider} won't change it.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.name.typedHint"
+msgstr "직접 입력한 이름이므로 {provider}(으)로 로그인해도 바뀌지 않습니다."
+
+#. You typed this name, so signing in won't change it.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.name.typedHintAny"
+msgstr "직접 입력한 이름이므로 로그인해도 바뀌지 않습니다."
+
+#. You picked the name from {provider}, so signing in won't change it.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.name.pickedHint"
+msgstr "{provider}의 이름을 선택했으므로 로그인해도 바뀌지 않습니다."
+
+#. This name comes from {provider} and follows it until you type or pick one yourself.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.name.followsHint"
+msgstr "이 이름은 {provider}에서 가져왔으며, 직접 입력하거나 선택하기 전까지 {provider}를 따릅니다."
+
+#. Name typed by you
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.source.nameTyped"
+msgstr "직접 입력한 이름"
+
+#. Name from {provider}
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.source.nameFrom"
+msgstr "{provider}의 이름"
+
+#. picture from {provider}
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.source.pictureFrom"
+msgstr "{provider}의 사진"
+
+#. picture uploaded by you
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.source.pictureUploaded"
+msgstr "직접 올린 사진"
+
+#. initials instead of a picture
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.source.pictureInitials"
+msgstr "사진 대신 이니셜"
+
+#. Apple doesn't share a picture
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.source.appleNoPicture"
+msgstr "Apple은 사진을 공유하지 않습니다"
+
+#. no picture
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.source.noPicture"
+msgstr "사진 없음"
+
+#. An earlier picture from {provider}
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.picture.earlierNote"
+msgstr "{provider}의 이전 사진"
+
+#. Use the name {name} from {provider}
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.name.chip"
+msgstr "{provider}의 이름 {name} 사용"
+
+#. Born {date} · private to you
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.birthdate.line"
+msgstr "생일 {date} · 나만 볼 수 있음"
+
+#. Download my data
+#. Your data (Account and each product page); moved from the portal's copy tables (P0-36).
+msgid "yourData.account.copy.title"
+msgstr "내 데이터 다운로드"
+
+#. Account, sign-in methods, licenses, devices and each app's data. No keys or tokens.
+#. Your data (Account and each product page); moved from the portal's copy tables (P0-36).
+msgid "yourData.account.copy.body"
+msgstr "계정, 로그인 방법, 라이선스, 기기, 각 앱의 데이터. 키와 토큰은 포함되지 않습니다."
+
+#. Download my data
+#. Your data (Account and each product page); moved from the portal's copy tables (P0-36).
+msgid "yourData.account.copy.button"
+msgstr "내 데이터 다운로드"
+
+#. macos: Download My Data
+msgctxt "macos"
+msgid "yourData.account.copy.button"
+msgstr "내 데이터 다운로드"
+
+#. It holds personal details, so keep it private.
+#. Your data (Account and each product page); moved from the portal's copy tables (P0-36).
+msgid "yourData.copy.private"
+msgstr "개인 정보가 들어 있으니 비공개로 보관하세요."
+
+#. Your download has started
+#. Your data (Account and each product page); moved from the portal's copy tables (P0-36).
+msgid "yourData.copy.started"
+msgstr "다운로드를 시작했습니다"
+
+#. Download my data
+#. Your data (Account and each product page); moved from the portal's copy tables (P0-36).
+msgid "yourData.product.copy.title"
+msgstr "내 데이터 다운로드"
+
+#. Remove my data
+#. Your data (Account and each product page); moved from the portal's copy tables (P0-36).
+msgid "yourData.product.remove.title"
+msgstr "내 데이터 삭제"
+
+#. Polaris Locker deletes your settings and activity here. This can't be undone.
+#. Your data (Account and each product page); moved from the portal's copy tables (P0-36).
+msgid "yourData.product.remove.body"
+msgstr "Polaris Locker가 여기의 설정과 활동을 삭제합니다. 되돌릴 수 없습니다."
+
+#. Support code
+#. Your data (Account and each product page); moved from the portal's copy tables (P0-36).
+msgid "yourData.product.support.title"
+msgstr "지원 코드"
+
+#. Read it to the app's support team.
+#. Your data (Account and each product page); moved from the portal's copy tables (P0-36).
+msgid "yourData.product.support.body"
+msgstr "앱 지원팀에 알려 주세요."
+
+#. Keep my data
+#. Your data (Account and each product page); moved from the portal's copy tables (P0-36).
+msgid "yourData.remove.keep"
+msgstr "내 데이터 유지"
+
+#. macos: Keep My Data
+msgctxt "macos"
+msgid "yourData.remove.keep"
+msgstr "내 데이터 유지"
+
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).
 msgid "core.fallback.title"

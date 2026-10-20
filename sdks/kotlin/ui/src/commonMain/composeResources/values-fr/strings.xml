@@ -1589,6 +1589,148 @@
     <string name="signin_rateLimitedFew">Trop de codes. Réessayez dans quelques minutes.</string>
     <!-- Sign-in card, code step: the address belongs to another account that does not use it as a sign-in method. Polaris Locker is never translated. -->
     <string name="signin_code_emailInUse">Un autre compte Polaris Locker utilise cet e-mail. Connectez-vous comme avant.</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_title">Profil</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_subtitle">Votre apparence dans Polaris Locker et, avec votre accord, dans une app.</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_edit">Modifier le profil</string>
+    <string name="profile_edit__macos">Modifier le profil</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_editShort">Modifier</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_addPicture">Ajouter une photo</string>
+    <string name="profile_addPicture__macos">Ajouter une photo</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_preview">Aperçu</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_name_label">Nom affiché</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_name_yourChoice">Votre choix</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_name_useFrom">Utiliser un nom de</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_name_required">Saisissez un nom.</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_picture_label">Photo</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_picture_inUse">Utilisée</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_picture_initials">Initiales</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_picture_initialsNote">Pas de photo</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_picture_upload">Importer</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_picture_uploadNote">PNG ou JPEG, 5 Mo maximum</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_picture_uploading">Importation…</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_picture_uploaded">Photo importée. Enregistrez votre profil pour l'utiliser.</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_picture_yourUpload">Votre import</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_picture_yourUploadNote">Recadrée en carré</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_picture_current">Photo actuelle</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_picture_currentNote">D'une méthode de connexion supprimée</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_birthdate_label">Date de naissance</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_birthdate_optional">Facultatif</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_birthdate_hint">Privée. Les apps ne la reçoivent jamais.</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_birthdate_remove">Supprimer la date de naissance</string>
+    <string name="profile_birthdate_remove__macos">Supprimer la date de naissance</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_birthdate_removeShort">Supprimer</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_note">Les photos sont copiées dans Polaris Locker : ni cette page ni aucune app ne les charge depuis le fournisseur. Un nom ou une photo importés suivent leur fournisseur jusqu'à ce que vous en choisissiez un vous-même ; ensuite, votre choix reste.</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_save">Enregistrer le profil</string>
+    <string name="profile_save__macos">Enregistrer le profil</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_saved">Profil enregistré</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_loadError">Votre profil ne s'est pas chargé</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_removedMethod">une méthode de connexion supprimée</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_error_invalidName">Saisissez un nom.</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_error_invalidBirthdate">Saisissez une date entre 1900 et aujourd'hui.</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_error_unknownSource">Cette méthode de connexion n'est plus sur ce compte. Choisissez à nouveau.</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_error_noName">Cette méthode de connexion n'a pas partagé de nom. Choisissez-en une autre ou saisissez-en un.</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_error_noPicture">Cette méthode de connexion n'a pas partagé de photo. Choisissez-en une autre.</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_error_unknownUpload">Cet import a expiré. Importez à nouveau la photo.</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_error_tooLarge">Utilisez une photo de 5 Mo maximum.</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_error_unsupportedType">Utilisez une photo PNG ou JPEG.</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_error_unreadableImage">Nous n'avons pas pu lire cette photo. Essayez un autre PNG ou JPEG.</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_error_uploadLimit">Vous pouvez importer 10 photos par heure. Réessayez plus tard.</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_error_uploadUnavailable">L'import de photos n'est pas disponible pour le moment. Réessayez plus tard.</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). Arguments: 1=provider. -->
+    <string name="profile_name_typedHint">Vous avez saisi ce nom : se connecter avec %1$s ne le changera pas.</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_name_typedHintAny">Vous avez saisi ce nom : se connecter ne le changera pas.</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). Arguments: 1=provider. -->
+    <string name="profile_name_pickedHint">Vous avez choisi le nom de %1$s : se connecter ne le changera pas.</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). Arguments: 1=provider. -->
+    <string name="profile_name_followsHint">Ce nom vient de %1$s et le suit jusqu'à ce que vous en saisissiez ou choisissiez un vous-même.</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_source_nameTyped">Nom saisi par vous</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). Arguments: 1=provider. -->
+    <string name="profile_source_nameFrom">Nom de %1$s</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). Arguments: 1=provider. -->
+    <string name="profile_source_pictureFrom">photo de %1$s</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_source_pictureUploaded">photo importée par vous</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_source_pictureInitials">initiales au lieu d'une photo</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_source_appleNoPicture">Apple ne partage pas de photo</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_source_noPicture">pas de photo</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). Arguments: 1=provider. -->
+    <string name="profile_picture_earlierNote">Une ancienne photo de %1$s</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). Arguments: 1=name, 2=provider. -->
+    <string name="profile_name_chip">Utiliser le nom %1$s de %2$s</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). Arguments: 1=date. -->
+    <string name="profile_birthdate_line">Né(e) le %1$s · privé</string>
+    <!-- Your data (Account and each product page); moved from the portal's copy tables (P0-36). -->
+    <string name="yourData_account_copy_title">Télécharger mes données</string>
+    <!-- Your data (Account and each product page); moved from the portal's copy tables (P0-36). -->
+    <string name="yourData_account_copy_body">Compte, méthodes de connexion, licences, appareils et données de chaque app. Ni clés ni jetons.</string>
+    <!-- Your data (Account and each product page); moved from the portal's copy tables (P0-36). -->
+    <string name="yourData_account_copy_button">Télécharger mes données</string>
+    <string name="yourData_account_copy_button__macos">Télécharger mes données</string>
+    <!-- Your data (Account and each product page); moved from the portal's copy tables (P0-36). -->
+    <string name="yourData_copy_private">Il contient des informations personnelles : gardez-le privé.</string>
+    <!-- Your data (Account and each product page); moved from the portal's copy tables (P0-36). -->
+    <string name="yourData_copy_started">Votre téléchargement a commencé</string>
+    <!-- Your data (Account and each product page); moved from the portal's copy tables (P0-36). -->
+    <string name="yourData_product_copy_title">Télécharger mes données</string>
+    <!-- Your data (Account and each product page); moved from the portal's copy tables (P0-36). -->
+    <string name="yourData_product_remove_title">Supprimer mes données</string>
+    <!-- Your data (Account and each product page); moved from the portal's copy tables (P0-36). -->
+    <string name="yourData_product_remove_body">Polaris Locker supprime ici vos réglages et votre activité. Cette action est irréversible.</string>
+    <!-- Your data (Account and each product page); moved from the portal's copy tables (P0-36). -->
+    <string name="yourData_product_support_title">Code d'assistance</string>
+    <!-- Your data (Account and each product page); moved from the portal's copy tables (P0-36). -->
+    <string name="yourData_product_support_body">Communiquez-le à l'équipe d'assistance de l'app.</string>
+    <!-- Your data (Account and each product page); moved from the portal's copy tables (P0-36). -->
+    <string name="yourData_remove_keep">Garder mes données</string>
+    <string name="yourData_remove_keep__macos">Garder mes données</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">Something went wrong</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

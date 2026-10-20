@@ -117,12 +117,23 @@ export const KEY_NAMESPACES = [
   "common",
   "a11y",
   "signin",
+  // The customer portal's Account page (PX-31a): the profile card and Your data.
+  "profile",
+  "yourData",
   // The terminal kits' own strings: help, key hints, status rows (UK-14, UK-13).
   "cli",
 ] as const;
 
 /** Namespaces whose keys need not be listed by a component state (parts and shared groups). */
-const SHARED_NAMESPACES = new Set(["part", "common", "a11y", "signin", "cli"]);
+const SHARED_NAMESPACES = new Set([
+  "part",
+  "common",
+  "a11y",
+  "signin",
+  "cli",
+  "profile",
+  "yourData",
+]);
 
 /** The §4.1 component names, exactly. */
 export const COMPONENTS = [

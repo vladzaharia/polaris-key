@@ -4192,6 +4192,376 @@ msgstr "コードが多すぎます。数分後にもう一度お試しくださ
 msgid "signin.code.emailInUse"
 msgstr "別の Polaris Locker アカウントがこのメールアドレスを使用しています。以前の方法でサインインしてください。"
 
+#. Profile
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.title"
+msgstr "プロフィール"
+
+#. How you appear in Polaris Locker, and to an app once you agree to share it.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.subtitle"
+msgstr "Polaris Lockerでの表示と、同意した場合にアプリへ表示される内容です。"
+
+#. Edit profile
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.edit"
+msgstr "プロフィールを編集"
+
+#. macos: Edit Profile
+msgctxt "macos"
+msgid "profile.edit"
+msgstr "プロフィールを編集"
+
+#. Edit
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.editShort"
+msgstr "編集"
+
+#. Add a picture
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.addPicture"
+msgstr "画像を追加"
+
+#. macos: Add a Picture
+msgctxt "macos"
+msgid "profile.addPicture"
+msgstr "画像を追加"
+
+#. Preview
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.preview"
+msgstr "プレビュー"
+
+#. Screen name
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.name.label"
+msgstr "表示名"
+
+#. Your choice
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.name.yourChoice"
+msgstr "自分で入力"
+
+#. Use a name from
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.name.useFrom"
+msgstr "次の名前を使う"
+
+#. Enter a name.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.name.required"
+msgstr "名前を入力してください。"
+
+#. Picture
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.picture.label"
+msgstr "画像"
+
+#. In use
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.picture.inUse"
+msgstr "使用中"
+
+#. Initials
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.picture.initials"
+msgstr "イニシャル"
+
+#. No picture
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.picture.initialsNote"
+msgstr "画像なし"
+
+#. Upload
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.picture.upload"
+msgstr "アップロード"
+
+#. PNG or JPEG, up to 5 MB
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.picture.uploadNote"
+msgstr "PNGまたはJPEG、5 MBまで"
+
+#. Uploading…
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.picture.uploading"
+msgstr "アップロード中…"
+
+#. Picture uploaded. Save your profile to use it.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.picture.uploaded"
+msgstr "画像をアップロードしました。使うにはプロフィールを保存してください。"
+
+#. Your upload
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.picture.yourUpload"
+msgstr "アップロードした画像"
+
+#. Cropped to a square
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.picture.yourUploadNote"
+msgstr "正方形に切り抜き"
+
+#. Current picture
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.picture.current"
+msgstr "現在の画像"
+
+#. From a sign-in method you removed
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.picture.currentNote"
+msgstr "削除したサインイン方法のもの"
+
+#. Birth date
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.birthdate.label"
+msgstr "生年月日"
+
+#. Optional
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.birthdate.optional"
+msgstr "任意"
+
+#. Private to you. Apps never receive it.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.birthdate.hint"
+msgstr "自分だけに表示されます。アプリには送信されません。"
+
+#. Remove birth date
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.birthdate.remove"
+msgstr "生年月日を削除"
+
+#. macos: Remove Birth Date
+msgctxt "macos"
+msgid "profile.birthdate.remove"
+msgstr "生年月日を削除"
+
+#. Remove
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.birthdate.removeShort"
+msgstr "削除"
+
+#. Pictures are copied to Polaris Locker, so neither this page nor any app loads them from the provider. An imported name or picture follows its provider until you pick one yourself; after that, your choice stays.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.note"
+msgstr "画像はPolaris Lockerにコピーされるため、このページもアプリも提供元から読み込みません。取り込んだ名前や画像は、自分で選ぶまで提供元に追従し、選んだ後はその選択が維持されます。"
+
+#. Save profile
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.save"
+msgstr "プロフィールを保存"
+
+#. macos: Save Profile
+msgctxt "macos"
+msgid "profile.save"
+msgstr "プロフィールを保存"
+
+#. Profile saved
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.saved"
+msgstr "プロフィールを保存しました"
+
+#. Your profile didn't load
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.loadError"
+msgstr "プロフィールを読み込めませんでした"
+
+#. a sign-in method you removed
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.removedMethod"
+msgstr "削除したサインイン方法"
+
+#. Enter a name.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.error.invalidName"
+msgstr "名前を入力してください。"
+
+#. Enter a date from 1900 to today.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.error.invalidBirthdate"
+msgstr "1900年から今日までの日付を入力してください。"
+
+#. That sign-in method isn't on this account anymore. Choose again.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.error.unknownSource"
+msgstr "このサインイン方法はもうこのアカウントにありません。選び直してください。"
+
+#. That sign-in method didn't share a name. Choose another or type one.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.error.noName"
+msgstr "このサインイン方法は名前を共有していません。別の方法を選ぶか、名前を入力してください。"
+
+#. That sign-in method didn't share a picture. Choose another picture.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.error.noPicture"
+msgstr "このサインイン方法は画像を共有していません。別の画像を選んでください。"
+
+#. That upload has expired. Upload the picture again.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.error.unknownUpload"
+msgstr "このアップロードは期限切れです。画像をもう一度アップロードしてください。"
+
+#. Use a picture of 5 MB or less.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.error.tooLarge"
+msgstr "5 MB以下の画像を使ってください。"
+
+#. Use a PNG or JPEG picture.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.error.unsupportedType"
+msgstr "PNGまたはJPEGの画像を使ってください。"
+
+#. We couldn't read that picture. Try another PNG or JPEG.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.error.unreadableImage"
+msgstr "この画像を読み取れませんでした。別のPNGまたはJPEGを試してください。"
+
+#. You can upload 10 pictures an hour. Try again later.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.error.uploadLimit"
+msgstr "アップロードは1時間に10枚までです。しばらくしてからもう一度お試しください。"
+
+#. Picture uploads aren't available right now. Try again later.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.error.uploadUnavailable"
+msgstr "現在、画像をアップロードできません。しばらくしてからもう一度お試しください。"
+
+#. You typed this name, so signing in with {provider} won't change it.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.name.typedHint"
+msgstr "この名前は自分で入力したため、{provider}でサインインしても変わりません。"
+
+#. You typed this name, so signing in won't change it.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.name.typedHintAny"
+msgstr "この名前は自分で入力したため、サインインしても変わりません。"
+
+#. You picked the name from {provider}, so signing in won't change it.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.name.pickedHint"
+msgstr "{provider}の名前を選んだため、サインインしても変わりません。"
+
+#. This name comes from {provider} and follows it until you type or pick one yourself.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.name.followsHint"
+msgstr "この名前は{provider}のもので、自分で入力または選ぶまで{provider}に追従します。"
+
+#. Name typed by you
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.source.nameTyped"
+msgstr "自分で入力した名前"
+
+#. Name from {provider}
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.source.nameFrom"
+msgstr "{provider}の名前"
+
+#. picture from {provider}
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.source.pictureFrom"
+msgstr "{provider}の画像"
+
+#. picture uploaded by you
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.source.pictureUploaded"
+msgstr "自分でアップロードした画像"
+
+#. initials instead of a picture
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.source.pictureInitials"
+msgstr "画像の代わりにイニシャル"
+
+#. Apple doesn't share a picture
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.source.appleNoPicture"
+msgstr "Appleは画像を共有しません"
+
+#. no picture
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.source.noPicture"
+msgstr "画像なし"
+
+#. An earlier picture from {provider}
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.picture.earlierNote"
+msgstr "{provider}の以前の画像"
+
+#. Use the name {name} from {provider}
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.name.chip"
+msgstr "{provider}の名前「{name}」を使う"
+
+#. Born {date} · private to you
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.birthdate.line"
+msgstr "生年月日 {date} · 自分だけに表示"
+
+#. Download my data
+#. Your data (Account and each product page); moved from the portal's copy tables (P0-36).
+msgid "yourData.account.copy.title"
+msgstr "自分のデータをダウンロード"
+
+#. Account, sign-in methods, licenses, devices and each app's data. No keys or tokens.
+#. Your data (Account and each product page); moved from the portal's copy tables (P0-36).
+msgid "yourData.account.copy.body"
+msgstr "アカウント、サインイン方法、ライセンス、デバイス、各アプリのデータ。キーとトークンは含まれません。"
+
+#. Download my data
+#. Your data (Account and each product page); moved from the portal's copy tables (P0-36).
+msgid "yourData.account.copy.button"
+msgstr "自分のデータをダウンロード"
+
+#. macos: Download My Data
+msgctxt "macos"
+msgid "yourData.account.copy.button"
+msgstr "自分のデータをダウンロード"
+
+#. It holds personal details, so keep it private.
+#. Your data (Account and each product page); moved from the portal's copy tables (P0-36).
+msgid "yourData.copy.private"
+msgstr "個人情報が含まれます。外部に共有しないでください。"
+
+#. Your download has started
+#. Your data (Account and each product page); moved from the portal's copy tables (P0-36).
+msgid "yourData.copy.started"
+msgstr "ダウンロードを開始しました"
+
+#. Download my data
+#. Your data (Account and each product page); moved from the portal's copy tables (P0-36).
+msgid "yourData.product.copy.title"
+msgstr "自分のデータをダウンロード"
+
+#. Remove my data
+#. Your data (Account and each product page); moved from the portal's copy tables (P0-36).
+msgid "yourData.product.remove.title"
+msgstr "自分のデータを削除"
+
+#. Polaris Locker deletes your settings and activity here. This can't be undone.
+#. Your data (Account and each product page); moved from the portal's copy tables (P0-36).
+msgid "yourData.product.remove.body"
+msgstr "Polaris Lockerはここでの設定とアクティビティを削除します。元に戻せません。"
+
+#. Support code
+#. Your data (Account and each product page); moved from the portal's copy tables (P0-36).
+msgid "yourData.product.support.title"
+msgstr "サポートコード"
+
+#. Read it to the app's support team.
+#. Your data (Account and each product page); moved from the portal's copy tables (P0-36).
+msgid "yourData.product.support.body"
+msgstr "アプリのサポート担当に伝えてください。"
+
+#. Keep my data
+#. Your data (Account and each product page); moved from the portal's copy tables (P0-36).
+msgid "yourData.remove.keep"
+msgstr "データを残す"
+
+#. macos: Keep My Data
+msgctxt "macos"
+msgid "yourData.remove.keep"
+msgstr "データを残す"
+
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).
 msgid "core.fallback.title"
