@@ -1,0 +1,147 @@
+{
+  "version": "1.3.0",
+  "authority": "Key Edition 04 foundations; selected Locker A2; 19 October public-brand decision",
+  "brands": {
+    "key": {
+      "name": "Polaris Key",
+      "role": "Underlying platform",
+      "mark": "Pinned K; Star Cut for Delivery",
+      "darkAccent": "#9a5cff",
+      "lightAccent": "#7a2fff"
+    },
+    "locker": {
+      "name": "Polaris Locker",
+      "role": "All public-facing Polaris surfaces",
+      "mark": "A2 Compact Bookends",
+      "darkAccent": "#ff7869",
+      "lightAccent": "#c44438"
+    }
+  },
+  "dark": {
+    "page": "#060912",
+    "surface": "#0d111b",
+    "text": "#dbe4ff",
+    "muted": "#b5bed3",
+    "controlBoundary": "#61697b"
+  },
+  "light": {
+    "page": "#f6f8ff",
+    "surface": "#ffffff",
+    "text": "#262d40",
+    "muted": "#48536b",
+    "controlBoundary": "#7e8699"
+  },
+  "font": {
+    "family": "Rubik",
+    "technical": "JetBrains Mono",
+    "body": 400,
+    "control": 500,
+    "heading": 600,
+    "badgePrefix": 400
+  },
+  "geometry": {
+    "star": "Stationary four-point motif; use each approved drawing, not a swapped or redrawn star",
+    "clearSpace": "At least one quarter of visible glyph height",
+    "minimumMarkCssPx": 24,
+    "microExceptionCssPx": 16,
+    "smallMark": "Flat colour, no gradient; white star on dark; single ink in mono"
+  },
+  "opticalCuts": {
+    "key": {
+      "micro": "16-23 CSS px",
+      "service": "24-32 CSS px",
+      "display": "Above 32 CSS px; signing bit only at 48px and above"
+    },
+    "locker": {
+      "micro": "16-23 CSS px",
+      "master": "24 CSS px and above"
+    }
+  },
+  "interaction": {
+    "primaryTargetCssPx": 44,
+    "readingLineHeight": [
+      1.6,
+      1.75
+    ],
+    "stateCues": "Text or shape as well as colour",
+    "focus": "Visible focus on every actual background"
+  },
+  "motion": {
+    "pressMs": 80,
+    "navigationMs": [
+      200,
+      260
+    ],
+    "entranceMs": [
+      320,
+      480
+    ],
+    "reducedMotion": "Remove spatial movement and decorative loops",
+    "authority": "Reference ranges from Key Edition 04; canonical runtime motion system governs implementation"
+  },
+  "capabilities": [
+    {
+      "name": "License",
+      "displayAccent": "#c6e940",
+      "keyFamily": "Pinned K"
+    },
+    {
+      "name": "Config",
+      "displayAccent": "#fac700",
+      "keyFamily": "Pinned K"
+    },
+    {
+      "name": "Release",
+      "displayAccent": "#00dbfd",
+      "keyFamily": "Pinned K"
+    },
+    {
+      "name": "Distribution",
+      "displayAccent": "#39d075",
+      "keyFamily": "Star Cut"
+    },
+    {
+      "name": "Update",
+      "displayAccent": "#fe8001",
+      "keyFamily": "Star Cut"
+    },
+    {
+      "name": "Identity",
+      "displayAccent": "#d77df2",
+      "keyFamily": "Pinned K"
+    },
+    {
+      "name": "Cloud Sync",
+      "displayAccent": "#14f8e1",
+      "keyFamily": "Pinned K"
+    },
+    {
+      "name": "Commerce",
+      "displayAccent": "#39d075",
+      "keyFamily": "Star Cut"
+    },
+    {
+      "name": "Content Packs",
+      "displayAccent": "#fe8001",
+      "keyFamily": "Star Cut"
+    }
+  ],
+  "colourScope": "Coral identifies Locker; violet identifies Key. Keep capability accents unchanged in either context. Bright capability swatches are display references, not universal text or control colours.",
+  "badge": {
+    "publicBrand": "Polaris Locker",
+    "prefixWeight": 400,
+    "lockerCanvas": [
+      320,
+      104
+    ],
+    "lockerMinimumWidthCssPx": 320,
+    "padding": "Preserve the complete supplied canvas and vertical space. Approved Key badge canvases retain their own proportions."
+  },
+  "reserved": {
+    "signatureDark": "#ffc24d",
+    "signatureLight": "#d07a00",
+    "signatureRule": "Gold is signature meaning, not premium or warning. No signing bit on Locker or badges.",
+    "parentBlue": "#3b82ff",
+    "excludedKeyIndigo": "#5b7cfa"
+  }
+}

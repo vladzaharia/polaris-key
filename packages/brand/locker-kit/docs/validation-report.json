@@ -1,40 +1,27 @@
 {
-  "svg_files_parsed": 52,
-  "png_files_decoded": 225,
-  "explicit_micro_ico_layers": "dark and light match 16px PNG source",
-  "parent_guide": "first 35 pages text unchanged in combined 41-page reference",
-  "document_layout": "18 Locker and 6 addendum pages rendered and visually inspected",
-  "colour_pairs": [
-    {
-      "pair": "Coral / dark",
-      "foreground": "#ff7869",
-      "background": "#060912",
-      "ratio": 7.714
-    },
-    {
-      "pair": "Deep coral / light",
-      "foreground": "#c44438",
-      "background": "#f6f8ff",
-      "ratio": 4.677
-    },
-    {
-      "pair": "White / deep coral",
-      "foreground": "#ffffff",
-      "background": "#c44438",
-      "ratio": 4.963
-    },
-    {
-      "pair": "Dark / coral",
-      "foreground": "#060912",
-      "background": "#ff7869",
-      "ratio": 7.714
-    },
-    {
-      "pair": "Body / dark",
-      "foreground": "#dbe4ff",
-      "background": "#060912",
-      "ratio": 15.682
-    }
+  "revision": "1.3.0",
+  "keyGuidePages": 38,
+  "lockerGuidePages": 20,
+  "restoration": "All 34 original non-contents pages retain their original text and artwork; footer numbering updated. Contents rebuilt with links.",
+  "lockerSectionPages": [
+    21,
+    22,
+    23
   ],
-  "limits": "Application integration, print profiles and platform submissions require target-specific review."
+  "sharedTokensVerified": [
+    "page",
+    "surface",
+    "text",
+    "muted",
+    "controlBoundary",
+    "font",
+    "brand roles"
+  ],
+  "badgeLabels": 16,
+  "badgeSvgVariants": 144,
+  "badgeVectorPdfs": 144,
+  "badgePngExports": 432,
+  "approvedGeometry": "Pinned K / Star Cut reference retained; Locker A2 and micro paths unchanged.",
+  "review": "All 20 Locker pages, rebuilt Key contents and three inserted pages, and all five badge catalogue pages visually reviewed after font correction. Colour/mono size sheet reviewed at 16, 24, 32, 48 and 96px.",
+  "fontWeights": "Distinct embedded Rubik Regular, Medium and SemiBold verified; outlined badges retain 400 prefix and 500 brand."
 }

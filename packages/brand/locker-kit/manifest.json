@@ -1,10 +1,245 @@
 {
-  "version": "1.0.0",
+  "version": "1.3.0",
   "files": [
     {
       "path": "README.md",
-      "bytes": 2489,
-      "sha256": "38578b3b6023e4485335d8dbcdec6c1661e40cab3ccbdba0e222d17a4e859063"
+      "bytes": 3511,
+      "sha256": "c6cb682cc98635e3f3be4b54d2a9b4327bdc3cd66e6d35bef38628ce4baa8290"
+    },
+    {
+      "path": "badges/README.md",
+      "bytes": 1595,
+      "sha256": "2573e44b4bf84a5d40f7623a1e3ce06a1495d4881457671b60a4953272050198"
+    },
+    {
+      "path": "badges/index.json",
+      "bytes": 3559,
+      "sha256": "dbf8b0012d4edc3dfb5cfd52d4b213aa4a164ec3d711f549b81e30ae308adda4"
+    },
+    {
+      "path": "badges/locker-available-in-dark-outline-1280.png",
+      "bytes": 35193,
+      "sha256": "0c0176e6908beffbb9083b6ec139a659add2dc4cb84305f92ed6cddb3df382e3"
+    },
+    {
+      "path": "badges/locker-available-in-dark-outline-320.png",
+      "bytes": 7971,
+      "sha256": "ba347f4cd3195358d5dc19fdf48eaabee6482e05837ca27594f3487682f8ae5f"
+    },
+    {
+      "path": "badges/locker-available-in-dark-outline-640.png",
+      "bytes": 16853,
+      "sha256": "723e9935b901f673868076966f49f75138f1d497bcd9a84fdd9d5d87a63f9020"
+    },
+    {
+      "path": "badges/locker-available-in-dark-outline.pdf",
+      "bytes": 11050,
+      "sha256": "d4197199d17914ffb7d7691c09218db96f700c2a734cb92f9ae75f3fe9f974b0"
+    },
+    {
+      "path": "badges/locker-available-in-dark-outline.svg",
+      "bytes": 21079,
+      "sha256": "b02f3ad47df400c8298d2a076851ec54069243f3855dbc464e15dca558165b87"
+    },
+    {
+      "path": "badges/locker-available-in-dark-sticker-1280.png",
+      "bytes": 32524,
+      "sha256": "83aab90ab74145a02e92be43aa61c409eda8ddb6b33dc400d40a0293931b7ad3"
+    },
+    {
+      "path": "badges/locker-available-in-dark-sticker-320.png",
+      "bytes": 7462,
+      "sha256": "16f634f594c69e8ac5086e4ef96e14c1a0de9c850cd312457014e4f218077db4"
+    },
+    {
+      "path": "badges/locker-available-in-dark-sticker-640.png",
+      "bytes": 15443,
+      "sha256": "1fe95ffea86b1c4dea5fbf6fad4cc71e08ede511a7cc82f2d490ab684579e46d"
+    },
+    {
+      "path": "badges/locker-available-in-dark-sticker.pdf",
+      "bytes": 11050,
+      "sha256": "1706ea51ca58d85f09c52a651580713b324a96c3239d8fade4ffdaf48b1df742"
+    },
+    {
+      "path": "badges/locker-available-in-dark-sticker.svg",
+      "bytes": 21079,
+      "sha256": "52b6dbabab0120af510a0e2315273fef7272dd1441f272871c06af616987180a"
+    },
+    {
+      "path": "badges/locker-available-in-dark-transparent-1280.png",
+      "bytes": 24881,
+      "sha256": "4bd750fcfb007fb190ed5b3fd244c349a08a444888a58ee7cd4855b2bcb7cac5"
+    },
+    {
+      "path": "badges/locker-available-in-dark-transparent-320.png",
+      "bytes": 5620,
+      "sha256": "5a21b0f04ff79c0d5acf251825678998dbcf2bddc091df1b37db52165af8b9f1"
+    },
+    {
+      "path": "badges/locker-available-in-dark-transparent-640.png",
+      "bytes": 11701,
+      "sha256": "a42a944263ce4347b2822b149556b45b5373f7fd69154381ea7e650d39339b24"
+    },
+    {
+      "path": "badges/locker-available-in-dark-transparent.pdf",
+      "bytes": 10905,
+      "sha256": "596cd0ba79d4637e95c7ca2eca655e779f511033def363ef8ebc404baddb1570"
+    },
+    {
+      "path": "badges/locker-available-in-dark-transparent.svg",
+      "bytes": 20978,
+      "sha256": "0719018041a3caa802f595204b0ec10a079b0c7357fe8fbd08be42b491c5912e"
+    },
+    {
+      "path": "badges/locker-available-in-light-outline-1280.png",
+      "bytes": 35688,
+      "sha256": "515ecd2bb1d4875aa0f4877f080a1b29545f53abec62da87fd6c1d433b9cc3b4"
+    },
+    {
+      "path": "badges/locker-available-in-light-outline-320.png",
+      "bytes": 8090,
+      "sha256": "aa652c3a4887e4a913137d832423d191824d385b2eccac876ea71ad947f907b3"
+    },
+    {
+      "path": "badges/locker-available-in-light-outline-640.png",
+      "bytes": 16892,
+      "sha256": "876fd7971fca12ac272899ed96cbb44a86b176bea78c9e34ca1ca67eb55d6cde"
+    },
+    {
+      "path": "badges/locker-available-in-light-outline.pdf",
+      "bytes": 11057,
+      "sha256": "26dae8f762e03721dda5d6669d4e4d5ecca6ed030b717634f806c7ee6dd523b8"
+    },
+    {
+      "path": "badges/locker-available-in-light-outline.svg",
+      "bytes": 21079,
+      "sha256": "1d75649e0166df72e05cc8020538af726562ee4b768022accf86c2c0930e8a99"
+    },
+    {
+      "path": "badges/locker-available-in-light-sticker-1280.png",
+      "bytes": 32243,
+      "sha256": "797af6e49e3879e6630d73ff5fa2a68c498e1d4d7ca8d4aec10724e0b9cac8be"
+    },
+    {
+      "path": "badges/locker-available-in-light-sticker-320.png",
+      "bytes": 7371,
+      "sha256": "c71948bee4d441e7eb3359b8d1de82f7c4ce7a39238aa9f2843e9c62d4dff325"
+    },
+    {
+      "path": "badges/locker-available-in-light-sticker-640.png",
+      "bytes": 15306,
+      "sha256": "e47783413476d321c379cb457c919fca642b6f9738cde6e8cbbd507b69808de0"
+    },
+    {
+      "path": "badges/locker-available-in-light-sticker.pdf",
+      "bytes": 11054,
+      "sha256": "c9c4bd8a8da804326cb4f48bb94ad24d83bf1416fdfb8ecfcf07b60a95c10560"
+    },
+    {
+      "path": "badges/locker-available-in-light-sticker.svg",
+      "bytes": 21079,
+      "sha256": "64eb2d32bf2ce15865a0f95d48345d5f20ce83a0b44179aae6904031efa3fb4b"
+    },
+    {
+      "path": "badges/locker-available-in-light-transparent-1280.png",
+      "bytes": 26902,
+      "sha256": "b640cbf6c619a91ed3ad9e702d4be9004d0895f357606fb038daf9f82d63c9bf"
+    },
+    {
+      "path": "badges/locker-available-in-light-transparent-320.png",
+      "bytes": 6226,
+      "sha256": "0e5aa691d2426df2202ec78cf3c02d8830eff2c7cac7ea56d55d7649e18db5da"
+    },
+    {
+      "path": "badges/locker-available-in-light-transparent-640.png",
+      "bytes": 12758,
+      "sha256": "ebe64074ec161dd5763c59419c7ab2c15af4d513c2d79afacd516e6a3ca74896"
+    },
+    {
+      "path": "badges/locker-available-in-light-transparent.pdf",
+      "bytes": 10910,
+      "sha256": "87722d6d6be96e05fdc82eccd3539019372c400031117f5bb1666f1831bedaaf"
+    },
+    {
+      "path": "badges/locker-available-in-light-transparent.svg",
+      "bytes": 20978,
+      "sha256": "2c88a1119e407455c8b87c0e6824baf0fd2f0411a3a138a0bf1c143da4c05c3b"
+    },
+    {
+      "path": "badges/locker-available-in-white-outline-1280.png",
+      "bytes": 34697,
+      "sha256": "bcdc865bec84676586fa8ecfe875f2e622eebc422bd5813856f05c318dc96268"
+    },
+    {
+      "path": "badges/locker-available-in-white-outline-320.png",
+      "bytes": 7717,
+      "sha256": "60ce395269ced6ff3749af52a8edffcce689a549b79d1c621a92ed4c6b9d33c6"
+    },
+    {
+      "path": "badges/locker-available-in-white-outline-640.png",
+      "bytes": 16323,
+      "sha256": "ee037c39dafe260f2dd91e34d2ef96a52440ec63285ffcb6ea35dfe541b60843"
+    },
+    {
+      "path": "badges/locker-available-in-white-outline.pdf",
+      "bytes": 11021,
+      "sha256": "9d509ba50791a17cc5e955b6f5a1f4db3d921a55da2082733b584ee0fb6052a1"
+    },
+    {
+      "path": "badges/locker-available-in-white-outline.svg",
+      "bytes": 21079,
+      "sha256": "d10f8881d2670e6cacf2590c81f50133d235ee033225d586f297240f9eaa5323"
+    },
+    {
+      "path": "badges/locker-available-in-white-sticker-1280.png",
+      "bytes": 32496,
+      "sha256": "d175133fa804b1045572436f88306cbcf58633fac9118368825011c3d8e6c157"
+    },
+    {
+      "path": "badges/locker-available-in-white-sticker-320.png",
+      "bytes": 7300,
+      "sha256": "3629f8cd9a4e08af569f831be4825e8440048b376ba096de9d03e18e8186aa3b"
+    },
+    {
+      "path": "badges/locker-available-in-white-sticker-640.png",
+      "bytes": 15236,
+      "sha256": "ce7d848d2cd18ca82c902eb8c4eb840dea609e1539eff3a41e9ed9e22b4db223"
+    },
+    {
+      "path": "badges/locker-available-in-white-sticker.pdf",
+      "bytes": 11024,
+      "sha256": "5716ea8ceeab6cfa46c14e7c70828c2aae7621fcd5d025b05e839a89edb7ba61"
+    },
+    {
+      "path": "badges/locker-available-in-white-sticker.svg",
+      "bytes": 21079,
+      "sha256": "0b341fc1e04f1fd879f170a86db466f497791347f2ec56f4d66f50fd84e4a5da"
+    },
+    {
+      "path": "badges/locker-available-in-white-transparent-1280.png",
+      "bytes": 20228,
+      "sha256": "6dec7fc6b20ed624375972adad849e25d75a5dff3296cd4b6700e902a9650412"
+    },
+    {
+      "path": "badges/locker-available-in-white-transparent-320.png",
+      "bytes": 4169,
+      "sha256": "2a8f20b702cc952196576ccbd7042e6683f4b86843d5bf6a304f8f0363906117"
+    },
+    {
+      "path": "badges/locker-available-in-white-transparent-640.png",
+      "bytes": 9091,
+      "sha256": "14b571a0ef057125049d5f1cb180bb23b10a3cfbdcbb679f2806cdd4ea4cb1db"
+    },
+    {
+      "path": "badges/locker-available-in-white-transparent.pdf",
+      "bytes": 10874,
+      "sha256": "2065b3c629b164a924c7cc6da681307c6265b5800f34841042557ac99ec49fad"
+    },
+    {
+      "path": "badges/locker-available-in-white-transparent.svg",
+      "bytes": 20978,
+      "sha256": "789247f0fac2a3d24fa847481bd1b1835d6738f0cfb8cc0af815ba76fedee263"
     },
     {
       "path": "badges/locker-available-on-dark-outline-1280.png",
@@ -24,12 +259,12 @@
     {
       "path": "badges/locker-available-on-dark-outline.pdf",
       "bytes": 11257,
-      "sha256": "a6685792299fc1c57d2afd45734f81ae4600287affe932dd351c25808986c8d0"
+      "sha256": "0bde18322aaee887e41631fe1a27b91809f40cb09a7ca8fba799f0d04197a1ca"
     },
     {
       "path": "badges/locker-available-on-dark-outline.svg",
-      "bytes": 21500,
-      "sha256": "8c3953984d8f44d8dc68d6338370f470caa2c1dc68e5c45ea546023174ed0bb7"
+      "bytes": 21513,
+      "sha256": "174734383f083fda8317ec123b3eb0dbba7262b74d8c9bc0fffdc66e5658bba2"
     },
     {
       "path": "badges/locker-available-on-dark-sticker-1280.png",
@@ -49,12 +284,12 @@
     {
       "path": "badges/locker-available-on-dark-sticker.pdf",
       "bytes": 11257,
-      "sha256": "6bdacc9e8414946959c97ab743b03be9f229ae6a56f251dad33465db62330a27"
+      "sha256": "94a1b46562a6c567bebf6d830f4f5a050678f132a3092d71837d36ad927abcd7"
     },
     {
       "path": "badges/locker-available-on-dark-sticker.svg",
-      "bytes": 21500,
-      "sha256": "8f976829ef59ca25c1daf6a2245bea818e2cbad6f7398c1b8d689664a8723405"
+      "bytes": 21513,
+      "sha256": "a1679c08b39834516c53f09061fb82e2d99eecabe0bb9a7a331d4d281391ced2"
     },
     {
       "path": "badges/locker-available-on-dark-transparent-1280.png",
@@ -74,12 +309,12 @@
     {
       "path": "badges/locker-available-on-dark-transparent.pdf",
       "bytes": 11113,
-      "sha256": "85ae5dac509c50317bfcef7e6184768fd419349e518387a28dd8ee1231d27159"
+      "sha256": "0929c52dd3b978b51e248a52b66faae4ab460e8f743ee97b7e327ea0ab6454da"
     },
     {
       "path": "badges/locker-available-on-dark-transparent.svg",
-      "bytes": 21399,
-      "sha256": "e5a8e275cbbc21854b29509e7c772d532d0f07930defd3174341681260289cdc"
+      "bytes": 21412,
+      "sha256": "71ebdebd5f6eb4ec74e9eeb6145e5697e223eda3c90d575e47f8bd8e47d54c7b"
     },
     {
       "path": "badges/locker-available-on-light-outline-1280.png",
@@ -99,12 +334,12 @@
     {
       "path": "badges/locker-available-on-light-outline.pdf",
       "bytes": 11262,
-      "sha256": "8e6e88dad3c25fbdd03888894e104499e9bb2a99cef1c01df062701f000ec732"
+      "sha256": "50cb85b0fcf3326d24f97ff22d7258a752afd00d66b609ffa0c8bf0a51198c05"
     },
     {
       "path": "badges/locker-available-on-light-outline.svg",
-      "bytes": 21500,
-      "sha256": "b7758aa0702e8eb28683e0914fadad76bffa8ab041d75ad77b977adc79c19b6d"
+      "bytes": 21513,
+      "sha256": "916466c7f3104f20cce4ad6e77ce9e149d0c7770c482dcc6ae127ea34e813b1b"
     },
     {
       "path": "badges/locker-available-on-light-sticker-1280.png",
@@ -124,12 +359,12 @@
     {
       "path": "badges/locker-available-on-light-sticker.pdf",
       "bytes": 11260,
-      "sha256": "a20a97707b4877eab81e9b0f2c17afb5b9fb4428602538b39b54c59a45533700"
+      "sha256": "95aa5e6c492ac41a5b9d8182d68d53fc115074f1bf7e65c617085810e6247bdf"
     },
     {
       "path": "badges/locker-available-on-light-sticker.svg",
-      "bytes": 21500,
-      "sha256": "ce8c59088e7685a0b14325a9274b7d85e43d26d4afed96c51839ac48cec0809e"
+      "bytes": 21513,
+      "sha256": "1791b0245c390e68431761c3fc88836ea8f03e51c7ef42a66476748ea2847a9c"
     },
     {
       "path": "badges/locker-available-on-light-transparent-1280.png",
@@ -149,12 +384,12 @@
     {
       "path": "badges/locker-available-on-light-transparent.pdf",
       "bytes": 11116,
-      "sha256": "571e2aa97ca27a1cfa1de98898185360c2369e34e235ad6b376308bf1bce4928"
+      "sha256": "26190b7416a11dfc145024715167428af44846636d8c5970150b9921827d2dbf"
     },
     {
       "path": "badges/locker-available-on-light-transparent.svg",
-      "bytes": 21399,
-      "sha256": "a77eb8085a1cf844ce4e1d464f57be33214c3c6958bbb9494b994790ea6a30c8"
+      "bytes": 21412,
+      "sha256": "a20c3fd7fddc23fa01ec99e1fbcc60115764c0f2b8d6db1912bca500c3654251"
     },
     {
       "path": "badges/locker-available-on-white-outline-1280.png",
@@ -174,12 +409,12 @@
     {
       "path": "badges/locker-available-on-white-outline.pdf",
       "bytes": 11229,
-      "sha256": "65c152551553c9bc489447955288812851f0e11c6981f461ee78bbf054ac2fb0"
+      "sha256": "dac25ad7a3fdfdf5191416e3cd71a25a313b78b0b851dc5926407b963d710df5"
     },
     {
       "path": "badges/locker-available-on-white-outline.svg",
-      "bytes": 21500,
-      "sha256": "31ed44f0f9eab1ef5814f4e24b37f652ca47a9a3a894ba310a45a3aa837f84b0"
+      "bytes": 21513,
+      "sha256": "6ae7bafc5e4262927ffce7593ca0f23fc7e97b5b349845f08097340c81e4a8b7"
     },
     {
       "path": "badges/locker-available-on-white-sticker-1280.png",
@@ -199,12 +434,12 @@
     {
       "path": "badges/locker-available-on-white-sticker.pdf",
       "bytes": 11231,
-      "sha256": "9967af7fee8a83e3614102f546a2d44dfa72f03d7e5cc252058376a8fdbd73bb"
+      "sha256": "bb38646d0e27bc00135c0467ce202797fa804852c85ba2a8e5c625a550c3c574"
     },
     {
       "path": "badges/locker-available-on-white-sticker.svg",
-      "bytes": 21500,
-      "sha256": "414d18290edc4f8e75f2ed5ffab643d6677bbee2ed8f663e45701048e2510d90"
+      "bytes": 21513,
+      "sha256": "9126cd3509f30028edbd70b4a87fbbe4c334e07ba75a1d8c1f6724d04a239ddc"
     },
     {
       "path": "badges/locker-available-on-white-transparent-1280.png",
@@ -224,12 +459,1587 @@
     {
       "path": "badges/locker-available-on-white-transparent.pdf",
       "bytes": 11082,
-      "sha256": "d596ad268b103217fe368f9e2d4d09cd3c0077b6e52a1b72cb48f82a12755cf0"
+      "sha256": "7d05b03de2b56c941c2ab83db5ce8145e2e806806e79c3d8df4a6ce5e98c6170"
     },
     {
       "path": "badges/locker-available-on-white-transparent.svg",
-      "bytes": 21399,
-      "sha256": "fd77a6c0f3cc74827de9df614ac38a01ab1c7a7859e02fe1843d986aa0033ed4"
+      "bytes": 21412,
+      "sha256": "e60a1389d4788b53597aaaa6e80998428d0b171718cc77b4c0849fb3308c15c0"
+    },
+    {
+      "path": "badges/locker-buy-on-dark-outline-1280.png",
+      "bytes": 32327,
+      "sha256": "e85b32166f52b978b978b6ee5a2cc6504ca0d6ac93f12a3c4bfb9f53caf9cbec"
+    },
+    {
+      "path": "badges/locker-buy-on-dark-outline-320.png",
+      "bytes": 7395,
+      "sha256": "a53216dbb370c780a2e7185c043fd46c161a6aaf5b632e8ddd7f58e483ad0d82"
+    },
+    {
+      "path": "badges/locker-buy-on-dark-outline-640.png",
+      "bytes": 15313,
+      "sha256": "efcf5567d14913b4cb518949c5e58bcaf3770c6cc272880f3db524eaa7b5ae66"
+    },
+    {
+      "path": "badges/locker-buy-on-dark-outline.pdf",
+      "bytes": 8809,
+      "sha256": "6f3b93215034ce5a6cf29b7a7ffe95b331c7504048e643190e720e42eeaafd4e"
+    },
+    {
+      "path": "badges/locker-buy-on-dark-outline.svg",
+      "bytes": 16569,
+      "sha256": "935f43bf1bee9e76efa0bce6b989fd26365b3288b72826a80ab0645ab77daad4"
+    },
+    {
+      "path": "badges/locker-buy-on-dark-sticker-1280.png",
+      "bytes": 29609,
+      "sha256": "8687520aaa742d172ce75f73bb9b3f9fc925146cceda3d7add8ef2b12f50eccd"
+    },
+    {
+      "path": "badges/locker-buy-on-dark-sticker-320.png",
+      "bytes": 6877,
+      "sha256": "08c714c22c07c8a7a70546ad7e84096faaabf88565de31ad587a4fe5d6244212"
+    },
+    {
+      "path": "badges/locker-buy-on-dark-sticker-640.png",
+      "bytes": 13900,
+      "sha256": "cf2f3bf788cc9d5fe375b93a5da5459d114997b88be1760bc4bf26de21405b0e"
+    },
+    {
+      "path": "badges/locker-buy-on-dark-sticker.pdf",
+      "bytes": 8811,
+      "sha256": "b026bdb008352be5fe949fadb49a142e18f44bded9e6d5340faef80bb79ae2d3"
+    },
+    {
+      "path": "badges/locker-buy-on-dark-sticker.svg",
+      "bytes": 16569,
+      "sha256": "2841a9cb13a4f3682f541a7e2081f5c322c01389762995f92f72f34b2c91d528"
+    },
+    {
+      "path": "badges/locker-buy-on-dark-transparent-1280.png",
+      "bytes": 22334,
+      "sha256": "fb11ece25803cd265b5237ee18fd496365e8ac701716660d247fcf97b4f25d32"
+    },
+    {
+      "path": "badges/locker-buy-on-dark-transparent-320.png",
+      "bytes": 5089,
+      "sha256": "7118b1caf2bb1ba515431ccc623aff527077c3255fc6a980221d88054b79d4f0"
+    },
+    {
+      "path": "badges/locker-buy-on-dark-transparent-640.png",
+      "bytes": 10462,
+      "sha256": "6033c7a7fd4aedd8545bcca708b0792f7828cb3c6465a12ba20dfc8b995f2798"
+    },
+    {
+      "path": "badges/locker-buy-on-dark-transparent.pdf",
+      "bytes": 8665,
+      "sha256": "466c3757e9cb8f6f30eb61439949991054eea7050e73e171e1a996210ed05847"
+    },
+    {
+      "path": "badges/locker-buy-on-dark-transparent.svg",
+      "bytes": 16468,
+      "sha256": "8db20e611809804d7b1935f0ce65ad9ffdc6f212e41a02ef05563d3d5cabb875"
+    },
+    {
+      "path": "badges/locker-buy-on-light-outline-1280.png",
+      "bytes": 32829,
+      "sha256": "2f729e128fadac517a3be8a210983e6f2e5058204fb7593c73f1789b9e118fa2"
+    },
+    {
+      "path": "badges/locker-buy-on-light-outline-320.png",
+      "bytes": 7519,
+      "sha256": "d63bd2328d294a5169d89bdfa850751aef73a94fbd71f4b5260ef4e328d148fc"
+    },
+    {
+      "path": "badges/locker-buy-on-light-outline-640.png",
+      "bytes": 15316,
+      "sha256": "a9d78e1c03d484b67a58f63b235fca73b2407b0e357e5f5f6bc6f26678f8985c"
+    },
+    {
+      "path": "badges/locker-buy-on-light-outline.pdf",
+      "bytes": 8815,
+      "sha256": "0c4f6fab1192715aeb85b57abbbefc7ebdee8f8cfa3cf9c340ad64b0693c06c5"
+    },
+    {
+      "path": "badges/locker-buy-on-light-outline.svg",
+      "bytes": 16569,
+      "sha256": "6ec50f2b49aee763d0c64e409d0dc37ead24f5d678c8729eed8e134c802e03db"
+    },
+    {
+      "path": "badges/locker-buy-on-light-sticker-1280.png",
+      "bytes": 29388,
+      "sha256": "50f26b7148093fb102fe739d3aae0568e45a561bc11505c201418f34a54fdb93"
+    },
+    {
+      "path": "badges/locker-buy-on-light-sticker-320.png",
+      "bytes": 6790,
+      "sha256": "149de9ffe56e828dcd4f04c94b0b1d123e3ebc12148e70c46622383b4ba7f8bb"
+    },
+    {
+      "path": "badges/locker-buy-on-light-sticker-640.png",
+      "bytes": 13764,
+      "sha256": "39455041b5ae013a0b32c2c41410c4354ff89c754451aab9f4c3bfcc0148ba29"
+    },
+    {
+      "path": "badges/locker-buy-on-light-sticker.pdf",
+      "bytes": 8813,
+      "sha256": "4e583e82545005defb5bdb85ad8a54599b46873e75dac6a967e55615f1866dde"
+    },
+    {
+      "path": "badges/locker-buy-on-light-sticker.svg",
+      "bytes": 16569,
+      "sha256": "d82474630e1f76338b50a95493e0004830df141d5259efa047879cd19df2cd1e"
+    },
+    {
+      "path": "badges/locker-buy-on-light-transparent-1280.png",
+      "bytes": 24133,
+      "sha256": "9ca40515d9eded0980dcc69b76501ff09bb4f74104234ba99f94248b938834e6"
+    },
+    {
+      "path": "badges/locker-buy-on-light-transparent-320.png",
+      "bytes": 5651,
+      "sha256": "1709dc2ede25067ed0b2e977aa48cc8e889ec7f9cc40d7879f2e6caef6c0b6b1"
+    },
+    {
+      "path": "badges/locker-buy-on-light-transparent-640.png",
+      "bytes": 11383,
+      "sha256": "730077269df9f24413b5f072d3983cb2645dbddc327d1da02fff79d7cd7e890c"
+    },
+    {
+      "path": "badges/locker-buy-on-light-transparent.pdf",
+      "bytes": 8670,
+      "sha256": "2dc2b29ed6b3e2610cf8eba9ac3f94045026e0efc739af35af06c444acd70855"
+    },
+    {
+      "path": "badges/locker-buy-on-light-transparent.svg",
+      "bytes": 16468,
+      "sha256": "07d552b70d3205e6cf199547e945e7878ec899093a47aa64d27c47e78f57b7d5"
+    },
+    {
+      "path": "badges/locker-buy-on-white-outline-1280.png",
+      "bytes": 31789,
+      "sha256": "74cf388ddb2abe6f7ca1c8ca7d214b3524dbd25d2d360627f9858e352df872f9"
+    },
+    {
+      "path": "badges/locker-buy-on-white-outline-320.png",
+      "bytes": 7193,
+      "sha256": "f55b2950bc4ba06aa1544aa2c115090adec8a96b74703e729b031d7d1cd958a5"
+    },
+    {
+      "path": "badges/locker-buy-on-white-outline-640.png",
+      "bytes": 14821,
+      "sha256": "c507d5fd423c8750b3c54568b0c79e84170270f4b571fbe3db84f23fba275c01"
+    },
+    {
+      "path": "badges/locker-buy-on-white-outline.pdf",
+      "bytes": 8781,
+      "sha256": "4fb658a3dad4a91821e7ce090e8ccc9549d93e12cb6a15358c6e52a04fa36436"
+    },
+    {
+      "path": "badges/locker-buy-on-white-outline.svg",
+      "bytes": 16569,
+      "sha256": "1582280718a5402c778c678a7d8e75cb76d119e7789a294606b1199acb6f928c"
+    },
+    {
+      "path": "badges/locker-buy-on-white-sticker-1280.png",
+      "bytes": 29568,
+      "sha256": "f1b1a561f2d95cc24da277b858f65938a40f671ab611916332e348aca142f3e1"
+    },
+    {
+      "path": "badges/locker-buy-on-white-sticker-320.png",
+      "bytes": 6765,
+      "sha256": "1f796636228bdd09b0c24a779a76df3468c86bc77db1d4b3551db43bdd4258de"
+    },
+    {
+      "path": "badges/locker-buy-on-white-sticker-640.png",
+      "bytes": 13721,
+      "sha256": "fb9eda8ae3c1a33db4a0c6319879100bb3b5dc115d34c8870f5a34c43c6973f7"
+    },
+    {
+      "path": "badges/locker-buy-on-white-sticker.pdf",
+      "bytes": 8783,
+      "sha256": "5a1a90943e962c7858324ef6ab6d6c2b50d39cb5f652e8c8126c6954e58649de"
+    },
+    {
+      "path": "badges/locker-buy-on-white-sticker.svg",
+      "bytes": 16569,
+      "sha256": "d63aacd509a84feb7c83bcfb3128b5cc3697add838491cacde5b5b5a732ea19b"
+    },
+    {
+      "path": "badges/locker-buy-on-white-transparent-1280.png",
+      "bytes": 18228,
+      "sha256": "d7815f4ab44fe96b0db52d0a4956eb090ae711ab37e862c0101ccf2307f2692b"
+    },
+    {
+      "path": "badges/locker-buy-on-white-transparent-320.png",
+      "bytes": 3784,
+      "sha256": "e4b75dece063c3af012c680893370f522b9a5710daea6f1fc217d6be691a8ef0"
+    },
+    {
+      "path": "badges/locker-buy-on-white-transparent-640.png",
+      "bytes": 8101,
+      "sha256": "939784a4a1d865fd70881d267a4629c64ebbba0c65259d5e19d1bc9985818dca"
+    },
+    {
+      "path": "badges/locker-buy-on-white-transparent.pdf",
+      "bytes": 8633,
+      "sha256": "ccac85ffdf481bfa8825ae2d2f75ac017904daa29d0cc44763f372f61ef926ed"
+    },
+    {
+      "path": "badges/locker-buy-on-white-transparent.svg",
+      "bytes": 16468,
+      "sha256": "e931b48d26d6af28a09764caa843ea01a453093ff8df6f4ea6e39379e515caa4"
+    },
+    {
+      "path": "badges/locker-connect-with-dark-outline-1280.png",
+      "bytes": 36511,
+      "sha256": "64edcc8af4b92228cb0a75fb0c8a485f1d56f3fa64ed5b4d738569d69351c0a4"
+    },
+    {
+      "path": "badges/locker-connect-with-dark-outline-320.png",
+      "bytes": 8348,
+      "sha256": "8d5bac4f0aafb8190127d6f02f84fe8df04dce87c7aacbaf0c8744b48cb55ee3"
+    },
+    {
+      "path": "badges/locker-connect-with-dark-outline-640.png",
+      "bytes": 17452,
+      "sha256": "19f583e6411122ce5a1e7ea3b3c67741a383844438ee53d0b9fb967b7b8d247a"
+    },
+    {
+      "path": "badges/locker-connect-with-dark-outline.pdf",
+      "bytes": 11604,
+      "sha256": "09aaee72ca0530598eb411ef937b2bdf6d78d38a244d8be63cc3d64aeb981f1f"
+    },
+    {
+      "path": "badges/locker-connect-with-dark-outline.svg",
+      "bytes": 22123,
+      "sha256": "8a29f9f5b3a47bc1fcbfb1a72d4806dc9361803a30af8103aaf95290a0c9b5ef"
+    },
+    {
+      "path": "badges/locker-connect-with-dark-sticker-1280.png",
+      "bytes": 33875,
+      "sha256": "a59f046f35caaf2748286976b284648a55c15cd0f566ac29c839806814e6e037"
+    },
+    {
+      "path": "badges/locker-connect-with-dark-sticker-320.png",
+      "bytes": 7814,
+      "sha256": "c4542d4e727871e587a6d891276a6dcc5af4b360d13e96c821a3499b41e81e12"
+    },
+    {
+      "path": "badges/locker-connect-with-dark-sticker-640.png",
+      "bytes": 16009,
+      "sha256": "48cfa1de5bafc1ba9745d696d510af4d905e1265c7bb7c42b6edb61c8c85044c"
+    },
+    {
+      "path": "badges/locker-connect-with-dark-sticker.pdf",
+      "bytes": 11604,
+      "sha256": "d84e6d636ca51e1a16fdba91d450c159dbf18eda754515b14c1bc4643c59c711"
+    },
+    {
+      "path": "badges/locker-connect-with-dark-sticker.svg",
+      "bytes": 22123,
+      "sha256": "1d7fce3b93ece9f9eda0670e21e629e6ff94a0b02aed39d1102e316131c2f4aa"
+    },
+    {
+      "path": "badges/locker-connect-with-dark-transparent-1280.png",
+      "bytes": 25916,
+      "sha256": "2f5d4b567c8483165cb6232205e1d475ab71c0ab8f1b953c7bc144b4ab45ee35"
+    },
+    {
+      "path": "badges/locker-connect-with-dark-transparent-320.png",
+      "bytes": 5841,
+      "sha256": "b6af3ae5221ec80510e06f6af9f5e7f39309dfb7d9a70ff53e621368ffb7ec6e"
+    },
+    {
+      "path": "badges/locker-connect-with-dark-transparent-640.png",
+      "bytes": 12105,
+      "sha256": "fca4908a1369bdf44cc717e6e599a0a548ac969cbe4fe124cda4dda111986550"
+    },
+    {
+      "path": "badges/locker-connect-with-dark-transparent.pdf",
+      "bytes": 11451,
+      "sha256": "477caa17b839cd30ca696ec43cb230973f5b21c75cfbbd402cc7738cbfb63c1a"
+    },
+    {
+      "path": "badges/locker-connect-with-dark-transparent.svg",
+      "bytes": 22022,
+      "sha256": "693410d0a07b0bf69319078b319464cca7fbd9508004b7c3779fb29abbae6605"
+    },
+    {
+      "path": "badges/locker-connect-with-light-outline-1280.png",
+      "bytes": 37038,
+      "sha256": "f943a3d18d432c1c81c4eca4fe7f63de741e4057d86e0b04cff2bcef841b3e3d"
+    },
+    {
+      "path": "badges/locker-connect-with-light-outline-320.png",
+      "bytes": 8436,
+      "sha256": "eeb36064089c9cbba8f73c4572c23db60fefd6dd179ce2efaaead50b0c79ac38"
+    },
+    {
+      "path": "badges/locker-connect-with-light-outline-640.png",
+      "bytes": 17441,
+      "sha256": "e7bd18fda20a13e786c40418c6010b23f6315a800f73919a52462834af068d4d"
+    },
+    {
+      "path": "badges/locker-connect-with-light-outline.pdf",
+      "bytes": 11602,
+      "sha256": "c63a742731c2556ca8bb2b4ff8fa44cdb33cf91d780d1d87b5a5a78a8c47424a"
+    },
+    {
+      "path": "badges/locker-connect-with-light-outline.svg",
+      "bytes": 22123,
+      "sha256": "d2ab844b989f74d6a9bd544f61528aa50495c3aaebdb9e2620c8a71b34c28cf8"
+    },
+    {
+      "path": "badges/locker-connect-with-light-sticker-1280.png",
+      "bytes": 33646,
+      "sha256": "b1b2378a3801a494ea591fc16753362c5c35569805e8314b20567fc11c516e77"
+    },
+    {
+      "path": "badges/locker-connect-with-light-sticker-320.png",
+      "bytes": 7701,
+      "sha256": "eb9dc001da031c15fa0f1148c21ff1d89dd86e10fbcad3b9c53070ea9313d0cb"
+    },
+    {
+      "path": "badges/locker-connect-with-light-sticker-640.png",
+      "bytes": 15856,
+      "sha256": "a9f94eb6d863945f7f5d969a899df1c1a17b5a65840ee054d2773a1cbba97a93"
+    },
+    {
+      "path": "badges/locker-connect-with-light-sticker.pdf",
+      "bytes": 11600,
+      "sha256": "3f4615bf8a4a7307033b2312ac2fbbb04d467cc48e9fd69473f8e309493bff5b"
+    },
+    {
+      "path": "badges/locker-connect-with-light-sticker.svg",
+      "bytes": 22123,
+      "sha256": "e2fe57d5e11fcfda26e48b313cc8b5fc5bb9be9293bc5ba6be9b88dfa7ebc60c"
+    },
+    {
+      "path": "badges/locker-connect-with-light-transparent-1280.png",
+      "bytes": 27908,
+      "sha256": "cb2ebc324f029fc73ee8e3cb24555857494a93f93d3c3412f4dd732548b4db1c"
+    },
+    {
+      "path": "badges/locker-connect-with-light-transparent-320.png",
+      "bytes": 6472,
+      "sha256": "5f5ed5cb046601c8135f84e81e40a167ea36752a8d2702993cb5e393a4547b2d"
+    },
+    {
+      "path": "badges/locker-connect-with-light-transparent-640.png",
+      "bytes": 13213,
+      "sha256": "5314e50b490fdfdc15f03533921886e777d08ee7ad21c6edaff8a14f0ffa9a51"
+    },
+    {
+      "path": "badges/locker-connect-with-light-transparent.pdf",
+      "bytes": 11450,
+      "sha256": "d0b27a6eae66029fda1e6f820b6f96b9dd47e3c327c4006d2a7457c58989afc4"
+    },
+    {
+      "path": "badges/locker-connect-with-light-transparent.svg",
+      "bytes": 22022,
+      "sha256": "331b71de3d6f8cc829fed89a3a111c1c5d25ae0aa1e65616769c982bb82673cb"
+    },
+    {
+      "path": "badges/locker-connect-with-white-outline-1280.png",
+      "bytes": 35945,
+      "sha256": "55cea855fc9988fa3d26d1040e225bb082d0f04e5dfdcf5a741af4154797aeee"
+    },
+    {
+      "path": "badges/locker-connect-with-white-outline-320.png",
+      "bytes": 8097,
+      "sha256": "c804861de78677146d80f4ef4e14bda9c49b77d1f86192f3bfd8a5dac2e12e64"
+    },
+    {
+      "path": "badges/locker-connect-with-white-outline-640.png",
+      "bytes": 16922,
+      "sha256": "41af37a0a8888c4ca9131c8bf40922fe9d1749cfde31cf0bd50dcf97cd695a65"
+    },
+    {
+      "path": "badges/locker-connect-with-white-outline.pdf",
+      "bytes": 11577,
+      "sha256": "671b20660c38d955b4dc32adaae98dfc3812e691ebad69dd5120c99e54d2fe52"
+    },
+    {
+      "path": "badges/locker-connect-with-white-outline.svg",
+      "bytes": 22123,
+      "sha256": "0c339c6779089fb780f3c28ed405f4a89e4364bed9296db66f2527c0c8eb9464"
+    },
+    {
+      "path": "badges/locker-connect-with-white-sticker-1280.png",
+      "bytes": 33751,
+      "sha256": "d9dc44c6f24f1a090f7f4df6fe3395458fa82dacf5b339d26f3d2f3e727c78a7"
+    },
+    {
+      "path": "badges/locker-connect-with-white-sticker-320.png",
+      "bytes": 7670,
+      "sha256": "36cf59ba665ee58b751f149544efc80ff8ce1cc96166d4c6eb7da65c3e81eb7e"
+    },
+    {
+      "path": "badges/locker-connect-with-white-sticker-640.png",
+      "bytes": 15816,
+      "sha256": "58c4fc876c684771816481d1d45de594962ba9926fba3b6cc2fcbd8d7e8142c5"
+    },
+    {
+      "path": "badges/locker-connect-with-white-sticker.pdf",
+      "bytes": 11580,
+      "sha256": "c3263b290b05827375400cd06bfa867a685ffd35d55b0bf7de14e92b3be8b278"
+    },
+    {
+      "path": "badges/locker-connect-with-white-sticker.svg",
+      "bytes": 22123,
+      "sha256": "91e4baf9956ab23e3b27847e33e74ee9b970720e514539e6352f55c0370be153"
+    },
+    {
+      "path": "badges/locker-connect-with-white-transparent-1280.png",
+      "bytes": 20950,
+      "sha256": "5ea6543caef653c5df3a8370fdada77478f8235dafb33b3ebdad6ea3fcd4c2b6"
+    },
+    {
+      "path": "badges/locker-connect-with-white-transparent-320.png",
+      "bytes": 4295,
+      "sha256": "7116879105b3745e39e9b979e212bdb09037548c32af43610c9aa4204bd4a182"
+    },
+    {
+      "path": "badges/locker-connect-with-white-transparent-640.png",
+      "bytes": 9356,
+      "sha256": "f82a5103c5e3b1620fc47b704231fbff4f56a1c56fd0416dbb29966936e25b92"
+    },
+    {
+      "path": "badges/locker-connect-with-white-transparent.pdf",
+      "bytes": 11422,
+      "sha256": "5df34dffe32c0786de50449d79e4062c5c5f39c6bf8d713b5428eab9a935a3e2"
+    },
+    {
+      "path": "badges/locker-connect-with-white-transparent.svg",
+      "bytes": 22022,
+      "sha256": "efedcb011aa3cd78b2f53f2fb69367d4b663a09eaea69b45e5b9c8234a18d944"
+    },
+    {
+      "path": "badges/locker-download-from-dark-outline-1280.png",
+      "bytes": 37546,
+      "sha256": "405000b5b3193d9217e1052e0db0fb5dc4eb1ff18497f6f4932168c25ef5bfe4"
+    },
+    {
+      "path": "badges/locker-download-from-dark-outline-320.png",
+      "bytes": 8492,
+      "sha256": "03c9c738390922caece5f7f65b4095b84d74519729440b8d542aa5b7ed932c6a"
+    },
+    {
+      "path": "badges/locker-download-from-dark-outline-640.png",
+      "bytes": 17847,
+      "sha256": "7f73d7e9e87820a999cccfa26b7e7771bc0cfe214ce50021de28f8d158c2ea0c"
+    },
+    {
+      "path": "badges/locker-download-from-dark-outline.pdf",
+      "bytes": 12096,
+      "sha256": "c076880328efdd8c193328753216854bb31699640dce224997893cab7e088374"
+    },
+    {
+      "path": "badges/locker-download-from-dark-outline.svg",
+      "bytes": 23165,
+      "sha256": "586343b08808425b2b822bf732de5777741ba0e242e841968d55eb9a1687406b"
+    },
+    {
+      "path": "badges/locker-download-from-dark-sticker-1280.png",
+      "bytes": 34961,
+      "sha256": "8b4d595bc13a89496d6f18a707e271dd1a1eb4b8c7c5e7b828bb6e6e5071e3a9"
+    },
+    {
+      "path": "badges/locker-download-from-dark-sticker-320.png",
+      "bytes": 7938,
+      "sha256": "f6ced3394c088df6eb7f9a93332b8cdb48bb9f9a0e65847b4894752d28c83696"
+    },
+    {
+      "path": "badges/locker-download-from-dark-sticker-640.png",
+      "bytes": 16423,
+      "sha256": "0baabc24d5926c5b88d50abc4584ca4b375437e9daa340019299d6c150349c15"
+    },
+    {
+      "path": "badges/locker-download-from-dark-sticker.pdf",
+      "bytes": 12096,
+      "sha256": "73065ecce8bed32bade55589a58abd6339a921594d31f58c5ffbac2d475df2f5"
+    },
+    {
+      "path": "badges/locker-download-from-dark-sticker.svg",
+      "bytes": 23165,
+      "sha256": "dbd1c773b33b47d671952ea2d08bf43bd0623b13d4e2a582e0a7c30f7521e9e7"
+    },
+    {
+      "path": "badges/locker-download-from-dark-transparent-1280.png",
+      "bytes": 26907,
+      "sha256": "760e6203a29b00c5b624888d513eb9aff3e6b71677848414ff0c0f7b13d1b4f5"
+    },
+    {
+      "path": "badges/locker-download-from-dark-transparent-320.png",
+      "bytes": 5940,
+      "sha256": "8a2bfed5f78f0ad4f012045dc6357e6c2ae465c783b7ef5fc84e395e5dd89966"
+    },
+    {
+      "path": "badges/locker-download-from-dark-transparent-640.png",
+      "bytes": 12508,
+      "sha256": "bc1fe5afeb43ede4000100c6d358e91b804de0611bba19e4d9065f3b855d4ac1"
+    },
+    {
+      "path": "badges/locker-download-from-dark-transparent.pdf",
+      "bytes": 11954,
+      "sha256": "533686bb8e6dcb57449e0bd336315fc56a1b7b2accd60d095f8e7e8b6b0a0ebd"
+    },
+    {
+      "path": "badges/locker-download-from-dark-transparent.svg",
+      "bytes": 23064,
+      "sha256": "5dcf20c1178dc716b298ca35d4494a71d09f9f1510e940ee5beb6120d7f14a54"
+    },
+    {
+      "path": "badges/locker-download-from-light-outline-1280.png",
+      "bytes": 37925,
+      "sha256": "60e6a06a7b89239400a408e0a92ff3764c8285b2b55fb50f9c6937a74600f134"
+    },
+    {
+      "path": "badges/locker-download-from-light-outline-320.png",
+      "bytes": 8583,
+      "sha256": "d89fb9f4e9b2f127cf4d3b85783b90cf9e3e8a82f3e173670c21db82ded45263"
+    },
+    {
+      "path": "badges/locker-download-from-light-outline-640.png",
+      "bytes": 17863,
+      "sha256": "4708c4f32062bb15e24567c11ebf692926e5049dc77699501a4c99aba599e5a4"
+    },
+    {
+      "path": "badges/locker-download-from-light-outline.pdf",
+      "bytes": 12095,
+      "sha256": "3da82cf4e96c8714591e951619dbf8b02d08755c708956142636d003f87f369e"
+    },
+    {
+      "path": "badges/locker-download-from-light-outline.svg",
+      "bytes": 23165,
+      "sha256": "37b80116e2f049ebe05727bb83a729380affe0b0c12fe98ac606991dcace8529"
+    },
+    {
+      "path": "badges/locker-download-from-light-sticker-1280.png",
+      "bytes": 34587,
+      "sha256": "b92202a8b3b79c7cc7e30992553d71ae9b583841f7753b6da8a7d5d42145219b"
+    },
+    {
+      "path": "badges/locker-download-from-light-sticker-320.png",
+      "bytes": 7850,
+      "sha256": "4c666b9c427dcb54e21b5a7a7d02874f61ed7bb8827a9b8826b4c3b572317680"
+    },
+    {
+      "path": "badges/locker-download-from-light-sticker-640.png",
+      "bytes": 16268,
+      "sha256": "10d004c0450b3231c17b09d4a69e689e531a86c8a5a93746dcc0565df171c7a1"
+    },
+    {
+      "path": "badges/locker-download-from-light-sticker.pdf",
+      "bytes": 12093,
+      "sha256": "abb22d76c6c45c9f55ae3209d558222200d24c50c11489940d044f277638e774"
+    },
+    {
+      "path": "badges/locker-download-from-light-sticker.svg",
+      "bytes": 23165,
+      "sha256": "efa7cbd6c518baaafa4c1b65ef82963bf1d5db4b8caa9730da1ba583932e6124"
+    },
+    {
+      "path": "badges/locker-download-from-light-transparent-1280.png",
+      "bytes": 29004,
+      "sha256": "7a0480672143b94047b26d5a50601a71ba73bbd5750608199beda2820c304e7f"
+    },
+    {
+      "path": "badges/locker-download-from-light-transparent-320.png",
+      "bytes": 6619,
+      "sha256": "caf42559a48c203e525a20f8c0b9678220d362a9c19873c3cbe38a1def49cff9"
+    },
+    {
+      "path": "badges/locker-download-from-light-transparent-640.png",
+      "bytes": 13664,
+      "sha256": "889cf22cdd1e0600a9cd5b392ba3e7b4193adaa6ff3120369445337ab6d2492f"
+    },
+    {
+      "path": "badges/locker-download-from-light-transparent.pdf",
+      "bytes": 11951,
+      "sha256": "7212b0e434517ab4df059d480b56a84ccd151b198391e4e3a31a6a534b6507b8"
+    },
+    {
+      "path": "badges/locker-download-from-light-transparent.svg",
+      "bytes": 23064,
+      "sha256": "3958f8efbd9b1e38e4aaa641e582c6366127cede45b60e765f901b2c122113f8"
+    },
+    {
+      "path": "badges/locker-download-from-white-outline-1280.png",
+      "bytes": 36969,
+      "sha256": "46e001f2fd279884a273d57e1434b968e81b55421667c7e4e02912ae7e5af4b0"
+    },
+    {
+      "path": "badges/locker-download-from-white-outline-320.png",
+      "bytes": 8258,
+      "sha256": "2411e2fc1468bf3fc184d84fb633cab62dec8d54ab18a3a7a15317ec7532f1d6"
+    },
+    {
+      "path": "badges/locker-download-from-white-outline-640.png",
+      "bytes": 17348,
+      "sha256": "e1a09397235aacb8a0b274489f2b95f5a9af8c19af4bae6fd36b0ccfe9dffb35"
+    },
+    {
+      "path": "badges/locker-download-from-white-outline.pdf",
+      "bytes": 12065,
+      "sha256": "047dfdd116139e4df8c060060f39949df778a9ca968fedbb9de1d6f322f637ee"
+    },
+    {
+      "path": "badges/locker-download-from-white-outline.svg",
+      "bytes": 23165,
+      "sha256": "5d01064c294c7721a9fa88e1db11b4cb34f6101bdcb141d2a4cd912202d4d319"
+    },
+    {
+      "path": "badges/locker-download-from-white-sticker-1280.png",
+      "bytes": 34793,
+      "sha256": "c7d80544a7e003fd30a1f33b583d522fa7a779b9d8986606963e28eb22d771d4"
+    },
+    {
+      "path": "badges/locker-download-from-white-sticker-320.png",
+      "bytes": 7839,
+      "sha256": "fdf00cfc5a6ac65caa364906d924c62d81d8151d6f1a09ec7a9f8a178873722b"
+    },
+    {
+      "path": "badges/locker-download-from-white-sticker-640.png",
+      "bytes": 16242,
+      "sha256": "a237a4d043ca33646228623be30ec14a3bfa0e0ce5f25461250c3d6dd723a14c"
+    },
+    {
+      "path": "badges/locker-download-from-white-sticker.pdf",
+      "bytes": 12068,
+      "sha256": "962ee9b50cff080b4e234288f34ac17417a3861acac55de16d0167b9579f3bf7"
+    },
+    {
+      "path": "badges/locker-download-from-white-sticker.svg",
+      "bytes": 23165,
+      "sha256": "0aee6f8860b598bfa84e5baf943645d711f5863c264812ad9c3b75658bb52abf"
+    },
+    {
+      "path": "badges/locker-download-from-white-transparent-1280.png",
+      "bytes": 21591,
+      "sha256": "48790361141d61f3c3fd5d63474d331a3eaaa0ff401aca2a77ce7ae531bbc8c3"
+    },
+    {
+      "path": "badges/locker-download-from-white-transparent-320.png",
+      "bytes": 4453,
+      "sha256": "7d10740b50004ee88905271204fc0d9753e4f0d91bf75d8c2bd2869ad5fdb8a4"
+    },
+    {
+      "path": "badges/locker-download-from-white-transparent-640.png",
+      "bytes": 9724,
+      "sha256": "23cdf2e05a301f1d7babba794829ad9e2055ce0b0028b97ea30b640cffa6b832"
+    },
+    {
+      "path": "badges/locker-download-from-white-transparent.pdf",
+      "bytes": 11920,
+      "sha256": "9f1c85e14fcbe32cea19b97c44682a6a083c1e8870986a639e1250c4ccf2e624"
+    },
+    {
+      "path": "badges/locker-download-from-white-transparent.svg",
+      "bytes": 23064,
+      "sha256": "5fe753c5f93eff92ba98965b602175e4793d8d9348f98524b4df13f2713e3ea6"
+    },
+    {
+      "path": "badges/locker-get-it-on-dark-outline-1280.png",
+      "bytes": 33222,
+      "sha256": "68ada521b199b43db92b0008dcaae4a0cbb56a106b259ab6292a46c07f1a9fab"
+    },
+    {
+      "path": "badges/locker-get-it-on-dark-outline-320.png",
+      "bytes": 7649,
+      "sha256": "2c19ddcdfd9184eb4d946f8e800ec64991d382c8dc682f2d130141576e52f78e"
+    },
+    {
+      "path": "badges/locker-get-it-on-dark-outline-640.png",
+      "bytes": 15910,
+      "sha256": "f299d36a68987763fa9c155def7b11baa17dfd8ac768bde1fcdbc94027a97c84"
+    },
+    {
+      "path": "badges/locker-get-it-on-dark-outline.pdf",
+      "bytes": 9927,
+      "sha256": "ab579344bfd6e8d446926355ebdd74d0c9d17ee30a061561364a705b35d90324"
+    },
+    {
+      "path": "badges/locker-get-it-on-dark-outline.svg",
+      "bytes": 18943,
+      "sha256": "6769468c27b5b90178b8572b912bcbc5723e365a260b92ca851e906dcc2854a0"
+    },
+    {
+      "path": "badges/locker-get-it-on-dark-sticker-1280.png",
+      "bytes": 30611,
+      "sha256": "881b70d6ee3200d6492ae475a69fb24068908d54ff0caadb50f849a8a6bbe781"
+    },
+    {
+      "path": "badges/locker-get-it-on-dark-sticker-320.png",
+      "bytes": 7121,
+      "sha256": "4057da1bf0d1750f61ce5d766771cefc2312dae23d6d79a00f4231752c5ac38c"
+    },
+    {
+      "path": "badges/locker-get-it-on-dark-sticker-640.png",
+      "bytes": 14472,
+      "sha256": "a365395d6455c69f1c8654171c728a21a332fdb5bf74b6a03041d344ea007e9e"
+    },
+    {
+      "path": "badges/locker-get-it-on-dark-sticker.pdf",
+      "bytes": 9927,
+      "sha256": "65a8c71513663faa90874efa7b073ff742012a6feceeab25de06d432b64be5c5"
+    },
+    {
+      "path": "badges/locker-get-it-on-dark-sticker.svg",
+      "bytes": 18943,
+      "sha256": "4edaa0ddb7da2752ba2182da036705c1f41f9197e4a5458b931c3942fcfd5b3f"
+    },
+    {
+      "path": "badges/locker-get-it-on-dark-transparent-1280.png",
+      "bytes": 23141,
+      "sha256": "69b71e77d2d6aecb4965b82d323c6525e8017256d42b9fb19cebbfd15ead156d"
+    },
+    {
+      "path": "badges/locker-get-it-on-dark-transparent-320.png",
+      "bytes": 5311,
+      "sha256": "f28a96339676e1b90a7de7124e9499f4e58591719744cea9a81fcddab60cd551"
+    },
+    {
+      "path": "badges/locker-get-it-on-dark-transparent-640.png",
+      "bytes": 10907,
+      "sha256": "7404bd8e1e35561e206ac72bb286e40c0ef9092f95e86e3125b8f1be787e2f6c"
+    },
+    {
+      "path": "badges/locker-get-it-on-dark-transparent.pdf",
+      "bytes": 9785,
+      "sha256": "0b88dfc0f187dd8ac6e9c3b11698c6511dd0731ad032dc508ec80ecd394cbf4a"
+    },
+    {
+      "path": "badges/locker-get-it-on-dark-transparent.svg",
+      "bytes": 18842,
+      "sha256": "014845e75f03f1f9302772a8e50b3ce4baf69fde166f2d23f4e38404c6807237"
+    },
+    {
+      "path": "badges/locker-get-it-on-light-outline-1280.png",
+      "bytes": 33792,
+      "sha256": "c9f5199fc4dd1610d4246a471c2535d835d16b31443ea3fb4f380de38e14eef1"
+    },
+    {
+      "path": "badges/locker-get-it-on-light-outline-320.png",
+      "bytes": 7731,
+      "sha256": "e1e5c3e3e07e98bbe7b87c8cb06520190959adbecb88ee8247e852a0650e88ee"
+    },
+    {
+      "path": "badges/locker-get-it-on-light-outline-640.png",
+      "bytes": 15888,
+      "sha256": "5788ceae5656b26f4661e631f065f6a471503c340bb28582f4b214c643e6a191"
+    },
+    {
+      "path": "badges/locker-get-it-on-light-outline.pdf",
+      "bytes": 9927,
+      "sha256": "268454cd292b1de7c215ef7ed2a6d60b6042f06c856e4b9187a8a665fe80bb74"
+    },
+    {
+      "path": "badges/locker-get-it-on-light-outline.svg",
+      "bytes": 18943,
+      "sha256": "05b9171edb3ae6bd711aba00b51472dd2b57f8506c09b1c7f1c07714fc588c66"
+    },
+    {
+      "path": "badges/locker-get-it-on-light-sticker-1280.png",
+      "bytes": 30325,
+      "sha256": "07b9ec6348354fa8b9f6d65bd4e3c0cc6c30b35b098530614384fcd9c02bebcc"
+    },
+    {
+      "path": "badges/locker-get-it-on-light-sticker-320.png",
+      "bytes": 7008,
+      "sha256": "8a82238213f29b4039ea8f530573f71f2cd832eb28654374e6aaf925a50f3c71"
+    },
+    {
+      "path": "badges/locker-get-it-on-light-sticker-640.png",
+      "bytes": 14306,
+      "sha256": "d7eeadf5e45d93ffdb1dc4c08c7e9c1596a60fcd15ce5e027b83ee5b732f37ef"
+    },
+    {
+      "path": "badges/locker-get-it-on-light-sticker.pdf",
+      "bytes": 9925,
+      "sha256": "615516932133f045dd2f95e5d39fbbb9a913d170166603913114f75be1213925"
+    },
+    {
+      "path": "badges/locker-get-it-on-light-sticker.svg",
+      "bytes": 18943,
+      "sha256": "159f6f3ccac01a2a0847fbe5e295f6cdd21ff69ee008f67a23b7a5d0d206d26a"
+    },
+    {
+      "path": "badges/locker-get-it-on-light-transparent-1280.png",
+      "bytes": 24999,
+      "sha256": "b3f2f30b14cb4366c70d9736d5367c7de49e49bd8b1fc58a0c0bd0260e2b02d3"
+    },
+    {
+      "path": "badges/locker-get-it-on-light-transparent-320.png",
+      "bytes": 5849,
+      "sha256": "edff41a42544be7e562ef11f071cde430146ff8cfacebe08392fd3ffa4f02022"
+    },
+    {
+      "path": "badges/locker-get-it-on-light-transparent-640.png",
+      "bytes": 11898,
+      "sha256": "ba9a512c0eb9796364a17ff4a67aaf3ae8fa85769f9cf44b1de2822704d39233"
+    },
+    {
+      "path": "badges/locker-get-it-on-light-transparent.pdf",
+      "bytes": 9785,
+      "sha256": "d1961143dbb971a0c0bd56359db2cb0109c7601c3b742cf42beecd6239b0de19"
+    },
+    {
+      "path": "badges/locker-get-it-on-light-transparent.svg",
+      "bytes": 18842,
+      "sha256": "9c62977b347f953dd7528921b304ac3e8204bfef826eed0389a32050134162db"
+    },
+    {
+      "path": "badges/locker-get-it-on-white-outline-1280.png",
+      "bytes": 32708,
+      "sha256": "c2f3f8d7972761362c01bb085a6a8b2e226fad2013892d0b7714fa96ace05ba7"
+    },
+    {
+      "path": "badges/locker-get-it-on-white-outline-320.png",
+      "bytes": 7441,
+      "sha256": "c6874632f301152b57169275859c11d3369628b51e7876e931288037ebf943f6"
+    },
+    {
+      "path": "badges/locker-get-it-on-white-outline-640.png",
+      "bytes": 15372,
+      "sha256": "f5dce967740787e0e526576897407c8a31d6015c33233fbe4e33dbc8a1a0096f"
+    },
+    {
+      "path": "badges/locker-get-it-on-white-outline.pdf",
+      "bytes": 9899,
+      "sha256": "d6532a689f790a2d7c3d94f255b562c35df0e3ee4b11ce7a229f01ce3d2aad83"
+    },
+    {
+      "path": "badges/locker-get-it-on-white-outline.svg",
+      "bytes": 18943,
+      "sha256": "353b633ba7aa9bd02b065e32793b18d0de000c0075a23fe470d77bebb1c55647"
+    },
+    {
+      "path": "badges/locker-get-it-on-white-sticker-1280.png",
+      "bytes": 30499,
+      "sha256": "ba2f1fc2bd780b68605a4ec68d632ea32d5dde10c26d0e7cf528c57dd55bca90"
+    },
+    {
+      "path": "badges/locker-get-it-on-white-sticker-320.png",
+      "bytes": 7011,
+      "sha256": "453e52d0267f2fae0e98a81fbcf49f347a9c94e9f7429c38a9df39d972c66545"
+    },
+    {
+      "path": "badges/locker-get-it-on-white-sticker-640.png",
+      "bytes": 14279,
+      "sha256": "cdc62b7b24e0039a5e1fed327589aba1c640bbe914571162e5bc4600b7581017"
+    },
+    {
+      "path": "badges/locker-get-it-on-white-sticker.pdf",
+      "bytes": 9901,
+      "sha256": "5fd7e380695b5d27f562b16185e59a3e992fc96a2b59e82d0884eee3f41b1351"
+    },
+    {
+      "path": "badges/locker-get-it-on-white-sticker.svg",
+      "bytes": 18943,
+      "sha256": "1162d4941de378c66beba322290e295849381ddcb65ed5ae3ca910b3931cc3a0"
+    },
+    {
+      "path": "badges/locker-get-it-on-white-transparent-1280.png",
+      "bytes": 18775,
+      "sha256": "107329f2c8d0f26b8f7a729ebb3a21b8cf008fa2366afab6da990ef207d4ff66"
+    },
+    {
+      "path": "badges/locker-get-it-on-white-transparent-320.png",
+      "bytes": 3902,
+      "sha256": "a9193f7437c425f4a74d23d70882c8680d27f4ab8b9f439f8cbca51a79789c33"
+    },
+    {
+      "path": "badges/locker-get-it-on-white-transparent-640.png",
+      "bytes": 8412,
+      "sha256": "ade2122159fca577a8858e6970d654ae525e8e5f4c5b1f67a8d8e026d8d23337"
+    },
+    {
+      "path": "badges/locker-get-it-on-white-transparent.pdf",
+      "bytes": 9754,
+      "sha256": "d1415595980c01dda74a8489562994fce31790f286628cf43979ad64b8ef54ef"
+    },
+    {
+      "path": "badges/locker-get-it-on-white-transparent.svg",
+      "bytes": 18842,
+      "sha256": "34decbb79ef6ab58cae21b3f4ad6d87a3b211a12f8b9de3e102aa8522dcea67f"
+    },
+    {
+      "path": "badges/locker-install-with-dark-outline-1280.png",
+      "bytes": 34323,
+      "sha256": "b19ae5d217966edbd40554de7b2a73e110f5c0606747f3dd71fa2d61424080b1"
+    },
+    {
+      "path": "badges/locker-install-with-dark-outline-320.png",
+      "bytes": 7715,
+      "sha256": "4ddc2d07ae8a08f04ed39aaeabfc1afeea63b46961ea3ff644d1786e6ea4d13b"
+    },
+    {
+      "path": "badges/locker-install-with-dark-outline-640.png",
+      "bytes": 16295,
+      "sha256": "68700eba46417a5c5328afb2b52c83a2c1f4c8652ed68c94e13f3b924247fae4"
+    },
+    {
+      "path": "badges/locker-install-with-dark-outline.pdf",
+      "bytes": 10866,
+      "sha256": "d8e08c2d9db7d5004e686676d52cf2018871901a5161fd5d161bd0c706144a5d"
+    },
+    {
+      "path": "badges/locker-install-with-dark-outline.svg",
+      "bytes": 20659,
+      "sha256": "3ac8d4fc083b0773541cc50e4676ef450225ef94d48a579cda2fd62f65647d53"
+    },
+    {
+      "path": "badges/locker-install-with-dark-sticker-1280.png",
+      "bytes": 31635,
+      "sha256": "504503e7b22aed5fe1a0933d40b2d1e10123d0ad7d118276cdae6cfec0417d41"
+    },
+    {
+      "path": "badges/locker-install-with-dark-sticker-320.png",
+      "bytes": 7217,
+      "sha256": "a63c2c3722da5ca5c876e96e2f15034f085d000fd4952f6af7914ffc40fed547"
+    },
+    {
+      "path": "badges/locker-install-with-dark-sticker-640.png",
+      "bytes": 14891,
+      "sha256": "4e78f00118a08001c33b74638217acc28c6b6c1a88e6fd39e925c16364723032"
+    },
+    {
+      "path": "badges/locker-install-with-dark-sticker.pdf",
+      "bytes": 10866,
+      "sha256": "b0c92b6ba37640f55cae11cb11ec4039a75d3bfd32b5254f2df6cd3140ad062b"
+    },
+    {
+      "path": "badges/locker-install-with-dark-sticker.svg",
+      "bytes": 20659,
+      "sha256": "b81f2e403bb101109205ba5831261e8fc8441ca4c659e5dcd8912763c4960a10"
+    },
+    {
+      "path": "badges/locker-install-with-dark-transparent-1280.png",
+      "bytes": 24101,
+      "sha256": "eb584abd679d11c1ebcd3b86617cc8253fc952f09a38363b72694dd9823e9bbf"
+    },
+    {
+      "path": "badges/locker-install-with-dark-transparent-320.png",
+      "bytes": 5386,
+      "sha256": "51119b2526b30bf1031cc2641182be482ee316fe82c89ec57c44b1392761ef96"
+    },
+    {
+      "path": "badges/locker-install-with-dark-transparent-640.png",
+      "bytes": 11228,
+      "sha256": "d96743a21190b829971e9fa0ae99fd6fe86dbe96776d75403c14ff51de76ef46"
+    },
+    {
+      "path": "badges/locker-install-with-dark-transparent.pdf",
+      "bytes": 10719,
+      "sha256": "4a747039de269089fc506dbb92f2c4bb99c34b7c1e7c2c2e8a4cfc60cae73beb"
+    },
+    {
+      "path": "badges/locker-install-with-dark-transparent.svg",
+      "bytes": 20558,
+      "sha256": "7ddfb061a41db41f3bfe0ec783518a20d652eab879db956c411a5c0762ac17c7"
+    },
+    {
+      "path": "badges/locker-install-with-light-outline-1280.png",
+      "bytes": 34768,
+      "sha256": "0f239fee8252c7e7b2d3f0ba52f392947256d60120d1fb0e1293d9dab323ab7c"
+    },
+    {
+      "path": "badges/locker-install-with-light-outline-320.png",
+      "bytes": 7834,
+      "sha256": "e982e3d648d92f13d2b417b12054b65bac0bf5a6352faee32af0a1717c9d4153"
+    },
+    {
+      "path": "badges/locker-install-with-light-outline-640.png",
+      "bytes": 16364,
+      "sha256": "849fc9930a687df89b1b6fd78a02f78347a6e01fcb437c0d36557ab4f35f8b49"
+    },
+    {
+      "path": "badges/locker-install-with-light-outline.pdf",
+      "bytes": 10866,
+      "sha256": "dc386467cc81ffeaa83432e5770c6c4ee7908cf3d11a098c046f84712f956fd2"
+    },
+    {
+      "path": "badges/locker-install-with-light-outline.svg",
+      "bytes": 20659,
+      "sha256": "f18cf64fc9083db81e837d6063156ecee87b21aab402b34a249723501354e3f3"
+    },
+    {
+      "path": "badges/locker-install-with-light-sticker-1280.png",
+      "bytes": 31332,
+      "sha256": "0392174a52cda6dc5c5f7c594b898d1b8420f7d9b1c8550142b46a575280b15f"
+    },
+    {
+      "path": "badges/locker-install-with-light-sticker-320.png",
+      "bytes": 7107,
+      "sha256": "eccdf26ee5aca62d5e59a03f893db47ac90143670ec9124e5dab9372baf08646"
+    },
+    {
+      "path": "badges/locker-install-with-light-sticker-640.png",
+      "bytes": 14818,
+      "sha256": "6253b34e786081e6d04861fede9a536b01812f0706d9f400fd26116e89e0d615"
+    },
+    {
+      "path": "badges/locker-install-with-light-sticker.pdf",
+      "bytes": 10865,
+      "sha256": "e38c2ec79fb1da3c03383f80288f8826258362875cebe0bd9b996069cd40c955"
+    },
+    {
+      "path": "badges/locker-install-with-light-sticker.svg",
+      "bytes": 20659,
+      "sha256": "943409e6959cb834236f74dfb8343a8f29bba26a6836650281216225a471c36b"
+    },
+    {
+      "path": "badges/locker-install-with-light-transparent-1280.png",
+      "bytes": 26009,
+      "sha256": "0cfd558d4daf256e37d2c69ce4c9f64a60fbcb2f9fbb18bece4061e110a8f567"
+    },
+    {
+      "path": "badges/locker-install-with-light-transparent-320.png",
+      "bytes": 6003,
+      "sha256": "204c74066261f11c3947485468a2b6b2af6a8009aa1748f6a230eed59706f50e"
+    },
+    {
+      "path": "badges/locker-install-with-light-transparent-640.png",
+      "bytes": 12270,
+      "sha256": "8106eb7f35bfa2b104fa1e596a10b73cbf4fcd0234296688d5c2319af33cde66"
+    },
+    {
+      "path": "badges/locker-install-with-light-transparent.pdf",
+      "bytes": 10720,
+      "sha256": "2281796d965d77c385bf3219476da57e7268e3efc9b4d0757a975e73a26be118"
+    },
+    {
+      "path": "badges/locker-install-with-light-transparent.svg",
+      "bytes": 20558,
+      "sha256": "8609f116da662d88179c54f6b8213bbe917e86f2110a29892f4a0286920407f2"
+    },
+    {
+      "path": "badges/locker-install-with-white-outline-1280.png",
+      "bytes": 33682,
+      "sha256": "1ff77f05436c72acc348b012cfe5aa1a72f9de285d5c7f763c899e604d071e45"
+    },
+    {
+      "path": "badges/locker-install-with-white-outline-320.png",
+      "bytes": 7497,
+      "sha256": "e00d176cd2221ccab0bc1dab46fa1f7ad92131e911cc70928b7dd0e390385b90"
+    },
+    {
+      "path": "badges/locker-install-with-white-outline-640.png",
+      "bytes": 15822,
+      "sha256": "07962335449f6f21210cc97e957c2b0ce03707961b8d777269065c826478ed6c"
+    },
+    {
+      "path": "badges/locker-install-with-white-outline.pdf",
+      "bytes": 10836,
+      "sha256": "1d8eaf9d955d0b5fff5987d5d548b79afd40ead1c2e9a9b011a938eeafa5d4ec"
+    },
+    {
+      "path": "badges/locker-install-with-white-outline.svg",
+      "bytes": 20659,
+      "sha256": "a0fde6517f1d3e9b0f96b60cd5e7dc33d34d62807b1eab3da857443dd532afe4"
+    },
+    {
+      "path": "badges/locker-install-with-white-sticker-1280.png",
+      "bytes": 31469,
+      "sha256": "6ee6b7c738c95f5b358915fc7dce02cc29ba13f910136cef82814e429b413606"
+    },
+    {
+      "path": "badges/locker-install-with-white-sticker-320.png",
+      "bytes": 7074,
+      "sha256": "e6b4f2b1cb01930455b4b9c8ac2bd470b293423de18cf16f33ab7480fa0a2426"
+    },
+    {
+      "path": "badges/locker-install-with-white-sticker-640.png",
+      "bytes": 14727,
+      "sha256": "73180e841f87752bce57bac2681a32bd8abed1410d425c6dd9f45a24beb2009d"
+    },
+    {
+      "path": "badges/locker-install-with-white-sticker.pdf",
+      "bytes": 10836,
+      "sha256": "72c46bcfab53d0016bddeb246c9910a1340beb59991cc8a490d73d2b594775b0"
+    },
+    {
+      "path": "badges/locker-install-with-white-sticker.svg",
+      "bytes": 20659,
+      "sha256": "9419e3f3e1040ecac8f0616b9709b8c7f2d40bfb59b9f69850f9ed0fcc34a35a"
+    },
+    {
+      "path": "badges/locker-install-with-white-transparent-1280.png",
+      "bytes": 19580,
+      "sha256": "a2948007bd47408e615216c844ec868132e8195efadce7e95a31fe78f3fad6e8"
+    },
+    {
+      "path": "badges/locker-install-with-white-transparent-320.png",
+      "bytes": 4044,
+      "sha256": "46c7146791eaf0f2f34cc0bf84c656e5a6cebac1355036726e3461880148f830"
+    },
+    {
+      "path": "badges/locker-install-with-white-transparent-640.png",
+      "bytes": 8754,
+      "sha256": "77c7caa2a6258d2e42ba207939795508d32aceb4097a386c1f4a4abf99b88da0"
+    },
+    {
+      "path": "badges/locker-install-with-white-transparent.pdf",
+      "bytes": 10684,
+      "sha256": "366f117393c811d7c3ef91ac412e649e8c916ae7cfecef137aa312f7909642db"
+    },
+    {
+      "path": "badges/locker-install-with-white-transparent.svg",
+      "bytes": 20558,
+      "sha256": "3c241b457970930b86c735777c19d18eb82ce520bf6c0152d683fe9350c69d34"
+    },
+    {
+      "path": "badges/locker-login-with-dark-outline-1280.png",
+      "bytes": 34071,
+      "sha256": "a2a495ccefd2e50aa0c7a959ac6eaf0c61e46f54984faa42182e2c3c6fa13af4"
+    },
+    {
+      "path": "badges/locker-login-with-dark-outline-320.png",
+      "bytes": 7759,
+      "sha256": "9c2ef3c9dd0fcea92c4c967abfa4fbbeee101d03f55dde8a77044370fe79e867"
+    },
+    {
+      "path": "badges/locker-login-with-dark-outline-640.png",
+      "bytes": 16234,
+      "sha256": "3ed62e01dc209b648e87963bd062695f4c6f7710b9a10a5882ef0174b34999af"
+    },
+    {
+      "path": "badges/locker-login-with-dark-outline.pdf",
+      "bytes": 10425,
+      "sha256": "2826d05bde26da1548fafe6bfccc71f81b910745bec4dceac3e5c92a5cfff150"
+    },
+    {
+      "path": "badges/locker-login-with-dark-outline.svg",
+      "bytes": 19868,
+      "sha256": "0b6d0a83799d3df5355ba6b7dbab017bfd2e2a5d851816547c7c0059e5c363b5"
+    },
+    {
+      "path": "badges/locker-login-with-dark-sticker-1280.png",
+      "bytes": 31372,
+      "sha256": "781899f67d06cfdf683ee74966a0c143bfbc250ebfe05cdbe277466f3dc89c64"
+    },
+    {
+      "path": "badges/locker-login-with-dark-sticker-320.png",
+      "bytes": 7220,
+      "sha256": "ba28983f2ca89894c70e1ef90f4fbc7c2ce6e02df04adfb1dfcd8619e957ae2e"
+    },
+    {
+      "path": "badges/locker-login-with-dark-sticker-640.png",
+      "bytes": 14847,
+      "sha256": "c6624d81f42832750b5747574462474ee2cd919c3b6ef62855c1e0d1d5e0d4a2"
+    },
+    {
+      "path": "badges/locker-login-with-dark-sticker.pdf",
+      "bytes": 10425,
+      "sha256": "fedd3da7863b649418ed833c9f9e803fa3ed77f6d9a604394667e36fb94b9020"
+    },
+    {
+      "path": "badges/locker-login-with-dark-sticker.svg",
+      "bytes": 19868,
+      "sha256": "5ad825e94c6886f6b0c33946dddfbccb499bb4655fb15f43cd014f30539f3c67"
+    },
+    {
+      "path": "badges/locker-login-with-dark-transparent-1280.png",
+      "bytes": 23912,
+      "sha256": "fdc4799513cd1cc1126d96eb48a85438952f5e569e669e5cd581fb5245bfce80"
+    },
+    {
+      "path": "badges/locker-login-with-dark-transparent-320.png",
+      "bytes": 5464,
+      "sha256": "6c885b449790390a19dacda6f09e35db76c97f23183b34c6e9393f13dbc54a50"
+    },
+    {
+      "path": "badges/locker-login-with-dark-transparent-640.png",
+      "bytes": 11253,
+      "sha256": "d4815b89beb6def85fb942f4f65b0add4796a1a23fcd8547a8bbc4ab59426364"
+    },
+    {
+      "path": "badges/locker-login-with-dark-transparent.pdf",
+      "bytes": 10277,
+      "sha256": "4d10afba7840f9249844774b944b88e0e62763679b1c176f2494d0eaf0343314"
+    },
+    {
+      "path": "badges/locker-login-with-dark-transparent.svg",
+      "bytes": 19767,
+      "sha256": "b40cf552a5b0d61e12143ef38bbb022c519936d181345d1a6435cc9778107b1c"
+    },
+    {
+      "path": "badges/locker-login-with-light-outline-1280.png",
+      "bytes": 34500,
+      "sha256": "1d90c671aa21876dbbd09b03ec95c9c2831e084f5747c30b7882ab4b6a3d8b88"
+    },
+    {
+      "path": "badges/locker-login-with-light-outline-320.png",
+      "bytes": 7837,
+      "sha256": "639b26a2a01e15140fa7d930a525a52fe93a8dfa715847535f04a0dc94c13d84"
+    },
+    {
+      "path": "badges/locker-login-with-light-outline-640.png",
+      "bytes": 16254,
+      "sha256": "125a8d0dde934edc63a13311a239895149a6f2407de7b24332290a744defded0"
+    },
+    {
+      "path": "badges/locker-login-with-light-outline.pdf",
+      "bytes": 10426,
+      "sha256": "a926533eed1aa1a2c48d7690603cd5c7cc12e92ada95acbe0f4ad32ede3f9549"
+    },
+    {
+      "path": "badges/locker-login-with-light-outline.svg",
+      "bytes": 19868,
+      "sha256": "32704857de3d8cfa748d47206aff26c66823786e93dede217d527ff9bf87db45"
+    },
+    {
+      "path": "badges/locker-login-with-light-sticker-1280.png",
+      "bytes": 31102,
+      "sha256": "6e958cd2f7599242ac89eeb63fc0ab0c0e1fccf6c89a21d565beef1a133d8a2a"
+    },
+    {
+      "path": "badges/locker-login-with-light-sticker-320.png",
+      "bytes": 7116,
+      "sha256": "d3746f7bb1f504b10fa8e78f6ea787aaf8899bd48145ceccce34038ac3b51c1f"
+    },
+    {
+      "path": "badges/locker-login-with-light-sticker-640.png",
+      "bytes": 14689,
+      "sha256": "b921cb49b655d43b8e8cc3f97359ac760a410eaefd3351556a659561b677ce0d"
+    },
+    {
+      "path": "badges/locker-login-with-light-sticker.pdf",
+      "bytes": 10424,
+      "sha256": "9e6031c8af30832113bc381589c25505ec48f4cc7072169bc10c2960ee454db6"
+    },
+    {
+      "path": "badges/locker-login-with-light-sticker.svg",
+      "bytes": 19868,
+      "sha256": "41dc131d33c473d6bbb0dc92aea810e513dd9af46bfe57de56ef2531159845fc"
+    },
+    {
+      "path": "badges/locker-login-with-light-transparent-1280.png",
+      "bytes": 25805,
+      "sha256": "c9727f5f819fb844069ecafa23ee8c9bd96d28dbe6efd3595a04e774a209925d"
+    },
+    {
+      "path": "badges/locker-login-with-light-transparent-320.png",
+      "bytes": 6067,
+      "sha256": "e54dfe4cb547726f3665179c07ece6a120be6cbb2550e3745660b834d4d1bd3a"
+    },
+    {
+      "path": "badges/locker-login-with-light-transparent-640.png",
+      "bytes": 12228,
+      "sha256": "1581ebe20a8af822e5a33ba9351da2dc0c8551db679b4cc8c88d3000f8338aa4"
+    },
+    {
+      "path": "badges/locker-login-with-light-transparent.pdf",
+      "bytes": 10280,
+      "sha256": "5542219db62adb476a7a627c4015f8f6072a75fde19e1b43fa8078498fbb3cf2"
+    },
+    {
+      "path": "badges/locker-login-with-light-transparent.svg",
+      "bytes": 19767,
+      "sha256": "632c35460dc90f28dff3b4afcc4f47333e1c8c13077d488f855323fba65cd983"
+    },
+    {
+      "path": "badges/locker-login-with-white-outline-1280.png",
+      "bytes": 33520,
+      "sha256": "2310fdd3defa837e804a6cf56ae8692e145797961a5902b8405e60685cccdee7"
+    },
+    {
+      "path": "badges/locker-login-with-white-outline-320.png",
+      "bytes": 7561,
+      "sha256": "4e70aec24ff517c7aa083042e6c44c109ce000ef713ceb5c38a7fbc2c5d6bd65"
+    },
+    {
+      "path": "badges/locker-login-with-white-outline-640.png",
+      "bytes": 15764,
+      "sha256": "5bb27eb103a88ca8bcd14b316ec560234ee7c0a1076eb681416e24b47d7c9cd9"
+    },
+    {
+      "path": "badges/locker-login-with-white-outline.pdf",
+      "bytes": 10396,
+      "sha256": "dc2bbceedebcaa482a9dde14eccd6b56476fcac104698b57a18ef76df8c209bb"
+    },
+    {
+      "path": "badges/locker-login-with-white-outline.svg",
+      "bytes": 19868,
+      "sha256": "4de9edbca2f4e8bc42d9ef46ffe6fd1d2d6aec2c285422961026dc0f1a951f06"
+    },
+    {
+      "path": "badges/locker-login-with-white-sticker-1280.png",
+      "bytes": 31271,
+      "sha256": "6c9d3b6b946d07ba6565c342d2026106d363d5792fc0f3c709382bb2745668ec"
+    },
+    {
+      "path": "badges/locker-login-with-white-sticker-320.png",
+      "bytes": 7136,
+      "sha256": "797ad82821aed15568f670b60fef4154b28d7cf6fa080dba7b4ea0d4998fad46"
+    },
+    {
+      "path": "badges/locker-login-with-white-sticker-640.png",
+      "bytes": 14680,
+      "sha256": "5f91db725668923778471607138c010e008448df262270ab3010f5a8ea898243"
+    },
+    {
+      "path": "badges/locker-login-with-white-sticker.pdf",
+      "bytes": 10398,
+      "sha256": "4806bd149302fa266f29397b0ca353ddb326a27b6ccf4f4538856ad8f46e278c"
+    },
+    {
+      "path": "badges/locker-login-with-white-sticker.svg",
+      "bytes": 19868,
+      "sha256": "8b2ec34cdd7e0c8ce2957f1aaacfa6d2448c27edf4d91943f5430f12f272c506"
+    },
+    {
+      "path": "badges/locker-login-with-white-transparent-1280.png",
+      "bytes": 19389,
+      "sha256": "2ca9c58f24627448081083f9dc012a909f2834298967fbf6c5ef10d4cf5b80a3"
+    },
+    {
+      "path": "badges/locker-login-with-white-transparent-320.png",
+      "bytes": 4023,
+      "sha256": "0806aa6ffc3b120a96c9882cf4b1b71995f1f7a07d6ea0297347c06a403ebd72"
+    },
+    {
+      "path": "badges/locker-login-with-white-transparent-640.png",
+      "bytes": 8714,
+      "sha256": "1615404ff8e53f78f52660d858b9a5ce19b1c24243d14695126e90ed95309e48"
+    },
+    {
+      "path": "badges/locker-login-with-white-transparent.pdf",
+      "bytes": 10245,
+      "sha256": "ef78a823468865f2ecc9ee44563128b121b93fca6734561e0989786438d817a9"
+    },
+    {
+      "path": "badges/locker-login-with-white-transparent.svg",
+      "bytes": 19767,
+      "sha256": "e823884a5d3a6bc7e756e00d2159390c4909d6103fc271113c1411e6862d0187"
+    },
+    {
+      "path": "badges/locker-manage-with-dark-outline-1280.png",
+      "bytes": 36844,
+      "sha256": "b34c0eb2e348c5600e6cf5d5f16b45b41c00424bb8b6a553b32add47c973716c"
+    },
+    {
+      "path": "badges/locker-manage-with-dark-outline-320.png",
+      "bytes": 8312,
+      "sha256": "f39b0c393186f3a3fa6d0519c447faa3121d61dc73a69e9aa4452b364c2a141c"
+    },
+    {
+      "path": "badges/locker-manage-with-dark-outline-640.png",
+      "bytes": 17592,
+      "sha256": "2a206283a19b47f70d8988ffd75ddb132bb79020db18f29a372e85ce6d26c550"
+    },
+    {
+      "path": "badges/locker-manage-with-dark-outline.pdf",
+      "bytes": 11768,
+      "sha256": "f2f94419d21bf6a68722ab1fa867e3fc68972a37dfa557eb2157df125322e2d5"
+    },
+    {
+      "path": "badges/locker-manage-with-dark-outline.svg",
+      "bytes": 22425,
+      "sha256": "2fe02cac00b89733bbbf7decdea9acb7d7facfda66e0b77ec30f13391b910215"
+    },
+    {
+      "path": "badges/locker-manage-with-dark-sticker-1280.png",
+      "bytes": 34190,
+      "sha256": "93ae038a68d7361837c1227c22e2eb6504388d648c030c5c14de941734ff9e20"
+    },
+    {
+      "path": "badges/locker-manage-with-dark-sticker-320.png",
+      "bytes": 7779,
+      "sha256": "a34c528b8f6a6018df9d53a3ee58efac69886ad48ced549e711b11991794e6e1"
+    },
+    {
+      "path": "badges/locker-manage-with-dark-sticker-640.png",
+      "bytes": 16182,
+      "sha256": "303ef765b1ae265c442868b2748130a5cec26f6dce83ce8671a1bc633829f729"
+    },
+    {
+      "path": "badges/locker-manage-with-dark-sticker.pdf",
+      "bytes": 11768,
+      "sha256": "6e1673a7906073650aa1a7d178b25bb51f7d63852a44b3df7358bf13d6ff7d41"
+    },
+    {
+      "path": "badges/locker-manage-with-dark-sticker.svg",
+      "bytes": 22425,
+      "sha256": "a0d8bd2ceee0a5dace5509efa825401b0a320f38feebbfa454ae8b983d2ba00f"
+    },
+    {
+      "path": "badges/locker-manage-with-dark-transparent-1280.png",
+      "bytes": 26394,
+      "sha256": "9b0943cc2038a353bcf4117a57fbd5343f961c250e1049291e8c7dcff373fb4d"
+    },
+    {
+      "path": "badges/locker-manage-with-dark-transparent-320.png",
+      "bytes": 5831,
+      "sha256": "8e178e3debb0219495f640ae67eb8f5a2f1b62ae50e0c2b0782bb6ae54625f13"
+    },
+    {
+      "path": "badges/locker-manage-with-dark-transparent-640.png",
+      "bytes": 12282,
+      "sha256": "ab8f1424f0f72f9bd31d6dcc6d0c63552ef8303b017cf724f1da500ed92e28bb"
+    },
+    {
+      "path": "badges/locker-manage-with-dark-transparent.pdf",
+      "bytes": 11619,
+      "sha256": "cea908646c4690826e3fde25993968320cf885e6465da47240bf4e8961ccdac3"
+    },
+    {
+      "path": "badges/locker-manage-with-dark-transparent.svg",
+      "bytes": 22324,
+      "sha256": "471240db5553fcc7b3bbf37767644f22ca6bfac19f9c4b0fc021790eb0ca40ab"
+    },
+    {
+      "path": "badges/locker-manage-with-light-outline-1280.png",
+      "bytes": 37259,
+      "sha256": "96c46a28982f7bf3833b781f777fd3c3c222ce4f5d3a72c741304fa299ee5bc8"
+    },
+    {
+      "path": "badges/locker-manage-with-light-outline-320.png",
+      "bytes": 8393,
+      "sha256": "7e51c9579e3aa0bb3233715c75c69f9b8cf08f4dd6601ade22ca2368def0edfc"
+    },
+    {
+      "path": "badges/locker-manage-with-light-outline-640.png",
+      "bytes": 17601,
+      "sha256": "f1913039a26eb788edc68b6e1017309d79522715089d9e7b2375a72db2cf81a8"
+    },
+    {
+      "path": "badges/locker-manage-with-light-outline.pdf",
+      "bytes": 11769,
+      "sha256": "5c311e5337179a7d3a972c1f64d8654654c142f29350fb1e37dceacd608c5319"
+    },
+    {
+      "path": "badges/locker-manage-with-light-outline.svg",
+      "bytes": 22425,
+      "sha256": "71a0b97035c3945c5155504e055e5be81ae6bfb0bb8f06417ad0f568049f770f"
+    },
+    {
+      "path": "badges/locker-manage-with-light-sticker-1280.png",
+      "bytes": 33907,
+      "sha256": "8de8c6ee6c46af71e764e427d63ef38799097b0b0124e54686582aed698f76c1"
+    },
+    {
+      "path": "badges/locker-manage-with-light-sticker-320.png",
+      "bytes": 7655,
+      "sha256": "a001dbb4fb27f45b0bb0525787e54b1946845caca64ae1d6283eba19bf1d04d1"
+    },
+    {
+      "path": "badges/locker-manage-with-light-sticker-640.png",
+      "bytes": 16030,
+      "sha256": "fc9e0b0b7a15e89a8e390c07c1b3c535a5116ef5224d66f45e0698fb1e7d4ebc"
+    },
+    {
+      "path": "badges/locker-manage-with-light-sticker.pdf",
+      "bytes": 11767,
+      "sha256": "56e857a9d9d1362bcd1a5dad99a3c26752e0864f5c87ea7d7180fafea6fedb11"
+    },
+    {
+      "path": "badges/locker-manage-with-light-sticker.svg",
+      "bytes": 22425,
+      "sha256": "e1609edd22278689241ec9902b9b00775dd1c227fa996d4d61681886364c5b5d"
+    },
+    {
+      "path": "badges/locker-manage-with-light-transparent-1280.png",
+      "bytes": 28509,
+      "sha256": "a36ca21caceb8edf9d2dccb5752ff35d9757dbad3114fba827c4afd87ba0b995"
+    },
+    {
+      "path": "badges/locker-manage-with-light-transparent-320.png",
+      "bytes": 6467,
+      "sha256": "f6b3f26aa30a1e17ebacae6450dc36714967e4cdeeb08b33e49807b822cc2d74"
+    },
+    {
+      "path": "badges/locker-manage-with-light-transparent-640.png",
+      "bytes": 13389,
+      "sha256": "5dd1d43ac7993e7e4f5f246a6448843797a93547a70f07f37e397bdb06ca77fa"
+    },
+    {
+      "path": "badges/locker-manage-with-light-transparent.pdf",
+      "bytes": 11621,
+      "sha256": "9937c92faedd08c30233bea33c15da36007ef9c233e0020213e360d75256bddd"
+    },
+    {
+      "path": "badges/locker-manage-with-light-transparent.svg",
+      "bytes": 22324,
+      "sha256": "a2fe76cf7b16b4c7fc12fdeea4798bd21145d5ee77480fd2ee48d2de2b6bd9df"
+    },
+    {
+      "path": "badges/locker-manage-with-white-outline-1280.png",
+      "bytes": 36184,
+      "sha256": "f7b7909d30d269b2b1d610cece67f73c68dad5a57fedd41107763975c027d9a3"
+    },
+    {
+      "path": "badges/locker-manage-with-white-outline-320.png",
+      "bytes": 8075,
+      "sha256": "5da4bc67fa0d81c3413fb680957381d1113d3290d5139e0e24de351d930661cb"
+    },
+    {
+      "path": "badges/locker-manage-with-white-outline-640.png",
+      "bytes": 17096,
+      "sha256": "8f5024a4c2371aa3366163664a0e06fa2827448b30941d5d86874b13d7139c3b"
+    },
+    {
+      "path": "badges/locker-manage-with-white-outline.pdf",
+      "bytes": 11738,
+      "sha256": "7d9b591aafd2baa23cfd604aa1b35823ea41c1bcb599f634185f210eb5cecc79"
+    },
+    {
+      "path": "badges/locker-manage-with-white-outline.svg",
+      "bytes": 22425,
+      "sha256": "450841685d279c45a9e5cce26ef28eae9d35c08561217873f4b64a957cab8ecb"
+    },
+    {
+      "path": "badges/locker-manage-with-white-sticker-1280.png",
+      "bytes": 33994,
+      "sha256": "1071fb553c735da60ed67af51610195f442e106a580c662dcd307f05082ffdc5"
+    },
+    {
+      "path": "badges/locker-manage-with-white-sticker-320.png",
+      "bytes": 7651,
+      "sha256": "fb5764a14dcc38b89cc9d3c498564778ba3266311fdb34cded42a413fb1d025c"
+    },
+    {
+      "path": "badges/locker-manage-with-white-sticker-640.png",
+      "bytes": 15983,
+      "sha256": "0ce2f1d16e0fd8d655038eb0324ef4d90b1527fc3526e0c9be63c91295ec64ee"
+    },
+    {
+      "path": "badges/locker-manage-with-white-sticker.pdf",
+      "bytes": 11741,
+      "sha256": "4e130eb5fc31ef82ae3f41cb44908ff77521474c4ad49bd95233b34df72bd716"
+    },
+    {
+      "path": "badges/locker-manage-with-white-sticker.svg",
+      "bytes": 22425,
+      "sha256": "3ce82d14dec8fc8343f4a158196dac216f65c98eb3d8073a896e17c04f0b3e2c"
+    },
+    {
+      "path": "badges/locker-manage-with-white-transparent-1280.png",
+      "bytes": 21138,
+      "sha256": "16b976af4a67118f22da5854b718477c2ade139f0f03c45989467b9cebc112cb"
+    },
+    {
+      "path": "badges/locker-manage-with-white-transparent-320.png",
+      "bytes": 4315,
+      "sha256": "05a0fb929193a52d88cf012b05a4a7248f80836342e13c0a3511a59ff599ba25"
+    },
+    {
+      "path": "badges/locker-manage-with-white-transparent-640.png",
+      "bytes": 9487,
+      "sha256": "f52fad1dc78a7f2ab704fba0c2a1eda6565a70d05344ab5de569be935dcbce2e"
+    },
+    {
+      "path": "badges/locker-manage-with-white-transparent.pdf",
+      "bytes": 11587,
+      "sha256": "4bc6d6f5cd772c38d2f0727b9b1ceebb22b35d839d79f9ad5f313d4cbbb0fba9"
+    },
+    {
+      "path": "badges/locker-manage-with-white-transparent.svg",
+      "bytes": 22324,
+      "sha256": "8c0c6b449cb5bc2cc6be5f8690e818c3e89726a31d64a18279d21fe33bddeaa2"
     },
     {
       "path": "badges/locker-open-in-dark-outline-1280.png",
@@ -249,12 +2059,12 @@
     {
       "path": "badges/locker-open-in-dark-outline.pdf",
       "bytes": 9625,
-      "sha256": "69d2f09b2d3ed6fdcb55f011a001cb07086bdb8ff3c1a54d25426934b7fb5c36"
+      "sha256": "4ae9ea0f4e3b2e63e297eb0e1758511d764a175134d55e9e9cc79eacf57dfcb8"
     },
     {
       "path": "badges/locker-open-in-dark-outline.svg",
-      "bytes": 18132,
-      "sha256": "a133aaee6960bb3281a839f4ee4ac494269f34220e7a986f9ae46cbc9481f33d"
+      "bytes": 18140,
+      "sha256": "d7e997dc6c095d31d9a1394348abfcb9f1f339a853ec32890ed878bbb31984a1"
     },
     {
       "path": "badges/locker-open-in-dark-sticker-1280.png",
@@ -274,12 +2084,12 @@
     {
       "path": "badges/locker-open-in-dark-sticker.pdf",
       "bytes": 9625,
-      "sha256": "77209604d5ea63b19ae9671f8bf72c7652946edc8781589b2a7a2311a310712c"
+      "sha256": "1447adb5333e52b4b38616f23466478331b7c995677d15893d524e52fa637c22"
     },
     {
       "path": "badges/locker-open-in-dark-sticker.svg",
-      "bytes": 18132,
-      "sha256": "833d30c5ff6439713b8a372066163ce021d787150bc7ec2829e1c8a83152e912"
+      "bytes": 18140,
+      "sha256": "67ff60bc15a14a81167a158088fc315451eedbcf818234d34dac0b2c733619ef"
     },
     {
       "path": "badges/locker-open-in-dark-transparent-1280.png",
@@ -299,12 +2109,12 @@
     {
       "path": "badges/locker-open-in-dark-transparent.pdf",
       "bytes": 9477,
-      "sha256": "4f8e40b6cb8f3ad9e2ec1c1ad3030a9e7cca791ba5e999ac001a67284bbe6c67"
+      "sha256": "debdc2d9541b34818225adf4e8b4272b30e5c1769c2feca6e6462226e0900415"
     },
     {
       "path": "badges/locker-open-in-dark-transparent.svg",
-      "bytes": 18031,
-      "sha256": "dcf8f5e724145f8e87edc08cc328a88872ee458991336cd2bc3d44dd59d3f926"
+      "bytes": 18039,
+      "sha256": "91f1e5893cf2ae6963f865edd042b4c5a8e89b0f396ac4ea8c76c4c041d5500c"
     },
     {
       "path": "badges/locker-open-in-light-outline-1280.png",
@@ -324,12 +2134,12 @@
     {
       "path": "badges/locker-open-in-light-outline.pdf",
       "bytes": 9627,
-      "sha256": "31c836860e8de7ebaf5cd8a9f84739050963243d283b3697ac855c80d601a4fe"
+      "sha256": "1a7fe7658f8f6b0be13f8f2e437386e81a369b5be0c93836248b313f2146c52d"
     },
     {
       "path": "badges/locker-open-in-light-outline.svg",
-      "bytes": 18132,
-      "sha256": "73b4ccf2b7e89e9b9a0baa4eb18d004914fdc6a7f523877cd9c8bf74127d9281"
+      "bytes": 18140,
+      "sha256": "0ef96be7540234cc27bc1d32134a7c1aa40c0e9a24f78529586f991ba19615b2"
     },
     {
       "path": "badges/locker-open-in-light-sticker-1280.png",
@@ -349,12 +2159,12 @@
     {
       "path": "badges/locker-open-in-light-sticker.pdf",
       "bytes": 9625,
-      "sha256": "390ec67dbc9c26be63afb02de68e9433a12405cbc953db27dd55ba570700d8b1"
+      "sha256": "a42027f15ff80ba050a9f4a8bff93056cb9747b75cd520f8901d057a27fa7c93"
     },
     {
       "path": "badges/locker-open-in-light-sticker.svg",
-      "bytes": 18132,
-      "sha256": "57fed9b7c876fa8c2f02e668fe7d375a15f3e9e7ad8b48dc1dcd3ddcb64ea6b6"
+      "bytes": 18140,
+      "sha256": "8e7671c7953f6e8e1cdef034a8633702087ad9b8642c6062b4c991b83523b0ee"
     },
     {
       "path": "badges/locker-open-in-light-transparent-1280.png",
@@ -374,12 +2184,12 @@
     {
       "path": "badges/locker-open-in-light-transparent.pdf",
       "bytes": 9481,
-      "sha256": "98ea47143bb0bfd3fb2eb4dab8c24b6deded567b3666ee4cec573f2d6604f51d"
+      "sha256": "6822c37cf5803d5be18f4bc5693afd7319a1892000a66b272bcd165fd1ff4214"
     },
     {
       "path": "badges/locker-open-in-light-transparent.svg",
-      "bytes": 18031,
-      "sha256": "3db6d934bc6e8158007b55ec694698f87c124ec368872b76ed5d19cc3f9a0b89"
+      "bytes": 18039,
+      "sha256": "f2869721c74a1abc62ce6b63ecd4364a465e6365c053d3cf99099c97c800687c"
     },
     {
       "path": "badges/locker-open-in-white-outline-1280.png",
@@ -399,12 +2209,12 @@
     {
       "path": "badges/locker-open-in-white-outline.pdf",
       "bytes": 9597,
-      "sha256": "9fe6ac858494c61bb846fe784c1045ed5a7d64224935765697427a3de0371dca"
+      "sha256": "ad232b17e72543b547c4c150086ffba4bc0a1d34b59448ac1ad6d2df37216ca5"
     },
     {
       "path": "badges/locker-open-in-white-outline.svg",
-      "bytes": 18132,
-      "sha256": "94ac81e4c931e50941d4766a4220254cdccf5ed5089201381d39f0102200c0db"
+      "bytes": 18140,
+      "sha256": "c59d1f490488dce002dfca60e56171dd9e61addc12ee52d53175baf6ed295de4"
     },
     {
       "path": "badges/locker-open-in-white-sticker-1280.png",
@@ -424,12 +2234,12 @@
     {
       "path": "badges/locker-open-in-white-sticker.pdf",
       "bytes": 9600,
-      "sha256": "d57db3fd05d4a1a027c0780b743b6f45bf1a86aea1900d6bb2451e8b1f3de4b7"
+      "sha256": "dcee049a4cff138766db3cb38dd313a3db0bada4164a4d7c6841ebf6de77d5f7"
     },
     {
       "path": "badges/locker-open-in-white-sticker.svg",
-      "bytes": 18132,
-      "sha256": "1023be1d684813b3f18ca4ed8246f69aa450f319c0102eefee930b0c4b7dc557"
+      "bytes": 18140,
+      "sha256": "31d2d14b0867a1614930afca413e9b988d4c787d95ed78d14e1da8311f35d62b"
     },
     {
       "path": "badges/locker-open-in-white-transparent-1280.png",
@@ -449,32 +2259,1392 @@
     {
       "path": "badges/locker-open-in-white-transparent.pdf",
       "bytes": 9448,
-      "sha256": "39f5010d7b40b154a3a353fc184d20f821dc0db6c82a914b0d63f3bc217461ce"
+      "sha256": "1c1025d089f81e55e68cc794028bb2db41217bb9e17c493207c4f80eb752f74e"
     },
     {
       "path": "badges/locker-open-in-white-transparent.svg",
-      "bytes": 18031,
-      "sha256": "9c09822495a141368ac3b799fb0d5a52e895ea6eef211f58b07b842ca8208eba"
+      "bytes": 18039,
+      "sha256": "2d73c2ac8c88d4eccf39c9be90c25227fdad2ffdf3d58d3ec5be4c2d75a4685c"
+    },
+    {
+      "path": "badges/locker-play-on-dark-outline-1280.png",
+      "bytes": 32664,
+      "sha256": "2fed722f44010c51480118cb1a5a19cb04fdaacc0158b7458c266ae1e22af67d"
+    },
+    {
+      "path": "badges/locker-play-on-dark-outline-320.png",
+      "bytes": 7414,
+      "sha256": "131291d33b0efe748fb646dfbb333145e3da50377b0ca3d1f046a5a0311cc0e2"
+    },
+    {
+      "path": "badges/locker-play-on-dark-outline-640.png",
+      "bytes": 15512,
+      "sha256": "eb44b7a76aea20cd727e614f67c3a9b4f8984ec2a27d70521dfabde7782c4011"
+    },
+    {
+      "path": "badges/locker-play-on-dark-outline.pdf",
+      "bytes": 9132,
+      "sha256": "c047a39bf5a5916e8c7158cedbf6ad5ee11793f3b9edc109ddc2c17ae112067f"
+    },
+    {
+      "path": "badges/locker-play-on-dark-outline.svg",
+      "bytes": 17175,
+      "sha256": "a61d038018daf24c9a91aff05b100504bac8f599de9bb51c1bd70966415492b7"
+    },
+    {
+      "path": "badges/locker-play-on-dark-sticker-1280.png",
+      "bytes": 29969,
+      "sha256": "1134ba6c44fe70afd2329cc357ba63ec5afbcfc783978ef7fc010b115a401902"
+    },
+    {
+      "path": "badges/locker-play-on-dark-sticker-320.png",
+      "bytes": 6893,
+      "sha256": "b0c0b2a354cb6948d2a924df94ca8ad4e844b3b7b897a164a6f325b38961f888"
+    },
+    {
+      "path": "badges/locker-play-on-dark-sticker-640.png",
+      "bytes": 14095,
+      "sha256": "f2fa044eaf1d2728b8db0932c5f3843de7e2c5fdae5f80472ff4444862d93a41"
+    },
+    {
+      "path": "badges/locker-play-on-dark-sticker.pdf",
+      "bytes": 9134,
+      "sha256": "710b24f08eade534ff4605973a632bc6dea4da8266c834b9b467e7c6915c5c46"
+    },
+    {
+      "path": "badges/locker-play-on-dark-sticker.svg",
+      "bytes": 17175,
+      "sha256": "b2f81f31782050d69f7dd1fa7ab4a539daa9e9c6688bdb8ad261bb63d78f88fa"
+    },
+    {
+      "path": "badges/locker-play-on-dark-transparent-1280.png",
+      "bytes": 22666,
+      "sha256": "7b0d280fc76b932594651ea63595b3d3261c4f06804aea335bc3b1c0190f3b17"
+    },
+    {
+      "path": "badges/locker-play-on-dark-transparent-320.png",
+      "bytes": 5125,
+      "sha256": "ffa35d40314b21d45080dbe08777506684a3ae8656c2accfa8b4f5f1beeccfb7"
+    },
+    {
+      "path": "badges/locker-play-on-dark-transparent-640.png",
+      "bytes": 10571,
+      "sha256": "8efe93d197cb98927baa60b118eaa10889bdf793ac8c3a91653ea8fb22c1ecda"
+    },
+    {
+      "path": "badges/locker-play-on-dark-transparent.pdf",
+      "bytes": 8992,
+      "sha256": "2dcf4e47f4cae517504db50c89a88e626c52d87b51ceebe444190cbff9c7ba2d"
+    },
+    {
+      "path": "badges/locker-play-on-dark-transparent.svg",
+      "bytes": 17074,
+      "sha256": "93126ffc33dc3d7a74dea9a2556bbb44fdcb6e774f16b2faca2c3e74226365ec"
+    },
+    {
+      "path": "badges/locker-play-on-light-outline-1280.png",
+      "bytes": 33162,
+      "sha256": "e70f94a29c8071e47a47de55b9cbd5567e7c67b4786719f71c9f5414602d60b1"
+    },
+    {
+      "path": "badges/locker-play-on-light-outline-320.png",
+      "bytes": 7545,
+      "sha256": "7bdb8b75de6fa35962496d859e5bc7249fd406fa32efda2897673d663e537384"
+    },
+    {
+      "path": "badges/locker-play-on-light-outline-640.png",
+      "bytes": 15507,
+      "sha256": "9a074acd752e79f5465f9531b21ed19af1b2ad0e36623d633f1aa3867d4aee76"
+    },
+    {
+      "path": "badges/locker-play-on-light-outline.pdf",
+      "bytes": 9133,
+      "sha256": "fe4dc79479356b8a429a8090f4635fa73eeebc20a85da78a7711ce49a74833da"
+    },
+    {
+      "path": "badges/locker-play-on-light-outline.svg",
+      "bytes": 17175,
+      "sha256": "644c1615d0f15bb0d9a32b9ebdc5786df692018d3d6099fa1ac38c17ad87e5ac"
+    },
+    {
+      "path": "badges/locker-play-on-light-sticker-1280.png",
+      "bytes": 29741,
+      "sha256": "e4f4611689b63e4c412b15e2777b3967d193fb322ff5edce93856537588a868b"
+    },
+    {
+      "path": "badges/locker-play-on-light-sticker-320.png",
+      "bytes": 6818,
+      "sha256": "8b68f4f875c6c514f098ae754d64261617c14d67ac9a9d43f6a578622d8749da"
+    },
+    {
+      "path": "badges/locker-play-on-light-sticker-640.png",
+      "bytes": 13959,
+      "sha256": "78e002abe822ec2448419a252729102f4ac1c344a49c8bed09d9112307f5150a"
+    },
+    {
+      "path": "badges/locker-play-on-light-sticker.pdf",
+      "bytes": 9130,
+      "sha256": "2747c57b5d859991d92d801daa2932b0abd7a52f2ce8bbd98a35b891c6524775"
+    },
+    {
+      "path": "badges/locker-play-on-light-sticker.svg",
+      "bytes": 17175,
+      "sha256": "f7e42a4faf7a5efab00595d48d06c3eeca90e4227215896edb5c8f543a66b40b"
+    },
+    {
+      "path": "badges/locker-play-on-light-transparent-1280.png",
+      "bytes": 24462,
+      "sha256": "b0d55dd73bbcadb799de2b50bedca25d712b8a0754eefcd3ec834d98659ab3a7"
+    },
+    {
+      "path": "badges/locker-play-on-light-transparent-320.png",
+      "bytes": 5707,
+      "sha256": "ac5867afc224c5f108647966fb564868dd6bd8adddde9123b80e767d44586e52"
+    },
+    {
+      "path": "badges/locker-play-on-light-transparent-640.png",
+      "bytes": 11486,
+      "sha256": "41bf275fec17f3955ef77076c2a50dc083341f96debbbb34192f225bead25291"
+    },
+    {
+      "path": "badges/locker-play-on-light-transparent.pdf",
+      "bytes": 8993,
+      "sha256": "a3d9b6849a6f0d80e6143dd6d22ca6d0d19c5353951fdfdc891fd4c790e8b6b9"
+    },
+    {
+      "path": "badges/locker-play-on-light-transparent.svg",
+      "bytes": 17074,
+      "sha256": "2a7bb2fbce4cf9cb930704f50183c7eb82f05be3059f2a0d36f10c5cd45062e3"
+    },
+    {
+      "path": "badges/locker-play-on-white-outline-1280.png",
+      "bytes": 32140,
+      "sha256": "26f1a83461b7a49c4e4c794a77fd042657e06393a8f63c6c5df35a0b06389938"
+    },
+    {
+      "path": "badges/locker-play-on-white-outline-320.png",
+      "bytes": 7218,
+      "sha256": "e35dbe88133fce1ff29221b10ac9c91840a98b9d69e97a6bb551ec1dd3888fb6"
+    },
+    {
+      "path": "badges/locker-play-on-white-outline-640.png",
+      "bytes": 15035,
+      "sha256": "447ac61115b2a45db8101091d5e7e337f5ed8b9de42ea9540fd410c528377b13"
+    },
+    {
+      "path": "badges/locker-play-on-white-outline.pdf",
+      "bytes": 9104,
+      "sha256": "b85944fa285ece6ea9c99d4cdc1c3487423cfd7a33e5d2fb179dafda28b93e94"
+    },
+    {
+      "path": "badges/locker-play-on-white-outline.svg",
+      "bytes": 17175,
+      "sha256": "fab025face49d313cab5c07a656ea18bc736475a807412c5ba8f294d87f5617a"
+    },
+    {
+      "path": "badges/locker-play-on-white-sticker-1280.png",
+      "bytes": 29930,
+      "sha256": "21fc7df36d9e47cb5b74f0edb2f834cee4a1a23e746977b60992cd6f3725ebea"
+    },
+    {
+      "path": "badges/locker-play-on-white-sticker-320.png",
+      "bytes": 6791,
+      "sha256": "c3688aab48cf21b50084c7173590647816bb9022d3bf5bca6f05e21903e8e696"
+    },
+    {
+      "path": "badges/locker-play-on-white-sticker-640.png",
+      "bytes": 13940,
+      "sha256": "553be5aaea4cc067c7da4ad535750515412312a0d6947cb9ce213f38fded87cf"
+    },
+    {
+      "path": "badges/locker-play-on-white-sticker.pdf",
+      "bytes": 9108,
+      "sha256": "addc0b6935098beee6c65b2872d65af7e4c5d759bf10548e0d756e387f8db82d"
+    },
+    {
+      "path": "badges/locker-play-on-white-sticker.svg",
+      "bytes": 17175,
+      "sha256": "ea8ac5cbb238a81553ee76080df08fe34fd3e1c9339c63cffb5646a7cd94b504"
+    },
+    {
+      "path": "badges/locker-play-on-white-transparent-1280.png",
+      "bytes": 18447,
+      "sha256": "c7c34dfd8f744c10dafce5d2c4a3bd25fa33ecced50fbe47a17bafb5ff02e467"
+    },
+    {
+      "path": "badges/locker-play-on-white-transparent-320.png",
+      "bytes": 3814,
+      "sha256": "98b82778cd45f3ac11bbb8f1b0ede6dd636cc03f404412bd93d4950d58b7ac98"
+    },
+    {
+      "path": "badges/locker-play-on-white-transparent-640.png",
+      "bytes": 8201,
+      "sha256": "c8ffbb3385ac80b8c052d85d7b892806634d7b24f7ccce35e9f0eaeec0604a1b"
+    },
+    {
+      "path": "badges/locker-play-on-white-transparent.pdf",
+      "bytes": 8961,
+      "sha256": "62d0df0d8f6aa945b278a110fb3c6812f9961203a93dcbc76da2e612b6b46402"
+    },
+    {
+      "path": "badges/locker-play-on-white-transparent.svg",
+      "bytes": 17074,
+      "sha256": "38b4a120fcdb5f6f1342c89f304ea26b053a15409e9fb534489c1838650b1d7a"
+    },
+    {
+      "path": "badges/locker-powered-by-dark-outline-1280.png",
+      "bytes": 36389,
+      "sha256": "0f9d8580f64beced5f21d3faea1653ef7f7c51f13a382af08f18f6344b52f7e1"
+    },
+    {
+      "path": "badges/locker-powered-by-dark-outline-320.png",
+      "bytes": 8230,
+      "sha256": "7523d260e14839388b45a7de1d241f925733af1a40d4b040ba16f44a8ee6f6ab"
+    },
+    {
+      "path": "badges/locker-powered-by-dark-outline-640.png",
+      "bytes": 17314,
+      "sha256": "cbaccd182a024908282aa7ff930472a55b2a4a42942a73e789d3d80a2bf06bfd"
+    },
+    {
+      "path": "badges/locker-powered-by-dark-outline.pdf",
+      "bytes": 11095,
+      "sha256": "2e45d6b9aed0617b45a708a4afa50bf6ad7fa58132a9594157974a725670dc0c"
+    },
+    {
+      "path": "badges/locker-powered-by-dark-outline.svg",
+      "bytes": 21183,
+      "sha256": "fae1980b5dd5bb245623550c1019d393fd5a3fa08b266545d0809cd24d5199cf"
+    },
+    {
+      "path": "badges/locker-powered-by-dark-sticker-1280.png",
+      "bytes": 33715,
+      "sha256": "51e295401e367cf4a4832f9dcc73bfb564699566f183ff0b26ae5c6d427e38a0"
+    },
+    {
+      "path": "badges/locker-powered-by-dark-sticker-320.png",
+      "bytes": 7716,
+      "sha256": "911311372c4dfa798ef7fa64399b40258bda0ee4666fc3feb5c274464c6f4285"
+    },
+    {
+      "path": "badges/locker-powered-by-dark-sticker-640.png",
+      "bytes": 15924,
+      "sha256": "4a8268b01b3f504fbf9d9009cded2f04dbbc7cd71694fa169bc9cd7619c7c645"
+    },
+    {
+      "path": "badges/locker-powered-by-dark-sticker.pdf",
+      "bytes": 11094,
+      "sha256": "f09e5e12d98b087f935709a841819d7feb1f7291f8fcd2f08171853f10413aea"
+    },
+    {
+      "path": "badges/locker-powered-by-dark-sticker.svg",
+      "bytes": 21183,
+      "sha256": "55d064a7ee509bfefaab4aec5e133ecc03ca62bae6e0d23cfdd5dd9a2b45f7e1"
+    },
+    {
+      "path": "badges/locker-powered-by-dark-transparent-1280.png",
+      "bytes": 25951,
+      "sha256": "72de39797a6ad188741b391ef2504440ce91eecd909177f8994fb1cac310abaa"
+    },
+    {
+      "path": "badges/locker-powered-by-dark-transparent-320.png",
+      "bytes": 5794,
+      "sha256": "77e23851df2f2dcb957943303cd5cee7119d71ef39c912405d44ff64e1d31468"
+    },
+    {
+      "path": "badges/locker-powered-by-dark-transparent-640.png",
+      "bytes": 12121,
+      "sha256": "1b324bd6cb1f0fd64466750db40a6dd99348204ccb28f54483066bfbe800e54c"
+    },
+    {
+      "path": "badges/locker-powered-by-dark-transparent.pdf",
+      "bytes": 10953,
+      "sha256": "7ca8c4e1ce085bbf42eb20ab5e231a6987175147241ed7ba576572a4f0942013"
+    },
+    {
+      "path": "badges/locker-powered-by-dark-transparent.svg",
+      "bytes": 21082,
+      "sha256": "aa883b9836f93443e7a595483894e0f274e7bbc50bdf349c20ef24de3119887c"
+    },
+    {
+      "path": "badges/locker-powered-by-light-outline-1280.png",
+      "bytes": 36890,
+      "sha256": "dcb8086d65539be0b6b069a9ac6fdda40faf26f3414cf073dcd62525ebd874d0"
+    },
+    {
+      "path": "badges/locker-powered-by-light-outline-320.png",
+      "bytes": 8336,
+      "sha256": "1e55336aacea7b5f807132896112b5ec3cc0832f1dafb8354a0de1cd6438771f"
+    },
+    {
+      "path": "badges/locker-powered-by-light-outline-640.png",
+      "bytes": 17369,
+      "sha256": "f6ba2bffbeac00f910a8b02c3d948ff7d2a4f5f370a902c9c881a4fdde4072c1"
+    },
+    {
+      "path": "badges/locker-powered-by-light-outline.pdf",
+      "bytes": 11096,
+      "sha256": "eeea4713f3647524b37788e6075f81d4734cefeef9d21b0b4caa1a22f1857bfb"
+    },
+    {
+      "path": "badges/locker-powered-by-light-outline.svg",
+      "bytes": 21183,
+      "sha256": "aa8cac7a3c055996af71c75fde18883bc976a7e369a5f2f07aeb9427cfacc6e3"
+    },
+    {
+      "path": "badges/locker-powered-by-light-sticker-1280.png",
+      "bytes": 33555,
+      "sha256": "6f97fd3969a77829ad41c2851e40d31e5652d224d3e5828d7bde95038288e65a"
+    },
+    {
+      "path": "badges/locker-powered-by-light-sticker-320.png",
+      "bytes": 7605,
+      "sha256": "cb07b5fc5885a284ec12351756ccec9f6a54a7ad191e86aef9d20883663c2505"
+    },
+    {
+      "path": "badges/locker-powered-by-light-sticker-640.png",
+      "bytes": 15781,
+      "sha256": "74f07fb47f2cfb292927ca3ede0b1b2795a81e186fd493772e8d1be5a4869ea2"
+    },
+    {
+      "path": "badges/locker-powered-by-light-sticker.pdf",
+      "bytes": 11091,
+      "sha256": "98968bfee35546e016468dc38f96481503dc34016ab2e2624fbee3f217ab9aae"
+    },
+    {
+      "path": "badges/locker-powered-by-light-sticker.svg",
+      "bytes": 21183,
+      "sha256": "85e0b581c5ddcfeba8b15d80eac745afb96d1cf520aeb024bb64a34eee5b391e"
+    },
+    {
+      "path": "badges/locker-powered-by-light-transparent-1280.png",
+      "bytes": 28061,
+      "sha256": "d6757c1da27b1ea7acb3b432280fdcc4c6560918781638e077828b7ce2b1e990"
+    },
+    {
+      "path": "badges/locker-powered-by-light-transparent-320.png",
+      "bytes": 6387,
+      "sha256": "7591ec1e7c7e70d4dc95f72bf5d3af86a2c047ca21a3dfa104bbd14f48b9742b"
+    },
+    {
+      "path": "badges/locker-powered-by-light-transparent-640.png",
+      "bytes": 13195,
+      "sha256": "387940fc195fe824d6262ea8f79c10dce89c8f034d69e4801ebcc8bd6b92459c"
+    },
+    {
+      "path": "badges/locker-powered-by-light-transparent.pdf",
+      "bytes": 10952,
+      "sha256": "bba74b5ef069e7489c4c8b6a672a67c339757ac5d082ad6e179da1c4777269d8"
+    },
+    {
+      "path": "badges/locker-powered-by-light-transparent.svg",
+      "bytes": 21082,
+      "sha256": "c2f643709db8fd1960af457d18e7a88a8c2ce16ef0cadb6f3d85146245bff041"
+    },
+    {
+      "path": "badges/locker-powered-by-white-outline-1280.png",
+      "bytes": 35789,
+      "sha256": "ad0ffde45fa9a9690f30c2325064fd0d55494536e0ff9099cc5a6bdf0d15eaab"
+    },
+    {
+      "path": "badges/locker-powered-by-white-outline-320.png",
+      "bytes": 7953,
+      "sha256": "8f0a20e6e23c734ffd92c4a5c2686f91fe4cbd926d72459768dd3cbbe27eee8b"
+    },
+    {
+      "path": "badges/locker-powered-by-white-outline-640.png",
+      "bytes": 16852,
+      "sha256": "31a337684bad51d1e7d0f93bfd540c91040ae0e16f79509996db6c00a2cc1bae"
+    },
+    {
+      "path": "badges/locker-powered-by-white-outline.pdf",
+      "bytes": 11068,
+      "sha256": "75c48e8383820fa5f017745dc2b2b20ad1d8c0607af66b165c4897d6f0e3817f"
+    },
+    {
+      "path": "badges/locker-powered-by-white-outline.svg",
+      "bytes": 21183,
+      "sha256": "5174cd07ccf1158f6a3849d1b34cd28e16e44c2d0360cae33ea0356fa129d8d7"
+    },
+    {
+      "path": "badges/locker-powered-by-white-sticker-1280.png",
+      "bytes": 33596,
+      "sha256": "3254579c9f401cc20cf239466daa3fbcea64d3dc790c60d402fd34a64ba2a1d3"
+    },
+    {
+      "path": "badges/locker-powered-by-white-sticker-320.png",
+      "bytes": 7539,
+      "sha256": "afaa46ea49969e51569d3f46e9bfbe9abb920d9b9f2304f04ae3fb5f4e3bf3d3"
+    },
+    {
+      "path": "badges/locker-powered-by-white-sticker-640.png",
+      "bytes": 15749,
+      "sha256": "32969faa0feead6fbf8d2f801cc2fa985303b7c675edaae272a2dd55a899e1e7"
+    },
+    {
+      "path": "badges/locker-powered-by-white-sticker.pdf",
+      "bytes": 11070,
+      "sha256": "935a6a2e42cfbe9ad2282d997154225b2c142728e5d0df6440636788d4cb3803"
+    },
+    {
+      "path": "badges/locker-powered-by-white-sticker.svg",
+      "bytes": 21183,
+      "sha256": "914d00c4c63aa1dcaff1e976d2fb11a3042939e134b265432a5a0fead1fa8a5f"
+    },
+    {
+      "path": "badges/locker-powered-by-white-transparent-1280.png",
+      "bytes": 20775,
+      "sha256": "0925ebc868186f351de5aab8da9463f47ad749cccf2afc828253a2071087ea56"
+    },
+    {
+      "path": "badges/locker-powered-by-white-transparent-320.png",
+      "bytes": 4252,
+      "sha256": "1a02fd948d7139d170ce102af716d64f859b9071bdd0ac24cc80118782d4ac62"
+    },
+    {
+      "path": "badges/locker-powered-by-white-transparent-640.png",
+      "bytes": 9221,
+      "sha256": "86e7a6545663594a36b886abd0a8b3c05c07fef6b9004d6972162331622f3ac3"
+    },
+    {
+      "path": "badges/locker-powered-by-white-transparent.pdf",
+      "bytes": 10919,
+      "sha256": "5c6d5259cafe8da534b5f7ea8035d44fb3b6e0b66ec0bf77699e8436b78d158d"
+    },
+    {
+      "path": "badges/locker-powered-by-white-transparent.svg",
+      "bytes": 21082,
+      "sha256": "1c032739f9894844fe3810f5e608633327c67003bf99a38fcfe9cd92879731e4"
+    },
+    {
+      "path": "badges/locker-purchase-with-dark-outline-1280.png",
+      "bytes": 36732,
+      "sha256": "e84c42f81acdb4ce122c619b93fcf68ab382cb3e4ed0d088b03d726d90afe17c"
+    },
+    {
+      "path": "badges/locker-purchase-with-dark-outline-320.png",
+      "bytes": 8353,
+      "sha256": "fa766b58a445c9cf3131d01c9e6bfa8b41c759e6ffe008663630c5fd23ce2fc9"
+    },
+    {
+      "path": "badges/locker-purchase-with-dark-outline-640.png",
+      "bytes": 17578,
+      "sha256": "89651fce01fa44c35c0b18fd74e9f78fc6c6f8853dcd26d733be352559d491c9"
+    },
+    {
+      "path": "badges/locker-purchase-with-dark-outline.pdf",
+      "bytes": 12229,
+      "sha256": "fcddf1b7bb07e6b27dc3581589e46236454a5e5645c2dcff54d3543d21f1a1a4"
+    },
+    {
+      "path": "badges/locker-purchase-with-dark-outline.svg",
+      "bytes": 23205,
+      "sha256": "f0da91bccac4a00d5df9d5a53a036ae9462133ef3dc54fdccbed6a556087f5c9"
+    },
+    {
+      "path": "badges/locker-purchase-with-dark-sticker-1280.png",
+      "bytes": 34133,
+      "sha256": "3a1ec8ae7e971f9682ac2fd729591ea3f441f7f3ca991af87a178c6831b26788"
+    },
+    {
+      "path": "badges/locker-purchase-with-dark-sticker-320.png",
+      "bytes": 7791,
+      "sha256": "621d72cbc9f9f60d816ca77327236a8aa228b0f657cab8d177aadbade721cbc2"
+    },
+    {
+      "path": "badges/locker-purchase-with-dark-sticker-640.png",
+      "bytes": 16172,
+      "sha256": "ac2a381d6e7f4c06dc498bd54ae66e54cee916045c93f25df4d23a16afaa5ba5"
+    },
+    {
+      "path": "badges/locker-purchase-with-dark-sticker.pdf",
+      "bytes": 12231,
+      "sha256": "f7673be66c4b12825057f4b64b11cb65368e29446220c17c9d78fccf9548cdff"
+    },
+    {
+      "path": "badges/locker-purchase-with-dark-sticker.svg",
+      "bytes": 23205,
+      "sha256": "a21f08ba511358e18fe08d52dc0a5c04705359c9c6eda141d855b9316016b16d"
+    },
+    {
+      "path": "badges/locker-purchase-with-dark-transparent-1280.png",
+      "bytes": 26243,
+      "sha256": "16134edd255b8bb3ce20452b81c1358c90480ef627c500a0a092915334551e63"
+    },
+    {
+      "path": "badges/locker-purchase-with-dark-transparent-320.png",
+      "bytes": 5904,
+      "sha256": "30b5c9c001a3bdd0259b59e6860ed80a3b3aefd5fe84029cbfb587bd132fc43d"
+    },
+    {
+      "path": "badges/locker-purchase-with-dark-transparent-640.png",
+      "bytes": 12280,
+      "sha256": "556fd962455246436974c88cf7e6deed9a6c276692a71696795814f33cd7ef10"
+    },
+    {
+      "path": "badges/locker-purchase-with-dark-transparent.pdf",
+      "bytes": 12089,
+      "sha256": "f7329f74b247d401cbb48f79292f9b857a1233444e59d8ae4661396a82240a95"
+    },
+    {
+      "path": "badges/locker-purchase-with-dark-transparent.svg",
+      "bytes": 23104,
+      "sha256": "4e2628ea6774f8b9f682ca2a13cb9f4ad0a0570860d5d76738ea0d24b9cfb3d9"
+    },
+    {
+      "path": "badges/locker-purchase-with-light-outline-1280.png",
+      "bytes": 37271,
+      "sha256": "b988361828f0e3b64aa8350e5eb1566f05a0bc68926225c37d7c46490b2951ed"
+    },
+    {
+      "path": "badges/locker-purchase-with-light-outline-320.png",
+      "bytes": 8453,
+      "sha256": "82ee617a3447780deac43401e4528c0db508408c2498c15a85bd5bc46b4b0cf8"
+    },
+    {
+      "path": "badges/locker-purchase-with-light-outline-640.png",
+      "bytes": 17612,
+      "sha256": "aa37ffe27041f7733c0781dde44b22be9c72912ee20472b701900a675a2dd844"
+    },
+    {
+      "path": "badges/locker-purchase-with-light-outline.pdf",
+      "bytes": 12231,
+      "sha256": "7df225883fe7479c63925f65727a66125151dc5b01bd9950626d0f6b2087acaf"
+    },
+    {
+      "path": "badges/locker-purchase-with-light-outline.svg",
+      "bytes": 23205,
+      "sha256": "a97718eb33ac6e5c726c672283a9d4eddb0ca95be4e4ac3b69fb4812ab590474"
+    },
+    {
+      "path": "badges/locker-purchase-with-light-sticker-1280.png",
+      "bytes": 33920,
+      "sha256": "e2da550879dd8d19db31d8ea1ba85b18eee4f7fbfd2c0c9f1f3abe02d3328e39"
+    },
+    {
+      "path": "badges/locker-purchase-with-light-sticker-320.png",
+      "bytes": 7721,
+      "sha256": "d53f775c9dd9475f7aee3751cfc386d52622a789ed472bb31011a8491cefed43"
+    },
+    {
+      "path": "badges/locker-purchase-with-light-sticker-640.png",
+      "bytes": 16009,
+      "sha256": "c968c73158fbb358e9392efb6a2fc935d091acf9e0288d7d5d7074d659202164"
+    },
+    {
+      "path": "badges/locker-purchase-with-light-sticker.pdf",
+      "bytes": 12228,
+      "sha256": "1e17d668815ce975201a9173a042b07002cb9befd8438d12c65385c88a719e2d"
+    },
+    {
+      "path": "badges/locker-purchase-with-light-sticker.svg",
+      "bytes": 23205,
+      "sha256": "94df408828efb34537b69768b1b0dce6627c93fdbd8c3046e31897b5545d6c69"
+    },
+    {
+      "path": "badges/locker-purchase-with-light-transparent-1280.png",
+      "bytes": 28336,
+      "sha256": "18d502fc50b55d4fe6bb82a13c91b7fce72194f534bd74d0b4c5d89ce22af6be"
+    },
+    {
+      "path": "badges/locker-purchase-with-light-transparent-320.png",
+      "bytes": 6532,
+      "sha256": "a406179879a316905e033ff928a70330cfcabf9282bfebb26363d88b09e11de8"
+    },
+    {
+      "path": "badges/locker-purchase-with-light-transparent-640.png",
+      "bytes": 13346,
+      "sha256": "9bd536def9c04ccf2e3a65f6737debecc559df498a5925f9479c9d694512aae8"
+    },
+    {
+      "path": "badges/locker-purchase-with-light-transparent.pdf",
+      "bytes": 12088,
+      "sha256": "0e8ed0858d6f85703be0e49109be3e172e050d16535703a0fe826ce1d6202e7c"
+    },
+    {
+      "path": "badges/locker-purchase-with-light-transparent.svg",
+      "bytes": 23104,
+      "sha256": "ef8beca2a10044238f98e1bac33adeff9ec42f289b02e6aa10121cd4530ea5d8"
+    },
+    {
+      "path": "badges/locker-purchase-with-white-outline-1280.png",
+      "bytes": 36205,
+      "sha256": "053dff1ab9eb7ddbfb915a5884e5ce48f7c77c27a36e9d1504bfc199cde3806f"
+    },
+    {
+      "path": "badges/locker-purchase-with-white-outline-320.png",
+      "bytes": 8084,
+      "sha256": "56c99f99c0d8dda5965ec78142e95a92debf6e0baa258a666a9e0c19c15aedac"
+    },
+    {
+      "path": "badges/locker-purchase-with-white-outline-640.png",
+      "bytes": 17106,
+      "sha256": "496eb87d44c9273cdbb265a5b5892236e8d5fdfc77951d523f93cdf06037aefb"
+    },
+    {
+      "path": "badges/locker-purchase-with-white-outline.pdf",
+      "bytes": 12199,
+      "sha256": "2908ccd0c9de88874e487471a7f5c53b7f3d547b562786bdb0da388dc1327809"
+    },
+    {
+      "path": "badges/locker-purchase-with-white-outline.svg",
+      "bytes": 23205,
+      "sha256": "c69bee96a81558ebb42df8bbda416b7b7cfd26bc849a5a72d18f5414fa5e8bed"
+    },
+    {
+      "path": "badges/locker-purchase-with-white-sticker-1280.png",
+      "bytes": 34007,
+      "sha256": "619e9df866dd8c6c2000a222b167a0ecb1f3d8309b38a1e01c4579ceedfa31b5"
+    },
+    {
+      "path": "badges/locker-purchase-with-white-sticker-320.png",
+      "bytes": 7658,
+      "sha256": "c6754b4677026c99aad3dafad0259a84d0c6b3bf9a49db1f542ac95aa1240958"
+    },
+    {
+      "path": "badges/locker-purchase-with-white-sticker-640.png",
+      "bytes": 16009,
+      "sha256": "7510272d12b38f138553f01e668b6a3674bf7fab317a807eda84f21541af46be"
+    },
+    {
+      "path": "badges/locker-purchase-with-white-sticker.pdf",
+      "bytes": 12203,
+      "sha256": "7e8f1c2886400c7d08e4e4e22ea37082961720820f0ad937244985afe43d2f52"
+    },
+    {
+      "path": "badges/locker-purchase-with-white-sticker.svg",
+      "bytes": 23205,
+      "sha256": "8cfeecc1db6dd6c7b88b582c60f637712ef0964065341c9ea106db4434ab72b9"
+    },
+    {
+      "path": "badges/locker-purchase-with-white-transparent-1280.png",
+      "bytes": 21158,
+      "sha256": "df5389dce2ad18247e8543b8f863bef3b82117502c971d056bf65fed1266bf63"
+    },
+    {
+      "path": "badges/locker-purchase-with-white-transparent-320.png",
+      "bytes": 4354,
+      "sha256": "1cae31a0fda1381007c13a2659bbe0c62dde2c8dff069e31f101272d5a75a217"
+    },
+    {
+      "path": "badges/locker-purchase-with-white-transparent-640.png",
+      "bytes": 9517,
+      "sha256": "24b96deb4fe7c7584ce10cd84d37cd15fb69990be6a2dd2c79820ff3e4866c56"
+    },
+    {
+      "path": "badges/locker-purchase-with-white-transparent.pdf",
+      "bytes": 12056,
+      "sha256": "0643fdee0735f9d36a584c1866ceb6dbdc9fed73914734ff18307ae46d68204e"
+    },
+    {
+      "path": "badges/locker-purchase-with-white-transparent.svg",
+      "bytes": 23104,
+      "sha256": "67e4b7a9cefc057c8126226893ab840ab50d2f078503126969549b0ceace7891"
+    },
+    {
+      "path": "badges/locker-sign-in-with-dark-outline-1280.png",
+      "bytes": 35143,
+      "sha256": "d4f92a1910902c07843c0f53f55e3172792f8c0295b2a52e25b75b5125d31865"
+    },
+    {
+      "path": "badges/locker-sign-in-with-dark-outline-320.png",
+      "bytes": 7995,
+      "sha256": "31f08e387b65a42c5b80ea3f3e536f14ce3c151c6ff6463e616d63b85f7cf414"
+    },
+    {
+      "path": "badges/locker-sign-in-with-dark-outline-640.png",
+      "bytes": 16786,
+      "sha256": "e7a692a619896634a311b4a7ab62cc76c1da10ae3264676f9d8522b2a1ab80a5"
+    },
+    {
+      "path": "badges/locker-sign-in-with-dark-outline.pdf",
+      "bytes": 11130,
+      "sha256": "972d62cc41b53c53f301ba4f749e0ab33679e8cb083a78e4fb9ba52a7173c62b"
+    },
+    {
+      "path": "badges/locker-sign-in-with-dark-outline.svg",
+      "bytes": 21269,
+      "sha256": "54f63f87aeaa9ba36a224af32c9c46d8f7964ad2607b66ae69500ed3d27e1888"
+    },
+    {
+      "path": "badges/locker-sign-in-with-dark-sticker-1280.png",
+      "bytes": 32505,
+      "sha256": "dc7fad5cbb66ef56312bcb7db2a5a8d403575b153c3ed6fa7e0c90ab68270168"
+    },
+    {
+      "path": "badges/locker-sign-in-with-dark-sticker-320.png",
+      "bytes": 7469,
+      "sha256": "3713f538142d6c73a6de3c6d77473cf0b7c8bd35f337b06fe6f1594a26396413"
+    },
+    {
+      "path": "badges/locker-sign-in-with-dark-sticker-640.png",
+      "bytes": 15383,
+      "sha256": "bbec6e9db942ec07eed630db59d2a1877e9c7e7bf5d9c97eb3683d11d3c2cdc7"
+    },
+    {
+      "path": "badges/locker-sign-in-with-dark-sticker.pdf",
+      "bytes": 11130,
+      "sha256": "037c17f6841831f904c7f257abc613708bd979d2fac3be90371b0254e43b3a18"
+    },
+    {
+      "path": "badges/locker-sign-in-with-dark-sticker.svg",
+      "bytes": 21269,
+      "sha256": "a62069d96873044dea325f3f51ad94f45b08a6781446eb9922b9d83535554ecc"
+    },
+    {
+      "path": "badges/locker-sign-in-with-dark-transparent-1280.png",
+      "bytes": 24824,
+      "sha256": "7de52d6f903535cd7450ef1e8b7435ae5279aee43e1a9ae7d611f8ffe166c8ca"
+    },
+    {
+      "path": "badges/locker-sign-in-with-dark-transparent-320.png",
+      "bytes": 5630,
+      "sha256": "6619747ee28f98ce3c8be7c5b9a6013d46bb7485825126f4dfda3b3e0b7967ed"
+    },
+    {
+      "path": "badges/locker-sign-in-with-dark-transparent-640.png",
+      "bytes": 11670,
+      "sha256": "c56f538744f3c83e127a0fcbd4c870674601c720d3feab832ad3c8ab89831b7b"
+    },
+    {
+      "path": "badges/locker-sign-in-with-dark-transparent.pdf",
+      "bytes": 10981,
+      "sha256": "15a81d57cd8b16d8c9c0f160d060a27e07af23cc244117730abe4942cc9695f6"
+    },
+    {
+      "path": "badges/locker-sign-in-with-dark-transparent.svg",
+      "bytes": 21168,
+      "sha256": "d896c3e084bb3431a4ed1d3f12b787d08e76976f785cbd37e2f904a1e7194ca0"
+    },
+    {
+      "path": "badges/locker-sign-in-with-light-outline-1280.png",
+      "bytes": 35527,
+      "sha256": "4ee111faa03f18cea3a8e14c4bae46098f938ee32727c2f719d352c937e18432"
+    },
+    {
+      "path": "badges/locker-sign-in-with-light-outline-320.png",
+      "bytes": 8084,
+      "sha256": "431c8d3ed8ea24b46a4350c3bb3fe2cbc459fa5c1d1d398827cb75ffae5d9575"
+    },
+    {
+      "path": "badges/locker-sign-in-with-light-outline-640.png",
+      "bytes": 16818,
+      "sha256": "0a5aa47422433b2923e0bdc712910840bc55ad4c2663de24e111b2b8dd09df4d"
+    },
+    {
+      "path": "badges/locker-sign-in-with-light-outline.pdf",
+      "bytes": 11130,
+      "sha256": "e91e66136c70b7a8622fc709a6b2a2321c67c54a135a70283f12d0517d6a6682"
+    },
+    {
+      "path": "badges/locker-sign-in-with-light-outline.svg",
+      "bytes": 21269,
+      "sha256": "a12206d405b2ef7d9f6fabf04092691b41790b6fd311007dcc27f2060e15b130"
+    },
+    {
+      "path": "badges/locker-sign-in-with-light-sticker-1280.png",
+      "bytes": 32136,
+      "sha256": "ecf6a6aabd8b16b9014543cd68772c2a1547c1fca99f42a314a9362b9c9565f8"
+    },
+    {
+      "path": "badges/locker-sign-in-with-light-sticker-320.png",
+      "bytes": 7360,
+      "sha256": "6fae6e9c990872348ccd526f42ecdd5c00ad6a5cc86223029ecef48bcb31f8f9"
+    },
+    {
+      "path": "badges/locker-sign-in-with-light-sticker-640.png",
+      "bytes": 15242,
+      "sha256": "cbcdca60ef5438d63f9a906fb1611496a895c91615255aaa4aeae3d98be4f4f4"
+    },
+    {
+      "path": "badges/locker-sign-in-with-light-sticker.pdf",
+      "bytes": 11130,
+      "sha256": "4b0fafd6b570d437e3e3ef9535020af643e42a8d34b5789b9c21eb598177416d"
+    },
+    {
+      "path": "badges/locker-sign-in-with-light-sticker.svg",
+      "bytes": 21269,
+      "sha256": "e0d1e8cdbecabdaff9b5b2a42bfc051ded9d4e70fa528b8ce7ea765b0099e346"
+    },
+    {
+      "path": "badges/locker-sign-in-with-light-transparent-1280.png",
+      "bytes": 26710,
+      "sha256": "2a835444be20ea3f4e2ffb6afcf50101afdadd9d3310f856b4bda4b13472cf64"
+    },
+    {
+      "path": "badges/locker-sign-in-with-light-transparent-320.png",
+      "bytes": 6247,
+      "sha256": "13654a0681fcfc091201d296b15258019487e4b2e2e23253d86a8c2ad6681f9f"
+    },
+    {
+      "path": "badges/locker-sign-in-with-light-transparent-640.png",
+      "bytes": 12726,
+      "sha256": "675202849b85c72bd1fa899578936029a5bd60082b24b050f7c029cdeb9467fa"
+    },
+    {
+      "path": "badges/locker-sign-in-with-light-transparent.pdf",
+      "bytes": 10985,
+      "sha256": "47b48eb039f87dfaf2a9cce53dc9a335f08c005ec216d4a8418f59ee072a2bc9"
+    },
+    {
+      "path": "badges/locker-sign-in-with-light-transparent.svg",
+      "bytes": 21168,
+      "sha256": "1ea3254db99e3a345fb9499e3ec2b2815f2d39072bffe076c249764ff2950edc"
+    },
+    {
+      "path": "badges/locker-sign-in-with-white-outline-1280.png",
+      "bytes": 34576,
+      "sha256": "ad9eb9a1391a2431722048af2462c9c748f7aa7faa4041d1abfe050d62df4118"
+    },
+    {
+      "path": "badges/locker-sign-in-with-white-outline-320.png",
+      "bytes": 7800,
+      "sha256": "6d2d7920d7e35dd4cc0ef581ff2259ad2665809c22326b8b9ba13217bf492b9e"
+    },
+    {
+      "path": "badges/locker-sign-in-with-white-outline-640.png",
+      "bytes": 16294,
+      "sha256": "accb8a3692da9d82bcbd9832f24a723b4778af3c99f5da5f53224ce14dbc86b7"
+    },
+    {
+      "path": "badges/locker-sign-in-with-white-outline.pdf",
+      "bytes": 11101,
+      "sha256": "00854d4c9d0f21fef3f7ed469b55d80e2b935b2f4c0cbc2318dd76abe156a0b2"
+    },
+    {
+      "path": "badges/locker-sign-in-with-white-outline.svg",
+      "bytes": 21269,
+      "sha256": "7e87c0f34ad46dae8eae010144268a83511fd9e6c7eeed966e3da2f16bd5ee5b"
+    },
+    {
+      "path": "badges/locker-sign-in-with-white-sticker-1280.png",
+      "bytes": 32349,
+      "sha256": "1bbc91bc481e46b8b9f516ebf412e8e31e1b8ee82b0c3225400ccc8a3927ed0c"
+    },
+    {
+      "path": "badges/locker-sign-in-with-white-sticker-320.png",
+      "bytes": 7377,
+      "sha256": "20dbfbd2ce14ba9b092f5a6a1e3841bcbb1b9d1e92cc78f2b1d4d099ae05d185"
+    },
+    {
+      "path": "badges/locker-sign-in-with-white-sticker-640.png",
+      "bytes": 15199,
+      "sha256": "c53429373b45d991ac36d4d76daf125acb52e829e838f96f861b486026b34414"
+    },
+    {
+      "path": "badges/locker-sign-in-with-white-sticker.pdf",
+      "bytes": 11104,
+      "sha256": "fc11bfc850799ef7e85197cc6188520539e8c211ddc4a74d36ac6204044a636d"
+    },
+    {
+      "path": "badges/locker-sign-in-with-white-sticker.svg",
+      "bytes": 21269,
+      "sha256": "9f56f194dd0d2d0b5b511f2b8ad354661194c926bad5d6e0080453a8ea4dac50"
+    },
+    {
+      "path": "badges/locker-sign-in-with-white-transparent-1280.png",
+      "bytes": 20028,
+      "sha256": "41b0e3a767ba1281f7557b9215832f5ad7d4e68250b65d651f280bad15e3a165"
+    },
+    {
+      "path": "badges/locker-sign-in-with-white-transparent-320.png",
+      "bytes": 4159,
+      "sha256": "537abc1f8510e736433ac387531273138e225ce7d05ca105f3e5077016d55687"
+    },
+    {
+      "path": "badges/locker-sign-in-with-white-transparent-640.png",
+      "bytes": 9016,
+      "sha256": "7c6e8a170bd5cfedb34ea39922955b209606def873347186dabd1e7957f4f742"
+    },
+    {
+      "path": "badges/locker-sign-in-with-white-transparent.pdf",
+      "bytes": 10950,
+      "sha256": "bc653683dc5b5f0ac7f967773f7944404d6f5fb3b439c949bada6057955e5481"
+    },
+    {
+      "path": "badges/locker-sign-in-with-white-transparent.svg",
+      "bytes": 21168,
+      "sha256": "7651e27289251d81ccff6768b8c71b229ef9a0c9546b0984856ecc7ee109541e"
+    },
+    {
+      "path": "badges/locker-sync-with-dark-outline-1280.png",
+      "bytes": 34766,
+      "sha256": "241b3682435e457226d8df81db5427f861323c3004323e702e23d9e56ad9984c"
+    },
+    {
+      "path": "badges/locker-sync-with-dark-outline-320.png",
+      "bytes": 7899,
+      "sha256": "176db48a132bfd21e57bccd3e250981cdb17bb6438c80f2a031a37d341fa03bc"
+    },
+    {
+      "path": "badges/locker-sync-with-dark-outline-640.png",
+      "bytes": 16639,
+      "sha256": "6ce83f55e01fc6ff40be5ba5f9f9672f50fc0262cb77701810aa40e942e704d2"
+    },
+    {
+      "path": "badges/locker-sync-with-dark-outline.pdf",
+      "bytes": 10327,
+      "sha256": "7fee6c7b97f0750f401cab2acfdfc0ae637ff69b2a77e6c61ab0a00816724b4b"
+    },
+    {
+      "path": "badges/locker-sync-with-dark-outline.svg",
+      "bytes": 19516,
+      "sha256": "fa4d2562e81dfe6a9d617cfe37834293abcc6058011ff0b60c4ed1b6befce367"
+    },
+    {
+      "path": "badges/locker-sync-with-dark-sticker-1280.png",
+      "bytes": 32084,
+      "sha256": "8732d978f3ee0887f3b29a4e2f54fe1879ea77c7c6adea7cb60cf7dd4c971d08"
+    },
+    {
+      "path": "badges/locker-sync-with-dark-sticker-320.png",
+      "bytes": 7386,
+      "sha256": "45aeec9572e19da0762e6e798b4c7b64746dcb84108bf0341d03813ddfa61397"
+    },
+    {
+      "path": "badges/locker-sync-with-dark-sticker-640.png",
+      "bytes": 15208,
+      "sha256": "69336ffe8d528393ecb4a5d7b7ce33849a74882932bd7197ae35028bec9a8d88"
+    },
+    {
+      "path": "badges/locker-sync-with-dark-sticker.pdf",
+      "bytes": 10327,
+      "sha256": "a712f30e78bb24107758454822e4bf27511c8fd9157c08a87865192a5bd5e159"
+    },
+    {
+      "path": "badges/locker-sync-with-dark-sticker.svg",
+      "bytes": 19516,
+      "sha256": "4e9c34460287d149b0e3f0eb23494cd064c4af1445a3286efca731c72ffd19c1"
+    },
+    {
+      "path": "badges/locker-sync-with-dark-transparent-1280.png",
+      "bytes": 24510,
+      "sha256": "3973dbfcf632ee3ff257857aa00db2bdc443ed1ae3249e981aa97b2ad9c87dca"
+    },
+    {
+      "path": "badges/locker-sync-with-dark-transparent-320.png",
+      "bytes": 5504,
+      "sha256": "317bfcca5cbd3b48d974719ec4af6c6c0ebdab115423b238656fa37a46de6e7e"
+    },
+    {
+      "path": "badges/locker-sync-with-dark-transparent-640.png",
+      "bytes": 11492,
+      "sha256": "d7fab8e7e89e744a3bc68beeb8af2af0dc9ce140642c0b86629fe09c4aad81d0"
+    },
+    {
+      "path": "badges/locker-sync-with-dark-transparent.pdf",
+      "bytes": 10180,
+      "sha256": "b192d687687f9163baa62ddabf502004a00343f64cb82e1b30e17d3c8446141c"
+    },
+    {
+      "path": "badges/locker-sync-with-dark-transparent.svg",
+      "bytes": 19415,
+      "sha256": "3cc0169bdfa32ffa5773af0eba27a4407c4cd01271a4fcd7f665d277b856a872"
+    },
+    {
+      "path": "badges/locker-sync-with-light-outline-1280.png",
+      "bytes": 35293,
+      "sha256": "8ebfb499e91f8553f415663c6f0e82dfd32fb4bb4d28ac7398efd30d31e294fb"
+    },
+    {
+      "path": "badges/locker-sync-with-light-outline-320.png",
+      "bytes": 8002,
+      "sha256": "1ac97bfe148b7ee6b5efa3b08302e26fa19df125c9254b4df6810ca79dd94423"
+    },
+    {
+      "path": "badges/locker-sync-with-light-outline-640.png",
+      "bytes": 16626,
+      "sha256": "a8774d2de63c74830324482f4c175c8c660ea48d14f9ffdc06a02164b48dbaa9"
+    },
+    {
+      "path": "badges/locker-sync-with-light-outline.pdf",
+      "bytes": 10328,
+      "sha256": "f18137ee40f0eefc99300d25b1f591d0ae849236fd2a6b2c3ca4c6b8159ae1c7"
+    },
+    {
+      "path": "badges/locker-sync-with-light-outline.svg",
+      "bytes": 19516,
+      "sha256": "0e60cf1b6996896f6a8e9595c6372c33eceee7bf7f06a9139040112dbc882f7f"
+    },
+    {
+      "path": "badges/locker-sync-with-light-sticker-1280.png",
+      "bytes": 31893,
+      "sha256": "218965c75b71f60168adb58f12e5b74bb65e95fe808668340372c19a7e708bcc"
+    },
+    {
+      "path": "badges/locker-sync-with-light-sticker-320.png",
+      "bytes": 7280,
+      "sha256": "155adcbf31d9cc29faf983c03b15f0e3476b77fd67aa8b4ac2cdf752d261f292"
+    },
+    {
+      "path": "badges/locker-sync-with-light-sticker-640.png",
+      "bytes": 15064,
+      "sha256": "c48a5b8461be1cd13043ed340de897dea3bed411f62a25ced498aba1d7e7df4a"
+    },
+    {
+      "path": "badges/locker-sync-with-light-sticker.pdf",
+      "bytes": 10327,
+      "sha256": "884031cc664c5ed60f53649e018d5b203d820052eb7add4cd433fbe00bb459f9"
+    },
+    {
+      "path": "badges/locker-sync-with-light-sticker.svg",
+      "bytes": 19516,
+      "sha256": "e88637517059bd4ee0c989596d3e1cfcadd59f15291ab30bd2457cdb188bfd35"
+    },
+    {
+      "path": "badges/locker-sync-with-light-transparent-1280.png",
+      "bytes": 26471,
+      "sha256": "fd2aa56eceecd0416ca9a4a97b69d79d7523e4f950840e0ae8027b2db916da67"
+    },
+    {
+      "path": "badges/locker-sync-with-light-transparent-320.png",
+      "bytes": 6105,
+      "sha256": "7d83619e6ea5fe407a99d555d94d066b559e68a35d71f5fce741ea247b6b571e"
+    },
+    {
+      "path": "badges/locker-sync-with-light-transparent-640.png",
+      "bytes": 12483,
+      "sha256": "a75c6e36642aea2bdb810416bbf40c0da688f1476f5bd6407e1212df89c9923a"
+    },
+    {
+      "path": "badges/locker-sync-with-light-transparent.pdf",
+      "bytes": 10181,
+      "sha256": "1673ec07b411ffc6d634e98e8fe219f1d2a8fcec1ac9289dcc431dddb6c3057e"
+    },
+    {
+      "path": "badges/locker-sync-with-light-transparent.svg",
+      "bytes": 19415,
+      "sha256": "76eebc6f61c72f6e756f71dce16f64dff1a8b90765218fb208910ab098a7f0b9"
+    },
+    {
+      "path": "badges/locker-sync-with-white-outline-1280.png",
+      "bytes": 34261,
+      "sha256": "1c5b1fb3253a2e0acf683190c2e2b779f20edb67fe96a6d16ed46e7de005498c"
+    },
+    {
+      "path": "badges/locker-sync-with-white-outline-320.png",
+      "bytes": 7687,
+      "sha256": "501dfca494979aab02b6fcf829bb75a691356eab2afa46f2c23e2db359a350e8"
+    },
+    {
+      "path": "badges/locker-sync-with-white-outline-640.png",
+      "bytes": 16124,
+      "sha256": "03feb1f8a3ee2862c8b78ddc2c73175fc1bd37dd88958266b5bcd414c63673ba"
+    },
+    {
+      "path": "badges/locker-sync-with-white-outline.pdf",
+      "bytes": 10299,
+      "sha256": "36411072b3232796abbc98c0615db5ac29a0d8b6c5068fc19f3be1554aae91ef"
+    },
+    {
+      "path": "badges/locker-sync-with-white-outline.svg",
+      "bytes": 19516,
+      "sha256": "05d21366cef7b63645c64bf33f6a6177fea03f48161f99a1f60a7b2a465f9176"
+    },
+    {
+      "path": "badges/locker-sync-with-white-sticker-1280.png",
+      "bytes": 32045,
+      "sha256": "04d362fffe4e507ca467ea49bab3867f67b57a18e49843226c544d65b047d7cc"
+    },
+    {
+      "path": "badges/locker-sync-with-white-sticker-320.png",
+      "bytes": 7268,
+      "sha256": "8a6d2eef4e77d0eb570ac2a482359e76a44b5414bb0138f0936c81f771c0e1a6"
+    },
+    {
+      "path": "badges/locker-sync-with-white-sticker-640.png",
+      "bytes": 15024,
+      "sha256": "65afcbdfc99c4c185cb58df2d15b3a79fc582a42d7404c8ee756bbd85f3f3d79"
+    },
+    {
+      "path": "badges/locker-sync-with-white-sticker.pdf",
+      "bytes": 10302,
+      "sha256": "295cd3afd9471fd394780af444f8fbfc9165211d9cf825dedb5765ee0c9b23e9"
+    },
+    {
+      "path": "badges/locker-sync-with-white-sticker.svg",
+      "bytes": 19516,
+      "sha256": "53cdbf01ff40f80b5f35f4bea1a6ed1acacc0df1b138acaaf18e010cd40615e5"
+    },
+    {
+      "path": "badges/locker-sync-with-white-transparent-1280.png",
+      "bytes": 19854,
+      "sha256": "e58ab40510cef0a90f4248334f5ceab124fafc6d6128950ba3d451ae348ffe51"
+    },
+    {
+      "path": "badges/locker-sync-with-white-transparent-320.png",
+      "bytes": 4074,
+      "sha256": "743efe9fd972a6dbd48af830c8c990289f3a098f867747155c5a967f220ad34a"
+    },
+    {
+      "path": "badges/locker-sync-with-white-transparent-640.png",
+      "bytes": 8854,
+      "sha256": "d183df12236cd1654a5956deef7e4430819101b0ad4db03e06751a2703466db6"
+    },
+    {
+      "path": "badges/locker-sync-with-white-transparent.pdf",
+      "bytes": 10150,
+      "sha256": "e6659b90ee497e74b671dff34caad598e98d1f2c027eda04527ea5eb1c836d17"
+    },
+    {
+      "path": "badges/locker-sync-with-white-transparent.svg",
+      "bytes": 19415,
+      "sha256": "d84e806346c5b7065c643126542e05bacd88926b6b980769e54a94fe69392ea1"
+    },
+    {
+      "path": "badges/locker-update-with-dark-outline-1280.png",
+      "bytes": 35963,
+      "sha256": "fd798d8aa7a6b4ff2c5d40a69b75eda4d441de8d335b814d555f278a11a6be0c"
+    },
+    {
+      "path": "badges/locker-update-with-dark-outline-320.png",
+      "bytes": 8170,
+      "sha256": "5fa80c8c6b7565b61604463f2e9d68a9131169ca9b02ff8988988be5e340af2b"
+    },
+    {
+      "path": "badges/locker-update-with-dark-outline-640.png",
+      "bytes": 17144,
+      "sha256": "89532301918a311c1412f5b732bf5fb0ec02b05b5574e465501a635f1441efef"
+    },
+    {
+      "path": "badges/locker-update-with-dark-outline.pdf",
+      "bytes": 11497,
+      "sha256": "4f1a21dfc0275bac128b6994174019a068c62f283048a71051573f704366dd06"
+    },
+    {
+      "path": "badges/locker-update-with-dark-outline.svg",
+      "bytes": 21929,
+      "sha256": "6408e6168bf671471d889f4eb56f5746f61b3767b32b59e488590c1429bf254e"
+    },
+    {
+      "path": "badges/locker-update-with-dark-sticker-1280.png",
+      "bytes": 33294,
+      "sha256": "eb21f2abe4b6d91d8db2ed674ef2720e7e497ca4060f86982e1a252280fd5e11"
+    },
+    {
+      "path": "badges/locker-update-with-dark-sticker-320.png",
+      "bytes": 7690,
+      "sha256": "26b9ae48fdc14bb1923a93ce4445384e15a19ae4f09f1271f5879d87237ce3ff"
+    },
+    {
+      "path": "badges/locker-update-with-dark-sticker-640.png",
+      "bytes": 15728,
+      "sha256": "a7ab1588298a88c11f403d66fde87827c2145ebd79aecec5108a813c2ea30cda"
+    },
+    {
+      "path": "badges/locker-update-with-dark-sticker.pdf",
+      "bytes": 11497,
+      "sha256": "d2556f4ad66cd24cc6bc9f4e17244e5fe82fe09d5babf0b9d46fbbb069360763"
+    },
+    {
+      "path": "badges/locker-update-with-dark-sticker.svg",
+      "bytes": 21929,
+      "sha256": "f58bd54eef8e0145dee8fdf74d7fdbfcc22eb595aaa74e0ffeb4fd62b9fd3621"
+    },
+    {
+      "path": "badges/locker-update-with-dark-transparent-1280.png",
+      "bytes": 25493,
+      "sha256": "35da950e12330e9d896f35ddf14fded316914f1495c8dc63753f0f40b66c1611"
+    },
+    {
+      "path": "badges/locker-update-with-dark-transparent-320.png",
+      "bytes": 5731,
+      "sha256": "1c77e1de7506f6f0faa8f850553dfd2aa3d2053927193aee4b865d788538b9de"
+    },
+    {
+      "path": "badges/locker-update-with-dark-transparent-640.png",
+      "bytes": 11968,
+      "sha256": "dba5dfe8d90fc424393a7a31e4ab90a9e18da2641d2b62254549be2a7acd2ec0"
+    },
+    {
+      "path": "badges/locker-update-with-dark-transparent.pdf",
+      "bytes": 11351,
+      "sha256": "5a5c17cb09671206aabc3608d06590859b68747349708c7edd68e37032826536"
+    },
+    {
+      "path": "badges/locker-update-with-dark-transparent.svg",
+      "bytes": 21828,
+      "sha256": "22b2412464c5652987954217a0c9070d0ed377cae60626d4438d66decea66b1d"
+    },
+    {
+      "path": "badges/locker-update-with-light-outline-1280.png",
+      "bytes": 36505,
+      "sha256": "3ac5983c478852b920a24f8fe3ecf06e778a615a5a438a2f3e20e3b343bece8e"
+    },
+    {
+      "path": "badges/locker-update-with-light-outline-320.png",
+      "bytes": 8254,
+      "sha256": "c550fbb44a929a9b95120efc08b1ab25b79c47e57d9dbb25d6a3d9fd5000e30e"
+    },
+    {
+      "path": "badges/locker-update-with-light-outline-640.png",
+      "bytes": 17174,
+      "sha256": "d99abc076b025d1045b51cec490bd9001c58dbffe669d0fcf6acd6403bc53ce0"
+    },
+    {
+      "path": "badges/locker-update-with-light-outline.pdf",
+      "bytes": 11501,
+      "sha256": "d14ac9885311e9d6025777e2b5411e6fe22b3981ae52bafa4a6b322aa4122e10"
+    },
+    {
+      "path": "badges/locker-update-with-light-outline.svg",
+      "bytes": 21929,
+      "sha256": "eb3393024de197fdd6d4638f2ab8671c50c08fa253d172ff87bb1eedf56270a7"
+    },
+    {
+      "path": "badges/locker-update-with-light-sticker-1280.png",
+      "bytes": 33108,
+      "sha256": "a30904875153a600567009a74e8be353cb42063e63945c72520d1075064ce9b2"
+    },
+    {
+      "path": "badges/locker-update-with-light-sticker-320.png",
+      "bytes": 7539,
+      "sha256": "ca8faf9d47f52fdce14667e3c8a61ac517a324e4f300699564f093c1fe9b3964"
+    },
+    {
+      "path": "badges/locker-update-with-light-sticker-640.png",
+      "bytes": 15620,
+      "sha256": "ce44570a85919621368e2e7b9df897b82208a778424f1b14784fe665cc009d83"
+    },
+    {
+      "path": "badges/locker-update-with-light-sticker.pdf",
+      "bytes": 11499,
+      "sha256": "2eb7ca012f84902d41a4a4eef5455583484f79acd1155876904f3272b82c2423"
+    },
+    {
+      "path": "badges/locker-update-with-light-sticker.svg",
+      "bytes": 21929,
+      "sha256": "3a62bc1e768d98baf33d3d52fdf1880041b2bce178d947a48a9cb16456ac6e6a"
+    },
+    {
+      "path": "badges/locker-update-with-light-transparent-1280.png",
+      "bytes": 27436,
+      "sha256": "20481fa8e40ecf09daa9c589cd211b55ee2289d2d4ba8a24413f9c211f56ce7b"
+    },
+    {
+      "path": "badges/locker-update-with-light-transparent-320.png",
+      "bytes": 6361,
+      "sha256": "b5f294b407ec912e459583cb54b131c051a6060cf7a6267bdf38490e1b9f9944"
+    },
+    {
+      "path": "badges/locker-update-with-light-transparent-640.png",
+      "bytes": 13038,
+      "sha256": "6e788eed742d703486928beccc9fdcdb92ef03b34a8568374222ae641925957b"
+    },
+    {
+      "path": "badges/locker-update-with-light-transparent.pdf",
+      "bytes": 11352,
+      "sha256": "94a8864e089b6454bdc4830ced8b43de3dd2eab9aa9ec90b5c562f0eef05b5f5"
+    },
+    {
+      "path": "badges/locker-update-with-light-transparent.svg",
+      "bytes": 21828,
+      "sha256": "172d0a1dc306a41562ce23ac935b7e3f11ff4b0c28b543c1384189640ee9c2c0"
+    },
+    {
+      "path": "badges/locker-update-with-white-outline-1280.png",
+      "bytes": 35370,
+      "sha256": "2dd83d39835eb44cae67fe4a3f434974f8c102c44afaf7b69d4e1023d298572b"
+    },
+    {
+      "path": "badges/locker-update-with-white-outline-320.png",
+      "bytes": 7935,
+      "sha256": "7473d457f10e81cd4c6da4c5829d6f4ef8f5877ea7479301b5b4198390427026"
+    },
+    {
+      "path": "badges/locker-update-with-white-outline-640.png",
+      "bytes": 16638,
+      "sha256": "7e801a6af9f7690b12bf86c592ed7f116ca7ac0e95bb745542cd325f5a2c5457"
+    },
+    {
+      "path": "badges/locker-update-with-white-outline.pdf",
+      "bytes": 11470,
+      "sha256": "0e930bc7c60b38b72897c90baf539c7a83c276c58bb0d39abc4f72bfd15f899f"
+    },
+    {
+      "path": "badges/locker-update-with-white-outline.svg",
+      "bytes": 21929,
+      "sha256": "a9616cc62b5751d406ce34d28bac0a3df5dcfcfa6ef7c349279e747310a8294b"
+    },
+    {
+      "path": "badges/locker-update-with-white-sticker-1280.png",
+      "bytes": 33120,
+      "sha256": "70f5179ae2e6a107ec8f25ac38924339882bd818d154ba7282aa0ee49577d921"
+    },
+    {
+      "path": "badges/locker-update-with-white-sticker-320.png",
+      "bytes": 7515,
+      "sha256": "0d061a321db02e134fe1e48334412400911e3d9beb61bfbb7a80126af65f90d0"
+    },
+    {
+      "path": "badges/locker-update-with-white-sticker-640.png",
+      "bytes": 15543,
+      "sha256": "520c6e86840c9b69539138f9a35af64a1e6c1fa6f03d705af9712a7648e10e6b"
+    },
+    {
+      "path": "badges/locker-update-with-white-sticker.pdf",
+      "bytes": 11472,
+      "sha256": "3425a5d5ca567b873c8d5c62e36385ff331b21afcf328f7bf674a625bd43f506"
+    },
+    {
+      "path": "badges/locker-update-with-white-sticker.svg",
+      "bytes": 21929,
+      "sha256": "b7c110ee96aba42510d508da88dd3f8ee8a37c0f7714f0d247099355537ae920"
+    },
+    {
+      "path": "badges/locker-update-with-white-transparent-1280.png",
+      "bytes": 20509,
+      "sha256": "0b6188c330a6c7d4d8e7ca1669e3bb9d4d5eb8704a224f43435cdf16f7625c9e"
+    },
+    {
+      "path": "badges/locker-update-with-white-transparent-320.png",
+      "bytes": 4259,
+      "sha256": "d44e94d301c24981e0dc98900fccdddf92ddd991ec3ad61a8f26da1b3b69719c"
+    },
+    {
+      "path": "badges/locker-update-with-white-transparent-640.png",
+      "bytes": 9172,
+      "sha256": "e34fc8e66f49720db962401c84bdaccc8c6367145b5f4d173672354386c60b25"
+    },
+    {
+      "path": "badges/locker-update-with-white-transparent.pdf",
+      "bytes": 11319,
+      "sha256": "d7877724335d44364d50596a475b2d55a2c00b63e6504b054c567db703dc3ab0"
+    },
+    {
+      "path": "badges/locker-update-with-white-transparent.svg",
+      "bytes": 21828,
+      "sha256": "f6dd204bbcd451b29e78de71be26e30d664c7a8d6951d1eea82ad454337b425e"
     },
     {
       "path": "docs/Polaris-Key-Brand-Guide-Locker-Addendum-v1.pdf",
-      "bytes": 19706,
-      "sha256": "b226c37908442e7bfd3ebaf5383d8a6339f39e6bc6f5ae9a1186df322d1028dc"
+      "bytes": 74559,
+      "sha256": "26f8fda10b1865c0f682099cc1294fbbff89abc4a2b0214eabcfea2844b7388c"
     },
     {
       "path": "docs/Polaris-Key-Brand-Guide-with-Locker-v1.pdf",
-      "bytes": 1374732,
-      "sha256": "cba813bdbc48017cc6c2963dbefda8660dc79459176aa8a2d820c8f56e43177d"
+      "bytes": 3317247,
+      "sha256": "5d0d4347f9a2eecd12aab228dbc40f05f6da2f738c3b161e5e77ce406269fe42"
+    },
+    {
+      "path": "docs/Polaris-Locker-Badge-Catalogue-v1.pdf",
+      "bytes": 384813,
+      "sha256": "6b8524267962725a05fde16bb75ecbd65d51bba1c7a3e5bb16b916272004aa54"
     },
     {
       "path": "docs/Polaris-Locker-Brand-Guide-v1.pdf",
-      "bytes": 59284,
-      "sha256": "d0b9786ad8ac33013b35987c6932792548e4fd600c42420a82229d46273f0425"
+      "bytes": 95762,
+      "sha256": "ca4b414a52c310575ede48524f2dea72e79c856b654f0a291d302976acb1b92f"
+    },
+    {
+      "path": "docs/brand-alignment.md",
+      "bytes": 3138,
+      "sha256": "c527e125d57ba867912ce689d33edd88bda8cffb7cf69abea373ece8cd7f5ffe"
     },
     {
       "path": "docs/validation-report.json",
-      "bytes": 1073,
-      "sha256": "bd5acc6a70f62d589aa5922cb12271656ea8ddc683113beef75ef910c1b8a4ab"
+      "bytes": 969,
+      "sha256": "8c0a8409af937fc8ff1cef6594735a001089d11b7e171817cc695832b3201f7c"
     },
     {
       "path": "fonts/OFL.txt",
@@ -483,18 +3653,18 @@
     },
     {
       "path": "fonts/Rubik-400.ttf",
-      "bytes": 212228,
-      "sha256": "640aa225c6808347b8f706bb6d8e87b194f0a502b73bce0ab5a33aeb671da11c"
+      "bytes": 212224,
+      "sha256": "6c5b683dd5a295349463248d12141d46a0085f071ee4719bfc66cbec839902ea"
     },
     {
       "path": "fonts/Rubik-500.ttf",
-      "bytes": 212124,
-      "sha256": "a1e999c7c7a09a352c46df5766849771873c4de4be73dca04e3794cacba8f012"
+      "bytes": 212104,
+      "sha256": "8171f1288a3c0a9a7b32054a7f4dfa6ecf5b9f47be3ebb11f4e0214df10b6c03"
     },
     {
       "path": "fonts/Rubik-600.ttf",
-      "bytes": 212140,
-      "sha256": "78c5f0782338e5eab4687131a416ce81756210c07b32a0c0f9b3ba8ceb29b856"
+      "bytes": 212128,
+      "sha256": "f817af8fa0e3b6632694059075a0f6da0c34d907211a3898228db8d596c6c037"
     },
     {
       "path": "fonts/Rubik-Variable.ttf",
@@ -744,127 +3914,127 @@
     {
       "path": "logos/pdf/locker-compact-black.pdf",
       "bytes": 6962,
-      "sha256": "94f717dd196b2e32cb1020171fbd1189d15022e8dc0b1b3d95a91ebe4d6832a3"
+      "sha256": "6f016dbc210eb0c3469722163378f718833582ddecabc71a75d456beb93ca8cc"
     },
     {
       "path": "logos/pdf/locker-compact-coral.pdf",
       "bytes": 6973,
-      "sha256": "3c249dd6eecb18b921f90a8700a7b80a1955ec635d2e0dca6bfdfc0b2038d443"
+      "sha256": "6965d39d85c4d57644fc858664fa820276b7d14536547124edc35850500b0cfd"
     },
     {
       "path": "logos/pdf/locker-compact-dark.pdf",
       "bytes": 6993,
-      "sha256": "51be98872ae5c4c1d674e4b0fad003537d31b8c0236b38be9962fd297224b3cd"
+      "sha256": "c09fda55aa0b672d35d7bb93c0b2c8bd793e452eec22d3da2251ab2694f3e3e0"
     },
     {
       "path": "logos/pdf/locker-compact-light.pdf",
       "bytes": 6997,
-      "sha256": "8a2c127d1502b678f8b3328441a4ef0672f02987f0acbd744b8cfdf9a602962e"
+      "sha256": "a6cfce9dec1008e0f0e2fd73e63215d851b80538182b9d2872062762e951852d"
     },
     {
       "path": "logos/pdf/locker-compact-white.pdf",
       "bytes": 6964,
-      "sha256": "8532fd08a397c9630c0cd24bd3ec1be681fca11667d485e0aecea9ac0c37f52b"
+      "sha256": "8a8e65be0b04f4bd6197553bd386e9297bb75bafc63f6890419e7cb6679d6ceb"
     },
     {
       "path": "logos/pdf/locker-horizontal-black.pdf",
       "bytes": 6996,
-      "sha256": "e8ed02760907c966341c9f97ac6319f5d4734b491c154acf3dc0f274de1f7b40"
+      "sha256": "1723b41f05da4d562bc375f01e8fc41b72f432c8529aa452a0486de0c7a73334"
     },
     {
       "path": "logos/pdf/locker-horizontal-coral.pdf",
       "bytes": 7007,
-      "sha256": "3fa97a9fba4e5495e600828fd7aa37e64f99f4ea4ac6c940a41838776706b651"
+      "sha256": "d9626e9307d61def139a1a52906a96fc89c567b3d6c1dd17dcfd69a94a1e0ee8"
     },
     {
       "path": "logos/pdf/locker-horizontal-dark.pdf",
-      "bytes": 7025,
-      "sha256": "2cc587df25fe23cbbbf9f6b2b8affcfbf1286576505b8c21f9bdd6ef80073200"
+      "bytes": 7026,
+      "sha256": "fde18bd0a9132da1ed2a37498029c65f30e71f5d1d17d96d73ebc988d1c9f410"
     },
     {
       "path": "logos/pdf/locker-horizontal-light.pdf",
-      "bytes": 7028,
-      "sha256": "23a6e68942fa677ac37c7d9b2d587b69239e9566ed9ea3e2a81dfba1a64013af"
+      "bytes": 7029,
+      "sha256": "76bddfc6bf7b7c3d7b2bb4cc117aaf5238411cde823c14e45823464762b8e008"
     },
     {
       "path": "logos/pdf/locker-horizontal-white.pdf",
       "bytes": 6997,
-      "sha256": "3e2ce735d195b9c29bd09fc24abb096d67b45b431c00179b1529618785b921cc"
+      "sha256": "bf4f713fa9db28bfa45c521d436a7cc850fa4dca379309f66a30b8255792c73f"
     },
     {
       "path": "logos/pdf/locker-mark-black-master.pdf",
-      "bytes": 1313,
-      "sha256": "0988326901e861fff82bcd523d3a471b10e5d535f47ed7dde502e49d0d7f7035"
+      "bytes": 1312,
+      "sha256": "e9d6bbe0cebc477f783bc5a0b47720a137ff751e2134b79470a5290de775c4c7"
     },
     {
       "path": "logos/pdf/locker-mark-black-micro.pdf",
-      "bytes": 1115,
-      "sha256": "602dfc678bd6529c75893fbc003bce742ea8020bd8e55af9b1cfc2625fb9762d"
+      "bytes": 1114,
+      "sha256": "97c2f793faadeaa3bc74b24f4c4bbafde41358ec259581acbed2172214def285"
     },
     {
       "path": "logos/pdf/locker-mark-coral-master.pdf",
-      "bytes": 1320,
-      "sha256": "da8b3afb74f8b13cb30f3d4e17f8938803f9fc7301e77a30f347a1067a35c5b6"
+      "bytes": 1319,
+      "sha256": "e9bb2472d3f65596aed2ce609c750ef8b237ccd585a46b0c88628ab8ed57d605"
     },
     {
       "path": "logos/pdf/locker-mark-coral-micro.pdf",
-      "bytes": 1124,
-      "sha256": "633ff2e28ad6e0567c83d55a4f925c0d4f4cd101c4d654fcb9ca600bb65627f7"
+      "bytes": 1123,
+      "sha256": "9be2929edfc36624001cbb2932c55be8f53908a9d56691dc168a5d32f78905f2"
     },
     {
       "path": "logos/pdf/locker-mark-dark-master.pdf",
-      "bytes": 1324,
-      "sha256": "21b5072fe9e0c0488713eb1dc6707a5b4ed214f5409ee049517c7f60fde75729"
+      "bytes": 1325,
+      "sha256": "9a701892815a3732bf8a018e9d636e66c5371052544f068a9657d80baae0ba01"
     },
     {
       "path": "logos/pdf/locker-mark-dark-micro.pdf",
-      "bytes": 1128,
-      "sha256": "6054e269f75baf91fc3e296370de02f32580f4b09c8649a1dc09e0f5114c46ab"
+      "bytes": 1129,
+      "sha256": "b1c1f38043e81c8f35974be14bdf2c042446228f2e5d09fd9581306489b2633f"
     },
     {
       "path": "logos/pdf/locker-mark-light-master.pdf",
-      "bytes": 1326,
-      "sha256": "44a0baa20cae6de9423c22624024b46531c58bed719e3ec52774306dc8aa01e7"
+      "bytes": 1325,
+      "sha256": "c4557d0729b0fc261127ae5ae46856420c450163540333359f877b1da51b1058"
     },
     {
       "path": "logos/pdf/locker-mark-light-micro.pdf",
-      "bytes": 1126,
-      "sha256": "39590aa700d4e82bd916def1f9f67aa61c68c94dc37c393239897d3f62d1690a"
+      "bytes": 1125,
+      "sha256": "efcc36d0e55d29bf42a23434b1ace7495296309f376b33b4c7501fad6e875452"
     },
     {
       "path": "logos/pdf/locker-mark-white-master.pdf",
-      "bytes": 1313,
-      "sha256": "20a42f9c50ebc05568a6e62c369988f4f3126e330106ea81cf038e55c6b4e9c1"
+      "bytes": 1312,
+      "sha256": "ff91e4b73c6eb0871dbc05399d1054c239a2a78cba1285dca94c2d887352e289"
     },
     {
       "path": "logos/pdf/locker-mark-white-micro.pdf",
-      "bytes": 1115,
-      "sha256": "4def2a923cc5bb578dc981ce2b5a41c98a1ab30fe1dd45dca2a3be475c46cef2"
+      "bytes": 1114,
+      "sha256": "6ef8b7c50fd2c5084f1a956246b95e84e9e874437efaf6810c70e90876765fe9"
     },
     {
       "path": "logos/pdf/locker-stacked-black.pdf",
-      "bytes": 6948,
-      "sha256": "c19b36515d2c3a4373378dd9936283420753da906ebe3e54854eaa621c326654"
+      "bytes": 6949,
+      "sha256": "ae224666c5720bd5ee76639f9c7ede8d4d005e7c719f69e9b98f013ed6c283d8"
     },
     {
       "path": "logos/pdf/locker-stacked-coral.pdf",
-      "bytes": 6959,
-      "sha256": "da7170cee8622b354c0d48034cc1c5ea2d745c36568fff6ec7d8ac8be70f755c"
+      "bytes": 6960,
+      "sha256": "5dcdc7ae472307331bca3d5b3a750dfcc51c768cc488799f8016685f7eb3af53"
     },
     {
       "path": "logos/pdf/locker-stacked-dark.pdf",
-      "bytes": 6978,
-      "sha256": "a292d4b9fcb463b9eb7d8548adb99a3958aa4d743e7f3437dba488ff29dd511a"
+      "bytes": 6979,
+      "sha256": "aa3ec7c5afe3b6e2b659659a95f2112ae92b22eebacef47388a8fe09345dca24"
     },
     {
       "path": "logos/pdf/locker-stacked-light.pdf",
       "bytes": 6980,
-      "sha256": "e77d4ce736e534d23de12fa514b44b201999b4847cd5aca7b093f1d00bf99c4a"
+      "sha256": "68cf9d3ce75ccea4d3f348542cfbcb1f1857341f0f79ba714aa793a204c96126"
     },
     {
       "path": "logos/pdf/locker-stacked-white.pdf",
       "bytes": 6950,
-      "sha256": "2544697bcd6b14f6cca18f7095f4a331abc9d09b9f8227eb26f91de5df32f924"
+      "sha256": "08c42e435630616dd93fe0ab396e13a080301117116791e3d37d7d378257b775"
     },
     {
       "path": "logos/png/locker-compact-black-1280.png",
@@ -1598,8 +4768,8 @@
     },
     {
       "path": "previews/identity.png",
-      "bytes": 26178,
-      "sha256": "2c0cb19a471d9835f0944c97afb48f8e4621f565313d2856317cbc996b739f87"
+      "bytes": 26141,
+      "sha256": "60840d2129dad58aef0dd4e4a687a15eeb0d3f5283edb8e1697773e3b9c7d2f0"
     },
     {
       "path": "previews/size-theme-check.png",
@@ -1608,43 +4778,63 @@
     },
     {
       "path": "social/social-landscape-1200.png",
-      "bytes": 34255,
-      "sha256": "1cf4bc81f351d27b73ec22ac48c185543e2abe336e7897ae75533c4be6821bd3"
+      "bytes": 30388,
+      "sha256": "856583a337b6afec799f4815b2918bf3f8d933c19d2908f19a4aa53abf31aab0"
     },
     {
       "path": "social/social-landscape.svg",
-      "bytes": 68670,
-      "sha256": "b3428d633058d4697f45f43cb65ca7eff2d042d2b0f53875cad1a88b5d365aec"
+      "bytes": 56554,
+      "sha256": "ccbe7738c93afebb4205f29b43172eb0b84fe292c21e10ccf79294970f0f1a21"
     },
     {
       "path": "social/social-portrait-1080.png",
-      "bytes": 38364,
-      "sha256": "efe46fc8914c3a64a1d5b392cd9c3c19bee015fbe9bdba55eee223dd9e1240f2"
+      "bytes": 34657,
+      "sha256": "f274b42039eb7103347200755456241f1dc0115c260481936ee826f7444f45b0"
     },
     {
       "path": "social/social-portrait.svg",
-      "bytes": 68674,
-      "sha256": "fec8a0978249a21a7d06cf17fe48bc369f0469b826ffffc5aa5b8b0a1137b64c"
+      "bytes": 56558,
+      "sha256": "b7f717801d237719ff5c1f868372905d0a5db92f884e988f66f5872a6273d468"
     },
     {
       "path": "social/social-square-1080.png",
-      "bytes": 37183,
-      "sha256": "c7bf8743a278aad8a8b1e8ad191b9b8a8dc3b9d11b1ad16a6cadb1a1e3e74e93"
+      "bytes": 33121,
+      "sha256": "b5e2dd42955559c61008b3af6d5b84bc38f89488d47778ede4b4a54f1245e7a7"
     },
     {
       "path": "social/social-square.svg",
-      "bytes": 68674,
-      "sha256": "8bbf07ac873468cd1640fed2279c8ecea26517ba59e1f7555898be6569528f15"
+      "bytes": 56558,
+      "sha256": "1c0e3c190724c21ddbd08a824f88637ecc4b6a9c5c89e16c9fb0f2f31f728099"
     },
     {
-      "path": "source/Polaris-Key-Brand-Guide-Edition04.pdf",
-      "bytes": 1560463,
-      "sha256": "31a98e106164a2610a01a9722e3bdb206b8ff93b922339c2e094f6391fb867cd"
+      "path": "source/badge_catalogue.py",
+      "bytes": 4782,
+      "sha256": "efbea55387793325a569d21080e501c037ba75e62316627ae13dcc2a81d57923"
     },
     {
       "path": "source/build.py",
-      "bytes": 31226,
-      "sha256": "d9763c5ff69705d83859d0dbb271836ab0d5b2173aa0f86653ba6d889e358bae"
+      "bytes": 30810,
+      "sha256": "76c830c1452fc4d5092d1851bfeb31d97d4a08331c69b387c79cf9aeff6749b4"
+    },
+    {
+      "path": "source/family_guide_pages.py",
+      "bytes": 2487,
+      "sha256": "3f95511b3b03c89f5236bc864e2730fc9b03f430c8b5d276bbb2d6c757a8e719"
+    },
+    {
+      "path": "source/family_system.py",
+      "bytes": 7447,
+      "sha256": "a6957c96ba3216264ce189a918f57be7505879e132193fbe578f5be9ef5c91bf"
+    },
+    {
+      "path": "source/platform_guide.py",
+      "bytes": 8992,
+      "sha256": "6552384ea90cfd38d9f20f9d3e35034ca794562c7c532b3ad581188efa014f99"
+    },
+    {
+      "path": "source/reference/Polaris-Key-Brand-Guide-Edition04.pdf",
+      "bytes": 1560463,
+      "sha256": "31a98e106164a2610a01a9722e3bdb206b8ff93b922339c2e094f6391fb867cd"
     },
     {
       "path": "tokens/contrast-report.json",
@@ -1653,13 +4843,23 @@
     },
     {
       "path": "tokens/locker.css",
-      "bytes": 414,
-      "sha256": "983e7dbd4db8e4af77ac69733aa20db6288921d0a861fe87d9f459b36980675a"
+      "bytes": 488,
+      "sha256": "78b494a2bbfd9baee4d8cb4aa36993a42c1b69f3a30d9e6a41532c8261684d64"
     },
     {
       "path": "tokens/locker.tokens.json",
-      "bytes": 657,
-      "sha256": "6253735f402ff8719148932c4b82d2cd975b1759667321e116cb00faf237dbd3"
+      "bytes": 989,
+      "sha256": "c8861231f36a444e8427066ced4691c79306beff6b4776e006a4b58637d97426"
+    },
+    {
+      "path": "tokens/polaris-family.css",
+      "bytes": 1141,
+      "sha256": "2a3426e8760b494689ec9c4fa81d8f5873a4d8cbd9b30d74a52789299e205532"
+    },
+    {
+      "path": "tokens/polaris-family.tokens.json",
+      "bytes": 3855,
+      "sha256": "55022d261c9380366ff329de412b1c4759fe6ef81f6c3d04800b5afe0e2f8578"
     },
     {
       "path": "web/README.md",
