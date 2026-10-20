@@ -89,3 +89,10 @@ def test_the_qt_layout_draws_the_attribution_apart_from_the_body() -> None:
         assert spec.powered_by_text == "Powered by Polaris Locker"
         assert "Powered by Polaris Locker" not in spec.body
         assert spec.as_dict()["poweredBy"] == mode
+
+
+@pytest.mark.parametrize("status", ["needs-activation", "revoked", "expired"])
+def test_never_on_a_gate(status: str) -> None:
+    k = kit(env("none", "unicode", 80, "dark"), Theme(powered_by="line"))
+    text = plain(screens.gate(k, gate_view(status, now=NOW, developer=k.identity.developer), "status"))  # type: ignore[arg-type]
+    assert "Powered by" not in text

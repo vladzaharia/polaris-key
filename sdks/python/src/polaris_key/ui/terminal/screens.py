@@ -204,7 +204,8 @@ def gate(k: Kit, v: GateView, verb: str = "status") -> Lines:
         body += k.step("active", [k.t("core.gate.needs-activation.title", "strong")])
         body += _gap(k)
         body += _fixes(k, [("activate", "welcome.useKey"), ("login", "welcome.signIn")])
-    body += powered_by(k)
+    if v.component in ("AccountAndLicense", "GraceBanner"):  # never on a gate (UI-KITS §1.6)
+        body += powered_by(k)
     return _frame(k, verb, body, end)
 
 
