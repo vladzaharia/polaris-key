@@ -183,6 +183,7 @@ describe("GET /manage/api/platform/ready", () => {
       "Diceroll's Steam uploads need a Steamworks publisher key.",
     );
     expect(row.action?.label).toBe("Connect Steam");
+    expect((row.action as { store?: string }).store).toBe("steam");
   });
 
   it("is the platform's: a product member is refused", async () => {

@@ -7,10 +7,15 @@ import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
 
 /** Where each row's fix lives (the worker names a Platform page; the console owns the address). */
-const TARGETS: Record<string, () => string> = {
+const TARGETS: Record<string, (store?: string) => string> = {
   settings: r.platformSettings,
   status: r.platformOperations,
-  connections: () => r.platformConnections(),
+  // Store accounts are the Store connections page's (not the sign-in providers'); one missing
+  // store opens it on that store.
+  connections: (store) =>
+    store
+      ? `${r.platformStores()}?store=${encodeURIComponent(store)}`
+      : r.platformStores(),
   packages: r.platformFeeds,
 };
 
@@ -48,7 +53,8 @@ export function PlatformReady({
       >
         <h2
           id={titleId}
-          className="text-lg font-semibold leading-6 text-fg-strong"
+          tabIndex={-1}
+          className="text-lg font-semibold leading-6 text-fg-strong outline-hidden"
         >
           Platform ready
         </h2>
@@ -113,7 +119,9 @@ export function PlatformReady({
 }
 
 function Task({ row }: { row: PlatformReadyRow }): React.ReactElement {
-  const to = row.action ? TARGETS[row.action.to]?.() : undefined;
+  const to = row.action
+    ? TARGETS[row.action.to]?.(row.action.store)
+    : undefined;
   return (
     <li className="grid grid-cols-[1.75rem_minmax(0,1fr)] gap-x-3 px-5 py-3">
       <span aria-hidden className="mt-0.5 grid size-7 place-items-center">

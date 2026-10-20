@@ -332,7 +332,8 @@ export function AttentionList({
         <div data-head-count="" className="flex items-baseline gap-2">
           <h2
             id={id}
-            className="text-lg font-semibold leading-6 text-fg-strong"
+            tabIndex={-1}
+            className="text-lg font-semibold leading-6 text-fg-strong outline-hidden"
           >
             {title}
           </h2>
@@ -411,7 +412,12 @@ export function AttentionList({
       </ul>
       {sorted.length > max ? (
         <div className="border-t border-border px-5 py-2">
-          <Button variant="link" size="sm" onClick={() => setAll((v) => !v)}>
+          <Button
+            variant="link"
+            size="sm"
+            className="min-h-6"
+            onClick={() => setAll((v) => !v)}
+          >
             {all ? "Show fewer" : `Show all ${sorted.length}`}
           </Button>
         </div>

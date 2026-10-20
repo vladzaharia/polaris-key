@@ -86,7 +86,6 @@ describe("Home table", () => {
     await page();
     await waitFor(() => expect(rows()).toHaveLength(2));
     const acme = rows().find((r) => r.textContent?.includes("acme"))!;
-    expect(within(acme).getByText("GitHub")).toBeTruthy();
     expect(within(acme).getByText("Missing secret")).toBeTruthy();
     expect(
       within(acme).getByText(
@@ -94,7 +93,6 @@ describe("Home table", () => {
       ),
     ).toBeTruthy();
     const djdl = rows().find((r) => r.textContent?.includes("djdl"))!;
-    expect(within(djdl).getByText("Manual")).toBeTruthy();
     // Pills mean attention (ADMIN.md §5.11): the issue pill ends the row, in the last data
     // column; a healthy product draws no pill, only words for assistive tech.
     const acmeCells = within(acme).getAllByRole("cell");

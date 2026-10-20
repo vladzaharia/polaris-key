@@ -397,7 +397,7 @@ describe("Home", () => {
       within(region)
         .getByRole("link", { name: "Open connections" })
         .getAttribute("href"),
-    ).toBe("#/platform/connections");
+    ).toBe("#/platform/store-connections");
     expect(
       within(region).getByText("Keyring configured").closest("ul")!.hidden,
     ).toBe(true);
@@ -408,6 +408,113 @@ describe("Home", () => {
     fireEvent.click(toggle);
     expect(toggle.getAttribute("aria-expanded")).toBe("true");
     expect(within(region).getByText("Keyring configured")).toBeTruthy();
+  });
+
+  it("Connect Steam opens Store connections on that store, not the sign-in providers", async () => {
+    const ready = {
+      ...READY,
+      rows: READY.rows.map((r) =>
+        r.id === "store-accounts"
+          ? {
+              ...r,
+              action: {
+                label: "Connect Steam",
+                to: "connections",
+                store: "steam",
+              },
+            }
+          : r,
+      ),
+    };
+    boot("#/", {
+      extra: { ...registry(), "/manage/api/platform/ready": ready },
+    });
+    await home();
+    const region = await within(main()).findByRole("region", {
+      name: "Platform ready",
+    });
+    expect(
+      within(region)
+        .getByRole("link", { name: "Connect Steam" })
+        .getAttribute("href"),
+    ).toBe("#/platform/store-connections?store=steam");
+    expect(
+      within(region)
+        .getByRole("link", { name: "Open status" })
+        .getAttribute("href"),
+    ).toBe("#/platform/operations");
+  });
+
+  it("first run: a pending or failed Platform ready read still has its card", async () => {
+    boot("#/", {
+      me: { products: [] },
+      extra: {
+        "/manage/api/platform/ready": new Response("{}", { status: 500 }),
+      },
+    });
+    await home();
+    const card = await within(main()).findByRole("region", {
+      name: "Platform ready",
+    });
+    expect(
+      within(card).getByRole("button", { name: "Try again" }),
+    ).toBeTruthy();
+    cleanup();
+    boot("#/", {
+      me: { products: [] },
+      extra: { "/manage/api/platform/ready": PENDING },
+    });
+    await home();
+    expect(
+      await within(main()).findByRole("region", {
+        name: "Loading Platform ready",
+      }),
+    ).toBeTruthy();
+  });
+
+  it("Try again that answers moves focus to the new card's heading", async () => {
+    let calls = 0;
+    boot("#/", {
+      extra: {
+        ...registry(),
+        "/manage/api/attention": () =>
+          ++calls < 3
+            ? new Response("{}", { status: 500 })
+            : { items: ATTENTION },
+      },
+    });
+    await home();
+    const card = await within(main()).findByRole("region", {
+      name: "Needs attention",
+    });
+    fireEvent.click(within(card).getByRole("button", { name: "Try again" }));
+    await waitFor(() =>
+      expect(document.activeElement?.textContent).toContain("Needs attention"),
+    );
+  });
+
+  it("the Attention facet is not offered until the attention read has answered", async () => {
+    boot("#/", { extra: { ...registry(), "/manage/api/attention": PENDING } });
+    await home();
+    await waitFor(() => expect(cards()).toHaveLength(2));
+    expect(within(main()).queryByText("Attention")).toBeNull();
+    expect(within(main()).getByText("Integration")).toBeTruthy();
+  });
+
+  it("arrow keys on Cards and Table select the view", async () => {
+    boot("#/", { extra: registry() });
+    await home();
+    await waitFor(() => expect(cards()).toHaveLength(2));
+    const cardsRadio = within(main()).getByRole("radio", { name: /Cards/ });
+    cardsRadio.focus();
+    fireEvent.keyDown(cardsRadio, { key: "ArrowRight" });
+    await waitFor(() =>
+      expect(
+        within(main())
+          .getByRole("radio", { name: /Table/ })
+          .getAttribute("aria-checked"),
+      ).toBe("true"),
+    );
   });
 
   it("Platform ready leaves Home when every row is done, and is never asked for by a member without Platform", async () => {

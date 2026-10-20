@@ -121,6 +121,43 @@ export function Home(): React.ReactElement {
     [list],
   );
 
+  /** Ask a failed read again; once it answers, focus the card's heading (the card was replaced). */
+  const retry = async (
+    refetch: () => Promise<{ isSuccess: boolean }>,
+    heading: string,
+  ): Promise<void> => {
+    if ((await refetch()).isSuccess)
+      requestAnimationFrame(() =>
+        document.querySelector<HTMLElement>(heading)?.focus(),
+      );
+  };
+  const items = attentionRows(attention.data ?? [], logoOf);
+  const attentionSlot = attention.isPending ? (
+    <CardSkeleton label="Needs attention" rows={2} />
+  ) : attention.isError ? (
+    <LoadFailedCard
+      title="Needs attention"
+      message="What needs attention didn't load."
+      onRetry={() => retry(attention.refetch, "[data-home-grid] > section h2")}
+    />
+  ) : items.length > 0 ? (
+    <AttentionList items={items} max={6} stagger={firstLoad} />
+  ) : (
+    <AllClear />
+  );
+  const readySlot = !readyOpen ? null : ready.isPending ? (
+    <CardSkeleton label="Platform ready" rows={3} className={READY_AREA} />
+  ) : ready.isError || !Array.isArray(ready.data?.rows) ? (
+    <LoadFailedCard
+      title="Platform ready"
+      message="Platform ready didn't load."
+      onRetry={() => retry(ready.refetch, "[data-platform-ready] h2")}
+      className={READY_AREA}
+    />
+  ) : (
+    <PlatformReady ready={ready.data} className={READY_AREA} />
+  );
+
   const header = (
     <PageHeader
       title="Home"
@@ -191,38 +228,11 @@ export function Home(): React.ReactElement {
           }
           docs="/docs/admin/products/"
         />
-        {readyOpen && ready.data && Array.isArray(ready.data.rows) ? (
-          <PlatformReady ready={ready.data} />
-        ) : null}
+        <div data-home-grid="" className="grid grid-cols-1 gap-6">
+          {readySlot}
+        </div>
       </div>
     );
-
-  const items = attentionRows(attention.data ?? [], logoOf);
-  const attentionSlot = attention.isPending ? (
-    <CardSkeleton label="Needs attention" rows={2} />
-  ) : attention.isError ? (
-    <LoadFailedCard
-      title="Needs attention"
-      message="What needs attention didn't load."
-      onRetry={() => void attention.refetch()}
-    />
-  ) : items.length > 0 ? (
-    <AttentionList items={items} max={6} stagger={firstLoad} />
-  ) : (
-    <AllClear />
-  );
-  const readySlot = !readyOpen ? null : ready.isPending ? (
-    <CardSkeleton label="Platform ready" rows={3} className={READY_AREA} />
-  ) : ready.isError || !Array.isArray(ready.data?.rows) ? (
-    <LoadFailedCard
-      title="Platform ready"
-      message="Platform ready didn't load."
-      onRetry={() => void ready.refetch()}
-      className={READY_AREA}
-    />
-  ) : (
-    <PlatformReady ready={ready.data} className={READY_AREA} />
-  );
 
   return (
     // The page is its own container: the split follows the content column's width, so a larger
@@ -243,17 +253,23 @@ export function Home(): React.ReactElement {
         <div
           className={cn(
             "min-w-0",
-            readyOpen &&
-              "@[60rem]:col-span-2 @[80rem]:col-span-1 @[80rem]:col-start-1 @[80rem]:row-start-2",
+            readyOpen && "@[60rem]:col-start-1 @[60rem]:row-start-2",
           )}
         >
-          <ProductShelf rows={rows} loading={loading} />
+          <ProductShelf
+            rows={rows}
+            loading={loading}
+            attentionKnown={attention.isSuccess}
+          />
         </div>
       </div>
     </div>
   );
 }
 
-/** Platform ready beside the cards: below the split it stacks, at 80rem it is the aside. */
+/**
+ * Platform ready beside attention and the cards from the 60rem split: it spans both rows, so the
+ * products flow under attention, not under the taller card.
+ */
 const READY_AREA =
-  "@[80rem]:col-start-2 @[80rem]:row-span-2 @[80rem]:row-start-1";
+  "@[60rem]:col-start-2 @[60rem]:row-span-2 @[60rem]:row-start-1";

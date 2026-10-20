@@ -1480,7 +1480,7 @@ export interface PlatformReadyRow {
   title: string;
   done: boolean;
   detail?: string;
-  action?: { label: string; to: string };
+  action?: { label: string; to: string; store?: string };
 }
 
 export interface PlatformReadyDto {

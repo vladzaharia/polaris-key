@@ -23,7 +23,7 @@ export interface ReadyRow {
   /** One fact, only while the row is open. */
   detail?: string;
   /** Where the fix is: a Platform page id. */
-  action?: { label: string; to: string };
+  action?: { label: string; to: string; store?: string };
 }
 
 export interface PlatformReady {
@@ -117,7 +117,7 @@ export async function platformReady(
       title: "Background jobs ticking",
       done: beat?.at != null && beat.at >= now - TICK_WINDOW_SECONDS,
       detail: "No scheduled run in the last 20 minutes.",
-      action: { label: "Open status", to: "status" },
+      action: { label: "Open Operations", to: "status" },
     },
     {
       id: "email-sender",
@@ -132,10 +132,12 @@ export async function platformReady(
       done: missingStores.length === 0,
       detail: missingStores.map((m) => storeSentence(m, names)).join(" "),
       action: {
+        // Exactly one missing store deep-links the Store connections page to it (`?store=`).
+        store: missingStores.length === 1 ? missingStores[0]!.store : undefined,
         label:
           missingStores.length === 1
             ? `Connect ${STORE_LABEL[missingStores[0]!.store] ?? "store"}`
-            : "Open connections",
+            : "Open store accounts",
         to: "connections",
       },
     },
@@ -144,7 +146,7 @@ export async function platformReady(
       title: "Platform packages set up",
       done: system !== null,
       detail: "The platform's own package feeds aren't set up.",
-      action: { label: "Open packages", to: "packages" },
+      action: { label: "Open package feeds", to: "packages" },
     },
   ];
   return {

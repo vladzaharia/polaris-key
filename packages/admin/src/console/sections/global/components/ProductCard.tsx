@@ -132,7 +132,7 @@ export function ProductCard({
               <Link
                 to={r.overview(p.slug)}
                 data-card-link=""
-                className="underline-offset-4 outline-hidden after:absolute after:inset-0 after:rounded-lg after:content-[''] hover:underline focus-visible:ring-0 focus-visible:ring-offset-0"
+                className="underline-offset-4 outline-none after:absolute after:inset-0 after:rounded-lg after:content-[''] hover:underline focus-visible:ring-0 focus-visible:ring-offset-0"
               >
                 {name}
               </Link>

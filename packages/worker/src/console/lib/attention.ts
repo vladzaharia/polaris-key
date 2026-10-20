@@ -101,11 +101,11 @@ export function syncReason(message: string | null): string {
     )
   )
     return "GitHub refused access to the repository.";
-  if (/\b404\b|not found|no such|missing/.test(m))
-    return "The repository or its .pkey/ directory was not found.";
   if (/\b429\b|rate.?limit/.test(m)) return "GitHub rate-limited the request.";
   if (/manifest|invalid|schema|line \d+|validation|parse/.test(m))
     return "The manifest did not validate.";
+  if (/\b404\b|not found|no such|missing/.test(m))
+    return "The repository or its `.pkey/` directory was not found.";
   if (/\b5\d\d\b|timeout|timed out|network|fetch/.test(m))
     return "GitHub could not be reached.";
   return "The last resync did not finish.";

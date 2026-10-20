@@ -26,7 +26,11 @@ export function LoadFailedCard({
       className={`rounded-xl border border-border bg-surface-raised light:shadow-elevation-1 ${className ?? ""}`}
     >
       <div data-card-header="" className="border-b border-border px-5 py-3">
-        <h2 id={id} className="text-lg font-semibold leading-6 text-fg-strong">
+        <h2
+          id={id}
+          tabIndex={-1}
+          className="text-lg font-semibold leading-6 text-fg-strong outline-hidden"
+        >
           {title}
         </h2>
       </div>

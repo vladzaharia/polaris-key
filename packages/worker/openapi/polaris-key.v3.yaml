@@ -21124,7 +21124,16 @@ components:
               action:
                 type: object
                 required: [label, to]
-                properties: { label: { type: string }, to: { type: string } }
+                properties:
+                  {
+                    label: { type: string },
+                    to: { type: string },
+                    store:
+                      {
+                        type: string,
+                        description: "Set when exactly one store needs an account.",
+                      },
+                  }
     AdminProductList:
       type: object
       required: [products]

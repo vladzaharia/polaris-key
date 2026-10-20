@@ -101,7 +101,15 @@ const COLUMNS: DataColumn<HomeRow>[] = [
           presentation={row.original.product.presentation}
           size={24}
         />
-        <span className="min-w-0 break-words">{row.original.name}</span>
+        <span className="min-w-0">
+          <span className="block break-words">{row.original.name}</span>
+          <span
+            aria-hidden
+            className="block break-all font-mono text-xs text-fg-muted"
+          >
+            {row.original.slug}
+          </span>
+        </span>
       </span>
     ),
   },
@@ -109,7 +117,11 @@ const COLUMNS: DataColumn<HomeRow>[] = [
     id: "slug",
     header: "Slug",
     accessorKey: "slug",
-    meta: { priority: 1, mono: true },
+    meta: {
+      defaultHidden: true,
+      priority: 3,
+      mono: true,
+    },
   },
   {
     id: "features",
@@ -145,21 +157,21 @@ const COLUMNS: DataColumn<HomeRow>[] = [
     id: "source",
     header: "Source",
     accessorKey: "source",
-    meta: { priority: 2 },
+    meta: { defaultHidden: true, priority: 3 },
     cell: ({ row }) => label(PROVIDER_LABELS, row.original.source),
   },
   {
     id: "modified",
     header: "Changed",
     accessorFn: (row) => row.product.modifiedAt,
-    meta: { numeric: true, priority: 2 },
+    meta: { defaultHidden: true, numeric: true, priority: 2 },
     cell: ({ row }) => <When seconds={row.original.product.modifiedAt} />,
   },
   {
     id: "created",
     header: "Created",
     accessorFn: (row) => row.product.createdAt,
-    meta: { numeric: true, priority: 3 },
+    meta: { defaultHidden: true, numeric: true, priority: 3 },
     cell: ({ row }) => <When seconds={row.original.product.createdAt} />,
   },
   // Last, flush right: a product that needs something shows the one pill; a healthy one nothing.
@@ -192,9 +204,12 @@ const COLUMNS: DataColumn<HomeRow>[] = [
 export function ProductShelf({
   rows,
   loading,
+  attentionKnown,
 }: {
   rows: HomeRow[];
   loading: boolean;
+  /** The attention read answered: until it has, the Attention facet is not offered. */
+  attentionKnown: boolean;
 }): React.ReactElement {
   const [view, setView] = React.useState<View>(() =>
     readPref(PREF_KEYS.homeView, parseView, "cards"),
@@ -204,8 +219,14 @@ export function ProductShelf({
   });
   const canOpenHref = useCanOpenHref();
   const filtered = React.useMemo(
-    () => filterHomeRows(rows, state.q, state.filters),
-    [rows, state.q, state.filters],
+    () =>
+      filterHomeRows(
+        rows,
+        state.q,
+        // Until attention is known a stale `attention=` filter would hide every product.
+        attentionKnown ? state.filters : { ...state.filters, attention: [] },
+      ),
+    [rows, state.q, state.filters, attentionKnown],
   );
   const filtering =
     state.q.trim() !== "" || Object.keys(state.filters).length > 0;
@@ -281,7 +302,9 @@ export function ProductShelf({
             onChange: (q) => setState({ ...state, q, offset: 0 }),
             placeholder: "Filter products",
           }}
-          facets={FACET_LABELS.map((f) => ({
+          facets={FACET_LABELS.filter(
+            (f) => f.id !== "attention" || attentionKnown,
+          ).map((f) => ({
             id: f.id,
             label: f.label,
             options: [...f.options],
