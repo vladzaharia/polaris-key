@@ -86,7 +86,7 @@ AS 2.2 or PJ B4.
   space.
 - **Pills only for issues**, right-aligned. No healthy-state pills.
 - Platform is hidden inside a product.
-- The customer site is "Polaris Locker", then "Locker" (D8), never "Polaris Key Portal", "the portal" or "customer portal" in copy. The console and the platform stay "Polaris Key". Portal nav: Library (default)
+- The customer site is "Polaris Locker", then "Locker" (D8), never "Polaris Key Portal", "the portal" or "customer portal" in copy. The console is Polaris Locker too; "Polaris Key" names only the platform (LK-00 §14.1). Portal nav: Library (default)
   and Discover, with Activate License as a right-aligned modal. On phones, Activate is the middle
   pill of the bottom bar, as the owner-approved PORTAL.md §3.2 already specifies (§5.2).
 - One login card: a logo-only Apple/Google/Steam row, identifier-first email, passkey, "Have a

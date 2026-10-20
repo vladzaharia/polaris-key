@@ -17774,7 +17774,7 @@
       "optional": false,
       "refs": ["plans/LK-00.md §14"],
       "brief": "wp/LK-13-locker-words-v13.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "LK-14",

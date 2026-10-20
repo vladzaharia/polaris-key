@@ -258,7 +258,7 @@ of the opt-in services; adding one is the checklist at
 
 **4. Terminology comes from the concepts page.** `packages/docs/src/content/docs/start/concepts.md`
 (served at `/docs/start/concepts/`) is the canonical glossary — the former `docs/CONCEPTS.md`,
-moved into the site. Device, not machine. Tier, not plan. **Product** is the record in Polaris
+moved into the site. **Polaris Locker** is the public brand on every surface people read (customer site, console, docs, mail, kit attribution, badges). **Polaris Key** is the platform under it, named only where a sentence explains the platform, or as an identifier (LK-00 §14.1). Device, not machine. Tier, not plan. **Product** is the record in Polaris
 Key (the console's product, the manifest, the API); **app** is the developer's build that embeds an
 SDK, and what consumers use. "Create the product in the console" and "Add licensing to your app"
 are both right; "create the app in the console" is wrong, and Help says "app" throughout. The
@@ -296,12 +296,12 @@ per-component hashes; the server recomputes the composite `hwid` and never trust
 copy. There is no installed-application enumeration — a probe answers only for product-declared
 companion apps. See `docs/PRIVACY.md`.
 
-**8. The naming is Polaris Key.** Packages `@polaris-key/*`, PyPI `polaris-key`, SwiftPM
+**8. Identifiers are Polaris Key.** Packages `@polaris-key/*`, PyPI `polaris-key`, SwiftPM
 `PolarisKey`, CLI bin `pkey`, manifest dir `.pkey/`, license keys `pkey_`, device tokens `pkeyt_`,
 CI tokens `pkeyci_`, registry tokens `pkeyr_`, admin API tokens `pkeya_`, personal tokens `pkeyp_`, headers `X-PKey-*`, env `PKEY_CONFIG_*`, issuer `key.plrs.im`. The `@plrs` / `polaris-suite` /
 `plrs` / `.polaris/` states that appear in mid-branch history and in
 `docs/superpowers/plans/2026-08-26-polaris-suite-services.md` are **dead** — Amendment A1 reverted
-the naming layer. Read the spec's closeout, not that plan, for final state.
+the naming layer. Read the spec's closeout, not that plan, for final state. The Polaris Locker brand (rule 4) renames none of them.
 
 **9. A validation rule needs a mutation-table entry.** The `.pkey/` manifest validator
 (`packages/shared-manifest/src/index.ts`) and the published JSON Schemas
@@ -341,7 +341,7 @@ and the repo, not the deployed site.
   plans — read the specs' **closeouts**, not the plans, for shipped state).
 - **`packages/docs/src/content/docs/`** — the published site, in three doors
   (`docs/research/2026-10-08-docs/README.md` §3.1): **Help** for people using an app built on
-  Polaris Key (`help/`); **Developers** (`start/`, `build/`, `features/<feature>/`, `reference/`);
+  Polaris Locker (`help/`); **Developers** (`start/`, `build/`, `features/<feature>/`, `reference/`);
   **Operate** (`operate/console/`, `operate/platform/`, `contribute/`). The door and the access tier
   of a page come from its directory (`src/lib/doors.ts`), never from frontmatter. A page that moves
   is a row in `packages/docs/site-map.json`, which also lists the hidden stubs that reserve every
