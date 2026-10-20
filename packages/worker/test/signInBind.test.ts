@@ -14,7 +14,6 @@ import {
   type ServicesMap,
 } from "../src/core/services.js";
 import { setServices } from "../src/core/products/store.js";
-import { invalidatePlatformSettings } from "../src/core/platformSettings.js";
 import { handlePortalApi as portalApi } from "../src/services/identity/portal/api.js";
 import { SETTINGS } from "../src/mount.js";
 import { portalHooksFor } from "./portalHarness.js";
@@ -33,15 +32,6 @@ const CHALLENGE = createHash("sha256")
 
 let db: SqliteDb;
 let env: Env;
-
-async function setMode(mode: string) {
-  await db.run(
-    "INSERT OR REPLACE INTO platform_settings (key, value_json, version, updated_at, updated_by) VALUES ('CUSTOMER_HOST', ?, 1, ?, 'test')",
-    JSON.stringify(mode),
-    NOW,
-  );
-  invalidatePlatformSettings(env, db);
-}
 
 beforeEach(async () => {
   db = makeTestDb();
@@ -95,7 +85,8 @@ const authorize = () => {
 };
 
 describe("authorize with the customer host on", () => {
-  it("off: unchanged, a cookie on the API host and no bind token", async () => {
+  it("no customer origin: unchanged, a cookie on the API host and no bind token", async () => {
+    delete env.CUSTOMER_ORIGIN;
     const res = await authorize();
     const loc = new URL(res.headers.get("location")!);
     expect(loc.origin).toBe(API);
@@ -103,8 +94,7 @@ describe("authorize with the customer host on", () => {
     expect(res.headers.get("set-cookie")).toMatch(/^__Host-pk_req=/);
   });
 
-  it("on: no cookie here, a bind URL on the customer host", async () => {
-    await setMode("on");
+  it("with a customer origin: no cookie here, a bind URL on the customer host", async () => {
     const res = await authorize();
     expect(res.status).toBe(303);
     expect(res.headers.get("set-cookie")).toBeNull();
@@ -129,7 +119,6 @@ describe("authorize with the customer host on", () => {
 
 describe("the hop on the customer host", () => {
   async function bindUrl() {
-    await setMode("on");
     return (await authorize()).headers.get("location")!;
   }
 

@@ -7418,7 +7418,7 @@ paths:
         script-free, under the
         static-HTML CSP, `cache-control: no-store` and `referrer-policy: no-referrer`; the
         confirmation page's `form-action` additionally allows the IdP origin its POST
-        redirects to. Nothing about the flow is confirmed by this GET. With `customer.host` on, a `GET`
+        redirects to. Nothing about the flow is confirmed by this GET. With a customer origin set, a `GET`
         on the API host answers `303` to `<customer>/device[?user_code=]` (a code that does not
         normalise is not carried), and the customer host serves the page itself.
       parameters:
@@ -7565,7 +7565,7 @@ paths:
       tags: [identity]
       summary: The API host's half of a device confirmation made on the customer host
       description: >
-        With `customer.host` on, the confirmation POST is made on the customer host, but the IdP
+        With a customer origin set, the confirmation POST is made on the customer host, but the IdP
         calls back on the API host, whose callback needs the flow's binder cookie. The customer
         host therefore answers the confirmation with `303` to this route and a single-use `bind`
         token (120 s). The token is redeemed once; the response sets the flow's `__Host-pk_lcb`

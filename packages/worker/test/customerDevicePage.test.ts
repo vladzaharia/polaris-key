@@ -7,7 +7,6 @@ import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
 import { dispatchWith } from "../src/dispatch.js";
-import { invalidatePlatformSettings } from "../src/core/platformSettings.js";
 import {
   serializeServices,
   SERVICE_SLUGS,
@@ -52,12 +51,6 @@ beforeEach(async () => {
     JSON.stringify([`${API}/djdl/identity/auth/callback`]),
     "{}",
   );
-  await db.run(
-    "INSERT OR REPLACE INTO platform_settings (key, value_json, version, updated_at, updated_by) VALUES ('CUSTOMER_HOST', ?, 1, ?, 'test')",
-    JSON.stringify("on"),
-    NOW,
-  );
-  invalidatePlatformSettings(env, db);
 });
 
 const send = (url: string, init: RequestInit = {}) =>
@@ -197,10 +190,9 @@ describe("the device page on the customer host", () => {
     );
   });
 
-  it("switch off: the old behaviour, a relative 302 to the product's page", async () => {
+  it("no customer origin: the old behaviour, a relative 302 to the product's page", async () => {
+    delete env.CUSTOMER_ORIGIN;
     const f = await start();
-    await db.run("DELETE FROM platform_settings WHERE key='CUSTOMER_HOST'");
-    invalidatePlatformSettings(env, db);
     const res = await send(`${API}/device?user_code=${f.userCode}`);
     expect(res.status).toBe(302);
     expect(res.headers.get("location")).toBe(

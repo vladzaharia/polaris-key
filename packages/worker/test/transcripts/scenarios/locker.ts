@@ -1,6 +1,6 @@
 /// <reference types="@cloudflare/workers-types" />
 // The four Polaris Locker transcripts (LK-04, plans/LK-00.md §5): the same conversations as their
-// key.plrs.im twins, recorded with `CUSTOMER_ORIGIN` set and `customer.host` on, so the unsigned
+// key.plrs.im twins, recorded with `CUSTOMER_ORIGIN` set, so the unsigned
 // URL values (WIRE-CONTRACT-V4 §3 of plans/LK-00.md) name the customer host:
 //
 //   locker-refusal-links      the seat and key-entry refusals' `manageUrl`
@@ -14,7 +14,6 @@
 
 import { expect } from "vitest";
 import { dispatchWith } from "../../../src/dispatch.js";
-import { invalidatePlatformSettings } from "../../../src/core/platformSettings.js";
 import { PORTAL_CSRF_HEADER } from "../../../src/services/identity/portal/session.js";
 import {
   BASE_URL,
@@ -68,23 +67,11 @@ export const CUSTOMER = "https://polaris.locker";
 
 const IDENTITY_ON = servicesOn("license", "config", "identity");
 
-/** Turn the customer host on in a recording world: the deploy sets the origin, the console sets
- *  the switch. The console origin is the recorder's own host. */
-export function lockerOn(w: World): void {
+/** The deploy sets the customer origin (a hard cutover: no switch). The console origin is the
+ *  recorder's own host. */
+export function lockerSwitch(w: World): void {
   w.env.CONSOLE_ORIGIN = BASE_URL;
   w.env.CUSTOMER_ORIGIN = CUSTOMER;
-  // `run` is async in the Db interface but the in-memory D1 applies it immediately; the scenarios
-  // await `lockerSwitch` instead.
-}
-
-export async function lockerSwitch(w: World): Promise<void> {
-  lockerOn(w);
-  await w.db.run(
-    `INSERT OR REPLACE INTO platform_settings (key, value_json, version, updated_at, updated_by)
-     VALUES ('CUSTOMER_HOST', '"on"', 1, ?, 'transcript')`,
-    T0,
-  );
-  invalidatePlatformSettings(w.env, w.db);
 }
 
 /** A request from the person's browser to `origin`, outside the recording. */
@@ -129,7 +116,7 @@ export const lockerRefusalLinks: Scenario = {
   record: () =>
     pinned("locker-refusal-links", async (pin) => {
       const world = await productWorld(IDENTITY_ON);
-      await lockerSwitch(world);
+      lockerSwitch(world);
       // Licence A has one seat, held by another device; licence B has none to spare.
       const a = await seedLicenseWithKey(world.db, PRODUCT, {
         id: "lic_locker_a",
@@ -228,7 +215,7 @@ export const lockerDiscoveryIdentity: Scenario = {
   record: () =>
     pinned("locker-discovery-identity", async (pin) => {
       const world = await productWorld(IDENTITY_ON);
-      await lockerSwitch(world);
+      lockerSwitch(world);
       await world.db.run(
         `INSERT INTO product_settings (product, key, value_json, source, updated_at, updated_by)
          VALUES (?, 'identity.keyEntry.limit', '5', 'manifest', ?, 'resync')`,
@@ -349,7 +336,7 @@ export const lockerDevicecode: Scenario = {
   record: () =>
     pinned("locker-devicecode", async (pin) => {
       const world = await identityWorld();
-      await lockerSwitch(world);
+      lockerSwitch(world);
       const r = new TranscriptRecorder({
         id: "locker-devicecode",
         description:
@@ -441,7 +428,7 @@ export const lockerRedirectWeb: Scenario = {
   record: () =>
     pinned("locker-redirect-web", async (pin) => {
       const { w, cookie, csrf, subject } = await redirectWorld();
-      await lockerSwitch(w);
+      lockerSwitch(w);
       const r = new TranscriptRecorder({
         id: "locker-redirect-web",
         description:

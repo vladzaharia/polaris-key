@@ -7249,12 +7249,12 @@ Tests: `test/customerHost.test.ts`, `test/customerOrigin.test.ts`, `test/routeCo
 
 ### The cross-host bind hops (LK-04)
 
-**What it is.** The sign-in card and the device page live on the customer host, but `authorize`
+**What it is.** Once `CUSTOMER_ORIGIN` is set (no switch: owner direction 2026-10-19), the sign-in card and the device page live on the customer host, but `authorize`
 (and the IdP's callback for a device flow) stay on the API host, and `__Host-` cookies are
 host-only. So a request is bound to its browser through a single-use **bind token** instead of a
 cookie set from the wrong host (plans/LK-00.md §7.8; WIRE-CONTRACT-V4 §12.9). Two hops use it:
 
-- _Request hop._ `authorize` (switch on) stores the request under a handle bound to a fresh binder
+- _Request hop._ `authorize` stores the request under a handle bound to a fresh binder
   and 303s to `<customer>/signin?request=rq_…&bind=<token>`, setting no cookie. The customer host
   redeems the token and sets `__Host-pk_req` itself, then 303s to `/signin?request=rq_…`.
 - _Device hop._ A device confirmation made on the customer host cannot set the flow's binder where

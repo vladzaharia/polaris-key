@@ -40,7 +40,6 @@ import {
   customerHostname,
   type CustomerHostMode,
 } from "../hosts.js";
-import { platformSetting } from "../settings/platformRead.js";
 import {
   normalizeArchHeader,
   normalizePlatformHeader,
@@ -125,19 +124,16 @@ export function portalOriginFor(env: Env, fallback: string): string | null {
 }
 
 /**
- * The `customer.host` mode (LK-03): `off` without a read while there is no usable customer host,
- * so a deployment that never sets `CUSTOMER_ORIGIN` costs nothing and every URL is what it was.
+ * Is the customer host the customer site? Owner direction 2026-10-19 (LK-04): a hard cutover, no
+ * switch. Whenever `CUSTOMER_ORIGIN` is a usable origin the customer host IS the customer site
+ * (`on`); unset or unusable (tests, local development), `off` without a read and every URL is what
+ * it was. The `customer.host` platform setting is no longer read; retiring it is LK-03's follow-up.
  */
 export async function customerHostMode(
   env: Env,
-  db: Db,
+  _db?: Db,
 ): Promise<CustomerHostMode> {
-  if (customerHostname(env) === null) return "off";
-  try {
-    return await platformSetting(env, db, "customer.host");
-  } catch {
-    return "off";
-  }
+  return customerHostname(env) === null ? "off" : "on";
 }
 
 /**
