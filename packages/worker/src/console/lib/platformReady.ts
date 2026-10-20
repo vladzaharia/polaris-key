@@ -12,11 +12,7 @@ import type { Db } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
 import { getProduct } from "../../core/products/store.js";
 import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
-import { PLATFORM_STORES } from "../../core/platformStoreSettings.js";
-import {
-  platformCredentialStatus,
-  primaryPlatformCredential,
-} from "../../core/platformCredentials.js";
+import { storesMissingAccount } from "../../services/distribution/public.js";
 import { adminOidcIsDedicated } from "../../platform/platformOidc.js";
 import { settingsWarnings } from "../handlers/platformSettings.js";
 
@@ -39,21 +35,6 @@ export interface PlatformReady {
 /** The cron runs every 15 minutes (`wrangler.toml`); one missed run is not an outage. */
 const TICK_WINDOW_SECONDS = 20 * 60;
 
-/** Outlet kinds that need a platform store account, by store. */
-const STORE_OUTLETS: Readonly<Record<string, string>> = {
-  "app-store": "app-store",
-  "google-play": "google-play",
-  "microsoft-store": "ms-store",
-  steam: "steam",
-};
-
-const STORE_NAMES: Readonly<Record<string, string>> = {
-  "app-store": "App Store",
-  "google-play": "Google Play",
-  "microsoft-store": "Microsoft Store",
-  steam: "Steam",
-};
-
 export async function platformReady(
   env: Env,
   db: Db,
@@ -65,23 +46,7 @@ export async function platformReady(
       at: number | null;
     }>("SELECT MAX(at) AS at FROM platform_heartbeats")
     .catch(() => null);
-  const kinds = new Set(
-    (
-      await db.all<{ kind: string }>(
-        "SELECT DISTINCT kind FROM dist_outlets WHERE removed_at IS NULL",
-      )
-    ).map((r) => r.kind),
-  );
-  const missingStores: string[] = [];
-  for (const store of PLATFORM_STORES) {
-    if (!kinds.has(STORE_OUTLETS[store]!)) continue;
-    const status = await platformCredentialStatus(
-      env,
-      db,
-      primaryPlatformCredential(store),
-    );
-    if (!status.configured) missingStores.push(STORE_NAMES[store] ?? store);
-  }
+  const missingStores = await storesMissingAccount(env, db);
   const system = await getProduct(db, SYSTEM_PRODUCT_SLUG);
 
   const rows: ReadyRow[] = [

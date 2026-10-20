@@ -18,6 +18,7 @@ import { getProductSyncState } from "../../core/products/store.js";
 import type { ProductRow } from "../../core/repo.js";
 import type { AreaId, Principal } from "../authz.js";
 import { can, productScope } from "../authz.js";
+import { expiringCredentials } from "../../services/distribution/public.js";
 import { productSetupFor } from "./shape.js";
 
 export type AttentionTone = "danger" | "warning";
@@ -179,29 +180,23 @@ export async function productAttention(
       });
   }
 
-  const creds = await db.all<{
-    credential_id: string;
-    kind: string;
-    expires_at: number;
-  }>(
-    `SELECT credential_id, kind, expires_at FROM outlet_credentials
-      WHERE product = ? AND status = 'active' AND expires_at IS NOT NULL AND expires_at <= ?
-      ORDER BY expires_at, credential_id`,
+  const creds = await expiringCredentials(
+    db,
     p.slug,
     now + EXPIRY_WINDOW_SECONDS,
   );
   for (const c of creds) {
     const label = CREDENTIAL_LABELS[c.kind];
     if (!label) continue;
-    const gone = c.expires_at <= now;
+    const gone = c.expiresAt <= now;
     items.push({
-      id: id("credential.expiring", c.credential_id),
+      id: id("credential.expiring", c.id),
       product,
       kind: "credential.expiring",
       tone: gone ? "danger" : "warning",
       service: "release",
       short: gone ? "Credential expired" : "Credential expiring",
-      lines: [`${label} ${gone ? "expired" : "expires"} ${day(c.expires_at)}.`],
+      lines: [`${label} ${gone ? "expired" : "expires"} ${day(c.expiresAt)}.`],
       action: { label: "Replace key", page: "storefronts" },
       area: "ship",
     });

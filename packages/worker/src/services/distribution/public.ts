@@ -49,3 +49,8 @@ export {
   stmtEnsureFeed,
   stmtSetPackageFeeds,
 } from "./registryFeeds.js";
+export {
+  expiringCredentials,
+  type ExpiringCredential,
+  storesMissingAccount,
+} from "./attentionFacts.js";
