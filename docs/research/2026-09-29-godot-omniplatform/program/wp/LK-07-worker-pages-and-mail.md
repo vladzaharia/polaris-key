@@ -29,9 +29,9 @@ Re-scoped by Amendment A3: operator mail (ungated), the download page and the by
 
 ## Acceptance criteria
 
-- [ ] email snapshots updated and reviewed; worker `test:workerd` passes
+- [x] email snapshots updated and reviewed; worker `test:workerd` passes
 - [ ] pkey-ux-reviewer passes the pages
-- [ ] The relevant `plans/LK-00.md` §13 commands pass; the green gate passes (AGENTS.md).
+- [x] The relevant `plans/LK-00.md` §13 commands pass; the green gate passes (AGENTS.md).
 
 ## Hand-off
 
