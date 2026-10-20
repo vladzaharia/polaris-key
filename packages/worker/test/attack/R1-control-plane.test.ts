@@ -835,7 +835,7 @@ describe("R1-07 device-code confirmation gate is bypassable by the flow's own st
       "max-age=31536000",
     );
     // The backstop must not eat the body.
-    expect(await served.text()).toContain("Continue to sign in");
+    expect(await served.text()).toContain("Sign in on Unnamed device");
   });
 });
 
