@@ -21,7 +21,7 @@ clickable prototype of the integrated web flow in [sign-in/prototype/](sign-in/p
 **Owner request (verbatim, 2026-10-05):** "Let's ensure all our UX systems are aligned on what this
 will all look like as we're making several UX changes around the login flow."
 
-**Naming (D8).** The hosted card and the account are **Polaris Locker**, then **Locker**: "your Polaris Locker account". The developer platform and the console stay **Polaris Key**. Never "Polaris Key Portal", "the portal", "the customer portal" or "PK" in UI
+**Naming (D8).** The hosted card and the account are **Polaris Locker**, then **Locker**: "your Polaris Locker account". The developer platform and the Polaris Key Console stay **Polaris Key** (LK-00 §15). Never "Polaris Key Portal", "the portal", "the customer portal" or "PK" in UI
 copy or email. "Can't reach Polaris Key" stays for licence and update network errors. The Locker name reaches customers when `customer.host` turns on. UI copy uses **license** (US spelling; glossary, AGENTS.md rule 4), so the owner's
 "Choose a licence for this device" reads **"Choose a license for this device"** (D-01).
 Banned UI words: claim, redeem, merge, OIDC, deauthorize, activation (for an entry), portal.

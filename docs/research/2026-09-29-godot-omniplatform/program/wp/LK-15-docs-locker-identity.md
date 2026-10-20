@@ -16,6 +16,8 @@
 
 Developer docs on the Locker identity: Starlight chrome, the split stated once on the landing and concepts pages, the 26 pages, the prose sweep, and package READMEs. Executes `plans/LK-00.md` §14.1, §14.2, §14.6; do not restate the plan.
 
+Amendment A4 (`plans/LK-00.md` §15) re-scopes this package: the developer docs stay Polaris Key ("Polaris Key docs"); only customer-site words say Locker.
+
 ## Read first
 
 - `AGENTS.md`, `CLAUDE.md`, and `plans/LK-00.md` §14.1, §14.2, §14.6 (plus its §0, §1, A1, A2 and A3 notes).

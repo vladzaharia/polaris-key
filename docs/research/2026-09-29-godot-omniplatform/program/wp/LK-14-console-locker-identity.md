@@ -16,6 +16,8 @@
 
 Console on the Locker identity: shell lockup, `document.title`, favicon and manifest, sign-in moment, `data-brand="locker"`, the copy sweep, and `pkey` output words. Executes `plans/LK-00.md` §14.1, §14.2, §14.6; do not restate the plan.
 
+Amendment A4 (`plans/LK-00.md` §15) re-scopes this package: the console stays the Polaris Key Console (Key mark with the section bit, no `data-brand="locker"`); only customer-site words say Locker; add the root front door.
+
 ## Read first
 
 - `AGENTS.md`, `CLAUDE.md`, and `plans/LK-00.md` §14.1, §14.2, §14.6 (plus its §0, §1, A1, A2 and A3 notes).
