@@ -47,6 +47,16 @@ export interface PendingState {
   wp: string[];
 }
 
+const LINK_ACCOUNT = (role: "started" | "other") => ({
+  role,
+  current: role === "other",
+  name: role === "started" ? "Mara Fennick" : "Mara F.",
+  email: role === "started" ? "mara@fennick.studio" : "mara@old.example",
+  avatarUrl: null,
+  methods: ["email"],
+  products: role === "started" ? 1 : 2,
+  proven: { by: "email", at: 1_800_000_000, fresh: true },
+});
 const KEY = "pkey_mossgarden_Q7xZr2Lk9vT3mN8pB1cY4w";
 const NO_METHODS = {
   body: {
@@ -1018,7 +1028,7 @@ export const SHIPPED: ShippedState[] = [
     scenario: "three",
     path: `/#/?activate=${KEY}`,
     routes: previewSays({ verdict: "license_owned" }),
-    ready: (p) => continueTo(p, /already in another Polaris Key account/),
+    ready: (p) => continueTo(p, /already in another Polaris Locker account/),
   },
   {
     section: "4.19",
@@ -1378,6 +1388,69 @@ export const SHIPPED: ShippedState[] = [
   },
   // §4.26 Account (PX-07; Sign-in methods and Where you're signed in, PX-13).
   {
+    section: "4.10",
+    id: "nudge-add-method",
+    title: "Add another way to sign in: once, on the next portal page",
+    scenario: "three",
+    path: "/#/",
+    ready: async (p) => {
+      // The shell is up (and has taken nothing): the Worker's flag arrives, the next visit shows it.
+      await p.getByRole("heading", { level: 1 }).first().waitFor();
+      await p.evaluate(() =>
+        window.sessionStorage.setItem("pk-signin-nudge", "1"),
+      );
+      await p.reload();
+      await p
+        .getByRole("region", { name: "Add another way to sign in" })
+        .waitFor();
+    },
+  },
+  {
+    section: "4.11",
+    id: "account-link-start",
+    title: "Link an existing account: before the second sign-in",
+    scenario: "three",
+    path: "/#/account/link",
+    routes: { "/api/me/link": { body: { flow: null, undoable: [] } } },
+    ready: async (p) => {
+      await p
+        .getByRole("dialog", { name: "Link an existing account" })
+        .waitFor();
+      await p
+        .getByRole("button", { name: "Sign in to the other account" })
+        .waitFor();
+    },
+  },
+  {
+    section: "4.11",
+    id: "account-link-both",
+    title: "Link an existing account: both accounts proven, ready to join",
+    scenario: "three",
+    path: "/#/account/link",
+    routes: {
+      "/api/me/link": {
+        body: {
+          flow: {
+            expiresAt: 1_800_000_900,
+            started: LINK_ACCOUNT("started"),
+            other: LINK_ACCOUNT("other"),
+            canJoin: true,
+            reason: null,
+            keep: "other",
+            result: { products: 3, primaryEmail: "mara@old.example" },
+          },
+          undoable: [],
+        },
+      },
+    },
+    ready: async (p) => {
+      await p
+        .getByRole("dialog", { name: "Link an existing account" })
+        .waitFor();
+      await p.getByRole("button", { name: "Join into one account" }).waitFor();
+    },
+  },
+  {
     section: "4.26",
     id: "account",
     title: "Account: profile, sign-in methods, where you're signed in",
@@ -1636,11 +1709,6 @@ export const PENDING: PendingState[] = [
     section: "4.9",
     title: "App sign-in: device code (method choice, TV signed in)",
     wp: ["PX-14"],
-  },
-  {
-    section: "4.10",
-    title: "Add another way to sign in (nudge)",
-    wp: ["PX-15"],
   },
   { section: "4.20", title: "Product page with Cloud Sync", wp: ["PX-18"] },
   {
