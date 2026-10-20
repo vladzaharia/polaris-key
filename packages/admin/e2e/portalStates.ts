@@ -289,7 +289,7 @@ export const SHIPPED: ShippedState[] = [
     title: "Login card, email first",
     scenario: "signedOut",
     path: "/",
-    ready: (p) => h1(p, "Sign in to Polaris Key"),
+    ready: (p) => h1(p, "Sign in to Polaris Locker"),
   },
   {
     section: "4.1",
@@ -299,7 +299,7 @@ export const SHIPPED: ShippedState[] = [
     path: "/",
     routes: { "/api/capabilities": WITH_PROVIDERS },
     ready: async (p) => {
-      await h1(p, "Sign in to Polaris Key");
+      await h1(p, "Sign in to Polaris Locker");
       await p.getByRole("link", { name: "Continue with Steam" }).waitFor();
     },
   },
@@ -319,7 +319,7 @@ export const SHIPPED: ShippedState[] = [
       },
     },
     ready: async (p) => {
-      await h1(p, "Sign in to Polaris Key");
+      await h1(p, "Sign in to Polaris Locker");
       await p.evaluate(() => {
         navigator.credentials.get = () =>
           Promise.reject(new DOMException("denied", "NotAllowedError"));
@@ -341,7 +341,7 @@ export const SHIPPED: ShippedState[] = [
       },
     },
     ready: async (p) => {
-      await h1(p, "Sign in to Polaris Key");
+      await h1(p, "Sign in to Polaris Locker");
       await p
         .getByRole("button", { name: "Sign in with another device" })
         .click();
@@ -370,11 +370,36 @@ export const SHIPPED: ShippedState[] = [
       },
     },
     ready: async (p) => {
-      await h1(p, "Sign in to Polaris Key");
+      await h1(p, "Sign in to Polaris Locker");
       await p
         .getByRole("button", { name: "Sign in with another device" })
         .click();
       await p.getByText("That request was denied").waitFor();
+    },
+  },
+  {
+    section: "4.3",
+    id: "signin-hint",
+    title: 'Known account: "You usually sign in with Steam" (HintStep)',
+    scenario: "signedOut",
+    path: "/",
+    routes: { "/api/capabilities": WITH_PROVIDERS },
+    ready: async (p) => {
+      await h1(p, "Sign in to Polaris Locker");
+      // What a past Steam sign-in left in this browser (lastMethod.ts), written the same way.
+      await p.evaluate(async (at) => {
+        localStorage.setItem("pk-hint-salt", "e2e");
+        const bytes = new TextEncoder().encode("e2e:mara@fennick.studio");
+        const digest = await crypto.subtle.digest("SHA-256", bytes);
+        const h = Array.from(new Uint8Array(digest).slice(0, 12), (x) =>
+          x.toString(16).padStart(2, "0"),
+        ).join("");
+        document.cookie = `pk_last_method=steam.${h}.${at}; Path=/`;
+        localStorage.setItem(`pk-hint-name:${h}`, "Mara");
+      }, FIXTURE_NOW - 2 * 86400);
+      await typeEmail(p, "mara@fennick.studio");
+      await h1(p, "Welcome back, Mara");
+      await p.getByRole("link", { name: "Continue with Steam" }).waitFor();
     },
   },
   {
@@ -551,7 +576,7 @@ export const SHIPPED: ShippedState[] = [
     scenario: "signedOut",
     path: "/",
     ready: async (p) => {
-      await h1(p, "Sign in to Polaris Key");
+      await h1(p, "Sign in to Polaris Locker");
       await p.getByRole("button", { name: "Have a license key?" }).click();
       await h1(p, "Have a license key?");
     },
@@ -572,7 +597,7 @@ export const SHIPPED: ShippedState[] = [
     scenario: "signedOut",
     path: "/",
     routes: { "/api/capabilities": "abort" },
-    ready: (p) => h1(p, "Can't reach Polaris Key"),
+    ready: (p) => h1(p, "Can't reach Polaris Locker"),
   },
   // §4.1 Where the address goes (I-30; mockup identity.sign-in-routes pins 1 and 2).
   {
@@ -611,7 +636,7 @@ export const SHIPPED: ShippedState[] = [
     path: "/",
     routes: { "/api/capabilities": WITH_CONNECTION },
     ready: async (p) => {
-      await h1(p, "Sign in to Polaris Key");
+      await h1(p, "Sign in to Polaris Locker");
       await p
         .getByRole("link", { name: "Continue with Lakeside University" })
         .waitFor();
@@ -1547,11 +1572,11 @@ export const SHIPPED: ShippedState[] = [
   {
     section: "4.28",
     id: "boot-unreachable",
-    title: "Can't reach Polaris Key",
+    title: "Can't reach Polaris Locker",
     scenario: "three",
     path: "/",
     routes: { "/api/me": "abort" },
-    ready: (p) => h1(p, "Can't reach Polaris Key"),
+    ready: (p) => h1(p, "Can't reach Polaris Locker"),
   },
   {
     section: "4.28",
@@ -1583,11 +1608,7 @@ export const PENDING: PendingState[] = [
     wp: ["PX-12"],
   },
   {
-    section: "4.3",
-    title: 'Known account: "You usually sign in with Steam"',
-    wp: ["PX-12"],
-  },
-  {
+      {
     section: "4.4",
     title: "Enter the code (wrong, expired, too many tries, resend)",
     wp: ["PX-12", "PX-W4"],

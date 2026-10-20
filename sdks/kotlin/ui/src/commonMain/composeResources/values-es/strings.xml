@@ -1429,6 +1429,139 @@
     <string name="cli_update_downloadNoLink">Consigue la nueva versión donde conseguiste %1$s.</string>
     <!-- Terminal: activate read a piped stdin (a file, pipe or socket) and no key arrived in time. -->
     <string name="cli_activate_noKeyPiped">No llegó ninguna clave de licencia por stdin.</string>
+    <!-- Sign in with another device: under the title (SIGN-IN.md §3.11). Account → Approve a new device is the portal's own menu path. -->
+    <string name="signin_approve_lede">En un teléfono o un ordenador donde hayas iniciado sesión, escanea el código, o abre Cuenta → Aprobar un dispositivo nuevo y escríbelo.</string>
+    <!-- Polaris Locker sign-in card (SIGN-IN.md §3.4, §3.5, §3.11). -->
+    <string name="signin_approve_other">Usar otra forma de iniciar sesión</string>
+    <string name="signin_approve_other__macos">Usar otra forma de iniciar sesión</string>
+    <!-- Announced once when the sign-in code has one minute left (WCAG 2.2.1). -->
+    <string name="signin_approve_minuteLeft">Queda un minuto para este código.</string>
+    <!-- Busy label while the sign-in code is requested. -->
+    <string name="signin_approve_starting">Obteniendo tu código</string>
+    <!-- Sign in with another device or a passkey, for an account that can't sign in. -->
+    <string name="signin_approve_disabled">Esa cuenta no puede iniciar sesión. Usa otra forma de iniciar sesión.</string>
+    <!-- Account → Where you're signed in: opens the approve dialog (SIGN-IN.md §3.11). -->
+    <string name="signin_approve_open">Aprobar un dispositivo nuevo</string>
+    <string name="signin_approve_open__macos">Aprobar un dispositivo nuevo</string>
+    <!-- Approve dialog, when the link carried no code. -->
+    <string name="signin_approve_enter">Escribe el código que se muestra en el otro dispositivo.</string>
+    <!-- Approve dialog: the field's label. -->
+    <string name="signin_approve_codeLabel">Código</string>
+    <!-- Approve dialog: looks the code up (reads only, never approves). -->
+    <string name="signin_approve_look">Buscar</string>
+    <string name="signin_approve_look__macos">Buscar</string>
+    <!-- Approve dialog. Arguments: {code} = the 8-letter code, shown as is. Arguments: 1=code. -->
+    <string name="signin_approve_askBody">El código %1$s pide iniciar sesión en tu cuenta.</string>
+    <!-- Approve dialog: the request's coarse place, as a row label. -->
+    <string name="signin_approve_where">Lugar</string>
+    <!-- Approve dialog: when it asked, as a row label. -->
+    <string name="signin_approve_when">Cuándo</string>
+    <!-- Approve dialog: the asking device, as a row label. -->
+    <string name="signin_approve_device">Dispositivo</string>
+    <!-- Approve dialog: no coarse location was available. -->
+    <string name="signin_approve_unknownPlace">Lugar desconocido</string>
+    <!-- Approve dialog: why the person must confirm it's them first. -->
+    <string name="signin_approve_stepUpWhy">La solicitud viene de un lugar distinto al tuyo, o de un lugar que no podemos identificar.</string>
+    <!-- Approve dialog: completes 'Use your passkey to …' in the confirm-it's-you prompt. -->
+    <string name="signin_approve_stepUpVerb">aprobarlo</string>
+    <!-- Approve dialog outcome. Arguments: {device} = the device label. Arguments: 1=device. -->
+    <string name="signin_approve_approved">Aprobado. %1$s ha iniciado sesión.</string>
+    <!-- Approve dialog outcome. -->
+    <string name="signin_approve_deniedDone">Rechazado. No ha cambiado nada.</string>
+    <!-- Approve dialog: a decision that failed. -->
+    <string name="signin_approve_failed">No se pudo completar. Inténtalo de nuevo.</string>
+    <!-- Passkey prompt closed or timed out. -->
+    <string name="signin_passkey_cancelled">No se usó tu passkey. Inténtalo de nuevo o usa otra forma.</string>
+    <!-- Passkey not usable in this browser. -->
+    <string name="signin_passkey_unsupported">Este navegador no puede usar tu passkey aquí. Usa otra forma.</string>
+    <!-- Passkey refused. -->
+    <string name="signin_passkey_failed">Tu passkey no funcionó. Inténtalo de nuevo o usa otra forma.</string>
+    <!-- Finish step strip when the provider shared no identity to show. Arguments: {provider} = a provider's name. Arguments: 1=provider. -->
+    <string name="signin_gate_stripNoIdentity">Sesión iniciada con %1$s</string>
+    <!-- Finish step title when only the terms are asked. -->
+    <string name="signin_gate_termsTitle">Un paso más</string>
+    <!-- Finish step: the screen name field. -->
+    <string name="signin_gate_name">Tu nombre</string>
+    <!-- Finish step: the provider's address as a radio. Arguments: {email} = an address. Arguments: 1=email. -->
+    <string name="signin_gate_useEmail">Usar %1$s</string>
+    <!-- Finish step: marks an Apple private-relay address. -->
+    <string name="signin_gate_relay">Tu dirección privada de Apple</string>
+    <!-- Finish step: swaps the provider's picture for initials. -->
+    <string name="signin_gate_pictureInitials">Usar mis iniciales</string>
+    <string name="signin_gate_pictureInitials__macos">Usar mis iniciales</string>
+    <!-- Finish step: back to the provider's picture. Arguments: {provider} = a provider's name. Arguments: 1=provider. -->
+    <string name="signin_gate_pictureProvider">Usar mi imagen de %1$s</string>
+    <string name="signin_gate_pictureProvider__macos">Usar mi imagen de %1$s</string>
+    <!-- Finish step: only when a connection offered a birth date. Arguments: {org} = the organization that offered it. Arguments: 1=org. -->
+    <string name="signin_gate_birthdate">Añadir mi fecha de nacimiento de %1$s</string>
+    <!-- Finish step: under the birth date choice. -->
+    <string name="signin_gate_birthdateHelp">Solo tú puedes verla. Las apps nunca la reciben.</string>
+    <!-- Finish step: the product's terms checkbox. Arguments: {product} = the product's name. Arguments: 1=product. -->
+    <string name="signin_gate_productTerms">Acepto las condiciones de %1$s</string>
+    <!-- Finish step: the platform's terms line, with the link below it. Polaris Locker is never translated. -->
+    <string name="signin_gate_platformTerms">Al continuar, aceptas las condiciones de Polaris Locker.</string>
+    <!-- Finish step: link to the terms page. -->
+    <string name="signin_gate_readTerms">Leer las condiciones</string>
+    <string name="signin_gate_readTerms__macos">Leer las condiciones</string>
+    <!-- Finish step: the 15-minute sign-in ran out. -->
+    <string name="signin_gate_expired">Ese inicio de sesión ha caducado. Vuelve a iniciar sesión.</string>
+    <!-- Finish step: the join offer (SIGN-IN.md §3.5). -->
+    <string name="signin_gate_joinTitle">Unir tus cuentas</string>
+    <!-- Finish step: the join offer. Arguments: {email} = an address. Polaris Locker is never translated. Arguments: 1=email. -->
+    <string name="signin_gate_joinLede">%1$s ya pertenece a una cuenta de Polaris Locker. Une este inicio de sesión a ella, o usa otro correo.</string>
+    <!-- Finish step: the join offer cannot be taken until the other account is proven. -->
+    <string name="signin_gate_joinProve">Para unirlas, inicia sesión primero en esa cuenta en este navegador y luego añade este inicio de sesión desde Cuenta.</string>
+    <!-- Finish step, code stage. Arguments: {email} = an address. Arguments: 1=email. -->
+    <string name="signin_gate_codeSent">Hemos enviado un código a %1$s.</string>
+    <!-- HintStep under the usual method. Arguments: {when} = a relative time such as '2 days ago'. Arguments: 1=when. -->
+    <string name="signin_hint_when">En este navegador, la última vez %1$s</string>
+    <!-- HintStep title when the browser kept no name. -->
+    <string name="signin_hint_welcomeNoName">Te damos la bienvenida de nuevo</string>
+    <!-- HintStep: completes 'You usually sign in with {method}'. -->
+    <string name="signin_hint_method_passkey">una passkey</string>
+    <!-- HintStep: completes 'You usually sign in with {method}'. -->
+    <string name="signin_hint_method_email">un código por correo</string>
+    <!-- HintStep: passkey button. -->
+    <string name="signin_hint_usePasskey">Usar una passkey</string>
+    <string name="signin_hint_usePasskey__macos">Usar una passkey</string>
+    <!-- HintStep: sends a sign-in code. -->
+    <string name="signin_hint_emailCode">Enviarme un código por correo</string>
+    <string name="signin_hint_emailCode__macos">Enviarme un código por correo</string>
+    <!-- HintStep: back to the email field. -->
+    <string name="signin_hint_change">Cambiar</string>
+    <!-- Sign-in card when a license key is carried through sign-in. Arguments: {product} = the product's name. Arguments: 1=product. -->
+    <string name="signin_key_carriedTitle">Inicia sesión para añadir %1$s</string>
+    <!-- Sign-in card when a license key is carried. Arguments: {product} = the product's name. Arguments: 1=product. -->
+    <string name="signin_key_carriedLede">Tu clave está lista. Inicia sesión o crea una cuenta y %1$s se añade a tu biblioteca.</string>
+    <!-- Sign-in card: drops the carried license key. -->
+    <string name="signin_key_withoutKey">Iniciar sesión sin la clave</string>
+    <string name="signin_key_withoutKey__macos">Iniciar sesión sin la clave</string>
+    <!-- Have a license key? step, under the title. -->
+    <string name="signin_key_onrampLede">Pega la clave de tu correo de recibo. Inicia sesión después y se añade a tu biblioteca.</string>
+    <!-- Sign-in card, back at the email step after the sign-in ran out. -->
+    <string name="signin_code_expiredRestart">Ese inicio de sesión ha caducado. Continúa para recibir un código nuevo.</string>
+    <!-- Code step: the per-sign-in resend cap. -->
+    <string name="signin_code_noMore">No se pueden enviar más códigos para este inicio de sesión. El último código sigue siendo válido.</string>
+    <!-- Sign-in card, a domain routed to its connection. Arguments: {org} = the organization's name. Arguments: 1=org. -->
+    <string name="signin_sso_title">Iniciar sesión con %1$s</string>
+    <!-- Sign-in card, an enforced connection. Arguments: {host} = the email domain. Arguments: 1=host. -->
+    <string name="signin_sso_required">Obligatorio para las direcciones de %1$s.</string>
+    <!-- Sign-in card, the resend countdown on a routed step. Arguments: {time} = the wait, such as 0:42. Arguments: 1=time. -->
+    <string name="signin_sso_codeIn">Enviarme un código en %1$s</string>
+    <string name="signin_sso_codeIn__macos">Enviarme un código en %1$s</string>
+    <!-- Sign-in card, a routed step that is not enforced. -->
+    <string name="signin_sso_code">Enviarme un código por correo</string>
+    <string name="signin_sso_code__macos">Enviarme un código por correo</string>
+    <!-- Sign-in card: a right code for an account that can't sign in (SIGN-IN.md §3.4). -->
+    <string name="signin_refused_title">Esta cuenta no puede iniciar sesión</string>
+    <!-- Sign-in card, account disabled. Arguments: {email} = an address. Arguments: 1=email. -->
+    <string name="signin_refused_lede">%1$s pertenece a una cuenta que no puede iniciar sesión. Prueba con otro correo o con otra forma de iniciar sesión.</string>
+    <!-- Sign-in card: no way to sign in is enabled. -->
+    <string name="signin_off_title">El inicio de sesión está desactivado</string>
+    <!-- Sign-in card: the bot check refused. -->
+    <string name="signin_turnstile_failed">La comprobación de seguridad no se superó. Inténtalo de nuevo.</string>
+    <!-- Code step: the verify's 429. -->
+    <string name="signin_code_rateLimited">Demasiados intentos. Espera un minuto y vuelve a intentarlo.</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">Algo salió mal</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

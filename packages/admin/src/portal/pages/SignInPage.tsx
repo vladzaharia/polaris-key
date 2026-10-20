@@ -43,7 +43,6 @@ import { setParams, useDocumentTitle, useRoute } from "../router.js";
 import { FinishStep } from "../components/signin/FinishStep.js";
 import { DeviceStep } from "../components/signin/DeviceStep.js";
 import { passkeysSupported } from "../webauthn.js";
-import { sc } from "../copy/signin.js";
 import { rememberVia, readLastMethod, type LastMethod } from "../lastMethod.js";
 import { usePasskeySignIn } from "../components/signin/usePasskeySignIn.js";
 import { HintStep } from "../components/signin/HintStep.js";
@@ -175,7 +174,7 @@ export function SignInPage(): React.ReactElement {
     step.kind === "code"
       ? t("signin.code.title")
       : step.kind === "refused"
-        ? "This account can't sign in"
+        ? t("signin.refused.title")
         : step.kind === "hint"
           ? t("signin.hint.other")
           : step.kind === "finish"
@@ -236,8 +235,7 @@ export function SignInPage(): React.ReactElement {
               {
                 kind: "methods",
                 email: step.email,
-                // signin.code.expiredRestart (PX-W4): no catalog key yet
-                notice: "That sign-in has expired. Continue to get a new code.",
+                notice: t("signin.code.expiredRestart"),
               },
               "back",
             )
@@ -259,8 +257,7 @@ export function SignInPage(): React.ReactElement {
               {
                 kind: "methods",
                 email: step.email,
-                // signin.code.expiredRestart (PX-W4): no catalog key yet
-                notice: "That sign-in has expired. Continue to get a new code.",
+                notice: t("signin.code.expiredRestart"),
               },
               "back",
             )
@@ -307,7 +304,7 @@ export function SignInPage(): React.ReactElement {
           }}
           onExpired={() => {
             window.history.replaceState(null, "", "/");
-            go({ kind: "methods", notice: sc("signin.gate.expired") }, "back");
+            go({ kind: "methods", notice: t("signin.gate.expired") }, "back");
           }}
         />
       ) : step.kind === "device" ? (
@@ -390,8 +387,7 @@ function startErrorText(err: unknown): string {
       return t("signin.emailDown");
     if (err.status === 422) return t("signin.email.invalid");
     if (err.code === "auth_method_disabled") return t("signin.off.any");
-    if (err.code === "turnstile_failed")
-      return "The security check did not pass. Try again.";
+    if (err.code === "turnstile_failed") return t("signin.turnstile.failed");
   }
   return portalErrorCopy(err).title + ". " + portalErrorCopy(err).description;
 }
@@ -469,7 +465,7 @@ function MethodsStep({
   if (!magic && !oidc && providers.length === 0 && connections.length === 0) {
     return (
       <>
-        <Title>Sign-in is turned off</Title>
+        <Title>{t("signin.off.title")}</Title>
         <p className="text-fg-muted">
           {context
             ? t("signin.off.product", {
@@ -514,12 +510,12 @@ function MethodsStep({
   const carriedName =
     carriedCheck?.kind === "valid" ? productLabel(carriedCheck.slug) : null;
   const title = carriedName
-    ? `Sign in to add ${carriedName}` // signin.key.carriedTitle (no catalog key yet)
+    ? t("signin.key.carriedTitle", { product: carriedName })
     : context
       ? t("signin.methods.titleApp")
       : t("signin.methods.title");
   const lede = carriedName
-    ? `Your key is ready. Sign in or create an account, and ${carriedName} joins your library.` // signin.key.carriedLede
+    ? t("signin.key.carriedLede", { product: carriedName })
     : context
       ? t("signin.methods.ledeApp", { product: context.name })
       : null;
@@ -641,8 +637,7 @@ function MethodsStep({
               onClick={() => setParams({ activate: null })}
               icon={<KeyRound aria-hidden className="size-4" />}
             >
-              {/* signin.key.withoutKey */}
-              Sign in without the key
+              {t("signin.key.withoutKey")}
             </QuietLink>
           ) : caps.modules.claim ? (
             <QuietLink
@@ -709,7 +704,7 @@ function codeErrorText(err: unknown): string {
     }
     if (err.code === "signin_expired") return expiredCodeText();
     if (err.status === 429 || err.code === "rate_limited")
-      return "Too many tries. Wait a minute, then try again.";
+      return t("signin.code.rateLimited");
     if (err.code === "forbidden" || err.code === "email_in_use")
       return err.message;
   }
@@ -848,8 +843,7 @@ function CodeStep({
         // one to use.
         setCapped(true);
         setStatus({
-          // signin.code.noMore (PX-W4): no catalog key yet
-          text: "No more codes can be sent for this sign-in. The latest code still works.",
+          text: t("signin.code.noMore"),
           tone: "muted",
         });
         focusCode();
@@ -893,7 +887,7 @@ function CodeStep({
             htmlFor={inputId}
             className="text-sm font-medium text-fg-strong"
           >
-            Code
+            {t("signin.approve.codeLabel")}
           </label>
           <CodeCells
             id={inputId}
@@ -1069,15 +1063,11 @@ function SsoStep({
           >
             <Building2 className="size-5" />
           </span>
-          <Title>
-            {/* signin.sso.title (I-30): no catalog key yet */}
-            Sign in with <bdi>{connection.label}</bdi>
-          </Title>
+          <Title>{t("signin.sso.title", { org: connection.label })}</Title>
         </div>
         {enforced ? (
           <p className="text-fg-muted">
-            {/* signin.sso.required (I-30): no catalog key yet */}
-            Required for <bdi>{domain}</bdi> addresses.
+            {t("signin.sso.required", { host: domain })}
           </p>
         ) : null}
       </div>
@@ -1109,10 +1099,8 @@ function SsoStep({
             onClick={() => void sendCode()}
           >
             {wait > 0
-              ? // signin.sso.codeIn (I-30): no catalog key yet
-                `Email me a code in ${clock}`
-              : // signin.sso.code (I-30): no catalog key yet
-                "Email me a code instead"}
+              ? t("signin.sso.codeIn", { time: clock })
+              : t("signin.sso.code")}
           </Button>
         )}
         {error ? (
@@ -1140,14 +1128,8 @@ function RefusedStep({
   return (
     <>
       <div className="space-y-2">
-        {/* signin.disabled.title */}
-        <Title>This account can't sign in</Title>
-        <p className="text-fg">
-          {/* signin.disabled.lede */}
-          <span className="font-medium text-fg-strong">{email}</span> belongs to
-          an account that can't sign in. Try a different email or another way to
-          sign in.
-        </p>
+        <Title>{t("signin.refused.title")}</Title>
+        <p className="text-fg">{t("signin.refused.lede", { email })}</p>
       </div>
       <Button
         variant="neutral"
@@ -1177,11 +1159,7 @@ function KeyStep({
       <div className="space-y-2">
         {/* The on-ramp keeps the link's words as its title. */}
         <Title>{t("signin.link.key")}</Title>
-        <p className="text-fg-muted">
-          {/* signin.key.onrampLede */}
-          Paste the key from your receipt email. Sign in next, and it joins your
-          library.
-        </p>
+        <p className="text-fg-muted">{t("signin.key.onrampLede")}</p>
       </div>
       <form
         noValidate

@@ -3170,6 +3170,311 @@
       "value": "No license key arrived on stdin.",
       "role": "body",
       "note": "Terminal: activate read a piped stdin (a file, pipe or socket) and no key arrived in time."
+    },
+    "signin.approve.lede": {
+      "value": "On a phone or computer where you're signed in, scan the code, or open Account → Approve a new device and type it.",
+      "role": "body",
+      "note": "Sign in with another device: under the title (SIGN-IN.md §3.11). Account → Approve a new device is the portal's own menu path."
+    },
+    "signin.approve.other": {
+      "value": "Use another way to sign in",
+      "role": "button",
+      "note": "Polaris Locker sign-in card (SIGN-IN.md §3.4, §3.5, §3.11)."
+    },
+    "signin.approve.minuteLeft": {
+      "value": "One minute left on this code.",
+      "role": "a11y",
+      "note": "Announced once when the sign-in code has one minute left (WCAG 2.2.1)."
+    },
+    "signin.approve.starting": {
+      "value": "Getting your code",
+      "role": "a11y",
+      "note": "Busy label while the sign-in code is requested."
+    },
+    "signin.approve.disabled": {
+      "value": "That account can't sign in. Use another way to sign in.",
+      "role": "body",
+      "note": "Sign in with another device or a passkey, for an account that can't sign in."
+    },
+    "signin.approve.open": {
+      "value": "Approve a new device",
+      "role": "button",
+      "note": "Account → Where you're signed in: opens the approve dialog (SIGN-IN.md §3.11)."
+    },
+    "signin.approve.enter": {
+      "value": "Enter the code shown on the other device.",
+      "role": "body",
+      "note": "Approve dialog, when the link carried no code."
+    },
+    "signin.approve.codeLabel": {
+      "value": "Code",
+      "role": "label",
+      "note": "Approve dialog: the field's label."
+    },
+    "signin.approve.look": {
+      "value": "Find it",
+      "role": "button",
+      "note": "Approve dialog: looks the code up (reads only, never approves)."
+    },
+    "signin.approve.askBody": {
+      "value": "Code {code} asks to sign in to your account.",
+      "role": "body",
+      "note": "Approve dialog. Arguments: {code} = the 8-letter code, shown as is."
+    },
+    "signin.approve.where": {
+      "value": "Where",
+      "role": "label",
+      "note": "Approve dialog: the request's coarse place, as a row label."
+    },
+    "signin.approve.when": {
+      "value": "When",
+      "role": "label",
+      "note": "Approve dialog: when it asked, as a row label."
+    },
+    "signin.approve.device": {
+      "value": "Device",
+      "role": "label",
+      "note": "Approve dialog: the asking device, as a row label."
+    },
+    "signin.approve.unknownPlace": {
+      "value": "Unknown place",
+      "role": "body",
+      "note": "Approve dialog: no coarse location was available."
+    },
+    "signin.approve.stepUpWhy": {
+      "value": "It's asking from a different place than you're in now, or from a place we can't tell.",
+      "role": "body",
+      "note": "Approve dialog: why the person must confirm it's them first."
+    },
+    "signin.approve.stepUpVerb": {
+      "value": "approve it",
+      "role": "body",
+      "note": "Approve dialog: completes 'Use your passkey to …' in the confirm-it's-you prompt."
+    },
+    "signin.approve.approved": {
+      "value": "Approved. {device} is signed in.",
+      "role": "body",
+      "note": "Approve dialog outcome. Arguments: {device} = the device label."
+    },
+    "signin.approve.deniedDone": {
+      "value": "Denied. Nothing changed.",
+      "role": "body",
+      "note": "Approve dialog outcome."
+    },
+    "signin.approve.failed": {
+      "value": "That didn't go through. Try again.",
+      "role": "body",
+      "note": "Approve dialog: a decision that failed."
+    },
+    "signin.passkey.cancelled": {
+      "value": "Your passkey wasn't used. Try again, or use another way.",
+      "role": "body",
+      "note": "Passkey prompt closed or timed out."
+    },
+    "signin.passkey.unsupported": {
+      "value": "This browser can't use your passkey here. Use another way.",
+      "role": "body",
+      "note": "Passkey not usable in this browser."
+    },
+    "signin.passkey.failed": {
+      "value": "Your passkey didn't work. Try again, or use another way.",
+      "role": "body",
+      "note": "Passkey refused."
+    },
+    "signin.gate.stripNoIdentity": {
+      "value": "Signed in with {provider}",
+      "role": "body",
+      "note": "Finish step strip when the provider shared no identity to show. Arguments: {provider} = a provider's name."
+    },
+    "signin.gate.termsTitle": {
+      "value": "One more step",
+      "role": "title",
+      "note": "Finish step title when only the terms are asked."
+    },
+    "signin.gate.name": {
+      "value": "Your name",
+      "role": "label",
+      "note": "Finish step: the screen name field."
+    },
+    "signin.gate.useEmail": {
+      "value": "Use {email}",
+      "role": "label",
+      "note": "Finish step: the provider's address as a radio. Arguments: {email} = an address."
+    },
+    "signin.gate.relay": {
+      "value": "Your private Apple address",
+      "role": "hint",
+      "note": "Finish step: marks an Apple private-relay address."
+    },
+    "signin.gate.pictureInitials": {
+      "value": "Use my initials",
+      "role": "button",
+      "note": "Finish step: swaps the provider's picture for initials."
+    },
+    "signin.gate.pictureProvider": {
+      "value": "Use my {provider} picture",
+      "role": "button",
+      "note": "Finish step: back to the provider's picture. Arguments: {provider} = a provider's name."
+    },
+    "signin.gate.birthdate": {
+      "value": "Add my birth date from {org}",
+      "role": "label",
+      "note": "Finish step: only when a connection offered a birth date. Arguments: {org} = the organization that offered it."
+    },
+    "signin.gate.birthdateHelp": {
+      "value": "Only you can see it. Apps never get it.",
+      "role": "hint",
+      "note": "Finish step: under the birth date choice."
+    },
+    "signin.gate.productTerms": {
+      "value": "I agree to the {product} terms",
+      "role": "label",
+      "note": "Finish step: the product's terms checkbox. Arguments: {product} = the product's name."
+    },
+    "signin.gate.platformTerms": {
+      "value": "By continuing you agree to the Polaris Locker terms.",
+      "role": "body",
+      "note": "Finish step: the platform's terms line, with the link below it. Polaris Locker is never translated."
+    },
+    "signin.gate.readTerms": {
+      "value": "Read the terms",
+      "role": "button",
+      "note": "Finish step: link to the terms page."
+    },
+    "signin.gate.expired": {
+      "value": "That sign-in has expired. Sign in again.",
+      "role": "body",
+      "note": "Finish step: the 15-minute sign-in ran out."
+    },
+    "signin.gate.joinTitle": {
+      "value": "Join your accounts",
+      "role": "title",
+      "note": "Finish step: the join offer (SIGN-IN.md §3.5)."
+    },
+    "signin.gate.joinLede": {
+      "value": "{email} already belongs to a Polaris Locker account. Join this sign-in to it, or use a different email.",
+      "role": "body",
+      "note": "Finish step: the join offer. Arguments: {email} = an address. Polaris Locker is never translated."
+    },
+    "signin.gate.joinProve": {
+      "value": "To join, sign in to that account in this browser first, then add this sign-in from Account.",
+      "role": "body",
+      "note": "Finish step: the join offer cannot be taken until the other account is proven."
+    },
+    "signin.gate.codeSent": {
+      "value": "We sent a code to {email}.",
+      "role": "body",
+      "note": "Finish step, code stage. Arguments: {email} = an address."
+    },
+    "signin.hint.when": {
+      "value": "On this browser, last time {when}",
+      "role": "body",
+      "note": "HintStep under the usual method. Arguments: {when} = a relative time such as '2 days ago'."
+    },
+    "signin.hint.welcomeNoName": {
+      "value": "Welcome back",
+      "role": "title",
+      "note": "HintStep title when the browser kept no name."
+    },
+    "signin.hint.method.passkey": {
+      "value": "a passkey",
+      "role": "body",
+      "note": "HintStep: completes 'You usually sign in with {method}'."
+    },
+    "signin.hint.method.email": {
+      "value": "an email code",
+      "role": "body",
+      "note": "HintStep: completes 'You usually sign in with {method}'."
+    },
+    "signin.hint.usePasskey": {
+      "value": "Use a passkey",
+      "role": "button",
+      "note": "HintStep: passkey button."
+    },
+    "signin.hint.emailCode": {
+      "value": "Email me a code",
+      "role": "button",
+      "note": "HintStep: sends a sign-in code."
+    },
+    "signin.hint.change": {
+      "value": "Change",
+      "role": "button",
+      "note": "HintStep: back to the email field."
+    },
+    "signin.key.carriedTitle": {
+      "value": "Sign in to add {product}",
+      "role": "title",
+      "note": "Sign-in card when a license key is carried through sign-in. Arguments: {product} = the product's name."
+    },
+    "signin.key.carriedLede": {
+      "value": "Your key is ready. Sign in or create an account, and {product} joins your library.",
+      "role": "body",
+      "note": "Sign-in card when a license key is carried. Arguments: {product} = the product's name."
+    },
+    "signin.key.withoutKey": {
+      "value": "Sign in without the key",
+      "role": "button",
+      "note": "Sign-in card: drops the carried license key."
+    },
+    "signin.key.onrampLede": {
+      "value": "Paste the key from your receipt email. Sign in next, and it joins your library.",
+      "role": "body",
+      "note": "Have a license key? step, under the title."
+    },
+    "signin.code.expiredRestart": {
+      "value": "That sign-in has expired. Continue to get a new code.",
+      "role": "body",
+      "note": "Sign-in card, back at the email step after the sign-in ran out."
+    },
+    "signin.code.noMore": {
+      "value": "No more codes can be sent for this sign-in. The latest code still works.",
+      "role": "body",
+      "note": "Code step: the per-sign-in resend cap."
+    },
+    "signin.sso.title": {
+      "value": "Sign in with {org}",
+      "role": "title",
+      "note": "Sign-in card, a domain routed to its connection. Arguments: {org} = the organization's name."
+    },
+    "signin.sso.required": {
+      "value": "Required for {host} addresses.",
+      "role": "body",
+      "note": "Sign-in card, an enforced connection. Arguments: {host} = the email domain."
+    },
+    "signin.sso.codeIn": {
+      "value": "Email me a code in {time}",
+      "role": "button",
+      "note": "Sign-in card, the resend countdown on a routed step. Arguments: {time} = the wait, such as 0:42."
+    },
+    "signin.sso.code": {
+      "value": "Email me a code instead",
+      "role": "button",
+      "note": "Sign-in card, a routed step that is not enforced."
+    },
+    "signin.refused.title": {
+      "value": "This account can't sign in",
+      "role": "title",
+      "note": "Sign-in card: a right code for an account that can't sign in (SIGN-IN.md §3.4)."
+    },
+    "signin.refused.lede": {
+      "value": "{email} belongs to an account that can't sign in. Try a different email or another way to sign in.",
+      "role": "body",
+      "note": "Sign-in card, account disabled. Arguments: {email} = an address."
+    },
+    "signin.off.title": {
+      "value": "Sign-in is turned off",
+      "role": "title",
+      "note": "Sign-in card: no way to sign in is enabled."
+    },
+    "signin.turnstile.failed": {
+      "value": "The security check did not pass. Try again.",
+      "role": "body",
+      "note": "Sign-in card: the bot check refused."
+    },
+    "signin.code.rateLimited": {
+      "value": "Too many tries. Wait a minute, then try again.",
+      "role": "body",
+      "note": "Code step: the verify's 429."
     }
   }
 }

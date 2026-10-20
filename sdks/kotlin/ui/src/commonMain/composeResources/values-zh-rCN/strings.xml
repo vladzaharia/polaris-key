@@ -1409,6 +1409,139 @@
     <string name="cli_update_downloadNoLink">请从你获取 %1$s 的地方获取新版本。</string>
     <!-- Terminal: activate read a piped stdin (a file, pipe or socket) and no key arrived in time. -->
     <string name="cli_activate_noKeyPiped">stdin 上没有收到许可证密钥。</string>
+    <!-- Sign in with another device: under the title (SIGN-IN.md §3.11). Account → Approve a new device is the portal's own menu path. -->
+    <string name="signin_approve_lede">在已登录的手机或电脑上扫描该代码，或打开“账户 → 批准新设备”并输入。</string>
+    <!-- Polaris Locker sign-in card (SIGN-IN.md §3.4, §3.5, §3.11). -->
+    <string name="signin_approve_other">使用其他登录方式</string>
+    <string name="signin_approve_other__macos">使用其他登录方式</string>
+    <!-- Announced once when the sign-in code has one minute left (WCAG 2.2.1). -->
+    <string name="signin_approve_minuteLeft">此代码还剩一分钟。</string>
+    <!-- Busy label while the sign-in code is requested. -->
+    <string name="signin_approve_starting">正在获取代码</string>
+    <!-- Sign in with another device or a passkey, for an account that can't sign in. -->
+    <string name="signin_approve_disabled">该账户无法登录。请使用其他登录方式。</string>
+    <!-- Account → Where you're signed in: opens the approve dialog (SIGN-IN.md §3.11). -->
+    <string name="signin_approve_open">批准新设备</string>
+    <string name="signin_approve_open__macos">批准新设备</string>
+    <!-- Approve dialog, when the link carried no code. -->
+    <string name="signin_approve_enter">输入另一台设备上显示的代码。</string>
+    <!-- Approve dialog: the field's label. -->
+    <string name="signin_approve_codeLabel">代码</string>
+    <!-- Approve dialog: looks the code up (reads only, never approves). -->
+    <string name="signin_approve_look">查找</string>
+    <string name="signin_approve_look__macos">查找</string>
+    <!-- Approve dialog. Arguments: {code} = the 8-letter code, shown as is. Arguments: 1=code. -->
+    <string name="signin_approve_askBody">代码 %1$s 请求登录您的账户。</string>
+    <!-- Approve dialog: the request's coarse place, as a row label. -->
+    <string name="signin_approve_where">位置</string>
+    <!-- Approve dialog: when it asked, as a row label. -->
+    <string name="signin_approve_when">时间</string>
+    <!-- Approve dialog: the asking device, as a row label. -->
+    <string name="signin_approve_device">设备</string>
+    <!-- Approve dialog: no coarse location was available. -->
+    <string name="signin_approve_unknownPlace">未知位置</string>
+    <!-- Approve dialog: why the person must confirm it's them first. -->
+    <string name="signin_approve_stepUpWhy">请求来自与您当前不同的位置，或无法确定的位置。</string>
+    <!-- Approve dialog: completes 'Use your passkey to …' in the confirm-it's-you prompt. -->
+    <string name="signin_approve_stepUpVerb">批准</string>
+    <!-- Approve dialog outcome. Arguments: {device} = the device label. Arguments: 1=device. -->
+    <string name="signin_approve_approved">已批准。%1$s 已登录。</string>
+    <!-- Approve dialog outcome. -->
+    <string name="signin_approve_deniedDone">已拒绝。未做任何更改。</string>
+    <!-- Approve dialog: a decision that failed. -->
+    <string name="signin_approve_failed">未能完成。请重试。</string>
+    <!-- Passkey prompt closed or timed out. -->
+    <string name="signin_passkey_cancelled">未使用您的通行密钥。请重试或使用其他方式。</string>
+    <!-- Passkey not usable in this browser. -->
+    <string name="signin_passkey_unsupported">此浏览器无法在此使用您的通行密钥。请使用其他方式。</string>
+    <!-- Passkey refused. -->
+    <string name="signin_passkey_failed">您的通行密钥无效。请重试或使用其他方式。</string>
+    <!-- Finish step strip when the provider shared no identity to show. Arguments: {provider} = a provider's name. Arguments: 1=provider. -->
+    <string name="signin_gate_stripNoIdentity">已通过 %1$s 登录</string>
+    <!-- Finish step title when only the terms are asked. -->
+    <string name="signin_gate_termsTitle">还有一步</string>
+    <!-- Finish step: the screen name field. -->
+    <string name="signin_gate_name">您的姓名</string>
+    <!-- Finish step: the provider's address as a radio. Arguments: {email} = an address. Arguments: 1=email. -->
+    <string name="signin_gate_useEmail">使用 %1$s</string>
+    <!-- Finish step: marks an Apple private-relay address. -->
+    <string name="signin_gate_relay">您的 Apple 私密地址</string>
+    <!-- Finish step: swaps the provider's picture for initials. -->
+    <string name="signin_gate_pictureInitials">使用我的首字母</string>
+    <string name="signin_gate_pictureInitials__macos">使用我的首字母</string>
+    <!-- Finish step: back to the provider's picture. Arguments: {provider} = a provider's name. Arguments: 1=provider. -->
+    <string name="signin_gate_pictureProvider">使用我的 %1$s 头像</string>
+    <string name="signin_gate_pictureProvider__macos">使用我的 %1$s 头像</string>
+    <!-- Finish step: only when a connection offered a birth date. Arguments: {org} = the organization that offered it. Arguments: 1=org. -->
+    <string name="signin_gate_birthdate">添加来自 %1$s 的出生日期</string>
+    <!-- Finish step: under the birth date choice. -->
+    <string name="signin_gate_birthdateHelp">只有您能看到。应用永远不会获得。</string>
+    <!-- Finish step: the product's terms checkbox. Arguments: {product} = the product's name. Arguments: 1=product. -->
+    <string name="signin_gate_productTerms">我同意 %1$s 条款</string>
+    <!-- Finish step: the platform's terms line, with the link below it. Polaris Locker is never translated. -->
+    <string name="signin_gate_platformTerms">继续即表示您同意 Polaris Locker 条款。</string>
+    <!-- Finish step: link to the terms page. -->
+    <string name="signin_gate_readTerms">阅读条款</string>
+    <string name="signin_gate_readTerms__macos">阅读条款</string>
+    <!-- Finish step: the 15-minute sign-in ran out. -->
+    <string name="signin_gate_expired">此次登录已过期。请重新登录。</string>
+    <!-- Finish step: the join offer (SIGN-IN.md §3.5). -->
+    <string name="signin_gate_joinTitle">合并您的账户</string>
+    <!-- Finish step: the join offer. Arguments: {email} = an address. Polaris Locker is never translated. Arguments: 1=email. -->
+    <string name="signin_gate_joinLede">%1$s 已属于一个 Polaris Locker 账户。请将此登录合并到该账户，或使用其他邮箱。</string>
+    <!-- Finish step: the join offer cannot be taken until the other account is proven. -->
+    <string name="signin_gate_joinProve">要合并，请先在此浏览器中登录该账户，然后在“账户”中添加此登录。</string>
+    <!-- Finish step, code stage. Arguments: {email} = an address. Arguments: 1=email. -->
+    <string name="signin_gate_codeSent">我们已向 %1$s 发送了验证码。</string>
+    <!-- HintStep under the usual method. Arguments: {when} = a relative time such as '2 days ago'. Arguments: 1=when. -->
+    <string name="signin_hint_when">在此浏览器上，上次为 %1$s</string>
+    <!-- HintStep title when the browser kept no name. -->
+    <string name="signin_hint_welcomeNoName">欢迎回来</string>
+    <!-- HintStep: completes 'You usually sign in with {method}'. -->
+    <string name="signin_hint_method_passkey">通行密钥</string>
+    <!-- HintStep: completes 'You usually sign in with {method}'. -->
+    <string name="signin_hint_method_email">邮件验证码</string>
+    <!-- HintStep: passkey button. -->
+    <string name="signin_hint_usePasskey">使用通行密钥</string>
+    <string name="signin_hint_usePasskey__macos">使用通行密钥</string>
+    <!-- HintStep: sends a sign-in code. -->
+    <string name="signin_hint_emailCode">通过邮件发送验证码</string>
+    <string name="signin_hint_emailCode__macos">通过邮件发送验证码</string>
+    <!-- HintStep: back to the email field. -->
+    <string name="signin_hint_change">更改</string>
+    <!-- Sign-in card when a license key is carried through sign-in. Arguments: {product} = the product's name. Arguments: 1=product. -->
+    <string name="signin_key_carriedTitle">登录以添加 %1$s</string>
+    <!-- Sign-in card when a license key is carried. Arguments: {product} = the product's name. Arguments: 1=product. -->
+    <string name="signin_key_carriedLede">密钥已就绪。登录或创建账户后，%1$s 将加入您的库。</string>
+    <!-- Sign-in card: drops the carried license key. -->
+    <string name="signin_key_withoutKey">不使用密钥登录</string>
+    <string name="signin_key_withoutKey__macos">不使用密钥登录</string>
+    <!-- Have a license key? step, under the title. -->
+    <string name="signin_key_onrampLede">粘贴收据邮件中的密钥。接着登录，它就会加入您的库。</string>
+    <!-- Sign-in card, back at the email step after the sign-in ran out. -->
+    <string name="signin_code_expiredRestart">此次登录已过期。请继续以获取新验证码。</string>
+    <!-- Code step: the per-sign-in resend cap. -->
+    <string name="signin_code_noMore">此次登录无法再发送验证码。最新的验证码仍然有效。</string>
+    <!-- Sign-in card, a domain routed to its connection. Arguments: {org} = the organization's name. Arguments: 1=org. -->
+    <string name="signin_sso_title">使用 %1$s 登录</string>
+    <!-- Sign-in card, an enforced connection. Arguments: {host} = the email domain. Arguments: 1=host. -->
+    <string name="signin_sso_required">%1$s 地址必须使用。</string>
+    <!-- Sign-in card, the resend countdown on a routed step. Arguments: {time} = the wait, such as 0:42. Arguments: 1=time. -->
+    <string name="signin_sso_codeIn">%1$s 后通过邮件发送验证码</string>
+    <string name="signin_sso_codeIn__macos">%1$s 后通过邮件发送验证码</string>
+    <!-- Sign-in card, a routed step that is not enforced. -->
+    <string name="signin_sso_code">改为通过邮件发送验证码</string>
+    <string name="signin_sso_code__macos">改为通过邮件发送验证码</string>
+    <!-- Sign-in card: a right code for an account that can't sign in (SIGN-IN.md §3.4). -->
+    <string name="signin_refused_title">该账户无法登录</string>
+    <!-- Sign-in card, account disabled. Arguments: {email} = an address. Arguments: 1=email. -->
+    <string name="signin_refused_lede">%1$s 属于无法登录的账户。请尝试其他邮箱或其他登录方式。</string>
+    <!-- Sign-in card: no way to sign in is enabled. -->
+    <string name="signin_off_title">登录已关闭</string>
+    <!-- Sign-in card: the bot check refused. -->
+    <string name="signin_turnstile_failed">安全检查未通过。请重试。</string>
+    <!-- Code step: the verify's 429. -->
+    <string name="signin_code_rateLimited">尝试次数过多。请等待一分钟后重试。</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">出现问题</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

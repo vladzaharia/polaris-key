@@ -17,7 +17,6 @@ import {
 import { portalErrorCopy } from "../../errors.js";
 import { sessionMethodText } from "../../model/methods.js";
 import { href, scrollBehavior } from "../../router.js";
-import { sc } from "../../copy/signin.js";
 import { ErrorPanel } from "../States.js";
 import { SectionCard } from "../product/Card.js";
 import { t } from "../../../lib/copy.js";
@@ -96,7 +95,7 @@ function SessionList({
             window.location.hash = href.account("sessions", { approve: "" });
           }}
         >
-          {sc("signin.approve.open")}
+          {t("signin.approve.open")}
         </Button>
       </div>
     </>

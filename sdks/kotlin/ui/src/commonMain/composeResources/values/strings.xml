@@ -1419,6 +1419,139 @@
     <string name="cli_update_downloadNoLink">Get the new version from where you got %1$s.</string>
     <!-- Terminal: activate read a piped stdin (a file, pipe or socket) and no key arrived in time. -->
     <string name="cli_activate_noKeyPiped">No license key arrived on stdin.</string>
+    <!-- Sign in with another device: under the title (SIGN-IN.md §3.11). Account → Approve a new device is the portal's own menu path. -->
+    <string name="signin_approve_lede">On a phone or computer where you're signed in, scan the code, or open Account → Approve a new device and type it.</string>
+    <!-- Polaris Locker sign-in card (SIGN-IN.md §3.4, §3.5, §3.11). -->
+    <string name="signin_approve_other">Use another way to sign in</string>
+    <string name="signin_approve_other__macos">Use Another Way to Sign In</string>
+    <!-- Announced once when the sign-in code has one minute left (WCAG 2.2.1). -->
+    <string name="signin_approve_minuteLeft">One minute left on this code.</string>
+    <!-- Busy label while the sign-in code is requested. -->
+    <string name="signin_approve_starting">Getting your code</string>
+    <!-- Sign in with another device or a passkey, for an account that can't sign in. -->
+    <string name="signin_approve_disabled">That account can't sign in. Use another way to sign in.</string>
+    <!-- Account → Where you're signed in: opens the approve dialog (SIGN-IN.md §3.11). -->
+    <string name="signin_approve_open">Approve a new device</string>
+    <string name="signin_approve_open__macos">Approve a New Device</string>
+    <!-- Approve dialog, when the link carried no code. -->
+    <string name="signin_approve_enter">Enter the code shown on the other device.</string>
+    <!-- Approve dialog: the field's label. -->
+    <string name="signin_approve_codeLabel">Code</string>
+    <!-- Approve dialog: looks the code up (reads only, never approves). -->
+    <string name="signin_approve_look">Find it</string>
+    <string name="signin_approve_look__macos">Find It</string>
+    <!-- Approve dialog. Arguments: {code} = the 8-letter code, shown as is. Arguments: 1=code. -->
+    <string name="signin_approve_askBody">Code %1$s asks to sign in to your account.</string>
+    <!-- Approve dialog: the request's coarse place, as a row label. -->
+    <string name="signin_approve_where">Where</string>
+    <!-- Approve dialog: when it asked, as a row label. -->
+    <string name="signin_approve_when">When</string>
+    <!-- Approve dialog: the asking device, as a row label. -->
+    <string name="signin_approve_device">Device</string>
+    <!-- Approve dialog: no coarse location was available. -->
+    <string name="signin_approve_unknownPlace">Unknown place</string>
+    <!-- Approve dialog: why the person must confirm it's them first. -->
+    <string name="signin_approve_stepUpWhy">It's asking from a different place than you're in now, or from a place we can't tell.</string>
+    <!-- Approve dialog: completes 'Use your passkey to …' in the confirm-it's-you prompt. -->
+    <string name="signin_approve_stepUpVerb">approve it</string>
+    <!-- Approve dialog outcome. Arguments: {device} = the device label. Arguments: 1=device. -->
+    <string name="signin_approve_approved">Approved. %1$s is signed in.</string>
+    <!-- Approve dialog outcome. -->
+    <string name="signin_approve_deniedDone">Denied. Nothing changed.</string>
+    <!-- Approve dialog: a decision that failed. -->
+    <string name="signin_approve_failed">That didn't go through. Try again.</string>
+    <!-- Passkey prompt closed or timed out. -->
+    <string name="signin_passkey_cancelled">Your passkey wasn't used. Try again, or use another way.</string>
+    <!-- Passkey not usable in this browser. -->
+    <string name="signin_passkey_unsupported">This browser can't use your passkey here. Use another way.</string>
+    <!-- Passkey refused. -->
+    <string name="signin_passkey_failed">Your passkey didn't work. Try again, or use another way.</string>
+    <!-- Finish step strip when the provider shared no identity to show. Arguments: {provider} = a provider's name. Arguments: 1=provider. -->
+    <string name="signin_gate_stripNoIdentity">Signed in with %1$s</string>
+    <!-- Finish step title when only the terms are asked. -->
+    <string name="signin_gate_termsTitle">One more step</string>
+    <!-- Finish step: the screen name field. -->
+    <string name="signin_gate_name">Your name</string>
+    <!-- Finish step: the provider's address as a radio. Arguments: {email} = an address. Arguments: 1=email. -->
+    <string name="signin_gate_useEmail">Use %1$s</string>
+    <!-- Finish step: marks an Apple private-relay address. -->
+    <string name="signin_gate_relay">Your private Apple address</string>
+    <!-- Finish step: swaps the provider's picture for initials. -->
+    <string name="signin_gate_pictureInitials">Use my initials</string>
+    <string name="signin_gate_pictureInitials__macos">Use My Initials</string>
+    <!-- Finish step: back to the provider's picture. Arguments: {provider} = a provider's name. Arguments: 1=provider. -->
+    <string name="signin_gate_pictureProvider">Use my %1$s picture</string>
+    <string name="signin_gate_pictureProvider__macos">Use My %1$s Picture</string>
+    <!-- Finish step: only when a connection offered a birth date. Arguments: {org} = the organization that offered it. Arguments: 1=org. -->
+    <string name="signin_gate_birthdate">Add my birth date from %1$s</string>
+    <!-- Finish step: under the birth date choice. -->
+    <string name="signin_gate_birthdateHelp">Only you can see it. Apps never get it.</string>
+    <!-- Finish step: the product's terms checkbox. Arguments: {product} = the product's name. Arguments: 1=product. -->
+    <string name="signin_gate_productTerms">I agree to the %1$s terms</string>
+    <!-- Finish step: the platform's terms line, with the link below it. Polaris Locker is never translated. -->
+    <string name="signin_gate_platformTerms">By continuing you agree to the Polaris Locker terms.</string>
+    <!-- Finish step: link to the terms page. -->
+    <string name="signin_gate_readTerms">Read the terms</string>
+    <string name="signin_gate_readTerms__macos">Read the Terms</string>
+    <!-- Finish step: the 15-minute sign-in ran out. -->
+    <string name="signin_gate_expired">That sign-in has expired. Sign in again.</string>
+    <!-- Finish step: the join offer (SIGN-IN.md §3.5). -->
+    <string name="signin_gate_joinTitle">Join your accounts</string>
+    <!-- Finish step: the join offer. Arguments: {email} = an address. Polaris Locker is never translated. Arguments: 1=email. -->
+    <string name="signin_gate_joinLede">%1$s already belongs to a Polaris Locker account. Join this sign-in to it, or use a different email.</string>
+    <!-- Finish step: the join offer cannot be taken until the other account is proven. -->
+    <string name="signin_gate_joinProve">To join, sign in to that account in this browser first, then add this sign-in from Account.</string>
+    <!-- Finish step, code stage. Arguments: {email} = an address. Arguments: 1=email. -->
+    <string name="signin_gate_codeSent">We sent a code to %1$s.</string>
+    <!-- HintStep under the usual method. Arguments: {when} = a relative time such as '2 days ago'. Arguments: 1=when. -->
+    <string name="signin_hint_when">On this browser, last time %1$s</string>
+    <!-- HintStep title when the browser kept no name. -->
+    <string name="signin_hint_welcomeNoName">Welcome back</string>
+    <!-- HintStep: completes 'You usually sign in with {method}'. -->
+    <string name="signin_hint_method_passkey">a passkey</string>
+    <!-- HintStep: completes 'You usually sign in with {method}'. -->
+    <string name="signin_hint_method_email">an email code</string>
+    <!-- HintStep: passkey button. -->
+    <string name="signin_hint_usePasskey">Use a passkey</string>
+    <string name="signin_hint_usePasskey__macos">Use a Passkey</string>
+    <!-- HintStep: sends a sign-in code. -->
+    <string name="signin_hint_emailCode">Email me a code</string>
+    <string name="signin_hint_emailCode__macos">Email Me a Code</string>
+    <!-- HintStep: back to the email field. -->
+    <string name="signin_hint_change">Change</string>
+    <!-- Sign-in card when a license key is carried through sign-in. Arguments: {product} = the product's name. Arguments: 1=product. -->
+    <string name="signin_key_carriedTitle">Sign in to add %1$s</string>
+    <!-- Sign-in card when a license key is carried. Arguments: {product} = the product's name. Arguments: 1=product. -->
+    <string name="signin_key_carriedLede">Your key is ready. Sign in or create an account, and %1$s joins your library.</string>
+    <!-- Sign-in card: drops the carried license key. -->
+    <string name="signin_key_withoutKey">Sign in without the key</string>
+    <string name="signin_key_withoutKey__macos">Sign In Without the Key</string>
+    <!-- Have a license key? step, under the title. -->
+    <string name="signin_key_onrampLede">Paste the key from your receipt email. Sign in next, and it joins your library.</string>
+    <!-- Sign-in card, back at the email step after the sign-in ran out. -->
+    <string name="signin_code_expiredRestart">That sign-in has expired. Continue to get a new code.</string>
+    <!-- Code step: the per-sign-in resend cap. -->
+    <string name="signin_code_noMore">No more codes can be sent for this sign-in. The latest code still works.</string>
+    <!-- Sign-in card, a domain routed to its connection. Arguments: {org} = the organization's name. Arguments: 1=org. -->
+    <string name="signin_sso_title">Sign in with %1$s</string>
+    <!-- Sign-in card, an enforced connection. Arguments: {host} = the email domain. Arguments: 1=host. -->
+    <string name="signin_sso_required">Required for %1$s addresses.</string>
+    <!-- Sign-in card, the resend countdown on a routed step. Arguments: {time} = the wait, such as 0:42. Arguments: 1=time. -->
+    <string name="signin_sso_codeIn">Email me a code in %1$s</string>
+    <string name="signin_sso_codeIn__macos">Email Me a Code in %1$s</string>
+    <!-- Sign-in card, a routed step that is not enforced. -->
+    <string name="signin_sso_code">Email me a code instead</string>
+    <string name="signin_sso_code__macos">Email Me a Code Instead</string>
+    <!-- Sign-in card: a right code for an account that can't sign in (SIGN-IN.md §3.4). -->
+    <string name="signin_refused_title">This account can't sign in</string>
+    <!-- Sign-in card, account disabled. Arguments: {email} = an address. Arguments: 1=email. -->
+    <string name="signin_refused_lede">%1$s belongs to an account that can't sign in. Try a different email or another way to sign in.</string>
+    <!-- Sign-in card: no way to sign in is enabled. -->
+    <string name="signin_off_title">Sign-in is turned off</string>
+    <!-- Sign-in card: the bot check refused. -->
+    <string name="signin_turnstile_failed">The security check did not pass. Try again.</string>
+    <!-- Code step: the verify's 429. -->
+    <string name="signin_code_rateLimited">Too many tries. Wait a minute, then try again.</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">Something went wrong</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

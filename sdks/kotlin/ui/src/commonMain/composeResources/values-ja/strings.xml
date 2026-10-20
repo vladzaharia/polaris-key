@@ -1409,6 +1409,139 @@
     <string name="cli_update_downloadNoLink">%1$sを入手した場所から新しいバージョンを入手してください。</string>
     <!-- Terminal: activate read a piped stdin (a file, pipe or socket) and no key arrived in time. -->
     <string name="cli_activate_noKeyPiped">stdin からライセンスキーが届きませんでした。</string>
+    <!-- Sign in with another device: under the title (SIGN-IN.md §3.11). Account → Approve a new device is the portal's own menu path. -->
+    <string name="signin_approve_lede">サインイン済みのスマートフォンまたはコンピュータで、コードをスキャンするか、アカウント → 新しいデバイスを承認 を開いて入力してください。</string>
+    <!-- Polaris Locker sign-in card (SIGN-IN.md §3.4, §3.5, §3.11). -->
+    <string name="signin_approve_other">別の方法でサインイン</string>
+    <string name="signin_approve_other__macos">別の方法でサインイン</string>
+    <!-- Announced once when the sign-in code has one minute left (WCAG 2.2.1). -->
+    <string name="signin_approve_minuteLeft">このコードの有効時間はあと1分です。</string>
+    <!-- Busy label while the sign-in code is requested. -->
+    <string name="signin_approve_starting">コードを取得しています</string>
+    <!-- Sign in with another device or a passkey, for an account that can't sign in. -->
+    <string name="signin_approve_disabled">このアカウントはサインインできません。別の方法でサインインしてください。</string>
+    <!-- Account → Where you're signed in: opens the approve dialog (SIGN-IN.md §3.11). -->
+    <string name="signin_approve_open">新しいデバイスを承認</string>
+    <string name="signin_approve_open__macos">新しいデバイスを承認</string>
+    <!-- Approve dialog, when the link carried no code. -->
+    <string name="signin_approve_enter">もう一方のデバイスに表示されているコードを入力してください。</string>
+    <!-- Approve dialog: the field's label. -->
+    <string name="signin_approve_codeLabel">コード</string>
+    <!-- Approve dialog: looks the code up (reads only, never approves). -->
+    <string name="signin_approve_look">検索</string>
+    <string name="signin_approve_look__macos">検索</string>
+    <!-- Approve dialog. Arguments: {code} = the 8-letter code, shown as is. Arguments: 1=code. -->
+    <string name="signin_approve_askBody">コード %1$s がアカウントへのサインインを求めています。</string>
+    <!-- Approve dialog: the request's coarse place, as a row label. -->
+    <string name="signin_approve_where">場所</string>
+    <!-- Approve dialog: when it asked, as a row label. -->
+    <string name="signin_approve_when">日時</string>
+    <!-- Approve dialog: the asking device, as a row label. -->
+    <string name="signin_approve_device">デバイス</string>
+    <!-- Approve dialog: no coarse location was available. -->
+    <string name="signin_approve_unknownPlace">不明な場所</string>
+    <!-- Approve dialog: why the person must confirm it's them first. -->
+    <string name="signin_approve_stepUpWhy">いまの場所とは別の場所、または場所を特定できない場所からのリクエストです。</string>
+    <!-- Approve dialog: completes 'Use your passkey to …' in the confirm-it's-you prompt. -->
+    <string name="signin_approve_stepUpVerb">承認する</string>
+    <!-- Approve dialog outcome. Arguments: {device} = the device label. Arguments: 1=device. -->
+    <string name="signin_approve_approved">承認しました。%1$s はサインインしています。</string>
+    <!-- Approve dialog outcome. -->
+    <string name="signin_approve_deniedDone">拒否しました。何も変更されていません。</string>
+    <!-- Approve dialog: a decision that failed. -->
+    <string name="signin_approve_failed">完了できませんでした。もう一度お試しください。</string>
+    <!-- Passkey prompt closed or timed out. -->
+    <string name="signin_passkey_cancelled">パスキーは使用されませんでした。もう一度お試しいただくか、別の方法をお使いください。</string>
+    <!-- Passkey not usable in this browser. -->
+    <string name="signin_passkey_unsupported">このブラウザではここでパスキーを使用できません。別の方法をお使いください。</string>
+    <!-- Passkey refused. -->
+    <string name="signin_passkey_failed">パスキーが機能しませんでした。もう一度お試しいただくか、別の方法をお使いください。</string>
+    <!-- Finish step strip when the provider shared no identity to show. Arguments: {provider} = a provider's name. Arguments: 1=provider. -->
+    <string name="signin_gate_stripNoIdentity">%1$s でサインイン済み</string>
+    <!-- Finish step title when only the terms are asked. -->
+    <string name="signin_gate_termsTitle">あと1ステップ</string>
+    <!-- Finish step: the screen name field. -->
+    <string name="signin_gate_name">お名前</string>
+    <!-- Finish step: the provider's address as a radio. Arguments: {email} = an address. Arguments: 1=email. -->
+    <string name="signin_gate_useEmail">%1$s を使用</string>
+    <!-- Finish step: marks an Apple private-relay address. -->
+    <string name="signin_gate_relay">Apple のプライベートアドレス</string>
+    <!-- Finish step: swaps the provider's picture for initials. -->
+    <string name="signin_gate_pictureInitials">イニシャルを使用</string>
+    <string name="signin_gate_pictureInitials__macos">イニシャルを使用</string>
+    <!-- Finish step: back to the provider's picture. Arguments: {provider} = a provider's name. Arguments: 1=provider. -->
+    <string name="signin_gate_pictureProvider">%1$s の画像を使用</string>
+    <string name="signin_gate_pictureProvider__macos">%1$s の画像を使用</string>
+    <!-- Finish step: only when a connection offered a birth date. Arguments: {org} = the organization that offered it. Arguments: 1=org. -->
+    <string name="signin_gate_birthdate">%1$s から生年月日を追加</string>
+    <!-- Finish step: under the birth date choice. -->
+    <string name="signin_gate_birthdateHelp">表示されるのはご本人だけです。アプリには渡されません。</string>
+    <!-- Finish step: the product's terms checkbox. Arguments: {product} = the product's name. Arguments: 1=product. -->
+    <string name="signin_gate_productTerms">%1$s の利用規約に同意します</string>
+    <!-- Finish step: the platform's terms line, with the link below it. Polaris Locker is never translated. -->
+    <string name="signin_gate_platformTerms">続行すると、Polaris Locker の利用規約に同意したことになります。</string>
+    <!-- Finish step: link to the terms page. -->
+    <string name="signin_gate_readTerms">利用規約を読む</string>
+    <string name="signin_gate_readTerms__macos">利用規約を読む</string>
+    <!-- Finish step: the 15-minute sign-in ran out. -->
+    <string name="signin_gate_expired">このサインインは期限切れです。もう一度サインインしてください。</string>
+    <!-- Finish step: the join offer (SIGN-IN.md §3.5). -->
+    <string name="signin_gate_joinTitle">アカウントを統合</string>
+    <!-- Finish step: the join offer. Arguments: {email} = an address. Polaris Locker is never translated. Arguments: 1=email. -->
+    <string name="signin_gate_joinLede">%1$s はすでに Polaris Locker のアカウントに属しています。このサインインをそのアカウントに統合するか、別のメールアドレスを使用してください。</string>
+    <!-- Finish step: the join offer cannot be taken until the other account is proven. -->
+    <string name="signin_gate_joinProve">統合するには、まずこのブラウザでそのアカウントにサインインし、アカウントからこのサインインを追加してください。</string>
+    <!-- Finish step, code stage. Arguments: {email} = an address. Arguments: 1=email. -->
+    <string name="signin_gate_codeSent">%1$s にコードを送信しました。</string>
+    <!-- HintStep under the usual method. Arguments: {when} = a relative time such as '2 days ago'. Arguments: 1=when. -->
+    <string name="signin_hint_when">このブラウザで、前回は %1$s</string>
+    <!-- HintStep title when the browser kept no name. -->
+    <string name="signin_hint_welcomeNoName">おかえりなさい</string>
+    <!-- HintStep: completes 'You usually sign in with {method}'. -->
+    <string name="signin_hint_method_passkey">パスキー</string>
+    <!-- HintStep: completes 'You usually sign in with {method}'. -->
+    <string name="signin_hint_method_email">メールのコード</string>
+    <!-- HintStep: passkey button. -->
+    <string name="signin_hint_usePasskey">パスキーを使用</string>
+    <string name="signin_hint_usePasskey__macos">パスキーを使用</string>
+    <!-- HintStep: sends a sign-in code. -->
+    <string name="signin_hint_emailCode">メールでコードを送る</string>
+    <string name="signin_hint_emailCode__macos">メールでコードを送る</string>
+    <!-- HintStep: back to the email field. -->
+    <string name="signin_hint_change">変更</string>
+    <!-- Sign-in card when a license key is carried through sign-in. Arguments: {product} = the product's name. Arguments: 1=product. -->
+    <string name="signin_key_carriedTitle">%1$s を追加するにはサインイン</string>
+    <!-- Sign-in card when a license key is carried. Arguments: {product} = the product's name. Arguments: 1=product. -->
+    <string name="signin_key_carriedLede">キーの準備ができました。サインインまたはアカウントを作成すると、%1$s がライブラリに追加されます。</string>
+    <!-- Sign-in card: drops the carried license key. -->
+    <string name="signin_key_withoutKey">キーなしでサインイン</string>
+    <string name="signin_key_withoutKey__macos">キーなしでサインイン</string>
+    <!-- Have a license key? step, under the title. -->
+    <string name="signin_key_onrampLede">領収メールのキーを貼り付けてください。次にサインインすると、ライブラリに追加されます。</string>
+    <!-- Sign-in card, back at the email step after the sign-in ran out. -->
+    <string name="signin_code_expiredRestart">このサインインは期限切れです。続行して新しいコードを取得してください。</string>
+    <!-- Code step: the per-sign-in resend cap. -->
+    <string name="signin_code_noMore">このサインインでは、これ以上コードを送信できません。最新のコードは引き続き使えます。</string>
+    <!-- Sign-in card, a domain routed to its connection. Arguments: {org} = the organization's name. Arguments: 1=org. -->
+    <string name="signin_sso_title">%1$s でサインイン</string>
+    <!-- Sign-in card, an enforced connection. Arguments: {host} = the email domain. Arguments: 1=host. -->
+    <string name="signin_sso_required">%1$s のアドレスでは必須です。</string>
+    <!-- Sign-in card, the resend countdown on a routed step. Arguments: {time} = the wait, such as 0:42. Arguments: 1=time. -->
+    <string name="signin_sso_codeIn">%1$s 後にメールでコードを送る</string>
+    <string name="signin_sso_codeIn__macos">%1$s 後にメールでコードを送る</string>
+    <!-- Sign-in card, a routed step that is not enforced. -->
+    <string name="signin_sso_code">代わりにメールでコードを送る</string>
+    <string name="signin_sso_code__macos">代わりにメールでコードを送る</string>
+    <!-- Sign-in card: a right code for an account that can't sign in (SIGN-IN.md §3.4). -->
+    <string name="signin_refused_title">このアカウントはサインインできません</string>
+    <!-- Sign-in card, account disabled. Arguments: {email} = an address. Arguments: 1=email. -->
+    <string name="signin_refused_lede">%1$s はサインインできないアカウントに属しています。別のメールアドレスまたは別の方法をお試しください。</string>
+    <!-- Sign-in card: no way to sign in is enabled. -->
+    <string name="signin_off_title">サインインは無効です</string>
+    <!-- Sign-in card: the bot check refused. -->
+    <string name="signin_turnstile_failed">セキュリティチェックに失敗しました。もう一度お試しください。</string>
+    <!-- Code step: the verify's 429. -->
+    <string name="signin_code_rateLimited">試行回数が多すぎます。1分待ってからもう一度お試しください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">問題が発生しました</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

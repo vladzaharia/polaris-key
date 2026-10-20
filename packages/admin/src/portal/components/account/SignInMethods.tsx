@@ -960,7 +960,7 @@ function AddEmail({
                 htmlFor={codeId}
                 className="text-sm font-medium text-fg-strong"
               >
-                Code
+                {t("signin.approve.codeLabel")}
               </label>
               <div className="max-w-xs">
                 <CodeCells

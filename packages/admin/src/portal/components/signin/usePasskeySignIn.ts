@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { sc } from "../../copy/signin.js";
+import { t } from "../../../lib/copy.js";
 import { portalApi, PortalApiError } from "../../api.js";
 import { portalKeys } from "../../data.js";
 import { rememberVia } from "../../lastMethod.js";
@@ -61,12 +61,12 @@ export function usePasskeySignIn(returnTo: () => string): {
     } catch (err) {
       setError(
         err instanceof PasskeyError && err.reason === "cancelled"
-          ? sc("signin.passkey.cancelled")
+          ? t("signin.passkey.cancelled")
           : err instanceof PasskeyError && err.reason === "unsupported"
-            ? sc("signin.passkey.unsupported")
+            ? t("signin.passkey.unsupported")
             : err instanceof PortalApiError && err.status === 403
-              ? sc("signin.approve.disabled")
-              : sc("signin.passkey.failed"),
+              ? t("signin.approve.disabled")
+              : t("signin.passkey.failed"),
       );
     } finally {
       setBusy(false);

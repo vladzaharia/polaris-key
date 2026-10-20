@@ -254,7 +254,7 @@ export function StepUp({
           aria-label={`Email a code to ${email}`}
           aria-describedby={error ? errorId : undefined}
         >
-          Email me a code
+          {t("signin.hint.emailCode")}
         </Button>
       ) : way === "email" && email ? (
         <form
@@ -274,7 +274,7 @@ export function StepUp({
             htmlFor={codeId}
             className="text-sm font-medium text-fg-strong"
           >
-            Code
+            {t("signin.approve.codeLabel")}
           </label>
           <div className="max-w-xs">
             <CodeCells
@@ -404,11 +404,9 @@ async function afterStepUp(
 
 function passkeyErrorText(err: unknown): string {
   if (err instanceof PasskeyError) {
-    if (err.reason === "cancelled")
-      return "Your passkey wasn't used. Try again, or use another way.";
-    if (err.reason === "unsupported")
-      return "This browser can't use your passkey here. Use another way.";
-    return "Your passkey didn't work. Try again, or use another way.";
+    if (err.reason === "cancelled") return t("signin.passkey.cancelled");
+    if (err.reason === "unsupported") return t("signin.passkey.unsupported");
+    return t("signin.passkey.failed");
   }
   return commonErrorText(err);
 }
@@ -444,8 +442,7 @@ function commonErrorText(err: unknown): string {
       return `That signed you in to a different Polaris Locker account. Nothing was changed.`;
     if (err.status === 401 && err.code === "unauthorized")
       return "That didn't confirm it's you. Try again, or use another way.";
-    if (err.status === 429)
-      return "Too many tries. Wait a minute, then try again.";
+    if (err.status === 429) return t("signin.code.rateLimited");
   }
   const copy = portalErrorCopy(err);
   return `${copy.title}. ${copy.description}`;

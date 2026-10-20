@@ -1,3 +1,4 @@
+import { t } from "../../lib/copy.js";
 /**
  * Account → Sign-in methods and Where you're signed in (PX-13; PORTAL.md §4.26): the words the
  * page builds from `GET /api/me/methods` and `GET /api/sessions`. Pure.
@@ -126,8 +127,8 @@ export function remainingAfter(
 
 /** How a session signed in, in words (`GET /api/sessions` `methods`): unknown kinds are left out. */
 const SESSION_METHOD: Record<string, string> = {
-  passkey: "a passkey",
-  email: "an email code",
+  passkey: t("signin.hint.method.passkey"),
+  email: t("signin.hint.method.email"),
   google: "Google",
   apple: "Apple",
   steam: "Steam",
@@ -143,7 +144,9 @@ export function sessionMethodText(methods: readonly string[]): string | null {
         .filter((m): m is string => Boolean(m)),
     ),
   ];
-  return named.length ? `Signed in with ${list(named)}` : null;
+  return named.length
+    ? t("signin.gate.stripNoIdentity", { provider: list(named) })
+    : null;
 }
 
 /**

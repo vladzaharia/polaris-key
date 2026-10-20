@@ -12,7 +12,6 @@ import {
   QuietLink,
 } from "../../../ui/auth/index.js";
 import { t } from "../../../lib/copy.js";
-import { sc } from "../../copy/signin.js";
 import {
   portalApi,
   PortalApiError,
@@ -213,7 +212,7 @@ function FinishForm({
         if (err.status === 409 || err.code === "email_in_use")
           return void (await reload());
         if (err.code === "terms_required")
-          return setError(sc("signin.gate.termsRequired"));
+          return setError(t("core.codes.terms_required.message"));
         if (err.code === "invalid_code")
           return setError(wrongCodeText(err.triesLeft));
         if (err.status === 422) return setError(t("signin.email.invalid"));
@@ -221,7 +220,7 @@ function FinishForm({
           return setError(t("signin.rateLimited", { minutes: "a few" }));
         if (err.status === 400) return void (await reload());
       }
-      setError(sc("signin.approve.failed"));
+      setError(t("signin.approve.failed"));
     } finally {
       setBusy(false);
     }
@@ -249,13 +248,13 @@ function FinishForm({
     return (
       <>
         <div className="space-y-2">
-          <AuthTitle>{sc("signin.gate.joinTitle")}</AuthTitle>
+          <AuthTitle>{t("signin.gate.joinTitle")}</AuthTitle>
           <p className="text-fg-muted">
-            {sc("signin.gate.joinLede", { email })}
+            {t("signin.gate.joinLede", { email })}
           </p>
           {gate.join?.proven ? null : (
             <p className="text-sm text-fg-muted">
-              {sc("signin.gate.joinProve")}
+              {t("signin.gate.joinProve")}
             </p>
           )}
         </div>
@@ -298,7 +297,7 @@ function FinishForm({
     ? t("signin.register.title")
     : emailAsked
       ? t("signin.gate.title")
-      : sc("signin.gate.termsTitle");
+      : t("signin.gate.termsTitle");
   const lede =
     gate.product?.name && !register
       ? t("signin.gate.ledeApp", { app: gate.product.name })
@@ -312,7 +311,7 @@ function FinishForm({
         <div className="space-y-2">
           <AuthTitle>{t("signin.code.title")}</AuthTitle>
           <p className="text-fg-muted">
-            {sc("signin.gate.codeSent", { email: to })}
+            {t("signin.gate.codeSent", { email: to })}
           </p>
         </div>
         <form
@@ -394,11 +393,11 @@ function FinishForm({
           <span className="min-w-0 flex-1 truncate">
             {identity
               ? t("signin.gate.strip", { provider, identity })
-              : sc("signin.gate.stripNoIdentity", { provider })}
+              : t("signin.gate.stripNoIdentity", { provider })}
           </span>
           <span className="inline-flex items-center gap-1 font-medium text-success">
             <Check aria-hidden className="size-4" />
-            {sc("signin.gate.done")}
+            {t("common.done")}
           </span>
         </div>
       )}
@@ -420,7 +419,7 @@ function FinishForm({
         onSubmit={(e) => {
           e.preventDefault();
           if (productTerms && !product)
-            return setError(sc("signin.gate.termsRequired"));
+            return setError(t("core.codes.terms_required.message"));
           if (
             emailAsked &&
             way === "typed" &&
@@ -457,7 +456,7 @@ function FinishForm({
                 htmlFor={nameId}
                 className="text-sm font-medium text-fg-strong"
               >
-                {sc("signin.gate.name")}
+                {t("signin.gate.name")}
               </label>
               <Input
                 id={nameId}
@@ -470,7 +469,7 @@ function FinishForm({
               {suggestions.length > 0 ? (
                 <ul
                   className="flex flex-wrap gap-2"
-                  aria-label={sc("signin.gate.name")}
+                  aria-label={t("signin.gate.name")}
                 >
                   {suggestions.map((s) => (
                     <li key={s.name}>
@@ -498,8 +497,8 @@ function FinishForm({
                     onClick={() => setInitials(!initials)}
                   >
                     {initials
-                      ? sc("signin.gate.pictureProvider", { provider })
-                      : sc("signin.gate.pictureInitials")}
+                      ? t("signin.gate.pictureProvider", { provider })
+                      : t("signin.gate.pictureInitials")}
                   </button>
                 ) : null}
               </p>
@@ -509,7 +508,7 @@ function FinishForm({
         {emailAsked ? (
           <fieldset className="space-y-2">
             <legend className="text-sm font-medium text-fg-strong">
-              {sc("signin.gate.emailChoice")}
+              {t("signin.email.label")}
             </legend>
             {providerEmail ? (
               <>
@@ -522,11 +521,11 @@ function FinishForm({
                   />
                   <span className="min-w-0 break-words">
                     <bdi>
-                      {sc("signin.gate.useEmail", { email: providerEmail })}
+                      {t("signin.gate.useEmail", { email: providerEmail })}
                     </bdi>
                     {gate.email.relay ? (
                       <span className="block text-fg-muted">
-                        {sc("signin.gate.relay")}
+                        {t("signin.gate.relay")}
                       </span>
                     ) : null}
                   </span>
@@ -574,32 +573,30 @@ function FinishForm({
           <Checkbox
             checked={birth}
             onCheckedChange={setBirth}
-            label={sc("signin.gate.birthdate", {
+            label={t("signin.gate.birthdate", {
               from: gate.profile.birthdate.from,
             })}
-            description={sc("signin.gate.birthdateHelp")}
+            description={t("signin.gate.birthdateHelp")}
           />
         ) : null}
         {productTerms ? (
           <Checkbox
             checked={product}
             onCheckedChange={setProduct}
-            label={
-              <>
-                {sc("signin.gate.productTerms", {
-                  product: gate.product?.name ?? "",
-                })}{" "}
-                {safeHref(productTerms.url) ? (
-                  <a
-                    href={safeHref(productTerms.url)!}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    className="underline underline-offset-4"
-                  >
-                    {sc("signin.gate.termsLink")}
-                  </a>
-                ) : null}
-              </>
+            label={t("signin.gate.productTerms", {
+              product: gate.product?.name ?? "",
+            })}
+            description={
+              safeHref(productTerms.url) ? (
+                <a
+                  href={safeHref(productTerms.url)!}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="underline underline-offset-4"
+                >
+                  {t("signin.gate.readTerms")}
+                </a>
+              ) : undefined
             }
           />
         ) : null}
@@ -622,7 +619,7 @@ function FinishForm({
         </div>
         {platformTerms ? (
           <p className="text-sm text-fg-muted">
-            {sc("signin.gate.platformTerms")}{" "}
+            {t("signin.gate.platformTerms")}{" "}
             {safeHref(platformTerms.url) ? (
               <a
                 href={safeHref(platformTerms.url)!}
@@ -630,12 +627,9 @@ function FinishForm({
                 rel="noreferrer noopener"
                 className="underline underline-offset-4"
               >
-                {sc("signin.gate.termsLink")}
+                {t("signin.gate.readTerms")}
               </a>
-            ) : (
-              sc("signin.gate.termsLink")
-            )}
-            .
+            ) : null}
           </p>
         ) : null}
       </form>

@@ -6,7 +6,6 @@ import { Dialog, DialogBody, DialogFooter } from "../../ui/Dialog.js";
 import { Input } from "../../ui/Input.js";
 import { formatRelative } from "../../lib/format.js";
 import { t } from "../../lib/copy.js";
-import { sc } from "../copy/signin.js";
 import {
   portalApi,
   PortalApiError,
@@ -101,7 +100,7 @@ export function ApproveDeviceDialog({
         (err.status === 410 || err.status === 422)
       )
         return setPhase({ kind: "enter", error: t("signin.approve.expired") });
-      setPhase({ kind: "review", request, error: sc("signin.approve.failed") });
+      setPhase({ kind: "review", request, error: t("signin.approve.failed") });
     }
   };
 
@@ -112,7 +111,7 @@ export function ApproveDeviceDialog({
         ? t("core.codes.step_up_required.title")
         : phase.kind === "done"
           ? t("signin.approve.title")
-          : sc("signin.approve.open");
+          : t("signin.approve.open");
 
   return (
     <Dialog
@@ -133,13 +132,13 @@ export function ApproveDeviceDialog({
           }}
         >
           <DialogBody className="space-y-3">
-            <p className="text-fg-muted">{sc("signin.approve.enter")}</p>
+            <p className="text-fg-muted">{t("signin.approve.enter")}</p>
             <div className="space-y-1.5">
               <label
                 htmlFor="pk-approve-code"
                 className="text-sm font-medium text-fg-strong"
               >
-                {sc("signin.approve.codeLabel")}
+                {t("signin.approve.codeLabel")}
               </label>
               <Input
                 id="pk-approve-code"
@@ -177,7 +176,7 @@ export function ApproveDeviceDialog({
               disabled={typed.length !== 9}
               iconStart={<ScanLine aria-hidden />}
             >
-              {sc("signin.approve.look")}
+              {t("signin.approve.look")}
             </Button>
           </DialogFooter>
         </form>
@@ -185,17 +184,17 @@ export function ApproveDeviceDialog({
         <>
           <DialogBody className="space-y-4">
             <p className="text-fg">
-              {sc("signin.approve.askBody", { code: phase.request.code })}
+              {t("signin.approve.askBody", { code: phase.request.code })}
             </p>
             <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-              <dt className="text-fg-muted">{sc("signin.approve.device")}</dt>
+              <dt className="text-fg-muted">{t("signin.approve.device")}</dt>
               <dd className="text-fg-strong">{phase.request.device.label}</dd>
-              <dt className="text-fg-muted">{sc("signin.approve.where")}</dt>
+              <dt className="text-fg-muted">{t("signin.approve.where")}</dt>
               <dd className="text-fg-strong">
                 {phase.request.location.label ??
-                  sc("signin.approve.unknownPlace")}
+                  t("signin.approve.unknownPlace")}
               </dd>
-              <dt className="text-fg-muted">{sc("signin.approve.when")}</dt>
+              <dt className="text-fg-muted">{t("signin.approve.when")}</dt>
               <dd className="text-fg-strong">
                 {formatRelative(phase.request.requestedAt * 1000, Date.now())}
               </dd>
@@ -226,9 +225,9 @@ export function ApproveDeviceDialog({
         </>
       ) : phase.kind === "stepup" ? (
         <DialogBody className="space-y-3">
-          <p className="text-fg-muted">{sc("signin.approve.stepUpWhy")}</p>
+          <p className="text-fg-muted">{t("signin.approve.stepUpWhy")}</p>
           <StepUpInline
-            verb={sc("signin.approve.stepUpVerb")}
+            verb={t("signin.approve.stepUpVerb")}
             onConfirmed={() => void decide(phase.request, phase.decision)}
             onCancel={() =>
               setPhase({ kind: "review", request: phase.request })
@@ -241,10 +240,10 @@ export function ApproveDeviceDialog({
             <p role="status" className="flex items-center gap-2 text-fg">
               <Check aria-hidden className="size-4 shrink-0 text-success" />
               {phase.status === "approved"
-                ? sc("signin.approve.approved", {
+                ? t("signin.approve.approved", {
                     device: phase.request.device.label,
                   })
-                : sc("signin.approve.deniedDone")}
+                : t("signin.approve.deniedDone")}
             </p>
           </DialogBody>
           <DialogFooter>

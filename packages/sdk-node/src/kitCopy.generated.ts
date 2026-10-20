@@ -750,6 +750,81 @@ export const KIT_COPY: Readonly<
     "cli.update.downloadNoLink":
       "Get the new version from where you got {product}.",
     "cli.activate.noKeyPiped": "No license key arrived on stdin.",
+    "signin.approve.lede":
+      "On a phone or computer where you're signed in, scan the code, or open Account → Approve a new device and type it.",
+    "signin.approve.other": "Use another way to sign in",
+    "signin.approve.minuteLeft": "One minute left on this code.",
+    "signin.approve.starting": "Getting your code",
+    "signin.approve.disabled":
+      "That account can't sign in. Use another way to sign in.",
+    "signin.approve.open": "Approve a new device",
+    "signin.approve.enter": "Enter the code shown on the other device.",
+    "signin.approve.codeLabel": "Code",
+    "signin.approve.look": "Find it",
+    "signin.approve.askBody": "Code {code} asks to sign in to your account.",
+    "signin.approve.where": "Where",
+    "signin.approve.when": "When",
+    "signin.approve.device": "Device",
+    "signin.approve.unknownPlace": "Unknown place",
+    "signin.approve.stepUpWhy":
+      "It's asking from a different place than you're in now, or from a place we can't tell.",
+    "signin.approve.stepUpVerb": "approve it",
+    "signin.approve.approved": "Approved. {device} is signed in.",
+    "signin.approve.deniedDone": "Denied. Nothing changed.",
+    "signin.approve.failed": "That didn't go through. Try again.",
+    "signin.passkey.cancelled":
+      "Your passkey wasn't used. Try again, or use another way.",
+    "signin.passkey.unsupported":
+      "This browser can't use your passkey here. Use another way.",
+    "signin.passkey.failed":
+      "Your passkey didn't work. Try again, or use another way.",
+    "signin.gate.stripNoIdentity": "Signed in with {provider}",
+    "signin.gate.termsTitle": "One more step",
+    "signin.gate.name": "Your name",
+    "signin.gate.useEmail": "Use {email}",
+    "signin.gate.relay": "Your private Apple address",
+    "signin.gate.pictureInitials": "Use my initials",
+    "signin.gate.pictureProvider": "Use my {provider} picture",
+    "signin.gate.birthdate": "Add my birth date from {org}",
+    "signin.gate.birthdateHelp": "Only you can see it. Apps never get it.",
+    "signin.gate.productTerms": "I agree to the {product} terms",
+    "signin.gate.platformTerms":
+      "By continuing you agree to the Polaris Locker terms.",
+    "signin.gate.readTerms": "Read the terms",
+    "signin.gate.expired": "That sign-in has expired. Sign in again.",
+    "signin.gate.joinTitle": "Join your accounts",
+    "signin.gate.joinLede":
+      "{email} already belongs to a Polaris Locker account. Join this sign-in to it, or use a different email.",
+    "signin.gate.joinProve":
+      "To join, sign in to that account in this browser first, then add this sign-in from Account.",
+    "signin.gate.codeSent": "We sent a code to {email}.",
+    "signin.hint.when": "On this browser, last time {when}",
+    "signin.hint.welcomeNoName": "Welcome back",
+    "signin.hint.method.passkey": "a passkey",
+    "signin.hint.method.email": "an email code",
+    "signin.hint.usePasskey": "Use a passkey",
+    "signin.hint.emailCode": "Email me a code",
+    "signin.hint.change": "Change",
+    "signin.key.carriedTitle": "Sign in to add {product}",
+    "signin.key.carriedLede":
+      "Your key is ready. Sign in or create an account, and {product} joins your library.",
+    "signin.key.withoutKey": "Sign in without the key",
+    "signin.key.onrampLede":
+      "Paste the key from your receipt email. Sign in next, and it joins your library.",
+    "signin.code.expiredRestart":
+      "That sign-in has expired. Continue to get a new code.",
+    "signin.code.noMore":
+      "No more codes can be sent for this sign-in. The latest code still works.",
+    "signin.sso.title": "Sign in with {org}",
+    "signin.sso.required": "Required for {host} addresses.",
+    "signin.sso.codeIn": "Email me a code in {time}",
+    "signin.sso.code": "Email me a code instead",
+    "signin.refused.title": "This account can't sign in",
+    "signin.refused.lede":
+      "{email} belongs to an account that can't sign in. Try a different email or another way to sign in.",
+    "signin.off.title": "Sign-in is turned off",
+    "signin.turnstile.failed": "The security check did not pass. Try again.",
+    "signin.code.rateLimited": "Too many tries. Wait a minute, then try again.",
     "core.fallback.title": "Something went wrong",
     "core.fallback.message": "Something went wrong ({code}). Try again.",
     "core.codes.unauthorized.title": "Not signed in",
@@ -2100,6 +2175,87 @@ export const KIT_COPY: Readonly<
     "cli.update.downloadNoLink":
       "Holen Sie sich die neue Version dort, wo Sie {product} bekommen haben.",
     "cli.activate.noKeyPiped": "Auf stdin ist kein Lizenzschlüssel angekommen.",
+    "signin.approve.lede":
+      "Scannen Sie auf einem Handy oder Computer, auf dem Sie angemeldet sind, den Code oder öffnen Sie Konto → Neues Gerät genehmigen und geben Sie ihn ein.",
+    "signin.approve.other": "Andere Anmeldeart verwenden",
+    "signin.approve.minuteLeft": "Noch eine Minute für diesen Code.",
+    "signin.approve.starting": "Code wird angefordert",
+    "signin.approve.disabled":
+      "Dieses Konto kann sich nicht anmelden. Verwenden Sie eine andere Anmeldeart.",
+    "signin.approve.open": "Neues Gerät genehmigen",
+    "signin.approve.enter":
+      "Geben Sie den Code ein, der auf dem anderen Gerät angezeigt wird.",
+    "signin.approve.codeLabel": "Code",
+    "signin.approve.look": "Suchen",
+    "signin.approve.askBody":
+      "Code {code} möchte sich bei Ihrem Konto anmelden.",
+    "signin.approve.where": "Ort",
+    "signin.approve.when": "Zeit",
+    "signin.approve.device": "Gerät",
+    "signin.approve.unknownPlace": "Unbekannter Ort",
+    "signin.approve.stepUpWhy":
+      "Die Anfrage kommt von einem anderen Ort als Ihrem aktuellen oder von einem unbekannten Ort.",
+    "signin.approve.stepUpVerb": "zu genehmigen",
+    "signin.approve.approved": "Genehmigt. {device} ist angemeldet.",
+    "signin.approve.deniedDone": "Abgelehnt. Es hat sich nichts geändert.",
+    "signin.approve.failed": "Das hat nicht geklappt. Versuchen Sie es erneut.",
+    "signin.passkey.cancelled":
+      "Ihr Passkey wurde nicht verwendet. Versuchen Sie es erneut oder nutzen Sie eine andere Möglichkeit.",
+    "signin.passkey.unsupported":
+      "Dieser Browser kann Ihren Passkey hier nicht verwenden. Nutzen Sie eine andere Möglichkeit.",
+    "signin.passkey.failed":
+      "Ihr Passkey hat nicht funktioniert. Versuchen Sie es erneut oder nutzen Sie eine andere Möglichkeit.",
+    "signin.gate.stripNoIdentity": "Mit {provider} angemeldet",
+    "signin.gate.termsTitle": "Noch ein Schritt",
+    "signin.gate.name": "Ihr Name",
+    "signin.gate.useEmail": "{email} verwenden",
+    "signin.gate.relay": "Ihre private Apple-Adresse",
+    "signin.gate.pictureInitials": "Meine Initialen verwenden",
+    "signin.gate.pictureProvider": "Mein {provider}-Bild verwenden",
+    "signin.gate.birthdate": "Mein Geburtsdatum von {org} hinzufügen",
+    "signin.gate.birthdateHelp":
+      "Nur Sie können es sehen. Apps erhalten es nie.",
+    "signin.gate.productTerms": "Ich stimme den Bedingungen von {product} zu",
+    "signin.gate.platformTerms":
+      "Mit dem Fortfahren stimmen Sie den Bedingungen von Polaris Locker zu.",
+    "signin.gate.readTerms": "Bedingungen lesen",
+    "signin.gate.expired":
+      "Diese Anmeldung ist abgelaufen. Melden Sie sich erneut an.",
+    "signin.gate.joinTitle": "Konten zusammenführen",
+    "signin.gate.joinLede":
+      "{email} gehört bereits zu einem Konto bei Polaris Locker. Führen Sie diese Anmeldung damit zusammen oder verwenden Sie eine andere E-Mail-Adresse.",
+    "signin.gate.joinProve":
+      "Melden Sie sich dafür zuerst in diesem Browser bei diesem Konto an und fügen Sie diese Anmeldung dann unter Konto hinzu.",
+    "signin.gate.codeSent": "Wir haben einen Code an {email} gesendet.",
+    "signin.hint.when": "In diesem Browser, zuletzt {when}",
+    "signin.hint.welcomeNoName": "Willkommen zurück",
+    "signin.hint.method.passkey": "einem Passkey",
+    "signin.hint.method.email": "einem E-Mail-Code",
+    "signin.hint.usePasskey": "Passkey verwenden",
+    "signin.hint.emailCode": "Code per E-Mail senden",
+    "signin.hint.change": "Ändern",
+    "signin.key.carriedTitle": "Anmelden, um {product} hinzuzufügen",
+    "signin.key.carriedLede":
+      "Ihr Schlüssel ist bereit. Melden Sie sich an oder erstellen Sie ein Konto, und {product} kommt in Ihre Bibliothek.",
+    "signin.key.withoutKey": "Ohne den Schlüssel anmelden",
+    "signin.key.onrampLede":
+      "Fügen Sie den Schlüssel aus Ihrer Bestätigungs-E-Mail ein. Melden Sie sich danach an, und er kommt in Ihre Bibliothek.",
+    "signin.code.expiredRestart":
+      "Diese Anmeldung ist abgelaufen. Fahren Sie fort, um einen neuen Code zu erhalten.",
+    "signin.code.noMore":
+      "Für diese Anmeldung können keine weiteren Codes gesendet werden. Der letzte Code gilt weiterhin.",
+    "signin.sso.title": "Mit {org} anmelden",
+    "signin.sso.required": "Erforderlich für Adressen bei {host}.",
+    "signin.sso.codeIn": "Code per E-Mail in {time}",
+    "signin.sso.code": "Stattdessen Code per E-Mail senden",
+    "signin.refused.title": "Dieses Konto kann sich nicht anmelden",
+    "signin.refused.lede":
+      "{email} gehört zu einem Konto, das sich nicht anmelden kann. Versuchen Sie eine andere E-Mail-Adresse oder eine andere Anmeldeart.",
+    "signin.off.title": "Die Anmeldung ist deaktiviert",
+    "signin.turnstile.failed":
+      "Die Sicherheitsprüfung wurde nicht bestanden. Versuchen Sie es erneut.",
+    "signin.code.rateLimited":
+      "Zu viele Versuche. Warten Sie eine Minute und versuchen Sie es erneut.",
     "core.fallback.title": "Ein Fehler ist aufgetreten",
     "core.fallback.message":
       "Ein Fehler ist aufgetreten ({code}). Versuchen Sie es erneut.",
@@ -3455,6 +3611,85 @@ export const KIT_COPY: Readonly<
     "cli.update.downloadNoLink":
       "Récupérez la nouvelle version là où vous avez obtenu {product}.",
     "cli.activate.noKeyPiped": "Aucune clé de licence n’est arrivée sur stdin.",
+    "signin.approve.lede":
+      "Sur un téléphone ou un ordinateur où vous êtes connecté, scannez le code, ou ouvrez Compte → Approuver un nouvel appareil et saisissez-le.",
+    "signin.approve.other": "Utiliser une autre méthode de connexion",
+    "signin.approve.minuteLeft": "Il reste une minute pour ce code.",
+    "signin.approve.starting": "Obtention de votre code",
+    "signin.approve.disabled":
+      "Ce compte ne peut pas se connecter. Utilisez une autre méthode.",
+    "signin.approve.open": "Approuver un nouvel appareil",
+    "signin.approve.enter": "Saisissez le code affiché sur l'autre appareil.",
+    "signin.approve.codeLabel": "Code",
+    "signin.approve.look": "Rechercher",
+    "signin.approve.askBody":
+      "Le code {code} demande à se connecter à votre compte.",
+    "signin.approve.where": "Lieu",
+    "signin.approve.when": "Quand",
+    "signin.approve.device": "Appareil",
+    "signin.approve.unknownPlace": "Lieu inconnu",
+    "signin.approve.stepUpWhy":
+      "La demande vient d'un autre endroit que le vôtre, ou d'un endroit inconnu.",
+    "signin.approve.stepUpVerb": "l'approuver",
+    "signin.approve.approved": "Approuvé. {device} est connecté.",
+    "signin.approve.deniedDone": "Refusé. Rien n'a changé.",
+    "signin.approve.failed": "Cela n'a pas abouti. Réessayez.",
+    "signin.passkey.cancelled":
+      "Votre passkey n'a pas été utilisée. Réessayez ou utilisez une autre méthode.",
+    "signin.passkey.unsupported":
+      "Ce navigateur ne peut pas utiliser votre passkey ici. Utilisez une autre méthode.",
+    "signin.passkey.failed":
+      "Votre passkey n'a pas fonctionné. Réessayez ou utilisez une autre méthode.",
+    "signin.gate.stripNoIdentity": "Connecté avec {provider}",
+    "signin.gate.termsTitle": "Encore une étape",
+    "signin.gate.name": "Votre nom",
+    "signin.gate.useEmail": "Utiliser {email}",
+    "signin.gate.relay": "Votre adresse privée Apple",
+    "signin.gate.pictureInitials": "Utiliser mes initiales",
+    "signin.gate.pictureProvider": "Utiliser mon image {provider}",
+    "signin.gate.birthdate": "Ajouter ma date de naissance depuis {org}",
+    "signin.gate.birthdateHelp":
+      "Vous seul pouvez la voir. Les apps ne la reçoivent jamais.",
+    "signin.gate.productTerms": "J'accepte les conditions de {product}",
+    "signin.gate.platformTerms":
+      "En continuant, vous acceptez les conditions de Polaris Locker.",
+    "signin.gate.readTerms": "Lire les conditions",
+    "signin.gate.expired": "Cette connexion a expiré. Reconnectez-vous.",
+    "signin.gate.joinTitle": "Réunir vos comptes",
+    "signin.gate.joinLede":
+      "{email} appartient déjà à un compte Polaris Locker. Associez cette connexion à ce compte, ou utilisez un autre e-mail.",
+    "signin.gate.joinProve":
+      "Pour les réunir, connectez-vous d'abord à ce compte dans ce navigateur, puis ajoutez cette connexion depuis Compte.",
+    "signin.gate.codeSent": "Nous avons envoyé un code à {email}.",
+    "signin.hint.when": "Sur ce navigateur, dernière fois {when}",
+    "signin.hint.welcomeNoName": "Bon retour",
+    "signin.hint.method.passkey": "une passkey",
+    "signin.hint.method.email": "un code par e-mail",
+    "signin.hint.usePasskey": "Utiliser une passkey",
+    "signin.hint.emailCode": "M'envoyer un code par e-mail",
+    "signin.hint.change": "Modifier",
+    "signin.key.carriedTitle": "Connectez-vous pour ajouter {product}",
+    "signin.key.carriedLede":
+      "Votre clé est prête. Connectez-vous ou créez un compte, et {product} rejoint votre bibliothèque.",
+    "signin.key.withoutKey": "Se connecter sans la clé",
+    "signin.key.onrampLede":
+      "Collez la clé de votre e-mail de reçu. Connectez-vous ensuite, et elle rejoint votre bibliothèque.",
+    "signin.code.expiredRestart":
+      "Cette connexion a expiré. Continuez pour recevoir un nouveau code.",
+    "signin.code.noMore":
+      "Aucun autre code ne peut être envoyé pour cette connexion. Le dernier code fonctionne toujours.",
+    "signin.sso.title": "Se connecter avec {org}",
+    "signin.sso.required": "Obligatoire pour les adresses {host}.",
+    "signin.sso.codeIn": "M'envoyer un code par e-mail dans {time}",
+    "signin.sso.code": "M'envoyer plutôt un code par e-mail",
+    "signin.refused.title": "Ce compte ne peut pas se connecter",
+    "signin.refused.lede":
+      "{email} appartient à un compte qui ne peut pas se connecter. Essayez un autre e-mail ou une autre méthode.",
+    "signin.off.title": "La connexion est désactivée",
+    "signin.turnstile.failed":
+      "La vérification de sécurité a échoué. Réessayez.",
+    "signin.code.rateLimited":
+      "Trop de tentatives. Attendez une minute, puis réessayez.",
     "core.fallback.title": "Something went wrong",
     "core.fallback.message": "Something went wrong ({code}). Try again.",
     "core.codes.unauthorized.title": "Not signed in",
@@ -4779,6 +5014,87 @@ export const KIT_COPY: Readonly<
     "cli.update.downloadNoLink":
       "Consigue la nueva versión donde conseguiste {product}.",
     "cli.activate.noKeyPiped": "No llegó ninguna clave de licencia por stdin.",
+    "signin.approve.lede":
+      "En un teléfono o un ordenador donde hayas iniciado sesión, escanea el código, o abre Cuenta → Aprobar un dispositivo nuevo y escríbelo.",
+    "signin.approve.other": "Usar otra forma de iniciar sesión",
+    "signin.approve.minuteLeft": "Queda un minuto para este código.",
+    "signin.approve.starting": "Obteniendo tu código",
+    "signin.approve.disabled":
+      "Esa cuenta no puede iniciar sesión. Usa otra forma de iniciar sesión.",
+    "signin.approve.open": "Aprobar un dispositivo nuevo",
+    "signin.approve.enter":
+      "Escribe el código que se muestra en el otro dispositivo.",
+    "signin.approve.codeLabel": "Código",
+    "signin.approve.look": "Buscar",
+    "signin.approve.askBody":
+      "El código {code} pide iniciar sesión en tu cuenta.",
+    "signin.approve.where": "Lugar",
+    "signin.approve.when": "Cuándo",
+    "signin.approve.device": "Dispositivo",
+    "signin.approve.unknownPlace": "Lugar desconocido",
+    "signin.approve.stepUpWhy":
+      "La solicitud viene de un lugar distinto al tuyo, o de un lugar que no podemos identificar.",
+    "signin.approve.stepUpVerb": "aprobarlo",
+    "signin.approve.approved": "Aprobado. {device} ha iniciado sesión.",
+    "signin.approve.deniedDone": "Rechazado. No ha cambiado nada.",
+    "signin.approve.failed": "No se pudo completar. Inténtalo de nuevo.",
+    "signin.passkey.cancelled":
+      "No se usó tu passkey. Inténtalo de nuevo o usa otra forma.",
+    "signin.passkey.unsupported":
+      "Este navegador no puede usar tu passkey aquí. Usa otra forma.",
+    "signin.passkey.failed":
+      "Tu passkey no funcionó. Inténtalo de nuevo o usa otra forma.",
+    "signin.gate.stripNoIdentity": "Sesión iniciada con {provider}",
+    "signin.gate.termsTitle": "Un paso más",
+    "signin.gate.name": "Tu nombre",
+    "signin.gate.useEmail": "Usar {email}",
+    "signin.gate.relay": "Tu dirección privada de Apple",
+    "signin.gate.pictureInitials": "Usar mis iniciales",
+    "signin.gate.pictureProvider": "Usar mi imagen de {provider}",
+    "signin.gate.birthdate": "Añadir mi fecha de nacimiento de {org}",
+    "signin.gate.birthdateHelp":
+      "Solo tú puedes verla. Las apps nunca la reciben.",
+    "signin.gate.productTerms": "Acepto las condiciones de {product}",
+    "signin.gate.platformTerms":
+      "Al continuar, aceptas las condiciones de Polaris Locker.",
+    "signin.gate.readTerms": "Leer las condiciones",
+    "signin.gate.expired":
+      "Ese inicio de sesión ha caducado. Vuelve a iniciar sesión.",
+    "signin.gate.joinTitle": "Unir tus cuentas",
+    "signin.gate.joinLede":
+      "{email} ya pertenece a una cuenta de Polaris Locker. Une este inicio de sesión a ella, o usa otro correo.",
+    "signin.gate.joinProve":
+      "Para unirlas, inicia sesión primero en esa cuenta en este navegador y luego añade este inicio de sesión desde Cuenta.",
+    "signin.gate.codeSent": "Hemos enviado un código a {email}.",
+    "signin.hint.when": "En este navegador, la última vez {when}",
+    "signin.hint.welcomeNoName": "Te damos la bienvenida de nuevo",
+    "signin.hint.method.passkey": "una passkey",
+    "signin.hint.method.email": "un código por correo",
+    "signin.hint.usePasskey": "Usar una passkey",
+    "signin.hint.emailCode": "Enviarme un código por correo",
+    "signin.hint.change": "Cambiar",
+    "signin.key.carriedTitle": "Inicia sesión para añadir {product}",
+    "signin.key.carriedLede":
+      "Tu clave está lista. Inicia sesión o crea una cuenta y {product} se añade a tu biblioteca.",
+    "signin.key.withoutKey": "Iniciar sesión sin la clave",
+    "signin.key.onrampLede":
+      "Pega la clave de tu correo de recibo. Inicia sesión después y se añade a tu biblioteca.",
+    "signin.code.expiredRestart":
+      "Ese inicio de sesión ha caducado. Continúa para recibir un código nuevo.",
+    "signin.code.noMore":
+      "No se pueden enviar más códigos para este inicio de sesión. El último código sigue siendo válido.",
+    "signin.sso.title": "Iniciar sesión con {org}",
+    "signin.sso.required": "Obligatorio para las direcciones de {host}.",
+    "signin.sso.codeIn": "Enviarme un código en {time}",
+    "signin.sso.code": "Enviarme un código por correo",
+    "signin.refused.title": "Esta cuenta no puede iniciar sesión",
+    "signin.refused.lede":
+      "{email} pertenece a una cuenta que no puede iniciar sesión. Prueba con otro correo o con otra forma de iniciar sesión.",
+    "signin.off.title": "El inicio de sesión está desactivado",
+    "signin.turnstile.failed":
+      "La comprobación de seguridad no se superó. Inténtalo de nuevo.",
+    "signin.code.rateLimited":
+      "Demasiados intentos. Espera un minuto y vuelve a intentarlo.",
     "core.fallback.title": "Algo salió mal",
     "core.fallback.message": "Algo salió mal ({code}). Vuelve a intentarlo.",
     "core.codes.unauthorized.title": "Sin sesión iniciada",
@@ -6122,6 +6438,83 @@ export const KIT_COPY: Readonly<
     "cli.update.downloadNoLink":
       "Obtenha a nova versão de onde você baixou {product}.",
     "cli.activate.noKeyPiped": "Nenhuma chave de licença chegou pelo stdin.",
+    "signin.approve.lede":
+      "Em um celular ou computador onde você está conectado, escaneie o código, ou abra Conta → Aprovar um novo dispositivo e digite-o.",
+    "signin.approve.other": "Usar outra forma de entrar",
+    "signin.approve.minuteLeft": "Resta um minuto para este código.",
+    "signin.approve.starting": "Obtendo seu código",
+    "signin.approve.disabled":
+      "Essa conta não pode entrar. Use outra forma de entrar.",
+    "signin.approve.open": "Aprovar um novo dispositivo",
+    "signin.approve.enter": "Digite o código mostrado no outro dispositivo.",
+    "signin.approve.codeLabel": "Código",
+    "signin.approve.look": "Buscar",
+    "signin.approve.askBody": "O código {code} pede para entrar na sua conta.",
+    "signin.approve.where": "Local",
+    "signin.approve.when": "Quando",
+    "signin.approve.device": "Dispositivo",
+    "signin.approve.unknownPlace": "Local desconhecido",
+    "signin.approve.stepUpWhy":
+      "O pedido vem de um lugar diferente do seu, ou de um lugar que não conseguimos identificar.",
+    "signin.approve.stepUpVerb": "aprová-lo",
+    "signin.approve.approved": "Aprovado. {device} está conectado.",
+    "signin.approve.deniedDone": "Negado. Nada mudou.",
+    "signin.approve.failed": "Não foi possível concluir. Tente novamente.",
+    "signin.passkey.cancelled":
+      "Sua passkey não foi usada. Tente novamente ou use outra forma.",
+    "signin.passkey.unsupported":
+      "Este navegador não pode usar sua passkey aqui. Use outra forma.",
+    "signin.passkey.failed":
+      "Sua passkey não funcionou. Tente novamente ou use outra forma.",
+    "signin.gate.stripNoIdentity": "Conectado com {provider}",
+    "signin.gate.termsTitle": "Mais uma etapa",
+    "signin.gate.name": "Seu nome",
+    "signin.gate.useEmail": "Usar {email}",
+    "signin.gate.relay": "Seu endereço privado da Apple",
+    "signin.gate.pictureInitials": "Usar minhas iniciais",
+    "signin.gate.pictureProvider": "Usar minha imagem do {provider}",
+    "signin.gate.birthdate": "Adicionar minha data de nascimento de {org}",
+    "signin.gate.birthdateHelp": "Só você pode ver. Os apps nunca a recebem.",
+    "signin.gate.productTerms": "Concordo com os termos de {product}",
+    "signin.gate.platformTerms":
+      "Ao continuar, você concorda com os termos do Polaris Locker.",
+    "signin.gate.readTerms": "Ler os termos",
+    "signin.gate.expired": "Esse login expirou. Entre novamente.",
+    "signin.gate.joinTitle": "Juntar suas contas",
+    "signin.gate.joinLede":
+      "{email} já pertence a uma conta do Polaris Locker. Una este login a ela ou use outro e-mail.",
+    "signin.gate.joinProve":
+      "Para juntar, entre primeiro nessa conta neste navegador e depois adicione este login em Conta.",
+    "signin.gate.codeSent": "Enviamos um código para {email}.",
+    "signin.hint.when": "Neste navegador, na última vez {when}",
+    "signin.hint.welcomeNoName": "Bem-vindo de volta",
+    "signin.hint.method.passkey": "uma passkey",
+    "signin.hint.method.email": "um código por e-mail",
+    "signin.hint.usePasskey": "Usar uma passkey",
+    "signin.hint.emailCode": "Enviar um código por e-mail",
+    "signin.hint.change": "Alterar",
+    "signin.key.carriedTitle": "Entre para adicionar {product}",
+    "signin.key.carriedLede":
+      "Sua chave está pronta. Entre ou crie uma conta, e {product} entra na sua biblioteca.",
+    "signin.key.withoutKey": "Entrar sem a chave",
+    "signin.key.onrampLede":
+      "Cole a chave do seu e-mail de recibo. Entre em seguida e ela entra na sua biblioteca.",
+    "signin.code.expiredRestart":
+      "Esse login expirou. Continue para receber um novo código.",
+    "signin.code.noMore":
+      "Não é possível enviar mais códigos para este login. O último código ainda funciona.",
+    "signin.sso.title": "Entrar com {org}",
+    "signin.sso.required": "Obrigatório para endereços de {host}.",
+    "signin.sso.codeIn": "Enviar um código em {time}",
+    "signin.sso.code": "Enviar um código por e-mail",
+    "signin.refused.title": "Esta conta não pode entrar",
+    "signin.refused.lede":
+      "{email} pertence a uma conta que não pode entrar. Tente outro e-mail ou outra forma de entrar.",
+    "signin.off.title": "O login está desativado",
+    "signin.turnstile.failed":
+      "A verificação de segurança não foi aprovada. Tente novamente.",
+    "signin.code.rateLimited":
+      "Muitas tentativas. Aguarde um minuto e tente novamente.",
     "core.fallback.title": "Algo deu errado",
     "core.fallback.message": "Algo deu errado ({code}). Tente novamente.",
     "core.codes.unauthorized.title": "Não conectado",
@@ -7452,6 +7845,86 @@ export const KIT_COPY: Readonly<
     "cli.update.downloadNoLink":
       "Scarica la nuova versione da dove hai ottenuto {product}.",
     "cli.activate.noKeyPiped": "Nessuna chiave di licenza è arrivata da stdin.",
+    "signin.approve.lede":
+      "Su un telefono o un computer dove hai già effettuato l'accesso, inquadra il codice, oppure apri Account → Approva un nuovo dispositivo e digitalo.",
+    "signin.approve.other": "Usa un altro modo per accedere",
+    "signin.approve.minuteLeft": "Resta un minuto per questo codice.",
+    "signin.approve.starting": "Recupero del codice",
+    "signin.approve.disabled":
+      "Questo account non può accedere. Usa un altro modo per accedere.",
+    "signin.approve.open": "Approva un nuovo dispositivo",
+    "signin.approve.enter":
+      "Inserisci il codice mostrato sull'altro dispositivo.",
+    "signin.approve.codeLabel": "Codice",
+    "signin.approve.look": "Cerca",
+    "signin.approve.askBody":
+      "Il codice {code} chiede di accedere al tuo account.",
+    "signin.approve.where": "Luogo",
+    "signin.approve.when": "Quando",
+    "signin.approve.device": "Dispositivo",
+    "signin.approve.unknownPlace": "Luogo sconosciuto",
+    "signin.approve.stepUpWhy":
+      "La richiesta arriva da un luogo diverso dal tuo, o da un luogo che non riconosciamo.",
+    "signin.approve.stepUpVerb": "approvarlo",
+    "signin.approve.approved": "Approvato. {device} ha effettuato l'accesso.",
+    "signin.approve.deniedDone": "Rifiutato. Non è cambiato nulla.",
+    "signin.approve.failed": "Non è andata a buon fine. Riprova.",
+    "signin.passkey.cancelled":
+      "La tua passkey non è stata usata. Riprova o usa un altro modo.",
+    "signin.passkey.unsupported":
+      "Questo browser non può usare la tua passkey qui. Usa un altro modo.",
+    "signin.passkey.failed":
+      "La tua passkey non ha funzionato. Riprova o usa un altro modo.",
+    "signin.gate.stripNoIdentity": "Accesso eseguito con {provider}",
+    "signin.gate.termsTitle": "Ancora un passaggio",
+    "signin.gate.name": "Il tuo nome",
+    "signin.gate.useEmail": "Usa {email}",
+    "signin.gate.relay": "Il tuo indirizzo privato Apple",
+    "signin.gate.pictureInitials": "Usa le mie iniziali",
+    "signin.gate.pictureProvider": "Usa la mia immagine di {provider}",
+    "signin.gate.birthdate": "Aggiungi la mia data di nascita da {org}",
+    "signin.gate.birthdateHelp":
+      "Solo tu puoi vederla. Le app non la ricevono mai.",
+    "signin.gate.productTerms": "Accetto i termini di {product}",
+    "signin.gate.platformTerms":
+      "Continuando accetti i termini di Polaris Locker.",
+    "signin.gate.readTerms": "Leggi i termini",
+    "signin.gate.expired": "Questo accesso è scaduto. Accedi di nuovo.",
+    "signin.gate.joinTitle": "Unisci i tuoi account",
+    "signin.gate.joinLede":
+      "{email} appartiene già a un account Polaris Locker. Unisci questo accesso a quell'account, oppure usa un'altra email.",
+    "signin.gate.joinProve":
+      "Per unirli, accedi prima a quell'account in questo browser, poi aggiungi questo accesso da Account.",
+    "signin.gate.codeSent": "Abbiamo inviato un codice a {email}.",
+    "signin.hint.when": "In questo browser, l'ultima volta {when}",
+    "signin.hint.welcomeNoName": "Bentornato",
+    "signin.hint.method.passkey": "una passkey",
+    "signin.hint.method.email": "un codice via email",
+    "signin.hint.usePasskey": "Usa una passkey",
+    "signin.hint.emailCode": "Inviami un codice via email",
+    "signin.hint.change": "Cambia",
+    "signin.key.carriedTitle": "Accedi per aggiungere {product}",
+    "signin.key.carriedLede":
+      "La tua chiave è pronta. Accedi o crea un account e {product} entra nella tua libreria.",
+    "signin.key.withoutKey": "Accedi senza la chiave",
+    "signin.key.onrampLede":
+      "Incolla la chiave dalla email della ricevuta. Poi accedi e entra nella tua libreria.",
+    "signin.code.expiredRestart":
+      "Questo accesso è scaduto. Continua per ricevere un nuovo codice.",
+    "signin.code.noMore":
+      "Non è possibile inviare altri codici per questo accesso. L'ultimo codice è ancora valido.",
+    "signin.sso.title": "Accedi con {org}",
+    "signin.sso.required": "Obbligatorio per gli indirizzi {host}.",
+    "signin.sso.codeIn": "Inviami un codice tra {time}",
+    "signin.sso.code": "Inviami invece un codice via email",
+    "signin.refused.title": "Questo account non può accedere",
+    "signin.refused.lede":
+      "{email} appartiene a un account che non può accedere. Prova un'altra email o un altro modo per accedere.",
+    "signin.off.title": "L'accesso è disattivato",
+    "signin.turnstile.failed":
+      "Il controllo di sicurezza non è andato a buon fine. Riprova.",
+    "signin.code.rateLimited":
+      "Troppi tentativi. Attendi un minuto, poi riprova.",
     "core.fallback.title": "Si è verificato un problema",
     "core.fallback.message": "Si è verificato un problema ({code}). Riprova.",
     "core.codes.unauthorized.title": "Accesso non effettuato",
@@ -8800,6 +9273,88 @@ export const KIT_COPY: Readonly<
     "cli.update.downloadNoLink":
       "{product}を入手した場所から新しいバージョンを入手してください。",
     "cli.activate.noKeyPiped": "stdin からライセンスキーが届きませんでした。",
+    "signin.approve.lede":
+      "サインイン済みのスマートフォンまたはコンピュータで、コードをスキャンするか、アカウント → 新しいデバイスを承認 を開いて入力してください。",
+    "signin.approve.other": "別の方法でサインイン",
+    "signin.approve.minuteLeft": "このコードの有効時間はあと1分です。",
+    "signin.approve.starting": "コードを取得しています",
+    "signin.approve.disabled":
+      "このアカウントはサインインできません。別の方法でサインインしてください。",
+    "signin.approve.open": "新しいデバイスを承認",
+    "signin.approve.enter":
+      "もう一方のデバイスに表示されているコードを入力してください。",
+    "signin.approve.codeLabel": "コード",
+    "signin.approve.look": "検索",
+    "signin.approve.askBody":
+      "コード {code} がアカウントへのサインインを求めています。",
+    "signin.approve.where": "場所",
+    "signin.approve.when": "日時",
+    "signin.approve.device": "デバイス",
+    "signin.approve.unknownPlace": "不明な場所",
+    "signin.approve.stepUpWhy":
+      "いまの場所とは別の場所、または場所を特定できない場所からのリクエストです。",
+    "signin.approve.stepUpVerb": "承認する",
+    "signin.approve.approved":
+      "承認しました。{device} はサインインしています。",
+    "signin.approve.deniedDone": "拒否しました。何も変更されていません。",
+    "signin.approve.failed": "完了できませんでした。もう一度お試しください。",
+    "signin.passkey.cancelled":
+      "パスキーは使用されませんでした。もう一度お試しいただくか、別の方法をお使いください。",
+    "signin.passkey.unsupported":
+      "このブラウザではここでパスキーを使用できません。別の方法をお使いください。",
+    "signin.passkey.failed":
+      "パスキーが機能しませんでした。もう一度お試しいただくか、別の方法をお使いください。",
+    "signin.gate.stripNoIdentity": "{provider} でサインイン済み",
+    "signin.gate.termsTitle": "あと1ステップ",
+    "signin.gate.name": "お名前",
+    "signin.gate.useEmail": "{email} を使用",
+    "signin.gate.relay": "Apple のプライベートアドレス",
+    "signin.gate.pictureInitials": "イニシャルを使用",
+    "signin.gate.pictureProvider": "{provider} の画像を使用",
+    "signin.gate.birthdate": "{org} から生年月日を追加",
+    "signin.gate.birthdateHelp":
+      "表示されるのはご本人だけです。アプリには渡されません。",
+    "signin.gate.productTerms": "{product} の利用規約に同意します",
+    "signin.gate.platformTerms":
+      "続行すると、Polaris Locker の利用規約に同意したことになります。",
+    "signin.gate.readTerms": "利用規約を読む",
+    "signin.gate.expired":
+      "このサインインは期限切れです。もう一度サインインしてください。",
+    "signin.gate.joinTitle": "アカウントを統合",
+    "signin.gate.joinLede":
+      "{email} はすでに Polaris Locker のアカウントに属しています。このサインインをそのアカウントに統合するか、別のメールアドレスを使用してください。",
+    "signin.gate.joinProve":
+      "統合するには、まずこのブラウザでそのアカウントにサインインし、アカウントからこのサインインを追加してください。",
+    "signin.gate.codeSent": "{email} にコードを送信しました。",
+    "signin.hint.when": "このブラウザで、前回は {when}",
+    "signin.hint.welcomeNoName": "おかえりなさい",
+    "signin.hint.method.passkey": "パスキー",
+    "signin.hint.method.email": "メールのコード",
+    "signin.hint.usePasskey": "パスキーを使用",
+    "signin.hint.emailCode": "メールでコードを送る",
+    "signin.hint.change": "変更",
+    "signin.key.carriedTitle": "{product} を追加するにはサインイン",
+    "signin.key.carriedLede":
+      "キーの準備ができました。サインインまたはアカウントを作成すると、{product} がライブラリに追加されます。",
+    "signin.key.withoutKey": "キーなしでサインイン",
+    "signin.key.onrampLede":
+      "領収メールのキーを貼り付けてください。次にサインインすると、ライブラリに追加されます。",
+    "signin.code.expiredRestart":
+      "このサインインは期限切れです。続行して新しいコードを取得してください。",
+    "signin.code.noMore":
+      "このサインインでは、これ以上コードを送信できません。最新のコードは引き続き使えます。",
+    "signin.sso.title": "{org} でサインイン",
+    "signin.sso.required": "{host} のアドレスでは必須です。",
+    "signin.sso.codeIn": "{time} 後にメールでコードを送る",
+    "signin.sso.code": "代わりにメールでコードを送る",
+    "signin.refused.title": "このアカウントはサインインできません",
+    "signin.refused.lede":
+      "{email} はサインインできないアカウントに属しています。別のメールアドレスまたは別の方法をお試しください。",
+    "signin.off.title": "サインインは無効です",
+    "signin.turnstile.failed":
+      "セキュリティチェックに失敗しました。もう一度お試しください。",
+    "signin.code.rateLimited":
+      "試行回数が多すぎます。1分待ってからもう一度お試しください。",
     "core.fallback.title": "問題が発生しました",
     "core.fallback.message":
       "問題が発生しました（{code}）。もう一度お試しください。",
@@ -10116,6 +10671,84 @@ export const KIT_COPY: Readonly<
     "cli.update.downloadNoLink":
       "{product}을(를) 받은 곳에서 새 버전을 받으세요.",
     "cli.activate.noKeyPiped": "stdin으로 라이선스 키가 들어오지 않았어요.",
+    "signin.approve.lede":
+      "로그인한 휴대폰이나 컴퓨터에서 코드를 스캔하거나, 계정 → 새 기기 승인을 열어 입력하세요.",
+    "signin.approve.other": "다른 방법으로 로그인",
+    "signin.approve.minuteLeft": "이 코드는 1분 남았습니다.",
+    "signin.approve.starting": "코드를 가져오는 중",
+    "signin.approve.disabled":
+      "이 계정은 로그인할 수 없습니다. 다른 방법으로 로그인하세요.",
+    "signin.approve.open": "새 기기 승인",
+    "signin.approve.enter": "다른 기기에 표시된 코드를 입력하세요.",
+    "signin.approve.codeLabel": "코드",
+    "signin.approve.look": "찾기",
+    "signin.approve.askBody": "코드 {code}이(가) 계정에 로그인하려고 합니다.",
+    "signin.approve.where": "위치",
+    "signin.approve.when": "시간",
+    "signin.approve.device": "기기",
+    "signin.approve.unknownPlace": "알 수 없는 위치",
+    "signin.approve.stepUpWhy":
+      "현재 위치와 다른 곳이거나 위치를 알 수 없는 곳에서 요청했습니다.",
+    "signin.approve.stepUpVerb": "승인하기",
+    "signin.approve.approved": "승인했습니다. {device}이(가) 로그인되었습니다.",
+    "signin.approve.deniedDone": "거부했습니다. 변경된 내용이 없습니다.",
+    "signin.approve.failed": "처리되지 않았습니다. 다시 시도하세요.",
+    "signin.passkey.cancelled":
+      "패스키가 사용되지 않았습니다. 다시 시도하거나 다른 방법을 사용하세요.",
+    "signin.passkey.unsupported":
+      "이 브라우저에서는 패스키를 사용할 수 없습니다. 다른 방법을 사용하세요.",
+    "signin.passkey.failed":
+      "패스키가 작동하지 않았습니다. 다시 시도하거나 다른 방법을 사용하세요.",
+    "signin.gate.stripNoIdentity": "{provider}(으)로 로그인됨",
+    "signin.gate.termsTitle": "한 단계 남았습니다",
+    "signin.gate.name": "이름",
+    "signin.gate.useEmail": "{email} 사용",
+    "signin.gate.relay": "Apple 비공개 주소",
+    "signin.gate.pictureInitials": "이니셜 사용",
+    "signin.gate.pictureProvider": "{provider} 사진 사용",
+    "signin.gate.birthdate": "{org}에서 생년월일 추가",
+    "signin.gate.birthdateHelp":
+      "본인만 볼 수 있습니다. 앱에는 전달되지 않습니다.",
+    "signin.gate.productTerms": "{product} 약관에 동의합니다",
+    "signin.gate.platformTerms":
+      "계속하면 Polaris Locker 약관에 동의하는 것으로 간주됩니다.",
+    "signin.gate.readTerms": "약관 읽기",
+    "signin.gate.expired": "이 로그인은 만료되었습니다. 다시 로그인하세요.",
+    "signin.gate.joinTitle": "계정 통합",
+    "signin.gate.joinLede":
+      "{email}은(는) 이미 Polaris Locker 계정에 속해 있습니다. 이 로그인을 해당 계정에 통합하거나 다른 이메일을 사용하세요.",
+    "signin.gate.joinProve":
+      "통합하려면 먼저 이 브라우저에서 해당 계정에 로그인한 다음 계정에서 이 로그인을 추가하세요.",
+    "signin.gate.codeSent": "{email}(으)로 코드를 보냈습니다.",
+    "signin.hint.when": "이 브라우저에서 마지막으로 {when}",
+    "signin.hint.welcomeNoName": "다시 오신 것을 환영합니다",
+    "signin.hint.method.passkey": "패스키",
+    "signin.hint.method.email": "이메일 코드",
+    "signin.hint.usePasskey": "패스키 사용",
+    "signin.hint.emailCode": "이메일로 코드 받기",
+    "signin.hint.change": "변경",
+    "signin.key.carriedTitle": "{product}을(를) 추가하려면 로그인",
+    "signin.key.carriedLede":
+      "키가 준비되었습니다. 로그인하거나 계정을 만들면 {product}이(가) 라이브러리에 추가됩니다.",
+    "signin.key.withoutKey": "키 없이 로그인",
+    "signin.key.onrampLede":
+      "영수증 이메일의 키를 붙여 넣으세요. 이어서 로그인하면 라이브러리에 추가됩니다.",
+    "signin.code.expiredRestart":
+      "이 로그인은 만료되었습니다. 계속하여 새 코드를 받으세요.",
+    "signin.code.noMore":
+      "이 로그인에서는 더 이상 코드를 보낼 수 없습니다. 마지막 코드는 계속 사용할 수 있습니다.",
+    "signin.sso.title": "{org}(으)로 로그인",
+    "signin.sso.required": "{host} 주소에는 필수입니다.",
+    "signin.sso.codeIn": "{time} 후 이메일로 코드 받기",
+    "signin.sso.code": "대신 이메일로 코드 받기",
+    "signin.refused.title": "이 계정은 로그인할 수 없습니다",
+    "signin.refused.lede":
+      "{email}은(는) 로그인할 수 없는 계정에 속해 있습니다. 다른 이메일이나 다른 방법을 사용해 보세요.",
+    "signin.off.title": "로그인이 꺼져 있습니다",
+    "signin.turnstile.failed":
+      "보안 확인을 통과하지 못했습니다. 다시 시도하세요.",
+    "signin.code.rateLimited":
+      "시도 횟수가 너무 많습니다. 1분 기다린 후 다시 시도하세요.",
     "core.fallback.title": "문제가 발생했어요",
     "core.fallback.message": "문제가 발생했어요({code}). 다시 시도하세요.",
     "core.codes.unauthorized.title": "로그인되지 않음",
@@ -11362,6 +11995,75 @@ export const KIT_COPY: Readonly<
     "cli.login.attached": "许可证密钥已添加到你的账户。",
     "cli.update.downloadNoLink": "请从你获取 {product} 的地方获取新版本。",
     "cli.activate.noKeyPiped": "stdin 上没有收到许可证密钥。",
+    "signin.approve.lede":
+      "在已登录的手机或电脑上扫描该代码，或打开“账户 → 批准新设备”并输入。",
+    "signin.approve.other": "使用其他登录方式",
+    "signin.approve.minuteLeft": "此代码还剩一分钟。",
+    "signin.approve.starting": "正在获取代码",
+    "signin.approve.disabled": "该账户无法登录。请使用其他登录方式。",
+    "signin.approve.open": "批准新设备",
+    "signin.approve.enter": "输入另一台设备上显示的代码。",
+    "signin.approve.codeLabel": "代码",
+    "signin.approve.look": "查找",
+    "signin.approve.askBody": "代码 {code} 请求登录您的账户。",
+    "signin.approve.where": "位置",
+    "signin.approve.when": "时间",
+    "signin.approve.device": "设备",
+    "signin.approve.unknownPlace": "未知位置",
+    "signin.approve.stepUpWhy":
+      "请求来自与您当前不同的位置，或无法确定的位置。",
+    "signin.approve.stepUpVerb": "批准",
+    "signin.approve.approved": "已批准。{device} 已登录。",
+    "signin.approve.deniedDone": "已拒绝。未做任何更改。",
+    "signin.approve.failed": "未能完成。请重试。",
+    "signin.passkey.cancelled": "未使用您的通行密钥。请重试或使用其他方式。",
+    "signin.passkey.unsupported":
+      "此浏览器无法在此使用您的通行密钥。请使用其他方式。",
+    "signin.passkey.failed": "您的通行密钥无效。请重试或使用其他方式。",
+    "signin.gate.stripNoIdentity": "已通过 {provider} 登录",
+    "signin.gate.termsTitle": "还有一步",
+    "signin.gate.name": "您的姓名",
+    "signin.gate.useEmail": "使用 {email}",
+    "signin.gate.relay": "您的 Apple 私密地址",
+    "signin.gate.pictureInitials": "使用我的首字母",
+    "signin.gate.pictureProvider": "使用我的 {provider} 头像",
+    "signin.gate.birthdate": "添加来自 {org} 的出生日期",
+    "signin.gate.birthdateHelp": "只有您能看到。应用永远不会获得。",
+    "signin.gate.productTerms": "我同意 {product} 条款",
+    "signin.gate.platformTerms": "继续即表示您同意 Polaris Locker 条款。",
+    "signin.gate.readTerms": "阅读条款",
+    "signin.gate.expired": "此次登录已过期。请重新登录。",
+    "signin.gate.joinTitle": "合并您的账户",
+    "signin.gate.joinLede":
+      "{email} 已属于一个 Polaris Locker 账户。请将此登录合并到该账户，或使用其他邮箱。",
+    "signin.gate.joinProve":
+      "要合并，请先在此浏览器中登录该账户，然后在“账户”中添加此登录。",
+    "signin.gate.codeSent": "我们已向 {email} 发送了验证码。",
+    "signin.hint.when": "在此浏览器上，上次为 {when}",
+    "signin.hint.welcomeNoName": "欢迎回来",
+    "signin.hint.method.passkey": "通行密钥",
+    "signin.hint.method.email": "邮件验证码",
+    "signin.hint.usePasskey": "使用通行密钥",
+    "signin.hint.emailCode": "通过邮件发送验证码",
+    "signin.hint.change": "更改",
+    "signin.key.carriedTitle": "登录以添加 {product}",
+    "signin.key.carriedLede":
+      "密钥已就绪。登录或创建账户后，{product} 将加入您的库。",
+    "signin.key.withoutKey": "不使用密钥登录",
+    "signin.key.onrampLede":
+      "粘贴收据邮件中的密钥。接着登录，它就会加入您的库。",
+    "signin.code.expiredRestart": "此次登录已过期。请继续以获取新验证码。",
+    "signin.code.noMore": "此次登录无法再发送验证码。最新的验证码仍然有效。",
+    "signin.sso.title": "使用 {org} 登录",
+    "signin.sso.required": "{host} 地址必须使用。",
+    "signin.sso.codeIn": "{time} 后通过邮件发送验证码",
+    "signin.sso.code": "改为通过邮件发送验证码",
+    "signin.refused.title": "该账户无法登录",
+    "signin.refused.lede":
+      "{email} 属于无法登录的账户。请尝试其他邮箱或其他登录方式。",
+    "signin.off.title": "登录已关闭",
+    "signin.turnstile.failed": "安全检查未通过。请重试。",
+    "signin.code.rateLimited": "尝试次数过多。请等待一分钟后重试。",
     "core.fallback.title": "出现问题",
     "core.fallback.message": "出现问题（{code}）。请重试。",
     "core.codes.unauthorized.title": "未登录",
@@ -11967,4 +12669,15 @@ export const KIT_COPY_VARIANTS: Readonly<
     macos: "Manage Sign-In Methods in Polaris Locker",
   },
   "signin.profile.changePicture": { macos: "Change Picture" },
+  "signin.approve.other": { macos: "Use Another Way to Sign In" },
+  "signin.approve.open": { macos: "Approve a New Device" },
+  "signin.approve.look": { macos: "Find It" },
+  "signin.gate.pictureInitials": { macos: "Use My Initials" },
+  "signin.gate.pictureProvider": { macos: "Use My {provider} Picture" },
+  "signin.gate.readTerms": { macos: "Read the Terms" },
+  "signin.hint.usePasskey": { macos: "Use a Passkey" },
+  "signin.hint.emailCode": { macos: "Email Me a Code" },
+  "signin.key.withoutKey": { macos: "Sign In Without the Key" },
+  "signin.sso.codeIn": { macos: "Email Me a Code in {time}" },
+  "signin.sso.code": { macos: "Email Me a Code Instead" },
 };

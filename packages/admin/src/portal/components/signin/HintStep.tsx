@@ -15,7 +15,6 @@ import {
 } from "../../../ui/auth/ProviderGlyphs.js";
 import { formatRelative } from "../../../lib/format.js";
 import { t } from "../../../lib/copy.js";
-import { sc } from "../../copy/signin.js";
 import { portalApi, PortalApiError, type PortalEmailSent } from "../../api.js";
 import { initialsOf } from "../Avatar.js";
 import type { LastMethod } from "../../lastMethod.js";
@@ -63,7 +62,7 @@ export function HintStep({
       : null;
   const methodName = provider
     ? NAME[provider]!
-    : sc(
+    : t(
         last.kind === "passkey"
           ? "signin.hint.method.passkey"
           : "signin.hint.method.email",
@@ -112,13 +111,13 @@ export function HintStep({
           onClick={onOther}
           className="shrink-0 font-medium text-fg-strong underline underline-offset-4"
         >
-          {sc("signin.hint.change")}
+          {t("signin.hint.change")}
         </button>
       </div>
       <AuthTitle>
         {last.name
           ? t("signin.hint.welcome", { name: last.name })
-          : sc("signin.hint.welcomeNoName")}
+          : t("signin.hint.welcomeNoName")}
       </AuthTitle>
       <div className="flex items-center gap-3 rounded-md border border-border-strong bg-surface-sunken px-4 py-3">
         <span className="shrink-0 text-fg-strong">{mark}</span>
@@ -128,7 +127,7 @@ export function HintStep({
           </p>
           {last.at ? (
             <p className="text-sm text-fg-muted">
-              {sc("signin.hint.when", { when: formatRelative(last.at * 1000) })}
+              {t("signin.hint.when", { when: formatRelative(last.at * 1000) })}
             </p>
           ) : null}
         </div>
@@ -149,7 +148,7 @@ export function HintStep({
           onClick={() => void pk.run()}
           iconStart={<Fingerprint aria-hidden />}
         >
-          {sc("signin.hint.usePasskey")}
+          {t("signin.hint.usePasskey")}
         </Button>
       ) : null}
       <OrDivider />
@@ -163,7 +162,7 @@ export function HintStep({
             onClick={() => void mail()}
             iconStart={<Mail aria-hidden />}
           >
-            {sc("signin.hint.emailCode")}
+            {t("signin.hint.emailCode")}
           </Button>
         ) : null}
         {passkeyAvailable && last.kind !== "passkey" ? (
@@ -175,7 +174,7 @@ export function HintStep({
             onClick={() => void pk.run()}
             iconStart={<Fingerprint aria-hidden />}
           >
-            {sc("signin.hint.usePasskey")}
+            {t("signin.hint.usePasskey")}
           </Button>
         ) : null}
       </div>

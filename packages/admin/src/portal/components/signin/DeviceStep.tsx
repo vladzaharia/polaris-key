@@ -4,7 +4,6 @@ import { Button } from "../../../ui/Button.js";
 import { Spinner } from "../../../ui/Spinner.js";
 import { AuthTitle } from "../../../ui/auth/index.js";
 import { t } from "../../../lib/copy.js";
-import { sc } from "../../copy/signin.js";
 import {
   portalApi,
   PortalApiError,
@@ -106,7 +105,7 @@ export function DeviceStep({
     const tick = window.setInterval(() => {
       const s = Math.round((state.endsAt - Date.now()) / 1000);
       setLeft(s);
-      if (s === 60) setAnnounce(sc("signin.approve.minuteLeft"));
+      if (s === 60) setAnnounce(t("signin.approve.minuteLeft"));
     }, 1000);
     return () => window.clearInterval(tick);
   }, [state]);
@@ -117,13 +116,13 @@ export function DeviceStep({
     <>
       <div className="space-y-2">
         <AuthTitle>{t("signin.approve.title")}</AuthTitle>
-        <p className="text-fg-muted">{sc("signin.approve.lede")}</p>
+        <p className="text-fg-muted">{t("signin.approve.lede")}</p>
       </div>
       {state.kind === "starting" ? (
         <div
           aria-busy
           role="status"
-          aria-label={sc("signin.approve.starting")}
+          aria-label={t("signin.approve.starting")}
           className="flex flex-col gap-4 sm:flex-row sm:items-center"
         >
           <div aria-hidden className="size-42 rounded-md bg-hover" />
@@ -171,7 +170,7 @@ export function DeviceStep({
           {state.kind === "denied"
             ? t("signin.approve.denied")
             : state.kind === "disabled"
-              ? sc("signin.approve.disabled")
+              ? t("signin.approve.disabled")
               : t("signin.approve.expired")}
         </p>
       )}
@@ -201,7 +200,7 @@ export function DeviceStep({
           className="h-12 w-full text-base font-semibold"
           onClick={onOther}
         >
-          {sc("signin.approve.other")}
+          {t("signin.approve.other")}
         </Button>
       </div>
     </>
