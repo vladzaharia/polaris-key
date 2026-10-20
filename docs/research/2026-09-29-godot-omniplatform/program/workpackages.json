@@ -18081,7 +18081,7 @@
       "optional": false,
       "refs": ["plans/LK-00.md §14"],
       "brief": "wp/LK-15-docs-locker-identity.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "LK-16",

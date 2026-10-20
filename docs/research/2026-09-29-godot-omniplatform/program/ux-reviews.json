@@ -264,6 +264,11 @@
       "verdict": "pass",
       "date": "2026-10-20",
       "evidence": "Lead-verified MOCKUP pass (portal.library Locker re-skin)."
+    },
+    "LK-15": {
+      "verdict": "pass",
+      "date": "2026-10-20",
+      "evidence": "UX review PASS-WITH-NOTES 2026-10-19 (_mockups/review/LK-15/); notes fixed (8bd71e72b); A4 re-scope to Key chrome (f5936e16d, chrome = main); switch notes dropped (4f7a06bcd)."
     }
   }
 }
