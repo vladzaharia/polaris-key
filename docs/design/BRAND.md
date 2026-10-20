@@ -113,6 +113,8 @@ without gold; `opticalCut()` and `<PolarisMark>` do the same.
 
 ### 1.5 "Powered by Polaris Key"
 
+> LK-00 §14: the public attribution is now "Powered by Polaris Locker" (UI-KITS §1.6). The Key badges below stay platform references and are not offered to integrators.
+
 - The exact phrase **Powered by Polaris Key**. The secondary phrase is Rubik Regular; the wordmark
   is Rubik Bold.
 - Minimum sizes (CSS px): **horizontal 376 × 144**, **compact 232 × 88**, **stacked 288 × 336**.
@@ -591,13 +593,13 @@ consistent with the ¼-glyph rule for the outward edges).
 
 ### 7.1 Which mark
 
-| Surface                                                                                                                                         | Mark                                                                  | Favicon / PWA identity            |
-| ----------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | --------------------------------- |
-| Admin console, customer portal, docs site, Worker pages on key.plrs.im, emails                                                                  | Pinned K                                                              | `web/key/`                        |
-| Delivery surfaces: dl.plrs.im (and dl-staging, dl-dev), updater prompts, feed pages, the Distribution and Update console sections' empty states | Star Cut                                                              | `web/update/` (on the bytes host) |
-| Console header (service sections, including Distribution/Update; core pages show no bit)                                                        | Pinned K with the section bit                                         | `web/key/`                        |
-| Service navigation, diagrams, marketing menus                                                                                                   | Service icon in the section accent (`fg`), beside the name (§1.1)     | n/a                               |
-| SDK UI kits (every screen)                                                                                                                      | None: the product's identity ([UI-KITS.md §1.6](UI-KITS.md#16-marks)) | n/a                               |
+| Surface                                                                                                                                                          | Mark                                                                  | Favicon / PWA identity            |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | --------------------------------- |
+| Admin console, customer portal, docs site, Worker pages on key.plrs.im, emails (public identity is Locker, LK-00 §14.2; Pinned K here is the platform reference) | Pinned K                                                              | `web/key/`                        |
+| Delivery surfaces: dl.plrs.im (and dl-staging, dl-dev), updater prompts, feed pages, the Distribution and Update console sections' empty states                  | Star Cut                                                              | `web/update/` (on the bytes host) |
+| Console header (service sections, including Distribution/Update; core pages show no bit)                                                                         | Pinned K with the section bit                                         | `web/key/`                        |
+| Service navigation, diagrams, marketing menus                                                                                                                    | Service icon in the section accent (`fg`), beside the name (§1.1)     | n/a                               |
+| SDK UI kits (every screen)                                                                                                                                       | None: the product's identity ([UI-KITS.md §1.6](UI-KITS.md#16-marks)) | n/a                               |
 
 SDK UI kit screens show **no Polaris Key mark**; the Pinned K appears only inside the optional
 Powered-by line or badge, and the Star Cut not at all (UI-KITS.md §1.6, superseding this table's
@@ -607,6 +609,8 @@ Install only one identity's manifest per origin (kit README). Copy the relevant 
 directory, adapt `head-snippet.html`, and set the manifest's `id`, `start_url` and `scope`.
 
 ### 7.2 "Powered by Polaris Key"
+
+> LK-00 §14: integrators use "Powered by Polaris Locker" (UI-KITS §1.6). This section describes the Key badge as a platform reference.
 
 - **Where:** in a product built on Polaris Key: its about/credits screen, its licence or account
   screen, the Godot credits (`games/powered-by-credit-*`), a partner page. In an SDK's drop-in UI
@@ -1120,7 +1124,7 @@ entry points; body copy uses glossary words, and no marketing name becomes a pro
 | Commerce       | `commerce` (CM-29)           | Commerce                        | Commerce              |
 | Packs (update) | none: a capability of Update | none: under Releases            | Content Packs         |
 
-**Polaris Locker** is not a service slug. It is the customer site (Library, Discover, Account, the sign-in card, the device page), a destination with its own `locker` brand namespace (D8). Developers see Polaris Key in the console, CLI, API and developer docs; customers see Polaris Locker once `customer.host` is on. The words "portal" and "customer portal" are internal and leave every string.
+**Polaris Locker** is not a service slug. It is the customer site (Library, Discover, Account, the sign-in card, the device page), a destination with its own `locker` brand namespace (D8). Polaris Locker is the public brand on every surface people read (console, docs, mail, badges, kit attribution); the customer site shows it once `customer.host` is on. Polaris Key is the platform under it, named only where a sentence explains it (LK-00 §14.1). The words "portal" and "customer portal" are internal and leave every string.
 
 Eight slugs, nine marketing entry points, six console features. Ship builds is one console
 identity (Package glyph, Release cyan); the marketing identities (Delivery, Update tangerine, Packs
