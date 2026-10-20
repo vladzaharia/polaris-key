@@ -152,7 +152,7 @@ public class PolarisUiConfig internal constructor(
     public val branding: PolarisBranding,
     public val showPoweredBy: Boolean,
     /** How the attribution is drawn when [showPoweredBy] is on (UI-KITS.md section 1.6). */
-    public val poweredByStyle: PolarisPoweredByStyle = PolarisPoweredByStyle.Badge,
+    public val poweredByStyle: PolarisPoweredByStyle = PolarisPoweredByStyle.Line,
     public val copy: PolarisCopy,
     public val logo: (@Composable () -> Unit)?,
     public val dark: Boolean,
@@ -181,9 +181,10 @@ internal val LocalPolarisUi = staticCompositionLocalOf<PolarisUiConfig?> { null 
  *   [PolarisBranding.PolarisKey] applies the Polaris Key brand. The one switch.
  * @param showPoweredBy shows "Powered by Polaris Locker" at the foot of the kit's screens. Off by
  *   default, and independent of [branding].
- * @param poweredByStyle [PolarisPoweredByStyle.Badge] (the default) draws the 320 x 104 badge where 320 dp
- *   are free and the line elsewhere; [PolarisPoweredByStyle.Line] always draws the line (the Locker
- *   micro mark and the phrase).
+ * @param poweredByStyle [PolarisPoweredByStyle.Line] (the default) draws the Locker micro mark and the
+ *   phrase; [PolarisPoweredByStyle.Badge] draws the 320 x 104 badge on an About or credits screen where
+ *   320 dp are free (the line elsewhere). The gate never draws it (UI-KITS.md section 1.6): the kit's
+ *   account pane does, and [PolarisPoweredBy] is for your about and credits screens.
  * @param copy every string the kit renders; the default reads the string resources, so an app's
  *   translations apply.
  * @param logo the product's icon: the hero of the welcome, beside the product name on focused
@@ -206,7 +207,7 @@ internal val LocalPolarisUi = staticCompositionLocalOf<PolarisUiConfig?> { null 
 public fun PolarisTheme(
     branding: PolarisBranding = PolarisBranding.None,
     showPoweredBy: Boolean = false,
-    poweredByStyle: PolarisPoweredByStyle = PolarisPoweredByStyle.Badge,
+    poweredByStyle: PolarisPoweredByStyle = PolarisPoweredByStyle.Line,
     copy: PolarisCopy = PolarisCopy.localized(),
     logo: (@Composable () -> Unit)? = null,
     darkTheme: Boolean = isSystemInDarkTheme(),

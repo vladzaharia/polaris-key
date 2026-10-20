@@ -16,7 +16,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -135,30 +137,34 @@ public fun PolarisPoweredByBadge(modifier: Modifier = Modifier, width: Dp? = nul
 public fun PolarisPoweredByLine(modifier: Modifier = Modifier) {
     val vector = if (PolarisTheme.current.dark) microDark else microLight
     val label = PolarisTheme.copy.poweredBy
+    // 16 dp at the default text size, growing with the text (the em rule): the line's text is 1.25 em.
+    val side = with(LocalDensity.current) {
+        maxOf(PolarisBrandTokens.POWERED_BY_MARK_SIZE.dp, (MaterialTheme.typography.bodySmall.fontSize * 1.25f).toDp())
+    }
     Row(
         // One node named by the phrase, like the badge: the mark is decorative and the text is not read twice.
-        modifier = modifier.clearAndSetSemantics { contentDescription = label },
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = label },
+        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Image(
             painter = rememberVectorPainter(vector),
             contentDescription = null,
-            modifier = Modifier.size(PolarisBrandTokens.POWERED_BY_MARK_SIZE.dp),
+            modifier = Modifier.size(side),
         )
         Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
 /**
- * The attribution the kit's screens show: the line, or, for [PolarisPoweredByStyle.Badge], the badge
- * where 320 dp are free and the line where they are not (UI-KITS.md section 1.6).
+ * The attribution for an about or credits screen: the line, or, for [PolarisPoweredByStyle.Badge], the
+ * badge where 320 dp are free and the line where they are not (UI-KITS.md section 1.6), centred in its column.
  */
 @Composable
 public fun PolarisPoweredBy(modifier: Modifier = Modifier) {
     when (PolarisTheme.current.poweredByStyle) {
         PolarisPoweredByStyle.Line -> PolarisPoweredByLine(modifier)
-        PolarisPoweredByStyle.Badge -> BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
+        PolarisPoweredByStyle.Badge -> BoxWithConstraints(modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
             if (maxWidth >= PolarisBrandTokens.badgeMin.width.dp) {
                 PolarisPoweredByBadge()
             } else {

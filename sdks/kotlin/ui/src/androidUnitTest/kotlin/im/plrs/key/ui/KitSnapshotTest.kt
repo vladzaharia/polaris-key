@@ -17,6 +17,10 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -93,7 +97,7 @@ internal fun ComposeTestRule.capture(
     name: String,
     variant: SnapshotVariant,
     showPoweredBy: Boolean = false,
-    poweredByStyle: PolarisPoweredByStyle = PolarisPoweredByStyle.Badge,
+    poweredByStyle: PolarisPoweredByStyle = PolarisPoweredByStyle.Line,
     keyboard: Boolean = false,
     accent: Color? = null,
     host: ColorScheme? = null,
@@ -150,8 +154,8 @@ class KitSnapshotTest(private val variant: SnapshotVariant) {
 }
 
 /**
- * The optional attribution, off by default, in both brandings: the line where 320 dp are not free (a
- * phone), the Locker badge where they are (a tablet), and the line always with `Line`.
+ * The optional attribution on an about screen, off by default, in both brandings: the line by default,
+ * the Locker badge with `Badge` where 320 dp are free.
  */
 @RunWith(org.robolectric.RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -162,15 +166,25 @@ class PoweredBySnapshotTest {
 
     @Test
     fun attributionInBothBrandings() {
-        val activation = kitScreens.first { it.first == "gate-activation" }.second
-        rule.capture("powered-by/phone-neutral-light", snapshotVariants[0], showPoweredBy = true, content = activation)
-        rule.capture("powered-by/phone-branded-dark", snapshotVariants[2], showPoweredBy = true, content = activation)
-        rule.capture("powered-by/phone-branded-light", snapshotVariants[3], showPoweredBy = true, content = activation)
-        rule.capture("powered-by/tablet-branded-dark", snapshotVariants[6], showPoweredBy = true, content = activation)
-        rule.capture("powered-by/tablet-neutral-light", snapshotVariants[5], showPoweredBy = true, content = activation)
+        val about: @Composable () -> Unit = {
+            PolarisScreen {
+                PolarisTitle("About Diceroll")
+                PolarisBody("Version 2.4.1")
+                Spacer(Modifier.height(16.dp))
+                PolarisPoweredBy()
+            }
+        }
+        rule.capture("powered-by/phone-neutral-light", snapshotVariants[0], showPoweredBy = true, content = about)
+        rule.capture("powered-by/phone-branded-dark", snapshotVariants[2], showPoweredBy = true, content = about)
+        rule.capture("powered-by/phone-branded-light", snapshotVariants[3], showPoweredBy = true, content = about)
         rule.capture(
-            "powered-by/tablet-neutral-light-line", snapshotVariants[5], showPoweredBy = true,
-            poweredByStyle = PolarisPoweredByStyle.Line, content = activation,
+            "powered-by/phone-badge-branded-dark", snapshotVariants[2], showPoweredBy = true,
+            poweredByStyle = PolarisPoweredByStyle.Badge, content = about,
         )
+        rule.capture(
+            "powered-by/tablet-badge-neutral-light", snapshotVariants[5], showPoweredBy = true,
+            poweredByStyle = PolarisPoweredByStyle.Badge, content = about,
+        )
+        rule.capture("powered-by/tablet-branded-dark", snapshotVariants[6], showPoweredBy = true, content = about)
     }
 }

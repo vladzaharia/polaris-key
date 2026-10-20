@@ -73,7 +73,8 @@ public fun PolarisKitScreen(
     }
     val controls = lines.filter { it.role == KitLineRole.Control }
     val announcement = lines.filter { it.role == KitLineRole.Announcement }.joinToString(". ") { it.text }
-    val text = lines.filter { it.role == KitLineRole.Text }
+    val text = lines.filter { it.role == KitLineRole.Text && it.key != "part.poweredBy" }
+    val attribution = lines.any { it.key == "part.poweredBy" }
     PolarisScreen(
         modifier = modifier.semantics {
             if (announcement.isNotEmpty()) {
@@ -97,6 +98,11 @@ public fun PolarisKitScreen(
         text.forEachIndexed { index, line ->
             if (index == 0) PolarisTitle(line.text) else PolarisBody(line.text)
             Spacer(Modifier.height(8.dp))
+        }
+        // The optional attribution is the pane's last item (UI-KITS.md section 1.6): the line on the
+        // account pane, the badge only on About.
+        if (attribution) {
+            if (screen.component.name.equals("about", ignoreCase = true)) PolarisPoweredBy() else PolarisPoweredByLine()
         }
     }
 }
