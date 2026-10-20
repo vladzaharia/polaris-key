@@ -198,14 +198,3 @@ public struct PolarisPoweredByAttribution: View {
         .accessibilityElement(children: .combine)
     }
 }
-
-/// Which attribution a product opts in to. The legacy gate never draws it (UI-KITS §1.6: only on
-/// account, settings, about and credits screens); place `PolarisPoweredByAttribution(style:)` there.
-/// `.line` is the default; the badge is opt-in.
-public struct PolarisPoweredBy: Sendable, Equatable {
-    public var style: PolarisPoweredByStyle
-
-    public init(style: PolarisPoweredByStyle = .line) {
-        self.style = style
-    }
-}

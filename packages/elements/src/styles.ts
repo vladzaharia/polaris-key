@@ -489,6 +489,8 @@ p {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-wrap: wrap;
+  text-align: center;
   gap: var(--pk-space-2);
   margin: 0;
 }

@@ -179,7 +179,8 @@ internal val LocalPolarisUi = staticCompositionLocalOf<PolarisUiConfig?> { null 
  *
  * @param branding [PolarisBranding.None] (the default) inherits the host's MaterialTheme;
  *   [PolarisBranding.PolarisKey] applies the Polaris Key brand. The one switch.
- * @param showPoweredBy shows "Powered by Polaris Locker" at the foot of the kit's screens. Off by
+ * @param showPoweredBy draws "Powered by Polaris Locker" as the last item of [PolarisSettingsScreen] and of the
+ *   kit's account pane ([PolarisKitScreen] for the account component), after its controls. Off by
  *   default, and independent of [branding].
  * @param poweredByStyle [PolarisPoweredByStyle.Line] (the default) draws the Locker micro mark and the
  *   phrase; [PolarisPoweredByStyle.Badge] draws the 320 x 104 badge on an About or credits screen where

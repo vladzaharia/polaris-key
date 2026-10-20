@@ -139,11 +139,26 @@ class BrandingTest {
     }
 
     @Test
+    fun showPoweredByDrawsTheLineOnTheSettingsScreenAndTheAccountPane() {
+        var on by mutableStateOf(true)
+        host { content -> PolarisTheme(showPoweredBy = on, copy = sampleCopy, darkTheme = false, content = content) }
+        show { PolarisSettingsScreen(sampleSettings) }
+        assertEquals("settings draws the line with the switch on", 1, badges())
+        rule.runOnIdle { on = false }
+        rule.waitForIdle()
+        assertEquals("and none with it off", 0, badges())
+        rule.runOnIdle { on = true }
+        val inputs = KitInputs.of(mapOf("account" to kotlinx.serialization.json.buildJsonObject { put("signedIn", kotlinx.serialization.json.JsonPrimitive(true)) }))
+        show { PolarisKitScreen(KitStates.resolve(KitComponent.accountAndLicense, inputs)) }
+        assertEquals("the account pane draws the line too", 1, badges())
+    }
+
+    @Test
     fun theAttributionIsIndependentOfBrandingAndNeverOnTheGate() {
         var branding by mutableStateOf(PolarisBranding.None)
         host { content -> PolarisTheme(branding = branding, showPoweredBy = true, copy = sampleCopy, darkTheme = false, content = content) }
         // UI-KITS.md section 1.6: never on the gate or a message screen.
-        for ((name, content) in kitScreens) {
+        for ((name, content) in kitScreens.filter { it.first != "settings" }) {
             show(content)
             assertEquals("$name draws the attribution", 0, badges())
         }

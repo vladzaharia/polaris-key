@@ -220,6 +220,8 @@ Rectangle {
                     }
                     Text {
                         text: spec.poweredByText
+                        wrapMode: Text.Wrap
+                        Layout.maximumWidth: column.width - 40
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.typeMeta.size * root.fs
                         color: Theme.textSubtle

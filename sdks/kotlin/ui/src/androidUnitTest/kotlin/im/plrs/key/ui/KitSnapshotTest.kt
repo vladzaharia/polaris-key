@@ -186,5 +186,12 @@ class PoweredBySnapshotTest {
             poweredByStyle = PolarisPoweredByStyle.Badge, content = about,
         )
         rule.capture("powered-by/tablet-branded-dark", snapshotVariants[6], showPoweredBy = true, content = about)
+        // The kit's own account pane: the line after the controls.
+        val account: @Composable () -> Unit = {
+            val inputs = KitInputs.of(mapOf("account" to kotlinx.serialization.json.buildJsonObject { put("signedIn", kotlinx.serialization.json.JsonPrimitive(true)) }))
+            PolarisKitScreen(KitStates.resolve(KitComponent.accountAndLicense, inputs))
+        }
+        rule.capture("powered-by/account-pane-branded-dark", snapshotVariants[2], showPoweredBy = true, content = account)
+        rule.capture("powered-by/account-pane-neutral-light", snapshotVariants[0], showPoweredBy = true, content = account)
     }
 }

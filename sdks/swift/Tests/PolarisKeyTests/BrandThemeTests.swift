@@ -64,7 +64,6 @@
             XCTAssertEqual(theme.resolvedPalette(for: .dark), .native)
             XCTAssertEqual(theme.resolvedTypography(), .system)
             XCTAssertFalse(theme.setsTint(), "a native gate inherits the host app's tint")
-            XCTAssertNil(theme.poweredBy)
         }
 
         func testTheEnvironmentOptInSwitchesToTheBrand() {
@@ -79,7 +78,6 @@
                 theme.resolvedPalette(for: .light, branding: branding), PolarisPalette.brandLight)
             XCTAssertEqual(theme.resolvedTypography(branding: branding), .brand)
             XCTAssertTrue(theme.setsTint(branding: branding))
-            XCTAssertNil(theme.poweredBy, "the badge stays a separate opt-in")
         }
 
         /// The theme's own `branding` wins over the environment, in both directions.
@@ -238,7 +236,6 @@
         }
 
         func testPoweredByIsOptInAndUsesTheExactPhrase() {
-            XCTAssertNil(PolarisTheme().poweredBy)
             XCTAssertEqual(PolarisBrand.poweredByPhrase, "Powered by Polaris Locker")
         }
 

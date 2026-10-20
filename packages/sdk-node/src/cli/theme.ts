@@ -19,7 +19,7 @@
 //   motion       "reduced" / "none" stop the spinner and redraws (lines print once).
 //   product      the integrator's ProductIdentity, which wins over every other source.
 //   copy         `{ locale, overrides }` (§4.7).
-//   poweredBy    "line" or "badge" add the Powered by Polaris Locker line (the Locker mark's glyph
+//   poweredBy    true, "line" or "badge" add the Powered by Polaris Locker line (the Locker mark's glyph
 //                and the phrase) under the signed-in `status` and the grace line (never on a gate); a terminal has no badge.
 //   symbols      the terminal's restyle hook (§3.2): "unicode" (default) or "ascii".
 //   serviceCues, radius, typography, ambient, platform: accepted for one theme value across kits,
@@ -101,7 +101,7 @@ export interface PolarisKeyTerminalTheme {
   ambient?: boolean;
   product?: Partial<ProductIdentity>;
   copy?: CopyOptions;
-  poweredBy?: false | "line" | "badge";
+  poweredBy?: boolean | "line" | "badge";
   platform?: string;
   symbols?: "unicode" | "ascii";
 }

@@ -139,9 +139,6 @@ public struct PolarisCopy: Sendable {
 /// - `palette` replaces every colour, per colour scheme;
 /// - `typography` picks the system font, Rubik or the product's own faces;
 /// - `logo` replaces the product icon the kit would show;
-/// - `poweredBy` records the opt-in to "Powered by Polaris Locker" (the line by default). The gate never
-///   draws it (UI-KITS §1.6); the account pane does, and `PolarisPoweredByAttribution` is for your
-///   about and credits screens.
 public struct PolarisTheme: Sendable {
     /// The branding for this gate; nil (the default) follows the `polarisKeyBranding`
     /// environment, which is `.native` unless the host opts in.
@@ -160,8 +157,6 @@ public struct PolarisTheme: Sendable {
     /// size the kit draws the product icon; nil shows the presentation's icon, else the app's
     /// icon, else a monogram tile, in both brandings (never a Polaris Key mark).
     public var logoOverride: (@Sendable () -> AnyView)?
-    /// The badge shown under the activation card, or nil (the default) for none.
-    public var poweredBy: PolarisPoweredBy?
 
     public init(
         branding: PolarisBranding? = nil,
@@ -170,8 +165,7 @@ public struct PolarisTheme: Sendable {
         palette: (@Sendable (ColorScheme) -> PolarisPalette)? = nil,
         typography: PolarisTypography? = nil,
         copy: PolarisCopy = PolarisCopy(),
-        logo: (@Sendable () -> AnyView)? = nil,
-        poweredBy: PolarisPoweredBy? = nil
+        logo: (@Sendable () -> AnyView)? = nil
     ) {
         self.branding = branding
         self.accentOverride = accent
@@ -180,7 +174,6 @@ public struct PolarisTheme: Sendable {
         self.typography = typography
         self.copy = copy
         self.logoOverride = logo
-        self.poweredBy = poweredBy
     }
 
     /// The branding in effect under an environment value of `environment`.

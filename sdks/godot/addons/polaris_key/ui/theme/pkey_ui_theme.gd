@@ -250,7 +250,7 @@ static var accent := Color(0, 0, 0, 0):
 		_cache = null
 ## A Theme that replaces the kit's in every scene still on the stock theme; null for none.
 static var override: Theme = null
-## Show "Powered by Polaris Locker" where the scenes offer it (gate, boot, settings).
+## Show "Powered by Polaris Locker" where the scenes offer it (the settings scene; never the gate or boot).
 static var powered_by := false
 ## How it is drawn (UI-KITS.md §1.6), `PKeyOptions.ui_powered_by_style`: "line" (the default: the
 ## Locker micro mark and the phrase) or "badge" (the 320 x 104 badge on a credits or about scene the

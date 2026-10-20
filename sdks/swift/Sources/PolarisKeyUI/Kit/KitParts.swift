@@ -524,7 +524,7 @@ public struct LoadingIndicator: View {
 
 /// "Powered by Polaris Locker" (UI-KITS §1.6, §4.5): off by default, only at the foot of settings
 /// and about screens, never on the gate. The line is the Locker micro mark (16 pt) and the phrase in
-/// live text; `poweredBy: .badge` draws the Locker `powered-by` badge instead where 320 pt are free.
+/// live text. The badge is for about and credits screens (`PolarisPoweredByAttribution(style: .badge)`).
 public struct PoweredBy: View {
     public init() {}
 

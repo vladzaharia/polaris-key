@@ -38,7 +38,7 @@ mark at 16 dp and the phrase) where they are not; `poweredByStyle = PolarisPower
 always draws the line:
 
 ```kotlin
-PolarisTheme(showPoweredBy = true) { ... }                                        // neutral + attribution
+PolarisTheme(showPoweredBy = true) { ... }                                        // neutral + attribution (settings, account pane)
 PolarisTheme(branding = PolarisBranding.PolarisKey, showPoweredBy = true) { ... } // branded + attribution
 ```
 

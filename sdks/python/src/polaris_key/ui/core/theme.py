@@ -56,7 +56,7 @@ class Theme:
         if self.motion not in MOTIONS:
             raise ValueError(f"theme.motion must be one of {MOTIONS}, not {self.motion!r}")
         if self.powered_by not in (False, True, "line", "badge"):
-            raise ValueError(f"theme.powered_by must be False, 'line' or 'badge', not {self.powered_by!r}")
+            raise ValueError(f"theme.powered_by must be False, True, 'line' or 'badge', not {self.powered_by!r}")
         if self.symbols not in ("auto", "unicode", "ascii"):
             raise ValueError(f"theme.symbols must be auto, unicode or ascii, not {self.symbols!r}")
 

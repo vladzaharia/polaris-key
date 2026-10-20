@@ -1137,7 +1137,7 @@ private struct OptionalTint: ViewModifier {
                 .needsActivation,
                 theme: PolarisTheme(
                     branding: .polarisKey,
-                    copy: PolarisCopy(productName: "Aurora"), poweredBy: PolarisPoweredBy())
+                    copy: PolarisCopy(productName: "Aurora"))
             )
             .previewLayout(.fixed(width: 393, height: 852))
             .previewDisplayName("Branded with Powered-by badge")

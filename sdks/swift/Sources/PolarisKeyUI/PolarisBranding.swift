@@ -7,7 +7,7 @@
 //         .polarisKeyBranding(.polarisKey)
 //
 // or per gate with `PolarisTheme(branding: .polarisKey)`. The "Powered by Polaris Locker" attribution is a
-// separate opt-in (`PolarisTheme(poweredBy:)`) and is off in both modes.
+// separate opt-in (the kit theme's `poweredBy`, or `PolarisPoweredByAttribution` on your about and credits screens) and is off in both modes.
 
 import SwiftUI
 
