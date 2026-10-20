@@ -1645,8 +1645,6 @@
     <string name="profile_birthdate_remove">Rimuovi la data di nascita</string>
     <string name="profile_birthdate_remove__macos">Rimuovi la data di nascita</string>
     <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
-    <string name="profile_birthdate_removeShort">Rimuovi</string>
-    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
     <string name="profile_note">Le immagini vengono copiate in Polaris Locker, quindi né questa pagina né le app le caricano dal provider. Un nome o un'immagine importati seguono il provider finché non ne scegli uno tu; dopo, resta la tua scelta.</string>
     <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
     <string name="profile_save">Salva profilo</string>

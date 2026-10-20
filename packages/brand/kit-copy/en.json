@@ -3676,11 +3676,6 @@
       "role": "button",
       "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
     },
-    "profile.birthdate.removeShort": {
-      "value": "Remove",
-      "role": "button",
-      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
-    },
     "profile.note": {
       "value": "Pictures are copied to Polaris Locker, so neither this page nor any app loads them from the provider. An imported name or picture follows its provider until you pick one yourself; after that, your choice stays.",
       "role": "body",

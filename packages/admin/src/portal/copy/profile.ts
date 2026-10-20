@@ -34,7 +34,7 @@ export const PROFILE_COPY = {
   "profile.birthdate.optional": t("profile.birthdate.optional"),
   "profile.birthdate.hint": t("profile.birthdate.hint"),
   "profile.birthdate.remove": t("profile.birthdate.remove"),
-  "profile.birthdate.removeShort": t("profile.birthdate.removeShort"),
+  "profile.birthdate.removeShort": t("devices.remove"),
   "profile.note": t("profile.note"),
   "profile.save": t("profile.save"),
   "profile.cancel": t("signin.cancel"),

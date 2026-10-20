@@ -738,7 +738,6 @@
     "profile.birthdate.optional": "可选",
     "profile.birthdate.hint": "仅你可见，应用不会收到。",
     "profile.birthdate.remove": "移除出生日期",
-    "profile.birthdate.removeShort": "移除",
     "profile.note": "图片会复制到 Polaris Locker，因此此页面和任何应用都不会从提供方加载。导入的名称或图片会跟随其提供方，直到你自己选择；之后将保留你的选择。",
     "profile.save": "保存个人资料",
     "profile.saved": "个人资料已保存",

@@ -1625,8 +1625,6 @@
     <string name="profile_birthdate_remove">生年月日を削除</string>
     <string name="profile_birthdate_remove__macos">生年月日を削除</string>
     <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
-    <string name="profile_birthdate_removeShort">削除</string>
-    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
     <string name="profile_note">画像はPolaris Lockerにコピーされるため、このページもアプリも提供元から読み込みません。取り込んだ名前や画像は、自分で選ぶまで提供元に追従し、選んだ後はその選択が維持されます。</string>
     <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
     <string name="profile_save">プロフィールを保存</string>

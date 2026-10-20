@@ -731,7 +731,6 @@
   "profile.birthdate.optional": "선택 사항",
   "profile.birthdate.hint": "나만 볼 수 있으며 앱에는 전달되지 않습니다.",
   "profile.birthdate.remove": "생년월일 삭제",
-  "profile.birthdate.removeShort": "삭제",
   "profile.note": "사진은 Polaris Locker에 복사되므로 이 페이지와 앱은 제공업체에서 사진을 불러오지 않습니다. 가져온 이름이나 사진은 직접 선택하기 전까지 제공업체를 따르며, 선택한 후에는 선택이 유지됩니다.",
   "profile.save": "프로필 저장",
   "profile.saved": "프로필을 저장했습니다",

@@ -738,7 +738,6 @@
     "profile.birthdate.optional": "Opcional",
     "profile.birthdate.hint": "Privada. Os apps nunca a recebem.",
     "profile.birthdate.remove": "Remover data de nascimento",
-    "profile.birthdate.removeShort": "Remover",
     "profile.note": "As imagens são copiadas para o Polaris Locker, então nem esta página nem nenhum app as carrega do provedor. Um nome ou uma imagem importados acompanham o provedor até você escolher um; depois disso, a sua escolha permanece.",
     "profile.save": "Salvar perfil",
     "profile.saved": "Perfil salvo",

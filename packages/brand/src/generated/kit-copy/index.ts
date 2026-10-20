@@ -745,7 +745,6 @@ export type KitCopyKey =
   | "profile.birthdate.optional"
   | "profile.birthdate.hint"
   | "profile.birthdate.remove"
-  | "profile.birthdate.removeShort"
   | "profile.note"
   | "profile.save"
   | "profile.saved"

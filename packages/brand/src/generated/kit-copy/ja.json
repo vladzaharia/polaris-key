@@ -731,7 +731,6 @@
   "profile.birthdate.optional": "任意",
   "profile.birthdate.hint": "自分だけに表示されます。アプリには送信されません。",
   "profile.birthdate.remove": "生年月日を削除",
-  "profile.birthdate.removeShort": "削除",
   "profile.note": "画像はPolaris Lockerにコピーされるため、このページもアプリも提供元から読み込みません。取り込んだ名前や画像は、自分で選ぶまで提供元に追従し、選んだ後はその選択が維持されます。",
   "profile.save": "プロフィールを保存",
   "profile.saved": "プロフィールを保存しました",

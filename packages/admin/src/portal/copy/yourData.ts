@@ -80,7 +80,7 @@ export function removeConfirm(
   alsoRemoveLicense: boolean,
   licenses: number,
 ): string {
-  if (!alsoRemoveLicense) return "Remove my data";
+  if (!alsoRemoveLicense) return t("yourData.product.remove.title");
   return licenses === 1
     ? "Remove my data and license"
     : "Remove my data and licenses";

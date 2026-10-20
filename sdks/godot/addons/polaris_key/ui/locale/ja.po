@@ -4337,11 +4337,6 @@ msgctxt "macos"
 msgid "profile.birthdate.remove"
 msgstr "生年月日を削除"
 
-#. Remove
-#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
-msgid "profile.birthdate.removeShort"
-msgstr "削除"
-
 #. Pictures are copied to Polaris Locker, so neither this page nor any app loads them from the provider. An imported name or picture follows its provider until you pick one yourself; after that, your choice stays.
 #. Account page (PX-31a); moved from the portal's copy tables (P0-36).
 msgid "profile.note"

@@ -107,7 +107,7 @@ function SupportCodeRow({ slug }: { slug: string }): React.ReactElement {
       {code ? (
         <div className="flex flex-wrap items-center gap-2">
           <code
-            aria-label="Support code"
+            aria-label={t("yourData.product.support.title")}
             className="break-all rounded-md bg-surface-sunken px-2 py-1 font-mono text-sm text-fg-strong"
           >
             {code}

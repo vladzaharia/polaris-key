@@ -59,7 +59,7 @@ import { t } from "../../lib/copy.js";
  * (PX-31b) goes between Sign-in methods and Packages.
  */
 const SECTIONS: { id: AccountSection; label: string }[] = [
-  { id: "profile", label: "Profile" },
+  { id: "profile", label: t("profile.title") },
   { id: "methods", label: "Sign-in methods" },
   { id: "packages", label: "Packages" },
   { id: "sessions", label: "Where you're signed in" },
