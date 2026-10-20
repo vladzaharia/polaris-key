@@ -17,7 +17,8 @@ import * as React from "react";
 import { ArrowRight } from "lucide-react";
 import { ApiError, type ConnectionDiscovery } from "../../../../api.js";
 import { Button } from "../../../../ui/Button.js";
-import { CopyButton } from "../../../../ui/CopyButton.js";
+import { useMe } from "../../../data/hooks.js";
+import { RegisterAddresses, registerAt } from "./RegisterAddresses.js";
 import { DescriptionList } from "../../../../ui/DescriptionList.js";
 import { FormField } from "../../../../ui/form.js";
 import { Input } from "../../../../ui/Input.js";
@@ -62,6 +63,7 @@ import {
 } from "./platformConnectionParts.js";
 
 export function AddConnectionPage(): React.ReactElement {
+  const me = useMe();
   const [step, setStep] = useSearchParam("step", stepCodec, { replace: false });
   const [draftParam, setDraftParam] = useSearchParam("draft", textCodec);
   const [returned] = useSearchParam("state", textCodec);
@@ -97,6 +99,10 @@ export function AddConnectionPage(): React.ReactElement {
   const index = STEP_IDS.indexOf(step);
   const go = (s: StepId): void => setStep(s);
   const discovered = discovery?.issuer === draft.issuer.trim();
+  const clientAddresses = registerAt(
+    discovery?.value.redirectUri ?? `${window.location.origin}/callback`,
+    me.data?.customerOrigin ?? null,
+  );
   const clientOk = /^[\x21-\x7e]{1,200}$/.test(draft.clientId.trim());
   const name = draft.label.trim() || hostOf(draft.issuer);
 
@@ -413,22 +419,16 @@ export function AddConnectionPage(): React.ReactElement {
             onSubmit={() => clientOk && go("test")}
           >
             <div className="space-y-1">
-              <p className="text-sm font-medium text-fg-strong">Redirect URI</p>
-              <div className="flex items-center gap-2">
-                <code className="min-w-0 flex-1 break-all rounded-md bg-surface-sunken px-2 py-1 text-xs">
-                  {discovery?.value.redirectUri ??
-                    `${window.location.origin}/callback`}
-                </code>
-                <CopyButton
-                  value={
-                    discovery?.value.redirectUri ??
-                    `${window.location.origin}/callback`
-                  }
-                  label="Copy redirect URI"
-                />
-              </div>
+              <RegisterAddresses
+                title="Redirect URI"
+                copyLabel="Copy redirect URI"
+                inline
+                addresses={clientAddresses}
+              />
               <p className="text-xs text-fg-muted">
-                Register it at the provider as an allowed redirect.
+                {clientAddresses.length > 1
+                  ? "Register them at the provider as allowed redirects."
+                  : "Register it at the provider as an allowed redirect."}
               </p>
             </div>
             <FormField

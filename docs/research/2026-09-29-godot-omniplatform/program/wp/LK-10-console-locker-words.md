@@ -29,6 +29,15 @@ Re-scoped by Amendment A3: "Get a badge" offers only labels the product backs, p
 
 Amendment A5 (`plans/LK-00.md` §16): the switch preflight and the fresh step-up are moot (no switch). Keep Connections callbacks and "Get a badge".
 
+## Correction (A5, built)
+
+There is no switch: the customer site is Polaris Locker whenever CUSTOMER_ORIGIN is set, so the
+switch preflight and the customer.host step-up are dropped. Built: Connections list the Polaris
+Locker address first, then the Polaris Key Console one (`redirectUris`, `registrations`);
+`/me.customerOrigin`; "Open on Polaris Locker" on the product's Locker page; "Get a badge"
+(`LockerBadges`, `model/badges.ts`). The badge grid's self-look was a static render; the UX review
+still owes the built page.
+
 ## Acceptance criteria
 
 - [ ] `pnpm gen --check` settings clean; admin build succeeds

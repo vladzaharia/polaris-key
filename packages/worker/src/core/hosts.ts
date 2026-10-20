@@ -113,6 +113,17 @@ export function hostOrigin(kind: HostKind, env: HostsEnv): string | null {
 
 export const customerHostname = (env: HostsEnv): string | null =>
   hostname("customer", env);
+
+/**
+ * The customer site's origin (Polaris Locker) whenever `CUSTOMER_ORIGIN` is usable, else `null`.
+ * Unlike {@link customerOrigin} it never falls back to the console origin: the console reads it to
+ * decide whether there is a customer site to link to at all (LK-10).
+ */
+export function customerSiteOrigin(env: HostsEnv): string | null {
+  return hostname("customer", env) === null
+    ? null
+    : usableOrigin(env.CUSTOMER_ORIGIN ?? "");
+}
 export const isCustomerHost = (url: URL, env: HostsEnv): boolean =>
   isHost("customer", url, env);
 

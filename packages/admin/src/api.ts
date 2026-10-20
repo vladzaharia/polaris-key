@@ -844,14 +844,23 @@ export interface PlatformConnection {
 
 export interface PlatformConnectionsPage {
   connections: PlatformConnection[];
-  /** The redirect URI to register at every provider. */
+  /** The primary redirect URI to register at every provider. */
   redirectUri: string;
+  /** Every address a person may sign in at: Polaris Locker first when set, then the console. */
+  redirectUris?: { site: "locker" | "console"; label: string; value: string }[];
   builtIns: {
     kind: "google" | "apple" | "steam";
     label: string;
     configured: boolean;
     /** What to register at the provider: one exact URI, or (Steam) the realm. */
     registration: { kind: "redirect-uri" | "realm"; value: string };
+    /** One per place a person may sign in (Polaris Locker first when set). */
+    registrations?: {
+      site: "locker" | "console";
+      label: string;
+      kind: "redirect-uri" | "realm";
+      value: string;
+    }[];
   }[];
   email: { configured: boolean };
   turnstile: { enabled: boolean };
@@ -1913,6 +1922,8 @@ export interface PolarisKeyStatusResponse {
   everyone: boolean;
   identityEligible: boolean;
   licenseEnabled: boolean;
+  /** A published release has a file Get it can hand over. */
+  directDownload?: boolean;
   groups: { group: string; tier: string | null; label: string | null }[];
   autoIssue: {
     tier: string;

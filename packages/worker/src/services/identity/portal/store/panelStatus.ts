@@ -87,6 +87,8 @@ export interface PolarisKeyStatus {
   identityEligible: boolean;
   /** License runs for the product (the identity paths issue a licence). */
   licenseEnabled: boolean;
+  /** A published release has a file Get it can hand over (a direct download, not a store link). */
+  directDownload: boolean;
   groups: PolarisKeyGroupView[];
   autoIssue: PolarisKeyAutoIssue | null;
   readiness: readonly ReadinessCheck[];
@@ -211,6 +213,8 @@ export async function polarisKeyStatus(
     everyone: listing.listed === "listed" && listing.audience === "everyone",
     identityEligible,
     licenseEnabled,
+    directDownload:
+      (downloads?.releases.reduce((n, r) => n + r.files.length, 0) ?? 0) > 0,
     groups,
     autoIssue,
     readiness,

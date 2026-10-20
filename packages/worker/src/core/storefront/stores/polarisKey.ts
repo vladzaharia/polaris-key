@@ -28,9 +28,7 @@ const OPS: Readonly<Record<StorefrontOp, Support>> = {
   connect: firstParty("connect"),
   listApps: firstParty("listApps"),
   identifiers: firstParty("identifiers"),
-  createApp: unsupported(
-    "Every Polaris Key product already has a storefront page",
-  ),
+  createApp: unsupported("Every product already has a storefront page"),
   readListing: firstParty("readListing"),
   writeListingText: firstParty("writeListingText"),
   writeListingAssets: firstParty("writeListingAssets"),
@@ -46,10 +44,10 @@ const OPS: Readonly<Record<StorefrontOp, Support>> = {
   testers: unsupported("Who can add a product is decided by its obtain paths"),
   uploadBuild: unsupported("Builds come from the product's releases"),
   notificationsUrl: unsupported(
-    "Polaris Key is the store, so there are no store notifications to receive",
+    "Polaris Locker is the store, so there are no store notifications to receive",
   ),
   submit: firstParty("submit"),
-  release: unsupported("A published release is live on Polaris Key at once"),
+  release: unsupported("A published release is live on Polaris Locker at once"),
   rollout: unsupported("Rollouts are set per outlet in Distribution"),
   status: firstParty("status"),
 };
@@ -66,7 +64,7 @@ export const FIRST_PARTY_PROJECTION: Readonly<
 
 export const POLARIS_KEY_ADAPTER: StorefrontAdapter = {
   id: "polaris-key",
-  label: "Polaris Key",
+  label: "Polaris Locker",
   outletKinds: ["direct"],
   credential: null,
   gate: null,
@@ -81,6 +79,6 @@ export const POLARIS_KEY_ADAPTER: StorefrontAdapter = {
   ci: null,
   pr: null,
   listing: adapterListingProfile(STORE_LISTING_COLUMNS["polaris-key"]),
-  confirmation: { phrase: "app-name", label: "Polaris Key" },
+  confirmation: { phrase: "app-name", label: "Polaris Locker" },
   audit: { action: "polaris-key", projection: FIRST_PARTY_PROJECTION },
 };

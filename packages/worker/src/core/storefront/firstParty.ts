@@ -120,12 +120,12 @@ export const FIRST_PARTY_HANDLERS: Readonly<Record<string, FirstPartyHandler>> =
     [firstPartyHandlerName("writeListingText")]: write(
       "writeListingText",
       (ctx) => ctx.ports.writeListing(ctx.product, "text", ctx.input),
-      "Updated the Polaris Key listing text",
+      "Updated the Polaris Locker listing text",
     ),
     [firstPartyHandlerName("writeListingAssets")]: write(
       "writeListingAssets",
       (ctx) => ctx.ports.writeListing(ctx.product, "assets", ctx.input),
-      "Updated the Polaris Key listing art",
+      "Updated the Polaris Locker listing art",
     ),
     [firstPartyHandlerName("category")]: write(
       "category",

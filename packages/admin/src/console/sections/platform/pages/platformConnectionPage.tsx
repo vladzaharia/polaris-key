@@ -11,7 +11,7 @@ import { fromSeconds } from "../../../../lib/format.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
 import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
-import { CopyButton } from "../../../../ui/CopyButton.js";
+import { RegisterAddresses } from "./RegisterAddresses.js";
 import { DescriptionList } from "../../../../ui/DescriptionList.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
@@ -328,18 +328,14 @@ export function ConnectionPage({ id }: { id: string }): React.ReactElement {
                 </Section>
                 <Section title="Register at the provider">
                   {redirectUri ? (
-                    <div className="space-y-1">
-                      <p className="text-xs text-fg-muted">Redirect URI</p>
-                      <div className="flex items-center gap-2">
-                        <code className="min-w-0 flex-1 break-all rounded-md bg-surface-sunken px-2 py-1 text-xs">
-                          {redirectUri}
-                        </code>
-                        <CopyButton
-                          value={redirectUri}
-                          label="Copy redirect URI"
-                        />
-                      </div>
-                    </div>
+                    <RegisterAddresses
+                      inline
+                      title="Redirect URI"
+                      copyLabel="Copy redirect URI"
+                      addresses={
+                        page.data?.redirectUris ?? [{ value: redirectUri }]
+                      }
+                    />
                   ) : null}
                   <div className="mt-4">{test}</div>
                 </Section>

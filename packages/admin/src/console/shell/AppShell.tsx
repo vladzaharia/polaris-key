@@ -76,6 +76,8 @@ export function pageTitle(route: Route): string {
   if (route.child && page.record?.child) {
     return `${page.record.child.noun} ${route.child.ids[route.child.ids.length - 1]}`;
   }
+  if (route.page === "storefronts" && route.id === "polaris-key")
+    return "Polaris Locker";
   if (route.id !== undefined && page.record) {
     return `${page.record.noun} ${route.id}`;
   }

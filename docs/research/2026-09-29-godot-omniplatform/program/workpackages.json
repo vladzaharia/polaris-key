@@ -17979,7 +17979,7 @@
       "optional": false,
       "refs": ["plans/LK-00.md §7, §10, §16"],
       "brief": "wp/LK-10-console-locker-words.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "LK-11",

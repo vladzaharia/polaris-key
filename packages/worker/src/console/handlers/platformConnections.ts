@@ -26,6 +26,7 @@
 
 import { ErrorCode } from "../../core/errors.js";
 import { actorOf } from "../../core/audit.js";
+import { customerSiteOrigin } from "../../core/hosts.js";
 import { emailConfigured } from "../../core/notify/destinations.js";
 import {
   AdminBodyError,
@@ -48,6 +49,8 @@ import {
   SIGNIN_PROVIDER_KINDS,
   signInProviderConfigured,
   signInRegistration,
+  signInRegistrations,
+  signInSites,
   startConnectionTest,
   takeTestResult,
   turnstileEnabled,
@@ -84,16 +87,24 @@ const tooMany = (): Response =>
 
 async function page(c: AdminCtx): Promise<Response> {
   const url = new URL(c.req.url);
+  // Primary first: the customer origin (Polaris Locker) when set, then this console's own.
+  const sites = signInSites(url.origin, customerSiteOrigin(c.env));
   return adminJson({
     connections: await listConnectionViews(c.db),
-    redirectUri: `${url.origin}/callback`,
+    redirectUri: `${(sites[0] ?? { origin: url.origin }).origin}/callback`,
+    redirectUris: sites.map((s) => ({
+      site: s.site,
+      label: s.label,
+      value: `${s.origin}/callback`,
+    })),
     builtIns: SIGNIN_PROVIDER_KINDS.map((kind) => ({
       kind,
       label: BUILTIN_LABELS[kind],
       configured: signInProviderConfigured(c.env, kind),
       // What to register at the provider: one exact URI (Steam: the realm), from the same
       // helper the login flow builds its own with.
-      registration: signInRegistration(kind, url.origin),
+      registration: signInRegistration(kind, sites[0]!.origin),
+      registrations: signInRegistrations(kind, sites),
     })),
     email: { configured: emailConfigured(c.env) },
     turnstile: { enabled: turnstileEnabled(c.env) },

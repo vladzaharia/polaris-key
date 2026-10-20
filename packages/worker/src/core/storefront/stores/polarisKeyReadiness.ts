@@ -64,12 +64,12 @@ function portal(i: PolarisKeyReadinessInput): ReadinessCheck {
     ? {
         id: "portal",
         state: "pass",
-        reason: "The portal is on for this product",
+        reason: "Polaris Locker is on for this product",
       }
     : {
         id: "portal",
         state: "fail",
-        reason: "Turn the portal on for this product to show it on Polaris Key",
+        reason: "Polaris Locker is off for this product",
       };
 }
 
@@ -86,7 +86,7 @@ function listing(i: PolarisKeyReadinessInput): ReadinessCheck {
       id,
       state: "fail",
       reason:
-        "The listing needs a name and a short description that fit Polaris Key's limits",
+        "The listing needs a name and a short description that fit Polaris Locker's limits",
     };
   if (!i.hasIcon)
     return { id, state: "fail", reason: "Add an icon to the listing" };

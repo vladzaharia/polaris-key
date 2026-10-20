@@ -277,7 +277,7 @@ export const STORE_LISTING_COLUMNS: Readonly<
   // slot (HA-04), the header the portal's 16:9 cover.
   "polaris-key": {
     store: "polaris-key",
-    label: "Polaris Key",
+    label: "Polaris Locker",
     fields: {
       name: text("name", 60, { required: true }),
       shortDescription: text("shortDescription", 140, { required: true }),

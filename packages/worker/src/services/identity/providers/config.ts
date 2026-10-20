@@ -56,6 +56,46 @@ export function signInRegistration(
     : { kind: "redirect-uri", value: `${origin}${signInCallbackPath(kind)}` };
 }
 
+/**
+ * Every place a customer may start a sign-in, for the console to list (LK-10): Polaris Locker (the
+ * customer origin, primary) first when there is one, then the Polaris Key Console's own origin
+ * while customers may still sign in there. Each row is what to register at the provider.
+ */
+export interface SignInSite {
+  site: "locker" | "console";
+  label: "Polaris Locker" | "Polaris Key Console";
+  origin: string;
+}
+export function signInSites(
+  consoleOrigin: string,
+  customer: string | null,
+): SignInSite[] {
+  const sites: SignInSite[] = [];
+  if (customer !== null && customer !== consoleOrigin)
+    sites.push({ site: "locker", label: "Polaris Locker", origin: customer });
+  sites.push({
+    site: "console",
+    label: "Polaris Key Console",
+    origin: consoleOrigin,
+  });
+  return sites;
+}
+export function signInRegistrations(
+  kind: SignInProviderKind,
+  sites: readonly SignInSite[],
+): {
+  site: SignInSite["site"];
+  label: SignInSite["label"];
+  kind: "redirect-uri" | "realm";
+  value: string;
+}[] {
+  return sites.map((s) => ({
+    site: s.site,
+    label: s.label,
+    ...signInRegistration(kind, s.origin),
+  }));
+}
+
 /** The sealed slots. */
 export const SIGNIN_SECRET_IDS = {
   google: "google-client-secret",

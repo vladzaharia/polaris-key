@@ -649,6 +649,37 @@ describe("page", () => {
     ]);
     expect(typeof body.email.configured).toBe("boolean");
     expect(typeof body.turnstile.enabled).toBe("boolean");
+    // No customer origin: only the console's own address is listed.
+    expect(body.redirectUris).toEqual([
+      {
+        site: "console",
+        label: "Polaris Key Console",
+        value: "https://key.plrs.im/callback",
+      },
+    ]);
+  });
+
+  it("lists the Polaris Locker address first once the customer origin is set", async () => {
+    const w = await world();
+    w.env.CONSOLE_ORIGIN = "https://key.plrs.im";
+    w.env.CUSTOMER_ORIGIN = "https://polaris.locker";
+    const body = (await (
+      await api(w, "GET", "/platform/connections")
+    ).json()) as Record<string, any>;
+    expect(body.redirectUri).toBe("https://polaris.locker/callback");
+    expect(body.redirectUris.map((u: any) => [u.label, u.value])).toEqual([
+      ["Polaris Locker", "https://polaris.locker/callback"],
+      ["Polaris Key Console", "https://key.plrs.im/callback"],
+    ]);
+    const [google, , steam] = body.builtIns;
+    expect(google.registrations.map((x: any) => x.value)).toEqual([
+      "https://polaris.locker/login/google/callback",
+      "https://key.plrs.im/login/google/callback",
+    ]);
+    expect(steam.registrations.map((x: any) => [x.kind, x.value])).toEqual([
+      ["realm", "https://polaris.locker"],
+      ["realm", "https://key.plrs.im"],
+    ]);
   });
 });
 

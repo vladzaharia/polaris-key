@@ -29,12 +29,12 @@ describe("the polaris-key declaration", () => {
     const a = storefrontAdapter("polaris-key");
     expect(a).toBe(POLARIS_KEY_ADAPTER);
     expect(a).toMatchObject({
-      label: "Polaris Key",
+      label: "Polaris Locker",
       outletKinds: ["direct"],
       credential: null,
       gate: null,
       ci: null,
-      confirmation: { phrase: "app-name", label: "Polaris Key" },
+      confirmation: { phrase: "app-name", label: "Polaris Locker" },
       audit: { action: "polaris-key" },
     });
     expect(a!.specPin).toBeUndefined();
@@ -66,7 +66,7 @@ describe("the polaris-key declaration", () => {
     });
     expect(ops.createApp).toEqual({
       mode: "unsupported",
-      reason: "Every Polaris Key product already has a storefront page",
+      reason: "Every product already has a storefront page",
     });
     for (const op of STOREFRONT_OPS) {
       const s = ops[op];
@@ -107,7 +107,7 @@ function model(over: Partial<ListingModel> = {}): ListingModel {
 describe("the fit report projects the shared listing for polaris-key", () => {
   it("a fitting listing is green, with the name, the tile line and the description", () => {
     const [row] = fitReport({ model: model() }, ["polaris-key"]);
-    expect(row).toMatchObject({ store: "polaris-key", label: "Polaris Key" });
+    expect(row).toMatchObject({ store: "polaris-key", label: "Polaris Locker" });
     expect(row!.status).toBe("green");
     expect(row!.payload!.locales["en-US"]).toEqual({
       name: "Diceroll",
@@ -214,7 +214,7 @@ describe("polarisKeyReadiness: the five checks of S-21 §6.1", () => {
   it("1. portal: fails when the portal is off for the product", () => {
     expect(check({ portalEnabled: false }, "portal")).toMatchObject({
       state: "fail",
-      reason: expect.stringContaining("Turn the portal on"),
+      reason: expect.stringContaining("Polaris Locker is off"),
     });
   });
 

@@ -18,14 +18,13 @@
  */
 
 import * as React from "react";
-import { AlertTriangle, Check, Eye, X } from "lucide-react";
+import { ExternalLink, Eye } from "lucide-react";
 import type {
   ObtainPathKind,
   PolarisKeyAnalyticsResponse,
   PolarisKeyListed,
   PolarisKeyPersona,
   PolarisKeyPreviewResponse,
-  PolarisKeyReadinessCheck,
   PolarisKeyStatusResponse,
   PolarisKeyTile,
   UpdatePortalSettingsBody,
@@ -60,6 +59,11 @@ import {
   SettingsSection,
   SettingsTemplate,
 } from "../../../templates/Settings.js";
+import { useMe } from "../../../data/hooks.js";
+import { lockerUrl, visibleOnLocker } from "../model/badges.js";
+import { ALL_KINDS, nextOfferPaths } from "../model/offerPaths.js";
+import { LockerBadges } from "./LockerBadges.js";
+import { ReadinessList } from "./PolarisKeyReadiness.js";
 import { usePolarisKey, usePolarisKeyAnalytics } from "../data.js";
 import {
   AUDIENCE_CHOICES,
@@ -78,21 +82,15 @@ import {
 /** The store id this page serves (the adapter's, PS-01). */
 export const POLARIS_KEY = "polaris-key";
 
-const ALL_KINDS: readonly ObtainPathKind[] = [
-  "group",
-  "auto_issue",
-  "open",
-  "store_owned",
-  "product_idp",
-  "email_domain",
-];
-
 export function PolarisKeyPanel({
   slug,
 }: {
   slug: string;
 }): React.ReactElement {
   const q = usePolarisKey(slug);
+  const origin = useMe().data?.customerOrigin;
+  const lockerPage =
+    q.data && visibleOnLocker(q.data) ? lockerUrl(origin, slug) : null;
   const header = (
     <PageHeader
       eyebrow={
@@ -112,11 +110,22 @@ export function PolarisKeyPanel({
         ) : null
       }
       primaryAction={
-        <Button variant="outline" asChild>
-          <Link to={r.listing(slug, { tab: "fit", store: POLARIS_KEY })}>
-            Edit the listing
-          </Link>
-        </Button>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          {lockerPage ? (
+            <Button variant="outline" asChild>
+              <a href={lockerPage} target="_blank" rel="noreferrer">
+                Open in Polaris Locker
+                <ExternalLink aria-hidden />
+                <span className="sr-only"> (opens a new tab)</span>
+              </a>
+            </Button>
+          ) : null}
+          <Button variant="outline" asChild>
+            <Link to={r.listing(slug, { tab: "fit", store: POLARIS_KEY })}>
+              Edit the listing
+            </Link>
+          </Button>
+        </div>
       }
     />
   );
@@ -161,19 +170,6 @@ async function save(
   body: UpdatePortalSettingsBody,
 ): Promise<void> {
   await mutate("updatePortalSettings", slug, body);
-}
-
-/** The ways to add, as the stored list: `null` again once every kind is on. */
-function nextOfferPaths(
-  current: readonly ObtainPathKind[] | null,
-  path: ObtainPathKind,
-  on: boolean,
-): ObtainPathKind[] | null {
-  const set = new Set(current ?? ALL_KINDS);
-  if (on) set.add(path);
-  else set.delete(path);
-  const next = ALL_KINDS.filter((k) => set.has(k));
-  return next.length === ALL_KINDS.length ? null : next;
 }
 
 function PendingDialog({
@@ -242,7 +238,7 @@ function PendingDialog({
         ]
       : [
           "People whose only way to add it is this one no longer see it, and cannot add it from Discover.",
-          "Licences already added keep working.",
+          "Licenses already added keep working.",
         ];
     confirmLabel = p.on ? "Turn on" : "Turn off";
     onConfirm = async () => {
@@ -299,6 +295,7 @@ function PanelBody({
     ...(showGroups ? [{ id: "pk-groups", title: "Group labels" }] : []),
     { id: "pk-who", title: "Who can see this?" },
     { id: "pk-analytics", title: "Last 28 days" },
+    { id: "pk-badges", title: "Get a badge" },
   ];
   const listingId = `pk-${slug}-listed`;
   const audienceId = `pk-${slug}-audience`;
@@ -308,7 +305,7 @@ function PanelBody({
       {!status.enabled ? (
         <Callout tone="warning" title="Off for this deployment">
           A platform admin turned the Locker storefront off, so no product is
-          shown on Discover. Licences, sign-in and auto-issue keep working.
+          shown on Discover. Licenses, sign-in and auto-issue keep working.
         </Callout>
       ) : null}
 
@@ -396,6 +393,8 @@ function PanelBody({
         <Analytics slug={slug} />
       </SettingsSection>
 
+      <LockerBadges slug={slug} status={status} />
+
       <PendingDialog
         slug={slug}
         status={status}
@@ -405,81 +404,6 @@ function PanelBody({
     </SettingsTemplate>
   );
 }
-
-// ── Readiness ────────────────────────────────────────────────────────────────────────────────
-
-const CHECK_TITLES: Record<PolarisKeyReadinessCheck["id"], string> = {
-  portal: "Polaris Locker",
-  listing: "Listing",
-  "obtain-path": "A way to add it",
-  "get-it": "Get it",
-  "licence-tier": "Licence tiers",
-};
-
-const STATE_WORDS: Record<PolarisKeyReadinessCheck["state"], string> = {
-  pass: "Ready",
-  warn: "Ready, with a note",
-  fail: "Needs a fix",
-};
-
-function ReadinessList({
-  slug,
-  checks,
-}: {
-  slug: string;
-  checks: PolarisKeyReadinessCheck[];
-}): React.ReactElement {
-  const fix = (c: PolarisKeyReadinessCheck): React.ReactNode => {
-    if (c.state === "pass") return null;
-    if (c.id === "portal")
-      return (
-        <Button size="sm" variant="outline" asChild>
-          <Link to={r.appSignIn(slug)}>Open App sign-in</Link>
-        </Button>
-      );
-    if (c.id === "listing")
-      return (
-        <Button size="sm" variant="outline" asChild>
-          <Link to={r.listing(slug)}>Open Listing</Link>
-        </Button>
-      );
-    return null;
-  };
-  return (
-    <ul aria-label="Readiness" className="divide-y divide-border">
-      {checks.map((c) => (
-        <li
-          key={c.id}
-          data-check={c.id}
-          data-state={c.state}
-          className="flex min-h-14 items-center justify-between gap-3 px-5 py-3"
-        >
-          <div className="flex min-w-0 items-start gap-3">
-            <span className="mt-0.5 shrink-0">
-              {c.state === "pass" ? (
-                <Check aria-hidden className="size-4 text-success" />
-              ) : c.state === "warn" ? (
-                <AlertTriangle aria-hidden className="size-4 text-warning" />
-              ) : (
-                <X aria-hidden className="size-4 text-danger" />
-              )}
-            </span>
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-fg-strong">
-                {CHECK_TITLES[c.id]}
-                <span className="sr-only">: {STATE_WORDS[c.state]}</span>
-              </p>
-              <p className="text-sm text-fg-muted">{c.reason}</p>
-            </div>
-          </div>
-          <div className="ml-auto shrink-0">{fix(c)}</div>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-// ── Ways to add ──────────────────────────────────────────────────────────────────────────────
 
 function WaysToAdd({
   slug,
