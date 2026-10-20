@@ -378,6 +378,15 @@ export const NOT_A_SETTING: readonly NotASetting[] = [
     },
   },
   {
+    thing: "Old lazy-delta and sign-in mail cap tables",
+    reason:
+      "ST-11 copied both into product settings rows once (deltas.lazy.enabled, deltas.lazy.hotDevices, deltas.lazy.dailyCap, email.dailyCap). Nothing reads the old tables; ST-25 drops them.",
+    shows: "Product → Settings",
+    covers: {
+      ids: ["table:lazy_delta_settings", "table:email_product_caps"],
+    },
+  },
+  {
     thing: "Connection records (where a connection row came from)",
     reason:
       "A record of how a connection was created: env for the seeded platform sign-in, console or manifest later. The connection itself is configured as a whole, not as a setting.",
@@ -449,14 +458,6 @@ export const NOT_A_SETTING: readonly NotASetting[] = [
  * lands (lower `PENDING_CEILING` with every removal).
  */
 export const PENDING: readonly PendingEntry[] = [
-  // SQL-only stores (S-18 §2.2).
-  { target: "table:lazy_delta_settings", owner: "ST-11" },
-  { target: "table:email_product_caps", owner: "ST-11" },
-  {
-    target: "env:EMAIL_PRODUCT_DAILY_CAP",
-    owner: "ST-11",
-    note: "email.dailyCapDefault",
-  },
   // API-only stores (S-18 §2.2).
   { target: "table:platform_store_settings", owner: "ST-12" },
   { target: "table:platform_credentials", owner: "ST-12" },
@@ -479,7 +480,7 @@ export const PENDING: readonly PendingEntry[] = [
 ];
 
 /** `PENDING.length`, written down: lower it with every removal; raising it needs a review. */
-export const PENDING_CEILING = 16;
+export const PENDING_CEILING = 13;
 
 export interface CoverageInputs {
   targets: readonly CoverageTarget[];

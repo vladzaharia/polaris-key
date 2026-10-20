@@ -28,7 +28,7 @@
  *
  * Nothing is counted unless the deployment's `LAZY_DELTAS` switch is on (the platform settings
  * store, A-13: the console's value unless the `[vars]` value is a hard `off`) AND the product has
- * a `lazy_delta_settings` row with `enabled = 1` (docs/RUNBOOK.md "Lazy deltas"). Both default
+ * the product's `deltas.lazy.enabled` setting on (docs/RUNBOOK.md "Lazy deltas"). Both default
  * off, so deploying this changes nothing until an operator turns it on and opts a product in.
  *
  * Privacy (docs/PRIVACY.md): an entry carries a pack id, two content hashes, a strategy name and
@@ -152,24 +152,50 @@ const OFF: LazyDeltaSettings = {
   dailyCap: DEFAULT_DAILY_CAP,
 };
 
-/** A product's opt-in (no row: off), defaults filled. */
+/** The product-scope keys (ST-11): `lazy_delta_settings`' three columns, now `product_settings` rows. */
+export const LAZY_ENABLED_KEY = "deltas.lazy.enabled";
+export const LAZY_HOT_DEVICES_KEY = "deltas.lazy.hotDevices";
+export const LAZY_DAILY_CAP_KEY = "deltas.lazy.dailyCap";
+
+function storedJson(raw: string | null | undefined): unknown {
+  if (raw === null || raw === undefined) return undefined;
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * A product's opt-in (no row: off), defaults filled. The three rows are the registry's
+ * (`deltas.lazy.*`, written by `writeSetting()`); a value that no longer fits its spec reads as
+ * the default, like the resolver. Read straight from `product_settings`: this runs on the report
+ * path, where the platform store's copy is not needed.
+ */
 export async function lazyDeltaSettings(
   db: Db,
   product: string,
 ): Promise<LazyDeltaSettings> {
-  const row = await db.first<{
-    enabled: number;
-    hot_devices: number | null;
-    daily_cap: number | null;
-  }>(
-    "SELECT enabled, hot_devices, daily_cap FROM lazy_delta_settings WHERE product = ?",
+  const rows = await db.all<{ key: string; value_json: string | null }>(
+    "SELECT key, value_json FROM product_settings WHERE product = ? AND key IN (?, ?, ?)",
     product,
+    LAZY_ENABLED_KEY,
+    LAZY_HOT_DEVICES_KEY,
+    LAZY_DAILY_CAP_KEY,
   );
-  if (!row) return OFF;
+  const by = new Map(rows.map((r) => [r.key, storedJson(r.value_json)]));
+  const hot = by.get(LAZY_HOT_DEVICES_KEY);
+  const cap = by.get(LAZY_DAILY_CAP_KEY);
   return {
-    enabled: row.enabled === 1,
-    hotDevices: row.hot_devices ?? DEFAULT_HOT_DEVICES,
-    dailyCap: row.daily_cap ?? DEFAULT_DAILY_CAP,
+    enabled: by.get(LAZY_ENABLED_KEY) === "on",
+    hotDevices:
+      typeof hot === "number" && Number.isSafeInteger(hot) && hot >= 1
+        ? hot
+        : DEFAULT_HOT_DEVICES,
+    dailyCap:
+      typeof cap === "number" && Number.isSafeInteger(cap) && cap >= 0
+        ? cap
+        : DEFAULT_DAILY_CAP,
   };
 }
 
@@ -191,10 +217,11 @@ export async function lazyDeltaProducts(
 ): Promise<string[]> {
   if (!(await lazyDeltasOn(env, db))) return [];
   const rows = await db.all<{ product: string }>(
-    `SELECT s.product FROM lazy_delta_settings s
+    `SELECT s.product FROM product_settings s
        JOIN products p ON p.slug = s.product
-      WHERE s.enabled = 1 AND p.status = 'active' AND p.deleted_at IS NULL
+      WHERE s.key = ? AND s.value_json = '"on"' AND p.status = 'active' AND p.deleted_at IS NULL
       ORDER BY s.product`,
+    LAZY_ENABLED_KEY,
   );
   return rows.map((r) => r.product);
 }

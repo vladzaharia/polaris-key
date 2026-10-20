@@ -204,6 +204,8 @@ describe("the settings registry (ST-03)", () => {
       ["KEYENTRY_REFUSALS", "identity.keyEntryRefusals"],
       // HA-10: the hosted-asset kill switch (notes/S-20 §6.8 "Rollback").
       ["ASSET_HOSTING", "assets.hosting.enabled"],
+      // ST-11: the deploy default of the per-product sign-in mail cap.
+      ["EMAIL_PRODUCT_DAILY_CAP", "email.dailyCapDefault"],
     ];
     for (const [alias, key] of pairs) {
       expect(SETTINGS.canonicalKey(alias)).toBe(key);

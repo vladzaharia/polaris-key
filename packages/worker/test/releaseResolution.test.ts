@@ -10,7 +10,7 @@
 import { describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
-import { makeEnv, NOW, seedProduct } from "./seed.js";
+import { makeEnv, NOW, seedOperatorPolicy, seedProduct } from "./seed.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
 import type { Product } from "../src/core/products.js";
@@ -111,6 +111,7 @@ async function seed(db: Db, over: Record<string, unknown> = {}) {
   // The `dist_access` row migration 0038 (or any link/resync) writes for this configuration: no
   // row reads fail-closed as `entitled` (P2b-04).
   await seedDeliveryAccess(db, SLUG, String(row.artifacts_access));
+  await seedOperatorPolicy(db, SLUG, row.operator_policy_json as string);
 }
 
 function product(): Product {

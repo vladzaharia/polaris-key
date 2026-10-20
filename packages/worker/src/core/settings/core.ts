@@ -43,6 +43,8 @@ const STOREFRONT_READERS = [
 const storefrontColumn = (column: string) =>
   ({ kind: "column", table: "portal_product_settings", column }) as const;
 
+const PLATFORM_DOCS_PATH = "/docs/operate/platform/settings/";
+
 export const CORE_SLICE: readonly SettingDef[] = [
   setting({
     key: "core.name",
@@ -504,6 +506,87 @@ export const CORE_SLICE: readonly SettingDef[] = [
     ],
     storage: { kind: "scalar" },
     since: "HA-10",
+  }),
+  // ── Platform-owned product policies (ST-11, notes/S-18 §4.14.4) ─────────────────────────
+  // Lazy-delta opt-in and sign-in mail cap: SQL-only until ST-11 (`lazy_delta_settings`,
+  // `email_product_caps`, copied once into `product_settings` rows; ST-25 drops the tables).
+  // Operator-owned, never in the manifest. Rows are written through `writeSetting()`.
+  setting({
+    key: "deltas.lazy.enabled",
+    scope: "product",
+    service: "core",
+    area: "assets",
+    label: "Lazy deltas",
+    description:
+      "Counts which version pairs this product's devices move between and builds a delta for the hot ones, so those updates download less. Needs lazy deltas on for the platform. Off counts nothing and builds nothing; deltas already built keep serving.",
+    keywords: ["delta", "update size", "hot pairs", "downloads"],
+    docs: PLATFORM_DOCS_PATH,
+    value: { kind: "switch" },
+    defaultValue: "off",
+    merge: "cascade",
+    ownership: "operator",
+    confirm: { on: "L0", off: "L0" },
+    readers: ["core/assets/deltaDemand.ts"],
+    storage: { kind: "scalar" },
+    since: "ST-11",
+  }),
+  setting({
+    key: "deltas.lazy.hotDevices",
+    scope: "product",
+    service: "core",
+    area: "assets",
+    label: "Devices that make a pair hot",
+    description:
+      "How many devices must move between the same two versions, without a delta, before one is built. Lower builds more deltas.",
+    keywords: ["delta", "threshold", "hot pairs"],
+    docs: PLATFORM_DOCS_PATH,
+    value: { kind: "integer", unit: "count", min: 1, max: 100_000 },
+    defaultValue: 25,
+    merge: "cascade",
+    ownership: "operator",
+    confirm: { up: "L0", down: "L1" },
+    readers: ["core/assets/deltaDemand.ts"],
+    storage: { kind: "scalar" },
+    since: "ST-11",
+  }),
+  setting({
+    key: "deltas.lazy.dailyCap",
+    scope: "product",
+    service: "core",
+    area: "assets",
+    label: "Deltas built a day",
+    description:
+      "The most deltas this product may have built in a day. Zero builds none.",
+    keywords: ["delta", "limit", "quota"],
+    docs: PLATFORM_DOCS_PATH,
+    value: { kind: "integer", unit: "perDay", min: 0, max: 10_000 },
+    defaultValue: 20,
+    merge: "cascade",
+    ownership: "operator",
+    confirm: { up: "L1", down: "L0" },
+    readers: ["core/assets/deltaDemand.ts"],
+    storage: { kind: "scalar" },
+    since: "ST-11",
+  }),
+  setting({
+    key: "email.dailyCap",
+    scope: "product",
+    service: "core",
+    area: "general",
+    label: "Daily sign-in mail cap",
+    description:
+      "How many sign-in emails this product can send a day. Unset follows the platform default.",
+    keywords: ["limit", "quota", "passthrough", "sign-in", "mail"],
+    docs: PLATFORM_DOCS_PATH,
+    value: { kind: "integer", unit: "perDay", min: 1, max: 1_000_000 },
+    defaultValue: null,
+    allowUnset: true,
+    merge: "cascade",
+    ownership: "operator",
+    confirm: { up: "L1", down: "L0" },
+    readers: ["core/notify/emailDelivery.ts"],
+    storage: { kind: "scalar" },
+    since: "ST-11",
   }),
   // ST-27: this product's alert destinations. They replace the platform's `alerts.destinations`
   // for the alert kinds they take; with none, the platform's apply. Rich: `notify_destinations`,
