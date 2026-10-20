@@ -360,22 +360,19 @@ describe("admin api", () => {
       groups: [PLATFORM_GROUP],
     });
 
+    // The list is the slim projection (ST-44); the signing block rides the one-product read.
     const res = await dispatch(
-      mkReq("GET", "/api/products", { cookie }),
+      mkReq("GET", "/api/products/djdl", { cookie }),
       env,
       db,
-      "/api/products",
+      "/api/products/djdl",
     );
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
-      products: Array<{
-        slug: string;
-        signing?: unknown | null;
-      }>;
+      product: { slug: string; signing?: unknown | null };
     };
-    const djdl = body.products.find((p) => p.slug === "djdl");
-    expect(djdl).toBeDefined();
-    expect(djdl!.signing).toBeNull();
+    expect(body.product.slug).toBe("djdl");
+    expect(body.product.signing).toBeNull();
   });
 
   it("reads and updates per-product customer portal settings", async () => {

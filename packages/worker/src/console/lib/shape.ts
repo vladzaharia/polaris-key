@@ -179,6 +179,61 @@ export async function productView(
 }
 
 /**
+ * The slim row `GET /products` answers (ST-44): what the shell, the switcher and Home's cards
+ * draw, and nothing that costs a query per product beyond enablement. The setup state, the signing
+ * block, the claims and the portal settings ride `GET /products/:slug` (`productView`); what
+ * needs the operator is the attention read's (`GET /attention`, `./attention.ts`).
+ */
+export async function productListView(
+  db: Db,
+  p: ProductRow,
+  icons: Map<string, ProductIconView>,
+  headers: Map<string, ProductIconView>,
+): Promise<Record<string, unknown>> {
+  const services = serviceStateOf(p);
+  const presentation: ProductPresentationView = {
+    icon: icons.get(p.slug) ?? null,
+    header: headers.get(p.slug) ?? null,
+  };
+  return {
+    slug: p.slug,
+    name: p.name,
+    presentation,
+    system: p.system === 1,
+    packageFeeds: (await packageFeedsOf(db, p.slug)).enabled,
+    releaseSource: p.release_source ?? "manual",
+    services: services.services,
+    effectiveRegistration: services.effectiveRegistration,
+    servicesSource: services.source,
+    createdAt: p.created_at,
+    modifiedAt: p.modified_at,
+  };
+}
+
+/** One product's server-computed setup state: the source of its attention items. */
+export async function productSetupFor(
+  env: Env,
+  db: Db,
+  p: ProductRow,
+): Promise<Record<string, unknown>> {
+  const activeKey = await loadPublicSigningKey(db, p.slug);
+  const services = serviceStateOf(p);
+  return productSetupView(
+    env,
+    db,
+    p.slug,
+    Boolean(activeKey?.publicKey ?? p.signing_pub),
+    services.services.update.enabled,
+    {
+      slug: p.slug,
+      registration: services.effectiveRegistration,
+      autoIssue: parseAutoIssue(p.auto_issue_json),
+      services: services.services,
+    },
+  );
+}
+
+/**
  * Which product secrets the product's configuration names, and what names each (a custom OIDC
  * provider's client secret, each edge-mint recipe's signing key). Shared by the setup projection
  * and the secrets inventory (A-5), so both say the same thing.

@@ -8,6 +8,8 @@
  *                                   `beforeAt`/`beforeId`/`limit`), D1 migrations applied vs the
  *                                   build's newest, missing required indexes, binding presence
  *                                   (A-11).
+ *   GET /api/platform/ready       — Platform ready (UX-67): the first-run checklist, each row a
+ *                                   fact the Worker holds (`lib/platformReady.ts`).
  *   GET /api/platform/activity    — `platform_audit`, keyset-paginated, newest first (A-12).
  *   GET/PATCH/DELETE /api/platform/settings[/:key]
  *                                 — the platform settings store and the read-only inventory
@@ -80,6 +82,7 @@ import { adminOidcIsDedicated } from "../../platform/platformOidc.js";
 import { platformMigrationReport } from "../../services/identity/public.js";
 import { handleOverrideMigration } from "./overrideMigration.js";
 import { handleMigrations } from "./migrations.js";
+import { platformReady } from "../lib/platformReady.js";
 import { parseJsonColumn } from "../../platform/json.js";
 
 /** The bindings the Deployment page lists. Presence only. */
@@ -312,12 +315,14 @@ export async function handlePlatform(
     resource !== "version" &&
     resource !== "deployment" &&
     resource !== "activity" &&
-    resource !== "operations"
+    resource !== "operations" &&
+    resource !== "ready"
   )
     return notFound();
   if (req.method !== "GET")
     return err(405, "method_not_allowed", "method not allowed");
   if (resource === "version") return adminJson(identity(env));
+  if (resource === "ready") return adminJson(await platformReady(env, db, now));
   if (resource === "deployment") return deployment(req, env, db);
   if (resource === "operations")
     return adminJson(
