@@ -76,7 +76,7 @@ export function refusalScreen(r: Refusal) {
   const message = copy.activation(r.kind, { code: r.code });
   switch (r.kind) {
     case "device-limit":
-      // Replace a device: the portal frees a seat. Nothing was wiped.
+      // Replace a device: Polaris Locker frees a seat. Nothing was wiped.
       return {
         message,
         link: r.manageUrl && withManageReturn(r.manageUrl, "myapp://activated"),

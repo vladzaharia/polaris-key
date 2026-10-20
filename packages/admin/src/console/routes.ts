@@ -117,6 +117,13 @@ export const MOVED_TABS: ReadonlyMap<string, ProductPageId> = new Map<
 
 /** An old tab, or an old tab and a record id when its page has records; anything else is not. */
 function movedFrom(rest: string[]): MovedTo | undefined {
+  // I-29: Identity → Portal and Identity → Sign-in became the one App sign-in page.
+  if (
+    rest.length === 2 &&
+    rest[0] === "identity" &&
+    (rest[1] === "portal" || rest[1] === "sign-in")
+  )
+    return { page: "app-sign-in" };
   const page = rest[0] === undefined ? undefined : MOVED_TABS.get(rest[0]);
   if (!page) return undefined;
   if (rest.length === 1) return { page };
@@ -558,8 +565,7 @@ export const r = {
       child: { ids: [name], tab },
     }),
   feed: (slug: string) => productPage(slug, "feed"),
-  portal: (slug: string) => productPage(slug, "portal"),
-  signIn: (slug: string) => productPage(slug, "sign-in"),
+  appSignIn: (slug: string) => productPage(slug, "app-sign-in"),
   syncData: (slug: string) => productPage(slug, "sync-data"),
 };
 

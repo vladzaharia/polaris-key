@@ -78,5 +78,5 @@ The server answers on `127.0.0.1`, which an emulator does not share with your ma
 
 ## What it is not
 
-It is the real router over throwaway data, not Polaris Key: no console, no portal, and no store
+It is the real router over throwaway data, not Polaris Key: no console, no Polaris Locker, and no store
 connectors. The keys, pins and users exist only until you stop it.

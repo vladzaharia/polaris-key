@@ -199,7 +199,7 @@
     },
     "email_in_use": {
       "title": "Correo ya en uso",
-      "message": "Otra cuenta de Polaris Key ya usa este correo. Une este inicio de sesión a esa cuenta o usa otro correo."
+      "message": "Otra cuenta de Polaris Locker ya usa este correo. Une este inicio de sesión a esa cuenta o usa otro correo."
     },
     "terms_required": {
       "title": "Condiciones no aceptadas",
@@ -207,15 +207,15 @@
     },
     "license_owned": {
       "title": "Licencia en otra cuenta",
-      "message": "Esta licencia de {product} ya está en otra cuenta de Polaris Key. Una licencia nunca se transfiere con su clave."
+      "message": "Esta licencia de {product} ya está en otra cuenta de Polaris Locker. Una licencia nunca se transfiere con su clave."
     },
     "license_email_bound": {
       "title": "Correo no verificado",
-      "message": "Esta licencia pertenece a una dirección de correo que tu cuenta de Polaris Key no ha verificado. Verifica ese correo en tu cuenta y vuelve a intentarlo."
+      "message": "Esta licencia pertenece a una dirección de correo que tu cuenta de Polaris Locker no ha verificado. Verifica ese correo en tu cuenta y vuelve a intentarlo."
     },
     "account_required": {
       "title": "Es necesario iniciar sesión",
-      "message": "Inicia sesión en tu cuenta de Polaris Key en este dispositivo y vuelve a intentarlo."
+      "message": "Inicia sesión en tu cuenta de Polaris Locker en este dispositivo y vuelve a intentarlo."
     },
     "email_mismatch": {
       "title": "Correo no verificado",
@@ -223,7 +223,7 @@
     },
     "link_conflict": {
       "title": "Ya vinculado",
-      "message": "Ese método de inicio de sesión pertenece a otra cuenta de Polaris Key. Inicia sesión en esa cuenta o une las dos cuentas."
+      "message": "Ese método de inicio de sesión pertenece a otra cuenta de Polaris Locker. Inicia sesión en esa cuenta o une las dos cuentas."
     },
     "last_link": {
       "title": "No se puede quitar",
@@ -323,7 +323,7 @@
     },
     "network": {
       "title": "No se puede conectar",
-      "message": "No se puede conectar con Polaris Key. Revisa tu conexión y vuelve a intentarlo."
+      "message": "No se puede conectar con Polaris Locker. Revisa tu conexión y vuelve a intentarlo."
     },
     "refresh-failed": {
       "title": "No se pudo actualizar",
@@ -395,7 +395,7 @@
     },
     "network-error": {
       "title": "No se puede conectar",
-      "message": "No se puede conectar con Polaris Key. Revisa tu conexión y vuelve a intentarlo."
+      "message": "No se puede conectar con Polaris Locker. Revisa tu conexión y vuelve a intentarlo."
     },
     "server-error": {
       "title": "Problema del servicio",
@@ -687,7 +687,7 @@
     },
     "sign_in_required": {
       "title": "Es necesario iniciar sesión",
-      "message": "Inicia sesión en tu cuenta de Polaris Key en la app y vuelve a intentarlo."
+      "message": "Inicia sesión en tu cuenta de Polaris Locker en la app y vuelve a intentarlo."
     }
   },
   "gate": {

@@ -34,7 +34,7 @@ export const BACKEND_COPY: Readonly<Record<BackendLocale, BackendCopyTable>> = {
     sign_in_required: {
       title: "Sign-in needed",
       message:
-        "Sign in to your Polaris Key account in the app, then try again.",
+        "Sign in to your Polaris Locker account in the app, then try again.",
     },
   },
   de: {
@@ -59,7 +59,7 @@ export const BACKEND_COPY: Readonly<Record<BackendLocale, BackendCopyTable>> = {
     sign_in_required: {
       title: "Anmeldung erforderlich",
       message:
-        "Melden Sie sich in der App bei Ihrem Polaris Key-Konto an und versuchen Sie es dann erneut.",
+        "Melden Sie sich in der App bei Ihrem Polaris Locker-Konto an und versuchen Sie es dann erneut.",
     },
   },
   es: {
@@ -84,7 +84,7 @@ export const BACKEND_COPY: Readonly<Record<BackendLocale, BackendCopyTable>> = {
     sign_in_required: {
       title: "Es necesario iniciar sesión",
       message:
-        "Inicia sesión en tu cuenta de Polaris Key en la app y vuelve a intentarlo.",
+        "Inicia sesión en tu cuenta de Polaris Locker en la app y vuelve a intentarlo.",
     },
   },
   it: {
@@ -108,7 +108,7 @@ export const BACKEND_COPY: Readonly<Record<BackendLocale, BackendCopyTable>> = {
     },
     sign_in_required: {
       title: "Accesso richiesto",
-      message: "Accedi al tuo account Polaris Key nell'app, poi riprova.",
+      message: "Accedi al tuo account Polaris Locker nell'app, poi riprova.",
     },
   },
   ja: {
@@ -133,7 +133,7 @@ export const BACKEND_COPY: Readonly<Record<BackendLocale, BackendCopyTable>> = {
     sign_in_required: {
       title: "サインインが必要です",
       message:
-        "アプリでPolaris Keyアカウントにサインインしてから、もう一度お試しください。",
+        "アプリでPolaris Lockerアカウントにサインインしてから、もう一度お試しください。",
     },
   },
   ko: {
@@ -157,7 +157,7 @@ export const BACKEND_COPY: Readonly<Record<BackendLocale, BackendCopyTable>> = {
     },
     sign_in_required: {
       title: "로그인 필요",
-      message: "앱에서 Polaris Key 계정에 로그인한 후 다시 시도하세요.",
+      message: "앱에서 Polaris Locker 계정에 로그인한 후 다시 시도하세요.",
     },
   },
   "pt-BR": {
@@ -181,7 +181,7 @@ export const BACKEND_COPY: Readonly<Record<BackendLocale, BackendCopyTable>> = {
     },
     sign_in_required: {
       title: "É preciso entrar",
-      message: "Entre na sua conta do Polaris Key no app e tente novamente.",
+      message: "Entre na sua conta do Polaris Locker no app e tente novamente.",
     },
   },
   "zh-Hans": {
@@ -200,7 +200,7 @@ export const BACKEND_COPY: Readonly<Record<BackendLocale, BackendCopyTable>> = {
     not_entitled: { title: "未包含", message: "你的许可证不包含此内容。" },
     sign_in_required: {
       title: "需要登录",
-      message: "请在应用中登录你的Polaris Key账户，然后重试。",
+      message: "请在应用中登录你的Polaris Locker账户，然后重试。",
     },
   },
 };

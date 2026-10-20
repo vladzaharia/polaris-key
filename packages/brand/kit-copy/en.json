@@ -1,6 +1,6 @@
 {
   "$schema": "./kit-copy.schema.json",
-  "$comment": "The kit copy catalog (plans/UK-02.md §3.1): every string a Polaris Key UI kit shows that is not core copy. Hand-written ICU MessageFormat subset (plain arguments, at most one plural on an integer argument, select only on formFactor). Error and gate copy is never repeated here: it lives in conformance/parity/copy.en.json and every generated kit table carries it under core.* keys. `pnpm gen brand` validates this file, the eight locale packs and components.json, and writes the per-platform tables; `pnpm gen brand --check` is the drift gate. US spelling (license); the signin.* namespace is docs/design/SIGN-IN.md §5.2.",
+  "$comment": "The kit copy catalog (plans/UK-02.md §3.1): every string a Polaris Locker UI kit shows that is not core copy. Hand-written ICU MessageFormat subset (plain arguments, at most one plural on an integer argument, select only on formFactor). Error and gate copy is never repeated here: it lives in conformance/parity/copy.en.json and every generated kit table carries it under core.* keys. `pnpm gen brand` validates this file, the eight locale packs and components.json, and writes the per-platform tables; `pnpm gen brand --check` is the drift gate. US spelling (license); the signin.* namespace is docs/design/SIGN-IN.md §5.2.",
   "kitCopyVersion": 1,
   "locale": "en",
   "messages": {
@@ -82,7 +82,7 @@
     "common.manage": {
       "value": "Manage",
       "role": "button",
-      "note": "Shared verb used across the kit's screens. Opens the person's Polaris Key account in the browser."
+      "note": "Shared verb used across the kit's screens. Opens the person's Polaris Locker account in the browser."
     },
     "common.reconnect": {
       "value": "Reconnect",
@@ -230,9 +230,9 @@
       "note": "Caption under the seat meter. {used} and {limit} are numbers of devices. Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number."
     },
     "part.poweredBy": {
-      "value": "Powered by Polaris Key",
+      "value": "Powered by Polaris Locker",
       "role": "label",
-      "note": "Optional footer line. Polaris Key is never translated."
+      "note": "Optional footer line. Polaris Locker is never translated."
     },
     "part.status.ok": {
       "value": "Active",
@@ -1367,7 +1367,7 @@
       "note": "Toast: an update is available. Arguments: {product} = the product's name from ProductIdentity (never translated); {version} = a version string such as 2.4.1."
     },
     "signin.methods.title": {
-      "value": "Sign in to Polaris Key",
+      "value": "Sign in to Polaris Locker",
       "role": "title",
       "note": "Hosted sign-in card, method chooser (SIGN-IN.md §3.3)."
     },
@@ -1462,7 +1462,7 @@
       "note": "Header of the sign-in card when an app asks (SIGN-IN.md §3.1). Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated."
     },
     "signin.footer": {
-      "value": "Polaris Key signs you in for {app}. {developer} never sees your codes or passkeys.",
+      "value": "Polaris Locker signs you in for {app}. {developer} never sees your codes or passkeys.",
       "role": "body",
       "note": "Hosted sign-in card (SIGN-IN.md). Arguments: {app} = the requesting app's name (never translated); {developer} = the developer's name (never translated)."
     },
@@ -1487,7 +1487,7 @@
       "note": "Hosted sign-in card (SIGN-IN.md)."
     },
     "signin.network.title": {
-      "value": "Can't reach Polaris Key",
+      "value": "Can't reach Polaris Locker",
       "role": "title",
       "note": "The card can't reach the service."
     },
@@ -1547,7 +1547,7 @@
       "note": "Email code step (SIGN-IN.md §3.4)."
     },
     "signin.email.subject": {
-      "value": "Your Polaris Key code: {code}",
+      "value": "Your Polaris Locker code: {code}",
       "role": "title",
       "note": "Sign-in email subject (SIGN-IN.md §3.15). Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated."
     },
@@ -2197,7 +2197,7 @@
       "note": "App menu item that opens sign-in (SIGN-IN.md §3.17)."
     },
     "signin.handoff.browserBody": {
-      "value": "We opened Polaris Key in your browser. Sign in there and {app} continues by itself.",
+      "value": "We opened Polaris Locker in your browser. Sign in there and {app} continues by itself.",
       "role": "body",
       "note": "App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). Arguments: {app} = the requesting app's name (never translated)."
     },
@@ -2287,7 +2287,7 @@
       "note": "Choose a license for this device (SIGN-IN.md §3.6)."
     },
     "signin.replace.opensBrowser": {
-      "value": "Opens Polaris Key in your browser",
+      "value": "Opens Polaris Locker in your browser",
       "role": "body",
       "note": "Replace a device, inline in the license choice (SIGN-IN.md §3.7)."
     },
@@ -2357,7 +2357,7 @@
       "note": "Sign in with another device (SIGN-IN.md §3.11)."
     },
     "signin.approve.warning": {
-      "value": "Only approve if you started this yourself, on a device in front of you. Nobody from Polaris Key or a developer will ever ask you for this.",
+      "value": "Only approve if you started this yourself, on a device in front of you. Nobody from Polaris Locker or a developer will ever ask you for this.",
       "role": "body",
       "note": "Sign in with another device (SIGN-IN.md §3.11)."
     },
@@ -2432,14 +2432,14 @@
       "note": "Expired code or link page (SIGN-IN.md §4.12)."
     },
     "signin.identityOff.notice": {
-      "value": "{product} doesn't use Polaris Key sign-in. Open {product} and enter your license key there.",
+      "value": "{product} doesn't use Polaris Locker sign-in. Open {product} and enter your license key there.",
       "role": "body",
-      "note": "The product doesn't use Polaris Key sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated)."
+      "note": "The product doesn't use Polaris Locker sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated)."
     },
     "signin.identityOff.lede": {
       "value": "Sign in here to see {product} in your library.",
       "role": "body",
-      "note": "The product doesn't use Polaris Key sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated)."
+      "note": "The product doesn't use Polaris Locker sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated)."
     },
     "signin.signout.title": {
       "value": "Sign out of {product} on this device?",
@@ -2477,7 +2477,7 @@
       "note": "Session ended (SIGN-IN.md §4.10). Arguments: {product} = the product's name from ProductIdentity (never translated)."
     },
     "signin.provider.manage": {
-      "value": "Manage sign-in methods in Polaris Key",
+      "value": "Manage sign-in methods in Polaris Locker",
       "role": "button",
       "note": "Sign-in provider buttons (SIGN-IN.md §3.3)."
     },
@@ -2492,22 +2492,22 @@
       "note": "Security email (SIGN-IN.md §3.15). Arguments: {product} = the product's name from ProductIdentity (never translated); {device} = a device's friendly name, for example “Maya's MacBook”."
     },
     "signin.mail.replaced.body": {
-      "value": "{device} was replaced by {newDevice} when you signed in to {product} on {date}. It can sign in again later if a seat is free. If this wasn't you, open Polaris Key and check your devices.",
+      "value": "{device} was replaced by {newDevice} when you signed in to {product} on {date}. It can sign in again later if a seat is free. If this wasn't you, open Polaris Locker and check your devices.",
       "role": "body",
       "note": "Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {newDevice} = the new device's friendly name; {product} = the product's name from ProductIdentity (never translated); {date} = a date already formatted by the platform."
     },
     "signin.mail.newDevice.subject": {
-      "value": "A new device signed in to your Polaris Key account",
+      "value": "A new device signed in to your Polaris Locker account",
       "role": "title",
       "note": "Security email (SIGN-IN.md §3.15)."
     },
     "signin.mail.newDevice.body": {
-      "value": "{device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Key under Where you're signed in.",
+      "value": "{device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Locker under Where you're signed in.",
       "role": "body",
       "note": "Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {date} = a date already formatted by the platform; {place} = an approximate place (city, country)."
     },
     "signin.mail.open": {
-      "value": "Open Polaris Key",
+      "value": "Open Polaris Locker",
       "role": "button",
       "note": "Security email (SIGN-IN.md §3.15)."
     },
@@ -3089,12 +3089,12 @@
     "cli.status.keyRevoked.message": {
       "value": "It may have expired or been turned off:",
       "role": "body",
-      "note": "Terminal status, under the title above. It ends in a colon: the product's account page on Polaris Key follows on its own line, as a link."
+      "note": "Terminal status, under the title above. It ends in a colon: the product's account page on Polaris Locker follows on its own line, as a link."
     },
     "cli.activate.unauthorized": {
       "value": "Check it for typos. If it's right, it may have expired or been turned off:",
       "role": "body",
-      "note": "Terminal activate: the server did not accept the license key, under the title 'Key not accepted'. It answers the same for a wrong key and for one that expired or was turned off, so the text covers both. It ends in a colon: the product's account page on Polaris Key follows on its own line, as a link."
+      "note": "Terminal activate: the server did not accept the license key, under the title 'Key not accepted'. It answers the same for a wrong key and for one that expired or was turned off, so the text covers both. It ends in a colon: the product's account page on Polaris Locker follows on its own line, as a link."
     },
     "cli.option.reveal": {
       "value": "Print the value",

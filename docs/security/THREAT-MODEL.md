@@ -3850,7 +3850,7 @@ delivery. All mail goes through one choke point, `deliverEmail` (`src/core/notif
   comment, quoted local part or route), when it is parsed and again in `deliverEmail` before the
   provider, so the string that is rate-limited and suppression-checked is the string mailed.
 - _Draining the shared quota._ A per-product daily cap on passthrough mail (default 500, the
-  `EMAIL_PRODUCT_DAILY_CAP` var, or the product's `email_product_caps` row), charged after
+  platform default `email.dailyCapDefault`, a console value over the `EMAIL_PRODUCT_DAILY_CAP` var, or the product's own `email.dailyCap` setting, both operator-owned and audited since ST-11; a raise needs L1), charged after
   suppression so it counts only mail that leaves; over it the product answers
   `email_unavailable`, which names no recipient. Platform mail (account notices, the
   dormant-account warning, merge and join notices) is never capped (owner, 2026-10-04).
@@ -4265,7 +4265,7 @@ event-notification rule on the payload prefixes, and a **second Worker script**,
 (`polaris-key-deltas-<env>`, `wrangler.deltas.toml`), which encodes `zstd-patch-from` deltas in
 WebAssembly (`@polaris-key/zstd-wasm/encoder`, level 9, levels above 15 refused, 32 MiB per side).
 It adds no route and no wire member. Off by default twice: the `LAZY_DELTAS` var in both scripts
-and a per-product `lazy_delta_settings` row.
+and a per-product `deltas.lazy.enabled` setting (ST-11: a registry entry, audited; it was a SQL-only row).
 
 - **A lazy delta carries no trust of its own.** It is in no CI-signed record. A device that is
   offered one checks the artifact's SHA-256 and length, that its base is the installed payload,
@@ -9344,7 +9344,7 @@ Poison the release channel
 ├── Write access to a linked repo
 │   ├── set `.pkey/release` sparkleEd25519Pub to a key you hold  (the verifying key is repo-sourced: resync rewrites `sparkle_ed25519_pub` on every push-triggered resync, with no operator guard)
 │   ├── publish a DMG + a .sig made with that key (the appcast verifies the sidecar over the DMG bytes against `sparkle_ed25519_pub`, so a repo writer who swapped the key passes; only the client-side Sparkle `SUPublicEDKey` pin stops it)
-│   └── set `.pkey/release` requireSparkleSignature:false  (no effect: the requirement is operator-owned, read from `operator_policy_json`, which no manifest path writes)
+│   └── set `.pkey/release` requireSparkleSignature:false  (no effect: the requirement is operator-owned, read from the `update.operatorPolicy` setting (ST-11: a `product_settings` row), which no manifest path writes)
 ├── Publish through a trusted publisher (P2-02)
 │   ├── run the declared workflow in the declared environment on a protected ref   (= repo write + whatever the rulesets/environment reviewers allow; the intended path)
 │   ├── present another repository's OIDC token  (refused: numeric repository_id/owner_id pinned from GitHub)
@@ -9580,16 +9580,28 @@ dotted path from that root, so `GET /manage/docs/<file>` served gated docs with 
 **Control.** `isPublicSpaAssetPath` (`http.ts`) is an allowlist: the proxies fetch only
 `/assets/<literal file>`, and every other path is the SPA shell. Docs are served only by
 `handleDocs`. Since ST-29 it serves by tier (`DOCS_TIERS`, docs plan §3.1 and D2): the landing
-page, the developer sections and the site's shared assets need no session; Operate → Console (and
-Help, until the owner's support address exists, D4) need a console member; Operate → Platform,
-Contribute, the search index (one bundle holds every tier's text until DOC-03b splits it) and
-every path no row names need `can(platform, docs)`. The gate runs before anything is fetched. Tests:
+page, the access page, Help (public since DOC-03b), the developer sections, the site's shared
+assets and the public search bundle need no session; Operate → Console and its search bundle need
+a console member; Operate → Platform, Contribute, the full search bundle and every path no row
+names need `can(platform, docs)`. A sessionless request for a gated path is a 302 to
+`/docs/access/`, which leaks nothing (the path is not echoed). Search is one Pagefind bundle per
+tier (`SEARCH_BUNDLES`, built by `packages/docs/scripts/build-search-bundles.ts`): each holds its
+tier's pages and those below it, so no bundle carries text its reader may not open, and a test
+reads every fragment of every bundle and fails on a page above the bundle's tier. Gated pages are
+`noindex` and out of the sitemap. The gate runs before anything is fetched. Tests:
 `test/docsGateBypass.test.ts` walks every file in the assembled tree through encoded, cased,
 doubled-slash, traversal, HEAD and Range variants: a gated file is denied anonymously by every
 route, a public one is served at `/docs` only, and with an admin session every file is served at
-`/docs` only; `test/docsGate.test.ts` pins the tier table to the docs site's `TIER_PREFIXES`.
+`/docs` only; `test/docsGate.test.ts` pins the tier table to the docs site's `TIER_PREFIXES` and
+the bundle directories to the build's. The docs `check:links` adds the tier rule: a public page's
+content links only to public pages (existing exceptions are held in `link-tier-debt.json`, which
+only shrinks).
 
-**Residual.** Anything placed under `/assets/` in the admin build is public by design. The
-developer door is public since ST-29, and a file under `/docs/_astro/` that only a gated page
-uses (an imported image) is public with it until DOC-03b gives assets their pages' tier; the
-repository that builds them is public too.
+**Residual.** Until DOC-02b scopes the sidebar to the page's door, a public page's sidebar lists
+gated pages' titles and URLs; no gated page text leaks (the docs source is public anyway).
+Anything placed under `/assets/` in the admin build is public by design. The
+developer door and Help are public, and a file under `/docs/_astro/` that only a gated page uses
+(an imported image) is public with it; the repository that builds them is public too. The search
+UI still loads the public bundle for every reader until DOC-02c picks the bundle by tier, so a
+member searching sees public results only. `robots.txt` for the docs host is not served yet (it
+needs a route, with its OpenAPI row).

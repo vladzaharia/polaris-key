@@ -22,16 +22,21 @@ import {
   type Context,
   type LicenseChoiceRow,
 } from "../input.js";
+import {
+  DEVICE_CODE_PAGE,
+  SIGN_IN_PROVIDER_NAME,
+  TV_CODE_PAGE,
+} from "@polaris-key/protocol/core";
 import { codeExpired, countdown, linkVerdict, validLink } from "../link.js";
 import { loadingVisible } from "../loading.js";
 import { hiddenView, identityText, makeView, type View } from "../view.js";
 
-const DEFAULT_DEVICE_URL = "https://key.plrs.im/device";
-const DEFAULT_TV_URL = "https://key.plrs.im/tv";
-/** The provider the generic sign-in row names. That row opens Polaris Key's own sign-in (the hosted
- *  card), so this is its true name; a product that shows a provider's row of its own (Apple,
+const DEFAULT_DEVICE_URL = DEVICE_CODE_PAGE;
+const DEFAULT_TV_URL = TV_CODE_PAGE;
+/** The provider the generic sign-in row names. That row opens Polaris Locker's own sign-in (the
+ *  hosted card), so this is its true name; a product that shows a provider's row of its own (Apple,
  *  Google, Steam) says which with `UiInput.provider`. */
-const DEFAULT_PROVIDER = "Polaris Key";
+const DEFAULT_PROVIDER = SIGN_IN_PROVIDER_NAME;
 
 /** The sign-in is possible here: Identity is on and the build offers it. */
 function signInOn(ctx: Context): boolean {
@@ -45,7 +50,7 @@ function choosesInApp(ctx: Context): boolean {
 }
 
 /** The device-code page: the product's own `deviceCodeUrl`, else the server's address, else
- *  Polaris Key's (`/tv` on a TV or console, `/device` elsewhere; SIGN-IN.md D-16). */
+ *  Polaris Locker's (`/tv` on a TV or console, `/device` elsewhere; SIGN-IN.md D-16). */
 export function verificationUrl(ctx: Context): string {
   // The first that passes the opener (DL14): a broken integrator address never hides the
   // server's valid one.
@@ -58,7 +63,7 @@ export function verificationUrl(ctx: Context): string {
   return c === "tv" || c === "console" ? DEFAULT_TV_URL : DEFAULT_DEVICE_URL;
 }
 
-/** What opening, copying or scanning the link does: the Polaris Key page we fall back to carries
+/** What opening, copying or scanning the link does: the Polaris Locker page we fall back to carries
  *  the code (`?user_code=`), so the person need not type it. The displayed address stays bare. */
 function verificationTarget(ctx: Context, shown: string): string {
   const code = ctx.input.deviceCode?.userCode;

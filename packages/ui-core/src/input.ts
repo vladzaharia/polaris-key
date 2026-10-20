@@ -297,7 +297,7 @@ export interface UiInput {
   };
   signIn?: SignInSession;
   /** The sign-in provider the methods step's row names ("Apple", "Google", "Steam"), and the one a
-   *  failed sign-in names. Absent: "Polaris Key", the sign-in the generic row opens. */
+   *  failed sign-in names. Absent: "Polaris Locker", the sign-in the generic row opens. */
   provider?: string;
   deviceCode?: DeviceCodeInput;
   choices?: LicenseChoiceView;

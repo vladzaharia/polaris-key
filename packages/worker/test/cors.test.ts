@@ -9,7 +9,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
-import { makeEnv, NOW, seedProduct } from "./seed.js";
+import { makeEnv, NOW, seedOperatorPolicy, seedProduct } from "./seed.js";
 import { TEST_RSA_PKCS8 } from "./releaseFixtures.js";
 import { dispatch } from "../src/dispatch.js";
 import { secureResponse } from "../src/core/securityHeaders.js";
@@ -110,6 +110,11 @@ async function seed(
   // The `dist_access` row migration 0038 (or any link/resync) writes for this configuration: no
   // row reads fail-closed as `entitled` (P2b-04).
   await seedDeliveryAccess(db, SLUG, "public");
+  await seedOperatorPolicy(
+    db,
+    SLUG,
+    JSON.stringify({ requireSparkleSignature: false }),
+  );
 }
 
 function envFor(): Env {

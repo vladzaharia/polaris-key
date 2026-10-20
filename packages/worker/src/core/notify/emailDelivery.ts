@@ -7,6 +7,8 @@ import {
   EMAIL_SEND_PRODUCT_DAILY_DEFAULT,
   recipientHash,
 } from "./emailLimits.js";
+import { tryParseJson } from "../../platform/json.js";
+import { platformSetting } from "../settings/platformRead.js";
 import { passthroughSender, platformSender } from "./emailSender.js";
 
 // The ONE place sign-in and account email leaves the Worker (I-18). Every send, platform or
@@ -61,7 +63,11 @@ export type SuppressionReason =
   | "operator";
 
 export type EmailSender =
-  | { kind: "platform" }
+  /**
+   * Platform mail: customer mail is "Polaris Locker" (LK-07). `audience: "operator"` (alerts,
+   * invites, member notices: the console side) is "Polaris Key".
+   */
+  | { kind: "platform"; audience?: "operator" }
   | {
       kind: "passthrough";
       product: string;
@@ -104,53 +110,45 @@ function positiveInt(value: unknown): number | null {
   return Number.isSafeInteger(n) && n > 0 ? n : null;
 }
 
+/** The product-scope key (ST-11): `email_product_caps.daily_cap`, now a `product_settings` row. */
+export const PRODUCT_EMAIL_CAP_KEY = "email.dailyCap";
+
 /**
- * A product's daily passthrough-mail cap: its `email_product_caps` row, else the deploy's
- * `EMAIL_PRODUCT_DAILY_CAP` var, else `EMAIL_SEND_PRODUCT_DAILY_DEFAULT`. An unreadable row reads
- * as absent (the deploy-wide value still caps the product).
+ * A product's daily passthrough-mail cap: its own `email.dailyCap` (a `product_settings` row),
+ * else the platform default `email.dailyCapDefault` (a console value, else the deploy's
+ * `EMAIL_PRODUCT_DAILY_CAP` var), else `EMAIL_SEND_PRODUCT_DAILY_DEFAULT`. An unreadable row reads
+ * as absent (the platform value still caps the product).
  */
 export async function productDailyEmailCap(
   env: Env,
   db: Db,
   product: string,
 ): Promise<number> {
-  let row: { daily_cap: number } | null = null;
+  let own: unknown;
   try {
-    row = await db.first<{ daily_cap: number }>(
-      "SELECT daily_cap FROM email_product_caps WHERE product = ?",
+    const row = await db.first<{ value_json: string | null }>(
+      "SELECT value_json FROM product_settings WHERE product = ? AND key = ?",
       product,
+      PRODUCT_EMAIL_CAP_KEY,
     );
+    own = tryParseJson(row?.value_json);
   } catch {
-    row = null;
+    own = undefined;
   }
-  return (
-    positiveInt(row?.daily_cap) ??
-    positiveInt(env.EMAIL_PRODUCT_DAILY_CAP) ??
-    EMAIL_SEND_PRODUCT_DAILY_DEFAULT
-  );
-}
-
-/** Set (or, with `null`, clear) a product's own daily cap. */
-export async function setProductDailyEmailCap(
-  db: Db,
-  product: string,
-  dailyCap: number | null,
-  now: number,
-): Promise<void> {
-  if (dailyCap === null) {
-    await db.run("DELETE FROM email_product_caps WHERE product = ?", product);
-    return;
-  }
-  if (positiveInt(dailyCap) === null)
-    throw new Error("a daily cap is a positive integer");
-  await db.run(
-    `INSERT INTO email_product_caps (product, daily_cap, modified_at) VALUES (?, ?, ?)
-     ON CONFLICT(product) DO UPDATE SET daily_cap = excluded.daily_cap,
-                                        modified_at = excluded.modified_at`,
-    product,
-    dailyCap,
-    now,
-  );
+  const fallback = async (): Promise<number> => {
+    try {
+      return (
+        positiveInt(await platformSetting(env, db, "email.dailyCapDefault")) ??
+        EMAIL_SEND_PRODUCT_DAILY_DEFAULT
+      );
+    } catch {
+      return (
+        positiveInt(env.EMAIL_PRODUCT_DAILY_CAP) ??
+        EMAIL_SEND_PRODUCT_DAILY_DEFAULT
+      );
+    }
+  };
+  return positiveInt(own) ?? (await fallback());
 }
 
 /**
@@ -284,7 +282,7 @@ export async function deliverEmail(
 
   const from =
     msg.sender.kind === "platform"
-      ? platformSender(env)
+      ? platformSender(env, msg.sender.audience)
       : passthroughSender(env, msg.sender.displayName, msg.sender.product);
   if (!from) return unavailable;
 

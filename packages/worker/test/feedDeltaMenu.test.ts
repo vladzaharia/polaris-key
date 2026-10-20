@@ -484,11 +484,11 @@ async function packRow(pack: string, version: string) {
 function optIn(enabled = true) {
   env.LAZY_DELTAS = "on";
   return db.run(
-    `INSERT INTO lazy_delta_settings (product, enabled, hot_devices, daily_cap, updated_at)
-     VALUES (?, ?, NULL, NULL, ?)
-     ON CONFLICT (product) DO UPDATE SET enabled = excluded.enabled`,
+    `INSERT INTO product_settings (product, key, value_json, source, version, updated_at, updated_by)
+     VALUES (?, 'deltas.lazy.enabled', ?, 'console', 1, ?, 'test')
+     ON CONFLICT (product, key) DO UPDATE SET value_json = excluded.value_json`,
     SLUG,
-    enabled ? 1 : 0,
+    enabled ? '"on"' : '"off"',
     NOW,
   );
 }

@@ -38,6 +38,7 @@ export interface PlatformValues {
   "identity.reservedDisplayNames": ReservedDisplayNamesMode;
   "identity.keyEntryRefusals": "on" | "off";
   "assets.hosting.enabled": "on" | "off";
+  "email.dailyCapDefault": number;
 }
 
 let CORE_REGISTRY: SettingsRegistry | undefined;

@@ -71,7 +71,7 @@ func refusalScreen(_ result: ActivationResult) -> (message: String, link: String
     case .ok:
         return nil
     case .deviceLimit(let limit, let count, let manageURL):
-        // Replace a device: the portal frees a seat. Nothing was wiped.
+        // Replace a device: Polaris Locker frees a seat. Nothing was wiped.
         var params: [String: String] = [:]
         if let limit { params["limit"] = String(limit) }
         if let count { params["deviceCount"] = String(count) }

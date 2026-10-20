@@ -1,6 +1,6 @@
 ---
 title: "Sign-in"
-description: "Let people sign in to your app with a Polaris Key account, a work provider or a code, and give them a customer portal for their licenses and devices."
+description: "Let people sign in to your app with a Polaris Locker account, a work provider or a code, and send them to Polaris Locker for their licenses and devices."
 type: "overview"
 lastReviewed: "2026-10-16"
 sidebar:
@@ -11,7 +11,7 @@ import CardGrid from "../../../../components/docs/CardGrid.astro";
 import Requires from "../../../../components/docs/Requires.astro";
 import { LinkCard } from "@astrojs/starlight/components";
 
-Sign-in proves who a person is to one product and turns that into a license, a browser session or a device token the rest of Polaris Key already understands. It also runs the customer portal, where people manage their licenses and devices across your products.
+Sign-in proves who a person is to one product and turns that into a license, a browser session or a device token the rest of Polaris Key already understands. It also runs Polaris Locker, where people manage their licenses and devices across your products.
 
 <Requires features={["sign-in"]} role="Product admin" />
 
@@ -44,7 +44,7 @@ Sign-in proves who a person is to one product and turns that into a license, a b
     description="The product cookie and the session document."
   />
   <LinkCard
-    title="Customer portal"
+    title="Polaris Locker"
     href="/docs/features/sign-in/customer-portal/"
     description="The account surface customers use."
   />
@@ -69,9 +69,9 @@ Sign-in proves who a person is to one product and turns that into a license, a b
 
 <CardGrid>
   <LinkCard
-    title="Portal API"
+    title="Polaris Locker API"
     href="/docs/reference/portal-api/"
-    description="Every portal route and its gates."
+    description="Every Polaris Locker route and its gates."
   />
 </CardGrid>
 

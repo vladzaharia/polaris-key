@@ -411,3 +411,22 @@ export async function setClaimByKey(
   }))
     await db.run(stmt.sql, ...stmt.params);
 }
+
+/**
+ * ST-11: a product's operator-only artifact policy is its `update.operatorPolicy`
+ * `product_settings` row (the old `release_config.operator_policy_json` column is not read).
+ */
+export async function seedOperatorPolicy(
+  db: Db,
+  product: string,
+  json: string | null | undefined,
+): Promise<void> {
+  if (!json) return;
+  await db.run(
+    `INSERT INTO product_settings (product, key, value_json, source, version, updated_at, updated_by)
+     VALUES (?, 'update.operatorPolicy', ?, 'console', 1, 0, 'test')
+     ON CONFLICT(product, key) DO UPDATE SET value_json = excluded.value_json`,
+    product,
+    json,
+  );
+}

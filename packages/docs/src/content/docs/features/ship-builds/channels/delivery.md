@@ -10,7 +10,7 @@ lastReviewed: "2026-10-16"
 Release writes the records; **Distribution serves the bytes**. Every download a product
 offers — the curl-pipe installer, the direct download, and the build, file and blob routes —
 is a Distribution route, and who may download a deliverable is Distribution's **delivery
-access**: one answer that the downloads, the Sparkle appcast and the customer portal all read.
+access**: one answer that the downloads, the Sparkle appcast and Polaris Locker all read.
 
 ## The byte routes
 
@@ -109,7 +109,7 @@ as `entitled` (fail-closed). The refusals are exactly the ones Release answered 
 
 ### One answer for every surface
 
-The appcast, the download routes and the portal's download mint all read the same
+The appcast, the download routes and Locker's download mint all read the same
 `delivery.accessMode()`. Before, the feed and the download read access separately, so a feed
 could offer what the download then refused.
 
@@ -120,7 +120,7 @@ could offer what the download then refused.
   deliverables whose releases carry it, and a pack's object under the pack's own access and
   gate ([Pack bytes](#pack-bytes)).
 - **The appcast** is gated by the `app` deliverable's delivery access.
-- **The portal.** A customer has licenses, not a device token, so each mode is asked of the
+- **Locker.** A customer has licenses, not a device token, so each mode is asked of the
   account's linked licenses: `licensed` needs a usable one, `entitled` one whose grant holds the
   release's release track (stable for a GitHub-derived release) and whose window holds its version.
   A public artifact with no GitHub download URL is redirected to its bytes-host URL; a

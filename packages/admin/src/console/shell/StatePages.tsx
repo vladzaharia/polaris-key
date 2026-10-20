@@ -20,6 +20,11 @@ import { pageOf, sectionOf, type NavSection } from "../nav.js";
 import { Link } from "../router.js";
 import { movedHref, r, searchTermFor, type MovedTo } from "../routes.js";
 import { LiveRegion } from "../../ui/LiveRegion.js";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "../../ui/toast.js";
+import { mutate } from "../data/mutations.js";
+import { qk } from "../data/queries.js";
+import { useWriteGate } from "../access/useCan.js";
 
 /** A page title for a state page: an `<h1>` the route focus can land on. */
 function StateHeading({ children }: { children: React.ReactNode }) {
@@ -235,6 +240,35 @@ export function UnknownProductPage({
  * puts the fix (Core → Services) one click away. It explains, it does not guard: every endpoint
  * gates itself on the worker.
  */
+/** Sign-in's own way back: one button on the page, no trip to Services (I-29). */
+function TurnOnSignIn({ slug }: { slug: string }): React.ReactElement {
+  const queryClient = useQueryClient();
+  const gate = useWriteGate("core", slug);
+  const [busy, setBusy] = React.useState(false);
+  return (
+    <Button
+      loading={busy}
+      disabled={!gate.allowed}
+      disabledReason={gate.disabledReason}
+      onClick={() => {
+        setBusy(true);
+        mutate("updateServices", slug, {
+          services: { identity: { enabled: true } },
+        })
+          .then((next) => {
+            queryClient.setQueryData(qk.services(slug), next);
+            void queryClient.invalidateQueries({ queryKey: qk.product(slug) });
+            toast.success("Sign-in turned on");
+          })
+          .catch((error) => toast.error(error))
+          .finally(() => setBusy(false));
+      }}
+    >
+      Turn on Sign-in
+    </Button>
+  );
+}
+
 export function ServiceOffPage({
   section,
   slug,
@@ -244,22 +278,36 @@ export function ServiceOffPage({
   slug: string;
   productName: string;
 }): React.ReactElement {
+  const signIn = section.key === "identity";
+  const label = signIn ? "Sign-in" : section.label;
   return (
     <section
       className="space-y-6 animate-pk-enter"
       data-service={section.accent}
     >
-      <StateHeading>{section.label}</StateHeading>
+      <StateHeading>{signIn ? "App sign-in" : section.label}</StateHeading>
       <EmptyState
         kind="service-off"
         headingLevel={2}
         service={section.service ?? undefined}
-        title={`The ${section.label} service isn’t enabled for ${productName}.`}
-        description={`${productName} doesn’t run ${section.label}, so there is nothing here to manage. Turn it on in Services and this page comes back.`}
+        title={
+          signIn
+            ? `Sign-in is off for ${productName}.`
+            : `The ${section.label} service isn’t enabled for ${productName}.`
+        }
+        description={
+          signIn
+            ? `No one can sign in to ${productName} until Sign-in is on. Accounts and settings are kept.`
+            : `${productName} doesn’t run ${section.label}, so there is nothing here to manage. Turn it on in Services and this page comes back.`
+        }
         primaryAction={
-          <Button asChild>
-            <Link to={r.services(slug)}>Enable {section.label}</Link>
-          </Button>
+          signIn ? (
+            <TurnOnSignIn slug={slug} />
+          ) : (
+            <Button asChild>
+              <Link to={r.services(slug)}>Enable {label}</Link>
+            </Button>
+          )
         }
         docs={section.docs}
       />

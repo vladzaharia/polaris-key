@@ -108,7 +108,7 @@ msgid "common.signOut"
 msgstr "로그아웃"
 
 #. Manage
-#. Shared verb used across the kit's screens. Opens the person's Polaris Key account in the browser.
+#. Shared verb used across the kit's screens. Opens the person's Polaris Locker account in the browser.
 msgid "common.manage"
 msgstr "관리"
 
@@ -339,10 +339,10 @@ msgstr "대신 휴대폰으로 스캔"
 msgid "part.seatMeter.caption"
 msgstr "{limit}대 중 {used}대 사용 중"
 
-#. Powered by Polaris Key
-#. Optional footer line. Polaris Key is never translated.
+#. Powered by Polaris Locker
+#. Optional footer line. Polaris Locker is never translated.
 msgid "part.poweredBy"
-msgstr "Polaris Key 제공"
+msgstr "Polaris Locker 제공"
 
 #. Active
 #. Status pill: the license works.
@@ -1717,10 +1717,10 @@ msgstr "실행 취소"
 msgid "toast.updateAvailable"
 msgstr "{product} {version} 업데이트가 있어요"
 
-#. Sign in to Polaris Key
+#. Sign in to Polaris Locker
 #. Hosted sign-in card, method chooser (SIGN-IN.md §3.3).
 msgid "signin.methods.title"
-msgstr "Polaris Key에 로그인"
+msgstr "Polaris Locker에 로그인"
 
 #. Sign in
 #. Hosted sign-in card, method chooser (SIGN-IN.md §3.3).
@@ -1837,10 +1837,10 @@ msgstr "라이선스, 다운로드 및 기기"
 msgid "signin.header.codePanel"
 msgstr "화면의 코드 · {code} · 화면과 일치하는지 확인하세요"
 
-#. Polaris Key signs you in for {app}. {developer} never sees your codes or passkeys.
+#. Polaris Locker signs you in for {app}. {developer} never sees your codes or passkeys.
 #. Hosted sign-in card (SIGN-IN.md). Arguments: {app} = the requesting app's name (never translated); {developer} = the developer's name (never translated).
 msgid "signin.footer"
-msgstr "Polaris Key가 {app} 로그인을 처리해요. {developer}에게는 코드나 패스키가 절대 공개되지 않아요."
+msgstr "Polaris Locker가 {app} 로그인을 처리해요. {developer}에게는 코드나 패스키가 절대 공개되지 않아요."
 
 #. Sign-in is turned off for {product}. Contact {developer}.
 #. Sign-in is turned off (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated); {developer} = the developer's name (never translated).
@@ -1862,10 +1862,10 @@ msgstr "코드를 너무 많이 요청했어요. {minutes}분 후에 다시 시�
 msgid "signin.emailDown"
 msgstr "지금은 이메일을 보낼 수 없어요. 다른 방법으로 로그인하세요."
 
-#. Can't reach Polaris Key
+#. Can't reach Polaris Locker
 #. The card can't reach the service.
 msgid "signin.network.title"
-msgstr "Polaris Key에 연결할 수 없어요"
+msgstr "Polaris Locker에 연결할 수 없어요"
 
 #. Try again
 #. Hosted sign-in card (SIGN-IN.md).
@@ -1944,10 +1944,10 @@ msgctxt "macos"
 msgid "signin.code.differentEmail"
 msgstr "다른 이메일 사용"
 
-#. Your Polaris Key code: {code}
+#. Your Polaris Locker code: {code}
 #. Sign-in email subject (SIGN-IN.md §3.15). Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated.
 msgid "signin.email.subject"
-msgstr "Polaris Key 코드: {code}"
+msgstr "Polaris Locker 코드: {code}"
 
 #. Or sign in with the button. The code and the link work once, for 10 minutes.
 #. Sign-in email body (SIGN-IN.md §3.15).
@@ -2740,10 +2740,10 @@ msgctxt "macos"
 msgid "signin.menu.signIn"
 msgstr "로그인…"
 
-#. We opened Polaris Key in your browser. Sign in there and {app} continues by itself.
+#. We opened Polaris Locker in your browser. Sign in there and {app} continues by itself.
 #. App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). Arguments: {app} = the requesting app's name (never translated).
 msgid "signin.handoff.browserBody"
-msgstr "브라우저에서 Polaris Key를 열었어요. 거기서 로그인하면 {app}에서 자동으로 계속 진행돼요."
+msgstr "브라우저에서 Polaris Locker를 열었어요. 거기서 로그인하면 {app}에서 자동으로 계속 진행돼요."
 
 #. Waiting for your browser…
 #. App waiting while sign-in runs in the browser (SIGN-IN.md §3.17).
@@ -2855,10 +2855,10 @@ msgstr "내 라이브러리 열기"
 msgid "signin.choice.freed"
 msgstr "이제 이 라이선스에 빈 기기 자리가 있어요."
 
-#. Opens Polaris Key in your browser
+#. Opens Polaris Locker in your browser
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7).
 msgid "signin.replace.opensBrowser"
-msgstr "브라우저에서 Polaris Key가 열려요"
+msgstr "브라우저에서 Polaris Locker가 열려요"
 
 #. Opening your browser…
 #. Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting.
@@ -2925,10 +2925,10 @@ msgstr "다른 기기에서 승인하기를 기다리는 중…"
 msgid "signin.approve.ask"
 msgstr "새 기기를 승인할까요?"
 
-#. Only approve if you started this yourself, on a device in front of you. Nobody from Polaris Key or a developer will ever ask you for this.
+#. Only approve if you started this yourself, on a device in front of you. Nobody from Polaris Locker or a developer will ever ask you for this.
 #. Sign in with another device (SIGN-IN.md §3.11).
 msgid "signin.approve.warning"
-msgstr "직접 시작했고 기기가 눈앞에 있을 때만 승인하세요. Polaris Key나 개발자는 절대 이것을 요청하지 않아요."
+msgstr "직접 시작했고 기기가 눈앞에 있을 때만 승인하세요. Polaris Locker나 개발자는 절대 이것을 요청하지 않아요."
 
 #. Approve and sign it in
 #. Sign in with another device (SIGN-IN.md §3.11).
@@ -3010,13 +3010,13 @@ msgctxt "macos"
 msgid "signin.again"
 msgstr "다시 로그인"
 
-#. {product} doesn't use Polaris Key sign-in. Open {product} and enter your license key there.
-#. The product doesn't use Polaris Key sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. {product} doesn't use Polaris Locker sign-in. Open {product} and enter your license key there.
+#. The product doesn't use Polaris Locker sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "signin.identityOff.notice"
-msgstr "{product}에서는 Polaris Key 로그인을 사용하지 않아요. {product}을(를) 열어 라이선스 키를 입력하세요."
+msgstr "{product}에서는 Polaris Locker 로그인을 사용하지 않아요. {product}을(를) 열어 라이선스 키를 입력하세요."
 
 #. Sign in here to see {product} in your library.
-#. The product doesn't use Polaris Key sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. The product doesn't use Polaris Locker sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "signin.identityOff.lede"
 msgstr "여기서 로그인하면 라이브러리에서 {product}을(를) 볼 수 있어요."
 
@@ -3062,15 +3062,15 @@ msgstr "다시 로그인하여 하던 작업을 이어서 하세요."
 msgid "signin.session.kitEnded"
 msgstr "로그인이 종료됐어요. {product}을(를) 계속 사용하려면 다시 로그인하세요."
 
-#. Manage sign-in methods in Polaris Key
+#. Manage sign-in methods in Polaris Locker
 #. Sign-in provider buttons (SIGN-IN.md §3.3).
 msgid "signin.provider.manage"
-msgstr "Polaris Key에서 로그인 방법 관리"
+msgstr "Polaris Locker에서 로그인 방법 관리"
 
-#. macos: Manage Sign-In Methods in Polaris Key
+#. macos: Manage Sign-In Methods in Polaris Locker
 msgctxt "macos"
 msgid "signin.provider.manage"
-msgstr "Polaris Key에서 로그인 방법 관리"
+msgstr "Polaris Locker에서 로그인 방법 관리"
 
 #. Change picture
 #. Profile import (SIGN-IN.md §3.5).
@@ -3087,25 +3087,25 @@ msgstr "사진 변경"
 msgid "signin.mail.replaced.subject"
 msgstr "{device}에서 {product} 로그아웃됨"
 
-#. {device} was replaced by {newDevice} when you signed in to {product} on {date}. It can sign in again later if a seat is free. If this wasn't you, open Polaris Key and check your devices.
+#. {device} was replaced by {newDevice} when you signed in to {product} on {date}. It can sign in again later if a seat is free. If this wasn't you, open Polaris Locker and check your devices.
 #. Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {newDevice} = the new device's friendly name; {product} = the product's name from ProductIdentity (never translated); {date} = a date already formatted by the platform.
 msgid "signin.mail.replaced.body"
-msgstr "{date}에 {product}에 로그인하면서 {device} 대신 {newDevice} 기기가 등록됐어요. 자리가 비면 나중에 다시 로그인할 수 있어요. 본인이 아니라면 Polaris Key를 열고 기기를 확인하세요."
+msgstr "{date}에 {product}에 로그인하면서 {device} 대신 {newDevice} 기기가 등록됐어요. 자리가 비면 나중에 다시 로그인할 수 있어요. 본인이 아니라면 Polaris Locker를 열고 기기를 확인하세요."
 
-#. A new device signed in to your Polaris Key account
+#. A new device signed in to your Polaris Locker account
 #. Security email (SIGN-IN.md §3.15).
 msgid "signin.mail.newDevice.subject"
-msgstr "Polaris Key 계정에 새 기기가 로그인했어요"
+msgstr "Polaris Locker 계정에 새 기기가 로그인했어요"
 
-#. {device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Key under Where you're signed in.
+#. {device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Locker under Where you're signed in.
 #. Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {date} = a date already formatted by the platform; {place} = an approximate place (city, country).
 msgid "signin.mail.newDevice.body"
-msgstr "{date}에 {place}에서 {device}에 로그인했어요. 본인이 아니라면 Polaris Key의 “로그인된 위치”에서 해당 기기를 로그아웃하세요."
+msgstr "{date}에 {place}에서 {device}에 로그인했어요. 본인이 아니라면 Polaris Locker의 “로그인된 위치”에서 해당 기기를 로그아웃하세요."
 
-#. Open Polaris Key
+#. Open Polaris Locker
 #. Security email (SIGN-IN.md §3.15).
 msgid "signin.mail.open"
-msgstr "Polaris Key 열기"
+msgstr "Polaris Locker 열기"
 
 #. 6-digit code
 #. Email code step (SIGN-IN.md §3.4).
@@ -3683,12 +3683,12 @@ msgid "cli.status.keyRevoked.title"
 msgstr "이 라이선스 키는 더 이상 사용할 수 없어요"
 
 #. It may have expired or been turned off:
-#. Terminal status, under the title above. It ends in a colon: the product's account page on Polaris Key follows on its own line, as a link.
+#. Terminal status, under the title above. It ends in a colon: the product's account page on Polaris Locker follows on its own line, as a link.
 msgid "cli.status.keyRevoked.message"
 msgstr "만료되었거나 꺼졌을 수 있어요."
 
 #. Check it for typos. If it's right, it may have expired or been turned off:
-#. Terminal activate: the server did not accept the license key, under the title 'Key not accepted'. It answers the same for a wrong key and for one that expired or was turned off, so the text covers both. It ends in a colon: the product's account page on Polaris Key follows on its own line, as a link.
+#. Terminal activate: the server did not accept the license key, under the title 'Key not accepted'. It answers the same for a wrong key and for one that expired or was turned off, so the text covers both. It ends in a colon: the product's account page on Polaris Locker follows on its own line, as a link.
 msgid "cli.activate.unauthorized"
 msgstr "오타가 없는지 확인하세요. 맞다면 만료되었거나 꺼졌을 수 있어요."
 
@@ -4252,10 +4252,10 @@ msgstr "그 코드는 작동하지 않았어요. 이메일을 확인하고 다�
 msgid "core.codes.email_in_use.title"
 msgstr "이미 사용 중인 이메일"
 
-#. Another Polaris Key account already uses this email. Join this sign-in to that account, or use a different email.
+#. Another Polaris Locker account already uses this email. Join this sign-in to that account, or use a different email.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.email_in_use.message"
-msgstr "다른 Polaris Key 계정이 이미 이 이메일을 사용하고 있어요. 이 로그인을 그 계정에 연결하거나 다른 이메일을 사용하세요."
+msgstr "다른 Polaris Locker 계정이 이미 이 이메일을 사용하고 있어요. 이 로그인을 그 계정에 연결하거나 다른 이메일을 사용하세요."
 
 #. Terms not accepted
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -4272,30 +4272,30 @@ msgstr "계속하려면 약관에 동의하세요."
 msgid "core.codes.license_owned.title"
 msgstr "다른 계정의 라이선스"
 
-#. This {product} license is already in another Polaris Key account. A license never moves by its key.
+#. This {product} license is already in another Polaris Locker account. A license never moves by its key.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_owned.message"
-msgstr "이 {product} 라이선스는 이미 다른 Polaris Key 계정에 있어요. 라이선스는 키로 옮겨지지 않아요."
+msgstr "이 {product} 라이선스는 이미 다른 Polaris Locker 계정에 있어요. 라이선스는 키로 옮겨지지 않아요."
 
 #. Email not verified
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_email_bound.title"
 msgstr "인증되지 않은 이메일"
 
-#. This license belongs to an email address your Polaris Key account hasn't verified. Verify that email in your account, then try again.
+#. This license belongs to an email address your Polaris Locker account hasn't verified. Verify that email in your account, then try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_email_bound.message"
-msgstr "이 라이선스는 회원님의 Polaris Key 계정에서 인증하지 않은 이메일 주소에 속해 있어요. 계정에서 해당 이메일을 인증한 후 다시 시도하세요."
+msgstr "이 라이선스는 회원님의 Polaris Locker 계정에서 인증하지 않은 이메일 주소에 속해 있어요. 계정에서 해당 이메일을 인증한 후 다시 시도하세요."
 
 #. Sign-in needed
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.account_required.title"
 msgstr "로그인 필요"
 
-#. Sign in to your Polaris Key account on this device, then try again.
+#. Sign in to your Polaris Locker account on this device, then try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.account_required.message"
-msgstr "이 기기에서 Polaris Key 계정에 로그인한 후 다시 시도하세요."
+msgstr "이 기기에서 Polaris Locker 계정에 로그인한 후 다시 시도하세요."
 
 #. Email not verified
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -4312,10 +4312,10 @@ msgstr "이 라이선스는 회원님 계정에서 인증하지 않은 이메일
 msgid "core.codes.link_conflict.title"
 msgstr "이미 연결됨"
 
-#. That sign-in method belongs to another Polaris Key account. Sign in to that account, or join the two accounts.
+#. That sign-in method belongs to another Polaris Locker account. Sign in to that account, or join the two accounts.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.link_conflict.message"
-msgstr "해당 로그인 방법은 다른 Polaris Key 계정에 속해 있어요. 그 계정으로 로그인하거나 두 계정을 합치세요."
+msgstr "해당 로그인 방법은 다른 Polaris Locker 계정에 속해 있어요. 그 계정으로 로그인하거나 두 계정을 합치세요."
 
 #. Can't remove
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -4562,10 +4562,10 @@ msgstr "연결 상태를 확인하고 다시 시도하세요."
 msgid "core.codes.network.title"
 msgstr "연결할 수 없음"
 
-#. Can't reach Polaris Key. Check your connection and try again.
+#. Can't reach Polaris Locker. Check your connection and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.network.message"
-msgstr "Polaris Key에 연결할 수 없어요. 연결 상태를 확인하고 다시 시도하세요."
+msgstr "Polaris Locker에 연결할 수 없어요. 연결 상태를 확인하고 다시 시도하세요."
 
 #. Couldn't refresh
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -4742,10 +4742,10 @@ msgstr "서비스에서 앱이 사용할 수 없는 응답을 보냈어요. 다�
 msgid "core.codes.network-error.title"
 msgstr "연결할 수 없음"
 
-#. Can't reach Polaris Key. Check your connection and try again.
+#. Can't reach Polaris Locker. Check your connection and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.network-error.message"
-msgstr "Polaris Key에 연결할 수 없어요. 연결 상태를 확인하고 다시 시도하세요."
+msgstr "Polaris Locker에 연결할 수 없어요. 연결 상태를 확인하고 다시 시도하세요."
 
 #. Service problem
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5472,10 +5472,10 @@ msgstr "앱이 라이선스를 새로 고칠 수 있도록 인터넷에 연결�
 msgid "core.codes.sign_in_required.title"
 msgstr "로그인 필요"
 
-#. Sign in to your Polaris Key account in the app, then try again.
+#. Sign in to your Polaris Locker account in the app, then try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.sign_in_required.message"
-msgstr "앱에서 Polaris Key 계정에 로그인한 후 다시 시도하세요."
+msgstr "앱에서 Polaris Locker 계정에 로그인한 후 다시 시도하세요."
 
 #. License active
 #. Core copy (conformance/parity/copy.en.json, gate).

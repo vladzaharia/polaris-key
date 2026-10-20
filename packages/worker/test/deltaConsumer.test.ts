@@ -333,11 +333,16 @@ async function world(
   const db = makeTestDb();
   await seedProduct(db, P);
   if (o.enabled !== false)
-    await db.run(
-      `INSERT INTO lazy_delta_settings (product, enabled, hot_devices, daily_cap, updated_at)
-       VALUES (?, 1, 3, 5, ?)`,
-      P,
-      NOW,
+    await db.batch(
+      [
+        ["deltas.lazy.enabled", '"on"'],
+        ["deltas.lazy.hotDevices", "3"],
+        ["deltas.lazy.dailyCap", "5"],
+      ].map(([key, value]) => ({
+        sql: `INSERT INTO product_settings (product, key, value_json, source, version, updated_at, updated_by)
+              VALUES (?, ?, ?, 'console', 1, ?, 'test')`,
+        params: [P, key!, value!, NOW],
+      })),
     );
   const r2 = new R2Mock();
   const [b1, b2] = pairBytes();

@@ -74,7 +74,7 @@ def activate(client: PolarisKeyClient, key: str) -> Optional[str]:
         return None
     text = activation_message(r.kind, code=r.code)
     if isinstance(r, ActivationDeviceLimit) and r.manage_url:
-        # Replace a device: the portal frees a seat. Nothing was wiped.
+        # Replace a device: Polaris Locker frees a seat. Nothing was wiped.
         return f"{text} {with_manage_return(r.manage_url, 'myapp://activated')}"
     if isinstance(r, ActivationRateLimited) and r.retryAfterSeconds:
         return f"{text} ({r.retryAfterSeconds}s)"

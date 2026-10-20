@@ -199,7 +199,7 @@
     },
     "email_in_use": {
       "title": "电子邮件已被使用",
-      "message": "另一个Polaris Key账户已在使用此电子邮件。请将此次登录合并到该账户，或使用其他电子邮件。"
+      "message": "另一个Polaris Locker账户已在使用此电子邮件。请将此次登录合并到该账户，或使用其他电子邮件。"
     },
     "terms_required": {
       "title": "未接受条款",
@@ -207,15 +207,15 @@
     },
     "license_owned": {
       "title": "许可证在另一个账户中",
-      "message": "此{product}许可证已在另一个Polaris Key账户中。许可证不会通过密钥转移。"
+      "message": "此{product}许可证已在另一个Polaris Locker账户中。许可证不会通过密钥转移。"
     },
     "license_email_bound": {
       "title": "电子邮件未验证",
-      "message": "此许可证属于你的Polaris Key账户尚未验证的电子邮件地址。请在账户中验证该电子邮件，然后重试。"
+      "message": "此许可证属于你的Polaris Locker账户尚未验证的电子邮件地址。请在账户中验证该电子邮件，然后重试。"
     },
     "account_required": {
       "title": "需要登录",
-      "message": "请在此设备上登录你的Polaris Key账户，然后重试。"
+      "message": "请在此设备上登录你的Polaris Locker账户，然后重试。"
     },
     "email_mismatch": {
       "title": "电子邮件未验证",
@@ -223,7 +223,7 @@
     },
     "link_conflict": {
       "title": "已被关联",
-      "message": "该登录方式属于另一个Polaris Key账户。请登录那个账户，或将两个账户合并。"
+      "message": "该登录方式属于另一个Polaris Locker账户。请登录那个账户，或将两个账户合并。"
     },
     "last_link": {
       "title": "无法移除",
@@ -323,7 +323,7 @@
     },
     "network": {
       "title": "无法连接",
-      "message": "无法连接到Polaris Key。请检查网络连接后重试。"
+      "message": "无法连接到Polaris Locker。请检查网络连接后重试。"
     },
     "refresh-failed": {
       "title": "无法刷新",
@@ -395,7 +395,7 @@
     },
     "network-error": {
       "title": "无法连接",
-      "message": "无法连接到Polaris Key。请检查网络连接后重试。"
+      "message": "无法连接到Polaris Locker。请检查网络连接后重试。"
     },
     "server-error": {
       "title": "服务出现问题",
@@ -687,7 +687,7 @@
     },
     "sign_in_required": {
       "title": "需要登录",
-      "message": "请在应用中登录你的Polaris Key账户，然后重试。"
+      "message": "请在应用中登录你的Polaris Locker账户，然后重试。"
     }
   },
   "gate": {

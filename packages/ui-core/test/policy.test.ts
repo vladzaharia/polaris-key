@@ -51,6 +51,9 @@ describe("DL14: links fail closed", () => {
   });
 
   it("shows a link without its scheme", () => {
+    expect(displayLink("https://polaris.locker/activate")).toBe(
+      "polaris.locker/activate",
+    );
     expect(displayLink("https://key.plrs.im/device/")).toBe(
       "key.plrs.im/device",
     );
@@ -168,11 +171,11 @@ describe("DL14: links fail closed", () => {
     });
     const mac = viewOf("SignInHandoff", input(MAC));
     expect(mac.decisions.link?.url).toBe(
-      "https://key.plrs.im/device?user_code=WDJB-MJHT",
+      "https://polaris.locker/device?user_code=WDJB-MJHT",
     );
-    expect(mac.decisions.link?.display).toBe("key.plrs.im/device");
+    expect(mac.decisions.link?.display).toBe("polaris.locker/device");
     expect(viewOf("SignInHandoff", input(TV)).decisions.link?.url).toBe(
-      "https://key.plrs.im/tv?user_code=WDJB-MJHT",
+      "https://polaris.locker/tv?user_code=WDJB-MJHT",
     );
   });
 

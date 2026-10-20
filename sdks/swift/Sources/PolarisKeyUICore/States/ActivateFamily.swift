@@ -2,6 +2,7 @@
 // The activate family of ui-matrix.json: Welcome, Activate and OfflineActivation.
 
 import Foundation
+import PolarisKeyCore
 
 public enum WelcomeState: String, KitStateID {
     case `default`, busy
@@ -277,13 +278,13 @@ public enum KitLinks {
         return nil
     }
 
-    /// The default device-code page (SIGN-IN.md D-16): `key.plrs.im/tv` on TV and console,
-    /// `key.plrs.im/device` elsewhere. A product's `deviceCodeUrl` wins when it is valid.
+    /// The default device-code page (SIGN-IN.md D-16): `polaris.locker/tv` on TV and console,
+    /// `polaris.locker/device` elsewhere. A product's `deviceCodeUrl` wins when it is valid.
     public static func deviceCodePage(_ identity: ResolvedIdentity, platform: KitPlatform)
         -> String
     {
         if let custom = valid(identity.deviceCodeUrl) { return custom.absoluteString }
-        return platform.isTV ? "https://key.plrs.im/tv" : "https://key.plrs.im/device"
+        return platform.isTV ? TV_CODE_PAGE : DEVICE_CODE_PAGE
     }
 
     /// A URL as people read it: no scheme, no trailing slash.

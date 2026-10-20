@@ -726,7 +726,11 @@ async function deliverOne(
       const r = await deliverEmail(
         env,
         db,
-        { sender: { kind: "platform" }, to: row.target, ...m },
+        {
+          sender: { kind: "platform", audience: "operator" },
+          to: row.target,
+          ...m,
+        },
         now,
       );
       if (r.ok) return { outcome: "ok", detail: null };

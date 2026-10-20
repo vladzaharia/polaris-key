@@ -19860,6 +19860,23 @@ paths:
       responses:
         "200": { description: The related origins. }
         "404": { description: No customer host is configured. }
+  /help:
+    get:
+      operationId: getHelpAlias
+      tags: [portal]
+      summary: Help (alias)
+      description: >
+        DOC-03b. A short link to the public Help site: `302` to `/docs/help/`. No session. `/help/`
+        answers the same. `GET` and `HEAD` only.
+      responses:
+        "302": { description: Redirect to /docs/help/. }
+    head:
+      operationId: headHelpAlias
+      tags: [portal]
+      summary: Help (alias), headers only
+      description: DOC-03b. As `GET /help`.
+      responses:
+        "302": { description: Redirect to /docs/help/. }
 components:
   securitySchemes:
     ciToken:

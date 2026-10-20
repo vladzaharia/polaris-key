@@ -11,8 +11,9 @@ const VISIBLE = { service: "update", offBehaviour: "hide" } as const;
 
 export const UPDATE_SETTINGS_SLICE: ServiceSettingsSlice = {
   namespaces: ["update"],
-  // ST-04: both entries live in Release's `release_config`, so Release's adapters write them
-  // (Update → Release is the one sanctioned cross-service edge, D-05).
+  // ST-04: the access mode lives in Release's `release_config`, so Release's adapter writes it
+  // (Update → Release is the one sanctioned cross-service edge, D-05). The operator policy is a
+  // `product_settings` row since ST-11.
   columns: UPDATE_COLUMN_ADAPTERS,
   entries: [
     setting({
@@ -64,11 +65,7 @@ export const UPDATE_SETTINGS_SLICE: ServiceSettingsSlice = {
       confirm: { change: "L1" },
       visibleWhen: VISIBLE,
       readers: ["services/update/feed.ts", "services/update/admin.ts"],
-      storage: {
-        kind: "column",
-        table: "release_config",
-        column: "operator_policy_json",
-      },
+      storage: { kind: "scalar" },
     }),
   ],
 };

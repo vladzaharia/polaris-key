@@ -542,7 +542,7 @@ describe("identity/portal", () => {
       mkReq("PATCH", CANONICAL, {
         cookie: auth.cookie,
         csrf: auth.csrf,
-        body: { portalEnabled: true, magicEnabled: false },
+        body: { portalEnabled: true, keyReissueEnabled: true },
       }),
       env,
       db,
@@ -552,7 +552,7 @@ describe("identity/portal", () => {
     expect(
       ((await patched.json()) as { settings: Record<string, unknown> })
         .settings,
-    ).toMatchObject({ portalEnabled: true, magicEnabled: false });
+    ).toMatchObject({ portalEnabled: true, keyReissueEnabled: true });
 
     const read = await dispatch(
       mkReq("GET", CANONICAL, { cookie: auth.cookie }),
@@ -563,7 +563,7 @@ describe("identity/portal", () => {
     expect(read.status).toBe(200);
     expect(
       ((await read.json()) as { settings: Record<string, unknown> }).settings,
-    ).toMatchObject({ portalEnabled: true, magicEnabled: false });
+    ).toMatchObject({ portalEnabled: true, keyReissueEnabled: true });
   });
 
   it("404s the pre-namespace `portal` path — the rewrite is gone, not merely deprecated", async () => {
@@ -588,7 +588,7 @@ describe("identity/portal", () => {
       mkReq("PATCH", LEGACY, {
         cookie: auth.cookie,
         csrf: auth.csrf,
-        body: { releasesEnabled: !before.releasesEnabled },
+        body: { keyReissueEnabled: !before.keyReissueEnabled },
       }),
       mkReq("GET", LEGACY, { cookie: auth.cookie }),
     ]) {

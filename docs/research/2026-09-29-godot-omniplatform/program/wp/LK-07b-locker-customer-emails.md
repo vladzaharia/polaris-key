@@ -40,10 +40,15 @@ Builds on LK-07's rewritten `templates.ts`; starts the moment LK-07 merges and d
 
 ## Acceptance criteria
 
-- [ ] Every customer template has an HTML snapshot; no Key mark, name or violet in customer mail.
-- [ ] `pkey-ux-reviewer` passes the rendered emails (BUILT mode: render each template and view it in a browser, dark and light clients' colour schemes).
+- [x] Every customer template has an HTML snapshot; no Key mark, name or violet in customer mail.
+- [ ] (self-look done in Chromium, 600/390 x light/dark/style-stripped, axe clean bar landmark rules; reviewer pending) `pkey-ux-reviewer` passes the rendered emails (BUILT mode: render each template and view it in a browser, dark and light clients' colour schemes).
 - [ ] The scoped green gate passes (AGENTS.md); the header's gates hold.
 
 ## Hand-off
 
 The role agent sets `--set LK-07b in-review` when it hands off; the lead sets done after review. Branch from integ/next after the packages in Depends on have merged.
+
+## Notes (2026-10-20)
+
+- LK-07 had already done the ink button, the 230 x 64 Locker lockup and the sender. LK-07b adds the neutral callout (`EmailContent.callout`; the "Wasn't you?" line is one; the deletion date is one), a plain-text part that opens with the heading, and `test/customerEmailHtml.test.ts` (HTML snapshot for 25 messages, brand rules, text mirrors HTML; `LK07B_DUMP=<dir>` writes each for browser review).
+- No email mockup files exist under docs/design/mockups; the spec used was SIGN-IN §3.4/§3.15, EXPERIENCE §11.1 and BRAND §15.

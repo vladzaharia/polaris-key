@@ -434,7 +434,7 @@ function ReadinessList({
     if (c.id === "portal")
       return (
         <Button size="sm" variant="outline" asChild>
-          <Link to={r.portal(slug)}>Open Locker</Link>
+          <Link to={r.appSignIn(slug)}>Open App sign-in</Link>
         </Button>
       );
     if (c.id === "listing")

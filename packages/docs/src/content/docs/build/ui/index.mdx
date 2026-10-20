@@ -12,7 +12,7 @@ sidebar:
 import CardGrid from "../../../../components/docs/CardGrid.astro";
 import { LinkCard } from "@astrojs/starlight/components";
 
-A UI kit is the drop-in lane of an SDK: the screens a product needs to gate itself on a license, from boot and sign-in to devices, updates and settings. Every kit draws the same component catalog with the same theme API, copy catalog and flows, so a person moves between your app, the customer portal and the console in one system. The other lane, [your own UI](/docs/start/choose-your-integration/), draws the screens itself.
+A UI kit is the drop-in lane of an SDK: the screens a product needs to gate itself on a license, from boot and sign-in to devices, updates and settings. Every kit draws the same component catalog with the same theme API, copy catalog and flows, so a person moves between your app, Polaris Locker and the console in one system. The other lane, [your own UI](/docs/start/choose-your-integration/), draws the screens itself.
 
 **Requires:** an SDK with a kit, and its [quickstart](/docs/start/choose-your-integration/). [All frameworks](/docs/build/ui/frameworks/) lists each kit and whether it is built.
 
@@ -20,7 +20,7 @@ A UI kit is the drop-in lane of an SDK: the screens a product needs to gate itse
 
 Each SDK's quickstart forks after the shared setup into two lanes.
 
-- **Drop-in screens.** The kit, whole or piece by piece: the gate, the sign-in form, devices, updates. The sign-in form's `presentation: "browser"` hands the whole flow to the Polaris Key sign-in card in the browser, with no UI code.
+- **Drop-in screens.** The kit, whole or piece by piece: the gate, the sign-in form, devices, updates. The sign-in form's `presentation: "browser"` hands the whole flow to the Locker sign-in card in the browser, with no UI code.
 - **Your own UI.** Your screens drawn over the SDK's headless layer, on the SDK's own-UI page ([Node](/docs/build/sdks/node/your-own-ui/), [React](/docs/build/sdks/react/your-own-ui/), [Python](/docs/build/sdks/python/your-own-ui/), [Swift](/docs/build/sdks/swift/your-own-ui/), [Kotlin](/docs/build/sdks/kotlin/your-own-ui/), [Godot](/docs/build/sdks/godot/your-own-ui/)).
 
 ## Three layers in every kit

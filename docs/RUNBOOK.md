@@ -1645,13 +1645,15 @@ Polaris Key <noreply@auth.plrs.im>`. Repeat to a Hide-My-Email (`@privaterelay.a
    headers into the I-18 PR, then deploy prod.
 7. **Quota.** `GET /accounts/<id>/email/sending/limits` gives the account's daily quota. The
    per-product default cap is 500 a day (`EMAIL_SEND_PRODUCT_DAILY_DEFAULT`); raise or lower it
-   for the deployment with `EMAIL_PRODUCT_DAILY_CAP`, or per product (below).
+   for the deployment in Platform → Settings → Daily sign-in mail cap (or `EMAIL_PRODUCT_DAILY_CAP`),
+   or per product (below).
 
 ### Operating it
 
-- **A product is capped** (its users see "We can't send email right now"): its own cap is a row,
-  `wrangler d1 execute polaris_key_prod --remote --command "INSERT INTO email_product_caps (product, daily_cap, modified_at) VALUES ('<slug>', <n>, unixepoch()) ON CONFLICT(product) DO UPDATE SET daily_cap = excluded.daily_cap, modified_at = excluded.modified_at"`.
-  Delete the row to return to the deployment value. The day is a sliding 24 hours.
+- **A product is capped** (its users see "We can't send email right now"): set its own cap in the
+  product's Settings → Daily sign-in mail cap (`email.dailyCap`). Reset it to return to the
+  deployment value. The day is a sliding 24 hours. (Before ST-11 this was a row in
+  `email_product_caps`; migration 0124 copied each row once, and ST-25 drops the table.)
 - **Suppression list** (`email_suppressions`): keyed by the peppered hash of the address, never
   the address. A hard bounce suppresses for 90 days, a complaint, a Cloudflare suppression
   (`E_RECIPIENT_SUPPRESSED`) or an operator entry permanently. A suppressed recipient is answered
@@ -2386,18 +2388,13 @@ evidence for a Container tier, P4-17b). Setup is DEPLOYMENT §3 "Lazy deltas".
   No deploy: both scripts read the same `platform_settings` row (the request Worker within 30
   seconds, the consumer on its next message). It only takes effect while both TOML files carry
   `LAZY_DELTAS = "runtime"` (the committed value); `"off"` there is a deploy-time hard off. Then
-  opt a product in:
+  opt a product in: its Settings → Lazy deltas (`deltas.lazy.enabled`). Devices that make a
+  pair hot (`deltas.lazy.hotDevices`, default 25) and deltas built a day (`deltas.lazy.dailyCap`,
+  default 20) are beside it. No SQL: the console writes and audits each change. (Before ST-11 this
+  was a row in `lazy_delta_settings`; migration 0124 copied each row once, and ST-25 drops the
+  table.)
 
-  ```sh
-  npx wrangler d1 execute polaris_key_<env> --env <env> --remote --command \
-    "INSERT INTO lazy_delta_settings (product, enabled, updated_at) VALUES ('<slug>', 1, unixepoch())
-     ON CONFLICT(product) DO UPDATE SET enabled = 1, updated_at = unixepoch()"
-  ```
-
-  `hot_devices` (default 25) and `daily_cap` (default 20 deltas a day) are optional columns of the
-  same row.
-
-- **Turn it off.** `enabled = 0` for one product (counting and generation stop at once), or the
+- **Turn it off.** Lazy deltas off for one product (counting and generation stop at once), or the
   console's Lazy deltas switch for everything (within 30 seconds). For an off no console session
   can undo, set `LAZY_DELTAS = "off"` in both TOML files and deploy both. Stored deltas stay until
   they go cold.

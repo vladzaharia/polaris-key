@@ -288,8 +288,8 @@ func prompt_fixture() -> PKeySignInPrompt:
 	var p := PKeySignInPrompt.new(true)
 	p.device_code = "dc_fixture"
 	p.user_code = "WDJB-MJHT"
-	p.verification_uri = "https://key.plrs.im/device"
-	p.verification_uri_complete = "https://key.plrs.im/device?user_code=WDJB-MJHT"
+	p.verification_uri = PKeyConstants.DEVICE_CODE_PAGE
+	p.verification_uri_complete = PKeyConstants.DEVICE_CODE_PAGE + "?user_code=WDJB-MJHT"
 	p.expires_in = 600
 	p.interval = 5
 	p.expires_at = NOW + 125

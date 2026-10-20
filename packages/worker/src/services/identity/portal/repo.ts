@@ -55,12 +55,6 @@ export interface PortalAccountRow {
 export interface PortalProductSettingsRow {
   product: string;
   portal_enabled: number;
-  oidc_enabled: number;
-  magic_enabled: number;
-  license_key_claim_enabled: number;
-  releases_enabled: number;
-  /** R5-01/R5-02. NULL = derive from the product's OIDC provider (see AUTO_LINK_ENABLED_SQL). */
-  auto_link_enabled: number | null;
   /** PX-W5 (G7): customers may replace their own license key from the portal. Opt-in, default 0. */
   key_reissue_enabled: number;
   /** PX-W5 / S-16: an email-carrying license may be claimed by key without that email. Default 0. */
@@ -81,11 +75,6 @@ export interface PortalProductSettingsRow {
 
 export interface PortalProductSettingsView {
   portalEnabled: boolean;
-  oidcEnabled: boolean;
-  magicEnabled: boolean;
-  licenseKeyClaimEnabled: boolean;
-  releasesEnabled: boolean;
-  autoLinkEnabled: boolean | null;
   keyReissueEnabled: boolean;
   claimByKey: boolean;
   discoverEnabled: boolean;
@@ -337,19 +326,16 @@ export async function linkLicense(
  *
  * R5-01/R5-02. A product's `oidc_config.provider` is `'platform'` or `'custom'`; `'custom'`
  * means a TENANT-CONTROLLED issuer, whose `email` and `sub` claims the platform cannot vouch
- * for. `portal_product_settings.auto_link_enabled` is NULL by default and resolves to "on for
- * platform-issuer products, off for custom-issuer products", so a tenant that stands up its own
- * Keycloak/Authentik after this migration is opted out automatically rather than by an
- * operator remembering to. An explicit 1/0 is an operator override in either direction.
+ * for. The rule is "on for platform-issuer products, off for custom-issuer products", so a
+ * tenant that stands up its own Keycloak/Authentik is opted out automatically rather than by an
+ * operator remembering to. I-29 retired the per-product override (`auto_link_enabled` is no
+ * longer read or written): the issuer is the whole decision.
  *
  * This is the PRODUCT-level rule, for the callers with no licence in hand (`autoLinkEnabled`,
  * the storefront's eligibility): it reads the provider as it stands now.
  */
 const AUTO_LINK_ENABLED_SQL = `
-  COALESCE(
-    s.auto_link_enabled,
-    CASE WHEN COALESCE(o.provider, 'platform') = 'custom' THEN 0 ELSE 1 END
-  ) = 1`;
+  (CASE WHEN COALESCE(o.provider, 'platform') = 'custom' THEN 0 ELSE 1 END) = 1`;
 
 /**
  * The LICENCE-level rule: the derived default underneath the operator override is a write-time
@@ -363,17 +349,13 @@ const AUTO_LINK_ENABLED_SQL = `
  *
  * The fallback to `o.provider` is not a hole, it is the earlier rule kept for the rows that
  * genuinely have no issuer: an admin-created or enrolled licence carries an operator-entered
- * address that no IdP asserted, and those rows keep behaving exactly as they did. The operator
- * override (`s.auto_link_enabled`) is unchanged, in either direction: it is a decision only a
- * platform admin can make, through the console, on the record.
+ * address that no IdP asserted, and those rows keep behaving exactly as they did. There is
+ * no operator override (I-29).
  */
 const LICENSE_ISSUER_CLASS_SQL = `COALESCE(l.email_issuer_class, COALESCE(o.provider, 'platform'))`;
 
 const LICENSE_AUTO_LINK_ENABLED_SQL = `
-  COALESCE(
-    s.auto_link_enabled,
-    CASE WHEN ${LICENSE_ISSUER_CLASS_SQL} = 'custom' THEN 0 ELSE 1 END
-  ) = 1`;
+  (CASE WHEN ${LICENSE_ISSUER_CLASS_SQL} = 'custom' THEN 0 ELSE 1 END) = 1`;
 
 /**
  * Whether implicit auto-linking resolves ON for `product`: `AUTO_LINK_ENABLED_SQL` for one
@@ -699,11 +681,6 @@ export async function getPortalProductSettings(
     row ?? {
       product,
       portal_enabled: 1,
-      oidc_enabled: 1,
-      magic_enabled: 1,
-      license_key_claim_enabled: 1,
-      releases_enabled: 1,
-      auto_link_enabled: null,
       // Both PX-W5 switches default OFF, exactly as the migration's column defaults do.
       key_reissue_enabled: 0,
       claim_by_key: 0,
@@ -726,13 +703,6 @@ export function portalProductSettingsView(
 ): PortalProductSettingsView {
   return {
     portalEnabled: row.portal_enabled === 1,
-    oidcEnabled: row.oidc_enabled === 1,
-    magicEnabled: row.magic_enabled === 1,
-    licenseKeyClaimEnabled: row.license_key_claim_enabled === 1,
-    releasesEnabled: row.releases_enabled === 1,
-    // null = "auto" (derived from the product's OIDC issuer). See AUTO_LINK_ENABLED_SQL.
-    autoLinkEnabled:
-      row.auto_link_enabled == null ? null : row.auto_link_enabled === 1,
     keyReissueEnabled: row.key_reissue_enabled === 1,
     claimByKey: row.claim_by_key === 1,
     ...listingView(row),
@@ -835,12 +805,6 @@ export function listingSettingWrites(
 /** The non-listing portal switches and branding a console or sign-in-settings patch may set. */
 export type PortalSettingsPatch = Partial<{
   portalEnabled: boolean;
-  oidcEnabled: boolean;
-  magicEnabled: boolean;
-  licenseKeyClaimEnabled: boolean;
-  releasesEnabled: boolean;
-  /** `null` restores "auto" (derived from the product's OIDC issuer) — R5-01/R5-02. */
-  autoLinkEnabled: boolean | null;
   keyReissueEnabled: boolean;
   branding: unknown;
 }>;
@@ -863,21 +827,6 @@ export function stmtUpsertPortalProductSettings(
     v === undefined ? was : v ? 1 : 0;
   const next = {
     portal_enabled: flag(patch.portalEnabled, current.portal_enabled),
-    oidc_enabled: flag(patch.oidcEnabled, current.oidc_enabled),
-    magic_enabled: flag(patch.magicEnabled, current.magic_enabled),
-    license_key_claim_enabled: flag(
-      patch.licenseKeyClaimEnabled,
-      current.license_key_claim_enabled,
-    ),
-    releases_enabled: flag(patch.releasesEnabled, current.releases_enabled),
-    auto_link_enabled:
-      patch.autoLinkEnabled === undefined
-        ? current.auto_link_enabled
-        : patch.autoLinkEnabled === null
-          ? null
-          : patch.autoLinkEnabled
-            ? 1
-            : 0,
     key_reissue_enabled: flag(
       patch.keyReissueEnabled,
       current.key_reissue_enabled,
@@ -891,28 +840,16 @@ export function stmtUpsertPortalProductSettings(
   };
   return {
     sql: `INSERT INTO portal_product_settings
-       (product, portal_enabled, oidc_enabled, magic_enabled,
-        license_key_claim_enabled, releases_enabled, auto_link_enabled,
-        key_reissue_enabled, branding_json, created_at, modified_at)
-     SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE (${guard.sql})
+       (product, portal_enabled, key_reissue_enabled, branding_json, created_at, modified_at)
+     SELECT ?, ?, ?, ?, ?, ? WHERE (${guard.sql})
      ON CONFLICT(product) DO UPDATE SET
        portal_enabled = excluded.portal_enabled,
-       oidc_enabled = excluded.oidc_enabled,
-       magic_enabled = excluded.magic_enabled,
-       license_key_claim_enabled = excluded.license_key_claim_enabled,
-       releases_enabled = excluded.releases_enabled,
-       auto_link_enabled = excluded.auto_link_enabled,
        key_reissue_enabled = excluded.key_reissue_enabled,
        branding_json = excluded.branding_json,
        modified_at = excluded.modified_at`,
     params: [
       product,
       next.portal_enabled,
-      next.oidc_enabled,
-      next.magic_enabled,
-      next.license_key_claim_enabled,
-      next.releases_enabled,
-      next.auto_link_enabled,
       next.key_reissue_enabled,
       next.branding_json,
       current.created_at || now,
@@ -955,69 +892,33 @@ export function releaseServiceEnabled(
 }
 
 /**
- * Which auth methods and modules are available.
+ * What the customer portal offers for ONE product, or (without `product`) for the platform.
  *
- * R5-06 — this used to be an unconditional `SUM(...) > 0` across EVERY tenant, so one tenant
- * leaving magic-link on kept it enabled platform-wide for a tenant that had deliberately set
- * `magic_enabled = 0`, and the last tenant to disable a feature turned it off for everyone. It
- * is reached PRE-AUTHENTICATION, so the unauthenticated `/api/capabilities` response also
- * leaked whether *any* tenant had each feature on.
+ * I-29: the per-product toggles `oidc_enabled`, `magic_enabled`, `license_key_claim_enabled` and
+ * `auto_link_enabled` are retired and no longer read. Email and passkeys are always on, platform
+ * single sign-on follows the platform's connections, and key claim is always on; a domain's
+ * owner turns the email methods off for its addresses with an enforced domain (I-30), which the
+ * sign-in routes check on their own. `releases_enabled` is retired too: downloads follow the
+ * product's Release service (Ship builds).
  *
- * Passing `product` evaluates the settings where they belong — on that one product's row, with
- * no cross-tenant term at all. Omitting it keeps the platform-wide aggregate, which is the
- * honest answer for the ONE surface that genuinely has no product context: the root portal
- * login page, where the visitor has not yet identified a product. That aggregate is now an
- * explicit, documented choice rather than an accident of a missing predicate, and every
- * product-scoped decision downstream still re-checks `getPortalProductSettings`.
- *
- * ── WHY THE FOLD LEFT SQL (task 7.2) ────────────────────────────────────────────────────────
- *
- * `releasesEnabled` used to be `portal_product_settings.releases_enabled` and nothing else, so a
- * product whose RELEASE SERVICE was off still advertised `modules.releases: true` and the portal
- * put a Downloads tab over an empty truth store. The two switches answer different questions —
- * the portal flag is "show this tenant's customers the tab", `products.services_json` is "this
- * product distributes builds at all" — and the second is the stronger one, because a product
- * that does not run Release has no `release_metadata` for the tab to render. `core/services.ts`
- * is the single enablement authority, so `modules.releases` becomes a projection of it rather
- * than a fifth opinion.
- *
- * `services_json` is a TEXT blob, which is exactly why this is no longer one aggregate query:
- * SQLite cannot ask whether `release.enabled` is true, so `SUM(CASE …)` had nowhere to put the
- * term. The statement therefore returns one row PER surviving product and the ANY/ALL decision
- * is made here, in TypeScript, where `parseServices` can run. The cost is a handful of small
- * JSON parses over the live product list, on a route that is already doing a database
- * round-trip and — in its unscoped form — is only reached by the root login page.
- *
- * The `COALESCE(s.x, 1)` defaults stay in SQL rather than moving into the fold: "no settings row
- * means enabled" is what every other portal read of this table assumes, and stating it once in
- * the projection keeps the code below a plain conjunction instead of a second place that has to
- * remember the default. `some` over the empty row set is `false`, which is the same answer the
- * old `SUM(...) > 0` gave for a deleted or unknown slug.
+ * R5-06 stays: a `product` evaluates that one product's row with no cross-tenant term, and the
+ * answer for no product (the root login page, which has no product context) reveals nothing
+ * about any tenant beyond "some portal is on": `releasesEnabled` is false there, as there is
+ * nothing to download without a product.
  */
 export async function portalAuthCapabilities(
   db: Db,
   product?: string | null,
 ): Promise<{
   portalEnabled: boolean;
-  oidcEnabled: boolean;
-  magicEnabled: boolean;
-  licenseKeyClaimEnabled: boolean;
   releasesEnabled: boolean;
 }> {
   const rows = await db.all<{
     portal_enabled: number;
-    oidc_enabled: number;
-    magic_enabled: number;
-    license_key_claim_enabled: number;
-    releases_enabled: number;
     services_json: string | null;
   }>(
     `SELECT
        COALESCE(s.portal_enabled, 1) AS portal_enabled,
-       COALESCE(s.oidc_enabled, 1) AS oidc_enabled,
-       COALESCE(s.magic_enabled, 1) AS magic_enabled,
-       COALESCE(s.license_key_claim_enabled, 1) AS license_key_claim_enabled,
-       COALESCE(s.releases_enabled, 1) AS releases_enabled,
        p.services_json AS services_json
        FROM products p
        LEFT JOIN portal_product_settings s ON s.product = p.slug
@@ -1026,22 +927,12 @@ export async function portalAuthCapabilities(
     product ?? null,
     product ?? null,
   );
-  // Every term is conjoined WITHIN a row before anything is aggregated ACROSS rows — the shape
-  // the old `SUM(CASE WHEN portal AND x …)` had. Tenant A's portal being on must not license
-  // tenant B's magic link, and with `product` set there is at most one row anyway, so the
-  // cross-product reading only ever applies to the deliberate platform aggregate.
   const live = rows.filter((row) => row.portal_enabled === 1);
   return {
     portalEnabled: live.length > 0,
-    oidcEnabled: live.some((row) => row.oidc_enabled === 1),
-    magicEnabled: live.some((row) => row.magic_enabled === 1),
-    licenseKeyClaimEnabled: live.some(
-      (row) => row.license_key_claim_enabled === 1,
-    ),
-    releasesEnabled: live.some(
-      (row) =>
-        row.releases_enabled === 1 && releaseServiceEnabled(row.services_json),
-    ),
+    releasesEnabled:
+      product != null &&
+      live.some((row) => releaseServiceEnabled(row.services_json)),
   };
 }
 

@@ -72,7 +72,12 @@ const NOT_COPY_FILES: Record<string, string> = {
     "a mutation's label names the write for the invalidation table and its test, never the UI",
 };
 
-export type CopyRuleId = "outlet" | "storefront-feed" | "grant" | "capability";
+export type CopyRuleId =
+  | "outlet"
+  | "storefront-feed"
+  | "grant"
+  | "capability"
+  | "portal";
 
 interface CopyRule {
   id: CopyRuleId;
@@ -110,6 +115,12 @@ export const COPY_RULES: readonly CopyRule[] = [
     word: "capability",
     pattern: /\bcapabilit(?:y|ies)\b/i,
     use: "the feature, the switch, or what the channel allows",
+  },
+  {
+    id: "portal",
+    word: "portal",
+    pattern: /\b(?:customer\s+)?portals?\b/i,
+    use: "Polaris Locker, then Locker",
   },
 ];
 
@@ -718,9 +729,10 @@ describe("the portal copy lint", () => {
 
   it("finds none of the console's banned words in the portal", () => {
     const found = portal.flatMap((f) =>
-      lintCopy(f.source, f.rel).map(
-        (c) => `${f.rel}:${c.line} ${c.rule}: "${c.text}"`,
-      ),
+      lintCopy(f.source, f.rel)
+        // "Portal" is the customer site's own word; the rule keeps it out of the console only.
+        .filter((c) => c.rule !== "portal")
+        .map((c) => `${f.rel}:${c.line} ${c.rule}: "${c.text}"`),
     );
     expect(found).toEqual([]);
   });

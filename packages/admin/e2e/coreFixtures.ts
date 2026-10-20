@@ -650,12 +650,46 @@ export const CORE_ROUTES: Record<string, unknown> = {
   "/manage/api/products/djdl/identity/portal": {
     settings: {
       portalEnabled: true,
-      oidcEnabled: true,
-      magicEnabled: true,
-      licenseKeyClaimEnabled: true,
-      releasesEnabled: true,
-      autoLinkEnabled: null,
     },
+  },
+  "/manage/api/products/djdl/identity/sign-in-settings": {
+    settings: {
+      claimByKey: false,
+      passthroughName: null,
+      effectiveName: "DJDL",
+      appReview48Warning: true,
+    },
+  },
+  "/manage/api/platform/connections": {
+    connections: [
+      {
+        id: "pocket-id",
+        label: "Pocket ID",
+        issuer: "https://id.example.com",
+        clientId: "pkey",
+        jwksUri: null,
+        audience: "customers",
+        claimMap: {},
+        status: "active",
+        source: "console",
+        hasSecret: true,
+        domains: [
+          { domain: "lakeside.example", verified: true, enforce: false },
+          { domain: "east.example", verified: true, enforce: true },
+        ],
+        links: 12,
+        lastSuccessAt: null,
+        lastError: null,
+      },
+    ],
+    redirectUri: "https://key.plrs.im/callback",
+    builtIns: [
+      { kind: "google", label: "Google", configured: true },
+      { kind: "apple", label: "Apple", configured: true },
+      { kind: "steam", label: "Steam", configured: false },
+    ],
+    email: { configured: true },
+    turnstile: { enabled: false },
   },
   "/manage/api/products/djdl/config/mint": {
     registration: "requires-license",

@@ -207,8 +207,8 @@ is served or derived for it ([Pack transports](/docs/features/ship-builds/channe
 
 Store-page metadata, every field optional: `name`, `subtitle`, `category`, `developerName`
 (one line each, at most 200 characters), `description` (at most 4000, newlines allowed),
-`website` (an https URL) and `tintColor` (`#rrggbb`), plus the two support links the customer
-portal shows: `supportUrl` (an https URL) and `supportEmail` (one address, at most 254
+`website` (an https URL) and `tintColor` (`#rrggbb`), plus the two support links Polaris Locker
+shows: `supportUrl` (an https URL) and `supportEmail` (one address, at most 254
 characters). A channel may carry its own `listing`, merged over the document's for that channel.
 A malformed listing is `invalid_listing`.
 
@@ -234,13 +234,13 @@ listing:
   screenshots: [.pkey/art/shot-1.png, .pkey/art/shot-2.png]
 ```
 
-The **document's** listing (not a channel's) is also the product's presentation in the customer
-portal: `name`, `developerName`, `tintColor`, `website`, the support links, and `icon` and
-`header` as art. The portal never loads that art from the developer's host: it serves it
+The **document's** listing (not a channel's) is also the product's presentation in Polaris
+Locker: `name`, `developerName`, `tintColor`, `website`, the support links, and `icon` and
+`header` as art. Locker never loads that art from the developer's host: it serves it
 same-origin through its media proxy (`/media/<product>/icon` and `/media/<product>/header`), which
 fetches only from GitHub-hosted URLs (`github.com`, `*.githubusercontent.com`), only PNG, JPEG,
 WebP or GIF, and at most 1 MB for the icon and 5 MB for the header. Art hosted anywhere else,
-and art given as a repo path, is not shown there; the portal falls back to the product's initial
+and art given as a repo path, is not shown there; Locker falls back to the product's initial
 on its tint.
 
 ## Capabilities are not here

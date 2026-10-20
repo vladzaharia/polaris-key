@@ -371,7 +371,6 @@ export async function handleProductDownloads(
   // Release running for the product at all.
   if (
     settings.portal_enabled !== 1 ||
-    settings.releases_enabled !== 1 ||
     !releaseServiceEnabled(productRow.services_json)
   )
     return notFound();

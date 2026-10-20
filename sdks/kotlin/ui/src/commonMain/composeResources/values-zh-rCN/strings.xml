@@ -45,7 +45,7 @@
     <!-- Shared verb used across the kit's screens. Signs this device out of the product. -->
     <string name="common_signOut">退出登录</string>
     <string name="common_signOut__macos">退出登录</string>
-    <!-- Shared verb used across the kit's screens. Opens the person's Polaris Key account in the browser. -->
+    <!-- Shared verb used across the kit's screens. Opens the person's Polaris Locker account in the browser. -->
     <string name="common_manage">管理</string>
     <!-- Shared verb used across the kit's screens. Tries to reach the licensing service again. -->
     <string name="common_reconnect">重新连接</string>
@@ -123,8 +123,8 @@
     <string name="part_qr_scanInstead__macos">改用手机扫描</string>
     <!-- Caption under the seat meter. {used} and {limit} are numbers of devices. Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number. Arguments: 1=used, 2=limit. -->
     <string name="part_seatMeter_caption">已使用%1$s/%2$s</string>
-    <!-- Optional footer line. Polaris Key is never translated. -->
-    <string name="part_poweredBy">由Polaris Key提供支持</string>
+    <!-- Optional footer line. Polaris Locker is never translated. -->
+    <string name="part_poweredBy">由Polaris Locker提供支持</string>
     <!-- Status pill: the license works. -->
     <string name="part_status_ok">有效</string>
     <!-- Status pill: offline grace period. -->
@@ -631,7 +631,7 @@
     <!-- Toast: an update is available. Arguments: {product} = the product's name from ProductIdentity (never translated); {version} = a version string such as 2.4.1. Arguments: 1=product, 2=version. -->
     <string name="toast_updateAvailable">%1$s %2$s现已推出</string>
     <!-- Hosted sign-in card, method chooser (SIGN-IN.md §3.3). -->
-    <string name="signin_methods_title">登录Polaris Key</string>
+    <string name="signin_methods_title">登录Polaris Locker</string>
     <!-- Hosted sign-in card, method chooser (SIGN-IN.md §3.3). -->
     <string name="signin_methods_titleApp">登录</string>
     <!-- Hosted sign-in card, method chooser (SIGN-IN.md §3.3). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
@@ -674,7 +674,7 @@
     <!-- Header of the sign-in card when an app asks (SIGN-IN.md §3.1). Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated. Arguments: 1=code. -->
     <string name="signin_header_codePanel">屏幕上的代码 · %1$s · 请确认与屏幕上的一致</string>
     <!-- Hosted sign-in card (SIGN-IN.md). Arguments: {app} = the requesting app's name (never translated); {developer} = the developer's name (never translated). Arguments: 1=app, 2=developer. -->
-    <string name="signin_footer">Polaris Key为%1$s提供登录服务。%2$s永远不会看到你的验证码或通行密钥。</string>
+    <string name="signin_footer">Polaris Locker为%1$s提供登录服务。%2$s永远不会看到你的验证码或通行密钥。</string>
     <!-- Sign-in is turned off (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated); {developer} = the developer's name (never translated). Arguments: 1=product, 2=developer. -->
     <string name="signin_off_product">%1$s已关闭登录功能。请联系%2$s。</string>
     <!-- Sign-in is turned off (SIGN-IN.md §4.12). -->
@@ -684,7 +684,7 @@
     <!-- Hosted sign-in card (SIGN-IN.md). -->
     <string name="signin_emailDown">我们目前无法发送电子邮件。请换一种方式登录。</string>
     <!-- The card can't reach the service. -->
-    <string name="signin_network_title">无法连接到Polaris Key</string>
+    <string name="signin_network_title">无法连接到Polaris Locker</string>
     <!-- Hosted sign-in card (SIGN-IN.md). -->
     <string name="signin_retry">重试</string>
     <string name="signin_retry__macos">重试</string>
@@ -714,7 +714,7 @@
     <string name="signin_code_differentEmail">使用其他电子邮件</string>
     <string name="signin_code_differentEmail__macos">使用其他电子邮件</string>
     <!-- Sign-in email subject (SIGN-IN.md §3.15). Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated. Arguments: 1=code. -->
-    <string name="signin_email_subject">你的Polaris Key验证码：%1$s</string>
+    <string name="signin_email_subject">你的Polaris Locker验证码：%1$s</string>
     <!-- Sign-in email body (SIGN-IN.md §3.15). -->
     <string name="signin_email_body">或点击按钮登录。验证码和链接仅可使用一次，10分钟内有效。</string>
     <!-- Page opened from the email's sign-in link on another device (SIGN-IN.md §3.4). Arguments: {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”); {place} = an approximate place (city, country). Arguments: 1=time, 2=place. -->
@@ -1008,7 +1008,7 @@
     <string name="signin_menu_signIn">登录…</string>
     <string name="signin_menu_signIn__macos">登录…</string>
     <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
-    <string name="signin_handoff_browserBody">我们已在你的浏览器中打开Polaris Key。在那里登录后，%1$s会自动继续。</string>
+    <string name="signin_handoff_browserBody">我们已在你的浏览器中打开Polaris Locker。在那里登录后，%1$s会自动继续。</string>
     <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). -->
     <string name="signin_handoff_waiting">正在等待你的浏览器…</string>
     <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). -->
@@ -1049,7 +1049,7 @@
     <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
     <string name="signin_choice_freed">此许可证现在有一台空余设备。</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
-    <string name="signin_replace_opensBrowser">在浏览器中打开Polaris Key</string>
+    <string name="signin_replace_opensBrowser">在浏览器中打开Polaris Locker</string>
     <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. -->
     <string name="signin_cli_opening">正在打开浏览器…</string>
     <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {url} = a web address, shown as is. Arguments: 1=url. -->
@@ -1077,7 +1077,7 @@
     <!-- Sign in with another device (SIGN-IN.md §3.11). -->
     <string name="signin_approve_ask">要批准新设备吗？</string>
     <!-- Sign in with another device (SIGN-IN.md §3.11). -->
-    <string name="signin_approve_warning">仅当是你本人在面前的设备上发起时才批准。Polaris Key或任何开发者都不会向你索要此信息。</string>
+    <string name="signin_approve_warning">仅当是你本人在面前的设备上发起时才批准。Polaris Locker或任何开发者都不会向你索要此信息。</string>
     <!-- Sign in with another device (SIGN-IN.md §3.11). -->
     <string name="signin_approve_approve">批准并登录</string>
     <string name="signin_approve_approve__macos">批准并登录</string>
@@ -1108,9 +1108,9 @@
     <!-- Expired code or link page (SIGN-IN.md §4.12). -->
     <string name="signin_again">重新登录</string>
     <string name="signin_again__macos">重新登录</string>
-    <!-- The product doesn't use Polaris Key sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="signin_identityOff_notice">%1$s不使用Polaris Key登录。请打开%1$s并在其中输入你的许可证密钥。</string>
-    <!-- The product doesn't use Polaris Key sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <!-- The product doesn't use Polaris Locker sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_identityOff_notice">%1$s不使用Polaris Locker登录。请打开%1$s并在其中输入你的许可证密钥。</string>
+    <!-- The product doesn't use Polaris Locker sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_identityOff_lede">在此登录即可在你的资料库中看到%1$s。</string>
     <!-- Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_signout_title">要在此设备上退出登录%1$s吗？</string>
@@ -1130,21 +1130,21 @@
     <!-- Session ended (SIGN-IN.md §4.10). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_session_kitEnded">你的登录已结束。请重新登录以继续使用%1$s。</string>
     <!-- Sign-in provider buttons (SIGN-IN.md §3.3). -->
-    <string name="signin_provider_manage">在Polaris Key中管理登录方式</string>
-    <string name="signin_provider_manage__macos">在Polaris Key中管理登录方式</string>
+    <string name="signin_provider_manage">在Polaris Locker中管理登录方式</string>
+    <string name="signin_provider_manage__macos">在Polaris Locker中管理登录方式</string>
     <!-- Profile import (SIGN-IN.md §3.5). -->
     <string name="signin_profile_changePicture">更换头像</string>
     <string name="signin_profile_changePicture__macos">更换头像</string>
     <!-- Security email (SIGN-IN.md §3.15). Arguments: {product} = the product's name from ProductIdentity (never translated); {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=product, 2=device. -->
     <string name="signin_mail_replaced_subject">%1$s已在%2$s上退出登录</string>
     <!-- Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {newDevice} = the new device's friendly name; {product} = the product's name from ProductIdentity (never translated); {date} = a date already formatted by the platform. Arguments: 1=device, 2=newDevice, 3=product, 4=date. -->
-    <string name="signin_mail_replaced_body">你于%4$s登录%3$s时，%1$s被%2$s替换。如有空余席位，它之后可以重新登录。如果这不是你本人操作，请打开Polaris Key检查你的设备。</string>
+    <string name="signin_mail_replaced_body">你于%4$s登录%3$s时，%1$s被%2$s替换。如有空余席位，它之后可以重新登录。如果这不是你本人操作，请打开Polaris Locker检查你的设备。</string>
     <!-- Security email (SIGN-IN.md §3.15). -->
-    <string name="signin_mail_newDevice_subject">有新设备登录了你的Polaris Key账户</string>
+    <string name="signin_mail_newDevice_subject">有新设备登录了你的Polaris Locker账户</string>
     <!-- Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {date} = a date already formatted by the platform; {place} = an approximate place (city, country). Arguments: 1=device, 2=date, 3=place. -->
-    <string name="signin_mail_newDevice_body">%1$s于%2$s从%3$s登录。如果这不是你本人操作，请在Polaris Key的“你的登录位置”中将其退出登录。</string>
+    <string name="signin_mail_newDevice_body">%1$s于%2$s从%3$s登录。如果这不是你本人操作，请在Polaris Locker的“你的登录位置”中将其退出登录。</string>
     <!-- Security email (SIGN-IN.md §3.15). -->
-    <string name="signin_mail_open">打开Polaris Key</string>
+    <string name="signin_mail_open">打开Polaris Locker</string>
     <!-- Email code step (SIGN-IN.md §3.4). -->
     <string name="signin_code_label">6位验证码</string>
     <!-- Terminal help: the heading over the license commands (activate, status…). -->
@@ -1375,9 +1375,9 @@
     <string name="cli_update_download">在此下载：</string>
     <!-- Terminal status: a device activated with a license key only, and the license is no longer valid. -->
     <string name="cli_status_keyRevoked_title">此许可证密钥已失效</string>
-    <!-- Terminal status, under the title above. It ends in a colon: the product's account page on Polaris Key follows on its own line, as a link. -->
+    <!-- Terminal status, under the title above. It ends in a colon: the product's account page on Polaris Locker follows on its own line, as a link. -->
     <string name="cli_status_keyRevoked_message">它可能已过期或被停用：</string>
-    <!-- Terminal activate: the server did not accept the license key, under the title 'Key not accepted'. It answers the same for a wrong key and for one that expired or was turned off, so the text covers both. It ends in a colon: the product's account page on Polaris Key follows on its own line, as a link. -->
+    <!-- Terminal activate: the server did not accept the license key, under the title 'Key not accepted'. It answers the same for a wrong key and for one that expired or was turned off, so the text covers both. It ends in a colon: the product's account page on Polaris Locker follows on its own line, as a link. -->
     <string name="cli_activate_unauthorized">请检查是否有输入错误。如果无误，它可能已过期或被停用：</string>
     <!-- Terminal help: what the -reveal flag does. A command-line flag; keep it as is. -->
     <string name="cli_option_reveal">输出该值</string>
@@ -1604,7 +1604,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_in_use_title">电子邮件已被使用</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_email_in_use_message">另一个Polaris Key账户已在使用此电子邮件。请将此次登录合并到该账户，或使用其他电子邮件。</string>
+    <string name="core_codes_email_in_use_message">另一个Polaris Locker账户已在使用此电子邮件。请将此次登录合并到该账户，或使用其他电子邮件。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_terms_required_title">未接受条款</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1612,15 +1612,15 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_owned_title">许可证在另一个账户中</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). Arguments: 1=product. -->
-    <string name="core_codes_license_owned_message">此%1$s许可证已在另一个Polaris Key账户中。许可证不会通过密钥转移。</string>
+    <string name="core_codes_license_owned_message">此%1$s许可证已在另一个Polaris Locker账户中。许可证不会通过密钥转移。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_email_bound_title">电子邮件未验证</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_license_email_bound_message">此许可证属于你的Polaris Key账户尚未验证的电子邮件地址。请在账户中验证该电子邮件，然后重试。</string>
+    <string name="core_codes_license_email_bound_message">此许可证属于你的Polaris Locker账户尚未验证的电子邮件地址。请在账户中验证该电子邮件，然后重试。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_account_required_title">需要登录</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_account_required_message">请在此设备上登录你的Polaris Key账户，然后重试。</string>
+    <string name="core_codes_account_required_message">请在此设备上登录你的Polaris Locker账户，然后重试。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_mismatch_title">电子邮件未验证</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1628,7 +1628,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_link_conflict_title">已被关联</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_link_conflict_message">该登录方式属于另一个Polaris Key账户。请登录那个账户，或将两个账户合并。</string>
+    <string name="core_codes_link_conflict_message">该登录方式属于另一个Polaris Locker账户。请登录那个账户，或将两个账户合并。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_last_link_title">无法移除</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1728,7 +1728,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_network_title">无法连接</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_network_message">无法连接到Polaris Key。请检查网络连接后重试。</string>
+    <string name="core_codes_network_message">无法连接到Polaris Locker。请检查网络连接后重试。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_refresh_failed_title">无法刷新</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1800,7 +1800,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_network_error_title">无法连接</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_network_error_message">无法连接到Polaris Key。请检查网络连接后重试。</string>
+    <string name="core_codes_network_error_message">无法连接到Polaris Locker。请检查网络连接后重试。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_server_error_title">服务出现问题</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2092,7 +2092,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sign_in_required_title">需要登录</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_sign_in_required_message">请在应用中登录你的Polaris Key账户，然后重试。</string>
+    <string name="core_codes_sign_in_required_message">请在应用中登录你的Polaris Locker账户，然后重试。</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
     <string name="core_gate_ok_title">许可证有效</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->

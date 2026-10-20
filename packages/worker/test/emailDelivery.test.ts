@@ -5,7 +5,6 @@ import {
   HARD_BOUNCE_SUPPRESSION_SECONDS,
   productDailyEmailCap,
   recordDeliveryEvent,
-  setProductDailyEmailCap,
   suppressEmail,
   unsuppressEmail,
   type OutgoingEmail,
@@ -18,7 +17,35 @@ import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
-import { makeEnv, NOW } from "./seed.js";
+import { makeEnv, NOW, seedProduct } from "./seed.js";
+
+/** ST-11: a product's own cap is the `email.dailyCap` `product_settings` row. */
+async function setProductDailyEmailCap(
+  db: Db,
+  product: string,
+  cap: number | null,
+  now: number,
+): Promise<void> {
+  if (cap === null) {
+    await db.run(
+      "DELETE FROM product_settings WHERE product = ? AND key = 'email.dailyCap'",
+      product,
+    );
+    return;
+  }
+  if (!Number.isInteger(cap) || cap <= 0)
+    throw new Error("a daily cap is a positive integer");
+  if (!(await db.first("SELECT 1 FROM products WHERE slug = ?", product)))
+    await seedProduct(db, product);
+  await db.run(
+    `INSERT INTO product_settings (product, key, value_json, source, version, updated_at, updated_by)
+     VALUES (?, 'email.dailyCap', ?, 'console', 1, ?, 'test')
+     ON CONFLICT(product, key) DO UPDATE SET value_json = excluded.value_json`,
+    product,
+    JSON.stringify(cap),
+    now,
+  );
+}
 
 // I-18: the one send choke point. No test sends real email: the binding is a recorder (or a
 // thrower standing in for Cloudflare's refusals).
@@ -51,7 +78,7 @@ function setup(opts: { throwCode?: string } = {}): {
 
 const platform = (to: string): OutgoingEmail => ({
   to,
-  subject: "Sign in to Polaris Key",
+  subject: "Sign in to Polaris Locker",
   text: "code 123456",
   sender: { kind: "platform" },
 });
@@ -63,21 +90,21 @@ const passthrough = (to: string, product = "acme"): OutgoingEmail => ({
 });
 
 describe("senders", () => {
-  it("platform mail goes out as 'Polaris Key' from the shared address", async () => {
+  it("platform mail goes out as 'Polaris Locker' from the shared address", async () => {
     const { env, db, sent } = setup();
     expect(await deliverEmail(env, db, platform("a@example.com"), NOW)).toEqual(
       { ok: true },
     );
     expect(sent[0]!.from).toEqual({
-      name: "Polaris Key",
+      name: "Polaris Locker",
       email: "noreply@auth.plrs.im",
     });
   });
 
-  it("passthrough mail goes out as '<App> via Polaris Key'", async () => {
+  it("passthrough mail goes out as '<App> via Polaris Locker'", async () => {
     const { env, db, sent } = setup();
     await deliverEmail(env, db, passthrough("a@example.com"), NOW);
-    expect(sent[0]!.from.name).toBe("Acme Games via Polaris Key");
+    expect(sent[0]!.from.name).toBe("Acme Games via Polaris Locker");
   });
 
   it("a product whose name and slug are both reserved sends nothing", async () => {

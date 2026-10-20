@@ -22,6 +22,7 @@ import {
   NOW,
   seedLicenseWithKey,
   seedProduct,
+  seedOperatorPolicy,
 } from "../seed.js";
 import type { Db } from "../../src/db/types.js";
 import type { Env } from "../../src/platform/env.js";
@@ -2160,10 +2161,10 @@ describe("entitled: the version window holds for a moving selector", () => {
     });
     // The signature requirement is OPERATOR policy: opt out so the appcast renders and the
     // tests are about the access decision, not the enclosure.
-    await db.run(
-      "UPDATE release_config SET operator_policy_json = ? WHERE product = ?",
-      JSON.stringify({ requireSparkleSignature: false }),
+    await seedOperatorPolicy(
+      db,
       SLUG,
+      JSON.stringify({ requireSparkleSignature: false }),
     );
     const env = envFor();
     const product = (await loadProduct(env, db, SLUG))!;

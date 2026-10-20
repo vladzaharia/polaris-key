@@ -925,11 +925,9 @@ describe("I-26 outside the trigger", () => {
   });
 
   it("auto-linking turned off for the product", async () => {
-    await db.run(
-      "INSERT INTO portal_product_settings (product, auto_link_enabled, created_at, modified_at) VALUES ('djdl', 0, ?, ?)",
-      NOW,
-      NOW,
-    );
+    // I-29: auto-link resolves off for a custom-issuer product (no per-product override).
+    await setProvider("custom");
+    product = (await loadProduct(env, db, "djdl"))!;
     await insertLic({ id: "lic_std", tier: "std", account: accountId });
     await signsInAsToday();
   });

@@ -386,13 +386,13 @@ describe("bytes host: the landing page at /", () => {
         .match(/https?:\/\/[^"\s)<]+/g)!
         .filter((u) => u !== "http://www.w3.org/2000/svg"),
     ).toEqual([`${CONSOLE}/`, `${CONSOLE}/docs/`]);
-    // The Polaris Key Delivery identity, the one-line explanation, no environment label in prod.
-    expect(html).toContain('role="img" aria-label="Polaris Key Delivery"');
-    expect(html).toContain("<title>Polaris Key Delivery</title>");
-    expect(html).not.toContain("Polaris Key Update");
-    expect(html).toContain(
-      "The download host for games and apps built on Polaris Key.",
-    );
+    // The Polaris Locker shell with the Star Cut as Delivery's symbol (LK-07), the one-line
+    // explanation, no environment label in prod.
+    expect(html).toContain('role="img" aria-label="Polaris Locker"');
+    expect(html).toContain("<title>Delivery · Polaris Locker</title>");
+    expect(html).toContain('<div class="svc">');
+    expect(html).not.toContain("Polaris Key");
+    expect(html).toContain("The download host for games and apps.");
     expect(html).not.toContain("environment</p>");
     expect(html).not.toContain("noindex");
   });
@@ -514,7 +514,7 @@ describe("bytes host: the landing page at /", () => {
       const html = await res.text();
       expect(html, blob).toContain(`<p class="env">${label} environment</p>`);
       expect(html, blob).toContain(
-        `<title>Polaris Key Delivery (${label})</title>`,
+        `<title>Delivery (${label}) · Polaris Locker</title>`,
       );
       expect(html, blob).toContain(`href="${consoleOrigin}/"`);
       expect(html, blob).toContain(`href="${consoleOrigin}/docs/"`);
@@ -581,7 +581,7 @@ describe("bytes host: the landing page at /", () => {
     );
   });
 
-  it("the favicon is the kit's adaptive Star Cut favicon, inlined", () => {
+  it("the favicon is the kit's adaptive Locker favicon, inlined", () => {
     const kit = readFileSync(
       join(
         HERE,
@@ -589,9 +589,8 @@ describe("bytes host: the landing page at /", () => {
         "node_modules",
         "@polaris-key",
         "brand",
-        "kit",
-        "04-web",
-        "update",
+        "locker-kit",
+        "web",
         "favicon.svg",
       ),
       "utf8",
@@ -602,11 +601,16 @@ describe("bytes host: the landing page at /", () => {
         m[1],
         m[2],
       ]);
-    // The same inks, with three-digit hex spelled out (the kit writes `#fff`).
+    // The same inks and rules, with the colour names the kit writes spelled out.
     const style = (svg: string) =>
       /<style>([^<]+)<\/style>/
         .exec(svg)?.[1]
-        ?.replace(/#([0-9a-f])([0-9a-f])([0-9a-f])\b/gi, "#$1$1$2$2$3$3");
+        ?.replace(/#([0-9a-f])([0-9a-f])([0-9a-f])\b/gi, "#$1$1$2$2$3$3")
+        .replace(/:white\b/g, ":#ffffff")
+        .replace(
+          ".body,.star{fill:#c44438}",
+          ".body{fill:#c44438}.star{fill:#c44438}",
+        );
     expect(paths(ours)).toEqual(paths(kit));
     expect(paths(ours).length).toBeGreaterThan(0);
     expect(style(ours)).toBe(style(kit));

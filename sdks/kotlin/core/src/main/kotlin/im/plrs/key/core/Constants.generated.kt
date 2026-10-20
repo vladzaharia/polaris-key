@@ -1462,6 +1462,18 @@ public const val REQUEST_HANDLE_TTL_SECONDS: Int = 600
 /** Signed-in subject: `PAIRWISE_SUBJECT_PATTERN` (WIRE-CONTRACT-V4 §3.2, `@polaris-key/protocol/core`). */
 public const val PAIRWISE_SUBJECT_PATTERN: String = "^ps_[A-Za-z0-9_-]{22}\$"
 
+/** Customer site display fallback: `CUSTOMER_ORIGIN_DEFAULT` (LK-00 §3, `@polaris-key/protocol/core`). */
+public const val CUSTOMER_ORIGIN_DEFAULT: String = "https://polaris.locker"
+
+/** Customer site display fallback: `DEVICE_CODE_PAGE` (LK-00 §3, `@polaris-key/protocol/core`). */
+public const val DEVICE_CODE_PAGE: String = "https://polaris.locker/device"
+
+/** Customer site display fallback: `TV_CODE_PAGE` (LK-00 §3, `@polaris-key/protocol/core`). */
+public const val TV_CODE_PAGE: String = "https://polaris.locker/tv"
+
+/** Customer site display fallback: `SIGN_IN_PROVIDER_NAME` (LK-00 §3, `@polaris-key/protocol/core`). */
+public const val SIGN_IN_PROVIDER_NAME: String = "Polaris Locker"
+
 /** Product presentation: `PRESENTATION_TEXT_MAX_BYTES` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`). */
 public const val PRESENTATION_TEXT_MAX_BYTES: Int = 1024
 

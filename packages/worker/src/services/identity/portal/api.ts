@@ -266,10 +266,8 @@ export async function shapeLicenseSummary(
     access: await licenseAccess(db, row),
     // PX-23: Remove from my library is offered only for a licence its key can bring back.
     removable:
-      notRemovableReason(
-        activeKeyCount,
-        settings.license_key_claim_enabled === 1,
-      ) === null,
+      notRemovableReason(activeKeyCount, settings.portal_enabled === 1) ===
+      null,
   };
 }
 
@@ -921,7 +919,7 @@ async function handleCapabilities(
   const caps = await portalAuthCapabilities(db, product);
   // I-30: the seeded platform connection is the single sign-on button's only source, and every
   // other active platform connection for customers is a "Continue with <label>" entry.
-  const sso = caps.portalEnabled && caps.oidcEnabled;
+  const sso = caps.portalEnabled;
   const seeded = sso ? await platformEnvConnection(env, db, now) : null;
   const connections = sso
     ? (await activePlatformConnections(db, "customers"))
@@ -938,7 +936,7 @@ async function handleCapabilities(
         audienceCovers(seeded.audience, "customers") &&
         !platformSignInEnded(env, now),
       connections,
-      magic: caps.portalEnabled && caps.magicEnabled && emailConfigured(env),
+      magic: caps.portalEnabled && emailConfigured(env),
       // I-16: passkeys are an account sign-in method, platform-level (no product toggle).
       passkey: caps.portalEnabled,
     },
@@ -947,7 +945,7 @@ async function handleCapabilities(
     turnstileSiteKey: turnstileSiteKey(env),
     modules: {
       licensing: caps.portalEnabled,
-      claim: caps.portalEnabled && caps.licenseKeyClaimEnabled,
+      claim: caps.portalEnabled,
       releases: caps.portalEnabled && caps.releasesEnabled,
     },
   });
@@ -1340,7 +1338,6 @@ async function handleReleases(
       // is the actual disclosure, and `services_json` has to bind both or it binds neither.
       if (
         settings.portal_enabled === 1 &&
-        settings.releases_enabled === 1 &&
         releaseServiceEnabled(row.services_json)
       ) {
         enabledProducts.push(row.slug);
@@ -1468,7 +1465,6 @@ async function handleReleases(
   // longer runs the service at all.
   if (
     settings.portal_enabled !== 1 ||
-    settings.releases_enabled !== 1 ||
     !releaseServiceEnabled(productRow.services_json)
   ) {
     return notFound();
@@ -1579,7 +1575,6 @@ async function handleEmailDownload(
   const settings = await getPortalProductSettings(db, product);
   if (
     settings.portal_enabled !== 1 ||
-    settings.releases_enabled !== 1 ||
     !releaseServiceEnabled(productRow.services_json)
   ) {
     return notFound();
@@ -2221,7 +2216,7 @@ export async function handlePortalDownload(
   if (!artifact || !facts || !gate || !mode || target === null)
     return notFound();
   const settings = await getPortalProductSettings(db, row.product);
-  if (settings.portal_enabled !== 1 || settings.releases_enabled !== 1) {
+  if (settings.portal_enabled !== 1) {
     return notFound();
   }
   const scope = parseJsonOr<{ portalAccountId?: string }>(row.scope_json, {});

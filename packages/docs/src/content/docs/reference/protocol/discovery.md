@@ -118,7 +118,7 @@ entitlement or trust decision reads it, in the Worker or in any SDK.
 - The icon is named only by content-addressed image-host URLs and their hashes. An SDK fetches
   one size with no credentials and no `X-PKey-*` headers, refuses redirects, and shows the bytes
   only when their SHA-256 matches. The manifest's own icon reference, a developer's host and the
-  portal's `/media` proxy never appear.
+  Polaris Locker's `/media` proxy never appear.
 
 Which icon discovery names, slot by slot (the console's Presentation page
 shows the same slots):

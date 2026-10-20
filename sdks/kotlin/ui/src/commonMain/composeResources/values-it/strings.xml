@@ -45,7 +45,7 @@
     <!-- Shared verb used across the kit's screens. Signs this device out of the product. -->
     <string name="common_signOut">Esci</string>
     <string name="common_signOut__macos">Esci</string>
-    <!-- Shared verb used across the kit's screens. Opens the person's Polaris Key account in the browser. -->
+    <!-- Shared verb used across the kit's screens. Opens the person's Polaris Locker account in the browser. -->
     <string name="common_manage">Gestisci</string>
     <!-- Shared verb used across the kit's screens. Tries to reach the licensing service again. -->
     <string name="common_reconnect">Riconnetti</string>
@@ -125,8 +125,8 @@
     <string name="part_qr_scanInstead__macos">Scansiona con il telefono</string>
     <!-- Caption under the seat meter. {used} and {limit} are numbers of devices. Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number. Arguments: 1=used, 2=limit. -->
     <string name="part_seatMeter_caption">%1$s di %2$s in uso</string>
-    <!-- Optional footer line. Polaris Key is never translated. -->
-    <string name="part_poweredBy">Con tecnologia Polaris Key</string>
+    <!-- Optional footer line. Polaris Locker is never translated. -->
+    <string name="part_poweredBy">Con tecnologia Polaris Locker</string>
     <!-- Status pill: the license works. -->
     <string name="part_status_ok">Attiva</string>
     <!-- Status pill: offline grace period. -->
@@ -641,7 +641,7 @@
     <!-- Toast: an update is available. Arguments: {product} = the product's name from ProductIdentity (never translated); {version} = a version string such as 2.4.1. Arguments: 1=product, 2=version. -->
     <string name="toast_updateAvailable">%1$s %2$s è disponibile</string>
     <!-- Hosted sign-in card, method chooser (SIGN-IN.md §3.3). -->
-    <string name="signin_methods_title">Accedi a Polaris Key</string>
+    <string name="signin_methods_title">Accedi a Polaris Locker</string>
     <!-- Hosted sign-in card, method chooser (SIGN-IN.md §3.3). -->
     <string name="signin_methods_titleApp">Accedi</string>
     <!-- Hosted sign-in card, method chooser (SIGN-IN.md §3.3). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
@@ -684,7 +684,7 @@
     <!-- Header of the sign-in card when an app asks (SIGN-IN.md §3.1). Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated. Arguments: 1=code. -->
     <string name="signin_header_codePanel">Codice sullo schermo · %1$s · Verifica che corrisponda a quello sullo schermo</string>
     <!-- Hosted sign-in card (SIGN-IN.md). Arguments: {app} = the requesting app's name (never translated); {developer} = the developer's name (never translated). Arguments: 1=app, 2=developer. -->
-    <string name="signin_footer">Polaris Key gestisce il tuo accesso a %1$s. %2$s non vede mai i tuoi codici o le tue passkey.</string>
+    <string name="signin_footer">Polaris Locker gestisce il tuo accesso a %1$s. %2$s non vede mai i tuoi codici o le tue passkey.</string>
     <!-- Sign-in is turned off (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated); {developer} = the developer's name (never translated). Arguments: 1=product, 2=developer. -->
     <string name="signin_off_product">L'accesso è disattivato per %1$s. Contatta %2$s.</string>
     <!-- Sign-in is turned off (SIGN-IN.md §4.12). -->
@@ -694,7 +694,7 @@
     <!-- Hosted sign-in card (SIGN-IN.md). -->
     <string name="signin_emailDown">Al momento non possiamo inviare email. Prova un altro modo per accedere.</string>
     <!-- The card can't reach the service. -->
-    <string name="signin_network_title">Impossibile raggiungere Polaris Key</string>
+    <string name="signin_network_title">Impossibile raggiungere Polaris Locker</string>
     <!-- Hosted sign-in card (SIGN-IN.md). -->
     <string name="signin_retry">Riprova</string>
     <string name="signin_retry__macos">Riprova</string>
@@ -726,7 +726,7 @@
     <string name="signin_code_differentEmail">Usa un'altra email</string>
     <string name="signin_code_differentEmail__macos">Usa un'altra email</string>
     <!-- Sign-in email subject (SIGN-IN.md §3.15). Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated. Arguments: 1=code. -->
-    <string name="signin_email_subject">Il tuo codice Polaris Key: %1$s</string>
+    <string name="signin_email_subject">Il tuo codice Polaris Locker: %1$s</string>
     <!-- Sign-in email body (SIGN-IN.md §3.15). -->
     <string name="signin_email_body">Oppure accedi con il pulsante. Il codice e il link funzionano una sola volta, per 10 minuti.</string>
     <!-- Page opened from the email's sign-in link on another device (SIGN-IN.md §3.4). Arguments: {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”); {place} = an approximate place (city, country). Arguments: 1=time, 2=place. -->
@@ -1026,7 +1026,7 @@
     <string name="signin_menu_signIn">Accedi…</string>
     <string name="signin_menu_signIn__macos">Accedi…</string>
     <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
-    <string name="signin_handoff_browserBody">Abbiamo aperto Polaris Key nel browser. Accedi lì e %1$s continuerà da solo.</string>
+    <string name="signin_handoff_browserBody">Abbiamo aperto Polaris Locker nel browser. Accedi lì e %1$s continuerà da solo.</string>
     <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). -->
     <string name="signin_handoff_waiting">In attesa del browser…</string>
     <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). -->
@@ -1067,7 +1067,7 @@
     <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
     <string name="signin_choice_freed">Ora c'è un dispositivo libero su questa licenza.</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
-    <string name="signin_replace_opensBrowser">Apre Polaris Key nel browser</string>
+    <string name="signin_replace_opensBrowser">Apre Polaris Locker nel browser</string>
     <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. -->
     <string name="signin_cli_opening">Apertura del browser…</string>
     <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {url} = a web address, shown as is. Arguments: 1=url. -->
@@ -1095,7 +1095,7 @@
     <!-- Sign in with another device (SIGN-IN.md §3.11). -->
     <string name="signin_approve_ask">Approvare un nuovo dispositivo?</string>
     <!-- Sign in with another device (SIGN-IN.md §3.11). -->
-    <string name="signin_approve_warning">Approva solo se hai avviato tu questa operazione, su un dispositivo che hai davanti. Nessuno di Polaris Key o di uno sviluppatore te lo chiederà mai.</string>
+    <string name="signin_approve_warning">Approva solo se hai avviato tu questa operazione, su un dispositivo che hai davanti. Nessuno di Polaris Locker o di uno sviluppatore te lo chiederà mai.</string>
     <!-- Sign in with another device (SIGN-IN.md §3.11). -->
     <string name="signin_approve_approve">Approva e fai accedere</string>
     <string name="signin_approve_approve__macos">Approva e fai accedere</string>
@@ -1126,9 +1126,9 @@
     <!-- Expired code or link page (SIGN-IN.md §4.12). -->
     <string name="signin_again">Accedi di nuovo</string>
     <string name="signin_again__macos">Accedi di nuovo</string>
-    <!-- The product doesn't use Polaris Key sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="signin_identityOff_notice">%1$s non usa l'accesso Polaris Key. Apri %1$s e inserisci lì la tua chiave di licenza.</string>
-    <!-- The product doesn't use Polaris Key sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <!-- The product doesn't use Polaris Locker sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_identityOff_notice">%1$s non usa l'accesso Polaris Locker. Apri %1$s e inserisci lì la tua chiave di licenza.</string>
+    <!-- The product doesn't use Polaris Locker sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_identityOff_lede">Accedi qui per vedere %1$s nella tua libreria.</string>
     <!-- Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_signout_title">Uscire da %1$s su questo dispositivo?</string>
@@ -1150,21 +1150,21 @@
     <!-- Session ended (SIGN-IN.md §4.10). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_session_kitEnded">Il tuo accesso è terminato. Accedi di nuovo per continuare a usare %1$s.</string>
     <!-- Sign-in provider buttons (SIGN-IN.md §3.3). -->
-    <string name="signin_provider_manage">Gestisci i metodi di accesso in Polaris Key</string>
-    <string name="signin_provider_manage__macos">Gestisci i metodi di accesso in Polaris Key</string>
+    <string name="signin_provider_manage">Gestisci i metodi di accesso in Polaris Locker</string>
+    <string name="signin_provider_manage__macos">Gestisci i metodi di accesso in Polaris Locker</string>
     <!-- Profile import (SIGN-IN.md §3.5). -->
     <string name="signin_profile_changePicture">Cambia immagine</string>
     <string name="signin_profile_changePicture__macos">Cambia immagine</string>
     <!-- Security email (SIGN-IN.md §3.15). Arguments: {product} = the product's name from ProductIdentity (never translated); {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=product, 2=device. -->
     <string name="signin_mail_replaced_subject">%1$s è uscito su %2$s</string>
     <!-- Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {newDevice} = the new device's friendly name; {product} = the product's name from ProductIdentity (never translated); {date} = a date already formatted by the platform. Arguments: 1=device, 2=newDevice, 3=product, 4=date. -->
-    <string name="signin_mail_replaced_body">%1$s è stato sostituito da %2$s quando hai effettuato l'accesso a %3$s il %4$s. Potrà accedere di nuovo in seguito se si libera un posto. Se non sei stato tu, apri Polaris Key e controlla i tuoi dispositivi.</string>
+    <string name="signin_mail_replaced_body">%1$s è stato sostituito da %2$s quando hai effettuato l'accesso a %3$s il %4$s. Potrà accedere di nuovo in seguito se si libera un posto. Se non sei stato tu, apri Polaris Locker e controlla i tuoi dispositivi.</string>
     <!-- Security email (SIGN-IN.md §3.15). -->
-    <string name="signin_mail_newDevice_subject">Un nuovo dispositivo ha effettuato l'accesso al tuo account Polaris Key</string>
+    <string name="signin_mail_newDevice_subject">Un nuovo dispositivo ha effettuato l'accesso al tuo account Polaris Locker</string>
     <!-- Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {date} = a date already formatted by the platform; {place} = an approximate place (city, country). Arguments: 1=device, 2=date, 3=place. -->
-    <string name="signin_mail_newDevice_body">%1$s ha effettuato l'accesso il %2$s da %3$s. Se non sei stato tu, disconnettilo in Polaris Key nella sezione Dove hai effettuato l'accesso.</string>
+    <string name="signin_mail_newDevice_body">%1$s ha effettuato l'accesso il %2$s da %3$s. Se non sei stato tu, disconnettilo in Polaris Locker nella sezione Dove hai effettuato l'accesso.</string>
     <!-- Security email (SIGN-IN.md §3.15). -->
-    <string name="signin_mail_open">Apri Polaris Key</string>
+    <string name="signin_mail_open">Apri Polaris Locker</string>
     <!-- Email code step (SIGN-IN.md §3.4). -->
     <string name="signin_code_label">Codice a 6 cifre</string>
     <!-- Terminal help: the heading over the license commands (activate, status…). -->
@@ -1395,9 +1395,9 @@
     <string name="cli_update_download">Scaricala qui:</string>
     <!-- Terminal status: a device activated with a license key only, and the license is no longer valid. -->
     <string name="cli_status_keyRevoked_title">Questa chiave di licenza non funziona più</string>
-    <!-- Terminal status, under the title above. It ends in a colon: the product's account page on Polaris Key follows on its own line, as a link. -->
+    <!-- Terminal status, under the title above. It ends in a colon: the product's account page on Polaris Locker follows on its own line, as a link. -->
     <string name="cli_status_keyRevoked_message">Potrebbe essere scaduta o disattivata:</string>
-    <!-- Terminal activate: the server did not accept the license key, under the title 'Key not accepted'. It answers the same for a wrong key and for one that expired or was turned off, so the text covers both. It ends in a colon: the product's account page on Polaris Key follows on its own line, as a link. -->
+    <!-- Terminal activate: the server did not accept the license key, under the title 'Key not accepted'. It answers the same for a wrong key and for one that expired or was turned off, so the text covers both. It ends in a colon: the product's account page on Polaris Locker follows on its own line, as a link. -->
     <string name="cli_activate_unauthorized">Controlla di non aver sbagliato a digitarla. Se è giusta, potrebbe essere scaduta o disattivata:</string>
     <!-- Terminal help: what the -reveal flag does. A command-line flag; keep it as is. -->
     <string name="cli_option_reveal">Mostra il valore</string>
@@ -1624,7 +1624,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_in_use_title">Email già in uso</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_email_in_use_message">Un altro account Polaris Key usa già questa email. Unisci questo accesso a quell'account oppure usa un'altra email.</string>
+    <string name="core_codes_email_in_use_message">Un altro account Polaris Locker usa già questa email. Unisci questo accesso a quell'account oppure usa un'altra email.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_terms_required_title">Condizioni non accettate</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1632,15 +1632,15 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_owned_title">Licenza in un altro account</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). Arguments: 1=product. -->
-    <string name="core_codes_license_owned_message">Questa licenza di %1$s è già in un altro account Polaris Key. Una licenza non si sposta mai tramite la sua chiave.</string>
+    <string name="core_codes_license_owned_message">Questa licenza di %1$s è già in un altro account Polaris Locker. Una licenza non si sposta mai tramite la sua chiave.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_email_bound_title">Email non verificata</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_license_email_bound_message">Questa licenza appartiene a un indirizzo email che il tuo account Polaris Key non ha verificato. Verifica quell'email nel tuo account, poi riprova.</string>
+    <string name="core_codes_license_email_bound_message">Questa licenza appartiene a un indirizzo email che il tuo account Polaris Locker non ha verificato. Verifica quell'email nel tuo account, poi riprova.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_account_required_title">Accesso richiesto</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_account_required_message">Accedi al tuo account Polaris Key su questo dispositivo, poi riprova.</string>
+    <string name="core_codes_account_required_message">Accedi al tuo account Polaris Locker su questo dispositivo, poi riprova.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_mismatch_title">Email non verificata</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1648,7 +1648,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_link_conflict_title">Già collegato</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_link_conflict_message">Questo metodo di accesso appartiene a un altro account Polaris Key. Accedi a quell'account o unisci i due account.</string>
+    <string name="core_codes_link_conflict_message">Questo metodo di accesso appartiene a un altro account Polaris Locker. Accedi a quell'account o unisci i due account.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_last_link_title">Impossibile rimuovere</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1748,7 +1748,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_network_title">Impossibile connettersi</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_network_message">Impossibile raggiungere Polaris Key. Controlla la connessione e riprova.</string>
+    <string name="core_codes_network_message">Impossibile raggiungere Polaris Locker. Controlla la connessione e riprova.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_refresh_failed_title">Impossibile aggiornare</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1820,7 +1820,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_network_error_title">Impossibile connettersi</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_network_error_message">Impossibile raggiungere Polaris Key. Controlla la connessione e riprova.</string>
+    <string name="core_codes_network_error_message">Impossibile raggiungere Polaris Locker. Controlla la connessione e riprova.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_server_error_title">Problema del servizio</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2112,7 +2112,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sign_in_required_title">Accesso richiesto</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_sign_in_required_message">Accedi al tuo account Polaris Key nell'app, poi riprova.</string>
+    <string name="core_codes_sign_in_required_message">Accedi al tuo account Polaris Locker nell'app, poi riprova.</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
     <string name="core_gate_ok_title">Licenza attiva</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->

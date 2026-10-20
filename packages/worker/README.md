@@ -4,7 +4,7 @@ The one Cloudflare Worker behind `key.plrs.im`: the licensing, config, release, 
 
 ## Where it sits
 
-- Called by the SDKs and the `pkey` CLI (`/<product>/<service>/…`), the publish Action's CI calls, the admin SPA (`/manage/api/…`), the customer portal, and store and GitHub webhooks.
+- Called by the SDKs and the `pkey` CLI (`/<product>/<service>/…`), the publish Action's CI calls, the admin SPA (`/manage/api/…`), Polaris Locker (the customer site), and store and GitHub webhooks.
 - Calls D1 (`DB`), KV (`HOT`), R2 (`BLOBS`), the Durable Objects `RL`, `UPDATE_HEALTH` and `SINGLE_USE`, queues, email and outbound store APIs. The bindings are tagged on `Env` in `src/platform/env.ts` and declared in `wrangler.toml`.
 - Builds on `@polaris-key/protocol`, `jws`, `catalog`, `manifest`, `client-core`, `brand` and `zstd-wasm`.
 - Serves the built `../admin` and `../docs` output from one `[assets]` root.

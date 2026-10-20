@@ -103,6 +103,21 @@ export const MAX_TRUST_SIGNER_ATTEMPTS = 4;
  *  sanctioned pre-launch wire break, not something this constant absorbs.) */
 export const ISSUER = "key.plrs.im";
 
+/** The customer site's default origin (LK-00 §3). A display fallback only, never a routing or
+ *  trust input: the Worker's `manageUrl`, `signInUrl` and `verificationUri` are what clients
+ *  open. */
+export const CUSTOMER_ORIGIN_DEFAULT = "https://polaris.locker";
+
+/** The device-code page an app falls back to when neither the integrator nor the server names
+ *  one (display fallback only). */
+export const DEVICE_CODE_PAGE = `${CUSTOMER_ORIGIN_DEFAULT}/device`;
+
+/** The same page with larger type, for a TV or console browser. */
+export const TV_CODE_PAGE = `${CUSTOMER_ORIGIN_DEFAULT}/tv`;
+
+/** The name the generic sign-in row shows: the public brand of the customer site. */
+export const SIGN_IN_PROVIDER_NAME = "Polaris Locker";
+
 /** A JSON-serialisable value — the type every managed entry carries. */
 export type JSONValue =
   | string

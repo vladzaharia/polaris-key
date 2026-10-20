@@ -199,7 +199,7 @@
     },
     "email_in_use": {
       "title": "E-mail já em uso",
-      "message": "Outra conta do Polaris Key já usa este e-mail. Junte este acesso a essa conta ou use outro e-mail."
+      "message": "Outra conta do Polaris Locker já usa este e-mail. Junte este acesso a essa conta ou use outro e-mail."
     },
     "terms_required": {
       "title": "Termos não aceitos",
@@ -207,15 +207,15 @@
     },
     "license_owned": {
       "title": "Licença em outra conta",
-      "message": "Esta licença de {product} já está em outra conta do Polaris Key. Uma licença nunca é transferida pela chave."
+      "message": "Esta licença de {product} já está em outra conta do Polaris Locker. Uma licença nunca é transferida pela chave."
     },
     "license_email_bound": {
       "title": "E-mail não verificado",
-      "message": "Esta licença pertence a um endereço de e-mail que sua conta do Polaris Key não verificou. Verifique esse e-mail na sua conta e tente novamente."
+      "message": "Esta licença pertence a um endereço de e-mail que sua conta do Polaris Locker não verificou. Verifique esse e-mail na sua conta e tente novamente."
     },
     "account_required": {
       "title": "É preciso entrar",
-      "message": "Entre na sua conta do Polaris Key neste dispositivo e tente novamente."
+      "message": "Entre na sua conta do Polaris Locker neste dispositivo e tente novamente."
     },
     "email_mismatch": {
       "title": "E-mail não verificado",
@@ -223,7 +223,7 @@
     },
     "link_conflict": {
       "title": "Já vinculado",
-      "message": "Esse método de acesso pertence a outra conta do Polaris Key. Entre nessa conta ou una as duas contas."
+      "message": "Esse método de acesso pertence a outra conta do Polaris Locker. Entre nessa conta ou una as duas contas."
     },
     "last_link": {
       "title": "Não é possível remover",
@@ -323,7 +323,7 @@
     },
     "network": {
       "title": "Não é possível conectar",
-      "message": "Não foi possível acessar o Polaris Key. Verifique sua conexão e tente novamente."
+      "message": "Não foi possível acessar o Polaris Locker. Verifique sua conexão e tente novamente."
     },
     "refresh-failed": {
       "title": "Não foi possível atualizar",
@@ -395,7 +395,7 @@
     },
     "network-error": {
       "title": "Não é possível conectar",
-      "message": "Não foi possível acessar o Polaris Key. Verifique sua conexão e tente novamente."
+      "message": "Não foi possível acessar o Polaris Locker. Verifique sua conexão e tente novamente."
     },
     "server-error": {
       "title": "Problema no serviço",
@@ -687,7 +687,7 @@
     },
     "sign_in_required": {
       "title": "É preciso entrar",
-      "message": "Entre na sua conta do Polaris Key no app e tente novamente."
+      "message": "Entre na sua conta do Polaris Locker no app e tente novamente."
     }
   },
   "gate": {

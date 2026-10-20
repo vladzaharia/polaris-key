@@ -113,7 +113,7 @@
             await server.reply(
                 "/djdl/identity/auth/device/start", status: 200,
                 body:
-                    #"{"deviceCode":"dc_1","userCode":"WDJB-MJHT","verificationUri":"https://key.plrs.im/device","verificationUriComplete":"https://key.plrs.im/device?code=WDJB-MJHT","expiresIn":600,"interval":5}"#
+                    #"{"deviceCode":"dc_1","userCode":"WDJB-MJHT","verificationUri":"https://polaris.locker/device","verificationUriComplete":"https://polaris.locker/device?code=WDJB-MJHT","expiresIn":600,"interval":5}"#
             )
             let model = PolarisKeyGateModel(
                 client: try await client(), browser: NoBrowser())

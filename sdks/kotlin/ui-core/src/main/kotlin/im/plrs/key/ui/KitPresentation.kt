@@ -553,7 +553,7 @@ internal object KitLinks {
     }
 
     internal fun deviceCodePage(identity: ResolvedIdentity, isTv: Boolean): String =
-        valid(identity.deviceCodeUrl) ?: if (isTv) "https://key.plrs.im/tv" else "https://key.plrs.im/device"
+        valid(identity.deviceCodeUrl) ?: if (isTv) im.plrs.key.core.TV_CODE_PAGE else im.plrs.key.core.DEVICE_CODE_PAGE
 
     internal fun display(url: String): String =
         url.removePrefix("https://").removePrefix("http://").removeSuffix("/")

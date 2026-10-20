@@ -198,6 +198,7 @@ function htmlError(status: number, message: string): Response {
   const retry = status === 400 || status === 401 || status === 429;
   return new Response(
     renderBrandPage({
+      brand: "key", // the console is the Polaris Key side (LK-07)
       title: "Console sign-in",
       surface: "console",
       heading: message,
@@ -212,6 +213,7 @@ function htmlError(status: number, message: string): Response {
           "content-type": "text/html; charset=utf-8",
           "cache-control": "no-store",
         }),
+        { brand: "key" },
       ),
     },
   );

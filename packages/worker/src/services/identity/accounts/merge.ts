@@ -351,7 +351,7 @@ export async function mergeAccounts(
         S,
         now,
         A,
-        "Joined another Polaris Key account into this one",
+        "Joined another Polaris Locker account into this one",
       ],
     },
     stmtRecordMerge(mergeId, S, A, snapshot, now),
