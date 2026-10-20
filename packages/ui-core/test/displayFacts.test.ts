@@ -171,9 +171,9 @@ describe("the sign-in provider", () => {
     signIn: { presentation: "inline", replace: "inline", channel: "browser" },
   };
 
-  it("is Polaris Key's own sign-in unless the product names a provider's row", () => {
+  it("is Polaris Locker's own sign-in unless the product names a provider's row", () => {
     expect(en.strings(viewOf("SignIn", form))["signin.provider.continue"]).toBe(
-      "Continue with Polaris Key",
+      "Continue with Polaris Locker",
     );
     expect(
       en.strings(viewOf("SignIn", { ...form, provider: "Apple" }))[
