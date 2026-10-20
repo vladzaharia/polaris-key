@@ -3,7 +3,7 @@
 | Field       | Value                                                                        |
 | ----------- | ---------------------------------------------------------------------------- |
 | Phase       | LK: Polaris Locker                                                           |
-| Size        | 0.5–0.75 engineer-weeks                                                      |
+| Size        | 0.25–0.5 engineer-weeks                                                      |
 | Depends on  | [LK-02](LK-02-locker-words-and-docs.md), [DOC-03b](DOC-03b-public-access.md) |
 | Unblocks    | none                                                                         |
 | Role        | `pkey-implementer`                                                           |
@@ -23,6 +23,8 @@ Docs: Help door words and host (D7), the 26 developer pages, a badges page. Exec
 ## Scope
 
 Exactly `plans/LK-00.md` D7, §2.3. Anything else is another package's row in §9.
+
+Re-scoped by Amendment A3: the Help door, the host, and a badges page for the 16 labels; see `plans/LK-00.md` §14.6.
 
 ## Acceptance criteria
 

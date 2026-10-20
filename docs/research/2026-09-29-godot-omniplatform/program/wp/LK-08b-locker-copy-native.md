@@ -24,6 +24,8 @@ The same in Swift, Kotlin and Godot. Executes `plans/LK-00.md` §6; do not resta
 
 Exactly `plans/LK-00.md` §6. Anything else is another package's row in §9.
 
+Re-scoped by Amendment A3: the same keys in Swift, Kotlin and Godot; see `plans/LK-00.md` §14.6.
+
 Deferred until: customer.host is on in prod.
 
 ## Acceptance criteria

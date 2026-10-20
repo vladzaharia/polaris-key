@@ -3,7 +3,7 @@
 | Field       | Value                                                                          |
 | ----------- | ------------------------------------------------------------------------------ |
 | Phase       | LK: Polaris Locker                                                             |
-| Size        | 0.5–0.75 engineer-weeks                                                        |
+| Size        | 0.75–1 engineer-weeks                                                          |
 | Depends on  | [LK-01](LK-01-brand-locker-kit.md), [LK-03](LK-03-customer-host-and-origin.md) |
 | Unblocks    | [LK-11](LK-11-cutover.md)                                                      |
 | Role        | `pkey-implementer`                                                             |
@@ -24,6 +24,8 @@ Console: Locker words and links, the switch with its preflight, Connections call
 ## Scope
 
 Exactly `plans/LK-00.md` §7, §10. Anything else is another package's row in §9.
+
+Re-scoped by Amendment A3: "Get a badge" offers only labels the product backs, previews at 320 px or wider; see `plans/LK-00.md` §14.6.
 
 ## Acceptance criteria
 

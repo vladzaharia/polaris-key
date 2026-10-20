@@ -3,7 +3,7 @@
 | Field       | Value                                                                          |
 | ----------- | ------------------------------------------------------------------------------ |
 | Phase       | LK: Polaris Locker                                                             |
-| Size        | 0.75 engineer-weeks                                                            |
+| Size        | 1–1.25 engineer-weeks                                                          |
 | Depends on  | [LK-01](LK-01-brand-locker-kit.md), [LK-03](LK-03-customer-host-and-origin.md) |
 | Unblocks    | [LK-11](LK-11-cutover.md)                                                      |
 | Role        | `pkey-implementer`                                                             |
@@ -24,6 +24,8 @@ Worker pages and customer mail on the Locker identity. Executes `plans/LK-00.md`
 ## Scope
 
 Exactly `plans/LK-00.md` §7.11–7.12. Anything else is another package's row in §9.
+
+Re-scoped by Amendment A3: operator mail (ungated), the download page and the bytes and registry landings (gated); see `plans/LK-00.md` §14.6.
 
 ## Acceptance criteria
 
