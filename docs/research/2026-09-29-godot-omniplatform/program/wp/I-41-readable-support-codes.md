@@ -51,6 +51,20 @@ NOT NULL, created_at INTEGER NOT NULL, UNIQUE(product, subject))`, owned by `ide
    covers search and the palette; correct every place that says the code is the subject. Terse copy;
    "Polaris Locker" on customer pages, "Polaris Key Console" on operator pages.
 
+## As built (2026-10-20)
+
+- Migration `0125_support_codes.sql` (provisional number; the lead renumbers it and `LATEST_MIGRATION`).
+- Code: `core/accounts/supportCodes.ts`; portal `supportCode.ts` and `library.ts`; console route
+  `GET /manage/api/support-codes/:code` (`console/handlers/supportCodes.ts`, area `console`, then
+  `can(product, core, view)`, 30 a minute per operator).
+- A search by code lists the person even before a licence or sign-in (a targeted find cannot flood the page).
+- Relink also accepts a support code as the target, because the code used to be the subject it took.
+- `R11-data` gains `support_codes` as a global-by-design table (the key is the code); `limits` and
+  `subjectStores` guards got rows.
+- Screen acceptance: self-look in Chromium at 390 and 1440, dark and light (portal row; console list,
+  record, palette). The `pkey-ux-reviewer` pass is the lead's. Code-level rows (keyboard, motion, states)
+  reuse the existing CopyButton, DataTable and palette. No new states, so no new loading or error screens.
+
 ## Tests
 
 Alphabet, length and grouping; normalization; collision retry; stability; scope (product A's operator
@@ -58,10 +72,10 @@ gets 404 for product B's code); palette jump; portal display; the worker suite; 
 
 ## Acceptance criteria
 
-- [ ] Spec items 1-7 hold.
-- [ ] Migration, TABLE_OWNERS row, OpenAPI + routeCoverage, THREAT-MODEL rows done.
-- [ ] Tests above pass; green gate passes.
-- [ ] Real-browser self-look: portal row and console search and palette, dark and light, 390 and 1440.
+- [x] Spec items 1-7 hold.
+- [x] Migration, TABLE_OWNERS row, OpenAPI + routeCoverage, THREAT-MODEL rows done.
+- [x] Tests above pass; green gate passes (see report).
+- [x] Real-browser self-look: portal row and console search and palette, dark and light, 390 and 1440.
 
 ## Screen acceptance (brand transition, 2026-10-09)
 
