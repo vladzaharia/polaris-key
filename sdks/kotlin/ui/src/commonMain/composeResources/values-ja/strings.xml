@@ -1461,7 +1461,7 @@
     <!-- Finish step title when only the terms are asked. -->
     <string name="signin_gate_termsTitle">あと1ステップ</string>
     <!-- Finish step: the screen name field. -->
-    <string name="signin_gate_name">お名前</string>
+    <string name="signin_gate_name">表示名</string>
     <!-- Finish step: the provider's address as a radio. Arguments: {email} = an address. Arguments: 1=email. -->
     <string name="signin_gate_useEmail">%1$s を使用</string>
     <!-- Finish step: marks an Apple private-relay address. -->
@@ -1479,7 +1479,7 @@
     <!-- Finish step: the product's terms checkbox. Arguments: {product} = the product's name. Arguments: 1=term. -->
     <string name="signin_gate_productTerms">%1$sに同意します</string>
     <!-- Finish step: the platform's terms line, with the link below it. Polaris Locker is never translated. Arguments: 1=term. -->
-    <string name="signin_gate_platformTerms">続行すると、%1$sに同意したことになります。</string>
+    <string name="signin_gate_platformTerms">%1$sに同意します</string>
     <!-- Finish step: the 15-minute sign-in ran out. -->
     <string name="signin_gate_expired">このサインインは期限切れです。もう一度サインインしてください。</string>
     <!-- Finish step: the join offer (SIGN-IN.md §3.5). -->
@@ -1542,7 +1542,7 @@
     <!-- The product's terms link in the finish step; fills {term} in the terms sentence. Arguments: {product} = the product's name. Arguments: 1=product. -->
     <string name="signin_gate_termsLinkProduct">%1$s の利用規約</string>
     <!-- The platform's terms link in the finish step. Polaris Locker is never translated. -->
-    <string name="signin_gate_termsLinkPlatform">Polaris Locker の利用規約</string>
+    <string name="signin_gate_termsLinkPlatform">Polaris Lockerの利用規約とプライバシーポリシー</string>
     <!-- Approve dialog: the code is spent or expired (410). -->
     <string name="signin_approve_expiredCode">そのコードは期限切れです。もう一方のデバイスで新しいコードを取得してください。</string>
     <!-- Approve dialog: no pending request has this code (404 or 422). -->
@@ -1569,6 +1569,30 @@
     <string name="signin_rateLimitedFew">コードが多すぎます。数分後にもう一度お試しください。</string>
     <!-- Sign-in card, code step: the address belongs to another account that does not use it as a sign-in method. Polaris Locker is never translated. -->
     <string name="signin_code_emailInUse">別の Polaris Locker アカウントがこのメールアドレスを使用しています。以前の方法でサインインしてください。</string>
+    <!-- Finish step: beside the Email label when a provider vouches for the address. Arguments: {provider}. Arguments: 1=provider. -->
+    <string name="signin_gate_confirmedBy">%1$sで確認済み</string>
+    <!-- Finish step: beside the Email label when a sign-in code proved the address. -->
+    <string name="signin_gate_confirmedByCode">コードで確認済み</string>
+    <!-- Finish step: label above the screen-name suggestion chips. -->
+    <string name="signin_gate_nameFrom">次の名前を使う</string>
+    <!-- Finish step: under the screen name. Polaris Locker is never translated. -->
+    <string name="signin_gate_nameHint">Polaris Lockerとメールに表示されます。</string>
+    <!-- Finish step: the picture group label. -->
+    <string name="signin_gate_picture">画像</string>
+    <!-- Finish step: the initials picture tile. -->
+    <string name="signin_gate_pictureInitialsTile">イニシャル</string>
+    <!-- Finish step: under the initials tile. -->
+    <string name="signin_gate_pictureFromName">名前から作成</string>
+    <!-- Finish step: the upload picture tile. -->
+    <string name="signin_gate_pictureUpload">アップロード</string>
+    <!-- Finish step: under the upload tile; the accepted file types. -->
+    <string name="signin_gate_pictureUploadHint">PNGまたはJPEG</string>
+    <!-- Finish step: under the picture tile in use. -->
+    <string name="signin_gate_pictureInUse">使用中</string>
+    <!-- Finish step: the unticked passkey opt-in. -->
+    <string name="signin_gate_passkey">この後でパスキーを追加</string>
+    <!-- Finish step: an upload that is not a PNG or JPEG. -->
+    <string name="signin_gate_pictureInvalid">PNGまたはJPEGを選んでください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">問題が発生しました</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

@@ -1481,7 +1481,7 @@
     <!-- Finish step title when only the terms are asked. -->
     <string name="signin_gate_termsTitle">Ancora un passaggio</string>
     <!-- Finish step: the screen name field. -->
-    <string name="signin_gate_name">Il tuo nome</string>
+    <string name="signin_gate_name">Nome visualizzato</string>
     <!-- Finish step: the provider's address as a radio. Arguments: {email} = an address. Arguments: 1=email. -->
     <string name="signin_gate_useEmail">Usa %1$s</string>
     <!-- Finish step: marks an Apple private-relay address. -->
@@ -1499,7 +1499,7 @@
     <!-- Finish step: the product's terms checkbox. Arguments: {product} = the product's name. Arguments: 1=term. -->
     <string name="signin_gate_productTerms">Accetto i %1$s</string>
     <!-- Finish step: the platform's terms line, with the link below it. Polaris Locker is never translated. Arguments: 1=term. -->
-    <string name="signin_gate_platformTerms">Continuando accetti i %1$s.</string>
+    <string name="signin_gate_platformTerms">Accetto %1$s</string>
     <!-- Finish step: the 15-minute sign-in ran out. -->
     <string name="signin_gate_expired">Questo accesso è scaduto. Accedi di nuovo.</string>
     <!-- Finish step: the join offer (SIGN-IN.md §3.5). -->
@@ -1562,7 +1562,7 @@
     <!-- The product's terms link in the finish step; fills {term} in the terms sentence. Arguments: {product} = the product's name. Arguments: 1=product. -->
     <string name="signin_gate_termsLinkProduct">termini di %1$s</string>
     <!-- The platform's terms link in the finish step. Polaris Locker is never translated. -->
-    <string name="signin_gate_termsLinkPlatform">termini di Polaris Locker</string>
+    <string name="signin_gate_termsLinkPlatform">i Termini e l’Informativa sulla privacy di Polaris Locker</string>
     <!-- Approve dialog: the code is spent or expired (410). -->
     <string name="signin_approve_expiredCode">Quel codice è scaduto. Chiedine uno nuovo sull'altro dispositivo.</string>
     <!-- Approve dialog: no pending request has this code (404 or 422). -->
@@ -1589,6 +1589,30 @@
     <string name="signin_rateLimitedFew">Troppi codici. Riprova tra qualche minuto.</string>
     <!-- Sign-in card, code step: the address belongs to another account that does not use it as a sign-in method. Polaris Locker is never translated. -->
     <string name="signin_code_emailInUse">Un altro account Polaris Locker usa questa email. Accedi come prima.</string>
+    <!-- Finish step: beside the Email label when a provider vouches for the address. Arguments: {provider}. Arguments: 1=provider. -->
+    <string name="signin_gate_confirmedBy">Confermata da %1$s</string>
+    <!-- Finish step: beside the Email label when a sign-in code proved the address. -->
+    <string name="signin_gate_confirmedByCode">Confermata con codice</string>
+    <!-- Finish step: label above the screen-name suggestion chips. -->
+    <string name="signin_gate_nameFrom">Usa un nome da</string>
+    <!-- Finish step: under the screen name. Polaris Locker is never translated. -->
+    <string name="signin_gate_nameHint">Mostrato in Polaris Locker e nelle email.</string>
+    <!-- Finish step: the picture group label. -->
+    <string name="signin_gate_picture">Immagine</string>
+    <!-- Finish step: the initials picture tile. -->
+    <string name="signin_gate_pictureInitialsTile">Iniziali</string>
+    <!-- Finish step: under the initials tile. -->
+    <string name="signin_gate_pictureFromName">Dal tuo nome</string>
+    <!-- Finish step: the upload picture tile. -->
+    <string name="signin_gate_pictureUpload">Carica</string>
+    <!-- Finish step: under the upload tile; the accepted file types. -->
+    <string name="signin_gate_pictureUploadHint">PNG o JPEG</string>
+    <!-- Finish step: under the picture tile in use. -->
+    <string name="signin_gate_pictureInUse">In uso</string>
+    <!-- Finish step: the unticked passkey opt-in. -->
+    <string name="signin_gate_passkey">Aggiungi una passkey dopo</string>
+    <!-- Finish step: an upload that is not a PNG or JPEG. -->
+    <string name="signin_gate_pictureInvalid">Scegli un PNG o JPEG.</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">Si è verificato un problema</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

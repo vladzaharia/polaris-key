@@ -3922,10 +3922,10 @@ msgstr "Connecté avec {provider}"
 msgid "signin.gate.termsTitle"
 msgstr "Encore une étape"
 
-#. Your name
+#. Screen name
 #. Finish step: the screen name field.
 msgid "signin.gate.name"
-msgstr "Votre nom"
+msgstr "Nom d’affichage"
 
 #. Use {email}
 #. Finish step: the provider's address as a radio. Arguments: {email} = an address.
@@ -3972,10 +3972,10 @@ msgstr "Vous seul pouvez la voir. Les apps ne la reçoivent jamais."
 msgid "signin.gate.productTerms"
 msgstr "J'accepte les {term}"
 
-#. By continuing you agree to the {term}.
+#. I agree to {term}
 #. Finish step: the platform's terms line, with the link below it. Polaris Locker is never translated.
 msgid "signin.gate.platformTerms"
-msgstr "En continuant, vous acceptez les {term}."
+msgstr "J’accepte {term}"
 
 #. That sign-in has expired. Sign in again.
 #. Finish step: the 15-minute sign-in ran out.
@@ -4142,10 +4142,10 @@ msgstr "Trop de tentatives. Attendez une minute, puis réessayez."
 msgid "signin.gate.termsLinkProduct"
 msgstr "conditions de {product}"
 
-#. Polaris Locker terms
+#. Polaris Locker’s Terms and Privacy Policy
 #. The platform's terms link in the finish step. Polaris Locker is never translated.
 msgid "signin.gate.termsLinkPlatform"
-msgstr "conditions de Polaris Locker"
+msgstr "les Conditions et la Politique de confidentialité de Polaris Locker"
 
 #. That code expired. Ask for a new one on the other device.
 #. Approve dialog: the code is spent or expired (410).
@@ -4211,6 +4211,66 @@ msgstr "Trop de codes. Réessayez dans quelques minutes."
 #. Sign-in card, code step: the address belongs to another account that does not use it as a sign-in method. Polaris Locker is never translated.
 msgid "signin.code.emailInUse"
 msgstr "Un autre compte Polaris Locker utilise cet e-mail. Connectez-vous comme avant."
+
+#. Confirmed by {provider}
+#. Finish step: beside the Email label when a provider vouches for the address. Arguments: {provider}.
+msgid "signin.gate.confirmedBy"
+msgstr "Confirmé par {provider}"
+
+#. Confirmed by code
+#. Finish step: beside the Email label when a sign-in code proved the address.
+msgid "signin.gate.confirmedByCode"
+msgstr "Confirmé par code"
+
+#. Use a name from
+#. Finish step: label above the screen-name suggestion chips.
+msgid "signin.gate.nameFrom"
+msgstr "Utiliser un nom de"
+
+#. Shown in Polaris Locker and in emails.
+#. Finish step: under the screen name. Polaris Locker is never translated.
+msgid "signin.gate.nameHint"
+msgstr "Affiché dans Polaris Locker et dans les e-mails."
+
+#. Picture
+#. Finish step: the picture group label.
+msgid "signin.gate.picture"
+msgstr "Image"
+
+#. Initials
+#. Finish step: the initials picture tile.
+msgid "signin.gate.pictureInitialsTile"
+msgstr "Initiales"
+
+#. From your name
+#. Finish step: under the initials tile.
+msgid "signin.gate.pictureFromName"
+msgstr "D’après votre nom"
+
+#. Upload
+#. Finish step: the upload picture tile.
+msgid "signin.gate.pictureUpload"
+msgstr "Importer"
+
+#. PNG or JPEG
+#. Finish step: under the upload tile; the accepted file types.
+msgid "signin.gate.pictureUploadHint"
+msgstr "PNG ou JPEG"
+
+#. In use
+#. Finish step: under the picture tile in use.
+msgid "signin.gate.pictureInUse"
+msgstr "Utilisée"
+
+#. Add a passkey after this
+#. Finish step: the unticked passkey opt-in.
+msgid "signin.gate.passkey"
+msgstr "Ajouter une clé d’accès ensuite"
+
+#. Choose a PNG or JPEG.
+#. Finish step: an upload that is not a PNG or JPEG.
+msgid "signin.gate.pictureInvalid"
+msgstr "Choisissez un PNG ou un JPEG."
 
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).

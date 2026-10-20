@@ -129,12 +129,20 @@ describe("the setting's value", () => {
 });
 
 describe("unset (Q2: dormant)", () => {
-  it("a new address's email code creates the account at once, with no terms step and no row", async () => {
+  it("a new address's email code opens the finish step with no Polaris Locker terms (PX-21), and passing it writes no row", async () => {
     const w = await seededWorld();
     const d = new Device(w);
-    const res = await d.signInWithCode("ada@example.com");
+    const res = await d.verifyCode("ada@example.com");
     expect(res.status).toBe(200);
-    expect(((await res.json()) as { status: string }).status).toBe("signed_in");
+    expect(((await res.json()) as { status: string }).status).toBe("finish");
+    expect(d.jar.has(ACCOUNT_SESSION_COOKIE)).toBe(false);
+    expect(await count(w, "accounts")).toBe(0);
+    const view = (await (await d.send("GET", GATE)).json()) as Record<
+      string,
+      unknown
+    >;
+    expect(view.platformTerms).toBeNull();
+    expect((await d.send("POST", GATE, { name: "Ada" })).status).toBe(200);
     expect(d.jar.has(ACCOUNT_SESSION_COOKIE)).toBe(true);
     expect(await count(w, "accounts")).toBe(1);
     expect(await acceptances(w)).toEqual([]);
@@ -161,7 +169,7 @@ describe("set: the email path finishes through the gate", () => {
     const w = await seededWorld();
     await publish(w, TERMS);
     const d = new Device(w);
-    const verified = await d.signInWithCode("ada@example.com");
+    const verified = await d.verifyCode("ada@example.com");
     expect(verified.status).toBe(200);
     expect(await verified.json()).toEqual({
       status: "finish",
@@ -294,7 +302,7 @@ describe("set: the email path finishes through the gate", () => {
     const w = await seededWorld();
     await publish(w, TERMS);
     const d = new Device(w, "203.0.113.60");
-    await d.signInWithCode("ada@example.com");
+    await d.verifyCode("ada@example.com");
     await insertAccount(
       w.db,
       {

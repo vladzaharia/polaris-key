@@ -55009,6 +55009,126 @@
         }
       }
     },
+    "signin.gate.confirmedBy": {
+      "comment": "Finish step: beside the Email label when a provider vouches for the address. Arguments: {provider}. Arguments: 1=provider.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirmed by %1$@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bestätigt von %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirmé par %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirmado por %1$@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirmado por %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confermata da %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@で確認済み"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@에서 확인됨"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已由%1$@确认"
+          }
+        }
+      }
+    },
+    "signin.gate.confirmedByCode": {
+      "comment": "Finish step: beside the Email label when a sign-in code proved the address.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirmed by code"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Per Code bestätigt"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirmé par code"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirmado con código"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirmado por código"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confermata con codice"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "コードで確認済み"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "코드로 확인됨"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已通过验证码确认"
+          }
+        }
+      }
+    },
     "signin.gate.expired": {
       "comment": "Finish step: the 15-minute sign-in ran out.",
       "extractionState": "manual",
@@ -55388,55 +55508,415 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your name"
+            "value": "Screen name"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ihr Name"
+            "value": "Anzeigename"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Votre nom"
+            "value": "Nom d’affichage"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tu nombre"
+            "value": "Nombre visible"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Seu nome"
+            "value": "Nome de exibição"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Il tuo nome"
+            "value": "Nome visualizzato"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "お名前"
+            "value": "表示名"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이름"
+            "value": "표시 이름"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "您的姓名"
+            "value": "显示名称"
+          }
+        }
+      }
+    },
+    "signin.gate.nameFrom": {
+      "comment": "Finish step: label above the screen-name suggestion chips.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use a name from"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Namen übernehmen von"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utiliser un nom de"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usar un nombre de"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usar um nome de"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa un nome da"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "次の名前を使う"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다음에서 이름 사용"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用来自以下的名称"
+          }
+        }
+      }
+    },
+    "signin.gate.nameHint": {
+      "comment": "Finish step: under the screen name. Polaris Locker is never translated.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shown in Polaris Locker and in emails."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wird in Polaris Locker und in E-Mails angezeigt."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Affiché dans Polaris Locker et dans les e-mails."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se muestra en Polaris Locker y en los correos."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aparece no Polaris Locker e nos e-mails."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrato in Polaris Locker e nelle email."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Polaris Lockerとメールに表示されます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Polaris Locker와 이메일에 표시됩니다."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示在 Polaris Locker 和电子邮件中。"
+          }
+        }
+      }
+    },
+    "signin.gate.passkey": {
+      "comment": "Finish step: the unticked passkey opt-in.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add a passkey after this"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Danach einen Passkey hinzufügen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajouter une clé d’accès ensuite"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añadir una llave de acceso después"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adicionar uma chave de acesso depois"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aggiungi una passkey dopo"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この後でパスキーを追加"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이후 패스키 추가"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "之后添加通行密钥"
+          }
+        }
+      }
+    },
+    "signin.gate.picture": {
+      "comment": "Finish step: the picture group label.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Picture"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bild"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Image"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Imagen"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Imagem"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Immagine"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "画像"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "사진"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "头像"
+          }
+        }
+      }
+    },
+    "signin.gate.pictureFromName": {
+      "comment": "Finish step: under the initials tile.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "From your name"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aus Ihrem Namen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "D’après votre nom"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De tu nombre"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Do seu nome"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dal tuo nome"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名前から作成"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이름에서 만들기"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "来自你的名称"
+          }
+        }
+      }
+    },
+    "signin.gate.pictureInUse": {
+      "comment": "Finish step: under the picture tile in use.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In use"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In Verwendung"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utilisée"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En uso"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Em uso"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In uso"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用中"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "사용 중"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用中"
           }
         }
       }
@@ -55513,6 +55993,126 @@
         }
       }
     },
+    "signin.gate.pictureInitialsTile": {
+      "comment": "Finish step: the initials picture tile.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Initials"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Initialen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Initiales"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iniciales"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iniciais"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iniziali"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "イニシャル"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이니셜"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "首字母"
+          }
+        }
+      }
+    },
+    "signin.gate.pictureInvalid": {
+      "comment": "Finish step: an upload that is not a PNG or JPEG.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a PNG or JPEG."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wählen Sie ein PNG oder JPEG."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez un PNG ou un JPEG."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige un PNG o JPEG."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escolha um PNG ou JPEG."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scegli un PNG o JPEG."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PNGまたはJPEGを選んでください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PNG 또는 JPEG를 선택하세요."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请选择 PNG 或 JPEG。"
+          }
+        }
+      }
+    },
     "signin.gate.pictureProvider": {
       "comment": "Finish step: back to the provider's picture. Arguments: {provider} = a provider's name. Arguments: 1=provider.",
       "extractionState": "manual",
@@ -55585,6 +56185,126 @@
         }
       }
     },
+    "signin.gate.pictureUpload": {
+      "comment": "Finish step: the upload picture tile.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Upload"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hochladen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Importer"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subir"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enviar"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carica"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アップロード"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "업로드"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上传"
+          }
+        }
+      }
+    },
+    "signin.gate.pictureUploadHint": {
+      "comment": "Finish step: under the upload tile; the accepted file types.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PNG or JPEG"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PNG oder JPEG"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PNG ou JPEG"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PNG o JPEG"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PNG ou JPEG"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PNG o JPEG"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PNGまたはJPEG"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PNG 또는 JPEG"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PNG 或 JPEG"
+          }
+        }
+      }
+    },
     "signin.gate.platformTerms": {
       "comment": "Finish step: the platform's terms line, with the link below it. Polaris Locker is never translated. Arguments: 1=term.",
       "extractionState": "manual",
@@ -55592,55 +56312,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "By continuing you agree to the %1$@."
+            "value": "I agree to %1$@"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mit dem Fortfahren stimmen Sie den %1$@ zu."
+            "value": "Ich stimme den %1$@ zu"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "En continuant, vous acceptez les %1$@."
+            "value": "J’accepte %1$@"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Al continuar, aceptas las %1$@."
+            "value": "Acepto %1$@"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ao continuar, você concorda com os %1$@."
+            "value": "Concordo com %1$@"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Continuando accetti i %1$@."
+            "value": "Accetto %1$@"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "続行すると、%1$@に同意したことになります。"
+            "value": "%1$@に同意します"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "계속하면 %1$@에 동의하는 것으로 간주됩니다."
+            "value": "%1$@에 동의합니다"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "继续即表示您同意%1$@。"
+            "value": "我同意%1$@"
           }
         }
       }
@@ -56024,55 +56744,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Polaris Locker terms"
+            "value": "Polaris Locker’s Terms and Privacy Policy"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bedingungen von Polaris Locker"
+            "value": "Bedingungen und Datenschutzerklärung von Polaris Locker"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "conditions de Polaris Locker"
+            "value": "les Conditions et la Politique de confidentialité de Polaris Locker"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "condiciones de Polaris Locker"
+            "value": "los Términos y la Política de privacidad de Polaris Locker"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "termos do Polaris Locker"
+            "value": "os Termos e a Política de Privacidade do Polaris Locker"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "termini di Polaris Locker"
+            "value": "i Termini e l’Informativa sulla privacy di Polaris Locker"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "Polaris Locker の利用規約"
+            "value": "Polaris Lockerの利用規約とプライバシーポリシー"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "Polaris Locker 약관"
+            "value": "Polaris Locker 약관 및 개인정보 처리방침"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "Polaris Locker 条款"
+            "value": "Polaris Locker 的条款和隐私政策"
           }
         }
       }

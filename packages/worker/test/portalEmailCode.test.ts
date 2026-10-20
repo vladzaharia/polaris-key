@@ -106,6 +106,7 @@ describe("resend: enumeration safety", () => {
 describe("resend", () => {
   it("mails a new code and link to the same address, keeps returnTo, and retires the old ones", async () => {
     const w = await seededWorld();
+    await getOrCreateAccountByEmail(w.db, "ada@example.com", NOW);
     const d = await started(w, "ada@example.com", undefined, {
       returnTo: "/library",
     });
@@ -323,6 +324,7 @@ describe("resend", () => {
 describe("races on the single-use store", () => {
   it("a code is single-use under concurrent verify: one of five racing verifications signs in", async () => {
     const w = await seededWorld();
+    await getOrCreateAccountByEmail(w.db, "ada@example.com", NOW);
     const d = await started(w);
     const code = lastCode(w, "ada@example.com");
     const results = await Promise.all(

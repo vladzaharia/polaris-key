@@ -495,14 +495,13 @@ function birthdateOffer(
 
 /**
  * I-33: the email path's finish. A first email-code sign-in of an address no account knows opens
- * the same gate a provider's first sign-in does, when it has something to ask: today, Polaris
- * Key's terms (`identity.platformTerms`). Answers `null` when nothing is asked, and the email
- * sign-in then creates the account as before. The address is already proven by the code, so the
- * gate starts confirmed and asks only for the profile and the terms. A known address, or one
- * another account uses, is never sent here (`signIn` signs it in or answers the join offer).
- *
- * PX-21 makes the step unconditional for every new address once the card renders FinishStep:
- * then the screen name, picture and passkey opt-in are asked on this path too.
+ * the same gate a provider's first sign-in does: the screen name, the picture, the passkey
+ * opt-in and the terms. PX-21 makes it unconditional for every new address, so it opens even
+ * while Polaris Locker's terms are unset (`identity.platformTerms`). Answers `null` only for an
+ * address that is not valid or that an account already knows; the email sign-in then signs in as
+ * before. The address is already proven by the code, so the gate starts confirmed. A known
+ * address, or one another account uses, is never sent here (`signIn` signs it in or answers the
+ * join offer).
  */
 export async function beginEmailFinish(
   env: Env,
@@ -524,7 +523,6 @@ export async function beginEmailFinish(
     })) !== null || (await accountUsingEmail(db, id.subject)) !== null;
   if (known) return null;
   const terms = await platformTermsToAsk(db, null);
-  if (!terms) return null;
   const gate: GateRecord = {
     v: 1,
     rev: 0,

@@ -135,6 +135,7 @@ describe("routing", () => {
   it("picking the code: resend sends it at once, and the code signs in", async () => {
     const w = await seededWorld();
     await connectionWith(w, { domain: "acme.example" });
+    await getOrCreateAccountByEmail(w.db, "ada@acme.example", NOW);
     const d = new Device(w);
     await d.send("POST", START, { email: "ada@acme.example" });
     const resend = await d.send("POST", RESEND, {});

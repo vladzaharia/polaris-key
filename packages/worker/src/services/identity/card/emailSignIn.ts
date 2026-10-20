@@ -670,8 +670,8 @@ async function completeEmailSignIn(
           [clearFlow()],
         );
   }
-  // I-33: a new address finishes through the gate's FinishStep when it has something to ask
-  // (Polaris Key's terms, once published); the account is created there, not here.
+  // I-33, PX-21: a new address always finishes through the gate's FinishStep; the account is
+  // created there, not here.
   const finish = await beginEmailFinish(
     env,
     db,
