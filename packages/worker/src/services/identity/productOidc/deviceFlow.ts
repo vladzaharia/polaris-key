@@ -5,6 +5,7 @@ import { normalizeDeviceLabel } from "@polaris-key/client-core";
 import { HEADER_DEVICE } from "@polaris-key/protocol/core";
 import { hashKey } from "../../../platform/crypto.js";
 import { type Env } from "../../../platform/env.js";
+import { hostOrigin } from "../../../core/hosts.js";
 import { randomToken } from "../../../platform/random.js";
 import { parseFlowRecord, tryParseJson } from "../../../platform/json.js";
 import type { Db } from "../../../db/types.js";
@@ -113,7 +114,12 @@ export async function handleAuthDeviceStart(
   // The page a human types the code into, and the same page with the code pre-filled for a QR
   // code or a clickable link (RFC 8628 §3.2, §3.3.1). Neither carries the device code: that is
   // the poll credential and stays between this server and the polling client.
-  const verificationUri = `${new URL(req.url).origin}/${product.slug}/identity/auth/device`;
+  // With a usable `CUSTOMER_ORIGIN`, the short customer-site page (`<customer>/device`, LK-00 §7.9):
+  // the global index finds the product. Unset, it is the product's own page, exactly as before.
+  const customer = hostOrigin("customer", env);
+  const verificationUri = customer
+    ? `${customer}/device`
+    : `${new URL(req.url).origin}/${product.slug}/identity/auth/device`;
   return json({
     status: "pending",
     deviceCode,

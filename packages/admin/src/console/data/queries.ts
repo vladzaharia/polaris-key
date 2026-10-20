@@ -67,6 +67,9 @@ export const qk = {
   /** The admin API tokens (`GET /manage/api/tokens`): the deployment's, so under `platform`. */
   apiTokens: (): QueryKey => ["platform", "api-tokens"],
   personalTokens: (): QueryKey => ["platform", "personal-tokens"],
+  /** Platform → Connections (I-31): the page and every connection on it. */
+  platformConnections: (): QueryKey => ["platform", "connections"],
+  platformConnection: (id: string): QueryKey => ["platform", "connections", id],
   /**
    * The licence override migration (U-03): its state and inventory. As a prefix, also the
    * per-product reads and the report.
@@ -132,6 +135,9 @@ export const qk = {
   allProducts: (): QueryKey => ["product"],
   /** The product detail row. Match it with `exact: true`; as a prefix it is the whole product. */
   product: (slug: string): QueryKey => product(slug),
+
+  // commerce
+  commerceView: (slug: string) => product(slug, "commerce", "view"),
 
   // core
   services: (slug: string) => product(slug, "core", "services"),

@@ -12,6 +12,8 @@
 | Human input | none                                                                                                                                                                                                 |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                            |
 
+> **Ships in PX-12's branch (2026-10-19, "PX-12b").** The same builder that builds PX-12 builds EmailGate and ProfileImport in every variant, with the app header kept, so providers and the gate are one release. This package keeps its id for coverage and status; it adds no new dependency. PX-14a hosts this step in the card.
+
 ## Follow-ups from the 2026-10-06 reviews
 
 Checked against `main` at `148439c4f`. Each item names the package whose review raised it.

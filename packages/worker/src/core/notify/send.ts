@@ -2,7 +2,7 @@
  * Sending platform mail: the magic sign-in link, the login card's code email and the account
  * notices (whose copy lives in `templates.ts`).
  *
- * Every message is platform mail, sent as "Polaris Key" through Core's one send choke point
+ * Every message is customer mail, sent as "Polaris Locker" (LK-07) through Core's one send choke point
  * (`emailDelivery.ts`, I-18), which applies the suppression list, the Apple private-relay
  * gate and the provider-error handling; platform mail is never counted against a product cap.
  * Every message carries a plain-text part (the canonical copy) and a branded HTML part.
@@ -28,7 +28,7 @@ export async function sendMagicLink(
   link: string,
   now: number,
 ): Promise<boolean> {
-  const subject = "Sign in to Polaris Key";
+  const subject = "Sign in to Polaris Locker";
   const result = await deliverEmail(
     env,
     db,
@@ -37,11 +37,11 @@ export async function sendMagicLink(
       to,
       subject,
       text:
-        `Use this link to sign in to Polaris Key:\n\n${link}\n\n` +
+        `Use this link to sign in to Polaris Locker:\n\n${link}\n\n` +
         `This link expires in 10 minutes and works once. If you did not ask to sign in, you can ignore this email.`,
       html: renderEmail({
         subject,
-        heading: "Sign in to Polaris Key",
+        heading: "Sign in to Polaris Locker",
         paragraphs: [
           "Use the button below to sign in. The link expires in 10 minutes and works once.",
         ],
@@ -49,6 +49,7 @@ export async function sendMagicLink(
         footer:
           "If you did not ask to sign in, you can ignore this email. Nothing changes until the link is used.",
         origin: emailAssetOrigin(link, env.CONSOLE_ORIGIN),
+        brand: "locker",
       }),
     },
     now,
@@ -81,9 +82,9 @@ export async function sendSignInEmail(
   const confirm = content.purpose === "confirm";
   // SIGN-IN.md §3.4 / §3.15: the code in the subject, then first and large in the body.
   const subject = confirm
-    ? "Confirm your email for Polaris Key"
-    : `Your Polaris Key code: ${content.code}`; // signin.email.subject
-  const heading = confirm ? "Confirm your email" : "Your Polaris Key code";
+    ? "Confirm your email for Polaris Locker"
+    : `Your Polaris Locker code: ${content.code}`; // signin.email.subject
+  const heading = confirm ? "Confirm your email" : "Your Polaris Locker code";
   const lines = content.link
     ? [
         // signin.email.body
@@ -120,6 +121,7 @@ export async function sendSignInEmail(
           : {}),
         footer,
         origin: emailAssetOrigin(content.link, env.CONSOLE_ORIGIN),
+        brand: "locker",
       }),
     },
     now,

@@ -183,11 +183,11 @@ describe("§4.19 Activate license errors: every case, inline, never a toast", ()
     for (const [typed, copy] of [
       [
         "5XKQ7-B2M9P-HT4LZ",
-        "That isn't a Polaris Key license key. Ours start with pkey_. This one looks like a Steam key: activate it in Steam.",
+        "That isn't a Polaris Locker license key. Ours start with pkey_. This one looks like a Steam key: activate it in Steam.",
       ],
       [
         "ABCD-1234",
-        "That isn't a Polaris Key license key. Ours start with pkey_.",
+        "That isn't a Polaris Locker license key. Ours start with pkey_.",
       ],
     ] as const) {
       const dialog = await openFromHeader();

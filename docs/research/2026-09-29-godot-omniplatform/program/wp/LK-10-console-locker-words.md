@@ -1,4 +1,4 @@
-# LK-10 Console: Locker words and links, the switch with its preflight, Connections callbacks, "Get a badge"
+# LK-10 Console: Locker words and links, Connections callbacks, "Get a badge"
 
 | Field       | Value                                                                          |
 | ----------- | ------------------------------------------------------------------------------ |
@@ -14,7 +14,7 @@
 
 ## Goal
 
-Console: Locker words and links, the switch with its preflight, Connections callbacks, "Get a badge". Executes `plans/LK-00.md` §7, §10; do not restate the plan.
+Console: Locker words and links, Connections callbacks, "Get a badge". Executes `plans/LK-00.md` §7, §10; do not restate the plan.
 
 ## Read first
 
@@ -26,6 +26,8 @@ Console: Locker words and links, the switch with its preflight, Connections call
 Exactly `plans/LK-00.md` §7, §10. Anything else is another package's row in §9.
 
 Re-scoped by Amendment A3: "Get a badge" offers only labels the product backs, previews at 320 px or wider; see `plans/LK-00.md` §14.6.
+
+Amendment A5 (`plans/LK-00.md` §16): the switch preflight and the fresh step-up are moot (no switch). Keep Connections callbacks and "Get a badge".
 
 ## Acceptance criteria
 

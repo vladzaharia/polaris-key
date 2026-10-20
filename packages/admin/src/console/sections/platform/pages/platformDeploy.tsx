@@ -75,12 +75,12 @@ const DEPLOY_LABELS: Record<
   },
   PLATFORM_OIDC_ISSUER: {
     label: "Platform identity provider issuer",
-    help: "The OIDC issuer the customer portal and platform-provider products sign in against.",
+    help: "The OIDC issuer Polaris Locker and platform-provider products sign in against.",
     unset: "Not set",
   },
   PLATFORM_OIDC_CLIENT_ID: {
     label: "Platform identity provider client",
-    help: "The OIDC client id the customer portal and platform-provider products use.",
+    help: "The OIDC client id Polaris Locker and platform-provider products use.",
     unset: "Not set",
   },
   OIDC_ISSUER_ALLOWLIST: {

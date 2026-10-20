@@ -3,6 +3,7 @@ import type { ServiceSlug, ServicesDryRun } from "../../../../api.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
 import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
 import {
+  COMMERCE_OFF_LIMITS,
   DISABLE_CONSEQUENCES,
   listOf,
   signedInConsequence,
@@ -43,6 +44,7 @@ export function ServiceOffConfirmation({
             ]
           : []),
         ...affected.map((service) => DISABLE_CONSEQUENCES[service]),
+        ...(affected.includes("commerce") ? [COMMERCE_OFF_LIMITS] : []),
         ...(signedIn ? [signedIn] : []),
         cascaded.length
           ? "Settings are kept. Turning it back on does not turn the others on."

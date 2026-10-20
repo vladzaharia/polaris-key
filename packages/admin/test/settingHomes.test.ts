@@ -129,7 +129,7 @@ describe("settings homes", () => {
         kind: "page",
         page: "storefronts",
         id: "polaris-key",
-        section: "Polaris Key → Listing",
+        section: "Polaris Locker → Listing",
       },
     ],
     // Sign-in only shows it and links to Portal.

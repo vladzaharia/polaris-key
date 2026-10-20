@@ -65,6 +65,8 @@ Sign-in owns exactly the override keys its hooks declare. It sets each from the 
 
 **Identity → Sign-in** shows the provider, issuer, client id, the group-to-tier table and the `oidcDefault` outcome, read-only. To change them, edit `.pkey/product`, commit, and select **Resync from repo**.
 
+The platform-level providers (a company's single sign-on, Google, Apple, Steam) are set up in **Platform → Connections**: [Sign-in connections](/docs/operate/platform/sign-in-connections/).
+
 ## Next steps
 
 - [Device flow](/docs/features/sign-in/device-flow/): the same mint step without a redirect.

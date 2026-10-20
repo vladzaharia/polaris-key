@@ -4,13 +4,15 @@
 | ----------- | --------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16)                                                          |
 | Size        | 0.6–1 engineer-weeks                                                                                                        |
-| Depends on  | [I-08](I-08-app-passthrough.md), [I-15](I-15-native-redirect.md)                                                            |
-| Unblocks    | [I-38](I-38-hosted-passport-worker-csp.md), [I-40](I-40-account-initiated-pairing.md), [PX-14](PX-14-passthrough-header.md) |
+| Depends on  | [I-08](I-08-app-passthrough.md)                                                                                             |
+| Unblocks    | [I-40](I-40-account-initiated-pairing.md)                                                                                   |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                       |
 | Plan mode   | yes: [I-37 plan](../plans/I-37.md) requires owner approval before implementation                                            |
 | Gates       | plan-mode, drift-gate, threat-model, workerd, portal-e2e, ui-snapshots                                                      |
 | Human input | Owner approval of the device-holder proof, legacy-flow policy and customer-facing refusal copy in the plan's decision table |
 | Repo        | `vladzaharia/polaris-key`                                                                                                   |
+
+> **Dependency cut (lead decision, 2026-10-19):** I-37 no longer depends on I-15. The fail-closed marker is Worker-side, and I-15 sits behind I-10a/b, SP-35/35b and HA-13. The device-confirm UI ships first in [I-38a](I-38a-hosted-worker-pages-locker.md).
 
 ## Goal
 

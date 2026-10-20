@@ -217,6 +217,17 @@ export interface Env {
    */
   CONSOLE_ORIGIN?: string;
   /**
+   * The customer site's origin, e.g. `https://polaris.locker` (Polaris Locker, LK-03). A second
+   * host on THIS Worker: a request whose host is this origin's host reaches ONLY the customer
+   * routes (`core/customerHost.ts`); everything else answers not-found. Customer links, discovery's
+   * `accountPortal` and the old-URL redirects use it whenever it is usable (`core/hosts.ts`
+   * `customerOrigin()`); setting it IS the cutover (LK-17: no switch). Unset (or unparsable, or the console or an earlier
+   * auxiliary host) ⇒ there is no customer host and every URL is what it was. Deploy-time only
+   * (never a console value).
+   * @inventory var delivery
+   */
+  CUSTOMER_ORIGIN?: string;
+  /**
    * Trusted publishing (P2-02, `core/publisher.ts`): the bucket name the upload tickets' R2
    * temporary credentials are scoped to (the same bucket as `BLOBS`; the S3 API names buckets,
    * the binding does not). A `[vars]` value, public, per environment.

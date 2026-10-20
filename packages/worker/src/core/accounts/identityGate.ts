@@ -30,6 +30,8 @@
 import { ErrorCode, wireError } from "../errors.js";
 import { codeRefusalPage } from "../brandPage.js";
 import type { Db } from "../../db/types.js";
+import type { Env } from "../../platform/env.js";
+import { customerOrigin } from "../hosts.js";
 import { parseServices, type ServicesMap } from "../services.js";
 
 /** The query value the friendly card reads (`/signin?…&error=identity_disabled`). Mirrors
@@ -111,15 +113,17 @@ export function isNavigation(req: Request): boolean {
  * navigation entry, or when the request is not a navigation; the caller then dispatches as
  * usual, and a JSON caller gets the registry's `404 not_found`.
  */
-export function identityNavigationRedirect(
+export async function identityNavigationRedirect(
   req: Request,
+  env: Env,
+  db: Db,
   product: { slug: string; services: ServicesMap },
   rest: readonly string[],
-): Response | null {
+): Promise<Response | null> {
   if (product.services.identity?.enabled) return null;
   if (!IDENTITY_NAVIGATION_ENTRIES.includes(rest.join("/"))) return null;
   if (!isNavigation(req)) return null;
-  const origin = new URL(req.url).origin;
+  const origin = customerOrigin(env, req) ?? new URL(req.url).origin;
   const params = new URLSearchParams({
     product: product.slug,
     error: IDENTITY_DISABLED,

@@ -101,3 +101,11 @@ Slice done on `wp/CM-29-commerce` (plan §2-§4, §5, §6 and the CM-29b token a
 - Docs: only the `features/commerce/index` page moved and gained the "Turn it on" section; `help/restore-purchase`, `help/refunds`, `channels/storefronts` moved in, `services/commerce/index` rename [DOC lane].
 - Android Kotlin modules (`:billing`, `:android`) were edited for the path and gate but not built (no Android SDK here).
 - `supports("commerce.receipt")` is product-N/A while Commerce is off in every SDK (via `features.json` `service: commerce`).
+
+## Progress and continuation (2026-10-19, slice 2 on `wp/CM-29-s2`)
+
+Done: plan §3.4 console (the Commerce feature row's "N storefronts ready" / "Set up a storefront" status, the Attention callout "Store refunds are not landing while Commerce is off", the Commerce Overview page at `commerce` with Overview first in the section, the off-confirmation line on Play's 7-day and 31-day limits); `GET …/services` facts gained `commerce: { storefronts, storeGrants }`; console CommercePage docs links now `/docs/features/commerce/`; Activity gained a "Commerce" filter (`commerce.`) and verbs for `commerce.*` and the legacy `distribution.commerce.*`; `flagRefusal` documented as stricter while Distribution is off, and its refusal says so. CM-29b: the BRAND.md §5.2 kit rule, the generated `[data-service="commerce"] a` rule (strong text) in `tokens.css`, the `accents-{dark,light}.png` re-render.
+
+Corrections found against the code: the Attention state counts active rows in `grants` (store sources) plus `license_store_grants`, because store purchases still write the latter; "storefront ready" means a configured `commerce` connector block until CM-21's Ready gate; there is no console audit filter by action name beyond the prefix groups, and a prefix filter cannot reach rows written as `distribution.commerce.*` before CM-29.
+
+Still open: Home's per-product Attention pill for this state (needs per-product facts), the §3.5 pre-deploy check, CM-21 readiness, UK-02b rows, the `services/commerce` docs rename (the service table still says `/docs/services/commerce/`).

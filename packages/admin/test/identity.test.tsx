@@ -172,7 +172,7 @@ function checked(el: HTMLElement): boolean {
 }
 
 const saveButton = () =>
-  screen.queryByRole("button", { name: "Save portal settings" });
+  screen.queryByRole("button", { name: "Save Locker settings" });
 
 async function axeViolations(container: HTMLElement): Promise<string[]> {
   const results = await axe(container);
@@ -237,7 +237,7 @@ describe("Identity → Portal", () => {
   it("titles the page Portal, matching its sidebar item (IDN-5)", async () => {
     renderPortal();
     expect(
-      await screen.findByRole("heading", { level: 1, name: "Portal" }),
+      await screen.findByRole("heading", { level: 1, name: "Locker" }),
     ).toBeTruthy();
   });
 
@@ -264,7 +264,7 @@ describe("Identity → Portal", () => {
       expect(checked(toggle("OIDC access"))).toBe(false);
       expect(checked(toggle("License-key claim"))).toBe(false);
     });
-    expect(checked(toggle("Customer portal"))).toBe(true);
+    expect(checked(toggle("Polaris Locker"))).toBe(true);
     expect(checked(toggle("Email magic links"))).toBe(true);
     expect(checked(toggle("Release downloads"))).toBe(true);
   });
@@ -325,7 +325,7 @@ describe("Identity → Portal", () => {
     renderPortal();
     await waitFor(() => {
       expect(checked(toggle("OIDC access"))).toBe(false);
-      expect(checked(toggle("Customer portal"))).toBe(true);
+      expect(checked(toggle("Polaris Locker"))).toBe(true);
     });
     expect(portalSettings).toHaveBeenCalledWith("djdl");
   });
@@ -380,7 +380,7 @@ describe("Identity → Portal", () => {
     expect("branding" in body).toBe(false);
     // The invalidation table: `portal settings` → the portal query.
     await waitFor(() => expect(portalSettings).toHaveBeenCalledTimes(2));
-    expect(await screen.findByText("Portal settings saved")).toBeTruthy();
+    expect(await screen.findByText("Locker settings saved")).toBeTruthy();
   });
 
   it("keeps the draft and says why when a save fails", async () => {
@@ -477,7 +477,7 @@ describe("Identity → Portal", () => {
       settings: { ...PORTAL, portalEnabled: false },
     });
     renderPortal();
-    await waitFor(() => expect(checked(toggle("Customer portal"))).toBe(false));
+    await waitFor(() => expect(checked(toggle("Polaris Locker"))).toBe(false));
 
     for (const name of [
       "OIDC access",
@@ -496,11 +496,11 @@ describe("Identity → Portal", () => {
         .hasAttribute("disabled"),
     ).toBe(true);
     expect(
-      screen.getAllByText("Turn on the customer portal to change this.").length,
+      screen.getAllByText("Turn on Polaris Locker to change this.").length,
     ).toBe(4);
 
     // Turning the portal on in the draft unlocks them.
-    await userEvent.click(toggle("Customer portal"));
+    await userEvent.click(toggle("Polaris Locker"));
     expect(toggle("OIDC access").hasAttribute("disabled")).toBe(false);
     expect(toggle("Release downloads").hasAttribute("disabled")).toBe(false);
   });
@@ -527,7 +527,7 @@ describe("Identity → Portal", () => {
     renderPortal();
     expect(
       await screen.findByText(
-        "None. The portal shows the product name in the Polaris Key theme.",
+        "None. Polaris Locker shows the product name in its own theme.",
       ),
     ).toBeTruthy();
     cleanup();
@@ -535,7 +535,7 @@ describe("Identity → Portal", () => {
       settings: { ...PORTAL, branding: { accent: "#7c3aed" } },
     });
     renderPortal();
-    const tree = await screen.findByRole("tree", { name: "Portal branding" });
+    const tree = await screen.findByRole("tree", { name: "Locker branding" });
     expect(within(tree).getByText(/#7c3aed/)).toBeTruthy();
     // Read-only: no input edits it.
     expect(screen.queryByRole("textbox")).toBeNull();
@@ -550,7 +550,7 @@ describe("Identity → Portal", () => {
     const alert = await screen.findByRole("alert");
     await userEvent.click(within(alert).getByRole("button", { name: "Retry" }));
     expect(
-      await screen.findByRole("switch", { name: "Customer portal" }),
+      await screen.findByRole("switch", { name: "Polaris Locker" }),
     ).toBeTruthy();
   });
 
@@ -777,7 +777,7 @@ describe("Identity → Sign-in, through this product (I-12)", () => {
     expect(screen.getByText(/DJDL wants you to sign in/)).toBeTruthy();
     expect(
       screen
-        .getByRole("link", { name: "Change on Portal" })
+        .getByRole("link", { name: "Change in Locker" })
         .getAttribute("href"),
     ).toBe("#/p/djdl/identity/portal");
     expect(screen.queryByText("App Review guideline 4.8")).toBeNull();

@@ -203,7 +203,7 @@ export function LicenseOverridesNotice({
     <>
       <p>
         If the customer wants to keep managed config, send them this link to add
-        the license to a Polaris Key account:
+        the license to a Polaris Locker account:
       </p>
       <SignUpOffer url={co.signUpUrl} />
     </>

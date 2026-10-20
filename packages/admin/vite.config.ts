@@ -43,12 +43,39 @@ const BRAND_LOCKUP_FILES: readonly string[] = [
 ];
 
 /**
+ * The Polaris Locker lockup PNGs for the Worker's mail (LK-07; plans/LK-00.md §7.11). Same
+ * console origin, `/assets/branding/locker/`: mail already sent links under `/assets/`, and the
+ * router hands this path to the assets binding. `light` is for light grounds.
+ */
+const BRAND_LOCKER_DIR = "assets/branding/locker";
+const BRAND_LOCKER_LOCKUP_FILES: readonly string[] = [
+  "locker-horizontal-light-640.png",
+  "locker-horizontal-dark-640.png",
+];
+
+/**
  * Rubik and JetBrains Mono (the brand package's variable WOFF2 files, latin subset, and their
  * licences) at a stable, unhashed path, for the
  * Worker's server-rendered pages (packages/worker/src/core/brandHtml.ts): their stylesheet is a
  * build constant allowed by its hash, so it cannot follow Vite's content-hashed font names. The
  * SPAs themselves keep loading the hashed copies their CSS imports.
  */
+/**
+ * The Polaris Locker web identity (LK-06), for the portal shell while `customer.host` is on: the
+ * Worker swaps the Key links for these (`services/identity/portal/lockerShell.ts`). Same icon `src`
+ * convention as the Key set: the manifest's are relative.
+ */
+const LOCKER_WEB_DIR = "assets/branding/locker";
+const LOCKER_WEB_FILES: readonly string[] = [
+  "favicon.svg",
+  "favicon.ico",
+  "apple-touch-icon.png",
+  "site.webmanifest",
+  "icon-192.png",
+  "icon-512.png",
+  "maskable-512.png",
+];
+
 const BRAND_FONT_DIR = "assets/branding/fonts";
 const BRAND_FONT_FILES: readonly string[] = [
   "rubik-var-latin.woff2",
@@ -69,9 +96,21 @@ const brandWebKey = dirname(
   ),
 );
 
+const brandWebLocker = dirname(
+  createRequire(import.meta.url).resolve(
+    "@polaris-key/brand/web/locker/favicon.svg",
+  ),
+);
+
 const brandLockupKey = dirname(
   createRequire(import.meta.url).resolve(
     "@polaris-key/brand/lockups/key/key-horizontal-light-944.png",
+  ),
+);
+
+const brandLockerLockups = dirname(
+  createRequire(import.meta.url).resolve(
+    "@polaris-key/brand/locker-kit/logos/png/locker-horizontal-light-640.png",
   ),
 );
 
@@ -90,8 +129,14 @@ const BRAND_DIRS: readonly {
   from: string;
 }[] = [
   { dir: BRAND_WEB_DIR, files: BRAND_WEB_FILES, from: brandWebKey },
+  { dir: LOCKER_WEB_DIR, files: LOCKER_WEB_FILES, from: brandWebLocker },
   { dir: BRAND_WEB_DIR, files: BRAND_LOCKUP_FILES, from: brandLockupKey },
   { dir: BRAND_FONT_DIR, files: BRAND_FONT_FILES, from: brandFonts },
+  {
+    dir: BRAND_LOCKER_DIR,
+    files: BRAND_LOCKER_LOCKUP_FILES,
+    from: brandLockerLockups,
+  },
 ];
 
 function brandWebAssets(): Plugin {

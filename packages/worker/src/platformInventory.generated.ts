@@ -168,6 +168,13 @@ export const PLATFORM_INVENTORY: readonly PlatformInventoryEntry[] = [
     editable: null,
   },
   {
+    name: "CUSTOMER_ORIGIN",
+    kind: "var",
+    area: "delivery",
+    optional: true,
+    editable: null,
+  },
+  {
     name: "BLOBS_BUCKET_NAME",
     kind: "var",
     area: "delivery",

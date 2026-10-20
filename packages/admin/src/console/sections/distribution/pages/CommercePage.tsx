@@ -162,7 +162,7 @@ export function CommercePage({ slug }: { slug: string }): React.ReactElement {
               <Link to={r.credentials(slug)}>Open Outlet credentials</Link>
             </Button>
           }
-          docs="/docs/services/distribution/commerce/"
+          docs="/docs/features/commerce/"
         />
       ) : (
         <AppStoreProducts slug={slug} appleId={appleId!} q={products} />
@@ -310,7 +310,7 @@ function AppStoreProducts({
             kind="first-run"
             title="No App Store products are mapped"
             description="Commerce maps an App Store product id to the licence flag a purchase unlocks. Once one is mapped, its In-App Purchase can be created here."
-            docs="/docs/services/distribution/commerce/"
+            docs="/docs/features/commerce/"
           />
         }
       />

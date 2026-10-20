@@ -271,6 +271,7 @@ export const NOT_A_SETTING: readonly NotASetting[] = [
         "env:BLOB_ORIGIN",
         "env:PKG_ORIGIN",
         "env:IMG_ORIGIN",
+        "env:CUSTOMER_ORIGIN",
       ],
     },
   },

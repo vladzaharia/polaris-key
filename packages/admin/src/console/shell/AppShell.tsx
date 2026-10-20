@@ -23,6 +23,7 @@ import {
   type ServiceState,
 } from "../nav.js";
 import { navigate, useLocation } from "../router.js";
+import { portalHandOff } from "../portalHandOff.js";
 import {
   pageOfRoute,
   productPage,
@@ -92,7 +93,7 @@ function knownProductPageRefused(me: Me, route: Route): boolean {
   );
 }
 
-/** `"{page title} · {product} · Polaris Key"`, or `"{page title} · Polaris Key"` off a product. */
+/** `"{page title} · {product} · Polaris Key Console"`, or `"{page title} · Polaris Key Console"` off a product. */
 export function documentTitle(
   route: Route,
   productName: string | null,
@@ -101,7 +102,7 @@ export function documentTitle(
   return [
     refused ? `No access · ${pageTitle(route)}` : pageTitle(route),
     productName,
-    "Polaris Key",
+    "Polaris Key Console",
   ]
     .filter(Boolean)
     .join(" · ");
@@ -190,6 +191,14 @@ function useRouteFocus(key: string, title: string): string {
 export function AppShell({ me }: { me: Me }): React.ReactElement {
   const { route } = useLocation();
   const page = pageOfRoute(route);
+  const handOff = portalHandOff(
+    route,
+    typeof window === "undefined" ? "" : window.location.hash,
+    me.customerOrigin,
+  );
+  React.useEffect(() => {
+    if (handOff) window.location.replace(handOff);
+  }, [handOff]);
   const routeSlug = slugOfRoute(route);
   const knownProduct =
     routeSlug !== null && me.products.some((p) => p.slug === routeSlug);

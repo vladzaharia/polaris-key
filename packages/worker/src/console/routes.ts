@@ -42,6 +42,7 @@ import { handleAccessAdmins } from "./handlers/access.js";
 import { handleGithub } from "./handlers/github.js";
 import { handlePlatformStoreConnections } from "./handlers/platformStoreConnections.js";
 import { handlePlatform } from "./handlers/platform.js";
+import { handlePlatformConnections } from "./handlers/platformConnections.js";
 import { handleProducts } from "./handlers/products.js";
 import { handleIntegration } from "./handlers/integration.js";
 import { handleProductScoped } from "./productScoped.js";
@@ -221,6 +222,83 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   ...rows(["GET"], "/platform/override-migration/report", "platform", platform),
   ...rows(["POST"], "/platform/feeds/bootstrap", "platform", platform),
   ...rows(["GET", "PUT", "POST"], "/platform/feeds/**", "platform", platform),
+  // I-31: the platform's OIDC connections. Reads and the dry checks (discovery, the test) need
+  // the platform area; every change is a step-up write. A token reaches none of them.
+  ...rows(
+    ["GET"],
+    "/platform/connections",
+    "platform",
+    handlePlatformConnections,
+  ),
+  ...rows(
+    ["POST"],
+    "/platform/connections",
+    "platform",
+    handlePlatformConnections,
+    {
+      stepUp: true,
+    },
+  ),
+  ...rows(
+    ["POST"],
+    "/platform/connections/discover",
+    "platform",
+    handlePlatformConnections,
+  ),
+  ...rows(
+    ["POST"],
+    "/platform/connections/test/start",
+    "platform",
+    handlePlatformConnections,
+  ),
+  ...rows(
+    ["GET"],
+    "/platform/connections/test/result",
+    "platform",
+    handlePlatformConnections,
+  ),
+  ...rows(
+    ["GET"],
+    "/platform/connections/:id",
+    "platform",
+    handlePlatformConnections,
+  ),
+  ...rows(
+    ["PATCH", "DELETE"],
+    "/platform/connections/:id",
+    "platform",
+    handlePlatformConnections,
+    {
+      stepUp: true,
+    },
+  ),
+  ...rows(
+    ["POST"],
+    "/platform/connections/:id/domains",
+    "platform",
+    handlePlatformConnections,
+    {
+      stepUp: true,
+    },
+  ),
+  ...rows(
+    ["POST"],
+    "/platform/connections/:id/domains/verify",
+    "platform",
+    handlePlatformConnections,
+    {
+      stepUp: true,
+    },
+  ),
+  ...rows(
+    ["PATCH", "DELETE"],
+    "/platform/connections/:id/domains/:domain",
+    "platform",
+    handlePlatformConnections,
+    {
+      stepUp: true,
+    },
+  ),
   ...rows(
     ["GET", "PUT", "POST", "DELETE"],
     "/platform/store-connections/**",

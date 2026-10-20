@@ -355,7 +355,7 @@ describe("PLATFORM_SETTINGS", () => {
     expect(
       settingConfirmLevel(def("LAZY_DELTA_MAX_BYTES"), 33_554_432, 2_097_152),
     ).toBe("L0");
-    // None of the five is L2+: the `{ confirm }` echo is reserved for future settings.
+    // None is L2+ (LK-17 removed the customer-host switch): the `{ confirm }` echo is reserved for future settings.
     for (const d of PLATFORM_SETTINGS)
       expect(
         Object.values(d.confirm).every((l) => l === "L0" || l === "L1"),

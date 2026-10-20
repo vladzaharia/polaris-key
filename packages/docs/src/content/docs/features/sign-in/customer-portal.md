@@ -76,7 +76,7 @@ Every email is from Polaris Key (`PORTAL_EMAIL_FROM`) and names the product and 
 
 ## Per-product settings
 
-Each product has Locker settings, edited at **Identity → Portal**. They default on for a product that never wrote a row: `portalEnabled`, `oidcEnabled`, `magicEnabled`, `licenseKeyClaimEnabled`, `releasesEnabled` and `discoverEnabled`. These default off:
+Each product has Locker settings, edited at **Identity → Locker**. They default on for a product that never wrote a row: `portalEnabled`, `oidcEnabled`, `magicEnabled`, `licenseKeyClaimEnabled`, `releasesEnabled` and `discoverEnabled`. These default off:
 
 - `keyReissueEnabled`: customers may replace a license's key from Locker.
 - `claimByKey`: a license that carries an email may be added by anyone holding its key. Off is the safe default: such a license joins only an account that verified that email. A license already in an account never moves by its key either way.
@@ -85,7 +85,7 @@ Each product has Locker settings, edited at **Identity → Portal**. They defaul
 
 Only addresses Locker proved (a magic link it sent, or `email_verified: true` from the platform issuer) can drive a link, and only a platform-issuer subject can match a license's `sub`.
 
-**Identity → Portal** is read-only for the sign-in methods and modules while the product's **Portal** switch is off, and for **Release downloads** while the Release service is off.
+**Identity → Locker** is read-only for the sign-in methods and modules while the product's **Locker** switch is off, and for **Release downloads** while the Release service is off.
 
 ### Polaris Locker listing
 

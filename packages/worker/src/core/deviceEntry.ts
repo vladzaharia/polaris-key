@@ -69,6 +69,7 @@ export async function handleDeviceEntry(
   env: Env,
   tv: boolean,
   now: number = Math.floor(Date.now() / 1000),
+  productOrigin: string | null = null,
 ): Promise<Response> {
   if (req.method !== "GET" && req.method !== "HEAD") return methodNotAllowed();
   const raw = new URL(req.url).searchParams.get("user_code");
@@ -95,8 +96,10 @@ export async function handleDeviceEntry(
   return new Response(null, {
     status: 302,
     headers: {
-      // Relative: the same host the visitor is on, whatever it is called.
-      location: `/${slug}/identity/auth/device?user_code=${formatUserCode(code)}`,
+      // Relative: the same host the visitor is on, whatever it is called. On the customer host
+      // the product's page is on the API host, so `productOrigin` (configuration, never the
+      // request) names it (LK-03).
+      location: `${productOrigin ?? ""}/${slug}/identity/auth/device?user_code=${formatUserCode(code)}`,
       "cache-control": "no-store",
       "referrer-policy": "no-referrer",
     },

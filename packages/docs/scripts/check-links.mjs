@@ -8,7 +8,13 @@
 // External links (http…) are deliberately not fetched — this origin is auth-gated and CI
 // should not depend on the outside world; the reviewer wave owns external-link hygiene.
 
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import {
+  existsSync,
+  readdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { isRedirectPage, redirectTarget } from "./redirect-fragments.mjs";
@@ -70,9 +76,57 @@ function idsOf(file) {
 const failures = [];
 let checked = 0;
 
+// The tier rule (docs plan §3.1): a page anyone can read links only to pages anyone can read,
+// so a public reader is never sent to a page that answers with a sign-in. The one exception is
+// the landing page's Operate card, labelled "For console members". The rule covers the page's
+// own content (`<main>`): the sidebar lists every door until DOC-02b scopes it to the page's
+// door, and the rule then extends to the chrome. Tiers come from the
+// docs-access.json the build wrote from src/lib/doors.ts.
+const access = JSON.parse(readFileSync(join(dist, "docs-access.json"), "utf8"));
+function tierOf(route) {
+  const id = route.replace(/^\/docs\//, "").replace(/\/$/, "") || "index";
+  let best = null;
+  for (const [prefix, tier] of access.pages) {
+    const hit = prefix.endsWith("/")
+      ? `${id}/`.startsWith(prefix)
+      : id === prefix;
+    if (hit && (best === null || prefix.length > best[0].length))
+      best = [prefix, tier];
+  }
+  return best === null ? "admin" : best[1];
+}
+// Existing public pages that still link to a gated page, as { "<page>": ["<target>", …] }. Like
+// lint-debt.json it only shrinks: a new link fails, and so does a row whose link is gone. Each
+// is a content fix for the page's owner (the link names a gated page; reword it or drop it).
+const DEBT_FILE = join(here, "..", "link-tier-debt.json");
+const debt = existsSync(DEBT_FILE)
+  ? JSON.parse(readFileSync(DEBT_FILE, "utf8"))
+  : {};
+const seenDebt = new Set();
+const CHROME_EXCEPTION = { page: "/index.html", target: "/docs/operate/" };
+
 for (const file of htmlFiles(dist)) {
   const page = "/" + relative(dist, file).split(sep).join("/");
   const html = readFileSync(file, "utf8");
+  // The tier rule, over the page's own content. A redirect page has no `<main>`.
+  const pageRoute =
+    page === "/index.html" ? "/docs/" : "/docs" + dirname(page) + "/";
+  const main = /<main[\s\S]*<\/main>/.exec(html)?.[0] ?? "";
+  if (tierOf(pageRoute) === "public") {
+    for (const match of main.matchAll(/href="(\/docs\/[^"#]*)/g)) {
+      const path = match[1];
+      if (/\.[a-z0-9]+$/i.test(path) || tierOf(path) === "public") continue;
+      if (page === CHROME_EXCEPTION.page && path === CHROME_EXCEPTION.target)
+        continue;
+      if (debt[page]?.includes(path)) {
+        seenDebt.add(`${page} ${path}`);
+        continue;
+      }
+      failures.push(
+        `${page}: public page links to a ${tierOf(path)} page ${path}`,
+      );
+    }
+  }
   for (const match of html.matchAll(/href="(\/docs\/[^"]*)"/g)) {
     checked += 1;
     const href = match[1];
@@ -111,6 +165,23 @@ for (const file of htmlFiles(dist)) {
     }
   }
 }
+
+if (process.env.WRITE_LINK_TIER_DEBT) {
+  // Regeneration helper for a human: records the current violations as debt.
+  const next = {};
+  for (const f of failures) {
+    const m = /^(\S+): public page links to a \w+ page (\S+)$/.exec(f);
+    if (m) (next[m[1]] ??= []).includes(m[2]) || next[m[1]].push(m[2]);
+  }
+  writeFileSync(DEBT_FILE, JSON.stringify(next, null, 2) + "\n");
+  process.exit(0);
+}
+for (const [page, targets] of Object.entries(debt))
+  for (const target of targets)
+    if (!seenDebt.has(`${page} ${target}`))
+      failures.push(
+        `${page}: link-tier-debt.json lists ${target}, which is gone`,
+      );
 
 if (failures.length) {
   console.error(

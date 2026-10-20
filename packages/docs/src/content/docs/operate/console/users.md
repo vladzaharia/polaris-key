@@ -145,6 +145,6 @@ With Identity on, **Identity → Sign-in** has a **Sign-in through this product*
   with their Polaris Key account, and in the sender of that sign-in mail. Empty uses the product's
   name. A name containing "Polaris" or "plrs", or one like "Support", "Security" or "Admin", is
   refused.
-- **Add by key without the purchase email**: shown here, changed on **Identity → Portal**.
+- **Add by key without the purchase email**: shown here, changed on **Identity → Locker**.
 - **App Review guideline 4.8**: a warning while iPhone or iPad devices use the product and it
   offers no native Sign in with Apple.

@@ -5,7 +5,8 @@
  * plain-text part and branded HTML part (`renderEmail`) — so the copy is snapshot-tested in one
  * place and the handlers only choose a template and its recipients. The rules they hold:
  *
- *   - From "Polaris Key", and named "Polaris Key" in the copy: never "Polaris Key Portal" or
+ *   - From "Polaris Locker", and named "Polaris Locker" in the copy (LK-07: the customer site and
+ *     its mail are Polaris Locker; operator mail is Polaris Key): never "Polaris Locker Portal" or
  *     "the portal" (§6.1 rule 2). The sender itself is Core's `platformSender`, applied by
  *     `deliverEmail` (I-18), which `send.ts` sends every notice through.
  *   - Product NAMES and device LABELS, never slugs or device ids (§6.1 rule 10).
@@ -86,9 +87,9 @@ function productRoute(slug: string, section?: string): string {
 }
 
 const NOTICE_FOOTER =
-  "You are receiving this because of a change to your Polaris Key account.";
+  "You are receiving this because of a change to your Polaris Locker account.";
 const SECURITY_FOOTER =
-  "You are receiving this because of a change to your Polaris Key account. " +
+  "You are receiving this because of a change to your Polaris Locker account. " +
   "We sent it to every verified email on the account.";
 const SECURE_LABEL = "Secure your account";
 
@@ -122,6 +123,7 @@ function buildNotice(spec: NoticeSpec): NoticeMessage {
       : {}),
     footer,
     origin: emailAssetOrigin(spec.origin),
+    brand: "locker",
   };
   return {
     subject: spec.subject,
@@ -142,7 +144,7 @@ export function licenseAddedNotice(input: {
   return buildNotice({
     subject: `${name} is in your library`,
     paragraphs: [
-      `${name} was added to your Polaris Key account with a license key.`,
+      `${name} was added to your Polaris Locker account with a license key.`,
     ],
     action: {
       label: `Open ${name}`,
@@ -162,9 +164,9 @@ export function licenseAttachedNotice(input: {
 }): NoticeMessage {
   const name = displayValue(input.productName, "Your");
   return buildNotice({
-    subject: `Your ${name} license was added to a Polaris Key account`,
+    subject: `Your ${name} license was added to a Polaris Locker account`,
     paragraphs: [
-      `Your ${name} license was added to a Polaris Key account with its license key.`,
+      `Your ${name} license was added to a Polaris Locker account with its license key.`,
       "If that wasn't you, contact the developer.",
     ],
     origin: input.origin,
@@ -181,7 +183,7 @@ export function licenseKeyReplacedNotice(input: {
   return buildNotice({
     subject: "Your license has a new key",
     paragraphs: [
-      `A new license key for ${name} was made in your Polaris Key account.`,
+      `A new license key for ${name} was made in your Polaris Locker account.`,
       "The old key no longer activates new devices; devices already using the product keep working.",
       "If this wasn't you, sign in and get a new key again, then contact the developer.",
     ],
@@ -211,11 +213,11 @@ export function downloadLinkEmail(input: {
     subject: `Download ${name} for ${platform}`,
     paragraphs: [
       `Here is the ${platform} download you asked for. Open this email on the device you want to install ${name} on.`,
-      "The link opens your Polaris Key library, so you may be asked to sign in first.",
+      "The link opens your Polaris Locker library, so you may be asked to sign in first.",
     ],
     action: { label: `Download ${name}`, url },
     footer:
-      "You are receiving this because you asked Polaris Key to email you a download link. " +
+      "You are receiving this because you asked Polaris Locker to email you a download link. " +
       "If you didn't, you can ignore it: the link only opens your own library.",
     origin: input.origin,
   });
@@ -226,10 +228,10 @@ export type { KeyEmailContext };
 
 /**
  * LX-27 (S-24 §8.4, D11/D12): the key an operator emailed to a licence's holder, sent as
- * "<App> via Polaris Key" (the caller picks the sender). The product is the hero (name, and its
+ * "<App> via Polaris Locker" (the caller picks the sender). The product is the hero (name, and its
  * icon when it has a hosted one); the key sits in a monospace box in the body only, never in the
  * subject. The primary button is the product's download when it has one, else **Open in Polaris
- * Key**, a plain portal sign-in link that carries no token, so a forwarded email signs nobody in.
+ * Locker**, a plain portal sign-in link that carries no token, so a forwarded email signs nobody in.
  */
 export function licenseKeyEmail(input: {
   productName: string | null | undefined;
@@ -278,6 +280,7 @@ export function licenseKeyEmail(input: {
     ...(secondary ? { secondary } : {}),
     footer,
     origin: emailAssetOrigin(input.origin),
+    brand: "locker",
   };
   return { subject, text, html: renderEmail(content) };
 }
@@ -332,7 +335,7 @@ function emailDate(at: number): string {
 
 /**
  * A new device signed in to the account (SIGN-IN.md §3.15): `signin.mail.newDevice.subject`,
- * `signin.mail.newDevice.body` and **Open Polaris Key** (`signin.mail.open`).
+ * `signin.mail.newDevice.body` and **Open Polaris Locker** (`signin.mail.open`).
  */
 export function newDeviceSignInNotice(input: {
   deviceLabel: string | null | undefined;
@@ -347,13 +350,13 @@ export function newDeviceSignInNotice(input: {
   const when = input.at !== undefined ? ` on ${emailDate(input.at)}` : "";
   const where = location ? ` from ${location}` : "";
   return buildNotice({
-    subject: "A new device signed in to your Polaris Key account", // signin.mail.newDevice.subject
+    subject: "A new device signed in to your Polaris Locker account", // signin.mail.newDevice.subject
     paragraphs: [
       // signin.mail.newDevice.body
-      `${device} signed in${when}${where}. If this wasn't you, sign it out in Polaris Key under Where you're signed in.`,
+      `${device} signed in${when}${where}. If this wasn't you, sign it out in Polaris Locker under Where you're signed in.`,
     ],
     action: {
-      label: "Open Polaris Key", // signin.mail.open
+      label: "Open Polaris Locker", // signin.mail.open
       url: appLink(input.origin, "account/sessions"),
     },
     secureUrl: appLink(input.origin, "account/methods"),
@@ -361,7 +364,7 @@ export function newDeviceSignInNotice(input: {
   });
 }
 
-/** A sign-in method was connected: "Steam was connected to your Polaris Key account". */
+/** A sign-in method was connected: "Steam was connected to your Polaris Locker account". */
 export function signInMethodAddedNotice(input: {
   /** The method by its own name: "Apple", "Google", "Steam", "A passkey", an email address. */
   method: string;
@@ -369,9 +372,9 @@ export function signInMethodAddedNotice(input: {
 }): NoticeMessage {
   const method = displayValue(input.method, "A sign-in method");
   return buildNotice({
-    subject: `${method} was connected to your Polaris Key account`,
+    subject: `${method} was connected to your Polaris Locker account`,
     paragraphs: [
-      `${method} was added as a way to sign in to your Polaris Key account.`,
+      `${method} was added as a way to sign in to your Polaris Locker account.`,
     ],
     action: {
       label: "See your sign-in methods",
@@ -382,16 +385,16 @@ export function signInMethodAddedNotice(input: {
   });
 }
 
-/** A sign-in method was removed: "Steam was disconnected from your Polaris Key account". */
+/** A sign-in method was removed: "Steam was disconnected from your Polaris Locker account". */
 export function signInMethodRemovedNotice(input: {
   method: string;
   origin: string;
 }): NoticeMessage {
   const method = displayValue(input.method, "A sign-in method");
   return buildNotice({
-    subject: `${method} was disconnected from your Polaris Key account`,
+    subject: `${method} was disconnected from your Polaris Locker account`,
     paragraphs: [
-      `${method} can no longer be used to sign in to your Polaris Key account.`,
+      `${method} can no longer be used to sign in to your Polaris Locker account.`,
     ],
     action: {
       label: "See your sign-in methods",
@@ -407,9 +410,9 @@ export function primaryEmailChangedNotice(input: {
   origin: string;
 }): NoticeMessage {
   return buildNotice({
-    subject: "Your Polaris Key primary email was changed",
+    subject: "Your Polaris Locker primary email was changed",
     paragraphs: [
-      "Another verified email on your Polaris Key account is now its primary. Security notices and the email apps see for you now go there.",
+      "Another verified email on your Polaris Locker account is now its primary. Security notices and the email apps see for you now go there.",
     ],
     action: {
       label: "See your sign-in methods",
@@ -426,9 +429,9 @@ export function accountDeletionScheduledNotice(input: {
   dueAt: number;
 }): NoticeMessage {
   return buildNotice({
-    subject: "Your Polaris Key account is scheduled for deletion",
+    subject: "Your Polaris Locker account is scheduled for deletion",
     paragraphs: [
-      `Your Polaris Key account is scheduled to be erased on ${utcInstant(input.dueAt)} unless you cancel the deletion before then.`,
+      `Your Polaris Locker account is scheduled to be erased on ${utcInstant(input.dueAt)} unless you cancel the deletion before then.`,
       "Your account stays active during that 14-day period. Deleting it does not cancel your licenses: they stay with each developer, and you can add them again with a new account.",
     ],
     action: {
@@ -445,9 +448,9 @@ export function accountDeletionCancelledNotice(input: {
   origin: string;
 }): NoticeMessage {
   return buildNotice({
-    subject: "Your Polaris Key account deletion was cancelled",
+    subject: "Your Polaris Locker account deletion was cancelled",
     paragraphs: [
-      "Your Polaris Key account will stay active. No account data will be erased.",
+      "Your Polaris Locker account will stay active. No account data will be erased.",
     ],
     action: {
       label: "Review account settings",
@@ -461,13 +464,13 @@ export function accountDeletionCancelledNotice(input: {
 /** The account was deleted at the holder's request (sent before the rows go). */
 export function accountDeletedNotice(input: { origin: string }): NoticeMessage {
   return buildNotice({
-    subject: "Your Polaris Key account has been deleted",
+    subject: "Your Polaris Locker account has been deleted",
     paragraphs: [
-      "Your Polaris Key account, its email addresses and its sign-in methods have been erased, as you asked.",
+      "Your Polaris Locker account, its email addresses and its sign-in methods have been erased, as you asked.",
       "Deleting it doesn't cancel your licenses: they stay with each developer, and you can add them again with a new account. To have a developer erase its own records, contact that developer's support.",
     ],
     footer:
-      "You are receiving this because your Polaris Key account was deleted. " +
+      "You are receiving this because your Polaris Locker account was deleted. " +
       "We sent it to every verified email on the account.",
     origin: input.origin,
   });
@@ -489,9 +492,9 @@ export function accountsMergedNotice(input: {
   undoUntil?: number;
 }): NoticeMessage {
   return buildNotice({
-    subject: "Two Polaris Key accounts were joined",
+    subject: "Two Polaris Locker accounts were joined",
     paragraphs: [
-      "Two Polaris Key accounts were joined into one after someone signed in to both. Their sign-in methods and licenses are now on a single account.",
+      "Two Polaris Locker accounts were joined into one after someone signed in to both. Their sign-in methods and licenses are now on a single account.",
       ...(input.undoUntil === undefined
         ? []
         : [
@@ -512,9 +515,9 @@ export function accountsSeparatedNotice(input: {
   origin: string;
 }): NoticeMessage {
   return buildNotice({
-    subject: "Your Polaris Key accounts were separated",
+    subject: "Your Polaris Locker accounts were separated",
     paragraphs: [
-      "Two Polaris Key accounts that were joined are separate again. Each has its own sign-in methods and licenses back, as they were before the join.",
+      "Two Polaris Locker accounts that were joined are separate again. Each has its own sign-in methods and licenses back, as they were before the join.",
     ],
     action: {
       label: "See your sign-in methods",
@@ -537,7 +540,7 @@ export function licenseLinkSupersededNotice(input: {
   return buildNotice({
     subject: `A ${name} license left your library`,
     paragraphs: [
-      `A ${name} license was linked to more than one Polaris Key account. A license now belongs to one account, and another account holds this one, so it has left your library.`,
+      `A ${name} license was linked to more than one Polaris Locker account. A license now belongs to one account, and another account holds this one, so it has left your library.`,
       "If you bought it, contact the developer: they can move it to your account.",
     ],
     origin: input.origin,
@@ -562,7 +565,7 @@ export function licenseRelinkedAwayNotice(input: {
   return buildNotice({
     subject: `The developer moved your ${name} license to another account`,
     paragraphs: [
-      `The developer of ${name} moved one of its licenses from your Polaris Key account to another account, at the request of its support.`,
+      `The developer of ${name} moved one of its licenses from your Polaris Locker account to another account, at the request of its support.`,
       `If you did not expect this, contact the developer's support now: they can undo it for ${RELINK_UNDO_WORDS}.`,
     ],
     secureUrl: appLink(input.origin, "account/methods"),
@@ -580,7 +583,7 @@ export function licenseRelinkedInNotice(input: {
   return buildNotice({
     subject: `${name} is being added to your library`,
     paragraphs: [
-      `The developer of ${name} moved one of its licenses to your Polaris Key account, at the request of its support.`,
+      `The developer of ${name} moved one of its licenses to your Polaris Locker account, at the request of its support.`,
       `If you did not ask for this, contact the developer's support: they can undo it for ${RELINK_UNDO_WORDS}.`,
     ],
     action: {
@@ -614,7 +617,7 @@ export function licenseRelinkUndoneNotice(input: {
 // Make floating and Reassign… are the relink tool's two holder moves. The side the licence leaves
 // is told before the move (with the undo window), at every verified email of its account when it
 // was in one, or at the licence's own address when it was waiting for one. A waiting address has
-// no Polaris Key account, so its variant carries no "Secure your account" link and says why the
+// no Polaris Locker account, so its variant carries no "Secure your account" link and says why the
 // message came. The new address is told the licence is waiting for it, and never whether an
 // account already holds that address (S-24 D4).
 
@@ -657,7 +660,7 @@ export function licenseMadeFloatingNotice(input: {
       ? `The developer removed a ${name} license from your account`
       : `A ${name} license is no longer assigned to you`,
     paragraph: input.inAccount
-      ? `The developer of ${dev} removed one of its licenses from your Polaris Key account, at the request of its support. It is no longer in your library.`
+      ? `The developer of ${dev} removed one of its licenses from your Polaris Locker account, at the request of its support. It is no longer in your library.`
       : `The developer of ${dev} removed your name and email address from one of its licenses, at the request of its support.`,
     inAccount: input.inAccount,
     origin: input.origin,
@@ -675,7 +678,7 @@ export function licenseReassignedAwayNotice(input: {
   return holderMovedAwayNotice({
     subject: `The developer assigned your ${name} license to someone else`,
     paragraph: input.inAccount
-      ? `The developer of ${dev} assigned one of its licenses in your Polaris Key account to someone else, at the request of its support. It is no longer in your library.`
+      ? `The developer of ${dev} assigned one of its licenses in your Polaris Locker account to someone else, at the request of its support. It is no longer in your library.`
       : `The developer of ${dev} assigned one of its licenses, issued to this email address, to someone else, at the request of its support.`,
     inAccount: input.inAccount,
     origin: input.origin,
@@ -697,7 +700,7 @@ export function licenseAssignedToYouNotice(input: {
     subject: `A ${name} license was assigned to you`,
     paragraphs: [
       `The developer of ${dev} assigned one of its licenses to this email address.`,
-      "Sign in to Polaris Key with this email address to find it in your library.",
+      "Sign in to Polaris Locker with this email address to find it in your library.",
     ],
     action: {
       label: `Open ${displayValue(input.productName, "it")}`,

@@ -28,4 +28,4 @@ export const KEY_EMAIL_AFTER =
 
 /** The primary button: the product's download when it has one, else the portal sign-in. */
 export const keyEmailPrimaryLabel = (hasDownload: boolean): string =>
-  hasDownload ? "Download" : "Open in Polaris Key";
+  hasDownload ? "Download" : "Open in Polaris Locker";
