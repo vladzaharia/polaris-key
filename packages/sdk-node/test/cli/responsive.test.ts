@@ -871,6 +871,22 @@ describe("the Powered by line (LK-16)", () => {
     },
   );
 
+  it("is never drawn on a gate: needs-activation and revoked print no attribution", async () => {
+    for (const status of ["needs-activation", "revoked"]) {
+      const out = await run(
+        { columns: 80, rows: 24, poweredBy: "line" },
+        async (h) =>
+          statusFlow(h.ctx, stubClient({ status: () => ({ status }) })),
+      );
+      expect(
+        out.screen
+          .all()
+          .map((r) => r.text)
+          .join("\n"),
+      ).not.toContain("Powered by");
+    }
+  });
+
   it("is absent by default", async () => {
     const status = await run({ columns: 80, rows: 24 }, async (h) =>
       statusFlow(h.ctx, stubClient()),
