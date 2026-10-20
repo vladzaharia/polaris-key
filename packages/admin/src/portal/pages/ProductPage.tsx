@@ -2,7 +2,7 @@ import * as React from "react";
 import { Skeleton } from "../../ui/Skeleton.js";
 import type { PortalAccount } from "../api.js";
 import { DevicesCard } from "../components/product/DevicesCard.js";
-import { GetItPanel } from "../components/product/GetItPanel.js";
+import { GetItPanel, useGetItShown } from "../components/product/GetItPanel.js";
 import { HelpCard } from "../components/product/HelpCard.js";
 import { LicenseCard } from "../components/product/LicenseCard.js";
 import { ProductHeader } from "../components/product/ProductHeader.js";
@@ -136,9 +136,12 @@ function ProductBody({
   const showCount = showsDeviceCount(product, selected);
   // The store of an active purchase on each licence (PX-W6): the origin names it with the key.
   const storeOf = (id: string): string | null => storeFor(view.data, id);
+  // Get it is in the nav only when its card is drawn (an ended license with nothing to download
+  // has none): the nav never points at a section the page does not have.
+  const getIt = useGetItShown(product, here);
   const sections = presentSections(product, releasesOn, {
     packageAccess: pkg.data?.available === true,
-  });
+  }).filter((s) => s !== "get" || getIt);
   const [current, setCurrent] = React.useState<ProductSection | null>(
     section && sections.includes(section) ? section : (sections[0] ?? null),
   );

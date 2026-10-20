@@ -1809,6 +1809,14 @@ describe("the section nav follows the page as it scrolls (owner polish 2026-10-0
     await within(card).findByText(/^Ended /);
     expect(screen.queryByText("Not included")).toBeNull();
     expect(screen.queryByRole("region", { name: "Get it" })).toBeNull();
+    // Neither the section nav nor the jump bar points at the card that is not there.
+    for (const nav of ["On this page", "Sections"]) {
+      const links = within(screen.getByRole("navigation", { name: nav }))
+        .getAllByRole("link")
+        .map((l) => l.textContent);
+      expect(links).toContain("License");
+      expect(links).not.toContain("Get it");
+    }
   });
 
   it("Help closes the main column, so the nav ends with it and Your data on every width", async () => {

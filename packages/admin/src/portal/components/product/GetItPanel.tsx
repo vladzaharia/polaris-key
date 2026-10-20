@@ -2,6 +2,7 @@ import * as React from "react";
 import { ExternalLink, Info, Package } from "lucide-react";
 import { Button } from "../../../ui/Button.js";
 import { Skeleton } from "../../../ui/Skeleton.js";
+import type { PortalDownloads } from "../../api.js";
 import { useProductDownloads } from "../../data.js";
 import type { LibraryProduct, DeviceInHand } from "../../model/library.js";
 import { formatDay, osName } from "../../model/library.js";
@@ -25,6 +26,61 @@ import { DownloadButton } from "./DownloadButton.js";
 import { InstallSourceList } from "./InstallSources.js";
 import { t } from "../../../lib/copy.js";
 import { platformInSentence } from "../../../lib/vocab/platforms.js";
+
+/**
+ * What Get it shows, from the downloads view (else the releases): the model, its rows (an
+ * inactive license's files left out), the install sources, the stores not already on the phone's
+ * lead, and whether the card renders at all. The product page asks the same question for its
+ * nav, so a section that is not drawn is not in the nav either.
+ */
+function getItView(
+  product: LibraryProduct,
+  device: DeviceInHand,
+  data: PortalDownloads | null | undefined,
+) {
+  const who = {
+    developer: product.presentation.developer,
+    website: product.presentation.website,
+  };
+  const model =
+    (data ? getItFromDownloads(data, device, who) : null) ??
+    getItModel(
+      product.releases,
+      device,
+      product.licenses.some((l) => l.usable),
+      { ...who, stores: product.stores },
+    );
+  if (!model) return null;
+  const mine = new Set(model.recommended.map((r) => r.artifact.artifactId));
+  // A license that is not active says so once, in the License card: its files get no row here.
+  const rows = [
+    ...model.recommended,
+    ...model.groups
+      .flatMap((g) => g.rows)
+      .filter((r) => !mine.has(r.artifact.artifactId)),
+  ].filter((r) => !r.inactive);
+  const withSources = model.groups.filter((g) => g.sources.length > 0);
+  // The phone's lead already offers its own stores: "Also yours on" never repeats them.
+  const leadIds = new Set(model.here?.stores.map((s) => s.id));
+  const stores = model.stores.filter((s) => !leadIds.has(s.id));
+  const render =
+    rows.length > 0 ||
+    withSources.length > 0 ||
+    stores.length > 0 ||
+    model.here !== null ||
+    device.phone;
+  return { model, mine, rows, withSources, stores, render };
+}
+
+/** Whether the Get it card will be drawn: true while the downloads are still loading. */
+export function useGetItShown(
+  product: LibraryProduct,
+  device: DeviceInHand,
+): boolean {
+  const downloads = useProductDownloads(product.slug, true);
+  if (downloads.isPending) return true;
+  return getItView(product, device, downloads.data)?.render ?? false;
+}
 
 /**
  * Get it, first cut (§4.20, PX-04): the build recommended for the device in hand (honest: a
@@ -59,19 +115,9 @@ export function GetItPanel({
         <Skeleton className="h-40 w-full" aria-busy />
       </SectionCard>
     );
-  const who = {
-    developer: product.presentation.developer,
-    website: product.presentation.website,
-  };
-  const model =
-    (downloads.data ? getItFromDownloads(downloads.data, device, who) : null) ??
-    getItModel(
-      product.releases,
-      device,
-      product.licenses.some((l) => l.usable),
-      { ...who, stores: product.stores },
-    );
-  if (!model) return null;
+  const view = getItView(product, device, downloads.data);
+  if (!view?.render) return null;
+  const { model, mine, rows, withSources, stores } = view;
   const { latest, here } = model;
   // The accessible name says which file: its build and its file name.
   const describe = (r: FileRowModel) =>
@@ -83,32 +129,10 @@ export function GetItPanel({
         g.platform === "windows" ||
         g.platform === "linux"),
   );
-  // One table, each file once: the build for the device in hand first and tinted, then every
-  // platform's files in the model's order (PX-28a; portal.license's Get it).
-  const mine = new Set(model.recommended.map((r) => r.artifact.artifactId));
-  // A license that is not active says so once, in the License card: its files get no row here.
-  const rows = [
-    ...model.recommended,
-    ...model.groups
-      .flatMap((g) => g.rows)
-      .filter((r) => !mine.has(r.artifact.artifactId)),
-  ].filter((r) => !r.inactive);
-  const withSources = model.groups.filter((g) => g.sources.length > 0);
-  // The phone's lead already offers its own stores: "Also yours on" never repeats them.
-  const leadIds = new Set(here?.stores.map((s) => s.id));
-  const stores = model.stores.filter((s) => !leadIds.has(s.id));
   // The head names the release the rows are (the covered one, when the newest is not covered).
   const shown = model.newerNotCovered
     ? { version: model.release.version, publishedAt: model.release.publishedAt }
     : latest;
-  if (
-    rows.length === 0 &&
-    withSources.length === 0 &&
-    stores.length === 0 &&
-    !here &&
-    !device.phone
-  )
-    return null;
   return (
     <SectionCard
       id="get"
