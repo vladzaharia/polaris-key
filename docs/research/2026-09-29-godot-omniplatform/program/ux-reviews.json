@@ -289,6 +289,16 @@
       "verdict": "pass",
       "date": "2026-10-20",
       "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/LK-16/recheck/ (BUILT review FAIL -> one fix round -> re-check FAIL on 1 small blocker (Compose showPoweredBy) -> lead fix list 01465b426 verified by the lead)"
+    },
+    "I-38a": {
+      "verdict": "pass",
+      "date": "2026-10-20",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/I-38a/recheck/ (BUILT re-check PASS-WITH-NOTES after one fix round; lead polish a19a95ba0)"
+    },
+    "PX-34": {
+      "verdict": "pass",
+      "date": "2026-10-20",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/PX-34/recheck/ (BUILT re-check PASS-WITH-NOTES after one fix round; lead polish 7c9a52ac4)"
     }
   }
 }
