@@ -63,9 +63,9 @@ export type SuppressionReason =
 
 export type EmailSender =
   /**
-   * Platform mail. `audience: "operator"` is mail to operators and members (alerts, invites,
-   * member notices): always sent as "Polaris Locker" (A3 §14.4). Customer mail (no audience) is
-   * sent as "Polaris Locker" only while `customer.host` is on.
+   * Platform mail. Customer mail is sent as "Polaris Locker" while `customer.host` is on (LK-07).
+   * `audience: "operator"` (alerts, invites, member notices: the console side) stays "Polaris
+   * Key" in either state.
    */
   | { kind: "platform"; audience?: "operator" }
   | {
@@ -293,10 +293,10 @@ export async function deliverEmail(
   const binding = env.EMAIL;
   if (!binding) return unavailable;
 
-  // The brand of the mail: Polaris Locker for operator and member mail always, for customer mail
-  // while `customer.host` is on (LK-07). Off: today's sender, byte for byte.
+  // The brand of customer mail: Polaris Locker while `customer.host` is on (LK-07). Off: today's
+  // sender, byte for byte. Operator and member mail stays Key.
   const operator = msg.sender.kind === "platform" && !!msg.sender.audience;
-  const locker = operator || (await customerHostMode(env, db)) !== "off";
+  const locker = !operator && (await customerHostMode(env, db)) !== "off";
   const from =
     msg.sender.kind === "platform"
       ? platformSender(env, locker)
@@ -308,7 +308,7 @@ export async function deliverEmail(
         );
   if (!from) return unavailable;
 
-  const body = locker && !operator && msg.locker ? msg.locker : msg;
+  const body = locker && msg.locker ? msg.locker : msg;
 
   // Whatever reached here, only a bare addr-spec is accepted (and is mailed trimmed) to the provider.
   if (strictEmail(msg.to) === null) return unavailable;

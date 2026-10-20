@@ -675,15 +675,14 @@ function alertMessage(env: Env, a: Alert, productName: string | null) {
   const where = productName ? `Product: ${productName}` : "Platform";
   return {
     subject,
-    text: `${title}\n\n${detail}\n\n${where}\n\nYou get this because this address is an alert destination in Polaris Locker.`,
+    text: `${title}\n\n${detail}\n\n${where}\n\nYou get this because this address is an alert destination in Polaris Key.`,
     html: renderEmail({
       subject,
       heading: title,
       paragraphs: [detail, where],
       footer:
-        "You get this because this address is an alert destination in Polaris Locker.",
+        "You get this because this address is an alert destination in Polaris Key.",
       origin: emailAssetOrigin(env.CONSOLE_ORIGIN),
-      brand: "locker",
     }),
   };
 }
@@ -978,7 +977,7 @@ export async function testDestination(
     product: scope === PLATFORM_SCOPE ? null : scope,
     title: "Test alert",
     detail:
-      "This is a test sent from the Polaris Locker console. Nothing needs doing.",
+      "This is a test sent from the Polaris Key admin. Nothing needs doing.",
   };
   const productName = scope === PLATFORM_SCOPE ? null : scope;
   const delivered = await deliverOne(

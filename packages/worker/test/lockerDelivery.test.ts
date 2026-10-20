@@ -83,7 +83,7 @@ describe("the bytes and registry landings", () => {
       expect(html).toContain("<title>Delivery · Polaris Locker</title>");
       expect(html).toContain('data-brand="locker"');
       expect(html).toContain('aria-label="Polaris Locker"');
-      expect(html).toContain('<p class="svc">');
+      expect(html).toContain('<div class="svc">');
       expect(html).toContain('class="sb"'); // the Star Cut, inside
       expect(html).not.toContain("Polaris Key");
       expect(html).toContain("data:image/svg+xml,");
@@ -168,7 +168,7 @@ describe("the download page", () => {
     expect(html).toContain('rel="icon"');
     expect(html).toContain(`<style>${PAGE_CSS_LOCKER}</style>`);
     expect(html).toContain('aria-label="Polaris Locker"');
-    expect(html).toContain('<p class="svc">');
+    expect(html).toContain('<div class="svc">');
     expect(html).not.toContain("Polaris Key");
     expect(html).not.toMatch(/<script/i);
   });

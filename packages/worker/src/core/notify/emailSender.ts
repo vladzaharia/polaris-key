@@ -33,8 +33,8 @@ export const PLATFORM_SENDER_NAME = "Polaris Key";
 /** The fixed suffix of every passthrough display name. */
 export const PASSTHROUGH_SENDER_SUFFIX = " via Polaris Key";
 /**
- * The display name once the brand is Polaris Locker (LK-07, D6; the address never changes).
- * Operator and member mail use it always (A3 §14.4); customer mail only while `customer.host` is on.
+ * The display name of customer mail once `customer.host` is on (LK-07, D6; the address never
+ * changes). Operator and member mail stays "Polaris Key".
  */
 export const LOCKER_SENDER_NAME = "Polaris Locker";
 /** The passthrough suffix while the brand is Polaris Locker. */
@@ -211,8 +211,8 @@ export function senderAddress(env: Env): string {
 }
 
 /**
- * The `From` of platform mail: "Polaris Key", never " via"; "Polaris Locker" when `locker` (mail
- * to operators and members always, customer mail while `customer.host` is on).
+ * The `From` of platform mail: "Polaris Key", never " via"; "Polaris Locker" when `locker`
+ * (customer mail while `customer.host` is on).
  */
 export function platformSender(env: Env, locker = false): EmailAddress {
   return {

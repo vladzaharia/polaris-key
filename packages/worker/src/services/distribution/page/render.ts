@@ -553,7 +553,7 @@ export function renderDownloadPage(
         ? `<section aria-labelledby="ways-title"><h2 id="ways-title">Other ways to get it</h2>${ways}</section>`
         : ""
     }${files}${keys}${about}</main>`,
-    `<footer><p>Verify a download's SHA-256 before you install it.</p><p class="delivery">${locker ? lockerLockup(40, "lockup") + serviceRow() : deliveryMark()}</p></footer>`,
+    `<footer><p>Verify a download's SHA-256 before you install it.</p>${locker ? `<p class="delivery">${lockerLockup(40, "lockup")}</p>${serviceRow()}` : `<p class="delivery">${deliveryMark()}</p>`}</footer>`,
     "</body></html>",
     "",
   ].join("\n");

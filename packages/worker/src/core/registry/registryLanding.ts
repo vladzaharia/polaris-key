@@ -120,6 +120,7 @@ export function renderRegistryLandingPage(env: Env, locker = false): string {
     `<body>`,
     `<main>`,
     `<h1>${lockups}</h1>`,
+    shell ? shell.service : "",
     environment
       ? `<p class="env">${escapeHtml(environment)} environment</p>`
       : "",

@@ -286,11 +286,14 @@ export function landingArt(): LandingArt {
 export function lockerLandingShell(environment: string | null): {
   title: string;
   heading: string;
+  /** The service row, after the heading: the Star Cut and "Delivery". */
+  service: string;
   faviconHref: string;
 } {
   return {
     title: `Delivery${environment ? ` (${environment})` : ""} · Polaris Locker`,
-    heading: lockerLockup(48, "lockup-full") + serviceRow(),
+    heading: lockerLockup(48, "lockup-locker"),
+    service: serviceRow(),
     faviconHref: lockerFaviconHref(),
   };
 }
@@ -332,6 +335,7 @@ export function renderLandingPage(env: Env, locker = false): string {
     `<body>`,
     `<main>`,
     `<h1>${lockups}</h1>`,
+    shell ? shell.service : "",
     environment
       ? `<p class="env">${escapeHtml(environment)} environment</p>`
       : "",

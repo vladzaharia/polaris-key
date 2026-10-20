@@ -1,6 +1,6 @@
-// LK-07 (plans/LK-00.md §7.11, A3 §14.2/§14.4): operator and member mail takes the Polaris Locker
-// sender and lockup ungated; customer mail takes them only while `customer.host` is on, and is
-// byte for byte today's output while it is off.
+// LK-07 (plans/LK-00.md §7.11, A3 §14.2): customer mail takes the Polaris Locker sender, copy and
+// lockup only while `customer.host` is on, and is byte for byte today's output while it is off.
+// Operator and member mail (the Polaris Key console side, owner direction 2026-10-19) stays Key.
 import { beforeEach, describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
@@ -70,22 +70,20 @@ const lockerMsg = {
 };
 
 describe("the sender name", () => {
-  it("operator mail is Polaris Locker with the switch off", async () => {
-    await deliverEmail(
-      env,
-      db,
-      {
-        to: "ops@example.com",
-        sender: { kind: "platform", audience: "operator" },
-        ...lockerMsg,
-      },
-      NOW,
-    );
-    expect(sent[0]!.from).toEqual({
-      name: "Polaris Locker",
-      email: "noreply@auth.plrs.im",
-    });
-    expect(sent[0]!.subject).toBe("Locker");
+  it("operator mail stays Polaris Key in either state", async () => {
+    const m: OutgoingEmail = {
+      to: "ops@example.com",
+      sender: { kind: "platform", audience: "operator" },
+      ...keyMsg,
+      locker: lockerMsg,
+    };
+    await deliverEmail(env, db, m, NOW);
+    await setMode("on");
+    await deliverEmail(env, db, m, NOW);
+    expect(sent.map((x) => [x.from.name, x.subject])).toEqual([
+      ["Polaris Key", "Key"],
+      ["Polaris Key", "Key"],
+    ]);
   });
 
   const customer = (): OutgoingEmail => ({
