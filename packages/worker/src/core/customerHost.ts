@@ -18,13 +18,12 @@
  */
 
 import type { Env } from "../platform/env.js";
-import type { Route } from "../router.js";
 import { methodNotAllowed } from "./errors.js";
 import { usableOrigin, type CustomerHostMode } from "./hosts.js";
 import { deployIdentity } from "./ops/deployIdentity.js";
 
 /** The route kinds the customer host serves: the root portal and the platform entry pages. */
-export const CUSTOMER_ROUTE_KINDS: ReadonlySet<Route["kind"]> = new Set([
+export const CUSTOMER_ROUTE_KINDS: ReadonlySet<string> = new Set([
   "portalSpa",
   "portalApi",
   "portalLogin",

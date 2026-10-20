@@ -393,7 +393,13 @@ async function routeProduct(
     // friendly card instead of a JSON 404. Core code, before dispatch, so no Identity code runs;
     // every non-navigation caller falls through to `dispatchService`'s `404 not_found`.
     if (route.slug === "identity") {
-      const redirect = identityNavigationRedirect(req, product, route.rest);
+      const redirect = await identityNavigationRedirect(
+        req,
+        env,
+        db,
+        product,
+        route.rest,
+      );
       if (redirect) return redirect;
     }
     return dispatchService(SERVICES, route.slug, product.services, {

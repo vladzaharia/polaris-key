@@ -2428,6 +2428,21 @@ polaris-key-deltas-<env>`).
   the consumer's logs for Error 1102 or "exceeded resource limits"; the consumer's reported CPU
   ms; the R2 event-to-consumer latency; and a re-PUT of the same object producing one delta.
 
+## Customer host (Polaris Locker)
+
+The customer site is a second host on this Worker, `CUSTOMER_ORIGIN`, moved to by the
+`customer.host` switch (`off` → `on` → `permanent`). It is off in every environment until the owner
+turns it on.
+
+**Move customers.** Check `https://<customer>/.well-known/polaris-host.json` answers
+`{host: "customer", environment, version}` with this environment. Set `customer.host` to `on` in
+Platform → Settings (typed confirmation). Customer links, discovery's `accountPortal` and the device
+code page move together. Watch sign-in, then `permanent` after the soak.
+
+**Roll back.** Set `customer.host` to `off`, or deploy `CUSTOMER_HOST = "off"` for a hard off no
+console value overrides. Links return to the console origin at once. Rolling the Worker back below
+LK-03 while the custom domain is attached leaves the host serving the console's routes.
+
 ## CI gates
 
 `.github/workflows/ci.yml` runs on PRs and `main` pushes. **`CI OK` is the one required check**

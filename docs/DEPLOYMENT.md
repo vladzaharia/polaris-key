@@ -651,6 +651,16 @@ curl -s -o /dev/null -w '%{http_code}\n' -X POST https://img.plrs.im/<slug>/icon
 # 405
 ```
 
+### Customer host (Polaris Locker)
+
+The Worker answers a fifth host, `CUSTOMER_ORIGIN` (`https://polaris.locker`; `staging.` and `dev.`
+elsewhere), confined to the customer routes (`src/core/customerHost.ts`). Both `CUSTOMER_ORIGIN`
+and `CUSTOMER_HOST` (the `customer.host` switch: `runtime`, or `off` for a hard off) are unset in
+`wrangler.toml` until the cutover (LK-11), so nothing changes. To use it: attach the custom domain,
+set `CUSTOMER_ORIGIN` and `CUSTOMER_HOST = "runtime"`, check
+`https://<customer>/.well-known/polaris-host.json`, then turn `customer.host` on in Platform →
+Settings (step-up). Roll back with `off`.
+
 ### Trusted publishing: the R2 parent token
 
 CI never uploads through the Worker. `POST /<p>/release/publish/uploads` hands a CI job R2

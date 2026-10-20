@@ -34,3 +34,16 @@ Exactly `plans/LK-00.md` §4, §7.1–7.5, §7.13. Anything else is another pack
 ## Hand-off
 
 The role agent sets `--set LK-03 in-review` when it hands off; the lead sets `done` after review.
+
+## Progress and continuation (2026-10-19, complete)
+
+Done (slice 1 and most of slice 2):
+
+- [x] `customer` host kind in `core/hosts.ts`; `customerOrigin()`; async `customerHostMode()` and `customerOriginOf()` in `core/licensing/manageUrl.ts` (no DB read while `CUSTOMER_ORIGIN` is unusable). `portalOriginOf`/`portalOriginFor` stay as the `off` wrappers.
+- [x] `customer.host` setting (`off`/`on`/`permanent`, ceiling, L2 `change`), `CUSTOMER_ORIGIN` in `DENIED_PLATFORM_NAMES`, Env members, `wrangler.toml` comment only (no `[vars]` until LK-11); `pnpm gen settings|platform-inventory|docs-reference` run.
+- [x] Call sites moved: `buildManageUrl`, `buildSignInUrl` (now async, takes `db`), `accountPortalUrl`, `licenseOwnedResponse`, key email, attach, licence-admin link, choice view links, legacy chooser, identity-off card redirect, maintenance mail origin, device start `verificationUri` (`<customer>/device` while on).
+- [x] Host confinement (`core/customerHost.ts`, `dispatch.ts`); `/.well-known/polaris-host.json` and `/robots.txt`; `/device` on the customer host redirects to the API host's product page (absolute, from `CONSOLE_ORIGIN`).
+- [x] Reserved slugs `signin`, `device`, `tv` were already shipped with A1/A2 (validator, schema, parity).
+- [x] Rule 10: spec path + `CUSTOMER_PATHS` in `routeCoverage`; tests `customerHost`, `customerOrigin`; THREAT-MODEL and DEPLOYMENT entries.
+
+Not done, by design (other packages): `authorize`'s 303 to `/signin` stays on the request origin (bind hop, LK-04; allow-listed in `customerOrigin.test.ts`); `/.well-known/webauthn` (LK-05); `/docs/help/*` and `/<slug>` on the customer host (D7, LK-12); old-URL redirects and cookie expiry (LK-11); `send.ts` asset origin stays on the console (images already sent). RUNBOOK and DEPLOYMENT text done. `/.well-known/webauthn` is left to LK-05 (it is the ROR work of §7.7).
