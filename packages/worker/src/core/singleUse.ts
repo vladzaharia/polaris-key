@@ -56,6 +56,8 @@ export type SingleUseKind =
   | "auth-code"
   /** A passthrough sign-in request handle (PX-W13, WIRE-CONTRACT-V4 §12.7.2), by its hash. */
   | "signin-request"
+  /** A cross-host bind token (LK-04, plans/LK-00.md §7.8), by its hash: the request handle and binder to hand to the customer host. */
+  | "signin-bind"
   /** An app passthrough authorization code (I-08, WIRE-CONTRACT-V4 §12.4), by its hash. */
   | "signin-code"
   /** A pending sign-in grant (I-08b, WIRE-CONTRACT-V4 §12.5.1), by the hash of the grant. */

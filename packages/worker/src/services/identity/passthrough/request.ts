@@ -36,6 +36,11 @@ import { hashKey } from "../../../platform/crypto.js";
 import { randomToken } from "../../../platform/random.js";
 import type { Env } from "../../../platform/env.js";
 import {
+  REQUEST_BINDER_COOKIE,
+  binderCookie as binderCookieOf,
+  issueBindToken,
+} from "../../../core/signInBind.js";
+import {
   artefactRef,
   consumeArtefact,
   getArtefact,
@@ -43,8 +48,7 @@ import {
   type ArtefactRef,
 } from "../../../core/singleUse.js";
 
-/** The binder cookie (§12.7.2). `__Host-` pins it to this origin, `Path=/` and `Secure`. */
-export const REQUEST_BINDER_COOKIE = "__Host-pk_req";
+export { REQUEST_BINDER_COOKIE };
 
 const HANDLE_RE = new RegExp(REQUEST_HANDLE_PATTERN);
 
@@ -113,7 +117,7 @@ export function readBinder(req: Request): string | null {
 
 /** The `Set-Cookie` value that hands a browser its binder. */
 export function binderCookie(binder: string): string {
-  return `${REQUEST_BINDER_COOKIE}=${binder}; Path=/; Max-Age=${REQUEST_HANDLE_TTL_SECONDS}; HttpOnly; Secure; SameSite=Lax`;
+  return binderCookieOf(binder, REQUEST_HANDLE_TTL_SECONDS);
 }
 
 /**
@@ -131,10 +135,19 @@ export async function createSignInRequest(
     origin?: string | null;
     flowRef: string;
     authz?: AuthzRecord;
+    /**
+     * The card is on another host (LK-04): no cookie is set here. A fresh binder is bound to the
+     * request and travels in a single-use bind token to the customer host.
+     */
+    crossHost?: boolean;
   },
   now: number,
-): Promise<{ handle: string; setCookie: string | null }> {
-  const existing = readBinder(req);
+): Promise<{
+  handle: string;
+  setCookie: string | null;
+  bindToken: string | null;
+}> {
+  const existing = init.crossHost ? null : readBinder(req);
   const binder = existing ?? randomToken(32);
   const handle = `rq_${randomToken(16)}`;
   const record: SignInRequestRecord = {
@@ -154,7 +167,17 @@ export async function createSignInRequest(
     JSON.stringify(record),
     REQUEST_HANDLE_TTL_SECONDS,
   );
-  return { handle, setCookie: existing ? null : binderCookie(binder) };
+  if (init.crossHost)
+    return {
+      handle,
+      setCookie: null,
+      bindToken: await issueBindToken(env, handle, binder),
+    };
+  return {
+    handle,
+    setCookie: existing ? null : binderCookie(binder),
+    bindToken: null,
+  };
 }
 
 /**

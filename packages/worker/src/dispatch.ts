@@ -58,7 +58,11 @@ import { handleAssetsPush } from "./core/assets/hostedAssetUploads.js";
 // HA-06: a CI push into a listing-model slot also writes Distribution's listing row; Core takes
 // the writer from here rather than importing the service.
 import { listingSlotMirror } from "./services/distribution/api.js";
-import { handleSignInEntry } from "./core/signInEntry.js";
+import {
+  handleSignInBind,
+  handleSignInEntry,
+  isBindHop,
+} from "./core/signInEntry.js";
 import { handleDeviceEntry } from "./core/deviceEntry.js";
 import { dispatchBytesHost, isBytesHost } from "./core/assets/bytesHost.js";
 import {
@@ -254,7 +258,9 @@ async function routeRequest(
       return handleDocs(req, env, now);
     // The platform device-code entry pages: no product, no session, no database.
     case "signInEntry":
-      return handleSignInEntry(req);
+      return onCustomerHost && isBindHop(req)
+        ? handleSignInBind(req, env)
+        : handleSignInEntry(req);
     case "deviceEntry":
       return handleDeviceEntry(
         req,

@@ -44,6 +44,8 @@ import { strictEmail } from "../../../core/strictEmail.js";
 import { cardPage } from "../card/http.js";
 import { appForPage, codeRefusalPage } from "../../../core/brandPage.js";
 import type { ServiceHooks } from "../../../core/hooks.js";
+import { customerHostMode } from "../../../core/licensing/manageUrl.js";
+import { customerOrigin } from "../../../core/hosts.js";
 import { cloudSyncOn } from "./client.js";
 import { createSignInRequest, type AuthzRecord } from "./request.js";
 import { redirectPathsOf, validateRedirectUri } from "./redirectUri.js";
@@ -239,7 +241,13 @@ export async function handleAuthorize(ctx: {
     nameHint: normalizeDeviceLabel(nameHint),
   };
 
-  let created: { handle: string; setCookie: string | null };
+  // The card lives on the customer host while `customer.host` is on (LK-04): the binder cannot
+  // be set from here, so the redirect goes through the bind hop.
+  const mode = await customerHostMode(env, db);
+  const apiOrigin = new URL(req.url).origin;
+  const customer = mode === "off" ? null : customerOrigin(env, mode, req);
+  const crossHost = customer !== null && customer !== apiOrigin;
+  let created: Awaited<ReturnType<typeof createSignInRequest>>;
   try {
     created = await createSignInRequest(
       env,
@@ -250,6 +258,7 @@ export async function handleAuthorize(ctx: {
         origin: new URL(verdict.uri).origin,
         flowRef: "authorize",
         authz,
+        crossHost,
       },
       now,
     );
@@ -258,7 +267,9 @@ export async function handleAuthorize(ctx: {
   }
   const res = redirect(
     303,
-    `${new URL(req.url).origin}/signin?request=${created.handle}`,
+    crossHost && created.bindToken
+      ? `${customer}/signin?request=${created.handle}&bind=${created.bindToken}`
+      : `${apiOrigin}/signin?request=${created.handle}`,
   );
   if (created.setCookie) res.headers.append("set-cookie", created.setCookie);
   return res;
