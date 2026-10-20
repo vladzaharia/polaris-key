@@ -17681,7 +17681,7 @@
       "optional": false,
       "refs": ["plans/LK-00.md §6"],
       "brief": "wp/LK-08b-locker-copy-native.md",
-      "status": "todo",
+      "status": "in-review",
       "deferred": "customer.host is on in prod"
     },
     {
