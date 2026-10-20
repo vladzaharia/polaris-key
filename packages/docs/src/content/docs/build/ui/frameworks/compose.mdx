@@ -55,6 +55,10 @@ fun MyGate(client: PolarisKeyClient) {
 }
 ```
 
+## Powered by Polaris Locker
+
+`PolarisTheme(showPoweredBy = true)` opts in; `poweredByStyle` is `PolarisPoweredByStyle.Line` (the Locker micro mark, 16 dp and growing with the text, and the phrase) by default. The kit's account pane draws it as its last item; never the gate or a message screen. Place `PolarisPoweredBy` on your about or credits screen: with `PolarisPoweredByStyle.Badge` it draws the 320 × 104 dp badge where 320 dp are free, else the line.
+
 ## Baselines
 
 The kit's Roborazzi baselines, matched to the [component catalog](/docs/build/ui/components/):

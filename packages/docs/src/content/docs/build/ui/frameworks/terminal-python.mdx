@@ -238,6 +238,10 @@ same:
   with one header and the URL and code whole, so nothing is left wider than the terminal or drawn
   twice; Ctrl+C and Esc replace the screen with one result block;
 
+## Powered by Polaris Locker
+
+`Theme(powered_by=True)` (or `"line"`; `"badge"` also prints the line, a terminal has no badge) adds the Locker glyph and "Powered by Polaris Locker" under `status` when licensed or in grace, never on a needs-activation or revoked screen. The Qt kit draws the micro mark and the phrase after the buttons; with `"badge"` it draws the 320 × 104 badge on About where 320 px are free.
+
 ## Localization
 
 The kit reads the generated table in `polaris_key.ui.kit_copy_generated` in the launch locales,
