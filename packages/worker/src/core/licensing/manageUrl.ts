@@ -35,12 +35,7 @@ import {
 } from "@polaris-key/protocol/license";
 import type { Db } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
-import {
-  customerOrigin,
-  customerHostname,
-  type CustomerHostMode,
-} from "../hosts.js";
-import { platformSetting } from "../settings/platformRead.js";
+import { consoleOrigin, customerOrigin } from "../hosts.js";
 import {
   normalizeArchHeader,
   normalizePlatformHeader,
@@ -121,36 +116,21 @@ export function portalOriginOf(env: Env, req: Request): string | null {
  * configured origin, else `fallback` (an absolute URL or origin the Worker was reached on).
  */
 export function portalOriginFor(env: Env, fallback: string): string | null {
-  return customerOrigin(env, "off", fallback);
+  return consoleOrigin(env, fallback);
 }
 
 /**
- * The `customer.host` mode (LK-03): `off` without a read while there is no usable customer host,
- * so a deployment that never sets `CUSTOMER_ORIGIN` costs nothing and every URL is what it was.
- */
-export async function customerHostMode(
-  env: Env,
-  db: Db,
-): Promise<CustomerHostMode> {
-  if (customerHostname(env) === null) return "off";
-  try {
-    return await platformSetting(env, db, "customer.host");
-  } catch {
-    return "off";
-  }
-}
-
-/**
- * The one source for every customer-facing URL: {@link customerOrigin} with the switch read. The
- * origin of `customerOrigin()` while `customer.host` is on, else the portal origin of old
+ * The one source for every customer-facing URL: {@link customerOrigin}. The customer origin
+ * while `CUSTOMER_ORIGIN` is usable (LK-17: no switch), else the portal origin of old
  * ({@link portalOriginOf}). `fallback` is the request, or an absolute URL the Worker was reached on.
+ * `db` is unused; the signature stays so the call sites do not move.
  */
 export async function customerOriginOf(
   env: Env,
-  db: Db,
+  _db: Db,
   fallback: Request | string,
 ): Promise<string | null> {
-  return customerOrigin(env, await customerHostMode(env, db), fallback);
+  return customerOrigin(env, fallback);
 }
 
 /**

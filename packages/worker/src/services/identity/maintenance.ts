@@ -33,7 +33,7 @@ import { sweepAccountDeletions } from "./accounts/lifecycle.js";
 import { customerOriginOf } from "../../core/licensing/manageUrl.js";
 import type { Db } from "../../db/types.js";
 
-/** The origin account mail links to: the customer site while `customer.host` is on. */
+/** The origin account mail links to: the customer site while `CUSTOMER_ORIGIN` is usable. */
 const originOf = async (env: Env, db: Db): Promise<string> =>
   (await customerOriginOf(env, db, env.CONSOLE_ORIGIN ?? "")) ?? "";
 
