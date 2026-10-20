@@ -119,11 +119,6 @@ export interface OpenOptions {
    * portal offers a visitor on one (the focused download's Email me the download, PX-29).
    */
   userAgent?: string;
-  /**
-   * `locker`: the shell as the Worker serves it while `customer.host` is on (LK-06), i.e.
-   * `data-brand="locker"` on `<html>` before the first script runs. Default: today's Key look.
-   */
-  brand?: "locker";
 }
 
 export interface PortalHarness {
@@ -190,19 +185,6 @@ export async function startPortal(): Promise<PortalHarness> {
         ),
       );
     }, theme);
-    if (opts.brand === "locker")
-      await ctx.addInitScript(() => {
-        // An init script runs before the document element exists.
-        const set = (): boolean => {
-          if (!document.documentElement) return false;
-          document.documentElement.setAttribute("data-brand", "locker");
-          return true;
-        };
-        if (!set())
-          new MutationObserver((_, o) => {
-            if (set()) o.disconnect();
-          }).observe(document, { childList: true });
-      });
     const routes: Record<string, Override> = {
       // Account → Packages (F-33): an account with no private feed, token or per-app token has no
       // such section, so every other Account state renders as it did.

@@ -1,5 +1,4 @@
 import * as React from "react";
-import { brandName, portalBrand } from "../brand.js";
 import { Compass, KeyRound, Library, TriangleAlert } from "lucide-react";
 import { Button } from "../../ui/Button.js";
 import { TOAST_BOTTOM_INSET_VAR } from "../../ui/toast.js";
@@ -82,7 +81,7 @@ export function PortalShell({
         <div className="mx-auto flex h-14 w-full max-w-[82rem] items-center gap-4 px-4 desk:h-16 desk:gap-6 desk:px-8 mid:gap-8">
           <a
             href={href.library()}
-            aria-label={`${brandName()}: your library`}
+            aria-label="Polaris Locker: your library"
             className="flex shrink-0 items-center rounded-md"
           >
             <Lockup height={44} className="hidden mid:block" />
@@ -170,11 +169,7 @@ export function PortalShell({
       </main>
       <footer className="border-t border-border pb-24 desk:pb-0">
         <div className="mx-auto flex w-full max-w-[82rem] flex-wrap items-center justify-between gap-2 px-4 py-6 text-sm text-fg-muted desk:px-8">
-          <span>
-            {portalBrand() === "locker"
-              ? "Polaris Locker"
-              : "Polaris Key · key.plrs.im"}
-          </span>
+          <span>Polaris Locker</span>
         </div>
       </footer>
       <nav
@@ -282,7 +277,7 @@ function NavLink({
       className={cn(
         "relative inline-flex items-center gap-2.5 px-1 text-md",
         active
-          ? "font-medium text-fg-strong after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:rounded-full after:bg-[var(--pk-locker-accent,var(--pk-accent))] in-data-[brand=locker]:after:h-[3px]"
+          ? "font-medium text-fg-strong after:absolute after:inset-x-0 after:-bottom-px after:rounded-full after:h-[3px] after:bg-[var(--pk-locker-accent)]"
           : "text-fg-muted hover:text-fg-strong",
       )}
     >

@@ -60,7 +60,7 @@ describe("portal shell and data layer (PX-01)", () => {
         .getAttribute("href"),
     ).toBe("#content");
     expect(screen.getByRole("contentinfo").textContent).toContain(
-      "Polaris Key · key.plrs.im",
+      "Polaris Locker",
     );
     const nav = screen.getByRole("navigation", { name: "Main" });
     const library = nav.querySelector("a[aria-current=page]");
@@ -77,7 +77,7 @@ describe("portal shell and data layer (PX-01)", () => {
     expect(
       screen.getByRole("button", { name: `Account: ${ACCOUNT.name}` }),
     ).toBeTruthy();
-    expect(document.title).toBe("Library · Polaris Key");
+    expect(document.title).toBe("Library · Polaris Locker");
     // Never "Polaris Key Portal".
     expect(document.body.textContent).not.toMatch(/portal/i);
   });
@@ -90,7 +90,7 @@ describe("portal shell and data layer (PX-01)", () => {
       await screen.findByRole("heading", { level: 1, name: "Account" }),
     ).toBeTruthy();
     expect(window.location.hash).toBe("#/account");
-    expect(document.title).toBe("Account · Polaris Key");
+    expect(document.title).toBe("Account · Polaris Locker");
   });
 
   it("opens the Activate license modal from the header", async () => {

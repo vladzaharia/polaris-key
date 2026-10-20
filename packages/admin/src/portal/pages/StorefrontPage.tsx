@@ -1,4 +1,3 @@
-import { brandName } from "../brand.js";
 import * as React from "react";
 import {
   AlertCircle,
@@ -260,7 +259,7 @@ function StorefrontBody({
         <Compass aria-hidden className="mt-0.5 size-4 shrink-0" />
         {product.cta === "add"
           ? "Adding it is free and puts it in your library."
-          : `${product.developerName ?? "Its developer"} shows it to everyone with a ${brandName()} account.${
+          : `${product.developerName ?? "Its developer"} shows it to everyone with a Polaris Locker account.${
               product.stores.length
                 ? " Get it from a store above."
                 : siteOf(product)

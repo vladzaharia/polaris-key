@@ -1,4 +1,3 @@
-import { brandName } from "../brand.js";
 import * as React from "react";
 import { LogOut, Trash2 } from "lucide-react";
 import {
@@ -469,7 +468,7 @@ function YourData({ account }: { account: PortalAccount }): React.ReactElement {
                 tabIndex={-1}
                 className="font-medium text-fg-strong outline-none"
               >
-                Schedule your {brandName()} account for deletion?
+                Schedule your Polaris Locker account for deletion?
               </h3>
               <ul className="list-disc space-y-1 pl-5 text-sm text-fg">
                 <li>

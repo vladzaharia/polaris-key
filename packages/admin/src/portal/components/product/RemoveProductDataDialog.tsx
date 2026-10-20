@@ -1,5 +1,4 @@
 import * as React from "react";
-import { brandName } from "../../brand.js";
 import { Checkbox } from "../../../ui/Checkbox.js";
 import { ConfirmDialog } from "../../../ui/ConfirmDialog.js";
 import { toast } from "../../../ui/toast.js";
@@ -98,7 +97,7 @@ export function RemoveProductDataDialog({
       onOpenChange={onOpenChange}
       intent="danger"
       title={`Remove your data from ${name}?`}
-      description={`This only affects ${name}. Your ${brandName()} account and your other apps stay as they are.`}
+      description={`This only affects ${name}. Your Polaris Locker account and your other apps stay as they are.`}
       consequences={removeConsequences({
         name,
         developer: product.presentation.developer,

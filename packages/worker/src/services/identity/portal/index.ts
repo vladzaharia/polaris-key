@@ -40,8 +40,6 @@ import { handlePortalMedia } from "./media.js";
 import { hostedImageOrigin } from "../../../core/assets/hostedImages.js";
 import { serveAvatar } from "../card/avatars.js";
 import { handleProviderSignInPath } from "../providers/flow.js";
-import { customerHostMode } from "../../../core/licensing/manageUrl.js";
-import { lockerShell } from "./lockerShell.js";
 
 /**
  * The portal's shell (and its assets) may load images from exactly one more origin: the image host
@@ -60,7 +58,7 @@ async function portalSecurityOptions(
 async function portalShell(env: Env, db: Db): Promise<Response> {
   const options = await portalSecurityOptions(env, db);
   return new Response(
-    `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Polaris Key</title></head><body><div id="root"></div><script type="module" src="/assets/portal.js"></script></body></html>`,
+    `<!doctype html><html lang="en" data-brand="locker"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Polaris Locker</title></head><body><div id="root"></div><script type="module" src="/assets/portal.js"></script></body></html>`,
     {
       status: 200,
       headers: {
@@ -100,14 +98,6 @@ async function servePortalAsset(
   const headers = new Headers(res.headers);
   if (isShell) headers.set("cache-control", "no-store");
   portalSecurityHeaders(headers, await portalSecurityOptions(env, db));
-  // Brand and host move together (LK-00 D1): while `customer.host` is on, the shell is Polaris
-  // Locker. Off, the bytes are the build's, untouched.
-  if (isShell && res.ok && (await customerHostMode(env, db)) !== "off") {
-    return new Response(lockerShell(await res.text()), {
-      status: res.status,
-      headers,
-    });
-  }
   return new Response(res.body, { status: res.status, headers });
 }
 

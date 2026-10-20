@@ -1,5 +1,4 @@
 import * as React from "react";
-import { brandName } from "../../brand.js";
 import { useQueryClient } from "@tanstack/react-query";
 import { LogOut, Monitor, Smartphone } from "lucide-react";
 import { Button } from "../../../ui/Button.js";
@@ -205,11 +204,11 @@ function Everywhere({ others }: { others: number }): React.ReactElement {
           <ul className="list-disc space-y-1 pl-5 text-sm text-fg">
             <li>
               {others > 0
-                ? `This browser and ${others === 1 ? "1 other" : `${others} others`} sign out of ${brandName()}.`
-                : `This browser signs out of ${brandName()}.`}
+                ? `This browser and ${others === 1 ? "1 other" : `${others} others`} sign out of Polaris Locker.`
+                : `This browser signs out of Polaris Locker.`}
             </li>
             <li>
-              Apps you signed in to with {brandName()} sign out too. A device
+              Apps you signed in to with Polaris Locker sign out too. A device
               that got its license by signing in gives up its seat.
             </li>
             <li>Your licenses stay in your library.</li>

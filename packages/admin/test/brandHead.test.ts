@@ -67,7 +67,7 @@ describe("the brand head snippet", () => {
     for (const icon of manifest.icons) expect(emitted).toContain(icon.src);
   });
 
-  it.each(["index.html", "manage.html"])(
+  it.each(["manage.html"])(
     "%s links the favicon, touch icon and manifest, all emitted",
     (file) => {
       const html = readFileSync(join(pkg, file), "utf8");
@@ -114,5 +114,24 @@ describe("the Locker web identity (LK-06)", () => {
       readFileSync(join(brandWebLocker, "site.webmanifest"), "utf8"),
     ) as { icons: { src: string }[] };
     for (const icon of manifest.icons) expect(files).toContain(icon.src);
+  });
+
+  it("index.html (the customer site) is Polaris Locker: brand, title and the Locker links, all emitted", () => {
+    const html = readFileSync(join(pkg, "index.html"), "utf8");
+    expect(html).toContain('<html lang="en" data-brand="locker">');
+    expect(html).toContain("<title>Polaris Locker</title>");
+    expect(html).not.toContain("/assets/branding/key/");
+    const links = [
+      ...html.matchAll(/href="\/assets\/branding\/locker\/([^"]+)"/g),
+    ].map((m) => m[1]!);
+    expect(links).toEqual(
+      expect.arrayContaining([
+        "favicon.svg",
+        "favicon.ico",
+        "apple-touch-icon.png",
+        "site.webmanifest",
+      ]),
+    );
+    for (const name of links) expect(files).toContain(name);
   });
 });

@@ -59,11 +59,11 @@ export function SectionNav({
                 }}
                 className={cn(
                   variant === "toc"
-                    ? "-ml-px block border-l-2 py-2 pl-4 text-sm"
+                    ? "-ml-px block border-l-[3px] py-2 pl-4 text-sm"
                     : "inline-flex h-9 items-center whitespace-nowrap rounded-full border px-4 text-sm",
                   variant === "toc"
                     ? on
-                      ? "border-[var(--pk-locker-accent,var(--pk-accent))] font-medium text-fg-strong in-data-[brand=locker]:border-l-[3px]"
+                      ? "border-[var(--pk-locker-accent)] font-medium text-fg-strong"
                       : "border-transparent text-fg-muted hover:text-fg-strong"
                     : on
                       ? "border-fg-strong bg-fg-strong font-medium text-surface-page"

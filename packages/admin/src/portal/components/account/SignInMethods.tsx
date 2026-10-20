@@ -1,5 +1,4 @@
 import * as React from "react";
-import { brandName } from "../../brand.js";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Fingerprint,
@@ -193,7 +192,7 @@ function callbackNotice(
   if (error === "link_conflict")
     return {
       tone: "danger",
-      text: `That ${name} account is connected to another ${brandName()} account, so it wasn't added here. Connect a different one, or sign in to that account to use it.`,
+      text: `That ${name} account is connected to another Polaris Locker account, so it wasn't added here. Connect a different one, or sign in to that account to use it.`,
     };
   if (error === "step_up_required")
     return {
@@ -603,7 +602,7 @@ function passkeyMeta(p: PortalPasskey): string {
 function flagText(m: PortalMethod): string | null {
   switch (m.flag) {
     case "consent_revoked":
-      return `You stopped using ${m.label} with ${brandName()}. Connect it again to sign in with it.`;
+      return `You stopped using ${m.label} with Polaris Locker. Connect it again to sign in with it.`;
     case "account_deleted":
       return `That ${m.label} account was deleted.`;
     case "email_disabled":
@@ -631,7 +630,7 @@ function changeErrorText(err: unknown, name?: string): string {
     if (err.code === "link_conflict")
       return err.message && err.message !== `portal api ${err.status}`
         ? err.message
-        : `Another ${brandName()} account uses this. Use a different one.`;
+        : `Another Polaris Locker account uses this. Use a different one.`;
     if (err.code === "auth_method_disabled" || err.status === 404)
       return `${name ?? "This"} isn't available here right now.`;
     if (err.status === 503)
@@ -1111,7 +1110,7 @@ function AddPasskey({
       const response = await createPasskey(options);
       await portalApi.addPasskey(response);
       toast.success("Passkey added", {
-        description: `Use it to sign in to ${brandName()} on this device.`,
+        description: `Use it to sign in to Polaris Locker on this device.`,
       });
       announce("Passkey added");
       refreshAfterMethodChange(qc);

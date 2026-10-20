@@ -5,7 +5,6 @@ import {
   devicesText,
   expiresInText,
 } from "../../lib/vocab/license.js";
-import { brandName } from "../brand.js";
 import { platformInSentence } from "../../lib/vocab/platforms.js";
 import {
   isEntryItem,
@@ -312,7 +311,7 @@ const STORE_NAMES: Record<string, string> = {
   steam: "Steam",
   "microsoft-store": "Microsoft Store",
   itch: "itch.io",
-  "polaris-key": brandName(),
+  "polaris-key": "Polaris Locker",
 };
 
 /** What a licence's origin is read from: the summary, its keys' known last characters (G7),

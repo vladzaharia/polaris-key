@@ -1,5 +1,4 @@
 import * as React from "react";
-import { brandName } from "../../brand.js";
 import { Info } from "lucide-react";
 import { Skeleton } from "../../../ui/Skeleton.js";
 import type { PortalLicenseDetail } from "../../api.js";
@@ -238,7 +237,7 @@ function LicenseFacts({
             <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
             {key.last4
               ? "Only the last 4 characters are kept, so a key can’t be shown in full."
-              : `${brandName()} keeps only a fingerprint of your key, so it can’t be shown again. Keep the copy from your email or store.`}
+              : `Polaris Locker keeps only a fingerprint of your key, so it can’t be shown again. Keep the copy from your email or store.`}
           </p>
         </div>
       ) : null}
