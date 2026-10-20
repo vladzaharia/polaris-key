@@ -7229,8 +7229,8 @@ choice view's links, the identity-off card redirect, the licence-key and account
 
 - _A host-header or request-supplied origin._ Customer links come from configuration
   (`CUSTOMER_ORIGIN`, else `CONSOLE_ORIGIN`); the request's origin is only the last fallback it
-  always was. The customer host's redirect to a product's device page (`/device` after a code
-  hit) uses `CONSOLE_ORIGIN`, never a request value: a fixed map with no request-supplied host.
+  always was. No redirect the customer host or the bind hops make takes a host, path or target
+  from the request: each `Location` is built from configuration or from a value this Worker stored.
 - _The health check._ `polaris-host.json` holds `{host: "customer"}` and nothing else: no
   environment, no version. CORS names the console origin only and allows no credentials, so
   another site cannot read it from a browser.
@@ -7242,10 +7242,57 @@ choice view's links, the identity-off card redirect, the licence-key and account
 - _A rollback._ `permanent` is the 301 phase of the old-URL redirects (LK-11); a cached 301
   outlives a rollback, which is why `on` (302) comes first.
 
-Still to come, each in its own package with its own entry here: the cross-host bind hop (LK-04),
-Related Origin Requests for passkeys (LK-05), the old-URL redirects and cookie expiry (LK-11).
+Still to come, each in its own package with its own entry here: Related Origin Requests for
+passkeys (LK-05), the old-URL redirects and cookie expiry (LK-11). The bind hops are below.
 Tests: `test/customerHost.test.ts`, `test/customerOrigin.test.ts`, `test/routeCoverage.test.ts`
 (`CUSTOMER_PATHS`).
+
+### The cross-host bind hops (LK-04)
+
+**What it is.** The sign-in card and the device page live on the customer host, but `authorize`
+(and the IdP's callback for a device flow) stay on the API host, and `__Host-` cookies are
+host-only. So a request is bound to its browser through a single-use **bind token** instead of a
+cookie set from the wrong host (plans/LK-00.md §7.8; WIRE-CONTRACT-V4 §12.9). Two hops use it:
+
+- _Request hop._ `authorize` (switch on) stores the request under a handle bound to a fresh binder
+  and 303s to `<customer>/signin?request=rq_…&bind=<token>`, setting no cookie. The customer host
+  redeems the token and sets `__Host-pk_req` itself, then 303s to `/signin?request=rq_…`.
+- _Device hop._ A device confirmation made on the customer host cannot set the flow's binder where
+  the IdP calls back. It 303s to `<api>/<p>/identity/auth/device/continue?bind=<token>`, which sets
+  the binder on the API host and 303s to the IdP address stored with the token.
+
+The token is 32 random bytes, stored (kind `signin-bind`) under its peppered hash for 120 seconds
+and consumed in one atomic step. Its payload names the kind of hop and the binder.
+
+**What an attacker gets.**
+
+- _Replay._ A token works once: the second visit is the plain `404` and sets nothing. A token for
+  the wrong kind of hop, or for another handle than the one in the URL, is refused and still spent
+  (fail closed). `HEAD` does not redeem, so a link scanner's `HEAD` leaves it usable. A scanner's
+  `GET` does spend it; the person then gets the `404` and restarts sign-in from the app.
+- _Fixation._ Whoever opens a bind URL binds their browser to that request: a bind URL is worth
+  what the `authorize` URL is worth (R1-07). The attacker who starts a request and hands the URL
+  to a victim only gets the victim signed in to the attacker's request, which the card then shows
+  ("&lt;App&gt; wants you to sign in") and the victim must press Continue on with their own
+  session. The token expires in 120 s, and the URL holds no `state`, challenge or redirect URI.
+- _Cross-host CSRF._ The token is a bearer credential in a URL; the only state it changes is
+  setting a binder cookie for a request the holder already controls. It does nothing without the
+  same browser's later session and CSRF header on Continue. The device hop's cookie only lets
+  that browser finish a flow it is already confirming.
+- _Open redirect._ Nothing in either query chooses a target. The request hop's `Location` is
+  `/signin?request=` plus the handle read from the store. The device hop's target is the IdP
+  authorization URL this Worker built and stored at device start; a request-supplied `to` is
+  ignored (`test/customerDevicePage.test.ts`).
+- _Token in logs and Referer._ Both hop responses set `Referrer-Policy: no-referrer` and
+  `Cache-Control: no-store`, and the token is dead after the first request.
+- _CSP._ The device page's `form-action` allows the API host and the IdP, because the browser
+  checks every redirect of a form POST against it.
+
+Residual risk: a token read from a log or history within its 120 seconds and used before the owner
+does binds the attacker's browser instead of the owner's. The attacker still needs the owner's
+session to finish a sign-in, and the owner's second visit shows the `404`.
+
+Tests: `test/signInBind.test.ts`, `test/customerDevicePage.test.ts`, the `locker-*` transcripts.
 
 ### The console loads product logos from the image host (console product card)
 

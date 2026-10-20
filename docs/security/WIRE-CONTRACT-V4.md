@@ -825,7 +825,7 @@ document, claim, header or error code changes, and `PROTOCOL_VERSION` stays 4.
 | `key_entry_limit` | `POST /<p>/license/activate`, `POST /<p>/identity/session/license` (§12.2)                     | `<portal>/activate?product=<slug>`                                                  |
 
 1. **Shape.** `manageUrl` is an absolute `https` URL of at most `MANAGE_URL_MAX_LENGTH` (2048)
-   characters on the portal origin: `CONSOLE_ORIGIN`, else the request's own origin. The body keeps
+   characters on the customer origin: `CUSTOMER_ORIGIN` while `customer.host` is on, else `CONSOLE_ORIGIN`, else the request's own origin (§12.9). The body keeps
    `limit` and `deviceCount` beside it. An attached licence is one with an account; the licence
    named is the device's anchor licence.
 2. **Presence.** The Worker emits it only while the product's customer portal is on, and omits it
@@ -1340,7 +1340,7 @@ a new device and point the person at an account instead (PORTAL §4.6).
    3. When `identity.keyEntryRefusals` is on and the licence is usable and in an account
       (`licenses.account_id IS NOT NULL`): the flat
       `403 {"error":"license_owned","message":…,"signInUrl":…}`. `signInUrl` is the product's
-      login card, `<origin>/signin?product=<slug>` (the console origin, else the Worker's own),
+      login card, `<origin>/signin?product=<slug>` (`<origin>` is the customer origin: `CUSTOMER_ORIGIN` while `customer.host` is on, else `CONSOLE_ORIGIN`, else the request's own origin),
       present whatever the product's portal settings say: the card is platform-level. It never
       carries the key and names nothing about the account. Nothing is written but the refusal log
       (reason `license_owned`). The device reaches the licence by signing in to the account that
@@ -1477,9 +1477,12 @@ on (§12.8).
    RFC 9207): `invalid_request`, `invalid_scope`, `access_denied` (Cancel) or `server_error`.
    `state` is echoed only when it was sent.
 3. **Success** stores the validated request under an opaque handle (§12.7.2) bound to this
-   browser by the `__Host-pk_req` cookie, and answers `303 <origin>/signin?request=rq_…`. Neither
-   the app's `state`, its challenge nor its redirect URI is in that URL. 60 calls a minute per
-   client network.
+   browser by the `__Host-pk_req` cookie, and answers `303 <origin>/signin?request=rq_…`, where
+   `<origin>` is the customer origin: `CUSTOMER_ORIGIN` while `customer.host` is on, else `CONSOLE_ORIGIN`, else the request's own origin. When that is not the API host's own origin, the cookie
+   cannot be set here (it is host-only), so the request is bound to a fresh binder instead and the
+   `303` goes through the bind hop (§12.9): `<origin>/signin?request=rq_…&bind=<token>`, with no
+   `Set-Cookie`. Neither the app's `state`, its challenge nor its redirect URI is in either URL.
+   60 calls a minute per client network.
 4. **Continue** is `POST /api/signin/requests/<handle>/continue` (same-origin portal JSON) with
    the account session, the portal CSRF header and the binder cookie of the browser that started
    the request: this is the callback binding of R1-07 for the web redirect. The body is
@@ -1638,8 +1641,9 @@ sign-in endpoints:
   key entry enforces it with (§12.2 rule 5). Discovery is cached for 300 seconds, so it can lag;
   the refusal carries the live value.
 - the endpoints `attach`, `subject` and `signout`, and `accountPortal` (`<origin>/#/p/<slug>`,
-  the product's page in the customer portal, for `openAccount()`), present while the product's
-  portal is on.
+  the product's page in the customer portal, for `openAccount()`; `<origin>` is the customer origin: `CUSTOMER_ORIGIN` while `customer.host` is on, else `CONSOLE_ORIGIN`, else the request's own origin), present
+  while the product's portal is on. Only this value changes host: the issuer, `authorize`, `token`
+  and every other endpoint stay on the API host.
 
 A client uses an account feature only when its endpoint is present and never builds one; a
 client that predates them ignores them. With Identity off the fragment stays `{"enabled":false}`
@@ -1739,7 +1743,7 @@ expiresAt}` to the binding browser, with `cache-control: no-store`. An unknown, 
    lists `text/html` with a non-zero quality — to `/<p>/identity/<entry>`, where `<entry>` is one
    of `authorize`, `auth/start`, `auth/device` or `auth/device/verify`
    (`IDENTITY_NAVIGATION_ENTRIES`), answers
-   `303 Location: <origin>/signin?product=<slug>&error=identity_disabled` with
+   `303 Location: <origin>/signin?product=<slug>&error=identity_disabled` (`<origin>` is the customer origin: `CUSTOMER_ORIGIN` while `customer.host` is on, else `CONSOLE_ORIGIN`, else the request's own origin) with
    `Cache-Control: no-store`. A `*/*` or JSON `Accept` is never a navigation. The redirect runs
    in Core before dispatch, so no Identity code runs. `token` is a JSON route and answers the
    registry's `404`.
@@ -1753,6 +1757,45 @@ expiresAt}` to the binding browser, with `cache-control: no-store`. An unknown, 
 This discloses nothing new: discovery already publishes `identity: {enabled:false}` for every
 existing product, and an unknown slug keeps its 404. The transcript `identity-disabled.json`
 pins rules 1 and 5 for the SDKs; the Worker suite (`test/identityPerProduct.test.ts`) pins 2 to 4.
+
+### 12.9 The customer host
+
+While `customer.host` is on (the platform setting, which also needs `CUSTOMER_ORIGIN` to be a usable
+https origin that is not the console's), a second host serves the people-facing pages. Nothing
+signed changes: `PROTOCOL_VERSION` 4, the issuer `key.plrs.im` and every signed document are
+unchanged, and a client reads every value below as any https URL.
+
+1. **Unsigned values that name the host.** `manageUrl` and `signInUrl` (§5.3, §12.2),
+   `accountPortal` (§12.6), `verificationUri` and `verificationUriComplete` (device start),
+   `freeDeviceUrl` and `getLicense.activateUrl`, and the `Location` of `authorize` (§12.4 rule 3)
+   and of §12.8 rule 3. With the switch off they are what they were.
+2. **Routes.** It serves `/`, `/activate`, `/signin`, `/device`, `/tv`, `/login[/…]`, `/callback`,
+   `/logout`, `/magic/verify`, `/api/*`, `/media/*`, `/download/<token>`, `/assets/*`, its own
+   `/.well-known/polaris-host.json` and `/robots.txt`. Everything else, the product routes and
+   `/manage` included, is the plain `404`. The issuer, `authorize`, `token`, discovery and every
+   signed document stay on the API host.
+3. **The bind hop.** `authorize` cannot set the request's `__Host-pk_req` cookie on another host.
+   It binds the request to a fresh binder and a single-use **bind token** (32 random bytes,
+   stored by its peppered hash, 120 seconds) and answers
+   `303 <customer>/signin?request=rq_…&bind=<token>` with no `Set-Cookie`. `GET /signin?request=&bind=`
+   on the customer host redeems the token once, sets `__Host-pk_req` itself and answers
+   `303 /signin?request=rq_…` with `Cache-Control: no-store` and `Referrer-Policy: no-referrer`. The
+   `Location` is built from the stored handle; nothing in the query is echoed. An unknown, used,
+   expired, malformed or mismatched token is the plain `404`; `HEAD` does not redeem. A bind URL is
+   worth what the `authorize` URL is worth: whoever opens it binds their browser to that request.
+4. **The device page.** `/device` and `/tv` look a code up across products and serve the product's
+   own device page on the customer host (the confirmation, its single-use CSRF token and the
+   sign-in request's binder live there); its forms `POST` back to `/device`. A `GET` of
+   `/<p>/identity/auth/device` on the API host answers `303` to `<customer>/device[?user_code=]`.
+   The IdP calls back on the API host, so a confirmation made on the customer host answers `303`
+   to `<api>/<p>/identity/auth/device/continue?bind=<token>`: the same kind of token, redeemed once,
+   sets the flow's binder on the API host and answers `303` to the IdP address stored with it.
+5. **No session crosses hosts.** Cookies are host-only on both hosts; a person signs in on the one
+   they use.
+
+The transcripts `locker-refusal-links.json`, `locker-discovery-identity.json`,
+`locker-devicecode.json` and `locker-redirect-web.json` pin rules 1 and 3 for the SDKs; the Worker
+suite (`test/signInBind.test.ts`, `test/customerDevicePage.test.ts`) pins the rest.
 
 ## 13. Cloud Sync (HTTP, additive)
 
