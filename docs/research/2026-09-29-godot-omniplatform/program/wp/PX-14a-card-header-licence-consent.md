@@ -107,7 +107,7 @@ Corrections (the code is the fact):
 - **The passport pane (>= 960 px landscape) is not built**; neither are native return variants and
   toggles (PX-14b). See the report's follow-ups.
 - New catalog keys (nine locales): `signin.choice.{pickOne,pickDevice,replaceAndSignIn,replaceSafety,
-  replacedTitle,replacedBody}`, `signin.request.{goneTitle,gone}`, `signin.header.onDevice`,
+replacedTitle,replacedBody}`, `signin.request.{goneTitle,gone}`, `signin.header.onDevice`,
   `signin.thisBrowser`, `signin.consent.{deny,cloudSync,newLicense}`,
   `signin.key.{upgradeTitle,upgradeLede,createAccount,signInInstead,noEntriesTitle,noEntriesKeeps,meter,keyWorks}`.
 
