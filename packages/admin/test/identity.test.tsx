@@ -237,7 +237,7 @@ describe("Identity → Portal", () => {
   it("titles the page Portal, matching its sidebar item (IDN-5)", async () => {
     renderPortal();
     expect(
-      await screen.findByRole("heading", { level: 1, name: "Locker" }),
+      await screen.findByRole("heading", { level: 1, name: "Locker settings" }),
     ).toBeTruthy();
   });
 
@@ -264,7 +264,7 @@ describe("Identity → Portal", () => {
       expect(checked(toggle("OIDC access"))).toBe(false);
       expect(checked(toggle("License-key claim"))).toBe(false);
     });
-    expect(checked(toggle("Polaris Locker"))).toBe(true);
+    expect(checked(toggle("Show on Polaris Locker"))).toBe(true);
     expect(checked(toggle("Email magic links"))).toBe(true);
     expect(checked(toggle("Release downloads"))).toBe(true);
   });
@@ -325,7 +325,7 @@ describe("Identity → Portal", () => {
     renderPortal();
     await waitFor(() => {
       expect(checked(toggle("OIDC access"))).toBe(false);
-      expect(checked(toggle("Polaris Locker"))).toBe(true);
+      expect(checked(toggle("Show on Polaris Locker"))).toBe(true);
     });
     expect(portalSettings).toHaveBeenCalledWith("djdl");
   });
@@ -477,7 +477,9 @@ describe("Identity → Portal", () => {
       settings: { ...PORTAL, portalEnabled: false },
     });
     renderPortal();
-    await waitFor(() => expect(checked(toggle("Polaris Locker"))).toBe(false));
+    await waitFor(() =>
+      expect(checked(toggle("Show on Polaris Locker"))).toBe(false),
+    );
 
     for (const name of [
       "OIDC access",
@@ -500,7 +502,7 @@ describe("Identity → Portal", () => {
     ).toBe(4);
 
     // Turning the portal on in the draft unlocks them.
-    await userEvent.click(toggle("Polaris Locker"));
+    await userEvent.click(toggle("Show on Polaris Locker"));
     expect(toggle("OIDC access").hasAttribute("disabled")).toBe(false);
     expect(toggle("Release downloads").hasAttribute("disabled")).toBe(false);
   });
@@ -550,7 +552,7 @@ describe("Identity → Portal", () => {
     const alert = await screen.findByRole("alert");
     await userEvent.click(within(alert).getByRole("button", { name: "Retry" }));
     expect(
-      await screen.findByRole("switch", { name: "Polaris Locker" }),
+      await screen.findByRole("switch", { name: "Show on Polaris Locker" }),
     ).toBeTruthy();
   });
 

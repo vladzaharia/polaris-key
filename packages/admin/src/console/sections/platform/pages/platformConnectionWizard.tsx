@@ -99,6 +99,10 @@ export function AddConnectionPage(): React.ReactElement {
   const index = STEP_IDS.indexOf(step);
   const go = (s: StepId): void => setStep(s);
   const discovered = discovery?.issuer === draft.issuer.trim();
+  const clientAddresses = registerAt(
+    discovery?.value.redirectUri ?? `${window.location.origin}/callback`,
+    me.data?.customerOrigin ?? null,
+  );
   const clientOk = /^[\x21-\x7e]{1,200}$/.test(draft.clientId.trim());
   const name = draft.label.trim() || hostOf(draft.issuer);
 
@@ -419,14 +423,12 @@ export function AddConnectionPage(): React.ReactElement {
                 title="Redirect URI"
                 copyLabel="Copy redirect URI"
                 inline
-                addresses={registerAt(
-                  discovery?.value.redirectUri ??
-                    `${window.location.origin}/callback`,
-                  me.data?.customerOrigin ?? null,
-                )}
+                addresses={clientAddresses}
               />
               <p className="text-xs text-fg-muted">
-                Register each at the provider as an allowed redirect.
+                {clientAddresses.length > 1
+                  ? "Register both at the provider as allowed redirects."
+                  : "Register it at the provider as an allowed redirect."}
               </p>
             </div>
             <FormField

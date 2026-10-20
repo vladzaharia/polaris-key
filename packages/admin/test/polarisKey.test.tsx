@@ -136,6 +136,7 @@ const STATUS: PolarisKeyStatusResponse = {
   active: ["group", "auto_issue"],
   everyone: false,
   identityEligible: true,
+  directDownload: true,
   licenseEnabled: true,
   groups: [
     { group: "aperture-beta", tier: "beta", label: "Aperture Seven" },
@@ -146,7 +147,7 @@ const STATUS: PolarisKeyStatusResponse = {
     {
       id: "portal",
       state: "pass",
-      reason: "The portal is on for this product",
+      reason: "Polaris Locker is on for this product",
     },
     {
       id: "listing",

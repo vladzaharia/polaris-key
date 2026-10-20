@@ -218,11 +218,12 @@ describe("ranking", () => {
     ).toEqual([
       // Core → Settings, then License → Settings (LX-06), in section order. The licence page is
       // "Licensing" in the palette and still found by its sidebar label.
-      ["Pages", ["Core · DJDL", "License · DJDL"]],
+      ["Pages", ["Core · DJDL", "Identity · DJDL", "License · DJDL"]],
       ["Platform", ["Platform"]],
     ]);
     expect(groups[0]!.items.map((i) => i.label)).toEqual([
       "Settings",
+      "Locker settings",
       "Licensing",
     ]);
   });

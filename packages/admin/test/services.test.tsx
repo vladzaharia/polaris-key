@@ -437,11 +437,11 @@ describe("Services feature groups", () => {
   it("loads Customer portal settings and retries the failed requested state", async () => {
     const user = userEvent.setup();
     updatePortalSettings.mockRejectedValueOnce(
-      new Error("Customer portal write failed"),
+      new Error("Locker write failed"),
     );
     mount();
     const customerPortal = await screen.findByRole("switch", {
-      name: /Customer portal/i,
+      name: /Show on Polaris Locker/i,
     });
     await waitFor(() => expect(portalSettings).toHaveBeenCalledWith("djdl"));
     expect(customerPortal.getAttribute("aria-describedby")).toBeNull();

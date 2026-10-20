@@ -1935,6 +1935,8 @@ export interface PolarisKeyStatusResponse {
   everyone: boolean;
   identityEligible: boolean;
   licenseEnabled: boolean;
+  /** A published release has a file Get it can hand over. */
+  directDownload?: boolean;
   groups: { group: string; tier: string | null; label: string | null }[];
   autoIssue: {
     tier: string;

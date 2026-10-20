@@ -41,7 +41,8 @@ export function BrandBlock({
         aria-hidden
         className="hidden whitespace-nowrap text-base font-semibold tracking-tight sm:inline"
       >
-        Polaris Key Console
+        Polaris Key
+        <span className="hidden lg:inline"> Console</span>
       </span>
     </Link>
   );

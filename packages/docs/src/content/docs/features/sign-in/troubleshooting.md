@@ -117,6 +117,6 @@ Entries are ordered by how often they happen. Every code is in the [error codes]
 
 **Cause** The requested method is off: the portal's sign-in method for the product, or email codes for an enforced single sign-on domain.
 
-**Fix** Turn the method on under **Identity → Locker**, or sign in through the organization's connection.
+**Fix** Turn the method on under **Identity → Locker settings**, or sign in through the organization's connection.
 
 **Check it works** The method works on the login card.

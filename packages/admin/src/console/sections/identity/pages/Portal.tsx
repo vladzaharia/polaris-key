@@ -123,7 +123,7 @@ export function PortalPage({ slug }: { slug: string }): React.ReactElement {
 
   const header = (
     <PageHeader
-      title="Locker"
+      title="Locker settings"
       titleAside={
         settings.data ? (
           // `modifiedAt` 0: no row was ever written, so these are the defaults.
@@ -260,7 +260,12 @@ function PortalForm({
     <SettingsTemplate header={header} sections={[]}>
       <Form form={form} aria-label="Locker settings" className="space-y-6">
         <SettingsSection id="portal-access" title="Availability">
-          {toggle("portalEnabled", "Polaris Locker", null, false)}
+          {toggle(
+            "portalEnabled",
+            "Show on Polaris Locker",
+            "Customers manage their licenses and devices there.",
+            false,
+          )}
         </SettingsSection>
 
         <SettingsSection
@@ -352,7 +357,7 @@ function PortalForm({
         <SaveBar
           form={form}
           saveLabel="Save Locker settings"
-          section="Locker"
+          section="Locker settings"
         />
       </Form>
 

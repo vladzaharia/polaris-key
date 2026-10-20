@@ -22,33 +22,42 @@ const on = (p: ProductDetail | undefined, slug: string): boolean =>
   (p?.services as Record<string, { enabled: boolean }> | undefined)?.[slug]
     ?.enabled === true;
 
-export function offeredBadges(
-  status: PolarisKeyStatusResponse,
-  product: ProductDetail | undefined,
-): OfferedBadge[] {
-  const listed =
+/**
+ * Is the product visible on Polaris Locker now: the storefront and the product's page are on, and
+ * the listing is not "Not listed" (automatic counts once its listing check passes).
+ */
+export function visibleOnLocker(status: PolarisKeyStatusResponse): boolean {
+  return (
     status.enabled &&
     status.portalEnabled &&
     (status.listing.listed === "listed" ||
       (status.listing.listed === "auto" &&
-        status.readiness.find((c) => c.id === "listing")?.state === "pass"));
+        status.readiness.find((c) => c.id === "listing")?.state === "pass"))
+  );
+}
+
+/**
+ * Locker has no purchase flow yet (Commerce sells through the App Store, Play, Steam and itch),
+ * so "Buy on" and "Purchase with" are never offered.
+ */
+export function offeredBadges(
+  status: PolarisKeyStatusResponse,
+  product: ProductDetail | undefined,
+): OfferedBadge[] {
   const out: OfferedBadge[] = [];
   const add = (label: string, because: string): void => {
     out.push({ kind: `locker-${label}` as LockerBadgeKind, because });
   };
-  if (listed) {
+  if (visibleOnLocker(status)) {
     add("open-in", "Listed on Polaris Locker");
     add("available-on", "Listed on Polaris Locker");
   }
   if (on(product, "identity")) add("sign-in-with", "Sign-in is on");
-  if (on(product, "distribution")) add("download-from", "Downloads are on");
-  if (on(product, "commerce")) {
-    add("buy-on", "Purchases are on");
-    add("purchase-with", "Purchases are on");
-  }
+  if (status.directDownload === true)
+    add("download-from", "A release can be downloaded");
   if (on(product, "update")) add("update-with", "Updates are on");
   if (on(product, "sync")) add("sync-with", "Sync is on");
-  add("powered-by", "Always");
+  add("powered-by", "");
   return out;
 }
 

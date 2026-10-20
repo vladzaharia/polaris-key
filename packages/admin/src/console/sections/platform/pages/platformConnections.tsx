@@ -69,7 +69,7 @@ const SETUP: Record<
     env: "SIGNIN_GOOGLE_CLIENT_ID, SIGNIN_GOOGLE_CLIENT_SECRET",
     steps: [
       "In Google Cloud, create an OAuth client of type Web application.",
-      "Add the redirect URI below as an authorized redirect.",
+      "Add every redirect URI below as an authorized redirect.",
       `Set SIGNIN_GOOGLE_CLIENT_ID. Seal the secret with ${SEAL} google, then set SIGNIN_GOOGLE_CLIENT_SECRET to the output.`,
     ],
   },
@@ -77,7 +77,7 @@ const SETUP: Record<
     env: "SIGNIN_APPLE_SERVICES_ID, SIGNIN_APPLE_TEAM_ID, SIGNIN_APPLE_KEY_ID, SIGNIN_APPLE_PRIVATE_KEY",
     steps: [
       "In your Apple Developer account, create a Services ID and a Sign in with Apple key.",
-      "Add the redirect URI below to the Services ID.",
+      "Add every redirect URI below to the Services ID.",
       `Set the Services ID, Team ID and Key ID. Seal the .p8 with ${SEAL} apple, then set SIGNIN_APPLE_PRIVATE_KEY to the output.`,
     ],
   },
@@ -85,7 +85,7 @@ const SETUP: Record<
     env: "SIGNIN_STEAM_WEB_API_KEY",
     steps: [
       "Request a Steam Web API key for your domain.",
-      "Steam takes no redirect URI. It checks the realm below against the domain you gave.",
+      "Steam takes no redirect URI. It checks the realm below against the domain you gave: one domain per API key, so give Polaris Locker's.",
       `Seal the key with ${SEAL} steam, then set SIGNIN_STEAM_WEB_API_KEY to the output.`,
     ],
   },
@@ -262,7 +262,28 @@ export function ConnectionsPage(): React.ReactElement {
                         </StatusPill>
                       )}
                     </div>
-                    {b.configured ? null : (
+                    {b.configured ? (
+                      <details className="text-sm text-fg">
+                        <summary className="inline-flex min-h-6 cursor-pointer items-center text-accent-fg">
+                          Addresses to register
+                        </summary>
+                        <div className="mt-2">
+                          <RegisterAddresses
+                            title={
+                              b.registration.kind === "realm"
+                                ? "Realm"
+                                : "Redirect URI"
+                            }
+                            copyLabel={
+                              b.registration.kind === "realm"
+                                ? "Copy realm"
+                                : "Copy redirect URI"
+                            }
+                            addresses={b.registrations ?? [b.registration]}
+                          />
+                        </div>
+                      </details>
+                    ) : (
                       <details className="text-sm text-fg">
                         <summary className="inline-flex min-h-6 cursor-pointer items-center text-accent-fg">
                           Set up {b.label}

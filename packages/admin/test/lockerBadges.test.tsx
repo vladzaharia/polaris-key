@@ -44,6 +44,7 @@ afterEach(() => {
 
 const kinds = (s: PolarisKeyStatusResponse, services: object) =>
   offeredBadges(s, { services } as never).map((b) => b.kind.slice(7));
+const withDownload = { ...STATUS, directDownload: true };
 
 describe("offeredBadges", () => {
   it("offers powered-by alone for a bare, unlisted product", () => {
@@ -55,7 +56,7 @@ describe("offeredBadges", () => {
   });
   it("adds a label per backing service, and open-in/available-on once listed", () => {
     expect(
-      kinds(STATUS, {
+      kinds(withDownload, {
         identity: { enabled: true },
         distribution: { enabled: true },
         commerce: { enabled: true },
@@ -67,8 +68,6 @@ describe("offeredBadges", () => {
       "available-on",
       "sign-in-with",
       "download-from",
-      "buy-on",
-      "purchase-with",
       "update-with",
       "sync-with",
       "powered-by",
@@ -76,6 +75,17 @@ describe("offeredBadges", () => {
     expect(kinds(STATUS, { sync: { enabled: false } })).not.toContain(
       "sync-with",
     );
+  });
+  it("never offers Buy on or Purchase with, and Download from needs a real download", () => {
+    const all = {
+      identity: { enabled: true },
+      commerce: { enabled: true },
+      distribution: { enabled: true },
+    };
+    expect(kinds(STATUS, all)).not.toContain("download-from");
+    expect(kinds(withDownload, all)).toContain("download-from");
+    for (const k of ["buy-on", "purchase-with"])
+      expect(kinds(withDownload, all)).not.toContain(k);
   });
   it("links to the product on the customer site only when there is one", () => {
     expect(lockerUrl(null, "djdl")).toBeNull();
@@ -108,10 +118,24 @@ describe("the Polaris Locker page", () => {
     expect(
       within(section).getAllByRole("button", { name: /^Copy HTML/ }).length,
     ).toBe(svgs.length);
-    const link = screen.getByRole("link", { name: /Open on Polaris Locker/ });
+    const link = screen.getByRole("link", { name: /Open in Polaris Locker/ });
     expect(link.getAttribute("href")).toBe(
       "https://polaris.locker/#/discover/djdl",
     );
+  });
+  it("hides the Open link when the product is not listed", async () => {
+    bootWith(PAGE, {
+      "/manage/api/me": { ...ME, customerOrigin: "https://polaris.locker" },
+      ...routes,
+      [P("/storefronts/polaris-key")]: {
+        ...STATUS,
+        listing: { ...STATUS.listing, listed: "unlisted" },
+      },
+    });
+    await screen.findByRole("heading", { name: "Get a badge" });
+    expect(
+      screen.queryByRole("link", { name: /Open in Polaris Locker/ }),
+    ).toBeNull();
   });
   it("copies only the SVG, and has no Open link, without a customer site", async () => {
     bootWith(PAGE, { "/manage/api/me": ME, ...routes }, { services: ALL_ON });
@@ -122,7 +146,7 @@ describe("the Polaris Locker page", () => {
       within(section).queryAllByRole("button", { name: /^Copy HTML/ }),
     ).toEqual([]);
     expect(
-      screen.queryByRole("link", { name: /Open on Polaris Locker/ }),
+      screen.queryByRole("link", { name: /Open in Polaris Locker/ }),
     ).toBeNull();
   });
 });

@@ -33,7 +33,7 @@ export function ReadinessList({
     if (c.id === "portal")
       return (
         <Button size="sm" variant="outline" asChild>
-          <Link to={r.portal(slug)}>Open Locker</Link>
+          <Link to={r.portal(slug)}>Open Locker settings</Link>
         </Button>
       );
     if (c.id === "listing")

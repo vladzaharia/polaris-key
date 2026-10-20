@@ -60,7 +60,8 @@ import {
   SettingsTemplate,
 } from "../../../templates/Settings.js";
 import { useMe } from "../../../data/hooks.js";
-import { lockerUrl } from "../model/badges.js";
+import { lockerUrl, visibleOnLocker } from "../model/badges.js";
+import { ALL_KINDS, nextOfferPaths } from "../model/offerPaths.js";
 import { LockerBadges } from "./LockerBadges.js";
 import { ReadinessList } from "./PolarisKeyReadiness.js";
 import { usePolarisKey, usePolarisKeyAnalytics } from "../data.js";
@@ -81,22 +82,15 @@ import {
 /** The store id this page serves (the adapter's, PS-01). */
 export const POLARIS_KEY = "polaris-key";
 
-const ALL_KINDS: readonly ObtainPathKind[] = [
-  "group",
-  "auto_issue",
-  "open",
-  "store_owned",
-  "product_idp",
-  "email_domain",
-];
-
 export function PolarisKeyPanel({
   slug,
 }: {
   slug: string;
 }): React.ReactElement {
   const q = usePolarisKey(slug);
-  const lockerPage = lockerUrl(useMe().data?.customerOrigin, slug);
+  const origin = useMe().data?.customerOrigin;
+  const lockerPage =
+    q.data && visibleOnLocker(q.data) ? lockerUrl(origin, slug) : null;
   const header = (
     <PageHeader
       eyebrow={
@@ -120,7 +114,7 @@ export function PolarisKeyPanel({
           {lockerPage ? (
             <Button variant="outline" asChild>
               <a href={lockerPage} target="_blank" rel="noreferrer">
-                Open on Polaris Locker
+                Open in Polaris Locker
                 <ExternalLink aria-hidden />
               </a>
             </Button>
@@ -175,19 +169,6 @@ async function save(
   body: UpdatePortalSettingsBody,
 ): Promise<void> {
   await mutate("updatePortalSettings", slug, body);
-}
-
-/** The ways to add, as the stored list: `null` again once every kind is on. */
-function nextOfferPaths(
-  current: readonly ObtainPathKind[] | null,
-  path: ObtainPathKind,
-  on: boolean,
-): ObtainPathKind[] | null {
-  const set = new Set(current ?? ALL_KINDS);
-  if (on) set.add(path);
-  else set.delete(path);
-  const next = ALL_KINDS.filter((k) => set.has(k));
-  return next.length === ALL_KINDS.length ? null : next;
 }
 
 function PendingDialog({

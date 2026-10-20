@@ -131,7 +131,7 @@ describe("All settings → Edit in", () => {
     ],
     [
       "identity.keyEntry.claimByKey",
-      "Identity → Locker",
+      "Identity → Locker settings",
       "License keys",
       "#/p/djdl/identity/portal",
     ],

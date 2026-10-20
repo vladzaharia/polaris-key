@@ -44,7 +44,7 @@ export const LISTED_CHOICES: readonly ChoiceCopy<PolarisKeyListed>[] = [
     value: "unlisted",
     label: "Not listed",
     description:
-      "Shown to no one in the portal. Sign-in, auto-issue and every licence keep working.",
+      "Shown to no one in Polaris Locker. Sign-in, auto-issue and every licence keep working.",
   },
 ];
 

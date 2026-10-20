@@ -1,14 +1,19 @@
 /**
  * "Get a badge" on the product's Polaris Locker page (LK-10): the labels the product backs, drawn
- * by @polaris-key/brand at 320 CSS px or wider, each with copy-SVG and copy-HTML. The HTML links
- * to the product's page on Polaris Locker; with no customer site there is no address to link, so
+ * by @polaris-key/brand at 320 CSS px or wider, each with Copy SVG and Copy HTML. The HTML links
+ * to the product's page on Polaris Locker; with no customer origin there is no address to link, so
  * only the SVG copies.
+ *
+ * One column until two 344 px previews fit (a container query), and the card chrome drops below
+ * that so a 320 px badge fits a 360 px screen. A preview never scrolls sideways unless the column
+ * is narrower than the art, and then it is a labelled, focusable region.
  */
 
 import * as React from "react";
 import { badgeSvg, type LockerBadgeOptions } from "@polaris-key/brand/svg";
 import type { PolarisKeyStatusResponse } from "../../../../api.js";
 import { CopyButton } from "../../../../ui/CopyButton.js";
+import { Select } from "../../../../ui/Select.js";
 import { SettingsSection } from "../../../templates/Settings.js";
 import { useMe, useProduct } from "../../../data/hooks.js";
 import { badgeHtml, lockerUrl, offeredBadges } from "../model/badges.js";
@@ -16,11 +21,26 @@ import { badgeHtml, lockerUrl, offeredBadges } from "../model/badges.js";
 type Theme = NonNullable<LockerBadgeOptions["theme"]>;
 type Treatment = NonNullable<LockerBadgeOptions["treatment"]>;
 
-const THEMES: readonly Theme[] = ["dark", "light", "white"];
-const TREATMENTS: readonly Treatment[] = ["sticker", "outline", "transparent"];
-const cap = (s: string): string => s[0]!.toUpperCase() + s.slice(1);
+const COLOURS: { value: Theme; label: string }[] = [
+  { value: "dark", label: "Dark" },
+  { value: "light", label: "Light" },
+  { value: "white", label: "White" },
+];
+const STYLES: { value: Treatment; label: string }[] = [
+  { value: "sticker", label: "Sticker" },
+  { value: "outline", label: "Outline" },
+  { value: "transparent", label: "Transparent" },
+];
 
-function Choice<T extends string>({
+/** The ground each colour is made for: white ink goes on dark. */
+const groundOf = (t: Theme): string => (t === "light" ? "#f4f6fb" : "#0b0f1a");
+
+const labelOf = (slug: string): string => {
+  const w = slug.replace(/-/g, " ");
+  return w[0]!.toUpperCase() + w.slice(1);
+};
+
+function Picker<T extends string>({
   label,
   value,
   options,
@@ -28,26 +48,21 @@ function Choice<T extends string>({
 }: {
   label: string;
   value: T;
-  options: readonly T[];
+  options: { value: T; label: string }[];
   onChange: (v: T) => void;
 }): React.ReactElement {
   const id = React.useId();
   return (
-    <label className="flex items-center gap-2 text-sm text-fg">
-      <span id={id}>{label}</span>
-      <select
-        aria-labelledby={id}
+    <div className="flex items-center gap-2 text-sm text-fg">
+      <label htmlFor={id}>{label}</label>
+      <Select
+        id={id}
+        className="w-36"
         value={value}
-        onChange={(e) => onChange(e.target.value as T)}
-        className="min-h-9 rounded-md border border-border bg-surface-raised px-2 text-sm"
-      >
-        {options.map((o) => (
-          <option key={o} value={o}>
-            {cap(o)}
-          </option>
-        ))}
-      </select>
-    </label>
+        options={options}
+        onChange={(v) => v && onChange(v as T)}
+      />
+    </div>
   );
 }
 
@@ -66,67 +81,70 @@ export function LockerBadges({
   const offered = offeredBadges(status, product);
   return (
     <SettingsSection id="pk-badges" title="Get a badge">
-      <p className="mb-4 text-sm text-fg-muted">
-        Only what this product does is offered. Each badge links to its page on
-        Polaris Locker.
-      </p>
-      <div className="mb-4 flex flex-wrap gap-4">
-        <Choice
-          label="Ground"
-          value={theme}
-          options={THEMES}
-          onChange={setTheme}
-        />
-        <Choice
-          label="Style"
-          value={treatment}
-          options={TREATMENTS}
-          onChange={setTreatment}
-        />
-      </div>
-      <ul className="grid gap-4 md:grid-cols-2">
-        {offered.map((b) => {
-          const svg = badgeSvg({ kind: b.kind, treatment, theme });
-          const name = `${b.kind.slice(7).replace(/-/g, " ")}`;
-          return (
-            <li
-              key={b.kind}
-              className="space-y-2 rounded-lg border border-border p-3"
-            >
-              <div
-                className="overflow-x-auto rounded-md p-3"
-                style={{
-                  background: theme === "dark" ? "#0b0f1a" : "#f4f6fb",
-                }}
-                // The kit's own paths: no script, no style, no external reference.
-                dangerouslySetInnerHTML={{ __html: svg }}
-              />
-              <p className="text-xs text-fg-muted">{b.because}</p>
-              <div className="flex flex-wrap items-center gap-3">
-                <CopyButton
-                  showLabel
-                  text="Copy SVG"
-                  label={`Copy SVG, ${name}`}
-                  value={svg}
+      <div className="@container min-w-0 px-5 py-4">
+        <p className="mb-4 text-sm text-fg-muted">
+          Only what this product does is offered.{" "}
+          {url
+            ? "Each badge links to its page on Polaris Locker."
+            : "There is no Polaris Locker address to link yet, so only the art copies."}
+        </p>
+        <div className="mb-4 flex flex-wrap gap-4">
+          <Picker
+            label="Colour"
+            value={theme}
+            options={COLOURS}
+            onChange={setTheme}
+          />
+          <Picker
+            label="Style"
+            value={treatment}
+            options={STYLES}
+            onChange={setTreatment}
+          />
+        </div>
+        <ul className="grid min-w-0 gap-6 @[720px]:grid-cols-2 @[720px]:gap-4">
+          {offered.map((b) => {
+            const svg = badgeSvg({ kind: b.kind, treatment, theme });
+            const name = `${labelOf(b.kind.slice(7))} Polaris Locker`;
+            return (
+              <li
+                key={b.kind}
+                className="min-w-0 space-y-2 @[720px]:rounded-lg @[720px]:border @[720px]:border-border @[720px]:p-3"
+              >
+                <div
+                  role="region"
+                  aria-label={`${name} preview`}
+                  // Scrolls only when the column is narrower than the 320 px art.
+                  tabIndex={0}
+                  className="overflow-x-auto rounded-md"
+                  style={{ background: groundOf(theme) }}
+                  // The kit's own paths: no script, no style, no external reference.
+                  dangerouslySetInnerHTML={{ __html: svg }}
                 />
-                {url ? (
+                {b.because ? (
+                  <p className="text-xs text-fg-muted">{b.because}</p>
+                ) : null}
+                <div className="flex flex-wrap items-center gap-3">
                   <CopyButton
                     showLabel
-                    text="Copy HTML"
-                    label={`Copy HTML, ${name}`}
-                    value={badgeHtml(svg, url, `${cap(name)} Polaris Locker`)}
+                    text="Copy SVG"
+                    label={`Copy SVG: ${name}`}
+                    value={svg}
                   />
-                ) : null}
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-      {url ? null : (
-        <p className="mt-3 text-xs text-fg-muted">
-          There is no customer site yet, so only the SVG copies.
-        </p>
-      )}
+                  {url ? (
+                    <CopyButton
+                      showLabel
+                      text="Copy HTML"
+                      label={`Copy HTML: ${name}`}
+                      value={badgeHtml(svg, url, name)}
+                    />
+                  ) : null}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
     </SettingsSection>
   );
 }

@@ -788,7 +788,7 @@ function IdentityTile({ slug }: { slug: string }): React.ReactElement {
     <TileFrame
       service="identity"
       href={r.portal(slug)}
-      linkLabel="Locker"
+      linkLabel="Locker settings"
       loading={portal.isPending}
       error={portal.isError ? portal.error : undefined}
       onRetry={() => void portal.refetch()}

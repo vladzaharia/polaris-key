@@ -476,6 +476,7 @@ const ROUTES: Record<string, unknown> = {
     active: ["group", "auto_issue"],
     everyone: false,
     identityEligible: true,
+    directDownload: true,
     licenseEnabled: true,
     groups: [{ group: "beta", tier: "beta", label: "Aperture Seven" }],
     autoIssue: { tier: "free", tierLabel: "Free", expiryDays: null },
@@ -483,7 +484,7 @@ const ROUTES: Record<string, unknown> = {
       {
         id: "portal",
         state: "pass",
-        reason: "The portal is on for this product",
+        reason: "Polaris Locker is on for this product",
       },
       {
         id: "listing",
