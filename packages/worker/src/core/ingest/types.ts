@@ -74,6 +74,8 @@ export interface CreateRequest {
   choices?: CreateChoices;
   /** The console session's subject: the author of the console-owned default rows. */
   author?: string;
+  /** The signing key's kid. Absent: `<slug>-<year>`. */
+  kid?: string;
 }
 
 /**

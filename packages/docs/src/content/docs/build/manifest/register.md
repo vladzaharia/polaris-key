@@ -36,11 +36,11 @@ A product that keeps its manifest in its own repo is registered by linking that 
 
 3. **CLI** Commit `.pkey/` and push it to the default branch. The console reads the default branch only.
 
-4. **Console** Open **Products → New product**, set **Start from** to **A GitHub repository**, enter the repository as `owner/repo`, and select **Link repository**.
+4. **Console** Open **Products → New product**, choose **A GitHub repository**, enter the repository as `owner/repo`, select **Read**, then check what Polaris Key found and select **Create**.
 
-   You should see the product's **Overview** with "Tidewater Studio is ready", its signing key id and a button that copies the public key.
+   You should see the product's **Integration** with "Tidewater Studio is ready" and its signing key.
 
-5. **Console** Open **Core → Keys & secrets** and set any secret the manifest names but has no value yet. **Overview** lists them under **remaining secrets**. A secret's value is never shown again.
+5. **Console** Open **Core → Keys & secrets** and set any secret the manifest names but has no value yet. The Check step named them. A secret's value is never shown again.
 
 6. **CLI** Check the registered product.
 

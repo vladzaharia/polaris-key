@@ -61,6 +61,7 @@ export type WriteMethod =
   | "runOverrideMigration"
   | "createManualProduct"
   | "linkRepo"
+  | "checkRepoCreate"
   | "updateProduct"
   | "deleteProduct"
   | "resyncProduct"
@@ -402,6 +403,11 @@ export const MUTATIONS: MutationTable = {
   linkRepo: {
     label: "product create (link a repository)",
     invalidates: () => [exact(qk.me()), exact(qk.products()), summary()],
+  },
+  checkRepoCreate: {
+    label: "product create check (dry run)",
+    invalidates: () => [],
+    why: "A dry run (POST link-repo?dryRun=1): it reads the repository and writes nothing.",
   },
   updateProduct: {
     label: "product update",

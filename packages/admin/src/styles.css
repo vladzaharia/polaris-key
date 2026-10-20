@@ -59,6 +59,25 @@
     @slot;
   }
 }
+/*
+ * The page wizard's footer pins to the bottom of the scroller only when there is room for it: a
+ * container at least 20rem wide and a window at least 36rem tall. Anywhere tighter (a phone at
+ * 200% zoom or text, a short window) it is an ordinary row, so it never covers a sixth of the screen.
+ */
+@custom-variant pinfoot {
+  @container (min-width: 20rem) {
+    @media (min-height: 36rem) {
+      @slot;
+    }
+  }
+}
+/*
+ * While the wizard's footer is pinned, the scroller keeps its height clear (`--pk-wizard-foot`,
+ * set by the Wizard), so a focused control scrolled into view is never behind the footer (WCAG 2.4.11).
+ */
+#content:has([data-wizard="page"]) {
+  scroll-padding-bottom: var(--pk-wizard-foot, 0px);
+}
 @custom-variant motion-safe {
   @media (prefers-reduced-motion: no-preference) {
     &:where(

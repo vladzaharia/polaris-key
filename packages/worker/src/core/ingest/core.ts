@@ -265,7 +265,8 @@ async function prepareCreate(
   ctx: IngestContext,
 ): Promise<ManifestContribution> {
   const { manifest, slug, now } = ctx;
-  const kid = `${slug}-${new Date(now * 1000).getUTCFullYear()}`;
+  const kid =
+    ctx.create?.kid ?? `${slug}-${new Date(now * 1000).getUTCFullYear()}`;
   // Mint + seal the per-product Ed25519 signing key under the platform KEK.
   const { privatePkcs8Pem, publicRawB64url } = await generateEd25519();
   const encPrivate = await seal(ctx.env, privatePkcs8Pem, {

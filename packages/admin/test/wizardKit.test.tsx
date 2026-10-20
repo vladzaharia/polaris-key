@@ -270,6 +270,38 @@ describe("Wizard", () => {
     ).toBeTruthy();
   });
 
+  it("tells the scroller how much a pinned footer covers, and clears it when it is not pinned or gone", () => {
+    const real = window.getComputedStyle;
+    let position = "sticky";
+    vi.spyOn(window, "getComputedStyle").mockImplementation(
+      (el: Element) =>
+        ({ ...real(el), position }) as unknown as CSSStyleDeclaration,
+    );
+    const root = document.documentElement;
+    const view = render(
+      <Wizard
+        label="Demo"
+        steps={[{ id: "a", label: "One" }]}
+        current="a"
+        title="Q"
+        footer={{ primary: <button>Go</button> }}
+      >
+        <p>body</p>
+      </Wizard>,
+    );
+    expect(view.container.querySelector("[data-wizard-foot]")).toBeTruthy();
+    expect(root.style.getPropertyValue("--pk-wizard-foot")).toMatch(/px$/);
+    position = "static";
+    window.dispatchEvent(new Event("resize"));
+    expect(root.style.getPropertyValue("--pk-wizard-foot")).toBe("");
+    position = "sticky";
+    window.dispatchEvent(new Event("resize"));
+    expect(root.style.getPropertyValue("--pk-wizard-foot")).toMatch(/px$/);
+    view.unmount();
+    expect(root.style.getPropertyValue("--pk-wizard-foot")).toBe("");
+    vi.restoreAllMocks();
+  });
+
   it("Skip stays visible with its reason when it is off, and a footer may have no primary", () => {
     const onSkip = vi.fn();
     render(

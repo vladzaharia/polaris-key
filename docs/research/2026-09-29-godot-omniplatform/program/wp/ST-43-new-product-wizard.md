@@ -109,9 +109,9 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] Two or three steps from Home to a created product
-- [ ] Lands on Integration
-- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `start/first-product` (the wizard steps); `operate/console/products`.
+- [x] Two or three steps from Home to a created product
+- [x] Lands on Integration
+- [x] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `start/first-product` (the wizard steps); `operate/console/products`.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify
@@ -121,6 +121,42 @@ mise exec node@22 -- pnpm --filter @polaris-key/admin test
 ```
 
 Then the full green gate in `AGENTS.md`.
+
+## Progress and corrections (2026-10-17, ST-43 build)
+
+Corrections from the code (the code is the fact):
+
+- **Both create routes and W22/W23/W24 already existed** (ST-42, UX-72): no new route, so rule 10 has
+  nothing to add. `POST /api/products` is now written by the ingest pipeline (`create` mode, no
+  repository: `core/ingest/fromDocuments.ts`); the OpenAPI description says so.
+- **No `upload` snapshot origin and no migration**: nothing here needs one. The origin stays `link`
+  with `applied_sha` NULL (P0-26 D8).
+- **The `core/products/store.ts` profiles seam is taken**: the Default profile row is Config's, written
+  in `services/config/ingest.ts`'s create contribution; the `tableCrossings` row is deleted.
+- **`PLAN_ORDER.create`** now equals `REFUSAL_ORDER.create` (adds `seal`, `services`, `starter`,
+  `trust`), so a create dry run cannot pass where the create refuses (P0-26b review).
+- **With no repository, `services` is the exact list** (a manifest cannot say "no services"), and the
+  set is the operator's (`services_source = 'admin'`).
+- "Home, Products and Cmd-K open it" already held (`r.productNew()`); `?via=` still preselects.
+- Not built, proposed follow-ups: the watching `WaitingFor` that re-reads W23 on a push (the Check
+  step has **Check again**), the setup pull request / `pkey init` branch for a repository with no
+  `.pkey/`, the accent swatches and the shared-element morph into the masthead (MO-04), and the
+  AutoList running live during Create (the button shows loading, then the route changes).
+
+### Fix round (2026-10-19)
+
+The BUILT UX review failed (B1, F1 to F7, V1 to V6, minors) and the security review left two notes;
+all are addressed: the long name wraps in the primary (B1); focus goes to the Integration h1 after
+Create, to the refusal callout after a failure, and to the result after Check again, and the
+moment is a `role=status` (F1); features are cards with Needs marks, locks and cascading clears,
+and the Free tier row shows exactly when Licensing is on (F2); a registered repository hides the
+plan and Open is the primary (F3); a 409 reads the repository again and holds Create (F4); Install
+opens the App's `installUrl`, a mistyped repository is "wasn't found" (F5); `.pkey/` missing shows
+`pkey init`, docs and Start from scratch (F6); the footer reason fits the failure (F7); the wizard
+is capped and has the Creates rail (from 1024 px) and a collapsed bar below (V1); platform names
+come from `lib/vocab` (V3); the source is a segmented control above the stepper, the picker a
+radiogroup with Show more (V4 to V6). Worker: `fromDocuments` says "invalid manifest"; the no-
+repository coherence refusals have tests; the dry run answers `starterTier`.
 
 ## Hand-off
 

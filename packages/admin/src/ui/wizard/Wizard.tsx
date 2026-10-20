@@ -18,6 +18,8 @@ export interface WizardFooter {
   skipLoading?: boolean;
   /** Back one step. Absent on the first step. */
   onBack?: () => void;
+  /** `start`: Back sits at the footer's left, before everything else. Default: beside the primary. */
+  backAt?: "start" | "end";
   /** Back stays in place but does nothing (a request is running). */
   backDisabled?: boolean;
   /**
@@ -165,9 +167,51 @@ export function Wizard({
     </div>
   );
 
+  const footRef = React.useRef<HTMLDivElement>(null);
+  // Tell the scroller how much of its bottom the pinned footer covers (styles.css reads it), or
+  // nothing while the footer is in the flow.
+  React.useEffect(() => {
+    const el = footRef.current;
+    if (isDrawer || !el) return;
+    const root = document.documentElement;
+    const measure = () => {
+      const pinned = getComputedStyle(el).position === "sticky";
+      if (pinned)
+        root.style.setProperty("--pk-wizard-foot", `${el.offsetHeight}px`);
+      else root.style.removeProperty("--pk-wizard-foot");
+    };
+    measure();
+    const ro =
+      typeof ResizeObserver === "function" ? new ResizeObserver(measure) : null;
+    ro?.observe(el);
+    window.addEventListener("resize", measure);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", measure);
+      root.style.removeProperty("--pk-wizard-foot");
+    };
+  }, [isDrawer]);
+
+  const back = footer.onBack ? (
+    <Button
+      variant="outline"
+      className={cn(isDrawer && "max-sm:order-2 max-sm:ml-auto")}
+      disabled={footer.backDisabled}
+      onClick={footer.onBack}
+    >
+      <ArrowLeft aria-hidden />
+      Back
+    </Button>
+  ) : null;
   const footRow = (
     <>
-      {footer.later ? (
+      {footer.backAt === "start" && (back || footer.later) ? (
+        // Back and "do this later" stay together when the footer wraps.
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          {back}
+          {footer.later}
+        </div>
+      ) : footer.later ? (
         <div className={cn(isDrawer && "max-sm:order-1")}>{footer.later}</div>
       ) : null}
       {footer.onSkip ? (
@@ -191,17 +235,7 @@ export function Wizard({
           isDrawer && "max-sm:contents",
         )}
       >
-        {footer.onBack ? (
-          <Button
-            variant="outline"
-            className={cn(isDrawer && "max-sm:order-2 max-sm:ml-auto")}
-            disabled={footer.backDisabled}
-            onClick={footer.onBack}
-          >
-            <ArrowLeft aria-hidden />
-            Back
-          </Button>
-        ) : null}
+        {footer.backAt !== "start" ? back : null}
         {React.isValidElement<{ "aria-describedby"?: string }>(footer.primary)
           ? React.cloneElement(
               footer.primary as React.ReactElement<Record<string, unknown>>,
@@ -222,7 +256,12 @@ export function Wizard({
     </>
   );
   const foot = (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border pt-4">
+    // Sticky: on a long step the primary stays on screen (the page scrolls inside `main`).
+    <div
+      ref={footRef}
+      data-wizard-foot=""
+      className="pinfoot:sticky pinfoot:bottom-0 pinfoot:z-10 pinfoot:-mb-6 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border bg-surface-page pb-4 pt-4"
+    >
       {footRow}
     </div>
   );
@@ -269,7 +308,9 @@ export function Wizard({
       aria-labelledby={`${uid}-title`}
       data-wizard="page"
       className={cn(
-        "space-y-6",
+        // A container, so the rail follows the room the wizard has, not the viewport: at 200%
+        // text the rem-sized rail would otherwise squeeze the column.
+        "@container space-y-6",
         centered && "mx-auto w-full max-w-[60rem]",
         className,
       )}
@@ -291,12 +332,12 @@ export function Wizard({
       <div
         className={cn(
           "grid gap-6",
-          aside ? "lg:grid-cols-[minmax(0,1fr)_18rem]" : null,
+          aside ? "@4xl:grid-cols-[minmax(0,1fr)_18rem]" : null,
         )}
       >
         {body}
         {aside ? (
-          <aside className="space-y-2 rounded-lg border border-border bg-surface-sunken p-4 text-sm text-fg self-start max-lg:hidden lg:sticky lg:top-4">
+          <aside className="space-y-2 rounded-lg border border-border bg-surface-sunken p-4 text-sm text-fg self-start hidden @4xl:block @4xl:sticky @4xl:top-4">
             {aside}
           </aside>
         ) : null}

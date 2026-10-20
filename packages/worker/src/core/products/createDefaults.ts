@@ -14,8 +14,8 @@
  *   trustReleaseWorkflow   link only: trust `.github/workflows/release.yml` as the product's CI
  *                          publisher (F9).
  *
- * Always, whatever was asked: the Default profile (`DEFAULT_PROFILE_ID`, empty), so a tier and the
- * config chain have something to point at. Every row is `source = 'console'`, so a resync never
+ * Always, whatever was asked: the Default profile (`DEFAULT_PROFILE_ID`, empty; Config writes it),
+ * so a tier and the config chain have something to point at. Every row is `source = 'console'`, so a resync never
  * rewrites or deletes it; a manifest that declares the same id owns it instead and the default
  * is skipped. The caller puts the statements in its own create batch: one `db.batch`, rolled
  * back whole.
@@ -23,7 +23,6 @@
 
 import { RELEASE_PLATFORMS } from "@polaris-key/manifest";
 import type { DbStatement } from "../../db/types.js";
-import { stmtInsertConsoleProfile } from "./store.js";
 import { stmtInsertConsoleTier } from "../licensing/store.js";
 import {
   applyRequirementRule,
@@ -224,23 +223,10 @@ export function planCreateDefaults(input: PlanInput): DefaultsPlan {
     trustedWorkflow: null,
   };
 
-  if (!input.declaredProfiles?.includes(DEFAULT_PROFILE_ID)) {
-    statements.push(
-      stmtInsertConsoleProfile({
-        product,
-        id: DEFAULT_PROFILE_ID,
-        name: "Default",
-        payloadJson: JSON.stringify({
-          config: {},
-          secrets: {},
-          entitlements: {},
-        }),
-        author: input.author,
-        now,
-      }),
-    );
+  // The row itself is Config's: it owns `profiles` and writes it in its create contribution
+  // (`services/config/ingest.ts`), by the same rule (a manifest that declares the id owns it).
+  if (!input.declaredProfiles?.includes(DEFAULT_PROFILE_ID))
     created.profile = DEFAULT_PROFILE_ID;
-  }
 
   const wantsFree =
     choices.starterTier === "free" ||

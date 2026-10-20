@@ -153,15 +153,15 @@ describe("create actions", () => {
   it("offers New license… only while the product runs License", () => {
     expect(createActions("djdl", ALL_ON).map((i) => i.label)).toEqual([
       "New license…",
-      "Create product",
+      "New product",
     ]);
     expect(
       createActions("djdl", { license: { enabled: false } }).map(
         (i) => i.label,
       ),
-    ).toEqual(["Create product"]);
+    ).toEqual(["New product"]);
     expect(createActions(null, null).map((i) => i.label)).toEqual([
-      "Create product",
+      "New product",
     ]);
   });
 });

@@ -29,7 +29,7 @@
  * gates the per-product key/secret/release operations.
  */
 
-import { stmtInsertSchema } from "../../services/config/public.js";
+import { createFromDocuments } from "../../core/ingest/fromDocuments.js";
 import {
   keyTransitionAllowed,
   stmtRetireOrRevokeKey,
@@ -52,18 +52,11 @@ import {
   getProductSecret,
   insertProductKeyIfAbsent,
   listProducts,
-  stmtInsertProduct,
-  stmtInsertProductKey,
   upsertProductSecret,
 } from "../../core/products/store.js";
 import {} from "../../core/licensing/store.js";
 import { mintKid } from "../../core/keys.js";
-import {
-  parseCreateChoices,
-  planCreateDefaults,
-  resolveServices,
-} from "../../core/products/createDefaults.js";
-import { DEFAULT_SERVICES, serializeServices } from "../../core/services.js";
+import { parseCreateChoices } from "../../core/products/createDefaults.js";
 import { deleteTokenRecord } from "../../platform/kv.js";
 import { deleteProduct } from "../../core/products/store.js";
 import { listDevicesByProduct } from "../../core/devices/store.js";
@@ -650,102 +643,62 @@ async function manualCreate(
       "a release workflow is trusted through a linked repository",
       { fields: ["trustReleaseWorkflow"], reason: "trust_requires_repository" },
     );
-  let services = DEFAULT_SERVICES;
-  if (choices.services) {
-    const resolved = resolveServices(choices.services, null);
-    if (!resolved.ok) return createRefusal(resolved);
-    services = resolved.services;
-  }
-  if (choices.starterTier === "free" && !services.license.enabled)
-    return err(
-      422,
-      ErrorCode.BadRequest,
-      "the Free tier needs the License service",
-      { fields: ["starterTier"], reason: "starter_tier_requires_license" },
-    );
-
-  // A schema is now required so the product gets a real, usable catalog. If none is supplied,
-  // seed the empty catalog (still mints a signing key).
-  const supplied = body.schema;
-  let catalogObj: unknown = { schemaVersion: 1, entries: [] };
-  if (supplied !== undefined) {
-    const compiled = compileSchema(supplied);
+  // ST-43: the pipeline writes the product, as it does for a linked one (plans/P0-26.md D8): the
+  // documents a manual create implies (name, slug, the uploaded catalog, the licence defaults)
+  // go through `ingest.run` in `create` mode, with no repository. Atomic: the product, signing
+  // key, catalog and ST-42's defaults are one batch.
+  // The catalog a caller uploads is compiled and screened here, as before, so the refusals keep
+  // their codes (`value_not_representable`, the reserved names); the pipeline then screens it
+  // again as it does every catalog.
+  let schema: unknown;
+  if (body.schema !== undefined) {
+    const compiled = compileSchema(body.schema);
     if (!compiled.ok)
       return err(422, ErrorCode.BadRequest, "invalid schema", {
         fields: [compiled.message],
       });
-    catalogObj = { schemaVersion: 1, entries: compiled.catalog.entries };
-    // A catalog default is a config value the document carries, and each key a member name in
-    // it: refuse an unsignable default or key, and a key the manifest's ID_RE would refuse.
-    const unrepresentable = catalogRepresentabilityResponse(catalogObj);
+    schema = { schemaVersion: 1, entries: compiled.catalog.entries };
+    const unrepresentable = catalogRepresentabilityResponse(schema);
     if (unrepresentable) return unrepresentable;
     const reserved = reservedNamesResponse(
-      catalogObj,
+      schema,
       await reservedNamesMode(env, db),
     );
     if (reserved) return reserved;
   }
-
-  // Mint + seal the per-product Ed25519 signing key under the platform KEK.
-  const kid = String(
-    body.signingKid ?? `${slug}-${new Date(now * 1000).getUTCFullYear()}`,
-  );
-  const { privatePkcs8Pem, publicRawB64url } = await generateEd25519();
-  const encPrivate = await seal(env, privatePkcs8Pem, {
-    product: slug,
-    kind: "signing-key",
-    id: kid,
-  });
-
-  const plan = planCreateDefaults({
-    product: slug,
-    now,
-    services,
+  const kid =
+    body.signingKid === undefined ? undefined : String(body.signingKid);
+  const result = await createFromDocuments(env, db, ingestFor(SERVICES), {
+    slug,
+    name: String(body.name ?? slug),
+    ...(schema === undefined ? {} : { schema }),
+    ...(body.defaultMaxOfflineDays === undefined
+      ? {}
+      : { defaultMaxOfflineDays: Number(body.defaultMaxOfflineDays) }),
+    defaultDeviceLimit: deviceLimit,
+    ...(typeof body.adminGroup === "string"
+      ? { adminGroup: body.adminGroup }
+      : {}),
+    ...(kid ? { kid } : {}),
     choices,
     author: session.sub,
+    now,
   });
-
-  // Atomic: product + signing key + active catalog + the defaults (Default profile, Free tier,
-  // planned platforms) in ONE batch, so a product can never exist without a usable signing key
-  // or half its defaults (matches the link-repo invariant).
-  await db.batch([
-    stmtInsertProduct({
-      slug,
-      name: String(body.name ?? slug),
-      signing_kid: kid,
-      signing_pub: publicRawB64url,
-      compat_min: "0.0.0",
-      compat_max: "99.0.0",
-      default_max_offline_days: Number(body.defaultMaxOfflineDays ?? 30),
-      default_device_limit: deviceLimit,
-      admin_group: typeof body.adminGroup === "string" ? body.adminGroup : null,
-      branding_json: null,
-      release_source: null,
-      services_json: choices.services ? serializeServices({ services }) : null,
-      services_source: choices.services ? "admin" : null,
-      created_at: now,
-      modified_at: now,
-    }),
-    stmtInsertProductKey({
-      product: slug,
-      kid,
-      alg: "Ed25519",
-      public_b64url: publicRawB64url,
-      enc_private_json: encPrivate,
-      status: "active",
-      created_at: now,
-      rotated_at: null,
-      revoked_at: null,
-    }),
-    stmtInsertSchema({
-      product: slug,
-      catalog_version: 1,
-      catalog_json: JSON.stringify(catalogObj),
-      active: 1,
-      created_at: now,
-    }),
-    ...plan.statements,
-  ]);
+  if (!result.ok) {
+    if ("status" in result)
+      return err(422, ErrorCode.BadRequest, result.error, {
+        fields: result.errors,
+      });
+    if (result.reason)
+      return createRefusal({
+        message: result.error,
+        fields: result.fields ?? [],
+        reason: result.reason,
+        codes: result.codes,
+      });
+    return err(422, ErrorCode.BadRequest, result.error);
+  }
+  const made = result.created!;
   await audit(
     db,
     slug,
@@ -760,15 +713,15 @@ async function manualCreate(
     {
       ok: true,
       slug,
-      kid,
+      kid: made.kid,
       signing: {
-        kid,
+        kid: made.kid,
         alg: "Ed25519",
-        publicKey: publicRawB64url,
+        publicKey: made.publicKey,
         jwksUrl: `/${slug}/.well-known/jwks.json`,
-        trustKeys: { [kid]: publicRawB64url },
+        trustKeys: { [made.kid]: made.publicKey },
       },
-      defaults: plan.created,
+      defaults: made.defaults,
       product: created ? await productView(env, db, created) : null,
     },
     201,

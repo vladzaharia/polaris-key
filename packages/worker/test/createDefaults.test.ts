@@ -92,6 +92,36 @@ describe("manual create with defaults", () => {
     ]);
   });
 
+  it("is written by the ingest pipeline from documents, with no repository (ST-43)", async () => {
+    const db = makeTestDb();
+    const res = await post(envFor(), db, "/api/products", {
+      slug: "tonebox",
+      name: "Tonebox",
+    });
+    expect(res.status).toBe(201);
+    expect(
+      await rows(
+        db,
+        "SELECT origin, applied_sha FROM product_manifest_snapshot WHERE product = ?",
+        "tonebox",
+      ),
+    ).toEqual([{ origin: "link", applied_sha: null }]);
+    expect(
+      await rows(
+        db,
+        "SELECT name, release_source, default_max_offline_days, default_device_limit FROM products WHERE slug = ?",
+        "tonebox",
+      ),
+    ).toEqual([
+      {
+        name: "Tonebox",
+        release_source: null,
+        default_max_offline_days: 30,
+        default_device_limit: 5,
+      },
+    ]);
+  });
+
   it("applies services through the chain rule, platforms and no tier", async () => {
     const db = makeTestDb();
     const res = await post(envFor(), db, "/api/products", {

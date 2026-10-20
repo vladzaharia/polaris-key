@@ -28,6 +28,7 @@ import { CodeBlock } from "../../../../ui/CodeBlock.js";
 import { CopyButton } from "../../../../ui/CopyButton.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
+import { announce } from "../../../../ui/LiveRegion.js";
 import { useLoadingAnnouncement } from "../../../../ui/loading.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
 import { SegmentedControl } from "../../../../ui/SegmentedControl.js";
@@ -38,6 +39,7 @@ import { qk } from "../../../data/queries.js";
 import { Link, navigate } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { focusWhenReady } from "../../../shell/palette/focus.js";
+import { MomentLine, momentKey } from "../../../components/Moment.js";
 import { useSetup } from "../../../wizard/useSetup.js";
 import {
   FeatureCard,
@@ -56,7 +58,7 @@ import {
 import { SDK_QUICK_START_ID } from "../model/sdkQuickStart.js";
 import { useQueryParams } from "../model/urlState.js";
 
-const PARAMS = ["sdk", "feature"] as const;
+const PARAMS = ["sdk", "feature", "created"] as const;
 
 export function IntegrationPage({
   slug,
@@ -103,6 +105,31 @@ export function IntegrationPage({
   const setup = useSetup(slug);
   const licenseGate = useWriteGate("license", slug);
   const [q, setQ] = useQueryParams(PARAMS);
+  // Arriving from New product (ST-43): the product's first moment shows once; the link is then
+  // a plain Integration link, so a refresh or a share does not repeat it.
+  const [justCreated] = React.useState(q.created === "1");
+  // The shell focused the skeleton's heading; the page's own heading replaces it once the data is
+  // in, so focus goes to that one (a route change leaves focus on the h1, not on the body).
+  const loaded = view.data !== undefined;
+  React.useEffect(() => {
+    if (!justCreated || !loaded) return;
+    const h1 = document.querySelector<HTMLElement>("h1[data-page-title]");
+    if (!h1) return;
+    if (!h1.hasAttribute("tabindex")) h1.setAttribute("tabindex", "-1");
+    h1.focus({ preventScroll: true });
+    // Said once, in the polite region (a line that mounts with its text is not announced), after
+    // the page's own "loaded".
+    const t = window.setTimeout(
+      () => announce(`${product.data?.name ?? slug} is ready`),
+      400,
+    );
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [justCreated, loaded]);
+  React.useEffect(() => {
+    if (justCreated) setQ({ created: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useLoadingAnnouncement("integration", view.isPending);
 
   const sdk = isSdkId(q.sdk) ? q.sdk : defaultSdk(data);
@@ -185,6 +212,16 @@ export function IntegrationPage({
           refreshing: view.isFetching,
         }}
       />
+      {justCreated ? (
+        <MomentLine
+          momentKey={momentKey("product-created", slug)}
+          title={`${product.data?.name ?? slug} is ready`}
+          className="rounded-xl border border-border bg-surface-raised px-5 py-3"
+        >
+          Signed by {data.snippet.pins[0]?.kid ?? "its key"}. Connect your app
+          below.
+        </MomentLine>
+      ) : null}
       {total === 0 ? (
         <EmptyState
           kind="first-run"

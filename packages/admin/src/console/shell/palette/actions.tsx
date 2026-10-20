@@ -121,9 +121,9 @@ export function createActions(
     {
       id: "action:create-product",
       group: "Actions",
-      label: "Create product",
+      label: "New product",
       detail: "Products",
-      keywords: "new add product",
+      keywords: "create add product",
       icon: <Plus aria-hidden className="size-4" />,
       href: r.productNew(),
     },
