@@ -100,6 +100,7 @@ const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
   signInEntry: [["/signin", ["get"]]],
   // LK-05: WebAuthn Related Origin Requests, on the console host.
   webauthnOrigins: [["/.well-known/webauthn", ["get", "head"]]],
+  helpAlias: [["/help", ["get", "head"]]],
   deviceEntry: [
     ["/device", ["get"]],
     ["/tv", ["get"]],

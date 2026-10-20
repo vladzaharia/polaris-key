@@ -99,11 +99,18 @@ await pagefind.close();
 let dropped = 0;
 const sitemap = join(dist, "sitemap-0.xml");
 if (existsSync(sitemap)) {
+  // Whole <url> blocks, whatever children they carry (<lastmod>, <xhtml:link>, …).
   const xml = readFileSync(sitemap, "utf8").replace(
-    /<url><loc>https:\/\/[^/<]+\/docs\/([^<]*)<\/loc><\/url>/g,
-    (all, rest: string) => {
-      const tier = doorOf(rest.replace(/\/$/, "") || "index")?.tier ?? "admin";
-      if (tier === "public") return all;
+    /<url>[\s\S]*?<\/url>/g,
+    (block) => {
+      const loc = /<loc>\s*https?:\/\/[^/<]+\/docs\/([^<]*?)\s*<\/loc>/.exec(
+        block,
+      );
+      // A block whose address is not under /docs is not ours to judge: gated by default.
+      const tier = loc
+        ? (doorOf(loc[1]!.replace(/\/$/, "") || "index")?.tier ?? "admin")
+        : "admin";
+      if (tier === "public") return block;
       dropped += 1;
       return "";
     },

@@ -9556,7 +9556,9 @@ the bundle directories to the build's. The docs `check:links` adds the tier rule
 content links only to public pages (existing exceptions are held in `link-tier-debt.json`, which
 only shrinks).
 
-**Residual.** Anything placed under `/assets/` in the admin build is public by design. The
+**Residual.** Until DOC-02b scopes the sidebar to the page's door, a public page's sidebar lists
+gated pages' titles and URLs; no gated page text leaks (the docs source is public anyway).
+Anything placed under `/assets/` in the admin build is public by design. The
 developer door and Help are public, and a file under `/docs/_astro/` that only a gated page uses
 (an imported image) is public with it; the repository that builds them is public too. The search
 UI still loads the public bundle for every reader until DOC-02c picks the bundle by tier, so a

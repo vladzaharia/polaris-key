@@ -5,11 +5,15 @@
  */
 
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { gunzipSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 import { SEARCH_BUNDLES, doorOf } from "../src/lib/doors";
+import {
+  isRedirectPage,
+  redirectTarget,
+} from "../scripts/redirect-fragments.mjs";
 
 const dist = join(dirname(fileURLToPath(import.meta.url)), "..", "dist");
 
@@ -53,8 +57,41 @@ describe.skipIf(!existsSync(join(dist, "docs-access.json")))(
       ).toBe(true);
     });
 
+    it("have no public redirect page that targets a gated page", () => {
+      const walk = (dir: string): string[] =>
+        readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+          e.isDirectory()
+            ? walk(join(dir, e.name))
+            : e.name.endsWith(".html")
+              ? [join(dir, e.name)]
+              : [],
+        );
+      let redirects = 0;
+      for (const file of walk(dist)) {
+        const html = readFileSync(file, "utf8");
+        if (!isRedirectPage(html)) continue;
+        const id = relative(dist, file)
+          .split(sep)
+          .join("/")
+          .replace(/(^|\/)index\.html$/, "");
+        if (doorOf(id || "index")?.tier !== "public") continue;
+        redirects += 1;
+        const target = redirectTarget(html) ?? "";
+        const route = target.split("#")[0]!.replace(/^\/docs\//, "");
+        expect(
+          doorOf(route.replace(/\/$/, "") || "index")?.tier,
+          `${id} -> ${target}`,
+        ).toBe("public");
+      }
+      expect(redirects).toBeGreaterThanOrEqual(0);
+    });
+
     it("keep gated pages out of the sitemap and mark them noindex", () => {
       const xml = readFileSync(join(dist, "sitemap-0.xml"), "utf8");
+      expect(
+        xml.match(/<url>/g)?.length ?? 0,
+        "no <url> entries",
+      ).toBeGreaterThan(0);
       expect(xml).toContain("/docs/help/");
       expect(xml).not.toContain("/docs/operate/");
       expect(xml).not.toContain("/docs/contribute/");
