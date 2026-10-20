@@ -9177,13 +9177,13 @@
     "body": "30:61b5f4a46397ebc3"
   },
   "GET /djdl/identity/auth/device/verify": {
-    "status": 400,
+    "status": 404,
     "headers": {
-      "content-type": "application/json",
+      "content-type": "text/html; charset=utf-8",
       "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "48:182b628920850fcc"
+    "body": "27691:21c20c37b4351af5"
   },
   "HEAD /djdl/identity/auth/device/verify": {
     "status": 405,
@@ -9194,13 +9194,13 @@
     "body": "18:e3933184560739b7"
   },
   "POST /djdl/identity/auth/device/verify": {
-    "status": 400,
+    "status": 404,
     "headers": {
-      "content-type": "application/json",
+      "content-type": "text/html; charset=utf-8",
       "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "48:182b628920850fcc"
+    "body": "27691:21c20c37b4351af5"
   },
   "POST+body /djdl/identity/auth/device/verify": {
     "status": 400,
