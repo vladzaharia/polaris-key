@@ -76,7 +76,7 @@ export function portalErrorCopy(
         ...copy,
         description: copy.description.replace(
           "contact the developer",
-          "contact Polaris Key support",
+          "contact Polaris Locker support",
         ),
       }
     : copy;

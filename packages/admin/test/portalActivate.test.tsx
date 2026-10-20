@@ -81,10 +81,10 @@ describe("license keys (§4.17)", () => {
 
   it("names a Steam-shaped key", () => {
     expect(keyProblem(checkKey("5XKQ7-B2M9P-HT4LZ"))).toBe(
-      "That isn't a Polaris Key license key. Ours start with pkey_. This one looks like a Steam key: activate it in Steam.",
+      "That isn't a Polaris Locker license key. Ours start with pkey_. This one looks like a Steam key: activate it in Steam.",
     );
     expect(keyProblem(checkKey("hello"))).toBe(
-      "That isn't a Polaris Key license key. Ours start with pkey_.",
+      "That isn't a Polaris Locker license key. Ours start with pkey_.",
     );
   });
 

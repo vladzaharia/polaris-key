@@ -7236,8 +7236,8 @@ configuration.
 
 - _A host-header or request-supplied origin._ Customer links come from configuration
   (`CUSTOMER_ORIGIN`, else `CONSOLE_ORIGIN`); the request's origin is only the last fallback it
-  always was. The customer host's redirect to a product's device page (`/device` after a code
-  hit) uses `CONSOLE_ORIGIN`, never a request value: a fixed map with no request-supplied host.
+  always was. No redirect the customer host or the bind hops make takes a host, path or target
+  from the request: each `Location` is built from configuration or from a value this Worker stored.
 - _The health check._ `polaris-host.json` holds `{host: "customer"}` and nothing else: no
   environment, no version. CORS names the console origin only and allows no credentials, so
   another site cannot read it from a browser.
@@ -7269,10 +7269,51 @@ the card offers email and the providers instead (LK-06 detects it). Accounts who
 method is a passkey are an O10 preflight count before the cutover. Tests:
 `test/webauthnRelatedOrigins.test.ts`, `test-workerd/passkeys.test.ts` (customer origin).
 
-Still to come, each in its own package with its own entry here: the cross-host bind hop (LK-04),
-the old-URL redirects and cookie expiry (LK-11).
+Still to come, each in its own package with its own entry here: the old-URL redirects and cookie
+expiry (LK-11). The request bind hop is below.
 Tests: `test/customerHost.test.ts`, `test/customerOrigin.test.ts`, `test/routeCoverage.test.ts`
 (`CUSTOMER_PATHS`).
+
+### The cross-host bind hop (LK-04)
+
+**What it is.** Once `CUSTOMER_ORIGIN` is usable, the sign-in card lives on the customer host, but
+`authorize` stays on the API host, and `__Host-` cookies are host-only. So the request is bound to
+its browser through a single-use **bind token** instead of a cookie set from the wrong host
+(plans/LK-00.md §7.8; WIRE-CONTRACT-V4 §12.9). `authorize` stores the request under a handle bound to
+a fresh binder and 303s to `<customer>/signin?request=rq_…&bind=<token>`, setting no cookie. The
+customer host redeems the token and sets `__Host-pk_req` itself, then 303s to
+`/signin?request=rq_…`. The token is 32 random bytes, stored (kind `signin-bind`) under its
+peppered hash for 120 seconds and consumed in one atomic step.
+
+**What an attacker gets.**
+
+- _Replay._ A token works once: the second visit is the plain `404` and sets nothing. A token for
+  another handle than the one in the URL is refused and still spent (fail closed). `HEAD` does not
+  redeem.
+- _Fixation._ Whoever opens a bind URL binds their browser to that request, which is worth what
+  the `authorize` URL is worth (R1-07). A victim sent a bind URL is signed in to the attacker's
+  request only if they press Continue on the card with their own session, which names the app. The
+  token expires in 120 s and the URL holds no `state`, challenge or redirect URI.
+- _Open redirect._ Nothing in the query chooses a target: the `Location` is `/signin?request=` plus
+  the handle read from the store.
+- _Token in logs and Referer._ The response sets `Referrer-Policy: no-referrer` and
+  `Cache-Control: no-store`, and the token is dead after the first request.
+
+**The device confirmation does not hop.** An earlier design carried the device flow's binder across
+hosts the same way. That reopens R1-07: an attacker who starts a device flow could confirm it
+without following the redirect and send the victim the token URL, so the victim's browser would
+carry the attacker's binder through a silent IdP login. The device page therefore stays on the API
+host, where the confirming browser itself receives the binder and the callback finds it.
+`/device` and `/tv` on the customer host only look the code up and 302 to the product's page on the
+API host (a fixed origin from configuration). `test/customerDevicePage.test.ts` pins that a
+confirmation sets the binder on the response to the confirming browser only, that a stranger's
+callback is refused, and that the retired continue route answers `404`.
+
+Residual risk: a token read from a log or history within its 120 seconds and used before the
+owner does binds the attacker's browser instead of the owner's. The attacker still needs the
+owner's session to finish a sign-in, and the owner's second visit shows the `404`.
+
+Tests: `test/signInBind.test.ts`, `test/customerDevicePage.test.ts`, the `locker-*` transcripts.
 
 ### The console loads product logos from the image host (console product card)
 

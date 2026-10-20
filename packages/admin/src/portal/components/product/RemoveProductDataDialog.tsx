@@ -97,7 +97,7 @@ export function RemoveProductDataDialog({
       onOpenChange={onOpenChange}
       intent="danger"
       title={`Remove your data from ${name}?`}
-      description={`This only affects ${name}. Your Polaris Key account and your other apps stay as they are.`}
+      description={`This only affects ${name}. Your Polaris Locker account and your other apps stay as they are.`}
       consequences={removeConsequences({
         name,
         developer: product.presentation.developer,

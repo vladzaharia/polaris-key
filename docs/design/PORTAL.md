@@ -6,7 +6,7 @@ This document records the customer portal that ships in `packages/admin/src/port
 
 ## 1. Purpose and boundary
 
-The portal is the signed-in customer surface, which customers know as **Polaris Locker**, then **Locker** (D8). Until `CUSTOMER_ORIGIN` is set on the Worker it is served at `key.plrs.im`, then at `polaris.locker`. "Portal" is the internal word only (route kinds, `handlePortal`, `portal_*` tables, this file's name); no customer-facing string says "portal" or "customer portal". Backend surfaces (the Polaris Key Console, the developer docs) say Polaris Locker only for the customer site (LK-00 §15). Words and copy rules: [concepts](../../packages/docs/src/content/docs/start/concepts.md). A person can inspect the products in their library, get a build or a store link, manage the devices and licenses attached to a product, add an eligible product or a license key, and manage their account.
+The portal is the signed-in customer surface, which customers know as **Polaris Locker**, then **Locker** (D8). It is served at `polaris.locker`; old `key.plrs.im` customer URLs redirect (A5). "Portal" is the internal word only (route kinds, `handlePortal`, `portal_*` tables, this file's name); no customer-facing string says "portal" or "customer portal". Backend surfaces (the Polaris Key Console, the developer docs) say Polaris Locker only for the customer site (LK-00 §15). Words and copy rules: [concepts](../../packages/docs/src/content/docs/start/concepts.md). A person can inspect the products in their library, get a build or a store link, manage the devices and licenses attached to a product, add an eligible product or a license key, and manage their account.
 
 It is distinct from the operator console. The portal has no product administration, provider configuration, catalog editing, or platform permissions. Product records and license policy are decided by the Worker; the portal presents the data and sends the person to the supported mutation endpoint.
 
@@ -34,7 +34,7 @@ Page navigation uses the shared motion layer when motion is allowed. A page rout
 
 ## 3. Signed-in shell
 
-`PortalShell` provides a skip link, one banner, named main navigation, a main region, and footer. On desktop it shows Library, conditional Discover, the Activate license action, and the account menu. Discover appears only when `GET /api/library` returns `discoverCount`; this prevents a navigation link to an unavailable list.
+`PortalShell` provides a skip link, one banner, named main navigation, a main region, and footer. The banner carries the Polaris Locker lockup, no Key mark; the footer reads "Polaris Locker · Help · Privacy · Terms", with no host. The primary is neutral ink, the focus ring `--pk-text-strong`, and coral marks identity only: the lockup, a 3 px selected marker and a 2 px link underline (D9a). On desktop it shows Library, conditional Discover, the Activate license action, and the account menu. Discover appears only when `GET /api/library` returns `discoverCount`; this prevents a navigation link to an unavailable list.
 
 On phones the fixed bar has Library, an outlined Activate license pill, and conditional Discover. The shell reserves room for that bar and positions phone toasts above it. The account menu contains the account destinations, appearance controls, Help, and sign-out.
 

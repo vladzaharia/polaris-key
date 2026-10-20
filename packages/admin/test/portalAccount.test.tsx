@@ -123,7 +123,7 @@ describe("Account v1 (PX-07)", () => {
       within(data).getByRole("button", { name: "Delete account" }),
     );
     const heading = within(data).getByRole("heading", {
-      name: "Schedule your Polaris Key account for deletion?",
+      name: "Schedule your Polaris Locker account for deletion?",
     });
     await waitFor(() => expect(document.activeElement).toBe(heading));
     const confirm = within(data).getByRole("button", {

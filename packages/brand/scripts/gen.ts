@@ -355,7 +355,10 @@ function scaleVars(): [string, string][] {
  */
 const lockerScope = `/* Polaris Locker (BRAND.md §15, D9a): coral is identity only: the mark, the 3 px selected-nav
    marker, a 2 px link underline and the context edge. Selection, hover, focus, links and checked
-   controls are neutral ink. --pk-action stays neutral ink. */
+   controls are neutral ink. --pk-action stays neutral ink. The \`:root\` form matches the
+   specificity of the core block's light values (\`:root:not([data-theme="dark"])\`), which would
+   otherwise win in light and leave the focus ring violet. */
+:root[data-brand="locker"],
 [data-brand="locker"] {
   --pk-accent: var(--pk-locker-accent);
   --pk-accent-fg: var(--pk-text-strong);
