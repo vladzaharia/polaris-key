@@ -133,7 +133,7 @@ const SESSION_METHOD: Record<string, string> = {
   apple: "Apple",
   steam: "Steam",
   device: "another device",
-  oidc: "single sign-on",
+  oidc: t("signin.sso.name"),
 };
 
 export function sessionMethodText(methods: readonly string[]): string | null {

@@ -2141,10 +2141,10 @@ msgstr "有效期至{date}"
 msgid "signin.term.yearlyUntil"
 msgstr "按年订阅，有效期至{date}"
 
-#. From signing in
+#. Automatic grant
 #. Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label).
 msgid "signin.choice.origin.signIn"
-msgstr "通过登录获得"
+msgstr "自动授予"
 
 #. Key ending {last6}
 #. Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {last6} = the license key's last six characters, shown as is.
@@ -3947,25 +3947,15 @@ msgstr "添加来自 {org} 的出生日期"
 msgid "signin.gate.birthdateHelp"
 msgstr "只有您能看到。应用永远不会获得。"
 
-#. I agree to the {product} terms
+#. I agree to the {term}
 #. Finish step: the product's terms checkbox. Arguments: {product} = the product's name.
 msgid "signin.gate.productTerms"
-msgstr "我同意 {product} 条款"
+msgstr "我同意{term}"
 
-#. By continuing you agree to the Polaris Locker terms.
+#. By continuing you agree to the {term}.
 #. Finish step: the platform's terms line, with the link below it. Polaris Locker is never translated.
 msgid "signin.gate.platformTerms"
-msgstr "继续即表示您同意 Polaris Locker 条款。"
-
-#. Read the terms
-#. Finish step: link to the terms page.
-msgid "signin.gate.readTerms"
-msgstr "阅读条款"
-
-#. macos: Read the Terms
-msgctxt "macos"
-msgid "signin.gate.readTerms"
-msgstr "阅读条款"
+msgstr "继续即表示您同意{term}。"
 
 #. That sign-in has expired. Sign in again.
 #. Finish step: the 15-minute sign-in ran out.
@@ -4126,6 +4116,81 @@ msgstr "安全检查未通过。请重试。"
 #. Code step: the verify's 429.
 msgid "signin.code.rateLimited"
 msgstr "尝试次数过多。请等待一分钟后重试。"
+
+#. {product} terms
+#. The product's terms link in the finish step; fills {term} in the terms sentence. Arguments: {product} = the product's name.
+msgid "signin.gate.termsLinkProduct"
+msgstr "{product} 条款"
+
+#. Polaris Locker terms
+#. The platform's terms link in the finish step. Polaris Locker is never translated.
+msgid "signin.gate.termsLinkPlatform"
+msgstr "Polaris Locker 条款"
+
+#. That code expired. Ask for a new one on the other device.
+#. Approve dialog: the code is spent or expired (410).
+msgid "signin.approve.expiredCode"
+msgstr "该代码已过期。请在另一台设备上获取新代码。"
+
+#. No sign-in is waiting for that code. Check it on the other device.
+#. Approve dialog: no pending request has this code (404 or 422).
+msgid "signin.approve.notFound"
+msgstr "没有等待该代码的登录。请在另一台设备上核对。"
+
+#. you@example.com
+#. Placeholder of the email field on the sign-in card. Not translated.
+msgid "signin.email.placeholder"
+msgstr "you@example.com"
+
+#. single sign-on
+#. Names the platform's single sign-on in 'Continue with {provider}' when it has no display name.
+msgid "signin.sso.name"
+msgstr "单点登录"
+
+#. its developer
+#. Stands for {developer} when a product has no developer name, in 'Contact {developer}'.
+msgid "signin.off.developer"
+msgstr "其开发者"
+
+#. Change email
+#. Accessible name of the control that goes back to the email step.
+msgid "signin.code.changeEmail"
+msgstr "更改邮箱"
+
+#. Wait {time}
+#. Why a resend is disabled. Arguments: {time} = the wait, such as 0:42.
+msgid "signin.sso.wait"
+msgstr "请等待 {time}"
+
+#. Key for {product}
+#. Have a license key? step, under a valid key. Arguments: {product} = the product's name.
+msgid "signin.key.keyFor"
+msgstr "{product} 的密钥"
+
+#. Starts with pkey_. Case-sensitive.
+#. Have a license key? step: help under the field.
+msgid "signin.key.help"
+msgstr "以 pkey_ 开头。区分大小写。"
+
+#. Paste your license key to continue.
+#. Have a license key? step: Continue pressed with an empty field.
+msgid "signin.key.empty"
+msgstr "请粘贴您的许可证密钥以继续。"
+
+#. Or connect another account
+#. Group label of the provider buttons when adding a sign-in method.
+msgid "signin.provider.connectGroup"
+msgstr "或连接其他账户"
+
+#. Too many codes. Try again in a few minutes.
+#. Rate limit with no wait given.
+msgid "signin.rateLimitedFew"
+msgstr "验证码过多。请几分钟后重试。"
+
+#. Another Polaris Locker account uses this email. Sign in the way you did before.
+#. Sign-in card, code step: the address belongs to another account that does not use it as a sign-in method. Polaris Locker is never translated.
+msgid "signin.code.emailInUse"
+msgstr "另一个 Polaris Locker 账户正在使用此邮箱。请使用之前的方式登录。"
 
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).

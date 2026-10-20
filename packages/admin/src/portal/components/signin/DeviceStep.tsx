@@ -2,7 +2,7 @@ import * as React from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "../../../ui/Button.js";
 import { Spinner } from "../../../ui/Spinner.js";
-import { AuthTitle } from "../../../ui/auth/index.js";
+import { AuthNotice, AuthTitle, useStepFocus } from "../../../ui/auth/index.js";
 import { t } from "../../../lib/copy.js";
 import {
   portalApi,
@@ -111,26 +111,31 @@ export function DeviceStep({
   }, [state]);
 
   const again = (): void => setRound((n) => n + 1);
+  // A restarted code or a decided request replaces the button that was pressed: focus the h1.
+  const { ref, live } = useStepFocus(state.kind);
+  const asking = state.kind === "starting" || state.kind === "waiting";
 
   return (
-    <>
+    <div ref={ref} className="space-y-5">
       <div className="space-y-2">
         <AuthTitle>{t("signin.approve.title")}</AuthTitle>
-        <p className="text-fg-muted">{t("signin.approve.lede")}</p>
+        {asking ? (
+          <p className="text-fg-muted">{t("signin.approve.lede")}</p>
+        ) : null}
       </div>
       {state.kind === "starting" ? (
         <div
           aria-busy
           role="status"
           aria-label={t("signin.approve.starting")}
-          className="flex flex-col gap-4 sm:flex-row sm:items-center"
+          className="flex flex-col items-center gap-4 sm:flex-row"
         >
           <div aria-hidden className="size-42 rounded-md bg-hover" />
           <div aria-hidden className="h-8 w-40 rounded-md bg-hover" />
         </div>
       ) : state.kind === "waiting" ? (
         <>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          <div className="flex flex-col items-center gap-4 sm:flex-row">
             <img
               src={state.start.qr}
               alt=""
@@ -138,7 +143,7 @@ export function DeviceStep({
               height={168}
               className="size-42 shrink-0 rounded-md bg-white p-2"
             />
-            <div>
+            <div className="text-center sm:text-left">
               <p
                 data-device-code
                 className="font-mono text-3xl font-medium tracking-widest text-fg-strong"
@@ -158,25 +163,25 @@ export function DeviceStep({
             {t("signin.approve.waiting")}
           </div>
         </>
-      ) : state.kind === "error" ? (
-        <p role="alert" className="text-sm text-danger">
-          {state.error instanceof PortalApiError &&
-          (state.error.status === 429 || state.error.code === "rate_limited")
-            ? t("signin.rateLimited", { minutes: "a few" })
-            : t("signin.network.title")}
-        </p>
       ) : (
-        <p role="alert" className="text-fg">
-          {state.kind === "denied"
-            ? t("signin.approve.denied")
-            : state.kind === "disabled"
-              ? t("signin.approve.disabled")
-              : t("signin.approve.expired")}
-        </p>
+        <AuthNotice>
+          {state.kind === "error"
+            ? state.error instanceof PortalApiError &&
+              (state.error.status === 429 ||
+                state.error.code === "rate_limited")
+              ? t("signin.rateLimitedFew")
+              : t("signin.network.title")
+            : state.kind === "denied"
+              ? t("signin.approve.denied")
+              : state.kind === "disabled"
+                ? t("signin.approve.disabled")
+                : t("signin.approve.expired")}
+        </AuthNotice>
       )}
       <div aria-live="polite" className="sr-only">
         {announce}
       </div>
+      {live}
       <div className="space-y-3">
         {state.kind === "expired" || state.kind === "error" ? (
           <Button
@@ -203,6 +208,6 @@ export function DeviceStep({
           {t("signin.approve.other")}
         </Button>
       </div>
-    </>
+    </div>
   );
 }

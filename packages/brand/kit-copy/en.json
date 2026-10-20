@@ -1707,7 +1707,7 @@
       "note": "A license's term, shown in license rows (SIGN-IN.md §3.6). Arguments: {date} = a date already formatted by the platform."
     },
     "signin.choice.origin.signIn": {
-      "value": "From signing in",
+      "value": "Automatic grant",
       "role": "label",
       "note": "Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, \"{origin} · {term}\" (owner, 2026-10-05: no license-type label)."
     },
@@ -3327,19 +3327,14 @@
       "note": "Finish step: under the birth date choice."
     },
     "signin.gate.productTerms": {
-      "value": "I agree to the {product} terms",
+      "value": "I agree to the {term}",
       "role": "label",
       "note": "Finish step: the product's terms checkbox. Arguments: {product} = the product's name."
     },
     "signin.gate.platformTerms": {
-      "value": "By continuing you agree to the Polaris Locker terms.",
+      "value": "By continuing you agree to the {term}.",
       "role": "body",
       "note": "Finish step: the platform's terms line, with the link below it. Polaris Locker is never translated."
-    },
-    "signin.gate.readTerms": {
-      "value": "Read the terms",
-      "role": "button",
-      "note": "Finish step: link to the terms page."
     },
     "signin.gate.expired": {
       "value": "That sign-in has expired. Sign in again.",
@@ -3475,6 +3470,81 @@
       "value": "Too many tries. Wait a minute, then try again.",
       "role": "body",
       "note": "Code step: the verify's 429."
+    },
+    "signin.gate.termsLinkProduct": {
+      "value": "{product} terms",
+      "role": "label",
+      "note": "The product's terms link in the finish step; fills {term} in the terms sentence. Arguments: {product} = the product's name."
+    },
+    "signin.gate.termsLinkPlatform": {
+      "value": "Polaris Locker terms",
+      "role": "label",
+      "note": "The platform's terms link in the finish step. Polaris Locker is never translated."
+    },
+    "signin.approve.expiredCode": {
+      "value": "That code expired. Ask for a new one on the other device.",
+      "role": "body",
+      "note": "Approve dialog: the code is spent or expired (410)."
+    },
+    "signin.approve.notFound": {
+      "value": "No sign-in is waiting for that code. Check it on the other device.",
+      "role": "body",
+      "note": "Approve dialog: no pending request has this code (404 or 422)."
+    },
+    "signin.email.placeholder": {
+      "value": "you@example.com",
+      "role": "hint",
+      "note": "Placeholder of the email field on the sign-in card. Not translated."
+    },
+    "signin.sso.name": {
+      "value": "single sign-on",
+      "role": "body",
+      "note": "Names the platform's single sign-on in 'Continue with {provider}' when it has no display name."
+    },
+    "signin.off.developer": {
+      "value": "its developer",
+      "role": "body",
+      "note": "Stands for {developer} when a product has no developer name, in 'Contact {developer}'."
+    },
+    "signin.code.changeEmail": {
+      "value": "Change email",
+      "role": "a11y",
+      "note": "Accessible name of the control that goes back to the email step."
+    },
+    "signin.sso.wait": {
+      "value": "Wait {time}",
+      "role": "body",
+      "note": "Why a resend is disabled. Arguments: {time} = the wait, such as 0:42."
+    },
+    "signin.key.keyFor": {
+      "value": "Key for {product}",
+      "role": "body",
+      "note": "Have a license key? step, under a valid key. Arguments: {product} = the product's name."
+    },
+    "signin.key.help": {
+      "value": "Starts with pkey_. Case-sensitive.",
+      "role": "hint",
+      "note": "Have a license key? step: help under the field."
+    },
+    "signin.key.empty": {
+      "value": "Paste your license key to continue.",
+      "role": "body",
+      "note": "Have a license key? step: Continue pressed with an empty field."
+    },
+    "signin.provider.connectGroup": {
+      "value": "Or connect another account",
+      "role": "a11y",
+      "note": "Group label of the provider buttons when adding a sign-in method."
+    },
+    "signin.rateLimitedFew": {
+      "value": "Too many codes. Try again in a few minutes.",
+      "role": "body",
+      "note": "Rate limit with no wait given."
+    },
+    "signin.code.emailInUse": {
+      "value": "Another Polaris Locker account uses this email. Sign in the way you did before.",
+      "role": "body",
+      "note": "Sign-in card, code step: the address belongs to another account that does not use it as a sign-in method. Polaris Locker is never translated."
     }
   }
 }

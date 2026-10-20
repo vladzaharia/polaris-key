@@ -1308,7 +1308,7 @@ export const portalApi = {
   },
   /** Redeems the emailed code for this browser's sign-in (the Worker sets the session cookie). */
   verifySignInCode: async (code: string) => {
-    const out = await call<{ status: string; next?: string }>(
+    const out = await call<{ status: string; next?: string; nudge?: boolean }>(
       "/api/signin/email/verify",
       { method: "POST", body: JSON.stringify({ code }) },
     );
@@ -1514,10 +1514,13 @@ export const portalApi = {
       body: JSON.stringify(returnTo ? { returnTo } : {}),
     }),
   passkeySignInVerify: (response: unknown) =>
-    call<{ status: string; next?: string }>("/api/signin/passkey/verify", {
-      method: "POST",
-      body: JSON.stringify({ response }),
-    }),
+    call<{ status: string; next?: string; nudge?: boolean }>(
+      "/api/signin/passkey/verify",
+      {
+        method: "POST",
+        body: JSON.stringify({ response }),
+      },
+    ),
   /** The email gate's state (the finish step); a 400 means it expired or was never opened. */
   gate: () => call<PortalGate>("/api/signin/confirm-email"),
   /** Confirm the provider's email or a typed one, with the profile and terms choices. */

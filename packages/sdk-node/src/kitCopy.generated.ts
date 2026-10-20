@@ -411,7 +411,7 @@ export const KIT_COPY: Readonly<
     "signin.term.lifetime": "Lifetime",
     "signin.term.until": "Until {date}",
     "signin.term.yearlyUntil": "Yearly, until {date}",
-    "signin.choice.origin.signIn": "From signing in",
+    "signin.choice.origin.signIn": "Automatic grant",
     "signin.choice.origin.key": "Key ending {last6}",
     "signin.choice.origin.keyAdded": "Added with a key",
     "signin.choice.origin.storeKey": "{store} key ending {last6}",
@@ -787,10 +787,8 @@ export const KIT_COPY: Readonly<
     "signin.gate.pictureProvider": "Use my {provider} picture",
     "signin.gate.birthdate": "Add my birth date from {org}",
     "signin.gate.birthdateHelp": "Only you can see it. Apps never get it.",
-    "signin.gate.productTerms": "I agree to the {product} terms",
-    "signin.gate.platformTerms":
-      "By continuing you agree to the Polaris Locker terms.",
-    "signin.gate.readTerms": "Read the terms",
+    "signin.gate.productTerms": "I agree to the {term}",
+    "signin.gate.platformTerms": "By continuing you agree to the {term}.",
     "signin.gate.expired": "That sign-in has expired. Sign in again.",
     "signin.gate.joinTitle": "Join your accounts",
     "signin.gate.joinLede":
@@ -825,6 +823,24 @@ export const KIT_COPY: Readonly<
     "signin.off.title": "Sign-in is turned off",
     "signin.turnstile.failed": "The security check did not pass. Try again.",
     "signin.code.rateLimited": "Too many tries. Wait a minute, then try again.",
+    "signin.gate.termsLinkProduct": "{product} terms",
+    "signin.gate.termsLinkPlatform": "Polaris Locker terms",
+    "signin.approve.expiredCode":
+      "That code expired. Ask for a new one on the other device.",
+    "signin.approve.notFound":
+      "No sign-in is waiting for that code. Check it on the other device.",
+    "signin.email.placeholder": "you@example.com",
+    "signin.sso.name": "single sign-on",
+    "signin.off.developer": "its developer",
+    "signin.code.changeEmail": "Change email",
+    "signin.sso.wait": "Wait {time}",
+    "signin.key.keyFor": "Key for {product}",
+    "signin.key.help": "Starts with pkey_. Case-sensitive.",
+    "signin.key.empty": "Paste your license key to continue.",
+    "signin.provider.connectGroup": "Or connect another account",
+    "signin.rateLimitedFew": "Too many codes. Try again in a few minutes.",
+    "signin.code.emailInUse":
+      "Another Polaris Locker account uses this email. Sign in the way you did before.",
     "core.fallback.title": "Something went wrong",
     "core.fallback.message": "Something went wrong ({code}). Try again.",
     "core.codes.unauthorized.title": "Not signed in",
@@ -1800,7 +1816,7 @@ export const KIT_COPY: Readonly<
     "signin.term.lifetime": "Unbefristet",
     "signin.term.until": "Bis {date}",
     "signin.term.yearlyUntil": "Jährlich, bis {date}",
-    "signin.choice.origin.signIn": "Über die Anmeldung",
+    "signin.choice.origin.signIn": "Automatisch zugewiesen",
     "signin.choice.origin.key": "Schlüssel mit Endung {last6}",
     "signin.choice.origin.keyAdded": "Mit einem Schlüssel hinzugefügt",
     "signin.choice.origin.storeKey": "{store}-Schlüssel endet auf {last6}",
@@ -2215,10 +2231,9 @@ export const KIT_COPY: Readonly<
     "signin.gate.birthdate": "Mein Geburtsdatum von {org} hinzufügen",
     "signin.gate.birthdateHelp":
       "Nur Sie können es sehen. Apps erhalten es nie.",
-    "signin.gate.productTerms": "Ich stimme den Bedingungen von {product} zu",
+    "signin.gate.productTerms": "Ich stimme den {term} zu",
     "signin.gate.platformTerms":
-      "Mit dem Fortfahren stimmen Sie den Bedingungen von Polaris Locker zu.",
-    "signin.gate.readTerms": "Bedingungen lesen",
+      "Mit dem Fortfahren stimmen Sie den {term} zu.",
     "signin.gate.expired":
       "Diese Anmeldung ist abgelaufen. Melden Sie sich erneut an.",
     "signin.gate.joinTitle": "Konten zusammenführen",
@@ -2256,6 +2271,25 @@ export const KIT_COPY: Readonly<
       "Die Sicherheitsprüfung wurde nicht bestanden. Versuchen Sie es erneut.",
     "signin.code.rateLimited":
       "Zu viele Versuche. Warten Sie eine Minute und versuchen Sie es erneut.",
+    "signin.gate.termsLinkProduct": "Bedingungen von {product}",
+    "signin.gate.termsLinkPlatform": "Bedingungen von Polaris Locker",
+    "signin.approve.expiredCode":
+      "Dieser Code ist abgelaufen. Fordern Sie auf dem anderen Gerät einen neuen an.",
+    "signin.approve.notFound":
+      "Für diesen Code wartet keine Anmeldung. Prüfen Sie ihn auf dem anderen Gerät.",
+    "signin.email.placeholder": "you@example.com",
+    "signin.sso.name": "Single Sign-on",
+    "signin.off.developer": "den Entwickler",
+    "signin.code.changeEmail": "E-Mail-Adresse ändern",
+    "signin.sso.wait": "Warten Sie {time}",
+    "signin.key.keyFor": "Schlüssel für {product}",
+    "signin.key.help": "Beginnt mit pkey_. Groß- und Kleinschreibung beachten.",
+    "signin.key.empty": "Fügen Sie Ihren Lizenzschlüssel ein, um fortzufahren.",
+    "signin.provider.connectGroup": "Oder ein anderes Konto verbinden",
+    "signin.rateLimitedFew":
+      "Zu viele Codes. Versuchen Sie es in ein paar Minuten erneut.",
+    "signin.code.emailInUse":
+      "Ein anderes Konto bei Polaris Locker verwendet diese E-Mail-Adresse. Melden Sie sich auf dem bisherigen Weg an.",
     "core.fallback.title": "Ein Fehler ist aufgetreten",
     "core.fallback.message":
       "Ein Fehler ist aufgetreten ({code}). Versuchen Sie es erneut.",
@@ -3241,7 +3275,7 @@ export const KIT_COPY: Readonly<
     "signin.term.lifetime": "À vie",
     "signin.term.until": "Jusqu’au {date}",
     "signin.term.yearlyUntil": "Annuelle, jusqu’au {date}",
-    "signin.choice.origin.signIn": "Via la connexion",
+    "signin.choice.origin.signIn": "Attribution automatique",
     "signin.choice.origin.key": "Clé se terminant par {last6}",
     "signin.choice.origin.keyAdded": "Ajoutée avec une clé",
     "signin.choice.origin.storeKey": "Clé {store} se terminant par {last6}",
@@ -3650,10 +3684,8 @@ export const KIT_COPY: Readonly<
     "signin.gate.birthdate": "Ajouter ma date de naissance depuis {org}",
     "signin.gate.birthdateHelp":
       "Vous seul pouvez la voir. Les apps ne la reçoivent jamais.",
-    "signin.gate.productTerms": "J'accepte les conditions de {product}",
-    "signin.gate.platformTerms":
-      "En continuant, vous acceptez les conditions de Polaris Locker.",
-    "signin.gate.readTerms": "Lire les conditions",
+    "signin.gate.productTerms": "J'accepte les {term}",
+    "signin.gate.platformTerms": "En continuant, vous acceptez les {term}.",
     "signin.gate.expired": "Cette connexion a expiré. Reconnectez-vous.",
     "signin.gate.joinTitle": "Réunir vos comptes",
     "signin.gate.joinLede":
@@ -3690,6 +3722,24 @@ export const KIT_COPY: Readonly<
       "La vérification de sécurité a échoué. Réessayez.",
     "signin.code.rateLimited":
       "Trop de tentatives. Attendez une minute, puis réessayez.",
+    "signin.gate.termsLinkProduct": "conditions de {product}",
+    "signin.gate.termsLinkPlatform": "conditions de Polaris Locker",
+    "signin.approve.expiredCode":
+      "Ce code a expiré. Demandez-en un nouveau sur l'autre appareil.",
+    "signin.approve.notFound":
+      "Aucune connexion n'attend ce code. Vérifiez-le sur l'autre appareil.",
+    "signin.email.placeholder": "you@example.com",
+    "signin.sso.name": "l'authentification unique",
+    "signin.off.developer": "son développeur",
+    "signin.code.changeEmail": "Modifier l'e-mail",
+    "signin.sso.wait": "Patientez {time}",
+    "signin.key.keyFor": "Clé pour {product}",
+    "signin.key.help": "Commence par pkey_. Sensible à la casse.",
+    "signin.key.empty": "Collez votre clé de licence pour continuer.",
+    "signin.provider.connectGroup": "Ou connecter un autre compte",
+    "signin.rateLimitedFew": "Trop de codes. Réessayez dans quelques minutes.",
+    "signin.code.emailInUse":
+      "Un autre compte Polaris Locker utilise cet e-mail. Connectez-vous comme avant.",
     "core.fallback.title": "Something went wrong",
     "core.fallback.message": "Something went wrong ({code}). Try again.",
     "core.codes.unauthorized.title": "Not signed in",
@@ -4649,7 +4699,7 @@ export const KIT_COPY: Readonly<
     "signin.term.lifetime": "De por vida",
     "signin.term.until": "Hasta el {date}",
     "signin.term.yearlyUntil": "Anual, hasta el {date}",
-    "signin.choice.origin.signIn": "Al iniciar sesión",
+    "signin.choice.origin.signIn": "Asignación automática",
     "signin.choice.origin.key": "Clave terminada en {last6}",
     "signin.choice.origin.keyAdded": "Añadida con una clave",
     "signin.choice.origin.storeKey": "Clave de {store} terminada en {last6}",
@@ -5054,10 +5104,8 @@ export const KIT_COPY: Readonly<
     "signin.gate.birthdate": "Añadir mi fecha de nacimiento de {org}",
     "signin.gate.birthdateHelp":
       "Solo tú puedes verla. Las apps nunca la reciben.",
-    "signin.gate.productTerms": "Acepto las condiciones de {product}",
-    "signin.gate.platformTerms":
-      "Al continuar, aceptas las condiciones de Polaris Locker.",
-    "signin.gate.readTerms": "Leer las condiciones",
+    "signin.gate.productTerms": "Acepto las {term}",
+    "signin.gate.platformTerms": "Al continuar, aceptas las {term}.",
     "signin.gate.expired":
       "Ese inicio de sesión ha caducado. Vuelve a iniciar sesión.",
     "signin.gate.joinTitle": "Unir tus cuentas",
@@ -5095,6 +5143,25 @@ export const KIT_COPY: Readonly<
       "La comprobación de seguridad no se superó. Inténtalo de nuevo.",
     "signin.code.rateLimited":
       "Demasiados intentos. Espera un minuto y vuelve a intentarlo.",
+    "signin.gate.termsLinkProduct": "condiciones de {product}",
+    "signin.gate.termsLinkPlatform": "condiciones de Polaris Locker",
+    "signin.approve.expiredCode":
+      "Ese código ha caducado. Pide uno nuevo en el otro dispositivo.",
+    "signin.approve.notFound":
+      "Ningún inicio de sesión está esperando ese código. Compruébalo en el otro dispositivo.",
+    "signin.email.placeholder": "you@example.com",
+    "signin.sso.name": "inicio de sesión único",
+    "signin.off.developer": "su desarrollador",
+    "signin.code.changeEmail": "Cambiar correo",
+    "signin.sso.wait": "Espera {time}",
+    "signin.key.keyFor": "Clave para {product}",
+    "signin.key.help": "Empieza por pkey_. Distingue mayúsculas.",
+    "signin.key.empty": "Pega tu clave de licencia para continuar.",
+    "signin.provider.connectGroup": "O conecta otra cuenta",
+    "signin.rateLimitedFew":
+      "Demasiados códigos. Inténtalo de nuevo en unos minutos.",
+    "signin.code.emailInUse":
+      "Otra cuenta de Polaris Locker usa este correo. Inicia sesión como antes.",
     "core.fallback.title": "Algo salió mal",
     "core.fallback.message": "Algo salió mal ({code}). Vuelve a intentarlo.",
     "core.codes.unauthorized.title": "Sin sesión iniciada",
@@ -6082,7 +6149,7 @@ export const KIT_COPY: Readonly<
     "signin.term.lifetime": "Vitalícia",
     "signin.term.until": "Até {date}",
     "signin.term.yearlyUntil": "Anual, até {date}",
-    "signin.choice.origin.signIn": "Ao entrar",
+    "signin.choice.origin.signIn": "Atribuição automática",
     "signin.choice.origin.key": "Chave terminada em {last6}",
     "signin.choice.origin.keyAdded": "Adicionada com uma chave",
     "signin.choice.origin.storeKey": "Chave {store} terminada em {last6}",
@@ -6475,10 +6542,8 @@ export const KIT_COPY: Readonly<
     "signin.gate.pictureProvider": "Usar minha imagem do {provider}",
     "signin.gate.birthdate": "Adicionar minha data de nascimento de {org}",
     "signin.gate.birthdateHelp": "Só você pode ver. Os apps nunca a recebem.",
-    "signin.gate.productTerms": "Concordo com os termos de {product}",
-    "signin.gate.platformTerms":
-      "Ao continuar, você concorda com os termos do Polaris Locker.",
-    "signin.gate.readTerms": "Ler os termos",
+    "signin.gate.productTerms": "Concordo com os {term}",
+    "signin.gate.platformTerms": "Ao continuar, você concorda com os {term}.",
     "signin.gate.expired": "Esse login expirou. Entre novamente.",
     "signin.gate.joinTitle": "Juntar suas contas",
     "signin.gate.joinLede":
@@ -6515,6 +6580,25 @@ export const KIT_COPY: Readonly<
       "A verificação de segurança não foi aprovada. Tente novamente.",
     "signin.code.rateLimited":
       "Muitas tentativas. Aguarde um minuto e tente novamente.",
+    "signin.gate.termsLinkProduct": "termos de {product}",
+    "signin.gate.termsLinkPlatform": "termos do Polaris Locker",
+    "signin.approve.expiredCode":
+      "Esse código expirou. Peça um novo no outro dispositivo.",
+    "signin.approve.notFound":
+      "Nenhum login está aguardando esse código. Confira-o no outro dispositivo.",
+    "signin.email.placeholder": "you@example.com",
+    "signin.sso.name": "login único",
+    "signin.off.developer": "o desenvolvedor",
+    "signin.code.changeEmail": "Alterar e-mail",
+    "signin.sso.wait": "Aguarde {time}",
+    "signin.key.keyFor": "Chave para {product}",
+    "signin.key.help": "Começa com pkey_. Diferencia maiúsculas.",
+    "signin.key.empty": "Cole sua chave de licença para continuar.",
+    "signin.provider.connectGroup": "Ou conecte outra conta",
+    "signin.rateLimitedFew":
+      "Muitos códigos. Tente novamente em alguns minutos.",
+    "signin.code.emailInUse":
+      "Outra conta do Polaris Locker usa este e-mail. Entre como você fazia antes.",
     "core.fallback.title": "Algo deu errado",
     "core.fallback.message": "Algo deu errado ({code}). Tente novamente.",
     "core.codes.unauthorized.title": "Não conectado",
@@ -7485,7 +7569,7 @@ export const KIT_COPY: Readonly<
     "signin.term.lifetime": "A vita",
     "signin.term.until": "Fino al {date}",
     "signin.term.yearlyUntil": "Annuale, fino al {date}",
-    "signin.choice.origin.signIn": "Dall'accesso",
+    "signin.choice.origin.signIn": "Assegnazione automatica",
     "signin.choice.origin.key": "Chiave che termina con {last6}",
     "signin.choice.origin.keyAdded": "Aggiunta con una chiave",
     "signin.choice.origin.storeKey": "Chiave {store} che termina con {last6}",
@@ -7885,10 +7969,8 @@ export const KIT_COPY: Readonly<
     "signin.gate.birthdate": "Aggiungi la mia data di nascita da {org}",
     "signin.gate.birthdateHelp":
       "Solo tu puoi vederla. Le app non la ricevono mai.",
-    "signin.gate.productTerms": "Accetto i termini di {product}",
-    "signin.gate.platformTerms":
-      "Continuando accetti i termini di Polaris Locker.",
-    "signin.gate.readTerms": "Leggi i termini",
+    "signin.gate.productTerms": "Accetto i {term}",
+    "signin.gate.platformTerms": "Continuando accetti i {term}.",
     "signin.gate.expired": "Questo accesso è scaduto. Accedi di nuovo.",
     "signin.gate.joinTitle": "Unisci i tuoi account",
     "signin.gate.joinLede":
@@ -7925,6 +8007,24 @@ export const KIT_COPY: Readonly<
       "Il controllo di sicurezza non è andato a buon fine. Riprova.",
     "signin.code.rateLimited":
       "Troppi tentativi. Attendi un minuto, poi riprova.",
+    "signin.gate.termsLinkProduct": "termini di {product}",
+    "signin.gate.termsLinkPlatform": "termini di Polaris Locker",
+    "signin.approve.expiredCode":
+      "Quel codice è scaduto. Chiedine uno nuovo sull'altro dispositivo.",
+    "signin.approve.notFound":
+      "Nessun accesso è in attesa di quel codice. Controllalo sull'altro dispositivo.",
+    "signin.email.placeholder": "you@example.com",
+    "signin.sso.name": "accesso singolo",
+    "signin.off.developer": "il suo sviluppatore",
+    "signin.code.changeEmail": "Cambia email",
+    "signin.sso.wait": "Attendi {time}",
+    "signin.key.keyFor": "Chiave per {product}",
+    "signin.key.help": "Inizia con pkey_. Distingue maiuscole e minuscole.",
+    "signin.key.empty": "Incolla la tua chiave di licenza per continuare.",
+    "signin.provider.connectGroup": "Oppure collega un altro account",
+    "signin.rateLimitedFew": "Troppi codici. Riprova tra qualche minuto.",
+    "signin.code.emailInUse":
+      "Un altro account Polaris Locker usa questa email. Accedi come prima.",
     "core.fallback.title": "Si è verificato un problema",
     "core.fallback.message": "Si è verificato un problema ({code}). Riprova.",
     "core.codes.unauthorized.title": "Accesso non effettuato",
@@ -8910,7 +9010,7 @@ export const KIT_COPY: Readonly<
     "signin.term.lifetime": "無期限",
     "signin.term.until": "{date}まで",
     "signin.term.yearlyUntil": "年間、{date}まで",
-    "signin.choice.origin.signIn": "サインインで取得",
+    "signin.choice.origin.signIn": "自動付与",
     "signin.choice.origin.key": "末尾が{last6}のキー",
     "signin.choice.origin.keyAdded": "キーで追加",
     "signin.choice.origin.storeKey": "末尾が{last6}の{store}キー",
@@ -9314,10 +9414,8 @@ export const KIT_COPY: Readonly<
     "signin.gate.birthdate": "{org} から生年月日を追加",
     "signin.gate.birthdateHelp":
       "表示されるのはご本人だけです。アプリには渡されません。",
-    "signin.gate.productTerms": "{product} の利用規約に同意します",
-    "signin.gate.platformTerms":
-      "続行すると、Polaris Locker の利用規約に同意したことになります。",
-    "signin.gate.readTerms": "利用規約を読む",
+    "signin.gate.productTerms": "{term}に同意します",
+    "signin.gate.platformTerms": "続行すると、{term}に同意したことになります。",
     "signin.gate.expired":
       "このサインインは期限切れです。もう一度サインインしてください。",
     "signin.gate.joinTitle": "アカウントを統合",
@@ -9355,6 +9453,25 @@ export const KIT_COPY: Readonly<
       "セキュリティチェックに失敗しました。もう一度お試しください。",
     "signin.code.rateLimited":
       "試行回数が多すぎます。1分待ってからもう一度お試しください。",
+    "signin.gate.termsLinkProduct": "{product} の利用規約",
+    "signin.gate.termsLinkPlatform": "Polaris Locker の利用規約",
+    "signin.approve.expiredCode":
+      "そのコードは期限切れです。もう一方のデバイスで新しいコードを取得してください。",
+    "signin.approve.notFound":
+      "そのコードを待っているサインインはありません。もう一方のデバイスで確認してください。",
+    "signin.email.placeholder": "you@example.com",
+    "signin.sso.name": "シングルサインオン",
+    "signin.off.developer": "開発元",
+    "signin.code.changeEmail": "メールアドレスを変更",
+    "signin.sso.wait": "{time} お待ちください",
+    "signin.key.keyFor": "{product} のキー",
+    "signin.key.help": "pkey_ で始まります。大文字と小文字は区別されます。",
+    "signin.key.empty": "続行するにはライセンスキーを貼り付けてください。",
+    "signin.provider.connectGroup": "または別のアカウントを接続",
+    "signin.rateLimitedFew":
+      "コードが多すぎます。数分後にもう一度お試しください。",
+    "signin.code.emailInUse":
+      "別の Polaris Locker アカウントがこのメールアドレスを使用しています。以前の方法でサインインしてください。",
     "core.fallback.title": "問題が発生しました",
     "core.fallback.message":
       "問題が発生しました（{code}）。もう一度お試しください。",
@@ -10331,7 +10448,7 @@ export const KIT_COPY: Readonly<
     "signin.term.lifetime": "평생",
     "signin.term.until": "{date}까지",
     "signin.term.yearlyUntil": "연간, {date}까지",
-    "signin.choice.origin.signIn": "로그인으로 받음",
+    "signin.choice.origin.signIn": "자동 부여",
     "signin.choice.origin.key": "{last6}(으)로 끝나는 키",
     "signin.choice.origin.keyAdded": "키로 추가됨",
     "signin.choice.origin.storeKey": "{last6}(으)로 끝나는 {store} 키",
@@ -10709,10 +10826,9 @@ export const KIT_COPY: Readonly<
     "signin.gate.birthdate": "{org}에서 생년월일 추가",
     "signin.gate.birthdateHelp":
       "본인만 볼 수 있습니다. 앱에는 전달되지 않습니다.",
-    "signin.gate.productTerms": "{product} 약관에 동의합니다",
+    "signin.gate.productTerms": "{term}에 동의합니다",
     "signin.gate.platformTerms":
-      "계속하면 Polaris Locker 약관에 동의하는 것으로 간주됩니다.",
-    "signin.gate.readTerms": "약관 읽기",
+      "계속하면 {term}에 동의하는 것으로 간주됩니다.",
     "signin.gate.expired": "이 로그인은 만료되었습니다. 다시 로그인하세요.",
     "signin.gate.joinTitle": "계정 통합",
     "signin.gate.joinLede":
@@ -10749,6 +10865,24 @@ export const KIT_COPY: Readonly<
       "보안 확인을 통과하지 못했습니다. 다시 시도하세요.",
     "signin.code.rateLimited":
       "시도 횟수가 너무 많습니다. 1분 기다린 후 다시 시도하세요.",
+    "signin.gate.termsLinkProduct": "{product} 약관",
+    "signin.gate.termsLinkPlatform": "Polaris Locker 약관",
+    "signin.approve.expiredCode":
+      "이 코드는 만료되었습니다. 다른 기기에서 새 코드를 받으세요.",
+    "signin.approve.notFound":
+      "해당 코드를 기다리는 로그인이 없습니다. 다른 기기에서 확인하세요.",
+    "signin.email.placeholder": "you@example.com",
+    "signin.sso.name": "싱글 사인온",
+    "signin.off.developer": "개발사",
+    "signin.code.changeEmail": "이메일 변경",
+    "signin.sso.wait": "{time} 기다려 주세요",
+    "signin.key.keyFor": "{product} 키",
+    "signin.key.help": "pkey_로 시작합니다. 대소문자를 구분합니다.",
+    "signin.key.empty": "계속하려면 라이선스 키를 붙여 넣으세요.",
+    "signin.provider.connectGroup": "또는 다른 계정 연결",
+    "signin.rateLimitedFew": "코드가 너무 많습니다. 몇 분 후 다시 시도하세요.",
+    "signin.code.emailInUse":
+      "다른 Polaris Locker 계정이 이 이메일을 사용하고 있습니다. 이전에 쓰던 방법으로 로그인하세요.",
     "core.fallback.title": "문제가 발생했어요",
     "core.fallback.message": "문제가 발생했어요({code}). 다시 시도하세요.",
     "core.codes.unauthorized.title": "로그인되지 않음",
@@ -11672,7 +11806,7 @@ export const KIT_COPY: Readonly<
     "signin.term.lifetime": "永久",
     "signin.term.until": "有效期至{date}",
     "signin.term.yearlyUntil": "按年订阅，有效期至{date}",
-    "signin.choice.origin.signIn": "通过登录获得",
+    "signin.choice.origin.signIn": "自动授予",
     "signin.choice.origin.key": "尾号为{last6}的密钥",
     "signin.choice.origin.keyAdded": "通过密钥添加",
     "signin.choice.origin.storeKey": "尾号为{last6}的{store}密钥",
@@ -12029,9 +12163,8 @@ export const KIT_COPY: Readonly<
     "signin.gate.pictureProvider": "使用我的 {provider} 头像",
     "signin.gate.birthdate": "添加来自 {org} 的出生日期",
     "signin.gate.birthdateHelp": "只有您能看到。应用永远不会获得。",
-    "signin.gate.productTerms": "我同意 {product} 条款",
-    "signin.gate.platformTerms": "继续即表示您同意 Polaris Locker 条款。",
-    "signin.gate.readTerms": "阅读条款",
+    "signin.gate.productTerms": "我同意{term}",
+    "signin.gate.platformTerms": "继续即表示您同意{term}。",
     "signin.gate.expired": "此次登录已过期。请重新登录。",
     "signin.gate.joinTitle": "合并您的账户",
     "signin.gate.joinLede":
@@ -12064,6 +12197,22 @@ export const KIT_COPY: Readonly<
     "signin.off.title": "登录已关闭",
     "signin.turnstile.failed": "安全检查未通过。请重试。",
     "signin.code.rateLimited": "尝试次数过多。请等待一分钟后重试。",
+    "signin.gate.termsLinkProduct": "{product} 条款",
+    "signin.gate.termsLinkPlatform": "Polaris Locker 条款",
+    "signin.approve.expiredCode": "该代码已过期。请在另一台设备上获取新代码。",
+    "signin.approve.notFound": "没有等待该代码的登录。请在另一台设备上核对。",
+    "signin.email.placeholder": "you@example.com",
+    "signin.sso.name": "单点登录",
+    "signin.off.developer": "其开发者",
+    "signin.code.changeEmail": "更改邮箱",
+    "signin.sso.wait": "请等待 {time}",
+    "signin.key.keyFor": "{product} 的密钥",
+    "signin.key.help": "以 pkey_ 开头。区分大小写。",
+    "signin.key.empty": "请粘贴您的许可证密钥以继续。",
+    "signin.provider.connectGroup": "或连接其他账户",
+    "signin.rateLimitedFew": "验证码过多。请几分钟后重试。",
+    "signin.code.emailInUse":
+      "另一个 Polaris Locker 账户正在使用此邮箱。请使用之前的方式登录。",
     "core.fallback.title": "出现问题",
     "core.fallback.message": "出现问题（{code}）。请重试。",
     "core.codes.unauthorized.title": "未登录",
@@ -12674,7 +12823,6 @@ export const KIT_COPY_VARIANTS: Readonly<
   "signin.approve.look": { macos: "Find It" },
   "signin.gate.pictureInitials": { macos: "Use My Initials" },
   "signin.gate.pictureProvider": { macos: "Use My {provider} Picture" },
-  "signin.gate.readTerms": { macos: "Read the Terms" },
   "signin.hint.usePasskey": { macos: "Use a Passkey" },
   "signin.hint.emailCode": { macos: "Email Me a Code" },
   "signin.key.withoutKey": { macos: "Sign In Without the Key" },

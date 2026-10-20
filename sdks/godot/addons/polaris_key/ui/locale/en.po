@@ -2148,10 +2148,10 @@ msgstr "Until {date}"
 msgid "signin.term.yearlyUntil"
 msgstr "Yearly, until {date}"
 
-#. From signing in
+#. Automatic grant
 #. Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label).
 msgid "signin.choice.origin.signIn"
-msgstr "From signing in"
+msgstr "Automatic grant"
 
 #. Key ending {last6}
 #. Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {last6} = the license key's last six characters, shown as is.
@@ -3957,25 +3957,15 @@ msgstr "Add my birth date from {org}"
 msgid "signin.gate.birthdateHelp"
 msgstr "Only you can see it. Apps never get it."
 
-#. I agree to the {product} terms
+#. I agree to the {term}
 #. Finish step: the product's terms checkbox. Arguments: {product} = the product's name.
 msgid "signin.gate.productTerms"
-msgstr "I agree to the {product} terms"
+msgstr "I agree to the {term}"
 
-#. By continuing you agree to the Polaris Locker terms.
+#. By continuing you agree to the {term}.
 #. Finish step: the platform's terms line, with the link below it. Polaris Locker is never translated.
 msgid "signin.gate.platformTerms"
-msgstr "By continuing you agree to the Polaris Locker terms."
-
-#. Read the terms
-#. Finish step: link to the terms page.
-msgid "signin.gate.readTerms"
-msgstr "Read the terms"
-
-#. macos: Read the Terms
-msgctxt "macos"
-msgid "signin.gate.readTerms"
-msgstr "Read the Terms"
+msgstr "By continuing you agree to the {term}."
 
 #. That sign-in has expired. Sign in again.
 #. Finish step: the 15-minute sign-in ran out.
@@ -4136,6 +4126,81 @@ msgstr "The security check did not pass. Try again."
 #. Code step: the verify's 429.
 msgid "signin.code.rateLimited"
 msgstr "Too many tries. Wait a minute, then try again."
+
+#. {product} terms
+#. The product's terms link in the finish step; fills {term} in the terms sentence. Arguments: {product} = the product's name.
+msgid "signin.gate.termsLinkProduct"
+msgstr "{product} terms"
+
+#. Polaris Locker terms
+#. The platform's terms link in the finish step. Polaris Locker is never translated.
+msgid "signin.gate.termsLinkPlatform"
+msgstr "Polaris Locker terms"
+
+#. That code expired. Ask for a new one on the other device.
+#. Approve dialog: the code is spent or expired (410).
+msgid "signin.approve.expiredCode"
+msgstr "That code expired. Ask for a new one on the other device."
+
+#. No sign-in is waiting for that code. Check it on the other device.
+#. Approve dialog: no pending request has this code (404 or 422).
+msgid "signin.approve.notFound"
+msgstr "No sign-in is waiting for that code. Check it on the other device."
+
+#. you@example.com
+#. Placeholder of the email field on the sign-in card. Not translated.
+msgid "signin.email.placeholder"
+msgstr "you@example.com"
+
+#. single sign-on
+#. Names the platform's single sign-on in 'Continue with {provider}' when it has no display name.
+msgid "signin.sso.name"
+msgstr "single sign-on"
+
+#. its developer
+#. Stands for {developer} when a product has no developer name, in 'Contact {developer}'.
+msgid "signin.off.developer"
+msgstr "its developer"
+
+#. Change email
+#. Accessible name of the control that goes back to the email step.
+msgid "signin.code.changeEmail"
+msgstr "Change email"
+
+#. Wait {time}
+#. Why a resend is disabled. Arguments: {time} = the wait, such as 0:42.
+msgid "signin.sso.wait"
+msgstr "Wait {time}"
+
+#. Key for {product}
+#. Have a license key? step, under a valid key. Arguments: {product} = the product's name.
+msgid "signin.key.keyFor"
+msgstr "Key for {product}"
+
+#. Starts with pkey_. Case-sensitive.
+#. Have a license key? step: help under the field.
+msgid "signin.key.help"
+msgstr "Starts with pkey_. Case-sensitive."
+
+#. Paste your license key to continue.
+#. Have a license key? step: Continue pressed with an empty field.
+msgid "signin.key.empty"
+msgstr "Paste your license key to continue."
+
+#. Or connect another account
+#. Group label of the provider buttons when adding a sign-in method.
+msgid "signin.provider.connectGroup"
+msgstr "Or connect another account"
+
+#. Too many codes. Try again in a few minutes.
+#. Rate limit with no wait given.
+msgid "signin.rateLimitedFew"
+msgstr "Too many codes. Try again in a few minutes."
+
+#. Another Polaris Locker account uses this email. Sign in the way you did before.
+#. Sign-in card, code step: the address belongs to another account that does not use it as a sign-in method. Polaris Locker is never translated.
+msgid "signin.code.emailInUse"
+msgstr "Another Polaris Locker account uses this email. Sign in the way you did before."
 
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).

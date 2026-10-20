@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, it } from "vitest";
-import { emptyStateStarBreaches } from "./pageChecks.js";
+import { emptyStateStarBreaches, rawPlaceholders } from "./pageChecks.js";
 import {
   axe,
   columnBreaches,
@@ -130,6 +130,12 @@ describe.concurrent("every shipped §4 state passes the quality bar", () => {
             expect.soft(await o.violations(), "CSP violations").toEqual([]);
             expect.soft(await axe(o.page), "axe violations").toEqual([]);
             expect.soft(await h1Count(o.page), "visible h1 count").toBe(1);
+            expect
+              .soft(
+                await rawPlaceholders(o.page),
+                "unfilled {argument} on screen",
+              )
+              .toEqual([]);
             expect
               .soft(await horizontalOverflow(o.page), "horizontal scroll")
               .toBeLessThanOrEqual(0);

@@ -1,25 +1,26 @@
 import * as React from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Check } from "lucide-react";
+import { Check, User } from "lucide-react";
 import { Button } from "../../../ui/Button.js";
 import { Checkbox } from "../../../ui/Checkbox.js";
 import { Input } from "../../../ui/Input.js";
-import { Spinner } from "../../../ui/Spinner.js";
 import {
   AuthTitle,
   CODE_LENGTH,
   CodeCells,
   QuietLink,
+  useStepFocus,
 } from "../../../ui/auth/index.js";
-import { t } from "../../../lib/copy.js";
+import { t, tParts } from "../../../lib/copy.js";
 import {
   portalApi,
   PortalApiError,
   type PortalGate,
   type PortalGateChoice,
 } from "../../api.js";
+import { portalErrorCopy } from "../../errors.js";
 import { portalKeys } from "../../data.js";
-import { rememberVia } from "../../lastMethod.js";
+import { rememberNudge, rememberVia } from "../../lastMethod.js";
 import { announceSignedIn } from "../../session.js";
 import { wrongCodeText } from "../../copy/codeEntry.js";
 import { initialsOf } from "../Avatar.js";
@@ -69,14 +70,65 @@ function ProviderMark({ kind }: { kind: string }): React.ReactElement | null {
   ) : null;
 }
 
+/** A terms link that opens in a new tab: a 44 px target, named for what it opens. */
+function TermsLink({
+  url,
+  children,
+}: {
+  url: string;
+  children: React.ReactNode;
+}): React.ReactElement {
+  const href = safeHref(url);
+  return href ? (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer noopener"
+      className="inline-flex min-h-11 items-center underline decoration-2 underline-offset-4"
+    >
+      {children}
+    </a>
+  ) : (
+    <span>{children}</span>
+  );
+}
+
+/** "I agree to the {term}" with the link filling the slot (a catalog sentence, a real link). */
+function TermsSentence({
+  sentence,
+  url,
+  label,
+}: {
+  sentence: "signin.gate.productTerms" | "signin.gate.platformTerms";
+  url: string;
+  label: string;
+}): React.ReactElement {
+  return (
+    <>
+      {tParts(sentence, ["term"]).map((part, i) =>
+        typeof part === "string" ? (
+          <React.Fragment key={i}>{part}</React.Fragment>
+        ) : (
+          <TermsLink key={i} url={url}>
+            {label}
+          </TermsLink>
+        ),
+      )}
+    </>
+  );
+}
+
 export function FinishStep({
   onLeave,
   onExpired,
+  onTitle,
 }: {
   /** Cancel sign-in: back to the methods. */
   onLeave: () => void;
   /** The gate is gone (15 minutes, or never opened): back to the methods with a notice. */
   onExpired: () => void;
+  /** The page's document title for the view on screen. */
+  onTitle?: (title: string) => void;
 }): React.ReactElement {
   const qc = useQueryClient();
   const [phase, setPhase] = React.useState<Phase>({ kind: "loading" });
@@ -101,7 +153,7 @@ export function FinishStep({
   }, [phase.kind, onExpired]);
 
   /** The gate passed: the session is set; open where the person was going. */
-  const passed = async (next: string): Promise<void> => {
+  const passed = async (next: string, nudge?: boolean): Promise<void> => {
     const via = phase.kind === "gate" ? phase.gate.provider : null;
     if (
       via === "apple" ||
@@ -110,6 +162,8 @@ export function FinishStep({
       via === "email"
     )
       rememberVia(via);
+    // "Add another way to sign in" (PX-15 shows it): kept, never dropped.
+    if (nudge) rememberNudge();
     announceSignedIn();
     // The finish landing is a query on the root; go to where the sign-in began.
     const target = next && next !== "/?signin=confirm-email" ? next : "/";
@@ -127,50 +181,84 @@ export function FinishStep({
     await qc.invalidateQueries({ queryKey: portalKeys.me });
   };
 
+  const cancel = async (): Promise<void> => {
+    try {
+      await portalApi.gateCancel();
+    } catch {
+      // Already gone: the same end.
+    }
+    onLeave();
+  };
+
   if (phase.kind === "loading" || phase.kind === "gone")
     return (
-      <div aria-busy role="status" aria-label="Loading" className="space-y-5">
+      <div
+        aria-busy
+        role="status"
+        aria-label={t("common.loading")}
+        className="space-y-5"
+      >
         <div aria-hidden className="h-8 w-2/3 rounded-md bg-hover" />
         <div aria-hidden className="h-24 rounded-md bg-hover" />
         <div aria-hidden className="h-12 rounded-md bg-hover" />
       </div>
     );
   if (phase.kind === "error")
-    return (
-      <>
-        <AuthTitle>{t("signin.network.title")}</AuthTitle>
-        <Button variant="outline" onClick={() => void load()}>
-          {t("signin.retry")}
-        </Button>
-      </>
-    );
+    return <GateUnreachable error={phase.error} onRetry={() => void load()} />;
   return (
     <FinishForm
       gate={phase.gate}
       reload={load}
       onPassed={passed}
-      onCancel={async () => {
-        try {
-          await portalApi.gateCancel();
-        } catch {
-          // Already gone: the same end.
-        }
-        onLeave();
-      }}
+      onCancel={() => void cancel()}
+      onTitle={onTitle}
     />
   );
 }
+
+/** The gate could not be read: what happened, and one ink primary to ask again. */
+function GateUnreachable({
+  error,
+  onRetry,
+}: {
+  error: unknown;
+  onRetry: () => void;
+}): React.ReactElement {
+  const copy = portalErrorCopy(error, { account: true });
+  const { ref, live } = useStepFocus("error");
+  return (
+    <div ref={ref} className="space-y-5">
+      <div className="space-y-2">
+        <AuthTitle>{copy.title}</AuthTitle>
+        <p className="text-fg-muted">{copy.description}</p>
+      </div>
+      <Button
+        variant="neutral"
+        size="lg"
+        className="h-12 w-full text-base font-semibold"
+        onClick={onRetry}
+      >
+        {t("signin.retry")}
+      </Button>
+      {live}
+    </div>
+  );
+}
+
+type FieldError = { field: "email" | "terms" | "code" | "form"; text: string };
 
 function FinishForm({
   gate,
   reload,
   onPassed,
   onCancel,
+  onTitle,
 }: {
   gate: PortalGate;
   reload: () => Promise<void>;
-  onPassed: (next: string) => Promise<void>;
+  onPassed: (next: string, nudge?: boolean) => Promise<void>;
   onCancel: () => void;
+  onTitle?: (title: string) => void;
 }): React.ReactElement {
   const provider = providerName(gate.provider);
   const register = gate.provider === "email";
@@ -180,6 +268,8 @@ function FinishForm({
     providerEmail ? "provider" : "typed",
   );
   const [typed, setTyped] = React.useState("");
+  /** Back from the code or the join offer to the email choice (the next choose replaces it). */
+  const [editing, setEditing] = React.useState(false);
   const [name, setName] = React.useState(gate.profile.name ?? "");
   const [initials, setInitials] = React.useState(
     gate.profile.initials === true,
@@ -188,18 +278,61 @@ function FinishForm({
   const [product, setProduct] = React.useState(false);
   const [code, setCode] = React.useState("");
   const [busy, setBusy] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
+  const [error, setError] = React.useState<FieldError | null>(null);
   const errorId = React.useId();
   const nameId = React.useId();
   const emailId = React.useId();
   const codeId = React.useId();
+  const emailRef = React.useRef<HTMLInputElement>(null);
+  const termsRef = React.useRef<HTMLButtonElement>(null);
 
   const emailAsked = gate.emailRequired;
   const productTerms = gate.terms;
   const platformTerms = gate.platformTerms ?? null;
   const needsCode = emailAsked && !(way === "provider" && vouched);
-  const identity =
-    gate.email.confirmed ?? providerEmail ?? gate.profile.name ?? null;
+  // The strip names who signed in once: the address is the radio's job when there is one.
+  const identity = providerEmail
+    ? null
+    : (gate.email.confirmed ?? gate.profile.name ?? null);
+  const view =
+    editing && gate.stage !== "choose"
+      ? "choose"
+      : gate.stage === "join_offer"
+        ? "join"
+        : gate.stage === "code_sent"
+          ? "code"
+          : "choose";
+  const { ref, live } = useStepFocus(`${view}:${gate.stage}`);
+
+  const title =
+    view === "join"
+      ? t("signin.gate.joinTitle")
+      : view === "code"
+        ? t("signin.code.title")
+        : register
+          ? t("signin.register.title")
+          : emailAsked
+            ? t("signin.gate.title")
+            : t("signin.gate.termsTitle");
+  React.useEffect(() => {
+    onTitle?.(view === "join" ? t("signin.register.title") : title);
+  }, [title, view, onTitle]);
+
+  // The first arrival takes focus on the heading, like a step change.
+  React.useEffect(() => {
+    ref.current
+      ?.querySelector<HTMLElement>("h1")
+      ?.focus({ preventScroll: true });
+  }, [ref]);
+
+  /** Show `text` under its field and move focus there. */
+  const fail = (field: FieldError["field"], text: string): void => {
+    setError({ field, text });
+    requestAnimationFrame(() => {
+      if (field === "email") emailRef.current?.focus();
+      else if (field === "terms") termsRef.current?.focus();
+    });
+  };
 
   const run = async (fn: () => Promise<void>): Promise<void> => {
     setBusy(true);
@@ -207,20 +340,21 @@ function FinishForm({
     try {
       await fn();
     } catch (err) {
+      // Every refusal is worded here, from the catalog; the Worker's prose never reaches the page.
       if (err instanceof PortalApiError) {
-        // The gate moved on or ran out: show what is true now.
-        if (err.status === 409 || err.code === "email_in_use")
+        if (err.status === 409 || err.code === "email_in_use") {
+          setEditing(false);
           return void (await reload());
+        }
         if (err.code === "terms_required")
-          return setError(t("core.codes.terms_required.message"));
+          return fail("terms", t("core.codes.terms_required.message"));
         if (err.code === "invalid_code")
-          return setError(wrongCodeText(err.triesLeft));
-        if (err.status === 422) return setError(t("signin.email.invalid"));
-        if (err.status === 429)
-          return setError(t("signin.rateLimited", { minutes: "a few" }));
+          return fail("code", wrongCodeText(err.triesLeft));
+        if (err.status === 422) return fail("email", t("signin.email.invalid"));
+        if (err.status === 429) return fail("form", t("signin.rateLimitedFew"));
         if (err.status === 400) return void (await reload());
       }
-      setError(t("signin.approve.failed"));
+      fail("form", t("signin.approve.failed"));
     } finally {
       setBusy(false);
     }
@@ -242,14 +376,26 @@ function FinishForm({
     return out;
   };
 
+  /** Back to the email choice with "a different email" selected and the address kept. */
+  const editEmail = (from: string | null): void => {
+    setWay("typed");
+    setTyped(from ?? "");
+    setCode("");
+    setError(null);
+    setEditing(true);
+  };
+
+  const pending = gate.email.pending ?? gate.join?.email ?? null;
+  const primaryClass = "h-12 w-full text-base font-semibold";
+
   // The join offer replaces the step (§3.5).
-  if (gate.stage === "join_offer") {
+  if (view === "join") {
     const email = gate.join?.email ?? "";
     return (
-      <>
+      <div ref={ref} className="space-y-5">
         <div className="space-y-2">
-          <AuthTitle>{t("signin.gate.joinTitle")}</AuthTitle>
-          <p className="text-fg-muted">
+          <AuthTitle>{title}</AuthTitle>
+          <p className="text-fg-muted [overflow-wrap:anywhere]">
             {t("signin.gate.joinLede", { email })}
           </p>
           {gate.join?.proven ? null : (
@@ -260,7 +406,7 @@ function FinishForm({
         </div>
         {error ? (
           <p role="alert" className="text-sm text-danger">
-            {error}
+            {error.text}
           </p>
         ) : null}
         <div className="space-y-3">
@@ -268,12 +414,13 @@ function FinishForm({
             <Button
               variant="neutral"
               size="lg"
-              className="h-12 w-full text-base font-semibold"
+              className={primaryClass}
               loading={busy}
               onClick={() =>
-                void run(async () =>
-                  onPassed((await portalApi.gateJoin()).next),
-                )
+                void run(async () => {
+                  const out = await portalApi.gateJoin();
+                  await onPassed(out.next, out.nudge);
+                })
               }
             >
               {t("signin.gate.join")}
@@ -282,35 +429,33 @@ function FinishForm({
           <Button
             variant={gate.join?.proven ? "ghost" : "neutral"}
             size="lg"
-            className="h-12 w-full text-base font-semibold"
+            className={primaryClass}
             disabled={busy}
-            onClick={onCancel}
+            onClick={emailAsked ? () => editEmail(pending) : onCancel}
           >
-            {t("signin.code.differentEmail")}
+            {emailAsked
+              ? t("signin.code.differentEmail")
+              : t("signin.gate.cancel")}
           </Button>
         </div>
-      </>
+        {live}
+      </div>
     );
   }
 
-  const title = register
-    ? t("signin.register.title")
-    : emailAsked
-      ? t("signin.gate.title")
-      : t("signin.gate.termsTitle");
   const lede =
     gate.product?.name && !register
       ? t("signin.gate.ledeApp", { app: gate.product.name })
       : null;
 
   // The code for a typed or unvouched address.
-  if (gate.stage === "code_sent") {
+  if (view === "code") {
     const to = gate.email.pending ?? "";
     return (
-      <>
+      <div ref={ref} className="space-y-5">
         <div className="space-y-2">
-          <AuthTitle>{t("signin.code.title")}</AuthTitle>
-          <p className="text-fg-muted">
+          <AuthTitle>{title}</AuthTitle>
+          <p className="text-fg-muted [overflow-wrap:anywhere]">
             {t("signin.gate.codeSent", { email: to })}
           </p>
         </div>
@@ -320,38 +465,41 @@ function FinishForm({
           onSubmit={(e) => {
             e.preventDefault();
             if (code.length === CODE_LENGTH)
-              void run(async () =>
-                onPassed((await portalApi.gateVerify(code)).next),
-              );
+              void run(async () => {
+                const out = await portalApi.gateVerify(code);
+                await onPassed(out.next, out.nudge);
+              });
           }}
         >
           <CodeCells
             id={codeId}
             value={code}
-            invalid={Boolean(error)}
+            invalid={error?.field === "code"}
             describedBy={error ? errorId : undefined}
             onChange={(v) => {
               setCode(v);
               setError(null);
             }}
           />
-          {error ? (
-            <p id={errorId} role="alert" className="text-sm text-danger">
-              {error}
-            </p>
-          ) : null}
+          <div className="min-h-5">
+            {error ? (
+              <p id={errorId} role="alert" className="text-sm text-danger">
+                {error.text}
+              </p>
+            ) : null}
+          </div>
           <Button
             type="submit"
             variant="neutral"
             size="lg"
-            className="h-12 w-full text-base font-semibold"
+            className={primaryClass}
             disabled={code.length !== CODE_LENGTH}
             loading={busy}
           >
             {t("signin.gate.verify")}
           </Button>
         </form>
-        <div className="flex justify-center">
+        <div className="flex flex-wrap items-center justify-center gap-x-5">
           <QuietLink
             onClick={() =>
               void run(
@@ -366,8 +514,13 @@ function FinishForm({
           >
             {t("signin.code.resend")}
           </QuietLink>
+          <QuietLink onClick={() => editEmail(to)}>
+            {t("signin.code.differentEmail")}
+          </QuietLink>
+          <QuietLink onClick={onCancel}>{t("signin.gate.cancel")}</QuietLink>
         </div>
-      </>
+        {live}
+      </div>
     );
   }
 
@@ -381,21 +534,25 @@ function FinishForm({
   const suggestions = (gate.profile.suggestions ?? []).filter(
     (s) => s.name !== name,
   );
+  const initialsText = name.trim() ? initialsOf(name, null) : null;
+  const radio =
+    "flex min-h-11 cursor-pointer items-center gap-3 rounded-md border border-border-strong px-3 py-2 text-sm has-[:checked]:border-fg-strong";
+  const emailInvalid = error?.field === "email";
 
   return (
-    <>
+    <div ref={ref} className="space-y-5">
       {register ? null : (
         <div
           data-gate-strip
           className="flex items-center gap-3 rounded-md border border-success-border bg-success-subtle px-3 py-2.5 text-sm text-fg"
         >
           <ProviderMark kind={gate.provider} />
-          <span className="min-w-0 flex-1 truncate">
+          <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
             {identity
               ? t("signin.gate.strip", { provider, identity })
               : t("signin.gate.stripNoIdentity", { provider })}
           </span>
-          <span className="inline-flex items-center gap-1 font-medium text-success">
+          <span className="inline-flex shrink-0 items-center gap-1 font-medium text-success">
             <Check aria-hidden className="size-4" />
             {t("common.done")}
           </span>
@@ -404,7 +561,7 @@ function FinishForm({
       <div className="space-y-2">
         <AuthTitle>{title}</AuthTitle>
         {register ? (
-          <p role="status" className="text-fg-muted">
+          <p role="status" className="text-fg-muted [overflow-wrap:anywhere]">
             {t("signin.register.verified", {
               email: gate.email.confirmed ?? "",
             })}
@@ -418,17 +575,19 @@ function FinishForm({
         className="space-y-5"
         onSubmit={(e) => {
           e.preventDefault();
-          if (productTerms && !product)
-            return setError(t("core.codes.terms_required.message"));
           if (
             emailAsked &&
             way === "typed" &&
             !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(typed.trim())
           )
-            return setError(t("signin.email.invalid"));
+            return fail("email", t("signin.email.invalid"));
+          if (productTerms && !product)
+            return fail("terms", t("core.codes.terms_required.message"));
           void run(async () => {
             const out = await portalApi.gateChoose(body());
-            if (out.status === "signed_in") return onPassed(out.next);
+            if (out.status === "signed_in")
+              return onPassed(out.next, out.nudge);
+            setEditing(false);
             await reload();
           });
         }}
@@ -446,9 +605,9 @@ function FinishForm({
             ) : (
               <span
                 aria-hidden
-                className="mt-6 inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-hover text-sm font-medium text-fg-strong"
+                className="mt-6 inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-border-strong bg-surface-raised text-sm font-medium text-fg-strong"
               >
-                {initialsOf(name, null)}
+                {initialsText ?? <User className="size-5 text-fg-muted" />}
               </span>
             )}
             <div className="min-w-0 flex-1 space-y-1.5">
@@ -476,7 +635,7 @@ function FinishForm({
                       <button
                         type="button"
                         onClick={() => setName(s.name)}
-                        className="min-h-8 rounded-full border border-border-strong px-3 text-sm text-fg-strong hover:bg-hover"
+                        className="min-h-11 rounded-full border border-border-strong px-3 text-sm text-fg-strong hover:bg-hover"
                       >
                         {s.name}
                       </button>
@@ -493,7 +652,7 @@ function FinishForm({
                 {gate.profile.picture ? (
                   <button
                     type="button"
-                    className="font-medium text-fg-strong underline underline-offset-4"
+                    className="inline-flex min-h-11 items-center font-medium text-fg-strong underline decoration-2 underline-offset-4"
                     onClick={() => setInitials(!initials)}
                   >
                     {initials
@@ -512,14 +671,18 @@ function FinishForm({
             </legend>
             {providerEmail ? (
               <>
-                <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md border border-border-strong px-3 py-2 text-sm has-[:checked]:border-accent">
+                <label className={radio}>
                   <input
                     type="radio"
                     name="pk-gate-email"
+                    className="accent-action"
                     checked={way === "provider"}
-                    onChange={() => setWay("provider")}
+                    onChange={() => {
+                      setWay("provider");
+                      setError(null);
+                    }}
                   />
-                  <span className="min-w-0 break-words">
+                  <span className="min-w-0 [overflow-wrap:anywhere]">
                     <bdi>
                       {t("signin.gate.useEmail", { email: providerEmail })}
                     </bdi>
@@ -530,10 +693,11 @@ function FinishForm({
                     ) : null}
                   </span>
                 </label>
-                <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md border border-border-strong px-3 py-2 text-sm has-[:checked]:border-accent">
+                <label className={radio}>
                   <input
                     type="radio"
                     name="pk-gate-email"
+                    className="accent-action"
                     checked={way === "typed"}
                     onChange={() => setWay("typed")}
                   />
@@ -550,14 +714,25 @@ function FinishForm({
                 )}
                 <Input
                   id={emailId}
+                  ref={emailRef}
                   type="email"
                   inputMode="email"
                   autoComplete="email"
+                  placeholder={t("signin.email.placeholder")}
                   value={typed}
-                  onValueChange={setTyped}
+                  onValueChange={(v) => {
+                    setTyped(v);
+                    if (emailInvalid) setError(null);
+                  }}
                   className="h-12 text-base"
+                  aria-invalid={emailInvalid || undefined}
                   aria-describedby={
-                    gate.provider === "steam" ? `${emailId}-help` : undefined
+                    [
+                      gate.provider === "steam" ? `${emailId}-help` : null,
+                      emailInvalid ? errorId : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" ") || undefined
                   }
                 />
                 {gate.provider === "steam" ? (
@@ -565,6 +740,17 @@ function FinishForm({
                     {t("signin.gate.steam")}
                   </p>
                 ) : null}
+                <div className="min-h-5">
+                  {emailInvalid ? (
+                    <p
+                      id={errorId}
+                      role="alert"
+                      className="text-sm text-danger"
+                    >
+                      {error?.text}
+                    </p>
+                  ) : null}
+                </div>
               </div>
             ) : null}
           </fieldset>
@@ -574,42 +760,62 @@ function FinishForm({
             checked={birth}
             onCheckedChange={setBirth}
             label={t("signin.gate.birthdate", {
-              from: gate.profile.birthdate.from,
+              org: gate.profile.birthdate.from,
             })}
             description={t("signin.gate.birthdateHelp")}
           />
         ) : null}
         {productTerms ? (
-          <Checkbox
-            checked={product}
-            onCheckedChange={setProduct}
-            label={t("signin.gate.productTerms", {
-              product: gate.product?.name ?? "",
-            })}
-            description={
-              safeHref(productTerms.url) ? (
-                <a
-                  href={safeHref(productTerms.url)!}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="underline underline-offset-4"
-                >
-                  {t("signin.gate.readTerms")}
-                </a>
-              ) : undefined
-            }
-          />
+          <div>
+            <Checkbox
+              ref={termsRef}
+              checked={product}
+              onCheckedChange={(v) => {
+                setProduct(v);
+                if (error?.field === "terms") setError(null);
+              }}
+              aria-invalid={error?.field === "terms" || undefined}
+              aria-describedby={error?.field === "terms" ? errorId : undefined}
+              label={
+                <TermsSentence
+                  sentence="signin.gate.productTerms"
+                  url={productTerms.url}
+                  label={t("signin.gate.termsLinkProduct", {
+                    product: gate.product?.name ?? "",
+                  })}
+                />
+              }
+            />
+            <div className="min-h-5">
+              {error?.field === "terms" ? (
+                <p id={errorId} role="alert" className="text-sm text-danger">
+                  {error.text}
+                </p>
+              ) : null}
+            </div>
+          </div>
         ) : null}
-        {error ? (
-          <p role="alert" className="text-sm text-danger">
-            {error}
+        {platformTerms ? (
+          <p className="text-sm text-fg-muted">
+            <TermsSentence
+              sentence="signin.gate.platformTerms"
+              url={platformTerms.url}
+              label={t("signin.gate.termsLinkPlatform")}
+            />
           </p>
         ) : null}
+        <div className="min-h-5">
+          {error?.field === "form" ? (
+            <p role="alert" className="text-sm text-danger">
+              {error.text}
+            </p>
+          ) : null}
+        </div>
         <Button
           type="submit"
           variant="neutral"
           size="lg"
-          className="h-12 w-full text-base font-semibold"
+          className={primaryClass}
           loading={busy}
         >
           {primary}
@@ -617,27 +823,8 @@ function FinishForm({
         <div className="flex justify-center">
           <QuietLink onClick={onCancel}>{t("signin.gate.cancel")}</QuietLink>
         </div>
-        {platformTerms ? (
-          <p className="text-sm text-fg-muted">
-            {t("signin.gate.platformTerms")}{" "}
-            {safeHref(platformTerms.url) ? (
-              <a
-                href={safeHref(platformTerms.url)!}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="underline underline-offset-4"
-              >
-                {t("signin.gate.readTerms")}
-              </a>
-            ) : null}
-          </p>
-        ) : null}
       </form>
-      {busy && !error ? (
-        <span className="sr-only">
-          <Spinner label="Working" />
-        </span>
-      ) : null}
-    </>
+      {live}
+    </div>
   );
 }

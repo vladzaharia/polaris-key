@@ -13,7 +13,6 @@ import {
   GoogleGlyph,
   SteamGlyph,
 } from "../../../ui/auth/ProviderGlyphs.js";
-import { formatRelative } from "../../../lib/format.js";
 import { t } from "../../../lib/copy.js";
 import { portalApi, PortalApiError, type PortalEmailSent } from "../../api.js";
 import { initialsOf } from "../Avatar.js";
@@ -26,6 +25,23 @@ import { usePasskeySignIn } from "./usePasskeySignIn.js";
  * hint comes from the first-party `pk_last_method` cookie and nothing the server said
  * (`lastMethod.ts`). A method this card no longer offers never reaches this step.
  */
+/** "2 days ago", "last year": long units, never the compact "yr." of tables. */
+function whenText(ms: number): string {
+  const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+  const s = Math.round((ms - Date.now()) / 1000);
+  const units: [Intl.RelativeTimeFormatUnit, number][] = [
+    ["year", 31_536_000],
+    ["month", 2_592_000],
+    ["week", 604_800],
+    ["day", 86_400],
+    ["hour", 3_600],
+    ["minute", 60],
+  ];
+  for (const [unit, size] of units)
+    if (Math.abs(s) >= size) return rtf.format(Math.round(s / size), unit);
+  return rtf.format(0, "second");
+}
+
 const NAME: Record<string, string> = {
   apple: "Apple",
   google: "Google",
@@ -77,7 +93,7 @@ export function HintStep({
       setError(
         err instanceof PortalApiError &&
           (err.status === 429 || err.code === "rate_limited")
-          ? t("signin.rateLimited", { minutes: "a few" })
+          ? t("signin.rateLimitedFew")
           : t("signin.emailDown"),
       );
     } finally {
@@ -98,18 +114,20 @@ export function HintStep({
   const primaryClass = "h-12 w-full text-base font-semibold";
   return (
     <>
-      <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-border-strong py-1 pl-1 pr-3 text-sm">
+      <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-border-strong py-0.5 pl-1 pr-3 text-sm">
         <span
           aria-hidden
           className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-hover text-xs font-medium text-fg-strong"
         >
           {initialsOf(last.name, email)}
         </span>
-        <span className="min-w-0 truncate text-fg-strong">{email}</span>
+        <span className="min-w-0 [overflow-wrap:anywhere] text-fg-strong">
+          {email}
+        </span>
         <button
           type="button"
           onClick={onOther}
-          className="shrink-0 font-medium text-fg-strong underline underline-offset-4"
+          className="inline-flex min-h-11 shrink-0 items-center font-medium text-fg-strong underline decoration-2 underline-offset-4"
         >
           {t("signin.hint.change")}
         </button>
@@ -119,7 +137,7 @@ export function HintStep({
           ? t("signin.hint.welcome", { name: last.name })
           : t("signin.hint.welcomeNoName")}
       </AuthTitle>
-      <div className="flex items-center gap-3 rounded-md border border-border-strong bg-surface-sunken px-4 py-3">
+      <div className="flex items-center gap-3 rounded-md bg-hover px-4 py-3">
         <span className="shrink-0 text-fg-strong">{mark}</span>
         <div className="min-w-0">
           <p className="font-medium text-fg-strong">
@@ -127,7 +145,7 @@ export function HintStep({
           </p>
           {last.at ? (
             <p className="text-sm text-fg-muted">
-              {t("signin.hint.when", { when: formatRelative(last.at * 1000) })}
+              {t("signin.hint.when", { when: whenText(last.at * 1000) })}
             </p>
           ) : null}
         </div>

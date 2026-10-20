@@ -677,7 +677,6 @@ export type KitCopyKey =
   | "signin.gate.birthdateHelp"
   | "signin.gate.productTerms"
   | "signin.gate.platformTerms"
-  | "signin.gate.readTerms"
   | "signin.gate.expired"
   | "signin.gate.joinTitle"
   | "signin.gate.joinLede"
@@ -705,6 +704,21 @@ export type KitCopyKey =
   | "signin.off.title"
   | "signin.turnstile.failed"
   | "signin.code.rateLimited"
+  | "signin.gate.termsLinkProduct"
+  | "signin.gate.termsLinkPlatform"
+  | "signin.approve.expiredCode"
+  | "signin.approve.notFound"
+  | "signin.email.placeholder"
+  | "signin.sso.name"
+  | "signin.off.developer"
+  | "signin.code.changeEmail"
+  | "signin.sso.wait"
+  | "signin.key.keyFor"
+  | "signin.key.help"
+  | "signin.key.empty"
+  | "signin.provider.connectGroup"
+  | "signin.rateLimitedFew"
+  | "signin.code.emailInUse"
   | "core.fallback.title"
   | "core.fallback.message"
   | "core.codes.unauthorized.title"
@@ -1213,7 +1227,6 @@ export const KIT_COPY_VARIANTS: Readonly<
   "signin.approve.look": { macos: "Find It" },
   "signin.gate.pictureInitials": { macos: "Use My Initials" },
   "signin.gate.pictureProvider": { macos: "Use My {provider} Picture" },
-  "signin.gate.readTerms": { macos: "Read the Terms" },
   "signin.hint.usePasskey": { macos: "Use a Passkey" },
   "signin.hint.emailCode": { macos: "Email Me a Code" },
   "signin.key.withoutKey": { macos: "Sign In Without the Key" },

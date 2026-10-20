@@ -46549,6 +46549,66 @@
         }
       }
     },
+    "signin.approve.expiredCode": {
+      "comment": "Approve dialog: the code is spent or expired (410).",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That code expired. Ask for a new one on the other device."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieser Code ist abgelaufen. Fordern Sie auf dem anderen Gerät einen neuen an."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce code a expiré. Demandez-en un nouveau sur l'autre appareil."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ese código ha caducado. Pide uno nuevo en el otro dispositivo."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esse código expirou. Peça um novo no outro dispositivo."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quel codice è scaduto. Chiedine uno nuovo sull'altro dispositivo."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "そのコードは期限切れです。もう一方のデバイスで新しいコードを取得してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 코드는 만료되었습니다. 다른 기기에서 새 코드를 받으세요."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "该代码已过期。请在另一台设备上获取新代码。"
+          }
+        }
+      }
+    },
     "signin.approve.failed": {
       "comment": "Approve dialog: a decision that failed.",
       "extractionState": "manual",
@@ -46797,6 +46857,66 @@
           "stringUnit": {
             "state": "translated",
             "value": "此代码还剩一分钟。"
+          }
+        }
+      }
+    },
+    "signin.approve.notFound": {
+      "comment": "Approve dialog: no pending request has this code (404 or 422).",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No sign-in is waiting for that code. Check it on the other device."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Für diesen Code wartet keine Anmeldung. Prüfen Sie ihn auf dem anderen Gerät."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune connexion n'attend ce code. Vérifiez-le sur l'autre appareil."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ningún inicio de sesión está esperando ese código. Compruébalo en el otro dispositivo."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nenhum login está aguardando esse código. Confira-o no outro dispositivo."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessun accesso è in attesa di quel codice. Controllalo sull'altro dispositivo."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "そのコードを待っているサインインはありません。もう一方のデバイスで確認してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "해당 코드를 기다리는 로그인이 없습니다. 다른 기기에서 확인하세요."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有等待该代码的登录。请在另一台设备上核对。"
           }
         }
       }
@@ -49436,55 +49556,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "From signing in"
+            "value": "Automatic grant"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Über die Anmeldung"
+            "value": "Automatisch zugewiesen"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Via la connexion"
+            "value": "Attribution automatique"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Al iniciar sesión"
+            "value": "Asignación automática"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ao entrar"
+            "value": "Atribuição automática"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dall'accesso"
+            "value": "Assegnazione automatica"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "サインインで取得"
+            "value": "自動付与"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "로그인으로 받음"
+            "value": "자동 부여"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "通过登录获得"
+            "value": "自动授予"
           }
         }
       }
@@ -50809,6 +50929,66 @@
         }
       }
     },
+    "signin.code.changeEmail": {
+      "comment": "Accessible name of the control that goes back to the email step.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Change email"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "E-Mail-Adresse ändern"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifier l'e-mail"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambiar correo"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alterar e-mail"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambia email"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "メールアドレスを変更"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이메일 변경"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更改邮箱"
+          }
+        }
+      }
+    },
     "signin.code.differentEmail": {
       "comment": "Email code step (SIGN-IN.md §3.4).",
       "extractionState": "manual",
@@ -50877,6 +51057,66 @@
           "stringUnit": {
             "state": "translated",
             "value": "使用其他电子邮件"
+          }
+        }
+      }
+    },
+    "signin.code.emailInUse": {
+      "comment": "Sign-in card, code step: the address belongs to another account that does not use it as a sign-in method. Polaris Locker is never translated.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Another Polaris Locker account uses this email. Sign in the way you did before."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ein anderes Konto bei Polaris Locker verwendet diese E-Mail-Adresse. Melden Sie sich auf dem bisherigen Weg an."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un autre compte Polaris Locker utilise cet e-mail. Connectez-vous comme avant."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otra cuenta de Polaris Locker usa este correo. Inicia sesión como antes."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Outra conta do Polaris Locker usa este e-mail. Entre como você fazia antes."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un altro account Polaris Locker usa questa email. Accedi come prima."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "別の Polaris Locker アカウントがこのメールアドレスを使用しています。以前の方法でサインインしてください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다른 Polaris Locker 계정이 이 이메일을 사용하고 있습니다. 이전에 쓰던 방법으로 로그인하세요."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "另一个 Polaris Locker 账户正在使用此邮箱。请使用之前的方式登录。"
           }
         }
       }
@@ -54157,6 +54397,66 @@
         }
       }
     },
+    "signin.email.placeholder": {
+      "comment": "Placeholder of the email field on the sign-in card. Not translated.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "you@example.com"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "you@example.com"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "you@example.com"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "you@example.com"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "you@example.com"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "you@example.com"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "you@example.com"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "you@example.com"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "you@example.com"
+          }
+        }
+      }
+    },
     "signin.email.subject": {
       "comment": "Sign-in email subject (SIGN-IN.md §3.15). Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated. Arguments: 1=code.",
       "extractionState": "manual",
@@ -55286,193 +55586,121 @@
       }
     },
     "signin.gate.platformTerms": {
-      "comment": "Finish step: the platform's terms line, with the link below it. Polaris Locker is never translated.",
+      "comment": "Finish step: the platform's terms line, with the link below it. Polaris Locker is never translated. Arguments: 1=term.",
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "By continuing you agree to the Polaris Locker terms."
+            "value": "By continuing you agree to the %1$@."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mit dem Fortfahren stimmen Sie den Bedingungen von Polaris Locker zu."
+            "value": "Mit dem Fortfahren stimmen Sie den %1$@ zu."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "En continuant, vous acceptez les conditions de Polaris Locker."
+            "value": "En continuant, vous acceptez les %1$@."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Al continuar, aceptas las condiciones de Polaris Locker."
+            "value": "Al continuar, aceptas las %1$@."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ao continuar, você concorda com os termos do Polaris Locker."
+            "value": "Ao continuar, você concorda com os %1$@."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Continuando accetti i termini di Polaris Locker."
+            "value": "Continuando accetti i %1$@."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "続行すると、Polaris Locker の利用規約に同意したことになります。"
+            "value": "続行すると、%1$@に同意したことになります。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "계속하면 Polaris Locker 약관에 동의하는 것으로 간주됩니다."
+            "value": "계속하면 %1$@에 동의하는 것으로 간주됩니다."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "继续即表示您同意 Polaris Locker 条款。"
+            "value": "继续即表示您同意%1$@。"
           }
         }
       }
     },
     "signin.gate.productTerms": {
-      "comment": "Finish step: the product's terms checkbox. Arguments: {product} = the product's name. Arguments: 1=product.",
+      "comment": "Finish step: the product's terms checkbox. Arguments: {product} = the product's name. Arguments: 1=term.",
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "I agree to the %1$@ terms"
+            "value": "I agree to the %1$@"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ich stimme den Bedingungen von %1$@ zu"
+            "value": "Ich stimme den %1$@ zu"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "J'accepte les conditions de %1$@"
+            "value": "J'accepte les %1$@"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Acepto las condiciones de %1$@"
+            "value": "Acepto las %1$@"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Concordo com os termos de %1$@"
+            "value": "Concordo com os %1$@"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Accetto i termini di %1$@"
+            "value": "Accetto i %1$@"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ の利用規約に同意します"
+            "value": "%1$@に同意します"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ 약관에 동의합니다"
+            "value": "%1$@에 동의합니다"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "我同意 %1$@ 条款"
-          }
-        }
-      }
-    },
-    "signin.gate.readTerms": {
-      "comment": "Finish step: link to the terms page.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "variations": {
-            "device": {
-              "mac": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "Read the Terms"
-                }
-              },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "Read the terms"
-                }
-              }
-            }
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bedingungen lesen"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lire les conditions"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Leer las condiciones"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ler os termos"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Leggi i termini"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "利用規約を読む"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "약관 읽기"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "阅读条款"
+            "value": "我同意%1$@"
           }
         }
       }
@@ -55785,6 +56013,126 @@
           "stringUnit": {
             "state": "translated",
             "value": "已通过 %1$@ 登录"
+          }
+        }
+      }
+    },
+    "signin.gate.termsLinkPlatform": {
+      "comment": "The platform's terms link in the finish step. Polaris Locker is never translated.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Polaris Locker terms"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bedingungen von Polaris Locker"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "conditions de Polaris Locker"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "condiciones de Polaris Locker"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "termos do Polaris Locker"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "termini di Polaris Locker"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Polaris Locker の利用規約"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Polaris Locker 약관"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Polaris Locker 条款"
+          }
+        }
+      }
+    },
+    "signin.gate.termsLinkProduct": {
+      "comment": "The product's terms link in the finish step; fills {term} in the terms sentence. Arguments: {product} = the product's name. Arguments: 1=product.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ terms"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bedingungen von %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "conditions de %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "condiciones de %1$@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "termos de %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "termini di %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ の利用規約"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 약관"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 条款"
           }
         }
       }
@@ -58501,6 +58849,66 @@
         }
       }
     },
+    "signin.key.empty": {
+      "comment": "Have a license key? step: Continue pressed with an empty field.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paste your license key to continue."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fügen Sie Ihren Lizenzschlüssel ein, um fortzufahren."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Collez votre clé de licence pour continuer."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pega tu clave de licencia para continuar."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cole sua chave de licença para continuar."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Incolla la tua chiave di licenza per continuare."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "続行するにはライセンスキーを貼り付けてください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "계속하려면 라이선스 키를 붙여 넣으세요."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请粘贴您的许可证密钥以继续。"
+          }
+        }
+      }
+    },
     "signin.key.entries": {
       "comment": "License key step (SIGN-IN.md §3.9). Arguments: {left} = how many are left, as a number; {limit} = the license's device limit, as a number; {n} = a number. Arguments: 1=left, 2=limit, 3=n.",
       "extractionState": "manual",
@@ -58825,6 +59233,66 @@
         }
       }
     },
+    "signin.key.help": {
+      "comment": "Have a license key? step: help under the field.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Starts with pkey_. Case-sensitive."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beginnt mit pkey_. Groß- und Kleinschreibung beachten."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Commence par pkey_. Sensible à la casse."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Empieza por pkey_. Distingue mayúsculas."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Começa com pkey_. Diferencia maiúsculas."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inizia con pkey_. Distingue maiuscole e minuscole."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pkey_ で始まります。大文字と小文字は区別されます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pkey_로 시작합니다. 대소문자를 구분합니다."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "以 pkey_ 开头。区分大小写。"
+          }
+        }
+      }
+    },
     "signin.key.keep": {
       "comment": "License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product.",
       "extractionState": "manual",
@@ -58893,6 +59361,66 @@
           "stringUnit": {
             "state": "translated",
             "value": "将%1$@保存在账户中"
+          }
+        }
+      }
+    },
+    "signin.key.keyFor": {
+      "comment": "Have a license key? step, under a valid key. Arguments: {product} = the product's name. Arguments: 1=product.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Key for %1$@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schlüssel für %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clé pour %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clave para %1$@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chave para %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chiave per %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ のキー"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 키"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 的密钥"
           }
         }
       }
@@ -60445,6 +60973,66 @@
         }
       }
     },
+    "signin.off.developer": {
+      "comment": "Stands for {developer} when a product has no developer name, in 'Contact {developer}'.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "its developer"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "den Entwickler"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "son développeur"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "su desarrollador"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "o desenvolvedor"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "il suo sviluppatore"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "開発元"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "개발사"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "其开发者"
+          }
+        }
+      }
+    },
     "signin.off.product": {
       "comment": "Sign-in is turned off (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated); {developer} = the developer's name (never translated). Arguments: 1=product, 2=developer.",
       "extractionState": "manual",
@@ -61141,6 +61729,66 @@
         }
       }
     },
+    "signin.provider.connectGroup": {
+      "comment": "Group label of the provider buttons when adding a sign-in method.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Or connect another account"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oder ein anderes Konto verbinden"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ou connecter un autre compte"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O conecta otra cuenta"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ou conecte outra conta"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oppure collega un altro account"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "または別のアカウントを接続"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "또는 다른 계정 연결"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "或连接其他账户"
+          }
+        }
+      }
+    },
     "signin.provider.continue": {
       "comment": "Sign-in provider buttons (SIGN-IN.md §3.3). Arguments: {provider} = a sign-in provider's name (Apple, Google, Steam). Arguments: 1=provider.",
       "extractionState": "manual",
@@ -61389,6 +62037,66 @@
           "stringUnit": {
             "state": "translated",
             "value": "验证码请求过多。请在%1$@分钟后重试。"
+          }
+        }
+      }
+    },
+    "signin.rateLimitedFew": {
+      "comment": "Rate limit with no wait given.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Too many codes. Try again in a few minutes."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zu viele Codes. Versuchen Sie es in ein paar Minuten erneut."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trop de codes. Réessayez dans quelques minutes."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Demasiados códigos. Inténtalo de nuevo en unos minutos."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Muitos códigos. Tente novamente em alguns minutos."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Troppi codici. Riprova tra qualche minuto."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "コードが多すぎます。数分後にもう一度お試しください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "코드가 너무 많습니다. 몇 분 후 다시 시도하세요."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "验证码过多。请几分钟后重试。"
           }
         }
       }
@@ -64561,6 +65269,66 @@
         }
       }
     },
+    "signin.sso.name": {
+      "comment": "Names the platform's single sign-on in 'Continue with {provider}' when it has no display name.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "single sign-on"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Single Sign-on"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "l'authentification unique"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "inicio de sesión único"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "login único"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "accesso singolo"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "シングルサインオン"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "싱글 사인온"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "单点登录"
+          }
+        }
+      }
+    },
     "signin.sso.required": {
       "comment": "Sign-in card, an enforced connection. Arguments: {host} = the email domain. Arguments: 1=host.",
       "extractionState": "manual",
@@ -64677,6 +65445,66 @@
           "stringUnit": {
             "state": "translated",
             "value": "使用 %1$@ 登录"
+          }
+        }
+      }
+    },
+    "signin.sso.wait": {
+      "comment": "Why a resend is disabled. Arguments: {time} = the wait, such as 0:42. Arguments: 1=time.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wait %1$@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Warten Sie %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Patientez %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Espera %1$@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aguarde %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Attendi %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ お待ちください"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 기다려 주세요"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请等待 %1$@"
           }
         }
       }

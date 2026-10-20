@@ -787,7 +787,7 @@
     <!-- A license's term, shown in license rows (SIGN-IN.md §3.6). Arguments: {date} = a date already formatted by the platform. Arguments: 1=date. -->
     <string name="signin_term_yearlyUntil">年間、%1$sまで</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). -->
-    <string name="signin_choice_origin_signIn">サインインで取得</string>
+    <string name="signin_choice_origin_signIn">自動付与</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {last6} = the license key's last six characters, shown as is. Arguments: 1=last6. -->
     <string name="signin_choice_origin_key">末尾が%1$sのキー</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). -->
@@ -1476,13 +1476,10 @@
     <string name="signin_gate_birthdate">%1$s から生年月日を追加</string>
     <!-- Finish step: under the birth date choice. -->
     <string name="signin_gate_birthdateHelp">表示されるのはご本人だけです。アプリには渡されません。</string>
-    <!-- Finish step: the product's terms checkbox. Arguments: {product} = the product's name. Arguments: 1=product. -->
-    <string name="signin_gate_productTerms">%1$s の利用規約に同意します</string>
-    <!-- Finish step: the platform's terms line, with the link below it. Polaris Locker is never translated. -->
-    <string name="signin_gate_platformTerms">続行すると、Polaris Locker の利用規約に同意したことになります。</string>
-    <!-- Finish step: link to the terms page. -->
-    <string name="signin_gate_readTerms">利用規約を読む</string>
-    <string name="signin_gate_readTerms__macos">利用規約を読む</string>
+    <!-- Finish step: the product's terms checkbox. Arguments: {product} = the product's name. Arguments: 1=term. -->
+    <string name="signin_gate_productTerms">%1$sに同意します</string>
+    <!-- Finish step: the platform's terms line, with the link below it. Polaris Locker is never translated. Arguments: 1=term. -->
+    <string name="signin_gate_platformTerms">続行すると、%1$sに同意したことになります。</string>
     <!-- Finish step: the 15-minute sign-in ran out. -->
     <string name="signin_gate_expired">このサインインは期限切れです。もう一度サインインしてください。</string>
     <!-- Finish step: the join offer (SIGN-IN.md §3.5). -->
@@ -1542,6 +1539,36 @@
     <string name="signin_turnstile_failed">セキュリティチェックに失敗しました。もう一度お試しください。</string>
     <!-- Code step: the verify's 429. -->
     <string name="signin_code_rateLimited">試行回数が多すぎます。1分待ってからもう一度お試しください。</string>
+    <!-- The product's terms link in the finish step; fills {term} in the terms sentence. Arguments: {product} = the product's name. Arguments: 1=product. -->
+    <string name="signin_gate_termsLinkProduct">%1$s の利用規約</string>
+    <!-- The platform's terms link in the finish step. Polaris Locker is never translated. -->
+    <string name="signin_gate_termsLinkPlatform">Polaris Locker の利用規約</string>
+    <!-- Approve dialog: the code is spent or expired (410). -->
+    <string name="signin_approve_expiredCode">そのコードは期限切れです。もう一方のデバイスで新しいコードを取得してください。</string>
+    <!-- Approve dialog: no pending request has this code (404 or 422). -->
+    <string name="signin_approve_notFound">そのコードを待っているサインインはありません。もう一方のデバイスで確認してください。</string>
+    <!-- Placeholder of the email field on the sign-in card. Not translated. -->
+    <string name="signin_email_placeholder">you@example.com</string>
+    <!-- Names the platform's single sign-on in 'Continue with {provider}' when it has no display name. -->
+    <string name="signin_sso_name">シングルサインオン</string>
+    <!-- Stands for {developer} when a product has no developer name, in 'Contact {developer}'. -->
+    <string name="signin_off_developer">開発元</string>
+    <!-- Accessible name of the control that goes back to the email step. -->
+    <string name="signin_code_changeEmail">メールアドレスを変更</string>
+    <!-- Why a resend is disabled. Arguments: {time} = the wait, such as 0:42. Arguments: 1=time. -->
+    <string name="signin_sso_wait">%1$s お待ちください</string>
+    <!-- Have a license key? step, under a valid key. Arguments: {product} = the product's name. Arguments: 1=product. -->
+    <string name="signin_key_keyFor">%1$s のキー</string>
+    <!-- Have a license key? step: help under the field. -->
+    <string name="signin_key_help">pkey_ で始まります。大文字と小文字は区別されます。</string>
+    <!-- Have a license key? step: Continue pressed with an empty field. -->
+    <string name="signin_key_empty">続行するにはライセンスキーを貼り付けてください。</string>
+    <!-- Group label of the provider buttons when adding a sign-in method. -->
+    <string name="signin_provider_connectGroup">または別のアカウントを接続</string>
+    <!-- Rate limit with no wait given. -->
+    <string name="signin_rateLimitedFew">コードが多すぎます。数分後にもう一度お試しください。</string>
+    <!-- Sign-in card, code step: the address belongs to another account that does not use it as a sign-in method. Polaris Locker is never translated. -->
+    <string name="signin_code_emailInUse">別の Polaris Locker アカウントがこのメールアドレスを使用しています。以前の方法でサインインしてください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">問題が発生しました</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

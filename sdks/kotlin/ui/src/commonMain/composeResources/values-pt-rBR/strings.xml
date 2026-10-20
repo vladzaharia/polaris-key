@@ -801,7 +801,7 @@
     <!-- A license's term, shown in license rows (SIGN-IN.md §3.6). Arguments: {date} = a date already formatted by the platform. Arguments: 1=date. -->
     <string name="signin_term_yearlyUntil">Anual, até %1$s</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). -->
-    <string name="signin_choice_origin_signIn">Ao entrar</string>
+    <string name="signin_choice_origin_signIn">Atribuição automática</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {last6} = the license key's last six characters, shown as is. Arguments: 1=last6. -->
     <string name="signin_choice_origin_key">Chave terminada em %1$s</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). -->
@@ -1496,13 +1496,10 @@
     <string name="signin_gate_birthdate">Adicionar minha data de nascimento de %1$s</string>
     <!-- Finish step: under the birth date choice. -->
     <string name="signin_gate_birthdateHelp">Só você pode ver. Os apps nunca a recebem.</string>
-    <!-- Finish step: the product's terms checkbox. Arguments: {product} = the product's name. Arguments: 1=product. -->
-    <string name="signin_gate_productTerms">Concordo com os termos de %1$s</string>
-    <!-- Finish step: the platform's terms line, with the link below it. Polaris Locker is never translated. -->
-    <string name="signin_gate_platformTerms">Ao continuar, você concorda com os termos do Polaris Locker.</string>
-    <!-- Finish step: link to the terms page. -->
-    <string name="signin_gate_readTerms">Ler os termos</string>
-    <string name="signin_gate_readTerms__macos">Ler os termos</string>
+    <!-- Finish step: the product's terms checkbox. Arguments: {product} = the product's name. Arguments: 1=term. -->
+    <string name="signin_gate_productTerms">Concordo com os %1$s</string>
+    <!-- Finish step: the platform's terms line, with the link below it. Polaris Locker is never translated. Arguments: 1=term. -->
+    <string name="signin_gate_platformTerms">Ao continuar, você concorda com os %1$s.</string>
     <!-- Finish step: the 15-minute sign-in ran out. -->
     <string name="signin_gate_expired">Esse login expirou. Entre novamente.</string>
     <!-- Finish step: the join offer (SIGN-IN.md §3.5). -->
@@ -1562,6 +1559,36 @@
     <string name="signin_turnstile_failed">A verificação de segurança não foi aprovada. Tente novamente.</string>
     <!-- Code step: the verify's 429. -->
     <string name="signin_code_rateLimited">Muitas tentativas. Aguarde um minuto e tente novamente.</string>
+    <!-- The product's terms link in the finish step; fills {term} in the terms sentence. Arguments: {product} = the product's name. Arguments: 1=product. -->
+    <string name="signin_gate_termsLinkProduct">termos de %1$s</string>
+    <!-- The platform's terms link in the finish step. Polaris Locker is never translated. -->
+    <string name="signin_gate_termsLinkPlatform">termos do Polaris Locker</string>
+    <!-- Approve dialog: the code is spent or expired (410). -->
+    <string name="signin_approve_expiredCode">Esse código expirou. Peça um novo no outro dispositivo.</string>
+    <!-- Approve dialog: no pending request has this code (404 or 422). -->
+    <string name="signin_approve_notFound">Nenhum login está aguardando esse código. Confira-o no outro dispositivo.</string>
+    <!-- Placeholder of the email field on the sign-in card. Not translated. -->
+    <string name="signin_email_placeholder">you@example.com</string>
+    <!-- Names the platform's single sign-on in 'Continue with {provider}' when it has no display name. -->
+    <string name="signin_sso_name">login único</string>
+    <!-- Stands for {developer} when a product has no developer name, in 'Contact {developer}'. -->
+    <string name="signin_off_developer">o desenvolvedor</string>
+    <!-- Accessible name of the control that goes back to the email step. -->
+    <string name="signin_code_changeEmail">Alterar e-mail</string>
+    <!-- Why a resend is disabled. Arguments: {time} = the wait, such as 0:42. Arguments: 1=time. -->
+    <string name="signin_sso_wait">Aguarde %1$s</string>
+    <!-- Have a license key? step, under a valid key. Arguments: {product} = the product's name. Arguments: 1=product. -->
+    <string name="signin_key_keyFor">Chave para %1$s</string>
+    <!-- Have a license key? step: help under the field. -->
+    <string name="signin_key_help">Começa com pkey_. Diferencia maiúsculas.</string>
+    <!-- Have a license key? step: Continue pressed with an empty field. -->
+    <string name="signin_key_empty">Cole sua chave de licença para continuar.</string>
+    <!-- Group label of the provider buttons when adding a sign-in method. -->
+    <string name="signin_provider_connectGroup">Ou conecte outra conta</string>
+    <!-- Rate limit with no wait given. -->
+    <string name="signin_rateLimitedFew">Muitos códigos. Tente novamente em alguns minutos.</string>
+    <!-- Sign-in card, code step: the address belongs to another account that does not use it as a sign-in method. Polaris Locker is never translated. -->
+    <string name="signin_code_emailInUse">Outra conta do Polaris Locker usa este e-mail. Entre como você fazia antes.</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">Algo deu errado</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

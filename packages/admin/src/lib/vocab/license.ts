@@ -26,14 +26,8 @@ export function devicesText(n: number, limit?: number | null): string {
 }
 
 /**
- * Every licence is account-bound, so none is labelled by type: how it came to be is a quiet
- * origin in plain words (owner decision, 2026-10-05: no "Account-wide" label).
+ * The **License source** of a license issued when the person signed in (the Worker's `signin`
+ * origin): "Automatic grant", sentence case. The glossary names it (concepts.md); the catalog holds
+ * the words (`signin.choice.origin.signIn`) so the kits say the same.
  */
-export const FROM_SIGNING_IN = t("signin.choice.origin.signIn");
-
-/**
- * The **License source** of a licence granted automatically through OIDC, by the product's
- * auto-issue or a group grant when the person signed in (the Worker's `signin` origin): "Automatic
- * grant", sentence case (owner polish 2026-10-07; P0-36).
- */
-export const AUTOMATIC_GRANT = "Automatic grant";
+export const AUTOMATIC_GRANT = t("signin.choice.origin.signIn");

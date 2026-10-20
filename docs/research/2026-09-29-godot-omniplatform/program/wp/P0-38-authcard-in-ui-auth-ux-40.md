@@ -175,3 +175,17 @@ once platform terms are published; making it unconditional changes the email-ver
 transcripts, a lead call); AccountUpgrade (needs `POST /api/key/preview` in KeyStep); "Automatic grant"
 (the catalog says "From signing in"; the portal says "Automatic grant"; an owner call); the ui-qa portal
 board; `BRAND_NAME_SOURCES` reads JSON packs only, so the portal's TS copy is not covered.
+
+## Fix round after the BUILT UX review (2026-10-20)
+
+Lead decisions recorded:
+
+- "Automatic grant" stays (glossary, concepts.md). `signin.choice.origin.signIn` is "Automatic grant" in
+  nine locales (the `grant` ban has one exception, that key); `FROM_SIGNING_IN` is gone, the portal
+  reads `AUTOMATIC_GRANT` from the catalog.
+- The Worker's `nudge: true` is kept in sessionStorage (`pk-signin-nudge`, `lastMethod.ts`) for PX-15 to
+  show; it is not discarded.
+- The Worker falls back for an empty screen name (`gate.name ?? profile.name ?? displayName ?? email`),
+  so the name field is optional.
+- Follow-ups, out of this round: FinishStep rebuilt to identity.finish with the unconditional Worker gate
+  (PX-21); AccountUpgrade (PX-12); Help, Privacy and Terms links.

@@ -27,6 +27,7 @@ export function AuthCard({
   stepKey,
   direction = "forward",
   loadingKey = "loading",
+  focusKey = 0,
   children,
 }: {
   /** The brand row: the lockup (portal: Polaris Locker). Decorative; the page names itself. */
@@ -39,6 +40,11 @@ export function AuthCard({
   direction?: "forward" | "back";
   /** The page-load placeholder's step key; leaving it is not a step change. */
   loadingKey?: string;
+  /**
+   * Bump it when the control the person pressed is about to vanish into a reload (Try again):
+   * the next h1 to appear takes focus and is announced, though no step changed.
+   */
+  focusKey?: number;
   children: React.ReactNode;
 }): React.ReactElement {
   const bodyRef = React.useRef<HTMLDivElement>(null);
@@ -91,6 +97,14 @@ export function AuthCard({
     h1?.focus({ preventScroll: true });
     setAnnounce(h1?.textContent ?? "");
   }, [stepKey]);
+
+  React.useEffect(() => {
+    if (!focusKey) return;
+    const h1 = bodyRef.current?.querySelector<HTMLElement>("h1");
+    if (!h1) return;
+    h1.focus({ preventScroll: true });
+    setAnnounce(h1.textContent ?? "");
+  }, [focusKey, stepKey]);
 
   return (
     <div className="relative flex min-h-dvh flex-col bg-surface-page text-fg">

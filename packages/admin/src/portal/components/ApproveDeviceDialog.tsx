@@ -57,6 +57,13 @@ export function ApproveDeviceDialog({
   const [phase, setPhase] = React.useState<Phase>({ kind: "enter" });
   const [typed, setTyped] = React.useState(tidyCode(code));
   const started = React.useRef(false);
+  const denyRef = React.useRef<HTMLButtonElement>(null);
+  const closeRef = React.useRef<HTMLButtonElement>(null);
+  // The step changed under the person: focus the safe choice, not the dialog frame.
+  React.useEffect(() => {
+    if (phase.kind === "review") denyRef.current?.focus();
+    else if (phase.kind === "done") closeRef.current?.focus();
+  }, [phase.kind]);
 
   const look = React.useCallback(async (value: string): Promise<void> => {
     setPhase({ kind: "looking" });
@@ -67,12 +74,14 @@ export function ApproveDeviceDialog({
       setPhase({
         kind: "enter",
         error:
-          err instanceof PortalApiError &&
-          (err.status === 410 || err.status === 422)
-            ? t("signin.approve.expired")
-            : portalErrorCopy(err).title +
-              ". " +
-              portalErrorCopy(err).description,
+          err instanceof PortalApiError && err.status === 410
+            ? t("signin.approve.expiredCode")
+            : err instanceof PortalApiError &&
+                (err.status === 404 || err.status === 422)
+              ? t("signin.approve.notFound")
+              : portalErrorCopy(err).title +
+                ". " +
+                portalErrorCopy(err).description,
       });
     }
   }, []);
@@ -95,11 +104,16 @@ export function ApproveDeviceDialog({
     } catch (err) {
       if (isStepUpRequired(err))
         return setPhase({ kind: "stepup", request, decision });
+      if (err instanceof PortalApiError && err.status === 410)
+        return setPhase({
+          kind: "enter",
+          error: t("signin.approve.expiredCode"),
+        });
       if (
         err instanceof PortalApiError &&
-        (err.status === 410 || err.status === 422)
+        (err.status === 404 || err.status === 422)
       )
-        return setPhase({ kind: "enter", error: t("signin.approve.expired") });
+        return setPhase({ kind: "enter", error: t("signin.approve.notFound") });
       setPhase({ kind: "review", request, error: t("signin.approve.failed") });
     }
   };
@@ -110,7 +124,7 @@ export function ApproveDeviceDialog({
       : phase.kind === "stepup"
         ? t("core.codes.step_up_required.title")
         : phase.kind === "done"
-          ? t("signin.approve.title")
+          ? t("signin.approve.open")
           : t("signin.approve.open");
 
   return (
@@ -208,6 +222,7 @@ export function ApproveDeviceDialog({
           </DialogBody>
           <DialogFooter>
             <Button
+              ref={denyRef}
               variant="outline"
               disabled={phase.kind === "deciding"}
               onClick={() => void decide(phase.request, "deny")}
@@ -247,7 +262,7 @@ export function ApproveDeviceDialog({
             </p>
           </DialogBody>
           <DialogFooter>
-            <Button variant="neutral" onClick={onClose}>
+            <Button ref={closeRef} variant="neutral" onClick={onClose}>
               {t("common.close")}
             </Button>
           </DialogFooter>

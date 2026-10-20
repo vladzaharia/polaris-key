@@ -56,7 +56,7 @@ export function ProviderRow({
       role="group"
       aria-label={
         mode === "connect"
-          ? "Or connect another account"
+          ? t("signin.provider.connectGroup")
           : t("signin.provider.group")
       }
       data-count={list.length}
@@ -76,8 +76,8 @@ export function ProviderRow({
             aria-label={label}
             title={label}
             className={cn(
-              "inline-flex h-[3.25rem] items-center justify-center rounded-md border border-border bg-hover text-fg-strong",
-              "hover:border-border-strong",
+              "inline-flex h-[3.25rem] items-center justify-center rounded-md border border-border-strong bg-surface-raised text-fg-strong",
+              "hover:bg-hover",
               list.length === 1 && "col-span-2 mx-auto w-[calc(50%-0.375rem)]",
             )}
           >

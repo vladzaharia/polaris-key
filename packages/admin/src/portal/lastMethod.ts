@@ -105,3 +105,28 @@ export async function readLastMethod(
   }
   return { kind: kind as LastKind, at: Number(at) || 0, name };
 }
+
+const NUDGE = "pk-signin-nudge";
+
+/**
+ * The Worker's `nudge: true` ("add another way to sign in", after a first sign-in): kept for the
+ * portal visit that follows, where PX-15 shows it once. Never discarded here.
+ */
+export function rememberNudge(): void {
+  try {
+    window.sessionStorage.setItem(NUDGE, "1");
+  } catch {
+    // Storage off: the nudge waits for the next sign-in the Worker offers it on.
+  }
+}
+
+/** Whether a nudge is waiting; `take` clears it. */
+export function nudgePending(take = false): boolean {
+  try {
+    const on = window.sessionStorage.getItem(NUDGE) === "1";
+    if (on && take) window.sessionStorage.removeItem(NUDGE);
+    return on;
+  } catch {
+    return false;
+  }
+}

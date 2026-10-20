@@ -541,7 +541,7 @@ async function emailVerify(
       {
         error: "link_conflict",
         message:
-          "Another Polaris Key account uses this email. Link that account instead, or use a different email.",
+          "Another Polaris Locker account uses this email. Link that account instead, or use a different email.",
       },
       409,
     );
@@ -564,7 +564,7 @@ async function emailVerify(
         {
           error: "link_conflict",
           message:
-            "Another Polaris Key account uses this email. Link that account instead, or use a different email.",
+            "Another Polaris Locker account uses this email. Link that account instead, or use a different email.",
         },
         409,
       );

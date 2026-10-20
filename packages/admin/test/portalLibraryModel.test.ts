@@ -132,8 +132,8 @@ describe("status model (§5.3), first match wins", () => {
     );
     expect(s).toMatchObject({
       kind: "signedInApp",
-      label: "From signing in",
-      note: "Standard · From signing in · 1 device",
+      label: "Automatic grant",
+      note: "Standard · Automatic grant · 1 device",
       tone: "neutral",
       attention: false,
     });
@@ -147,7 +147,7 @@ describe("status model (§5.3), first match wins", () => {
       }),
       NOW_S,
     );
-    expect(pro.note).toBe("Pro · From signing in · 1 device");
+    expect(pro.note).toBe("Pro · Automatic grant · 1 device");
   });
 
   it("words a licence's origin in plain words, naming the store with the key", () => {
