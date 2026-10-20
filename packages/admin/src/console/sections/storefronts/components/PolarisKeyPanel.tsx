@@ -110,7 +110,7 @@ export function PolarisKeyPanel({
         ) : null
       }
       primaryAction={
-        <div className="flex flex-wrap gap-2">
+        <>
           {lockerPage ? (
             <Button variant="outline" asChild>
               <a href={lockerPage} target="_blank" rel="noreferrer">
@@ -124,7 +124,7 @@ export function PolarisKeyPanel({
               Edit the listing
             </Link>
           </Button>
-        </div>
+        </>
       }
     />
   );

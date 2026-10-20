@@ -81,14 +81,14 @@ export function LockerBadges({
   const offered = offeredBadges(status, product);
   return (
     <SettingsSection id="pk-badges" title="Get a badge">
-      <div className="@container min-w-0 px-5 py-4">
-        <p className="mb-4 text-sm text-fg-muted">
+      <div className="@container min-w-0 py-4">
+        <p className="mb-4 px-5 text-sm text-fg-muted">
           Only what this product does is offered.{" "}
           {url
             ? "Each badge links to its page on Polaris Locker."
             : "There is no Polaris Locker address to link yet, so only the art copies."}
         </p>
-        <div className="mb-4 flex flex-wrap gap-4">
+        <div className="mb-4 flex flex-wrap gap-4 px-5">
           <Picker
             label="Colour"
             value={theme}
@@ -102,14 +102,14 @@ export function LockerBadges({
             onChange={setTreatment}
           />
         </div>
-        <ul className="grid min-w-0 gap-6 @[720px]:grid-cols-2 @[720px]:gap-4">
+        <ul className="grid min-w-0 gap-6 @[720px]:grid-cols-2 @[720px]:gap-4 @[720px]:px-5">
           {offered.map((b) => {
             const svg = badgeSvg({ kind: b.kind, treatment, theme });
             const name = `${labelOf(b.kind.slice(7))} Polaris Locker`;
             return (
               <li
                 key={b.kind}
-                className="min-w-0 space-y-2 @[720px]:rounded-lg @[720px]:border @[720px]:border-border @[720px]:p-3"
+                className="min-w-0 space-y-2 [&>:not([role=region])]:px-5 @[720px]:[&>:not([role=region])]:px-0 @[720px]:rounded-lg @[720px]:border @[720px]:border-border @[720px]:p-3"
               >
                 <div
                   role="region"
