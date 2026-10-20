@@ -2432,7 +2432,8 @@ polaris-key-deltas-<env>`).
 
 The customer site is a second host on this Worker, `CUSTOMER_ORIGIN`, moved to by the
 `customer.host` switch (`off` → `on` → `permanent`). It is off in every environment until the owner
-turns it on.
+turns it on. Since LK-11 the host is attached in every environment and inert: it answers its own
+routes and the health check, and nothing links to it. The deploy smoke check covers it.
 
 **Move customers.** Check `https://<customer>/.well-known/polaris-host.json` answers
 `{host: "customer", environment, version}` with this environment. Set `customer.host` to `on` in
@@ -2442,6 +2443,15 @@ code page move together. Watch sign-in, then `permanent` after the soak.
 **Roll back.** Set `customer.host` to `off`, or deploy `CUSTOMER_HOST = "off"` for a hard off no
 console value overrides. Links return to the console origin at once. Rolling the Worker back below
 LK-03 while the custom domain is attached leaves the host serving the console's routes.
+
+**Rollback floor.** The floor is the LK-11 release (the first with the routes in `wrangler.toml`).
+Never roll the Worker back below LK-03 while `polaris.locker` is attached (plan §9): the older
+code does not know the host and would serve it the console and every product route.
+
+**Emergency detach.** With the switch `off`, delete the Worker custom domain `polaris.locker` in
+the dashboard (Worker → Settings → Domains & Routes), or remove the customer
+`[[env.<env>.routes]]` entry and redeploy. The host then stops resolving to the Worker; the API
+host is untouched. Detach before rolling back below LK-03.
 
 ## CI gates
 

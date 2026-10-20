@@ -34,3 +34,14 @@ Deferred until: O2–O10 done.
 ## Hand-off
 
 The role agent sets `--set LK-11 in-review` when it hands off; the lead sets `done` after review.
+
+## Progress and continuation
+
+2026-10-19, slice 1 (wiring) done; the switch stays off. The `polaris.locker` zone is Active in the Worker's account.
+
+- `wrangler.toml`: custom-domain routes `polaris.locker`, `staging.polaris.locker`, `dev.polaris.locker` and `CUSTOMER_ORIGIN` in each env's `[vars]`; `CUSTOMER_HOST` stays unset.
+- `CUSTOMER_ORIGIN` joins the https-origin checks (`scripts/check-config.mjs`, `core/configGuard.ts`).
+- `deploy.yml` smoke (prod, the only environment the workflow deploys): polls the customer host up to about 5 minutes for first-certificate issuance; checks `/` 200 with a CSP and no cookie, `polaris-host.json`, `/manage` 404 and the API host's `/.well-known/webauthn`. Pinned in `packages/cli/test/releaseWorkflows.test.ts`.
+- `docs/DEPLOYMENT.md` and `docs/RUNBOOK.md`: attached and inert, the rollback floor (never below LK-03 while the domain exists), emergency detach.
+
+Remaining LK-11: old-URL redirects, cookie expiry, the switch steps, and the `/activate` 302 smoke line, after LK-04, LK-06, LK-07, LK-10 and O5-O10. Status stays in-progress.

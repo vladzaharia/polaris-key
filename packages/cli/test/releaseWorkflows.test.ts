@@ -1182,6 +1182,22 @@ describe("workflow hardening", () => {
       expect(smoke?.run).toContain('content="Starlight');
     });
 
+    it("smoke-checks the customer host (LK-11) with a bounded poll", () => {
+      const smoke = (deploy.jobs["deploy-worker"]!.steps ?? []).find(
+        (s) => s.id === "smoke",
+      );
+      expect(raw("deploy.yml")).toContain(
+        'echo "customer=https://polaris.locker"',
+      );
+      expect(smoke?.run).toContain("seq 1 30");
+      expect(smoke?.run).toContain(
+        '"$CUSTOMER_URL/.well-known/polaris-host.json"',
+      );
+      expect(smoke?.run).toContain('"$CUSTOMER_URL/manage"');
+      expect(smoke?.run).toContain('"$ORIGIN/.well-known/webauthn"');
+      expect(smoke?.run).toContain("content-security-policy");
+    });
+
     it("keeps the production environment and says why it must stay", () => {
       expect(deploy.jobs["deploy-worker"]!.environment).toBe("production");
       expect(raw("deploy.yml")).toContain(
