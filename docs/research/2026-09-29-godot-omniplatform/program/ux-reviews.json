@@ -314,6 +314,11 @@
       "verdict": "pass",
       "date": "2026-10-20",
       "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/ST-44/recheck/ (re-check FAIL on 2 small blockers -> lead fix list 5cdd4c8fa + fixture restore 11d6ad80d, lead-verified)"
+    },
+    "P0-38": {
+      "verdict": "pass",
+      "date": "2026-10-20",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/P0-38/recheck/ (BUILT re-check PASS-WITH-NOTES after one fix round; lead polish + 40 px lockup f48bcd106); security check PASS"
     }
   }
 }
