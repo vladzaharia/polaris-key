@@ -38,20 +38,22 @@ export function InstallSourceList({
   /** On a computer: show the QR codes a phone scans. */
   desktop: boolean;
   /** The heading's level where the list sits (`h5` under Get it's platform `h4`). */
-  heading?: "h2" | "h3" | "h4" | "h5";
+  heading?: "h2" | "h3" | "h4" | "h5" | null;
 }): React.ReactElement | null {
   const id = React.useId();
   if (sources.length === 0) return null;
   return (
     <div>
-      <Heading id={id} className="py-2 text-xs font-semibold text-fg-muted">
-        {C["getIt.otherWays"]}
-      </Heading>
+      {Heading ? (
+        <Heading id={id} className="py-2 text-xs font-semibold text-fg-muted">
+          {C["getIt.otherWays"]}
+        </Heading>
+      ) : null}
       <ul
         aria-label={
           platform ? otherWaysOn(platformInSentence(platform)) : undefined
         }
-        aria-labelledby={platform ? undefined : id}
+        aria-labelledby={platform || !Heading ? undefined : id}
         className="divide-y divide-border"
       >
         {sources.map((s) => (

@@ -290,7 +290,7 @@ function tileError(offer: PortalDiscoverOffer, err: unknown): TileError {
     err.code === "not_eligible"
   ) {
     return {
-      text: `${offer.developerName ?? "The developer"} no longer gives ${offer.name} to your account.`,
+      text: `${offer.developerName ?? t("license.developerFallbackCap")} no longer gives ${offer.name} to your account.`,
       ended: true,
     };
   }

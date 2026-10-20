@@ -1,6 +1,5 @@
 import * as React from "react";
 import { ExternalLink, Info, Package } from "lucide-react";
-import { Hash } from "../../../ui/Hash.js";
 import { Button } from "../../../ui/Button.js";
 import { Skeleton } from "../../../ui/Skeleton.js";
 import { useProductDownloads } from "../../data.js";
@@ -9,6 +8,7 @@ import { formatDay, osName } from "../../model/library.js";
 import {
   deviceNoun,
   getItFromDownloads,
+  fileSource,
   getItModel,
   type FileRowModel,
 } from "../../model/product.js";
@@ -17,6 +17,7 @@ import {
   installOnThis,
   openOnComputer,
 } from "../../copy/getIt.js";
+import { FileHash } from "./FileHash.js";
 import { PlatformGlyph, type PlatformKey } from "../Glyphs.js";
 import { PILL_CLASS, StorePillList } from "../StorePills.js";
 import { SectionCard } from "./Card.js";
@@ -72,8 +73,9 @@ export function GetItPanel({
     );
   if (!model) return null;
   const { latest, here } = model;
+  // The accessible name says which file: its build and its file name.
   const describe = (r: FileRowModel) =>
-    r.platform ? `${platformInSentence(r.platform)} ${r.title}` : r.title;
+    `${r.platform ? `${platformInSentence(r.platform)} ${r.title}` : r.title}, ${r.artifact.name}`;
   const desktopFiles = model.groups.some(
     (g) =>
       g.rows.length > 0 &&
@@ -84,25 +86,41 @@ export function GetItPanel({
   // One table, each file once: the build for the device in hand first and tinted, then every
   // platform's files in the model's order (PX-28a; portal.license's Get it).
   const mine = new Set(model.recommended.map((r) => r.artifact.artifactId));
+  // A license that is not active says so once, in the License card: its files get no row here.
   const rows = [
     ...model.recommended,
     ...model.groups
       .flatMap((g) => g.rows)
       .filter((r) => !mine.has(r.artifact.artifactId)),
-  ];
+  ].filter((r) => !r.inactive);
   const withSources = model.groups.filter((g) => g.sources.length > 0);
+  // The phone's lead already offers its own stores: "Also yours on" never repeats them.
+  const leadIds = new Set(here?.stores.map((s) => s.id));
+  const stores = model.stores.filter((s) => !leadIds.has(s.id));
+  // The head names the release the rows are (the covered one, when the newest is not covered).
+  const shown = model.newerNotCovered
+    ? { version: model.release.version, publishedAt: model.release.publishedAt }
+    : latest;
+  if (
+    rows.length === 0 &&
+    withSources.length === 0 &&
+    stores.length === 0 &&
+    !here &&
+    !device.phone
+  )
+    return null;
   return (
     <SectionCard
       id="get"
       title={t("getIt.heading")}
       aside={
         <p className="shrink-0 pt-1 text-right text-xs text-fg-muted">
-          {latest.publishedAt
+          {shown.publishedAt
             ? t("getIt.latest", {
-                version: latest.version,
-                date: formatDay(latest.publishedAt),
+                version: shown.version,
+                date: formatDay(shown.publishedAt),
               })
-            : latest.version}
+            : shown.version}
         </p>
       }
     >
@@ -209,18 +227,25 @@ export function GetItPanel({
           </table>
         </div>
       ) : null}
-      {withSources.map((g) => (
-        <section key={g.label} className="mt-5">
-          <h3 className="text-md font-semibold text-fg-strong">{g.label}</h3>
-          <InstallSourceList
-            sources={g.sources}
-            platform={g.platform}
-            desktop={!device.phone}
-            heading="h4"
-          />
+      {withSources.length ? (
+        <section className="mt-5 space-y-3">
+          <h3 className="text-md font-semibold text-fg-strong">
+            {C["getIt.otherWays"]}
+          </h3>
+          {withSources.map((g) => (
+            <div key={g.label}>
+              <h4 className="text-xs font-semibold text-fg-muted">{g.label}</h4>
+              <InstallSourceList
+                sources={g.sources}
+                platform={g.platform}
+                desktop={!device.phone}
+                heading={null}
+              />
+            </div>
+          ))}
         </section>
-      ))}
-      {model.stores.length ? (
+      ) : null}
+      {stores.length ? (
         <div className="mt-5 space-y-2">
           <h3
             id={`${product.slug}-also-yours-on`}
@@ -229,15 +254,11 @@ export function GetItPanel({
             {C["getIt.alsoYoursOn"]}
           </h3>
           <StorePillList
-            stores={model.stores}
+            stores={stores}
             labelledBy={`${product.slug}-also-yours-on`}
           />
         </div>
       ) : null}
-      <p className="mt-4 flex items-center gap-2 text-sm text-fg-muted">
-        <Info aria-hidden className="size-4 shrink-0" />
-        {t("getIt.fresh")}
-      </p>
     </SectionCard>
   );
 }
@@ -257,7 +278,11 @@ function FileRow({
 }): React.ReactElement {
   return (
     <tr className={mine ? "bg-surface-sunken" : undefined}>
-      <th scope="row" className="px-5 py-3 text-left font-normal desk:px-6">
+      {/* The device's own build: tinted, with a strong edge, so it reads in dark too. */}
+      <th
+        scope="row"
+        className={`border-l-4 px-4 py-3 text-left font-normal desk:px-5 ${mine ? "border-fg-strong" : "border-transparent"}`}
+      >
         <span className="flex items-center gap-3">
           <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-md bg-surface-page text-fg-muted">
             {r.platform ? (
@@ -278,20 +303,24 @@ function FileRow({
               {mine
                 ? `${t("getIt.forYour", { device: deviceNoun(mine) })} · `
                 : ""}
-              {r.meta}
+              {fileSource(r.artifact)}
             </span>
           </span>
         </span>
       </th>
       <td className="hidden whitespace-nowrap px-2 py-3 sm:table-cell">
-        {r.artifact.sha256 ? (
-          <Hash value={r.artifact.sha256} label="SHA-256" />
+        {r.artifact.sha256 && !r.elsewhere && !r.notIncluded ? (
+          <FileHash value={r.artifact.sha256} file={r.artifact.name} />
         ) : null}
       </td>
       <td className="px-5 py-3 text-right desk:px-6">
         {r.elsewhere ? (
           r.elsewhere.href ? (
-            <Button asChild variant="quiet">
+            <Button
+              asChild
+              variant="quiet"
+              className="min-h-11 whitespace-normal"
+            >
               <a href={r.elsewhere.href} target="_blank" rel="noreferrer">
                 {r.elsewhere.label}
                 <ExternalLink aria-hidden />
@@ -317,6 +346,7 @@ function FileRow({
             release={r.release}
             artifact={r.artifact}
             describe={describe}
+            table
           />
         )}
       </td>

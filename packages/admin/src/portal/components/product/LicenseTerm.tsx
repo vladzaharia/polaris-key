@@ -32,14 +32,16 @@ export function LicenseTerm({
       : ended
         ? t("license.term.ended", { date: formatDay(expiresAt) })
         : t("signin.term.until", { date: formatDay(expiresAt) });
-  const plot =
-    expiresAt !== null && activatedAt !== null && activatedAt < expiresAt
-      ? { start: activatedAt, end: expiresAt }
-      : null;
+  const plot = termPlot(activatedAt, expiresAt);
   return (
     <div
       data-license-term=""
-      className="space-y-3 rounded-lg border border-border bg-surface-sunken p-4"
+      // The box is for a chart; a word on its own (Lifetime, an end date) is not boxed.
+      className={
+        plot
+          ? "space-y-3 rounded-lg border border-border bg-surface-sunken p-4"
+          : "space-y-3"
+      }
     >
       <p className="font-semibold text-fg-strong">{headline}</p>
       {plot ? <Timeline {...plot} now={now} /> : null}
@@ -48,7 +50,27 @@ export function LicenseTerm({
   );
 }
 
-/** The chart: a track, the elapsed part, today's marker and its label, the two end dates. */
+/**
+ * The span a chart can draw: from a real activation day (never 0 or null: that is 1970) to a
+ * later end. Null otherwise. The card asks this too, so "Activated" shows exactly when no chart
+ * carries the start.
+ */
+export function termPlot(
+  activatedAt: number | null,
+  expiresAt: number | null,
+): { start: number; end: number } | null {
+  return activatedAt !== null &&
+    activatedAt > 0 &&
+    expiresAt !== null &&
+    activatedAt < expiresAt
+    ? { start: activatedAt, end: expiresAt }
+    : null;
+}
+
+/**
+ * The chart: a track, the elapsed part, today's marker and its label, the two end dates. Past the
+ * end the axis runs on to today and the stretch after the end is dashed (the lapsed mockup).
+ */
 function Timeline({
   start,
   end,
@@ -58,8 +80,15 @@ function Timeline({
   end: number;
   now: number;
 }): React.ReactElement {
-  const at = Math.min(1, Math.max(0, (now - start) / (end - start))) * 100;
-  const today = t("license.timeline.today", { date: formatDay(now, false) });
+  const axisEnd = Math.max(end, now);
+  const share = (at: number) =>
+    Math.min(1, Math.max(0, (at - start) / (axisEnd - start))) * 100;
+  const today = share(now);
+  const endAt = share(end);
+  const slide = (p: number): React.CSSProperties => ({
+    left: `${p}%`,
+    transform: `translateX(-${p}%)`,
+  });
   return (
     <div
       role="img"
@@ -70,14 +99,14 @@ function Timeline({
       })}
       className="space-y-1.5 text-xs text-fg-muted"
     >
-      {/* The label sits over the marker and slides with it (translate by its own share of the
-          width), so it never leaves the box at either end. */}
+      {/* Labels slide with their marker (translate by their own share of the width), so they
+          never leave the box at either end. */}
       <div aria-hidden className="relative h-4">
         <span
           className="absolute whitespace-nowrap font-medium text-fg-strong"
-          style={{ left: `${at}%`, transform: `translateX(-${at}%)` }}
+          style={slide(today)}
         >
-          {today}
+          {t("license.timeline.today", { date: formatDay(now, false) })}
         </span>
       </div>
       <div
@@ -86,16 +115,31 @@ function Timeline({
       >
         <span
           className="absolute inset-y-0 left-0 rounded-full bg-fg-strong forced-colors:bg-[CanvasText]"
-          style={{ width: `${at}%` }}
+          style={{ width: `${endAt}%` }}
         />
+        {endAt < 100 ? (
+          <span
+            className="absolute inset-y-0 rounded-r-full text-fg-strong [background:repeating-linear-gradient(90deg,currentColor_0_4px,transparent_4px_8px)] forced-colors:text-[CanvasText]"
+            style={{ left: `${endAt}%`, right: 0 }}
+          />
+        ) : null}
         <span
           className="absolute top-1/2 size-3.5 rounded-full border-2 border-surface-sunken bg-fg-strong forced-colors:bg-[CanvasText]"
-          style={{ left: `${at}%`, transform: `translate(-${at}%, -50%)` }}
+          style={{
+            left: `${today}%`,
+            transform: `translate(-${today}%, -50%)`,
+          }}
         />
       </div>
-      <div aria-hidden className="flex flex-wrap justify-between gap-x-3">
+      <div aria-hidden className="relative flex h-4 justify-between">
         <span>{formatDay(start)}</span>
-        <span>{formatDay(end)}</span>
+        {endAt < 100 ? (
+          <span className="absolute whitespace-nowrap" style={slide(endAt)}>
+            {formatDay(end)}
+          </span>
+        ) : (
+          <span>{formatDay(end)}</span>
+        )}
       </div>
     </div>
   );

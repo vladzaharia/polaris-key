@@ -1,4 +1,5 @@
 import * as React from "react";
+import { t } from "../../../lib/copy.js";
 import { ArrowRight, Package } from "lucide-react";
 import { href } from "../../router.js";
 import { SectionCard } from "./Card.js";
@@ -29,7 +30,8 @@ export function PackagesPointer({
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-fg">
-          {productName} packages from {developer ?? "the developer"}
+          {productName} packages from{" "}
+          {developer ?? t("license.developerFallback")}
         </p>
         <a
           href={href.account("packages")}

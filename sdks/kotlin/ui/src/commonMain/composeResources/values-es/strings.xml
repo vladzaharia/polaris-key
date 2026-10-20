@@ -1736,8 +1736,8 @@
     <string name="getIt_col_action">Acción</string>
     <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Under the build for the device in hand. Arguments: {device} = the device's noun (Mac, PC). Arguments: 1=device. -->
     <string name="getIt_forYour">Para tu %1$s</string>
-    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Over the table when the newest version is outside the license. Arguments: {version} = the newest version; {max} = the version the license covers. Arguments: 1=version, 2=max. -->
-    <string name="getIt_notCovered">La versión %1$s no está incluida en tu licencia. Cubre %2$s, más abajo.</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Over the table when the newest version is outside the license. Arguments: {version} = the newest version; {max} = the version the license covers. Arguments: 1=max, 2=version. -->
+    <string name="getIt_notCovered">Tu licencia cubre %1$s. La versión %2$s no está incluida.</string>
     <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Under the downloads table. -->
     <string name="getIt_fresh">Los enlaces de descarga se crean al hacer clic, así que nunca caducan.</string>
     <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Announced when a download starts. Arguments: {product}, {version}, {platform} = the build's description. Arguments: 1=product, 2=version, 3=platform. -->
@@ -1746,6 +1746,22 @@
     <string name="getIt_downloadFailed">La descarga no se inició</string>
     <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). A download button's accessible name; it begins with the button's visible words. Arguments: {name} = the visible label, {product}, {version}, {platform} = what the file is for. Arguments: 1=name, 2=product, 3=version, 4=platform. -->
     <string name="getIt_downloadAria">%1$s %2$s %3$s para %4$s</string>
+    <!-- The customer portal's License section on a product page (PX-28a). Stands for the developer's name when the Worker has none, inside a sentence (lower case). -->
+    <string name="license_developerFallback">el desarrollador</string>
+    <!-- The customer portal's License section on a product page (PX-28a). Stands for the developer's name when the Worker has none, at the start of a sentence. -->
+    <string name="license_developerFallbackCap">El desarrollador</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). What a Mac is called in “For your …”. -->
+    <string name="getIt_device_macos">Mac</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). What a Windows computer is called in “For your …”. -->
+    <string name="getIt_device_windows">PC con Windows</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). What a Linux computer is called in “For your …”. -->
+    <string name="getIt_device_linux">ordenador Linux</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). What an iPhone or iPad is called in “For your …”. -->
+    <string name="getIt_device_ios">iPhone o iPad</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). What an Android device is called in “For your …”. -->
+    <string name="getIt_device_android">dispositivo Android</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). What a browser is called in “For your …”. -->
+    <string name="getIt_device_web">navegador</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">Algo salió mal</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

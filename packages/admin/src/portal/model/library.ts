@@ -392,7 +392,7 @@ export function licenseOrigin(
     case "signin":
       return AUTOMATIC_GRANT;
     case "developer":
-      return `From ${facts.developer?.trim() || "the developer"}`;
+      return `From ${facts.developer?.trim() || t("license.developerFallback")}`;
   }
 }
 
@@ -591,7 +591,7 @@ export function statusFromServer(
         kind: "suspended",
         label: "Suspended",
         tone: "danger",
-        note: `Suspended by ${developer ?? "the developer"}.`,
+        note: `Suspended by ${developer ?? t("license.developerFallback")}.`,
         attention: true,
       };
     case "expired":
@@ -816,7 +816,10 @@ function archName(a: PortalArtifact): string | null {
       : arch === "x86_64"
         ? "Intel"
         : arch;
-  return arch === "x86_64" ? "x64" : arch;
+  // The same words as the downloads table's rows (`archTitle`): one vocabulary.
+  if (a.platform === "windows")
+    return arch === "x86_64" ? "x64" : arch === "arm64" ? "Arm64" : arch;
+  return arch === "x86_64" ? "x86_64" : arch === "arm64" ? "ARM64" : arch;
 }
 
 /** Covered builds for one OS in one release. */
@@ -1194,7 +1197,7 @@ export function attentionItems(
     const { supportUrl, supportEmail, developer } = p.presentation;
     const link = supportUrl ?? (supportEmail ? `mailto:${supportEmail}` : null);
     if (!link) continue;
-    const who = developer ?? "the developer";
+    const who = developer ?? t("license.developerFallback");
     const tier = tierLabel(p.best.tier);
     if (p.status.kind === "expiresSoon" && p.best.expiresAt) {
       out.push({

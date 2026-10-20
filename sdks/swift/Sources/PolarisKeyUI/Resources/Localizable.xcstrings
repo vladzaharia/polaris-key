@@ -39565,6 +39565,366 @@
         }
       }
     },
+    "getIt.device.android": {
+      "comment": "The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). What an Android device is called in “For your …”.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Android device"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Android-Gerät"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "appareil Android"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "dispositivo Android"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "dispositivo Android"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "dispositivo Android"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Androidデバイス"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Android 기기"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Android 设备"
+          }
+        }
+      }
+    },
+    "getIt.device.ios": {
+      "comment": "The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). What an iPhone or iPad is called in “For your …”.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iPhone or iPad"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iPhone oder iPad"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iPhone ou iPad"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iPhone o iPad"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iPhone ou iPad"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iPhone o iPad"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iPhoneまたはiPad"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iPhone 또는 iPad"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iPhone 或 iPad"
+          }
+        }
+      }
+    },
+    "getIt.device.linux": {
+      "comment": "The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). What a Linux computer is called in “For your …”.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Linux computer"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Linux-Computer"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ordinateur Linux"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ordenador Linux"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "computador Linux"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "computer Linux"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Linux コンピューター"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Linux 컴퓨터"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Linux 电脑"
+          }
+        }
+      }
+    },
+    "getIt.device.macos": {
+      "comment": "The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). What a Mac is called in “For your …”.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mac"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mac"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mac"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mac"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mac"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mac"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mac"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mac"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mac"
+          }
+        }
+      }
+    },
+    "getIt.device.web": {
+      "comment": "The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). What a browser is called in “For your …”.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "browser"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Browser"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "navigateur"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "navegador"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "navegador"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "browser"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ブラウザー"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "브라우저"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "浏览器"
+          }
+        }
+      }
+    },
+    "getIt.device.windows": {
+      "comment": "The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). What a Windows computer is called in “For your …”.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Windows PC"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Windows-PC"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PC Windows"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PC con Windows"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PC com Windows"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PC Windows"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Windows PC"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Windows PC"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Windows 电脑"
+          }
+        }
+      }
+    },
     "getIt.downloadAria": {
       "comment": "The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). A download button's accessible name; it begins with the button's visible words. Arguments: {name} = the visible label, {product}, {version}, {platform} = what the file is for. Arguments: 1=name, 2=product, 3=version, 4=platform.",
       "extractionState": "manual",
@@ -41678,61 +42038,61 @@
       }
     },
     "getIt.notCovered": {
-      "comment": "The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Over the table when the newest version is outside the license. Arguments: {version} = the newest version; {max} = the version the license covers. Arguments: 1=version, 2=max.",
+      "comment": "The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Over the table when the newest version is outside the license. Arguments: {version} = the newest version; {max} = the version the license covers. Arguments: 1=max, 2=version.",
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Version %1$@ isn't included in your license. It covers %2$@, below."
+            "value": "Your license covers %1$@. Version %2$@ isn't included."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Version %1$@ ist in Ihrer Lizenz nicht enthalten. Sie deckt %2$@ ab, siehe unten."
+            "value": "Ihre Lizenz deckt %1$@ ab. Version %2$@ ist nicht enthalten."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "La version %1$@ n’est pas incluse dans votre licence. Elle couvre %2$@, ci-dessous."
+            "value": "Votre licence couvre %1$@. La version %2$@ n’est pas incluse."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "La versión %1$@ no está incluida en tu licencia. Cubre %2$@, más abajo."
+            "value": "Tu licencia cubre %1$@. La versión %2$@ no está incluida."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "A versão %1$@ não está incluída na sua licença. Ela cobre %2$@, abaixo."
+            "value": "Sua licença cobre %1$@. A versão %2$@ não está incluída."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "La versione %1$@ non è inclusa nella tua licenza. Copre %2$@, qui sotto."
+            "value": "La tua licenza copre %1$@. La versione %2$@ non è inclusa."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "バージョン %1$@ はライセンスに含まれません。対象は下の %2$@ です。"
+            "value": "お使いのライセンスの対象は %1$@ です。バージョン %2$@ は含まれません。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "버전 %1$@은(는) 라이선스에 포함되지 않습니다. 아래 %2$@까지 적용됩니다."
+            "value": "라이선스는 %1$@까지 적용됩니다. 버전 %2$@은(는) 포함되지 않습니다."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "您的许可证不包含版本 %1$@，涵盖的是下方的 %2$@。"
+            "value": "您的许可证涵盖 %1$@，不包含版本 %2$@。"
           }
         }
       }
@@ -42897,6 +43257,126 @@
           "stringUnit": {
             "state": "translated",
             "value": "离线 · 请在今天重新连接以继续使用%1$@"
+          }
+        }
+      }
+    },
+    "license.developerFallback": {
+      "comment": "The customer portal's License section on a product page (PX-28a). Stands for the developer's name when the Worker has none, inside a sentence (lower case).",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "the developer"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "der Entwickler"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "le développeur"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "el desarrollador"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "o desenvolvedor"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "lo sviluppatore"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "開発元"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "개발자"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开发者"
+          }
+        }
+      }
+    },
+    "license.developerFallbackCap": {
+      "comment": "The customer portal's License section on a product page (PX-28a). Stands for the developer's name when the Worker has none, at the start of a sentence.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The developer"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Entwickler"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le développeur"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El desarrollador"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O desenvolvedor"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lo sviluppatore"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "開発元"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "개발자"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开发者"
           }
         }
       }

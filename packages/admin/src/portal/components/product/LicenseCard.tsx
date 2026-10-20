@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ExternalLink, Info, Mail } from "lucide-react";
+import { ExternalLink, Mail } from "lucide-react";
 import { Button } from "../../../ui/Button.js";
 import { Skeleton } from "../../../ui/Skeleton.js";
 import type { PortalLicenseDetail } from "../../api.js";
@@ -19,7 +19,7 @@ import { KeyMask } from "../KeyMask.js";
 import { isIssueStatus, ProductStatusPill } from "../ProductStatus.js";
 import { ErrorPanel } from "../States.js";
 import { SectionCard } from "./Card.js";
-import { LicenseTerm } from "./LicenseTerm.js";
+import { LicenseTerm, termPlot } from "./LicenseTerm.js";
 import { t } from "../../../lib/copy.js";
 
 /**
@@ -89,12 +89,12 @@ export function LicenseCard({
         selected || ownIssue ? (
           <div
             data-license-pills=""
-            className="flex flex-wrap items-center justify-end gap-1.5"
+            className="flex min-w-0 max-w-[60%] flex-wrap items-center justify-end gap-1.5"
           >
             {/* The tier is an identity label, not a status: a quiet neutral pill (owner,
                 2026-10-05), at the header's top right, before any issue pill (2026-10-07). */}
             {selected ? (
-              <StatusPill tone="neutral" icon={false}>
+              <StatusPill tone="neutral" icon={false} className="max-w-full">
                 {tierName(selected)}
               </StatusPill>
             ) : null}
@@ -130,14 +130,24 @@ export function LicenseCard({
         </div>
       ) : null}
       {loading ? (
-        <div className="space-y-3" aria-busy>
-          <Skeleton className="h-6 w-40" />
+        // The card's own order: the term, then the facts in their two columns.
+        <div className="space-y-5" aria-busy>
           <Skeleton className="h-24 w-full" />
+          <div className="grid grid-cols-2 gap-4">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
         </div>
       ) : error || !detail ? (
         <ErrorPanel
           error={error}
-          onRetry={onRetry}
+          // Try again keeps the person here: focus goes to the card's heading.
+          onRetry={() => {
+            onRetry();
+            document.getElementById("section-license-h")?.focus();
+          }}
           className="border-0 p-0 shadow-none"
         />
       ) : (
@@ -171,21 +181,23 @@ function LicenseFacts({
   });
   const key = detail.keys.find((k) => k.status === "active") ?? detail.keys[0];
   const includes = detail.entitlements.filter((e) => e.key !== "channels");
-  const channels = detail.channels;
-  const includedId = React.useId();
+  const channels = detail.channels.map(trackName);
   const developer = product.presentation.developer;
+  const who = developer ?? t("license.developerFallback");
   const { supportUrl, supportEmail, website } = product.presentation;
-  const renewHref =
-    status.kind === "expired" || status.kind === "expiresSoon"
-      ? (supportUrl ?? (supportEmail ? `mailto:${supportEmail}` : website))
-      : null;
   const renewing = status.kind === "expired" || status.kind === "expiresSoon";
-  const charted = detail.expiresAt !== null && detail.activatedAt !== null;
+  const renewHref = renewing
+    ? (supportUrl ?? (supportEmail ? `mailto:${supportEmail}` : website))
+    : null;
+  const external = renewHref !== null && !renewHref.startsWith("mailto:");
+  const charted = termPlot(detail.activatedAt, detail.expiresAt) !== null;
   return (
     <div className="space-y-5">
       {status.kind === "suspended" ? (
         <p className="rounded-lg border border-danger-border bg-danger-subtle p-3 text-sm text-fg">
-          {t("license.suspended", { developer: developer ?? "The developer" })}
+          {t("license.suspended", {
+            developer: developer ?? t("license.developerFallbackCap"),
+          })}
         </p>
       ) : (
         <LicenseTerm
@@ -193,33 +205,33 @@ function LicenseFacts({
           expiresAt={detail.expiresAt}
           now={now}
         >
-          {renewing ? (
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          {renewHref ? (
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4">
               {status.kind === "expired" ? (
                 <p className="text-sm text-fg-muted">{t("license.expired")}</p>
               ) : null}
-              {renewHref ? (
-                <Button asChild variant="quiet">
-                  <a
-                    href={renewHref}
-                    {...(renewHref.startsWith("mailto:")
-                      ? {}
-                      : { target: "_blank", rel: "noreferrer" })}
-                  >
-                    {renewHref.startsWith("mailto:") ? (
-                      <Mail aria-hidden />
-                    ) : (
-                      <ExternalLink aria-hidden />
-                    )}
-                    {t("license.renew", {
-                      developer: developer ?? "the developer",
-                    })}
-                    {renewHref.startsWith("mailto:") ? null : (
-                      <span className="sr-only">{t("getIt.newTab")}</span>
-                    )}
-                  </a>
-                </Button>
-              ) : null}
+              <Button
+                asChild
+                variant="quiet"
+                className="h-auto min-h-11 w-full whitespace-normal py-2 text-left sm:w-auto"
+              >
+                <a
+                  href={renewHref}
+                  {...(external ? { target: "_blank", rel: "noreferrer" } : {})}
+                >
+                  {external ? (
+                    <ExternalLink aria-hidden className="self-start" />
+                  ) : (
+                    <Mail aria-hidden className="self-start" />
+                  )}
+                  <span className="min-w-0 [overflow-wrap:anywhere]">
+                    {t("license.renew", { developer: who })}
+                  </span>
+                  {external ? (
+                    <span className="sr-only">{t("getIt.newTab")}</span>
+                  ) : null}
+                </a>
+              </Button>
             </div>
           ) : null}
         </LicenseTerm>
@@ -234,8 +246,8 @@ function LicenseFacts({
             {coversVersions(detail)}
           </span>
         </Fact>
-        {/* With no chart the start day is not on the page yet: say it (a lifetime license). */}
-        {!charted ? (
+        {/* With no chart the start day is not on the page yet: say it, when there is one. */}
+        {!charted && detail.activatedAt !== null && detail.activatedAt > 0 ? (
           <Fact term={t("core.activation.ok.title")}>
             {formatDay(detail.activatedAt)}
           </Fact>
@@ -248,40 +260,47 @@ function LicenseFacts({
           </Fact>
         ) : null}
         {channels.length ? (
-          <Fact
-            term={t("license.fact.tracks", { count: channels.length })}
-            wide
-          >
+          <Fact term={t("license.fact.tracks", { count: channels.length })}>
             {channels.join(", ")}
           </Fact>
         ) : null}
-      </dl>
-      {key ? (
-        <div className="space-y-2">
-          <p className="text-xs text-fg-muted">{t("part.keyField.label")}</p>
-          <div className="flex items-center rounded-md border border-border bg-surface-sunken px-3 py-2.5">
+        {/* The key is a fact like the others: the mask, and why it is only a mask. */}
+        {key ? (
+          <Fact term={t("part.keyField.label")} wide>
             <KeyMask slug={product.slug} last4={key.last4} />
-          </div>
-          <p className="flex gap-2 text-sm text-fg-muted">
-            <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
-            {key.last4 ? t("license.key.last4") : t("license.key.fingerprint")}
-          </p>
-        </div>
-      ) : null}
-      {includes.length ? (
-        <div className="space-y-1 text-sm">
-          <p id={includedId} className="text-xs text-fg-muted">
-            {t("license.fact.included")}
-          </p>
-          <ul aria-labelledby={includedId} className="space-y-1 text-fg-strong">
-            {includes.map((e) => (
-              <li key={e.key}>{e.label}</li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
+            <span className="mt-1 block text-xs text-fg-muted">
+              {key.last4
+                ? t("license.key.last4")
+                : t("license.key.fingerprint")}
+            </span>
+          </Fact>
+        ) : null}
+        {includes.length ? (
+          <Fact term={t("license.fact.included")} wide>
+            <ul
+              aria-label={t("license.fact.included")}
+              className="flex flex-wrap gap-x-2"
+            >
+              {includes.map((e) => (
+                <li
+                  key={e.key}
+                  className="after:ml-2 after:text-fg-muted after:content-['·'] last:after:content-none"
+                >
+                  {e.label}
+                </li>
+              ))}
+            </ul>
+          </Fact>
+        ) : null}
+      </dl>
     </div>
   );
+}
+
+/** A release track as a person reads it: "stable" is "Stable", "early-access" "Early access". */
+function trackName(slug: string): string {
+  const words = slug.replace(/[-_]+/g, " ").trim();
+  return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
 /** One fact: its label over its value (the two columns fall to one at 320 px or 200 % text). */

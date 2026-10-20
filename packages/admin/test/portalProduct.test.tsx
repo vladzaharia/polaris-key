@@ -311,7 +311,8 @@ describe("product page on today's data (PX-04)", () => {
       return el!;
     });
     expect(term.textContent).toMatch(/Ended \d{1,2} \w{3} \d{4}/);
-    expect(term.textContent).toContain("Renew to use it again.");
+    // No link to renew with, so nothing promises a renewal.
+    expect(term.textContent).not.toContain("Renew");
     expect(
       within(card).getByRole("img", { name: /^From .* to .*\. Today is / }),
     ).toBeTruthy();
@@ -505,15 +506,15 @@ describe("product page on today's data (PX-04)", () => {
     renderPortal();
     await page();
     const get = await screen.findByRole("region", { name: "Get it" });
-    await within(get).findByText(/Version 2.0 isn't included in your license/);
-    expect(get.textContent).toContain("It covers 1.8");
+    await within(get).findByText(/Version 2.0 isn't included/);
+    expect(get.textContent).toContain("Your license covers 1.8");
     expect(
       within(get).getByText("Your license doesn't include this version"),
     ).toBeTruthy();
     expect(within(get).getByRole("link", { name: /Steam/ })).toBeTruthy();
     expect(
       within(get).getByRole("button", {
-        name: "Download Nightfall 1.8 for macOS Universal",
+        name: "Download Nightfall 1.8 for macOS Universal, Nightfall.dmg",
       }),
     ).toBeTruthy();
   });
@@ -1768,6 +1769,7 @@ describe("the section nav follows the page as it scrolls (owner polish 2026-10-0
       name: /^Renew with Kiln Games/,
     });
     expect(renew.getAttribute("href")).toBe("https://help.example.com");
+    expect(card.textContent).toContain("Renew to use it again.");
     // One Renew on the page, and it is not a filled primary.
     expect(screen.getAllByRole("link", { name: /^Renew with/ })).toHaveLength(
       1,
@@ -1778,6 +1780,35 @@ describe("the section nav follows the page as it scrolls (owner polish 2026-10-0
     renderPortal();
     await page();
     expect(screen.queryByRole("link", { name: /^Renew with/ })).toBeNull();
+  });
+
+  it("an ended license gets no Not included rows in Get it: the card says it once (PORTAL.md §4.4)", async () => {
+    const lapsed = license({
+      product: "nightfall",
+      tier: "deluxe",
+      expiresAt: NOW_S - 3 * DAY,
+    });
+    mockFetch(
+      signedIn([lapsed], {
+        "/api/releases": { releases },
+        "/api/products/nightfall/downloads": downloadsView("nightfall", [
+          dlFile({
+            artifactId: "m",
+            platform: "macos",
+            canDownload: false,
+            reason: "license_inactive",
+          }),
+        ]),
+        "/api/licenses/nightfall/lic_nightfall": detail(lapsed, {
+          devices: [],
+        }),
+      }),
+    );
+    renderPortal();
+    const card = await screen.findByRole("region", { name: "License" });
+    await within(card).findByText(/^Ended /);
+    expect(screen.queryByText("Not included")).toBeNull();
+    expect(screen.queryByRole("region", { name: "Get it" })).toBeNull();
   });
 
   it("Help closes the main column, so the nav ends with it and Your data on every width", async () => {
@@ -1960,7 +1991,7 @@ describe("Get it: other ways to install (P0-48)", () => {
     expect(within(get).queryByRole("img", { name: /QR code/ })).toBeNull();
     // The phone's own OS comes first among the install sources.
     const headings = within(get)
-      .getAllByRole("heading", { level: 3 })
+      .getAllByRole("heading", { level: 4 })
       .map((h) => h.textContent);
     expect(headings[0]).toBe("iPhone and iPad");
   });

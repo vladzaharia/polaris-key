@@ -779,10 +779,18 @@
     "getIt.col.platform": "Plattform",
     "getIt.col.action": "Aktion",
     "getIt.forYour": "Für Ihren {device}",
-    "getIt.notCovered": "Version {version} ist in Ihrer Lizenz nicht enthalten. Sie deckt {max} ab, siehe unten.",
+    "getIt.notCovered": "Ihre Lizenz deckt {max} ab. Version {version} ist nicht enthalten.",
     "getIt.fresh": "Download-Links werden beim Klicken neu erstellt und veralten daher nie.",
     "getIt.downloading": "{product} {version} für {platform} wird heruntergeladen",
     "getIt.downloadFailed": "Der Download wurde nicht gestartet",
-    "getIt.downloadAria": "{name} {product} {version} für {platform}"
+    "getIt.downloadAria": "{name} {product} {version} für {platform}",
+    "license.developerFallback": "der Entwickler",
+    "license.developerFallbackCap": "Der Entwickler",
+    "getIt.device.macos": "Mac",
+    "getIt.device.windows": "Windows-PC",
+    "getIt.device.linux": "Linux-Computer",
+    "getIt.device.ios": "iPhone oder iPad",
+    "getIt.device.android": "Android-Gerät",
+    "getIt.device.web": "Browser"
   }
 }

@@ -779,10 +779,18 @@
     "getIt.col.platform": "プラットフォーム",
     "getIt.col.action": "操作",
     "getIt.forYour": "お使いの{device}向け",
-    "getIt.notCovered": "バージョン {version} はライセンスに含まれません。対象は下の {max} です。",
+    "getIt.notCovered": "お使いのライセンスの対象は {max} です。バージョン {version} は含まれません。",
     "getIt.fresh": "ダウンロードリンクはクリック時に作成されるため、期限切れになりません。",
     "getIt.downloading": "{platform}向け{product} {version}をダウンロード中",
     "getIt.downloadFailed": "ダウンロードを開始できませんでした",
-    "getIt.downloadAria": "{name} {product} {version} ({platform}向け)"
+    "getIt.downloadAria": "{name} {product} {version} ({platform}向け)",
+    "license.developerFallback": "開発元",
+    "license.developerFallbackCap": "開発元",
+    "getIt.device.macos": "Mac",
+    "getIt.device.windows": "Windows PC",
+    "getIt.device.linux": "Linux コンピューター",
+    "getIt.device.ios": "iPhoneまたはiPad",
+    "getIt.device.android": "Androidデバイス",
+    "getIt.device.web": "ブラウザー"
   }
 }

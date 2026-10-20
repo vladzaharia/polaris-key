@@ -4538,10 +4538,10 @@ msgstr "操作"
 msgid "getIt.forYour"
 msgstr "适用于您的 {device}"
 
-#. Version {version} isn't included in your license. It covers {max}, below.
+#. Your license covers {max}. Version {version} isn't included.
 #. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Over the table when the newest version is outside the license. Arguments: {version} = the newest version; {max} = the version the license covers.
 msgid "getIt.notCovered"
-msgstr "您的许可证不包含版本 {version}，涵盖的是下方的 {max}。"
+msgstr "您的许可证涵盖 {max}，不包含版本 {version}。"
 
 #. Download links are made fresh when you click, so they never go stale.
 #. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Under the downloads table.
@@ -4562,6 +4562,46 @@ msgstr "下载未能开始"
 #. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). A download button's accessible name; it begins with the button's visible words. Arguments: {name} = the visible label, {product}, {version}, {platform} = what the file is for.
 msgid "getIt.downloadAria"
 msgstr "{name} {product} {version}（{platform}）"
+
+#. the developer
+#. The customer portal's License section on a product page (PX-28a). Stands for the developer's name when the Worker has none, inside a sentence (lower case).
+msgid "license.developerFallback"
+msgstr "开发者"
+
+#. The developer
+#. The customer portal's License section on a product page (PX-28a). Stands for the developer's name when the Worker has none, at the start of a sentence.
+msgid "license.developerFallbackCap"
+msgstr "开发者"
+
+#. Mac
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). What a Mac is called in “For your …”.
+msgid "getIt.device.macos"
+msgstr "Mac"
+
+#. Windows PC
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). What a Windows computer is called in “For your …”.
+msgid "getIt.device.windows"
+msgstr "Windows 电脑"
+
+#. Linux computer
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). What a Linux computer is called in “For your …”.
+msgid "getIt.device.linux"
+msgstr "Linux 电脑"
+
+#. iPhone or iPad
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). What an iPhone or iPad is called in “For your …”.
+msgid "getIt.device.ios"
+msgstr "iPhone 或 iPad"
+
+#. Android device
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). What an Android device is called in “For your …”.
+msgid "getIt.device.android"
+msgstr "Android 设备"
+
+#. browser
+#. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). What a browser is called in “For your …”.
+msgid "getIt.device.web"
+msgstr "浏览器"
 
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).

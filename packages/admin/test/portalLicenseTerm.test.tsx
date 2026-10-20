@@ -1,6 +1,9 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { LicenseTerm } from "../src/portal/components/product/LicenseTerm.js";
+import {
+  LicenseTerm,
+  termPlot,
+} from "../src/portal/components/product/LicenseTerm.js";
 
 /** The License card's term (PX-28a): words first, a chart only when there is a span to plot. */
 const DAY = 86_400;
@@ -64,5 +67,28 @@ describe("LicenseTerm", () => {
     );
     const link = screen.getByRole("link", { name: "Renew with Dev" });
     expect(link.closest("[data-license-term]")).toBeTruthy();
+  });
+
+  it("a word on its own is not boxed, and the axis never starts at 1970", () => {
+    render(<LicenseTerm activatedAt={0} expiresAt={null} now={NOW} />);
+    expect(
+      screen.getByText("Lifetime").closest("[data-license-term]")!.className,
+    ).not.toContain("bg-surface-sunken");
+    expect(termPlot(0, NOW + DAY)).toBeNull();
+    expect(termPlot(null, NOW + DAY)).toBeNull();
+    expect(termPlot(NOW - DAY, NOW + DAY)).not.toBeNull();
+  });
+
+  it("past its end the axis runs on to today with the stretch after the end dashed", () => {
+    render(
+      <LicenseTerm
+        activatedAt={NOW - 400 * DAY}
+        expiresAt={NOW - 100 * DAY}
+        now={NOW}
+      />,
+    );
+    const chart = screen.getByRole("img");
+    expect(chart.querySelector("[style*='right: 0']")).toBeTruthy();
+    expect(chart.querySelector("[style*='left: 100%']")).toBeTruthy();
   });
 });

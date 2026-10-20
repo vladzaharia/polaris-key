@@ -12,7 +12,7 @@ export function HelpCard({
   product: LibraryProduct;
 }): React.ReactElement {
   const { developer, supportUrl, supportEmail, website } = product.presentation;
-  const who = developer ?? "The developer";
+  const who = developer ?? t("license.developerFallbackCap");
   return (
     <SectionCard id="help" title="Need help?">
       <div className="space-y-4">
@@ -25,7 +25,7 @@ export function HelpCard({
             <Button asChild variant="quiet">
               <a href={supportUrl} target="_blank" rel="noreferrer">
                 <ExternalLink aria-hidden />
-                Contact {developer ?? "the developer"}
+                Contact {developer ?? t("license.developerFallback")}
               </a>
             </Button>
           ) : supportEmail ? (

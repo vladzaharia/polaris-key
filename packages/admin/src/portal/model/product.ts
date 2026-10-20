@@ -103,6 +103,11 @@ export interface FileRowModel {
   /** Why it can't be downloaded, as visible text; null when it can. */
   notIncluded: string | null;
   /**
+   * The file is out of reach only because the license is not active (ended or suspended): the
+   * License card says so once, so Get it leaves the row out (PORTAL.md §4.4).
+   */
+  inactive: boolean;
+  /**
    * A file that isn't hosted here (`not_hosted`): where to get it instead, "Get it from Steam"
    * or "Get it from <developer>" (§0.6 P3, §11.2). Never "Not included": the license covers it.
    */
@@ -144,8 +149,11 @@ export function elsewhereFor(
         : true,
     ) ?? null;
   if (store) return { label: `Get it from ${store.label}`, href: store.url };
-  const who = ctx.developer ?? "the developer";
-  return { label: `Get it from ${who}`, href: httpsOrNull(ctx.website) };
+  const who = ctx.developer ?? t("license.developerFallback");
+  return {
+    label: `Get it from ${who}`,
+    href: httpsOrNull(ctx.website),
+  };
 }
 
 function ext(name: string): string | null {
@@ -241,6 +249,10 @@ export function fileRow(
       ? elsewhere.label
       : notIncludedReason(a, licenseUsable),
     elsewhere,
+    inactive:
+      !a.canDownload &&
+      (a.reason === "license_inactive" ||
+        (!a.reason && a.access === "licensed" && !licenseUsable)),
   };
 }
 
@@ -578,23 +590,23 @@ export function resolveDevice(
   return { os: server, phone: server === "ios" || server === "android" };
 }
 
-const DEVICE_NOUN: Record<PlatformKey, string> = {
-  macos: "Mac",
-  windows: "Windows PC",
-  linux: "Linux computer",
-  ios: "iPhone or iPad",
-  android: "Android device",
-  web: "browser",
+const DEVICE_NOUN: Record<PlatformKey, () => string> = {
+  macos: () => t("getIt.device.macos"),
+  windows: () => t("getIt.device.windows"),
+  linux: () => t("getIt.device.linux"),
+  ios: () => t("getIt.device.ios"),
+  android: () => t("getIt.device.android"),
+  web: () => t("getIt.device.web"),
 };
 
 /** "Mac", "Windows PC": what the device in hand is called next to its build ("For your Mac"). */
 export function deviceNoun(os: PlatformKey): string {
-  return DEVICE_NOUN[os];
+  return DEVICE_NOUN[os]();
 }
 
 /** "Recommended for your Mac": the label names the same OS the build is for. */
 export function recommendedLabel(os: PlatformKey): string {
-  return `Recommended for your ${DEVICE_NOUN[os]}`;
+  return `Recommended for your ${DEVICE_NOUN[os]()}`;
 }
 
 // ── the one next action, never pointing at the page you are on (§0.6 P3) ──────────────────────
@@ -615,7 +627,7 @@ export function settleAction(
   if (site)
     return {
       kind: "link",
-      label: `Get it from ${p.presentation.developer ?? "the developer"}`,
+      label: `Get it from ${p.presentation.developer ?? t("license.developerFallback")}`,
       href: site,
       icon: "open",
       external: true,

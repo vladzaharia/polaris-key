@@ -1710,8 +1710,8 @@
     <string name="getIt_col_action">작업</string>
     <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Under the build for the device in hand. Arguments: {device} = the device's noun (Mac, PC). Arguments: 1=device. -->
     <string name="getIt_forYour">내 %1$s용</string>
-    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Over the table when the newest version is outside the license. Arguments: {version} = the newest version; {max} = the version the license covers. Arguments: 1=version, 2=max. -->
-    <string name="getIt_notCovered">버전 %1$s은(는) 라이선스에 포함되지 않습니다. 아래 %2$s까지 적용됩니다.</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Over the table when the newest version is outside the license. Arguments: {version} = the newest version; {max} = the version the license covers. Arguments: 1=max, 2=version. -->
+    <string name="getIt_notCovered">라이선스는 %1$s까지 적용됩니다. 버전 %2$s은(는) 포함되지 않습니다.</string>
     <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Under the downloads table. -->
     <string name="getIt_fresh">다운로드 링크는 클릭할 때 새로 만들어지므로 만료되지 않습니다.</string>
     <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Announced when a download starts. Arguments: {product}, {version}, {platform} = the build's description. Arguments: 1=product, 2=version, 3=platform. -->
@@ -1720,6 +1720,22 @@
     <string name="getIt_downloadFailed">다운로드를 시작하지 못했습니다</string>
     <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). A download button's accessible name; it begins with the button's visible words. Arguments: {name} = the visible label, {product}, {version}, {platform} = what the file is for. Arguments: 1=name, 2=product, 3=version, 4=platform. -->
     <string name="getIt_downloadAria">%1$s %2$s %3$s (%4$s용)</string>
+    <!-- The customer portal's License section on a product page (PX-28a). Stands for the developer's name when the Worker has none, inside a sentence (lower case). -->
+    <string name="license_developerFallback">개발자</string>
+    <!-- The customer portal's License section on a product page (PX-28a). Stands for the developer's name when the Worker has none, at the start of a sentence. -->
+    <string name="license_developerFallbackCap">개발자</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). What a Mac is called in “For your …”. -->
+    <string name="getIt_device_macos">Mac</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). What a Windows computer is called in “For your …”. -->
+    <string name="getIt_device_windows">Windows PC</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). What a Linux computer is called in “For your …”. -->
+    <string name="getIt_device_linux">Linux 컴퓨터</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). What an iPhone or iPad is called in “For your …”. -->
+    <string name="getIt_device_ios">iPhone 또는 iPad</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). What an Android device is called in “For your …”. -->
+    <string name="getIt_device_android">Android 기기</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). What a browser is called in “For your …”. -->
+    <string name="getIt_device_web">브라우저</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">문제가 발생했어요</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->
