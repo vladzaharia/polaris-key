@@ -1600,7 +1600,7 @@
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_key_upgradeTitle">%1$s をアカウントに保管</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
-    <string name="signin_key_upgradeLede">キーは有効です。アカウントに保管すると、再取得したり、新しいデバイスへ自分で移したりできます。</string>
+    <string name="signin_key_upgradeLede">アカウントに保管すると、再取得したり、新しいデバイスへ自分で移したりできます。</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
     <string name="signin_key_createAccount">アカウントを作成</string>
     <string name="signin_key_createAccount__macos">アカウントを作成</string>

@@ -278,7 +278,7 @@ describe("LicenseChoiceStep (§3.6)", () => {
     ).toBeTruthy();
     expect(
       screen.getByText(
-        "Diceroll Standard Standard · Lifetime · Mara's Pixel 8 becomes device 2 of 3",
+        "Diceroll Standard · Lifetime · Mara's Pixel 8 becomes device 2 of 3",
       ),
     ).toBeTruthy();
     await userEvent.click(
@@ -370,9 +370,7 @@ describe("LicenseChoiceStep (§3.6)", () => {
     await userEvent.click(primary);
     // Consent names what replaces what.
     expect(
-      await screen.findByText(
-        "Diceroll Family Family · replaces Studio Mac mini",
-      ),
+      await screen.findByText("Diceroll Family · replaces Studio Mac mini"),
     ).toBeTruthy();
     await userEvent.click(
       screen.getByRole("button", { name: "Continue to Diceroll" }),

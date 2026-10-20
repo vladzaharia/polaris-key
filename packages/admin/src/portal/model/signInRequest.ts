@@ -263,7 +263,8 @@ export function licenseLine(
     case "create":
       return t("signin.consent.newLicense", { tier: chosen.tierName });
     case "license": {
-      const license = `${chosen.row.name ?? ctx.product} ${chosen.row.tierName}`;
+      const license =
+        chosen.row.name ?? `${ctx.product} ${chosen.row.tierName}`;
       if (chosen.replace)
         return t("signin.consent.replaces", {
           license,

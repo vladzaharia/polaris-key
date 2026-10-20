@@ -240,16 +240,17 @@ export async function startPortal(): Promise<PortalHarness> {
         );
         return route.fulfill({ status: 200, headers, body: png });
       }
-      // The Worker serves the SPA shell for `/activate` (router.ts); vite preview does not.
+      // The Worker serves the SPA shell for `/activate` and `/signin?request=` (router.ts, dispatch.ts); vite preview does not.
       const res =
-        url.pathname === "/activate"
+        url.pathname === "/activate" || url.pathname === "/signin"
           ? await route.fetch({ url: `${base}/index.html` })
           : await route.fetch();
       const headers = { ...res.headers() };
       if (
         url.pathname.endsWith(".html") ||
         url.pathname === "/" ||
-        url.pathname === "/activate"
+        url.pathname === "/activate" ||
+        url.pathname === "/signin"
       ) {
         headers["content-security-policy"] = CSP;
         headers["referrer-policy"] = REFERRER_POLICY;

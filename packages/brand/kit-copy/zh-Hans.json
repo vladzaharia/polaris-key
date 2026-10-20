@@ -726,7 +726,7 @@
     "signin.consent.cloudSync": "云同步",
     "signin.consent.newLicense": "新建:{tier} 许可证,继续时创建",
     "signin.key.upgradeTitle": "将 {product} 保存在账户中",
-    "signin.key.upgradeLede": "密钥有效。保存在账户中后,你可以找回它,也可以自己迁移到新设备。",
+    "signin.key.upgradeLede": "保存在账户中后,你可以找回它,也可以自己迁移到新设备。",
     "signin.key.createAccount": "创建账户",
     "signin.key.signInInstead": "改为登录",
     "signin.key.noEntriesTitle": "创建账户以保留 {product}",

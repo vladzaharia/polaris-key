@@ -719,7 +719,7 @@
   "signin.consent.cloudSync": "Cloud Sync",
   "signin.consent.newLicense": "New: {tier} license, created when you continue",
   "signin.key.upgradeTitle": "Keep {product} in an account",
-  "signin.key.upgradeLede": "Your key works. In an account you can get it back and move it to a new device yourself.",
+  "signin.key.upgradeLede": "In an account you can get it back and move it to a new device yourself.",
   "signin.key.createAccount": "Create account",
   "signin.key.signInInstead": "Sign in instead",
   "signin.key.noEntriesTitle": "Create an account to keep {product}",

@@ -16,6 +16,7 @@ import {
   ChoiceGroup,
   InkMeter,
   NeutralCallout,
+  PersonRow,
   Pill,
   PRIMARY_CLASS,
   type ChoiceOption,
@@ -36,6 +37,8 @@ export function LicenseChoiceStep({
   deviceName,
   browser,
   keyHref,
+  person,
+  onNotYou,
   onUse,
   onReplace,
   onCancel,
@@ -49,6 +52,8 @@ export function LicenseChoiceStep({
   browser: boolean;
   /** Where "Use a license key instead" goes (the Activate page, which returns here), or null. */
   keyHref: string | null;
+  person: { name: string | null; email: string | null; picture: string | null };
+  onNotYou: () => void;
   onUse: (
     pick: { kind: "license"; row: LicenseChoice } | { kind: "create" },
   ) => void;
@@ -142,11 +147,12 @@ export function LicenseChoiceStep({
   const stand = allFull ? [] : fullRows;
 
   const primary =
-    chosenFull && value !== "create"
+    (allFull || chosenFull) && value !== "create"
       ? t("signin.replace.open")
       : t("signin.choice.continue");
   return (
     <form noValidate onSubmit={submit} className="space-y-5">
+      <PersonRow {...person} onNotYou={onNotYou} />
       <div className="space-y-2">
         <AuthTitle>{t("signin.choice.title")}</AuthTitle>
         <p className="text-fg-muted">

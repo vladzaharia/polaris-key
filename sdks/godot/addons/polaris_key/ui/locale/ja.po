@@ -4272,10 +4272,10 @@ msgstr "新規: {tier} ライセンス。続けると作成されます"
 msgid "signin.key.upgradeTitle"
 msgstr "{product} をアカウントに保管"
 
-#. Your key works. In an account you can get it back and move it to a new device yourself.
+#. In an account you can get it back and move it to a new device yourself.
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
 msgid "signin.key.upgradeLede"
-msgstr "キーは有効です。アカウントに保管すると、再取得したり、新しいデバイスへ自分で移したりできます。"
+msgstr "アカウントに保管すると、再取得したり、新しいデバイスへ自分で移したりできます。"
 
 #. Create account
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).

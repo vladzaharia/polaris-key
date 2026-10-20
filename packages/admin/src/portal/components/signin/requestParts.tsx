@@ -126,7 +126,6 @@ export const ChoiceGroup = React.forwardRef<
                 checked
                   ? "border-fg-strong ring-1 ring-fg-strong"
                   : "border-border-strong hover:bg-hover",
-                error && !checked && "border-danger",
               )}
             >
               <span

@@ -859,7 +859,7 @@ export const KIT_COPY: Readonly<
       "New: {tier} license, created when you continue",
     "signin.key.upgradeTitle": "Keep {product} in an account",
     "signin.key.upgradeLede":
-      "Your key works. In an account you can get it back and move it to a new device yourself.",
+      "In an account you can get it back and move it to a new device yourself.",
     "signin.key.createAccount": "Create account",
     "signin.key.signInInstead": "Sign in instead",
     "signin.key.noEntriesTitle": "Create an account to keep {product}",
@@ -2335,7 +2335,7 @@ export const KIT_COPY: Readonly<
       "Neu: {tier}-Lizenz, wird beim Fortfahren erstellt",
     "signin.key.upgradeTitle": "{product} in einem Konto behalten",
     "signin.key.upgradeLede":
-      "Ihr Schlüssel funktioniert. In einem Konto können Sie ihn zurückholen und selbst auf ein neues Gerät übertragen.",
+      "In einem Konto können Sie ihn zurückholen und selbst auf ein neues Gerät übertragen.",
     "signin.key.createAccount": "Konto erstellen",
     "signin.key.signInInstead": "Stattdessen anmelden",
     "signin.key.noEntriesTitle": "Konto erstellen, um {product} zu behalten",
@@ -3811,7 +3811,7 @@ export const KIT_COPY: Readonly<
       "Nouvelle : licence {tier}, créée quand vous continuez",
     "signin.key.upgradeTitle": "Gardez {product} dans un compte",
     "signin.key.upgradeLede":
-      "Votre clé fonctionne. Dans un compte, vous la retrouvez et la déplacez vous-même vers un nouvel appareil.",
+      "Dans un compte, vous la retrouvez et la déplacez vous-même vers un nouvel appareil.",
     "signin.key.createAccount": "Créer un compte",
     "signin.key.signInInstead": "Se connecter à la place",
     "signin.key.noEntriesTitle": "Créez un compte pour garder {product}",
@@ -5258,7 +5258,7 @@ export const KIT_COPY: Readonly<
     "signin.consent.newLicense": "Nueva: licencia {tier}, se crea al continuar",
     "signin.key.upgradeTitle": "Guarda {product} en una cuenta",
     "signin.key.upgradeLede":
-      "Tu clave funciona. En una cuenta puedes recuperarla y pasarla a un dispositivo nuevo tú mismo.",
+      "En una cuenta puedes recuperarla y pasarla a un dispositivo nuevo tú mismo.",
     "signin.key.createAccount": "Crear cuenta",
     "signin.key.signInInstead": "Iniciar sesión en su lugar",
     "signin.key.noEntriesTitle": "Crea una cuenta para guardar {product}",
@@ -6720,7 +6720,7 @@ export const KIT_COPY: Readonly<
     "signin.consent.newLicense": "Nova: licença {tier}, criada ao continuar",
     "signin.key.upgradeTitle": "Guarde {product} em uma conta",
     "signin.key.upgradeLede":
-      "Sua chave funciona. Em uma conta, você a recupera e a move para um novo dispositivo sozinho.",
+      "Em uma conta, você a recupera e a move para um novo dispositivo sozinho.",
     "signin.key.createAccount": "Criar conta",
     "signin.key.signInInstead": "Entrar em vez disso",
     "signin.key.noEntriesTitle": "Crie uma conta para guardar {product}",
@@ -8172,7 +8172,7 @@ export const KIT_COPY: Readonly<
       "Nuova: licenza {tier}, creata quando continui",
     "signin.key.upgradeTitle": "Tieni {product} in un account",
     "signin.key.upgradeLede":
-      "La tua chiave funziona. In un account puoi recuperarla e spostarla su un nuovo dispositivo da solo.",
+      "In un account puoi recuperarla e spostarla su un nuovo dispositivo da solo.",
     "signin.key.createAccount": "Crea account",
     "signin.key.signInInstead": "Accedi invece",
     "signin.key.noEntriesTitle": "Crea un account per tenere {product}",
@@ -9645,7 +9645,7 @@ export const KIT_COPY: Readonly<
       "新規: {tier} ライセンス。続けると作成されます",
     "signin.key.upgradeTitle": "{product} をアカウントに保管",
     "signin.key.upgradeLede":
-      "キーは有効です。アカウントに保管すると、再取得したり、新しいデバイスへ自分で移したりできます。",
+      "アカウントに保管すると、再取得したり、新しいデバイスへ自分で移したりできます。",
     "signin.key.createAccount": "アカウントを作成",
     "signin.key.signInInstead": "代わりにサインイン",
     "signin.key.noEntriesTitle": "{product} を保管するにはアカウントを作成",
@@ -11081,7 +11081,7 @@ export const KIT_COPY: Readonly<
     "signin.consent.newLicense": "새 {tier} 라이선스: 계속하면 만들어집니다",
     "signin.key.upgradeTitle": "{product}을(를) 계정에 보관",
     "signin.key.upgradeLede":
-      "키가 유효합니다. 계정에 보관하면 다시 받거나 새 기기로 직접 옮길 수 있습니다.",
+      "계정에 보관하면 다시 받거나 새 기기로 직접 옮길 수 있습니다.",
     "signin.key.createAccount": "계정 만들기",
     "signin.key.signInInstead": "대신 로그인",
     "signin.key.noEntriesTitle": "{product}을(를) 보관하려면 계정을 만드세요",
@@ -12436,7 +12436,7 @@ export const KIT_COPY: Readonly<
     "signin.consent.newLicense": "新建:{tier} 许可证,继续时创建",
     "signin.key.upgradeTitle": "将 {product} 保存在账户中",
     "signin.key.upgradeLede":
-      "密钥有效。保存在账户中后,你可以找回它,也可以自己迁移到新设备。",
+      "保存在账户中后,你可以找回它,也可以自己迁移到新设备。",
     "signin.key.createAccount": "创建账户",
     "signin.key.signInInstead": "改为登录",
     "signin.key.noEntriesTitle": "创建账户以保留 {product}",

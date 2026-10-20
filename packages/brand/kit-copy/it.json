@@ -726,7 +726,7 @@
     "signin.consent.cloudSync": "Cloud Sync",
     "signin.consent.newLicense": "Nuova: licenza {tier}, creata quando continui",
     "signin.key.upgradeTitle": "Tieni {product} in un account",
-    "signin.key.upgradeLede": "La tua chiave funziona. In un account puoi recuperarla e spostarla su un nuovo dispositivo da solo.",
+    "signin.key.upgradeLede": "In un account puoi recuperarla e spostarla su un nuovo dispositivo da solo.",
     "signin.key.createAccount": "Crea account",
     "signin.key.signInInstead": "Accedi invece",
     "signin.key.noEntriesTitle": "Crea un account per tenere {product}",

@@ -13,6 +13,7 @@ import { t } from "../../../lib/copy.js";
 import {
   portalApi,
   PortalApiError,
+  type PortalAccount,
   type SignInContinueRequest,
 } from "../../api.js";
 import { portalErrorCopy } from "../../errors.js";
@@ -36,7 +37,7 @@ import { LicenseChoiceStep } from "./LicenseChoiceStep.js";
 import { ReplaceDeviceStep } from "./ReplaceDeviceStep.js";
 import { ReplacedDone } from "./ReplacedDone.js";
 import { RequestFooter, RequestHeader } from "./RequestHeader.js";
-import { PRIMARY_CLASS } from "./requestParts.js";
+import { PersonRow, PRIMARY_CLASS } from "./requestParts.js";
 
 /**
  * The signed-in half of an app sign-in (SIGN-IN.md §3.6 to §3.8, §4.16; PX-14a): one card at
@@ -52,8 +53,10 @@ type Step =
   | { kind: "done"; replaced: string; redirect: string };
 
 export function RequestFlow({
+  account,
   handle,
 }: {
+  account: PortalAccount;
   handle: string;
 }): React.ReactElement {
   const qc = useQueryClient();
@@ -295,6 +298,11 @@ export function RequestFlow({
     key = "none";
     body = (
       <NoneStep
+        person={{
+          name: account.name,
+          email: account.email,
+          picture: account.avatarUrl ?? null,
+        }}
         product={view.client.appName}
         keyHref={keyHrefFor(lic.getLicense, handle)}
         purchaseUrl={httpsOrNull(lic.getLicense?.purchaseUrl ?? null)}
@@ -312,6 +320,12 @@ export function RequestFlow({
         developer={view.client.developerName ?? t("signin.off.developer")}
         deviceName={thisDeviceName(view)}
         browser={view.deviceLabel === null}
+        person={{
+          name: account.name,
+          email: account.email,
+          picture: account.avatarUrl ?? null,
+        }}
+        onNotYou={() => void notYou()}
         keyHref={keyHrefFor(lic.getLicense, handle)}
         notice={notice}
         onUse={(pick) => {
@@ -414,6 +428,7 @@ function keyHrefFor(
 
 /** "No <Product> license in this account": never a dead end (§3.6 rule 6). */
 function NoneStep({
+  person,
   product,
   keyHref,
   purchaseUrl,
@@ -421,6 +436,7 @@ function NoneStep({
   onCancel,
   error,
 }: {
+  person: { name: string | null; email: string | null; picture: string | null };
   product: string;
   keyHref: string | null;
   purchaseUrl: string | null;
@@ -432,6 +448,7 @@ function NoneStep({
     "inline-flex min-h-11 items-center rounded-sm px-1 underline decoration-2 underline-offset-4 hover:text-fg-strong";
   return (
     <>
+      <PersonRow {...person} onNotYou={onOther} />
       <div className="space-y-2">
         <AuthTitle>{t("signin.none.title", { product })}</AuthTitle>
         <p className="text-fg-muted">{t("signin.none.body")}</p>

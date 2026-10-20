@@ -4292,10 +4292,10 @@ msgstr "Nouvelle : licence {tier}, créée quand vous continuez"
 msgid "signin.key.upgradeTitle"
 msgstr "Gardez {product} dans un compte"
 
-#. Your key works. In an account you can get it back and move it to a new device yourself.
+#. In an account you can get it back and move it to a new device yourself.
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
 msgid "signin.key.upgradeLede"
-msgstr "Votre clé fonctionne. Dans un compte, vous la retrouvez et la déplacez vous-même vers un nouvel appareil."
+msgstr "Dans un compte, vous la retrouvez et la déplacez vous-même vers un nouvel appareil."
 
 #. Create account
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).

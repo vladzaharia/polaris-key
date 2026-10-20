@@ -3617,7 +3617,7 @@
       "note": "PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated)."
     },
     "signin.key.upgradeLede": {
-      "value": "Your key works. In an account you can get it back and move it to a new device yourself.",
+      "value": "In an account you can get it back and move it to a new device yourself.",
       "role": "body",
       "note": "PX-14a: the app card (SIGN-IN.md §3.6 to §3.9)."
     },

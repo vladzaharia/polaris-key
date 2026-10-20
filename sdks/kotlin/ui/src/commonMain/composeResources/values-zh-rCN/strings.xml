@@ -1600,7 +1600,7 @@
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_key_upgradeTitle">将 %1$s 保存在账户中</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
-    <string name="signin_key_upgradeLede">密钥有效。保存在账户中后,你可以找回它,也可以自己迁移到新设备。</string>
+    <string name="signin_key_upgradeLede">保存在账户中后,你可以找回它,也可以自己迁移到新设备。</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
     <string name="signin_key_createAccount">创建账户</string>
     <string name="signin_key_createAccount__macos">创建账户</string>

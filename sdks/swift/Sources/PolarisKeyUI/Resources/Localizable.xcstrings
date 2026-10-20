@@ -60704,55 +60704,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your key works. In an account you can get it back and move it to a new device yourself."
+            "value": "In an account you can get it back and move it to a new device yourself."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ihr Schlüssel funktioniert. In einem Konto können Sie ihn zurückholen und selbst auf ein neues Gerät übertragen."
+            "value": "In einem Konto können Sie ihn zurückholen und selbst auf ein neues Gerät übertragen."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Votre clé fonctionne. Dans un compte, vous la retrouvez et la déplacez vous-même vers un nouvel appareil."
+            "value": "Dans un compte, vous la retrouvez et la déplacez vous-même vers un nouvel appareil."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tu clave funciona. En una cuenta puedes recuperarla y pasarla a un dispositivo nuevo tú mismo."
+            "value": "En una cuenta puedes recuperarla y pasarla a un dispositivo nuevo tú mismo."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sua chave funciona. Em uma conta, você a recupera e a move para um novo dispositivo sozinho."
+            "value": "Em uma conta, você a recupera e a move para um novo dispositivo sozinho."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "La tua chiave funziona. In un account puoi recuperarla e spostarla su un nuovo dispositivo da solo."
+            "value": "In un account puoi recuperarla e spostarla su un nuovo dispositivo da solo."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "キーは有効です。アカウントに保管すると、再取得したり、新しいデバイスへ自分で移したりできます。"
+            "value": "アカウントに保管すると、再取得したり、新しいデバイスへ自分で移したりできます。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "키가 유효합니다. 계정에 보관하면 다시 받거나 새 기기로 직접 옮길 수 있습니다."
+            "value": "계정에 보관하면 다시 받거나 새 기기로 직접 옮길 수 있습니다."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "密钥有效。保存在账户中后,你可以找回它,也可以自己迁移到新设备。"
+            "value": "保存在账户中后,你可以找回它,也可以自己迁移到新设备。"
           }
         }
       }

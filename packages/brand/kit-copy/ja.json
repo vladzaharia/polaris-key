@@ -726,7 +726,7 @@
     "signin.consent.cloudSync": "クラウド同期",
     "signin.consent.newLicense": "新規: {tier} ライセンス。続けると作成されます",
     "signin.key.upgradeTitle": "{product} をアカウントに保管",
-    "signin.key.upgradeLede": "キーは有効です。アカウントに保管すると、再取得したり、新しいデバイスへ自分で移したりできます。",
+    "signin.key.upgradeLede": "アカウントに保管すると、再取得したり、新しいデバイスへ自分で移したりできます。",
     "signin.key.createAccount": "アカウントを作成",
     "signin.key.signInInstead": "代わりにサインイン",
     "signin.key.noEntriesTitle": "{product} を保管するにはアカウントを作成",

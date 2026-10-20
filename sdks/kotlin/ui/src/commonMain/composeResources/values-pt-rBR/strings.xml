@@ -1620,7 +1620,7 @@
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_key_upgradeTitle">Guarde %1$s em uma conta</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
-    <string name="signin_key_upgradeLede">Sua chave funciona. Em uma conta, você a recupera e a move para um novo dispositivo sozinho.</string>
+    <string name="signin_key_upgradeLede">Em uma conta, você a recupera e a move para um novo dispositivo sozinho.</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
     <string name="signin_key_createAccount">Criar conta</string>
     <string name="signin_key_createAccount__macos">Criar conta</string>

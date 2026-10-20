@@ -117,7 +117,8 @@ function Boot(): React.ReactElement {
   // An app's sign-in (`/signin?request=rq_…`) continues in the card, not in the library.
   if (window.location.pathname === "/signin") {
     const handle = requestHandleFromUrl();
-    if (handle) return <RequestFlow handle={handle} />;
+    if (handle)
+      return <RequestFlow account={session.data.account} handle={handle} />;
   }
   return (
     <ActivateProvider>
