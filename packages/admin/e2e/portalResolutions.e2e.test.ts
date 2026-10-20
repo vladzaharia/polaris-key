@@ -199,7 +199,7 @@ describe("the signed-in header (PORTAL.md §3.2, §8)", () => {
           expect
             .soft(visible, `header controls at ${width}`)
             .toBe(
-              `Polaris Locker: your library · Library12 · Discover24 · Jump to a product · Activate license · Account: ${name}`,
+              `Polaris Locker: your library · Library12 · Discover24 · Activate license · Account: ${name}`,
             );
           // From 1180 px the chip shows the full name. It truncates only once the ⌘K field has
           // given way to its 176 px floor, or the chip has reached its 18rem cap.
@@ -247,7 +247,6 @@ describe("the signed-in header (PORTAL.md §3.2, §8)", () => {
     try {
       await h1(o.page, "Your library");
       const headerControls = [
-        'header button[aria-label="Jump to a product"]',
         'header button[aria-label="Activate license"]',
         'header button[aria-label^="Account:"]',
       ];
@@ -794,7 +793,7 @@ describe("the tablet and short-screen rules (PORTAL.md §8)", () => {
   it("Jump to a product gives focus back to its opener when closed without a jump", async ({
     expect,
   }) => {
-    const o = await portal.open("twelve", "/", { width: 900 });
+    const o = await portal.open("twelve", "/", { width: 700 });
     try {
       await h1(o.page, "Your library");
       await o.page.locator("[data-library-grid=compact]").waitFor();
@@ -808,7 +807,8 @@ describe("the tablet and short-screen rules (PORTAL.md §8)", () => {
             document.activeElement?.getAttribute("aria-label") ??
             document.activeElement?.textContent,
         );
-      for (const width of [900, 1440]) {
+      // The header trigger is the phone icon; from 900 px the toolbar search and ⌘K are the way in.
+      for (const width of [700, 390]) {
         await o.page.setViewportSize({ width, height: 900 });
         await trigger.focus();
         await o.page.keyboard.press("Enter");

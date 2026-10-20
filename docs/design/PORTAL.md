@@ -57,7 +57,7 @@ The card fetches capabilities before it chooses product context or providers. It
 
 The Library is the default page and presents one item per product, not one per license. It explicitly handles loading, read failure with Retry, an empty library, a one-product hero, two to seven large tiles, and the scaled library at eight or more products. The scaled view supplies search, filters, sort, a persisted grid/list preference, an attention shelf, and a jump palette. Products added recently sort first where the scaled view can sort them.
 
-Every library state retains the ways to add a key. An empty library may also show the Discover teaser only when the Worker has supplied a discover count. Quick actions are calculated from the Worker product, download, license, and device facts; the portal does not infer a download it has not received.
+Every library state retains the ways to add a key. An empty library offers "See N in Discover" only when the Worker has supplied a discover count; it lists no offers itself. Quick actions are calculated from the Worker product, download, license, and device facts; the portal does not infer a download it has not received.
 
 ### 4.3 Discover and storefront products
 

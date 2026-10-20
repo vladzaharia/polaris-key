@@ -71,7 +71,7 @@ export function LibraryToolbar({
   const label = "Search your library";
 
   return (
-    <div className="flex flex-col gap-3 wide:flex-row wide:items-center">
+    <div className="flex flex-col gap-3 wide:flex-row wide:flex-wrap wide:items-center">
       <div className="flex gap-2 wide:contents">
         <label className="relative flex h-11 min-w-0 flex-1 items-center rounded-md border border-border-strong bg-surface-page wide:w-80 wide:flex-none">
           <Search
@@ -124,8 +124,8 @@ export function LibraryToolbar({
           ]}
         />
       </div>
-      <div className="flex min-w-0 items-center gap-2 overflow-x-auto wide:flex-1">
-        <div role="group" aria-label="Filter" className="flex shrink-0 gap-2">
+      <div className="flex min-w-0 flex-wrap items-center gap-2 wide:flex-1 wide:basis-72">
+        <div role="group" aria-label="Filter" className="flex flex-wrap gap-2">
           {chips
             .filter((c) => c.count > 0)
             .map((c) => {
@@ -157,7 +157,7 @@ export function LibraryToolbar({
               );
             })}
         </div>
-        <label className="ml-auto flex shrink-0 items-center">
+        <label className="ml-auto flex items-center">
           <span className="sr-only">Sort</span>
           <select
             value={sort}

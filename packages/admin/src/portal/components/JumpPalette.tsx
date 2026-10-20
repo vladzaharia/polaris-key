@@ -280,7 +280,7 @@ export function JumpIconButton({
       onClick={onOpen}
       data-jump-trigger=""
       aria-label="Jump to a product"
-      className="inline-flex size-11 items-center justify-center rounded-full text-fg-strong hover:bg-hover"
+      className="inline-flex size-[44px] items-center justify-center rounded-full text-fg-strong hover:bg-hover"
     >
       <Search aria-hidden className="size-5" />
     </button>

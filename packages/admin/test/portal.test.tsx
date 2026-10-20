@@ -42,6 +42,22 @@ describe("portal shell and data layer (PX-01)", () => {
     expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
   });
 
+  it("ends every page with the Help and Privacy links, in the public Help door", async () => {
+    mockFetch(signedIn([]));
+    renderPortal();
+    const foot = await screen.findByRole("navigation", {
+      name: "Help and policies",
+    });
+    expect(
+      within(foot)
+        .getAllByRole("link")
+        .map((a) => [a.textContent, a.getAttribute("href")]),
+    ).toEqual([
+      ["Help", "/docs/help/"],
+      ["Privacy", "/docs/help/your-data/"],
+    ]);
+  });
+
   it("renders the signed-in shell's landmarks, nav and Activate action", async () => {
     mockFetch(
       signedIn([
