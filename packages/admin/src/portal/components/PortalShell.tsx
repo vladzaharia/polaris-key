@@ -282,7 +282,7 @@ function NavLink({
       className={cn(
         "relative inline-flex items-center gap-2.5 px-1 text-md",
         active
-          ? "font-medium text-fg-strong after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:rounded-full after:bg-accent"
+          ? "font-medium text-fg-strong after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:rounded-full after:bg-[var(--pk-locker-accent,var(--pk-accent))] in-data-[brand=locker]:after:h-[3px]"
           : "text-fg-muted hover:text-fg-strong",
       )}
     >

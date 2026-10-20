@@ -151,6 +151,54 @@ describe.concurrent("every shipped §4 state passes the quality bar", () => {
   }
 });
 
+/**
+ * The same site while `customer.host` is on (LK-06): the Polaris Locker identity. A few states
+ * only, at the two sizes the review looks at; every other state differs from its Key baseline in
+ * the mark and the coral identity alone. The Key set above is the OFF state and must not move.
+ */
+const LOCKER_STATES = new Set(["signin", "library-12", "discover", "account"]);
+describe.concurrent("Locker (customer.host on)", () => {
+  for (const state of SHIPPED.filter((s) => LOCKER_STATES.has(s.id))) {
+    for (const theme of THEMES) {
+      for (const w of WIDTHS.filter((x) => x.width !== 1920)) {
+        it(`${state.id}, ${theme}, ${w.width} px`, async ({ expect }) => {
+          const o = await portal.open(state.scenario, state.path, {
+            theme,
+            width: w.width,
+            height: w.height,
+            routes: state.routes,
+            brand: "locker",
+          });
+          try {
+            await state.ready(o.page);
+            expect(
+              await o.page.evaluate(() => document.title),
+              "Locker title",
+            ).toContain("Polaris Locker");
+            const name = `locker-${state.id}-${w.label}-${theme}`;
+            await shoot(o.page, name);
+            expect.soft(await o.violations(), "CSP violations").toEqual([]);
+            expect.soft(await axe(o.page), "axe violations").toEqual([]);
+            expect.soft(await h1Count(o.page), "visible h1 count").toBe(1);
+            expect
+              .soft(await horizontalOverflow(o.page), "horizontal scroll")
+              .toBeLessThanOrEqual(0);
+            const visual = await matchBaseline(o.page, name);
+            expect
+              .soft(
+                visual.status === "match" || visual.status === "recorded",
+                visual.detail,
+              )
+              .toBe(true);
+          } finally {
+            await o.close();
+          }
+        });
+      }
+    }
+  }
+});
+
 describe("§4 states still to build (PX-20 is rolling)", () => {
   for (const p of PENDING) {
     it.todo(`§${p.section} ${p.title} (${p.wp.join(", ")})`);
