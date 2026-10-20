@@ -10,6 +10,7 @@ import { t } from "../../../lib/copy.js";
 import {
   classifyChoice,
   rowModel,
+  waitText,
   type RowModel,
 } from "../../model/signInRequest.js";
 import {
@@ -37,6 +38,7 @@ export function LicenseChoiceStep({
   deviceName,
   browser,
   keyHref,
+  initialId = null,
   person,
   onNotYou,
   onUse,
@@ -52,6 +54,8 @@ export function LicenseChoiceStep({
   browser: boolean;
   /** Where "Use a license key instead" goes (the Activate page, which returns here), or null. */
   keyHref: string | null;
+  /** The row the person picked before (Change and Escape from consent keep it). */
+  initialId?: string | null;
   person: { name: string | null; email: string | null; picture: string | null };
   onNotYou: () => void;
   onUse: (
@@ -71,6 +75,13 @@ export function LicenseChoiceStep({
     (state === "create" && rows.every((r) => !r.selectable));
   const fullRows = rows.filter((r) => !r.selectable && r.tag === "full");
   const [value, setValue] = React.useState<string>(() => {
+    if (
+      initialId &&
+      (initialId === "create"
+        ? view.create
+        : view.choices.some((c) => c.id === initialId))
+    )
+      return initialId;
     if (view.preselected && view.preselected !== "keep")
       return view.preselected;
     // Every row full and one row: nothing else to pick, so nothing to leave unchosen.
@@ -121,7 +132,8 @@ export function LicenseChoiceStep({
       .join(", "),
     children: <RowBody m={m} />,
   });
-  for (const m of rows) if (m.selectable || allFull) options.push(asOption(m));
+  for (const m of rows)
+    if (m.selectable || (allFull && m.canReplace)) options.push(asOption(m));
   if (view.create)
     options.push({
       value: "create",
@@ -144,7 +156,11 @@ export function LicenseChoiceStep({
         </>
       ),
     });
-  const stand = allFull ? [] : fullRows;
+  const stand = fullRows.filter((m) => !(allFull && m.canReplace));
+  const replaceable = fullRows.some((r) => r.canReplace);
+  const wait = fullRows.find((r) => r.retryAfter !== null)?.retryAfter ?? null;
+  // Nothing here can act: no free row, no replaceable row, no Create. No primary then.
+  const noAction = allFull && !replaceable && !view.create;
 
   const primary =
     (allFull || chosenFull) && value !== "create"
@@ -209,25 +225,29 @@ export function LicenseChoiceStep({
           ))}
         </ul>
       ) : null}
-      {allFull || stand.length > 0 ? (
+      {allFull ? (
         <NeutralCallout icon={<MonitorSmartphone />}>
           <p>
-            {view.create
-              ? t("signin.choice.allFullCreate")
-              : fullRows.some((r) => r.canReplace)
-                ? t("signin.choice.allFull")
-                : t("signin.choice.noneReplaceable", { developer })}
+            {wait !== null && !replaceable
+              ? waitText(wait)
+              : view.create
+                ? t("signin.choice.allFullCreate")
+                : replaceable
+                  ? t("signin.choice.allFull")
+                  : t("signin.choice.noneReplaceable", { developer })}
           </p>
         </NeutralCallout>
       ) : null}
-      <Button
-        type="submit"
-        variant="neutral"
-        size="lg"
-        className={PRIMARY_CLASS}
-      >
-        {primary}
-      </Button>
+      {noAction ? null : (
+        <Button
+          type="submit"
+          variant="neutral"
+          size="lg"
+          className={PRIMARY_CLASS}
+        >
+          {primary}
+        </Button>
+      )}
       <QuietLinks>
         {keyHref ? (
           <a

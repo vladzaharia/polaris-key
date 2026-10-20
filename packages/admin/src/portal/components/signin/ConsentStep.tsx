@@ -7,7 +7,7 @@ import { t } from "../../../lib/copy.js";
 import {
   consentLines,
   firstName,
-  licenseLine,
+  licenseParts,
   type Chosen,
 } from "../../model/signInRequest.js";
 import { PersonRow, PRIMARY_CLASS } from "./requestParts.js";
@@ -36,7 +36,7 @@ export function ConsentStep({
   product: string;
   device: string;
   chosen: Chosen;
-  busy: boolean;
+  busy: "continue" | "deny" | null;
   error: string | null;
   /** Back to the licence list with the selection kept; null where no choice precedes. */
   onChange: (() => void) | null;
@@ -44,7 +44,7 @@ export function ConsentStep({
   onDeny: () => void;
   onNotYou: () => void;
 }): React.ReactElement {
-  const line = licenseLine(chosen, { product, app, device });
+  const line = licenseParts(chosen, { product, app, device });
   const lines = consentLines(view);
   return (
     <>
@@ -69,9 +69,12 @@ export function ConsentStep({
             {t("signin.consent.license")}
           </h2>
           <div className="flex items-start justify-between gap-3 rounded-md border border-border-strong px-3 py-3">
-            <p className="min-w-0 text-fg-strong [overflow-wrap:anywhere]">
-              {line}
-            </p>
+            <div className="min-w-0 [overflow-wrap:anywhere]">
+              <p className="font-semibold text-fg-strong">{line.title}</p>
+              {line.meta ? (
+                <p className="text-sm text-fg-muted">{line.meta}</p>
+              ) : null}
+            </div>
             {onChange ? (
               <button
                 type="button"
@@ -117,7 +120,8 @@ export function ConsentStep({
           variant="neutral"
           size="lg"
           className={PRIMARY_CLASS}
-          loading={busy}
+          loading={busy === "continue"}
+          busyFocusable
           onClick={onContinue}
         >
           {t("signin.consent.continue", { app })}
@@ -126,7 +130,8 @@ export function ConsentStep({
           variant="outline"
           size="lg"
           className={PRIMARY_CLASS}
-          disabled={busy}
+          loading={busy === "deny"}
+          busyFocusable
           onClick={onDeny}
         >
           {t("signin.consent.deny")}

@@ -277,9 +277,7 @@ describe("LicenseChoiceStep (§3.6)", () => {
       }),
     ).toBeTruthy();
     expect(
-      screen.getByText(
-        "Diceroll Standard · Lifetime · Mara's Pixel 8 becomes device 2 of 3",
-      ),
+      screen.getByText("Lifetime · Mara's Pixel 8 becomes device 2 of 3"),
     ).toBeTruthy();
     await userEvent.click(
       screen.getByRole("button", { name: "Continue to Diceroll" }),
@@ -369,9 +367,7 @@ describe("LicenseChoiceStep (§3.6)", () => {
     ).toBeTruthy();
     await userEvent.click(primary);
     // Consent names what replaces what.
-    expect(
-      await screen.findByText("Diceroll Family · replaces Studio Mac mini"),
-    ).toBeTruthy();
+    expect(await screen.findByText("replaces Studio Mac mini")).toBeTruthy();
     await userEvent.click(
       screen.getByRole("button", { name: "Continue to Diceroll" }),
     );
@@ -458,6 +454,77 @@ describe("LicenseChoiceStep (§3.6)", () => {
   });
 });
 
+describe("fix round", () => {
+  it("Change keeps the person's pick, even one the server did not preselect", async () => {
+    const other = {
+      ...ROW,
+      id: "lic_b",
+      name: "Diceroll Plus",
+      tierName: "Plus",
+    };
+    flow(choices({ preselected: null, choices: [ROW, other] }));
+    renderPortal();
+    await userEvent.click(
+      await screen.findByRole("radio", { name: /Diceroll Plus/ }),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Use this license and continue" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Change" }),
+    );
+    expect(
+      (
+        await screen.findByRole("radio", { name: /Diceroll Plus/ })
+      ).getAttribute("aria-checked"),
+    ).toBe("true");
+  });
+
+  it("the all-full callout shows only when every licence is full", async () => {
+    flow(choices({ preselected: ROW.id, choices: [ROW, FULL] }));
+    renderPortal();
+    await screen.findByRole("heading", {
+      level: 1,
+      name: "Choose a license for this device",
+    });
+    expect(document.querySelector("[data-callout]")).toBeNull();
+  });
+
+  it("a rate-limited Replace says the wait in minutes and offers no primary that cannot act", async () => {
+    const limited = { ...FULL, replace: { allowed: false, retryAfter: 600 } };
+    flow(choices({ choices: [limited], preselected: null }));
+    renderPortal();
+    await screen.findByRole("heading", {
+      level: 1,
+      name: "Choose a license for this device",
+    });
+    expect(
+      screen.getByText("Too many device changes. Try again in 10 minutes."),
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: "Replace a device" }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Use this license and continue" }),
+    ).toBeNull();
+  });
+
+  it("an unverified name's footer names the app, not an empty band", async () => {
+    mockFetch({
+      "/api/me": { status: 401 },
+      "/api/capabilities": CAPS_ALL,
+      [REQUEST]: {
+        ...VIEW,
+        client: { ...VIEW.client, appName: "diceroll", nameVerified: false },
+      },
+    });
+    renderPortal();
+    expect(
+      await screen.findByText("Polaris Locker signs you in for diceroll."),
+    ).toBeTruthy();
+  });
+});
+
 describe("AccountUpgrade on the key step (§3.9)", () => {
   const KEY = `pkey_diceroll_${"A".repeat(22)}`;
   function preview(over: Partial<KeyPreview> = {}): KeyPreview {
@@ -508,7 +575,9 @@ describe("AccountUpgrade on the key step (§3.9)", () => {
     expect(
       screen.getByRole("img", { name: "3 of 5 key entries used" }).innerHTML,
     ).not.toMatch(/warning|amber|danger/);
-    expect(screen.getByRole("button", { name: "Skip for now" })).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Sign in without the key" }),
+    ).toBeTruthy();
     expect(screen.getByRole("button", { name: "Create account" })).toBeTruthy();
     expect(await axeViolations()).toEqual([]);
   });
@@ -519,7 +588,9 @@ describe("AccountUpgrade on the key step (§3.9)", () => {
       level: 1,
       name: "Keep Diceroll in an account",
     });
-    expect(screen.queryByRole("button", { name: "Skip for now" })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Sign in without the key" }),
+    ).toBeNull();
   });
 
   it("forced at zero entries: a neutral callout, Create account, no skip", async () => {
@@ -536,7 +607,9 @@ describe("AccountUpgrade on the key step (§3.9)", () => {
     expect(
       screen.getByText(/This key has no entries left in Diceroll/),
     ).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Skip for now" })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Sign in without the key" }),
+    ).toBeNull();
     expect(screen.getByRole("button", { name: "Create account" })).toBeTruthy();
   });
 

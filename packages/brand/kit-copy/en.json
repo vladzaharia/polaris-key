@@ -1457,7 +1457,7 @@
       "note": "Header of the sign-in card when an app asks (SIGN-IN.md §3.1)."
     },
     "signin.header.codePanel": {
-      "value": "Code on the screen · {code} · Check it matches the screen",
+      "value": "Code · {code} · Check it matches the screen",
       "role": "body",
       "note": "Header of the sign-in card when an app asks (SIGN-IN.md §3.1). Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated."
     },
@@ -3650,6 +3650,21 @@
       "value": "Key works",
       "role": "label",
       "note": "PX-14a: the app card (SIGN-IN.md §3.6 to §3.9)."
+    },
+    "signin.footerNoDeveloper": {
+      "value": "Polaris Locker signs you in for {app}.",
+      "role": "body",
+      "note": "PX-14a fix round. Arguments: {app} = the requesting app's name (never translated)."
+    },
+    "signin.replace.rateLimitedMinutes": {
+      "value": "Too many device changes. Try again in {minutes, plural, one {# minute} other {# minutes}}.",
+      "role": "body",
+      "note": "PX-14a fix round. Arguments: {minutes} = a number of minutes."
+    },
+    "signin.request.tooMany": {
+      "value": "Too many tries. Wait a moment, then try again.",
+      "role": "body",
+      "note": "PX-14a fix round."
     }
   }
 }

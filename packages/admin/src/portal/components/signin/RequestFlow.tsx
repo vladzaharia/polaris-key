@@ -18,9 +18,11 @@ import {
 } from "../../api.js";
 import { portalErrorCopy } from "../../errors.js";
 import { portalKeys } from "../../data.js";
+import { useDocumentTitle } from "../../router.js";
 import {
   navigation,
   safeRedirect,
+  waitText,
   thisDeviceName,
   type Chosen,
   type DeviceRowModel,
@@ -73,7 +75,7 @@ export function RequestFlow({
   const [direction, setDirection] = React.useState<"forward" | "back">(
     "forward",
   );
-  const [busy, setBusy] = React.useState(false);
+  const [busy, setBusy] = React.useState<"continue" | "deny" | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [notice, setNotice] = React.useState<string | null>(null);
   const go = (next: Step, dir: "forward" | "back" = "forward"): void => {
@@ -134,18 +136,20 @@ export function RequestFlow({
   };
 
   const deny = async (): Promise<void> => {
-    setBusy(true);
+    if (busy) return;
+    setBusy("deny");
     setError(null);
     try {
       leave((await portalApi.signinCancel(handle)).redirect);
     } catch (err) {
-      setBusy(false);
+      setBusy(null);
       setError(refusalText(err));
     }
   };
 
   const proceed = async (): Promise<void> => {
-    setBusy(true);
+    if (busy) return;
+    setBusy("continue");
     setError(null);
     const body: SignInContinueRequest = {};
     if (chosen?.kind === "license")
@@ -158,7 +162,7 @@ export function RequestFlow({
     try {
       const out = await portalApi.signinContinue(handle, body);
       if (chosen?.kind === "license" && chosen.replace) {
-        setBusy(false);
+        setBusy(null);
         go({
           kind: "done",
           replaced: chosen.replace.label,
@@ -168,7 +172,7 @@ export function RequestFlow({
       }
       leave(out.redirect);
     } catch (err) {
-      setBusy(false);
+      setBusy(null);
       if (
         err instanceof PortalApiError &&
         (err.code === "license_choice_required" ||
@@ -193,6 +197,22 @@ export function RequestFlow({
   };
 
   const header = view ? <RequestHeader view={view} /> : undefined;
+  const titleText =
+    current?.kind === "done"
+      ? t("signin.choice.replacedTitle")
+      : current?.kind === "replace"
+        ? t("signin.replace.heading")
+        : current?.kind === "consent"
+          ? t("signin.consent.title", {
+              app: view?.client.appName ?? "",
+              name: consent.data?.person.displayName?.split(/\s+/)[0] ?? "",
+            })
+          : lic?.state === "none"
+            ? t("signin.none.title", { product: view?.client.appName ?? "" })
+            : req.error
+              ? t("signin.request.goneTitle")
+              : t("signin.choice.title");
+  useDocumentTitle(titleText);
   const footer = view ? <RequestFooter view={view} /> : undefined;
   const brand = (
     <span className="text-fg-muted opacity-80">
@@ -223,6 +243,9 @@ export function RequestFlow({
             <AuthTitle>{t("signin.request.goneTitle")}</AuthTitle>
             <p className="text-fg-muted">{t("signin.request.gone")}</p>
           </div>
+          <Button asChild variant="neutral" size="lg" className={PRIMARY_CLASS}>
+            <a href="/">{t("signin.return.library")}</a>
+          </Button>
         </>
       );
   } else if (
@@ -328,6 +351,13 @@ export function RequestFlow({
         onNotYou={() => void notYou()}
         keyHref={keyHrefFor(lic.getLicense, handle)}
         notice={notice}
+        initialId={
+          chosen?.kind === "license"
+            ? chosen.row.id
+            : chosen?.kind === "create"
+              ? "create"
+              : null
+        }
         onUse={(pick) => {
           setNotice(null);
           setChosen(
@@ -367,8 +397,8 @@ function refusalText(err: unknown): string {
   if (err instanceof PortalApiError) {
     if (err.status === 429 || err.code === "rate_limited")
       return typeof err.retryAfter === "number"
-        ? t("signin.replace.rateLimited", { seconds: err.retryAfter })
-        : t("signin.rateLimitedFew");
+        ? waitText(err.retryAfter)
+        : t("signin.request.tooMany");
     if (err.status === 404) return t("signin.request.gone");
   }
   const copy = portalErrorCopy(err, { account: true });

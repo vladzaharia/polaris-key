@@ -294,7 +294,7 @@
     "signin.header.app": "{app} quer que você entre",
     "signin.header.context": "{product} · {developer}",
     "signin.header.contextLine": "Sua licença, downloads e dispositivos",
-    "signin.header.codePanel": "Código na tela · {code} · Confira se é igual ao da tela",
+    "signin.header.codePanel": "Código · {code} · Confira se é igual ao da tela",
     "signin.footer": "O Polaris Locker faz seu acesso ao {app}. {developer} nunca vê seus códigos nem suas chaves de acesso.",
     "signin.off.product": "O acesso está desativado para {product}. Contate {developer}.",
     "signin.off.any": "O acesso está indisponível. Tente novamente mais tarde.",
@@ -732,6 +732,9 @@
     "signin.key.noEntriesTitle": "Crie uma conta para guardar {product}",
     "signin.key.noEntriesKeeps": "{product} continua funcionando nos dispositivos em que já está. Só digitar a chave de novo exige uma conta.",
     "signin.key.meter": "{used} de {limit} entradas da chave usadas",
-    "signin.key.keyWorks": "A chave funciona"
+    "signin.key.keyWorks": "A chave funciona",
+    "signin.footerNoDeveloper": "O Polaris Locker conecta você ao {app}.",
+    "signin.replace.rateLimitedMinutes": "Muitas trocas de dispositivo. Tente de novo em {minutes, plural, one {# minuto} many {# de minutos} other {# minutos}}.",
+    "signin.request.tooMany": "Muitas tentativas. Aguarde um instante e tente de novo."
   }
 }

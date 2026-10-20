@@ -682,7 +682,7 @@
     <!-- Header of the sign-in card when an app asks (SIGN-IN.md §3.1). -->
     <string name="signin_header_contextLine">Sua licença, downloads e dispositivos</string>
     <!-- Header of the sign-in card when an app asks (SIGN-IN.md §3.1). Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated. Arguments: 1=code. -->
-    <string name="signin_header_codePanel">Código na tela · %1$s · Confira se é igual ao da tela</string>
+    <string name="signin_header_codePanel">Código · %1$s · Confira se é igual ao da tela</string>
     <!-- Hosted sign-in card (SIGN-IN.md). Arguments: {app} = the requesting app's name (never translated); {developer} = the developer's name (never translated). Arguments: 1=app, 2=developer. -->
     <string name="signin_footer">O Polaris Locker faz seu acesso ao %1$s. %2$s nunca vê seus códigos nem suas chaves de acesso.</string>
     <!-- Sign-in is turned off (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated); {developer} = the developer's name (never translated). Arguments: 1=product, 2=developer. -->
@@ -1635,6 +1635,16 @@
     <string name="signin_key_meter">%1$s de %2$s entradas da chave usadas</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
     <string name="signin_key_keyWorks">A chave funciona</string>
+    <!-- PX-14a fix round. Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_footerNoDeveloper">O Polaris Locker conecta você ao %1$s.</string>
+    <!-- PX-14a fix round. Arguments: {minutes} = a number of minutes. Arguments: 1=minutes. -->
+    <plurals name="signin_replace_rateLimitedMinutes">
+        <item quantity="one">Muitas trocas de dispositivo. Tente de novo em %1$d minuto.</item>
+        <item quantity="many">Muitas trocas de dispositivo. Tente de novo em %1$d de minutos.</item>
+        <item quantity="other">Muitas trocas de dispositivo. Tente de novo em %1$d minutos.</item>
+    </plurals>
+    <!-- PX-14a fix round. -->
+    <string name="signin_request_tooMany">Muitas tentativas. Aguarde um instante e tente de novo.</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">Algo deu errado</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

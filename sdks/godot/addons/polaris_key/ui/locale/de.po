@@ -1837,10 +1837,10 @@ msgstr "{product} · {developer}"
 msgid "signin.header.contextLine"
 msgstr "Ihre Lizenz, Downloads und Geräte"
 
-#. Code on the screen · {code} · Check it matches the screen
+#. Code · {code} · Check it matches the screen
 #. Header of the sign-in card when an app asks (SIGN-IN.md §3.1). Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated.
 msgid "signin.header.codePanel"
-msgstr "Code auf dem Bildschirm · {code} · Prüfen Sie, ob er mit dem Bildschirm übereinstimmt"
+msgstr "Code · {code} · Prüfen Sie, ob er mit dem Bildschirm übereinstimmt"
 
 #. Polaris Locker signs you in for {app}. {developer} never sees your codes or passkeys.
 #. Hosted sign-in card (SIGN-IN.md). Arguments: {app} = the requesting app's name (never translated); {developer} = the developer's name (never translated).
@@ -4326,6 +4326,24 @@ msgstr "{used} von {limit} Schlüsseleingaben verwendet"
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
 msgid "signin.key.keyWorks"
 msgstr "Schlüssel gültig"
+
+#. Polaris Locker signs you in for {app}.
+#. PX-14a fix round. Arguments: {app} = the requesting app's name (never translated).
+msgid "signin.footerNoDeveloper"
+msgstr "Polaris Locker meldet Sie bei {app} an."
+
+#. Too many device changes. Try again in {minutes, plural, one {# minute} other {# minutes}}.
+#. PX-14a fix round. Arguments: {minutes} = a number of minutes.
+#. Plural on {minutes}.
+msgid "signin.replace.rateLimitedMinutes"
+msgid_plural "signin.replace.rateLimitedMinutes"
+msgstr[0] "Zu viele Geräteänderungen. Versuchen Sie es in {minutes} Minute erneut."
+msgstr[1] "Zu viele Geräteänderungen. Versuchen Sie es in {minutes} Minuten erneut."
+
+#. Too many tries. Wait a moment, then try again.
+#. PX-14a fix round.
+msgid "signin.request.tooMany"
+msgstr "Zu viele Versuche. Warten Sie einen Moment und versuchen Sie es erneut."
 
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).

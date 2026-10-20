@@ -62,7 +62,7 @@ import {
   RequestFooter,
   RequestHeader,
 } from "../components/signin/RequestHeader.js";
-import { requestHandleFromUrl } from "../model/signInRequest.js";
+import { headerModel, requestHandleFromUrl } from "../model/signInRequest.js";
 import { useSignInRequest } from "../requestData.js";
 
 /**
@@ -224,26 +224,33 @@ export function SignInPage(): React.ReactElement {
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   });
+  // A request that is gone (expired, unknown, Identity off, no binder) has nothing to sign in to.
+  const requestGone =
+    handle !== null &&
+    request.error instanceof PortalApiError &&
+    request.error.status === 404;
   useDocumentTitle(
-    step.kind === "code"
-      ? t("signin.code.title")
-      : step.kind === "refused"
-        ? t("signin.refused.title")
-        : step.kind === "hint"
-          ? t("signin.hint.welcomeNoName")
-          : step.kind === "finish"
-            ? finishTitle
-            : step.kind === "device"
-              ? t("signin.approve.title")
-              : step.kind === "key"
-                ? t("signin.link.key")
-                : step.kind === "upgrade"
-                  ? t("signin.key.upgradeTitle", {
-                      product: step.preview.product.name,
-                    })
-                  : step.kind === "sso"
-                    ? step.next.connection.label
-                    : t("signin.methods.titleApp"),
+    requestGone
+      ? t("signin.request.goneTitle")
+      : step.kind === "code"
+        ? t("signin.code.title")
+        : step.kind === "refused"
+          ? t("signin.refused.title")
+          : step.kind === "hint"
+            ? t("signin.hint.welcomeNoName")
+            : step.kind === "finish"
+              ? finishTitle
+              : step.kind === "device"
+                ? t("signin.approve.title")
+                : step.kind === "key"
+                  ? t("signin.link.key")
+                  : step.kind === "upgrade"
+                    ? t("signin.key.upgradeTitle", {
+                        product: step.preview.product.name,
+                      })
+                    : step.kind === "sso"
+                      ? step.next.connection.label
+                      : t("signin.methods.titleApp"),
   );
   /** The card's step key: a connection step is keyed by its route, so a change re-announces. */
   const ssoKey =
@@ -256,7 +263,7 @@ export function SignInPage(): React.ReactElement {
   // in" (§3.1). Every other step of an app's request keeps the request's header and footer.
   const onRamp = step.kind === "key" || step.kind === "upgrade";
   const appRequest = handle !== null && request.data && !onRamp;
-  const header = appRequest ? (
+  const header = requestGone ? undefined : appRequest ? (
     <RequestHeader view={request.data!} />
   ) : ctx ? (
     <CardHeader
@@ -266,14 +273,14 @@ export function SignInPage(): React.ReactElement {
       }
       name={ctx.name}
       developer={ctx.developerName ?? null}
+      where={
+        handle !== null && request.data
+          ? headerModel(request.data).where
+          : undefined
+      }
     />
   ) : undefined;
 
-  // A request that is gone (expired, unknown, Identity off, no binder) has nothing to sign in to.
-  const requestGone =
-    handle !== null &&
-    request.error instanceof PortalApiError &&
-    request.error.status === 404;
   const stepKey =
     handle !== null && request.isPending
       ? "loading"
@@ -290,7 +297,11 @@ export function SignInPage(): React.ReactElement {
       brand={<AuthBrand muted={Boolean(ctx) || handle !== null} />}
       focusKey={focusTick}
       header={header}
-      footer={appRequest ? <RequestFooter view={request.data!} /> : undefined}
+      footer={
+        handle !== null && request.data && !requestGone ? (
+          <RequestFooter view={request.data} />
+        ) : undefined
+      }
       stepKey={stepKey}
       direction={direction}
     >
@@ -302,6 +313,14 @@ export function SignInPage(): React.ReactElement {
             <Title>{t("signin.request.goneTitle")}</Title>
             <p className="text-fg-muted">{t("signin.request.gone")}</p>
           </div>
+          <Button
+            asChild
+            variant="neutral"
+            size="lg"
+            className="h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-semibold"
+          >
+            <a href="/">{t("signin.return.library")}</a>
+          </Button>
         </>
       ) : caps.error ? (
         <Unreachable
@@ -406,10 +425,6 @@ export function SignInPage(): React.ReactElement {
           preview={step.preview}
           canSkip={handle !== null}
           onCreate={() => {
-            setParams({ activate: step.key });
-            go({ kind: "methods" });
-          }}
-          onSignIn={() => {
             setParams({ activate: step.key });
             go({ kind: "methods" });
           }}

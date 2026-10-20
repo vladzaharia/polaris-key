@@ -348,8 +348,7 @@ export const KIT_COPY: Readonly<
     "signin.header.app": "{app} wants you to sign in",
     "signin.header.context": "{product} · {developer}",
     "signin.header.contextLine": "Your license, downloads and devices",
-    "signin.header.codePanel":
-      "Code on the screen · {code} · Check it matches the screen",
+    "signin.header.codePanel": "Code · {code} · Check it matches the screen",
     "signin.footer":
       "Polaris Locker signs you in for {app}. {developer} never sees your codes or passkeys.",
     "signin.off.product":
@@ -867,6 +866,10 @@ export const KIT_COPY: Readonly<
       "{product} keeps working on the devices it's already on. Only typing the key again needs an account.",
     "signin.key.meter": "{used} of {limit} key entries used",
     "signin.key.keyWorks": "Key works",
+    "signin.footerNoDeveloper": "Polaris Locker signs you in for {app}.",
+    "signin.replace.rateLimitedMinutes":
+      "Too many device changes. Try again in {minutes, plural, one {# minute} other {# minutes}}.",
+    "signin.request.tooMany": "Too many tries. Wait a moment, then try again.",
     "core.fallback.title": "Something went wrong",
     "core.fallback.message": "Something went wrong ({code}). Try again.",
     "core.codes.unauthorized.title": "Not signed in",
@@ -1772,7 +1775,7 @@ export const KIT_COPY: Readonly<
     "signin.header.context": "{product} · {developer}",
     "signin.header.contextLine": "Ihre Lizenz, Downloads und Geräte",
     "signin.header.codePanel":
-      "Code auf dem Bildschirm · {code} · Prüfen Sie, ob er mit dem Bildschirm übereinstimmt",
+      "Code · {code} · Prüfen Sie, ob er mit dem Bildschirm übereinstimmt",
     "signin.footer":
       "Polaris Locker meldet Sie bei {app} an. {developer} sieht Ihre Codes oder Passkeys nie.",
     "signin.off.product":
@@ -2343,6 +2346,11 @@ export const KIT_COPY: Readonly<
       "{product} läuft weiter auf den Geräten, auf denen es schon ist. Nur die erneute Eingabe des Schlüssels braucht ein Konto.",
     "signin.key.meter": "{used} von {limit} Schlüsseleingaben verwendet",
     "signin.key.keyWorks": "Schlüssel gültig",
+    "signin.footerNoDeveloper": "Polaris Locker meldet Sie bei {app} an.",
+    "signin.replace.rateLimitedMinutes":
+      "Zu viele Geräteänderungen. Versuchen Sie es in {minutes, plural, one {# Minute} other {# Minuten}} erneut.",
+    "signin.request.tooMany":
+      "Zu viele Versuche. Warten Sie einen Moment und versuchen Sie es erneut.",
     "core.fallback.title": "Ein Fehler ist aufgetreten",
     "core.fallback.message":
       "Ein Fehler ist aufgetreten ({code}). Versuchen Sie es erneut.",
@@ -3262,7 +3270,7 @@ export const KIT_COPY: Readonly<
     "signin.header.contextLine":
       "Votre licence, vos téléchargements et vos appareils",
     "signin.header.codePanel":
-      "Code à l’écran · {code} · Vérifiez qu’il correspond à l’écran",
+      "Code · {code} · Vérifiez qu'il correspond à l'écran",
     "signin.footer":
       "Polaris Locker vous connecte à {app}. {developer} ne voit jamais vos codes ni vos clés d’accès.",
     "signin.off.product":
@@ -3819,6 +3827,11 @@ export const KIT_COPY: Readonly<
       "{product} continue de fonctionner sur les appareils où il est déjà. Seule la saisie de la clé demande un compte.",
     "signin.key.meter": "{used} saisies de clé sur {limit} utilisées",
     "signin.key.keyWorks": "La clé fonctionne",
+    "signin.footerNoDeveloper": "Polaris Locker vous connecte à {app}.",
+    "signin.replace.rateLimitedMinutes":
+      "Trop de changements d'appareil. Réessayez dans {minutes, plural, one {# minute} many {# de minutes} other {# minutes}}.",
+    "signin.request.tooMany":
+      "Trop de tentatives. Patientez un instant, puis réessayez.",
     "core.fallback.title": "Something went wrong",
     "core.fallback.message": "Something went wrong ({code}). Try again.",
     "core.codes.unauthorized.title": "Not signed in",
@@ -4711,7 +4724,7 @@ export const KIT_COPY: Readonly<
     "signin.header.context": "{product} · {developer}",
     "signin.header.contextLine": "Tu licencia, descargas y dispositivos",
     "signin.header.codePanel":
-      "Código en la pantalla · {code} · Comprueba que coincide con la pantalla",
+      "Código · {code} · Comprueba que coincide con la pantalla",
     "signin.footer":
       "Polaris Locker inicia tu sesión en {app}. {developer} nunca ve tus códigos ni tus llaves de acceso.",
     "signin.off.product":
@@ -5266,6 +5279,11 @@ export const KIT_COPY: Readonly<
       "{product} sigue funcionando en los dispositivos donde ya está. Solo volver a escribir la clave requiere una cuenta.",
     "signin.key.meter": "{used} de {limit} entradas de clave usadas",
     "signin.key.keyWorks": "La clave funciona",
+    "signin.footerNoDeveloper": "Polaris Locker te inicia sesión en {app}.",
+    "signin.replace.rateLimitedMinutes":
+      "Demasiados cambios de dispositivo. Inténtalo de nuevo en {minutes, plural, one {# minuto} many {# de minutos} other {# minutos}}.",
+    "signin.request.tooMany":
+      "Demasiados intentos. Espera un momento e inténtalo de nuevo.",
     "core.fallback.title": "Algo salió mal",
     "core.fallback.message": "Algo salió mal ({code}). Vuelve a intentarlo.",
     "core.codes.unauthorized.title": "Sin sesión iniciada",
@@ -6189,7 +6207,7 @@ export const KIT_COPY: Readonly<
     "signin.header.context": "{product} · {developer}",
     "signin.header.contextLine": "Sua licença, downloads e dispositivos",
     "signin.header.codePanel":
-      "Código na tela · {code} · Confira se é igual ao da tela",
+      "Código · {code} · Confira se é igual ao da tela",
     "signin.footer":
       "O Polaris Locker faz seu acesso ao {app}. {developer} nunca vê seus códigos nem suas chaves de acesso.",
     "signin.off.product":
@@ -6728,6 +6746,11 @@ export const KIT_COPY: Readonly<
       "{product} continua funcionando nos dispositivos em que já está. Só digitar a chave de novo exige uma conta.",
     "signin.key.meter": "{used} de {limit} entradas da chave usadas",
     "signin.key.keyWorks": "A chave funciona",
+    "signin.footerNoDeveloper": "O Polaris Locker conecta você ao {app}.",
+    "signin.replace.rateLimitedMinutes":
+      "Muitas trocas de dispositivo. Tente de novo em {minutes, plural, one {# minuto} many {# de minutos} other {# minutos}}.",
+    "signin.request.tooMany":
+      "Muitas tentativas. Aguarde um instante e tente de novo.",
     "core.fallback.title": "Algo deu errado",
     "core.fallback.message": "Algo deu errado ({code}). Tente novamente.",
     "core.codes.unauthorized.title": "Não conectado",
@@ -7632,7 +7655,7 @@ export const KIT_COPY: Readonly<
     "signin.header.context": "{product} · {developer}",
     "signin.header.contextLine": "La tua licenza, i download e i dispositivi",
     "signin.header.codePanel":
-      "Codice sullo schermo · {code} · Verifica che corrisponda a quello sullo schermo",
+      "Codice · {code} · Controlla che coincida con lo schermo",
     "signin.footer":
       "Polaris Locker gestisce il tuo accesso a {app}. {developer} non vede mai i tuoi codici o le tue passkey.",
     "signin.off.product":
@@ -8180,6 +8203,10 @@ export const KIT_COPY: Readonly<
       "{product} continua a funzionare sui dispositivi in cui è già. Solo inserire di nuovo la chiave richiede un account.",
     "signin.key.meter": "{used} di {limit} inserimenti della chiave usati",
     "signin.key.keyWorks": "La chiave funziona",
+    "signin.footerNoDeveloper": "Polaris Locker ti fa accedere a {app}.",
+    "signin.replace.rateLimitedMinutes":
+      "Troppi cambi di dispositivo. Riprova tra {minutes, plural, one {# minuto} many {# di minuti} other {# minuti}}.",
+    "signin.request.tooMany": "Troppi tentativi. Attendi un momento e riprova.",
     "core.fallback.title": "Si è verificato un problema",
     "core.fallback.message": "Si è verificato un problema ({code}). Riprova.",
     "core.codes.unauthorized.title": "Accesso non effettuato",
@@ -9098,7 +9125,7 @@ export const KIT_COPY: Readonly<
     "signin.header.context": "{product} · {developer}",
     "signin.header.contextLine": "ライセンス、ダウンロード、デバイス",
     "signin.header.codePanel":
-      "画面上のコード · {code} · 画面と一致することを確認してください",
+      "コード · {code} · 画面のコードと一致しているか確認してください",
     "signin.footer":
       "Polaris Lockerが{app}へのサインインを行います。{developer}にコードやパスキーが知られることはありません。",
     "signin.off.product":
@@ -9653,6 +9680,11 @@ export const KIT_COPY: Readonly<
       "{product} は、すでに入っているデバイスでそのまま使えます。キーをもう一度入力する場合だけアカウントが必要です。",
     "signin.key.meter": "キー入力 {limit} 回のうち {used} 回を使用",
     "signin.key.keyWorks": "キーは有効です",
+    "signin.footerNoDeveloper": "Polaris Locker が {app} にサインインします。",
+    "signin.replace.rateLimitedMinutes":
+      "デバイスの変更が多すぎます。{minutes, plural, other {# 分}}後にもう一度お試しください。",
+    "signin.request.tooMany":
+      "試行回数が多すぎます。少し待ってからもう一度お試しください。",
     "core.fallback.title": "問題が発生しました",
     "core.fallback.message":
       "問題が発生しました（{code}）。もう一度お試しください。",
@@ -10568,7 +10600,7 @@ export const KIT_COPY: Readonly<
     "signin.header.context": "{product} · {developer}",
     "signin.header.contextLine": "라이선스, 다운로드 및 기기",
     "signin.header.codePanel":
-      "화면의 코드 · {code} · 화면과 일치하는지 확인하세요",
+      "코드 · {code} · 화면의 코드와 같은지 확인하세요",
     "signin.footer":
       "Polaris Locker가 {app} 로그인을 처리해요. {developer}에게는 코드나 패스키가 절대 공개되지 않아요.",
     "signin.off.product":
@@ -11089,6 +11121,11 @@ export const KIT_COPY: Readonly<
       "{product}은(는) 이미 설치된 기기에서 계속 작동합니다. 키를 다시 입력할 때만 계정이 필요합니다.",
     "signin.key.meter": "키 입력 {limit}회 중 {used}회 사용",
     "signin.key.keyWorks": "키가 유효합니다",
+    "signin.footerNoDeveloper": "Polaris Locker가 {app}에 로그인합니다.",
+    "signin.replace.rateLimitedMinutes":
+      "기기 변경이 너무 많습니다. {minutes, plural, other {#분}} 후에 다시 시도하세요.",
+    "signin.request.tooMany":
+      "시도가 너무 많습니다. 잠시 기다린 뒤 다시 시도하세요.",
     "core.fallback.title": "문제가 발생했어요",
     "core.fallback.message": "문제가 발생했어요({code}). 다시 시도하세요.",
     "core.codes.unauthorized.title": "로그인되지 않음",
@@ -11955,7 +11992,7 @@ export const KIT_COPY: Readonly<
     "signin.header.app": "{app}请求你登录",
     "signin.header.context": "{product} · {developer}",
     "signin.header.contextLine": "你的许可证、下载和设备",
-    "signin.header.codePanel": "屏幕上的代码 · {code} · 请确认与屏幕上的一致",
+    "signin.header.codePanel": "代码 · {code} · 请核对是否与屏幕上的一致",
     "signin.footer":
       "Polaris Locker为{app}提供登录服务。{developer}永远不会看到你的验证码或通行密钥。",
     "signin.off.product": "{product}已关闭登录功能。请联系{developer}。",
@@ -12444,6 +12481,10 @@ export const KIT_COPY: Readonly<
       "{product} 在已安装的设备上继续可用。只有再次输入密钥才需要账户。",
     "signin.key.meter": "已使用 {used} / {limit} 次密钥输入",
     "signin.key.keyWorks": "密钥有效",
+    "signin.footerNoDeveloper": "Polaris Locker 为你登录 {app}。",
+    "signin.replace.rateLimitedMinutes":
+      "设备更改过多。请在 {minutes, plural, other {# 分钟}}后重试。",
+    "signin.request.tooMany": "尝试次数过多。请稍候再试。",
     "core.fallback.title": "出现问题",
     "core.fallback.message": "出现问题（{code}）。请重试。",
     "core.codes.unauthorized.title": "未登录",

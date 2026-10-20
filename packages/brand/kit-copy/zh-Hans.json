@@ -294,7 +294,7 @@
     "signin.header.app": "{app}请求你登录",
     "signin.header.context": "{product} · {developer}",
     "signin.header.contextLine": "你的许可证、下载和设备",
-    "signin.header.codePanel": "屏幕上的代码 · {code} · 请确认与屏幕上的一致",
+    "signin.header.codePanel": "代码 · {code} · 请核对是否与屏幕上的一致",
     "signin.footer": "Polaris Locker为{app}提供登录服务。{developer}永远不会看到你的验证码或通行密钥。",
     "signin.off.product": "{product}已关闭登录功能。请联系{developer}。",
     "signin.off.any": "登录暂不可用。请稍后重试。",
@@ -732,6 +732,9 @@
     "signin.key.noEntriesTitle": "创建账户以保留 {product}",
     "signin.key.noEntriesKeeps": "{product} 在已安装的设备上继续可用。只有再次输入密钥才需要账户。",
     "signin.key.meter": "已使用 {used} / {limit} 次密钥输入",
-    "signin.key.keyWorks": "密钥有效"
+    "signin.key.keyWorks": "密钥有效",
+    "signin.footerNoDeveloper": "Polaris Locker 为你登录 {app}。",
+    "signin.replace.rateLimitedMinutes": "设备更改过多。请在 {minutes, plural, other {# 分钟}}后重试。",
+    "signin.request.tooMany": "尝试次数过多。请稍候再试。"
   }
 }

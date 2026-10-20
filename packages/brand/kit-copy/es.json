@@ -294,7 +294,7 @@
     "signin.header.app": "{app} quiere que inicies sesión",
     "signin.header.context": "{product} · {developer}",
     "signin.header.contextLine": "Tu licencia, descargas y dispositivos",
-    "signin.header.codePanel": "Código en la pantalla · {code} · Comprueba que coincide con la pantalla",
+    "signin.header.codePanel": "Código · {code} · Comprueba que coincide con la pantalla",
     "signin.footer": "Polaris Locker inicia tu sesión en {app}. {developer} nunca ve tus códigos ni tus llaves de acceso.",
     "signin.off.product": "El inicio de sesión está desactivado para {product}. Contacta con {developer}.",
     "signin.off.any": "El inicio de sesión no está disponible. Vuelve a intentarlo más tarde.",
@@ -732,6 +732,9 @@
     "signin.key.noEntriesTitle": "Crea una cuenta para guardar {product}",
     "signin.key.noEntriesKeeps": "{product} sigue funcionando en los dispositivos donde ya está. Solo volver a escribir la clave requiere una cuenta.",
     "signin.key.meter": "{used} de {limit} entradas de clave usadas",
-    "signin.key.keyWorks": "La clave funciona"
+    "signin.key.keyWorks": "La clave funciona",
+    "signin.footerNoDeveloper": "Polaris Locker te inicia sesión en {app}.",
+    "signin.replace.rateLimitedMinutes": "Demasiados cambios de dispositivo. Inténtalo de nuevo en {minutes, plural, one {# minuto} many {# de minutos} other {# minutos}}.",
+    "signin.request.tooMany": "Demasiados intentos. Espera un momento e inténtalo de nuevo."
   }
 }

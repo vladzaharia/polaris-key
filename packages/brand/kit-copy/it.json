@@ -294,7 +294,7 @@
     "signin.header.app": "{app} ti chiede di accedere",
     "signin.header.context": "{product} · {developer}",
     "signin.header.contextLine": "La tua licenza, i download e i dispositivi",
-    "signin.header.codePanel": "Codice sullo schermo · {code} · Verifica che corrisponda a quello sullo schermo",
+    "signin.header.codePanel": "Codice · {code} · Controlla che coincida con lo schermo",
     "signin.footer": "Polaris Locker gestisce il tuo accesso a {app}. {developer} non vede mai i tuoi codici o le tue passkey.",
     "signin.off.product": "L'accesso è disattivato per {product}. Contatta {developer}.",
     "signin.off.any": "L'accesso non è disponibile. Riprova più tardi.",
@@ -732,6 +732,9 @@
     "signin.key.noEntriesTitle": "Crea un account per tenere {product}",
     "signin.key.noEntriesKeeps": "{product} continua a funzionare sui dispositivi in cui è già. Solo inserire di nuovo la chiave richiede un account.",
     "signin.key.meter": "{used} di {limit} inserimenti della chiave usati",
-    "signin.key.keyWorks": "La chiave funziona"
+    "signin.key.keyWorks": "La chiave funziona",
+    "signin.footerNoDeveloper": "Polaris Locker ti fa accedere a {app}.",
+    "signin.replace.rateLimitedMinutes": "Troppi cambi di dispositivo. Riprova tra {minutes, plural, one {# minuto} many {# di minuti} other {# minuti}}.",
+    "signin.request.tooMany": "Troppi tentativi. Attendi un momento e riprova."
   }
 }

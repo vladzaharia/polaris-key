@@ -294,7 +294,7 @@
     "signin.header.app": "{app} vous demande de vous connecter",
     "signin.header.context": "{product} · {developer}",
     "signin.header.contextLine": "Votre licence, vos téléchargements et vos appareils",
-    "signin.header.codePanel": "Code à l’écran · {code} · Vérifiez qu’il correspond à l’écran",
+    "signin.header.codePanel": "Code · {code} · Vérifiez qu'il correspond à l'écran",
     "signin.footer": "Polaris Locker vous connecte à {app}. {developer} ne voit jamais vos codes ni vos clés d’accès.",
     "signin.off.product": "La connexion est désactivée pour {product}. Contactez {developer}.",
     "signin.off.any": "La connexion est indisponible. Réessayez plus tard.",
@@ -732,6 +732,9 @@
     "signin.key.noEntriesTitle": "Créez un compte pour garder {product}",
     "signin.key.noEntriesKeeps": "{product} continue de fonctionner sur les appareils où il est déjà. Seule la saisie de la clé demande un compte.",
     "signin.key.meter": "{used} saisies de clé sur {limit} utilisées",
-    "signin.key.keyWorks": "La clé fonctionne"
+    "signin.key.keyWorks": "La clé fonctionne",
+    "signin.footerNoDeveloper": "Polaris Locker vous connecte à {app}.",
+    "signin.replace.rateLimitedMinutes": "Trop de changements d'appareil. Réessayez dans {minutes, plural, one {# minute} many {# de minutes} other {# minutes}}.",
+    "signin.request.tooMany": "Trop de tentatives. Patientez un instant, puis réessayez."
   }
 }

@@ -34,9 +34,13 @@ export function PersonRow({
     >
       <Avatar name={name} email={email} picture={picture} size={40} />
       <div className="min-w-0 flex-1">
-        <p className="truncate font-medium text-fg-strong">{name ?? email}</p>
+        <p className="font-medium text-fg-strong [overflow-wrap:anywhere]">
+          {name ?? email}
+        </p>
         {name && email ? (
-          <p className="truncate text-sm text-fg-muted">{email}</p>
+          <p className="text-sm text-fg-muted [overflow-wrap:anywhere]">
+            {email}
+          </p>
         ) : null}
       </div>
       <button
@@ -121,11 +125,12 @@ export const ChoiceGroup = React.forwardRef<
               aria-label={o.label}
               data-checked={checked ? "" : undefined}
               className={cn(
-                "flex min-h-14 w-full items-start gap-3 rounded-md border bg-surface-raised px-3 py-3 text-left",
+                "relative flex min-h-14 w-full items-start gap-3 overflow-hidden rounded-md border px-3 py-3 text-left",
+                "before:absolute before:inset-y-0 before:left-0 before:w-[3px]",
                 "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page",
                 checked
-                  ? "border-fg-strong ring-1 ring-fg-strong"
-                  : "border-border-strong hover:bg-hover",
+                  ? "border-border-strong bg-surface-sunken before:bg-accent forced-colors:border-[Highlight] forced-colors:outline forced-colors:outline-2 forced-colors:outline-[Highlight] forced-colors:before:bg-[Highlight]"
+                  : "border-border-strong bg-surface-raised hover:bg-hover",
               )}
             >
               <span
@@ -134,7 +139,13 @@ export const ChoiceGroup = React.forwardRef<
                 data-on={checked ? "" : undefined}
               >
                 {checked ? (
-                  <span className="size-2.5 rounded-full bg-fg-strong" />
+                  <svg
+                    viewBox="0 0 10 10"
+                    className="size-2.5 text-fg-strong"
+                    aria-hidden
+                  >
+                    <circle cx="5" cy="5" r="5" fill="currentColor" />
+                  </svg>
                 ) : null}
               </span>
               <span className="min-w-0 flex-1 space-y-1">{o.children}</span>
@@ -185,17 +196,22 @@ export function InkMeter({
   const share = (n: number): number => Math.round((n / limit) * segments);
   const filled = Math.min(segments, share(Math.min(used, limit)));
   return (
-    <div role="img" aria-label={label} className="flex gap-1" data-ink-meter>
+    <div
+      role="img"
+      aria-label={label}
+      className="flex gap-1 forced-color-adjust-none"
+      data-ink-meter
+    >
       {Array.from({ length: segments }, (_, i) => (
         <span
           key={i}
           className={cn(
-            "h-1.5 flex-1 rounded-full",
+            "h-1.5 flex-1 rounded-full forced-colors:border forced-colors:border-[CanvasText]",
             i < filled
-              ? "bg-fg-muted"
+              ? "bg-fg-muted forced-colors:bg-[CanvasText]"
               : next && i === filled
-                ? "bg-fg-strong"
-                : "bg-surface-sunken ring-1 ring-inset ring-border-strong",
+                ? "bg-fg-strong forced-colors:bg-[Highlight]"
+                : "bg-surface-sunken ring-1 ring-inset ring-border-strong forced-colors:bg-[Canvas]",
           )}
         />
       ))}

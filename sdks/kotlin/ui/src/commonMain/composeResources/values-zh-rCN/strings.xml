@@ -672,7 +672,7 @@
     <!-- Header of the sign-in card when an app asks (SIGN-IN.md §3.1). -->
     <string name="signin_header_contextLine">你的许可证、下载和设备</string>
     <!-- Header of the sign-in card when an app asks (SIGN-IN.md §3.1). Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated. Arguments: 1=code. -->
-    <string name="signin_header_codePanel">屏幕上的代码 · %1$s · 请确认与屏幕上的一致</string>
+    <string name="signin_header_codePanel">代码 · %1$s · 请核对是否与屏幕上的一致</string>
     <!-- Hosted sign-in card (SIGN-IN.md). Arguments: {app} = the requesting app's name (never translated); {developer} = the developer's name (never translated). Arguments: 1=app, 2=developer. -->
     <string name="signin_footer">Polaris Locker为%1$s提供登录服务。%2$s永远不会看到你的验证码或通行密钥。</string>
     <!-- Sign-in is turned off (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated); {developer} = the developer's name (never translated). Arguments: 1=product, 2=developer. -->
@@ -1615,6 +1615,14 @@
     <string name="signin_key_meter">已使用 %1$s / %2$s 次密钥输入</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
     <string name="signin_key_keyWorks">密钥有效</string>
+    <!-- PX-14a fix round. Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_footerNoDeveloper">Polaris Locker 为你登录 %1$s。</string>
+    <!-- PX-14a fix round. Arguments: {minutes} = a number of minutes. Arguments: 1=minutes. -->
+    <plurals name="signin_replace_rateLimitedMinutes">
+        <item quantity="other">设备更改过多。请在 %1$d 分钟后重试。</item>
+    </plurals>
+    <!-- PX-14a fix round. -->
+    <string name="signin_request_tooMany">尝试次数过多。请稍候再试。</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">出现问题</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

@@ -141,6 +141,8 @@ export interface RowModel {
   selectable: boolean;
   /** The Replace a device button is offered (a full row the person may replace on). */
   canReplace: boolean;
+  /** Seconds until Replace may be tried again, on a full row whose Replace is rate-limited. */
+  retryAfter: number | null;
   /** The portal's Free a device flow, where Replace is not offered. */
   freeDeviceUrl: string | null;
 }
@@ -190,6 +192,7 @@ export function rowModel(
     tag: row.current ? "current" : full ? "full" : null,
     selectable: row.state === "free",
     canReplace: full && row.replace?.allowed === true,
+    retryAfter: full ? (row.replace?.retryAfter ?? null) : null,
     freeDeviceUrl: full && !row.replace?.allowed ? row.freeDeviceUrl : null,
   };
 }
@@ -203,6 +206,23 @@ export interface DeviceRowModel {
   activeNow: boolean;
   thisBrowser: boolean;
   leastRecent: boolean;
+  /** From the Worker's `deviceType`, never the label. */
+  kind: "phone" | "tv" | "computer";
+}
+
+/** The glyph class of a device, from its `deviceType`. */
+export function deviceKind(deviceType: string | null): DeviceRowModel["kind"] {
+  const v = (deviceType ?? "").toLowerCase();
+  if (/phone|tablet|mobile|handheld/.test(v)) return "phone";
+  if (/tv|console|television/.test(v)) return "tv";
+  return "computer";
+}
+
+/** "N minutes" wait for a rate-limited Replace, rounded up. */
+export function waitText(retryAfter: number): string {
+  return t("signin.replace.rateLimitedMinutes", {
+    minutes: Math.max(1, Math.ceil(retryAfter / 60)),
+  });
 }
 
 /** "3 days ago" in the person's language. */
@@ -230,6 +250,7 @@ export function deviceRows(view: ReplaceView, now?: number): DeviceRowModel[] {
     activeNow: d.activeNow,
     thisBrowser: d.thisBrowser,
     leastRecent: d.leastRecent,
+    kind: deviceKind(d.deviceType),
   }));
 }
 
@@ -249,37 +270,62 @@ export function firstName(name: string | null, email: string | null): string {
   return (email ?? "").split("@")[0] ?? "";
 }
 
-/** The consent step's "License for this device" line. */
-export function licenseLine(
+/** The consent step's "License for this device": a bold name over a meta line. */
+export interface LicenseParts {
+  title: string;
+  meta: string | null;
+}
+
+export function licenseParts(
   chosen: Chosen,
   ctx: { product: string; app: string; device: string },
-): string | null {
+): LicenseParts | null {
+  const split = (full: string, title: string): LicenseParts => ({
+    title,
+    meta: full.startsWith(`${title} · `)
+      ? full.slice(title.length + 3)
+      : full === title
+        ? null
+        : full,
+  });
   switch (chosen.kind) {
     case "none":
       return null;
     case "app":
-      return t("signin.consent.licenseInApp", { app: ctx.app });
+      return {
+        title: t("signin.consent.licenseInApp", { app: ctx.app }),
+        meta: null,
+      };
     case "new":
     case "create":
-      return t("signin.consent.newLicense", { tier: chosen.tierName });
+      return {
+        title: t("signin.consent.newLicense", { tier: chosen.tierName }),
+        meta: null,
+      };
     case "license": {
       const license =
         chosen.row.name ?? `${ctx.product} ${chosen.row.tierName}`;
       if (chosen.replace)
-        return t("signin.consent.replaces", {
+        return split(
+          t("signin.consent.replaces", {
+            license,
+            device: chosen.replace.label,
+          }),
           license,
-          device: chosen.replace.label,
-        });
+        );
       const term = termText(chosen.row.expiresAt);
       const { used, limit } = chosen.row.seats;
-      if (limit === null) return `${license} · ${term}`;
-      return t("signin.consent.licenseLine", {
+      if (limit === null) return { title: license, meta: term };
+      return split(
+        t("signin.consent.licenseLine", {
+          license,
+          term,
+          device: ctx.device,
+          position: used + 1,
+          limit,
+        }),
         license,
-        term,
-        device: ctx.device,
-        position: used + 1,
-        limit,
-      });
+      );
     }
   }
 }

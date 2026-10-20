@@ -23,14 +23,12 @@ export function AccountUpgrade({
   preview,
   canSkip,
   onCreate,
-  onSignIn,
   onSkip,
 }: {
   preview: KeyPreview;
   /** An app sent the person: the key is accepted and the licence floats (S-24 D13). */
   canSkip: boolean;
   onCreate: () => void;
-  onSignIn: () => void;
   onSkip: () => void;
 }): React.ReactElement {
   const name = preview.product.name;
@@ -118,16 +116,11 @@ export function AccountUpgrade({
           {t("signin.key.noEntriesKeeps", { product: name })}
         </p>
       ) : null}
-      <QuietLinks>
-        <QuietLink onClick={onSignIn}>
-          {forced
-            ? t("signin.key.carriedTitle", { product: name })
-            : t("signin.key.signInInstead")}
-        </QuietLink>
-        {!forced && canSkip ? (
-          <QuietLink onClick={onSkip}>{t("signin.key.skip")}</QuietLink>
-        ) : null}
-      </QuietLinks>
+      {!forced && canSkip ? (
+        <QuietLinks>
+          <QuietLink onClick={onSkip}>{t("signin.key.withoutKey")}</QuietLink>
+        </QuietLinks>
+      ) : null}
     </>
   );
 }

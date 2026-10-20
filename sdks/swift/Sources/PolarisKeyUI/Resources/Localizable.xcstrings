@@ -55321,6 +55321,66 @@
         }
       }
     },
+    "signin.footerNoDeveloper": {
+      "comment": "PX-14a fix round. Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Polaris Locker signs you in for %1$@."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Polaris Locker meldet Sie bei %1$@ an."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Polaris Locker vous connecte à %1$@."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Polaris Locker te inicia sesión en %1$@."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Polaris Locker conecta você ao %1$@."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Polaris Locker ti fa accedere a %1$@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Polaris Locker が %1$@ にサインインします。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Polaris Locker가 %1$@에 로그인합니다."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Polaris Locker 为你登录 %1$@。"
+          }
+        }
+      }
+    },
     "signin.gate.birthdate": {
       "comment": "Finish step: only when a connection offered a birth date. Arguments: {org} = the organization that offered it. Arguments: 1=org.",
       "extractionState": "manual",
@@ -58160,55 +58220,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Code on the screen · %1$@ · Check it matches the screen"
+            "value": "Code · %1$@ · Check it matches the screen"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Code auf dem Bildschirm · %1$@ · Prüfen Sie, ob er mit dem Bildschirm übereinstimmt"
+            "value": "Code · %1$@ · Prüfen Sie, ob er mit dem Bildschirm übereinstimmt"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Code à l’écran · %1$@ · Vérifiez qu’il correspond à l’écran"
+            "value": "Code · %1$@ · Vérifiez qu'il correspond à l'écran"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Código en la pantalla · %1$@ · Comprueba que coincide con la pantalla"
+            "value": "Código · %1$@ · Comprueba que coincide con la pantalla"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Código na tela · %1$@ · Confira se é igual ao da tela"
+            "value": "Código · %1$@ · Confira se é igual ao da tela"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Codice sullo schermo · %1$@ · Verifica che corrisponda a quello sullo schermo"
+            "value": "Codice · %1$@ · Controlla che coincida con lo schermo"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "画面上のコード · %1$@ · 画面と一致することを確認してください"
+            "value": "コード · %1$@ · 画面のコードと一致しているか確認してください"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "화면의 코드 · %1$@ · 화면과 일치하는지 확인하세요"
+            "value": "코드 · %1$@ · 화면의 코드와 같은지 확인하세요"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "屏幕上的代码 · %1$@ · 请确认与屏幕上的一致"
+            "value": "代码 · %1$@ · 请核对是否与屏幕上的一致"
           }
         }
       }
@@ -64801,6 +64861,270 @@
         }
       }
     },
+    "signin.replace.rateLimitedMinutes": {
+      "comment": "PX-14a fix round. Arguments: {minutes} = a number of minutes. Arguments: 1=minutes.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Too many device changes. Try again in %#@minutes@."
+          },
+          "substitutions": {
+            "minutes": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg minute"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg minutes"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zu viele Geräteänderungen. Versuchen Sie es in %#@minutes@ erneut."
+          },
+          "substitutions": {
+            "minutes": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg Minute"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg Minuten"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trop de changements d'appareil. Réessayez dans %#@minutes@."
+          },
+          "substitutions": {
+            "minutes": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg minute"
+                    }
+                  },
+                  "many": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg de minutes"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg minutes"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Demasiados cambios de dispositivo. Inténtalo de nuevo en %#@minutes@."
+          },
+          "substitutions": {
+            "minutes": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg minuto"
+                    }
+                  },
+                  "many": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg de minutos"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg minutos"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Muitas trocas de dispositivo. Tente de novo em %#@minutes@."
+          },
+          "substitutions": {
+            "minutes": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg minuto"
+                    }
+                  },
+                  "many": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg de minutos"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg minutos"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Troppi cambi di dispositivo. Riprova tra %#@minutes@."
+          },
+          "substitutions": {
+            "minutes": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg minuto"
+                    }
+                  },
+                  "many": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg di minuti"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg minuti"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "デバイスの変更が多すぎます。%#@minutes@後にもう一度お試しください。"
+          },
+          "substitutions": {
+            "minutes": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg 分"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "기기 변경이 너무 많습니다. %#@minutes@ 후에 다시 시도하세요."
+          },
+          "substitutions": {
+            "minutes": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg분"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "设备更改过多。请在 %#@minutes@后重试。"
+          },
+          "substitutions": {
+            "minutes": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg 分钟"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "signin.replace.thisBrowser": {
       "comment": "Replace a device, inline in the license choice (SIGN-IN.md §3.7).",
       "extractionState": "manual",
@@ -65037,6 +65361,66 @@
           "stringUnit": {
             "state": "translated",
             "value": "此次登录已结束"
+          }
+        }
+      }
+    },
+    "signin.request.tooMany": {
+      "comment": "PX-14a fix round.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Too many tries. Wait a moment, then try again."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zu viele Versuche. Warten Sie einen Moment und versuchen Sie es erneut."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trop de tentatives. Patientez un instant, puis réessayez."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Demasiados intentos. Espera un momento e inténtalo de nuevo."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Muitas tentativas. Aguarde um instante e tente de novo."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Troppi tentativi. Attendi un momento e riprova."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "試行回数が多すぎます。少し待ってからもう一度お試しください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "시도가 너무 많습니다. 잠시 기다린 뒤 다시 시도하세요."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "尝试次数过多。请稍候再试。"
           }
         }
       }

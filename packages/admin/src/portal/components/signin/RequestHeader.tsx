@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ShieldCheck } from "lucide-react";
+import { Shield, ShieldCheck } from "lucide-react";
 import type { SignInRequestView } from "@polaris-key/protocol/identity";
 import { CardHeader } from "../../../ui/auth/index.js";
 import { t } from "../../../lib/copy.js";
@@ -22,20 +22,24 @@ export function RequestHeader({
     <CardHeader
       variant={m.variant}
       icon={
-        m.verified ? (
+        m.verified && view.client.iconUrl ? (
           <ProductIcon
             slug={m.product}
             name={m.name}
             tint={null}
             size={56}
-            src={view.client.iconUrl ?? undefined}
+            src={view.client.iconUrl}
           />
         ) : (
           <span
             aria-hidden
-            className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-surface-sunken text-fg-muted"
+            className="flex size-14 shrink-0 items-center justify-center rounded-xl border border-border bg-surface-sunken text-xl font-semibold text-fg-strong"
           >
-            <ShieldCheck className="size-7" />
+            {m.verified ? (
+              (m.name[0] ?? "?").toUpperCase()
+            ) : (
+              <Shield className="size-7 text-fg-muted" />
+            )}
           </span>
         )
       }
@@ -52,13 +56,16 @@ export function RequestFooter({
   view,
 }: {
   view: SignInRequestView;
-}): React.ReactElement | null {
+}): React.ReactElement {
   const m = headerModel(view);
-  if (!m.developer) return null;
   return (
     <p className="flex items-start gap-2">
       <ShieldCheck aria-hidden className="mt-0.5 size-4 shrink-0" />
-      <span>{t("signin.footer", { app: m.name, developer: m.developer })}</span>
+      <span>
+        {m.developer
+          ? t("signin.footer", { app: m.name, developer: m.developer })
+          : t("signin.footerNoDeveloper", { app: m.name })}
+      </span>
     </p>
   );
 }

@@ -677,7 +677,7 @@
     <!-- Header of the sign-in card when an app asks (SIGN-IN.md §3.1). -->
     <string name="signin_header_contextLine">Ihre Lizenz, Downloads und Geräte</string>
     <!-- Header of the sign-in card when an app asks (SIGN-IN.md §3.1). Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated. Arguments: 1=code. -->
-    <string name="signin_header_codePanel">Code auf dem Bildschirm · %1$s · Prüfen Sie, ob er mit dem Bildschirm übereinstimmt</string>
+    <string name="signin_header_codePanel">Code · %1$s · Prüfen Sie, ob er mit dem Bildschirm übereinstimmt</string>
     <!-- Hosted sign-in card (SIGN-IN.md). Arguments: {app} = the requesting app's name (never translated); {developer} = the developer's name (never translated). Arguments: 1=app, 2=developer. -->
     <string name="signin_footer">Polaris Locker meldet Sie bei %1$s an. %2$s sieht Ihre Codes oder Passkeys nie.</string>
     <!-- Sign-in is turned off (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated); {developer} = the developer's name (never translated). Arguments: 1=product, 2=developer. -->
@@ -1625,6 +1625,15 @@
     <string name="signin_key_meter">%1$s von %2$s Schlüsseleingaben verwendet</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
     <string name="signin_key_keyWorks">Schlüssel gültig</string>
+    <!-- PX-14a fix round. Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_footerNoDeveloper">Polaris Locker meldet Sie bei %1$s an.</string>
+    <!-- PX-14a fix round. Arguments: {minutes} = a number of minutes. Arguments: 1=minutes. -->
+    <plurals name="signin_replace_rateLimitedMinutes">
+        <item quantity="one">Zu viele Geräteänderungen. Versuchen Sie es in %1$d Minute erneut.</item>
+        <item quantity="other">Zu viele Geräteänderungen. Versuchen Sie es in %1$d Minuten erneut.</item>
+    </plurals>
+    <!-- PX-14a fix round. -->
+    <string name="signin_request_tooMany">Zu viele Versuche. Warten Sie einen Moment und versuchen Sie es erneut.</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">Ein Fehler ist aufgetreten</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

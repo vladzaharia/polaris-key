@@ -10,7 +10,7 @@ import type {
 import {
   classifyChoice,
   headerModel,
-  licenseLine,
+  licenseParts,
   requestHandleFromUrl,
   rowModel,
   safeRedirect,
@@ -217,12 +217,15 @@ describe("header", () => {
 
 describe("consent line", () => {
   const ctx = { product: "Diceroll", app: "Diceroll", device: "this phone" };
-  it("names the seat, the replaced device, the new licence", () => {
-    expect(licenseLine({ kind: "license", row: ROW, replace: null }, ctx)).toBe(
-      "Diceroll Pro · Lifetime · this phone becomes device 3 of 3",
-    );
+  it("is a name over a meta line: the seat, the replaced device, the new licence", () => {
     expect(
-      licenseLine(
+      licenseParts({ kind: "license", row: ROW, replace: null }, ctx),
+    ).toEqual({
+      title: "Diceroll Pro",
+      meta: "Lifetime · this phone becomes device 3 of 3",
+    });
+    expect(
+      licenseParts(
         {
           kind: "license",
           row: ROW,
@@ -233,15 +236,16 @@ describe("consent line", () => {
             activeNow: false,
             thisBrowser: false,
             leastRecent: false,
+            kind: "computer",
           },
         },
         ctx,
       ),
-    ).toBe("Diceroll Pro · replaces Work laptop");
-    expect(licenseLine({ kind: "new", tierName: "Free" }, ctx)).toBe(
+    ).toEqual({ title: "Diceroll Pro", meta: "replaces Work laptop" });
+    expect(licenseParts({ kind: "new", tierName: "Free" }, ctx)?.title).toBe(
       "New: Free license, created when you continue",
     );
-    expect(licenseLine({ kind: "none" }, ctx)).toBeNull();
+    expect(licenseParts({ kind: "none" }, ctx)).toBeNull();
   });
 });
 

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { AlertTriangle, Laptop, Monitor, Smartphone } from "lucide-react";
+import { Info, Laptop, Monitor, Smartphone, Tv } from "lucide-react";
 import type { LicenseChoice } from "@polaris-key/protocol/identity";
 import { Button } from "../../../ui/Button.js";
 import { Spinner } from "../../../ui/Spinner.js";
@@ -9,6 +9,7 @@ import { portalErrorCopy } from "../../errors.js";
 import {
   deviceRows,
   rowModel,
+  waitText,
   type DeviceRowModel,
 } from "../../model/signInRequest.js";
 import { useSignInDevices } from "../../requestData.js";
@@ -91,22 +92,24 @@ export function ReplaceDeviceStep({
     value: d.id,
     label: [d.label, d.meta].join(", "),
     children: (
-      <>
-        <span className="flex flex-wrap items-center gap-2">
-          <DeviceGlyph label={d.label} />
-          <span className="font-medium text-fg-strong [overflow-wrap:anywhere]">
-            {d.label}
+      <span className="flex items-start gap-2">
+        <DeviceGlyph kind={d.kind} />
+        <span className="min-w-0 space-y-1">
+          <span className="flex flex-wrap items-center gap-2">
+            <span className="font-medium text-fg-strong [overflow-wrap:anywhere]">
+              {d.label}
+            </span>
+            {d.leastRecent ? (
+              <Pill>{t("signin.replace.leastRecent")}</Pill>
+            ) : null}
+            {d.activeNow ? <Pill>{t("signin.replace.activeNow")}</Pill> : null}
+            {d.thisBrowser ? (
+              <Pill>{t("signin.replace.thisBrowser")}</Pill>
+            ) : null}
           </span>
-          {d.leastRecent ? (
-            <Pill>{t("signin.replace.leastRecent")}</Pill>
-          ) : null}
-          {d.activeNow ? <Pill>{t("signin.replace.activeNow")}</Pill> : null}
-          {d.thisBrowser ? (
-            <Pill>{t("signin.replace.thisBrowser")}</Pill>
-          ) : null}
+          <span className="block text-sm text-fg-muted">{d.meta}</span>
         </span>
-        <span className="block text-sm text-fg-muted">{d.meta}</span>
-      </>
+      </span>
     ),
   }));
 
@@ -138,9 +141,7 @@ export function ReplaceDeviceStep({
         <NeutralCallout icon={<Monitor />}>
           <p>
             {q.data.replace.retryAfter !== null
-              ? t("signin.replace.rateLimited", {
-                  seconds: q.data.replace.retryAfter,
-                })
+              ? waitText(q.data.replace.retryAfter)
               : t("signin.choice.noneReplaceable", { developer })}
           </p>
         </NeutralCallout>
@@ -160,9 +161,9 @@ export function ReplaceDeviceStep({
           />
           {picked?.activeNow ? (
             <p className="flex items-start gap-2 text-sm text-fg-strong">
-              <AlertTriangle
+              <Info
                 aria-hidden
-                className="mt-0.5 size-4 shrink-0 text-warning"
+                className="mt-0.5 size-4 shrink-0 text-fg-muted"
               />
               {t("signin.replace.inUse", { device: picked.label })}
             </p>
@@ -187,12 +188,11 @@ export function ReplaceDeviceStep({
   );
 }
 
-function DeviceGlyph({ label }: { label: string }): React.ReactElement {
-  const phone = /phone|pixel|ipad|tablet|galaxy/i.test(label);
-  const Glyph = phone
-    ? Smartphone
-    : /mac|book|laptop/i.test(label)
-      ? Laptop
-      : Monitor;
-  return <Glyph aria-hidden className="size-4 shrink-0 text-fg-muted" />;
+function DeviceGlyph({
+  kind,
+}: {
+  kind: "phone" | "tv" | "computer";
+}): React.ReactElement {
+  const Glyph = kind === "phone" ? Smartphone : kind === "tv" ? Tv : Laptop;
+  return <Glyph aria-hidden className="mt-0.5 size-4 shrink-0 text-fg-muted" />;
 }

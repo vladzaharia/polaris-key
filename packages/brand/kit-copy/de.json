@@ -294,7 +294,7 @@
     "signin.header.app": "{app} möchte, dass Sie sich anmelden",
     "signin.header.context": "{product} · {developer}",
     "signin.header.contextLine": "Ihre Lizenz, Downloads und Geräte",
-    "signin.header.codePanel": "Code auf dem Bildschirm · {code} · Prüfen Sie, ob er mit dem Bildschirm übereinstimmt",
+    "signin.header.codePanel": "Code · {code} · Prüfen Sie, ob er mit dem Bildschirm übereinstimmt",
     "signin.footer": "Polaris Locker meldet Sie bei {app} an. {developer} sieht Ihre Codes oder Passkeys nie.",
     "signin.off.product": "Die Anmeldung ist für {product} deaktiviert. Wenden Sie sich an {developer}.",
     "signin.off.any": "Die Anmeldung ist nicht verfügbar. Versuchen Sie es später erneut.",
@@ -732,6 +732,9 @@
     "signin.key.noEntriesTitle": "Konto erstellen, um {product} zu behalten",
     "signin.key.noEntriesKeeps": "{product} läuft weiter auf den Geräten, auf denen es schon ist. Nur die erneute Eingabe des Schlüssels braucht ein Konto.",
     "signin.key.meter": "{used} von {limit} Schlüsseleingaben verwendet",
-    "signin.key.keyWorks": "Schlüssel gültig"
+    "signin.key.keyWorks": "Schlüssel gültig",
+    "signin.footerNoDeveloper": "Polaris Locker meldet Sie bei {app} an.",
+    "signin.replace.rateLimitedMinutes": "Zu viele Geräteänderungen. Versuchen Sie es in {minutes, plural, one {# Minute} other {# Minuten}} erneut.",
+    "signin.request.tooMany": "Zu viele Versuche. Warten Sie einen Moment und versuchen Sie es erneut."
   }
 }

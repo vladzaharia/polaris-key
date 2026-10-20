@@ -682,7 +682,7 @@
     <!-- Header of the sign-in card when an app asks (SIGN-IN.md §3.1). -->
     <string name="signin_header_contextLine">Votre licence, vos téléchargements et vos appareils</string>
     <!-- Header of the sign-in card when an app asks (SIGN-IN.md §3.1). Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated. Arguments: 1=code. -->
-    <string name="signin_header_codePanel">Code à l’écran · %1$s · Vérifiez qu’il correspond à l’écran</string>
+    <string name="signin_header_codePanel">Code · %1$s · Vérifiez qu'il correspond à l'écran</string>
     <!-- Hosted sign-in card (SIGN-IN.md). Arguments: {app} = the requesting app's name (never translated); {developer} = the developer's name (never translated). Arguments: 1=app, 2=developer. -->
     <string name="signin_footer">Polaris Locker vous connecte à %1$s. %2$s ne voit jamais vos codes ni vos clés d’accès.</string>
     <!-- Sign-in is turned off (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated); {developer} = the developer's name (never translated). Arguments: 1=product, 2=developer. -->
@@ -1635,6 +1635,16 @@
     <string name="signin_key_meter">%1$s saisies de clé sur %2$s utilisées</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
     <string name="signin_key_keyWorks">La clé fonctionne</string>
+    <!-- PX-14a fix round. Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_footerNoDeveloper">Polaris Locker vous connecte à %1$s.</string>
+    <!-- PX-14a fix round. Arguments: {minutes} = a number of minutes. Arguments: 1=minutes. -->
+    <plurals name="signin_replace_rateLimitedMinutes">
+        <item quantity="one">Trop de changements d'appareil. Réessayez dans %1$d minute.</item>
+        <item quantity="many">Trop de changements d'appareil. Réessayez dans %1$d de minutes.</item>
+        <item quantity="other">Trop de changements d'appareil. Réessayez dans %1$d minutes.</item>
+    </plurals>
+    <!-- PX-14a fix round. -->
+    <string name="signin_request_tooMany">Trop de tentatives. Patientez un instant, puis réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">Something went wrong</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

@@ -178,6 +178,8 @@ export type CardHeaderProps =
       icon: React.ReactNode;
       name: string;
       developer: string | null;
+      /** The key on-ramp of an app's request keeps the device line (§3.1). */
+      where?: { glyph: "globe" | "device" | "tv"; text: string } | null;
     }
   | {
       variant: "app" | "device";
@@ -194,7 +196,8 @@ const WHERE_GLYPH = { globe: Globe, device: Monitor, tv: Tv } as const;
 
 export function CardHeader(props: CardHeaderProps): React.ReactElement {
   if (props.variant === "context") {
-    const { variant, icon, name, developer } = props;
+    const { variant, icon, name, developer, where } = props;
+    const WhereGlyph = where ? WHERE_GLYPH[where.glyph] : null;
     return (
       <div
         data-variant={variant}
@@ -209,6 +212,14 @@ export function CardHeader(props: CardHeaderProps): React.ReactElement {
           <p className="text-sm text-fg-muted">
             {t("signin.header.contextLine")}
           </p>
+          {WhereGlyph && where ? (
+            <p className="flex items-center gap-1.5 text-sm text-fg-muted">
+              <WhereGlyph aria-hidden className="size-4 shrink-0" />
+              <span className="min-w-0 [overflow-wrap:anywhere]">
+                {where.text}
+              </span>
+            </p>
+          ) : null}
         </div>
       </div>
     );
