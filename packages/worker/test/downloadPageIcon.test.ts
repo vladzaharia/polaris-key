@@ -94,7 +94,7 @@ describe("the page shows the hosted icon", () => {
     expect(csp).toBe(await pageCsp(IMG));
     const html = await res.text();
     expect(html).toContain(
-      `<img class="icon" src="${IMG}/${SLUG}/a/${A}/${PAGE_ICON_WIDTH}.webp" alt="" width="64" height="64" decoding="async">`,
+      `<img class="icon" src="${IMG}/${SLUG}/a/${A}/${PAGE_ICON_WIDTH}.webp" alt="" width="56" height="56" decoding="async">`,
     );
     expect(html.match(/<img/g)).toHaveLength(1);
     // The model is unchanged: no field, so the recorded transcripts stay as they are.
