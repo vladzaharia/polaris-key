@@ -61,8 +61,8 @@ import { APP_STORE_EVENTS, PLAY_EVENTS } from "./bridge.js";
 
 type AdminCtx = ServiceContext & { session: AdminSession };
 
-async function setupOf(
-  ctx: AdminCtx,
+export async function setupOf(
+  ctx: Pick<AdminCtx, "env" | "db"> & { product: { slug: string } },
   settings: CommerceSettings,
 ): Promise<
   Record<

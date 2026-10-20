@@ -58,13 +58,16 @@ export const DISABLE_CONSEQUENCES: Record<ServiceSlug, string> = {
   identity:
     "Sign-in through this product stops. Licenses stay attached to their owners’ accounts.",
   sync: "Cloud Sync stops: settings stay on each device and nothing syncs.",
-  commerce:
-    "Commerce’s endpoints answer not-found: no purchase claims, and store refunds do not land until Commerce is back on.",
+  commerce: "Commerce’s endpoints answer not-found: no purchase claims.",
 };
 
 /** Play drops what Commerce cannot receive: the limits an operator has to beat when it is off. */
 export const COMMERCE_OFF_LIMITS =
-  "Google Play retries notifications for 7 days and lists voided purchases for 31. Turn Commerce back on within them or those refunds are missed.";
+  "Store refunds do not land while it is off. Google Play retries notifications for 7 days and lists voided purchases for 31: turn it back on within them or those refunds are missed.";
+
+/** The docs section that sets a storefront up. */
+export const STOREFRONT_DOCS = "/docs/features/commerce/#setting-it-up";
+export const SET_UP_STOREFRONT = "Set up a storefront";
 
 /** The row's Attention state: store purchases are live but Commerce is off, so refunds miss. */
 export function storeRefundsAttention(
@@ -179,7 +182,7 @@ export function factFor(
       const n = facts.commerce.storefronts;
       return n > 0
         ? `${n} ${n === 1 ? "storefront" : "storefronts"} ready`
-        : "Set up a storefront";
+        : SET_UP_STOREFRONT;
     }
     default:
       return null;

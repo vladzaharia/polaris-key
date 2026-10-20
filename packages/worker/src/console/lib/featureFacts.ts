@@ -7,7 +7,8 @@
  */
 
 import type { Db } from "../../db/types.js";
-import { readConnectorSettings } from "../../core/stores/settings.js";
+import type { Env } from "../../platform/env.js";
+import { readyStorefronts } from "../../services/commerce/public.js";
 
 export interface FeatureFacts {
   /** Licensing: the product's tiers and licences. */
@@ -17,14 +18,15 @@ export interface FeatureFacts {
   /** Ship builds: the app's latest release and its release track, `null` before the first. */
   shipBuilds: { latest: { version: string; channel: string | null } | null };
   /**
-   * Commerce: the stores with a configured storefront (`commerce` connector settings: one block per
-   * store; CM-21 tightens "configured" to Ready) and the store purchases that are live, which the
+   * Commerce: the stores with a configured storefront (settings saved and the credential resolves, as
+   * the Commerce overview's `setupOf`) and the store purchases that are live, which the
    * Attention state "Store refunds are not landing" reads while Commerce is off.
    */
   commerce: { storefronts: number; storeGrants: number };
 }
 
 export async function featureFactsOf(
+  env: Env,
   db: Db,
   product: string,
 ): Promise<FeatureFacts> {
@@ -48,7 +50,7 @@ export async function featureFactsOf(
         ORDER BY COALESCE(published_at, created_at) DESC LIMIT 1`,
         product,
       ),
-      readConnectorSettings(db, product, "commerce"),
+      readyStorefronts(env, db, product),
       db.first<{ n: number }>(
         `SELECT (SELECT COUNT(*) FROM grants WHERE product = ? AND state = 'active'
                  AND source IN ('app-store', 'play', 'steam'))
@@ -57,10 +59,6 @@ export async function featureFactsOf(
         product,
       ),
     ]);
-  const block = (k: string) => {
-    const v = commerce?.value[k];
-    return v !== null && typeof v === "object" && !Array.isArray(v);
-  };
   return {
     licensing: { tiers: tiers?.n ?? 0, licenses: licenses?.n ?? 0 },
     managedConfig: { catalogVersion: catalog?.v ?? null },
@@ -70,7 +68,7 @@ export async function featureFactsOf(
         : null,
     },
     commerce: {
-      storefronts: ["appStore", "play", "steam"].filter(block).length,
+      storefronts: commerce,
       storeGrants: storeGrants?.n ?? 0,
     },
   };

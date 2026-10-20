@@ -116,6 +116,17 @@ export const STATUS = {
     configured: e("Configured", "success"),
     missing: e("Missing", "warning"),
   },
+  purchase: {
+    active: e("Active", "success"),
+    pending: e("Pending", "neutral", Clock),
+    revoked: e("Refunded or revoked", "danger", Ban),
+    rejected: e("Rejected", "danger"),
+  },
+  storefront: {
+    ready: e("Ready", "success"),
+    unset: e("Not set up", "neutral", Circle),
+    credential: e("Needs a credential", "warning"),
+  },
   source: {
     manifest: e("From manifest", "neutral"),
     admin: e("Set in console", "info"),

@@ -29,6 +29,8 @@ import {
   featureOn,
   featureSwitchId,
   listOf,
+  SET_UP_STOREFRONT,
+  STOREFRONT_DOCS,
   serviceChange,
   storeRefundsAttention,
   unmetRequirements,
@@ -173,14 +175,25 @@ export function FeatureSection({
           <div className="border-t border-border px-5 py-3">
             <Callout tone="warning" title={attention}>
               Purchases stay unlocked, but their refunds are missed until
-              Commerce is on.
+              Commerce is on. Google Play stops retrying after 7 days.
             </Callout>
           </div>
         ) : null}
 
         {fact && on ? (
           <p className="border-t border-border px-5 py-3 text-sm text-fg-muted">
-            {fact}
+            {fact === SET_UP_STOREFRONT ? (
+              <a
+                href={STOREFRONT_DOCS}
+                target="_blank"
+                rel="noreferrer"
+                className="text-accent-fg underline underline-offset-2 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+              >
+                {fact} →
+              </a>
+            ) : (
+              fact
+            )}
           </p>
         ) : null}
 

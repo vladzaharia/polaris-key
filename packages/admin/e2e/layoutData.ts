@@ -1767,7 +1767,8 @@ export const DATA_ROUTES: Record<string, unknown> = {
       steam: {
         configured: false,
         credential: null,
-        reason: "no settings for this store",
+        reason:
+          "no active steam-publisher-key credential pinned to the configured app",
       },
     },
     products: [
@@ -1795,8 +1796,8 @@ export const DATA_ROUTES: Record<string, unknown> = {
         storeProductId:
           "com.djdl.app.pro.with.a.very.long.identifier.for.wrapping",
         licenseId: "lic_2",
-        state: "refunded",
-        environment: "Production",
+        state: "revoked",
+        environment: "Sandbox",
         firstSeen: GENERATED - 900000,
         lastVerified: GENERATED - 90000,
       },
