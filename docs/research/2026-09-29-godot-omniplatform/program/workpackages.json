@@ -17620,7 +17620,7 @@
       "optional": false,
       "refs": ["plans/LK-00.md §2, §7.6, §8"],
       "brief": "wp/LK-06-locker-shell-portal-card.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "LK-07",
