@@ -5,7 +5,7 @@
 | Phase       | LK: Polaris Locker                                                     |
 | Size        | 0.75–1 engineer-weeks                                                  |
 | Depends on  | [LK-01](LK-01-brand-locker-kit.md), [LK-13](LK-13-locker-words-v13.md) |
-| Unblocks    | none                                                                   |
+| Unblocks    | [LK-11](LK-11-cutover.md)                                              |
 | Role        | `pkey-implementer`                                                     |
 | Plan mode   | no                                                                     |
 | Gates       | docs-links, docs-generated, drift-gate                                 |
