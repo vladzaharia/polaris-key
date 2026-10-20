@@ -196,10 +196,11 @@ export function Home(): React.ReactElement {
       {header}
       <div
         data-home-grid=""
+        data-top-aligned=""
         className={cn(
           "grid grid-cols-1 items-start gap-6",
           hasReady &&
-            "xl:grid-cols-[minmax(0,2fr)_minmax(17.5rem,1fr)] min-[1600px]:grid-cols-[minmax(0,1fr)_25rem]",
+            "xl:grid-cols-[minmax(0,2fr)_minmax(17.5rem,1fr)] min-[100rem]:grid-cols-[minmax(0,1fr)_25rem]",
         )}
       >
         {hasAttention ? (
@@ -210,7 +211,7 @@ export function Home(): React.ReactElement {
             ready={ready.data!}
             className={cn(
               !hasAttention && "xl:col-span-2",
-              "min-[1600px]:col-span-1 min-[1600px]:col-start-2 min-[1600px]:row-span-2 min-[1600px]:row-start-1",
+              "min-[100rem]:col-span-1 min-[100rem]:col-start-2 min-[100rem]:row-span-2 min-[100rem]:row-start-1",
             )}
           />
         ) : null}
@@ -218,8 +219,8 @@ export function Home(): React.ReactElement {
           className={cn(
             "min-w-0",
             hasReady &&
-              "xl:col-span-2 min-[1600px]:col-span-1 min-[1600px]:col-start-1 min-[1600px]:row-start-2",
-            hasReady && !hasAttention && "min-[1600px]:row-start-1",
+              "xl:col-span-2 min-[100rem]:col-span-1 min-[100rem]:col-start-1 min-[100rem]:row-start-2",
+            hasReady && !hasAttention && "min-[100rem]:row-start-1",
           )}
         >
           <ProductShelf rows={rows} loading={loading} />

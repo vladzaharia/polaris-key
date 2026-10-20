@@ -299,7 +299,7 @@ export function AttentionList({
         data-card-header=""
         className="flex items-center justify-between border-b border-border px-5 py-3"
       >
-        <div className="flex items-baseline gap-2">
+        <div data-head-count="" className="flex items-baseline gap-2">
           <h2
             id={id}
             className="text-lg font-semibold leading-6 text-fg-strong"
@@ -319,13 +319,18 @@ export function AttentionList({
       </div>
       <ul
         ref={motion.ref}
-        className={cn("divide-y divide-border", motion.className)}
+        className={cn(
+          // From `sm` the rows share four columns (pill, subject, message, link), so every
+          // subject and message starts at one x whatever its pill word.
+          "divide-y divide-border sm:grid sm:grid-cols-[auto_minmax(6rem,11rem)_minmax(0,1fr)_auto]",
+          motion.className,
+        )}
       >
         {shown.map((item) => (
           <li
             key={item.id}
             data-service={item.service}
-            className="grid grid-cols-1 gap-x-3 gap-y-1.5 px-5 py-3 sm:grid-cols-[auto_minmax(6rem,11rem)_minmax(0,1fr)_auto] sm:items-start"
+            className="grid grid-cols-1 gap-x-3 gap-y-1.5 px-5 py-3 sm:col-span-full sm:grid-cols-subgrid sm:items-start"
           >
             {/* Phone: the pill and its subject read as one group; from `sm` they are columns. */}
             <div className="flex min-w-0 items-center gap-2 sm:contents">

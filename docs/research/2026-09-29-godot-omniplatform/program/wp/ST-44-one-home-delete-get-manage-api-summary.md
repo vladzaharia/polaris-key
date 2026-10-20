@@ -111,12 +111,39 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 - **Builds or backs 5 mockup item(s):** `products.home`, `products.overview-a`, `products.overview-b`, `products.overview-c`, `products.overview`.
 - `overview-21`: Failed long-running tasks keep a durable home: an attention item on Home plus a record (EXPERIENCE 0.3 J-2).
 
+## Corrections and notes (ST-44 build, 2026-10-20)
+
+- Verified against code: `GET /manage/api/summary` had no client reader (`useSummary` was unread since
+  the 2026-10-07 polish); ADMIN.md carries no A-8 text any more, so the note says the fleet facts are
+  dropped where the Platform context is described. The Home attention model was client-side
+  (`global/model/attention.ts` over each list row's `setup`); it is deleted.
+- The slim `GET /products` row drops the setup state, signing block, modules, portal settings and
+  claims (one `productSetupView` per product per list read before). `GET /products/:slug` keeps the
+  full row; the list adds `verified` (an SDK sighting exists, for the Integration verified facet) and
+  `presentation.header`. `useProduct`'s list placeholder therefore lacks those members until the
+  detail row arrives (Overview already honours `isPlaceholderData`).
+- `GET /manage/api/attention` (area `console`, filtered by product visibility and per-item area):
+  failed resync, missing required secret, missing signing key, secret not marked for edge minting,
+  edge-mint recipe awaiting approval, store credential expiring within 14 days or expired. The
+  LX-41 subscription-token kind needs the subscriptions table, which has not landed: it joins with
+  LX-41. `GET /manage/api/platform/ready` (area `platform`) is new (UX-67's readiness read did not
+  exist): keyring, portal sessions, console sign-in, background jobs, email sender, store accounts,
+  platform packages. "Reserved names reviewed" and "Team access" are not built (no stored
+  acknowledgement; the member roster is groups plus role bindings).
+- Not built from products.home: the Polaris Key system product card (the console list keeps the
+  system product out, F-03); the checklist has seven rows, not nine; per-product `tintColor` (HA-12 has not
+  stored one: a cover without hosted art is the icon on the neutral subtle surface, as the brand
+  transition says); the Platform sidebar context, breadcrumb and 3px context rule (ST-45).
+- Layout lint: `data-head-count` (a count beside its title is not a far-right pill) and
+  `data-top-aligned` (a row of cards drawn top-aligned on purpose) are narrow exemptions in
+  `layoutProbe.ts`, both from products.home.
+
 ## Acceptance criteria
 
-- [ ] Summary route and hooks deleted (OpenAPI, routeCoverage); ADMIN.md A-8 marked dropped
-- [ ] One Home for cards and table; attention comes from one server read
-- [ ] The card stays ST-36's name/slug header plus service icons, pips on phones (no added facts)
-- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `operate/platform/settings`; `operate/console/tour` regenerated.
+- [x] Summary route and hooks deleted (OpenAPI, routeCoverage); ADMIN.md A-8 marked dropped
+- [x] One Home for cards and table; attention comes from one server read
+- [x] The card stays ST-36's name/slug header plus feature glyphs (the mockup amends service icons to feature icons), pips on phones (no added facts; the cover is the brand-transition addition)
+- [x] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `operate/platform/settings`; `operate/console/tour` regenerated.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

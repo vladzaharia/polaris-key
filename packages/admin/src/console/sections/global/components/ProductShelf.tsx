@@ -310,7 +310,7 @@ export function ProductShelf({
       ) : view === "cards" ? (
         <ul
           aria-label="Products"
-          className="grid grid-cols-1 gap-4 sm:grid-cols-2 min-[1600px]:grid-cols-3 xl:grid-cols-3"
+          className="grid grid-cols-1 gap-4 sm:grid-cols-2 min-[100rem]:grid-cols-3 xl:grid-cols-3"
         >
           {filtered.map((row) => (
             <li key={row.slug} className="flex min-w-0">

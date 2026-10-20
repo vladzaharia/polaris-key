@@ -141,7 +141,10 @@ function cases(): Case[] {
       hash: "#/",
       act: async (page) => {
         await page.getByRole("radio", { name: "Table" }).click();
-        await page.getByRole("table").first().waitFor();
+        // A phone draws the table as cards (`mobile="cards"`): wait on the choice, not the role.
+        await page
+          .locator("[role=radio][aria-checked=true]", { hasText: "Table" })
+          .waitFor();
       },
     },
     { name: "djdl:activity?table", hash: "#/p/djdl/activity?view=table" },
@@ -270,7 +273,7 @@ const VIEWPORTS: {
         forcedColors: "active" as const,
         only: [
           "global:home",
-  "home:table",
+          "home:table",
           "djdl:licenses",
           "djdl:services",
           "dialog:set-secret",
@@ -283,7 +286,7 @@ const VIEWPORTS: {
         contrast: "more" as const,
         only: [
           "global:home",
-  "home:table",
+          "home:table",
           "djdl:licenses",
           "djdl:services",
           "dialog:set-secret",
@@ -634,24 +637,24 @@ async function axeWithin(page: Page, selector: string): Promise<string[]> {
 }
 
 describe("Home's product card (owner polish 2026-10-07)", () => {
-  const HOME: Case = { name: "global:home",
-  "home:table", hash: "#/" };
+  const HOME: Case = { name: "global:home", hash: "#/" };
   const CARDS = 'main [aria-label="Products"]';
 
   for (const theme of THEMES) {
-    it(`${theme}: one row of named service icons; on a phone, the name and one pip per service in its accent`, async () => {
+    it(`${theme}: one row of named feature glyphs; on a phone, the name and one pip per feature in its accent`, async () => {
       const desk = await open(HOME, theme, { width: 1440, height: 900 });
       try {
         const page = desk.page;
         const card = page.locator(`${CARDS} article[aria-label="DJDL"]`);
-        const icons = card.locator("[data-service-link]");
-        expect(await icons.count()).toBe(8);
-        for (const label of ["License", "Distribution", "Cloud Sync"]) {
+        const icons = card.locator("[data-feature-link]");
+        expect(await icons.count()).toBe(6);
+        for (const label of ["Licensing", "Ship builds", "Cloud Sync"]) {
+          // A feature with a problem names it too ("Managed config: 1 needs attention").
           const link = card.getByRole("link", { name: label, exact: true });
           expect(await link.isVisible()).toBe(true);
           expect(await link.getAttribute("title")).toBe(label);
         }
-        expect(await card.locator("[data-service-pips]").isVisible()).toBe(
+        expect(await card.locator("[data-feature-pips]").isVisible()).toBe(
           false,
         );
         // No facts, rows or footer on the card.
@@ -667,13 +670,13 @@ describe("Home's product card (owner polish 2026-10-07)", () => {
         const page = phone.page;
         const card = page.locator(`${CARDS} article[aria-label="DJDL"]`);
         const pips = card.getByRole("img", {
-          name: "Runs License, Config, Release, Distribution, Update, Identity, Cloud Sync and Commerce",
+          name: "Licensing, Managed config: 1 needs attention, Ship builds, Sign-in, Cloud Sync, Commerce",
         });
         expect(await pips.isVisible()).toBe(true);
         // Only the name and the pips: the logo, slug, pill and icon row step aside.
         for (const sel of [
           "[data-logo]",
-          "[data-service-icons]",
+          "[data-feature-icons]",
           "[data-card-header] [data-status]",
         ])
           expect(await card.locator(sel).first().isVisible(), sel).toBe(false);
@@ -687,36 +690,32 @@ describe("Home's product card (owner polish 2026-10-07)", () => {
         const colours = await card.locator("[data-pip]").evaluateAll((els) =>
           els.map((el) => {
             const probe = document.createElement("span");
-            probe.setAttribute("data-service", el.getAttribute("data-pip")!);
+            probe.setAttribute(
+              "data-service",
+              el.getAttribute("data-service")!,
+            );
             probe.style.color = "var(--pk-accent)";
             document.body.append(probe);
             const want = getComputedStyle(probe).color;
             probe.remove();
             return {
-              service: el.getAttribute("data-pip"),
+              service: el.getAttribute("data-service"),
               got: getComputedStyle(el).backgroundColor,
               want,
             };
           }),
         );
+        // One pip per feature, in canonical order, each in its feature's accent.
         expect(colours.map((c) => c.service)).toEqual([
           "license",
           "config",
           "release",
-          "distribution",
-          "update",
           "identity",
           "sync",
           "commerce",
         ]);
         for (const c of colours) expect(c.got, c.service!).toBe(c.want);
-        // Commerce draws in the Distribution green by decision (B1): the one declared shared
-        // pair. Every other pip is its own colour.
-        const by = Object.fromEntries(colours.map((c) => [c.service, c.got]));
-        expect(by.commerce).toBe(by.distribution);
-        expect(new Set(colours.map((c) => c.got)).size).toBe(
-          colours.length - 1,
-        );
+        expect(new Set(colours.map((c) => c.got)).size).toBe(colours.length);
         expect(await axeWithin(page, CARDS)).toEqual([]);
       } finally {
         await phone.page.context().close();

@@ -148,7 +148,7 @@ export function ProductCard({
                           aria-hidden
                           data-issue-dot={worstTone(f.issues)}
                           className={cn(
-                            "absolute -right-1 -top-1 size-2.5 rounded-full border-2 border-surface-raised",
+                            "absolute right-0.5 top-0.5 size-2 rounded-full ring-2 ring-surface-raised",
                             worstTone(f.issues) === "danger"
                               ? "bg-danger"
                               : "bg-warning",

@@ -40,7 +40,7 @@ describe("AttentionList", () => {
     expect(object.className).toContain("min-w-0");
     expect(object.className).not.toContain("shrink-0");
     // The subject has its own grid column from `sm`, so a long name cannot crush the message.
-    expect(object.closest("li")!.className).toContain("sm:grid-cols-[");
+    expect(object.closest("li")!.className).toContain("sm:grid-cols-subgrid");
     const reason = screen.getByText(
       "Missing required secret OIDC_CLIENT_SECRET",
     );
