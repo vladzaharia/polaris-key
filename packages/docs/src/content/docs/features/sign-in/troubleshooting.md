@@ -107,7 +107,7 @@ Entries are ordered by how often they happen. Every code is in the [error codes]
 
 ## email_in_use
 
-**Cause** The proven address belongs to another Polaris Locker account. Nothing was created or joined.
+**Cause** The proven address belongs to another Locker account. Nothing was created or joined.
 
 **Fix** Choose the join offer and prove the other account in the same browser, or use a different email.
 
@@ -115,7 +115,7 @@ Entries are ordered by how often they happen. Every code is in the [error codes]
 
 ## auth_method_disabled
 
-**Cause** The requested method is off: Polaris Locker's sign-in method for the product, or email codes for an enforced single sign-on domain.
+**Cause** The requested method is off: Locker's sign-in method for the product, or email codes for an enforced single sign-on domain.
 
 **Fix** Turn the method on under **Identity → Portal**, or sign in through the organization's connection.
 

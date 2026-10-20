@@ -5,9 +5,9 @@ type: "reference"
 lastReviewed: "2026-10-16"
 ---
 
-Polaris Locker's routes sit at the root of the host, reserved ahead of every product slug, because one account holds licenses across products. Polaris Locker's own pages call them. Your app doesn't. This page is written by hand from the router and `packages/worker/openapi/polaris-key.v3.yaml`, which holds the schemas for the sign-in, account, library, Discover and device-login routes.
+Polaris Locker's routes sit at the root of the host, reserved ahead of every product slug, because one account holds licenses across products. Locker's own pages call them. Your app doesn't. This page is written by hand from the router and `packages/worker/openapi/polaris-key.v3.yaml`, which holds the schemas for the sign-in, account, library, Discover and device-login routes.
 
-For how Polaris Locker behaves, see [Polaris Locker](/docs/features/sign-in/customer-portal/).
+For how Locker behaves, see [Locker](/docs/features/sign-in/customer-portal/).
 
 ## Gates
 
@@ -118,7 +118,7 @@ Deletion erases sessions, emails, identities, links and the account row in one a
 
 Removing a license from the library leaves it with its email, so it waits for an account that verifies that address. An auto-attach block keeps it out of this account until its key is added again. Package tokens for it are revoked and its devices keep their seats. Only a `removable` license can go: a sign-in license, a Discover claim or a keyless store or developer license answers `409 not_removable` with `reason` `no_active_key` or `key_claim_off`.
 
-A license's `origin` is `key`, `store-key`, `store`, `developer` or `signin`. Polaris Locker shows `signin` as **Automatic grant**.
+A license's `origin` is `key`, `store-key`, `store`, `developer` or `signin`. Locker shows `signin` as **Automatic grant**.
 
 The activate preview takes `{ "key": "<license key>" }`, rejects anything that isn't a license key shape with `422`, and returns a `verdict`.
 
@@ -142,7 +142,7 @@ Every answer carries `product` (`null` for `unknown`, so a guess never reveals a
 | `GET` `/api/products/<product>/downloads?channel=<channel>` | One product's files, store links and install sources |
 | `POST` `/api/products/<product>/email-download` | Emails the account a link to the download for a platform |
 
-Downloads are gated by three things at once: the product's `releasesEnabled` Polaris Locker setting, the Release service being on, and, for a `licensed` artifact, a usable license linked to the account. A refusal for an account with no linked license is `404`. An owner is told why: `404 file_not_found`, `403 license_inactive`, `403 not_entitled` or `409 not_hosted`.
+Downloads are gated by three things at once: the product's `releasesEnabled` Locker setting, the Release service being on, and, for a `licensed` artifact, a usable license linked to the account. A refusal for an account with no linked license is `404`. An owner is told why: `404 file_not_found`, `403 license_inactive`, `403 not_entitled` or `409 not_hosted`.
 
 Redemption re-runs every check and spends the token with a single conditional update, so two concurrent redemptions can't both win. A `public` file redirects to the bytes host. A non-public file redirects there with a download ticket bound to that file's name and SHA-256, valid 120 seconds, which needs the Worker secret `DOWNLOAD_TICKET_KEY`. Without it such files read `not_hosted`.
 
@@ -161,4 +161,4 @@ Start answers `201` with `id`, an 8-letter `code` from the consonant alphabet, a
 
 ## Per-product settings
 
-The admin route `/manage/api/products/<slug>/identity/portal` (`GET` and `PATCH`) holds the product's Polaris Locker settings. See [Polaris Locker](/docs/features/sign-in/customer-portal/).
+The admin route `/manage/api/products/<slug>/identity/portal` (`GET` and `PATCH`) holds the product's Locker settings. See [Locker](/docs/features/sign-in/customer-portal/).

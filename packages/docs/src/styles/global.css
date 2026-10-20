@@ -503,3 +503,27 @@ starlight-tabs [role="tab"] {
     grid-template-columns: repeat(3, 1fr);
   }
 }
+
+/* ---- Locker context: Starlight state is neutral ink (D9a) ------------------------------------ */
+
+/* Starlight reads --sl-color-accent for focus borders, open toggles, accent-color controls and
+   the active code tab; those are state, so they are neutral. Identity reads --pk-accent directly. */
+[data-brand="locker"]:not([data-service]) {
+  --sl-color-accent: var(--pk-text-strong);
+}
+
+[data-brand="locker"]:not([data-service]) .sl-link-card:hover {
+  border-color: var(--pk-border-strong);
+}
+
+/* The skip link renders outside .pk-section, so it takes the neutral action colours itself. */
+.sl-skip-link {
+  background-color: var(--pk-action);
+  color: var(--pk-action-on);
+  outline-color: var(--pk-text-strong);
+}
+
+/* A long site name ellipsises instead of clipping on a narrow header or a large text size. */
+.pk-site-title span {
+  text-overflow: ellipsis;
+}

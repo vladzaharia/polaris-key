@@ -85,6 +85,18 @@ export default defineConfig({
         },
         {
           tag: "meta",
+          attrs: { property: "og:image:alt", content: "Polaris Locker docs" },
+        },
+        {
+          tag: "meta",
+          attrs: { property: "og:image:width", content: "1200" },
+        },
+        {
+          tag: "meta",
+          attrs: { property: "og:image:height", content: "630" },
+        },
+        {
+          tag: "meta",
           attrs: {
             name: "twitter:image",
             content:

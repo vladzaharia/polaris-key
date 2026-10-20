@@ -236,11 +236,11 @@ listing:
 
 The **document's** listing (not a channel's) is also the product's presentation in Polaris
 Locker: `name`, `developerName`, `tintColor`, `website`, the support links, and `icon` and
-`header` as art. Polaris Locker never loads that art from the developer's host: it serves it
+`header` as art. Locker never loads that art from the developer's host: it serves it
 same-origin through its media proxy (`/media/<product>/icon` and `/media/<product>/header`), which
 fetches only from GitHub-hosted URLs (`github.com`, `*.githubusercontent.com`), only PNG, JPEG,
 WebP or GIF, and at most 1 MB for the icon and 5 MB for the header. Art hosted anywhere else,
-and art given as a repo path, is not shown there; Polaris Locker falls back to the product's initial
+and art given as a repo path, is not shown there; Locker falls back to the product's initial
 on its tint.
 
 ## Capabilities are not here

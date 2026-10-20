@@ -109,7 +109,7 @@ as `entitled` (fail-closed). The refusals are exactly the ones Release answered 
 
 ### One answer for every surface
 
-The appcast, the download routes and Polaris Locker's download mint all read the same
+The appcast, the download routes and Locker's download mint all read the same
 `delivery.accessMode()`. Before, the feed and the download read access separately, so a feed
 could offer what the download then refused.
 
@@ -120,7 +120,7 @@ could offer what the download then refused.
   deliverables whose releases carry it, and a pack's object under the pack's own access and
   gate ([Pack bytes](#pack-bytes)).
 - **The appcast** is gated by the `app` deliverable's delivery access.
-- **Polaris Locker.** A customer has licenses, not a device token, so each mode is asked of the
+- **Locker.** A customer has licenses, not a device token, so each mode is asked of the
   account's linked licenses: `licensed` needs a usable one, `entitled` one whose grant holds the
   release's release track (stable for a GitHub-derived release) and whose window holds its version.
   A public artifact with no GitHub download URL is redirected to its bytes-host URL; a

@@ -7,17 +7,17 @@ sidebar:
   order: 6
 ---
 
-Polaris Locker is a self-service account surface. A customer signs in once, sees every license they hold across every product on the deployment, adds more by key, manages their own devices and downloads the releases they are entitled to. Its code lives in the Identity service, but its routes aren't product-scoped. The route table is in [Polaris Locker API](/docs/reference/portal-api/). Customers see the name Polaris Locker once the Worker's `customer.host` switch is on; until then the same pages say Polaris Key.
+Polaris Locker is a self-service account surface. A customer signs in once, sees every license they hold across every product on the deployment, adds more by key, manages their own devices and downloads the releases they are entitled to. Its code lives in the Identity service, but its routes aren't product-scoped. The route table is in [Locker API](/docs/reference/portal-api/). Customers see the name Locker once the Worker's `customer.host` switch is on; until then the same pages say Polaris Key.
 
 ## Root-level routes
 
 `/login`, `/callback`, `/logout`, `/magic/verify`, `/api/*`, `/download/<token>` and `/media/*` are reserved ahead of every product slug. One account can hold licenses for several products at once, so no single product could own these paths.
 
-The Identity flag doesn't gate Polaris Locker. A product with Identity off has no `/identity/*` routes, yet its customers still see its licenses in Polaris Locker, claim them by key and manage their devices. The product's Polaris Locker settings decide that, never `services_json`. The one service flag Polaris Locker reads is Release's: release downloads need both `releasesEnabled` and the Release service on.
+The Identity flag doesn't gate Locker. A product with Identity off has no `/identity/*` routes, yet its customers still see its licenses in Locker, claim them by key and manage their devices. The product's Locker settings decide that, never `services_json`. The one service flag Locker reads is Release's: release downloads need both `releasesEnabled` and the Release service on.
 
 ## Signing in
 
-The login card on `key.plrs.im` is the only place a Polaris Locker account's credentials are entered, for Polaris Locker and, through the passthrough, for every app. It is identifier-first: the email, then the methods.
+The login card on `key.plrs.im` is the only place a Locker account's credentials are entered, for Locker and, through the passthrough, for every app. It is identifier-first: the email, then the methods.
 
 - **Connections.** Upstream OpenID Connect providers. `/login` starts the seeded platform connection, and `/login/sso/<id>` starts any other active platform connection whose audience covers customers. A flow is single-use and bound to the browser that started it. The redirect URI is `<origin>/callback` for every connection. Operators sign in to the console through a separate client.
 - **Email code and magic link.** One email carries a 6-digit code and a link. The link's landing page consumes nothing, so a mail scanner can't burn it, and its button posts the token back. A link opened on another device only confirms the asking browser's flow; it never signs the other device in. The answer is identical whether or not the address is known.
@@ -49,7 +49,7 @@ https://key.plrs.im/activate?product=<slug>#key=<license key>
 
 The page reads the key, then removes the fragment from the address bar and history before doing anything else. Never put a key in a query parameter: every request log records the query. The Worker never builds a link with a key in it, so `manageUrl` on a refusal carries none.
 
-Polaris Locker keeps these query parameters and drops the rest:
+Locker keeps these query parameters and drops the rest:
 
 | Parameter          | What it does                                                                        |
 | ------------------ | ----------------------------------------------------------------------------------- |
@@ -76,16 +76,16 @@ Every email is from Polaris Key (`PORTAL_EMAIL_FROM`) and names the product and 
 
 ## Per-product settings
 
-Each product has Polaris Locker settings, edited at **Identity → Portal**. They default on for a product that never wrote a row: `portalEnabled`, `oidcEnabled`, `magicEnabled`, `licenseKeyClaimEnabled`, `releasesEnabled` and `discoverEnabled`. These default off:
+Each product has Locker settings, edited at **Identity → Portal**. They default on for a product that never wrote a row: `portalEnabled`, `oidcEnabled`, `magicEnabled`, `licenseKeyClaimEnabled`, `releasesEnabled` and `discoverEnabled`. These default off:
 
-- `keyReissueEnabled`: customers may replace a license's key from Polaris Locker.
+- `keyReissueEnabled`: customers may replace a license's key from Locker.
 - `claimByKey`: a license that carries an email may be added by anyone holding its key. Off is the safe default: such a license joins only an account that verified that email. A license already in an account never moves by its key either way.
 
 `autoLinkEnabled` is tri-state. `true` or `false` is an operator override. `null` derives from the issuer that vouched for the license's address: on for the platform issuer, off for a product's own custom issuer, because a tenant-controlled provider's `email` and `sub` are outside the platform's trust boundary. The issuer class is recorded on the license when its address is written, so editing `oidc.provider` later can't turn a tenant-minted license into one that auto-links.
 
-Only addresses Polaris Locker proved (a magic link it sent, or `email_verified: true` from the platform issuer) can drive a link, and only a platform-issuer subject can match a license's `sub`.
+Only addresses Locker proved (a magic link it sent, or `email_verified: true` from the platform issuer) can drive a link, and only a platform-issuer subject can match a license's `sub`.
 
-**Identity → Portal** is read-only for the sign-in methods and modules while the Polaris Locker switch is off, and for **Release downloads** while the Release service is off.
+**Identity → Portal** is read-only for the sign-in methods and modules while the product's **Portal** switch is off, and for **Release downloads** while the Release service is off.
 
 ### Polaris Locker listing
 
@@ -93,10 +93,10 @@ Four operator-owned fields hold a product's listing: `storeListed` (`auto`, `lis
 
 ## Supported browsers
 
-Polaris Locker's styles need cascade layers, `@property` and `color-mix()`: Safari 16.4 or later, Chrome 111 or later (Edge too) and Firefox 128 or later. An older browser reaches every route but renders mostly unstyled, so check the browser first when a customer reports a broken page.
+Locker's styles need cascade layers, `@property` and `color-mix()`: Safari 16.4 or later, Chrome 111 or later (Edge too) and Firefox 128 or later. An older browser reaches every route but renders mostly unstyled, so check the browser first when a customer reports a broken page.
 
 ## Next steps
 
-- [Polaris Locker API](/docs/reference/portal-api/): every route and its gates.
-- [Product sign-in provider](/docs/features/sign-in/oidc/): the provider a platform product shares with Polaris Locker.
+- [Locker API](/docs/reference/portal-api/): every route and its gates.
+- [Product sign-in provider](/docs/features/sign-in/oidc/): the provider a platform product shares with Locker.
 - [Browser sessions](/docs/features/sign-in/sessions/): the product-scoped cookie this one is not.
