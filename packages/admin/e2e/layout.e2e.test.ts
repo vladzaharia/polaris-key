@@ -676,15 +676,15 @@ describe("Home's product card (owner polish 2026-10-07)", () => {
           name: "Licensing, Managed config: 1 needs attention, Ship builds, Sign-in, Cloud Sync, Commerce",
         });
         expect(await pips.isVisible()).toBe(true);
-        // Only the name and the pips: the logo, slug, pill and icon row step aside.
-        for (const sel of [
-          "[data-logo]",
-          "[data-feature-icons]",
-          "[data-card-header] [data-status]",
-        ])
-          expect(await card.locator(sel).first().isVisible(), sel).toBe(false);
+        // The glyph row steps aside; the logo, the slug with its pips beside it, and the small
+        // pill at the right edge stay (products.home, phone).
+        expect(
+          await card.locator("[data-feature-icons]").first().isVisible(),
+        ).toBe(false);
+        for (const sel of ["[data-logo]", "[data-card-header] [data-status]"])
+          expect(await card.locator(sel).first().isVisible(), sel).toBe(true);
         expect(await card.getByText("djdl", { exact: true }).isVisible()).toBe(
-          false,
+          true,
         );
         expect(await card.getByRole("link", { name: "DJDL" }).isVisible()).toBe(
           true,

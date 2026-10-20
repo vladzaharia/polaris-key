@@ -362,12 +362,12 @@ export function AttentionList({
             className="grid grid-cols-1 gap-x-3 gap-y-1.5 px-5 py-3 @xl:col-span-full @xl:grid-cols-subgrid @xl:items-start"
           >
             {/* Narrow: the pill and its subject read as one group; wide they are columns. */}
-            <div className="flex min-w-0 items-start gap-2 @xl:contents">
+            <div className="flex min-w-0 flex-wrap items-start gap-x-2 gap-y-1 @xl:contents">
               <StatusPill tone={item.tone} className="justify-self-start">
                 {TONE_WORD[item.tone]}
               </StatusPill>
               <span
-                className="min-w-0 max-w-full break-words text-sm font-medium leading-6 text-fg-strong [&_a]:line-clamp-2"
+                className="min-w-[min(8rem,100%)] max-w-full break-words text-sm font-medium leading-6 text-fg-strong"
                 title={
                   item.objectTitle ??
                   (typeof item.object === "string" ? item.object : undefined)

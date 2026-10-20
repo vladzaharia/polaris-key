@@ -108,7 +108,10 @@ export function ProductCard({
     >
       {cover ? <Cover product={p} /> : null}
       <div className="flex min-w-0 flex-1 flex-col gap-3 p-4 max-sm:py-3">
-        <div data-card-header="" className="flex min-w-0 items-start gap-3">
+        <div
+          data-card-header=""
+          className="flex min-w-0 flex-wrap items-start gap-x-3 gap-y-2"
+        >
           <ProductLogo
             name={name}
             presentation={p.presentation}
@@ -121,7 +124,7 @@ export function ProductCard({
             size={32}
             className="sm:hidden"
           />
-          <div className="min-w-0 flex-1">
+          <div className="min-w-[min(9rem,100%)] flex-1">
             <h3
               className="line-clamp-2 break-words text-base font-semibold text-fg-strong"
               title={name}

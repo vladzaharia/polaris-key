@@ -43,10 +43,12 @@ function attentionRows(
     object: (
       <Link
         to={r.overview(a.product.slug)}
-        className="inline-flex min-w-0 items-center gap-2 text-fg-strong underline-offset-4 hover:underline"
+        className="flex min-w-0 max-w-full items-start gap-2 text-fg-strong underline-offset-4 hover:underline"
       >
         {logo(a.product.slug)}
-        <span className="min-w-0 truncate">{a.product.name}</span>
+        <span className="min-w-0 line-clamp-2 break-words">
+          {a.product.name}
+        </span>
       </Link>
     ),
     objectTitle: a.product.name,
