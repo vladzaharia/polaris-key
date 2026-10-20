@@ -28,10 +28,15 @@ Exactly `plans/LK-00.md` §14.1, §14.2, §14.6. Anything else is another packag
 ## Acceptance criteria
 
 - [ ] `pnpm gen --check` settings clean; admin build succeeds; console CSP parity passes
-- [ ] ui-snapshots re-recorded
+- [x] ui-snapshots re-recorded (none needed: console e2e has no header baselines; only portal baselines exist)
 - [ ] pkey-ux-reviewer passes the mockups, then the built screens; every "Open in Polaris Locker" link reaches the customer site
 - [ ] The relevant `plans/LK-00.md` §13 commands pass; the green gate passes (AGENTS.md).
 
 ## Hand-off
 
 The role agent sets `--set LK-14 in-review` when it hands off; the lead sets `done` after review.
+
+## Code corrections
+
+- The console is `manage.html` (served at `/manage`); `index.html` is the customer portal and keeps the Key head until the switch. Locker icons are emitted at `/assets/branding/locker/`.
+- Gate steps 15 (Godot) not run: killed while queued behind other agents; unrelated to the change.
