@@ -43,8 +43,7 @@ const BRAND_LOCKUP_FILES: readonly string[] = [
 ];
 
 /**
- * The Polaris Locker lockup PNGs for the Worker's mail (LK-07; plans/LK-00.md §7.11), and the kit's
- * favicon set for the Worker's customer pages (`brandHtml.ts`) while `customer.host` is on. Same
+ * The Polaris Locker lockup PNGs for the Worker's mail (LK-07; plans/LK-00.md §7.11). Same
  * console origin, `/assets/branding/locker/`: mail already sent links under `/assets/`, and the
  * router hands this path to the assets binding. `light` is for light grounds.
  */
@@ -52,11 +51,6 @@ const BRAND_LOCKER_DIR = "assets/branding/locker";
 const BRAND_LOCKER_LOCKUP_FILES: readonly string[] = [
   "locker-horizontal-light-640.png",
   "locker-horizontal-dark-640.png",
-];
-const BRAND_LOCKER_WEB_FILES: readonly string[] = [
-  "favicon.svg",
-  "favicon.ico",
-  "apple-touch-icon.png",
 ];
 
 /**
@@ -120,12 +114,6 @@ const brandLockerLockups = dirname(
   ),
 );
 
-const brandLockerWeb = dirname(
-  createRequire(import.meta.url).resolve(
-    "@polaris-key/brand/locker-kit/web/favicon.svg",
-  ),
-);
-
 const CONTENT_TYPES: Record<string, string> = {
   svg: "image/svg+xml",
   ico: "image/x-icon",
@@ -148,11 +136,6 @@ const BRAND_DIRS: readonly {
     dir: BRAND_LOCKER_DIR,
     files: BRAND_LOCKER_LOCKUP_FILES,
     from: brandLockerLockups,
-  },
-  {
-    dir: BRAND_LOCKER_DIR,
-    files: BRAND_LOCKER_WEB_FILES,
-    from: brandLockerWeb,
   },
 ];
 
