@@ -18,7 +18,7 @@ export function AuthTitle({
     <h1
       tabIndex={-1}
       className={cn(
-        "text-2xl font-semibold text-fg-strong outline-none",
+        "text-2xl font-semibold text-fg-strong outline-none forced-colors:outline-none",
         className,
       )}
     >

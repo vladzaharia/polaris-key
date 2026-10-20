@@ -111,17 +111,18 @@ export function HintStep({
     ) : (
       <Fingerprint aria-hidden className="size-5" />
     );
-  const primaryClass = "h-12 w-full text-base font-semibold";
+  const primaryClass =
+    "h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-semibold";
   return (
     <>
-      <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-border-strong py-0.5 pl-1 pr-3 text-sm">
+      <div className="inline-flex max-w-full flex-wrap items-center gap-x-2 rounded-2xl border border-border-strong py-0.5 pl-1 pr-3 text-sm">
         <span
           aria-hidden
           className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-hover text-xs font-medium text-fg-strong"
         >
           {initialsOf(last.name, email)}
         </span>
-        <span className="min-w-0 [overflow-wrap:anywhere] text-fg-strong">
+        <span className="min-w-0 [overflow-wrap:break-word] text-fg-strong">
           {email}
         </span>
         <button
@@ -163,6 +164,7 @@ export function HintStep({
           size="lg"
           className={primaryClass}
           loading={pk.busy}
+          busyFocusable
           onClick={() => void pk.run()}
           iconStart={<Fingerprint aria-hidden />}
         >
@@ -189,6 +191,7 @@ export function HintStep({
             size="lg"
             className={primaryClass}
             loading={pk.busy}
+            busyFocusable
             onClick={() => void pk.run()}
             iconStart={<Fingerprint aria-hidden />}
           >

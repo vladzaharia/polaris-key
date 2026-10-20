@@ -57,12 +57,16 @@ export function ApproveDeviceDialog({
   const [phase, setPhase] = React.useState<Phase>({ kind: "enter" });
   const [typed, setTyped] = React.useState(tidyCode(code));
   const started = React.useRef(false);
+  const arrived = React.useRef(false);
   const denyRef = React.useRef<HTMLButtonElement>(null);
   const closeRef = React.useRef<HTMLButtonElement>(null);
   // The step changed under the person: focus the safe choice, not the dialog frame.
   React.useEffect(() => {
-    if (phase.kind === "review") denyRef.current?.focus();
-    else if (phase.kind === "done") closeRef.current?.focus();
+    // Deny only on first arrival: after a failed Approve, focus stays where the person was.
+    if (phase.kind === "review" && !arrived.current) {
+      arrived.current = true;
+      denyRef.current?.focus();
+    } else if (phase.kind === "done") closeRef.current?.focus();
   }, [phase.kind]);
 
   const look = React.useCallback(async (value: string): Promise<void> => {
@@ -232,6 +236,7 @@ export function ApproveDeviceDialog({
             <Button
               variant="neutral"
               loading={phase.kind === "deciding"}
+              busyFocusable
               onClick={() => void decide(phase.request, "approve")}
             >
               {t("signin.approve.approve")}

@@ -9,6 +9,7 @@ import {
   PortalApiError,
   type PortalDeviceLoginStart,
 } from "../../api.js";
+import { portalErrorCopy } from "../../errors.js";
 import { portalKeys } from "../../data.js";
 import { announceSignedIn } from "../../session.js";
 
@@ -170,7 +171,7 @@ export function DeviceStep({
               (state.error.status === 429 ||
                 state.error.code === "rate_limited")
               ? t("signin.rateLimitedFew")
-              : t("signin.network.title")
+              : portalErrorCopy(state.error, { account: true }).description
             : state.kind === "denied"
               ? t("signin.approve.denied")
               : state.kind === "disabled"
@@ -187,7 +188,7 @@ export function DeviceStep({
           <Button
             variant="neutral"
             size="lg"
-            className="h-12 w-full text-base font-semibold"
+            className="h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-semibold"
             onClick={again}
           >
             {state.kind === "error"
@@ -202,7 +203,7 @@ export function DeviceStep({
               : "ghost"
           }
           size="lg"
-          className="h-12 w-full text-base font-semibold"
+          className="h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-semibold"
           onClick={onOther}
         >
           {t("signin.approve.other")}

@@ -84,7 +84,7 @@ function TermsLink({
       href={href}
       target="_blank"
       rel="noreferrer noopener"
-      className="inline-flex min-h-11 items-center underline decoration-2 underline-offset-4"
+      className="-my-3 inline-block py-3 underline decoration-2 underline-offset-4"
     >
       {children}
     </a>
@@ -235,7 +235,7 @@ function GateUnreachable({
       <Button
         variant="neutral"
         size="lg"
-        className="h-12 w-full text-base font-semibold"
+        className="h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-semibold"
         onClick={onRetry}
       >
         {t("signin.retry")}
@@ -243,6 +243,13 @@ function GateUnreachable({
       {live}
     </div>
   );
+}
+
+/** The gate answers no `resendIn`: a fixed pause between codes. */
+const RESEND_S = 30;
+
+function clockText(s: number): string {
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
 type FieldError = { field: "email" | "terms" | "code" | "form"; text: string };
@@ -279,6 +286,14 @@ function FinishForm({
   const [code, setCode] = React.useState("");
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<FieldError | null>(null);
+  /** Seconds before "Send a new code" (the code stage), and the line that says one was sent. */
+  const [wait, setWait] = React.useState(RESEND_S);
+  const [resent, setResent] = React.useState<string | null>(null);
+  React.useEffect(() => {
+    if (wait <= 0) return;
+    const id = window.setTimeout(() => setWait((n) => n - 1), 1000);
+    return () => window.clearTimeout(id);
+  }, [wait]);
   const errorId = React.useId();
   const nameId = React.useId();
   const emailId = React.useId();
@@ -315,7 +330,7 @@ function FinishForm({
             ? t("signin.gate.title")
             : t("signin.gate.termsTitle");
   React.useEffect(() => {
-    onTitle?.(view === "join" ? t("signin.register.title") : title);
+    onTitle?.(view === "join" ? t("signin.gate.joinTitle") : title);
   }, [title, view, onTitle]);
 
   // The first arrival takes focus on the heading, like a step change.
@@ -383,10 +398,12 @@ function FinishForm({
     setCode("");
     setError(null);
     setEditing(true);
+    requestAnimationFrame(() => emailRef.current?.focus());
   };
 
   const pending = gate.email.pending ?? gate.join?.email ?? null;
-  const primaryClass = "h-12 w-full text-base font-semibold";
+  const primaryClass =
+    "h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-semibold";
 
   // The join offer replaces the step (§3.5).
   if (view === "join") {
@@ -486,7 +503,11 @@ function FinishForm({
               <p id={errorId} role="alert" className="text-sm text-danger">
                 {error.text}
               </p>
-            ) : null}
+            ) : (
+              <p role="status" className="text-sm text-fg-muted">
+                {resent}
+              </p>
+            )}
           </div>
           <Button
             type="submit"
@@ -500,20 +521,28 @@ function FinishForm({
           </Button>
         </form>
         <div className="flex flex-wrap items-center justify-center gap-x-5">
-          <QuietLink
-            onClick={() =>
-              void run(
-                async () =>
-                  void (await portalApi.gateChoose({
+          {wait > 0 ? (
+            <span className="inline-flex min-h-11 items-center text-fg-muted">
+              {t("signin.code.resendIn", { time: clockText(wait) })}
+            </span>
+          ) : (
+            <QuietLink
+              onClick={() =>
+                void run(async () => {
+                  await portalApi.gateChoose({
                     ...body(),
                     choice: "typed",
                     email: to,
-                  })),
-              )
-            }
-          >
-            {t("signin.code.resend")}
-          </QuietLink>
+                  });
+                  setCode("");
+                  setWait(RESEND_S);
+                  setResent(t("signin.code.resent", { email: to }));
+                })
+              }
+            >
+              {t("signin.code.resend")}
+            </QuietLink>
+          )}
           <QuietLink onClick={() => editEmail(to)}>
             {t("signin.code.differentEmail")}
           </QuietLink>
@@ -544,10 +573,10 @@ function FinishForm({
       {register ? null : (
         <div
           data-gate-strip
-          className="flex items-center gap-3 rounded-md border border-success-border bg-success-subtle px-3 py-2.5 text-sm text-fg"
+          className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-success-border bg-success-subtle px-3 py-2.5 text-sm text-fg"
         >
           <ProviderMark kind={gate.provider} />
-          <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
+          <span className="min-w-0 flex-1 [overflow-wrap:break-word]">
             {identity
               ? t("signin.gate.strip", { provider, identity })
               : t("signin.gate.stripNoIdentity", { provider })}
@@ -593,19 +622,19 @@ function FinishForm({
         }}
       >
         <div className="rounded-lg border border-border bg-surface-sunken p-3">
-          <div className="flex items-start gap-3">
+          <div className="flex flex-col items-start gap-3 min-[22rem]:flex-row">
             {gate.profile.picture && !initials ? (
               <img
                 src={gate.profile.picture}
                 alt=""
                 width={40}
                 height={40}
-                className="mt-6 size-10 shrink-0 rounded-full object-cover"
+                className="size-10 shrink-0 rounded-full object-cover min-[22rem]:mt-6"
               />
             ) : (
               <span
                 aria-hidden
-                className="mt-6 inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-border-strong bg-surface-raised text-sm font-medium text-fg-strong"
+                className="inline-flex size-10 shrink-0 min-[22rem]:mt-6 items-center justify-center rounded-full border border-border-strong bg-surface-raised text-sm font-medium text-fg-strong"
               >
                 {initialsText ?? <User className="size-5 text-fg-muted" />}
               </span>
@@ -699,7 +728,10 @@ function FinishForm({
                     name="pk-gate-email"
                     className="accent-action"
                     checked={way === "typed"}
-                    onChange={() => setWay("typed")}
+                    onChange={() => {
+                      setWay("typed");
+                      requestAnimationFrame(() => emailRef.current?.focus());
+                    }}
                   />
                   {t("signin.code.differentEmail")}
                 </label>
@@ -707,11 +739,9 @@ function FinishForm({
             ) : null}
             {way === "typed" ? (
               <div className="space-y-1.5">
-                {providerEmail ? null : (
-                  <label htmlFor={emailId} className="sr-only">
-                    {t("signin.email.label")}
-                  </label>
-                )}
+                <label htmlFor={emailId} className="sr-only">
+                  {t("signin.email.label")}
+                </label>
                 <Input
                   id={emailId}
                   ref={emailRef}
@@ -740,7 +770,7 @@ function FinishForm({
                     {t("signin.gate.steam")}
                   </p>
                 ) : null}
-                <div className="min-h-5">
+                <div className="mt-1.5 min-h-5">
                   {emailInvalid ? (
                     <p
                       id={errorId}
@@ -786,7 +816,7 @@ function FinishForm({
                 />
               }
             />
-            <div className="min-h-5">
+            <div className="mt-1.5 min-h-5">
               {error?.field === "terms" ? (
                 <p id={errorId} role="alert" className="text-sm text-danger">
                   {error.text}
@@ -804,13 +834,11 @@ function FinishForm({
             />
           </p>
         ) : null}
-        <div className="min-h-5">
-          {error?.field === "form" ? (
-            <p role="alert" className="text-sm text-danger">
-              {error.text}
-            </p>
-          ) : null}
-        </div>
+        {error?.field === "form" ? (
+          <p role="alert" className="text-sm text-danger">
+            {error.text}
+          </p>
+        ) : null}
         <Button
           type="submit"
           variant="neutral"

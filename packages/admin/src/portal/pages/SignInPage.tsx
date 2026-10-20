@@ -407,7 +407,7 @@ function Unreachable({
       <Button
         variant="neutral"
         size="lg"
-        className="h-12 w-full text-base font-semibold"
+        className="h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-semibold"
         iconStart={<RefreshCw aria-hidden />}
         onClick={onRetry}
       >
@@ -596,17 +596,19 @@ function MethodsStep({
               aria-describedby={error ? errorId : undefined}
               className="h-12 text-base"
             />
-            {error ? (
-              <p id={errorId} role="alert" className="text-sm text-danger">
-                {error}
-              </p>
-            ) : null}
+            <div className="mt-1.5 min-h-5">
+              {error ? (
+                <p id={errorId} role="alert" className="text-sm text-danger">
+                  {error}
+                </p>
+              ) : null}
+            </div>
           </div>
           <Button
             type="submit"
             variant="neutral"
             size="lg"
-            className="h-12 w-full text-base font-semibold"
+            className="h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-semibold"
             loading={sending}
             iconEnd={<ArrowRight aria-hidden />}
           >
@@ -635,7 +637,7 @@ function MethodsStep({
           asChild
           variant={magic || providers.length ? "secondary" : "neutral"}
           size="lg"
-          className="h-12 w-full"
+          className="h-auto min-h-12 w-full whitespace-normal py-2 text-center"
         >
           <a href={ssoHref} onClick={() => stashCarriedKey()}>
             <ShieldCheck aria-hidden />
@@ -657,8 +659,9 @@ function MethodsStep({
             type="button"
             variant="ghost"
             size="lg"
-            className="h-12 w-full text-base font-medium"
+            className="h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-medium"
             loading={passkeyBusy}
+            busyFocusable
             onClick={() => void withPasskey()}
             iconStart={<Fingerprint aria-hidden />}
           >
@@ -953,7 +956,7 @@ function CodeStep({
           type="submit"
           variant="neutral"
           size="lg"
-          className="h-12 w-full text-base font-semibold"
+          className="h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-semibold"
           disabled={code.length !== CODE_LENGTH}
           loading={verifying}
         >
@@ -1118,7 +1121,7 @@ function SsoStep({
           asChild
           variant="neutral"
           size="lg"
-          className="h-12 w-full text-base font-semibold"
+          className="h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-semibold"
         >
           <a
             href={connectionHref(connection.id, email)}
@@ -1133,7 +1136,7 @@ function SsoStep({
             ref={codeRef}
             variant="outline"
             size="lg"
-            className="h-12 w-full text-base font-semibold"
+            className="h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-semibold"
             loading={sending}
             disabledReason={
               wait > 0 ? t("signin.sso.wait", { time: clock }) : undefined
@@ -1178,7 +1181,7 @@ function RefusedStep({
       <Button
         variant="neutral"
         size="lg"
-        className="h-12 w-full text-base font-semibold"
+        className="h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-semibold"
         onClick={onChangeEmail}
       >
         {t("signin.code.differentEmail")}
@@ -1244,7 +1247,7 @@ function KeyStep({
           type="submit"
           variant="neutral"
           size="lg"
-          className="h-12 w-full text-base font-semibold"
+          className="h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-semibold"
           iconEnd={<ArrowRight aria-hidden />}
         >
           {t("signin.continue")}
