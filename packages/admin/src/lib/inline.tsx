@@ -8,7 +8,7 @@ import * as React from "react";
 export function inlineCode(line: string): React.ReactNode[] {
   return line.split("`").map((part, i) =>
     i % 2 === 1 ? (
-      <code key={i} className="font-mono text-[0.9em] text-fg-strong">
+      <code key={i} className="font-mono text-fg-strong">
         {part}
       </code>
     ) : (
