@@ -27,7 +27,7 @@ Exactly `plans/LK-00.md` §14.1, §14.2, §14.6. Anything else is another packag
 
 ## Acceptance criteria
 
-- [ ] `lint:docs`, `check:links` and the docs build pass; `pnpm gen --check` docs-csp and docs-reference clean
+- [x] `lint:docs`, `check:links` and the docs build pass; `pnpm gen --check` docs-csp and docs-reference clean
 - [ ] pkey-ux-reviewer passes the built docs chrome
 - [ ] The relevant `plans/LK-00.md` §13 commands pass; the green gate passes (AGENTS.md).
 
