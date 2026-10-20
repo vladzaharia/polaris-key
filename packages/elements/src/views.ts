@@ -4,6 +4,9 @@
 
 import { html, nothing, type TemplateResult } from "lit";
 import { ifDefined } from "lit/directives/if-defined.js";
+import { unsafeHTML } from "lit/directives/unsafe-html.js";
+import { markSvg, poweredBySvg } from "@polaris-key/brand/svg";
+import { POWERED_BY } from "@polaris-key/brand";
 import {
   countdown,
   type LicenseChoiceRow,
@@ -333,7 +336,8 @@ function statusLine(
 ): TemplateResult | typeof nothing {
   if (keys.length === 0) return nothing;
   const ticking: string[] = keys.filter((k) => k === "signin.handoff.expires");
-  const live = keys.filter((k) => !ticking.includes(k));
+  const attribution = keys.includes(POWERED_BY_KEY);
+  const live = keys.filter((k) => !ticking.includes(k) && k !== POWERED_BY_KEY);
   return html`${ticking.map(
     (k) =>
       html`<p class="status-line" data-part="countdown">
@@ -346,7 +350,45 @@ function statusLine(
             html`${i ? " · " : ""}<span data-key=${k}>${text(c, k)}</span>`,
         )}
       </p>`
-    : nothing}`;
+    : nothing}${attribution ? poweredBy(c) : nothing}`;
+}
+
+const POWERED_BY_KEY = "part.poweredBy";
+
+/**
+ * The optional attribution (UI-KITS §1.6): `<Locker micro mark, 16 px> Powered by Polaris Locker`
+ * in live text, or, for `poweredBy: "badge"`, the Locker `powered-by` badge where 320 px is free
+ * (a container query on the wrapper) and the line where it is not. The badge's art carries the
+ * phrase, so it is the one accessible name and the line is hidden from assistive technology there.
+ */
+function poweredBy(c: RenderCtx): TemplateResult {
+  const scheme = c.resolved.theme.scheme;
+  const badge = c.input.integrator?.poweredBy === "badge";
+  const line = html`<p
+    class="status-line powered-by-line"
+    data-part="powered-by"
+  >
+    ${unsafeHTML(
+      markSvg({
+        kind: "locker",
+        size: POWERED_BY.markSize,
+        theme: scheme,
+        title: "",
+      }),
+    )}<span data-key=${POWERED_BY_KEY}>${text(c, POWERED_BY_KEY)}</span>
+  </p>`;
+  if (!badge) return line;
+  return html`<div class="powered-by" data-variant="badge">
+    <div class="powered-by-badge" data-part="powered-by-badge">
+      ${unsafeHTML(
+        poweredBySvg({
+          theme: scheme,
+          title: plain(c, POWERED_BY_KEY),
+        }),
+      )}
+    </div>
+    ${line}
+  </div>`;
 }
 
 /** An embedded pane (DL2): start edge, at most 40rem, its own frame unless `bare`. */

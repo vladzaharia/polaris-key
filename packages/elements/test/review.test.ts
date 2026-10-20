@@ -516,6 +516,36 @@ describe("the panes have real controls", () => {
     expect(root.querySelector('[role="radiogroup"]')).not.toBeNull();
     expect(root.textContent).toContain("Version 2.4.1");
   });
+
+  it.each(["line", "badge"] as const)(
+    "AccountAndLicense poweredBy %s: the Locker micro mark and the phrase in live text (LK-16)",
+    async (poweredBy) => {
+      const el = await draw(
+        "pk-account-and-license",
+        base({
+          account: { signedIn: true, holder: "Mara", tier: "Pro" },
+          integrator: { poweredBy },
+        }),
+      );
+      const root = el.shadowRoot!;
+      const line = root.querySelector('[data-part="powered-by"]')!;
+      expect(line.textContent!.trim()).toBe("Powered by Polaris Locker");
+      const mark = line.querySelector("svg")!;
+      expect(mark.getAttribute("width")).toBe("16");
+      expect(mark.getAttribute("viewBox")).toBe("0 0 16 16");
+      expect(mark.getAttribute("aria-hidden")).toBe("true");
+      const badge = root.querySelector('[data-part="powered-by-badge"] svg');
+      if (poweredBy === "line") expect(badge).toBeNull();
+      else {
+        expect(badge!.getAttribute("viewBox")).toBe("0 0 320 104");
+        expect(badge!.getAttribute("width")).toBe("320");
+        expect(badge!.getAttribute("aria-label")).toBe(
+          "Powered by Polaris Locker",
+        );
+      }
+      expect(root.innerHTML).not.toContain("Polaris Key");
+    },
+  );
 });
 
 describe("the update prompt", () => {

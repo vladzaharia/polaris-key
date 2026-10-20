@@ -483,6 +483,38 @@ p {
 .status-line {
   color: var(--pk-text-muted);
 }
+/* UI-KITS §1.6: the Locker micro mark (16 px) and the phrase, in live text; or the 320 x 104
+   badge where 320 px is free (the wrapper is the container), else the line. */
+.powered-by-line {
+  display: flex;
+  align-items: center;
+  gap: var(--pk-space-2);
+  margin: 0;
+}
+.powered-by-line svg {
+  flex: none;
+  inline-size: 16px;
+  block-size: 16px;
+}
+.powered-by {
+  container-type: inline-size;
+}
+.powered-by-badge {
+  display: none;
+}
+.powered-by-badge svg {
+  display: block;
+  max-inline-size: 100%;
+  block-size: auto;
+}
+@container (min-width: 320px) {
+  .powered-by-badge {
+    display: block;
+  }
+  .powered-by[data-variant="badge"] .powered-by-line {
+    display: none;
+  }
+}
 .label {
   color: var(--pk-text-default);
   font-size: var(--pk-kit-type-label-size);
