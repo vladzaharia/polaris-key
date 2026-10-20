@@ -45,7 +45,7 @@ class ProductIdentity:
     accent_dark: Optional[str] = None
     #: The icon's pixels as flat RGBA bytes, for the derived accent (§3.3). Terminals draw no icon.
     icon_rgba: Optional[Sequence[int]] = None
-    #: The device-code page the product advertises (``driftkart.gg/tv``); else ``key.plrs.im/device``.
+    #: The device-code page the product advertises (``driftkart.gg/tv``); else ``polaris.locker/device``.
     device_code_url: Optional[str] = None
 
 

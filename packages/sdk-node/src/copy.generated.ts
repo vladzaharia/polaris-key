@@ -242,7 +242,7 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
   email_in_use: {
     title: "Email already in use",
     message:
-      "Another Polaris Key account already uses this email. Join this sign-in to that account, or use a different email.",
+      "Another Polaris Locker account already uses this email. Join this sign-in to that account, or use a different email.",
   },
   terms_required: {
     title: "Terms not accepted",
@@ -251,17 +251,17 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
   license_owned: {
     title: "License in another account",
     message:
-      "This {product} license is already in another Polaris Key account. A license never moves by its key.",
+      "This {product} license is already in another Polaris Locker account. A license never moves by its key.",
   },
   license_email_bound: {
     title: "Email not verified",
     message:
-      "This license belongs to an email address your Polaris Key account hasn't verified. Verify that email in your account, then try again.",
+      "This license belongs to an email address your Polaris Locker account hasn't verified. Verify that email in your account, then try again.",
   },
   account_required: {
     title: "Sign-in needed",
     message:
-      "Sign in to your Polaris Key account on this device, then try again.",
+      "Sign in to your Polaris Locker account on this device, then try again.",
   },
   email_mismatch: {
     title: "Email not verified",
@@ -271,7 +271,7 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
   link_conflict: {
     title: "Already linked",
     message:
-      "That sign-in method belongs to another Polaris Key account. Sign in to that account, or join the two accounts.",
+      "That sign-in method belongs to another Polaris Locker account. Sign in to that account, or join the two accounts.",
   },
   last_link: {
     title: "Can't remove",
@@ -378,7 +378,7 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
   },
   network: {
     title: "Can't connect",
-    message: "Can't reach Polaris Key. Check your connection and try again.",
+    message: "Can't reach Polaris Locker. Check your connection and try again.",
   },
   "refresh-failed": {
     title: "Couldn't refresh",
@@ -455,7 +455,7 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
   },
   "network-error": {
     title: "Can't connect",
-    message: "Can't reach Polaris Key. Check your connection and try again.",
+    message: "Can't reach Polaris Locker. Check your connection and try again.",
   },
   "server-error": {
     title: "Service problem",
@@ -789,7 +789,8 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
   },
   sign_in_required: {
     title: "Sign-in needed",
-    message: "Sign in to your Polaris Key account in the app, then try again.",
+    message:
+      "Sign in to your Polaris Locker account in the app, then try again.",
   },
 };
 

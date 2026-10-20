@@ -14852,7 +14852,7 @@ var DISPLAY_TEXT_STRIP = [
   [65279, 65279]
 ];
 
-// ../shared-protocol/dist/chunk-CO4Y3AWN.js
+// ../shared-protocol/dist/chunk-ACSXFTO6.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 var PROTOCOL_VERSION = 4;
 var MAX_JSON_DEPTH = 64;
@@ -14875,6 +14875,9 @@ var MAX_DELEGATION_TTL_SECONDS = 31622400;
 var MAX_DELEGATION_TYPES = 8;
 var DATA_ONLY_HEAD_BYTES = 64;
 var DATA_ONLY_TAIL_BYTES = 65557;
+var CUSTOMER_ORIGIN_DEFAULT = "https://polaris.locker";
+var DEVICE_CODE_PAGE = `${CUSTOMER_ORIGIN_DEFAULT}/device`;
+var TV_CODE_PAGE = `${CUSTOMER_ORIGIN_DEFAULT}/tv`;
 var FINGERPRINT_TOLERANCE = {
   off: Number.POSITIVE_INFINITY,
   lenient: 4,

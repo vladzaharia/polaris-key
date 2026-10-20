@@ -219,7 +219,7 @@ class SignInView:
     component: str
     state: str
     user_code: Optional[str] = None
-    #: The page to type the code into (``key.plrs.im/device``, or the product's own).
+    #: The page to type the code into (``polaris.locker/device``, or the product's own).
     url: Optional[str] = None
     #: The same page with the code filled in: the browser opens it.
     url_complete: Optional[str] = None

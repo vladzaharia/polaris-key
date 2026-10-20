@@ -38,7 +38,7 @@
       "reason": "Store prices, percentages, counts, versions and the status-bar time: formatted values."
     },
     {
-      "pattern": "key\\.plrs\\.im/activate|tidewater\\.app/(link|releases/2\\.5)|driftkart\\.gg/tv",
+      "pattern": "polaris\\.locker/(activate|device|tv)|key\\.plrs\\.im/activate|tidewater\\.app/(link|releases/2\\.5)|driftkart\\.gg/tv",
       "reason": "Device-code and release-notes URLs (theme value product.deviceCodeUrl, release data)."
     },
     {
