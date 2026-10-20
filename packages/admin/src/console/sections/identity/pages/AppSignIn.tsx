@@ -74,7 +74,7 @@ export function AppSignInPage({ slug }: { slug: string }): React.ReactElement {
   });
   const portal = useQuery({
     queryKey: qk.portal(slug),
-    queryFn: () => api.portalSettings(slug).then((res) => res.settings),
+    queryFn: () => api.portalSettings(slug).then((r) => r.settings),
   });
   const mint = useQuery({
     queryKey: qk.mint(slug),

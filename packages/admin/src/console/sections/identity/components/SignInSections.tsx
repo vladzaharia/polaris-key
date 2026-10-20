@@ -35,6 +35,7 @@ import {
   type OffConfirmation,
 } from "../../core/components/serviceFeatures.js";
 import { releaseSourceOf } from "../../../../lib/products.js";
+import { fetchPlatformConnections } from "../../platform/pages/platformConnections.js";
 import { parseGroupMap } from "../model/groups.js";
 
 const linkClass = "text-accent-fg underline underline-offset-2";
@@ -130,7 +131,7 @@ export function MethodsSection({ slug }: { slug: string }): React.ReactElement {
   });
   const q = useQuery<PlatformConnectionsPage>({
     queryKey: qk.platformConnections(),
-    queryFn: () => api.platformConnections(),
+    queryFn: fetchPlatformConnections,
     retry: false,
   });
   const page = q.data;
@@ -364,9 +365,10 @@ export function TermsSection({
   slug: string;
   name: string;
 }): React.ReactElement {
+  const area = "identity.signIn";
   const q = useQuery({
-    queryKey: qk.productSettings(slug, "identity.signIn"),
-    queryFn: () => api.productSettings(slug, "identity.signIn"),
+    queryKey: qk.productSettings(slug, area),
+    queryFn: () => api.productSettings(slug, area),
   });
   const value = q.data?.settings.find((s) => s.key === "identity.terms")
     ?.value as { version?: string; url?: string } | null | undefined;
