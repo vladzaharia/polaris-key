@@ -14,14 +14,51 @@
 //   - `?error=identity_disabled`: the portal has no "sign-in is off for this product" screen, so
 //     it lands on the portal root with the product context, like a plain sign-in.
 //   - `?request=<handle>`: PX-14's address, which needs the card; a 404 until then.
+//   - `?request=<handle>&bind=<token>` on the customer host: the bind hop (LK-04,
+//     `signInBind.ts`). The token is redeemed once, the browser gets its `__Host-pk_req` binder,
+//     and the 303 goes to `/signin?request=<handle from the store>`: nothing in the query reaches
+//     the `Location`. Any failure is the same plain not-found as an unknown handle.
 //
 // A 302 with no-store: nothing here is a credential, but the query can carry a return target.
 
 import { CARD_RETURN_TO, safeReturnTo } from "../platform/returnTo.js";
+import type { Env } from "../platform/env.js";
 import { notFound, methodNotAllowed } from "./errors.js";
+import { REQUEST_HANDLE_TTL_SECONDS } from "@polaris-key/protocol/identity";
+import { binderCookie, consumeBindToken } from "./signInBind.js";
 
 const SLUG = /^[a-z0-9][a-z0-9-]{0,63}$/;
 const PORTAL_PATHS = new Set(["/", "/activate"]);
+
+/** Is this the bind hop's address (`?request=&bind=`, GET only: HEAD must not spend the token)? */
+export function isBindHop(req: Request): boolean {
+  if (req.method !== "GET") return false;
+  const q = new URL(req.url).searchParams;
+  return q.has("request") && q.has("bind");
+}
+
+/** The hop itself; the caller only offers it on the customer host. */
+export async function handleSignInBind(
+  req: Request,
+  env: Env,
+): Promise<Response> {
+  const q = new URL(req.url).searchParams;
+  const handle = q.get("request") ?? "";
+  const bind = q.get("bind");
+  const bound = bind ? await consumeBindToken(env, bind) : null;
+  // The token names its own handle: a token for another request is as good as none.
+  if (!bound || bound.kind !== "request" || bound.handle !== handle)
+    return notFound();
+  return new Response(null, {
+    status: 303,
+    headers: {
+      location: `/signin?request=${bound.handle}`,
+      "set-cookie": binderCookie(bound.binder, REQUEST_HANDLE_TTL_SECONDS),
+      "cache-control": "no-store",
+      "referrer-policy": "no-referrer",
+    },
+  });
+}
 
 export function handleSignInEntry(req: Request): Response {
   if (req.method !== "GET" && req.method !== "HEAD") return methodNotAllowed();

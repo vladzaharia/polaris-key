@@ -55,7 +55,7 @@ const OTHER_DEVICE = "TRANSCRIPTKEYENTRY00000000000002";
 
 const FEATURES = ["license.activate", "identity.keyentry"];
 
-async function setLimit(w: World, limit: number): Promise<void> {
+export async function setLimit(w: World, limit: number): Promise<void> {
   await w.db.run(
     `INSERT INTO product_settings (product, key, value_json, source, updated_at, updated_by)
      VALUES (?, 'identity.keyEntry.limit', ?, 'console', ?, 'transcript')
@@ -66,7 +66,7 @@ async function setLimit(w: World, limit: number): Promise<void> {
   );
 }
 
-async function refusalsOn(w: World): Promise<void> {
+export async function refusalsOn(w: World): Promise<void> {
   await w.db.run(
     `INSERT INTO platform_settings (key, value_json, version, updated_at, updated_by)
      VALUES ('KEYENTRY_REFUSALS', '"on"', 1, ?, 'transcript')`,
@@ -75,7 +75,7 @@ async function refusalsOn(w: World): Promise<void> {
 }
 
 /** Setup: another device enters the same key (one counted entry on an Identity product). */
-async function otherDeviceEnters(w: World, key: string): Promise<void> {
+export async function otherDeviceEnters(w: World, key: string): Promise<void> {
   const res = await setup(w, "POST", `/${PRODUCT}/license/activate`, {
     authorization: `Bearer ${key}`,
     "x-pkey-device": OTHER_DEVICE,
