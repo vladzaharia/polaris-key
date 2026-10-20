@@ -817,12 +817,20 @@ describe("Activate license modal (PX-06)", () => {
     ).toBe(KEY);
   });
 
-  it("opens from the phone bar's Activate pill", async () => {
+  it("has no Activate pill on the phone bar, and opens from the account menu (PX-35)", async () => {
     mockFetch(routes());
     renderPortal();
     const bar = await screen.findByRole("navigation", { name: "Phone" });
+    expect(within(bar).queryByRole("button")).toBeNull();
+    const banner = screen.getByRole("banner");
+    expect(
+      within(banner).queryByRole("button", { name: /Activate/ }),
+    ).toBeNull();
     await userEvent.click(
-      within(bar).getByRole("button", { name: "Activate" }),
+      within(banner).getByRole("button", { name: /^Account:/ }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Activate a license" }),
     );
     expect(
       await screen.findByRole("dialog", { name: "Activate a license" }),

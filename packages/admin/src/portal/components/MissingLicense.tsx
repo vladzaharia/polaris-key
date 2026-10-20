@@ -23,9 +23,9 @@ export function MissingLicense(): React.ReactElement {
   return (
     <section
       aria-label="Missing a license?"
-      className="sticky bottom-[calc(3.25rem+1px+env(safe-area-inset-bottom))] z-20 border-t border-border bg-surface-raised desk:bottom-0 short:static"
+      className="sticky bottom-[calc(3.25rem+1px+env(safe-area-inset-bottom))] z-20 border-t border-border bg-surface-raised desk:bottom-0 short:static short:max-desk:mb-[calc(3.25rem+1px+env(safe-area-inset-bottom))]"
     >
-      <div className="mx-auto flex w-full max-w-[82rem] px-4 desk:px-8 flex-col xxl:max-w-[104rem] desk:flex-row desk:flex-wrap desk:items-center desk:gap-x-6">
+      <div className="mx-auto flex w-full max-w-[82rem] px-4 desk:px-8 flex-col desk:flex-row desk:flex-wrap desk:items-center desk:gap-x-6">
         <p
           aria-hidden
           className="hidden shrink-0 text-sm font-medium text-fg-strong desk:block"

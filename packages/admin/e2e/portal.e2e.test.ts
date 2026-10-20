@@ -148,7 +148,7 @@ describe("product header: the icon in front of the cover (§4.20)", () => {
   });
 });
 
-describe("library cards: 16:9 art, the status inset on its plate, no byline", () => {
+describe("library cards: 5:2 art, the status inset on its plate, no byline", () => {
   for (const [scenario, path] of [
     ["three", "/"],
     ["twelve", "/#/?view=grid"],
@@ -204,7 +204,7 @@ describe("library cards: 16:9 art, the status inset on its plate, no byline", ()
                 (art.querySelector("span.absolute")?.childElementCount ?? 0) >
                 0,
               insetRight: e.right - p.right,
-              insetBottom: e.bottom - p.bottom,
+              insetBottom: p.top - e.top,
               plateHeight: pill.height,
               byline: article.textContent!.includes("Lanternworks"),
               iconFrame: [
@@ -217,13 +217,14 @@ describe("library cards: 16:9 art, the status inset on its plate, no byline", ()
               squareRadius: parseFloat(q.borderTopLeftRadius),
             };
           });
+          // The denser tile's 5:2 art (PX-35); the status plate sits in its top-right corner.
           expect(card.ratio, `${scenario} ${theme} ${width}`).toBeCloseTo(
-            16 / 9,
+            5 / 2,
             1,
           );
-          expect(card.insetRight).toBeGreaterThanOrEqual(16);
+          expect(card.insetRight).toBeGreaterThanOrEqual(8);
           expect(card.healthyPlate).toBe(false);
-          expect(card.insetBottom).toBeGreaterThanOrEqual(16);
+          expect(card.insetBottom).toBeGreaterThanOrEqual(8);
           expect(card.insetRight).toBe(card.insetBottom);
           expect(card.plateHeight).toBeGreaterThanOrEqual(32);
           expect(card.byline).toBe(false);
@@ -485,11 +486,13 @@ describe("portal flow conformance (UX-79)", () => {
         });
         await h1(o.page, "Your library");
         await shoot(o.page, `library-no-discover-${width}-${theme}`);
+        // Activate is the account menu's first item at every width (PX-35).
         await o.page
-          .getByRole(width === 390 ? "navigation" : "banner", {
-            name: width === 390 ? "Phone" : undefined,
-          })
-          .getByRole("button", { name: /^Activate/ })
+          .getByRole("banner")
+          .getByRole("button", { name: /^Account:/ })
+          .click();
+        await o.page
+          .getByRole("menuitem", { name: "Activate a license" })
           .click();
         const dialog = o.page.getByRole("dialog", {
           name: "Activate a license",
@@ -866,14 +869,15 @@ describe("Account → Sign-in methods: Make primary and Rename (PX-W19)", () => 
 });
 
 describe("main flows", () => {
-  it("activates a license from the header and lands on the product page", async () => {
+  it("activates a license from the account menu and lands on the product page", async () => {
     const o = await open("three", "/");
     await h1(o.page, "Your library");
-    // The header's action, not the Library's key tile (PX-27) that loads a moment later.
+    // The account menu's item (PX-35), not the Library's key tile that loads a moment later.
     await o.page
       .getByRole("banner")
-      .getByRole("button", { name: "Activate license" })
+      .getByRole("button", { name: /^Account:/ })
       .click();
+    await o.page.getByRole("menuitem", { name: "Activate a license" }).click();
     const dialog = o.page.getByRole("dialog", { name: "Activate a license" });
     await dialog.waitFor();
     await dialog
@@ -1083,8 +1087,9 @@ describe("main flows", () => {
     await h1(o.page, "Your library");
     await o.page
       .getByRole("banner")
-      .getByRole("button", { name: "Activate license" })
+      .getByRole("button", { name: /^Account:/ })
       .click();
+    await o.page.getByRole("menuitem", { name: "Activate a license" }).click();
     const dialog = o.page.getByRole("dialog", { name: "Activate a license" });
     await dialog
       .getByRole("textbox", { name: "License key" })

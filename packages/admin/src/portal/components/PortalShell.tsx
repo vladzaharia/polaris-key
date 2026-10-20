@@ -55,9 +55,6 @@ export function PortalShell({
   // A storefront product page (PS-05) lives inside Discover: its tab stays current there.
   const onDiscover = route.kind === "discover" || route.kind === "storefront";
   const showDiscover = discoverCount !== null;
-  // The tile pages take a wider frame from 1700 px: a fifth column (PX-35).
-  const grid = route.kind === "library" || route.kind === "discover";
-  const frame = grid ? "xxl:max-w-[104rem]" : "";
   const mainRef = React.useRef<HTMLElement>(null);
   usePhoneBarToastInset();
 
@@ -78,12 +75,7 @@ export function PortalShell({
       </a>
       {/* pk-vt-chrome: kept above a list transition's moving content (src/motion.css). */}
       <header className="pk-vt-chrome sticky top-0 z-30 border-b border-border bg-surface-page short:static">
-        <div
-          className={cn(
-            "mx-auto flex h-14 w-full max-w-[82rem] items-center gap-4 px-4 desk:h-16 desk:gap-6 desk:px-8 mid:gap-8",
-            frame,
-          )}
-        >
+        <div className="mx-auto flex h-14 w-full max-w-[82rem] items-center gap-4 px-4 desk:h-16 desk:gap-6 desk:px-8 mid:gap-8">
           <a
             href={href.library()}
             aria-label="Polaris Locker: your library"
@@ -162,7 +154,6 @@ export function PortalShell({
           route.kind === "library"
             ? "pb-[calc(3.25rem+1px+env(safe-area-inset-bottom))] desk:pb-0"
             : "pb-[calc(3.25rem+1px+env(safe-area-inset-bottom)+1.5rem)] desk:pb-12",
-          frame,
         )}
       >
         {children}

@@ -6,14 +6,14 @@ import { Button } from "../../ui/Button.js";
 import { useActivate } from "../activate.js";
 
 /**
- * How many columns the key tile takes: the whole row when the products fill their rows (it then
- * lays out as one line), else one cell, never part of a row.
+ * How many columns the key tile takes: the rest of the products' last row, so the row is always
+ * full (the whole row, as one line, when the products fill their rows).
  */
 export function keyTileSpan(
   count: number,
   columns: 2 | 3 | 4 | 5,
 ): 1 | 2 | 3 | 4 | 5 {
-  return (count % columns === 0 ? columns : 1) as 1 | 2 | 3 | 4 | 5;
+  return (columns - (count % columns)) as 1 | 2 | 3 | 4 | 5;
 }
 
 /** The grid's columns by breakpoint (`tileGrid.ts`): 2, then 3 (desk), 4 (wide), 5 (xxl). */
@@ -37,8 +37,8 @@ const SPAN = {
 
 /**
  * The Library's own entry for a key (2-7 products, B12): the grid's last tile, dashed and quiet
- * beside the products, with its one outlined action. One cell, or a whole row (one line) when the
- * products fill their rows.
+ * beside the products, with its one outlined action. It fills the rest of the last row: one cell,
+ * or the whole row (one line) when the products fill their rows.
  */
 export function LibraryKeyTile({
   count,

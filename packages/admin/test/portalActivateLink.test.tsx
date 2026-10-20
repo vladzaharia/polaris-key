@@ -135,10 +135,14 @@ function routes(
 }
 
 async function openFromHeader(): Promise<HTMLElement> {
+  // The account menu's first item (PX-35).
   await userEvent.click(
     await within(await screen.findByRole("banner")).findByRole("button", {
-      name: "Activate license",
+      name: /^Account:/,
     }),
+  );
+  await userEvent.click(
+    await screen.findByRole("menuitem", { name: "Activate a license" }),
   );
   return screen.findByRole("dialog", { name: "Activate a license" });
 }

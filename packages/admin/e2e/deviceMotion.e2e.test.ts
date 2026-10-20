@@ -540,8 +540,9 @@ describe("motion on: devices and activation under the Worker's CSP", () => {
     await log(page);
     await page
       .getByRole("banner")
-      .getByRole("button", { name: "Activate license" })
+      .getByRole("button", { name: /^Account:/ })
       .click();
+    await page.getByRole("menuitem", { name: "Activate a license" }).click();
     await activate(page, KEY, "Mossgarden", {
       claim,
       // While the claim is in flight the busy Add button's spinner turns.
@@ -611,8 +612,9 @@ describe("motion on: devices and activation under the Worker's CSP", () => {
     const { page } = s;
     await page
       .getByRole("banner")
-      .getByRole("button", { name: "Activate license" })
+      .getByRole("button", { name: /^Account:/ })
       .click();
+    await page.getByRole("menuitem", { name: "Activate a license" }).click();
     const dialog = page.getByRole("dialog", { name: "Activate a license" });
     await dialog.getByRole("textbox", { name: "License key" }).fill(KEY);
     await dialog.getByRole("button", { name: "Continue" }).click();
@@ -726,8 +728,9 @@ describe("reduced motion: every change in scope is an instant swap to the same e
         .waitFor();
       await page
         .getByRole("banner")
-        .getByRole("button", { name: "Activate license" })
+        .getByRole("button", { name: /^Account:/ })
         .click();
+      await page.getByRole("menuitem", { name: "Activate a license" }).click();
       await activate(page, KEY, "Mossgarden", {
         claim,
         // The busy Add button's spinner is a still ring (S-23 D3: loading indicators stand still).

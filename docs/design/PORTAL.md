@@ -34,11 +34,13 @@ Page navigation uses the shared motion layer when motion is allowed. A page rout
 
 ## 3. Signed-in shell
 
-`PortalShell` provides a skip link, one banner, named main navigation, a main region, and footer. The banner carries the Polaris Locker lockup, no Key mark; the footer reads "Polaris Locker · Help · Privacy", with no host (Terms joins when `identity.platformTerms.termsUrl` reaches the portal). The primary is neutral ink, the focus ring `--pk-text-strong`, and coral marks identity only: the lockup, a 3 px selected marker and a 2 px link underline (D9a). On desktop it shows Library, conditional Discover, the Activate license action, and the account menu. Discover appears only when `GET /api/library` returns `discoverCount`; this prevents a navigation link to an unavailable list.
+`PortalShell` provides a skip link, one banner, named main navigation and a main region. There is no footer (owner, 2026-10-20, PX-35). The banner carries the Polaris Locker lockup, no Key mark. The primary is neutral ink, the focus ring `--pk-text-strong`, and coral marks identity only: the lockup, a 3 px selected marker and a 2 px link underline (D9a). On desktop the header shows Library, conditional Discover, the ⌘K trigger and the account menu. Discover appears only when `GET /api/library` returns `discoverCount`; this prevents a navigation link to an unavailable list.
 
-On phones the fixed bar has Library, an outlined Activate license pill, and conditional Discover. The shell reserves room for that bar and positions phone toasts above it. The account menu contains the account destinations, appearance controls, Help, and sign-out.
+**Activate a license** is the account menu's first item (key glyph); it opens the same modal. The Library's key tile and the ⌘K palette's "Activate a license" stay, and a `?activate=` link still opens the modal. The empty Library has its own ink Activate as its one primary. The menu's last group is Help and Privacy, with the same destinations the old footer had (Terms joins when `identity.platformTerms.termsUrl` reaches the portal).
 
-The shell is responsive rather than a second mobile information architecture. At compact desktop widths the search trigger and account label give way before the navigation action; on a phone the same Activate dialog opens as a bottom sheet.
+On phones the fixed bar has Library and conditional Discover. The shell reserves room for that bar and positions phone toasts above it. The account menu contains Activate a license, the account destinations, appearance controls, Help, Privacy, and sign-out.
+
+The shell is responsive rather than a second mobile information architecture. At compact desktop widths the search trigger and account label give way before the navigation action; on a phone the same Activate dialog (from the account menu) opens as a bottom sheet.
 
 ## 4. Shipped customer surfaces
 
@@ -57,7 +59,9 @@ The card fetches capabilities before it chooses product context or providers. It
 
 The Library is the default page and presents one item per product, not one per license. It explicitly handles loading, read failure with Retry, an empty library, a one-product hero, two to seven large tiles, and the scaled library at eight or more products. The scaled view supplies search, filters, sort, a persisted grid/list preference, an attention shelf, and a jump palette: ⌘K / Ctrl K focuses the toolbar search on the Library ("/" is an alias) and opens the palette on every other page, where a phone also gets a header search icon. Products added recently sort first where the scaled view can sort them.
 
-Every library state retains the ways to add a key. An empty library offers "See N in Discover" only when the Worker has supplied a discover count; it lists no offers itself. Quick actions are calculated from the Worker product, download, license, and device facts; the portal does not infer a download it has not received.
+Every library state retains the ways to add a key. **Missing a license?** is a slim sticky footer at the end of the Library page (`position: sticky; bottom: 0`, so it settles at the page's end and never covers the last row of tiles): a raised strip with a top border, one line on desktop ("Sent to another email? Add it in Sign-in methods", "Bought on Steam? Connect Steam", "App Store or Google Play? Sign in in the app"), with 44 px links in neutral ink and the coral 2 px underline. On a phone it sits above the bar and collapses to a "Missing a license?" disclosure that opens upward. It is a labelled region.
+
+The tile grid is shared with Discover: 5:2 art, a 40 px icon, tight padding and gaps, one line of meta, line-clamped names; two columns on phones, three from 761 px, four from 1180 px, five from 1700 px inside the same 82 rem content column. The key tile is one cell, or the whole row when the products fill it. An empty library offers "See N in Discover" only when the Worker has supplied a discover count; it lists no offers itself. Quick actions are calculated from the Worker product, download, license, and device facts; the portal does not infer a download it has not received.
 
 ### 4.3 Discover and storefront products
 

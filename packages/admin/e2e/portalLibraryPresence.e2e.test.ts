@@ -108,7 +108,7 @@ async function geometry(page: Page) {
     const title = getComputedStyle(document.querySelector("h1")!);
     const key = document.querySelector("li[aria-labelledby='key-tile-h']");
     const strip = document.querySelector(
-      "section[aria-labelledby='missing-h']",
+      "section[aria-label='Missing a license?']",
     );
     return {
       fullRow: lastLeft - g.left < 2 && g.right - lastRight < 2,
@@ -144,7 +144,8 @@ async function wordmarkWidth(page: Page): Promise<number> {
 }
 
 describe.concurrent("discover grid presence", () => {
-  // From 1180 px, three columns: two or four tiles take two, so no row is mostly empty.
+  // The shared grid (PX-35): four columns from 1180 px, five from 1700 px. The three scenario
+  // offers four tiles: a full row at four columns, one empty cell at five.
   for (const width of [1280, 1440, 1920]) {
     it(`no row has an empty cell at ${width}`, async ({ expect }) => {
       const o = await portal.open("three", "/#/discover", {
@@ -167,7 +168,7 @@ describe.concurrent("discover grid presence", () => {
             cells.count % cells.cols,
             `${cells.count} tiles in ${cells.cols} columns`,
           )
-          .toBe(0);
+          .toBe(cells.cols === 5 ? 4 : 0);
       } finally {
         await o.close();
       }
