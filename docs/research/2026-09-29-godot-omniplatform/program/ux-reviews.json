@@ -274,6 +274,11 @@
       "verdict": "pass",
       "date": "2026-10-20",
       "evidence": "Lead-verified BUILT emails (26 messages × 600/390 × light/dark/no-style; _scratch/LK-07b/shots/; e.g. deletion-scheduled 600-light): Locker lockup, ink action, neutral callouts, no Polaris Key, axe contrast clean."
+    },
+    "I-29": {
+      "verdict": "pass",
+      "date": "2026-10-20",
+      "evidence": "UX review FAIL B1–B5 + majors + frontend mockup gaps fixed in one round (ba98b6c44; layout e2e incl. zoom rows); security PASS; prod has no toggled product."
     }
   }
 }
