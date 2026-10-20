@@ -41,14 +41,10 @@ async function bindRef(env: Env, token: string) {
 }
 
 /**
- * What a token carries. `request`: the card's binder, redeemed on the customer host. `device`:
- * the device-code flow's binder and the IdP address to continue to, redeemed on the API host (the
- * IdP calls back there, so the flow's cookie must live there; LK-04). `to` is a value this Worker
- * stored itself, never one a request supplied.
+ * What a token carries: the card's binder for one request handle, redeemed on the customer host.
+ * A device confirmation never uses it: that stays on the API host, in the confirming browser (R1-07).
  */
-export type BindPayload =
-  | { kind: "request"; handle: string; binder: string }
-  | { kind: "device"; binder: string; to: string };
+export type BindPayload = { kind: "request"; handle: string; binder: string };
 
 /** Store a bind token, to be redeemed once. */
 export async function issueBindToken(
@@ -83,8 +79,6 @@ export async function consumeBindToken(
       HANDLE_RE.test(v.handle)
     )
       return { kind: "request", handle: v.handle, binder: v.binder };
-    if (v.kind === "device" && typeof v.to === "string")
-      return { kind: "device", binder: v.binder, to: v.to };
   } catch {
     /* fall through */
   }

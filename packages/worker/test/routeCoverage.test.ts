@@ -99,8 +99,8 @@ const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
   // The platform device-code entry pages: a code typed here finds its product's page.
   signInEntry: [["/signin", ["get"]]],
   deviceEntry: [
-    ["/device", ["get", "post"]],
-    ["/tv", ["get", "post"]],
+    ["/device", ["get"]],
+    ["/tv", ["get"]],
   ],
   portalMedia: [
     ["/media/{product}/{asset}", ["get"]],
@@ -746,7 +746,6 @@ const CORS_EXCLUDED = new Set([
   "/{product}/identity/auth/logout",
   "/{product}/identity/auth/device",
   "/{product}/identity/auth/device/verify",
-  "/{product}/identity/auth/device/continue",
   "/{product}/identity/auth/choose",
   // I-08: `authorize` is a browser navigation to the card; only `token` is a page's `fetch`.
   "/{product}/identity/authorize",

@@ -7418,9 +7418,7 @@ paths:
         script-free, under the
         static-HTML CSP, `cache-control: no-store` and `referrer-policy: no-referrer`; the
         confirmation page's `form-action` additionally allows the IdP origin its POST
-        redirects to. Nothing about the flow is confirmed by this GET. With a customer origin set, a `GET`
-        on the API host answers `303` to `<customer>/device[?user_code=]` (a code that does not
-        normalise is not carried), and the customer host serves the page itself.
+        redirects to. Nothing about the flow is confirmed by this GET.
       parameters:
         - name: user_code
           in: query
@@ -7557,34 +7555,6 @@ paths:
               examples:
                 limited:
                   { value: { error: rate_limited, message: too many requests } }
-  /{product}/identity/auth/device/continue:
-    parameters:
-      - { $ref: "#/components/parameters/Product" }
-    get:
-      operationId: deviceAuthContinue
-      tags: [identity]
-      summary: The API host's half of a device confirmation made on the customer host
-      description: >
-        With a customer origin set, the confirmation POST is made on the customer host, but the IdP
-        calls back on the API host, whose callback needs the flow's binder cookie. The customer
-        host therefore answers the confirmation with `303` to this route and a single-use `bind`
-        token (120 s). The token is redeemed once; the response sets the flow's `__Host-pk_lcb`
-        binder on this host and answers `303` to the IdP address stored with the token. Nothing in
-        the query chooses the target. An unknown, used, expired, malformed or wrong-kind token is
-        the plain `404`. `cache-control: no-store`, `referrer-policy: no-referrer`.
-      parameters:
-        - name: bind
-          in: query
-          required: true
-          schema: { type: string }
-      responses:
-        "303":
-          description: Continue to the IdP. `Set-Cookie` carries the flow's binder.
-          headers:
-            Location: { schema: { type: string } }
-            Set-Cookie: { schema: { type: string } }
-        "404": { $ref: "#/components/responses/NotFound" }
-        "405": { $ref: "#/components/responses/MethodNotAllowed" }
   /{product}/identity/auth/device/verify:
     parameters:
       - { $ref: "#/components/parameters/Product" }
@@ -13279,12 +13249,8 @@ paths:
         with query and fragment); a scheme, `//`, backslash, control character, traversal or
         console path, plain or percent-encoded, is dropped and the portal root is used. With
         `error=identity_disabled` it lands on the portal root with the product context. With
-        `request` it is `404` (the card's address, not built yet), except on the customer host
-        with `bind` too: the bind hop (WIRE-CONTRACT-V4 §12.4 rule 3). The token is redeemed once
-        (120 s), the response sets the host's `__Host-pk_req` binder and answers `303` to
-        `/signin?request=<handle>`, a path built from the stored handle, never from the query.
-        Any failure (unknown, used, expired, malformed token, or a token for another handle) is the
-        same `404`; `HEAD` does not redeem. `cache-control: no-store`, `referrer-policy: no-referrer`.
+        `request` it is `404` (the card's address, not built yet). `cache-control: no-store`,
+        `referrer-policy: no-referrer`.
       parameters:
         - {
             name: product,
@@ -13310,15 +13276,8 @@ paths:
           description: The portal. `Location` is relative to this host.
           headers:
             Location: { schema: { type: string } }
-        "303":
-          description: >
-            The bind hop (customer host, `request` and `bind`). `Location` is
-            `/signin?request=<handle>`; `Set-Cookie: __Host-pk_req=…`.
-          headers:
-            Location: { schema: { type: string } }
-            Set-Cookie: { schema: { type: string } }
         "404":
-          description: A `request` handle was given without a redeemable `bind` token.
+          description: A `request` handle was given.
   /device:
     get:
       operationId: getPlatformDeviceEntry
@@ -13328,11 +13287,10 @@ paths:
         The platform-level page an app sends people to when it cannot build its product's own
         device page (a UI kit's fallback link). With no `user_code`: a script-free code-entry form
         that `GET`s back here. With one: the code is normalised (upper-cased, spaces and hyphens
-        dropped), looked up across all products. On the API host a hit answers `302` to
-        `/{product}/identity/auth/device?user_code=` on the same host, whatever the product's
-        state; that page owns every later state. On the customer host the product's own device
-        handler runs on that host instead (no redirect): the confirmation page, its CSRF token and
-        the sign-in binder stay there, and its forms `POST` back to `/device`. A miss, an expired code and a malformed code all
+        dropped), looked up across all products, and a hit answers `302` to
+        `/{product}/identity/auth/device?user_code=` on the same host (on the customer host, on
+        the API host: an absolute `Location` from configuration), whatever the product's
+        state; that page owns every later state. A miss, an expired code and a malformed code all
         render the form again with one line and name no product. Lookups are limited per client
         network (30 per minute). `cache-control: no-store`, `referrer-policy: no-referrer`.
         `/tv` is the same page with larger type for a TV browser.
@@ -13362,42 +13320,6 @@ paths:
           content:
             text/html:
               schema: { type: string }
-    post:
-      operationId: postPlatformDeviceEntry
-      tags: [portal]
-      summary: Device-code entry and confirmation form (customer host only)
-      description: >
-        The forms the customer host's device page posts (`application/x-www-form-urlencoded`,
-        `user_code`, and `csrf` on the confirmation). The code is looked up across products and the
-        product's own handler runs: an entry form re-renders as the confirmation page; a
-        confirmation checks Origin and the single-use CSRF token and answers `303` to the product's
-        IdP. A confirmation for a code that no longer resolves is `403`. `405` on the API host.
-      requestBody:
-        content:
-          application/x-www-form-urlencoded:
-            schema:
-              type: object
-              properties:
-                user_code: { type: string, maxLength: 64 }
-                csrf: { type: string }
-      responses:
-        "200":
-          description: The confirmation page. `text/html; charset=utf-8`.
-          content:
-            text/html:
-              schema: { type: string }
-        "303":
-          description: Confirmed. `Location` is the product's IdP authorization URL.
-          headers:
-            Location: { schema: { type: string } }
-        "403":
-          description: Origin or CSRF check failed, or the code is gone.
-        "404":
-          description: The code matched no live flow. The form again.
-          content:
-            text/html:
-              schema: { type: string }
-        "405": { $ref: "#/components/responses/MethodNotAllowed" }
   /tv:
     get:
       operationId: getPlatformDeviceEntryTv
@@ -13430,37 +13352,6 @@ paths:
           content:
             text/html:
               schema: { type: string }
-    post:
-      operationId: postPlatformDeviceEntryTv
-      tags: [portal]
-      summary: Device-code entry and confirmation form, TV variant (customer host only)
-      description: The same as `POST /device`.
-      requestBody:
-        content:
-          application/x-www-form-urlencoded:
-            schema:
-              type: object
-              properties:
-                user_code: { type: string, maxLength: 64 }
-                csrf: { type: string }
-      responses:
-        "200":
-          description: The confirmation page.
-          content:
-            text/html:
-              schema: { type: string }
-        "303":
-          description: Confirmed.
-          headers:
-            Location: { schema: { type: string } }
-        "403":
-          description: Origin or CSRF check failed, or the code is gone.
-        "404":
-          description: The code matched no live flow.
-          content:
-            text/html:
-              schema: { type: string }
-        "405": { $ref: "#/components/responses/MethodNotAllowed" }
   /media/{product}/{asset}:
     get:
       operationId: getPortalMedia

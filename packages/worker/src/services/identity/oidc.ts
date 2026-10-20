@@ -60,7 +60,6 @@ export {
 } from "./productOidc/userCode.js";
 export { handleAuthStart } from "./productOidc/browserFlow.js";
 export {
-  handleAuthDeviceContinue,
   handleAuthDeviceEntry,
   handleAuthDeviceStart,
   handleAuthDeviceVerify,

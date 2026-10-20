@@ -15,9 +15,6 @@
  *     /identity/auth/device/verify          GET   render the confirmation page (by device code;
  *                                                 kept for flows started before `/device`)
  *                                           POST  confirm it
- *     /identity/auth/device/continue        GET   LK-04, the API host's half of a confirmation made on
- *                                                 the customer host: redeem the bind token, set the
- *                                                 flow's binder, 303 to the IdP
  *     /identity/auth/device/poll            POST  poll a confirmed device flow
  *     /identity/auth/choose                 GET   the legacy sign-in's licence chooser (I-26)
  *                                           POST  record a step of it, or the choice
@@ -57,7 +54,6 @@ import {
 import {
   handleAuthCallback,
   handleAuthChoose,
-  handleAuthDeviceContinue,
   handleAuthDeviceEntry,
   handleAuthDevicePoll,
   handleAuthDeviceStart,
@@ -199,8 +195,8 @@ export const IDENTITY_ROUTES = serviceRoutes("identity", [
     path: "auth/device",
     methods: ["GET", "POST"],
     auth: { kind: "code" },
-    handler: ({ req, env, db, product }) =>
-      handleAuthDeviceEntry(req, env, product, db),
+    handler: ({ req, env, product }) =>
+      handleAuthDeviceEntry(req, env, product),
   },
   {
     path: "auth/choose",
@@ -215,12 +211,6 @@ export const IDENTITY_ROUTES = serviceRoutes("identity", [
     auth: { kind: "none" },
     handler: ({ req, env, db, product }) =>
       handleAuthDeviceStart(req, env, db, product),
-  },
-  {
-    path: "auth/device/continue",
-    methods: ["GET"],
-    auth: { kind: "code" },
-    handler: ({ req, env }) => handleAuthDeviceContinue(req, env),
   },
   {
     path: "auth/device/verify",
