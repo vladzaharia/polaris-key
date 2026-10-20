@@ -21132,6 +21132,9 @@ components:
             description: "The platform's own product (F-03), kept out of the registry views.",
           }
         releaseSource: { type: string, enum: [github, manual] }
+        verified:
+          type: boolean
+          description: List only. An SDK has been seen calling one of the product's services.
         services:
           type: object
           description: Enablement per service slug.

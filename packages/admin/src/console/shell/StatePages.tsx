@@ -220,7 +220,7 @@ export function UnknownProductPage({
         }
         secondaryAction={
           <Button asChild variant={close[0] ? "outline" : "primary"}>
-            <Link to={r.products()}>All products</Link>
+            <Link to={r.home()}>All products</Link>
           </Button>
         }
       />

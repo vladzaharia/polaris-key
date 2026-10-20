@@ -278,6 +278,8 @@ export function parseLocation(hash: string): ParsedLocation {
   if (globalPath === PLATFORM_GROUP.key) {
     return redirectTo(globalHref(platformItems()[0]!.page, suffix));
   }
+  // ST-44: the Products page retired into Home; its address, with any filters, lands there.
+  if (globalPath === "products") return redirectTo(globalHref("home", suffix));
   const global = GLOBAL_PAGES.find((p) => p.path === globalPath);
   if (global) {
     return {
@@ -440,7 +442,6 @@ export function productPage(
  */
 export const r = {
   home: (query?: QueryInit) => globalPage("home", query),
-  products: (query?: QueryInit) => globalPage("products", query),
   productNew: (query?: QueryInit) => globalPage("product-new", query),
   apiTokens: () => globalPage("api-tokens"),
   personalTokens: () => globalPage("personal-tokens"),

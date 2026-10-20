@@ -103,6 +103,7 @@ import {
   listProductSecretsView,
   productListView,
   productView,
+  verifiedProducts,
 } from "../lib/shape.js";
 import { productHeaders, productIcons } from "../lib/presentation.js";
 import {
@@ -299,13 +300,14 @@ export async function handleProducts(
         canSeeProduct(session.principal, row),
       );
       // Every product's logo in one statement, not one per product.
-      const [icons, headers] = await Promise.all([
+      const [icons, headers, verified] = await Promise.all([
         productIcons(env, db),
         productHeaders(env, db),
+        verifiedProducts(db),
       ]);
       return adminJson({
         products: await Promise.all(
-          rows.map((row) => productListView(db, row, icons, headers)),
+          rows.map((row) => productListView(db, row, icons, headers, verified)),
         ),
       });
     }

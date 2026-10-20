@@ -189,6 +189,7 @@ export async function productListView(
   p: ProductRow,
   icons: Map<string, ProductIconView>,
   headers: Map<string, ProductIconView>,
+  verified: ReadonlySet<string>,
 ): Promise<Record<string, unknown>> {
   const services = serviceStateOf(p);
   const presentation: ProductPresentationView = {
@@ -205,9 +206,30 @@ export async function productListView(
     services: services.services,
     effectiveRegistration: services.effectiveRegistration,
     servicesSource: services.source,
+    // Integration verified (Home's facet): an SDK has been seen calling a service
+    // (`verifiedProducts`); the Integration page has the per-feature answer.
+    verified: verified.has(p.slug),
+    // Plain columns, no query: the one-product read's placeholder (`useProduct`) shows them until
+    // the full row arrives.
+    signingKid: p.signing_kid,
+    jwksUrl: `/${p.slug}/.well-known/jwks.json`,
+    compatMin: p.compat_min,
+    compatMax: p.compat_max,
+    defaultMaxOfflineDays: p.default_max_offline_days,
+    defaultDeviceLimit: p.default_device_limit,
+    adminGroup: p.admin_group,
+    webOrigins: parseWebOrigins(p.web_origins_json),
     createdAt: p.created_at,
     modifiedAt: p.modified_at,
   };
+}
+
+/** The products an SDK has been seen calling a service of, in one statement. */
+export async function verifiedProducts(db: Db): Promise<Set<string>> {
+  const rows = await db.all<{ product: string }>(
+    "SELECT DISTINCT product FROM sdk_sightings WHERE services_ok != 0",
+  );
+  return new Set(rows.map((r) => r.product));
 }
 
 /** One product's server-computed setup state: the source of its attention items. */

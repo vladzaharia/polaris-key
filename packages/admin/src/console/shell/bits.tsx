@@ -1,5 +1,5 @@
 /**
- * Small pieces the shell components share: service dots and a product's attention count.
+ * Small pieces the shell components share: service dots.
  */
 
 import * as React from "react";
@@ -17,13 +17,6 @@ export function enabledServices(p: ProductLike): string[] | null {
   return SERVICE_TABLE.filter((row) => services[row.slug]?.enabled).map(
     (row) => row.slug,
   );
-}
-
-/** How many setup actions a product has outstanding (the switcher's attention badge). */
-export function attentionCount(p: ProductLike): number {
-  const detail = p as ProductDetail;
-  const actions = detail.setup?.nextActions ?? [];
-  return Array.isArray(actions) ? actions.length : 0;
 }
 
 /**

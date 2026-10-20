@@ -89,7 +89,6 @@ export type NavGroupKey = SectionKey | "platform";
 /** Pages that exist outside any product. */
 export type GlobalPageId =
   | "home"
-  | "products"
   | "product-new"
   // the deployment's admin API tokens: a credential store that belongs to no product or service
   | "api-tokens"
@@ -855,14 +854,6 @@ export const GLOBAL_PAGES: NavPage[] = [
     inNav: true,
   },
   {
-    page: "products",
-    label: "Products",
-    path: "products",
-    icon: Boxes,
-    docs: "/docs/operate/console/products/",
-    inNav: true,
-  },
-  {
     page: "product-new",
     label: "New product",
     path: "products/new",
@@ -1007,7 +998,7 @@ export function navItems(
   return section.items.filter((i) => i.inNav && meetsRequirement(i, features));
 }
 
-/** The global pages the sidebar lists at the top level: Home and Products. */
+/** The global pages the sidebar lists at the top level: Home (the products live on it, ST-44). */
 export function platformLinks(): NavPage[] {
   return GLOBAL_PAGES.filter((p) => p.inNav && !p.group);
 }
