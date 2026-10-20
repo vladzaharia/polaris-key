@@ -236,6 +236,7 @@ export function StepUp({
         <Button
           variant={tone}
           loading={busy}
+          busyFocusable
           iconStart={<Fingerprint aria-hidden />}
           className={MAIN_BUTTON}
           onClick={() => void withPasskey()}
@@ -248,6 +249,7 @@ export function StepUp({
         <Button
           variant={tone}
           loading={busy}
+          busyFocusable
           iconStart={<Mail aria-hidden />}
           className={MAIN_BUTTON}
           onClick={() => void sendCode()}
@@ -294,6 +296,7 @@ export function StepUp({
               type="submit"
               variant={tone}
               loading={busy}
+              busyFocusable
               disabled={code.length !== CODE_LENGTH}
               className={MAIN_BUTTON}
               aria-label={`Confirm and ${verb}`}
@@ -444,6 +447,6 @@ function commonErrorText(err: unknown): string {
       return "That didn't confirm it's you. Try again, or use another way.";
     if (err.status === 429) return t("signin.code.rateLimited");
   }
-  const copy = portalErrorCopy(err);
+  const copy = portalErrorCopy(err, { account: true });
   return `${copy.title}. ${copy.description}`;
 }

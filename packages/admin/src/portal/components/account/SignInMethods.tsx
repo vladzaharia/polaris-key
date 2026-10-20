@@ -9,6 +9,7 @@ import {
   Plus,
   ShieldCheck,
 } from "lucide-react";
+import { ActionMenu } from "../../../ui/ActionMenu.js";
 import { Button } from "../../../ui/Button.js";
 import { t } from "../../../lib/copy.js";
 import { expiredCodeText, wrongCodeText } from "../../copy/codeEntry.js";
@@ -60,7 +61,7 @@ import {
   WindowsGlyph,
 } from "../Glyphs.js";
 import { ErrorPanel } from "../States.js";
-import { SectionCard } from "../product/Card.js";
+import { AccountCard as SectionCard } from "./AccountCard.js";
 import { MethodRow } from "./MethodRow.js";
 import {
   MakePrimaryTool,
@@ -112,6 +113,41 @@ export function SignInMethods({
     <SectionCard
       id="methods"
       title="Sign-in methods"
+      aside={
+        !emailOnly && methods.data ? (
+          <ActionMenu
+            label="Add a sign-in method"
+            align="end"
+            trigger={
+              <Button
+                variant="outline"
+                className="max-sm:min-h-11"
+                iconStart={<Plus aria-hidden />}
+              >
+                Add
+              </Button>
+            }
+            items={[
+              {
+                label: "Add an email",
+                onSelect: () => {
+                  window.location.hash = href.account("methods", {
+                    add: "email",
+                  });
+                },
+              },
+              {
+                label: "Add a passkey",
+                onSelect: () => {
+                  window.location.hash = href.account("methods", {
+                    add: "passkey",
+                  });
+                },
+              },
+            ]}
+          />
+        ) : null
+      }
       subtitle={
         emailOnly
           ? "Receipts and security notices go to your primary email."
@@ -128,6 +164,7 @@ export function SignInMethods({
         </div>
       ) : methods.error || !methods.data ? (
         <ErrorPanel
+          account
           error={methods.error}
           onRetry={() => void methods.refetch()}
           className="border-0 p-0 shadow-none"
@@ -640,7 +677,7 @@ function changeErrorText(err: unknown, name?: string): string {
     if (err.reason === "email_unverified" || err.reason === "limit")
       return err.message;
   }
-  const copy = portalErrorCopy(err);
+  const copy = portalErrorCopy(err, { account: true });
   return `${copy.title}. ${copy.description}`;
 }
 
@@ -721,6 +758,7 @@ function ConnectRow({
             variant="outline"
             className="ml-auto h-11 font-medium"
             loading={busy}
+            busyFocusable
             aria-label={t("signin.provider.connect", { provider: name })}
             onClick={() => void connect()}
           >
@@ -987,6 +1025,7 @@ function AddEmail({
                 <Button
                   type="submit"
                   loading={busy}
+                  busyFocusable
                   disabled={code.length !== CODE_LENGTH}
                 >
                   Add {step.email}
@@ -1041,7 +1080,7 @@ function AddEmail({
                 <Button variant="outline" onClick={close}>
                   {t("signin.cancel")}
                 </Button>
-                <Button type="submit" loading={busy}>
+                <Button type="submit" loading={busy} busyFocusable>
                   {t("signin.gate.sendCode")}
                 </Button>
               </div>
@@ -1142,6 +1181,7 @@ function AddPasskey({
           className="h-11 font-medium sm:ml-13"
           iconStart={<KeyRound aria-hidden />}
           loading={busy}
+          busyFocusable
           aria-disabled={reason ? true : undefined}
           aria-describedby={reason ? reasonId : undefined}
           onClick={() => {

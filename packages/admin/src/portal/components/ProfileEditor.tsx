@@ -258,7 +258,18 @@ export function ProfileEditor({
   const badge = badgeProvider(pic.picture, pic.source, nameSrc.source);
 
   return (
-    <form noValidate onSubmit={submit} className="@container">
+    <form
+      noValidate
+      onSubmit={submit}
+      className="@container"
+      onKeyDown={(e) => {
+        // Escape cancels the editor, unless something inside (a menu) already took it.
+        if (e.key === "Escape" && !e.defaultPrevented) {
+          e.preventDefault();
+          onDone(false);
+        }
+      }}
+    >
       <div className="grid gap-5 @3xl:grid-cols-[11rem_minmax(0,1fr)]">
         {/* The preview: the picture as it will look, with its source badge, and the name. */}
         <div
@@ -524,7 +535,7 @@ export function ProfileEditor({
             </p>
           ) : null}
           <div className="flex flex-wrap gap-2">
-            <Button type="submit" loading={save.isPending}>
+            <Button type="submit" loading={save.isPending} busyFocusable>
               {C["profile.save"]}
             </Button>
             <Button variant="outline" onClick={() => onDone(false)}>

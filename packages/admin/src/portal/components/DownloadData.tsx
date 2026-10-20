@@ -44,19 +44,22 @@ export function DownloadData({
   description,
   label,
   download,
+  account = false,
 }: {
   title: string;
   description: string;
   /** The button's accessible name; its text is "Download". */
   label: string;
   download: DataDownload;
+  /** An Account screen: no developer to contact. */
+  account?: boolean;
 }): React.ReactElement {
   const button = React.useRef<HTMLButtonElement>(null);
   // A stale sign-in: the prompt takes the refusal's place, and confirming runs the download again.
   const [askFirst, setAskFirst] = React.useState(false);
   const failure =
     download.error && !isStepUpRequired(download.error)
-      ? portalErrorCopy(download.error)
+      ? portalErrorCopy(download.error, { account })
       : null;
   const start = (): void => {
     if (download.isPending) return;
@@ -111,7 +114,7 @@ export function DownloadData({
       <Button
         ref={button}
         variant="outline"
-        className="w-full sm:w-auto"
+        className="w-full max-sm:min-h-11 sm:w-auto"
         iconStart={<Download aria-hidden />}
         loading={download.isPending}
         aria-label={label}

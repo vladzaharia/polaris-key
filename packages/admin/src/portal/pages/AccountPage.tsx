@@ -6,7 +6,6 @@ import {
 } from "../../components/motionPreference.js";
 import { useTheme, type ThemePreference } from "../../components/theme.js";
 import { Button } from "../../ui/Button.js";
-import { RadioCards } from "../../ui/RadioCards.js";
 import { toast } from "../../ui/toast.js";
 import { cn } from "../../lib/cn.js";
 import type { PortalAccount } from "../api.js";
@@ -17,7 +16,8 @@ import {
   packagesVisible,
 } from "../components/account/PackagesCard.js";
 import { SessionsCard } from "../components/account/SessionsCard.js";
-import { SectionCard } from "../components/product/Card.js";
+import { AccountCard as SectionCard } from "../components/account/AccountCard.js";
+import { SegmentedRow } from "../components/account/SegmentedRow.js";
 import { DownloadData } from "../components/DownloadData.js";
 import { DataRow } from "../components/DataRow.js";
 import { StepUpInline } from "../components/account/StepUpInline.js";
@@ -150,6 +150,7 @@ export function AccountPage({
           <Button
             type="submit"
             variant="outline"
+            className="max-sm:min-h-11"
             iconStart={<LogOut aria-hidden />}
           >
             {t("common.signOut")}
@@ -161,9 +162,9 @@ export function AccountPage({
         // Sticky under the header below desk (at the top on a short screen, where the header
         // scrolls away): the page's scroll padding clears it (styles.css).
         data-section-pills=""
-        className="sticky top-14 z-20 -mx-4 overflow-x-auto border-b border-border bg-surface-page px-4 py-2 short:top-0 desk:hidden"
+        className="sticky top-14 z-20 -mx-4 min-w-0 max-w-[100vw] overflow-x-auto border-b border-border bg-surface-page px-4 py-2 short:top-0 desk:hidden"
       >
-        <ul className="flex gap-2">
+        <ul className="flex w-max gap-2">
           {sections.map((s) => (
             <li key={s.id}>
               <SectionLink
@@ -231,14 +232,14 @@ function SectionLink({
       }}
       className={cn(
         pill
-          ? "inline-flex h-9 items-center whitespace-nowrap rounded-full border px-4 text-sm"
-          : "block rounded-md px-3 py-2 text-sm",
+          ? "inline-flex h-9 items-center whitespace-nowrap rounded-full border px-4 text-sm max-sm:h-11"
+          : "relative block rounded-md px-3 py-2 text-sm",
         pill
           ? on
-            ? "border-fg-strong bg-fg-strong font-medium text-surface-page"
+            ? "border-fg-strong bg-hover font-semibold text-fg-strong"
             : "border-border-strong text-fg-strong"
           : on
-            ? "bg-accent-subtle font-medium text-fg-strong"
+            ? "bg-hover font-medium text-fg-strong before:absolute before:inset-y-1 before:left-0 before:w-[3px] before:rounded-full before:bg-accent before:content-[''] forced-colors:before:bg-[Highlight]"
             : "text-fg-muted hover:bg-hover hover:text-fg-strong",
       )}
     >
@@ -279,62 +280,22 @@ function Appearance(): React.ReactElement {
   const [motion, setMotion] = useMotionPreference();
   return (
     <SectionCard id="appearance" title="Appearance">
-      <div className="flex flex-col gap-5">
-        <div className="flex flex-col gap-2">
-          <h3
-            id="appearance-theme-label"
-            className="text-sm font-medium text-fg-strong"
-          >
-            Theme
-          </h3>
-          <RadioCards
-            aria-labelledby="appearance-theme-label"
-            columns={3}
-            value={preference}
-            onChange={setPreference}
-            options={THEME_OPTIONS.map((o) => ({
-              value: o.value,
-              label: o.label,
-              description: <ThemeSwatch preference={o.value} />,
-            }))}
-          />
-        </div>
-        <div className="flex flex-col gap-2">
-          <h3
-            id="appearance-motion-label"
-            className="text-sm font-medium text-fg-strong"
-          >
-            Motion
-          </h3>
-          <RadioCards
-            id="appearance-motion"
-            aria-labelledby="appearance-motion-label"
-            columns={2}
-            value={motion}
-            onChange={setMotion}
-            options={MOTION_OPTIONS}
-          />
-        </div>
+      <div className="flex flex-col gap-4">
+        <SegmentedRow
+          label="Theme"
+          value={preference}
+          onChange={setPreference}
+          options={THEME_OPTIONS}
+        />
+        <SegmentedRow
+          label="Motion"
+          note={MOTION_OPTIONS.find((o) => o.value === motion)?.description}
+          value={motion}
+          onChange={setMotion}
+          options={MOTION_OPTIONS}
+        />
       </div>
     </SectionCard>
-  );
-}
-
-function ThemeSwatch({
-  preference,
-}: {
-  preference: ThemePreference;
-}): React.ReactElement {
-  return (
-    <span
-      aria-hidden
-      data-swatch={preference}
-      // 112 px, shrinking only when its card is narrower (three cards share a tablet's column).
-      className="mt-2 flex h-10 w-28 max-w-full overflow-hidden rounded-md border border-border"
-    >
-      {preference !== "light" ? <span className="flex-1 bg-[#060912]" /> : null}
-      {preference !== "dark" ? <span className="flex-1 bg-[#f6f7fb]" /> : null}
-    </span>
   );
 }
 
@@ -405,11 +366,11 @@ function YourData({ account }: { account: PortalAccount }): React.ReactElement {
     });
   const delFailure =
     del.error && !isStepUpRequired(del.error)
-      ? portalErrorCopy(del.error)
+      ? portalErrorCopy(del.error, { account: true })
       : null;
   const cancelFailure =
     cancel.error && !isStepUpRequired(cancel.error)
-      ? portalErrorCopy(cancel.error)
+      ? portalErrorCopy(cancel.error, { account: true })
       : null;
 
   return (
@@ -420,6 +381,7 @@ function YourData({ account }: { account: PortalAccount }): React.ReactElement {
           description={YOUR_DATA_COPY["yourData.account.copy.body"]}
           label={YOUR_DATA_COPY["yourData.account.copy.button"]}
           download={exportData}
+          account
         />
         <div className="border-t border-border pt-5">
           {scheduled ? (
@@ -458,7 +420,9 @@ function YourData({ account }: { account: PortalAccount }): React.ReactElement {
               ) : null}
               <Button
                 variant="outline"
+                className="max-sm:min-h-11"
                 loading={cancel.isPending}
+                busyFocusable
                 onClick={cancelDeletion}
               >
                 Cancel deletion
@@ -518,6 +482,7 @@ function YourData({ account }: { account: PortalAccount }): React.ReactElement {
               <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <Button
                   variant="outline"
+                  className="max-sm:min-h-11"
                   onClick={() => {
                     setOpen(false);
                     setTyped("");
@@ -530,8 +495,10 @@ function YourData({ account }: { account: PortalAccount }): React.ReactElement {
                 </Button>
                 <Button
                   variant="danger"
+                  className="max-sm:min-h-11"
                   disabled={!matches}
                   loading={del.isPending}
+                  busyFocusable
                   iconStart={<Trash2 aria-hidden />}
                   onClick={schedule}
                 >
@@ -549,7 +516,7 @@ function YourData({ account }: { account: PortalAccount }): React.ReactElement {
               <Button
                 ref={triggerRef}
                 variant="outline"
-                className="w-full border-danger-border text-danger sm:w-auto"
+                className="w-full border-danger-border text-danger max-sm:min-h-11 sm:w-auto"
                 aria-label="Delete account"
                 onClick={() => setOpen(true)}
               >

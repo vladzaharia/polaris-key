@@ -18,7 +18,7 @@ import { portalErrorCopy } from "../../errors.js";
 import { sessionMethodText } from "../../model/methods.js";
 import { href, scrollBehavior } from "../../router.js";
 import { ErrorPanel } from "../States.js";
-import { SectionCard } from "../product/Card.js";
+import { AccountCard as SectionCard } from "./AccountCard.js";
 import { t } from "../../../lib/copy.js";
 
 /**
@@ -35,11 +35,30 @@ import { t } from "../../../lib/copy.js";
  */
 export function SessionsCard(): React.ReactElement | null {
   const sessions = useSessions();
+  const [open, setOpen] = React.useState(false);
+  const buttonRef = React.useRef<HTMLButtonElement>(null);
   if (sessions.data === null) return null;
+  const listed =
+    Boolean(sessions.data) && !sessions.isPending && !sessions.error;
   return (
     <SectionCard
       id="sessions"
       title="Where you're signed in"
+      aside={
+        listed && !open ? (
+          <Button
+            ref={buttonRef}
+            variant="outline"
+            className="max-sm:min-h-11"
+            iconStart={<LogOut aria-hidden />}
+            aria-expanded={false}
+            aria-controls="sign-out-everywhere"
+            onClick={() => setOpen(true)}
+          >
+            Sign out everywhere
+          </Button>
+        ) : null
+      }
       subtitle="Browsers signed in to this account. Devices that use a license are on each product's page."
     >
       {sessions.isPending ? (
@@ -49,12 +68,20 @@ export function SessionsCard(): React.ReactElement | null {
         </div>
       ) : sessions.error || !sessions.data ? (
         <ErrorPanel
+          account
           error={sessions.error}
           onRetry={() => void sessions.refetch()}
           className="border-0 p-0 shadow-none"
         />
       ) : (
-        <SessionList sessions={sessions.data} />
+        <SessionList
+          sessions={sessions.data}
+          open={open}
+          onClose={() => {
+            setOpen(false);
+            requestAnimationFrame(() => buttonRef.current?.focus());
+          }}
+        />
       )}
     </SectionCard>
   );
@@ -69,8 +96,12 @@ function focusHeading(): void {
 
 function SessionList({
   sessions,
+  open,
+  onClose,
 }: {
   sessions: PortalSession[];
+  open: boolean;
+  onClose: () => void;
 }): React.ReactElement {
   // This browser first, then the others newest first (the Worker's order).
   const ordered = [
@@ -85,7 +116,7 @@ function SessionList({
           <SessionRow key={s.id} session={s} />
         ))}
       </ul>
-      <Everywhere others={others} />
+      <Everywhere others={others} open={open} onClose={onClose} />
       <div className="mt-1">
         <Button
           variant="link"
@@ -143,8 +174,9 @@ function SessionRow({
         {session.current ? null : (
           <Button
             variant="ghost"
-            className="ml-auto h-10 font-medium"
+            className="ml-auto h-10 font-medium max-sm:h-11"
             loading={end.isPending}
+            busyFocusable
             aria-label={`Sign out ${name}, ${meta}`}
             onClick={() =>
               end.mutate(session.id, {
@@ -164,8 +196,8 @@ function SessionRow({
       </div>
       {end.error ? (
         <p role="alert" className="mt-2 text-sm text-danger sm:pl-13">
-          {portalErrorCopy(end.error).title}.{" "}
-          {portalErrorCopy(end.error).description}
+          {portalErrorCopy(end.error, { account: true }).title}.{" "}
+          {portalErrorCopy(end.error, { account: true }).description}
         </p>
       ) : null}
     </li>
@@ -173,27 +205,20 @@ function SessionRow({
 }
 
 /** Sign out everywhere: every browser, this one included, and every app, after a confirm. */
-function Everywhere({ others }: { others: number }): React.ReactElement {
+function Everywhere({
+  others,
+  open,
+  onClose,
+}: {
+  others: number;
+  open: boolean;
+  onClose: () => void;
+}): React.ReactElement {
   const qc = useQueryClient();
   const all = useSignOutEverywhere();
-  const [open, setOpen] = React.useState(false);
   const headingRef = React.useRef<HTMLHeadingElement>(null);
-  const buttonRef = React.useRef<HTMLButtonElement>(null);
   return (
     <div className="mt-3">
-      {open ? null : (
-        <Button
-          ref={buttonRef}
-          variant="link"
-          className="h-11 font-medium"
-          iconStart={<LogOut aria-hidden />}
-          aria-expanded={false}
-          aria-controls="sign-out-everywhere"
-          onClick={() => setOpen(true)}
-        >
-          Sign out everywhere
-        </Button>
-      )}
       <Expand
         id="sign-out-everywhere"
         open={open}
@@ -227,24 +252,26 @@ function Everywhere({ others }: { others: number }): React.ReactElement {
           </ul>
           {all.error ? (
             <p role="alert" className="text-sm text-danger">
-              {portalErrorCopy(all.error).title}.{" "}
-              {portalErrorCopy(all.error).description}
+              {portalErrorCopy(all.error, { account: true }).title}.{" "}
+              {portalErrorCopy(all.error, { account: true }).description}
             </p>
           ) : null}
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button
               variant="outline"
+              className="max-sm:min-h-11"
               onClick={() => {
-                setOpen(false);
                 all.reset();
-                requestAnimationFrame(() => buttonRef.current?.focus());
+                onClose();
               }}
             >
               {t("signin.cancel")}
             </Button>
             <Button
               variant="danger"
+              className="max-sm:min-h-11"
               loading={all.isPending}
+              busyFocusable
               iconStart={<LogOut aria-hidden />}
               onClick={() =>
                 all.mutate(undefined, {

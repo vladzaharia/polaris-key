@@ -450,6 +450,6 @@ export function profileErrorCopy(err: unknown, op: "save" | "upload"): string {
     if (op === "upload" && err.status === 503)
       return PROFILE_COPY["profile.error.uploadUnavailable"];
   }
-  const copy = portalErrorCopy(err);
+  const copy = portalErrorCopy(err, { account: true });
   return `${copy.title}. ${copy.description}`;
 }

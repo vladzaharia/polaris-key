@@ -14,7 +14,7 @@ import {
 import { Avatar } from "./Avatar.js";
 import { providerBadge } from "./Glyphs.js";
 import { ProfileEditor } from "./ProfileEditor.js";
-import { SectionCard } from "./product/Card.js";
+import { AccountCard as SectionCard } from "./account/AccountCard.js";
 
 /**
  * Account's first card, Profile (PORTAL.md §4.26, §4.30; PX-22): the avatar with the badge of the
@@ -54,26 +54,10 @@ export function ProfileCard({
   const showName = name && name !== account.email ? name : account.email;
 
   return (
-    <SectionCard
-      id="profile"
-      title={C["profile.title"]}
-      aside={
-        profile && !editing ? (
-          <Button
-            ref={editRef}
-            variant="outline"
-            aria-label={C["profile.edit"]}
-            onClick={() => setEditing("name")}
-            className="shrink-0"
-          >
-            {C["profile.editShort"]}
-          </Button>
-        ) : null
-      }
-    >
+    <SectionCard id="profile" title={C["profile.title"]}>
       {q.isPending ? (
         <div className="flex items-center gap-4" aria-hidden>
-          <Skeleton className="size-14 rounded-full" />
+          <Skeleton className="size-10 rounded-full" />
           <div className="flex-1 space-y-2">
             <Skeleton className="h-4 w-40" />
             <Skeleton className="h-3 w-64 max-w-full" />
@@ -88,20 +72,25 @@ export function ProfileCard({
         />
       ) : (
         <div className="space-y-3 @container">
-          {/* Narrow: the action stacks under the name, which keeps the full line. */}
-          <div className="flex flex-col gap-3 @lg:flex-row @lg:items-center @lg:gap-4">
-            <div className="flex min-w-0 flex-1 items-center gap-4">
+          {/* Narrow: the actions stack under the text; wide: they sit in the right column. */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+            <div className="flex min-w-0 flex-1 items-center gap-3">
               <Avatar
                 name={name}
                 email={account.email}
                 picture={picture}
-                size={56}
+                size={40}
                 badge={providerBadge(badge)}
               />
               <div className="min-w-0 flex-1">
                 <p className="font-medium text-fg-strong [overflow-wrap:anywhere]">
                   {showName}
                 </p>
+                {name && name !== account.email ? (
+                  <p className="text-sm text-fg-muted [overflow-wrap:anywhere]">
+                    {account.email}
+                  </p>
+                ) : null}
                 {profile ? (
                   <p className="text-sm text-fg-muted">
                     {sourceSummary(profile)}
@@ -115,15 +104,28 @@ export function ProfileCard({
                 ) : null}
               </div>
             </div>
-            {profile && !profile.picture ? (
-              <Button
-                variant="ghost"
-                iconStart={<Upload aria-hidden />}
-                onClick={() => setEditing("picture")}
-                className="self-start @lg:self-auto"
-              >
-                {C["profile.addPicture"]}
-              </Button>
+            {profile ? (
+              <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
+                {!profile.picture ? (
+                  <Button
+                    variant="ghost"
+                    iconStart={<Upload aria-hidden />}
+                    onClick={() => setEditing("picture")}
+                    className="max-sm:min-h-11"
+                  >
+                    {C["profile.addPicture"]}
+                  </Button>
+                ) : null}
+                <Button
+                  ref={editRef}
+                  variant="outline"
+                  aria-label={C["profile.edit"]}
+                  onClick={() => setEditing("name")}
+                  className="max-sm:min-h-11 max-sm:flex-1"
+                >
+                  {C["profile.editShort"]}
+                </Button>
+              </div>
             ) : null}
           </div>
           {q.isError ? (
@@ -135,6 +137,7 @@ export function ProfileCard({
               <Button
                 variant="outline"
                 loading={q.isFetching}
+                busyFocusable
                 onClick={() => void q.refetch()}
               >
                 {C["profile.retry"]}

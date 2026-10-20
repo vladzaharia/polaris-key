@@ -258,6 +258,7 @@ export function MethodRow({
                 <Button
                   variant="danger"
                   loading={remove.isPending}
+                  busyFocusable
                   onClick={doRemove}
                 >
                   {verb} {name}
@@ -282,6 +283,6 @@ function removeErrorText(err: unknown): string {
     if (err.status === 404)
       return "It's already gone. The list is up to date now.";
   }
-  const copy = portalErrorCopy(err);
+  const copy = portalErrorCopy(err, { account: true });
   return `${copy.title}. ${copy.description}`;
 }

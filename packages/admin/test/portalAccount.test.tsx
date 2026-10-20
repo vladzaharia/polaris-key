@@ -342,7 +342,7 @@ describe("Your data: Download my data (I-11)", () => {
     [
       "an error from the Worker",
       { status: 500, body: { error: "internal" } },
-      "Something went wrong. Try again. If it keeps happening, contact the developer.",
+      "Something went wrong. Try again in a few minutes.",
     ],
   ])("says so and saves nothing: %s", async (_case, answer, words) => {
     const { data, button } = await open(answer);
