@@ -16,15 +16,16 @@ import { errorCopy } from "../../../../lib/errorCopy.js";
 import { Button } from "../../../../ui/Button.js";
 import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
-import { PageHeader } from "../../../../ui/PageHeader.js";
 import { PageSkeleton } from "../../../../ui/Skeleton.js";
 import { toast } from "../../../../ui/toast.js";
 import { useLoadingAnnouncement } from "../../../../ui/loading.js";
 import { mutate } from "../../../data/mutations.js";
 import { qk } from "../../../data/queries.js";
 import { useWriteGate } from "../../../access/useCan.js";
-import { SettingsTemplate } from "../../../templates/Settings.js";
-import { FeatureSection } from "../components/FeatureSection.js";
+import { useProduct } from "../../../data/hooks.js";
+import { AdvancedRows } from "../components/AdvancedRows.js";
+import { FeatureRowItem } from "../components/FeatureRows.js";
+import { SettingsPage as ProductDetails } from "./Settings.js";
 import { ServiceOffConfirmation } from "../components/ServiceOffConfirmation.js";
 import {
   mergeEnabled,
@@ -35,48 +36,42 @@ import {
   type ServiceChange,
 } from "../components/serviceFeatures.js";
 
-export function ServicesPage({ slug }: { slug: string }): React.ReactElement {
+export function ServicesPage({
+  slug,
+  openDetails = false,
+}: {
+  slug: string;
+  /** The product's own settings (name, origins, repository, danger zone) start unfolded. */
+  openDetails?: boolean;
+}): React.ReactElement {
   const query = useQuery({
     queryKey: qk.services(slug),
     queryFn: () => api.services(slug),
   });
-  useLoadingAnnouncement("services", query.isPending);
-
-  const header = (
-    <PageHeader
-      title="Services"
-      refetching={query.isFetching && !query.isPending}
-    />
-  );
+  useLoadingAnnouncement("features", query.isPending);
 
   if (query.isPending) {
-    return (
-      <div className="space-y-6">
-        {header}
-        <PageSkeleton template="form" label="services" />
-      </div>
-    );
+    return <PageSkeleton template="form" label="features" />;
   }
   if (query.isError) {
     return (
-      <div className="space-y-6">
-        {header}
-        <ErrorState error={query.error} onRetry={() => void query.refetch()} />
-      </div>
+      <ErrorState error={query.error} onRetry={() => void query.refetch()} />
     );
   }
 
-  return <ServicesForm slug={slug} data={query.data} header={header} />;
+  return (
+    <ServicesForm slug={slug} data={query.data} openDetails={openDetails} />
+  );
 }
 
 function ServicesForm({
   slug,
   data,
-  header,
+  openDetails,
 }: {
   slug: string;
   data: ServicesResponse;
-  header: React.ReactNode;
+  openDetails: boolean;
 }): React.ReactElement {
   const queryClient = useQueryClient();
   const gate = useWriteGate("core", slug);
@@ -87,6 +82,8 @@ function ServicesForm({
     React.useState<OffConfirmation | null>(null);
   const [confirmRevert, setConfirmRevert] = React.useState(false);
   const [reverting, setReverting] = React.useState(false);
+  const [detailsOpen, setDetailsOpen] = React.useState(openDetails);
+  const product = useProduct(slug);
 
   const saved = React.useMemo(() => readEnabled(data), [data]);
   const enabled =
@@ -144,36 +141,57 @@ function ServicesForm({
 
   const source = data.source === "admin" ? "admin" : "manifest";
 
+  const ctx = {
+    slug,
+    name: product.data?.name ?? slug,
+    enabled,
+    facts: data.facts,
+    pending,
+    failure,
+    codes,
+    busy,
+    locked: !gate.allowed,
+    onRequestChange: requestChange,
+    onRetry: retry,
+  };
+
   return (
-    <SettingsTemplate
-      header={header}
-      sections={FEATURES.map((feature) => ({
-        id: `feature-${feature.id}`,
-        title: feature.label,
-      }))}
-    >
+    <div className="space-y-6" data-template="features">
       {gate.disabledReason ? (
         <p role="note" className="text-sm text-fg-muted">
           {gate.disabledReason}
         </p>
       ) : null}
-      {FEATURES.map((feature) => (
-        <FeatureSection
-          key={feature.id}
-          feature={feature}
-          slug={slug}
+      <section
+        aria-label="Features"
+        className="overflow-hidden rounded-lg border border-border bg-surface-raised"
+      >
+        <div
+          aria-hidden
+          className="hidden items-center gap-x-4 border-b border-border bg-surface-sunken px-5 py-2.5 text-sm font-medium text-fg-strong sm:grid sm:grid-cols-[auto_minmax(0,1fr)_minmax(0,18rem)_auto]"
+        >
+          <span className="w-8" />
+          <span>Feature</span>
+          <span>Status</span>
+          <span className="w-9" />
+        </div>
+        <ul className="divide-y divide-border">
+          {FEATURES.map((feature) => (
+            <FeatureRowItem key={feature.id} feature={feature} ctx={ctx} />
+          ))}
+        </ul>
+        <AdvancedRows
           enabled={enabled}
-          facts={data.facts}
           effectiveRegistration={data.effectiveRegistration}
-          busy={busy}
-          locked={!gate.allowed}
-          source={source}
-          error={failure?.change.feature === feature.id ? failure : null}
-          codes={failure?.change.feature === feature.id ? codes : []}
-          onRequestChange={requestChange}
-          onRetry={retry}
+          detailsOpen={detailsOpen}
+          onDetails={setDetailsOpen}
         />
-      ))}
+      </section>
+      {detailsOpen ? (
+        <div id="feature-details-panel">
+          <ProductDetails slug={slug} />
+        </div>
+      ) : null}
 
       <ServiceOffConfirmation
         confirmation={offConfirmation}
@@ -223,6 +241,6 @@ function ServicesForm({
           </Button>
         </div>
       ) : null}
-    </SettingsTemplate>
+    </div>
   );
 }

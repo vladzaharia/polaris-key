@@ -5,20 +5,24 @@ import { errorCopy } from "../../../../lib/errorCopy.js";
 import { Button } from "../../../../ui/Button.js";
 import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
-import { SettingsRow } from "../../../templates/Settings.js";
+import { FeatureSubRow } from "./FeatureSubRow.js";
 import { Switch } from "../../../../ui/Switch.js";
 import { toast } from "../../../../ui/toast.js";
 import { mutate } from "../../../data/mutations.js";
 import { qk } from "../../../data/queries.js";
+import { fetchFeedsOverview } from "../../feeds/data.js";
 
 export function PackageFeedsControl({
   slug,
   distributionOn,
   featureOn,
+  locked = false,
 }: {
   slug: string;
   distributionOn: boolean;
   featureOn: boolean;
+  /** The member cannot edit Core. */
+  locked?: boolean;
 }): React.ReactElement {
   const queryClient = useQueryClient();
   const query = useQuery({
@@ -26,6 +30,14 @@ export function PackageFeedsControl({
     queryFn: () => api.packageFeeds(slug),
     enabled: distributionOn,
   });
+  const overview = useQuery({
+    queryKey: qk.pkgFeeds({ kind: "product", slug }),
+    queryFn: () => fetchFeedsOverview({ kind: "product", slug }),
+    enabled: distributionOn && featureOn,
+  });
+  const registryHost = overview.data?.registryOrigin
+    ? new URL(overview.data.registryOrigin).host
+    : undefined;
   const [pending, setPending] = React.useState<boolean | null>(null);
   const [confirming, setConfirming] = React.useState(false);
   const [failure, setFailure] = React.useState<{
@@ -73,7 +85,7 @@ export function PackageFeedsControl({
   };
   if (query.isError)
     return (
-      <div className="border-t border-border px-5 py-3">
+      <div className="px-4 py-3">
         <ErrorState
           compact
           error={query.error}
@@ -91,20 +103,24 @@ export function PackageFeedsControl({
       .join(" ") || undefined;
   return (
     <>
-      <SettingsRow
-        label="Packages"
+      <FeatureSubRow
+        title="Packages"
         htmlFor={switchId}
-        help={
+        lines={[
           blocked ? (
-            <span id={requirementId}>
-              Turn on Ship builds to manage packages.
-            </span>
+            <span id={requirementId}>Turns on with Ship builds</span>
           ) : on ? (
-            "Packages are available from this product’s registry."
+            registryHost ? (
+              <>
+                On <span className="font-mono">{registryHost}</span>
+              </>
+            ) : (
+              "On this product’s registry"
+            )
           ) : (
-            "Packages are kept but no package feed answers installs or updates."
-          )
-        }
+            "Off: no package feed answers installs or updates"
+          ),
+        ]}
         footer={
           failure && failureCopy ? (
             <div className="mt-2 flex items-center gap-3">
@@ -117,19 +133,21 @@ export function PackageFeedsControl({
             </div>
           ) : undefined
         }
-      >
-        <Switch
-          id={switchId}
-          checked={on}
-          disabled={blocked || query.isPending}
-          readOnly={pending !== null}
-          aria-describedby={describedBy}
-          onCheckedChange={(next) => {
-            if (next) void save(true).catch(() => undefined);
-            else setConfirming(true);
-          }}
-        />
-      </SettingsRow>
+        control={
+          <Switch
+            id={switchId}
+            touch
+            checked={on}
+            saving={pending !== null}
+            disabled={blocked || locked || query.isPending}
+            aria-describedby={describedBy}
+            onCheckedChange={(next) => {
+              if (next) void save(true).catch(() => undefined);
+              else setConfirming(true);
+            }}
+          />
+        }
+      />
       <ConfirmDialog
         open={confirming}
         onOpenChange={setConfirming}

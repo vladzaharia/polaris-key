@@ -10,7 +10,6 @@ import {
   OriginsEditor,
   originProblem,
 } from "../src/console/components/OriginsEditor.js";
-import { PageHeader } from "../src/ui/PageHeader.js";
 
 afterEach(() => {
   cleanup();
@@ -18,31 +17,48 @@ afterEach(() => {
 });
 
 describe("Settings hub", () => {
-  it("has one h1, six area tabs as links, and demotes the area's own header", () => {
+  it("has one h1, four tabs as links, History and All settings in the header, and no area header", () => {
     renderAt(
       "#/p/djdl/settings/features",
       <SettingsHub slug="djdl" page="services">
-        <PageHeader title="Services" />
+        <p>Body</p>
       </SettingsHub>,
     );
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
-    expect(
-      screen.getByRole("heading", { level: 2, name: "Services" }),
-    ).toBeTruthy();
-    const nav = screen.getByRole("navigation", { name: "Settings areas" });
+    expect(screen.queryAllByRole("heading", { level: 2 })).toHaveLength(0);
+    const nav = screen.getByRole("navigation", { name: "Settings" });
     const links = within(nav).getAllByRole("link");
     expect(links.map((l) => l.textContent)).toEqual([
-      "General",
-      "Services",
+      "Features",
       "Presentation",
       "Keys & secrets",
       "Members",
-      "All settings",
     ]);
-    expect(links[1]!.getAttribute("aria-current")).toBe("page");
-    expect(links[2]!.getAttribute("href")).toBe(
+    expect(links[0]!.getAttribute("aria-current")).toBe("page");
+    expect(links[1]!.getAttribute("href")).toBe(
       "#/p/djdl/settings/presentation",
     );
+    expect(
+      screen.getByRole("link", { name: "All settings" }).getAttribute("href"),
+    ).toBe("#/p/djdl/settings/all");
+    expect(
+      screen.getByRole("link", { name: "History" }).getAttribute("href"),
+    ).toBe("#/p/djdl/activity");
+  });
+
+  it("keeps Features current on the product's own settings route", () => {
+    renderAt(
+      "#/p/djdl/settings",
+      <SettingsHub slug="djdl" page="settings">
+        <p>Body</p>
+      </SettingsHub>,
+    );
+    const nav = screen.getByRole("navigation", { name: "Settings" });
+    expect(
+      within(nav)
+        .getByRole("link", { name: "Features" })
+        .getAttribute("aria-current"),
+    ).toBe("page");
   });
 });
 

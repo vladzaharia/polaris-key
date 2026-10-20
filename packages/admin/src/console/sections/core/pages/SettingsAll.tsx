@@ -37,9 +37,12 @@ import { SettingsSection } from "../../../templates/Settings.js";
 import { SETTING_HOMES, type SettingHome } from "../model/settingHomes.js";
 import { SETTINGS_AREAS } from "./SettingsHub.js";
 
-/** A page as the console words it elsewhere: `Settings → General`, `License → Enrollment`. */
+/** A page as the console words it elsewhere: `Settings → Features`, `License → Enrollment`. */
 function destination(page: ProductPageId): string {
-  const area = SETTINGS_AREAS.find((a) => a.page === page);
+  // The product's own settings unfold from Features' last row.
+  const area = SETTINGS_AREAS.find(
+    (a) => a.page === (page === "settings" ? "services" : page),
+  );
   if (area) return `Settings → ${area.label}`;
   const section = sectionOf(page);
   return section

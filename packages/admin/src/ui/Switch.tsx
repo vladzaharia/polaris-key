@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Switch as SwitchPrimitive } from "radix-ui";
 import { cn } from "../lib/cn.js";
+import { Spinner } from "./Spinner.js";
 
 type RootProps = React.ComponentPropsWithoutRef<typeof SwitchPrimitive.Root>;
 
@@ -17,6 +18,8 @@ export interface SwitchProps extends Omit<
   readOnly?: boolean;
   /** 44×24 on a phone (the touch size); the default 36×20 from `sm` up and everywhere else. */
   touch?: boolean;
+  /** A save is in flight: a ring in the knob, and the control is inert (`aria-busy`). */
+  saving?: boolean;
   ref?: React.Ref<HTMLButtonElement>;
 }
 
@@ -34,6 +37,7 @@ export function Switch({
   description,
   readOnly,
   touch,
+  saving,
   id,
   ref,
   ...props
@@ -46,9 +50,10 @@ export function Switch({
       ref={ref}
       id={switchId}
       checked={checked ?? value ?? false}
-      aria-readonly={readOnly || undefined}
+      aria-readonly={readOnly || saving || undefined}
+      aria-busy={saving || undefined}
       onCheckedChange={(c) => {
-        if (readOnly) return;
+        if (readOnly || saving) return;
         onCheckedChange?.(c);
         onChange?.(c);
       }}
@@ -73,11 +78,18 @@ export function Switch({
     >
       <SwitchPrimitive.Thumb
         className={cn(
-          "pointer-events-none block size-3.5 rounded-full bg-fg-muted shadow-elevation-1 [transition:translate_var(--pk-duration-slow)_var(--pk-ease-spring),background-color_var(--pk-duration-micro)_var(--pk-ease-standard)] data-[state=checked]:translate-x-[1.125rem] data-[state=checked]:bg-accent-on data-[state=unchecked]:translate-x-0.5 forced-colors:bg-[CanvasText] forced-colors:data-[state=checked]:bg-[HighlightText]",
+          "pointer-events-none relative block size-3.5 rounded-full bg-fg-muted shadow-elevation-1 [transition:translate_var(--pk-duration-slow)_var(--pk-ease-spring),background-color_var(--pk-duration-micro)_var(--pk-ease-standard)] data-[state=checked]:translate-x-[1.125rem] data-[state=checked]:bg-accent-on data-[state=unchecked]:translate-x-0.5 forced-colors:bg-[CanvasText] forced-colors:data-[state=checked]:bg-[HighlightText]",
           touch &&
             "max-sm:size-[1.125rem] max-sm:data-[state=checked]:translate-x-[1.375rem] max-sm:data-[state=unchecked]:translate-x-[0.1875rem]",
         )}
-      />
+      >
+        {saving ? (
+          <Spinner
+            label=""
+            className="absolute inset-0 m-auto size-2.5 border-[1.5px] text-fg-strong"
+          />
+        ) : null}
+      </SwitchPrimitive.Thumb>
     </SwitchPrimitive.Root>
   );
   if (!label) return control;

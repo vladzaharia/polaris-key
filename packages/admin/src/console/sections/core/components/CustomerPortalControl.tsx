@@ -4,7 +4,7 @@ import { api } from "../../../../api.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
 import { Button } from "../../../../ui/Button.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
-import { SettingsRow } from "../../../templates/Settings.js";
+import { FeatureSubRow } from "./FeatureSubRow.js";
 import { Switch } from "../../../../ui/Switch.js";
 import { toast } from "../../../../ui/toast.js";
 import { mutate } from "../../../data/mutations.js";
@@ -12,8 +12,14 @@ import { qk } from "../../../data/queries.js";
 
 export function CustomerPortalControl({
   slug,
+  blocked = false,
+  locked = false,
 }: {
   slug: string;
+  /** Sign-in is off: the Locker cannot be on without it. */
+  blocked?: boolean;
+  /** The member cannot edit Core. */
+  locked?: boolean;
 }): React.ReactElement {
   const queryClient = useQueryClient();
   const query = useQuery({
@@ -35,7 +41,7 @@ export function CustomerPortalControl({
         portalEnabled: next,
       });
       queryClient.setQueryData(qk.portal(slug), result.settings);
-      toast.success(`Customer portal turned ${next ? "on" : "off"}`);
+      toast.success(`Polaris Locker turned ${next ? "on" : "off"}`);
     } catch (failure) {
       setError(failure);
       setFailedRequested(next);
@@ -46,7 +52,7 @@ export function CustomerPortalControl({
   };
   if (query.isError)
     return (
-      <div className="border-t border-border px-5 py-3">
+      <div className="px-4 py-3">
         <ErrorState
           compact
           error={query.error}
@@ -57,10 +63,16 @@ export function CustomerPortalControl({
   const switchId = "feature-customer-portal";
   const errorId = `${switchId}-error`;
   return (
-    <SettingsRow
-      label="Customer portal"
+    <FeatureSubRow
+      title="Polaris Locker"
       htmlFor={switchId}
-      help="Lets customers manage their licenses and devices in the portal."
+      lines={[
+        blocked ? (
+          <span id={`${switchId}-requirements`}>Turns on with Sign-in</span>
+        ) : (
+          "Where customers manage their licenses and devices"
+        ),
+      ]}
       footer={
         error ? (
           <div className="mt-2 flex items-center gap-3">
@@ -80,14 +92,25 @@ export function CustomerPortalControl({
           </div>
         ) : undefined
       }
-    >
-      <Switch
-        id={switchId}
-        checked={on}
-        readOnly={pending !== null || query.isPending}
-        aria-describedby={error ? errorId : undefined}
-        onCheckedChange={(next) => void save(next).catch(() => undefined)}
-      />
-    </SettingsRow>
+      control={
+        <Switch
+          id={switchId}
+          touch
+          checked={on}
+          saving={pending !== null}
+          disabled={blocked || locked}
+          readOnly={query.isPending}
+          aria-describedby={
+            [
+              blocked ? `${switchId}-requirements` : null,
+              error ? errorId : null,
+            ]
+              .filter(Boolean)
+              .join(" ") || undefined
+          }
+          onCheckedChange={(next) => void save(next).catch(() => undefined)}
+        />
+      }
+    />
   );
 }

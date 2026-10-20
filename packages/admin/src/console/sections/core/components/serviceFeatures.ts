@@ -175,7 +175,7 @@ export function factFor(
     case "ship-builds": {
       const latest = facts.shipBuilds.latest;
       return latest
-        ? `Latest app ${latest.version}${latest.channel ? ` · ${latest.channel}` : ""}`
+        ? `${latest.version}${latest.channel ? ` on ${latest.channel}` : ""}`
         : "No app release yet";
     }
     case "commerce": {
@@ -219,4 +219,19 @@ export function serviceChange(
     requested: [service],
     body: patchFor([service], on),
   };
+}
+
+/** The features a feature needs from outside itself, in service order, by their feature words. */
+export function externalNeeds(feature: FeatureRow): ServiceSlug[] {
+  const own = new Set(feature.services);
+  const seen = new Set<string>();
+  const out: ServiceSlug[] = [];
+  for (const slug of feature.services)
+    for (const need of SERVICE_REQUIRES[slug]) {
+      const word = featureWord(need);
+      if (own.has(need) || seen.has(word)) continue;
+      seen.add(word);
+      out.push(need);
+    }
+  return out;
 }

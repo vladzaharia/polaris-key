@@ -139,7 +139,9 @@ describe("Services feature groups", () => {
       "Cloud Sync",
     ])
       expect(
-        await screen.findByRole("switch", { name: new RegExp(name, "i") }),
+        await screen.findByRole("switch", {
+          name: new RegExp(`^${name}(,|$)`, "i"),
+        }),
       ).toBeTruthy();
     expect(screen.getByText(/2 tiers/)).toBeTruthy();
     expect(screen.getAllByText(/Catalog v4/)).toHaveLength(1);
@@ -227,7 +229,7 @@ describe("Services feature groups", () => {
       signedInDevicesToClear: 0,
     });
     mount();
-    await user.click(await screen.findByRole("switch", { name: /Sign-in/i }));
+    await user.click(await screen.findByRole("switch", { name: /^Sign-in$/i }));
     const dialog = await screen.findByRole("alertdialog");
     expect(
       within(dialog).getByText(/Also turns off Cloud Sync because/),
@@ -424,11 +426,10 @@ describe("Services feature groups", () => {
 
   it("shows the Edge mint recipe approval path for minted tokens", async () => {
     mount();
-    const copy = await screen.findByText(/A recipe is the/i);
-    expect(copy.textContent).toMatch(/mint block of a minted-token entry/);
-    expect(copy.textContent).toMatch(
-      /signing secret is marked Edge mint and an operator approves/i,
+    const copy = await screen.findByText(
+      "A recipe mints only after an operator approves it",
     );
+    expect(copy).toBeTruthy();
     const review = screen.getByRole("link", { name: "Review recipe" });
     expect(review.getAttribute("href")).toBe("#/p/djdl/config/catalog");
     expect(screen.getAllByText(/Catalog v4/)).toHaveLength(1);
@@ -439,9 +440,12 @@ describe("Services feature groups", () => {
     updatePortalSettings.mockRejectedValueOnce(
       new Error("Customer portal write failed"),
     );
+    services.mockResolvedValue(
+      state({ services: { ...state().services, identity: { enabled: true } } }),
+    );
     mount();
     const customerPortal = await screen.findByRole("switch", {
-      name: /Customer portal/i,
+      name: /Polaris Locker/i,
     });
     await waitFor(() => expect(portalSettings).toHaveBeenCalledWith("djdl"));
     expect(customerPortal.getAttribute("aria-describedby")).toBeNull();
@@ -547,7 +551,64 @@ describe("Services feature groups", () => {
     expect((packages as HTMLButtonElement).disabled).toBe(true);
     expect(requirementId).toBe("feature-packages-requirements");
     expect(document.getElementById(requirementId!)?.textContent).toBe(
-      "Turn on Ship builds to manage packages.",
+      "Turns on with Ship builds",
+    );
+  });
+
+  it("marks each requirement with its own state and folds the raw slugs", async () => {
+    services.mockResolvedValue(
+      state({ services: { ...state().services, config: { enabled: true } } }),
+    );
+    mount();
+    await screen.findByRole("switch", { name: /^Licensing$/i });
+    expect(
+      screen.getByRole("img", { name: "Managed config is on" }),
+    ).toBeTruthy();
+    expect(screen.getByRole("img", { name: "Sign-in is off" })).toBeTruthy();
+    expect(screen.getByRole("img", { name: "Licensing is on" })).toBeTruthy();
+    expect(screen.queryByText("Device registration")).toBeNull();
+    const show = screen.getByRole("button", {
+      name: "Slugs and device registration",
+    });
+    expect(show.getAttribute("aria-expanded")).toBe("false");
+    await userEvent.setup().click(show);
+    expect(show.getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByText("Device registration")).toBeTruthy();
+  });
+
+  it("writes the Polaris Locker listing as one choice, Everyone after a confirm", async () => {
+    const user = userEvent.setup();
+    services.mockResolvedValue(
+      state({
+        services: {
+          ...state().services,
+          release: { enabled: true },
+          distribution: { enabled: true },
+          update: { enabled: true },
+        },
+      }),
+    );
+    mount();
+    const group = await screen.findByRole("radiogroup", {
+      name: "Polaris Locker listing",
+    });
+    expect(
+      within(group)
+        .getByRole("radio", { name: "Eligible" })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
+    await user.click(within(group).getByRole("radio", { name: "Everyone" }));
+    expect(updatePortalSettings).not.toHaveBeenCalled();
+    const dialog = await screen.findByRole("alertdialog");
+    await user.type(within(dialog).getByRole("textbox"), "djdl");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Show to everyone" }),
+    );
+    await waitFor(() =>
+      expect(updatePortalSettings).toHaveBeenCalledWith("djdl", {
+        storeAudience: "everyone",
+        confirm: "storefront.polarisKey.audience",
+      }),
     );
   });
 });

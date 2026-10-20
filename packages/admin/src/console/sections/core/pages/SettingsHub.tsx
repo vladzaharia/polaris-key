@@ -1,30 +1,40 @@
 /**
- * The product settings hub (ST-08, S-18 §4.9 level 2): `#/p/<slug>/settings/<area>`. One `<h1>`
- * and one row of area tabs; each area is a Core page rendered under it, with its own header
- * demoted to an `<h2>` (`PageHeaderNested`).
+ * The product settings hub (ST-08, S-18 §4.9 level 2), after products.features: a masthead (the
+ * product's icon, the one `<h1>`, History) over four route tabs (Features, Presentation, Keys &
+ * secrets, Members). Each tab is a Core page rendered under it with no header of its own.
  *
- * Areas: General (`settings`), Services (`settings/features`), Presentation, Keys & secrets,
- * Members and All settings. Keys & secrets answers to the `keys` area: a member without it does
- * not see the tab (the page itself is refused by the dispatcher). The tabs are route tabs, so the
- * area is in the URL and a phone scrolls the row inside its own region.
+ * `#/p/<slug>/settings` (the product's own settings) is Features with its last row unfolded.
+ * All settings is a link in the header, not a tab. Keys & secrets answers to the `keys` area: a
+ * member without it does not see the tab (the page itself is refused by the dispatcher). The tabs
+ * are route tabs, so the area is in the URL and a phone scrolls the row inside its own region.
  */
 
 import * as React from "react";
-import { PageHeaderNested, PageHeader } from "../../../../ui/PageHeader.js";
+import { History, ListTree } from "lucide-react";
+import { Button } from "../../../../ui/Button.js";
+import { ProductLogo } from "../../../../ui/ProductLogo.js";
 import { PageTabs, type PageTab } from "../../../components/PageTabs.js";
-import { useCan } from "../../../access/useCan.js";
+import { useCan, useAccessAdmins } from "../../../access/useCan.js";
+import { useProduct } from "../../../data/hooks.js";
 import type { ProductPageId } from "../../../nav.js";
-import { productPage } from "../../../routes.js";
+import { Link } from "../../../router.js";
+import { productPage, r } from "../../../routes.js";
 
-/** The hub's areas in tab order; All settings words its destinations with these labels. */
+/**
+ * The hub's tabs in order; All settings words its destinations with these labels. `settings`
+ * (the product's own settings) lives on the Features tab, so it has no tab of its own.
+ */
 export const SETTINGS_AREAS: { page: ProductPageId; label: string }[] = [
-  { page: "settings", label: "General" },
-  { page: "services", label: "Services" },
+  { page: "services", label: "Features" },
   { page: "presentation", label: "Presentation" },
   { page: "keys", label: "Keys & secrets" },
   { page: "settings-members", label: "Members" },
-  { page: "settings-all", label: "All settings" },
 ];
+
+/** The tab a hub page sits under: the product's own settings are on Features. */
+const TAB_OF: Partial<Record<ProductPageId, ProductPageId>> = {
+  settings: "services",
+};
 
 export function SettingsHub({
   slug,
@@ -36,20 +46,69 @@ export function SettingsHub({
   children: React.ReactNode;
 }): React.ReactElement {
   const canKeys = useCan("keys", slug);
+  const product = useProduct(slug);
+  const admins = useAccessAdmins("core", slug);
+  const name = product.data?.name ?? slug;
   const tabs: PageTab[] = SETTINGS_AREAS.filter(
     (a) => a.page !== "keys" || canKeys,
   ).map((a) => ({
     value: a.page,
     label: a.label,
     to: productPage(slug, a.page),
+    count:
+      a.page === "settings-members" && admins.data
+        ? admins.data.admins.length
+        : undefined,
   }));
   return (
     <div className="space-y-6" data-template="settings-hub">
-      <PageHeader
-        title="Settings"
-        tabs={<PageTabs label="Settings areas" items={tabs} value={page} />}
-      />
-      <PageHeaderNested.Provider value>{children}</PageHeaderNested.Provider>
+      <header className="space-y-3">
+        <nav aria-label="Breadcrumb" className="text-sm text-fg-muted">
+          <Link
+            to={r.overview(slug)}
+            className="rounded-xs underline-offset-4 hover:underline"
+          >
+            {name}
+          </Link>
+        </nav>
+        <div className="flex items-center gap-4">
+          <ProductLogo
+            name={name}
+            presentation={product.data?.presentation}
+            size={48}
+            className="max-sm:hidden"
+          />
+          <h1
+            tabIndex={-1}
+            data-page-title=""
+            className="text-2xl font-medium tracking-tight text-fg-strong outline-hidden sm:text-4xl"
+          >
+            Settings
+          </h1>
+          <div className="ml-auto flex items-center gap-1">
+            <Button asChild variant="ghost" size="sm">
+              <Link to={productPage(slug, "settings-all")}>
+                <ListTree aria-hidden />
+                All settings
+              </Link>
+            </Button>
+            <Button asChild variant="ghost" size="sm" className="max-sm:hidden">
+              <Link to={r.activity(slug)}>
+                <History aria-hidden />
+                History
+              </Link>
+            </Button>
+          </div>
+        </div>
+        <div className="border-b border-border">
+          <PageTabs
+            label="Settings"
+            items={tabs}
+            value={TAB_OF[page] ?? (page === "settings-all" ? "" : page)}
+          />
+        </div>
+      </header>
+      {children}
     </div>
   );
 }
