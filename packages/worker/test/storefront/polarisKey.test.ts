@@ -107,7 +107,10 @@ function model(over: Partial<ListingModel> = {}): ListingModel {
 describe("the fit report projects the shared listing for polaris-key", () => {
   it("a fitting listing is green, with the name, the tile line and the description", () => {
     const [row] = fitReport({ model: model() }, ["polaris-key"]);
-    expect(row).toMatchObject({ store: "polaris-key", label: "Polaris Locker" });
+    expect(row).toMatchObject({
+      store: "polaris-key",
+      label: "Polaris Locker",
+    });
     expect(row!.status).toBe("green");
     expect(row!.payload!.locales["en-US"]).toEqual({
       name: "Diceroll",
