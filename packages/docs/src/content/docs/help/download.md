@@ -36,7 +36,7 @@ The library shows your phone's store, such as **Get it on the App Store** or **G
 A developer can share a page that anyone can open. Its address is exactly `dl.plrs.im`, then a `/` and a path. A look-alike such as `dl.plrs.im.example.com` isn't the app's download page.
 
 - It leads with one button for your device, such as **Download for macOS**.
-- **Other ways to get it** lists other stores, entries such as **Add to AltStore**, and install commands. **Download from Polaris Key** lists the app's files.
+- **Other ways to get it** lists other stores, entries such as **Add to AltStore**, and install commands. **Download from Polaris Locker** lists the app's files.
 - While the developer releases a new version in stages, or has paused or stopped it, the page keeps offering the previous version.
 
 ## If a download doesn't work
