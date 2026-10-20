@@ -5,12 +5,12 @@ type: "help"
 lastReviewed: "2026-10-10"
 ---
 
-Some organizations, such as an employer or a school, sign their people in to Polaris Key, the
+Some organizations, such as an employer or a school, sign their people in to Polaris Locker, the
 service the app uses for licenses and sign-in. When your email belongs to one of them, typing it
 takes you to your organization's sign-in instead of an emailed code.
 
 :::caution[Important]
-Polaris Key and the app's developer can't change your organization's sign-in or reset its
+Locker and the app's developer can't change your organization's sign-in or reset its
 password. Your organization's IT help desk can.
 :::
 
@@ -22,7 +22,7 @@ password. Your organization's IT help desk can.
 3. Sign in on your organization's page, the same way you do at work or school.
 4. You come back signed in. The first time, you also set up your account.
 
-If your Polaris Key account already uses that email, your organization's sign-in is added to it,
+If your Locker account already uses that email, your organization's sign-in is added to it,
 and you get an email saying so.
 
 To use another email, select **Change** next to your email.

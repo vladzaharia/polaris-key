@@ -34,3 +34,8 @@ Re-scoped by Amendment A3: the Help door, the host, and a badges page for the 16
 ## Hand-off
 
 The role agent sets `--set LK-09 in-review` when it hands off; the lead sets `done` after review.
+
+## Progress and continuation
+
+- 2026-10-19, slice 1 (words only): Help door prose under `packages/docs/src/content/docs/help/` says Polaris Locker (first mention) then Locker; sidebar/link titles retitled, slugs unchanged. On-screen strings and email subjects/sender that the live customer site and mail still show stay literal "Polaris Key" (true until `customer.host` is on, D1); `what-is-polaris-key`, `emails` and the sign-in/code pages say so in one line.
+- Remaining: (1) the host move to `polaris.locker/docs/help/` and the `what-is-polaris-locker` slug (`site-map.json` row + redirect + help-link tables), blocked on DOC-03b; (2) the badges page for the 16 labels, needs LK-12 destinations; (3) after the switch, drop the literal "Polaris Key" quotes and the "(or Polaris Locker)" asides. Status stays in-progress.

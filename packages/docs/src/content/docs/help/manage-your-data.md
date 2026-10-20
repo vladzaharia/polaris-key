@@ -9,7 +9,7 @@ sidebar:
 ---
 
 Your library at key.plrs.im lets you download or remove information held for you, and delete your
-account. For what an app reads and what Polaris Key holds, see
+account. For what an app reads and what Polaris Locker holds, see
 [Your data and privacy](/docs/help/your-data/).
 
 ## Download my data
@@ -28,7 +28,7 @@ entries and says it was shortened. An app's file includes only information it ho
 
 ## Remove my data from an app
 
-Removing information from an app deletes the information Polaris Key holds for you in that app.
+Removing information from an app deletes the information Locker holds for you in that app.
 
 1. Open the app in your library.
 2. Select **Remove my data**.
@@ -41,7 +41,7 @@ records through that license. Removing the license takes it out of your library 
 ## Get a support code
 
 A support code is a short code for one app. Read it to the app's support team so they can find the
-right person without seeing your Polaris Key account.
+right person without seeing your Locker account.
 
 1. Open the app in your library.
 2. Select **Get a support code**.
@@ -56,9 +56,9 @@ days and how to cancel, see [Delete your account](/docs/help/delete-account/).
 
 ## Ask about or erase your data
 
-- Polaris Key doesn't publish a privacy address. [Get help with an app](/docs/help/contact/) says
-  who to ask about your Polaris Key account.
+- Locker doesn't publish a privacy address. [Get help with an app](/docs/help/contact/) says
+  who to ask about your Locker account.
 - To ask what an app holds about you, such as your licenses and devices, ask the app's developer.
   Ask the developer too if you want it to erase its records.
-- To erase your Polaris Key account, see [Delete your account](/docs/help/delete-account/).
+- To erase your Locker account, see [Delete your account](/docs/help/delete-account/).
   Deleting it doesn't erase a developer's own records.

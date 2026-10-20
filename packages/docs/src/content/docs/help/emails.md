@@ -1,6 +1,6 @@
 ---
-title: "Emails from Polaris Key"
-description: "What Polaris Key account emails mean."
+title: "Emails from Polaris Locker"
+description: "What Polaris Locker account emails mean."
 type: "help"
 status: "shipped"
 lastReviewed: "2026-10-16"
@@ -8,7 +8,7 @@ sidebar:
   order: 3
 ---
 
-Account emails come from **Polaris Key**, sent from `noreply@auth.plrs.im` or `noreply@plrs.im`.
+Account emails come from Polaris Locker (or **Polaris Key**), sent from `noreply@auth.plrs.im` or `noreply@plrs.im`.
 None asks for your full license key.
 
 If you did not ask for an email, leave it unused. A sign-in code that does not arrive: see [Your

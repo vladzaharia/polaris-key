@@ -10,11 +10,11 @@ sidebar:
 
 Who to ask depends on the problem.
 
-| Who                      | Ask them about                                                                     |
-| ------------------------ | ---------------------------------------------------------------------------------- |
-| The app's developer      | The app, its license, downloads, and billing or a refund when you bought from them |
-| The store                | Payment, billing, and refunds for a store purchase                                 |
-| Polaris Key (self-serve) | Your account, signing in, and privacy: see below                                   |
+| Who                         | Ask them about                                                                     |
+| --------------------------- | ---------------------------------------------------------------------------------- |
+| The app's developer         | The app, its license, downloads, and billing or a refund when you bought from them |
+| The store                   | Payment, billing, and refunds for a store purchase                                 |
+| Polaris Locker (self-serve) | Your account, signing in, and privacy: see below                                   |
 
 ## Start with the app's help card
 
@@ -26,7 +26,7 @@ downloads for that app. It can show:
 - a button that starts with **Email** and shows an address
 - a link that shows the developer's website
 
-If the card is not there, Polaris Key has no app-support contact for that app. Check the app or
+If the card is not there, Locker has no app-support contact for that app. Check the app or
 store where you got it.
 
 ## Contact the app's developer
@@ -39,9 +39,9 @@ the app directly from the developer, ask them about billing or a refund too.
 If you bought the app through a store, use that store's purchase help for payment, billing, or a
 refund.
 
-## Problems with your Polaris Key account
+## Problems with your Locker account
 
-Polaris Key does not have a published public help address. Fix these yourself:
+Locker does not have a published public help address. Fix these yourself:
 
 - A sign-in code that did not arrive or has expired: [Your sign-in code didn't arrive](/docs/help/code-didnt-arrive/).
 - A security email that worries you: [Secure your account](/docs/help/secure-your-account/).

@@ -37,7 +37,7 @@ Choose **Revoke** next to it, then confirm. Anything using it stops within 30 se
 
 ## Which versions stay available
 
-When the developer publishes a release of a package, such as `1.4.0`, Polaris Key's cleanup removes that package's development builds up to that version. Development builds are versions published ahead of a release. Their names end in `-main.` or `-dev.` and a number, such as `1.4.0-main.7`. Python names them like `1.4.0.dev7`.
+When the developer publishes a release of a package, such as `1.4.0`, Polaris Locker's cleanup removes that package's development builds up to that version. Development builds are versions published ahead of a release. Their names end in `-main.` or `-dev.` and a number, such as `1.4.0-main.7`. Python names them like `1.4.0.dev7`.
 
 | Version                               | Example                       | After `1.4.0` is released |
 | ------------------------------------- | ----------------------------- | ------------------------- |
@@ -48,13 +48,13 @@ When the developer publishes a release of a package, such as `1.4.0`, Polaris Ke
 
 If you install only releases and betas, cleanup does not affect you.
 
-Cleanup works on one package at a time: the one that was released. It changes only the app's own packages on Polaris Key (`pkg.plrs.im`), and it works the same for packages open to everyone and packages that need a license. It covers container images. A build that something else still refers to stays. A copy on a public registry, such as npmjs or PyPI.org, is never changed.
+Cleanup works on one package at a time: the one that was released. It changes only the app's own packages on Locker (`pkg.plrs.im`), and it works the same for packages open to everyone and packages that need a license. It covers container images. A build that something else still refers to stays. A copy on a public registry, such as npmjs or PyPI.org, is never changed.
 
 ## When cleanup runs
 
 Cleanup runs automatically right after the developer publishes a release. A beta version removes nothing.
 
-Cleanup is on by default. Before it first runs for an app, Polaris Key records a one-time notice in the app's activity log. The notice comes from a dry run: Polaris Key counts the development builds cleanup would remove and deletes nothing. It also gives a start day, 7 days after the notice. Until that day nothing is removed, unless the developer turns cleanup on or runs it by hand. The first release after that day starts cleanup.
+Cleanup is on by default. Before it first runs for an app, Locker records a one-time notice in the app's activity log. The notice comes from a dry run: Locker counts the development builds cleanup would remove and deletes nothing. It also gives a start day, 7 days after the notice. Until that day nothing is removed, unless the developer turns cleanup on or runs it by hand. The first release after that day starts cleanup.
 
 A developer can turn cleanup on or off for an app, and the choice applies at once. Turning it on starts cleanup at the next release. Turning it off stops automatic cleanup.
 
