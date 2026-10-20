@@ -265,11 +265,13 @@ export async function handleAuthorize(ctx: {
   } catch {
     return fail("server_error");
   }
+  // Off the switch (or with the customer host the same origin) the card is on this origin.
+  const origin = crossHost && created.bindToken ? customer : apiOrigin;
   const res = redirect(
     303,
-    crossHost && created.bindToken
-      ? `${customer}/signin?request=${created.handle}&bind=${created.bindToken}`
-      : `${apiOrigin}/signin?request=${created.handle}`,
+    `${origin}/signin?request=${created.handle}${
+      crossHost && created.bindToken ? `&bind=${created.bindToken}` : ""
+    }`,
   );
   if (created.setCookie) res.headers.append("set-cookie", created.setCookie);
   return res;

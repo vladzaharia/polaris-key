@@ -374,8 +374,9 @@ export async function handleAuthDeviceEntry(
     windowSec: 60,
   });
   if (limited) return limited;
-  const action = onCustomerHost
-    ? `${url.origin}/device`
+  const customer = onCustomerHost ? customerOrigin(env, "on", req) : null;
+  const action = customer
+    ? `${customer}/device`
     : `${url.origin}/${product.slug}/identity/auth/device`;
 
   let rawCode: string | null;
