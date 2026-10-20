@@ -12,12 +12,12 @@ import {
   type DiscoverTileState,
 } from "../components/DiscoverTile.js";
 import { ErrorPanel } from "../components/States.js";
+import { TILE_GRID } from "../components/tileGrid.js";
 import { useClaimDiscover, useDiscover, useLibraryView } from "../data.js";
 import { portalErrorCopy } from "../errors.js";
 import {
   addedOfferFromLibrary,
   addedParam,
-  navDiscoverCount,
   mergeAdded,
   withAdded,
 } from "../model/discover.js";
@@ -167,40 +167,24 @@ export function DiscoverPage({
     }
   };
 
-  // The grid's columns follow the tile count; while loading, the Worker's count (or three).
-  const expected = Math.max(
-    1,
-    Math.min(3, navDiscoverCount(library.data?.discoverCount) ?? 3),
-  );
   const pending =
     discover.isPending || (addedParams.length > 0 && library.isPending);
   const empty = !pending && !discover.error && tiles.length === 0;
 
   return (
-    <section className="space-y-8">
-      <div className="space-y-2">
+    <section className="space-y-6">
+      <div className="space-y-1">
         <h1 className="text-page-title-sm font-semibold text-fg-strong desk:text-page-title">
           Discover
         </h1>
       </div>
       {pending ? (
-        // Two columns on tablets, three from 1180 px (§4.16), as the loaded grid.
-        <div
-          className={cn("grid gap-6 desk:grid-cols-2", wideColumns(expected))}
-          aria-busy
-        >
-          <Skeleton className="h-96 rounded-xl" />
-          {expected >= 2 ? (
-            <Skeleton className="hidden h-96 rounded-xl desk:block" />
-          ) : null}
-          {expected >= 3 ? (
-            <Skeleton
-              className={cn(
-                "hidden h-96 rounded-xl",
-                wideColumns(expected) ? "wide:block" : "desk:block",
-              )}
-            />
-          ) : null}
+        // The loaded grid's columns (`tileGrid.ts`).
+        <div className={TILE_GRID} aria-busy>
+          <Skeleton className="h-72 rounded-xl" />
+          <Skeleton className="h-72 rounded-xl" />
+          <Skeleton className="hidden h-72 rounded-xl desk:block" />
+          <Skeleton className="hidden h-72 rounded-xl wide:block" />
         </div>
       ) : discover.error ? (
         <ErrorPanel
@@ -236,15 +220,7 @@ export function DiscoverPage({
             <h2 id="offers-h" className="sr-only">
               Products you can add
             </h2>
-            <ul
-              ref={stagger.ref}
-              className={cn(
-                "grid gap-6 desk:grid-cols-2",
-                // Two or four tiles at three columns leave a row with a hole (3 + 1).
-                wideColumns(tiles.length),
-                stagger.className,
-              )}
-            >
+            <ul ref={stagger.ref} className={cn(TILE_GRID, stagger.className)}>
               {tiles.map((offer) => {
                 const slug = offer.product;
                 const state: DiscoverTileState = addedSlugs.has(slug)
@@ -272,14 +248,6 @@ export function DiscoverPage({
       )}
     </section>
   );
-}
-
-/**
- * Three columns from the wide breakpoint, except for one, two or four tiles, where a third column
- * leaves a hole (3 + 1) or a lone tile wider than two columns' worth.
- */
-function wideColumns(n: number): string {
-  return n <= 2 || n === 4 ? "" : "wide:grid-cols-3";
 }
 
 /** An Add that didn't go through, in the person's words (§6.4), inline on the tile. */

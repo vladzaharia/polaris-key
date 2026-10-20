@@ -129,7 +129,7 @@ export function DiscoverTile({
           // The whole 16:9 frame edge to edge, capped at 280 px tall (contained over a blurred
           // copy of itself where the column is wider), as on Library tiles.
           fit="contain"
-          className="aspect-video max-h-[17.5rem] w-full"
+          className="aspect-[5/2] w-full"
         >
           {noArt && offer.iconUrl ? (
             <ProductIcon
@@ -137,7 +137,7 @@ export function DiscoverTile({
               name={offer.name}
               tint={offer.tintColor}
               src={offer.iconUrl}
-              size={64}
+              size={48}
               lift
               className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
             />
@@ -145,7 +145,7 @@ export function DiscoverTile({
           {added ? (
             <span
               className={cn(
-                "absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-full border border-success-border bg-surface-overlay px-2.5 py-0.5 text-sm font-medium text-success shadow-elevation-2",
+                "absolute right-2 top-2 inline-flex items-center gap-1.5 rounded-full border border-success-border bg-surface-overlay px-2 py-0.5 text-xs font-medium text-success shadow-elevation-2",
                 pop && "pk-pop-in",
               )}
             >
@@ -154,9 +154,9 @@ export function DiscoverTile({
             </span>
           ) : null}
         </ProductArt>
-        <div className="flex flex-1 flex-col px-5 pb-5">
+        <div className="flex flex-1 flex-col px-3 pb-3 desk:px-3.5 desk:pb-3.5">
           <div
-            className={cn("flex items-start gap-3", noArt ? "mt-4" : "-mt-5")}
+            className={cn("flex items-start gap-2.5", noArt ? "mt-3" : "-mt-4")}
           >
             {noArt ? null : (
               <ProductIcon
@@ -164,16 +164,16 @@ export function DiscoverTile({
                 name={offer.name}
                 tint={offer.tintColor}
                 src={offer.iconUrl}
-                size={56}
+                size={40}
                 className="relative border-[3px] border-surface-raised shadow-elevation-2"
               />
             )}
-            <div className={cn("min-w-0 flex-1", !noArt && "pt-8")}>
+            <div className={cn("min-w-0 flex-1", !noArt && "pt-5")}>
               <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
                 <h3
                   id={id}
                   dir="auto"
-                  className="line-clamp-2 min-w-0 max-w-full break-words text-lg font-semibold text-fg-strong"
+                  className="line-clamp-2 min-w-0 max-w-full break-words text-base font-semibold leading-snug text-fg-strong"
                 >
                   <a
                     href={page}
@@ -197,12 +197,12 @@ export function DiscoverTile({
             </div>
           </div>
           <TileFacts
-            className="mt-4"
+            className="mt-2"
             facts={facts}
             platforms={offerPlatforms(offer.platforms)}
           />
           {reason && ReasonIcon ? (
-            <p className="mt-3 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 rounded-md bg-surface-sunken px-3 py-2.5 text-md text-fg-strong">
+            <p className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1 rounded-md bg-surface-sunken px-2.5 py-1.5 text-sm text-fg-strong">
               <span className="flex min-w-0 flex-1 gap-2.5">
                 <ReasonIcon
                   aria-hidden
@@ -240,13 +240,13 @@ export function DiscoverTile({
           {link ? (
             <LinkActions offer={offer} page={page} />
           ) : ended && !added ? null : (
-            <div className="relative mt-auto pt-5">
+            <div className="relative mt-auto pt-3">
               {added ? (
                 <Button
                   asChild
                   variant="quiet"
-                  size="lg"
-                  className="h-11 w-full"
+                  size="md"
+                  className="h-10 w-full pointer-coarse:h-11"
                 >
                   <a id={`${id}-open`} href={href.product(offer.product)}>
                     <ArrowRight aria-hidden />
@@ -257,8 +257,8 @@ export function DiscoverTile({
                 <Button
                   id={`${id}-add`}
                   variant="quiet"
-                  size="lg"
-                  className="h-11 w-full"
+                  size="md"
+                  className="h-10 w-full pointer-coarse:h-11"
                   iconStart={<Plus aria-hidden />}
                   loading={state === "adding"}
                   aria-describedby={error ? errorId : undefined}
@@ -275,7 +275,7 @@ export function DiscoverTile({
           {reserveStoreRow || stores.length > 0 ? (
             <div
               className={cn(
-                "mt-4",
+                "mt-2",
                 reserveStoreRow ? "hidden min-h-9 desk:block" : "",
                 stores.length > 0 && "block",
               )}
@@ -316,7 +316,7 @@ function LinkActions({
   const site =
     offer.website && /^https:\/\//.test(offer.website) ? offer.website : null;
   return (
-    <ul className="relative mt-auto flex flex-col gap-2 pt-5">
+    <ul className="relative mt-auto flex flex-col gap-2 pt-3">
       {offer.stores.length > 0 ? (
         offer.stores.map((s) => (
           <li key={s.id}>
@@ -337,7 +337,12 @@ function LinkActions({
         </li>
       ) : (
         <li>
-          <Button asChild variant="quiet" size="lg" className="h-11 w-full">
+          <Button
+            asChild
+            variant="quiet"
+            size="md"
+            className="h-10 w-full pointer-coarse:h-11"
+          >
             <a href={page} aria-label={`See details: ${offer.name}`}>
               <ArrowRight aria-hidden />
               See details
@@ -359,7 +364,12 @@ function ExternalButton({
   name: string;
 }): React.ReactElement {
   return (
-    <Button asChild variant="quiet" size="lg" className="h-11 w-full">
+    <Button
+      asChild
+      variant="quiet"
+      size="md"
+      className="h-10 w-full pointer-coarse:h-11"
+    >
       <a
         href={to}
         target="_blank"

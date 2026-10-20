@@ -1,5 +1,14 @@
 import * as React from "react";
-import { ChevronDown, KeyRound, LogOut, Palette, User } from "lucide-react";
+import {
+  AtSign,
+  ChevronDown,
+  CircleHelp,
+  KeyRound,
+  LogOut,
+  Palette,
+  ShieldCheck,
+  User,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,13 +19,21 @@ import {
 } from "../../ui/DropdownMenu.js";
 import { cn } from "../../lib/cn.js";
 import type { PortalAccount } from "../api.js";
+import { useActivate } from "../activate.js";
 import { href } from "../router.js";
 import { Avatar } from "./Avatar.js";
 import { t } from "../../lib/copy.js";
 
+/** The public Help door and the page on what the site keeps (no terms page exists yet). */
+const FOOT_LINKS = [
+  { label: "Help", href: "/docs/help/", icon: CircleHelp },
+  { label: "Privacy", href: "/docs/help/your-data/", icon: ShieldCheck },
+] as const;
+
 /**
- * The account menu (PORTAL.md §3.2): the avatar chip ("Account: <name or email>"), then Account,
- * Sign-in methods, Appearance and Sign out. The chip and the menu's header show the profile
+ * The account menu (PORTAL.md §3.2): the avatar chip ("Account: <name or email>"), then Activate a
+ * license (PX-35; the same modal as the Library's key tile), Account, Sign-in methods, Appearance,
+ * Help, Privacy and Sign out. The chip and the menu's header show the profile
  * picture (PX-22, §4.30 rule 5) from the signed-in session, else the initials. Approve a new device waits for G29 and Help for a
  * public help URL; both are left out rather than shown as dead ends.
  *
@@ -33,6 +50,7 @@ export function AccountMenu({
   account: PortalAccount;
 }): React.ReactElement {
   const formRef = React.useRef<HTMLFormElement>(null);
+  const activate = useActivate();
   // The person's name when we have one (profile import, a provider), else their email.
   const name = account.name?.trim();
   const named = Boolean(name) && name !== account.email;
@@ -100,6 +118,10 @@ export function AccountMenu({
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
+          <DropdownMenuItem onSelect={() => activate.open()}>
+            <KeyRound aria-hidden />
+            Activate a license
+          </DropdownMenuItem>
           <DropdownMenuItem asChild>
             <a href={href.account()}>
               <User aria-hidden />
@@ -108,7 +130,7 @@ export function AccountMenu({
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
             <a href={href.account("methods")}>
-              <KeyRound aria-hidden />
+              <AtSign aria-hidden />
               Sign-in methods
             </a>
           </DropdownMenuItem>
@@ -118,6 +140,15 @@ export function AccountMenu({
               Appearance
             </a>
           </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          {FOOT_LINKS.map((l) => (
+            <DropdownMenuItem key={l.href} asChild>
+              <a href={l.href}>
+                <l.icon aria-hidden />
+                {l.label}
+              </a>
+            </DropdownMenuItem>
+          ))}
           <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={() => formRef.current?.requestSubmit()}>
             <LogOut aria-hidden />

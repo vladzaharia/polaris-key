@@ -138,6 +138,8 @@
      below it. */
   --breakpoint-split: 64rem;
   --breakpoint-wide: 73.75rem;
+  /* 1700 px: the Library and Discover grids add a fifth column (PX-35). */
+  --breakpoint-xxl: 106.25rem;
   /* The type scale's display step (EXPERIENCE.md §3): 40 px, for the portal's Library and
      Product titles only (`PageHeader size="display"`; 30 px, text-3xl, on phones). */
   --text-display: 2.5rem;

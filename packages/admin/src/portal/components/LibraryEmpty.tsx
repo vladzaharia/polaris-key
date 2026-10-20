@@ -10,8 +10,8 @@ import { href } from "../router.js";
 /**
  * The empty library (§4.12, mockup `portal.library-empty`, portal-17): one centred state, the
  * Locker mark in a tile, "Nothing here yet" (the page's subtitle already names the signed-in email),
- * **Activate license** (the header's own label, the one primary) and "See N in Discover" once the
- * Worker counts offers (G24). It takes the space between the title and "Missing a license?".
+ * **Activate license** (its own ink primary, the page's one) and "See N in Discover" once the
+ * Worker counts offers (G24). It takes the space between the title and the sticky "Missing a license?" strip.
  */
 export function LibraryEmpty({
   discoverCount = null,
