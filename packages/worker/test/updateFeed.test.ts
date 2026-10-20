@@ -24,6 +24,7 @@ import {
   seedLicenseWithKey,
   seedProduct,
   seedTier,
+  seedOperatorPolicy,
 } from "./seed.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 import type { Env } from "../src/platform/env.js";
@@ -134,6 +135,7 @@ async function seedCfg(
     row.operator_policy_json,
   );
   await seedDeliveryAccess(db, row.product, row.artifacts_access);
+  await seedOperatorPolicy(db, row.product, row.operator_policy_json);
 }
 
 function envFor(): Env {

@@ -214,7 +214,8 @@ describe("Discover (PX-16)", () => {
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     const moss = await tile("Mossgarden");
     expect(within(moss).getByText("Little Fern")).toBeTruthy();
-    expect(within(moss).getByText("Lifetime · 5 devices")).toBeTruthy();
+    expect(within(moss).getByText("Lifetime")).toBeTruthy();
+    expect(within(moss).getByText("5 devices")).toBeTruthy();
     expect(
       within(moss).getByText("Free with a Polaris Locker account"),
     ).toBeTruthy();
@@ -222,7 +223,9 @@ describe("Discover (PX-16)", () => {
       within(moss).getByRole("img", { name: "Runs on Windows, macOS" }),
     ).toBeTruthy();
     const lumen = await tile("Lumen RAW");
-    expect(within(lumen).getByText("Beta · 90 days · 2 devices")).toBeTruthy();
+    expect(within(lumen).getByText("Beta")).toBeTruthy();
+    expect(within(lumen).getByText("90 days")).toBeTruthy();
+    expect(within(lumen).getByText("2 devices")).toBeTruthy();
     expect(
       within(lumen).getByText("For members of aperture-seven-customers"),
     ).toBeTruthy();
@@ -238,12 +241,14 @@ describe("Discover (PX-16)", () => {
         "Offered to your account by its developer",
       ),
     ).toBeTruthy();
+    const quill = within(await tile("Quill"));
+    expect(quill.getByText("Personal")).toBeTruthy();
+    expect(quill.getByText("Lifetime")).toBeTruthy();
+    // The mockup has no subtitle and no closing line (portal.discover).
+    expect(screen.queryByText("Products you can add for free")).toBeNull();
     expect(
-      within(await tile("Quill")).getByText("Personal · Lifetime"),
-    ).toBeTruthy();
-    expect(
-      screen.getByText("Purchases appear in your library automatically."),
-    ).toBeTruthy();
+      screen.queryByText("Purchases appear in your library automatically."),
+    ).toBeNull();
     // In name order, every tile with its own Add.
     expect(
       screen
@@ -262,7 +267,7 @@ describe("Discover (PX-16)", () => {
     const nav = screen.getByRole("navigation", { name: "Main" });
     expect(
       within(nav).getByRole("link", { name: /Discover/ }).textContent,
-    ).toBe("Discover4");
+    ).toBe("Discover4 to add");
     expect(await axeViolations()).toEqual([]);
   });
 
@@ -361,7 +366,7 @@ describe("Discover (PX-16)", () => {
     await waitFor(() =>
       expect(
         within(nav).getByRole("link", { name: /Discover/ }).textContent,
-      ).toBe("Discover1"),
+      ).toBe("Discover1 to add"),
     );
     expect(within(nav).getByRole("link", { name: /Library/ }).textContent).toBe(
       "Library1",
@@ -483,11 +488,11 @@ describe("Discover (PX-16)", () => {
       within(moss).getByRole("button", { name: "Add to library: Mossgarden" }),
     );
     expect((await within(moss).findByRole("alert")).textContent).toBe(
-      "Too many tries. Wait a minute, then try again.",
+      "Couldn't add Mossgarden. Wait a minute, then try again.",
     );
-    // Back on the button, relabelled, with the error tied to it and focus returned to it.
+    // Back on the button, still "Add to library", with the error tied to it and focus returned.
     const retry = within(moss).getByRole("button", {
-      name: "Try again: Mossgarden",
+      name: "Add to library: Mossgarden",
     });
     expect(retry.getAttribute("aria-describedby")).toBe(
       within(moss).getByRole("alert").id,
@@ -525,48 +530,29 @@ describe("Discover (PX-16)", () => {
   });
 });
 
-describe("the empty Library's Discover teaser (PX-16, §4.12)", () => {
+describe("the empty Library's way into Discover (portal-17, §4.12)", () => {
   beforeEach(() => {
     window.history.replaceState(null, "", "/");
   });
 
-  it("shows up to three offers; the one link to Discover is the empty state's", async () => {
+  it("says one thing and offers the two ways in; no offers are listed under it", async () => {
     mockFetch(discoverWorker([QUILL, MOSSGARDEN, LUMEN, PIXEL]));
     renderPortal();
-    const ready = await screen.findByRole("region", { name: /Ready to add/ });
-    const rows = within(ready).getAllByRole("listitem");
-    // The thumbs are the fallback art (no media here): the tint and the product's letter first.
-    expect(rows.map((r) => r.textContent)).toEqual([
-      "QQuillFree with a Polaris Locker account",
-      "MMossgardenFree with a Polaris Locker account",
-      "LLumen RAWFor members of aperture-seven-customers",
-    ]);
-    // Each row opens its storefront page (PS-05); Discover is linked once, from the empty state.
-    expect(
-      within(ready)
-        .getAllByRole("listitem")
-        .map((r) => within(r).getByRole("link").getAttribute("href")),
-    ).toEqual([
-      "#/discover/quill",
-      "#/discover/mossgarden",
-      "#/discover/lumen-raw",
-    ]);
-    expect(within(ready).queryByRole("link", { name: "See all" })).toBeNull();
+    await screen.findByRole("heading", { name: "Nothing here yet" });
     expect(
       screen.getByRole("link", { name: "See 4 in Discover" }),
     ).toBeTruthy();
+    expect(screen.queryByRole("region", { name: /Ready to add/ })).toBeNull();
+    expect(fetchedRequests()).not.toContain("GET /api/discover");
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(await axeViolations()).toEqual([]);
   });
 
-  it("is hidden, and Discover never asked, when there is nothing to add", async () => {
+  it("has no Discover link when there is nothing to add", async () => {
     mockFetch(discoverWorker([]));
     renderPortal();
-    await screen.findByRole("heading", {
-      name: "Nothing here yet",
-    });
-    expect(screen.queryByRole("region", { name: /Ready to add/ })).toBeNull();
-    expect(fetchedRequests()).not.toContain("GET /api/discover");
+    await screen.findByRole("heading", { name: "Nothing here yet" });
+    expect(screen.queryByRole("link", { name: /in Discover/ })).toBeNull();
   });
 });
 

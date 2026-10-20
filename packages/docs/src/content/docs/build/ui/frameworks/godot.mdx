@@ -141,6 +141,10 @@ follows the game's own theme. The options are on `PKeyOptions` (`ui_brand_scheme
 [Theming](/docs/build/ui/theming/). `ui_reduce_motion` and `ui_reduce_transparency` follow the
 system's settings by default (`auto`, from Godot 4.5) and can be forced `on` or `off`.
 
+## Powered by Polaris Locker
+
+`ui_powered_by = true` adds the Locker line (the micro mark at 16 px and the phrase) as the last item in the settings scroll; never the gate or boot. `ui_powered_by_style` is `"line"` by default. On a credits or about scene you place, a `PKeyPoweredBy` node with `allow_badge = true` draws the 320 × 104 badge with `"badge"` where 320 px are free, else the line.
+
 ## Localization
 
 Every string the scenes show is a key of `PKeyUiCopy`, in English, passed through `tr()`: translate

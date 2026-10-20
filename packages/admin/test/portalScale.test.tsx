@@ -86,12 +86,12 @@ describe("scale features from 8 products (PX-03)", () => {
     expect(document.activeElement).toBe(screen.getByRole("searchbox"));
   });
 
-  it("filters to Needs attention with counts, hiding zero-count chips", async () => {
+  it("filters to Needs you with counts, hiding zero-count chips", async () => {
     mockFetch(signedIn(TWELVE));
     renderPortal();
     await ready();
     const group = screen.getByRole("group", { name: "Filter" });
-    const chip = within(group).getByRole("button", { name: /Needs attention/ });
+    const chip = within(group).getByRole("button", { name: /Needs you/ });
     expect(chip.textContent).toContain("2");
     expect(within(group).queryByRole("button", { name: /Games/ })).toBeNull();
     await userEvent.click(chip);
@@ -136,9 +136,11 @@ describe("scale features from 8 products (PX-03)", () => {
   });
 
   it("jumps to a product from the keyboard with ⌘K / Ctrl K", async () => {
+    // Off the Library (its toolbar search takes ⌘K there).
+    window.history.replaceState(null, "", "/#/p/nightfall");
     mockFetch(signedIn(TWELVE));
     renderPortal();
-    await ready();
+    await screen.findByRole("heading", { level: 1, name: "Nightfall" });
     await userEvent.keyboard("{Control>}k{/Control}");
     const dialog = await screen.findByRole("dialog", {
       name: "Jump to a product",
@@ -162,13 +164,14 @@ describe("scale features from 8 products (PX-03)", () => {
   });
 
   it("closing without a jump gives focus back to the opener (§9.4)", async () => {
+    window.history.replaceState(null, "", "/#/p/nightfall");
     mockFetch(signedIn(TWELVE));
     renderPortal();
-    await ready();
-    // From the trigger: Enter, then Escape.
-    const trigger = screen.getAllByRole("button", {
+    await screen.findByRole("heading", { level: 1, name: "Nightfall" });
+    // From the phone header's icon: Enter, then Escape.
+    const trigger = await screen.findByRole("button", {
       name: "Jump to a product",
-    })[0]!;
+    });
     trigger.focus();
     await userEvent.keyboard("{Enter}");
     await screen.findByRole("dialog", { name: "Jump to a product" });
@@ -179,13 +182,26 @@ describe("scale features from 8 products (PX-03)", () => {
       ).toBeNull(),
     );
     await waitFor(() => expect(document.activeElement).toBe(trigger));
-    // From a tile's link: ⌘K, then Escape.
-    const link = screen.getByRole("link", { name: "Glyphsmith" });
-    link.focus();
+  });
+
+  it("on the Library, ⌘K and / focus the toolbar search instead, and there is no header icon", async () => {
+    mockFetch(signedIn(TWELVE));
+    renderPortal();
+    await ready();
+    const search = screen.getByRole("searchbox", {
+      name: "Search your library",
+    });
+    expect(
+      screen.queryByRole("button", { name: "Jump to a product" }),
+    ).toBeNull();
     await userEvent.keyboard("{Control>}k{/Control}");
-    await screen.findByRole("dialog", { name: "Jump to a product" });
-    await userEvent.keyboard("{Escape}");
-    await waitFor(() => expect(document.activeElement).toBe(link));
+    expect(document.activeElement).toBe(search);
+    expect(
+      screen.queryByRole("dialog", { name: "Jump to a product" }),
+    ).toBeNull();
+    (document.activeElement as HTMLElement).blur();
+    await userEvent.keyboard("/");
+    expect(document.activeElement).toBe(search);
   });
 
   it("jumping to the product already showing still focuses its h1 (UX-79)", async () => {
@@ -208,11 +224,12 @@ describe("scale features from 8 products (PX-03)", () => {
   });
 
   it("moves through the palette with the arrow keys and opens Activate from it", async () => {
+    window.history.replaceState(null, "", "/#/p/nightfall");
     mockFetch(signedIn(TWELVE));
     renderPortal();
-    await ready();
+    await screen.findByRole("heading", { level: 1, name: "Nightfall" });
     await userEvent.click(
-      screen.getAllByRole("button", { name: "Jump to a product" })[0]!,
+      await screen.findByRole("button", { name: "Jump to a product" }),
     );
     const dialog = await screen.findByRole("dialog", {
       name: "Jump to a product",

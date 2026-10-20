@@ -199,7 +199,7 @@ describe("the signed-in header (PORTAL.md §3.2, §8)", () => {
           expect
             .soft(visible, `header controls at ${width}`)
             .toBe(
-              `Polaris Locker: your library · Library12 · Discover24 · Jump to a product · Activate license · Account: ${name}`,
+              `Polaris Locker: your library · Library12 · Discover24 to add · Activate license · Account: ${name}`,
             );
           // From 1180 px the chip shows the full name. It truncates only once the ⌘K field has
           // given way to its 176 px floor, or the chip has reached its 18rem cap.
@@ -237,7 +237,7 @@ describe("the signed-in header (PORTAL.md §3.2, §8)", () => {
     });
   }
 
-  it("gives ⌘K, Activate and the account chip one height: 40 px, 44 on a coarse pointer", async ({
+  it("gives Activate and the account chip one height: 40 px, 44 on a coarse pointer", async ({
     expect,
   }) => {
     const o = await portal.open("twelve", "/", {
@@ -247,7 +247,6 @@ describe("the signed-in header (PORTAL.md §3.2, §8)", () => {
     try {
       await h1(o.page, "Your library");
       const headerControls = [
-        'header button[aria-label="Jump to a product"]',
         'header button[aria-label="Activate license"]',
         'header button[aria-label^="Account:"]',
       ];
@@ -282,7 +281,7 @@ describe("the signed-in header (PORTAL.md §3.2, §8)", () => {
       };
       for (const width of [1024, 1440]) {
         await o.page.setViewportSize({ width, height: 900 });
-        expect.soft(await heights(), `at ${width}`).toEqual([40, 40, 40]);
+        expect.soft(await heights(), `at ${width}`).toEqual([40, 40]);
       }
     } finally {
       await o.close();
@@ -352,7 +351,7 @@ describe("the tablet and short-screen rules (PORTAL.md §8)", () => {
     const o = await portal.open("twelve", "/", { width: 900 });
     try {
       await h1(o.page, "Your library");
-      await o.page.getByRole("region", { name: /Needs attention/ }).waitFor();
+      await o.page.getByRole("region", { name: /Needs you/ }).waitFor();
       const SHELF = "section[aria-labelledby=attention-h]";
       for (const width of [390, 768, 900, 1280, 1440, 2560]) {
         await o.page.setViewportSize({ width, height: 900 });
@@ -404,26 +403,7 @@ describe("the tablet and short-screen rules (PORTAL.md §8)", () => {
     }
   });
 
-  it("Ready to add: on tablets the odd third offer spans both columns", async ({
-    expect,
-  }) => {
-    const o = await portal.open("empty", "/", { width: 768, height: 1024 });
-    try {
-      await o.page.getByRole("region", { name: /Ready to add/ }).waitFor();
-      const grid = await rowsOf(
-        o.page,
-        "section[aria-labelledby=ready-h] > ul",
-        "",
-      );
-      expect(grid.columns).toBe(2);
-      expect(grid.items).toHaveLength(3);
-      expect(grid.items[2]!.width).toBeCloseTo(grid.width, 0);
-    } finally {
-      await o.close();
-    }
-  });
-
-  it("the compact grid keeps three columns on tablets, every action label inside its button", async ({
+  it("the compact grid fills its columns from 17 rem tiles (two on tablets), every action label inside its button", async ({
     expect,
   }) => {
     const o = await portal.open("twelve", "/", { width: 761 });
@@ -437,7 +417,19 @@ describe("the tablet and short-screen rules (PORTAL.md §8)", () => {
           "[data-library-grid=compact]",
           "article .mt-auto > :first-child",
         );
-        expect.soft(grid.columns, `columns at ${width}`).toBe(3);
+        expect
+          .soft(grid.columns, `columns at ${width}`)
+          .toBe(
+            Math.floor(
+              ((await o.page.evaluate(
+                () =>
+                  document.querySelector("[data-library-grid=compact]")!
+                    .clientWidth,
+              )) +
+                20) /
+                (17 * 16 + 20),
+            ),
+          );
         for (const [i, it] of grid.items.entries())
           expect
             .soft(it.action?.fits, `tile ${i}'s action at ${width}`)
@@ -813,10 +805,9 @@ describe("the tablet and short-screen rules (PORTAL.md §8)", () => {
   it("Jump to a product gives focus back to its opener when closed without a jump", async ({
     expect,
   }) => {
-    const o = await portal.open("twelve", "/", { width: 900 });
+    const o = await portal.open("twelve", "/#/p/nightfall", { width: 700 });
     try {
-      await h1(o.page, "Your library");
-      await o.page.locator("[data-library-grid=compact]").waitFor();
+      await h1(o.page, "Nightfall");
       const trigger = o.page
         .getByRole("banner")
         .getByRole("button", { name: "Jump to a product" });
@@ -827,7 +818,8 @@ describe("the tablet and short-screen rules (PORTAL.md §8)", () => {
             document.activeElement?.getAttribute("aria-label") ??
             document.activeElement?.textContent,
         );
-      for (const width of [900, 1440]) {
+      // The header trigger is the phone icon; from 900 px the toolbar search and ⌘K are the way in.
+      for (const width of [700, 390]) {
         await o.page.setViewportSize({ width, height: 900 });
         await trigger.focus();
         await o.page.keyboard.press("Enter");
@@ -839,16 +831,6 @@ describe("the tablet and short-screen rules (PORTAL.md §8)", () => {
           .poll(focused, { message: `after Escape at ${width}` })
           .toBe("Jump to a product");
       }
-      // ⌘K from a tile's link, then Escape: back on the link.
-      const link = o.page
-        .locator("[data-library-grid]")
-        .getByRole("link", { name: "Glyphsmith", exact: true });
-      await link.focus();
-      await o.page.keyboard.press("Control+k");
-      await dialog.waitFor();
-      await o.page.keyboard.press("Escape");
-      await dialog.waitFor({ state: "detached" });
-      await expect.poll(focused).toBe("Glyphsmith");
     } finally {
       await o.close();
     }

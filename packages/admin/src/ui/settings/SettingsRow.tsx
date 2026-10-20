@@ -81,7 +81,12 @@ export function SettingsRow({
   );
   return (
     <div
-      className={cn("px-5", compact ? "py-2.5" : "py-4")}
+      className={cn(
+        "relative px-5",
+        compact ? "py-2.5" : "py-4",
+        // A row with an unsaved change: an ink bar at its leading edge and a wash.
+        "data-[state=changed]:bg-surface-sunken data-[state=changed]:before:absolute data-[state=changed]:before:inset-y-0 data-[state=changed]:before:left-0 data-[state=changed]:before:w-[3px] data-[state=changed]:before:bg-fg-strong data-[state=changed]:before:content-['']",
+      )}
       data-align={align}
       data-state={state}
     >

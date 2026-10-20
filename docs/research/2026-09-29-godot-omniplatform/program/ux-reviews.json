@@ -264,6 +264,31 @@
       "verdict": "pass",
       "date": "2026-10-20",
       "evidence": "Lead-verified MOCKUP pass (portal.library Locker re-skin)."
+    },
+    "LK-15": {
+      "verdict": "pass",
+      "date": "2026-10-20",
+      "evidence": "UX review PASS-WITH-NOTES 2026-10-19 (_mockups/review/LK-15/); notes fixed (8bd71e72b); A4 re-scope to Key chrome (f5936e16d, chrome = main); switch notes dropped (4f7a06bcd)."
+    },
+    "LK-07b": {
+      "verdict": "pass",
+      "date": "2026-10-20",
+      "evidence": "Lead-verified BUILT emails (26 messages × 600/390 × light/dark/no-style; _scratch/LK-07b/shots/; e.g. deletion-scheduled 600-light): Locker lockup, ink action, neutral callouts, no Polaris Key, axe contrast clean."
+    },
+    "I-29": {
+      "verdict": "pass",
+      "date": "2026-10-20",
+      "evidence": "UX review FAIL B1–B5 + majors + frontend mockup gaps fixed in one round (ba98b6c44; layout e2e incl. zoom rows); security PASS; prod has no toggled product."
+    },
+    "ST-08": {
+      "verdict": "pass",
+      "date": "2026-10-20",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/ST-08/rebuild/ (built re-check 2026-10-20 after one fix round; notes are ST-08n follow-ups)"
+    },
+    "LK-16": {
+      "verdict": "pass",
+      "date": "2026-10-20",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/LK-16/recheck/ (BUILT review FAIL -> one fix round -> re-check FAIL on 1 small blocker (Compose showPoweredBy) -> lead fix list 01465b426 verified by the lead)"
     }
   }
 }

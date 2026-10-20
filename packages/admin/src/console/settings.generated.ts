@@ -368,6 +368,25 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     deprecated: null,
   },
   {
+    key: "email.dailyCapDefault",
+    aliases: ["EMAIL_PRODUCT_DAILY_CAP"],
+    scope: "platform",
+    entity: null,
+    service: "platform",
+    area: "email",
+    rbacArea: "platform",
+    label: "Daily sign-in mail cap",
+    description:
+      "How many sign-in emails one product can send a day when it sets no cap of its own. Platform mail is never counted.",
+    keywords: ["limit", "quota", "passthrough", "sign-in", "mail"],
+    docs: "/docs/operate/platform/settings/",
+    ownership: "operator",
+    critical: false,
+    secret: false,
+    pending: null,
+    deprecated: null,
+  },
+  {
     key: "email.senderLegacy",
     aliases: [],
     scope: "platform",
@@ -1586,7 +1605,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "signin",
     label: "Key-entry limit",
     description:
-      "How many times the key of a license that is in no account may be entered on new devices while Identity is on. Past it, with key-entry refusals on, key entry is refused with a link to the portal.",
+      "How many times the key of a license that is in no account may be entered on new devices while Identity is on. Past it, with key-entry refusals on, key entry is refused with a link to Polaris Locker.",
     keywords: ["key entry", "key_entry_limit", "activations"],
     docs: "/docs/features/sign-in/",
     ownership: "claimable",
@@ -1901,6 +1920,12 @@ export const NOT_A_SETTING_INDEX: readonly NotASettingEntry[] = [
     shows: "Core → Settings; Core → Overview",
   },
   {
+    thing: "Old lazy-delta and sign-in mail cap tables",
+    reason:
+      "ST-11 copied both into product settings rows once (deltas.lazy.enabled, deltas.lazy.hotDevices, deltas.lazy.dailyCap, email.dailyCap). Nothing reads the old tables; ST-25 drops them.",
+    shows: "Product → Settings",
+  },
+  {
     thing: "Connection records (where a connection row came from)",
     reason:
       "A record of how a connection was created: env for the seeded platform sign-in, console or manifest later. The connection itself is configured as a whole, not as a setting.",
@@ -1909,14 +1934,14 @@ export const NOT_A_SETTING_INDEX: readonly NotASettingEntry[] = [
   {
     thing: "Customer licence links",
     reason:
-      "Customer data: how a portal account came to hold a licence, not Polaris behaviour.",
+      "Customer data: how a Polaris Locker account came to hold a license, not Polaris behaviour.",
     shows: "License → Licenses",
   },
   {
     thing: "An account's birth date and where it came from (I-33)",
     reason:
       "Personal data the person keeps on their own account (typed by them, or accepted from a connection's claim), not Polaris behaviour. No operator sees it.",
-    shows: "The customer portal's Account → Profile, to that person only",
+    shows: "Polaris Locker's Account → Profile, to that person only",
   },
   {
     thing: "Grant and licence provenance (LX-08)",

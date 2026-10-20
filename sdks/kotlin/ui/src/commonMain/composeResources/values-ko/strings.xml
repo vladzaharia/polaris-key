@@ -45,7 +45,7 @@
     <!-- Shared verb used across the kit's screens. Signs this device out of the product. -->
     <string name="common_signOut">로그아웃</string>
     <string name="common_signOut__macos">로그아웃</string>
-    <!-- Shared verb used across the kit's screens. Opens the person's Polaris Key account in the browser. -->
+    <!-- Shared verb used across the kit's screens. Opens the person's Polaris Locker account in the browser. -->
     <string name="common_manage">관리</string>
     <!-- Shared verb used across the kit's screens. Tries to reach the licensing service again. -->
     <string name="common_reconnect">다시 연결</string>
@@ -123,8 +123,8 @@
     <string name="part_qr_scanInstead__macos">대신 휴대폰으로 스캔</string>
     <!-- Caption under the seat meter. {used} and {limit} are numbers of devices. Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number. Arguments: 1=used, 2=limit. -->
     <string name="part_seatMeter_caption">%2$s대 중 %1$s대 사용 중</string>
-    <!-- Optional footer line. Polaris Key is never translated. -->
-    <string name="part_poweredBy">Polaris Key 제공</string>
+    <!-- Optional footer line. Polaris Locker is never translated. -->
+    <string name="part_poweredBy">Polaris Locker 제공</string>
     <!-- Status pill: the license works. -->
     <string name="part_status_ok">활성</string>
     <!-- Status pill: offline grace period. -->
@@ -631,7 +631,7 @@
     <!-- Toast: an update is available. Arguments: {product} = the product's name from ProductIdentity (never translated); {version} = a version string such as 2.4.1. Arguments: 1=product, 2=version. -->
     <string name="toast_updateAvailable">%1$s %2$s 업데이트가 있어요</string>
     <!-- Hosted sign-in card, method chooser (SIGN-IN.md §3.3). -->
-    <string name="signin_methods_title">Polaris Key에 로그인</string>
+    <string name="signin_methods_title">Polaris Locker에 로그인</string>
     <!-- Hosted sign-in card, method chooser (SIGN-IN.md §3.3). -->
     <string name="signin_methods_titleApp">로그인</string>
     <!-- Hosted sign-in card, method chooser (SIGN-IN.md §3.3). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
@@ -674,7 +674,7 @@
     <!-- Header of the sign-in card when an app asks (SIGN-IN.md §3.1). Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated. Arguments: 1=code. -->
     <string name="signin_header_codePanel">화면의 코드 · %1$s · 화면과 일치하는지 확인하세요</string>
     <!-- Hosted sign-in card (SIGN-IN.md). Arguments: {app} = the requesting app's name (never translated); {developer} = the developer's name (never translated). Arguments: 1=app, 2=developer. -->
-    <string name="signin_footer">Polaris Key가 %1$s 로그인을 처리해요. %2$s에게는 코드나 패스키가 절대 공개되지 않아요.</string>
+    <string name="signin_footer">Polaris Locker가 %1$s 로그인을 처리해요. %2$s에게는 코드나 패스키가 절대 공개되지 않아요.</string>
     <!-- Sign-in is turned off (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated); {developer} = the developer's name (never translated). Arguments: 1=product, 2=developer. -->
     <string name="signin_off_product">%1$s의 로그인이 꺼져 있어요. %2$s에 문의하세요.</string>
     <!-- Sign-in is turned off (SIGN-IN.md §4.12). -->
@@ -684,7 +684,7 @@
     <!-- Hosted sign-in card (SIGN-IN.md). -->
     <string name="signin_emailDown">지금은 이메일을 보낼 수 없어요. 다른 방법으로 로그인하세요.</string>
     <!-- The card can't reach the service. -->
-    <string name="signin_network_title">Polaris Key에 연결할 수 없어요</string>
+    <string name="signin_network_title">Polaris Locker에 연결할 수 없어요</string>
     <!-- Hosted sign-in card (SIGN-IN.md). -->
     <string name="signin_retry">다시 시도</string>
     <string name="signin_retry__macos">다시 시도</string>
@@ -714,7 +714,7 @@
     <string name="signin_code_differentEmail">다른 이메일 사용</string>
     <string name="signin_code_differentEmail__macos">다른 이메일 사용</string>
     <!-- Sign-in email subject (SIGN-IN.md §3.15). Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated. Arguments: 1=code. -->
-    <string name="signin_email_subject">Polaris Key 코드: %1$s</string>
+    <string name="signin_email_subject">Polaris Locker 코드: %1$s</string>
     <!-- Sign-in email body (SIGN-IN.md §3.15). -->
     <string name="signin_email_body">또는 버튼으로 로그인하세요. 코드와 링크는 10분 동안 한 번만 사용할 수 있어요.</string>
     <!-- Page opened from the email's sign-in link on another device (SIGN-IN.md §3.4). Arguments: {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”); {place} = an approximate place (city, country). Arguments: 1=time, 2=place. -->
@@ -1008,7 +1008,7 @@
     <string name="signin_menu_signIn">로그인…</string>
     <string name="signin_menu_signIn__macos">로그인…</string>
     <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
-    <string name="signin_handoff_browserBody">브라우저에서 Polaris Key를 열었어요. 거기서 로그인하면 %1$s에서 자동으로 계속 진행돼요.</string>
+    <string name="signin_handoff_browserBody">브라우저에서 Polaris Locker를 열었어요. 거기서 로그인하면 %1$s에서 자동으로 계속 진행돼요.</string>
     <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). -->
     <string name="signin_handoff_waiting">브라우저를 기다리는 중…</string>
     <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). -->
@@ -1049,7 +1049,7 @@
     <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
     <string name="signin_choice_freed">이제 이 라이선스에 빈 기기 자리가 있어요.</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
-    <string name="signin_replace_opensBrowser">브라우저에서 Polaris Key가 열려요</string>
+    <string name="signin_replace_opensBrowser">브라우저에서 Polaris Locker가 열려요</string>
     <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. -->
     <string name="signin_cli_opening">브라우저를 여는 중…</string>
     <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {url} = a web address, shown as is. Arguments: 1=url. -->
@@ -1077,7 +1077,7 @@
     <!-- Sign in with another device (SIGN-IN.md §3.11). -->
     <string name="signin_approve_ask">새 기기를 승인할까요?</string>
     <!-- Sign in with another device (SIGN-IN.md §3.11). -->
-    <string name="signin_approve_warning">직접 시작했고 기기가 눈앞에 있을 때만 승인하세요. Polaris Key나 개발자는 절대 이것을 요청하지 않아요.</string>
+    <string name="signin_approve_warning">직접 시작했고 기기가 눈앞에 있을 때만 승인하세요. Polaris Locker나 개발자는 절대 이것을 요청하지 않아요.</string>
     <!-- Sign in with another device (SIGN-IN.md §3.11). -->
     <string name="signin_approve_approve">승인하고 로그인</string>
     <string name="signin_approve_approve__macos">승인하고 로그인</string>
@@ -1108,9 +1108,9 @@
     <!-- Expired code or link page (SIGN-IN.md §4.12). -->
     <string name="signin_again">다시 로그인</string>
     <string name="signin_again__macos">다시 로그인</string>
-    <!-- The product doesn't use Polaris Key sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="signin_identityOff_notice">%1$s에서는 Polaris Key 로그인을 사용하지 않아요. %1$s을(를) 열어 라이선스 키를 입력하세요.</string>
-    <!-- The product doesn't use Polaris Key sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <!-- The product doesn't use Polaris Locker sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_identityOff_notice">%1$s에서는 Polaris Locker 로그인을 사용하지 않아요. %1$s을(를) 열어 라이선스 키를 입력하세요.</string>
+    <!-- The product doesn't use Polaris Locker sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_identityOff_lede">여기서 로그인하면 라이브러리에서 %1$s을(를) 볼 수 있어요.</string>
     <!-- Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_signout_title">이 기기의 %1$s에서 로그아웃할까요?</string>
@@ -1130,21 +1130,21 @@
     <!-- Session ended (SIGN-IN.md §4.10). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_session_kitEnded">로그인이 종료됐어요. %1$s을(를) 계속 사용하려면 다시 로그인하세요.</string>
     <!-- Sign-in provider buttons (SIGN-IN.md §3.3). -->
-    <string name="signin_provider_manage">Polaris Key에서 로그인 방법 관리</string>
-    <string name="signin_provider_manage__macos">Polaris Key에서 로그인 방법 관리</string>
+    <string name="signin_provider_manage">Polaris Locker에서 로그인 방법 관리</string>
+    <string name="signin_provider_manage__macos">Polaris Locker에서 로그인 방법 관리</string>
     <!-- Profile import (SIGN-IN.md §3.5). -->
     <string name="signin_profile_changePicture">사진 변경</string>
     <string name="signin_profile_changePicture__macos">사진 변경</string>
     <!-- Security email (SIGN-IN.md §3.15). Arguments: {product} = the product's name from ProductIdentity (never translated); {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=product, 2=device. -->
     <string name="signin_mail_replaced_subject">%2$s에서 %1$s 로그아웃됨</string>
     <!-- Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {newDevice} = the new device's friendly name; {product} = the product's name from ProductIdentity (never translated); {date} = a date already formatted by the platform. Arguments: 1=device, 2=newDevice, 3=product, 4=date. -->
-    <string name="signin_mail_replaced_body">%4$s에 %3$s에 로그인하면서 %1$s 대신 %2$s 기기가 등록됐어요. 자리가 비면 나중에 다시 로그인할 수 있어요. 본인이 아니라면 Polaris Key를 열고 기기를 확인하세요.</string>
+    <string name="signin_mail_replaced_body">%4$s에 %3$s에 로그인하면서 %1$s 대신 %2$s 기기가 등록됐어요. 자리가 비면 나중에 다시 로그인할 수 있어요. 본인이 아니라면 Polaris Locker를 열고 기기를 확인하세요.</string>
     <!-- Security email (SIGN-IN.md §3.15). -->
-    <string name="signin_mail_newDevice_subject">Polaris Key 계정에 새 기기가 로그인했어요</string>
+    <string name="signin_mail_newDevice_subject">Polaris Locker 계정에 새 기기가 로그인했어요</string>
     <!-- Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {date} = a date already formatted by the platform; {place} = an approximate place (city, country). Arguments: 1=device, 2=date, 3=place. -->
-    <string name="signin_mail_newDevice_body">%2$s에 %3$s에서 %1$s에 로그인했어요. 본인이 아니라면 Polaris Key의 “로그인된 위치”에서 해당 기기를 로그아웃하세요.</string>
+    <string name="signin_mail_newDevice_body">%2$s에 %3$s에서 %1$s에 로그인했어요. 본인이 아니라면 Polaris Locker의 “로그인된 위치”에서 해당 기기를 로그아웃하세요.</string>
     <!-- Security email (SIGN-IN.md §3.15). -->
-    <string name="signin_mail_open">Polaris Key 열기</string>
+    <string name="signin_mail_open">Polaris Locker 열기</string>
     <!-- Email code step (SIGN-IN.md §3.4). -->
     <string name="signin_code_label">6자리 코드</string>
     <!-- Terminal help: the heading over the license commands (activate, status…). -->
@@ -1375,9 +1375,9 @@
     <string name="cli_update_download">여기서 내려받으세요:</string>
     <!-- Terminal status: a device activated with a license key only, and the license is no longer valid. -->
     <string name="cli_status_keyRevoked_title">이 라이선스 키는 더 이상 사용할 수 없어요</string>
-    <!-- Terminal status, under the title above. It ends in a colon: the product's account page on Polaris Key follows on its own line, as a link. -->
+    <!-- Terminal status, under the title above. It ends in a colon: the product's account page on Polaris Locker follows on its own line, as a link. -->
     <string name="cli_status_keyRevoked_message">만료되었거나 꺼졌을 수 있어요.</string>
-    <!-- Terminal activate: the server did not accept the license key, under the title 'Key not accepted'. It answers the same for a wrong key and for one that expired or was turned off, so the text covers both. It ends in a colon: the product's account page on Polaris Key follows on its own line, as a link. -->
+    <!-- Terminal activate: the server did not accept the license key, under the title 'Key not accepted'. It answers the same for a wrong key and for one that expired or was turned off, so the text covers both. It ends in a colon: the product's account page on Polaris Locker follows on its own line, as a link. -->
     <string name="cli_activate_unauthorized">오타가 없는지 확인하세요. 맞다면 만료되었거나 꺼졌을 수 있어요.</string>
     <!-- Terminal help: what the -reveal flag does. A command-line flag; keep it as is. -->
     <string name="cli_option_reveal">값을 출력</string>
@@ -1604,7 +1604,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_in_use_title">이미 사용 중인 이메일</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_email_in_use_message">다른 Polaris Key 계정이 이미 이 이메일을 사용하고 있어요. 이 로그인을 그 계정에 연결하거나 다른 이메일을 사용하세요.</string>
+    <string name="core_codes_email_in_use_message">다른 Polaris Locker 계정이 이미 이 이메일을 사용하고 있어요. 이 로그인을 그 계정에 연결하거나 다른 이메일을 사용하세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_terms_required_title">약관 미동의</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1612,15 +1612,15 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_owned_title">다른 계정의 라이선스</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). Arguments: 1=product. -->
-    <string name="core_codes_license_owned_message">이 %1$s 라이선스는 이미 다른 Polaris Key 계정에 있어요. 라이선스는 키로 옮겨지지 않아요.</string>
+    <string name="core_codes_license_owned_message">이 %1$s 라이선스는 이미 다른 Polaris Locker 계정에 있어요. 라이선스는 키로 옮겨지지 않아요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_email_bound_title">인증되지 않은 이메일</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_license_email_bound_message">이 라이선스는 회원님의 Polaris Key 계정에서 인증하지 않은 이메일 주소에 속해 있어요. 계정에서 해당 이메일을 인증한 후 다시 시도하세요.</string>
+    <string name="core_codes_license_email_bound_message">이 라이선스는 회원님의 Polaris Locker 계정에서 인증하지 않은 이메일 주소에 속해 있어요. 계정에서 해당 이메일을 인증한 후 다시 시도하세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_account_required_title">로그인 필요</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_account_required_message">이 기기에서 Polaris Key 계정에 로그인한 후 다시 시도하세요.</string>
+    <string name="core_codes_account_required_message">이 기기에서 Polaris Locker 계정에 로그인한 후 다시 시도하세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_mismatch_title">인증되지 않은 이메일</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1628,7 +1628,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_link_conflict_title">이미 연결됨</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_link_conflict_message">해당 로그인 방법은 다른 Polaris Key 계정에 속해 있어요. 그 계정으로 로그인하거나 두 계정을 합치세요.</string>
+    <string name="core_codes_link_conflict_message">해당 로그인 방법은 다른 Polaris Locker 계정에 속해 있어요. 그 계정으로 로그인하거나 두 계정을 합치세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_last_link_title">제거할 수 없음</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1728,7 +1728,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_network_title">연결할 수 없음</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_network_message">Polaris Key에 연결할 수 없어요. 연결 상태를 확인하고 다시 시도하세요.</string>
+    <string name="core_codes_network_message">Polaris Locker에 연결할 수 없어요. 연결 상태를 확인하고 다시 시도하세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_refresh_failed_title">새로고침하지 못함</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1800,7 +1800,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_network_error_title">연결할 수 없음</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_network_error_message">Polaris Key에 연결할 수 없어요. 연결 상태를 확인하고 다시 시도하세요.</string>
+    <string name="core_codes_network_error_message">Polaris Locker에 연결할 수 없어요. 연결 상태를 확인하고 다시 시도하세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_server_error_title">서비스 문제</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2092,7 +2092,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sign_in_required_title">로그인 필요</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_sign_in_required_message">앱에서 Polaris Key 계정에 로그인한 후 다시 시도하세요.</string>
+    <string name="core_codes_sign_in_required_message">앱에서 Polaris Locker 계정에 로그인한 후 다시 시도하세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
     <string name="core_gate_ok_title">라이선스 활성</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->

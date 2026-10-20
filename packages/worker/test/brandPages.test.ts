@@ -156,11 +156,16 @@ describe("the branded page shell", () => {
     expect(html).toContain(
       'Polaris&nbsp;Key<span class="surface">console</span></span>',
     );
-    expect(
-      renderBrandPage({ title: "t", heading: "h", surface: "device" }),
-    ).toContain(
-      '<div class="brand" role="img" aria-label="Polaris Locker device">',
+    // Locker: the lockup is its own wordmark, so no surface label sits beside it.
+    const locker = renderBrandPage({
+      title: "t",
+      heading: "h",
+      surface: "device",
+    });
+    expect(locker).toContain(
+      '<div class="brand" role="img" aria-label="Polaris Locker">',
     );
+    expect(locker).not.toContain('class="surface"');
     expect(renderBrandPage({ title: "t", heading: "h" })).not.toContain(
       'class="surface"',
     );

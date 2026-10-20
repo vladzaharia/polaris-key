@@ -53,7 +53,7 @@ Entries are ordered by how often they happen. Every code is in the [error codes]
 
 **Cause** A custom issuer isn't on the Worker's `OIDC_ISSUER_ALLOWLIST`, or the product has no usable provider configuration. The Worker fails closed before it opens the client secret.
 
-**Fix** Ask the platform operator to add the issuer's host to the allowlist, or fix the `oidc:` block and select **Resync from repo** on **Identity → Sign-in**.
+**Fix** Ask the platform operator to add the issuer's host to the allowlist, or fix the `oidc:` block and select **Resync from repo** on **App sign-in**.
 
 **Check it works** The sign-in redirects to the provider.
 
@@ -83,7 +83,7 @@ Entries are ordered by how often they happen. Every code is in the [error codes]
 
 ## step_up_required
 
-**Cause** A portal action, such as a new key, a method change or an export, needs a sign-in within 5 minutes.
+**Cause** A Polaris Locker action, such as a new key, a method change or an export, needs a sign-in within 5 minutes.
 
 **Fix** Sign in again, then retry.
 
@@ -107,7 +107,7 @@ Entries are ordered by how often they happen. Every code is in the [error codes]
 
 ## email_in_use
 
-**Cause** The proven address belongs to another Polaris Key account. Nothing was created or joined.
+**Cause** The proven address belongs to another Locker account. Nothing was created or joined.
 
 **Fix** Choose the join offer and prove the other account in the same browser, or use a different email.
 
@@ -115,8 +115,8 @@ Entries are ordered by how often they happen. Every code is in the [error codes]
 
 ## auth_method_disabled
 
-**Cause** The requested method is off: the portal's sign-in method for the product, or email codes for an enforced single sign-on domain.
+**Cause** The requested method is off: Locker's sign-in method for the product, or email codes for an enforced single sign-on domain.
 
-**Fix** Turn the method on under **Identity → Locker settings**, or sign in through the organization's connection.
+**Fix** Email codes and passkeys are always on; a domain that is enforced to single sign-on gets only its connection. Sign in through the organization's connection, or ask its owner to lift the enforcement under **Platform → Connections**.
 
 **Check it works** The method works on the login card.

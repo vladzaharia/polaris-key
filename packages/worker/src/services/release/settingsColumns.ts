@@ -143,22 +143,4 @@ export const UPDATE_COLUMN_ADAPTERS: Readonly<
       ]),
     reset: (args) => updateReleaseConfig(args, [["access_source", "manifest"]]),
   },
-  // Operator-only (no manifest spelling): the whole object; an empty one is stored as NULL.
-  "update.operatorPolicy": {
-    table: "release_config",
-    keyColumn: "product",
-    columns: ["operator_policy_json"],
-    decode: (row) => parseJsonObject(row?.operator_policy_json) ?? undefined,
-    set: (args) => {
-      const v = args.value as Record<string, unknown> | null;
-      return updateReleaseConfig(args, [
-        [
-          "operator_policy_json",
-          v && Object.keys(v).length > 0 ? JSON.stringify(v) : null,
-        ],
-      ]);
-    },
-    reset: (args) =>
-      updateReleaseConfig(args, [["operator_policy_json", null]]),
-  },
 };

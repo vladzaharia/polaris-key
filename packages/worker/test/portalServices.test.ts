@@ -112,19 +112,14 @@ async function setProductServices(
 async function setPortalSettings(
   db: ReturnType<typeof makeTestDb>,
   slug: string,
-  opts: { portal?: number; releases?: number } = {},
+  opts: { portal?: number } = {},
 ): Promise<void> {
   await db.run(
     `INSERT INTO portal_product_settings
-       (product, portal_enabled, oidc_enabled, magic_enabled,
-        license_key_claim_enabled, releases_enabled, branding_json, created_at, modified_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (product, portal_enabled, branding_json, created_at, modified_at)
+     VALUES (?, ?, ?, ?, ?)`,
     slug,
     opts.portal ?? 1,
-    1,
-    1,
-    1,
-    opts.releases ?? 1,
     null,
     NOW,
     NOW,
@@ -216,9 +211,9 @@ describe("portal capabilities follow services_json", () => {
     const db = makeTestDb();
     const env = portalEnv();
     await seedProduct(db, "djdl");
-    // The exact shape the gap describes: the tenant WANTS the tab (`releases_enabled = 1`) but
-    // the product does not run the service that would fill it.
-    await setPortalSettings(db, "djdl", { releases: 1 });
+    // The exact shape the gap describes: the portal is on but the product does not run the
+    // service that would fill the tab.
+    await setPortalSettings(db, "djdl", {});
     await setProductServices(db, "djdl", { release: { enabled: false } });
 
     const caps = await capabilities(env, db, "djdl");
@@ -234,50 +229,27 @@ describe("portal capabilities follow services_json", () => {
     const db = makeTestDb();
     const env = portalEnv();
     await seedProduct(db, "djdl");
-    await setPortalSettings(db, "djdl", { releases: 1 });
+    await setPortalSettings(db, "djdl", {});
     await setProductServices(db, "djdl", { release: { enabled: true } });
 
     expect((await capabilities(env, db, "djdl")).modules.releases).toBe(true);
 
-    // The portal toggle is still the other half of the conjunction: a tenant that runs Release
-    // for its own update feed but does not want a customer-facing Downloads tab keeps that.
+    // I-29: there is no per-product Downloads switch any more; the portal being off still
+    // closes the tab.
     await db.run(
-      "UPDATE portal_product_settings SET releases_enabled = 0 WHERE product = ?",
+      "UPDATE portal_product_settings SET portal_enabled = 0 WHERE product = ?",
       "djdl",
     );
     expect((await capabilities(env, db, "djdl")).modules.releases).toBe(false);
   });
 
-  it("answers the unscoped platform aggregate with ANY product that has all three on", async () => {
-    // R5-06 keeps the unscoped answer as the documented platform-wide aggregate for the root
-    // login page, which has no product context. Task 7.2 only adds a term to it.
+  it("answers the unscoped (no product) capabilities without downloads", async () => {
+    // R5-06 / I-29: the root login page has no product context, so the unscoped answer never
+    // reports a tenant's Release service: nothing to download without a product.
     const db = makeTestDb();
     const env = portalEnv();
     await seedProduct(db, "djdl");
-    await seedProduct(db, "acme");
     await setProductServices(db, "djdl", { release: { enabled: true } });
-    await setProductServices(db, "acme", { release: { enabled: false } });
-
-    expect((await capabilities(env, db)).modules.releases).toBe(true);
-
-    await setProductServices(db, "djdl", { release: { enabled: false } });
-    expect((await capabilities(env, db)).modules.releases).toBe(false);
-  });
-
-  it("conjoins the three flags WITHIN a product before aggregating across products", async () => {
-    // The aggregate must not be assembled from three independent `some` passes: one product with
-    // the portal open and one product running Release is not a product that can serve downloads.
-    const db = makeTestDb();
-    const env = portalEnv();
-    await seedProduct(db, "open-no-release");
-    await seedProduct(db, "release-no-portal");
-    await setProductServices(db, "open-no-release", {
-      release: { enabled: false },
-    });
-    await setProductServices(db, "release-no-portal", {
-      release: { enabled: true },
-    });
-    await setPortalSettings(db, "release-no-portal", { portal: 0 });
 
     expect((await capabilities(env, db)).modules.releases).toBe(false);
   });

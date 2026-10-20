@@ -80,7 +80,7 @@ var _pane: PanelContainer
 var _scroll: ScrollContainer
 var _fade: TextureRect
 var _inset: MarginContainer
-var _powered_by: TextureRect
+var _powered_by: PKeyPoweredBy
 var _close_row: BoxContainer
 var _close: Button
 var _title: Label
@@ -171,9 +171,10 @@ func _build() -> void:
 	_advanced_row.name = "AdvancedRow"
 	_advanced_row.add_child(_advanced)
 	box.add_child(_advanced_row)
+	# The attribution is the last item inside the scroll, not a fixed footer (UI-KITS.md §1.6): the line.
+	_powered_by = brand_node(box, "PoweredBy", BRAND_POWERED_BY)
 	_close_row = actions_row(_frame, "Actions", BoxContainer.ALIGNMENT_END)
 	_close = button(_close_row, "Close", close)
-	_powered_by = brand_node(_frame, "PoweredBy", BRAND_POWERED_BY)
 
 
 func _bleeds() -> bool:
@@ -284,8 +285,6 @@ func _list_height() -> float:
 func _list_room() -> float:
 	var room := available_height()
 	room -= _frame_head_height()
-	if _powered_by.visible:
-		room -= _powered_by.get_combined_minimum_size().y + role("section_gap")
 	return maxf(room, 0.0)
 
 
@@ -326,7 +325,7 @@ func _frame_fixed_height() -> float:
 	var h := 0.0
 	var sep := float(_frame.get_theme_constant("separation"))
 	for ch in _frame.get_children():
-		if ch is Control and (ch as Control).visible and ch != _body and ch != _powered_by:
+		if ch is Control and (ch as Control).visible and ch != _body:
 			h += (ch as Control).get_combined_minimum_size().y + sep
 	if _head.get_parent() != _frame:
 		h += _head.get_combined_minimum_size().y + sep
@@ -336,7 +335,7 @@ func _frame_fixed_height() -> float:
 func _frame_head_height() -> float:
 	var h := 0.0
 	for ch in _frame.get_children():
-		if ch is Control and (ch as Control).visible and ch != _body and ch != _powered_by:
+		if ch is Control and (ch as Control).visible and ch != _body:
 			h += (ch as Control).get_combined_minimum_size().y + float(_frame.get_theme_constant("separation"))
 	if _rail_panel.visible and _body.vertical:
 		h += _rail_panel.get_combined_minimum_size().y
@@ -347,8 +346,6 @@ func _frame_head_height() -> float:
 ## it scrolls with the list instead, and the list gets the whole height. A function of the size.
 func _head_should_scroll() -> bool:
 	var room := available_height() - _frame_fixed_height() - float(_frame.get_theme_constant("separation"))
-	if _powered_by.visible:
-		room -= _powered_by.get_combined_minimum_size().y + role("section_gap")
 	var rows := _scroll_box.get_combined_minimum_size().y
 	if _head.get_parent() == _scroll_box:
 		rows -= _head.get_combined_minimum_size().y + float(_scroll_box.get_theme_constant("separation"))

@@ -13,7 +13,7 @@ Each product has one server-selected OpenID Connect provider and its own group m
 
 `oidc_config.provider` is `platform` (the default) or `custom`.
 
-- **Platform.** The operator-configured provider shared by every product that hasn't linked its own, from the `PLATFORM_OIDC_*` Worker secrets. The customer portal's `/login` uses the same provider, so a platform product and the portal share one trust boundary.
+- **Platform.** The operator-configured provider shared by every product that hasn't linked its own, from the `PLATFORM_OIDC_*` Worker secrets. Polaris Locker's `/login` uses the same provider, so a platform product and Locker share one trust boundary.
 - **Custom.** A provider the product links: `issuer`, `client_id` and a sealed `client_secret`, fed by the `oidc:` block of `.pkey/product` through repo link and resync. When `redirect_uris_json` is set, the computed redirect URI must appear in it.
 
 Both run on one relying-party client. It reads `<issuer>/.well-known/openid-configuration`, whose `issuer` must equal the configured one exactly, and dials only the issuer's host. A custom provider needs a discovery document that offers the code flow.
@@ -36,7 +36,7 @@ A custom issuer is repo-controlled: whoever can push `.pkey/product` can point i
 - clock tolerance 300 seconds and a maximum token age of 5 minutes;
 - the `nonce` equals the flow's, and a token with no `nonce` is rejected.
 
-A verified token with an empty `sub` is invalid. The Worker trusts an `email` only when `email_verified` is true, because the portal may later use it to link accounts.
+A verified token with an empty `sub` is invalid. The Worker trusts an `email` only when `email_verified` is true, because Locker may later use it to link accounts.
 
 With a `return_to`, the callback sets a `pkey_<product>_session` cookie ([Browser sessions](/docs/features/sign-in/sessions/)). Without one, it hands the result to a poller that redeems a device token. There is no `state`-keyed poll: `state` isn't a secret, so a device completes the flow on the device-code poll with its secret device code.
 
@@ -63,7 +63,7 @@ Sign-in owns exactly the override keys its hooks declare. It sets each from the 
 
 ## In the console
 
-**Identity → Sign-in** shows the provider, issuer, client id, the group-to-tier table and the `oidcDefault` outcome, read-only. To change them, edit `.pkey/product`, commit, and select **Resync from repo**.
+**App sign-in** shows the provider, issuer, client id, the group-to-tier table and the `oidcDefault` outcome, read-only. To change them, edit `.pkey/product`, commit, and select **Resync from repo**.
 
 The platform-level providers (a company's single sign-on, Google, Apple, Steam) are set up in **Platform → Connections**: [Sign-in connections](/docs/operate/platform/sign-in-connections/).
 
@@ -71,4 +71,4 @@ The platform-level providers (a company's single sign-on, Google, Apple, Steam) 
 
 - [Device flow](/docs/features/sign-in/device-flow/): the same mint step without a redirect.
 - [Browser sessions](/docs/features/sign-in/sessions/): what a `return_to` callback produces.
-- [Customer portal](/docs/features/sign-in/customer-portal/): the platform-level login.
+- [Locker](/docs/features/sign-in/customer-portal/): the platform-level login.

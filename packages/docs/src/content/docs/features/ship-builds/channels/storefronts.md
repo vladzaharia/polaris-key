@@ -33,7 +33,7 @@ One tile per store, with:
 **Set up** opens the flow for that store alone. Store connections' **Set up** on an assigned app
 does the same.
 
-**Polaris Key**, the storefront built into Polaris Key (the customer portal's Discover and
+**Polaris Locker**, the storefront built into the platform (its Discover and
 Library), has a tile like the others, rendered from its adapter the same way. It reads **Built in:
 always connected**, its operations are marked **Built in**, and **Manage** opens
 [its own page](/docs/features/ship-builds/channels/polaris-key/): the listing, who sees it, the ways to add it,

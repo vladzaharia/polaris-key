@@ -73,7 +73,12 @@ public fun PolarisKitScreen(
     }
     val controls = lines.filter { it.role == KitLineRole.Control }
     val announcement = lines.filter { it.role == KitLineRole.Announcement }.joinToString(". ") { it.text }
-    val text = lines.filter { it.role == KitLineRole.Text }
+    val text = lines.filter { it.role == KitLineRole.Text && it.key != "part.poweredBy" }
+    // The optional attribution (UI-KITS.md section 1.6): the line, the pane's last item, after the
+    // controls. On when the inputs carry it or the theme's `showPoweredBy` is on, and only on the
+    // account pane (the kit has no About); never on a gate.
+    val attribution = lines.any { it.key == "part.poweredBy" } ||
+        (PolarisTheme.current.showPoweredBy && screen.component == KitComponent.accountAndLicense)
     PolarisScreen(
         modifier = modifier.semantics {
             if (announcement.isNotEmpty()) {
@@ -91,6 +96,10 @@ public fun PolarisKitScreen(
                         PolarisTextButton(line.text, onClick = { onAction(action) })
                     }
                 }
+                if (attribution) {
+                    Spacer(Modifier.height(16.dp))
+                    PolarisPoweredByLine()
+                }
             }
         },
     ) {
@@ -98,6 +107,8 @@ public fun PolarisKitScreen(
             if (index == 0) PolarisTitle(line.text) else PolarisBody(line.text)
             Spacer(Modifier.height(8.dp))
         }
+        // With no controls, the line closes the content.
+        if (attribution && controls.isEmpty()) PolarisPoweredByLine()
     }
 }
 

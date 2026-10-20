@@ -30,14 +30,32 @@ describe("portal shell and data layer (PX-01)", () => {
     ).toBeTruthy();
   });
 
-  it("tells 'can't reach Polaris Key' apart from signed out", async () => {
+  it("tells 'can't reach Polaris Locker' apart from signed out", async () => {
     mockFetch({ "/api/me": "network", "/api/capabilities": "network" });
     renderPortal();
     expect(
-      await screen.findByRole("heading", { name: "Can't reach Polaris Key" }),
+      await screen.findByRole("heading", {
+        name: "Can't reach Polaris Locker",
+      }),
     ).toBeTruthy();
     expect(screen.queryByRole("heading", { name: /sign in/i })).toBeNull();
     expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
+  });
+
+  it("ends every page with the Help and Privacy links, in the public Help door", async () => {
+    mockFetch(signedIn([]));
+    renderPortal();
+    const foot = await screen.findByRole("navigation", {
+      name: "Help and policies",
+    });
+    expect(
+      within(foot)
+        .getAllByRole("link")
+        .map((a) => [a.textContent, a.getAttribute("href")]),
+    ).toEqual([
+      ["Help", "/docs/help/"],
+      ["Privacy", "/docs/help/your-data/"],
+    ]);
   });
 
   it("renders the signed-in shell's landmarks, nav and Activate action", async () => {

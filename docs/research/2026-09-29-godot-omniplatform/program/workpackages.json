@@ -4904,7 +4904,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/identity.md"
       ],
       "brief": "wp/I-29-retire-product-account-toggles-one-app.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "I-30",
@@ -9193,7 +9193,7 @@
         "DX consolidation 2026-10-07: edit (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/ST-08-product-settings-hub.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "ST-09",
@@ -9260,7 +9260,7 @@
         "DX consolidation 2026-10-07: keep (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/ST-11-sql-only-settings.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "ST-12",
@@ -15334,7 +15334,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-03b-public-access.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "DOC-04a",
@@ -17256,7 +17256,7 @@
         "docs/research/2026-09-29-godot-omniplatform/program/locker-ux-waves.md §2 (PX-34)"
       ],
       "brief": "wp/PX-34-library-discover-locker.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "AX-01",
@@ -17901,7 +17901,7 @@
         "wp/I-39-emails-brand-v2.md (original I-39 scope)"
       ],
       "brief": "wp/LK-07b-locker-customer-emails.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "LK-08a",
@@ -17924,7 +17924,7 @@
       "optional": false,
       "refs": ["plans/LK-00.md §3, §5, §6"],
       "brief": "wp/LK-08a-locker-copy-constants.md",
-      "status": "todo",
+      "status": "done",
       "planRef": "LK-00"
     },
     {
@@ -17943,7 +17943,7 @@
       "optional": false,
       "refs": ["plans/LK-00.md §6"],
       "brief": "wp/LK-08b-locker-copy-native.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "LK-09",
@@ -18081,7 +18081,7 @@
       "optional": false,
       "refs": ["plans/LK-00.md §14"],
       "brief": "wp/LK-15-docs-locker-identity.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "LK-16",
@@ -18099,7 +18099,7 @@
       "optional": false,
       "refs": ["plans/LK-00.md §14"],
       "brief": "wp/LK-16-locker-powered-by.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "LK-17",

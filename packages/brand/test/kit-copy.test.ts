@@ -235,13 +235,14 @@ describe("the checks refuse", () => {
     expect(errors.some((e) => e.startsWith('it common.close: "%"'))).toBe(true);
   });
 
-  it("a changed Polaris Key", () => {
+  it("a changed Polaris Locker", () => {
     expect(
       errorsAfter((s) => {
-        s.packs.de!.messages["part.poweredBy"] = "Unterstützt von Polaris-Key";
+        s.packs.de!.messages["part.poweredBy"] =
+          "Unterstützt von Polaris-Locker";
       }),
     ).toContain(
-      'de part.poweredBy: "Polaris Key" must appear exactly as in English',
+      'de part.poweredBy: "Polaris Locker" must appear exactly as in English',
     );
   });
 
@@ -446,7 +447,7 @@ describe("renderers (goldens over a synthetic catalog)", () => {
       packs,
       glossary: {
         glossaryVersion: 1,
-        neverTranslate: ["Polaris Key"],
+        neverTranslate: ["Polaris Key", "Polaris Locker"],
         terms: {
           license: Object.fromEntries(
             KIT_LOCALES.map((l) => [l, `license-${l}`]),

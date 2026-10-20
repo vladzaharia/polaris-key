@@ -22,8 +22,8 @@ const Link := preload("res://addons/polaris_key/ui/model/link.gd")
 const Loading := preload("res://addons/polaris_key/ui/model/loading.gd")
 const View := preload("res://addons/polaris_key/ui/model/view.gd")
 
-const DEFAULT_DEVICE_URL := "https://key.plrs.im/device"
-const DEFAULT_TV_URL := "https://key.plrs.im/tv"
+const DEFAULT_DEVICE_URL := PKeyConstants.DEVICE_CODE_PAGE
+const DEFAULT_TV_URL := PKeyConstants.TV_CODE_PAGE
 
 
 ## The sign-in is possible here: Identity is on and the build offers it.

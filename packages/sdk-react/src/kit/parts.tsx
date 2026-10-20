@@ -4,6 +4,8 @@
 // §3.2, §7.1). Every string is a catalog key of the view (DL8).
 
 import { Fragment, type KeyboardEvent, type ReactNode } from "react";
+import { POWERED_BY } from "@polaris-key/brand";
+import { markSvg, poweredBySvg } from "@polaris-key/brand/svg";
 import type { Copy, UiInput, View } from "@polaris-key/ui-core";
 import { encodeQr, monogramOf, OPENS, type Resolved } from "./contract.js";
 
@@ -830,7 +832,7 @@ export function statusLine(c: KitCtx, keys: string[]): ReactNode {
   if (keys.length === 0) return null;
   // A ticking countdown is not a live region: a screen reader would read it every second.
   const ticking: string[] = keys.filter((k) => k === "signin.handoff.expires");
-  const live = keys.filter((k) => !ticking.includes(k));
+  const live = keys.filter((k) => !ticking.includes(k) && k !== POWERED_BY_KEY);
   return (
     <>
       {ticking.map((k) => (
@@ -849,6 +851,52 @@ export function statusLine(c: KitCtx, keys: string[]): ReactNode {
         </p>
       ) : null}
     </>
+  );
+}
+
+const POWERED_BY_KEY = "part.poweredBy";
+
+/**
+ * The optional attribution at the foot of a pane or screen (UI-KITS §1.6): the Locker micro mark and
+ * the phrase in live text, or on About with `poweredBy: "badge"` the 320 x 104 badge where 320 px
+ * are free (a container query), else the line. Out of the status live region.
+ */
+export function attribution(c: KitCtx, meta: string[]): ReactNode {
+  if (!meta.includes(POWERED_BY_KEY)) return null;
+  const scheme = c.resolved.theme.scheme;
+  const badge =
+    c.input.integrator?.poweredBy === "badge" && c.view.component === "About";
+  const line = (
+    <p className="status-line powered-by-line" data-part="powered-by">
+      <span
+        aria-hidden="true"
+        dangerouslySetInnerHTML={{
+          __html: markSvg({
+            kind: "locker",
+            size: POWERED_BY.markSize,
+            theme: scheme,
+            title: "",
+          }),
+        }}
+      />
+      <span data-key={POWERED_BY_KEY}>{text(c, POWERED_BY_KEY)}</span>
+    </p>
+  );
+  if (!badge) return line;
+  return (
+    <div className="powered-by" data-variant="badge">
+      <div
+        className="powered-by-badge"
+        data-part="powered-by-badge"
+        dangerouslySetInnerHTML={{
+          __html: poweredBySvg({
+            theme: scheme,
+            title: plain(c, POWERED_BY_KEY),
+          }),
+        }}
+      />
+      {line}
+    </div>
   );
 }
 

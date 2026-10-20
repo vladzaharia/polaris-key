@@ -7,7 +7,7 @@ extends RefCounted
 ## matrix needs fixed, deliberately long German and unspaced Japanese strings for every kit string.
 ##
 ## Placeholders (`%s`, `%d`, `%%` and the core copy's `{name}`) keep the English order, since
-## GDScript `%` is positional. "Polaris Key" and "SDK" read the same in every locale and have no
+## GDScript `%` is positional. "Polaris Locker" and "SDK" read the same in every locale and have no
 ## entry.
 
 const DE := {
@@ -304,11 +304,11 @@ const DE := {
 	"The security check didn't pass. Reload the page and try again.": "Die Sicherheitsprüfung wurde nicht bestanden. Laden Sie die Seite neu und versuchen Sie es erneut.",
 	"This sign-in has expired. Start again.": "Diese Anmeldung ist abgelaufen. Beginnen Sie erneut.",
 	"That code isn't right. Check the email and try again.": "Dieser Code hat nicht funktioniert. Prüfen Sie die E-Mail und geben Sie ihn erneut ein.",
-	"Another Polaris Key account already uses this email. Join this sign-in to that account, or use a different email.": "Ein anderes Polaris Key-Konto verwendet diese E-Mail-Adresse bereits. Verbinden Sie diese Anmeldung mit jenem Konto, oder verwenden Sie eine andere E-Mail-Adresse.",
+	"Another Polaris Locker account already uses this email. Join this sign-in to that account, or use a different email.": "Ein anderes Polaris Locker-Konto verwendet diese E-Mail-Adresse bereits. Verbinden Sie diese Anmeldung mit jenem Konto, oder verwenden Sie eine andere E-Mail-Adresse.",
 	"Agree to the terms to continue.": "Stimmen Sie den Bedingungen zu, um fortzufahren.",
-	"This {product} license is already in another Polaris Key account. A license never moves by its key.": "Diese Lizenz für {product} befindet sich bereits in einem anderen Polaris Key-Konto. Eine Lizenz wird nie über ihren Schlüssel übertragen.",
+	"This {product} license is already in another Polaris Locker account. A license never moves by its key.": "Diese Lizenz für {product} befindet sich bereits in einem anderen Polaris Locker-Konto. Eine Lizenz wird nie über ihren Schlüssel übertragen.",
 	"This license belongs to an email address your account hasn't verified. Add and verify that email, then try again.": "Diese Lizenz gehört zu einer E-Mail-Adresse, die Ihr Konto nicht bestätigt hat. Fügen Sie diese E-Mail-Adresse hinzu, bestätigen Sie sie und versuchen Sie es dann erneut.",
-	"That sign-in method belongs to another Polaris Key account. Sign in to that account, or join the two accounts.": "Diese Anmeldemethode gehört zu einem anderen Polaris Key-Konto. Melden Sie sich bei diesem Konto an oder führen Sie die beiden Konten zusammen.",
+	"That sign-in method belongs to another Polaris Locker account. Sign in to that account, or join the two accounts.": "Diese Anmeldemethode gehört zu einem anderen Polaris Locker-Konto. Melden Sie sich bei diesem Konto an oder führen Sie die beiden Konten zusammen.",
 	"This is your account's only sign-in method. Add another one before removing it.": "Dies ist die einzige Anmeldemethode Ihres Kontos. Fügen Sie eine weitere hinzu, bevor Sie sie entfernen.",
 	"For your security, sign in again to continue.": "Melden Sie sich zu Ihrer Sicherheit erneut an, um fortzufahren.",
 	"This offer isn't available to your account anymore. Refresh and try again.": "Dieses Angebot ist für Ihr Konto nicht mehr verfügbar. Aktualisieren Sie die Ansicht und versuchen Sie es erneut.",
@@ -330,7 +330,7 @@ const DE := {
 	"The activation file is signed by a key this app doesn't trust.": "Die Aktivierungsdatei ist mit einem Schlüssel signiert, dem diese App nicht vertraut.",
 	"The license inside the activation file isn't valid.": "Die Lizenz in der Aktivierungsdatei ist ungültig.",
 	"The activation file couldn't be read.": "Die Aktivierungsdatei konnte nicht gelesen werden.",
-	"Can't reach Polaris Key. Check your connection and try again.": "Polaris Key ist nicht erreichbar. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
+	"Can't reach Polaris Locker. Check your connection and try again.": "Polaris Locker ist nicht erreichbar. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
 	"Your license and settings couldn't be refreshed. Check your connection and try again.": "Ihre Lizenz und Einstellungen konnten nicht aktualisiert werden. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
 	"Your license couldn't be checked, so the app can't start. Check your connection and try again.": "Ihre Lizenz konnte nicht geprüft werden, daher kann die App nicht starten. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
 	"Required content couldn't be downloaded, so the app can't start. Check your connection and try again.": "Erforderliche Inhalte konnten nicht heruntergeladen werden, daher kann die App nicht starten. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
@@ -732,11 +732,11 @@ const JA := {
 	"The security check didn't pass. Reload the page and try again.": "セキュリティ確認に失敗しました。ページを再読み込みして、もう一度お試しください。",
 	"This sign-in has expired. Start again.": "このサインインは期限切れです。最初からやり直してください。",
 	"That code isn't right. Check the email and try again.": "そのコードは使用できませんでした。メールを確認して、もう一度入力してください。",
-	"Another Polaris Key account already uses this email. Join this sign-in to that account, or use a different email.": "別のPolaris Keyアカウントがすでにこのメールアドレスを使用しています。このサインインをそのアカウントに統合するか、別のメールアドレスを使用してください。",
+	"Another Polaris Locker account already uses this email. Join this sign-in to that account, or use a different email.": "別のPolaris Lockerアカウントがすでにこのメールアドレスを使用しています。このサインインをそのアカウントに統合するか、別のメールアドレスを使用してください。",
 	"Agree to the terms to continue.": "続行するには規約に同意してください。",
-	"This {product} license is already in another Polaris Key account. A license never moves by its key.": "この{product}のライセンスは、すでに別のPolaris Keyアカウントにあります。ライセンスがキーによって移動することはありません。",
+	"This {product} license is already in another Polaris Locker account. A license never moves by its key.": "この{product}のライセンスは、すでに別のPolaris Lockerアカウントにあります。ライセンスがキーによって移動することはありません。",
 	"This license belongs to an email address your account hasn't verified. Add and verify that email, then try again.": "このライセンスは、お使いのアカウントで確認されていないメールアドレスに紐付いています。そのメールアドレスを追加して確認してから、もう一度お試しください。",
-	"That sign-in method belongs to another Polaris Key account. Sign in to that account, or join the two accounts.": "このサインイン方法は別のPolaris Keyアカウントに連携されています。そのアカウントにサインインするか、2つのアカウントを統合してください。",
+	"That sign-in method belongs to another Polaris Locker account. Sign in to that account, or join the two accounts.": "このサインイン方法は別のPolaris Lockerアカウントに連携されています。そのアカウントにサインインするか、2つのアカウントを統合してください。",
 	"This is your account's only sign-in method. Add another one before removing it.": "これはアカウントで唯一のサインイン方法です。削除する前に別の方法を追加してください。",
 	"For your security, sign in again to continue.": "セキュリティのため、続けるにはもう一度サインインしてください。",
 	"This offer isn't available to your account anymore. Refresh and try again.": "このオファーはお使いのアカウントでは利用できなくなりました。更新して、もう一度お試しください。",
@@ -758,7 +758,7 @@ const JA := {
 	"The activation file is signed by a key this app doesn't trust.": "アクティベーションファイルは、このアプリが信頼していない鍵で署名されています。",
 	"The license inside the activation file isn't valid.": "アクティベーションファイル内のライセンスが無効です。",
 	"The activation file couldn't be read.": "アクティベーションファイルを読み取れませんでした。",
-	"Can't reach Polaris Key. Check your connection and try again.": "Polaris Keyに接続できません。接続を確認して、もう一度お試しください。",
+	"Can't reach Polaris Locker. Check your connection and try again.": "Polaris Lockerに接続できません。接続を確認して、もう一度お試しください。",
 	"Your license and settings couldn't be refreshed. Check your connection and try again.": "ライセンスと設定を更新できませんでした。接続を確認して、もう一度お試しください。",
 	"Your license couldn't be checked, so the app can't start. Check your connection and try again.": "ライセンスを確認できなかったため、アプリを起動できません。接続を確認して、もう一度お試しください。",
 	"Required content couldn't be downloaded, so the app can't start. Check your connection and try again.": "必要なコンテンツをダウンロードできなかったため、アプリを起動できません。接続を確認して、もう一度お試しください。",

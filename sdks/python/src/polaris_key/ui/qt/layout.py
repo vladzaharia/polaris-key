@@ -82,6 +82,9 @@ class ScreenSpec:
     product: str = ""
     developer: str = ""
     focus: str = ""
+    #: The attribution (UI-KITS §1.6): ``""`` (off), ``"line"`` or ``"badge"``, with its text.
+    powered_by: str = ""
+    powered_by_text: str = ""
 
     def as_dict(self) -> Dict[str, Any]:
         return {
@@ -96,6 +99,8 @@ class ScreenSpec:
             "product": self.product,
             "developer": self.developer,
             "focus": self.focus,
+            "poweredBy": self.powered_by,
+            "poweredByText": self.powered_by_text,
             "hidden": self.state == "hidden" or not (self.title or self.body or self.buttons),
         }
 
@@ -112,7 +117,9 @@ def _open(text: str) -> bool:
     return "{" in text
 
 
-def build_spec(view: View, copy: Copy, *, product: str = "", developer: str = "") -> ScreenSpec:
+def build_spec(
+    view: View, copy: Copy, *, product: str = "", developer: str = "", powered_by: str = ""
+) -> ScreenSpec:
     """Lay one view out. Heading, then sentences, then the buttons in catalog order with the
     model's primary first among equals; at most one filled button.
 
@@ -130,6 +137,8 @@ def build_spec(view: View, copy: Copy, *, product: str = "", developer: str = ""
     busy = False
     for key in view.copy:
         if key == "common.byDeveloper":  # the identity header draws it
+            continue
+        if key == "part.poweredBy":  # drawn at the foot with the Locker mark, when the theme asks
             continue
         if key.startswith("a11y."):
             busy = busy or key in ("a11y.busy", "a11y.progress")
@@ -160,6 +169,16 @@ def build_spec(view: View, copy: Copy, *, product: str = "", developer: str = ""
         progress = max(0.0, min(1.0, float(fraction)))
     elif isinstance(args.get("done"), (int, float)) and isinstance(args.get("total"), (int, float)) and args["total"]:
         progress = max(0.0, min(1.0, args["done"] / args["total"]))
+    # The attribution (UI-KITS §1.6): the theme's `powered_by` alone turns it on for a signed-in account
+    # pane or About, whether or not the integrator input carried the catalog key.
+    attribution = powered_by if (
+        powered_by
+        and (
+            "part.poweredBy" in view.copy
+            or (view.component == "AccountAndLicense" and view.state == "signed-in")
+            or view.component == "About"
+        )
+    ) else ""
     buttons.sort(key=lambda b: {"primary": 0, "secondary": 1, "quiet": 2}[b.role])
     actions = {key: action for action, keys in ACTION_KEYS.items() for key in keys}
     buttons = [Button(b.key, b.text, b.role, actions.get(b.key)) for b in buttons]
@@ -175,4 +194,6 @@ def build_spec(view: View, copy: Copy, *, product: str = "", developer: str = ""
         product=product,
         developer=developer,
         focus=view.decisions.focus or "",
+        powered_by=attribution,
+        powered_by_text=copy("part.poweredBy") if attribution else "",
     )

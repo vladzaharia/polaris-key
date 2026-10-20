@@ -174,6 +174,9 @@ export function inputWithIdentity(input: UiInput, r: Resolved): UiInput {
       ...(id.shortName ? { shortName: id.shortName } : {}),
       ...(id.developer ? { developer: id.developer } : {}),
       ...(r.iconUrl ? { icon: true } : {}),
+      ...(r.options.poweredBy
+        ? { poweredBy: r.options.poweredBy === "badge" ? "badge" : "line" }
+        : {}),
     },
   };
 }

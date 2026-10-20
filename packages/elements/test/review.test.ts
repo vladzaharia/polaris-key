@@ -16,7 +16,12 @@ import type {
   UiInput,
 } from "@polaris-key/ui-core";
 
-import { TAGS, type PkElement, type PkSignIn } from "../src/index.js";
+import {
+  PolarisKey,
+  TAGS,
+  type PkElement,
+  type PkSignIn,
+} from "../src/index.js";
 import {
   COMPONENT_FAMILIES,
   readMatrix,
@@ -515,6 +520,60 @@ describe("the panes have real controls", () => {
     expect(root.querySelector('[role="switch"]')).not.toBeNull();
     expect(root.querySelector('[role="radiogroup"]')).not.toBeNull();
     expect(root.textContent).toContain("Version 2.4.1");
+  });
+
+  it.each([true, "line", "badge"] as const)(
+    "theme.poweredBy %s reaches the pane through the theme; the badge is About's only (LK-16)",
+    async (poweredBy) => {
+      PolarisKey.theme({ poweredBy });
+      try {
+        const el = await draw(
+          "pk-account-and-license",
+          base({ account: { signedIn: true, holder: "Mara", tier: "Pro" } }),
+        );
+        const root = el.shadowRoot!;
+        expect(
+          root.querySelector('[data-part="powered-by"]')!.textContent!.trim(),
+        ).toBe("Powered by Polaris Locker");
+        expect(root.querySelector('[data-part="powered-by-badge"]')).toBeNull();
+      } finally {
+        PolarisKey.theme({});
+      }
+    },
+  );
+
+  it("AccountAndLicense poweredBy: the Locker micro mark and the phrase in live text, never the badge (LK-16)", async () => {
+    for (const poweredBy of ["line", "badge"] as const) {
+      const el = await draw(
+        "pk-account-and-license",
+        base({
+          account: { signedIn: true, holder: "Mara", tier: "Pro" },
+          integrator: { poweredBy },
+        }),
+      );
+      const root = el.shadowRoot!;
+      const line = root.querySelector('[data-part="powered-by"]')!;
+      expect(line.textContent!.trim()).toBe("Powered by Polaris Locker");
+      const mark = line.querySelector("svg")!;
+      expect(mark.getAttribute("width")).toBe("16");
+      expect(mark.getAttribute("viewBox")).toBe("0 0 16 16");
+      expect(mark.getAttribute("aria-hidden")).toBe("true");
+      expect(root.querySelector('[data-part="powered-by-badge"]')).toBeNull();
+      expect(root.innerHTML).not.toContain("Polaris Key");
+    }
+  });
+
+  it("About poweredBy badge: the 320 x 104 Locker badge with the line as its fallback (LK-16)", async () => {
+    const el = await draw(
+      "pk-about",
+      base({ integrator: { poweredBy: "badge" } }),
+    );
+    const root = el.shadowRoot!;
+    const badge = root.querySelector('[data-part="powered-by-badge"] svg')!;
+    expect(badge.getAttribute("viewBox")).toBe("0 0 320 104");
+    expect(badge.getAttribute("width")).toBe("320");
+    expect(badge.getAttribute("aria-label")).toBe("Powered by Polaris Locker");
+    expect(root.querySelector('[data-part="powered-by"]')).not.toBeNull();
   });
 });
 

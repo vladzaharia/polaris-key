@@ -10,6 +10,7 @@ export {
 } from "./marks/react.js";
 export {
   badgeSize,
+  keyBadgeSize,
   bitVisible,
   opticalCut,
   type BitColor,

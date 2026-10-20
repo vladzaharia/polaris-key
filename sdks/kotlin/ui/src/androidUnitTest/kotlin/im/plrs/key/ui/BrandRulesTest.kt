@@ -71,9 +71,15 @@ class BrandRulesTest {
     fun theBrandMarksAreTheKitArtwork() {
         val k = PolarisBrandTokens
         assertEquals(96f, im.plrs.key.ui.brand.PolarisBrandMarkData.pinnedKDark.width)
-        assertEquals(k.badgeMinCompact.width, im.plrs.key.ui.brand.PolarisBrandMarkData.poweredByCompactDark.width)
+        // The Powered-by attribution is Polaris Locker's: the 320 x 104 badge and the 128-grid micro mark.
+        assertEquals(k.badgeMin.width, im.plrs.key.ui.brand.PolarisBrandMarkData.lockerPoweredByDark.width)
+        assertEquals(k.badgeMin.height, im.plrs.key.ui.brand.PolarisBrandMarkData.lockerPoweredByDark.height)
+        assertEquals(320f, k.badgeMin.width)
+        assertEquals(104f, k.badgeMin.height)
+        assertEquals(128f, im.plrs.key.ui.brand.PolarisBrandMarkData.lockerMicroDark.width)
+        assertEquals(16f, k.POWERED_BY_MARK_SIZE)
         assertEquals("display", k.opticalCut(56f))
-        assertEquals("Powered by Polaris Key", k.POWERED_BY_PHRASE)
+        assertEquals("Powered by Polaris Locker", k.POWERED_BY_PHRASE)
         assertEquals(k.POWERED_BY_PHRASE, PolarisCopy().poweredBy)
         // The display cut carries no terminal bit: three shapes, none of them gold.
         val paths = (im.plrs.key.ui.brand.PolarisBrandMarkData.pinnedKDark.nodes.single() as im.plrs.key.ui.brand.BrandVectorNode.Group).children

@@ -126,7 +126,7 @@ export interface Env {
   KEYENTRY_REFUSALS?: string;
   /**
    * Lazy hot-pair deltas (P4-17, `core/assets/deltaDemand.ts`, `services/release/packs/deltas/`): the
-   * deployment's kill switch. On lets an opted-in product (`lazy_delta_settings`) count demand
+   * deployment's kill switch. On lets an opted-in product (`deltas.lazy.enabled`) count demand
    * and generate deltas. A `[vars]` value, read only through the platform settings store (A-13,
    * `core/platformSettings.ts`, `ceiling`): `off` is a hard off; `runtime` (committed in every
    * environment) lets the console decide, default off; `on` means on unless the console says off.
@@ -504,8 +504,10 @@ export interface Env {
   EMAIL_SENDER_ADDRESS?: string;
   /**
    * I-18: the deploy-wide daily cap on one product's passthrough sign-in mail (a positive
-   * integer). A product's `email_product_caps` row wins; unset = the code default (500).
+   * integer). A product's own `email.dailyCap` wins; unset = the code default (500). ST-11: a
+   * console value (`email.dailyCapDefault`) wins over this `[vars]` value.
    * @inventory var email
+   * @editable EMAIL_PRODUCT_DAILY_CAP
    */
   EMAIL_PRODUCT_DAILY_CAP?: string;
   /**

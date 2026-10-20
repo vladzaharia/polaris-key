@@ -139,16 +139,42 @@ class BrandingTest {
     }
 
     @Test
-    fun theBadgeIsIndependentOfBranding() {
+    fun showPoweredByDrawsTheLineOnTheSettingsScreenAndTheAccountPane() {
+        var on by mutableStateOf(true)
+        host { content -> PolarisTheme(showPoweredBy = on, copy = sampleCopy, darkTheme = false, content = content) }
+        show { PolarisSettingsScreen(sampleSettings) }
+        assertEquals("settings draws the line with the switch on", 1, badges())
+        rule.runOnIdle { on = false }
+        rule.waitForIdle()
+        assertEquals("and none with it off", 0, badges())
+        rule.runOnIdle { on = true }
+        val inputs = KitInputs.of(mapOf("account" to kotlinx.serialization.json.buildJsonObject { put("signedIn", kotlinx.serialization.json.JsonPrimitive(true)) }))
+        show { PolarisKitScreen(KitStates.resolve(KitComponent.accountAndLicense, inputs)) }
+        assertEquals("the account pane draws the line too", 1, badges())
+    }
+
+    @Test
+    fun theAttributionIsIndependentOfBrandingAndNeverOnTheGate() {
         var branding by mutableStateOf(PolarisBranding.None)
         host { content -> PolarisTheme(branding = branding, showPoweredBy = true, copy = sampleCopy, darkTheme = false, content = content) }
-        show(kitScreens.first { it.first == "gate-activation" }.second)
+        // UI-KITS.md section 1.6: never on the gate or a message screen.
+        for ((name, content) in kitScreens.filter { it.first != "settings" }) {
+            show(content)
+            assertEquals("$name draws the attribution", 0, badges())
+        }
+        // An about or credits screen places it: the line by default, centred.
+        var style: PolarisPoweredByStyle? = null
+        show {
+            style = PolarisTheme.current.poweredByStyle
+            PolarisScreen { PolarisPoweredBy() }
+        }
         assertEquals(1, badges())
-        assertEquals("neutral with the badge still has no logo", 0, marks())
+        assertEquals("neutral with the attribution still has no logo", 0, marks())
         rule.runOnIdle { branding = PolarisBranding.PolarisKey }
         rule.waitForIdle()
         assertEquals(1, badges())
-        assertEquals("the Pinned K lives only inside the badge", 0, marks())
+        assertEquals("the Pinned K is not part of the attribution", 0, marks())
+        assertEquals(PolarisPoweredByStyle.Line, style)
     }
 
     /** Neutral is the native preset: the host's scheme reaches the kit untouched, dynamic colour included. */

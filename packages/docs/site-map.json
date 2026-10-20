@@ -879,15 +879,6 @@
   ],
   "stubs": [
     {
-      "path": "access",
-      "type": "overview",
-      "title": "Docs access",
-      "description": "Who the gated docs are for, and how to sign in or go to Help.",
-      "nearest": "/docs/",
-      "package": "DOC-03b",
-      "pri": "P1"
-    },
-    {
       "path": "features/index",
       "type": "overview",
       "title": "Features",

@@ -56,7 +56,7 @@
       "message": "Download a version your license covers, or upgrade your license to get this one."
     },
     "status-0": {
-      "title": "Can't reach Polaris Key",
+      "title": "Can't reach Polaris Locker",
       "message": "Check your connection, then try again."
     },
     "status-401": {
@@ -211,7 +211,7 @@
       "page": "signing-in",
       "entry": "account_required",
       "why": "This part of the app needs to know your Polaris Key account, and the license on this device doesn't name one.",
-      "fix": "Sign in to your Polaris Key account in the app, then try again."
+      "fix": "Sign in to your Polaris Locker account in the app, then try again."
     },
     "step_up_required": {
       "page": "signing-in",

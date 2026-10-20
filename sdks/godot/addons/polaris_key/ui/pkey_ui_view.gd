@@ -1586,21 +1586,14 @@ static func _resort(n: Node) -> void:
 
 # ── Brand and product ────────────────────────────────────────────────────────────────────
 
-## A TextureRect for the compact "Powered by Polaris Key" badge (`BRAND_POWERED_BY`, shown only when
-## `PKeyUiTheme.powered_by` is on, at its kit minimum or larger, never cropped). Hidden otherwise:
-## no screen carries a Polaris Key mark of its own, the product leads every one.
-func brand_node(parent: Node, node_name: String, kind: StringName, align := Control.SIZE_SHRINK_CENTER) -> TextureRect:
-	var r := TextureRect.new()
+## A PKeyPoweredBy for the optional "Powered by Polaris Locker" attribution (`BRAND_POWERED_BY`,
+## shown only when `PKeyUiTheme.powered_by` is on: the Locker micro mark and the phrase, or the
+## 320 x 104 badge where 320 px are free; never cropped). Hidden otherwise: no screen carries a
+## Polaris mark of its own, the product leads every one.
+func brand_node(parent: Node, node_name: String, kind: StringName, align := Control.SIZE_SHRINK_CENTER) -> PKeyPoweredBy:
+	var r := PKeyPoweredBy.new()
 	r.name = node_name
-	r.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	r.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	r.size_flags_horizontal = align
-	r.visible = false
-	r.custom_minimum_size = PKeyUiTheme.powered_by_size("compact")
-	r.tooltip_text = PKeyBrand.POWERED_BY_PHRASE
-	if "accessibility_name" in r:
-		r.set("accessibility_name", PKeyBrand.POWERED_BY_PHRASE)
 	parent.add_child(r)
 	_brand_nodes.append([r, kind])
 	return r
@@ -1611,10 +1604,10 @@ func _render_brand() -> void:
 		return
 	var dark := PKeyUiTheme.is_dark(self)
 	for pair in _brand_nodes:
-		var r: TextureRect = pair[0]
-		var on := PKeyUiTheme.powered_by
-		r.texture = PKeyUiTheme.powered_by_texture(dark) if on else null
-		r.visible = on and r.texture != null
+		var r: PKeyPoweredBy = pair[0]
+		var parent := r.get_parent() as Control
+		var free := parent.size.x if parent != null else size.x
+		r.render(PKeyBrand.POWERED_BY_PHRASE, dark, free)
 
 
 ## The product's identity (UI-KITS.md §1.2, the product is the hero): its icon, or a monogram

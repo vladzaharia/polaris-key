@@ -128,6 +128,11 @@ public fun PolarisSettingsScreen(
                 }
                 valuesCard(Modifier)
             }
+            // The optional attribution is the screen's last item (UI-KITS.md section 1.6).
+            if (PolarisTheme.current.showPoweredBy) {
+                Spacer(Modifier.height(PolarisSpace.group))
+                PolarisPoweredByLine()
+            }
         }
     }
 }

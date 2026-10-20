@@ -226,3 +226,29 @@ Reconciled against main in the 2026-10-16 audit. Remaining:
 - Criterion 2 blocked: Page moved for license/settings, license/enrollment, identity/portal, update/feed (replacement homes unbuilt; owners LX-40, ST-38/LX-34/ST-12/P2-10, I-29, update feed owner); lead must carve out or wait
 - Confirm settings-coverage PENDING entries removed and PENDING_CEILING lowered by 5
 - Record pkey-ux-reviewer BUILT pass
+
+## Mockup rebuild (2026-10-20)
+
+Owner direction: build the four console mockups faithfully (products.features,
+products.settings-presentation, products.settings-keys, admin.product-members). Done on
+`wp/ST-08-mockups`:
+
+- Hub: product-icon masthead, product crumb, History and All settings in the header, four tabs
+  (Features, Presentation, Keys & secrets, Members with its count). No repeated h2, no "On this
+  page" rail. `#/p/<slug>/settings` is Features with its last folded row unfolded.
+- Features: one Feature | Status | switch list, glyph tiles, sunken nested rows, "Needs" marks,
+  Polaris Locker row (locked while Sign-in is off), Polaris Locker listing as Unlisted / Eligible /
+  Everyone, one folded "Slugs and device registration" row, switches 44x24 on phones with a ring
+  while saving.
+- Presentation: "What customers see" rows (icon, hero art) with Manifest/Uploaded pills beside a
+  live Preview (Dark/Light, sheet on phones); inline upload failure; limit stated before upload;
+  binary units everywhere; slot titles.
+- Keys & secrets: Verification first, a row list for secrets (what a missing one breaks, Try
+  again), read-only Content keys, "Activate on <date>", Prepare disabled when the read fails.
+- Members: Admins and read-only Platform roles tables.
+- Fixes: web-origins focus and describedby, Page moved names its real home, toast close target,
+  registry-label copy lint (with a shrinking debt list), layout probe exempts a sticky rail.
+
+Not built, because no data serves it (follow-ups): Wordmark, Accent and Description rows; Minted
+tokens as a real switch; the secrets' "last use" and the JWKS read count; member areas, "Access
+from" and row menus (ST-31); the Invite people drawer (ST-31).

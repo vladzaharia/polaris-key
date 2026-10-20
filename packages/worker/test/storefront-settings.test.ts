@@ -396,7 +396,7 @@ describe("the portal-settings route's listing fields (PS-02)", () => {
 
   it("writes no listing audit row when no listing value changed", async () => {
     const { db, patch } = await fixture();
-    expect((await patch({ magicEnabled: false })).status).toBe(200);
+    expect((await patch({ keyReissueEnabled: true })).status).toBe(200);
     const rows = await listAudit(db, SLUG, { limit: 10 });
     expect(rows.map((r) => r.action)).toEqual(["portal.settings.update"]);
   });

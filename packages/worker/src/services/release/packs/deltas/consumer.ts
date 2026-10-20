@@ -7,7 +7,7 @@
  *
  * A pair job, all in one invocation:
  *
- *   1. opt-in      the deployment's `LAZY_DELTAS` and the product's `lazy_delta_settings`;
+ *   1. opt-in      the deployment's `LAZY_DELTAS` and the product's `deltas.lazy.enabled`;
  *   2. idempotent  a `release_lazy_deltas` row for the pair ends the job (a duplicate event or a
  *                  re-sent pair is a no-op); so does an object already at the delta key, which
  *                  is recorded instead of re-encoded (a job that died after its upload);

@@ -268,38 +268,6 @@ function visibleTrigger(): HTMLElement | null {
   );
 }
 
-/**
- * The header trigger: "Jump to a product ⌘K", a 40 px icon button below 1180 px (PORTAL.md §8:
- * the full 256 px field does not fit the tablet header beside Activate license and the account
- * menu). From 1180 px a 256 px field that gives way first when the row is tight, down to 176 px,
- * before the account chip's name does. 40 px tall, 44 on a coarse pointer.
- */
-export function JumpTrigger({
-  onOpen,
-}: {
-  onOpen: () => void;
-}): React.ReactElement {
-  const mac =
-    typeof navigator !== "undefined" &&
-    /Mac|iPhone|iPad/.test(navigator.userAgent);
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      data-jump-trigger=""
-      aria-label="Jump to a product"
-      aria-keyshortcuts={mac ? "Meta+K" : "Control+K"}
-      className="inline-flex h-10 w-10 items-center justify-center gap-3 rounded-md border border-border bg-surface-raised text-sm text-fg-muted hover:text-fg-strong pointer-coarse:h-11 max-wide:pointer-coarse:w-11 wide:w-64 wide:min-w-44 wide:shrink wide:justify-start wide:px-3"
-    >
-      <Search aria-hidden className="size-4 shrink-0" />
-      <span className="hidden min-w-0 flex-1 truncate text-left wide:inline">
-        Jump to a product
-      </span>
-      <Kbd keys={mac ? "⌘K" : "Ctrl K"} className="hidden shrink-0 wide:flex" />
-    </button>
-  );
-}
-
 /** The phone header's search icon. */
 export function JumpIconButton({
   onOpen,
@@ -312,7 +280,7 @@ export function JumpIconButton({
       onClick={onOpen}
       data-jump-trigger=""
       aria-label="Jump to a product"
-      className="inline-flex size-11 items-center justify-center rounded-full text-fg-strong hover:bg-hover"
+      className="inline-flex size-[44px] items-center justify-center rounded-full text-fg-strong hover:bg-hover"
     >
       <Search aria-hidden className="size-5" />
     </button>

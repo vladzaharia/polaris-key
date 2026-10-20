@@ -1,5 +1,6 @@
 import * as React from "react";
-import { Info, LayoutGrid } from "lucide-react";
+import { LayoutGrid } from "lucide-react";
+import { t } from "../../lib/copy.js";
 import { cn } from "../../lib/cn.js";
 import { Button } from "../../ui/Button.js";
 import { StationaryStar } from "../../ui/EmptyState.js";
@@ -16,17 +17,12 @@ import { portalErrorCopy } from "../errors.js";
 import {
   addedOfferFromLibrary,
   addedParam,
+  navDiscoverCount,
   mergeAdded,
   withAdded,
 } from "../model/discover.js";
 import { withoutHeld } from "../model/owned.js";
-import {
-  currentParams,
-  href,
-  navigate,
-  setParams,
-  useDocumentTitle,
-} from "../router.js";
+import { currentParams, href, setParams, useDocumentTitle } from "../router.js";
 import { useFirstLoad, useFirstLoadStagger } from "../stagger.js";
 
 interface TileError {
@@ -134,6 +130,11 @@ export function DiscoverPage({
     [...addedTiles, ...adding.values()],
   );
 
+  // Store links on any addable tile: every tile keeps their row (DiscoverTile).
+  const reserveStores = tiles.some(
+    (o) => o.cta === "add" && !addedSlugs.has(o.product) && o.stores.length > 0,
+  );
+
   const add = async (offer: PortalDiscoverOffer): Promise<void> => {
     const slug = offer.product;
     if (inFlight.current.has(slug)) return;
@@ -150,12 +151,8 @@ export function DiscoverPage({
       setFocusOpen(slug);
       // Read now, not from this render: another add may have finished meanwhile.
       setParams({ added: withAdded(addedParam(currentParams()), slug) });
-      toast.success(`${offer.name} is in your library`, {
-        action: {
-          label: "Open",
-          onClick: () => navigate(href.product(slug)),
-        },
-      });
+      // The tile says "Open"; the toast only confirms.
+      toast.success(`${offer.name} is in your library`);
     } catch (err) {
       const failed = tileError(offer, err);
       setErrors((m) => new Map(m).set(slug, failed));
@@ -170,6 +167,11 @@ export function DiscoverPage({
     }
   };
 
+  // The grid's columns follow the tile count; while loading, the Worker's count (or three).
+  const expected = Math.max(
+    1,
+    Math.min(3, navDiscoverCount(library.data?.discoverCount) ?? 3),
+  );
   const pending =
     discover.isPending || (addedParams.length > 0 && library.isPending);
   const empty = !pending && !discover.error && tiles.length === 0;
@@ -180,14 +182,25 @@ export function DiscoverPage({
         <h1 className="text-page-title-sm font-semibold text-fg-strong desk:text-page-title">
           Discover
         </h1>
-        <p className="text-fg-muted">Products you can add for free</p>
       </div>
       {pending ? (
         // Two columns on tablets, three from 1180 px (§4.16), as the loaded grid.
-        <div className="grid gap-5 desk:grid-cols-2 wide:grid-cols-3" aria-busy>
+        <div
+          className={cn("grid gap-6 desk:grid-cols-2", wideColumns(expected))}
+          aria-busy
+        >
           <Skeleton className="h-96 rounded-xl" />
-          <Skeleton className="hidden h-96 rounded-xl desk:block" />
-          <Skeleton className="hidden h-96 rounded-xl wide:block" />
+          {expected >= 2 ? (
+            <Skeleton className="hidden h-96 rounded-xl desk:block" />
+          ) : null}
+          {expected >= 3 ? (
+            <Skeleton
+              className={cn(
+                "hidden h-96 rounded-xl",
+                wideColumns(expected) ? "wide:block" : "desk:block",
+              )}
+            />
+          ) : null}
         </div>
       ) : discover.error ? (
         <ErrorPanel
@@ -226,9 +239,9 @@ export function DiscoverPage({
             <ul
               ref={stagger.ref}
               className={cn(
-                "grid gap-5 desk:grid-cols-2",
-                // Two or four tiles at three columns leave a row mostly empty (3 + 1).
-                tiles.length !== 2 && tiles.length !== 4 && "wide:grid-cols-3",
+                "grid gap-6 desk:grid-cols-2",
+                // Two or four tiles at three columns leave a row with a hole (3 + 1).
+                wideColumns(tiles.length),
                 stagger.className,
               )}
             >
@@ -248,20 +261,25 @@ export function DiscoverPage({
                       error={error?.text ?? null}
                       ended={error?.ended ?? false}
                       onAdd={() => void add(offer)}
+                      reserveStoreRow={reserveStores}
                     />
                   </li>
                 );
               })}
             </ul>
           </section>
-          <p className="flex gap-2 text-sm text-fg-muted">
-            <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
-            Purchases appear in your library automatically.
-          </p>
         </>
       )}
     </section>
   );
+}
+
+/**
+ * Three columns from the wide breakpoint, except for one, two or four tiles, where a third column
+ * leaves a hole (3 + 1) or a lone tile wider than two columns' worth.
+ */
+function wideColumns(n: number): string {
+  return n <= 2 || n === 4 ? "" : "wide:grid-cols-3";
 }
 
 /** An Add that didn't go through, in the person's words (§6.4), inline on the tile. */
@@ -276,6 +294,11 @@ function tileError(offer: PortalDiscoverOffer, err: unknown): TileError {
       ended: true,
     };
   }
+  // The button stays "Add to library" and the words say what to do, once.
+  const offline = err instanceof PortalApiError && err.status === 0;
   const copy = portalErrorCopy(err);
-  return { text: `${copy.title}. ${copy.description}`, ended: false };
+  return {
+    text: `Couldn't add ${offer.name}. ${offline ? t("core.codes.transport.message") : copy.description}`,
+    ended: false,
+  };
 }

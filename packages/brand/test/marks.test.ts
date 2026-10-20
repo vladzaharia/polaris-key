@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { SERVICE_ACCENTS } from "../src/generated/tokens.js";
 import {
   badgeSize,
+  keyBadgeSize,
   bitVisible,
   clearSpace,
   opticalCut,
@@ -16,10 +17,11 @@ import {
   lockupSvg,
   markParts,
   markSvg,
+  keyPoweredBySvg,
   poweredBySvg,
 } from "../src/marks/svg.js";
 import { sectionBit, serviceAccent } from "../src/tokens/services.js";
-import { BRAND, POWERED_BY } from "../src/tokens/primitives.js";
+import { BRAND, KEY_POWERED_BY, POWERED_BY } from "../src/tokens/primitives.js";
 import { SERVICE_IDS } from "../src/tokens/source.js";
 
 const BIT_PATH = "M70 85 L84 71 L90 77 L76 91 Z";
@@ -232,7 +234,12 @@ describe("accessibility", () => {
     expect(lockupSvg({ kind: "delivery" })).toContain(
       'aria-label="Polaris Key Delivery"',
     );
-    expect(poweredBySvg({})).toContain('aria-label="Powered by Polaris Key"');
+    expect(poweredBySvg({})).toContain(
+      'aria-label="Powered by Polaris Locker"',
+    );
+    expect(keyPoweredBySvg({})).toContain(
+      'aria-label="Powered by Polaris Key"',
+    );
     expect(lockupSvg({ title: "" })).toContain('aria-hidden="true"');
   });
 });
@@ -291,26 +298,41 @@ describe("lockups", () => {
 });
 
 describe("badge minimum sizes", () => {
-  it.each(Object.entries(POWERED_BY.minimum))(
-    "%s never renders below its minimum",
+  it("the Locker badge never renders below 320 x 104", () => {
+    const min = POWERED_BY.minimum;
+    expect(min).toEqual({ width: 320, height: 104 });
+    expect(badgeSize()).toEqual(min);
+    expect(badgeSize(10)).toEqual(min);
+    expect(badgeSize(min.width - 1)).toEqual(min);
+    expect(badgeSize(Number.NaN)).toEqual(min);
+    const big = badgeSize(min.width * 2);
+    expect(big.width).toBe(min.width * 2);
+    expect(big.height).toBe(min.height * 2);
+    expect(poweredBySvg({ width: 1 })).toContain(
+      `width="${min.width}" height="${min.height}"`,
+    );
+  });
+
+  it.each(Object.entries(KEY_POWERED_BY.minimum))(
+    "Key %s (a platform reference) never renders below its minimum",
     (layout, min) => {
-      const l = layout as keyof typeof POWERED_BY.minimum;
-      expect(badgeSize(l)).toEqual(min);
-      expect(badgeSize(l, 10)).toEqual(min);
-      expect(badgeSize(l, min.width - 1)).toEqual(min);
-      expect(badgeSize(l, Number.NaN)).toEqual(min);
-      const big = badgeSize(l, min.width * 2);
+      const l = layout as keyof typeof KEY_POWERED_BY.minimum;
+      expect(keyBadgeSize(l)).toEqual(min);
+      expect(keyBadgeSize(l, 10)).toEqual(min);
+      expect(keyBadgeSize(l, min.width - 1)).toEqual(min);
+      expect(keyBadgeSize(l, Number.NaN)).toEqual(min);
+      const big = keyBadgeSize(l, min.width * 2);
       expect(big.width).toBe(min.width * 2);
       expect(big.height).toBe(min.height * 2);
-      expect(poweredBySvg({ layout: l, width: 1 })).toContain(
+      expect(keyPoweredBySvg({ layout: l, width: 1 })).toContain(
         `width="${min.width}" height="${min.height}"`,
       );
     },
   );
 
-  it("the badge keeps its full padded canvas (viewBox is the kit's)", () => {
-    expect(poweredBySvg({ layout: "horizontal", width: 752 })).toContain(
-      'width="752" height="288" viewBox="0 0 376 144"',
+  it("the Locker badge keeps its full padded canvas (viewBox is the kit's)", () => {
+    expect(poweredBySvg({ width: 640 })).toContain(
+      'width="640" height="208" viewBox="0 0 320 104"',
     );
   });
 

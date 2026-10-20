@@ -2,6 +2,7 @@ import * as React from "react";
 import {
   AlertCircle,
   ArrowRight,
+  ArrowUpRight,
   AtSign,
   Check,
   Clock,
@@ -16,18 +17,18 @@ import {
 } from "lucide-react";
 import { Button } from "../../ui/Button.js";
 import { cn } from "../../lib/cn.js";
-import { t } from "../../lib/copy.js";
 import type { PortalDiscoverOffer } from "../api.js";
 import {
   moreWaysText,
   offerPlatforms,
   offerReason,
   storeLinkLabel,
-  termsLine,
   type ReasonKind,
 } from "../model/discover.js";
+import { discoverTileFacts } from "../model/tileFacts.js";
 import { href } from "../router.js";
-import { PlatformGlyphs } from "./Glyphs.js";
+import { SteamGlyph } from "./Glyphs.js";
+import { TileFacts } from "./TileFacts.js";
 import { ProductArt } from "./ProductArt.js";
 import { ProductIcon } from "./ProductIcon.js";
 
@@ -76,6 +77,7 @@ export function DiscoverTile({
   error = null,
   ended = false,
   onAdd,
+  reserveStoreRow = false,
 }: {
   offer: PortalDiscoverOffer;
   state: DiscoverTileState;
@@ -84,6 +86,8 @@ export function DiscoverTile({
   /** The offer is gone (409 `not_eligible`): no Add button any more. */
   ended?: boolean;
   onAdd: () => void;
+  /** Some tile in the grid shows store links: every tile keeps the row so the actions sit level. */
+  reserveStoreRow?: boolean;
 }): React.ReactElement {
   const reason = offerReason(offer);
   const ReasonIcon = reason ? REASON_ICON[reason.kind] : null;
@@ -99,7 +103,10 @@ export function DiscoverTile({
   const page = added
     ? href.product(offer.product)
     : href.storefront(offer.product);
-  const what = offer.offer ? termsLine(offer.offer) : offer.shortDescription;
+  const facts = discoverTileFacts(offer);
+  // No cover: a short tint field with the icon (or its letter tile) large and centred, as Library.
+  const noArt = !offer.headerUrl;
+  const stores = !link && !added && offer.cta === "add" ? offer.stores : [];
   return (
     <div className="pk-lift pk-pressable-card relative grid rounded-xl">
       <article
@@ -108,7 +115,7 @@ export function DiscoverTile({
         data-cta={offer.cta}
         className={cn(
           "relative flex flex-col overflow-hidden rounded-xl border bg-surface-raised shadow-elevation-1",
-          added ? "border-success" : "border-border",
+          added ? "border-fg-strong" : "border-border",
         )}
       >
         <ProductArt
@@ -117,15 +124,24 @@ export function DiscoverTile({
           tint={offer.tintColor}
           src={offer.headerUrl}
           variant="tile"
-          // No cover: a bare tint field; the icon (or its letter tile) in front of the art's lower
-          // edge already shows the letter, as on Library cards.
-          letter={false}
+          letter={noArt && !offer.iconUrl}
           liftArt
           // The whole 16:9 frame edge to edge, capped at 280 px tall (contained over a blurred
           // copy of itself where the column is wider), as on Library tiles.
           fit="contain"
           className="aspect-video max-h-[17.5rem] w-full"
         >
+          {noArt && offer.iconUrl ? (
+            <ProductIcon
+              slug={offer.product}
+              name={offer.name}
+              tint={offer.tintColor}
+              src={offer.iconUrl}
+              size={64}
+              lift
+              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+            />
+          ) : null}
           {added ? (
             <span
               className={cn(
@@ -139,47 +155,52 @@ export function DiscoverTile({
           ) : null}
         </ProductArt>
         <div className="flex flex-1 flex-col px-5 pb-5">
-          <div className="-mt-7 flex items-start gap-3">
-            <ProductIcon
-              slug={offer.product}
-              name={offer.name}
-              tint={offer.tintColor}
-              src={offer.iconUrl}
-              size={64}
-              className="relative border-[3px] border-surface-raised shadow-elevation-2"
-            />
-            <div className="min-w-0 flex-1 pt-9">
-              <h3
-                id={id}
-                dir="auto"
-                className="truncate text-lg font-semibold text-fg-strong"
-              >
-                <a
-                  href={page}
-                  // block: the name's full line is the link (24 px or taller), so a short name
-                  // still meets the target size (WCAG 2.5.8; PS-05). Its focus ring is the
-                  // card's, which it stretches over (styles.css, .pk-press-link).
-                  className="pk-press-link block truncate rounded-sm after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
+          <div
+            className={cn("flex items-start gap-3", noArt ? "mt-4" : "-mt-5")}
+          >
+            {noArt ? null : (
+              <ProductIcon
+                slug={offer.product}
+                name={offer.name}
+                tint={offer.tintColor}
+                src={offer.iconUrl}
+                size={56}
+                className="relative border-[3px] border-surface-raised shadow-elevation-2"
+              />
+            )}
+            <div className={cn("min-w-0 flex-1", !noArt && "pt-8")}>
+              <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+                <h3
+                  id={id}
+                  dir="auto"
+                  className="line-clamp-2 min-w-0 max-w-full break-words text-lg font-semibold text-fg-strong"
                 >
-                  {offer.name}
-                </a>
-              </h3>
-              {offer.developerName ? (
-                <p dir="auto" className="truncate text-sm text-fg-muted">
-                  {offer.developerName}
-                </p>
-              ) : null}
+                  <a
+                    href={page}
+                    // block: the name's full line is the link (24 px or taller), so a short name
+                    // still meets the target size (WCAG 2.5.8; PS-05). Its focus ring is the
+                    // card's, which it stretches over (styles.css, .pk-press-link).
+                    className="pk-press-link block rounded-sm after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
+                  >
+                    {offer.name}
+                  </a>
+                </h3>
+                {offer.developerName ? (
+                  <p
+                    dir="auto"
+                    className="min-w-0 max-w-full truncate text-sm text-fg-muted"
+                  >
+                    {offer.developerName}
+                  </p>
+                ) : null}
+              </div>
             </div>
           </div>
-          {what || offer.platforms.length ? (
-            <div className="mt-4 flex items-center justify-between gap-3 text-sm text-fg-muted">
-              <span className="min-w-0">{what}</span>
-              <PlatformGlyphs
-                platforms={offerPlatforms(offer.platforms)}
-                className="shrink-0"
-              />
-            </div>
-          ) : null}
+          <TileFacts
+            className="mt-4"
+            facts={facts}
+            platforms={offerPlatforms(offer.platforms)}
+          />
           {reason && ReasonIcon ? (
             <p className="mt-3 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 rounded-md bg-surface-sunken px-3 py-2.5 text-md text-fg-strong">
               <span className="flex min-w-0 flex-1 gap-2.5">
@@ -241,23 +262,38 @@ export function DiscoverTile({
                   iconStart={<Plus aria-hidden />}
                   loading={state === "adding"}
                   aria-describedby={error ? errorId : undefined}
-                  aria-label={`${error ? t("common.tryAgain") : "Add to library"}: ${offer.name}`}
+                  aria-label={`Add to library: ${offer.name}`}
                   onClick={onAdd}
                 >
-                  {error ? t("common.tryAgain") : "Add to library"}
+                  {state === "adding" ? "Adding…" : "Add to library"}
                 </Button>
               )}
             </div>
           )}
+          {/* The row is kept on every tile when any tile has store links, from tablets up, so
+              the actions sit level across a row. */}
+          {reserveStoreRow || stores.length > 0 ? (
+            <div
+              className={cn(
+                "mt-4",
+                reserveStoreRow ? "hidden min-h-9 desk:block" : "",
+                stores.length > 0 && "block",
+              )}
+            >
+              {stores.length > 0 ? (
+                <StoreLinks offer={offer} stores={stores} />
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </article>
       {added ? (
-        // The green ring around the card (outside its border, where the card can't clip it).
+        // The ink ring around the card (form, not colour) (outside its border, where the card can't clip it).
         <span
           aria-hidden
           data-ring
           className={cn(
-            "pointer-events-none absolute inset-0 rounded-xl ring-1 ring-success",
+            "pointer-events-none absolute inset-0 rounded-xl ring-1 ring-fg-strong",
             pop && "pk-content-in",
           )}
         />
@@ -334,5 +370,38 @@ function ExternalButton({
         <span className="truncate">{label}</span>
       </a>
     </Button>
+  );
+}
+
+/** The other places to get it (the kit's `.stores`): quieter than Add to library. */
+function StoreLinks({
+  offer,
+  stores,
+}: {
+  offer: PortalDiscoverOffer;
+  stores: PortalDiscoverOffer["stores"];
+}): React.ReactElement {
+  return (
+    <p className="relative flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-fg-muted">
+      <span>Also on</span>
+      {stores.map((st) => (
+        <a
+          key={st.id}
+          href={st.url}
+          target="_blank"
+          rel="noreferrer"
+          aria-label={`${st.label}: ${offer.name} (opens in a new tab)`}
+          className="inline-flex items-center gap-1.5 font-medium text-accent-fg underline decoration-accent-fg/35 underline-offset-[3px]"
+        >
+          {st.kind === "steam" ? (
+            <SteamGlyph className="size-4" />
+          ) : (
+            <ShoppingBag aria-hidden className="size-4" />
+          )}
+          {st.label}
+          <ArrowUpRight aria-hidden className="size-3.5 text-fg-subtle" />
+        </a>
+      ))}
+    </p>
   );
 }

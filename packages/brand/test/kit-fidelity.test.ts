@@ -20,6 +20,7 @@ import {
   BRAND,
   KIT_VERSION,
   OPTICAL,
+  KEY_POWERED_BY,
   POWERED_BY,
 } from "../src/tokens/primitives.js";
 
@@ -230,19 +231,21 @@ describe("badge and alt facts", () => {
       for (const layout of ["horizontal", "compact", "stacked"] as const) {
         const tpl = BADGE_TEMPLATES[t][layout];
         expect({ width: tpl.width, height: tpl.height }).toEqual(
-          POWERED_BY.minimum[layout],
+          KEY_POWERED_BY.minimum[layout],
         );
-        expect(tpl.title).toBe(POWERED_BY.phrase);
+        expect(tpl.title).toBe(KEY_POWERED_BY.phrase);
       }
   });
 
   it("the phrase and alt texts are the kit's (plus our Delivery name for the Star Cut)", () => {
-    expect(POWERED_BY.phrase).toBe("Powered by Polaris Key");
+    expect(KEY_POWERED_BY.phrase).toBe("Powered by Polaris Key");
+    expect(POWERED_BY.phrase).toBe("Powered by Polaris Locker");
     expect(ALT).toEqual({
       key: "Polaris Key",
       update: "Polaris Key Update",
       delivery: "Polaris Key Delivery",
-      poweredBy: "Powered by Polaris Key",
+      poweredBy: "Powered by Polaris Locker",
+      keyPoweredBy: "Powered by Polaris Key",
     });
     expect(LOCKUP_TEMPLATES.delivery.horizontal.title).toBe(ALT.delivery);
     expect(LOCKUP_TEMPLATES.key.horizontal.title).toBe(ALT.key);

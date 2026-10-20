@@ -12,7 +12,7 @@
 // The cross-board half then compares, per state, which keys each board shows against the
 // components.json copy list, and fails when one key renders differently on two boards beyond its
 // documented variants.
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 export interface CatalogMessage {
@@ -436,4 +436,63 @@ export function lintStrings(
     }
   }
   return { findings, keysByState };
+}
+
+// ── The brand-name rule (LK-00 §14.6) ───────────────────────────────────────────────────────
+//
+// "Polaris Locker" is the public brand on every surface people read; "Polaris Key" names the
+// platform and appears only in identifiers and in explanations of the machinery. So no string a
+// person reads in a kit, the core copy, or (once their copy lands here) the portal or email may
+// say "Polaris Key". Developer notes, `$comment` and the glossary's neverTranslate list do not
+// count; only message values do.
+
+/** Copy sources the rule reads, relative to the repo root: a directory is read for `*.json`
+ *  locale packs, a file as is. Portal and email copy join when LK-03 and LK-07 move it here. */
+export const BRAND_NAME_SOURCES = [
+  "packages/brand/kit-copy",
+  "conformance/parity",
+] as const;
+
+const BRAND_NAME_FILE =
+  /^(?:(?:[a-z]{2}(?:-[A-Za-z]+)?)|copy\.[a-z]{2}(?:-[A-Za-z]+)?)\.json$/;
+
+export function lintBrandName(
+  root: string,
+  sources: readonly string[] = BRAND_NAME_SOURCES,
+): StringFinding[] {
+  const findings: StringFinding[] = [];
+  const files: string[] = [];
+  for (const src of sources) {
+    const abs = resolve(root, src);
+    if (abs.endsWith(".json")) files.push(src);
+    else
+      for (const f of readdirSync(abs).sort())
+        if (BRAND_NAME_FILE.test(f)) files.push(`${src}/${f}`);
+  }
+  for (const file of files) {
+    const doc = JSON.parse(
+      readFileSync(resolve(root, file), "utf8"),
+    ) as unknown;
+    const walk = (node: unknown, path: string[]) => {
+      if (typeof node === "string") {
+        if (/Polaris Key/i.test(node))
+          findings.push({
+            board: "copy",
+            state: `${file} · ${path.join(".")}`,
+            text: node,
+            target: "",
+            detail:
+              'says "Polaris Key": a kit, core, portal or email string names Polaris Locker (LK-00 §14.1)',
+          });
+        return;
+      }
+      if (node && typeof node === "object")
+        for (const [k, v] of Object.entries(node)) {
+          if (k.startsWith("$") || k === "note" || k === "role") continue;
+          walk(v, [...path, k]);
+        }
+    };
+    walk(doc, []);
+  }
+  return findings;
 }

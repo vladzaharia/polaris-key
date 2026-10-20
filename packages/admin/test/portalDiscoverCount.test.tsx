@@ -137,7 +137,7 @@ describe("the nav with nothing to discover", () => {
     renderPortal();
     const main = await screen.findByRole("navigation", { name: "Main" });
     const link = await within(main).findByRole("link", { name: /Discover/ });
-    expect(link.textContent).toBe("Discover1");
+    expect(link.textContent).toBe("Discover1 to add");
     const phone = screen.getByRole("navigation", { name: "Phone" });
     expect(
       within(phone)
@@ -154,7 +154,7 @@ describe("the nav with nothing to discover", () => {
     const main = await screen.findByRole("navigation", { name: "Main" });
     const link = await within(main).findByRole("link", { name: /Discover/ });
     expect(link.getAttribute("href")).toBe("#/discover");
-    expect(link.textContent).toBe("Discover4");
+    expect(link.textContent).toBe("Discover4 to add");
     const phone = screen.getByRole("navigation", { name: "Phone" });
     expect(
       within(phone).getByRole("link", { name: /^Discover\W+4 to add$/ }),

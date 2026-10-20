@@ -267,13 +267,13 @@ describe("POST /api/activate/preview (G22)", () => {
     const env = portalEnv();
     await seedProduct(db, "djdl");
     const { key } = await seedLicenseWithKey(db, "djdl");
+    const s = await portalSession(env, db, "bob@example.com");
     await upsertPortalProductSettings(
       db,
       "djdl",
-      { licenseKeyClaimEnabled: false },
+      { portalEnabled: false },
       NOW,
     );
-    const s = await portalSession(env, db, "bob@example.com");
     const body = (await (await preview(env, db, s, key)).json()) as Record<
       string,
       unknown

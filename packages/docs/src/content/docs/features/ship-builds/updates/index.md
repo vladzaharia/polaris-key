@@ -116,7 +116,7 @@ plays out end to end.
 
 Every Update surface resolves against GitHub live, on every request that isn't already
 sitting in the edge cache — there is no local table Update reads from, not even the
-release truth store its sibling service maintains for the portal and the console. The two
+release truth store its sibling service maintains for Polaris Locker and the console. The two
 are kept in step because both ultimately reflect the same GitHub state, not because one
 queries the other. See
 The truth store for what that store is actually

@@ -61,14 +61,30 @@ export function isResolved(cfg: ReleaseConfigRow): cfg is ResolvedConfig {
   return Boolean(cfg.gh_owner && cfg.gh_repo && cfg.gh_installation_id);
 }
 
+/** The registry key of the operator-only artifact policy (ST-11: a `product_settings` row). */
+export const OPERATOR_POLICY_KEY = "update.operatorPolicy";
+
+/**
+ * A product's release config. `operator_policy_json` is overlaid from the product's
+ * `update.operatorPolicy` row (ST-11 moved it out of the column, which stays unread until ST-25
+ * drops it): no row reads NULL, the fail-safe "signature required, no minimum".
+ */
 export async function getReleaseConfig(
   db: Db,
   product: string,
 ): Promise<ReleaseConfigRow | null> {
-  return db.first<ReleaseConfigRow>(
-    "SELECT * FROM release_config WHERE product = ?",
+  const row = await db.first<
+    ReleaseConfigRow & { policy_value: string | null }
+  >(
+    `SELECT rc.*, (SELECT value_json FROM product_settings
+                    WHERE product = rc.product AND key = ?) AS policy_value
+       FROM release_config rc WHERE rc.product = ?`,
+    OPERATOR_POLICY_KEY,
     product,
   );
+  if (!row) return null;
+  const { policy_value, ...cfg } = row;
+  return { ...cfg, operator_policy_json: policy_value ?? null };
 }
 
 /**
@@ -120,9 +136,10 @@ export interface OperatorPolicy {
 }
 
 /**
- * Resolve the OPERATOR-owned artifact policy from `operator_policy_json` (0022_c).
+ * Resolve the OPERATOR-owned artifact policy from the `update.operatorPolicy` row (0022_c's
+ * `operator_policy_json` column until ST-11 moved it).
  *
- * This column is written by the setting `update.operatorPolicy` (the console's `update/settings`,
+ * This setting is written by the setting `update.operatorPolicy` (the console's `update/settings`,
  * through `writeSetting()`) and by nothing else: no manifest shape carries either key (R6-03), and resync never names the column. It is
  * separate from `artifact_policy_json` precisely because that blob is manifest-owned and a
  * resync rewrites it whole — which used to drop these keys on every push.

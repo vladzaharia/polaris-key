@@ -12,6 +12,7 @@ from dataclasses import replace
 from typing import Any, List, Optional, Sequence, Tuple
 from urllib.parse import quote
 
+from ...constants_generated import DEVICE_CODE_PAGE
 from ..core.models import (
     BOOT_STAGE_COPY,
     ActivateView,
@@ -49,7 +50,7 @@ __all__ = [
 ]
 
 #: The device-code page when the product sets none (SIGN-IN.md D-16).
-DEVICE_CODE_URL = "https://key.plrs.im/device"
+DEVICE_CODE_URL = DEVICE_CODE_PAGE
 
 Lines = List[Line]
 
@@ -203,7 +204,20 @@ def gate(k: Kit, v: GateView, verb: str = "status") -> Lines:
         body += k.step("active", [k.t("core.gate.needs-activation.title", "strong")])
         body += _gap(k)
         body += _fixes(k, [("activate", "welcome.useKey"), ("login", "welcome.signIn")])
+    if v.component in ("AccountAndLicense", "GraceBanner"):  # never on a gate (UI-KITS §1.6)
+        body += powered_by(k)
     return _frame(k, verb, body, end)
+
+
+def powered_by(k: Kit) -> Lines:
+    """The optional attribution (UI-KITS §1.6): the Locker mark's glyph and "Powered by Polaris
+    Locker", muted. A terminal has no badge, so ``"badge"`` prints the line too. Piped output
+    keeps the words and drops the glyph."""
+    if not k.theme.powered_by:
+        return []
+    glyph = k.sym("lockerMark", "muted")
+    line = ([glyph, Span(" ")] if glyph.text else []) + [k.t("part.poweredBy", "muted")]
+    return _gap(k) + k.body(line)
 
 
 # ── Activate, DeviceLimit ────────────────────────────────────────────────────────────────────

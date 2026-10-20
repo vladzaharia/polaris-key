@@ -2,35 +2,35 @@
 [2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · update check[0m
 [2m│[0m
 [31m✗[0m  [1mCan't connect[0m
-[2m│[0m  Can't reach Polaris Key. Check your connection and try again.
+[2m│[0m  Can't reach Polaris Locker. Check your connection and try again.
 [2m│[0m
 [2m└[0m  [1mtidewater update check[0m   [2mTry again[0m
 ── ansi16 · 80 ──
 [2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · update check[0m
 [2m│[0m
 [31m✗[0m  [1mCan't connect[0m
-[2m│[0m  Can't reach Polaris Key. Check your connection and try again.
+[2m│[0m  Can't reach Polaris Locker. Check your connection and try again.
 [2m│[0m
 [2m└[0m  [1mtidewater update check[0m   [2mTry again[0m
 ── no-color · 80 ──
 ┌  [7m Tidewater Studio [0m · update check
 │
 ✗  [1mCan't connect[0m
-│  Can't reach Polaris Key. Check your connection and try again.
+│  Can't reach Polaris Locker. Check your connection and try again.
 │
 └  [1mtidewater update check[0m   Try again
 ── ascii · 80 ──
 [2m+[0m  [1;7;36m Tidewater Studio [0m[2m - update check[0m
 [2m|[0m
 [31mx[0m  [1mCan't connect[0m
-[2m|[0m  Can't reach Polaris Key. Check your connection and try again.
+[2m|[0m  Can't reach Polaris Locker. Check your connection and try again.
 [2m|[0m
 [2m`[0m  [1mtidewater update check[0m   [2mTry again[0m
 ── truecolor · 60 ──
 [2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · update check[0m
 [2m│[0m
 [31m✗[0m  [1mCan't connect[0m
-[2m│[0m  Can't reach Polaris Key. Check your connection and
+[2m│[0m  Can't reach Polaris Locker. Check your connection and
 [2m│[0m  try again.
 [2m│[0m
 [2m└[0m  [1mtidewater update check[0m   [2mTry again[0m
@@ -38,7 +38,7 @@
 [2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · update check[0m
 [2m│[0m
 [31m✗[0m  [1mCan't connect[0m
-[2m│[0m  Can't reach Polaris Key. Check your connection and
+[2m│[0m  Can't reach Polaris Locker. Check your connection and
 [2m│[0m  try again.
 [2m│[0m
 [2m└[0m  [1mtidewater update check[0m   [2mTry again[0m
@@ -46,7 +46,7 @@
 ┌  [7m Tidewater Studio [0m · update check
 │
 ✗  [1mCan't connect[0m
-│  Can't reach Polaris Key. Check your connection and
+│  Can't reach Polaris Locker. Check your connection and
 │  try again.
 │
 └  [1mtidewater update check[0m   Try again
@@ -54,22 +54,22 @@
 [2m+[0m  [1;7;36m Tidewater Studio [0m[2m - update check[0m
 [2m|[0m
 [31mx[0m  [1mCan't connect[0m
-[2m|[0m  Can't reach Polaris Key. Check your connection and
+[2m|[0m  Can't reach Polaris Locker. Check your connection and
 [2m|[0m  try again.
 [2m|[0m
 [2m`[0m  [1mtidewater update check[0m   [2mTry again[0m
 ── pipe · 80 ──
 Tidewater Studio · update check
 Can't connect
-Can't reach Polaris Key. Check your connection and try again.
+Can't reach Polaris Locker. Check your connection and try again.
 
 tidewater update check   Try again
 ── truecolor · 40 ──
 [2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · update check[0m
 [2m│[0m
 [31m✗[0m  [1mCan't connect[0m
-[2m│[0m  Can't reach Polaris Key. Check your
-[2m│[0m  connection and try again.
+[2m│[0m  Can't reach Polaris Locker. Check
+[2m│[0m  your connection and try again.
 [2m│[0m
 [2m│[0m  [1mtidewater update check[0m
 [2m└[0m    [2mTry again[0m
@@ -77,8 +77,8 @@ tidewater update check   Try again
 ┌  [7m Tidewater Studio [0m · update check
 │
 ✗  [1mCan't connect[0m
-│  Can't reach Polaris Key. Check your
-│  connection and try again.
+│  Can't reach Polaris Locker. Check
+│  your connection and try again.
 │
 │  [1mtidewater update check[0m
 └    Try again
@@ -86,7 +86,7 @@ tidewater update check   Try again
 [2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m
 [2m│[0m
 [31m✗[0m  [1mCan't connect[0m
-[2m│[0m  Can't reach Polaris Key.
+[2m│[0m  Can't reach Polaris Locker.
 [2m│[0m  Check your connection and
 [2m│[0m  try again.
 [2m│[0m
@@ -96,7 +96,7 @@ tidewater update check   Try again
 ┌  [7m Tidewater Studio [0m
 │
 ✗  [1mCan't connect[0m
-│  Can't reach Polaris Key.
+│  Can't reach Polaris Locker.
 │  Check your connection and
 │  try again.
 │

@@ -6,6 +6,7 @@ import {
   BRAND,
   LOCKER_OPTICAL,
   OPTICAL,
+  KEY_POWERED_BY,
   POWERED_BY,
   type BadgeLayout,
   type AnyMarkKind,
@@ -99,15 +100,31 @@ export function bitVisible(kind: AnyMarkKind, size: number): boolean {
 }
 
 /**
- * The size a "Powered by Polaris Key" badge renders at: the requested width, never below the
- * layout's minimum, with the kit's aspect ratio. Badges are never cropped or shrunk past the kit
- * minimum (horizontal 376×144, compact 232×88, stacked 288×336).
+ * The size the Locker "Powered by" badge renders at: the requested width, never below the 320 px
+ * minimum, with the kit's 320 × 104 aspect ratio (never cropped or shrunk).
  */
-export function badgeSize(
+export function badgeSize(width?: number): { width: number; height: number } {
+  const min = POWERED_BY.minimum;
+  const w =
+    width === undefined || !Number.isFinite(width)
+      ? min.width
+      : Math.max(width, min.width);
+  return {
+    width: w,
+    height: Math.round(((w * min.height) / min.width) * 100) / 100,
+  };
+}
+
+/**
+ * The size a Key "Powered by Polaris Key" badge renders at (a platform reference): the requested
+ * width, never below the layout's minimum, with the kit's aspect ratio (horizontal 376×144,
+ * compact 232×88, stacked 288×336).
+ */
+export function keyBadgeSize(
   layout: BadgeLayout,
   width?: number,
 ): { width: number; height: number } {
-  const min = POWERED_BY.minimum[layout];
+  const min = KEY_POWERED_BY.minimum[layout];
   const w =
     width === undefined || !Number.isFinite(width)
       ? min.width

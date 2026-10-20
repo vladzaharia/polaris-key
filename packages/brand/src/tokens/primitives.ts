@@ -103,8 +103,22 @@ export const CUT_GRID = { favicon: 16, service: 24, display: 96 } as const;
 
 export type OpticalCut = keyof typeof CUT_GRID;
 
-/** "Powered by Polaris Key" badges: the exact phrase and the CSS-pixel minimums. */
+/**
+ * "Powered by Polaris Locker" (LK-00 §14.2, UI-KITS §1.6): the exact phrase, the one badge's
+ * CSS-pixel minimum (the kit's 320 × 104 canvas) and the size of the Locker micro mark in the line.
+ */
 export const POWERED_BY = {
+  phrase: "Powered by Polaris Locker",
+  minimum: { width: 320, height: 104 },
+  /** The line: the micro mark's displayed size in CSS px (the micro cut, below 24). */
+  markSize: 16,
+} as const;
+
+/**
+ * The Key "Powered by Polaris Key" badges (kit/03-powered-by): platform references only, not
+ * offered to integrators (LK-00 §14.2). The exact phrase and the CSS-pixel minimums.
+ */
+export const KEY_POWERED_BY = {
   phrase: "Powered by Polaris Key",
   minimum: {
     horizontal: { width: 376, height: 144 },
@@ -113,7 +127,7 @@ export const POWERED_BY = {
   },
 } as const;
 
-export type BadgeLayout = keyof typeof POWERED_BY.minimum;
+export type BadgeLayout = keyof typeof KEY_POWERED_BY.minimum;
 
 /**
  * The trimmed horizontal lockup (`lockupSvg({ trim: true })`, for the 64 px console header): the
@@ -129,14 +143,16 @@ export const LOCKUP_TRIM = { x: 16, y: 32, height: 96, right: 40 } as const;
 export const CLEAR_SPACE_RATIO = 0.25;
 
 /**
- * Accessible names. `key`, `update` and `poweredBy` are the kit's (README "General use");
+ * Accessible names. `key`, `update` and `keyPoweredBy` are the Key kit's (README "General use");
+ * `poweredBy` is the Locker attribution (the public one);
  * `update` names only the kit's own Update files. Our surfaces name the Star Cut `delivery`.
  */
 export const ALT = {
   key: "Polaris Key",
   update: "Polaris Key Update",
   delivery: "Polaris Key Delivery",
-  poweredBy: "Powered by Polaris Key",
+  poweredBy: "Powered by Polaris Locker",
+  keyPoweredBy: "Powered by Polaris Key",
 } as const;
 
 /** Typefaces the kit sets its type in. */

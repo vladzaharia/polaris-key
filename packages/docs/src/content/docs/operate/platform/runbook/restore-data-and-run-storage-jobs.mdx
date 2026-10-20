@@ -35,7 +35,7 @@ Use this when you restore D1, stop or tune a storage job, or check why a file is
 ## Roll back
 
 - Blob collector: turn it off in **Platform**, **Settings**, **Blob collector**. Nothing is deleted while it is off, and turning it on resumes where it stopped.
-- Lazy deltas: set `enabled` to 0 for one product, or switch lazy deltas off in **Platform**, **Settings**. Stored deltas stay until they go cold.
+- Lazy deltas: switch lazy deltas off for one product in its **Settings**, or switch lazy deltas off in **Platform**, **Settings**. Stored deltas stay until they go cold.
 - D1 restore: capture the current bookmark first. Restoring to that undo bookmark afterwards is safe for erasures too.
 
 ## Escalate

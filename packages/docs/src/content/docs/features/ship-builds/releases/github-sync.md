@@ -137,7 +137,7 @@ The same endpoint also accepts GitHub's `release` event, and treats every action
 `published`, `unpublished`, `created`, `edited`, `deleted`, `prereleased`, `released` — the
 same way: for each product linked to the delivery's repository, it re-runs the
 truth-store half of a resync and nothing else. Publishing
-a build therefore shows up in the console's Releases page and the customer portal within one
+a build therefore shows up in the console's Releases page and Polaris Locker within one
 delivery, without a push to `.pkey/` and without anyone pressing **Resync from repo**.
 
 The guards are the push path's, in the same order: the signature is verified over the raw body

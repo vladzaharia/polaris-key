@@ -22,6 +22,11 @@ const PAGES: { name: string; hash: string; title: string }[] = [
   { name: "overview", hash: "#/p/djdl", title: "DJDL" },
   { name: "integration", hash: "#/p/djdl/integration", title: "Integration" },
   { name: "services", hash: "#/p/djdl/settings/features", title: "Settings" },
+  {
+    name: "app-sign-in",
+    hash: "#/p/djdl/identity/app-sign-in",
+    title: "App sign-in",
+  },
   { name: "devices", hash: "#/p/djdl/devices", title: "Devices" },
   {
     name: "device-drawer",
@@ -151,7 +156,7 @@ describe("Core pages under the Worker's CSP", () => {
   it("the Set secret drawer and the Delete product dialog open and close cleanly", async () => {
     const page = await open("dark", "#/p/djdl/settings/keys");
     await page
-      .getByRole("heading", { level: 2, name: "Keys & secrets" })
+      .getByRole("heading", { level: 2, name: "Signing keys" })
       .waitFor();
     await violations(page);
     await page.getByRole("button", { name: "Set secret" }).first().click();
@@ -170,7 +175,7 @@ describe("Core pages under the Worker's CSP", () => {
   // ST-08: the old pages are removals, not aliases. The old URL stays and says where it went.
   it("old Services, Presentation and Keys URLs open Page moved, with no redirect", async () => {
     for (const [old, home] of [
-      ["#/p/djdl/services", "Services"],
+      ["#/p/djdl/services", "Features"],
       ["#/p/djdl/presentation", "Presentation"],
       ["#/p/djdl/keys", "Keys & secrets"],
     ] as const) {

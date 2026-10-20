@@ -97,6 +97,8 @@ interface NoticeSpec {
   subject: string;
   heading?: string;
   paragraphs: string[];
+  /** The one fact the reader must not miss, as a neutral callout after the paragraphs. */
+  callout?: string;
   action?: { label: string; url: string };
   /** A security notice: adds "Wasn't you? Secure your account" and the security footer. */
   secureUrl?: string;
@@ -108,15 +110,20 @@ interface NoticeSpec {
 function buildNotice(spec: NoticeSpec): NoticeMessage {
   const footer =
     spec.footer ?? (spec.secureUrl ? SECURITY_FOOTER : NOTICE_FOOTER);
-  const lines: string[] = [...spec.paragraphs];
+  const heading = spec.heading ?? spec.subject;
+  // The plain-text part mirrors the HTML, top to bottom: heading, copy, callout, action, secure
+  // line, small print.
+  const lines: string[] = [heading, ...spec.paragraphs];
+  if (spec.callout) lines.push(spec.callout);
   if (spec.action) lines.push(`${spec.action.label}: ${spec.action.url}`);
   if (spec.secureUrl)
     lines.push(`Wasn't you? ${SECURE_LABEL}: ${spec.secureUrl}`);
   lines.push(footer);
   const content: EmailContent = {
     subject: spec.subject,
-    heading: spec.heading ?? spec.subject,
+    heading,
     paragraphs: spec.paragraphs,
+    ...(spec.callout ? { callout: spec.callout } : {}),
     ...(spec.action ? { action: spec.action } : {}),
     ...(spec.secureUrl
       ? { secure: { label: SECURE_LABEL, url: spec.secureUrl } }
@@ -431,9 +438,10 @@ export function accountDeletionScheduledNotice(input: {
   return buildNotice({
     subject: "Your Polaris Locker account is scheduled for deletion",
     paragraphs: [
-      `Your Polaris Locker account is scheduled to be erased on ${utcInstant(input.dueAt)} unless you cancel the deletion before then.`,
+      "Your Polaris Locker account is scheduled to be erased unless you cancel the deletion before then.",
       "Your account stays active during that 14-day period. Deleting it does not cancel your licenses: they stay with each developer, and you can add them again with a new account.",
     ],
+    callout: `Erased on ${utcInstant(input.dueAt)}.`,
     action: {
       label: "Review account settings",
       url: appLink(input.origin, "account/data"),

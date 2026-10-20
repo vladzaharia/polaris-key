@@ -3,7 +3,7 @@
 The Polaris Key design system, as a package: brand tokens for every consumer (CSS, Tailwind v4,
 TypeScript, JSON, GDScript, Swift, Kotlin for Compose, Python, C#), the UI-kit tokens and the product accent
 resolver, the variable Rubik and JetBrains Mono fonts, the **Pinned K** and **Star Cut** marks
-(the Star Cut is the **Polaris Key Delivery** service mark on our surfaces), wordmark lockups and "Powered by Polaris Key" badges (React and framework-free), and the
+(the Star Cut is the **Polaris Key Delivery** service mark on our surfaces), wordmark lockups and "Powered by" badges for Polaris Key (platform references) and Polaris Locker (React and framework-free), and the
 launch-kit assets (favicons, PWA icons, Godot glyphs, social cards).
 
 **The spec is [`docs/design/BRAND.md`](../../docs/design/BRAND.md).** Read it before building UI.

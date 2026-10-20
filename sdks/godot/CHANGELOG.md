@@ -9,6 +9,14 @@ as the GitHub Release notes, and the same text is the Asset Store version's chan
 
 ## Unreleased
 
+- **Powered by Polaris Locker (LK-16).** `ui_powered_by` draws the Locker line (micro mark at 16 px and
+  the phrase) at the foot of the settings scene, never the gate or boot. `ui_powered_by_style`
+  (`"line"` default, `"badge"`) is the one option; `"badge"` applies to a `PKeyPoweredBy` node with
+  `allow_badge = true` that you place on a credits or about scene (320 × 104, where 320 px are free).
+  `PKeyUiTheme.powered_by_style` replaces `powered_by_mode`; `powered_by_size()` takes no layout. The
+  Key badges (`powered-by-compact-*`) are no longer shipped, and `brand/powered-by-credit-*.svg` (1920 × 1080
+  credit screens) became `brand/powered-by-badge-*.svg`, the 320 × 104 Locker badge: a size change.
+
 - **Client backend (`core.backend`, SP-59).** `PolarisKey.backend.headers()` (raw lines for
   `HTTPRequest`; set `max_redirects = 0`), `headers_for(url)` and `request()` send `X-PKey-License` and
   `X-PKey-Device` to the app's own backend, only to `PKeyOptions.backend_origins`; `request()` checks

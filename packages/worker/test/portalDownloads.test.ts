@@ -558,7 +558,7 @@ describe("GET /api/products/<p>/downloads", () => {
     expect(none.platforms).toEqual([]);
   });
 
-  it("gates: no session, no linked licence, portal releases off, Release off, wrong method", async () => {
+  it("gates: no session, no linked licence, portal off, Release off, wrong method", async () => {
     const w = await setup();
     expect((await downloads(w, null)).status).toBe(401);
 
@@ -568,16 +568,15 @@ describe("GET /api/products/<p>/downloads", () => {
     const p = await account(w, { id: "lic_diceroll_2" });
     await w.db.run(
       `INSERT INTO portal_product_settings
-         (product, portal_enabled, oidc_enabled, magic_enabled, license_key_claim_enabled,
-          releases_enabled, branding_json, created_at, modified_at)
-       VALUES (?, 1, 1, 1, 1, 0, NULL, ?, ?)`,
+         (product, portal_enabled, branding_json, created_at, modified_at)
+       VALUES (?, 0, NULL, ?, ?)`,
       SLUG,
       NOW,
       NOW,
     );
     expect((await downloads(w, p)).status).toBe(404);
     await w.db.run(
-      "UPDATE portal_product_settings SET releases_enabled = 1 WHERE product = ?",
+      "UPDATE portal_product_settings SET portal_enabled = 1 WHERE product = ?",
       SLUG,
     );
     expect((await downloads(w, p)).status).toBe(200);

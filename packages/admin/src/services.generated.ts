@@ -159,7 +159,7 @@ export const SERVICE_TABLE: readonly ServiceTableRow[] = [
     slug: "identity",
     label: "Identity",
     summary:
-      "OIDC sign-in and browser sessions for this product. The customer portal is platform-wide and runs either way.",
+      "OIDC sign-in and browser sessions for this product. Polaris Locker is platform-wide and runs either way.",
     accent: "identity",
     icon: "UserRound",
     docs: "/docs/services/identity/",
@@ -287,7 +287,7 @@ export const FEATURES: readonly FeatureRow[] = [
     switches: [
       {
         id: "customer-portal",
-        label: "Customer portal",
+        label: "Polaris Locker",
         kind: "setting",
         service: null,
       },

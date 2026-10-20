@@ -6,7 +6,6 @@ import { KeysPage } from "./pages/Keys.js";
 import { OverviewPage } from "./pages/Overview.js";
 import { PresentationPage } from "./pages/Presentation.js";
 import { ServicesPage } from "./pages/Services.js";
-import { SettingsPage } from "./pages/Settings.js";
 import { SettingsAllPage } from "./pages/SettingsAll.js";
 import { SettingsHub } from "./pages/SettingsHub.js";
 import { SettingsMembersPage } from "./pages/SettingsMembers.js";
@@ -39,7 +38,7 @@ export default function CorePages({
       return <ActivityPage slug={slug} />;
     // The settings hub (ST-08): one h1, one row of area tabs, one Core page per area.
     case "settings":
-      return hub(<SettingsPage slug={slug} />);
+      return hub(<ServicesPage slug={slug} openDetails />);
     case "services":
       return hub(<ServicesPage slug={slug} />);
     case "presentation":

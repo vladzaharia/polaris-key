@@ -6,7 +6,7 @@ import { href } from "../router.js";
 import { ProductIcon } from "./ProductIcon.js";
 
 /**
- * Needs attention (§4.15, mockup `portal.library-12`): one bordered card with a row per item the
+ * Needs you (§4.15, mockup `portal.library-12`): one bordered card with a row per item the
  * person can act on, each with its action: only the single most urgent item is solid, the others
  * are outlined (B12). Hidden when empty.
  *
@@ -29,7 +29,7 @@ export function AttentionShelf({
         id="attention-h"
         className="flex items-baseline gap-2 px-4 py-3 text-md font-semibold text-fg-strong"
       >
-        Needs attention
+        Needs you
         <span className="text-xs font-normal text-fg-muted">
           {items.length}
         </span>

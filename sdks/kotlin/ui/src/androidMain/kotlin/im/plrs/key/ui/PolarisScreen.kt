@@ -261,10 +261,6 @@ internal fun PolarisScaffold(
                                 Spacer(Modifier.height(window.section))
                             }
                             content()
-                            if (theme.showPoweredBy) {
-                                Spacer(Modifier.height(window.section))
-                                PolarisPoweredByBadge()
-                            }
                         }
                         Column(
                             Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(vertical = PolarisSpace.controls),
@@ -332,10 +328,6 @@ internal fun PolarisScaffold(
                         if (actions != null) {
                             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, content = actions)
                         }
-                    }
-                    if (theme.showPoweredBy) {
-                        Spacer(Modifier.height(window.section))
-                        PolarisPoweredByBadge(Modifier.align(Alignment.CenterHorizontally))
                     }
                 }
             }
@@ -753,10 +745,6 @@ internal fun PolarisMessageLayout(
             if (actions != null) {
                 Spacer(Modifier.height(window.section))
                 PolarisActionGroup(row = block, content = actions)
-            }
-            if (PolarisTheme.current.showPoweredBy) {
-                Spacer(Modifier.height(window.section))
-                PolarisPoweredByBadge()
             }
         }
         CompositionLocalProvider(LocalPolarisTextAlign provides align) {

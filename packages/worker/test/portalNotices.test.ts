@@ -596,28 +596,21 @@ describe("POST /api/products/:product/email-download (G23)", () => {
     expect(sent).toHaveLength(0);
   });
 
-  it.each([
-    ["releases_enabled", 1, 0],
-    ["portal_enabled", 0, 1],
-  ] as const)(
-    "404 when the product's %s is off",
-    async (_flag, portal, releases) => {
+  it("404 when the product's portal is off", async () => {
+    {
       const { db, sent, call } = await setup();
       await db.run(
         `INSERT INTO portal_product_settings
-           (product, portal_enabled, oidc_enabled, magic_enabled,
-            license_key_claim_enabled, releases_enabled, branding_json, created_at, modified_at)
-         VALUES (?, ?, 1, 1, 1, ?, NULL, ?, ?)`,
+           (product, portal_enabled, branding_json, created_at, modified_at)
+         VALUES (?, 0, NULL, ?, ?)`,
         "djdl",
-        portal,
-        releases,
         NOW,
         NOW,
       );
       expect((await call()).status).toBe(404);
       expect(sent).toHaveLength(0);
-    },
-  );
+    }
+  });
 
   it("404 without a license for the product, and for an unknown product", async () => {
     const { env, db, sent } = await setup();

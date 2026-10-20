@@ -435,7 +435,7 @@ describe("titles render from the catalog", () => {
       [
         "This ",
         { placeholder: "product", label: "app name" },
-        " license is already in another Polaris Key account. A license never moves by its key.",
+        " license is already in another Polaris Locker account. A license never moves by its key.",
       ],
     );
     expect(messageParts("No placeholders.")).toEqual(["No placeholders."]);
@@ -1339,7 +1339,7 @@ describe.skipIf(!existsSync(join(dist, "help", "messages", "index.html")))(
     it("quotes each message as the app shows it, with a placeholder named", () => {
       has(
         decode(html("accounts")),
-        "This <var>app name</var> license is already in another Polaris Key account.",
+        "This <var>app name</var> license is already in another Polaris Locker account.",
         "accounts",
       );
       has(

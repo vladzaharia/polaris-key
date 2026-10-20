@@ -116,7 +116,7 @@ A version row offers only what the protocol can express. A yank needs a reason a
 
 ### Personal tokens
 
-A personal token (`pkeyp_…`) belongs to a person, not a product: one token installs every package the account may read, across products. A person creates it in the portal under **Account → Packages**: a name, 1 to 365 days (90 by default), at most 25 live, `packages:read` only, after a sign-in from the last 5 minutes. It is shown once.
+A personal token (`pkeyp_…`) belongs to a person, not a product: one token installs every package the account may read, across products. A person creates it in Polaris Locker under **Account → Packages**: a name, 1 to 365 days (90 by default), at most 25 live, `packages:read` only, after a sign-in from the last 5 minutes. It is shown once.
 
 The registry host judges it per owner on every request:
 
@@ -128,7 +128,7 @@ A person revokes their own. A platform admin can list and revoke any, not create
 
 ### Registry tokens
 
-**Tokens** lists the owner's `pkeyr_…` tokens: label, last four characters, feeds, binding, creator, expiry, last use and status. **New token** asks for a label, the feeds, an expiry of 1 to 365 days (90 by default), a binding (the product, or one license), and **Godot editor URL**, a read-only token for the Godot feed that lasts 30 days by default. The token is shown once. **Access** chooses **Read** or **Read and publish**. A publish token is bound to the product, names its feeds explicitly and lasts 1 to 30 days (7 by default). Revoking is a danger confirmation and takes effect within 30 seconds. **Revoke all** revokes every active token of the owner, including those licensees minted. A license's **Keys** tab has a **Registry tokens** panel for the tokens bound to it. The portal mints only a license-bound Godot editor URL token (30 days). Older license-bound tokens work until they expire.
+**Tokens** lists the owner's `pkeyr_…` tokens: label, last four characters, feeds, binding, creator, expiry, last use and status. **New token** asks for a label, the feeds, an expiry of 1 to 365 days (90 by default), a binding (the product, or one license), and **Godot editor URL**, a read-only token for the Godot feed that lasts 30 days by default. The token is shown once. **Access** chooses **Read** or **Read and publish**. A publish token is bound to the product, names its feeds explicitly and lasts 1 to 30 days (7 by default). Revoking is a danger confirmation and takes effect within 30 seconds. **Revoke all** revokes every active token of the owner, including those licensees minted. A license's **Keys** tab has a **Registry tokens** panel for the tokens bound to it. Locker mints only a license-bound Godot editor URL token (30 days). Older license-bound tokens work until they expire.
 
 ### Retention
 

@@ -129,7 +129,7 @@ async function geometry(page: Page) {
   });
 }
 
-/** The header lockup's wordmark, in px: the mockup's 18 px brand is about 96 px wide. */
+/** The header lockup's wordmark, in px: the Locker horizontal lockup at 44 px draws it about 102 px wide (BRAND §15). */
 async function wordmarkWidth(page: Page): Promise<number> {
   return page.evaluate(() => {
     const svg = [
@@ -137,7 +137,9 @@ async function wordmarkWidth(page: Page): Promise<number> {
         "header a[aria-label^='Polaris Locker'] svg",
       ),
     ].find((el) => el.getBoundingClientRect().width > 0)!;
-    return svg.querySelectorAll("g")[1]!.getBoundingClientRect().width;
+    // The wordmark is the lockup's last group (the Locker lockup draws its mark as bare paths).
+    const groups = svg.querySelectorAll("g");
+    return groups[groups.length - 1]!.getBoundingClientRect().width;
   });
 }
 
@@ -223,7 +225,7 @@ describe.concurrent("library 2-7 grid presence", () => {
               if (size.label === "1440" || size.label === "390")
                 expect
                   .soft(await wordmarkWidth(o.page), "header wordmark width")
-                  .toBeCloseTo(96, -1);
+                  .toBeCloseTo(102, -1);
             } finally {
               await o.close();
             }

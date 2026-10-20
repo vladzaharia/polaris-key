@@ -63,7 +63,7 @@ export const EMAIL_SEND_PER_NETWORK_HOUR = 30;
 export const EMAIL_SEND_PER_DEVICE_HOUR = 3;
 /**
  * The operational per-product daily cap on passthrough sign-in mail (I-18), used when neither
- * the product's `email_product_caps` row nor the `EMAIL_PRODUCT_DAILY_CAP` var sets one
+ * the product's `email.dailyCap` nor the platform default `email.dailyCapDefault` sets one
  * (`productDailyEmailCap`). One tenant cannot drain the shared sender: at 500 a product can
  * spend a tenth of a 5,000-a-day account quota (Cloudflare's documented example; the account's
  * real quota is read from `GET /accounts/{id}/email/sending/limits`, RUNBOOK "Sign-in email").

@@ -1144,7 +1144,7 @@ describe("the read-only inventory", () => {
       within(warnings).getByRole("button", { name: /^Show all/ }),
     );
     expect(
-      within(warnings).getByText("Customer portal sessions cannot be signed"),
+      within(warnings).getByText("Polaris Locker sessions cannot be signed"),
     ).toBeTruthy();
     expect(
       within(warnings).getByText(/The console shares the customer sign-in/),
@@ -2396,17 +2396,19 @@ describe("Alert destinations in Email and alerts (ST-27)", () => {
     await userEvent.click(
       within(panel).getByRole("button", { name: "Actions for Hook 0" }),
     );
-    expect(await screen.findByText("Try again in 18 s")).toBeTruthy();
+    // The countdown runs on the real clock from the server's 18 s, so a slow runner may already
+    // read a second or two less: match the count, not the exact second.
+    expect(await screen.findByText(/^Try again in 1[0-8] s$/)).toBeTruthy();
     // The throttle is per scope: every row counts down, and the tapped row says so in words.
     await userEvent.keyboard("{Escape}");
     expect(
-      within(panel).getByText("Test not sent. Try again in 18 s."),
+      within(panel).getByText(/^Test not sent\. Try again in 1[0-8] s\.$/),
     ).toBeTruthy();
     expect(within(panel).getAllByRole("status").length).toBeGreaterThan(0);
     await userEvent.click(
       within(panel).getByRole("button", { name: "Actions for Hook 3" }),
     );
-    expect(await screen.findByText("Try again in 18 s")).toBeTruthy();
+    expect(await screen.findByText(/^Try again in 1[0-8] s$/)).toBeTruthy();
   });
 
   it("edits kinds and label without asking for the URL again", async () => {
@@ -2531,6 +2533,26 @@ describe("A product's alert routing (ST-27)", () => {
         stepUpMaxAgeSeconds: 300,
       },
       extra: {
+        // The product's own settings unfold under Features, which reads the services first.
+        "/manage/api/products/djdl/services": {
+          services: {},
+          effectiveRegistration: "requires-license",
+          source: "manifest",
+          facts: {
+            licensing: { tiers: 0, licenses: 0 },
+            managedConfig: { catalogVersion: null },
+            shipBuilds: { latest: null },
+            commerce: { storefronts: 0, storeGrants: 0 },
+          },
+        },
+        "/manage/api/products/djdl/blob-gc": {
+          enabled: false,
+          graceSeconds: 0,
+          lockAgeSeconds: 0,
+          drops: { packObject: 0, packUpload: 0, truncated: false, listed: [] },
+          restores: { count: 0, listed: [] },
+          earliestDeletion: null,
+        },
         "/manage/api/products/djdl/alerts": {
           ...ALERTS_NONE,
           destinations: [

@@ -38,5 +38,5 @@ The frozen wire format every SDK verifies. These pages summarize wire contract v
 | Page                                                    | Covers                                                   |
 | ------------------------------------------------------- | -------------------------------------------------------- |
 | [HTTP API](/docs/reference/http-api/)                   | Base URL, authentication, errors, versioning, pagination |
-| [Portal API](/docs/reference/portal-api/)               | The customer portal's routes                             |
+| [Polaris Locker API](/docs/reference/portal-api/)               | Polaris Locker's routes                             |
 | [What apps collect](/docs/reference/what-apps-collect/) | What a product collects from a device, and why           |

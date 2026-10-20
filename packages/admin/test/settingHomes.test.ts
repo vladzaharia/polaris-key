@@ -132,10 +132,10 @@ describe("settings homes", () => {
         section: "Polaris Locker → Listing",
       },
     ],
-    // Sign-in only shows it and links to Portal.
+    // App sign-in, License keys.
     [
       "identity.keyEntry.claimByKey",
-      { kind: "page", page: "portal", section: "License keys" },
+      { kind: "page", page: "app-sign-in", section: "License keys" },
     ],
     ["identity.keyEntry.limit", { kind: "manifest", file: "product" }],
   ])("%s", (key, home) => {

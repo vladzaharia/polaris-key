@@ -52,6 +52,7 @@ import {
   sep,
   stepRow,
   tableRows,
+  poweredByRow,
   textRow,
   unitLine,
 } from "./parts.js";
@@ -559,8 +560,12 @@ export async function statusFlow(
       break;
     }
   }
-  if (ctx.theme.poweredBy)
-    rows.push(...gap(ctx), textRow(t("part.poweredBy"), ["muted"]));
+  // Never on a gate (UI-KITS §1.6): the account summary and the grace line only.
+  if (
+    ctx.theme.poweredBy &&
+    (view.component === "AccountAndLicense" || view.component === "GraceBanner")
+  )
+    rows.push(...gap(ctx), poweredByRow(ctx, t));
   rows.push(endRow());
   ctx.rows(rows);
   return { exitCode, state: view.state, result };
@@ -3325,8 +3330,6 @@ export async function doctorFlow(
           ]),
         ),
       );
-    if (ctx.theme.poweredBy)
-      rows.push(...gap(ctx), textRow(t("part.poweredBy"), ["muted"]));
     rows.push(endRow());
     ctx.rows(rows);
   }

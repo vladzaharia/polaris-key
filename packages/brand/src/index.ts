@@ -40,6 +40,7 @@ export {
 } from "./generated/tokens.js";
 export {
   badgeSize,
+  keyBadgeSize,
   bitVisible,
   clearSpace,
   isNoBit,

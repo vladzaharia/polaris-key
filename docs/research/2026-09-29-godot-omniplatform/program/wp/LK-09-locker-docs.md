@@ -34,3 +34,10 @@ Re-scoped by Amendment A3: the Help door, the host, and a badges page for the 16
 ## Hand-off
 
 The role agent sets `--set LK-09 in-review` when it hands off; the lead sets `done` after review.
+
+## Progress and continuation
+
+- 2026-10-19, slice 1 (words only): Help door under `packages/docs/src/content/docs/help/` says Polaris Locker (first mention) then Locker; titles changed, slugs unchanged. Owner chose a hard cutover (no switch), so on-screen strings and mail subjects also say Polaris Locker; no dual-state wording remains. Strings are the obvious Locker form; check them against the LK-06/07/08a strings when those merge.
+- Remaining: (1) the host move to `polaris.locker/docs/help/` and the `what-is-polaris-locker` slug (`site-map.json` row + redirect + help-link tables), blocked on DOC-03b; (2) the badges page for the 16 labels, needs LK-12 destinations. Status stays in-progress.
+
+- 2026-10-20: merged `integ/next` (LK-15, ST-08, DOC-03b, cutover fixes). Help quotes match the shipped mail subjects and `portalLabels`; docs build, `check:links`, `lint:docs`, docs tests pass. Still to do: the host move to `polaris.locker/docs/help/` with the `what-is-polaris-locker` slug (row, redirect, help-link tables), and the badges page (LK-12). Stays in-progress.

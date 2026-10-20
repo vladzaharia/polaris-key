@@ -667,6 +667,7 @@ export const KIT_TOKENS = {
         barEmpty: "─",
         separator: "·",
         ellipsis: "…",
+        lockerMark: "✦",
         arrows: "↑↓",
       },
       ascii: {
@@ -684,6 +685,7 @@ export const KIT_TOKENS = {
         barEmpty: "-",
         separator: "-",
         ellipsis: "...",
+        lockerMark: "*",
         arrows: "^v",
       },
     },

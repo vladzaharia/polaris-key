@@ -11220,7 +11220,14 @@
       "locale": "ko",
       "key": "core.codes.license_owned.message",
       "args": { "product": "Tidewater Studio" },
-      "expect": "\uc774 Tidewater Studio \ub77c\uc774\uc120\uc2a4\ub294 \uc774\ubbf8 \ub2e4\ub978 Polaris Key \uacc4\uc815\uc5d0 \uc788\uc5b4\uc694. \ub77c\uc774\uc120\uc2a4\ub294 \ud0a4\ub85c \uc62e\uaca8\uc9c0\uc9c0 \uc54a\uc544\uc694."
+      "expect": "\uc774 Tidewater Studio \ub77c\uc774\uc120\uc2a4\ub294 \uc774\ubbf8 \ub2e4\ub978 Polaris Locker \uacc4\uc815\uc5d0 \uc788\uc5b4\uc694. \ub77c\uc774\uc120\uc2a4\ub294 \ud0a4\ub85c \uc62e\uaca8\uc9c0\uc9c0 \uc54a\uc544\uc694."
+    },
+    {
+      "name": "en: signin.handoff.url, the customer site address",
+      "locale": "en",
+      "key": "signin.handoff.url",
+      "args": { "url": "polaris.locker/activate" },
+      "expect": "Or go to polaris.locker/activate"
     },
     {
       "name": "de: the locale's override wins",

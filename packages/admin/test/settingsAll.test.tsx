@@ -94,7 +94,7 @@ describe("All settings → Edit in", () => {
     // [key, where it reads, its section, where the link goes]
     [
       "license.defaults.deviceLimit",
-      "Settings → General",
+      "Settings → Features",
       "License defaults",
       "#/p/djdl/settings",
     ],
@@ -110,7 +110,12 @@ describe("All settings → Edit in", () => {
       null,
       "#/p/djdl/license/settings",
     ],
-    ["release.github", "Settings → General", "Repository", "#/p/djdl/settings"],
+    [
+      "release.github",
+      "Settings → Features",
+      "Repository",
+      "#/p/djdl/settings",
+    ],
     [
       "release.compatWindow",
       "Update → Feed",
@@ -131,9 +136,9 @@ describe("All settings → Edit in", () => {
     ],
     [
       "identity.keyEntry.claimByKey",
-      "Identity → Locker settings",
+      "Identity → App sign-in",
       "License keys",
-      "#/p/djdl/identity/portal",
+      "#/p/djdl/identity/app-sign-in",
     ],
   ])("%s links to %s and opens it", async (key, where, section, hash) => {
     mount();

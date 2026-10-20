@@ -55,6 +55,9 @@ const FIXTURE_TREE = [
   "/docs/operations/index.html",
   "/docs/_astro/app.abc.css",
   "/docs/pagefind/pagefind.js",
+  "/docs/pagefind-member/pagefind.js",
+  "/docs/pagefind-admin/pagefind.js",
+  "/docs/help/activate/index.html",
   "/docs/pagefind/pagefind-entry.json",
   "/docs/pagefind/index/en_abc.pf_index",
   "/docs/openapi/openapi.json",
@@ -211,7 +214,8 @@ describe("SEC-WEB-1: gated docs are unreachable without a session", () => {
       "/docs/operate/",
       "/docs/operate/platform/runbook/",
       "/docs/contribute/",
-      "/docs/pagefind/pagefind.js",
+      "/docs/pagefind-admin/pagefind.js",
+      "/docs/pagefind-member/pagefind.js",
     ]) {
       const res = await dispatchWith(
         new Request(`https://key.plrs.im${p}`),
@@ -220,7 +224,7 @@ describe("SEC-WEB-1: gated docs are unreachable without a session", () => {
         NOW,
       );
       expect(res.status, p).toBe(302);
-      expect(res.headers.get("location")).toContain("/manage/login");
+      expect(res.headers.get("location")).toBe("/docs/access/");
     }
   }, 120_000);
 

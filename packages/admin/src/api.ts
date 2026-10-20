@@ -1276,17 +1276,6 @@ export interface ProductSyncState {
 
 export interface PortalProductSettings {
   portalEnabled: boolean;
-  oidcEnabled: boolean;
-  magicEnabled: boolean;
-  licenseKeyClaimEnabled: boolean;
-  releasesEnabled: boolean;
-  /**
-   * TRI-STATE (R5-01/R5-02). `null` is "auto": derived from the product's OIDC issuer — on for
-   * the platform issuer, OFF for a product on a tenant-controlled `custom` issuer, whose email
-   * and `sub` claims are outside the trust boundary. `true`/`false` is an explicit operator
-   * override in either direction, which is why this is not a boolean with a default.
-   */
-  autoLinkEnabled: boolean | null;
   /** PX-W5 (G7): customers may replace a license's key from the portal. Off by default. */
   keyReissueEnabled?: boolean;
   /** PX-W5 / S-16: an email-carrying license may be added by key without that email. Off by default. */
@@ -1874,14 +1863,9 @@ export type UpdatePortalSettingsBody = Partial<
   Pick<
     PortalProductSettings,
     | "portalEnabled"
-    | "oidcEnabled"
-    | "magicEnabled"
-    | "licenseKeyClaimEnabled"
-    | "releasesEnabled"
     | "keyReissueEnabled"
     | "claimByKey"
     | "discoverEnabled"
-    | "autoLinkEnabled"
     | "branding"
     | "storeListed"
     | "storeAudience"
