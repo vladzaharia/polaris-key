@@ -72,7 +72,6 @@ import {
 import { dispatchImgHost, isImgHost } from "./core/assets/imgHost.js";
 import {
   CUSTOMER_ROUTE_KINDS,
-  apiOrigin,
   customerHostOwnResponse,
   isCustomerHostOwnPath,
 } from "./core/customerHost.js";
@@ -267,9 +266,40 @@ async function routeRequest(
         env,
         route.tv,
         now,
-        // On the customer host the product's page lives on the API host: a fixed origin from
-        // configuration, never from the request (LK-00 §7.13).
-        onCustomerHost ? apiOrigin(env) : null,
+        // On the customer host the product's device page is served here (LK-04, plans/LK-00.md
+        // §7.9): the product's own handler runs under its own enablement, on this host, so the
+        // confirmation and the sign-in binder live on the customer host.
+        onCustomerHost
+          ? async (slug, userCode, body) => {
+              const target = matchRoute(`/${slug}/identity/auth/device`);
+              if (!("product" in target)) return notFound();
+              const product = await loadProduct(env, db, slug);
+              if (!product) return notFound();
+              const inner = new Request(
+                `${url.origin}/${slug}/identity/auth/device${
+                  body === null
+                    ? `?user_code=${encodeURIComponent(userCode)}`
+                    : ""
+                }`,
+                {
+                  method: req.method === "HEAD" ? "GET" : req.method,
+                  headers: req.headers,
+                  ...(body !== null ? { body } : {}),
+                },
+              );
+              return withoutAccountSetCookies(
+                await dispatchProduct(
+                  withoutAccountCookies(inner),
+                  env,
+                  db,
+                  product,
+                  target,
+                  now,
+                  exec,
+                ),
+              );
+            }
+          : null,
       );
     case "portalSpa":
     case "portalApi":

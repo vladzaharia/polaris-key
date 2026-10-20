@@ -40,17 +40,26 @@ async function bindRef(env: Env, token: string) {
   return artefactRef("signin-bind", await hashKey(token, env.KEY_HASH_PEPPER));
 }
 
-/** Store a bind token for `handle`, to be redeemed once on the customer host. */
+/**
+ * What a token carries. `request`: the card's binder, redeemed on the customer host. `device`:
+ * the device-code flow's binder and the IdP address to continue to, redeemed on the API host (the
+ * IdP calls back there, so the flow's cookie must live there; LK-04). `to` is a value this Worker
+ * stored itself, never one a request supplied.
+ */
+export type BindPayload =
+  | { kind: "request"; handle: string; binder: string }
+  | { kind: "device"; binder: string; to: string };
+
+/** Store a bind token, to be redeemed once. */
 export async function issueBindToken(
   env: Env,
-  handle: string,
-  binder: string,
+  payload: BindPayload,
 ): Promise<string> {
   const token = randomToken(32);
   await putArtefact(
     env,
     await bindRef(env, token),
-    JSON.stringify({ handle, binder }),
+    JSON.stringify(payload),
     BIND_TTL_SECONDS,
   );
   return token;
@@ -60,19 +69,22 @@ export async function issueBindToken(
 export async function consumeBindToken(
   env: Env,
   token: string,
-): Promise<{ handle: string; binder: string } | null> {
+): Promise<BindPayload | null> {
   if (!BIND_TOKEN_PATTERN.test(token)) return null;
   const raw = await consumeArtefact(env, await bindRef(env, token));
   if (!raw) return null;
   try {
-    const v = JSON.parse(raw) as { handle?: unknown; binder?: unknown };
+    const v = JSON.parse(raw) as Record<string, unknown>;
+    if (typeof v.binder !== "string" || !BIND_TOKEN_PATTERN.test(v.binder))
+      return null;
     if (
+      v.kind === "request" &&
       typeof v.handle === "string" &&
-      HANDLE_RE.test(v.handle) &&
-      typeof v.binder === "string" &&
-      BIND_TOKEN_PATTERN.test(v.binder)
+      HANDLE_RE.test(v.handle)
     )
-      return { handle: v.handle, binder: v.binder };
+      return { kind: "request", handle: v.handle, binder: v.binder };
+    if (v.kind === "device" && typeof v.to === "string")
+      return { kind: "device", binder: v.binder, to: v.to };
   } catch {
     /* fall through */
   }

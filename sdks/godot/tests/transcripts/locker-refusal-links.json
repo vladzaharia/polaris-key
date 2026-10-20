@@ -1,0 +1,132 @@
+{
+  "transcriptVersion": 1,
+  "id": "locker-refusal-links",
+  "description": "The refusals' portal links with the customer host on (plans/LK-00.md §3): the same conversations as license-device-limit and keyentry-limit, but manageUrl names https://polaris.locker. A licence whose only seat is taken is refused with device_limit and the portal's activate page; a key already entered by two other devices, at a limit of 2, is refused with key_entry_limit and the same page. Nothing signed changes: the refusals, their codes and the client's state are exactly the twins'. A client treats the link as any https URL and never builds one.",
+  "features": ["license.manage", "identity.keyentry"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "version": "1.0.0"
+  },
+  "steps": [
+    {
+      "action": "activate",
+      "note": "The only seat is taken: device_limit, with the customer host's activate page.",
+      "args": { "key": "pkey_djdl_3XtDdjEBQX6E1yUSWmsFpA" },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/license/activate",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {key}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": { "fingerprint": { "components": {}, "hwid": "" } },
+                "match": "shape",
+                "allowedKeys": ["fingerprint"]
+              }
+            },
+            "response": {
+              "status": 403,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "error": "device_limit",
+                "message": "device limit reached",
+                "limit": 1,
+                "deviceCount": 1,
+                "manageUrl": "https://polaris.locker/activate?product=djdl&next=free-device&for=Linux%20x86_64"
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "device-limit",
+        "manageUrl": "https://polaris.locker/activate?product=djdl&next=free-device&for=Linux%20x86_64",
+        "licenseStatus": "needs-activation",
+        "tokenHeld": false
+      }
+    },
+    {
+      "action": "activate",
+      "note": "Two other devices have entered the key and the limit is 2: key_entry_limit, with the same page.",
+      "args": { "key": "pkey_djdl_U7oVYCcJsoiRwjbwKjy8mQ" },
+      "now": 1700000060,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/license/activate",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {key}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": { "fingerprint": { "components": {}, "hwid": "" } },
+                "match": "shape",
+                "allowedKeys": ["fingerprint"]
+              }
+            },
+            "response": {
+              "status": 403,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "error": "key_entry_limit",
+                "message": "key entry limit reached",
+                "manageUrl": "https://polaris.locker/activate?product=djdl",
+                "keyEntries": { "used": 2, "limit": 2 }
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "key-entry-limit",
+        "keyEntries": { "used": 2, "limit": 2 },
+        "manageUrl": "https://polaris.locker/activate?product=djdl",
+        "licenseStatus": "needs-activation",
+        "tokenHeld": false
+      }
+    }
+  ]
+}

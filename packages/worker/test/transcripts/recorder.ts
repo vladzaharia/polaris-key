@@ -68,6 +68,10 @@ export interface ExchangeSpec {
   method: "GET" | "POST" | "PATCH" | "DELETE";
   /** Path (and query) under the origin, e.g. `/djdl/license/document`. */
   path: string;
+  /** The host the request is made to; default the API host. A `browser` step on the customer
+   *  host (LK-04) names it here. The transcript records the path only: a replayer serves it from
+   *  its one fake server. */
+  origin?: string;
   /** Send `Authorization: Bearer <binding>` and assert it as `Bearer {<binding>}`. */
   bearer?: "token" | "key";
   /** Send the seven metadata headers and require them. Defaults to true. */
@@ -170,7 +174,7 @@ export class StepRecorder {
       body = JSON.stringify(spec.body);
     }
 
-    const req = new Request(`${BASE_URL}${spec.path}`, {
+    const req = new Request(`${spec.origin ?? BASE_URL}${spec.path}`, {
       method: spec.method,
       headers: sent,
       ...(body !== undefined ? { body } : {}),

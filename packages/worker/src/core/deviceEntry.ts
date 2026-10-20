@@ -13,6 +13,12 @@
 // store read as a miss (a malformed code reads a fixed dummy key). Lookups are rate limited per
 // client network. The code rides in the query string, so the page is never cached and never sent
 // onward as a Referer, and no code is logged here.
+//
+// On the customer host (LK-04, plans/LK-00.md §7.9) the page does not hand the visitor on to the
+// product's page on the API host: `serve` (the composition root) runs the product's own device
+// handler on THIS host, so the confirmation, its CSRF token and the sign-in request binder all
+// live on the customer host. A POST (the entry form's or the confirmation's) is accepted only
+// there.
 
 import type { Env } from "../platform/env.js";
 import { escapeHtml } from "../platform/html.js";
@@ -21,7 +27,8 @@ import {
   lookupDeviceCode,
   normalizeUserCode,
 } from "./deviceCodeIndex.js";
-import { methodNotAllowed } from "./errors.js";
+import { errorResponse, methodNotAllowed } from "./errors.js";
+import { readBodyText } from "./cappedBody.js";
 import { clientNetwork, rateLimitOk } from "./rateLimit.js";
 import { renderBrandPage } from "./brandHtml.js";
 import { brandedHtmlSecurityHeaders } from "./securityHeaders.js";
@@ -64,16 +71,35 @@ function page(
   return new Response(html, { status, headers });
 }
 
+/** Run the product's device page for a live code on this host (the customer host's). `body` is
+ *  the form of a POST, already read, else null. */
+export type ServeDevicePage = (
+  slug: string,
+  userCode: string,
+  body: string | null,
+) => Promise<Response>;
+
 export async function handleDeviceEntry(
   req: Request,
   env: Env,
   tv: boolean,
   now: number = Math.floor(Date.now() / 1000),
-  productOrigin: string | null = null,
+  serve: ServeDevicePage | null = null,
 ): Promise<Response> {
-  if (req.method !== "GET" && req.method !== "HEAD") return methodNotAllowed();
-  const raw = new URL(req.url).searchParams.get("user_code");
-  if (!raw?.trim()) return page(tv, 200, null);
+  const post = req.method === "POST" && serve !== null;
+  if (req.method !== "GET" && req.method !== "HEAD" && !post)
+    return methodNotAllowed();
+  let body: string | null = null;
+  let raw: string | null;
+  if (post) {
+    // The forms post `application/x-www-form-urlencoded`; anything else reads as no code.
+    body = await readBodyText(req.clone(), 4096).catch(() => "");
+    raw = new URLSearchParams(body).get("user_code");
+    if (!raw?.trim()) return page(tv, 200, null);
+  } else {
+    raw = new URL(req.url).searchParams.get("user_code");
+    if (!raw?.trim()) return page(tv, 200, null);
+  }
 
   const ok = await rateLimitOk(
     env,
@@ -91,15 +117,20 @@ export async function handleDeviceEntry(
 
   const code = normalizeUserCode(raw);
   const slug = await lookupDeviceCode(env, code ?? DUMMY_CODE);
-  if (!code || !slug || !SLUG.test(slug)) return page(tv, 404, MISS);
+  if (!code || !slug || !SLUG.test(slug)) {
+    // A confirmation POST for a code that has gone away is a refused confirmation, as on the
+    // product's own page.
+    if (post && new URLSearchParams(body ?? "").has("csrf"))
+      return errorResponse(403, "forbidden", "confirmation failed");
+    return page(tv, 404, MISS);
+  }
+  if (serve) return serve(slug, formatUserCode(code), body);
 
   return new Response(null, {
     status: 302,
     headers: {
-      // Relative: the same host the visitor is on, whatever it is called. On the customer host
-      // the product's page is on the API host, so `productOrigin` (configuration, never the
-      // request) names it (LK-03).
-      location: `${productOrigin ?? ""}/${slug}/identity/auth/device?user_code=${formatUserCode(code)}`,
+      // Relative: the same host the visitor is on, whatever it is called.
+      location: `/${slug}/identity/auth/device?user_code=${formatUserCode(code)}`,
       "cache-control": "no-store",
       "referrer-policy": "no-referrer",
     },

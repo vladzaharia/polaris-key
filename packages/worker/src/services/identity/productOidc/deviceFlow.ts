@@ -6,12 +6,22 @@ import { HEADER_DEVICE } from "@polaris-key/protocol/core";
 import { hashKey } from "../../../platform/crypto.js";
 import { type Env } from "../../../platform/env.js";
 import { customerHostMode } from "../../../core/licensing/manageUrl.js";
-import { customerOrigin } from "../../../core/hosts.js";
+import {
+  customerOrigin,
+  isCustomerHost,
+  usableOrigin,
+} from "../../../core/hosts.js";
+import { consumeBindToken, issueBindToken } from "../../../core/signInBind.js";
 import { randomToken } from "../../../platform/random.js";
 import { parseFlowRecord, tryParseJson } from "../../../platform/json.js";
 import type { Db } from "../../../db/types.js";
 import { type Product } from "../../../core/products.js";
-import { errorResponse, json, methodNotAllowed } from "../../../core/errors.js";
+import {
+  errorResponse,
+  json,
+  methodNotAllowed,
+  notFound,
+} from "../../../core/errors.js";
 import { clientNetwork } from "../../../core/rateLimit.js";
 import { binderSetCookie } from "../licenseChoice.js";
 import {
@@ -207,9 +217,52 @@ export async function confirmDeviceFlow(
     "referrer-policy": "no-referrer",
     "cache-control": "no-store",
   });
+  // The IdP calls back on the API host, so the flow's binder must be set THERE. From the customer
+  // host the confirmation goes through the API host's `auth/device/continue` with a single-use
+  // bind token (LK-04, plans/LK-00.md §7.8): no cookie on this host, and the IdP address is the
+  // stored one, never a value the request names.
+  if (isCustomerHost(new URL(req.url), env)) {
+    const api = usableOrigin(env.CONSOLE_ORIGIN?.trim() ?? "");
+    if (!api) return errorResponse(503, "unavailable", "try again");
+    const bind = await issueBindToken(env, {
+      kind: "device",
+      binder,
+      to: record.authorizeUrl,
+    });
+    headers.set(
+      "location",
+      `${api}/${product.slug}/identity/auth/device/continue?bind=${bind}`,
+    );
+    return new Response(null, { status: 303, headers });
+  }
   if (binder)
     headers.append("set-cookie", binderSetCookie(binder, FLOW_TTL_SECONDS));
   return new Response(null, { status: 303, headers });
+}
+
+/**
+ * `GET /<product>/identity/auth/device/continue?bind=` — the API host's half of a confirmation
+ * made on the customer host: redeem the bind token once, set the flow's binder cookie on this
+ * host (where the IdP calls back) and 303 to the IdP address stored with the token. Any failure
+ * is the plain not-found.
+ */
+export async function handleAuthDeviceContinue(
+  req: Request,
+  env: Env,
+): Promise<Response> {
+  if (req.method !== "GET") return methodNotAllowed();
+  const token = new URL(req.url).searchParams.get("bind") ?? "";
+  const bound = await consumeBindToken(env, token);
+  if (!bound || bound.kind !== "device") return notFound();
+  return new Response(null, {
+    status: 303,
+    headers: {
+      location: bound.to,
+      "set-cookie": binderSetCookie(bound.binder, FLOW_TTL_SECONDS),
+      "referrer-policy": "no-referrer",
+      "cache-control": "no-store",
+    },
+  });
 }
 
 /** Refuse a cross-site POST to a device-flow page.
@@ -286,9 +339,30 @@ export async function handleAuthDeviceEntry(
   req: Request,
   env: Env,
   product: Product,
+  db?: Db,
 ): Promise<Response> {
   if (req.method !== "GET" && req.method !== "POST") return methodNotAllowed();
   const now = Math.floor(Date.now() / 1000);
+  const url = new URL(req.url);
+  // LK-04 (plans/LK-00.md §7.9): the page is the customer host's. On the API host a GET hands
+  // the visitor over (a flow already in progress keeps working); the customer host serves the
+  // page itself, with its forms posting back to `/device`.
+  const onCustomerHost = isCustomerHost(url, env);
+  if (!onCustomerHost && req.method === "GET" && db) {
+    const mode = await customerHostMode(env, db);
+    const customer = mode === "off" ? null : customerOrigin(env, mode, req);
+    if (customer && customer !== url.origin) {
+      const code = normalizeUserCode(url.searchParams.get("user_code"));
+      return new Response(null, {
+        status: 303,
+        headers: {
+          location: `${customer}/device${code ? `?user_code=${formatUserCode(code)}` : ""}`,
+          "cache-control": "no-store",
+          "referrer-policy": "no-referrer",
+        },
+      });
+    }
+  }
   // Per client network only: the IPv4 address, or the IPv6 /64 (one host holds a whole /64, so
   // a per-address key would be free to rotate — R10-04b). A product-wide bucket would let one
   // attacker exhaust it and lock every player out of sign-in; 20^8 codes over a 600 s lifetime
@@ -300,8 +374,9 @@ export async function handleAuthDeviceEntry(
     windowSec: 60,
   });
   if (limited) return limited;
-  const url = new URL(req.url);
-  const action = `${url.origin}/${product.slug}/identity/auth/device`;
+  const action = onCustomerHost
+    ? `${url.origin}/device`
+    : `${url.origin}/${product.slug}/identity/auth/device`;
 
   let rawCode: string | null;
   let csrf: string | undefined;

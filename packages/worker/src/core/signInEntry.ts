@@ -47,7 +47,8 @@ export async function handleSignInBind(
   const bind = q.get("bind");
   const bound = bind ? await consumeBindToken(env, bind) : null;
   // The token names its own handle: a token for another request is as good as none.
-  if (!bound || bound.handle !== handle) return notFound();
+  if (!bound || bound.kind !== "request" || bound.handle !== handle)
+    return notFound();
   return new Response(null, {
     status: 303,
     headers: {

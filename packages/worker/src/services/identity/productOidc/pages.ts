@@ -11,6 +11,7 @@ import {
 } from "../../../platform/html.js";
 import { randomToken } from "../../../platform/random.js";
 import { type Product } from "../../../core/products.js";
+import { isCustomerHost, usableOrigin } from "../../../core/hosts.js";
 import { renderBrandPage } from "../../../core/brandHtml.js";
 import { accountDisabledPage } from "../card/http.js";
 import { errorResponse } from "../../../core/errors.js";
@@ -26,7 +27,9 @@ import {
  *  `formTarget` widens `form-action` by exactly one origin — the IdP the confirmation POST
  *  303s to — because browsers apply `form-action` to every redirect a form submission follows,
  *  so `'self'` alone would block the hand-off the confirmation button exists to make. */
-export function deviceHtmlHeaders(formTarget?: string): Headers {
+export function deviceHtmlHeaders(
+  formTarget?: string | readonly string[],
+): Headers {
   // R1-09: `index.ts`'s `secureResponse` backstop would supply this policy anyway, but a
   // handler that emits HTML should not depend on the dispatcher — a direct call (a test, or a
   // future internal caller) must be hardened too. `brandedHtmlSecurityHeaders` preserves the
@@ -40,18 +43,26 @@ export function deviceHtmlHeaders(formTarget?: string): Headers {
       "cache-control": "no-store",
     }),
   );
-  let idp: string | null = null;
-  try {
-    if (formTarget) idp = new URL(formTarget).origin;
-  } catch {
-    idp = null;
+  const origins: string[] = [];
+  for (const target of typeof formTarget === "string"
+    ? [formTarget]
+    : (formTarget ?? [])) {
+    try {
+      const o = new URL(target).origin;
+      if (o !== "null" && !origins.includes(o)) origins.push(o);
+    } catch {
+      /* not a URL: widens nothing */
+    }
   }
-  if (idp && idp !== "null") {
+  if (origins.length > 0) {
     headers.set(
       "content-security-policy",
       headers
         .get("content-security-policy")!
-        .replace("form-action 'self'", `form-action 'self' ${idp}`),
+        .replace(
+          "form-action 'self'",
+          `form-action 'self' ${origins.join(" ")}`,
+        ),
     );
   }
   return headers;
@@ -119,7 +130,14 @@ export async function renderDeviceConfirmation(
       `<input type="hidden" name="csrf" value="${escapeHtml(csrf)}">` +
       `<button class="button" type="submit">Continue to sign in</button></form>`,
   });
-  const headers = deviceHtmlHeaders(record.authorizeUrl);
+  // From the customer host the confirmation is followed through the API host (the bind hop)
+  // before it reaches the IdP, and `form-action` applies to every redirect in the chain.
+  const api = isCustomerHost(new URL(req.url), env)
+    ? usableOrigin(env.CONSOLE_ORIGIN?.trim() ?? "")
+    : null;
+  const headers = deviceHtmlHeaders(
+    api ? [api, record.authorizeUrl] : record.authorizeUrl,
+  );
   if (signInRequest.setCookie)
     headers.append("set-cookie", signInRequest.setCookie);
   return new Response(html, { status: 200, headers });

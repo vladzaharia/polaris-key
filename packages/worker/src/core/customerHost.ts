@@ -82,12 +82,3 @@ export function customerHostOwnResponse(
     { headers },
   );
 }
-
-/**
- * The API host's origin (`CONSOLE_ORIGIN`): where the customer host sends a person to a product's
- * own page (the device confirmation) until that page moves (LK-04). From configuration, never from
- * the request; `null` when it is unset or unusable.
- */
-export function apiOrigin(env: Pick<Env, "CONSOLE_ORIGIN">): string | null {
-  return usableOrigin(env.CONSOLE_ORIGIN?.trim() ?? "");
-}

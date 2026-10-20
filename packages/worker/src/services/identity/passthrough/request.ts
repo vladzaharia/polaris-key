@@ -171,7 +171,7 @@ export async function createSignInRequest(
     return {
       handle,
       setCookie: null,
-      bindToken: await issueBindToken(env, handle, binder),
+      bindToken: await issueBindToken(env, { kind: "request", handle, binder }),
     };
   return {
     handle,
