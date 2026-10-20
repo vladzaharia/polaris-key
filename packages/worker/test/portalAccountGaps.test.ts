@@ -132,7 +132,7 @@ describe("POST /api/me/methods/<id>/primary", () => {
     ]);
     // Names no address.
     for (const m of w.mail) {
-      expect(m.subject).toBe("Your Polaris Key primary email was changed");
+      expect(m.subject).toBe("Your Polaris Locker primary email was changed");
       expect(m.text).not.toContain("@");
     }
   });

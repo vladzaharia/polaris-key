@@ -160,8 +160,8 @@ export function platformSignInEnded(env: Env, now: number): boolean {
  */
 export const PLATFORM_SIGNIN_ENDED = {
   heading: "This way of signing in has ended",
-  body: "Single sign-on no longer signs you in here. Sign in to your Polaris Key account with your email, a passkey or another way you added.",
-  action: "Sign in to Polaris Key",
+  body: "Single sign-on no longer signs you in here. Sign in to your Polaris Locker account with your email, a passkey or another way you added.",
+  action: "Sign in to Polaris Locker",
 } as const;
 
 // ── the subject's account ────────────────────────────────────────────────────────────────────
@@ -197,7 +197,7 @@ export async function platformSubjectLink(
 export type PlatformSubjectStanding = "allowed" | "refused" | "unavailable";
 
 /**
- * Whether a platform-IdP subject belongs to a Polaris Key account that can no longer sign in
+ * Whether a platform-IdP subject belongs to a Polaris Locker account that can no longer sign in
  * (the I-17 review's N9): the subject holds a method whose account is disabled, is being deleted
  * (`deleted`), no longer resolves, or is on the erasure ledger (I-11: a D1 restore brings an erased
  * account and its methods back as `active`; only the ledger says it was erased). `refused`: a
@@ -283,7 +283,7 @@ export async function accountsUsingEmail(
 }
 
 /**
- * Claim at next sign-in: land a platform-IdP subject on its Polaris Key account (see the module
+ * Claim at next sign-in: land a platform-IdP subject on its Polaris Locker account (see the module
  * comment). Writes nothing while the mode is `off`, past the sunset, for an unknown subject in
  * `operators-only`, on a join offer, or on an ambiguous email.
  */

@@ -1,0 +1,48 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`customer templates > say Polaris Locker and never Polaris Key 1`] = `
+{
+  "added": {
+    "subject": "Mossgarden is in your library",
+    "text": "Mossgarden was added to your Polaris Locker account with a license key.
+
+Open Mossgarden: https://key.plrs.im/#/p/mossgarden
+
+You are receiving this because of a change to your Polaris Locker account.",
+  },
+  "deleted": {
+    "subject": "Your Polaris Locker account has been deleted",
+    "text": "Your Polaris Locker account, its email addresses and its sign-in methods have been erased, as you asked.
+
+Deleting it doesn't cancel your licenses: they stay with each developer, and you can add them again with a new account. To have a developer erase its own records, contact that developer's support.
+
+You are receiving this because your Polaris Locker account was deleted. We sent it to every verified email on the account.",
+  },
+  "keyEmail": {
+    "subject": "Your Mossgarden license",
+    "text": "Mossgarden
+
+Hi Ada,
+
+Here is your license key.
+
+pkey_abc
+
+Enter it in the app to activate. Keep it private: anyone with the key can use it.
+
+Open in Polaris Locker: https://key.plrs.im/signin?product=mossgarden
+
+You are receiving this because a license was created for this address.",
+  },
+  "newDevice": {
+    "subject": "A new device signed in to your Polaris Locker account",
+    "text": "Studio PC signed in on 15 Jan 2027, 08:00 UTC from Lisbon, Portugal. If this wasn't you, sign it out in Polaris Locker under Where you're signed in.
+
+Open Polaris Locker: https://key.plrs.im/#/account/sessions
+
+Wasn't you? Secure your account: https://key.plrs.im/#/account/methods
+
+You are receiving this because of a change to your Polaris Locker account. We sent it to every verified email on the account.",
+  },
+}
+`;

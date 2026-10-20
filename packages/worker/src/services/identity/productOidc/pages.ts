@@ -196,7 +196,7 @@ export function productAccountDisabledPage(
 /** The signed-in page's join offer (I-17): the address is the one the person's own IdP just
  *  asserted, so it names nothing they did not already prove. Nothing has joined. */
 export function joinOfferNotice(email: string): string {
-  return `<p>A Polaris Key account already uses ${escapeHtml(email)}. To add this sign-in to it, <a href="/login">continue with single sign-on on Polaris Key</a>, then sign in to that account when asked.</p>`;
+  return `<p>A Polaris Locker account already uses ${escapeHtml(email)}. To add this sign-in to it, <a href="/login">continue with single sign-on on Polaris Locker</a>, then sign in to that account when asked.</p>`;
 }
 
 /** The callback's "return to the app" page. `notice` is TRUSTED markup (I-17's join offer). */

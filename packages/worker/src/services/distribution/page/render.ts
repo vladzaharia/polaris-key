@@ -23,9 +23,14 @@
  * `maxTouchPoints > 1`. With no detected platform, every platform's primary is offered.
  */
 
-import { BRAND, FONT, SERVICE_ACCENTS, THEME_TOKENS } from "@polaris-key/brand";
+import { FONT, SERVICE_ACCENTS, THEME_TOKENS } from "@polaris-key/brand";
 import { buildLabel, type BuildLabel } from "@polaris-key/manifest";
-import { themedLockup } from "../../../core/brandHtml.js";
+import {
+  LOCKER_SHELL_CSS,
+  lockerFaviconHref,
+  lockerLockup,
+  serviceRow,
+} from "../../../core/assets/lockerShell.js";
 import type {
   DetectedPlatform,
   PagePlatform,
@@ -91,9 +96,6 @@ function palette(theme: "dark" | "light"): string {
     `--accent-fg:${accent.on}`,
     `--accent-subtle:${accent.subtle}`,
     `--focus:${t.focus}`,
-    `--mb:${BRAND.violet[theme]}`,
-    `--ms:${BRAND.star[theme]}`,
-    `--mt:${BRAND.text[theme]}`,
   ].join(";");
 }
 
@@ -145,7 +147,7 @@ export const PAGE_CSS = [
   `footer p{margin:0 0 1rem}`,
   `.delivery{display:block;line-height:0}`,
   `.delivery svg{display:block;max-width:100%;height:auto}`,
-  `.mb{fill:var(--mb)}.ms{fill:var(--ms)}.mt{fill:var(--mt)}`,
+  LOCKER_SHELL_CSS,
 ].join("\n");
 
 const KEY_LABELS: Readonly<Record<string, string>> = {
@@ -290,9 +292,9 @@ function primaryBlock(
 /** One entry of "Other ways to get it". */
 function way(a: PageAction, group: PagePlatformGroup): string {
   const parts: string[] = [];
-  // The `direct` outlet is presented as Polaris Key (S-21 §6.8); its id stays `direct`.
+  // The `direct` outlet is presented as Polaris Locker (S-21 §6.8, LK-07); its id stays `direct`.
   const head =
-    a.kind === "download" && a.build ? `Download from Polaris Key` : a.label;
+    a.kind === "download" && a.build ? `Download from Polaris Locker` : a.label;
   parts.push(
     `<span class="way-head">${esc(head)}</span>${
       a.version ? ` <span class="meta">Version ${esc(a.version)}</span>` : ""
@@ -359,17 +361,6 @@ function iconTag(url: string | null): string {
   return src
     ? `<img class="icon" src="${src}" alt="" width="64" height="64" decoding="async">`
     : "";
-}
-
-let delivery: string | null = null;
-
-/**
- * The footer's service mark: the Polaris Key Delivery compact lockup (the Star Cut, BRAND.md
- * §1.1, §7.1) at 48 px tall, so its glyph is the 24 px service cut. Built once, on first use.
- */
-function deliveryMark(): string {
-  delivery ??= themedLockup("delivery", "compact", 48, "lockup");
-  return delivery;
 }
 
 /**
@@ -506,10 +497,11 @@ export function renderDownloadPage(
 
   return [
     "<!doctype html>",
-    '<html lang="en"><head><meta charset="utf-8">',
+    '<html lang="en" data-brand="locker"><head><meta charset="utf-8">',
     '<meta name="viewport" content="width=device-width, initial-scale=1">',
     '<meta name="referrer" content="no-referrer">',
-    `<title>Download ${esc(name)}</title>`,
+    `<title>Download ${esc(name)} · Polaris Locker</title>`,
+    `<link rel="icon" type="image/svg+xml" href="${lockerFaviconHref()}">`,
     `<style>${PAGE_CSS}</style>`,
     "</head><body>",
     `<header>${iconTag(extras.iconUrl ?? null)}<h1>${esc(name)}</h1>${
@@ -526,7 +518,7 @@ export function renderDownloadPage(
         ? `<section aria-labelledby="ways-title"><h2 id="ways-title">Other ways to get it</h2>${ways}</section>`
         : ""
     }${files}${keys}${about}</main>`,
-    `<footer><p>Verify a download's SHA-256 before you install it.</p><p class="delivery">${deliveryMark()}</p></footer>`,
+    `<footer><p>Verify a download's SHA-256 before you install it.</p><p class="delivery">${lockerLockup(40, "lockup")}</p>${serviceRow()}</footer>`,
     "</body></html>",
     "",
   ].join("\n");

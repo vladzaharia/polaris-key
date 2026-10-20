@@ -43,6 +43,17 @@ const BRAND_LOCKUP_FILES: readonly string[] = [
 ];
 
 /**
+ * The Polaris Locker lockup PNGs for the Worker's mail (LK-07; plans/LK-00.md §7.11). Same
+ * console origin, `/assets/branding/locker/`: mail already sent links under `/assets/`, and the
+ * router hands this path to the assets binding. `light` is for light grounds.
+ */
+const BRAND_LOCKER_DIR = "assets/branding/locker";
+const BRAND_LOCKER_LOCKUP_FILES: readonly string[] = [
+  "locker-horizontal-light-640.png",
+  "locker-horizontal-dark-640.png",
+];
+
+/**
  * Rubik and JetBrains Mono (the brand package's variable WOFF2 files, latin subset, and their
  * licences) at a stable, unhashed path, for the
  * Worker's server-rendered pages (packages/worker/src/core/brandHtml.ts): their stylesheet is a
@@ -97,6 +108,12 @@ const brandLockupKey = dirname(
   ),
 );
 
+const brandLockerLockups = dirname(
+  createRequire(import.meta.url).resolve(
+    "@polaris-key/brand/locker-kit/logos/png/locker-horizontal-light-640.png",
+  ),
+);
+
 const CONTENT_TYPES: Record<string, string> = {
   svg: "image/svg+xml",
   ico: "image/x-icon",
@@ -115,6 +132,11 @@ const BRAND_DIRS: readonly {
   { dir: LOCKER_WEB_DIR, files: LOCKER_WEB_FILES, from: brandWebLocker },
   { dir: BRAND_WEB_DIR, files: BRAND_LOCKUP_FILES, from: brandLockupKey },
   { dir: BRAND_FONT_DIR, files: BRAND_FONT_FILES, from: brandFonts },
+  {
+    dir: BRAND_LOCKER_DIR,
+    files: BRAND_LOCKER_LOCKUP_FILES,
+    from: brandLockerLockups,
+  },
 ];
 
 function brandWebAssets(): Plugin {

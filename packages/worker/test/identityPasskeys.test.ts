@@ -294,7 +294,8 @@ describe("passkey enrolment", () => {
       w.mail.filter(
         (m) =>
           m.to === "ada@example.com" &&
-          m.subject === "A passkey was connected to your Polaris Key account",
+          m.subject ===
+            "A passkey was connected to your Polaris Locker account",
       ),
     ).toHaveLength(2);
   });
@@ -786,7 +787,7 @@ describe("passkey removal and the settings list", () => {
       w.mail.some(
         (m) =>
           m.subject ===
-          "A passkey was disconnected from your Polaris Key account",
+          "A passkey was disconnected from your Polaris Locker account",
       ),
     ).toBe(true);
     const { res: signIn } = await passkeySignIn(new Device(w), auth);

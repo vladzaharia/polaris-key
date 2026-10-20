@@ -17,18 +17,33 @@
  * vite.config.ts`), which the router already hands to the assets binding. Without the binding
  * (tests, a bare `wrangler dev`) the font 404s and the system stack behind Rubik takes over.
  *
+ * ── Polaris Locker (LK-07; plans/LK-00.md §7.12, A3 §14.2) ──────────────────────────────────
+ *
+ * The shell draws the Polaris Locker identity by default: `data-brand="locker"` on `<html>`, the
+ * Locker lockup, the Locker favicon and title suffix, and neutral-ink actions and links with coral
+ * as identity only (D9a). Every page the Worker answers to a customer is one. The console's own
+ * pages (`console/auth.ts`) pass `brand: "key"`: the Pinned K, the Polaris Key wordmark, the
+ * violet accent. Each has its own stylesheet and SHA-256: the Locker one is the Key one plus a
+ * constant tail (`BRAND_PAGE_CSS_LOCKER`).
+ *
  * The bytes host never uses this shell: its pages stay on the system stack with no font source
  * at all (`bytesLanding.ts`, BRAND.md §8).
  */
 
 import { createHash } from "node:crypto";
 import { BRAND, FONT, THEME_TOKENS } from "@polaris-key/brand";
-import { lockupMetrics, markParts } from "@polaris-key/brand/svg";
+import {
+  LOCKER_LOCKUP_PALETTES,
+  lockupMetrics,
+  markParts,
+} from "@polaris-key/brand/svg";
 import { escapeHtml } from "../platform/html.js";
 
 /** Where the admin build emits the brand fonts and the Pinned K web identity. */
 export const BRAND_FONT_PATH = "/assets/branding/fonts";
 export const BRAND_WEB_KEY_PATH = "/assets/branding/key";
+/** The Polaris Locker favicon set, emitted next to it (`packages/admin/vite.config.ts`). */
+export const BRAND_WEB_LOCKER_PATH = "/assets/branding/locker";
 
 // ── Artwork ──────────────────────────────────────────────────────────────────────────────────
 
@@ -42,7 +57,7 @@ const ROLE_CLASS = { body: "mb", star: "ms", text: "mt" } as const;
  * a brand change this code must not follow silently, so it throws (the tests fail).
  */
 export function themedLockup(
-  kind: "key" | "delivery",
+  kind: "key" | "delivery" | "locker",
   layout: "horizontal" | "compact",
   height: number,
   className: string,
@@ -208,12 +223,54 @@ export const BRAND_PAGE_CSS = [
   `@media (max-width: 30rem){.tv .card{padding:1.5rem}.tv h1{font-size:2rem;line-height:2.5rem}.tv input[type=text]{font-size:1.75rem}}`,
 ].join("");
 
-let styleSource: string | null = null;
+/** The Locker identity's palette per theme: the lockup's three inks, and the neutral-ink action. */
+function lockerPalette(theme: "dark" | "light"): string {
+  const t = THEME_TOKENS[theme];
+  const ink = LOCKER_LOCKUP_PALETTES[theme];
+  return [
+    `--mb:${ink.body}`,
+    `--ms:${ink.star}`,
+    `--mt:${ink.text}`,
+    `--accent:${t.action.fill}`,
+    `--accent-fg:${t.text.strong}`,
+    `--on-accent:${t.action.on}`,
+    `--accent-subtle:${t.surface.sunken}`,
+    `--focus:${t.text.strong}`,
+  ].join(";");
+}
 
-/** The `'sha256-…'` source expression that allows `BRAND_PAGE_CSS`, computed once. */
-export function brandPageStyleSource(): string {
-  styleSource ??= `'sha256-${createHash("sha256").update(BRAND_PAGE_CSS, "utf8").digest("base64")}'`;
-  return styleSource;
+/**
+ * What a Locker page adds to `BRAND_PAGE_CSS` (a build constant, so its hash is too): the Locker
+ * inks, and D9a: coral is identity only, so actions, focus and link text are neutral ink and the
+ * link underline (2 px) carries the coral.
+ */
+const LOCKER_PAGE_CSS_TAIL = [
+  `:root[data-brand=locker]{${lockerPalette("dark")}}`,
+  `@media (prefers-color-scheme: light){:root[data-brand=locker]{${lockerPalette("light")}}}`,
+  `[data-brand=locker] a{color:var(--strong);text-decoration:underline;text-decoration-color:var(--mb);text-decoration-thickness:2px;text-underline-offset:.2em}`,
+  `[data-brand=locker] .button{text-decoration:none}`,
+].join("");
+
+/** The stylesheet of a Locker page: `BRAND_PAGE_CSS` and its tail. */
+export const BRAND_PAGE_CSS_LOCKER = BRAND_PAGE_CSS + LOCKER_PAGE_CSS_TAIL;
+
+export type BrandPageBrand = "key" | "locker";
+
+const styleSources = new Map<string, string>();
+
+/**
+ * The `'sha256-…'` source expression that allows the page stylesheet (`BRAND_PAGE_CSS_LOCKER` for
+ * `"locker"`, the default; `BRAND_PAGE_CSS` for `"key"`), computed once.
+ */
+export function brandPageStyleSource(brand: BrandPageBrand = "locker"): string {
+  const key = brand;
+  let v = styleSources.get(key);
+  if (v === undefined) {
+    const css = brand === "locker" ? BRAND_PAGE_CSS_LOCKER : BRAND_PAGE_CSS;
+    v = `'sha256-${createHash("sha256").update(css, "utf8").digest("base64")}'`;
+    styleSources.set(key, v);
+  }
+  return v;
 }
 
 // ── The document ─────────────────────────────────────────────────────────────────────────────
@@ -236,9 +293,31 @@ export interface BrandPageOptions {
   body?: string;
   /** `tv`: larger type and targets for a TV browser (`/tv`). */
   variant?: "tv";
+  /** `key`: the Polaris Key console identity; the default is Polaris Locker (see the header). */
+  brand?: BrandPageBrand;
 }
 
 let mark: string | null = null;
+let lockerLockup: string | null = null;
+
+/**
+ * The brand block above the card. `surface` is the already-escaped surface label, or "". Key:
+ * the Pinned K and "Polaris Key" with the label beside it. Locker: the Locker lockup (its own
+ * wordmark) with the label beside it.
+ */
+function brandBlock(
+  brand: BrandPageBrand | undefined,
+  surface: string,
+): string {
+  const label = surface ? `<span class="surface">${surface}</span>` : "";
+  const aria = surface ? ` ${surface}` : "";
+  if (brand === "locker") {
+    lockerLockup ??= themedLockup("locker", "horizontal", 48, "mark");
+    return `<div class="brand" role="img" aria-label="Polaris Locker${aria}">${lockerLockup}${label ? `<span class="wordmark" aria-hidden="true">${label}</span>` : ""}</div>`;
+  }
+  mark ??= themedMark(48, "mark");
+  return `<div class="brand" role="img" aria-label="Polaris Key${aria}">${mark}<span class="wordmark" aria-hidden="true">Polaris&nbsp;Key${label}</span></div>`;
+}
 
 /**
  * A branded page: the console's brand block (the Pinned K at 48 px, the display cut, BRAND
@@ -248,10 +327,8 @@ let mark: string | null = null;
  * than the Worker's module load.
  */
 export function renderBrandPage(opts: BrandPageOptions): string {
-  mark ??= themedMark(48, "mark");
-  const surface = opts.surface
-    ? `<span class="surface">${escapeHtml(opts.surface)}</span>`
-    : "";
+  const locker = opts.brand !== "key";
+  const brandName = locker ? "Polaris Locker" : "Polaris Key";
   const app = opts.app
     ? `<div class="app">${
         opts.app.iconUrl
@@ -263,21 +340,24 @@ export function renderBrandPage(opts: BrandPageOptions): string {
   const light = THEME_TOKENS.light.surface.page;
   return [
     `<!doctype html>`,
-    `<html lang="en">`,
+    locker ? `<html lang="en" data-brand="locker">` : `<html lang="en">`,
     `<head>`,
     `<meta charset="utf-8">`,
     `<meta name="viewport" content="width=device-width, initial-scale=1">`,
-    `<title>${escapeHtml(opts.title)} · Polaris Key</title>`,
+    `<title>${escapeHtml(opts.title)} · ${brandName}</title>`,
     `<meta name="color-scheme" content="dark light">`,
     `<meta name="theme-color" content="${dark}" media="(prefers-color-scheme: dark)">`,
     `<meta name="theme-color" content="${light}" media="(prefers-color-scheme: light)">`,
     `<meta name="robots" content="noindex, nofollow">`,
-    `<link rel="icon" type="image/svg+xml" href="${BRAND_WEB_KEY_PATH}/favicon.svg">`,
-    `<style>${BRAND_PAGE_CSS}</style>`,
+    `<link rel="icon" type="image/svg+xml" href="${locker ? BRAND_WEB_LOCKER_PATH : BRAND_WEB_KEY_PATH}/favicon.svg">`,
+    `<style>${locker ? BRAND_PAGE_CSS_LOCKER : BRAND_PAGE_CSS}</style>`,
     `</head>`,
     opts.variant === "tv" ? `<body class="tv">` : `<body>`,
     `<main>`,
-    `<div class="brand" role="img" aria-label="Polaris Key${opts.surface ? ` ${escapeHtml(opts.surface)}` : ""}">${mark}<span class="wordmark" aria-hidden="true">Polaris&nbsp;Key${surface}</span></div>`,
+    brandBlock(
+      opts.brand ?? "locker",
+      opts.surface ? escapeHtml(opts.surface) : "",
+    ),
     app,
     `<div class="card">`,
     opts.eyebrow ? `<p class="eyebrow">${escapeHtml(opts.eyebrow)}</p>` : "",
