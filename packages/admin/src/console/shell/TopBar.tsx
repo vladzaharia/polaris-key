@@ -3,7 +3,7 @@ import { BookOpen, Menu, Search } from "lucide-react";
 import type { Me, PlatformIdentity } from "../../api.js";
 import { Button } from "../../ui/Button.js";
 import { cn } from "../../lib/cn.js";
-import type { ProductPageId } from "../nav.js";
+import type { ProductPageId, ServiceAccent } from "../nav.js";
 import { BrandBlock } from "./BrandBlock.js";
 import { EnvironmentBadge } from "./EnvironmentBadge.js";
 import { ProductSwitcher } from "./ProductSwitcher.js";
@@ -15,14 +15,15 @@ import { canIn } from "../access/can.js";
 
 /**
  * The top bar (ADMIN.md §2.1–2.2, components.md §1.2): the global tier of navigation. Brand block
- * (the Locker lockup, Home; no section bit), the product switcher when a product is in scope, the environment
+ * (Home, with the section bit), the product switcher when a product is in scope, the environment
  * badge, the palette trigger, Docs, the theme menu and the account menu. There is no page title
  * here any more: each page owns its one `<h1>` (SH-12).
  *
- * Height 64 px (the 32 px Locker lockup with generous clear space), plus the top safe area.
+ * Height 64 px (BRAND.md §7.6: the 48 px mark with 8 px of clear space), plus the top safe area.
  */
 export function TopBar({
   me,
+  section,
   product,
   products,
   page,
@@ -37,6 +38,7 @@ export function TopBar({
   className,
 }: {
   me: Me;
+  section: ServiceAccent;
   product: ProductLike | null;
   products: ProductLike[];
   page: ProductPageId | null;
@@ -71,7 +73,10 @@ export function TopBar({
       >
         <Menu aria-hidden />
       </Button>
-      <BrandBlock className="max-[24rem]:hidden lg:min-w-[calc(var(--sidebar-w)-1.5rem)]" />
+      <BrandBlock
+        section={section}
+        className="max-[24rem]:hidden lg:min-w-[calc(var(--sidebar-w)-1.5rem)]"
+      />
       {product && page ? (
         <ProductSwitcher
           products={products}

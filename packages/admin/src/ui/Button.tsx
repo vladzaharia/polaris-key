@@ -9,7 +9,7 @@ import { Tooltip } from "./Tooltip.js";
  * The console's button (docs/design/admin/components.md §2.1).
  *
  * - `primary` is the section accent (`data-service` scoping): chartreuse in License, yellow in
- *   Config, neutral ink in the Locker context (core pages, D9a). `danger` is the danger status, never a section colour.
+ *   Config, violet on core pages. `danger` is the danger status, never a section colour.
  * - `loading` keeps the label, swaps the start icon for a spinner, sets `aria-busy` and ALWAYS
  *   disables the button; a caller's `disabled={false}` cannot re-enable it (fixes UI-1).
  * - `disabledReason` renders `aria-disabled` instead of `disabled`, so the button stays focusable,
@@ -36,7 +36,7 @@ export const buttonVariants = cva(
     variants: {
       variant: {
         primary:
-          "bg-[var(--pk-primary-fill,var(--pk-accent))] text-[var(--pk-primary-on,var(--pk-accent-on))] shadow-elevation-1 hover:not-disabled:not-aria-disabled:bg-[color-mix(in_oklab,var(--pk-primary-fill,var(--pk-accent)),white_10%)]",
+          "bg-accent text-accent-on shadow-elevation-1 hover:not-disabled:not-aria-disabled:bg-[color-mix(in_oklab,var(--pk-accent),white_10%)]",
         secondary:
           "bg-hover text-fg-strong hover:not-disabled:not-aria-disabled:bg-surface-sunken",
         outline:

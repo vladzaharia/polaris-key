@@ -464,7 +464,7 @@ describe("the Settings page in the Platform section", () => {
     expect(link.getAttribute("href")).toBe("#/platform/settings");
     expect(link.getAttribute("aria-current")).toBe("page");
     expect(link.querySelector("svg[data-nav-icon]")).not.toBeNull();
-    expect(document.title).toBe("Settings · Polaris Locker console");
+    expect(document.title).toBe("Settings · Polaris Key Console");
   });
 
   it("shows a skeleton while loading, then a retryable error", async () => {

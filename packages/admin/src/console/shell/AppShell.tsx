@@ -92,7 +92,7 @@ function knownProductPageRefused(me: Me, route: Route): boolean {
   );
 }
 
-/** `"{page title} · {product} · Polaris Locker console"`, or `"{page title} · Polaris Locker console"` off a product. */
+/** `"{page title} · {product} · Polaris Key Console"`, or `"{page title} · Polaris Key Console"` off a product. */
 export function documentTitle(
   route: Route,
   productName: string | null,
@@ -101,7 +101,7 @@ export function documentTitle(
   return [
     refused ? `No access · ${pageTitle(route)}` : pageTitle(route),
     productName,
-    "Polaris Locker console",
+    "Polaris Key Console",
   ]
     .filter(Boolean)
     .join(" · ");
@@ -215,7 +215,6 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
   // The sidebar group holding the page: its product section, or the Platform section.
   const group = page ? groupOf(page) : null;
   const accent = page ? accentOf(page) : "core";
-
   const productPageId: ProductPageId | null =
     route.kind === "product" ? route.page : null;
   // The page the product switcher keeps. A not-found page under a known product keeps the
@@ -224,7 +223,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
     productPageId ?? (slug !== null ? "overview" : null);
 
   // The section rides <html> too, so what Radix portals out of this tree (dialogs, menus) takes
-  // the section's accent, (core takes the Locker context: styles.css).
+  // the section's accent, and the header mark's bit follows the route (BRAND.md §6).
   React.useEffect(() => {
     const root = document.documentElement;
     root.setAttribute("data-service", accent);
@@ -384,6 +383,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
             <TopBar
               className="lg:col-span-2"
               me={me}
+              section={accent}
               product={slug ? product : null}
               products={productList}
               page={switcherPage}

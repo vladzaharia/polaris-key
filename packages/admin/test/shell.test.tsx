@@ -483,17 +483,19 @@ describe("accents and the section bit (BRAND.md §6)", () => {
     );
   });
 
-  it("the header is the Locker lockup with no section bit; only <html data-service> follows the section", async () => {
-    // The Key display cut's terminal bit (the kit's "gold" path): never drawn in the header.
+  it("the header mark: no bit on Home, Products and Core; each service section's own accent elsewhere", async () => {
+    // The display cut's terminal bit (the kit's "gold" path).
     const BIT_D = "M70 85 L84 71 L90 77 L76 91 Z";
     boot("#/p/djdl", { services: ALL_ON });
-    const brand = await screen.findByRole("link", {
-      name: "Polaris Locker console home",
-    });
-    expect(brand.hasAttribute("data-service")).toBe(false);
-    expect(
-      brand.querySelector('svg[aria-label="Polaris Locker"]'),
-    ).not.toBeNull();
+    const brand = await screen.findByRole("link", { name: "Polaris Key Console home" });
+    expect(brand.querySelector("svg")!.getAttribute("width")).toBe("48");
+    const theme = (): "dark" | "light" =>
+      document.documentElement.classList.contains("light") ? "light" : "dark";
+    const bit = (): Element | null => brand.querySelector(`path[d="${BIT_D}"]`);
+
+    // Core: the bare Pinned K, with no bit element at all.
+    expect(bit()).toBeNull();
+    expect(brand.querySelector(".polaris-section-bit")).toBeNull();
 
     for (const page of PRODUCT_PAGES.filter((p) => p.inNav)) {
       const section = SECTIONS.find((s) => s.items.includes(page))!;
@@ -505,9 +507,22 @@ describe("accents and the section bit (BRAND.md §6)", () => {
           section.accent,
         ),
       );
-      expect(brand.querySelector(`path[d="${BIT_D}"]`), page.page).toBeNull();
-      expect(brand.querySelector(".polaris-section-bit")).toBeNull();
+      if (section.accent === "core") {
+        expect(bit(), page.page).toBeNull();
+      } else {
+        await waitFor(() =>
+          expect(bit()?.getAttribute("fill"), page.page).toBe(
+            SERVICE_ACCENTS[theme()][section.accent as ServiceAccentKey].bit,
+          ),
+        );
+        expect(bit()!.classList.contains("polaris-section-bit")).toBe(true);
+      }
     }
+
+    act(() => {
+      window.location.hash = "#/products";
+    });
+    await waitFor(() => expect(bit()).toBeNull());
   });
 
   it("leaves <html> unsectioned once the shell is gone", async () => {
@@ -762,7 +777,7 @@ describe("state pages (T8)", () => {
     expect(window.location.hash).toBe("#/p/djdl/licenses?status=disabled");
     expect(replace).not.toHaveBeenCalled();
     await waitFor(() =>
-      expect(document.title).toBe("Page moved · DJDL · Polaris Locker console"),
+      expect(document.title).toBe("Page moved · DJDL · Polaris Key Console"),
     );
     // The product's chrome stays.
     expect(
@@ -880,24 +895,22 @@ describe("page heading, title and focus", () => {
       name: "Profiles",
     });
     const topBar = screen
-      .getByRole("link", { name: "Polaris Locker console home" })
+      .getByRole("link", { name: "Polaris Key Console home" })
       .closest("header")!;
     expect(within(topBar).queryAllByRole("heading")).toEqual([]);
     expect(h1.closest("main")).not.toBeNull();
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
   });
 
-  it("sets document.title to page · product · Polaris Locker console", async () => {
+  it("sets document.title to page · product · Polaris Key Console", async () => {
     boot("#/p/djdl/license/tiers", { services: ALL_ON });
     await waitFor(() =>
-      expect(document.title).toBe("Tiers · DJDL · Polaris Locker console"),
+      expect(document.title).toBe("Tiers · DJDL · Polaris Key Console"),
     );
     act(() => {
       window.location.hash = "#/products";
     });
-    await waitFor(() =>
-      expect(document.title).toBe("Products · Polaris Locker console"),
-    );
+    await waitFor(() => expect(document.title).toBe("Products · Polaris Key Console"));
   });
 
   it("moves focus to the new page's h1 and announces it", async () => {

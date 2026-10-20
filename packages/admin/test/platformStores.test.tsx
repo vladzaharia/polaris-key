@@ -360,7 +360,7 @@ describe("Store connections: navigation and URL", () => {
     expect(link.getAttribute("href")).toBe("#/platform/store-connections");
     expect(link.getAttribute("aria-current")).toBe("page");
     expect(link.querySelector("svg[data-nav-icon]")).not.toBeNull();
-    expect(document.title).toBe("Store connections · Polaris Locker console");
+    expect(document.title).toBe("Store connections · Polaris Key Console");
     expect(
       screen
         .getAllByRole("link", { name: /Docs/ })
