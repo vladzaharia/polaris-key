@@ -7,6 +7,7 @@ import {
   EMAIL_SEND_PRODUCT_DAILY_DEFAULT,
   recipientHash,
 } from "./emailLimits.js";
+import { tryParseJson } from "../../platform/json.js";
 import { platformSetting } from "../settings/platformRead.js";
 import { passthroughSender, platformSender } from "./emailSender.js";
 
@@ -126,7 +127,7 @@ export async function productDailyEmailCap(
       product,
       PRODUCT_EMAIL_CAP_KEY,
     );
-    own = row?.value_json ? (JSON.parse(row.value_json) as unknown) : undefined;
+    own = tryParseJson(row?.value_json);
   } catch {
     own = undefined;
   }

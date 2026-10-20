@@ -21,12 +21,12 @@ Use this when you set up the sending domain, cap a product's daily email, or cle
 
 - Send a sign-in to a test Apple account's private relay address and confirm it arrives. Apple must show each sending domain as SPF-verified.
 - Watch Cloudflare's Email Sending analytics: delivery rate over 95 %, hard bounces under 2 %, complaints under 0.1 %.
-- A product that hit its cap shows users "We can't send email right now". Raise or delete its row in `email_product_caps` and the message stops within the sliding 24 hours.
+- A product that hit its cap shows users "We can't send email right now". Raise or reset its cap in the product's **Settings** and the message stops within the sliding 24 hours.
 
 ## Roll back
 
 - The Worker sends from `noreply@plrs.im` while `EMAIL_SENDER_ADDRESS` is unset.
-- Delete a product's row in `email_product_caps` to return it to the deployment value.
+- Reset a product's cap in its **Settings** to return it to the deployment value.
 - Clear a suppressed address in Cloudflare's list too (**Email Sending**, **Suppressions**). Otherwise the next send adds it back.
 
 ## Escalate

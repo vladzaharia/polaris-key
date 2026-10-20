@@ -46,7 +46,7 @@ A person locked out by the wrong-guess limit sees nothing different and gets no 
 
 ## Raise a product's cap
 
-A capped product shows its users "We can't send email right now." Set its own cap with a row in `email_product_caps`, or change the deployment value with `EMAIL_PRODUCT_DAILY_CAP`. The day is a sliding 24 hours. The statement is in _Sign-in email_ in the [runbook](/docs/operate/platform/runbook/set-up-sign-in-email/).
+A capped product shows its users "We can't send email right now." Set its own cap in the product's **Settings**, **Daily sign-in mail cap**, or change the deployment value in **Platform**, **Settings**. The day is a sliding 24 hours.
 
 ## Verify
 
@@ -56,7 +56,7 @@ A capped product shows its users "We can't send email right now." Set its own ca
 
 ## Roll back
 
-- Delete a product's row in `email_product_caps` to return it to the deployment value.
+- Reset a product's cap in its **Settings** to return it to the deployment value.
 - The Worker sends from `noreply@plrs.im` while `EMAIL_SENDER_ADDRESS` is unset.
 - Clear a suppressed address in Cloudflare's list as well as ours. Otherwise the next send adds it back.
 

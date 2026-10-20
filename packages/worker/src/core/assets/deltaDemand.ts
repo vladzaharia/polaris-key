@@ -41,6 +41,7 @@ import { isDeliverableId } from "@polaris-key/manifest";
 import type { Db, DbStatement } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
 import { platformSetting } from "../settings/platformRead.js";
+import { tryParseJson } from "../../platform/json.js";
 
 /** At most this many `packInstalls` entries per report; the rest are dropped. */
 export const MAX_PACK_INSTALLS = 8;
@@ -157,15 +158,6 @@ export const LAZY_ENABLED_KEY = "deltas.lazy.enabled";
 export const LAZY_HOT_DEVICES_KEY = "deltas.lazy.hotDevices";
 export const LAZY_DAILY_CAP_KEY = "deltas.lazy.dailyCap";
 
-function storedJson(raw: string | null | undefined): unknown {
-  if (raw === null || raw === undefined) return undefined;
-  try {
-    return JSON.parse(raw) as unknown;
-  } catch {
-    return undefined;
-  }
-}
-
 /**
  * A product's opt-in (no row: off), defaults filled. The three rows are the registry's
  * (`deltas.lazy.*`, written by `writeSetting()`); a value that no longer fits its spec reads as
@@ -183,7 +175,7 @@ export async function lazyDeltaSettings(
     LAZY_HOT_DEVICES_KEY,
     LAZY_DAILY_CAP_KEY,
   );
-  const by = new Map(rows.map((r) => [r.key, storedJson(r.value_json)]));
+  const by = new Map(rows.map((r) => [r.key, tryParseJson(r.value_json)]));
   const hot = by.get(LAZY_HOT_DEVICES_KEY);
   const cap = by.get(LAZY_DAILY_CAP_KEY);
   return {
