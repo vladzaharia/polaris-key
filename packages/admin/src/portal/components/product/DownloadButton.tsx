@@ -2,7 +2,6 @@ import * as React from "react";
 import { Download } from "lucide-react";
 import { Button } from "../../../ui/Button.js";
 import { announce } from "../../../ui/LiveRegion.js";
-import { toast } from "../../../ui/toast.js";
 import type { PortalArtifact, PortalRelease } from "../../api.js";
 import { useStartDownload } from "../../data.js";
 import { portalErrorCopy } from "../../errors.js";
@@ -35,38 +34,44 @@ export function DownloadButton({
   ariaLabel?: string;
 }): React.ReactElement {
   const start = useStartDownload();
+  const alertId = React.useId();
   return (
-    <Button
-      variant={lead ? "primary" : "quiet"}
-      size={lead ? "lg" : "md"}
-      className={lead ? "h-12 px-6" : "h-10"}
-      loading={start.isPending}
-      iconStart={<Download aria-hidden />}
-      aria-label={
-        ariaLabel ??
-        `${label} ${productName} ${release.version} for ${describe}`
-      }
-      onClick={() =>
-        start.mutate(
-          {
-            product,
-            releaseId: release.releaseId,
-            artifactId: artifact.artifactId,
-          },
-          {
-            onSuccess: () =>
-              announce(
-                `Downloading ${productName} ${release.version} for ${describe}`,
-              ),
-            onError: (err) =>
-              toast.error("The download didn't start", {
-                description: portalErrorCopy(err).description,
-              }),
-          },
-        )
-      }
-    >
-      {label}
-    </Button>
+    <div className="flex min-w-0 flex-col items-start gap-2">
+      <Button
+        variant={lead ? "primary" : "quiet"}
+        size={lead ? "lg" : "md"}
+        className={lead ? "h-12 px-6" : "h-10"}
+        loading={start.isPending}
+        busyFocusable
+        aria-describedby={start.isError ? alertId : undefined}
+        iconStart={<Download aria-hidden />}
+        aria-label={
+          ariaLabel ??
+          `${label} ${productName} ${release.version} for ${describe}`
+        }
+        onClick={() =>
+          start.mutate(
+            {
+              product,
+              releaseId: release.releaseId,
+              artifactId: artifact.artifactId,
+            },
+            {
+              onSuccess: () =>
+                announce(
+                  `Downloading ${productName} ${release.version} for ${describe}`,
+                ),
+            },
+          )
+        }
+      >
+        {label}
+      </Button>
+      {start.isError ? (
+        <p id={alertId} role="alert" className="text-sm text-danger">
+          The download didn't start. {portalErrorCopy(start.error).description}
+        </p>
+      ) : null}
+    </div>
   );
 }

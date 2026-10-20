@@ -167,7 +167,7 @@ export function TaskFrame({
         <div className="space-y-3">
           <div
             data-identity=""
-            className="flex min-w-0 items-center gap-3 rounded-xl border border-border bg-surface-raised px-4 py-3"
+            className="flex min-w-0 items-center gap-3 rounded-xl border border-border bg-surface-raised px-4 py-3 max-[22rem]:flex-col max-[22rem]:items-start"
           >
             <ProductIcon
               slug={slug}

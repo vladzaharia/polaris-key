@@ -39,7 +39,7 @@ export function SeatMeter({
   if (!(limit > 0)) return null;
   const full = inUse >= limit;
   const label = `${Math.min(inUse, limit)} of ${limit} ${limit === 1 ? "device" : "devices"} in use`;
-  const color = full ? "bg-danger" : "bg-accent";
+  const color = full ? "bg-fg-strong" : "bg-accent";
   if (segmented) {
     return (
       <div

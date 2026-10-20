@@ -40,6 +40,7 @@ import {
   presentationFrom,
 } from "../model/library.js";
 import { deviceSeats } from "../model/product.js";
+import { StatusPill } from "../../ui/StatusPill.js";
 import { allowedReturn } from "../model/returnUrl.js";
 import {
   focusPageHeading,
@@ -339,17 +340,21 @@ function FreeDevice({
           value: d.deviceId,
           icon: <DeviceGlyph platform={d.platform} />,
           label: (
-            <span className="font-medium text-fg-strong">{deviceName(d)}</span>
+            <span className="inline-flex flex-wrap items-center gap-2">
+              <span className="font-medium text-fg-strong">
+                {deviceName(d)}
+              </span>
+              {d.deviceId === leastRecent && holders.length > 1 ? (
+                <StatusPill tone="neutral" icon={false} size="sm">
+                  Least recent
+                </StatusPill>
+              ) : null}
+            </span>
           ),
-          // "Least recent" is plain text in the meta, not a pill: pills are for issues
-          // (FLOWS.md §2 C20, P-6).
           description: [
             deviceOsName(d.platform),
             d.appVersion,
             lastSeenText(d.lastSeen),
-            d.deviceId === leastRecent && holders.length > 1
-              ? "least\u00a0recent"
-              : null,
           ]
             .filter(Boolean)
             .join(" · "),
@@ -358,15 +363,16 @@ function FreeDevice({
       {pickedDevice ? (
         <p id="free-consequence" className="flex gap-3 text-sm text-fg-muted">
           <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
-          <span>
-            {name} on {deviceName(pickedDevice)} will ask to activate next time
-            it opens. Its saved files stay on that device.
+          <span className="min-w-0 [overflow-wrap:anywhere]">
+            {deviceName(pickedDevice)} signs out of {name}.
             {caps.auth.magic ? ` We'll email ${account.email} to confirm.` : ""}
           </span>
         </p>
       ) : null}
       {remove.error ? (
         <p role="alert" className="text-sm text-danger">
+          Couldn&rsquo;t remove{" "}
+          {pickedDevice ? deviceName(pickedDevice) : "the device"}.{" "}
           {portalErrorCopy(remove.error).description}
         </p>
       ) : null}
@@ -380,7 +386,7 @@ function FreeDevice({
           <Button
             ref={removeRef}
             size="lg"
-            className="h-12 font-medium sm:flex-1"
+            className="h-12 font-medium sm:flex-none"
             loading={remove.isPending}
             disabledReason={
               pickedDevice ? undefined : "Choose a device to remove"

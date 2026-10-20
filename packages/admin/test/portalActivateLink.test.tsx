@@ -290,7 +290,7 @@ describe("§4.19 Activate license errors: every case, inline, never a toast", ()
     renderPortal();
     await pasteAndContinue(await openFromHeader());
     const confirm = await screen.findByRole("dialog", {
-      name: "Add Mossgarden to your account?",
+      name: "Add Mossgarden to your library?",
     });
     const notice = within(confirm).getByRole("status");
     expect(notice.textContent).toBe(
@@ -299,7 +299,7 @@ describe("§4.19 Activate license errors: every case, inline, never a toast", ()
     expect(within(confirm).queryByRole("alert")).toBeNull();
     expect(await axeViolations()).toEqual([]);
     await userEvent.click(
-      within(confirm).getByRole("button", { name: "Add Mossgarden" }),
+      within(confirm).getByRole("button", { name: "Add to my library" }),
     );
     await screen.findByRole("dialog", {
       name: "Mossgarden is in your library",
@@ -321,7 +321,7 @@ describe("§4.19 Activate license errors: every case, inline, never a toast", ()
       name: "Mossgarden is already in your library",
     });
     expect(done.textContent).toContain(
-      "This key's license was already linked to your account, so nothing changed.",
+      "This key's license was already in your library, so nothing changed.",
     );
     expect(
       within(done).getByRole("button", { name: "Open Mossgarden" }),
@@ -449,10 +449,10 @@ describe("§4.18 the deep link from an app (PX-17)", () => {
     expect(await axeViolations()).toEqual([]);
     await userEvent.click(continueButton(dialog));
     const confirm = await screen.findByRole("dialog", {
-      name: "Add Mossgarden to your account?",
+      name: "Add Mossgarden to your library?",
     });
     await userEvent.click(
-      within(confirm).getByRole("button", { name: "Add Mossgarden" }),
+      within(confirm).getByRole("button", { name: "Add to my library" }),
     );
     const h1 = await screen.findByRole("heading", {
       level: 1,
@@ -524,11 +524,11 @@ describe("§4.18 the deep link from an app (PX-17)", () => {
     expect(await axeViolations()).toEqual([]);
     await userEvent.click(continueButton(dialog));
     const confirm = await screen.findByRole("dialog", {
-      name: "Add Mossgarden to your account?",
+      name: "Add Mossgarden to your library?",
     });
     expect(go).not.toHaveBeenCalled();
     await userEvent.click(
-      within(confirm).getByRole("button", { name: "Add Mossgarden" }),
+      within(confirm).getByRole("button", { name: "Add to my library" }),
     );
     await waitFor(() =>
       expect(go).toHaveBeenCalledWith("/signin?request=rq_0123456789abcdef"),
@@ -557,9 +557,9 @@ describe("§4.18 the deep link from an app (PX-17)", () => {
     await userEvent.click(
       within(
         await screen.findByRole("dialog", {
-          name: "Add Mossgarden to your account?",
+          name: "Add Mossgarden to your library?",
         }),
-      ).getByRole("button", { name: "Add Mossgarden" }),
+      ).getByRole("button", { name: "Add to my library" }),
     );
     const done = await screen.findByRole("dialog", {
       name: "Mossgarden is in your library",
@@ -588,9 +588,9 @@ describe("§4.18 the deep link from an app (PX-17)", () => {
     await userEvent.click(
       within(
         await screen.findByRole("dialog", {
-          name: "Add Mossgarden to your account?",
+          name: "Add Mossgarden to your library?",
         }),
-      ).getByRole("button", { name: "Add Mossgarden" }),
+      ).getByRole("button", { name: "Add to my library" }),
     );
     const done = await screen.findByRole("dialog", {
       name: "Mossgarden is in your library",
@@ -675,9 +675,9 @@ describe("a #/?activate= hash written by hand (review fix)", () => {
     await userEvent.click(
       within(
         await screen.findByRole("dialog", {
-          name: "Add Mossgarden to your account?",
+          name: "Add Mossgarden to your library?",
         }),
-      ).getByRole("button", { name: "Add Mossgarden" }),
+      ).getByRole("button", { name: "Add to my library" }),
     );
     await screen.findByRole("heading", {
       level: 1,
@@ -822,7 +822,9 @@ describe("the confirm step in the login card (SIGN-IN.md §3.9)", () => {
       screen.getByRole("button", { name: "Add and use on this device" }),
     );
     expect(onAdd).toHaveBeenCalledOnce();
-    expect(screen.queryByRole("button", { name: "Add Mossgarden" })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Add to my library" }),
+    ).toBeNull();
     expect(screen.getByText("It's on 2 devices already.")).toBeTruthy();
     expect(screen.getByText("Lifetime · up to 2 devices")).toBeTruthy();
   });

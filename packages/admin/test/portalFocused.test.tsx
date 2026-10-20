@@ -170,9 +170,8 @@ describe("device limit, focused flow (§4.25, PX-10)", () => {
     expect(radios).toHaveLength(2);
     const work = screen.getByRole("radio", { name: /Work laptop/ });
     expect(work.getAttribute("aria-checked")).toBe("true");
-    // "Least recent" is text in the meta, never a pill (FLOWS.md P-6).
-    expect(within(work).getByText(/· least\srecent$/)).toBeTruthy();
-    expect(within(work).queryByText("Least recent")).toBeNull();
+    // "Least recent" is a neutral tag beside the name (the mockup), not an issue pill.
+    expect(within(work).getByText("Least recent")).toBeTruthy();
     expect(await axeViolations()).toEqual([]);
 
     await userEvent.click(
