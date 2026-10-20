@@ -7201,7 +7201,7 @@ is missing or disagrees with its name is the not-found, as in `blobResponse`.
 Residual risk: an operator can host abusive or illegal images, now served from a Polaris Key host.
 The operator terms apply, and HA-06's delete-a-copy (below) takes effect at the next request.
 
-### The customer host and the `customer.host` switch (LK-03)
+### The customer host and the hard cutover (LK-03, LK-17)
 
 **What it is.** `CUSTOMER_ORIGIN` (`https://polaris.locker`; `staging.` and `dev.` elsewhere) is
 the same Worker on a fifth custom domain (plans/LK-00.md §7). `core/customerHost.ts` confines it
@@ -7213,17 +7213,24 @@ every product route and every webhook are the plain not-found there. Unset, not 
 unusable, equal to the console host or equal to an earlier auxiliary host, the origin names no host and routing is what
 it was. It is deploy-time only (`DENIED_PLATFORM_NAMES`).
 
-**The switch.** `customer.host` is `off`, `on` or `permanent`, off by default; `[vars]`
-`CUSTOMER_HOST=off` is a hard off no console value overrides; unset or `runtime` leaves the
-console in charge, so a stored `on` goes live the moment `CUSTOMER_ORIGIN` is deployed. Every
-change is a typed-key confirmation (L2) and audited. **Gap:** there is no fresh sign-in
-requirement yet. A stolen console session with the settings permission can flip the switch.
-The server-side fresh step-up for `customer.host`, and the health-check preflight before `on`, are
-required LK-10 items before LK-11's cutover. It is effectively `off` while the host is unusable, without a database read. While it is
-not `off`, `customerOrigin()` (`core/hosts.ts`) is the one source of every customer link: refusal
-`manageUrl` and `signInUrl`, discovery's `accountPortal`, the device code's `verificationUri`, the
-choice view's links, the identity-off card redirect, the licence-key and account mail links.
-`test/customerOrigin.test.ts` fails on a customer path literal built on any other origin.
+**No switch (LK-17).** The host is on exactly when `CUSTOMER_ORIGIN` is usable; there is no
+setting, no `CUSTOMER_HOST` and no console value, so no console session can move customers. The cutover is a deploy
+(a reviewed `wrangler.toml` change). While it is on, `customerOrigin()` (`core/hosts.ts`) is the one
+source of every customer link: refusal `manageUrl` and `signInUrl`, discovery's `accountPortal`, the
+device code's `verificationUri`, the choice view's links, the identity-off card redirect, the
+licence-key and account mail links. `test/customerOrigin.test.ts` fails on a customer path literal
+built on any other origin.
+
+**Old-URL redirects.** On the console host, `oldCustomerUrlRedirect` (`core/customerHost.ts`)
+answers GET and HEAD to the old customer pages with a redirect to the same path and query on the
+configured customer origin: never a request-supplied host, so there is no open redirect. Pages are `301`; a
+path that carries a credential (`/callback`, `/login/<provider>[/…]`, `/magic/verify`,
+`/download/<token>`, `/logout`, a legacy `/activate?key=`) is `302` with `no-store`, so a token is not
+cached by the browser or an intermediary beyond its one hop (the Location header of such a hop is
+the same request line the caller already sent). `/signin?request=` (the bind hop) is left alone.
+The console's `/api/me` names the customer origin so the SPA sends an old portal hash
+(`#/library`, `#/account`, `#/discover`, `#/p/<slug>/free-device`) there; the origin comes from
+configuration.
 
 **What an attacker gets.**
 
@@ -7239,8 +7246,9 @@ choice view's links, the identity-off card redirect, the licence-key and account
 - _Cookies._ Both hosts keep the same `__Host-` names, so each is host-only. The customer realm
   leaves the console's site entirely, so R1-09's shared-origin caveat stops covering customers once
   customers are served there. No session crosses hosts (LK-00 D10).
-- _A rollback._ `permanent` is the 301 phase of the old-URL redirects (LK-11); a cached 301
-  outlives a rollback, which is why `on` (302) comes first.
+- _A rollback._ Removing `CUSTOMER_ORIGIN` stops the redirects, but a browser keeps a `301` it has
+  seen. That is the accepted cost of the hard cutover (owner direction, 2026-10-19); the
+  credential-bearing paths are `302` so they never cache.
 
 **Passkeys on the customer host: Related Origin Requests (LK-05, D2).** The RP id stays
 `key.plrs.im`, so no credential is re-enrolled. `GET /.well-known/webauthn` on the console host
@@ -7252,8 +7260,7 @@ hash), so an assertion from any other origin, a subdomain or a look-alike is ref
 record keeps `rpId` and a credential keeps its stored `rp_id`: one RP id per ceremony. Adding an
 origin to the list is the whole trust change: that origin's page can start a passkey sign-in for
 every account, so the customer origin is a deploy-time value, never a request or database one.
-The customer origin is trusted whenever the customer host is usable, whatever the
-`customer.host` mode (`off` included). Removing `CUSTOMER_ORIGIN` stops server verification at
+The customer origin is trusted whenever the customer host is usable. Removing `CUSTOMER_ORIGIN` stops server verification at
 once, but a browser may keep the cached list for up to 5 minutes (`max-age=300`). Both
 verifications also refuse client data with `crossOrigin: true` (the library does not check it),
 and the card's `frame-ancestors 'none'` already blocks cross-origin ceremonies. Firefox does not
