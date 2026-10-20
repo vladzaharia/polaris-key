@@ -319,6 +319,11 @@
       "verdict": "pass",
       "date": "2026-10-20",
       "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/P0-38/recheck/ (BUILT re-check PASS-WITH-NOTES after one fix round; lead polish + 40 px lockup f48bcd106); security check PASS"
+    },
+    "I-37": {
+      "verdict": "pass",
+      "date": "2026-10-20",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/I-37/recheck/ (BUILT review FAIL -> fix round -> re-check FAIL on a TV-only CSS regression -> lead fix d44069475 with the reviewer-verified rule; security PASS)"
     }
   }
 }
