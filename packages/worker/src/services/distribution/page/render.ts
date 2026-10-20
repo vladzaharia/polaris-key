@@ -95,7 +95,7 @@ function palette(theme: "dark" | "light"): string {
     `--accent-link:${accent.fg}`,
     `--accent-fg:${accent.on}`,
     `--accent-subtle:${accent.subtle}`,
-    `--focus:${t.focus}`,
+    `--focus:${t.text.strong}`,
   ].join(";");
 }
 
