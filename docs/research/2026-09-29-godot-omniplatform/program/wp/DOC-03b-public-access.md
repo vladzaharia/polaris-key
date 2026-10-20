@@ -68,9 +68,10 @@ doors.ts and docs.ts); `dist/docs-access.json`; gated pages noindex and out of t
 check:links tier rule (page content only; existing violations in `link-tier-debt.json`,
 shrink-only); rule 11 and THREAT-MODEL text.
 
+Round 2: `help` reserved as a product slug (productSlug.ts, schema, test), `/help` -> `/docs/help/` alias (router kind `helpAlias`, OpenAPI, routeCoverage); sitemap filter parses `<url>` blocks; redirect-tier test (3 known public-to-gated moves listed in searchBundles.test.ts).
+
 Not done: the search UI still loads the public bundle for every reader (DOC-02c); `robots.txt`
-for the docs host needs a route and an OpenAPI row (follow-up); the `/help` alias,
-`/docs/help/code/<id>/` and the `help` reserved slug (D8) are untouched; DOC-02b's per-door
+for the docs host needs a route and an OpenAPI row (follow-up); `/docs/help/code/<id>/` is a follow-up; DOC-02b's per-door
 sidebar lets the tier rule cover the chrome; the host move to polaris.locker is LK-09; the C-51
 text is not in this repo's docs.
 
