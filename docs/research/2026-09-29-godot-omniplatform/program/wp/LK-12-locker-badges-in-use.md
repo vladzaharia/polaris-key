@@ -3,7 +3,7 @@
 | Field       | Value                                                         |
 | ----------- | ------------------------------------------------------------- |
 | Phase       | LK: Polaris Locker                                            |
-| Size        | 0.25–0.5 engineer-weeks                                       |
+| Size        | 0.25–0.75 engineer-weeks                                      |
 | Depends on  | [LK-01](LK-01-brand-locker-kit.md), [LK-11](LK-11-cutover.md) |
 | Unblocks    | none                                                          |
 | Role        | `pkey-implementer`                                            |
@@ -23,6 +23,8 @@ Badges in use: `polaris.locker/<slug>`, the download page's badge link. Executes
 ## Scope
 
 Exactly `plans/LK-00.md` §7.1, §8. Anything else is another package's row in §9.
+
+Re-scoped by Amendment A3: destinations for the extra badge labels, 320 px; see `plans/LK-00.md` §14.6.
 
 Deferred until: LK-11 is live.
 
