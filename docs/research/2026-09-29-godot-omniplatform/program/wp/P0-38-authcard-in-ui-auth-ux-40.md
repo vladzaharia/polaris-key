@@ -125,3 +125,37 @@ Then the full green gate in `AGENTS.md`.
 
 What downstream work packages rely on from this one is named in their briefs (the Unblocks row). The role agent sets `--set P0-38 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P0-38 done`.
+
+## Progress and continuation (2026-10-19)
+
+Built on integ/next (branch `wp/P0-38-authcard`). Corrections to this brief, the code being the fact:
+`LoginCard`, `ProviderRow` and the step pieces already existed in `portal/components/signin` (PX-W
+series, I-30).
+
+Done:
+
+- `packages/admin/src/ui/auth/`: `AuthCard` (was `LoginCard`; the brand row and the product icon are
+  slots, so `ui/` stays app-neutral), `CardHeader`, `ProviderRow`, `ProviderGlyphs`, `CodeCells`,
+  and `AuthTitle`, `OrDivider`, `QuietLinks`, `QuietLink`. The portal's `SignInPage` uses them.
+- Neutral-ink primary: new `Button` variant `neutral` (`action-neutral` tokens), used for every
+  filled action on the card. No star field (lead, 2026-10-19).
+- MethodsStep: **Sign in with a passkey** (ghost; `auth.passkey` + `passkeysSupported()`; same
+  options/verify routes as the step-up) and **Sign in with another device** under the rule.
+- DeviceStep (new side, PX-W14 routes): QR, code, "Works for m:ss", poll, one-minute announcement,
+  denied / expired / disabled outcomes with their ways on.
+- Approver: `ApproveDeviceDialog` (lookup, review, Approve / Deny, step-up through `StepUpInline`,
+  outcomes), opened by `#/account/approve?code=` (router rewrites to `?approve=`) or **Approve a new
+  device** under Where you're signed in.
+- e2e: states `signin-passkey`, `signin-device`, `signin-device-denied`, `account-approve`,
+  `account-approve-step-up`, `account-approve-enter`; PENDING rows 4.23 and 4.24 removed.
+
+Not done (owners):
+
+- New sentences are in `portal/copy/signin.ts` under the keys they will take, not in the catalog (a
+  key is nine locales and every SDK table, and LK-08a is rewriting the same file): one batch with
+  LK-08a.
+- The Worker twin `renderAuthCard()`: I-38a, after LK-07 and LK-04 (lead).
+- Help, Privacy and Terms under the card: no public destination yet (Help needs a session).
+- One `CodeEntry` for SignInPage, StepUp and SignInMethods (the cells are shared; the surrounding
+  flows differ), `KeyField` promotion, conditional passkey UI, HintStep, ReturnStep and the
+  passthrough header (their wire is PX-14 / PX-W13), and the console card (ST-30).

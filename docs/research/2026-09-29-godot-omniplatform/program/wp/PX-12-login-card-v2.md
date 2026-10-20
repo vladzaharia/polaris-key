@@ -193,3 +193,10 @@ PX-14, PX-15 and PX-21 build on the v2 card.
 
 The role agent sets `--set PX-12 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set PX-12 done`.
+
+## Progress and continuation (2026-10-19)
+
+Landed with P0-38 (same branch): passkey button, **Sign in with another device** and its code step,
+the neutral-ink card. Left: `UsualMethodHint` / `pk_last_method` (HintStep), passkey conditional UI
+(`mediation: "conditional"`), `signalUnknownCredential`, `AccountUpgrade` (PX-W9 wire), PX-21's
+FinishStep (not reached).
