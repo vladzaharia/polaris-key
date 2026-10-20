@@ -67,6 +67,14 @@ import {
 } from "./core/registry/registryHost.js";
 import { dispatchImgHost, isImgHost } from "./core/assets/imgHost.js";
 import {
+  CUSTOMER_ROUTE_KINDS,
+  apiOrigin,
+  customerHostOwnResponse,
+  isCustomerHostOwnPath,
+} from "./core/customerHost.js";
+import { isCustomerHost } from "./core/hosts.js";
+import { customerHostMode } from "./core/licensing/manageUrl.js";
+import {
   drainRenderQueue,
   watchRenderEnqueues,
 } from "./core/registry/registryQueue.js";
@@ -180,7 +188,20 @@ async function routeRequest(
   // `IMG_ORIGIN` unset (or equal to the bytes or registry host, checked above) this is always
   // false, and routing is exactly what it was before the image host existed.
   if (isImgHost(url, env)) return dispatchImgHost(req, env, db, now, exec);
+  // The customer host (LK-03) reaches ONLY the customer routes (`core/customerHost.ts`). With
+  // `CUSTOMER_ORIGIN` unset (or naming the console or an earlier host) this is always false, and
+  // routing is exactly what it was before the customer host existed.
+  const onCustomerHost = isCustomerHost(url, env);
+  if (onCustomerHost && isCustomerHostOwnPath(url.pathname))
+    return customerHostOwnResponse(
+      req,
+      env,
+      url.pathname,
+      await customerHostMode(env, db),
+    );
   const route = matchRoute(url.pathname);
+  if (onCustomerHost && !CUSTOMER_ROUTE_KINDS.has(route.kind))
+    return notFound();
   // The portal is one account across every product, so it has no product to dispatch on; when
   // it reaches a product's downloads it asks for that product's hooks (P2b-04: the delivery
   // access every download surface reads), built here from the composition root's registry under
@@ -235,7 +256,15 @@ async function routeRequest(
     case "signInEntry":
       return handleSignInEntry(req);
     case "deviceEntry":
-      return handleDeviceEntry(req, env, route.tv, now);
+      return handleDeviceEntry(
+        req,
+        env,
+        route.tv,
+        now,
+        // On the customer host the product's page lives on the API host: a fixed origin from
+        // configuration, never from the request (LK-00 §7.13).
+        onCustomerHost ? apiOrigin(env) : null,
+      );
     case "portalSpa":
     case "portalApi":
     case "portalLogin":

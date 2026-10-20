@@ -345,7 +345,7 @@ async function bindKey(
     if (gate.kind === "owned")
       return refuse({
         reason: "license_owned",
-        signInUrl: buildSignInUrl(env, req, product),
+        signInUrl: await buildSignInUrl(env, db, req, product),
       });
     const manageUrl = await buildManageUrl(env, db, req, product, {
       kind: "key_entry_limit",

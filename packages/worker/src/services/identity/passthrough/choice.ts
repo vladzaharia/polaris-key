@@ -39,7 +39,10 @@ import {
   type AnchorCandidates,
 } from "../../../core/licensing/anchor.js";
 import { accountGrant } from "../../../core/licensing/issueAccount.js";
-import { buildManageUrl } from "../../../core/licensing/manageUrl.js";
+import {
+  buildManageUrl,
+  customerOriginOf,
+} from "../../../core/licensing/manageUrl.js";
 import type { OidcIdentity } from "../../../core/licensing/issue.js";
 import { getAccountRow } from "../accounts/repo.js";
 import { discoverIdentity } from "../portal/store/obtain.js";
@@ -183,7 +186,8 @@ export async function licenseChoiceView(
     const activateUrl =
       (await buildManageUrl(cx.env, db, req, product, {
         kind: "key_entry_limit",
-      })) ?? `${new URL(req.url).origin}/activate?product=${product.slug}`;
+      })) ??
+      `${(await customerOriginOf(cx.env, db, req)) ?? new URL(req.url).origin}/activate?product=${product.slug}`;
     getLicenseMember = {
       activateUrl,
       purchaseUrl: null,
@@ -215,7 +219,7 @@ async function choiceRow(
     : null; /* the card's own address */
   const freeDeviceUrl =
     card && full && portal
-      ? `${new URL(req.url).origin}/#/p/${encodeURIComponent(cx.product.slug)}/free-device?license=${encodeURIComponent(c.licenseId)}${
+      ? `${(await customerOriginOf(cx.env, cx.db, req)) ?? new URL(req.url).origin}/#/p/${encodeURIComponent(cx.product.slug)}/free-device?license=${encodeURIComponent(c.licenseId)}${
           card.deviceLabel ? `&for=${encodeURIComponent(card.deviceLabel)}` : ""
         }&return=${encodeURIComponent(returnTo ?? "")}`
       : null;

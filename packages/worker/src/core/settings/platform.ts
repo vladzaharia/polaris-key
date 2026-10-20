@@ -129,6 +129,32 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     storage: { kind: "scalar", storedAs: "LAZY_DELTA_MAX_BYTES" },
     since: "A-13",
   }),
+  // LK-03: the customer-host switch. Brand, links and old-URL redirects move together (LK-00 D1).
+  // Ordered: `up` is toward `permanent`. Every change is a step-up: it changes where customers
+  // land and what the browser caches (a 301 outlives a rollback). The console refuses `on` until
+  // the host answers its health check.
+  setting({
+    key: "customer.host",
+    aliases: ["CUSTOMER_HOST"],
+    scope: "platform",
+    service: "platform",
+    area: "identity",
+    label: "Customer site",
+    description:
+      "Moves customer links, the brand and the old-URL redirects to the customer site together. On redirects with 302; permanent redirects with 301. Off needs no host.",
+    keywords: ["locker", "customer", "host", "domain", "redirect"],
+    docs: PLATFORM_DOCS,
+    value: { kind: "enum", values: ["off", "on", "permanent"] },
+    defaultValue: "off",
+    merge: "cascade",
+    varName: "CUSTOMER_HOST",
+    precedence: "ceiling",
+    ownership: "operator",
+    confirm: { change: "L2" },
+    readers: ["core/hosts.ts", "core/licensing/manageUrl.ts"],
+    storage: { kind: "scalar", storedAs: "CUSTOMER_HOST" },
+    since: "LK-03",
+  }),
   setting({
     key: "blobs.gc.mode",
     aliases: ["BLOB_GC_MODE"],
