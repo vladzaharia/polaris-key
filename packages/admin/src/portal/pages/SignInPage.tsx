@@ -115,13 +115,14 @@ function resendDelay(out: PortalEmailSent | undefined): number {
 }
 
 /**
- * The brand row (SIGN-IN.md §3.1): the compact lockup, 22 px on the portal's own sign-in; in an
- * app or product context it drops to 18 px in muted text so the product reads first.
+ * The brand row (SIGN-IN.md §3.1): one 40 px Locker lockup on every sign-in surface, the same as
+ * the Worker's pages; muted in an app or product context so the product reads first. The size
+ * never changes between steps.
  */
 function AuthBrand({ muted }: { muted: boolean }): React.ReactElement {
   return (
     <span className={muted ? "text-fg-muted opacity-80" : undefined}>
-      <Lockup height={muted ? 18 : 22} />
+      <Lockup height={40} />
     </span>
   );
 }
