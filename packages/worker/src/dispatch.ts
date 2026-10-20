@@ -71,10 +71,10 @@ import {
   apiOrigin,
   customerHostOwnResponse,
   isCustomerHostOwnPath,
+  oldCustomerUrlRedirect,
 } from "./core/customerHost.js";
 import { customerHostname, isCustomerHost } from "./core/hosts.js";
 import { relatedOriginsResponse } from "./core/customerHost.js";
-import { customerHostMode } from "./core/licensing/manageUrl.js";
 import {
   drainRenderQueue,
   watchRenderEnqueues,
@@ -194,12 +194,7 @@ async function routeRequest(
   // routing is exactly what it was before the customer host existed.
   const onCustomerHost = isCustomerHost(url, env);
   if (onCustomerHost && isCustomerHostOwnPath(url.pathname))
-    return customerHostOwnResponse(
-      req,
-      env,
-      url.pathname,
-      await customerHostMode(env, db),
-    );
+    return customerHostOwnResponse(req, env, url.pathname);
   const route = matchRoute(url.pathname);
   if (onCustomerHost && !CUSTOMER_ROUTE_KINDS.has(route.kind))
     return notFound();
@@ -217,6 +212,11 @@ async function routeRequest(
       status: 302,
       headers: { location: "/manage", "cache-control": "no-store" },
     });
+  // LK-17: with a usable customer host, the old customer URLs on the console host redirect to it.
+  if (!onCustomerHost) {
+    const moved = oldCustomerUrlRedirect(req, env, route, url);
+    if (moved) return moved;
+  }
   // The portal is one account across every product, so it has no product to dispatch on; when
   // it reaches a product's downloads it asks for that product's hooks (P2b-04: the delivery
   // access every download surface reads), built here from the composition root's registry under

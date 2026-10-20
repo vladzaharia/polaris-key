@@ -47,3 +47,9 @@ The role agent sets `--set LK-11 in-review` when it hands off; the lead sets `do
 - `docs/DEPLOYMENT.md` and `docs/RUNBOOK.md`: attached and inert, the rollback floor (never below LK-03 while the domain exists), emergency detach.
 
 Remaining LK-11: old-URL redirects, cookie expiry, the switch steps, and the `/activate` 302 smoke line, after LK-04, LK-06, LK-07, LK-10 and O5-O10. Status stays in-progress.
+
+## LK-17 note (2026-10-19)
+
+The hard cutover (no `customer.host` switch; old-URL redirects; console hash hand-off) is LK-17.
+Left for LK-14: add `https://key.plrs.im/` answering 302 to `/manage` to the deploy smoke once
+LK-14's `/` redirect is merged. `/` is not redirected by LK-17.

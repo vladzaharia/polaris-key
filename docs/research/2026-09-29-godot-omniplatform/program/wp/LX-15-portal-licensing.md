@@ -1,16 +1,18 @@
-# LX-15 Portal licensing: duration line, add-ons and Automatic grant
+# LX-15 Dropped (portal UI absorbed 2026-10-19 by PX-28b): Portal licensing: duration line, add-ons and Automatic grant
 
-| Field       | Value                                                                                                                                                                                                       |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase B: the model, server-only)                                                                                                                |
-| Size        | 0.5–0.7 engineer-weeks                                                                                                                                                                                      |
-| Depends on  | [LX-09](LX-09-entitlement-resolver.md), [LX-10](LX-10-anchor-choice.md), [PX-W6](PX-W6-purchase-source.md), [LX-41](LX-41-durations-subscriptions-core-trials.md), [P0-36](P0-36-portal-on-copy-catalog.md) |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [CM-11](CM-11-portal-billing.md), [CM-26](CM-26-portal-account-purchases-across.md), [PX-28](PX-28-license-page-v2.md)                                              |
-| Role        | `pkey-implementer`                                                                                                                                                                                          |
-| Plan mode   | no                                                                                                                                                                                                          |
-| Gates       | portal e2e                                                                                                                                                                                                  |
-| Human input | none                                                                                                                                                                                                        |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                   |
+| Field       | Value                                                                                        |
+| ----------- | -------------------------------------------------------------------------------------------- |
+| Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase B: the model, server-only) |
+| Size        | 0.5–0.7 engineer-weeks                                                                       |
+| Depends on  | none                                                                                         |
+| Unblocks    | none                                                                                         |
+| Role        | `pkey-implementer`                                                                           |
+| Plan mode   | no                                                                                           |
+| Gates       | portal e2e                                                                                   |
+| Human input | none                                                                                         |
+| Repo        | `vladzaharia/polaris-key`                                                                    |
+
+> **Portal UI absorbed 2026-10-19 by [PX-28b](PX-28b-license-duration-addons.md). This brief stays as the original spec.**
 
 ## Amendments from approved plans (2026-10-05)
 

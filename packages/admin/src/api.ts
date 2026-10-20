@@ -73,6 +73,11 @@ export interface Me {
   environment?: ConsoleEnvironment | null;
   /** When the admin session ends, epoch seconds (A-1; the session is a hard 8 h). */
   sessionExpiresAt?: number;
+  /**
+   * The customer site's origin (`https://polaris.locker`) when the worker has one (LK-17); the
+   * console hands an old portal hash to it. `null`/absent otherwise.
+   */
+  customerOrigin?: string | null;
   /** When the operator last signed in interactively (I-12 step-up); `null` on an older session. */
   authAt?: number | null;
   /** How recent that sign-in must be for a step-up action (the relink tool). */

@@ -721,7 +721,7 @@ that breaks one does not ship.
 
 ### 1.6 Marks
 
-- Kit screens show **no Polaris Key mark and no Polaris Locker mark or coral**. Kits may name Polaris Locker as a destination in words ("Manage in Polaris Locker", the sign-in footer, the device-code address); they never draw its mark. The Locker name reaches kits through the copy tables when `customer.host` turns on. The Powered-by line says Polaris Locker (the Locker mark and coral appear only inside it). The optional Powered-by
+- Kit screens show **no Polaris Key mark and no Polaris Locker mark or coral**. Kits may name Polaris Locker as a destination in words ("Manage in Polaris Locker", the sign-in footer, the device-code address); they never draw its mark. The Locker name reaches kits through the copy tables when `CUSTOMER_ORIGIN` is set. The Powered-by line says Polaris Locker (the Locker mark and coral appear only inside it). The optional Powered-by
   line or badge is the only place a mark is drawn; the Star Cut does not appear in SDK UI at all. This supersedes BRAND §7.1's two
   "SDK UI" rows (§9).
 - The Powered-by line is `<Locker micro mark, 16 px> Powered by Polaris Locker` in live text, `text-subtle` at 12–13 px,

@@ -2430,25 +2430,29 @@ polaris-key-deltas-<env>`).
 
 ## Customer host (Polaris Locker)
 
-The customer site is a second host on this Worker, `CUSTOMER_ORIGIN`, moved to by the
-`customer.host` switch (`off` → `on` → `permanent`). It is off in every environment until the owner
-turns it on. Since LK-11 the host is attached in every environment and inert: it answers its own
-routes and the health check, and nothing links to it. The deploy smoke check covers it.
+The customer site (Polaris Locker) is a second host on this Worker, `CUSTOMER_ORIGIN`; the console
+(`key.plrs.im`) is the backend side. There is no switch (LK-17): the host is on exactly when
+`CUSTOMER_ORIGIN` is a usable origin, so the cutover is the deploy that sets it. The deploy smoke
+check covers it.
 
-**Move customers.** Check `https://<customer>/.well-known/polaris-host.json` answers
-`{host: "customer", environment, version}` with this environment. Set `customer.host` to `on` in
-Platform → Settings (typed confirmation). Customer links, discovery's `accountPortal` and the device
-code page move together. Watch sign-in, then `permanent` after the soak.
+**Cut over.** Before the deploy: the customer host's callbacks are registered with each sign-in
+provider, and `polaris.locker` is active in the account. Deploy. Customer links, discovery's
+`accountPortal` and the device code page move together, and the old customer pages on `key.plrs.im`
+redirect to the same path on the customer host (`301` for pages, `302` with `no-store` for a path
+that carries a token or code). `/signin?request=` stays on the API host (the sign-in bind hop). Watch
+sign-in after the deploy.
 
-**Roll back.** Set `customer.host` to `off`, or deploy `CUSTOMER_HOST = "off"` for a hard off no
-console value overrides. Links return to the console origin at once. Rolling the Worker back below
-LK-03 while the custom domain is attached leaves the host serving the console's routes.
+**Roll back.** Remove `CUSTOMER_ORIGIN` from `[vars]` (and the customer routes) and redeploy. Links
+return to the console origin and the redirects stop. A browser that has seen a `301` keeps it until
+its cache is cleared, so a rolled-back customer page can still land on the customer host: keep the
+host attached (or let it serve) until that has aged out. Rolling the Worker back below LK-03 while
+the custom domain is attached leaves the host serving the console's routes.
 
 **Rollback floor.** The floor is the LK-11 release (the first with the routes in `wrangler.toml`).
 Never roll the Worker back below LK-03 while `polaris.locker` is attached (plan §9): the older
 code does not know the host and would serve it the console and every product route.
 
-**Emergency detach.** With the switch `off`, delete the Worker custom domain `polaris.locker` in
+**Emergency detach.** After removing `CUSTOMER_ORIGIN`, delete the Worker custom domain `polaris.locker` in
 the dashboard (Worker → Settings → Domains & Routes), or remove the customer
 `[[env.<env>.routes]]` entry and redeploy. The host then stops resolving to the Worker; the API
 host is untouched. Detach before rolling back below LK-03.

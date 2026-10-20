@@ -195,8 +195,6 @@ describe("the settings registry (ST-03)", () => {
     const pairs: Array<[string, string]> = [
       ["LAZY_DELTAS", "deltas.lazy.mode"],
       ["LAZY_DELTA_MAX_BYTES", "deltas.lazy.maxBytes"],
-      // LK-03: the customer-host switch.
-      ["CUSTOMER_HOST", "customer.host"],
       ["BLOB_GC_MODE", "blobs.gc.mode"],
       ["BLOB_GC_GRACE_DAYS", "blobs.gc.graceDays"],
       ["LICENSING_RESERVED_NAMES", "licensing.reservedNames"],

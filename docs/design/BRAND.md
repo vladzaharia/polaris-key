@@ -1137,7 +1137,7 @@ entry points; body copy uses glossary words, and no marketing name becomes a pro
 | Packs (update) | none: a capability of Update | none: under Releases            | Content Packs         |
 | Locker         | none: a subbrand, not a slug | none: the customer-facing brand | Polaris Locker        |
 
-**Polaris Locker** is not a service slug. It is the customer site (Library, Discover, Account, the sign-in card, the device page), a destination with its own `locker` brand namespace (D8). Polaris Locker is the brand customers see (the customer site, customer mail, Help, SDK presentation, badges); the customer site shows it once `customer.host` is on. Polaris Key is the platform and its backend: the Polaris Key Console at `key.plrs.im`, the developer docs, the CLI and the API (LK-00 §15). The words "portal" and "customer portal" are internal and leave every string.
+**Polaris Locker** is not a service slug. It is the customer site (Library, Discover, Account, the sign-in card, the device page), a destination with its own `locker` brand namespace (D8). Polaris Locker is the brand customers see (the customer site, customer mail, Help, SDK presentation, badges); the customer site shows it once `CUSTOMER_ORIGIN` is set. Polaris Key is the platform and its backend: the Polaris Key Console at `key.plrs.im`, the developer docs, the CLI and the API (LK-00 §15). The words "portal" and "customer portal" are internal and leave every string.
 
 Eight slugs, nine marketing entry points, six console features. Ship builds is one console
 identity (Package glyph, Release cyan); the marketing identities (Delivery, Update tangerine, Packs

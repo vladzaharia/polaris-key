@@ -29,6 +29,7 @@ import {
   STEP_UP_MAX_AGE_SECONDS,
   type AdminSession,
 } from "../../core/console/session.js";
+import { hostOrigin } from "../../core/hosts.js";
 import { adminJson } from "../../core/console/respond.js";
 
 /** The deployments the console can name. */
@@ -69,6 +70,8 @@ export async function handleMe(
     products: adminProducts,
     permissions: permissionsOf(principal, visible),
     environment: consoleEnvironment(env),
+    // LK-17: where an old portal hash goes; `null` while there is no customer host.
+    customerOrigin: hostOrigin("customer", env),
     sessionExpiresAt: session.exp,
     // I-12: when the operator last signed in interactively, for the relink tool's step-up (a
     // sign-in no older than `stepUpMaxAgeSeconds`). `null` for a session minted before I-12.

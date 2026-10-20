@@ -4,7 +4,7 @@
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | CM: Commerce: store commerce (required) and Polaris Key checkout (deferred) (DX consolidation H: Distribution channels, storefronts and commerce) |
 | Size        | 0.6–0.9 engineer-weeks                                                                                                                            |
-| Depends on  | [CM-22](CM-22-purchases-ledger-one-revocation-path.md), [LX-15](LX-15-portal-licensing.md), [CM-29](CM-29-commerce-service.md)                    |
+| Depends on  | [CM-22](CM-22-purchases-ledger-one-revocation-path.md), [CM-29](CM-29-commerce-service.md), [PX-28b](PX-28b-license-duration-addons.md)           |
 | Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [CM-11](CM-11-portal-billing.md)                                                                          |
 | Role        | `pkey-implementer`                                                                                                                                |
 | Plan mode   | no                                                                                                                                                |

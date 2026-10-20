@@ -11,7 +11,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Sign in · Polaris Key (prototype)</title>
+    <title>Sign in · Polaris Locker (prototype)</title>
     <style>
       /*
  * The integrated web flow prototype (SIGN-IN.md §4.16) and its motion (§3.18). The AuthCard
@@ -173,6 +173,68 @@
         --pk-border-subtle: #212633;
         --pk-border-strong: #61697b;
         --pk-focus: #9a5cff;
+        --pk-action: #f6f8ff;
+        --pk-action-on: #060912;
+        --pk-action-hover: #dee0e7;
+        --pk-action-pressed: #c1c3cb;
+        --pk-action-disabled: #2c2f38;
+        --pk-action-disabled-on: #969eb2;
+        --pk-state-core-ring: #9a5cff;
+        --pk-state-core-selected-fill: #18132e;
+        --pk-state-core-hover-tint: #100f23;
+        --pk-state-core-checked-fill: #9a5cff;
+        --pk-state-core-checked-on: #060912;
+        --pk-state-core-checked-edge: #9a5cff;
+        --pk-state-core-context-edge: #9a5cff;
+        --pk-state-license-ring: #c6e940;
+        --pk-state-license-selected-fill: #1d2418;
+        --pk-state-license-hover-tint: #131915;
+        --pk-state-license-checked-fill: #c6e940;
+        --pk-state-license-checked-on: #060912;
+        --pk-state-license-checked-edge: #c6e940;
+        --pk-state-license-context-edge: #c6e940;
+        --pk-state-config-ring: #fac700;
+        --pk-state-config-selected-fill: #232010;
+        --pk-state-config-hover-tint: #171611;
+        --pk-state-config-checked-fill: #fac700;
+        --pk-state-config-checked-on: #060912;
+        --pk-state-config-checked-edge: #fac700;
+        --pk-state-config-context-edge: #fac700;
+        --pk-state-release-ring: #00dbfd;
+        --pk-state-release-selected-fill: #05222e;
+        --pk-state-release-hover-tint: #061822;
+        --pk-state-release-checked-fill: #00dbfd;
+        --pk-state-release-checked-on: #060912;
+        --pk-state-release-checked-edge: #00dbfd;
+        --pk-state-release-context-edge: #00dbfd;
+        --pk-state-distribution-ring: #39d075;
+        --pk-state-distribution-selected-fill: #0c211e;
+        --pk-state-distribution-hover-tint: #0a1719;
+        --pk-state-distribution-checked-fill: #39d075;
+        --pk-state-distribution-checked-on: #060912;
+        --pk-state-distribution-checked-edge: #39d075;
+        --pk-state-distribution-context-edge: #39d075;
+        --pk-state-update-ring: #fe8001;
+        --pk-state-update-selected-fill: #241710;
+        --pk-state-update-hover-tint: #171111;
+        --pk-state-update-checked-fill: #fe8001;
+        --pk-state-update-checked-on: #060912;
+        --pk-state-update-checked-edge: #fe8001;
+        --pk-state-update-context-edge: #fe8001;
+        --pk-state-identity-ring: #d77df2;
+        --pk-state-identity-selected-fill: #1f172d;
+        --pk-state-identity-hover-tint: #151122;
+        --pk-state-identity-checked-fill: #d77df2;
+        --pk-state-identity-checked-on: #060912;
+        --pk-state-identity-checked-edge: #d77df2;
+        --pk-state-identity-context-edge: #d77df2;
+        --pk-state-sync-ring: #14f8e1;
+        --pk-state-sync-selected-fill: #08262b;
+        --pk-state-sync-hover-tint: #071a20;
+        --pk-state-sync-checked-fill: #14f8e1;
+        --pk-state-sync-checked-on: #060912;
+        --pk-state-sync-checked-edge: #14f8e1;
+        --pk-state-sync-context-edge: #14f8e1;
         --pk-brand-violet: #9a5cff;
         --pk-brand-gold: #ffc24d;
         --pk-brand-star: #ffffff;
@@ -180,6 +242,11 @@
         --pk-brand-text: #ffffff;
         --pk-brand-muted: #dbe4ff;
         --pk-brand-rose: #ff6fa6;
+        --pk-locker-accent: #ff7869;
+        --pk-locker-fg: #ff7869;
+        --pk-locker-on: #060912;
+        --pk-locker-subtle: #171a23;
+        --pk-locker-hover: #10131b;
         --pk-service-core: #9a5cff;
         --pk-service-core-fg: #9a5cff;
         --pk-service-core-on: #060912;
@@ -214,6 +281,11 @@
         --pk-service-identity-on: #060912;
         --pk-service-identity-subtle: #1f172d;
         --pk-service-identity-bit: #d77df2;
+        --pk-service-sync: #14f8e1;
+        --pk-service-sync-fg: #14f8e1;
+        --pk-service-sync-on: #060912;
+        --pk-service-sync-subtle: #08262b;
+        --pk-service-sync-bit: #14f8e1;
         --pk-success: #56d57b;
         --pk-success-on: #060912;
         --pk-success-border: #3b9555;
@@ -256,6 +328,68 @@
           --pk-border-subtle: #dadee9;
           --pk-border-strong: #7e8699;
           --pk-focus: #7a2fff;
+          --pk-action: #060912;
+          --pk-action-on: #ffffff;
+          --pk-action-hover: #23262e;
+          --pk-action-pressed: #444750;
+          --pk-action-disabled: #d4d7de;
+          --pk-action-disabled-on: #5d667b;
+          --pk-state-core-ring: #7a2fff;
+          --pk-state-core-selected-fill: #eae4ff;
+          --pk-state-core-hover-tint: #efecff;
+          --pk-state-core-checked-fill: #7a2fff;
+          --pk-state-core-checked-on: #ffffff;
+          --pk-state-core-checked-edge: #7a2fff;
+          --pk-state-core-context-edge: #7a2fff;
+          --pk-state-license-ring: #556e00;
+          --pk-state-license-selected-fill: #e8ede6;
+          --pk-state-license-hover-tint: #eef1f0;
+          --pk-state-license-checked-fill: #6d8600;
+          --pk-state-license-checked-on: #060912;
+          --pk-state-license-checked-edge: #556e00;
+          --pk-state-license-context-edge: #556e00;
+          --pk-state-config-ring: #866500;
+          --pk-state-config-selected-fill: #ebeae6;
+          --pk-state-config-hover-tint: #f0eff0;
+          --pk-state-config-checked-fill: #8b6902;
+          --pk-state-config-checked-on: #ffffff;
+          --pk-state-config-checked-edge: #866500;
+          --pk-state-config-context-edge: #866500;
+          --pk-state-release-ring: #007487;
+          --pk-state-release-selected-fill: #ddedf6;
+          --pk-state-release-hover-tint: #e7f2f9;
+          --pk-state-release-checked-fill: #008ca3;
+          --pk-state-release-checked-on: #060912;
+          --pk-state-release-checked-edge: #007487;
+          --pk-state-release-context-edge: #007487;
+          --pk-state-distribution-ring: #05773b;
+          --pk-state-distribution-selected-fill: #deebeb;
+          --pk-state-distribution-hover-tint: #e8f0f3;
+          --pk-state-distribution-checked-fill: #05773b;
+          --pk-state-distribution-checked-on: #ffffff;
+          --pk-state-distribution-checked-edge: #05773b;
+          --pk-state-distribution-context-edge: #05773b;
+          --pk-state-update-ring: #aa5000;
+          --pk-state-update-selected-fill: #f0e8e6;
+          --pk-state-update-hover-tint: #f2eef0;
+          --pk-state-update-checked-fill: #b95800;
+          --pk-state-update-checked-on: #ffffff;
+          --pk-state-update-checked-edge: #aa5000;
+          --pk-state-update-context-edge: #aa5000;
+          --pk-state-identity-ring: #9e34ae;
+          --pk-state-identity-selected-fill: #ede4f7;
+          --pk-state-identity-hover-tint: #f1ecfa;
+          --pk-state-identity-checked-fill: #9e34ae;
+          --pk-state-identity-checked-on: #ffffff;
+          --pk-state-identity-checked-edge: #9e34ae;
+          --pk-state-identity-context-edge: #9e34ae;
+          --pk-state-sync-ring: #086260;
+          --pk-state-sync-selected-fill: #dee9ef;
+          --pk-state-sync-hover-tint: #e8eff5;
+          --pk-state-sync-checked-fill: #086260;
+          --pk-state-sync-checked-on: #ffffff;
+          --pk-state-sync-checked-edge: #086260;
+          --pk-state-sync-context-edge: #086260;
           --pk-brand-violet: #7a2fff;
           --pk-brand-gold: #d07a00;
           --pk-brand-star: #7a2fff;
@@ -263,25 +397,30 @@
           --pk-brand-text: #060912;
           --pk-brand-muted: #48536b;
           --pk-brand-rose: #e0348a;
+          --pk-locker-accent: #c44438;
+          --pk-locker-fg: #b8382e;
+          --pk-locker-on: #ffffff;
+          --pk-locker-subtle: #e5e7ee;
+          --pk-locker-hover: #eceef6;
           --pk-service-core: #7a2fff;
           --pk-service-core-fg: #7a2fff;
           --pk-service-core-on: #ffffff;
           --pk-service-core-subtle: #eae4ff;
-          --pk-service-license: #708d00;
+          --pk-service-license: #6d8600;
           --pk-service-license-fg: #556e00;
           --pk-service-license-on: #060912;
-          --pk-service-license-subtle: #e9ede6;
-          --pk-service-license-bit: #708d00;
+          --pk-service-license-subtle: #e8ede6;
+          --pk-service-license-bit: #6d8600;
           --pk-service-config: #8b6902;
           --pk-service-config-fg: #866500;
           --pk-service-config-on: #ffffff;
           --pk-service-config-subtle: #ebeae6;
           --pk-service-config-bit: #8b6902;
-          --pk-service-release: #0390a6;
+          --pk-service-release: #008ca3;
           --pk-service-release-fg: #007487;
           --pk-service-release-on: #060912;
-          --pk-service-release-subtle: #deeef6;
-          --pk-service-release-bit: #0390a6;
+          --pk-service-release-subtle: #ddedf6;
+          --pk-service-release-bit: #008ca3;
           --pk-service-distribution: #05773b;
           --pk-service-distribution-fg: #05773b;
           --pk-service-distribution-on: #ffffff;
@@ -297,6 +436,11 @@
           --pk-service-identity-on: #ffffff;
           --pk-service-identity-subtle: #ede4f7;
           --pk-service-identity-bit: #9e34ae;
+          --pk-service-sync: #086260;
+          --pk-service-sync-fg: #086260;
+          --pk-service-sync-on: #ffffff;
+          --pk-service-sync-subtle: #dee9ef;
+          --pk-service-sync-bit: #086260;
           --pk-success: #167337;
           --pk-success-on: #ffffff;
           --pk-success-border: #348f4f;
@@ -339,6 +483,68 @@
         --pk-border-subtle: #dadee9;
         --pk-border-strong: #7e8699;
         --pk-focus: #7a2fff;
+        --pk-action: #060912;
+        --pk-action-on: #ffffff;
+        --pk-action-hover: #23262e;
+        --pk-action-pressed: #444750;
+        --pk-action-disabled: #d4d7de;
+        --pk-action-disabled-on: #5d667b;
+        --pk-state-core-ring: #7a2fff;
+        --pk-state-core-selected-fill: #eae4ff;
+        --pk-state-core-hover-tint: #efecff;
+        --pk-state-core-checked-fill: #7a2fff;
+        --pk-state-core-checked-on: #ffffff;
+        --pk-state-core-checked-edge: #7a2fff;
+        --pk-state-core-context-edge: #7a2fff;
+        --pk-state-license-ring: #556e00;
+        --pk-state-license-selected-fill: #e8ede6;
+        --pk-state-license-hover-tint: #eef1f0;
+        --pk-state-license-checked-fill: #6d8600;
+        --pk-state-license-checked-on: #060912;
+        --pk-state-license-checked-edge: #556e00;
+        --pk-state-license-context-edge: #556e00;
+        --pk-state-config-ring: #866500;
+        --pk-state-config-selected-fill: #ebeae6;
+        --pk-state-config-hover-tint: #f0eff0;
+        --pk-state-config-checked-fill: #8b6902;
+        --pk-state-config-checked-on: #ffffff;
+        --pk-state-config-checked-edge: #866500;
+        --pk-state-config-context-edge: #866500;
+        --pk-state-release-ring: #007487;
+        --pk-state-release-selected-fill: #ddedf6;
+        --pk-state-release-hover-tint: #e7f2f9;
+        --pk-state-release-checked-fill: #008ca3;
+        --pk-state-release-checked-on: #060912;
+        --pk-state-release-checked-edge: #007487;
+        --pk-state-release-context-edge: #007487;
+        --pk-state-distribution-ring: #05773b;
+        --pk-state-distribution-selected-fill: #deebeb;
+        --pk-state-distribution-hover-tint: #e8f0f3;
+        --pk-state-distribution-checked-fill: #05773b;
+        --pk-state-distribution-checked-on: #ffffff;
+        --pk-state-distribution-checked-edge: #05773b;
+        --pk-state-distribution-context-edge: #05773b;
+        --pk-state-update-ring: #aa5000;
+        --pk-state-update-selected-fill: #f0e8e6;
+        --pk-state-update-hover-tint: #f2eef0;
+        --pk-state-update-checked-fill: #b95800;
+        --pk-state-update-checked-on: #ffffff;
+        --pk-state-update-checked-edge: #aa5000;
+        --pk-state-update-context-edge: #aa5000;
+        --pk-state-identity-ring: #9e34ae;
+        --pk-state-identity-selected-fill: #ede4f7;
+        --pk-state-identity-hover-tint: #f1ecfa;
+        --pk-state-identity-checked-fill: #9e34ae;
+        --pk-state-identity-checked-on: #ffffff;
+        --pk-state-identity-checked-edge: #9e34ae;
+        --pk-state-identity-context-edge: #9e34ae;
+        --pk-state-sync-ring: #086260;
+        --pk-state-sync-selected-fill: #dee9ef;
+        --pk-state-sync-hover-tint: #e8eff5;
+        --pk-state-sync-checked-fill: #086260;
+        --pk-state-sync-checked-on: #ffffff;
+        --pk-state-sync-checked-edge: #086260;
+        --pk-state-sync-context-edge: #086260;
         --pk-brand-violet: #7a2fff;
         --pk-brand-gold: #d07a00;
         --pk-brand-star: #7a2fff;
@@ -346,25 +552,30 @@
         --pk-brand-text: #060912;
         --pk-brand-muted: #48536b;
         --pk-brand-rose: #e0348a;
+        --pk-locker-accent: #c44438;
+        --pk-locker-fg: #b8382e;
+        --pk-locker-on: #ffffff;
+        --pk-locker-subtle: #e5e7ee;
+        --pk-locker-hover: #eceef6;
         --pk-service-core: #7a2fff;
         --pk-service-core-fg: #7a2fff;
         --pk-service-core-on: #ffffff;
         --pk-service-core-subtle: #eae4ff;
-        --pk-service-license: #708d00;
+        --pk-service-license: #6d8600;
         --pk-service-license-fg: #556e00;
         --pk-service-license-on: #060912;
-        --pk-service-license-subtle: #e9ede6;
-        --pk-service-license-bit: #708d00;
+        --pk-service-license-subtle: #e8ede6;
+        --pk-service-license-bit: #6d8600;
         --pk-service-config: #8b6902;
         --pk-service-config-fg: #866500;
         --pk-service-config-on: #ffffff;
         --pk-service-config-subtle: #ebeae6;
         --pk-service-config-bit: #8b6902;
-        --pk-service-release: #0390a6;
+        --pk-service-release: #008ca3;
         --pk-service-release-fg: #007487;
         --pk-service-release-on: #060912;
-        --pk-service-release-subtle: #deeef6;
-        --pk-service-release-bit: #0390a6;
+        --pk-service-release-subtle: #ddedf6;
+        --pk-service-release-bit: #008ca3;
         --pk-service-distribution: #05773b;
         --pk-service-distribution-fg: #05773b;
         --pk-service-distribution-on: #ffffff;
@@ -380,6 +591,11 @@
         --pk-service-identity-on: #ffffff;
         --pk-service-identity-subtle: #ede4f7;
         --pk-service-identity-bit: #9e34ae;
+        --pk-service-sync: #086260;
+        --pk-service-sync-fg: #086260;
+        --pk-service-sync-on: #ffffff;
+        --pk-service-sync-subtle: #dee9ef;
+        --pk-service-sync-bit: #086260;
         --pk-success: #167337;
         --pk-success-on: #ffffff;
         --pk-success-border: #348f4f;
@@ -415,8 +631,33 @@
         --pk-accent-fg: var(--pk-service-core-fg);
         --pk-accent-on: var(--pk-service-core-on);
         --pk-accent-subtle: var(--pk-service-core-subtle);
+        --pk-state-ring: var(--pk-state-core-ring);
+        --pk-state-selected-fill: var(--pk-state-core-selected-fill);
+        --pk-state-hover-tint: var(--pk-state-core-hover-tint);
+        --pk-state-checked-fill: var(--pk-state-core-checked-fill);
+        --pk-state-checked-on: var(--pk-state-core-checked-on);
+        --pk-state-checked-edge: var(--pk-state-core-checked-edge);
+        --pk-state-context-edge: var(--pk-state-core-context-edge);
         --pk-section-bit: none;
         --pk-section-bit-display: none;
+      }
+
+      /* Polaris Locker (BRAND.md §15, D9a): coral is identity only: the mark, the 3 px selected-nav
+   marker, a 2 px link underline and the context edge. Selection, hover, focus, links and checked
+   controls are neutral ink. --pk-action stays neutral ink. */
+      [data-brand="locker"] {
+        --pk-accent: var(--pk-locker-accent);
+        --pk-accent-fg: var(--pk-text-strong);
+        --pk-accent-on: var(--pk-locker-on);
+        --pk-accent-subtle: var(--pk-locker-subtle);
+        --pk-focus: var(--pk-text-strong);
+        --pk-state-ring: var(--pk-text-strong);
+        --pk-state-selected-fill: var(--pk-locker-subtle);
+        --pk-state-hover-tint: var(--pk-locker-hover);
+        --pk-state-checked-fill: var(--pk-action);
+        --pk-state-checked-on: var(--pk-action-on);
+        --pk-state-checked-edge: var(--pk-action);
+        --pk-state-context-edge: var(--pk-locker-accent);
       }
 
       [data-service="license"] {
@@ -424,6 +665,13 @@
         --pk-accent-fg: var(--pk-service-license-fg);
         --pk-accent-on: var(--pk-service-license-on);
         --pk-accent-subtle: var(--pk-service-license-subtle);
+        --pk-state-ring: var(--pk-state-license-ring);
+        --pk-state-selected-fill: var(--pk-state-license-selected-fill);
+        --pk-state-hover-tint: var(--pk-state-license-hover-tint);
+        --pk-state-checked-fill: var(--pk-state-license-checked-fill);
+        --pk-state-checked-on: var(--pk-state-license-checked-on);
+        --pk-state-checked-edge: var(--pk-state-license-checked-edge);
+        --pk-state-context-edge: var(--pk-state-license-context-edge);
         --pk-section-bit: var(--pk-service-license-bit);
         --pk-section-bit-display: inline;
       }
@@ -433,6 +681,13 @@
         --pk-accent-fg: var(--pk-service-config-fg);
         --pk-accent-on: var(--pk-service-config-on);
         --pk-accent-subtle: var(--pk-service-config-subtle);
+        --pk-state-ring: var(--pk-state-config-ring);
+        --pk-state-selected-fill: var(--pk-state-config-selected-fill);
+        --pk-state-hover-tint: var(--pk-state-config-hover-tint);
+        --pk-state-checked-fill: var(--pk-state-config-checked-fill);
+        --pk-state-checked-on: var(--pk-state-config-checked-on);
+        --pk-state-checked-edge: var(--pk-state-config-checked-edge);
+        --pk-state-context-edge: var(--pk-state-config-context-edge);
         --pk-section-bit: var(--pk-service-config-bit);
         --pk-section-bit-display: inline;
       }
@@ -442,6 +697,13 @@
         --pk-accent-fg: var(--pk-service-release-fg);
         --pk-accent-on: var(--pk-service-release-on);
         --pk-accent-subtle: var(--pk-service-release-subtle);
+        --pk-state-ring: var(--pk-state-release-ring);
+        --pk-state-selected-fill: var(--pk-state-release-selected-fill);
+        --pk-state-hover-tint: var(--pk-state-release-hover-tint);
+        --pk-state-checked-fill: var(--pk-state-release-checked-fill);
+        --pk-state-checked-on: var(--pk-state-release-checked-on);
+        --pk-state-checked-edge: var(--pk-state-release-checked-edge);
+        --pk-state-context-edge: var(--pk-state-release-context-edge);
         --pk-section-bit: var(--pk-service-release-bit);
         --pk-section-bit-display: inline;
       }
@@ -451,6 +713,13 @@
         --pk-accent-fg: var(--pk-service-distribution-fg);
         --pk-accent-on: var(--pk-service-distribution-on);
         --pk-accent-subtle: var(--pk-service-distribution-subtle);
+        --pk-state-ring: var(--pk-state-distribution-ring);
+        --pk-state-selected-fill: var(--pk-state-distribution-selected-fill);
+        --pk-state-hover-tint: var(--pk-state-distribution-hover-tint);
+        --pk-state-checked-fill: var(--pk-state-distribution-checked-fill);
+        --pk-state-checked-on: var(--pk-state-distribution-checked-on);
+        --pk-state-checked-edge: var(--pk-state-distribution-checked-edge);
+        --pk-state-context-edge: var(--pk-state-distribution-context-edge);
         --pk-section-bit: var(--pk-service-distribution-bit);
         --pk-section-bit-display: inline;
       }
@@ -460,6 +729,13 @@
         --pk-accent-fg: var(--pk-service-update-fg);
         --pk-accent-on: var(--pk-service-update-on);
         --pk-accent-subtle: var(--pk-service-update-subtle);
+        --pk-state-ring: var(--pk-state-update-ring);
+        --pk-state-selected-fill: var(--pk-state-update-selected-fill);
+        --pk-state-hover-tint: var(--pk-state-update-hover-tint);
+        --pk-state-checked-fill: var(--pk-state-update-checked-fill);
+        --pk-state-checked-on: var(--pk-state-update-checked-on);
+        --pk-state-checked-edge: var(--pk-state-update-checked-edge);
+        --pk-state-context-edge: var(--pk-state-update-context-edge);
         --pk-section-bit: var(--pk-service-update-bit);
         --pk-section-bit-display: inline;
       }
@@ -469,8 +745,56 @@
         --pk-accent-fg: var(--pk-service-identity-fg);
         --pk-accent-on: var(--pk-service-identity-on);
         --pk-accent-subtle: var(--pk-service-identity-subtle);
+        --pk-state-ring: var(--pk-state-identity-ring);
+        --pk-state-selected-fill: var(--pk-state-identity-selected-fill);
+        --pk-state-hover-tint: var(--pk-state-identity-hover-tint);
+        --pk-state-checked-fill: var(--pk-state-identity-checked-fill);
+        --pk-state-checked-on: var(--pk-state-identity-checked-on);
+        --pk-state-checked-edge: var(--pk-state-identity-checked-edge);
+        --pk-state-context-edge: var(--pk-state-identity-context-edge);
         --pk-section-bit: var(--pk-service-identity-bit);
         --pk-section-bit-display: inline;
+      }
+
+      [data-service="sync"] {
+        --pk-accent: var(--pk-service-sync);
+        --pk-accent-fg: var(--pk-service-sync-fg);
+        --pk-accent-on: var(--pk-service-sync-on);
+        --pk-accent-subtle: var(--pk-service-sync-subtle);
+        --pk-state-ring: var(--pk-state-sync-ring);
+        --pk-state-selected-fill: var(--pk-state-sync-selected-fill);
+        --pk-state-hover-tint: var(--pk-state-sync-hover-tint);
+        --pk-state-checked-fill: var(--pk-state-sync-checked-fill);
+        --pk-state-checked-on: var(--pk-state-sync-checked-on);
+        --pk-state-checked-edge: var(--pk-state-sync-checked-edge);
+        --pk-state-context-edge: var(--pk-state-sync-context-edge);
+        --pk-section-bit: var(--pk-service-sync-bit);
+        --pk-section-bit-display: inline;
+      }
+
+      [data-service="commerce"] {
+        --pk-accent: var(--pk-service-distribution);
+        --pk-accent-fg: var(--pk-service-distribution-fg);
+        --pk-accent-on: var(--pk-service-distribution-on);
+        --pk-accent-subtle: var(--pk-service-distribution-subtle);
+        --pk-state-ring: var(--pk-state-distribution-ring);
+        --pk-state-selected-fill: var(--pk-state-distribution-selected-fill);
+        --pk-state-hover-tint: var(--pk-state-distribution-hover-tint);
+        --pk-state-checked-fill: var(--pk-state-distribution-checked-fill);
+        --pk-state-checked-on: var(--pk-state-distribution-checked-on);
+        --pk-state-checked-edge: var(--pk-state-distribution-checked-edge);
+        --pk-state-context-edge: var(--pk-state-distribution-context-edge);
+        --pk-section-bit: var(--pk-service-distribution-bit);
+        --pk-section-bit-display: inline;
+      }
+
+      /*
+ * Kit rule (B1, CM-29b): Commerce shares Distribution's green, which reads close to success, so a
+ * link in a Commerce page's content (inside main, so dialogs, the sidebar and other sections are untouched) is strong text (underlined by the kit), never the accent. The accent never
+ * encodes status. A link styled as a button (a background utility) keeps its own colours.
+ */
+      main [data-service="commerce"] a:not([class*="bg-"]) {
+        color: var(--pk-text-strong);
       }
 
       /* Where linear() is unsupported, the spring easing falls back to standard. */
@@ -2730,6 +3054,123 @@
         font-size: 13px;
       }
 
+      /* ---- S-24: the recommendation after a key (notes/S-24-licence-holders.md §9.2) ---- */
+      .reco {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 14px 16px;
+        border-radius: 14px;
+        border: 1px solid var(--pk-border-subtle);
+        background: var(--pk-surface-sunken);
+      }
+      .reco.flat {
+        padding: 0;
+        border: 0;
+        background: none;
+      }
+      .reco .rh {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .reco .rh b {
+        color: var(--pk-text-strong);
+        font-size: 15px;
+      }
+      .reco .rl {
+        display: grid;
+        grid-template-columns: 18px minmax(0, 1fr);
+        gap: 10px;
+        font-size: 14px;
+        line-height: 20px;
+        color: var(--pk-text-muted);
+      }
+      .reco .rl svg {
+        width: 18px;
+        height: 18px;
+        margin-top: 1px;
+        color: var(--pk-accent-fg);
+      }
+      .reco .rl b {
+        color: var(--pk-text-strong);
+        font-weight: 600;
+      }
+      .desk .reco {
+        font-size: 13px;
+      }
+      .desk .reco .rl {
+        font-size: 13px;
+      }
+      .desk .reco .db {
+        align-self: flex-start;
+      }
+      .dkf {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .desk .dkf .input {
+        height: 36px;
+        font-size: 13px;
+      }
+
+      /* ---------- Polaris Locker (BRAND §15, MK-L1) ----------
+   Every end-user card is Locker. The Locker lockup replaces the Key lockup (the console card
+   keeps Key). Coral is identity only (D9a): the mark and the link underline. The primary,
+   selected fills, links and the focus ring are neutral ink. No Key star field behind the card. */
+      :root,
+      [data-theme="dark"] {
+        --lk-lockup: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22460%22 height=%22128%22 viewBox=%220 0 460 128%22 %3E%3Cpath fill=%22%23ff7869%22 d=%22M8 49 Q8 47 10 45 L35 25 Q37 23 40 24 Q42 25 42 28 V85 H61 Q64 85 64 88 V102 H12 Q8 102 8 98 Z M73 84 L101 61 Q103 59 106 59 H116 Q120 59 120 63 V98 Q120 102 116 102 H76 Q72 102 72 98 V87 Q72 85 73 84 Z%22/%3E%3Cpath fill=%22%23ffffff%22 d=%22M74 41 Q75 41 75.5 43 L79.7 52.3 L89 56.5 Q91 57.5 89 58.5 L79.7 62.7 L75.5 72 Q74.5 74 73.5 72 L69.3 62.7 L60 58.5 Q58 57.5 60 56.5 L69.3 52.3 L73.5 43 Q74 41 74 41 Z%22/%3E%3Cg fill=%22%23dbe4ff%22 transform=%22translate(144,80) scale(0.044, -0.044)%22%3E%3Cpath transform=%22translate(0,0)%22 d=%22M102.1875 0Q91.78125 0 84.96875 6.8125Q78.15625 13.625 78.15625 24.03125V675.375Q78.15625 686.375 84.96875 693.1875Q91.78125 700 102.1875 700H369.5625Q448.09375 700 506.09375 675.28125Q564.09375 650.5625 596.25 601.109375Q628.40625 551.65625 628.40625 477.5625Q628.40625 403.46875 596.25 354.828125Q564.09375 306.1875 506.09375 282.28125Q448.09375 258.375 369.5625 258.375H221.1875V24.03125Q221.1875 13.625 214.375 6.8125Q207.5625 0 196.5625 0ZM219.15625 369.15625H364.5625Q422.71875 369.15625 454.046875 396.796875Q485.375 424.4375 485.375 478.375Q485.375 528.25 456.28125 558.53125Q427.1875 588.8125 364.5625 588.8125H219.15625Z%22/%3E%3Cpath transform=%22translate(659,0)%22 d=%22M296.0625 -10Q215.9375 -10 161.546875 17.96875Q107.15625 45.9375 78.40625 97.125Q49.65625 148.3125 46.4375 215.96875Q45.4375 234.21875 45.4375 260.203125Q45.4375 286.1875 46.4375 304.03125Q49.65625 372.6875 79.421875 423.375Q109.1875 474.0625 163.578125 502.03125Q217.96875 530 296.0625 530Q374.15625 530 428.546875 502.03125Q482.9375 474.0625 512.703125 423.375Q542.46875 372.6875 545.6875 304.03125Q547.09375 286.1875 547.09375 260.203125Q547.09375 234.21875 545.6875 215.96875Q542.46875 148.3125 513.71875 97.125Q484.96875 45.9375 430.578125 17.96875Q376.1875 -10 296.0625 -10ZM296.0625 89.4375Q349.40625 89.4375 378.375 122.859375Q407.34375 156.28125 409.9375 220.96875Q410.9375 235.96875 410.9375 260.0Q410.9375 284.03125 409.9375 299.03125Q407.34375 363.5 378.375 397.03125Q349.40625 430.5625 296.0625 430.5625Q243.125 430.5625 213.953125 397.03125Q184.78125 363.5 182.1875 299.03125Q181.1875 284.03125 181.1875 260.0Q181.1875 235.96875 182.1875 220.96875Q184.78125 156.28125 213.953125 122.859375Q243.125 89.4375 296.0625 89.4375Z%22/%3E%3Cpath transform=%22translate(1251,0)%22 d=%22M91 0Q80.59375 0 73.78125 6.8125Q66.96875 13.625 66.96875 24.03125V685.96875Q66.96875 696.375 73.78125 703.1875Q80.59375 710 91 710H173.8125Q184.21875 710 191.03125 703.1875Q197.84375 696.375 197.84375 685.96875V24.03125Q197.84375 13.625 191.03125 6.8125Q184.21875 0 173.8125 0Z%22/%3E%3Cpath transform=%22translate(1516,0)%22 d=%22M216.9375 -10Q165.28125 -10 123.359375 10.40625Q81.4375 30.8125 56.640625 65.328125Q31.84375 99.84375 31.84375 143.0625Q31.84375 213.09375 88.671875 254.296875Q145.5 295.5 238.375 309.53125L375.25 329.5V350.6875Q375.25 392.71875 354.125 415.703125Q333 438.6875 282.3125 438.6875Q245.75 438.6875 223.296875 424.28125Q200.84375 409.875 189.65625 386.21875Q182.21875 372.84375 167 372.84375H88.4375Q77.25 372.84375 71.640625 379.140625Q66.03125 385.4375 66.4375 394.84375Q66.84375 410.875 79.171875 433.703125Q91.5 456.53125 117.359375 478.453125Q143.21875 500.375 184.109375 515.1875Q225 530 283.125 530Q345.78125 530 389.15625 514.609375Q432.53125 499.21875 458.703125 472.90625Q484.875 446.59375 496.921875 411.734375Q508.96875 376.875 508.96875 338.34375V24.03125Q508.96875 13.625 502.15625 6.8125Q495.34375 0 484.9375 0H403.75Q393.34375 0 386.53125 6.8125Q379.71875 13.625 379.71875 24.03125V63.3125Q366.90625 44.5 345.109375 27.921875Q323.3125 11.34375 291.859375 0.671875Q260.40625 -10 216.9375 -10ZM250.90625 84.5625Q286.34375 84.5625 314.796875 99.6875Q343.25 114.8125 359.859375 146.5625Q376.46875 178.3125 376.46875 226.28125V246.875L275.90625 230.90625Q216.65625 221.9375 188.0625 201.84375Q159.46875 181.75 159.46875 152.9375Q159.46875 130.5 172.578125 115.390625Q185.6875 100.28125 206.65625 92.421875Q227.625 84.5625 250.90625 84.5625Z%22/%3E%3Cpath transform=%22translate(2087,0)%22 d=%22M90.40625 0Q80 0 73.1875 6.8125Q66.375 13.625 66.375 24.03125V495.375Q66.375 505.78125 73.1875 512.890625Q80 520 90.40625 520H171Q181.40625 520 188.515625 512.890625Q195.625 505.78125 195.625 495.375V453.84375Q219.3125 486 255.546875 503.0Q291.78125 520 339.75 520H381.21875Q391.625 520 398.4375 513.1875Q405.25 506.375 405.25 495.96875V424.28125Q405.25 413.875 398.4375 407.0625Q391.625 400.25 381.21875 400.25H303.28125Q255.46875 400.25 228.59375 373.375Q201.71875 346.5 201.71875 298.6875V24.03125Q201.71875 13.625 194.609375 6.8125Q187.5 0 177.09375 0Z%22/%3E%3Cpath transform=%22translate(2504,0)%22 d=%22M90.40625 0Q80 0 73.1875 6.8125Q66.375 13.625 66.375 24.03125V495.96875Q66.375 506.375 73.1875 513.1875Q80 520 90.40625 520H173.21875Q183.625 520 190.4375 513.1875Q197.25 506.375 197.25 495.96875V24.03125Q197.25 13.625 190.4375 6.8125Q183.625 0 173.21875 0ZM85.90625 605.875Q75.5 605.875 68.6875 612.6875Q61.875 619.5 61.875 629.90625V701.625Q61.875 712.03125 68.6875 719.140625Q75.5 726.25 85.90625 726.25H177.125Q187.53125 726.25 194.640625 719.140625Q201.75 712.03125 201.75 701.625V629.90625Q201.75 619.5 194.640625 612.6875Q187.53125 605.875 177.125 605.875Z%22/%3E%3Cpath transform=%22translate(2768,0)%22 d=%22M263.46875 -10Q203.34375 -10 160.5625 4.203125Q117.78125 18.40625 90.734375 39.125Q63.6875 59.84375 50.765625 81.078125Q37.84375 102.3125 36.84375 116.375Q35.84375 127.375 43.640625 133.890625Q51.4375 140.40625 59.65625 140.40625H139.25Q143.21875 140.40625 146.296875 139.21875Q149.375 138.03125 153.9375 132.6875Q166.9375 122.1875 181.296875 109.9375Q195.65625 97.6875 216.0625 89.5Q236.46875 81.3125 266.3125 81.3125Q305.1875 81.3125 331.390625 96.59375Q357.59375 111.875 357.59375 141.4375Q357.59375 161.71875 346.15625 174.65625Q334.71875 187.59375 304.015625 198.359375Q273.3125 209.125 215.59375 221.09375Q159.5 233.65625 122.546875 253.84375Q85.59375 274.03125 67.703125 304.171875Q49.8125 334.3125 49.8125 374.4375Q49.8125 412.6875 73.46875 448.421875Q97.125 484.15625 143.53125 507.078125Q189.9375 530 258.875 530Q313.15625 530 353.140625 516.59375Q393.125 503.1875 419.796875 483.265625Q446.46875 463.34375 460.015625 442.5Q473.5625 421.65625 474.5625 406.59375Q475.5625 396.1875 468.5625 389.375Q461.5625 382.5625 452.5625 382.5625H379.46875Q373.90625 382.5625 369.71875 384.640625Q365.53125 386.71875 362.34375 390.28125Q350.71875 399.78125 337.9375 411.140625Q325.15625 422.5 306.734375 430.59375Q288.3125 438.6875 258.46875 438.6875Q220 438.6875 200.140625 422.3125Q180.28125 405.9375 180.28125 380.53125Q180.28125 364.21875 189.84375 351.375Q199.40625 338.53125 228.34375 327.875Q257.28125 317.21875 315.8125 305.0625Q383.0625 292.6875 422.5 269.546875Q461.9375 246.40625 478.65625 215.5625Q495.375 184.71875 495.375 148.34375Q495.375 103.0625 468.8125 67.03125Q442.25 31 390.4375 10.5Q338.625 -10 263.46875 -10Z%22/%3E%3Cpath transform=%22translate(3300,0)%22 d=%22%22/%3E%3Cpath transform=%22translate(3529,0)%22 d=%22M102.1875 0Q91.78125 0 84.96875 6.8125Q78.15625 13.625 78.15625 24.03125V675.96875Q78.15625 686.375 84.96875 693.1875Q91.78125 700 102.1875 700H194.71875Q205.125 700 211.9375 693.1875Q218.75 686.375 218.75 675.96875V118.90625H536.125Q547.125 118.90625 553.9375 112.09375Q560.75 105.28125 560.75 94.28125V24.03125Q560.75 13.625 553.9375 6.8125Q547.125 0 536.125 0Z%22/%3E%3Cpath transform=%22translate(4109,0)%22 d=%22M296.0625 -10Q215.9375 -10 161.546875 17.96875Q107.15625 45.9375 78.40625 97.125Q49.65625 148.3125 46.4375 215.96875Q45.4375 234.21875 45.4375 260.203125Q45.4375 286.1875 46.4375 304.03125Q49.65625 372.6875 79.421875 423.375Q109.1875 474.0625 163.578125 502.03125Q217.96875 530 296.0625 530Q374.15625 530 428.546875 502.03125Q482.9375 474.0625 512.703125 423.375Q542.46875 372.6875 545.6875 304.03125Q547.09375 286.1875 547.09375 260.203125Q547.09375 234.21875 545.6875 215.96875Q542.46875 148.3125 513.71875 97.125Q484.96875 45.9375 430.578125 17.96875Q376.1875 -10 296.0625 -10ZM296.0625 89.4375Q349.40625 89.4375 378.375 122.859375Q407.34375 156.28125 409.9375 220.96875Q410.9375 235.96875 410.9375 260.0Q410.9375 284.03125 409.9375 299.03125Q407.34375 363.5 378.375 397.03125Q349.40625 430.5625 296.0625 430.5625Q243.125 430.5625 213.953125 397.03125Q184.78125 363.5 182.1875 299.03125Q181.1875 284.03125 181.1875 260.0Q181.1875 235.96875 182.1875 220.96875Q184.78125 156.28125 213.953125 122.859375Q243.125 89.4375 296.0625 89.4375Z%22/%3E%3Cpath transform=%22translate(4701,0)%22 d=%22M291 -10Q218.5625 -10 164.28125 17.09375Q110 44.1875 79.421875 95.78125Q48.84375 147.375 46.03125 219.59375Q45.03125 235 45.03125 259.59375Q45.03125 284.1875 46.03125 300Q48.84375 372.8125 79.21875 424.3125Q109.59375 475.8125 164.078125 502.90625Q218.5625 530 291 530Q354.5625 530 399.96875 512.25Q445.375 494.5 474.234375 467.34375Q503.09375 440.1875 517.515625 410.5625Q531.9375 380.9375 532.9375 356.78125Q533.9375 346.375 526.328125 339.5625Q518.71875 332.75 508.90625 332.75H421.375Q410.96875 332.75 405.65625 337.65625Q400.34375 342.5625 395.34375 353.34375Q380.03125 392.875 355.3125 409.484375Q330.59375 426.09375 293.03125 426.09375Q243.3125 426.09375 213.640625 394.546875Q183.96875 363 181.78125 295Q180.1875 256.75 181.78125 224.59375Q184.375 155.78125 213.84375 124.84375Q243.3125 93.90625 293.03125 93.90625Q331.8125 93.90625 356.125 110.515625Q380.4375 127.125 395.34375 166.65625Q399.9375 177.4375 405.453125 182.34375Q410.96875 187.25 421.375 187.25H508.90625Q518.71875 187.25 526.328125 180.4375Q533.9375 173.625 532.9375 163.21875Q531.9375 144.875 523.328125 122.265625Q514.71875 99.65625 496.59375 76.21875Q478.46875 52.78125 450.40625 33.328125Q422.34375 13.875 382.546875 1.9375Q342.75 -10 291 -10Z%22/%3E%3Cpath transform=%22translate(5272,0)%22 d=%22M91 0Q80.59375 0 73.78125 6.8125Q66.96875 13.625 66.96875 24.03125V685.96875Q66.96875 696.375 73.78125 703.1875Q80.59375 710 91 710H172.1875Q182.59375 710 189.40625 703.1875Q196.21875 696.375 196.21875 685.96875V344.15625L364.375 503Q373.5 511.15625 380.203125 515.578125Q386.90625 520 401.09375 520H494.4375Q503.84375 520 509.953125 513.890625Q516.0625 507.78125 516.0625 498.375Q516.0625 494.375 513.96875 489.28125Q511.875 484.1875 506.3125 480.40625L300.4375 287.1875L531.3125 38.78125Q540.65625 29.21875 540.65625 21.625Q540.65625 12.21875 534.546875 6.109375Q528.4375 0 519.03125 0H424.21875Q409.21875 0 402.515625 4.53125Q395.8125 9.0625 386.6875 17L196.21875 218.46875V24.03125Q196.21875 13.625 189.40625 6.8125Q182.59375 0 172.1875 0Z%22/%3E%3Cpath transform=%22translate(5822,0)%22 d=%22M290.25 -10Q179.4375 -10 114.109375 53.90625Q48.78125 117.8125 44.03125 235.84375Q43.4375 245.5625 43.4375 261.21875Q43.4375 276.875 44.03125 286.1875Q47.8125 361.5 78.265625 416.34375Q108.71875 471.1875 162.71875 500.59375Q216.71875 530 289.84375 530Q371.21875 530 425.90625 496.359375Q480.59375 462.71875 508.71875 403.296875Q536.84375 343.875 536.84375 266.3125V245.21875Q536.84375 234.8125 529.734375 228.0Q522.625 221.1875 512.21875 221.1875H179.78125Q179.78125 220.78125 179.78125 218.0Q179.78125 215.21875 179.78125 213.21875Q180.96875 178.375 193.671875 148.84375Q206.375 119.3125 230.8125 101.328125Q255.25 83.34375 289.4375 83.34375Q317.40625 83.34375 336.15625 91.875Q354.90625 100.40625 366.828125 111.4375Q378.75 122.46875 383.75 129.25Q392.75 140.625 398.15625 143.125Q403.5625 145.625 414.96875 145.625H501.25Q510.65625 145.625 517.15625 139.921875Q523.65625 134.21875 522.65625 124.8125Q521.65625 108.78125 506.34375 85.84375Q491.03125 62.90625 461.890625 40.875Q432.75 18.84375 389.46875 4.421875Q346.1875 -10 290.25 -10ZM179.78125 305.21875H401.09375V308Q401.09375 346.625 387.984375 376.0625Q374.875 405.5 349.84375 422.09375Q324.8125 438.6875 289.84375 438.6875Q254.875 438.6875 230.140625 422.09375Q205.40625 405.5 192.59375 376.0625Q179.78125 346.625 179.78125 308Z%22/%3E%3Cpath transform=%22translate(6399,0)%22 d=%22M90.40625 0Q80 0 73.1875 6.8125Q66.375 13.625 66.375 24.03125V495.375Q66.375 505.78125 73.1875 512.890625Q80 520 90.40625 520H171Q181.40625 520 188.515625 512.890625Q195.625 505.78125 195.625 495.375V453.84375Q219.3125 486 255.546875 503.0Q291.78125 520 339.75 520H381.21875Q391.625 520 398.4375 513.1875Q405.25 506.375 405.25 495.96875V424.28125Q405.25 413.875 398.4375 407.0625Q391.625 400.25 381.21875 400.25H303.28125Q255.46875 400.25 228.59375 373.375Q201.71875 346.5 201.71875 298.6875V24.03125Q201.71875 13.625 194.609375 6.8125Q187.5 0 177.09375 0Z%22/%3E%3C/g%3E%3C/svg%3E");
+        --lk-mark: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22128%22 height=%22128%22 viewBox=%220 0 128 128%22 %3E%3Cg transform=%22scale(8)%22%3E%3Cpath fill=%22%23ff7869%22 d=%22M1 6 L4.5 3 H5 V11 H8 V13 H1 Z M9 11 L13 8 H15 V13 H9 Z%22/%3E%3Cpath fill=%22%23ffffff%22 d=%22M9.5 5 L10.3 6.7 L12 7.5 L10.3 8.3 L9.5 10 L8.7 8.3 L7 7.5 L8.7 6.7 Z%22/%3E%3C/g%3E%3C/svg%3E");
+        --pk-locker-accent: #ff7869;
+        --lk-ink: #f6f8ff;
+        --lk-ink-on: #060912;
+      }
+      [data-theme="light"] {
+        --lk-lockup: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22460%22 height=%22128%22 viewBox=%220 0 460 128%22 %3E%3Cpath fill=%22%23c44438%22 d=%22M8 49 Q8 47 10 45 L35 25 Q37 23 40 24 Q42 25 42 28 V85 H61 Q64 85 64 88 V102 H12 Q8 102 8 98 Z M73 84 L101 61 Q103 59 106 59 H116 Q120 59 120 63 V98 Q120 102 116 102 H76 Q72 102 72 98 V87 Q72 85 73 84 Z%22/%3E%3Cpath fill=%22%23c44438%22 d=%22M74 41 Q75 41 75.5 43 L79.7 52.3 L89 56.5 Q91 57.5 89 58.5 L79.7 62.7 L75.5 72 Q74.5 74 73.5 72 L69.3 62.7 L60 58.5 Q58 57.5 60 56.5 L69.3 52.3 L73.5 43 Q74 41 74 41 Z%22/%3E%3Cg fill=%22%23262d40%22 transform=%22translate(144,80) scale(0.044, -0.044)%22%3E%3Cpath transform=%22translate(0,0)%22 d=%22M102.1875 0Q91.78125 0 84.96875 6.8125Q78.15625 13.625 78.15625 24.03125V675.375Q78.15625 686.375 84.96875 693.1875Q91.78125 700 102.1875 700H369.5625Q448.09375 700 506.09375 675.28125Q564.09375 650.5625 596.25 601.109375Q628.40625 551.65625 628.40625 477.5625Q628.40625 403.46875 596.25 354.828125Q564.09375 306.1875 506.09375 282.28125Q448.09375 258.375 369.5625 258.375H221.1875V24.03125Q221.1875 13.625 214.375 6.8125Q207.5625 0 196.5625 0ZM219.15625 369.15625H364.5625Q422.71875 369.15625 454.046875 396.796875Q485.375 424.4375 485.375 478.375Q485.375 528.25 456.28125 558.53125Q427.1875 588.8125 364.5625 588.8125H219.15625Z%22/%3E%3Cpath transform=%22translate(659,0)%22 d=%22M296.0625 -10Q215.9375 -10 161.546875 17.96875Q107.15625 45.9375 78.40625 97.125Q49.65625 148.3125 46.4375 215.96875Q45.4375 234.21875 45.4375 260.203125Q45.4375 286.1875 46.4375 304.03125Q49.65625 372.6875 79.421875 423.375Q109.1875 474.0625 163.578125 502.03125Q217.96875 530 296.0625 530Q374.15625 530 428.546875 502.03125Q482.9375 474.0625 512.703125 423.375Q542.46875 372.6875 545.6875 304.03125Q547.09375 286.1875 547.09375 260.203125Q547.09375 234.21875 545.6875 215.96875Q542.46875 148.3125 513.71875 97.125Q484.96875 45.9375 430.578125 17.96875Q376.1875 -10 296.0625 -10ZM296.0625 89.4375Q349.40625 89.4375 378.375 122.859375Q407.34375 156.28125 409.9375 220.96875Q410.9375 235.96875 410.9375 260.0Q410.9375 284.03125 409.9375 299.03125Q407.34375 363.5 378.375 397.03125Q349.40625 430.5625 296.0625 430.5625Q243.125 430.5625 213.953125 397.03125Q184.78125 363.5 182.1875 299.03125Q181.1875 284.03125 181.1875 260.0Q181.1875 235.96875 182.1875 220.96875Q184.78125 156.28125 213.953125 122.859375Q243.125 89.4375 296.0625 89.4375Z%22/%3E%3Cpath transform=%22translate(1251,0)%22 d=%22M91 0Q80.59375 0 73.78125 6.8125Q66.96875 13.625 66.96875 24.03125V685.96875Q66.96875 696.375 73.78125 703.1875Q80.59375 710 91 710H173.8125Q184.21875 710 191.03125 703.1875Q197.84375 696.375 197.84375 685.96875V24.03125Q197.84375 13.625 191.03125 6.8125Q184.21875 0 173.8125 0Z%22/%3E%3Cpath transform=%22translate(1516,0)%22 d=%22M216.9375 -10Q165.28125 -10 123.359375 10.40625Q81.4375 30.8125 56.640625 65.328125Q31.84375 99.84375 31.84375 143.0625Q31.84375 213.09375 88.671875 254.296875Q145.5 295.5 238.375 309.53125L375.25 329.5V350.6875Q375.25 392.71875 354.125 415.703125Q333 438.6875 282.3125 438.6875Q245.75 438.6875 223.296875 424.28125Q200.84375 409.875 189.65625 386.21875Q182.21875 372.84375 167 372.84375H88.4375Q77.25 372.84375 71.640625 379.140625Q66.03125 385.4375 66.4375 394.84375Q66.84375 410.875 79.171875 433.703125Q91.5 456.53125 117.359375 478.453125Q143.21875 500.375 184.109375 515.1875Q225 530 283.125 530Q345.78125 530 389.15625 514.609375Q432.53125 499.21875 458.703125 472.90625Q484.875 446.59375 496.921875 411.734375Q508.96875 376.875 508.96875 338.34375V24.03125Q508.96875 13.625 502.15625 6.8125Q495.34375 0 484.9375 0H403.75Q393.34375 0 386.53125 6.8125Q379.71875 13.625 379.71875 24.03125V63.3125Q366.90625 44.5 345.109375 27.921875Q323.3125 11.34375 291.859375 0.671875Q260.40625 -10 216.9375 -10ZM250.90625 84.5625Q286.34375 84.5625 314.796875 99.6875Q343.25 114.8125 359.859375 146.5625Q376.46875 178.3125 376.46875 226.28125V246.875L275.90625 230.90625Q216.65625 221.9375 188.0625 201.84375Q159.46875 181.75 159.46875 152.9375Q159.46875 130.5 172.578125 115.390625Q185.6875 100.28125 206.65625 92.421875Q227.625 84.5625 250.90625 84.5625Z%22/%3E%3Cpath transform=%22translate(2087,0)%22 d=%22M90.40625 0Q80 0 73.1875 6.8125Q66.375 13.625 66.375 24.03125V495.375Q66.375 505.78125 73.1875 512.890625Q80 520 90.40625 520H171Q181.40625 520 188.515625 512.890625Q195.625 505.78125 195.625 495.375V453.84375Q219.3125 486 255.546875 503.0Q291.78125 520 339.75 520H381.21875Q391.625 520 398.4375 513.1875Q405.25 506.375 405.25 495.96875V424.28125Q405.25 413.875 398.4375 407.0625Q391.625 400.25 381.21875 400.25H303.28125Q255.46875 400.25 228.59375 373.375Q201.71875 346.5 201.71875 298.6875V24.03125Q201.71875 13.625 194.609375 6.8125Q187.5 0 177.09375 0Z%22/%3E%3Cpath transform=%22translate(2504,0)%22 d=%22M90.40625 0Q80 0 73.1875 6.8125Q66.375 13.625 66.375 24.03125V495.96875Q66.375 506.375 73.1875 513.1875Q80 520 90.40625 520H173.21875Q183.625 520 190.4375 513.1875Q197.25 506.375 197.25 495.96875V24.03125Q197.25 13.625 190.4375 6.8125Q183.625 0 173.21875 0ZM85.90625 605.875Q75.5 605.875 68.6875 612.6875Q61.875 619.5 61.875 629.90625V701.625Q61.875 712.03125 68.6875 719.140625Q75.5 726.25 85.90625 726.25H177.125Q187.53125 726.25 194.640625 719.140625Q201.75 712.03125 201.75 701.625V629.90625Q201.75 619.5 194.640625 612.6875Q187.53125 605.875 177.125 605.875Z%22/%3E%3Cpath transform=%22translate(2768,0)%22 d=%22M263.46875 -10Q203.34375 -10 160.5625 4.203125Q117.78125 18.40625 90.734375 39.125Q63.6875 59.84375 50.765625 81.078125Q37.84375 102.3125 36.84375 116.375Q35.84375 127.375 43.640625 133.890625Q51.4375 140.40625 59.65625 140.40625H139.25Q143.21875 140.40625 146.296875 139.21875Q149.375 138.03125 153.9375 132.6875Q166.9375 122.1875 181.296875 109.9375Q195.65625 97.6875 216.0625 89.5Q236.46875 81.3125 266.3125 81.3125Q305.1875 81.3125 331.390625 96.59375Q357.59375 111.875 357.59375 141.4375Q357.59375 161.71875 346.15625 174.65625Q334.71875 187.59375 304.015625 198.359375Q273.3125 209.125 215.59375 221.09375Q159.5 233.65625 122.546875 253.84375Q85.59375 274.03125 67.703125 304.171875Q49.8125 334.3125 49.8125 374.4375Q49.8125 412.6875 73.46875 448.421875Q97.125 484.15625 143.53125 507.078125Q189.9375 530 258.875 530Q313.15625 530 353.140625 516.59375Q393.125 503.1875 419.796875 483.265625Q446.46875 463.34375 460.015625 442.5Q473.5625 421.65625 474.5625 406.59375Q475.5625 396.1875 468.5625 389.375Q461.5625 382.5625 452.5625 382.5625H379.46875Q373.90625 382.5625 369.71875 384.640625Q365.53125 386.71875 362.34375 390.28125Q350.71875 399.78125 337.9375 411.140625Q325.15625 422.5 306.734375 430.59375Q288.3125 438.6875 258.46875 438.6875Q220 438.6875 200.140625 422.3125Q180.28125 405.9375 180.28125 380.53125Q180.28125 364.21875 189.84375 351.375Q199.40625 338.53125 228.34375 327.875Q257.28125 317.21875 315.8125 305.0625Q383.0625 292.6875 422.5 269.546875Q461.9375 246.40625 478.65625 215.5625Q495.375 184.71875 495.375 148.34375Q495.375 103.0625 468.8125 67.03125Q442.25 31 390.4375 10.5Q338.625 -10 263.46875 -10Z%22/%3E%3Cpath transform=%22translate(3300,0)%22 d=%22%22/%3E%3Cpath transform=%22translate(3529,0)%22 d=%22M102.1875 0Q91.78125 0 84.96875 6.8125Q78.15625 13.625 78.15625 24.03125V675.96875Q78.15625 686.375 84.96875 693.1875Q91.78125 700 102.1875 700H194.71875Q205.125 700 211.9375 693.1875Q218.75 686.375 218.75 675.96875V118.90625H536.125Q547.125 118.90625 553.9375 112.09375Q560.75 105.28125 560.75 94.28125V24.03125Q560.75 13.625 553.9375 6.8125Q547.125 0 536.125 0Z%22/%3E%3Cpath transform=%22translate(4109,0)%22 d=%22M296.0625 -10Q215.9375 -10 161.546875 17.96875Q107.15625 45.9375 78.40625 97.125Q49.65625 148.3125 46.4375 215.96875Q45.4375 234.21875 45.4375 260.203125Q45.4375 286.1875 46.4375 304.03125Q49.65625 372.6875 79.421875 423.375Q109.1875 474.0625 163.578125 502.03125Q217.96875 530 296.0625 530Q374.15625 530 428.546875 502.03125Q482.9375 474.0625 512.703125 423.375Q542.46875 372.6875 545.6875 304.03125Q547.09375 286.1875 547.09375 260.203125Q547.09375 234.21875 545.6875 215.96875Q542.46875 148.3125 513.71875 97.125Q484.96875 45.9375 430.578125 17.96875Q376.1875 -10 296.0625 -10ZM296.0625 89.4375Q349.40625 89.4375 378.375 122.859375Q407.34375 156.28125 409.9375 220.96875Q410.9375 235.96875 410.9375 260.0Q410.9375 284.03125 409.9375 299.03125Q407.34375 363.5 378.375 397.03125Q349.40625 430.5625 296.0625 430.5625Q243.125 430.5625 213.953125 397.03125Q184.78125 363.5 182.1875 299.03125Q181.1875 284.03125 181.1875 260.0Q181.1875 235.96875 182.1875 220.96875Q184.78125 156.28125 213.953125 122.859375Q243.125 89.4375 296.0625 89.4375Z%22/%3E%3Cpath transform=%22translate(4701,0)%22 d=%22M291 -10Q218.5625 -10 164.28125 17.09375Q110 44.1875 79.421875 95.78125Q48.84375 147.375 46.03125 219.59375Q45.03125 235 45.03125 259.59375Q45.03125 284.1875 46.03125 300Q48.84375 372.8125 79.21875 424.3125Q109.59375 475.8125 164.078125 502.90625Q218.5625 530 291 530Q354.5625 530 399.96875 512.25Q445.375 494.5 474.234375 467.34375Q503.09375 440.1875 517.515625 410.5625Q531.9375 380.9375 532.9375 356.78125Q533.9375 346.375 526.328125 339.5625Q518.71875 332.75 508.90625 332.75H421.375Q410.96875 332.75 405.65625 337.65625Q400.34375 342.5625 395.34375 353.34375Q380.03125 392.875 355.3125 409.484375Q330.59375 426.09375 293.03125 426.09375Q243.3125 426.09375 213.640625 394.546875Q183.96875 363 181.78125 295Q180.1875 256.75 181.78125 224.59375Q184.375 155.78125 213.84375 124.84375Q243.3125 93.90625 293.03125 93.90625Q331.8125 93.90625 356.125 110.515625Q380.4375 127.125 395.34375 166.65625Q399.9375 177.4375 405.453125 182.34375Q410.96875 187.25 421.375 187.25H508.90625Q518.71875 187.25 526.328125 180.4375Q533.9375 173.625 532.9375 163.21875Q531.9375 144.875 523.328125 122.265625Q514.71875 99.65625 496.59375 76.21875Q478.46875 52.78125 450.40625 33.328125Q422.34375 13.875 382.546875 1.9375Q342.75 -10 291 -10Z%22/%3E%3Cpath transform=%22translate(5272,0)%22 d=%22M91 0Q80.59375 0 73.78125 6.8125Q66.96875 13.625 66.96875 24.03125V685.96875Q66.96875 696.375 73.78125 703.1875Q80.59375 710 91 710H172.1875Q182.59375 710 189.40625 703.1875Q196.21875 696.375 196.21875 685.96875V344.15625L364.375 503Q373.5 511.15625 380.203125 515.578125Q386.90625 520 401.09375 520H494.4375Q503.84375 520 509.953125 513.890625Q516.0625 507.78125 516.0625 498.375Q516.0625 494.375 513.96875 489.28125Q511.875 484.1875 506.3125 480.40625L300.4375 287.1875L531.3125 38.78125Q540.65625 29.21875 540.65625 21.625Q540.65625 12.21875 534.546875 6.109375Q528.4375 0 519.03125 0H424.21875Q409.21875 0 402.515625 4.53125Q395.8125 9.0625 386.6875 17L196.21875 218.46875V24.03125Q196.21875 13.625 189.40625 6.8125Q182.59375 0 172.1875 0Z%22/%3E%3Cpath transform=%22translate(5822,0)%22 d=%22M290.25 -10Q179.4375 -10 114.109375 53.90625Q48.78125 117.8125 44.03125 235.84375Q43.4375 245.5625 43.4375 261.21875Q43.4375 276.875 44.03125 286.1875Q47.8125 361.5 78.265625 416.34375Q108.71875 471.1875 162.71875 500.59375Q216.71875 530 289.84375 530Q371.21875 530 425.90625 496.359375Q480.59375 462.71875 508.71875 403.296875Q536.84375 343.875 536.84375 266.3125V245.21875Q536.84375 234.8125 529.734375 228.0Q522.625 221.1875 512.21875 221.1875H179.78125Q179.78125 220.78125 179.78125 218.0Q179.78125 215.21875 179.78125 213.21875Q180.96875 178.375 193.671875 148.84375Q206.375 119.3125 230.8125 101.328125Q255.25 83.34375 289.4375 83.34375Q317.40625 83.34375 336.15625 91.875Q354.90625 100.40625 366.828125 111.4375Q378.75 122.46875 383.75 129.25Q392.75 140.625 398.15625 143.125Q403.5625 145.625 414.96875 145.625H501.25Q510.65625 145.625 517.15625 139.921875Q523.65625 134.21875 522.65625 124.8125Q521.65625 108.78125 506.34375 85.84375Q491.03125 62.90625 461.890625 40.875Q432.75 18.84375 389.46875 4.421875Q346.1875 -10 290.25 -10ZM179.78125 305.21875H401.09375V308Q401.09375 346.625 387.984375 376.0625Q374.875 405.5 349.84375 422.09375Q324.8125 438.6875 289.84375 438.6875Q254.875 438.6875 230.140625 422.09375Q205.40625 405.5 192.59375 376.0625Q179.78125 346.625 179.78125 308Z%22/%3E%3Cpath transform=%22translate(6399,0)%22 d=%22M90.40625 0Q80 0 73.1875 6.8125Q66.375 13.625 66.375 24.03125V495.375Q66.375 505.78125 73.1875 512.890625Q80 520 90.40625 520H171Q181.40625 520 188.515625 512.890625Q195.625 505.78125 195.625 495.375V453.84375Q219.3125 486 255.546875 503.0Q291.78125 520 339.75 520H381.21875Q391.625 520 398.4375 513.1875Q405.25 506.375 405.25 495.96875V424.28125Q405.25 413.875 398.4375 407.0625Q391.625 400.25 381.21875 400.25H303.28125Q255.46875 400.25 228.59375 373.375Q201.71875 346.5 201.71875 298.6875V24.03125Q201.71875 13.625 194.609375 6.8125Q187.5 0 177.09375 0Z%22/%3E%3C/g%3E%3C/svg%3E");
+        --lk-mark: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22128%22 height=%22128%22 viewBox=%220 0 128 128%22 %3E%3Cg transform=%22scale(8)%22%3E%3Cpath fill=%22%23c44438%22 d=%22M1 6 L4.5 3 H5 V11 H8 V13 H1 Z M9 11 L13 8 H15 V13 H9 Z%22/%3E%3Cpath fill=%22%23c44438%22 d=%22M9.5 5 L10.3 6.7 L12 7.5 L10.3 8.3 L9.5 10 L8.7 8.3 L7 7.5 L8.7 6.7 Z%22/%3E%3C/g%3E%3C/svg%3E");
+        --pk-locker-accent: #c44438;
+        --lk-ink: #060912;
+        --lk-ink-on: #ffffff;
+      }
+      .lockup .lk {
+        display: inline-block;
+        width: 132px;
+        height: 37px;
+        background: var(--lk-lockup) center / contain no-repeat;
+      }
+      .app .lockup .lk {
+        width: 120px;
+        height: 33px;
+      }
+      .lmark {
+        display: inline-block;
+        width: 14px;
+        height: 14px;
+        background: var(--lk-mark) center / contain no-repeat;
+      }
+      .screen:not(.kit):not(.desk),
+      .win.browser {
+        --pk-accent: var(--lk-ink);
+        --pk-accent-on: var(--lk-ink-on);
+        --pk-accent-fg: var(--pk-text-strong);
+        --pk-accent-subtle: color-mix(
+          in oklab,
+          var(--pk-text-strong) 7%,
+          transparent
+        );
+        --pk-focus: var(--pk-text-strong);
+      }
+      .screen:not(.kit):not(.desk) .stars {
+        display: none;
+      }
+      .screen:not(.kit):not(.desk) :is(a, .link) {
+        text-decoration: underline 2px var(--pk-locker-accent);
+        text-underline-offset: 3px;
+      }
+
       /* ---------- motion tokens ----------
    Every duration, easing, distance and stagger comes from packages/brand/css/tokens.css (S-23 §5,
    MO-01), imported by ../card.css: --pk-duration-micro 80ms, -fast 120ms (exits), -base 200ms,
@@ -2757,31 +3198,27 @@
         flex-direction: column;
         align-items: center;
         padding: 7vh 16px 48px;
-        background:
-          radial-gradient(
-            60% 40% at 15% 0%,
-            color-mix(in oklab, var(--pk-brand-violet) 14%, transparent),
-            transparent
-          ),
-          radial-gradient(
-            50% 40% at 90% 100%,
-            color-mix(in oklab, var(--pk-accent) 10%, transparent),
-            transparent
-          );
+        background: var(--pk-surface-page);
       }
       .lockup {
         margin-bottom: 20px;
         color: var(--pk-text-muted);
         gap: 8px;
       }
-      .lockup svg.mark {
-        width: 20px;
-        height: 20px;
-        color: var(--pk-text-muted);
+      .lockup .lk {
+        width: 120px;
+        height: 33px;
       }
-      .lockup .word {
-        font-size: 18px;
-        font-weight: 600;
+      .stage {
+        --pk-accent: var(--lk-ink);
+        --pk-accent-on: var(--lk-ink-on);
+        --pk-accent-fg: var(--pk-text-strong);
+        --pk-accent-subtle: color-mix(
+          in oklab,
+          var(--pk-text-strong) 7%,
+          transparent
+        );
+        --pk-focus: var(--pk-text-strong);
       }
       .card {
         max-width: 100%;
@@ -3387,15 +3824,7 @@
 
     <main class="stage">
       <div class="lockup">
-        <svg class="mark" viewBox="0 0 24 24" aria-hidden="true">
-          <path fill="currentColor" d="M3 4 L9 1 L9 19 L3 22 Z" />
-          <path fill="currentColor" d="M11 12 L15 12 L21 18 L18 21 L11 14 Z" />
-          <path
-            fill="currentColor"
-            d="M17 1 L19 4 L23 6 L19 8 L17 11 L15 8 L11 6 L15 4 Z"
-          />
-        </svg>
-        <span class="word">Polaris Key</span>
+        <i class="lk" role="img" aria-label="Polaris Locker"></i>
       </div>
 
       <section class="card" id="card">
@@ -3460,8 +3889,8 @@
             <path d="M8 11V8a4 4 0 0 1 8 0v3" />
           </svg>
           <span
-            >Polaris Key signs you in for Tidewater Studio. Harbor Audio never
-            sees your codes or passkeys.</span
+            >Polaris Locker signs you in for Tidewater Studio. Harbor Audio
+            never sees your codes or passkeys.</span
           >
         </footer>
       </section>

@@ -249,6 +249,11 @@
       "verdict": "pass",
       "date": "2026-10-20",
       "evidence": "Re-review 2026-10-19 (_mockups/review/I-31/rr/): first-round B1–B4 fixed; new PageHeader blocker + majors 1–9 fixed in the lead round (470710fe6): layout e2e 0 violations at 768x1024, 1280x800 and zoom rows."
+    },
+    "MK-L1": {
+      "verdict": "pass",
+      "date": "2026-10-20",
+      "evidence": "Lead-verified MOCKUP pass 2026-10-19: identity.* + portal.signin re-skinned (Locker lockup, D9a neutral ink, coral identity only, no star field); screenshots _scratch/MK-L1/."
     }
   }
 }

@@ -1,16 +1,18 @@
-# PX-31 Account composition v3
+# PX-31 Dropped (split 2026-10-19 into PX-31a and PX-31b): Account composition v3
 
-| Field       | Value                                                                                                                                      |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Phase       | PX: Customer portal (docs/design/PORTAL.md)                                                                                                |
-| Size        | 0.2–0.4 engineer-weeks                                                                                                                     |
-| Depends on  | [I-34](I-34-granular-consent-connected-apps.md), [F-33](F-33-personal-tokens-pkeyp-packages-read.md), [PX-W19](PX-W19-account-api-gaps.md) |
-| Unblocks    | none                                                                                                                                       |
-| Role        | `pkey-implementer`                                                                                                                         |
-| Plan mode   | no (no wire change)                                                                                                                        |
-| Gates       | portal-e2e, ui-snapshots                                                                                                                   |
-| Human input | none                                                                                                                                       |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                  |
+| Field       | Value                                       |
+| ----------- | ------------------------------------------- |
+| Phase       | PX: Customer portal (docs/design/PORTAL.md) |
+| Size        | 0.2–0.4 engineer-weeks                      |
+| Depends on  | none                                        |
+| Unblocks    | none                                        |
+| Role        | `pkey-implementer`                          |
+| Plan mode   | no (no wire change)                         |
+| Gates       | portal-e2e, ui-snapshots                    |
+| Human input | none                                        |
+| Repo        | `vladzaharia/polaris-key`                   |
+
+> **Superseded 2026-10-19 by [PX-31a](PX-31a-account-v3-shell.md) and [PX-31b](PX-31b-account-packages-connected-apps.md). This brief stays as the original spec.**
 
 ## Goal
 

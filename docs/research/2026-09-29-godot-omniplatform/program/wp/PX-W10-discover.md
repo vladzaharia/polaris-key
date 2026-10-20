@@ -5,7 +5,7 @@
 | Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase W: Worker additions)                                                                                             |
 | Size        | 0.4–0.8 engineer-weeks                                                                                                                                              |
 | Depends on  | [PX-W1](PX-W1-library-api-media.md)                                                                                                                                 |
-| Unblocks    | [PX-16](PX-16-discover-page.md)                                                                                                                                     |
+| Unblocks    | [PX-16](PX-16-discover-page.md), [PX-34](PX-34-library-discover-locker.md)                                                                                          |
 | Role        | `pkey-implementer`                                                                                                                                                  |
 | Plan mode   | no                                                                                                                                                                  |
 | Gates       | the PORTAL.md §11 green gate; rule 6 (Core descriptor hooks; no cross-service imports); rule 10 (OpenAPI + `routeCoverage`); `typecheck:workerd` and `test:workerd` |
