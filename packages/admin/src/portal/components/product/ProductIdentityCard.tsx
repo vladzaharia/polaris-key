@@ -1,4 +1,5 @@
 import * as React from "react";
+import { brandName } from "../../brand.js";
 import { KeyRound } from "lucide-react";
 import { Button } from "../../../ui/Button.js";
 import { href } from "../../router.js";
@@ -28,7 +29,7 @@ export function ProductIdentityCard({
         </span>
         <div className="min-w-0 space-y-1 text-sm">
           <p className="text-fg">
-            {productName} signs you in with your Polaris Key account.
+            {productName} signs you in with your {brandName()} account.
           </p>
           <p className="text-fg-muted">
             It gets its own id for you, so developers can't match you across

@@ -7,11 +7,11 @@
  * jargon (§6.1): a sign-in method, never an "identity link".
  */
 
+import { brandName } from "../brand.js";
 import { t } from "../../lib/copy.js";
 export const PROFILE_COPY = {
   "profile.title": "Profile",
-  "profile.subtitle":
-    "How you appear in Polaris Key, and to an app once you agree to share it.",
+  "profile.subtitle": `How you appear in ${brandName()}, and to an app once you agree to share it.`,
   "profile.edit": "Edit profile",
   "profile.addPicture": "Add a picture",
   "profile.preview": "Preview",
@@ -36,8 +36,7 @@ export const PROFILE_COPY = {
   "profile.birthdate.hint": "Private to you. Apps never receive it.",
   "profile.birthdate.remove": "Remove birth date",
   "profile.birthdate.removeShort": "Remove",
-  "profile.note":
-    "Pictures are copied to Polaris Key, so neither this page nor any app loads them from the provider. An imported name or picture follows its provider until you pick one yourself; after that, your choice stays.",
+  "profile.note": `Pictures are copied to ${brandName()}, so neither this page nor any app loads them from the provider. An imported name or picture follows its provider until you pick one yourself; after that, your choice stays.`,
   "profile.save": "Save profile",
   "profile.cancel": t("signin.cancel"),
   "profile.saved": "Profile saved",

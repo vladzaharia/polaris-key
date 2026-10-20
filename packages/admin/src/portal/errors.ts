@@ -1,3 +1,4 @@
+import { brandName } from "./brand.js";
 import { PortalApiError } from "./api.js";
 import { t } from "../lib/copy.js";
 
@@ -76,7 +77,7 @@ export function portalErrorCopy(
         ...copy,
         description: copy.description.replace(
           "contact the developer",
-          "contact Polaris Key support",
+          `contact ${brandName()} support`,
         ),
       }
     : copy;
