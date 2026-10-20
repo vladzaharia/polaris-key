@@ -59,6 +59,13 @@ export const SIGNIN_COPY = {
     "To join, sign in to that account in this browser first, then add this sign-in from Account.",
   "signin.gate.emailUsed": "A Polaris Locker account already uses this email.",
   "signin.gate.codeSent": "We sent a code to {email}.",
+  "signin.hint.when": "On this browser, last time {when}",
+  "signin.hint.welcomeNoName": "Welcome back",
+  "signin.hint.method.passkey": "a passkey",
+  "signin.hint.method.email": "an email code",
+  "signin.hint.usePasskey": "Use a passkey",
+  "signin.hint.emailCode": "Email me a code",
+  "signin.hint.change": "Change",
 } as const;
 
 export type SigninCopyKey = keyof typeof SIGNIN_COPY;

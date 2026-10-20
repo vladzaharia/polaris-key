@@ -20,6 +20,7 @@ import {
   type PortalGateChoice,
 } from "../../api.js";
 import { portalKeys } from "../../data.js";
+import { rememberVia } from "../../lastMethod.js";
 import { announceSignedIn } from "../../session.js";
 import { wrongCodeText } from "../../copy/codeEntry.js";
 import { initialsOf } from "../Avatar.js";
@@ -102,6 +103,14 @@ export function FinishStep({
 
   /** The gate passed: the session is set; open where the person was going. */
   const passed = async (next: string): Promise<void> => {
+    const via = phase.kind === "gate" ? phase.gate.provider : null;
+    if (
+      via === "apple" ||
+      via === "google" ||
+      via === "steam" ||
+      via === "email"
+    )
+      rememberVia(via);
     announceSignedIn();
     // The finish landing is a query on the root; go to where the sign-in began.
     const target = next && next !== "/?signin=confirm-email" ? next : "/";

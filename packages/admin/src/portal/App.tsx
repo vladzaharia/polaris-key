@@ -29,6 +29,7 @@ import { FreeDevicePage } from "./pages/FreeDevicePage.js";
 import { LibraryPage } from "./pages/LibraryPage.js";
 import { ProductPage } from "./pages/ProductPage.js";
 import { ApproveDeviceDialog } from "./components/ApproveDeviceDialog.js";
+import { commitLastMethod } from "./lastMethod.js";
 import { SignInPage } from "./pages/SignInPage.js";
 import { StorefrontPage } from "./pages/StorefrontPage.js";
 import { restoreCarriedKey } from "./carriedKey.js";
@@ -131,6 +132,10 @@ function SignedIn({ account }: { account: PortalAccount }): React.ReactElement {
   const route = useRoute();
   // Another tab waiting on "Check your email" signs itself in now (§4.4).
   React.useEffect(() => announceSignedIn(), []);
+  // The way this tab signed in is remembered for next time's hint (lastMethod.ts).
+  React.useEffect(() => {
+    void commitLastMethod(account);
+  }, [account.email]);
   // Focused flows (§4.25, PX-10) run in their own minimal chrome, outside the shell.
   if (route.kind === "focused") {
     return route.flow === "free-device" ? (

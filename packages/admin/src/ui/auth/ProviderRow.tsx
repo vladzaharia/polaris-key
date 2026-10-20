@@ -47,7 +47,7 @@ export function ProviderRow({
   mode?: "continue" | "connect";
   className?: string;
   /** Runs before the browser leaves for the provider (the portal stashes a carried key). */
-  onNavigate?: () => void;
+  onNavigate?: (p: AuthProvider) => void;
 }): React.ReactElement | null {
   const list = PROVIDER_ORDER.filter((p) => providers.includes(p));
   if (list.length === 0) return null;
@@ -72,7 +72,7 @@ export function ProviderRow({
           <a
             key={p}
             href={hrefFor(p)}
-            onClick={onNavigate}
+            onClick={() => onNavigate?.(p)}
             aria-label={label}
             title={label}
             className={cn(

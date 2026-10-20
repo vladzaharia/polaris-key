@@ -1124,6 +1124,8 @@ export class PortalApiError extends Error {
   reason?: string;
   /** I-30: an enforced domain's refusal names the connection to use instead. */
   next?: PortalSsoNext;
+  /** I-16: a passkey sign-in refused because no account here holds that credential. */
+  unknownCredential?: boolean;
   constructor(
     public readonly status: number,
     public readonly code?: string,
@@ -1177,6 +1179,7 @@ async function send(
     let retryAfter: number | undefined;
     let reason: string | undefined;
     let next: PortalSsoNext | undefined;
+    let unknownCredential = false;
     try {
       const body = (await res.json()) as {
         error?: string;
@@ -1185,7 +1188,9 @@ async function send(
         retryAfter?: unknown;
         reason?: unknown;
         next?: unknown;
+        unknownCredential?: unknown;
       };
+      unknownCredential = body.unknownCredential === true;
       code = body.error;
       message = body.message;
       if (typeof body.triesLeft === "number") triesLeft = body.triesLeft;
@@ -1201,6 +1206,7 @@ async function send(
     if (retryAfter !== undefined) error.retryAfter = retryAfter;
     if (reason !== undefined) error.reason = reason;
     if (next) error.next = next;
+    if (unknownCredential) error.unknownCredential = true;
     throw error;
   }
   return res;

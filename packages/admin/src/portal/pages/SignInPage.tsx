@@ -42,13 +42,11 @@ import { checkKey, formatVerdict, productLabel } from "../model/key.js";
 import { setParams, useDocumentTitle, useRoute } from "../router.js";
 import { FinishStep } from "../components/signin/FinishStep.js";
 import { DeviceStep } from "../components/signin/DeviceStep.js";
-import {
-  PasskeyError,
-  passkeyAssertion,
-  passkeysSupported,
-} from "../webauthn.js";
+import { passkeysSupported } from "../webauthn.js";
 import { sc } from "../copy/signin.js";
-import { announceSignedIn } from "../session.js";
+import { rememberVia, readLastMethod, type LastMethod } from "../lastMethod.js";
+import { usePasskeySignIn } from "../components/signin/usePasskeySignIn.js";
+import { HintStep } from "../components/signin/HintStep.js";
 import { useSessionRecheck } from "../session.js";
 import { returnUrl, stashCarriedKey } from "../carriedKey.js";
 
@@ -102,7 +100,9 @@ type Step =
   /** Sign in with another device (§3.11): this browser asks, a signed-in device approves. */
   | { kind: "device" }
   /** FinishStep (§3.5): a provider's first sign-in, or a new address's code, finishes here. */
-  | { kind: "finish" };
+  | { kind: "finish" }
+  /** HintStep (§3.4): the typed address is the one this browser last signed in with. */
+  | { kind: "hint"; email: string; last: LastMethod };
 
 /** The countdown when an answer carries no `resendIn` (a Worker from before PX-W4). */
 const RESEND_FALLBACK_S = 60;
@@ -176,15 +176,17 @@ export function SignInPage(): React.ReactElement {
       ? t("signin.code.title")
       : step.kind === "refused"
         ? "This account can't sign in"
-        : step.kind === "finish"
-          ? t("signin.gate.title")
-          : step.kind === "device"
-            ? t("signin.approve.title")
-            : step.kind === "key"
-              ? t("signin.link.key")
-              : step.kind === "sso"
-                ? step.next.connection.label
-                : t("signin.methods.titleApp"),
+        : step.kind === "hint"
+          ? t("signin.hint.other")
+          : step.kind === "finish"
+            ? t("signin.gate.title")
+            : step.kind === "device"
+              ? t("signin.approve.title")
+              : step.kind === "key"
+                ? t("signin.link.key")
+                : step.kind === "sso"
+                  ? step.next.connection.label
+                  : t("signin.methods.titleApp"),
   );
   /** The card's step key: a connection step is keyed by its route, so a change re-announces. */
   const ssoKey =
@@ -269,6 +271,34 @@ export function SignInPage(): React.ReactElement {
           email={step.email}
           onChangeEmail={() => go({ kind: "methods" }, "back")}
         />
+      ) : step.kind === "hint" ? (
+        <HintStep
+          email={step.email}
+          last={step.last}
+          passkeyAvailable={
+            caps.data?.auth.passkey === true && passkeysSupported()
+          }
+          hrefFor={(p) =>
+            `/login/${p}?return_to=${encodeURIComponent(returnTo())}${
+              ctx ? `&product=${encodeURIComponent(ctx.slug)}` : ""
+            }`
+          }
+          onProvider={(p) => {
+            rememberVia(p);
+            stashCarriedKey();
+          }}
+          onSent={(email, sent) =>
+            go(
+              sent?.next
+                ? { kind: "sso", email, next: sent.next }
+                : { kind: "code", email, resendIn: resendDelay(sent) },
+            )
+          }
+          onOther={() =>
+            go({ kind: "methods", email: step.email, focusEmail: true }, "back")
+          }
+          returnTo={returnTo}
+        />
       ) : step.kind === "finish" ? (
         <FinishStep
           onLeave={() => {
@@ -306,6 +336,7 @@ export function SignInPage(): React.ReactElement {
           }
           onKey={() => go({ kind: "key" })}
           onDevice={() => go({ kind: "device" })}
+          onHint={(email, last) => go({ kind: "hint", email, last })}
         />
       )}
     </AuthCard>
@@ -374,6 +405,7 @@ function MethodsStep({
   onSent,
   onKey,
   onDevice,
+  onHint,
 }: {
   caps: PortalCapabilities;
   context: { slug: string; name: string; developerName?: string | null } | null;
@@ -387,10 +419,21 @@ function MethodsStep({
   onSent: (email: string, sent: PortalEmailSent | undefined) => void;
   onKey: () => void;
   onDevice: () => void;
+  /** The address matches this browser's last sign-in with a method the card still offers. */
+  onHint: (email: string, last: LastMethod) => void;
 }): React.ReactElement {
-  const qc = useQueryClient();
-  const [passkeyBusy, setPasskeyBusy] = React.useState(false);
-  const [passkeyError, setPasskeyError] = React.useState<string | null>(null);
+  /** The usual method is only a hint while this card still offers it. */
+  const offers = (last: LastMethod): boolean =>
+    last.kind === "passkey"
+      ? caps.auth.passkey === true && passkeysSupported()
+      : last.kind === "email"
+        ? true
+        : (caps.auth.providers ?? []).includes(last.kind);
+  const pk = usePasskeySignIn(returnTo);
+  const passkeyBusy = pk.busy;
+  const passkeyError = pk.error;
+  const withPasskey = pk.run;
+  const startConditional = pk.conditional;
   const [email, setEmail] = React.useState(initialEmail ?? "");
   const [invalid, setInvalid] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -407,6 +450,11 @@ function MethodsStep({
   }, [focusEmail]);
   const carried = useCarriedKey();
   const passkey = caps.auth.passkey === true && passkeysSupported();
+  // Conditional UI: the email field's autofill offers this browser's passkeys.
+  React.useEffect(
+    () => (passkey ? startConditional() : undefined),
+    [passkey, startConditional],
+  );
   const providers = caps.auth.providers ?? [];
   const magic = caps.auth.magic;
   // With the email field, the address routes to its connection (identifier-first); the buttons
@@ -446,37 +494,19 @@ function MethodsStep({
     setError(null);
     setSending(true);
     try {
+      // The usual way first, when this browser knows one for this address (never a server lookup).
+      const last = await readLastMethod(value);
+      if (last && last.kind !== "email" && offers(last)) {
+        setSending(false);
+        onHint(value, last);
+        return;
+      }
       onSent(value, await portalApi.startEmailSignIn(value));
     } catch (err) {
       setError(startErrorText(err));
       if (err instanceof PortalApiError && err.status === 422) setInvalid(true);
     } finally {
       setSending(false);
-    }
-  };
-
-  /** Sign in with a passkey (I-16): the browser picks one, the Worker opens the session. */
-  const withPasskey = async (): Promise<void> => {
-    setPasskeyBusy(true);
-    setPasskeyError(null);
-    try {
-      const { options } = await portalApi.passkeySignInOptions(returnTo());
-      const response = await passkeyAssertion(options);
-      await portalApi.passkeySignInVerify(response);
-      announceSignedIn();
-      await qc.invalidateQueries({ queryKey: portalKeys.me });
-    } catch (err) {
-      setPasskeyError(
-        err instanceof PasskeyError && err.reason === "cancelled"
-          ? sc("signin.passkey.cancelled")
-          : err instanceof PasskeyError && err.reason === "unsupported"
-            ? sc("signin.passkey.unsupported")
-            : err instanceof PortalApiError && err.status === 403
-              ? sc("signin.approve.disabled")
-              : sc("signin.passkey.failed"),
-      );
-    } finally {
-      setPasskeyBusy(false);
     }
   };
 
@@ -558,7 +588,10 @@ function MethodsStep({
             context ? `&product=${encodeURIComponent(context.slug)}` : ""
           }`
         }
-        onNavigate={() => stashCarriedKey()}
+        onNavigate={(p) => {
+          rememberVia(p);
+          stashCarriedKey();
+        }}
       />
       {oidc ? (
         <Button
@@ -732,6 +765,7 @@ function CodeStep({
     setStatus(null);
     try {
       const out = await portalApi.verifySignInCode(value);
+      rememberVia("email");
       // A new address finishes first (I-33): the account is created there.
       if (out?.status === "finish") {
         onFinish();
