@@ -17662,8 +17662,7 @@
       "refs": ["plans/LK-00.md §3, §5, §6"],
       "brief": "wp/LK-08a-locker-copy-constants.md",
       "status": "todo",
-      "planRef": "LK-00",
-      "deferred": "customer.host is on in prod"
+      "planRef": "LK-00"
     },
     {
       "id": "LK-08b",
@@ -17681,8 +17680,7 @@
       "optional": false,
       "refs": ["plans/LK-00.md §6"],
       "brief": "wp/LK-08b-locker-copy-native.md",
-      "status": "todo",
-      "deferred": "customer.host is on in prod"
+      "status": "todo"
     },
     {
       "id": "LK-09",
@@ -17704,7 +17702,7 @@
     },
     {
       "id": "LK-10",
-      "title": "Console: Locker words and links, the switch with its preflight, Connections callbacks, \"Get a badge\"",
+      "title": "Console: Locker words and links, Connections callbacks, \"Get a badge\"",
       "phase": "LK",
       "stage": "Polaris Locker",
       "lane": "console",
@@ -17716,28 +17714,38 @@
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["plans/LK-00.md §7, §10"],
+      "refs": ["plans/LK-00.md §7, §10, §16"],
       "brief": "wp/LK-10-console-locker-words.md",
       "status": "todo"
     },
     {
       "id": "LK-11",
-      "title": "Cutover: wrangler routes and vars, old-URL redirects, cookie expiry, RUNBOOK, smoke",
+      "title": "Cutover: wiring done; the cutover deploy and smoke",
       "phase": "LK",
       "stage": "Polaris Locker",
       "lane": "worker",
       "role": "pkey-implementer",
       "estimateWeeks": [0.5, 0.5],
-      "deps": ["LK-03", "LK-04", "LK-05", "LK-06", "LK-07", "LK-10"],
+      "deps": [
+        "LK-03",
+        "LK-04",
+        "LK-05",
+        "LK-06",
+        "LK-07",
+        "LK-10",
+        "LK-14",
+        "LK-15",
+        "LK-17"
+      ],
       "planMode": false,
       "gates": ["wrangler", "workerd", "threat-model"],
-      "humanInputs": ["Owner steps O2–O10 (plans/LK-00.md §12)"],
+      "humanInputs": ["Owner steps O5, O6, O8, O9, O10 (plans/LK-00.md §16)"],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["plans/LK-00.md §7.10, §10, §12"],
+      "refs": ["plans/LK-00.md §7.10, §10, §12, §16"],
       "brief": "wp/LK-11-cutover.md",
       "status": "todo",
-      "deferred": "O2–O10 done"
+      "deferred": "O5, O6, O8, O9, O10 done"
     },
     {
       "id": "LK-12",
@@ -17778,7 +17786,7 @@
     },
     {
       "id": "LK-14",
-      "title": "Console on the Locker identity: shell, titles, sign-in moment, data-brand, copy sweep",
+      "title": "Polaris Key Console: identity, customer-site words, root front door",
       "phase": "LK",
       "stage": "Polaris Locker",
       "lane": "console",
@@ -17792,11 +17800,11 @@
       "optional": false,
       "refs": ["plans/LK-00.md §14"],
       "brief": "wp/LK-14-console-locker-identity.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "LK-15",
-      "title": "Developer docs on the Locker identity: chrome, the split, the prose sweep, READMEs",
+      "title": "Developer docs: Polaris Key, customer-site words to Locker",
       "phase": "LK",
       "stage": "Polaris Locker",
       "lane": "docs",
@@ -17828,8 +17836,25 @@
       "optional": false,
       "refs": ["plans/LK-00.md §14"],
       "brief": "wp/LK-16-locker-powered-by.md",
-      "status": "todo",
-      "deferred": "customer.host is on in prod"
+      "status": "todo"
+    },
+    {
+      "id": "LK-17",
+      "title": "Hard cutover: remove the customer.host switch, 301 old customer URLs, console hash hand-off",
+      "phase": "LK",
+      "stage": "Polaris Locker",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.5, 0.75],
+      "deps": ["LK-03"],
+      "planMode": false,
+      "gates": ["rule-9", "rule-10", "drift-gate", "workerd", "threat-model"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["plans/LK-00.md §16"],
+      "brief": "wp/LK-17-hard-cutover.md",
+      "status": "in-progress"
     }
   ]
 }

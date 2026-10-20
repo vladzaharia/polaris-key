@@ -28,7 +28,7 @@ export function BrandBlock({
   return (
     <Link
       to={r.home()}
-      aria-label="Polaris Key home"
+      aria-label="Polaris Key Console home"
       data-service={section}
       className={cn(
         "flex shrink-0 items-center gap-3 rounded-md text-fg-strong",
@@ -41,7 +41,7 @@ export function BrandBlock({
         aria-hidden
         className="hidden whitespace-nowrap text-base font-semibold tracking-tight sm:inline"
       >
-        Polaris Key
+        Polaris Key Console
       </span>
     </Link>
   );

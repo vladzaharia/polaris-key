@@ -662,7 +662,7 @@ DNS record on those names. Since LK-11 `wrangler.toml` attaches the three custom
 first certificate can take minutes). There is no switch (LK-17): a usable `CUSTOMER_ORIGIN` is the
 cutover. The deploy that carries it moves every customer link to the customer host, and the old
 customer pages on the API host (`/activate`, `/signin` but for `?request=`, `/device`, `/tv`,
-`/login[/…]`, `/callback`, `/logout`, `/magic/verify`, `/download/<token>`, `/index.html`) redirect
+`/login[/…]`, `/callback`, `/logout`, `/magic/verify`, `/download/<token>`) redirect
 to the same path and query there.
 
 The deploy's smoke check polls the host (up to about 5 minutes): `/` answers 200 with a

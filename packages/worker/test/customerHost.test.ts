@@ -130,6 +130,25 @@ describe("customer URLs follow CUSTOMER_ORIGIN", () => {
       `${CUSTOMER}/#/p/djdl`,
     );
   });
+
+  it("the API host's root is the customer portal with no customer origin and the console's front door once it is set (LK-14)", async () => {
+    const get = (path: string, init?: RequestInit) =>
+      dispatchWith(new Request(`${API}${path}`, init), env, db, NOW);
+    expect((await get("/")).status).toBe(200);
+    env.CUSTOMER_ORIGIN = CUSTOMER;
+    for (const path of ["/", "/index.html"]) {
+      const res = await get(path);
+      expect(res.status, path).toBe(302);
+      expect(res.headers.get("location")).toBe("/manage");
+    }
+    // Only the root: the rest of the portal's routes and assets are untouched.
+    expect((await get("/activate")).status).toBe(200);
+    expect((await get("/manage")).status).not.toBe(302);
+    // The customer host's own root is still the portal.
+    expect(
+      (await dispatchWith(new Request(`${CUSTOMER}/`), env, db, NOW)).status,
+    ).toBe(200);
+  });
 });
 
 describe("old customer URLs on the console host", () => {
@@ -161,7 +180,6 @@ describe("old customer URLs on the console host", () => {
       ["/device?user_code=ABCD", "/device?user_code=ABCD"],
       ["/tv", "/tv"],
       ["/login", "/login"],
-      ["/index.html", "/"],
     ] as const) {
       const res = await get(`${API}${path}`);
       expect(res.status, path).toBe(301);

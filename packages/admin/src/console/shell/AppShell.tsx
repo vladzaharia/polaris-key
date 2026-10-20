@@ -93,7 +93,7 @@ function knownProductPageRefused(me: Me, route: Route): boolean {
   );
 }
 
-/** `"{page title} · {product} · Polaris Key"`, or `"{page title} · Polaris Key"` off a product. */
+/** `"{page title} · {product} · Polaris Key Console"`, or `"{page title} · Polaris Key Console"` off a product. */
 export function documentTitle(
   route: Route,
   productName: string | null,
@@ -102,7 +102,7 @@ export function documentTitle(
   return [
     refused ? `No access · ${pageTitle(route)}` : pageTitle(route),
     productName,
-    "Polaris Key",
+    "Polaris Key Console",
   ]
     .filter(Boolean)
     .join(" · ");

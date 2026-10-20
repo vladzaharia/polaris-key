@@ -85,7 +85,7 @@ export function customerHostOwnResponse(
  * usable, a GET or HEAD to a customer page on the console host answers a redirect to the same path
  * and query on the customer origin, so every link already out keeps working. `/signin?request=`
  * stays (the cross-host bind hop, LK-04) and so do `/api/*`, `/media/*` and `/assets/*` (the console
- * bundle). `/` is the console's own redirect (LK-14). Permanent (301) for the pages; temporary
+ * bundle). `/` and `/index.html` are the console's own redirect (LK-14). Permanent (301) for the pages; temporary
  * (302, no-store) for a path that carries a credential: a sign-in callback, a magic-link token,
  * a download token, a legacy `/activate?key=`. `null` when the request is not an old customer URL.
  * Rollback is removing `CUSTOMER_ORIGIN`: a browser keeps a 301 it has seen (docs/RUNBOOK.md).
@@ -103,7 +103,7 @@ export function oldCustomerUrlRedirect(
   let permanent: boolean;
   switch (route.kind) {
     case "portalSpa":
-      if (path !== "/activate" && path !== "/index.html") return null;
+      if (path !== "/activate") return null;
       permanent = !url.searchParams.has("key");
       break;
     case "signInEntry":
@@ -126,7 +126,7 @@ export function oldCustomerUrlRedirect(
     default:
       return null;
   }
-  const target = `${origin}${path === "/index.html" ? "/" : path}${url.search}`;
+  const target = `${origin}${path}${url.search}`;
   const headers = new Headers({
     location: target,
     "x-content-type-options": "nosniff",

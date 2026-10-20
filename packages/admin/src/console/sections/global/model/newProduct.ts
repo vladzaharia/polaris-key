@@ -229,7 +229,7 @@ export function featureCopy(id: FeatureId, name: string): string {
     licensing: `Gate ${who} on a license.`,
     "managed-config": "Change settings and secrets without shipping a build.",
     "ship-builds": "Publish releases from CI to every store.",
-    "sign-in": "Let people sign in with a Polaris Key account.",
+    "sign-in": "Let people sign in with a Polaris Locker account.",
     "cloud-sync": "Each person's saves and settings, the same on every device.",
     commerce:
       "Sell packs and tiers on App Store, Google Play, Steam and itch.io.",

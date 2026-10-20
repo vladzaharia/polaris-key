@@ -232,7 +232,7 @@ const SECRET_NOTES: Record<string, { what: string; unset?: string }> = {
   KEY_HASH_PEPPER: { what: "Pepper for license key and token hashes" },
   ADMIN_SESSION_SECRET: { what: "Console session signing" },
   PORTAL_SESSION_SECRET: {
-    what: "Customer portal session signing",
+    what: "Polaris Locker session signing",
     unset: "Falls back to ADMIN_SESSION_SECRET",
   },
   PLATFORM_OIDC_CLIENT_SECRET: {
@@ -253,9 +253,9 @@ const SECRET_NOTES: Record<string, { what: string; unset?: string }> = {
     unset: "Trusted publishing is off",
   },
   DOWNLOAD_TICKET_KEY: {
-    what: "Portal download ticket signing",
+    what: "Polaris Locker download ticket signing",
     unset:
-      "Licensed builds served from the bytes host cannot be downloaded from the portal",
+      "Licensed builds served from the bytes host cannot be downloaded from Polaris Locker",
   },
   DOWNLOAD_TICKET_KEY_PREVIOUS: {
     what: "Previous download ticket key, during a rotation",

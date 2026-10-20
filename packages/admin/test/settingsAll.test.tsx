@@ -126,12 +126,12 @@ describe("All settings → Edit in", () => {
     [
       "storefront.polarisKey.listed",
       "Distribution → Storefronts",
-      "Polaris Key → Listing",
+      "Polaris Locker → Listing",
       "#/p/djdl/distribution/storefronts/polaris-key",
     ],
     [
       "identity.keyEntry.claimByKey",
-      "Identity → Portal",
+      "Identity → Locker",
       "License keys",
       "#/p/djdl/identity/portal",
     ],

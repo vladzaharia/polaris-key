@@ -685,7 +685,7 @@ export const SECTIONS: NavSection[] = [
     items: [
       {
         page: "portal",
-        label: "Portal",
+        label: "Locker",
         path: "identity/portal",
         icon: AppWindow,
         docs: "/docs/features/sign-in/customer-portal/",
