@@ -56,7 +56,7 @@ After the key checks, Core runs one shared decision. Sign-in activation runs the
 }
 ```
 
-`manageUrl` opens the Polaris Locker flow that frees a seat. It is present only while the product's Polaris Locker is on, never carries a key, account id or device id, and isn't an auth failure: offer it behind a user action such as **Replace a device**.
+`manageUrl` opens the Polaris Locker flow that frees a seat. It is present only while Locker is on for the product, never carries a key, account id or device id, and isn't an auth failure: offer it behind a user action such as **Replace a device**.
 
 ## Fingerprint body rules
 
@@ -66,10 +66,10 @@ An absent, empty, oversized (over 4 KiB) or unparseable body means no fingerprin
 
 While Identity is on, the Worker counts how many times a license key was typed on a new device, so a key passed around in public stops working on new devices and points people at an account.
 
-- **What counts.** A new device taking a seat through `/license/activate`, a browser key session, and a Polaris Locker claim. Rotation, document fetches and a device that is already enrolled don't count.
+- **What counts.** A new device taking a seat through `/license/activate`, a browser key session, and a Locker claim. Rotation, document fetches and a device that is already enrolled don't count.
 - **The member.** Every success carries `"keyEntries": { "used": 3, "limit": 10 }`. Show `max(0, limit − used)` entries left.
 - **The limit.** The product setting `identity.keyEntry.limit`, from 1 to 100, capped by the platform setting of the same name.
-- **The refusal.** With the platform switch `identity.keyEntryRefusals` on, a new device whose key belongs to a usable license in no account, at or past its limit, gets `403 key_entry_limit` with Polaris Locker's activate link as `manageUrl`. The switch is off until the SDKs that show the refusal ship. Counting runs either way.
+- **The refusal.** With the platform switch `identity.keyEntryRefusals` on, a new device whose key belongs to a usable license in no account, at or past its limit, gets `403 key_entry_limit` with Locker's activate link as `manageUrl`. The switch is off until the SDKs that show the refusal ship. Counting runs either way.
 - **Owned licenses.** With the same switch on, a usable license that is in an account refuses a device not enrolled on it: `403 license_owned` with `signInUrl`. The device reaches the license by signing in to that account.
 
 With Identity off nothing is counted or refused.
@@ -95,7 +95,7 @@ Authorization: Bearer <device token>
 
 The device is marked `deauthorized`, its fingerprint and facts rows are purged, its seat frees and its token record is evicted. The response is `{"ok": true}`. No device header is needed, and the bucket (30 per 60 seconds) fails open.
 
-A device token authenticates one device. Deauthorizing a sibling is refused with `403`, because any device could otherwise evict every other install. Cross-device management belongs on Polaris Locker.
+A device token authenticates one device. Deauthorizing a sibling is refused with `403`, because any device could otherwise evict every other install. Cross-device management belongs on Locker.
 
 ## Next steps
 

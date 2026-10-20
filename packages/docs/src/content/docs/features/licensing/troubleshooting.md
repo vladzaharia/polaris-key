@@ -51,7 +51,7 @@ Entries are ordered by how often they happen. Every code is in the [error codes]
 
 ## license_owned
 
-**Cause** The license is in a Polaris Locker account, and an owned license never moves by presenting its key.
+**Cause** The license is in a Locker account, and an owned license never moves by presenting its key.
 
 **Fix** Sign in to the account that holds the license. The response carries `signInUrl`.
 

@@ -3,7 +3,8 @@
  *
  * - every service in tools/services.json gets its accent on its docs pages (data-service);
  * - the theme takes its colours from @polaris-key/brand's tokens, never its own hex values;
- * - the header mark, favicons and social card come from the Locker kit (LK-00 §14.2).
+ * - the header mark and favicons come from the launch kit, and none of them carries the
+ *   terminal bit (the default Polaris Key mark has none).
  */
 
 import { existsSync, readFileSync } from "node:fs";
@@ -95,36 +96,41 @@ describe("docs theme", () => {
 });
 
 describe("docs marks", () => {
-  it("the header mark is the Locker kit's master cut, one file per ground", () => {
+  const brandKit = join(repoRoot, "packages", "brand", "kit");
+
+  it("the header mark is the kit's bit-less service cut, one file per ground", () => {
     const title = read(docsRoot, "src", "components", "SiteTitle.astro");
     expect(title).toContain(
-      "@polaris-key/brand/marks/locker/dark-master.svg?url",
+      "@polaris-key/brand/marks/key/svg/key-service-dark.svg?url",
     );
     expect(title).toContain(
-      "@polaris-key/brand/marks/locker/light-master.svg?url",
+      "@polaris-key/brand/marks/key/svg/key-service-light.svg?url",
     );
+    expect(title).not.toMatch(/-signed-/);
   });
 
-  it("every page sits in the Locker context; core pages carry no data-service", () => {
-    const frame = read(docsRoot, "src", "components", "PageFrame.astro");
-    expect(frame).toContain('data-brand="locker"');
-    expect(frame).toContain('section.slug === "core" ? undefined');
-  });
-
-  it("the favicons and social card copied into public/ are the Locker kit's", () => {
+  it("the favicons and hero marks copied into public/ carry no terminal bit", () => {
     const copier = read(docsRoot, "scripts", "copy-artifacts.mjs");
     for (const spec of [
-      "web/locker/favicon.svg",
-      "web/locker/favicon.ico",
-      "web/locker/apple-touch-icon.png",
-      "social/locker/social-landscape-1200.png",
+      "web/key/favicon.svg",
+      "web/key/favicon.ico",
+      "web/key/app-icon-dark-180.png",
+      "marks/key/svg/key-display-dark.svg",
+      "marks/key/svg/key-display-light.svg",
     ]) {
       expect(copier).toContain(`"@polaris-key/brand/${spec}"`);
     }
-    expect(copier).not.toMatch(/site\.webmanifest"/);
-    const config = read(docsRoot, "astro.config.mjs");
-    expect(config).toContain('title: "Polaris Locker docs"');
-    expect(config).toContain('favicon: "/branding/locker/favicon.svg"');
-    expect(config).not.toContain("branding/key");
+    expect(copier).not.toMatch(/-signed-|site\.webmanifest"/);
+    // The unsigned display masters are three paths: the K's stem, its arm and the star.
+    for (const ground of ["dark", "light"]) {
+      const svg = read(
+        brandKit,
+        "01-marks",
+        "key",
+        "svg",
+        `key-display-${ground}.svg`,
+      );
+      expect(svg.match(/<path\b/g)).toHaveLength(3);
+    }
   });
 });

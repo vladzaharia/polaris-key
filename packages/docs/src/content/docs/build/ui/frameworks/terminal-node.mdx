@@ -542,7 +542,7 @@ verb's help, so they match no component.
 `examples/ui/terminal-node/` is `tidewater`, the demo CLI of Tidewater Studio by Harbor Audio: a
 commander program with `registerPolarisCommands`, whose bare `tidewater` runs `checkFlow` through
 `runKitVerb`. By default it runs on a fixture client with no Worker: the fixture key activates,
-any other Tidewater key hits the device limit with the Polaris Locker link, `login` finishes by itself
+any other Tidewater key hits the device limit with the Locker link, `login` finishes by itself
 after a few seconds, the state is kept between runs, and `TIDEWATER_STATE` pins the gate (`grace`,
 `revoked`, `version-too-old` and the rest) to show every screen. `--live` builds a real
 `PolarisKeyClient` from `--product`, `--pinned-key` and `--app-version`, or their `TIDEWATER_*`

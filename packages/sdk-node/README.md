@@ -349,7 +349,7 @@ lastVerifiedAt, highWaterMark }` — the snapshot the React bridge renders from.
 
 A refused activation or enrolment returns `{ kind: "device-limit", limit, deviceCount, manageUrl? }`.
 `manageUrl` is the Polaris Locker link that frees a seat (WIRE-CONTRACT-V4 §5.3), present while
-the product's Polaris Locker is on and already validated. It is never an auth failure: nothing is wiped,
+Polaris Locker is on for the product and already validated. It is never an auth failure: nothing is wiped,
 and the app offers it behind a user action.
 
 ```ts
