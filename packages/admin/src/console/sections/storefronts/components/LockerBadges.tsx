@@ -39,7 +39,7 @@ function Choice<T extends string>({
         aria-labelledby={id}
         value={value}
         onChange={(e) => onChange(e.target.value as T)}
-        className="min-h-9 rounded-md border border-border bg-surface px-2 text-sm"
+        className="min-h-9 rounded-md border border-border bg-surface-raised px-2 text-sm"
       >
         {options.map((o) => (
           <option key={o} value={o}>
@@ -94,11 +94,10 @@ export function LockerBadges({
               className="space-y-2 rounded-lg border border-border p-3"
             >
               <div
-                className={
-                  theme === "light" || theme === "white"
-                    ? "overflow-x-auto rounded-md bg-neutral-100 p-3"
-                    : "overflow-x-auto rounded-md bg-neutral-900 p-3"
-                }
+                className="overflow-x-auto rounded-md p-3"
+                style={{
+                  background: theme === "dark" ? "#0b0f1a" : "#f4f6fb",
+                }}
                 // The kit's own paths: no script, no style, no external reference.
                 dangerouslySetInnerHTML={{ __html: svg }}
               />
