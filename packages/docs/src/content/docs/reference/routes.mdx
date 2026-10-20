@@ -18,6 +18,11 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | DELETE | `/manage/api/account-tokens/{tokenId}` | admin | Revoke a person's personal token |
 | GET | `/manage/api/account-tokens` | admin | List people's personal tokens |
 | GET | `/manage/api/github/repositories` | admin | The repositories the Polaris Key GitHub App can read |
+| POST | `/manage/api/platform/alerts/{id}/test` | admin | Send a test alert to a destination |
+| PATCH | `/manage/api/platform/alerts/{id}` | admin | Change, disable or re-secret an alert destination (step-up) |
+| DELETE | `/manage/api/platform/alerts/{id}` | admin | Remove an alert destination |
+| GET | `/manage/api/platform/alerts` | admin | Alert destinations (the platform's) |
+| POST | `/manage/api/platform/alerts` | admin | Add an alert destination (step-up) |
 | POST | `/manage/api/platform/migrations/apply` | admin | Apply a job against a report, resumably |
 | POST | `/manage/api/platform/migrations/down` | admin | Undo an apply, resumably |
 | POST | `/manage/api/platform/migrations/dry-run` | admin | Plan a job and store the report, changing no data |
@@ -30,6 +35,11 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/manage/api/platform/override-migration/report` | admin | The migration report (90 days) |
 | POST | `/manage/api/platform/override-migration/run` | admin | Start or continue the run (owner-scheduled; step-up) |
 | GET | `/manage/api/platform/override-migration` | admin | The licence-override migration's state and inventory |
+| POST | `/manage/api/products/{product}/alerts/{id}/test` | admin | Send a test alert to a destination |
+| PATCH | `/manage/api/products/{product}/alerts/{id}` | admin | Change, disable or re-secret an alert destination (step-up) |
+| DELETE | `/manage/api/products/{product}/alerts/{id}` | admin | Remove an alert destination |
+| GET | `/manage/api/products/{product}/alerts` | admin | Alert destinations (a product's) |
+| POST | `/manage/api/products/{product}/alerts` | admin | Add an alert destination (step-up) |
 | POST | `/manage/api/products/{product}/assets/{slot}` | admin | Upload a file into a hosted-asset slot (the console claims the slot) |
 | DELETE | `/manage/api/products/{product}/assets/{slot}` | admin | Revert a console upload to the manifest, or delete a hosted copy |
 | POST | `/manage/api/products/{product}/assets/mirror` | admin | Queue a copy of every release file that still owes one (release-file mirroring) |
@@ -222,8 +232,11 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/api/signin/requests/{request}/licenses/{licenseId}/devices` | portal | The seat-holding devices of a full licence (Replace a device) |
 | GET | `/api/signin/requests/{request}/licenses` | portal | The licence choice for the signed-in account (the card's step) |
 | GET | `/api/signin/requests/{request}` | portal | One app sign-in request, as the sign-in card renders it |
+| GET | `/device` | portal | Device-code entry page (HTML) |
 | GET | `/media/{product}/{asset}` | portal | A product's art, as a redirect to its hosted copy |
 | GET | `/media/avatar/{asset}` | portal | An account picture, re-encoded and served same-origin |
+| GET | `/signin` | portal | Sign-in entry (redirect) |
+| GET | `/tv` | portal | Device-code entry page, TV variant (HTML) |
 | GET | `https://pkg.plrs.im/` | registry | The registry host's landing page (registry host only) |
 | HEAD | `https://pkg.plrs.im/` | registry | The registry host's landing page, headers only (registry host only) |
 | GET | `https://pkg.plrs.im/cargo/{owner}/{prefix1}/{prefix2}/{name}` | registry | Cargo sparse-index file, a longer name under `<characters 1-2>/<characters 3-4>/` (registry host only) |

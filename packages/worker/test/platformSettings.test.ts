@@ -1245,7 +1245,7 @@ describe("A-13 hardening", () => {
     // Negative controls: a pending entry, a list-valued entry and a non-platform key are 404,
     // and nothing is stored for them.
     for (const key of [
-      "identity.keyEntry.limit",
+      "license.defaults.deviceLimit",
       "identity.platformTerms",
       "core.name",
       "NOT_A_SETTING",

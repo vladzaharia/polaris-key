@@ -111,8 +111,8 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] A platform change shows the affected product count and needs L2 (e2e).
-- [ ] Clamped values display both set and effective (test).
+- [x] A platform change shows the affected product count and needs L2 (test/platformSettings.test.tsx and worker test/platformDefaults.test.ts; the e2e layout lint covers the section in the browser).
+- [x] Clamped values display both set and effective (test: the row's Clamped by Platform note and the reach endpoint).
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify
@@ -129,3 +129,36 @@ mise exec node@22 -- pnpm --filter @polaris-key/admin test
 The role agent sets `--set ST-16 in-review` when it hands off. After review, the lead adds the last
 commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set ST-16 done`.
+
+## Progress and continuation (2026-10-17)
+
+Built: `identity.keyEntry.limit` (bound) and `assets.quota.mediaBytes` / `releaseBytes` (defaults)
+are live rows in Product defaults, through the ST-07 engine (`EditableRow`), `useWriteGate`
+and the existing `jump` rail; both directions of each take L2; the confirm dialog shows
+`GET /platform/settings/:key/reach` (new, `console/handlers/platformReach.ts`); a bound's row
+lists the clamped products with set and effective.
+
+Corrections to the brief, from the code:
+
+- `license.defaults.deviceLimit` and `license.defaults.maxOfflineDays` stay `pending` (wp
+  ST-16 still names them). They are column-backed on `products` and the hot paths read the column
+  directly (core/settings/columns.ts: "column-backed is PERMANENT"), and a product row never has
+  an "unset" state, so a platform default could not take effect. Making them live needs an
+  unset marker per product plus the hot paths reading the resolver: a follow-up package.
+- `cloudSync.quota.defaultBytes` is `rich` storage (adapter), outside the scalar platform route;
+  `cloudSync.writesPaused` is U-05's. Neither is a row here.
+- Enforce/delegate per entry and the products-policies matrix were dropped by the 2026-10-07
+  consolidation; "per-product audit rows with origin = 'platform'" is not built (the platform
+  audit row of the write is the record).
+
+## Fix round (2026-10-19, branch wp/ST-16-fix)
+
+The BUILT UX review failed the fan-out confirm. Fixed: `reachOf` is direction-aware
+(`{product, name, from, to, inherited}` per product whose effective value changes; a raise reaches the
+products it releases); the clamped note and a default's muted line now come with the settings list
+(`fleet`), so they are fresh after every save or revert and never pop in; the dialog leads with the
+count and names, carries the count in the button, holds Confirm until the count resolves (a failed
+count stays held, with Try again: a change to every product is never confirmed blind); Revert shows
+its count; focus returns to the field when the opener is gone (shared engine, only when focus fell
+to the body); quotas read in GiB/TiB; "per license" affix; ConfirmDialog: one line of consequences
+after a lead, title wraps clear of the close button, the sheet scrolls as a whole on a phone.

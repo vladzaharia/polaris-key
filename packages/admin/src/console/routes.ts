@@ -485,6 +485,11 @@ export const r = {
   settings: (slug: string) => productPage(slug, "settings"),
   licenses: (slug: string, query?: QueryInit) =>
     productPage(slug, "licenses", { query }),
+  /** The Licenses page with the New license wizard open on its first step (LX-29). */
+  newLicense: (slug: string, step = "tier") =>
+    productPage(slug, "licenses", {
+      query: { setup: "new-license", step },
+    }),
   license: (slug: string, id: string, tab?: string) =>
     productPage(slug, "licenses", { id, tab }),
   tiers: (slug: string) => productPage(slug, "tiers"),

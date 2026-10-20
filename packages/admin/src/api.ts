@@ -310,6 +310,10 @@ interface PlatformSettingBase {
   description: string;
   /** The Worker scripts that read it (`main`, `deltas`). */
   scripts: string[];
+  /** ST-16: `default`: products that set none inherit it; `bound`: it clamps products. */
+  link?: "default" | "bound" | null;
+  /** ST-16: what the setting reaches at rest (linked rows only). */
+  fleet?: PlatformFleet;
   /** `ceiling`: a deploy-time `off` is a hard off no runtime value can override. */
   precedence: "runtime" | "ceiling";
   /** The raw `[vars]` string, `null` when unset. */
@@ -337,7 +341,7 @@ export interface PlatformSwitchSetting extends PlatformSettingBase {
 
 export interface PlatformIntegerSetting extends PlatformSettingBase {
   kind: "integer";
-  unit: "bytes" | "days";
+  unit: "bytes" | "days" | "count";
   /** Inclusive bounds on a runtime value. */
   min: number;
   max: number;
@@ -392,6 +396,53 @@ export interface PlatformDeployValue {
   area: string;
   value: string | string[] | null;
 }
+
+/** One product a change reaches: its effective value before and after. */
+export interface PlatformReachProduct {
+  product: string;
+  name: string;
+  from: unknown;
+  to: unknown;
+  /** The product sets no value of its own. */
+  inherited: boolean;
+}
+
+/**
+ * `GET /manage/api/platform/settings/:key/reach?value=` (ST-16, worker
+ * `console/handlers/platformReach.ts`): the products whose effective value changes when the
+ * platform value goes from `from` to `to`.
+ */
+export interface PlatformReach {
+  kind: "default" | "bound";
+  direction: "lower" | "raise" | "none";
+  total: number;
+  reaches: number;
+  from: unknown;
+  to: unknown;
+  /** Up to five. */
+  products: PlatformReachProduct[];
+}
+
+/** What a linked row reaches at rest, sent with the settings list (so never stale). */
+export type PlatformFleet =
+  | {
+      kind: "bound";
+      total: number;
+      count: number;
+      products: {
+        product: string;
+        name: string;
+        set: unknown;
+        effective: unknown;
+        inherited: boolean;
+      }[];
+    }
+  | {
+      kind: "default";
+      total: number;
+      inheriting: number;
+      own: { product: string; name: string; value: unknown }[];
+    };
 
 /** `GET /manage/api/platform/settings` (worker `console/handlers/platformSettings.ts`). */
 export interface PlatformSettingsView {
@@ -4025,8 +4076,9 @@ export interface LicenseDetail extends LicenseSummary {
 }
 
 export interface CreateLicenseBody {
-  name: string;
-  email: string;
+  /** LX-26: an `email` assigns the licence; without one it is floating. */
+  name?: string;
+  email?: string;
   /** Omitted: the tier's term (`policyExpiryDays` from now). `null`: no expiry. */
   expiresAt?: number | null;
   profile?: string;
@@ -4040,6 +4092,19 @@ export interface CreateLicenseBody {
   deviceLimit?: number;
   /** LX-27: `email: true` mails the first key to `email` in the same request. */
   delivery?: { email: boolean };
+}
+
+/** LX-28: `POST …/license/batches`: up to 500 floating licences under one label. */
+export interface CreateLicenseBatchBody {
+  label: string;
+  count: number;
+  tier: string;
+  deviceLimit?: number | null;
+  expiresAt?: number | null;
+  maxOfflineDays?: number;
+  channels?: string[];
+  minVersion?: string;
+  maxVersion?: string;
 }
 
 /** LX-27: how the key email went. */
@@ -4464,6 +4529,68 @@ export type FeedScope =
   | { kind: "platform" }
   | { kind: "product"; slug: string };
 
+// ── alert destinations (ST-27) ───────────────────────────────────────────────
+/** The alert kinds a destination can take (worker `core/notify/alertDestinations.ts`). */
+export type AlertKindId =
+  | "auto_halt"
+  | "store_connection"
+  | "commerce"
+  | "access_changed"
+  | "notifications_failing";
+
+/** Which console scope an alert-destination call is in. */
+export type AlertScope =
+  | { kind: "platform" }
+  | { kind: "product"; slug: string };
+
+/**
+ * One destination as the API shows it. `target` is the address, or `https://host/…` for a
+ * webhook: the URL and the signing secret are sealed on the Worker and never come back.
+ */
+export interface AlertDestination {
+  id: string;
+  scope: string;
+  kind: "email" | "webhook";
+  target: string;
+  label: string | null;
+  alerts: AlertKindId[];
+  enabled: boolean;
+  version: number;
+  lastStatus: "ok" | "failed" | "refused" | null;
+  lastAt: number | null;
+  /** Why the last delivery failed: a host or HTTP status, never a path or secret. */
+  lastError: string | null;
+  failures: number;
+}
+
+export interface AlertDestinationsView {
+  destinations: AlertDestination[];
+  kinds: Array<{ id: AlertKindId; label: string; sent: boolean }>;
+  max: number;
+  emailAvailable: boolean;
+  /** Product scope: how many enabled platform destinations apply where this sets none. */
+  inherited?: number;
+  /** Product scope: enabled platform destinations that take each kind. */
+  inheritedByKind?: Record<AlertKindId, number>;
+}
+
+export interface AlertDestinationBody {
+  kind?: "email" | "webhook";
+  /** An address, or an https URL (write only). */
+  target?: string;
+  label?: string;
+  alerts?: AlertKindId[];
+  enabled?: boolean;
+  rotateSecret?: boolean;
+  expectedVersion?: number;
+}
+
+/** A write's answer. `secret` (a webhook's signing secret) is present on create and rotate only. */
+export interface AlertDestinationWritten {
+  destination: AlertDestination;
+  secret?: string;
+}
+
 // ── activity ──────────────────────────────────────────────────────────────────
 export interface ActivityItem {
   id: string;
@@ -4660,6 +4787,12 @@ const feedsBase = (scope: FeedScope): string =>
     ? "/manage/api/platform/feeds"
     : `${p(scope.slug)}/distribution/feeds`;
 
+/** The alert destinations base of a scope (ST-27). */
+const alertsBase = (scope: AlertScope): string =>
+  scope.kind === "platform"
+    ? "/manage/api/platform/alerts"
+    : `${p(scope.slug)}/alerts`;
+
 /** One package: `:owner/:name` in platform scope, `:name` in product scope. */
 const feedPackagePath = (
   scope: FeedScope,
@@ -4715,6 +4848,39 @@ const rawApi = {
     call<{ ok: true; token: AdminApiToken }>(`/manage/api/tokens/${enc(id)}`, {
       method: "DELETE",
     }),
+  // ── alert destinations (ST-27) ───────────────────────────────────────────────
+  /** Where this scope's alerts go. Never a URL or a secret. */
+  alertDestinations: (scope: AlertScope) =>
+    call<AlertDestinationsView>(alertsBase(scope)),
+  /**
+   * Add one. A webhook answers its signing secret once, in `secret`. Needs a sign-in from the
+   * last five minutes (403 `step_up_required`); 422 `reason` says what was refused.
+   */
+  createAlertDestination: (scope: AlertScope, body: AlertDestinationBody) =>
+    call<AlertDestinationWritten>(alertsBase(scope), {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  /** Change one; `rotateSecret` answers a new secret once. Retargeting needs the step-up. */
+  updateAlertDestination: (
+    scope: AlertScope,
+    id: string,
+    body: AlertDestinationBody,
+  ) =>
+    call<AlertDestinationWritten>(`${alertsBase(scope)}/${enc(id)}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  deleteAlertDestination: (scope: AlertScope, id: string) =>
+    call<{ ok: true }>(`${alertsBase(scope)}/${enc(id)}`, {
+      method: "DELETE",
+    }),
+  /** One test alert; 429 `too_soon` inside 30 seconds of the last send. */
+  testAlertDestination: (scope: AlertScope, id: string) =>
+    call<{ outcome: "ok" | "failed" | "refused"; detail: string | null }>(
+      `${alertsBase(scope)}/${enc(id)}/test`,
+      { method: "POST" },
+    ),
   /** People's `pkeyp_` tokens (F-33): the Superadmin's roster. Never a token or a hash. */
   personalTokens: () =>
     call<{ tokens: AdminPersonalToken[] }>("/manage/api/account-tokens"),
@@ -4727,6 +4893,11 @@ const rawApi = {
   /** The runtime settings, the read-only inventory, secrets presence and the warnings (A-13). */
   platformSettings: () =>
     call<PlatformSettingsView>("/manage/api/platform/settings"),
+  /** How many products a change to this default or bound reaches (`value`: the proposed one). */
+  platformSettingReach: (key: string, value?: number) =>
+    call<PlatformReach>(
+      `/manage/api/platform/settings/${enc(key)}/reach${value === undefined ? "" : `?value=${value}`}`,
+    ),
   /** The reserved entitlement names and the products that declare one (LX-05). */
   platformReservedNames: () =>
     call<PlatformReservedNames>("/manage/api/platform/reserved-names"),
@@ -5722,6 +5893,16 @@ const rawApi = {
       `${p(slug)}/license/batches${qs ? `?${qs}` : ""}`,
     );
   },
+  createLicenseBatch: (slug: string, body: CreateLicenseBatchBody) =>
+    call<{
+      batchId: string;
+      licenses: { licenseId: string; key: string }[];
+      batch: LicenseBatch;
+      expiresAt: number | null;
+    }>(`${p(slug)}/license/batches`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
   licenseBatch: (slug: string, id: string) =>
     call<LicenseBatch>(`${p(slug)}/license/batches/${enc(id)}`),
   /** Typed confirmation: `confirm` is the batch label. */

@@ -216,7 +216,7 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("Core → Overview", () => {
-  it("titles the page with the product and offers Create license when License is on (OVR-1)", async () => {
+  it("titles the page with the product and offers New license when License is on (OVR-1)", async () => {
     // Nothing left to do on Integration: the header's primary follows enablement.
     fns.integration.mockResolvedValue(
       integrationView({ features: [], verified: false }),
@@ -226,10 +226,10 @@ describe("Core → Overview", () => {
       await screen.findByRole("heading", { level: 1, name: "DJDL" }),
     ).toBeTruthy();
     expect(
-      (
-        await screen.findByRole("link", { name: "Create license" })
-      ).getAttribute("href"),
-    ).toBe("#/p/djdl/license/licenses");
+      (await screen.findByRole("link", { name: "New license" })).getAttribute(
+        "href",
+      ),
+    ).toBe("#/p/djdl/license/licenses?setup=new-license&step=tier");
   });
 
   it("offers Publish catalog with only Config on, else Enable services", async () => {

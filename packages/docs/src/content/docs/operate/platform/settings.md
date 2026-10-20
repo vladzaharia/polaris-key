@@ -118,8 +118,12 @@ section (`?section=`), so a link opens there.
   `PLATFORM_KEK` kept as a legacy key beside `PLATFORM_KEK_KEYS`, `PORTAL_SESSION_SECRET` unset),
   no admin group and no GitHub App. One banner shows the most severe item with a link to where it
   is fixed; **Show all** lists the rest. With nothing to fix the banner is not shown.
-- **Product defaults.** The values a product starts from when it sets none of its own. Shown once
-  a default is editable.
+- **Product defaults.** The values a product starts from when it sets none of its own: the key-entry
+  limit ceiling and the hosted-asset quotas. Every change, and every revert, asks for the L2 confirmation. The dialog leads with the
+  products whose value changes, named, with what each goes from and to; its button carries the
+  count, and Confirm waits until the count is in. The key-entry ceiling is a bound: it clamps a product that set a higher
+  limit and never rewrites its value (raising it releases those products again), and the row lists the products it clamps with what each set
+  and what is in effect. The licence defaults (device limit, offline window) are not editable yet.
 - **Sign-in.** The reserved display-name setting and the console session length. The identity
   provider's deploy-time values are under Advanced.
 - **Storefront and hosting.** The hosted-assets switch (`ASSET_HOSTING`; turning it
@@ -128,7 +132,20 @@ section (`?section=`), so a link opens there.
   and a size ceiling in MiB with its own Save bar. A member without Platform edit sees values with a lock
   and one notice at the top saying who to ask.
 - **Email and alerts.** The sender address, the legacy sender, the daily cap per product and the
-  Apple private relay. All deploy-time, read-only.
+  Apple private relay: deploy-time, read-only. Below them, **Alert destinations**: where
+  auto-halts, store and commerce problems, access changes and failing destinations are sent.
+  A destination is an email address or an https webhook, with the alerts it takes. A product can
+  set its own under its Settings, which replace these for the alerts they take. Adding, changing,
+  turning off or removing one needs a sign-in from the last five minutes; turning one on does not. Today only auto-halt alerts (and a
+  failing destination's own alert) are sent; the other kinds are marked _Not sent yet_ and start
+  when the feature that raises them ships. A product's email address cannot be sent a test. A webhook must be a public https address: `http`, a port
+  other than 443, an IP address, `plrs.im` and private names are refused, and a redirect is not
+  followed. Its URL and signing secret are stored sealed. The secret (`whsec_…`) is shown once,
+  when you add the webhook or issue a new one. Each alert is a JSON body signed in the
+  [Standard Webhooks](https://www.standardwebhooks.com/) scheme (`webhook-id`,
+  `webhook-timestamp`, `webhook-signature`); reject a timestamp more than five minutes old.
+  **Send test** delivers one. A destination that fails three times in a row raises its own alert
+  to the others. Every change is in the platform trail.
 - **Licensing.** The key-entry refusal switch, the reserved-names setting as a Warn / Refuse choice (switching to Refuse asks
   first), the reserved keys with the rule the platform applies to each, and every registered
   product whose catalog declares a reserved name, each declaration marked compatible or not with

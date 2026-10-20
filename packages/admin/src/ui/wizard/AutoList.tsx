@@ -33,9 +33,12 @@ const WORDS: Record<AutoState, string> = {
 export function AutoList({
   items,
   title = "Polaris Key does this",
+  hideIdle = false,
 }: {
   items: readonly AutoItem[];
   title?: string;
+  /** Before the work, a row says nothing: the heading already says "will". */
+  hideIdle?: boolean;
 }): React.ReactElement {
   const id = React.useId();
   return (
@@ -74,6 +77,7 @@ export function AutoList({
             <span
               className={cn(
                 "text-xs",
+                hideIdle && a.state === "will" && "sr-only",
                 a.state === "failed" || a.state === "needs"
                   ? "text-danger"
                   : "text-fg-muted",

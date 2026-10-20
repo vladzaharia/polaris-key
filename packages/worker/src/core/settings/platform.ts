@@ -343,9 +343,10 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     widensWhen: "higher",
     productLink: { default: false, bound: true },
     ownership: "operator",
-    confirm: { up: "L1", down: "L2" },
+    // Both directions reach every product (ST-16): the dialog shows how many.
+    confirm: { up: "L2", down: "L2" },
+    readers: ["core/licensing/keyEntries.ts"],
     storage: { kind: "scalar" },
-    pending: { wp: "ST-16" },
   }),
 
   // ── The Polaris Key storefront (PS-02, notes/S-21 §6.2) ─────────────────────────────────
@@ -434,7 +435,7 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     merge: "cascade",
     productLink: { default: true, bound: false },
     ownership: "operator",
-    confirm: { up: "L1", down: "L1" },
+    confirm: { up: "L2", down: "L2" },
     readers: ["core/assets/assetSettings.ts", "core/assets/assetQuota.ts"],
     storage: { kind: "scalar" },
     since: "HA-10",
@@ -459,7 +460,7 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     merge: "cascade",
     productLink: { default: true, bound: false },
     ownership: "operator",
-    confirm: { up: "L1", down: "L1" },
+    confirm: { up: "L2", down: "L2" },
     readers: ["core/assets/assetSettings.ts", "core/assets/assetQuota.ts"],
     storage: { kind: "scalar" },
     since: "HA-10",
@@ -587,6 +588,33 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     readers: ["core/notify/emailSender.ts"],
     storage: { kind: "none" },
     since: "ST-09",
+  }),
+
+  // ST-27: where operator alerts go. Rich: the destinations live in `notify_destinations` and are
+  // written by `/api/platform/alerts` (`console/handlers/alertDestinations.ts`), not by the
+  // scalar settings route. A webhook's URL and signing secret are sealed and never shown back.
+  setting({
+    key: "alerts.destinations",
+    scope: "platform",
+    service: "platform",
+    area: "email",
+    label: "Alert destinations",
+    description:
+      "Where the platform's alerts go: email addresses and signed https webhooks, per alert kind (auto-halt, store connection, commerce, access changes, a failing destination). A product's own destinations replace these for the kinds they take. Unset, alerts reach the audit trail only.",
+    keywords: ["notify", "webhook", "email", "alerts", "notifications"],
+    docs: PLATFORM_DOCS,
+    value: {
+      kind: "json",
+      schema: "notify_destinations rows (core/notify/alertDestinations.ts)",
+    },
+    defaultValue: null,
+    allowUnset: true,
+    merge: "cascade",
+    ownership: "operator",
+    confirm: { change: "L1" },
+    readers: ["core/notify/alertDestinations.ts"],
+    storage: { kind: "rich", adapter: "notify_destinations" },
+    since: "ST-27",
   }),
 
   // ── Package feeds policy (F-11; moved here by ST-09) ────────────────────────────────────

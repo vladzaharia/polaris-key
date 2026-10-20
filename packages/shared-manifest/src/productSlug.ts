@@ -48,6 +48,11 @@ export const RESERVED_PRODUCT_SLUGS: readonly string[] = [
   // PX-W16 (G33): avatars will be served at `/media/avatar/<asset>`, which the media proxy's
   // `/media/<product>/<asset>` would read as a product slugged `avatar`; reserved now.
   "avatar",
+  // The platform's device-code entry pages, `/device` and `/tv`.
+  "device",
+  "tv",
+  // The platform sign-in entry, `/signin`.
+  "signin",
 ];
 
 /**

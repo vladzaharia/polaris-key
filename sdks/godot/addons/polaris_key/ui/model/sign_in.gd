@@ -49,6 +49,16 @@ static func verification_url(ctx: RefCounted) -> String:
 	return DEFAULT_TV_URL if c == "tv" or c == "console" else DEFAULT_DEVICE_URL
 
 
+## What opening, copying or scanning the link does: the Polaris Key page we fall back to carries the
+## code (`?user_code=`), so the player need not type it. The displayed address stays bare.
+static func verification_target(ctx: RefCounted, shown: String) -> String:
+	var dc = ctx.member("deviceCode")
+	var code = dc.get("userCode") if dc is Dictionary else null
+	if not (code is String) or code == "" or (shown != DEFAULT_DEVICE_URL and shown != DEFAULT_TV_URL):
+		return shown
+	return "%s?user_code=%s" % [shown, code.uri_encode()]
+
+
 # ── SignIn ─────────────────────────────────────────────────────────────────────────────────────
 
 ## `SignInState`.
@@ -225,6 +235,8 @@ static func sign_in_handoff_view(ctx: RefCounted) -> Dictionary:
 	var d: Dictionary = dc if dc is Dictionary else {}
 	var c := Context.platform_class(ctx.platform)
 	var link := Link.verdict(verification_url(ctx), ctx.platform, "sign-in")
+	if link["url"] != null:
+		link["url"] = verification_target(ctx, link["url"])
 	var seconds_left = d.get("secondsLeft")
 	var args := {
 		"product": id["name"],

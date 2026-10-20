@@ -93,6 +93,9 @@ const FAIL_MODE: Record<string, FailMode> = {
   adminLogin: "closed",
   adminCallback: "closed",
   portalLogin: "closed",
+  // The platform device-code entry page (`/device`, `/tv`): a product-less guess oracle for live
+  // user codes, so an outage must not make it unlimited.
+  deviceEntry: "closed",
   portalMagic: "closed",
   // The two legs of the portal's own sign-in that had no budget: `/callback` runs a token
   // exchange and an ID-token verification for anyone who names a `state`, and `/magic/verify` is

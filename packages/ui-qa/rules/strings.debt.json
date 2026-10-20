@@ -818,26 +818,6 @@
     },
     {
       "board": "web",
-      "state": "device-limit",
-      "text": "Remove Work laptop and continue"
-    },
-    {
-      "board": "web",
-      "state": "device-limit",
-      "text": "Tidewater Studio signs out on Work laptop."
-    },
-    {
-      "board": "web",
-      "state": "device-limit",
-      "text": "To use it on Studio Mac mini, remove one. You can add it back later."
-    },
-    {
-      "board": "web",
-      "state": "device-limit",
-      "text": "Work laptop Least recent"
-    },
-    {
-      "board": "web",
       "state": "forced-colors",
       "text": "This key is one character short. Check the email and paste it again."
     },
@@ -888,6 +868,21 @@
     },
     {
       "board": "web",
+      "state": "replace-12",
+      "text": "Mara's iPad"
+    },
+    {
+      "board": "web",
+      "state": "replace-12",
+      "text": "Mara's studio workstation in the second-floor mixing room"
+    },
+    {
+      "board": "web",
+      "state": "replace-confirm",
+      "text": "Mara's iPad"
+    },
+    {
+      "board": "web",
       "state": "settings",
       "text": "Beta"
     },
@@ -934,11 +929,6 @@
     {
       "board": "web",
       "state": "sign-in",
-      "text": "Waiting for you to sign in · code expires in 4:12"
-    },
-    {
-      "board": "web",
-      "state": "sign-in",
       "text": "We opened the sign-in page. Check the code there matches this one."
     },
     {
@@ -965,11 +955,6 @@
       "board": "web",
       "state": "states",
       "text": "We couldn't find this key. Check it against your purchase email, or get help."
-    },
-    {
-      "board": "web",
-      "state": "states",
-      "text": "Work laptop Least recent"
     },
     {
       "board": "web",

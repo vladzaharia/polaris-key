@@ -245,6 +245,26 @@
         font-weight: 500;
         color: var(--pk-text-strong);
       }
+      .k-list.scroll {
+        display: grid;
+        grid-auto-rows: max-content;
+        max-height: 336px;
+        overflow-y: auto;
+      }
+      .k-item .k-btn.sm {
+        margin-inline-start: auto;
+        flex: none;
+      }
+      .docked {
+        position: sticky;
+        inset-block-end: 0;
+        background: var(--pk-surface-base, var(--pk-bg));
+        padding-block: 12px;
+        margin-inline: -20px;
+        padding-inline: 20px;
+        display: grid;
+        gap: 10px;
+      }
       .waiting {
         display: flex;
         align-items: center;
@@ -1192,8 +1212,10 @@
                     ></span>
                   </div>
                   <div class="waiting tnum">
-                    <span data-countdown="0.84"></span>Waiting for you to sign
-                    in · code expires in 4:12
+                    <span data-countdown="0.84"></span>Code expires in 4:12
+                  </div>
+                  <div class="waiting" role="status">
+                    Waiting for you to sign in…
                   </div>
                 </div>
               </div>
@@ -1247,6 +1269,9 @@
                   <div class="waiting tnum">
                     <span data-countdown="0.84"></span>Code expires in 4:12
                   </div>
+                  <div class="waiting" role="status">
+                    Waiting for you to sign in…
+                  </div>
                 </div>
               </div>
               <span class="spacer"></span>
@@ -1280,6 +1305,255 @@
         <figcaption>web · device limit · 390 × 844</figcaption>
         <div class="shot kit w390" data-shot="device-limit-390">
           <div class="center"><div class="k-card flow" id="dl2"></div></div>
+        </div>
+      </figure>
+
+      <!-- 7a. Choose a license, mixed: a full row has its own Replace -->
+      <figure>
+        <figcaption>
+          web · sign-in · choose a license, one full · 390 × 844 · a full
+          license row carries its own Replace. Built today
+        </figcaption>
+        <div class="shot kit w390" data-shot="choose-mixed-390">
+          <div class="center">
+            <div class="k-card flow">
+              <div style="display: grid; gap: 20px">
+                <div class="k-product">
+                  <div
+                    class="k-appicon"
+                    data-art="tidewater"
+                    data-size="32"
+                    style="border-radius: 8px"
+                  ></div>
+                  <span>Tidewater Studio <span class="tier">· Pro</span></span>
+                </div>
+                <div style="display: grid; gap: 8px">
+                  <h1 class="k-h1">Choose a license</h1>
+                </div>
+                <div class="k-list" role="radiogroup">
+                  <div class="k-item sel" role="radio" aria-checked="true">
+                    <span data-icon="key" data-size="20"></span>
+                    <div class="t">
+                      <span>Pro <em class="k-tag">Lifetime</em></span
+                      ><small>1 of 3 devices</small>
+                    </div>
+                    <span class="chk" data-icon="check" data-size="20"></span>
+                  </div>
+                  <div class="k-item" role="group">
+                    <span data-icon="key" data-size="20"></span>
+                    <div class="t">
+                      <span>Team <em class="k-tag">Yearly</em></span
+                      ><small>5 of 5 devices</small>
+                    </div>
+                    <button class="k-btn secondary sm" style="min-height: 44px">
+                      Replace a device
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <span class="spacer"></span>
+              <div class="actions">
+                <button class="k-btn primary block">
+                  Use this license and continue
+                </button>
+                <button class="k-btn secondary block">Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 7b. Replace a device, twelve devices: the list scrolls, actions stay docked -->
+      <figure>
+        <figcaption>
+          web · replace a device, 12 devices · 390 × 844 · the list scrolls
+          inside the card, a long name wraps, the actions stay docked, the
+          button names the device. Built today
+        </figcaption>
+        <div class="shot kit w390" data-shot="replace-12-390">
+          <div class="center">
+            <div class="k-card flow" style="grid-template-rows: 1fr auto">
+              <div
+                style="
+                  display: grid;
+                  gap: 16px;
+                  align-content: start;
+                  min-height: 0;
+                "
+              >
+                <div style="display: grid; gap: 8px">
+                  <h1 class="k-h1">Replace a device</h1>
+                  <p class="k-lede">
+                    Choose a device to sign out. This computer takes its seat.
+                  </p>
+                </div>
+                <div class="k-list scroll" role="radiogroup" id="dl12"></div>
+              </div>
+              <div class="docked">
+                <button class="k-btn primary block">
+                  Replace Work laptop and continue
+                </button>
+                <button class="k-btn secondary block">Back</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 7c. Replace, confirm inline -->
+      <figure>
+        <figcaption>
+          web · replace a device · inline confirm · 390 × 844 · the consequence
+          opens under the chosen row. Built today
+        </figcaption>
+        <div class="shot kit w390" data-shot="replace-confirm-390">
+          <div class="center">
+            <div class="k-card flow">
+              <div style="display: grid; gap: 16px; align-content: start">
+                <h1 class="k-h1">Replace a device</h1>
+                <div class="k-list" role="radiogroup">
+                  <div class="k-item sel" role="radio" aria-checked="true">
+                    <span data-icon="laptop" data-size="20"></span>
+                    <div class="t">
+                      <span
+                        >Work laptop <em class="k-tag">Least recent</em></span
+                      ><small>Windows 11 · last used 41 days ago</small>
+                    </div>
+                    <span class="chk" data-icon="check" data-size="20"></span>
+                  </div>
+                  <div class="k-item confirm">
+                    <div class="t">
+                      <span>Replace Work laptop?</span
+                      ><small
+                        >Work laptop signs out of Tidewater Studio and this
+                        computer takes its seat. Work laptop can sign in again
+                        later if a seat is free. We’ll email you about
+                        it.</small
+                      >
+                    </div>
+                  </div>
+                  <div class="k-item" role="radio">
+                    <span data-icon="tablet" data-size="20"></span>
+                    <div class="t">
+                      <span>Mara’s iPad</span
+                      ><small>iPadOS 26 · last used yesterday</small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <span class="spacer"></span>
+              <div class="actions">
+                <button class="k-btn primary block">
+                  Replace Work laptop and continue
+                </button>
+                <button class="k-btn secondary block">Back</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 7d. Activate, key refused: one danger callout under the field -->
+      <figure>
+        <figcaption>
+          web · activate · key refused · 390 × 844 · one danger callout under
+          the field, said once, cleared on edit. Built today
+        </figcaption>
+        <div class="shot kit w390" data-shot="activate-refused-390">
+          <div class="center">
+            <div class="k-card flow">
+              <div style="display: grid; gap: 20px; align-content: start">
+                <div class="k-product">
+                  <span
+                    class="k-iconbtn tonal"
+                    data-icon="chevronLeft"
+                    data-size="18"
+                    style="margin-inline-end: 4px"
+                    aria-label="Back"
+                  ></span>
+                  <div
+                    class="k-appicon"
+                    data-art="tidewater"
+                    data-size="32"
+                    style="border-radius: 8px"
+                  ></div>
+                  <span>Tidewater Studio <span class="tier">· Pro</span></span>
+                </div>
+                <h1 class="k-h1">Add your license</h1>
+                <div>
+                  <label class="k-label">License key</label>
+                  <div class="k-field invalid">
+                    <span class="mono"
+                      ><span class="k-key"
+                        ><span>pkey_tidewater_7Q2MXK9RV4TC8HJN</span
+                        ><span>3WPLDA</span></span
+                      ></span
+                    >
+                    <span
+                      class="k-iconbtn"
+                      data-icon="paste"
+                      data-size="18"
+                      aria-label="Paste"
+                    ></span>
+                  </div>
+                  <div class="k-error" role="alert">
+                    <span class="ic" data-icon="alert" data-size="16"></span>
+                    <span>This license key no longer works</span>
+                  </div>
+                </div>
+              </div>
+              <span class="spacer"></span>
+              <div class="actions">
+                <button class="k-btn primary block" aria-disabled="true">
+                  Activate
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 7e. Update prompt, before the download -->
+      <figure>
+        <figcaption>
+          web · update prompt · 1440 × 900 · the host app keeps its own type.
+          Built today
+        </figcaption>
+        <div class="shot kit w1440" data-shot="update-available">
+          <div class="host">
+            <div class="bar">
+              <span
+                class="k-appicon"
+                data-art="tidewater"
+                data-size="22"
+                style="border-radius: 6px"
+              ></span
+              >Tidewater Studio
+            </div>
+            <div class="side">
+              <span class="on"
+                ><span data-icon="play" data-size="16"></span>Session</span
+              >
+              <span><span data-icon="sliders" data-size="16"></span>Mixer</span>
+              <span><span data-icon="cloud" data-size="16"></span>Library</span>
+            </div>
+            <div class="tracks" id="tracks2"></div>
+          </div>
+          <div class="scrim"></div>
+          <div class="center">
+            <div class="k-card dialog" role="dialog" aria-modal="true">
+              <div style="display: grid; gap: 8px">
+                <h2 class="k-h1" style="font-size: 22px">
+                  An update is available
+                </h2>
+                <span class="k-meta tnum">You have 2.4.1</span>
+              </div>
+              <div class="actions row">
+                <button class="k-btn secondary">Later</button>
+                <button class="k-btn primary">Download 2.5.0 ↗</button>
+              </div>
+            </div>
+          </div>
         </div>
       </figure>
 
@@ -2215,7 +2489,7 @@ pk-activate::part(primary) { border-radius: 999px; }</pre>
         <div style="display: grid; gap: 12px">
           <h1 class="k-h1">Your license is on 3 of 3 devices</h1>
           <p class="k-lede">
-            To use it on Studio Mac mini, remove one. You can add it back later.
+            To use it on this computer, replace one. You can add it back later.
           </p>
           <div class="k-meter" role="img" aria-label="3 of 3 devices in use">
             <i class="on"></i><i class="on"></i><i class="on"></i
@@ -2249,11 +2523,13 @@ pk-activate::part(primary) { border-radius: 999px; }</pre>
       <span class="spacer"></span>
       <div style="display: grid; gap: 14px">
         <p class="k-meta" style="margin: 0">
-          Tidewater Studio signs out on Work laptop.
+          Work laptop signs out of Tidewater Studio and this computer takes its
+          seat. Work laptop can sign in again later if a seat is free. We’ll
+          email you about it.
         </p>
         <div class="actions">
           <button class="k-btn primary block">
-            Remove Work laptop and continue
+            Replace Work laptop and continue
           </button>
           <button class="k-btn secondary block">Cancel</button>
         </div>
@@ -2396,24 +2672,51 @@ pk-activate::part(primary) { border-radius: 999px; }</pre>
         document
           .getElementById(id)
           .appendChild(document.getElementById(tpl).content.cloneNode(true));
+      const names = [
+        ["Work laptop", "laptop", "Windows 11 · last used 41 days ago"],
+        ["Mara’s iPad", "tablet", "iPadOS 26 · last used yesterday"],
+        ["MacBook Pro", "laptop", "macOS 26 · last used today"],
+        [
+          "Mara’s studio workstation in the second-floor mixing room",
+          "laptop",
+          "Windows 11 · last used 3 days ago",
+        ],
+        ["Living room Mac mini", "macmini", "macOS 26 · last used 6 days ago"],
+        ["Pixel tablet", "tablet", "Android 16 · last used 9 days ago"],
+        ["Old desktop", "laptop", "Windows 10 · last used 12 days ago"],
+        ["Kitchen iPad", "tablet", "iPadOS 25 · last used 20 days ago"],
+        ["Travel laptop", "laptop", "macOS 25 · last used 24 days ago"],
+        ["Studio Mac Pro", "laptop", "macOS 26 · last used 30 days ago"],
+        ["Spare tablet", "tablet", "Android 15 · last used 33 days ago"],
+        ["Rehearsal laptop", "laptop", "Linux · last used 38 days ago"],
+      ];
+      document.getElementById("dl12").innerHTML = names
+        .map(
+          (n, i) =>
+            `<div class="k-item${i === 0 ? " sel" : ""}" role="radio" aria-checked="${i === 0}"><span data-icon="${n[1]}" data-size="20"></span><div class="t"><span>${n[0]}${i === 0 ? ' <em class="k-tag">Least recent</em>' : ""}</span><small>${n[2]}</small></div>${i === 0 ? '<span class="chk" data-icon="check" data-size="20"></span>' : ""}</div>`,
+        )
+        .join("");
       fill("dl1", "dl");
       fill("dl2", "dl");
       fill("set1", "set");
       fill("set2", "set");
       ["t1", "t2", "t3", "t4"].forEach((id) => fill(id, "mini"));
-      const tracks = document.getElementById("tracks");
-      ["", "b", "c", "", "b", "c"].forEach((cls, t) => {
-        let bars = "";
-        for (let i = 0; i < 260; i++) {
-          const h =
-            6 +
-            Math.abs(Math.sin(i * 0.37 + t) * Math.cos(i * 0.11 + t * 2)) * 44;
-          bars += `<i style="height:${h.toFixed(0)}px"></i>`;
-        }
-        tracks.insertAdjacentHTML(
-          "beforeend",
-          `<div class="track ${cls}">${bars}</div>`,
-        );
+      ["tracks", "tracks2"].forEach((tid) => {
+        const tracks = document.getElementById(tid);
+        ["", "b", "c", "", "b", "c"].forEach((cls, t) => {
+          let bars = "";
+          for (let i = 0; i < 260; i++) {
+            const h =
+              6 +
+              Math.abs(Math.sin(i * 0.37 + t) * Math.cos(i * 0.11 + t * 2)) *
+                44;
+            bars += `<i style="height:${h.toFixed(0)}px"></i>`;
+          }
+          tracks.insertAdjacentHTML(
+            "beforeend",
+            `<div class="track ${cls}">${bars}</div>`,
+          );
+        });
       });
       [0, 0.4, 0.75, 1].forEach((p, i) => {
         const len = 24;

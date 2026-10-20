@@ -48,6 +48,7 @@
  * and one `reading` (`last`) with every rollout judged on the last tick, which the console shows.
  */
 
+import { raiseAlert } from "../../core/notify/alertDestinations.js";
 import type { Db } from "../../db/types.js";
 import type { ServiceHooks } from "../../core/hooks.js";
 import type { Env } from "../../platform/env.js";
@@ -388,6 +389,18 @@ export async function runAutoHalt(
         `The ${row.outlet_id} rollout of ${row.release_id} on ${row.channel} crossed the auto-halt threshold but is mirrored from ${row.source}; not halted here — halt it with the ${row.source} connector: ${reason}`,
       );
       alerted++;
+      // ST-27: tell the operator, not only the audit trail. Never throws.
+      await raiseAlert(
+        env,
+        db,
+        {
+          kind: "auto_halt",
+          product,
+          title: "Auto-halt tripped on a store rollout",
+          detail: `The ${row.outlet_id} rollout of ${row.release_id} on ${row.channel} crossed the threshold. It is mirrored from ${row.source}, so halt it there: ${reason}`,
+        },
+        now,
+      );
       continue;
     }
 
@@ -457,6 +470,17 @@ export async function runAutoHalt(
       terminal: true,
     });
     halted++;
+    await raiseAlert(
+      env,
+      db,
+      {
+        kind: "auto_halt",
+        product,
+        title: "Auto-halt halted a rollout",
+        detail: `The ${row.outlet_id} rollout of ${row.release_id} on ${row.channel} was halted: ${reason}`,
+      },
+      now,
+    );
   }
 
   await upsertObject(write, AUTO_HALT_CONNECTOR, {

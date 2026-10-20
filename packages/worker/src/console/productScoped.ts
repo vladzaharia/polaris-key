@@ -21,6 +21,7 @@ import { handleProductUsers } from "./handlers/users.js";
 import { handleRefusals } from "./handlers/refusals.js";
 import { handleHostedAssets } from "./handlers/hostedAssets.js";
 import { handleTrustPolicy } from "./handlers/trustPolicy.js";
+import { handleAlertDestinations } from "./handlers/alertDestinations.js";
 import { handleProductSettings } from "./handlers/productSettings.js";
 import { handleServicesAdmin } from "./handlers/servicesAdmin.js";
 import { handleBundleMint } from "./handlers/bundles.js";
@@ -140,6 +141,20 @@ export async function handleProductScoped(c: AdminCtx): Promise<Response> {
       now,
     );
   }
+
+  // ST-27: this product's alert destinations, which replace the platform's for the alert kinds
+  // they take.
+  //   GET|POST /products/<slug>/alerts, PATCH|DELETE …/alerts/<id>, POST …/alerts/<id>/test
+  if (resource === "alerts")
+    return handleAlertDestinations(
+      req,
+      env,
+      db,
+      session,
+      slug,
+      rest.slice(1),
+      now,
+    );
 
   // The product settings API's first slice (LX-06, S-18 §4.7): the row-backed claimable settings
   // of every service in one store. CORE, like `claims`: a console edit claims, Revert hands back.

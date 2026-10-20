@@ -166,7 +166,18 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   ...rows(["GET"], "/platform/reserved-names", "platform", platform),
   ...rows(["GET"], "/platform/settings", "platform", platform),
   ...rows(["PATCH", "DELETE"], "/platform/settings/:key", "platform", platform),
+  ...rows(["GET"], "/platform/settings/:key/reach", "platform", platform),
   ...rows(["GET", "POST"], "/platform/settings/backfill", "platform", platform),
+  // ST-27: where operator alerts go. Adding, retargeting or removing a destination changes where alerts
+  // go (a stolen session could silence them all), so each needs the step-up; a test send does not.
+  ...rows(["GET"], "/platform/alerts", "platform", platform),
+  ...rows(["POST"], "/platform/alerts", "platform", platform, { stepUp: true }),
+  // PATCH checks the step-up in its handler: only a body that just turns a destination on skips it.
+  ...rows(["PATCH"], "/platform/alerts/:id", "platform", platform),
+  ...rows(["DELETE"], "/platform/alerts/:id", "platform", platform, {
+    stepUp: true,
+  }),
+  ...rows(["POST"], "/platform/alerts/:id/test", "platform", platform),
   // P0-49: the data-migration runner. Apply and down are step-up writes.
   // A `migrations:report` token (`pkey migrate`) reaches the read side and the dry run; apply and
   // down need a step-up, which a token cannot have, so they refuse every token.
@@ -267,6 +278,14 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   ...rows(["GET", "POST"], `${P}/settings/backfill`, "settings", product),
   ...rows(["GET"], `${P}/settings/backfill/:reportId`, "settings", product),
   ...rows(["DELETE"], `${P}/claims/:key`, "byKey", product),
+  // ST-27: this product's alert destinations (the override of the platform's).
+  ...rows(["GET"], `${P}/alerts`, "settings", product),
+  ...rows(["POST"], `${P}/alerts`, "settings", product, { stepUp: true }),
+  ...rows(["PATCH"], `${P}/alerts/:id`, "settings", product),
+  ...rows(["DELETE"], `${P}/alerts/:id`, "settings", product, {
+    stepUp: true,
+  }),
+  ...rows(["POST"], `${P}/alerts/:id/test`, "settings", product),
   ...rows(["GET", "PATCH"], `${P}/services`, "core", product),
   ...rows(["POST"], `${P}/services/revert`, "core", product),
   ...rows(["GET"], `${P}/activity`, "core", product),

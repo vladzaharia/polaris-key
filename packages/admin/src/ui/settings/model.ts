@@ -15,7 +15,14 @@ export type SettingLevel = "L0" | "L1" | "L2" | "L3";
 export type SettingSpec =
   | { kind: "switch" }
   | { kind: "boolean" }
-  | { kind: "integer"; unit: string; min: number; max: number }
+  | {
+      kind: "integer";
+      unit: string;
+      min: number;
+      max: number;
+      /** Bytes only: the unit of the field. A value reads in the largest unit it fills. */
+      byteUnit?: "GiB";
+    }
   | { kind: "enum"; values: readonly string[] }
   | { kind: "string"; pattern?: string; maxLength: number }
   | { kind: "list"; of: SettingSpec; max: number }
@@ -32,6 +39,18 @@ export type SettingConfirm =
 export type ValueLabels = Record<string, string>;
 
 const MIB = 1_048_576;
+const GIB = MIB * 1024;
+const TIB = GIB * 1024;
+
+/** A byte size in words: "512 MiB", "1 GiB", "10 TiB". */
+function formatBytes(n: number, large: boolean): string {
+  if (large && n >= TIB) return `${formatNumber(n / TIB, 2)} TiB`;
+  if (large && n >= GIB) return `${formatNumber(n / GIB, 2)} GiB`;
+  return `${formatNumber(n / MIB, 2)} MiB`;
+}
+
+const fieldDivisor = (spec: { byteUnit?: "GiB" }): number =>
+  spec.byteUnit === "GiB" ? GIB : MIB;
 
 /**
  * The confirm level for changing `from` to `to`. An unchanged value is `L0`. An ordered enum ranks
@@ -84,7 +103,7 @@ export function formatSettingValue(
     return value === "on" ? "On" : value === "off" ? "Off" : String(value);
   if (spec.kind === "integer") {
     const n = Number(value);
-    if (spec.unit === "bytes") return `${formatNumber(n / MIB, 2)} MiB`;
+    if (spec.unit === "bytes") return formatBytes(n, spec.byteUnit === "GiB");
     if (spec.unit === "count") return formatCount(n);
     const unit =
       n === 1 && /^(days|hours|minutes|seconds)$/.test(spec.unit)
@@ -99,21 +118,21 @@ export function formatSettingValue(
 /** The number a field shows for a stored value: MiB for a byte size, the value otherwise. */
 export function toField(spec: SettingSpec, value: number): number {
   return spec.kind === "integer" && spec.unit === "bytes"
-    ? Math.round((value / MIB) * 10_000) / 10_000
+    ? Math.round((value / fieldDivisor(spec)) * 10_000) / 10_000
     : value;
 }
 
 /** The stored value for what a field shows (the inverse of `toField`). */
 export function fromField(spec: SettingSpec, value: number): number {
   return spec.kind === "integer" && spec.unit === "bytes"
-    ? Math.round(value * MIB)
+    ? Math.round(value * fieldDivisor(spec))
     : value;
 }
 
 /** The unit word on a field: "MiB" for bytes, the spec's unit otherwise, none for a count. */
 export function fieldUnit(spec: SettingSpec): string | undefined {
   if (spec.kind !== "integer") return undefined;
-  if (spec.unit === "bytes") return "MiB";
+  if (spec.unit === "bytes") return spec.byteUnit === "GiB" ? "GiB" : "MiB";
   return spec.unit === "count" ? undefined : spec.unit;
 }
 

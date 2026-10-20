@@ -46,6 +46,10 @@ export interface SettingRowProps extends Omit<SettingWriteOptions, "commit"> {
   notes?: React.ReactNode;
   /** Under the control: the exact bytes in effect. */
   footnote?: React.ReactNode;
+  /** One muted line under the help: who uses the setting. */
+  meta?: React.ReactNode;
+  /** The word after a number field, when the spec's unit has none ("per license"). */
+  unitLabel?: string;
   /** The bounds sentence under a number field (default: "1 to 365 days."). */
   bounds?: React.ReactNode;
   /** The reloaded message's tail ("set by ada@x.io"). */
@@ -105,12 +109,30 @@ export function SettingRow(props: SettingRowProps): React.ReactElement {
       ? "immediate"
       : "explicit");
   const w = useSettingWrite({ ...props, commit });
+  // The opener can be gone when a confirmation closes (a Save bar that unmounts on a clean row, a
+  // conflict): focus then falls to <body>, so it returns to the field. The dialog's own return to
+  // a surviving opener runs first and is left alone.
+  const wasConfirming = React.useRef(false);
+  React.useEffect(() => {
+    if (wasConfirming.current && !w.confirming) {
+      const t = window.setTimeout(() => {
+        const a = document.activeElement;
+        if (!a || a === document.body) document.getElementById(id)?.focus();
+      }, 120);
+      wasConfirming.current = false;
+      return () => window.clearTimeout(t);
+    }
+    wasConfirming.current = w.confirming;
+    return undefined;
+  }, [w.confirming, id]);
   const fmt = (v: unknown) => formatSettingValue(spec, v, labels);
   const viewOnly = readOnly !== undefined;
   const off = disabled || locked !== undefined || viewOnly || w.busy;
   const errId = `${id}-error`;
   const hintId = `${id}-hint`;
-  const unit = fieldUnit(spec);
+  // A custom unit is long ("per license"): it goes under the field with the bounds, never inside.
+  const unit = props.unitLabel ?? fieldUnit(spec);
+  const fieldSuffix = props.unitLabel ? undefined : unit;
   const state = w.conflict
     ? "conflict"
     : w.error
@@ -207,7 +229,7 @@ export function SettingRow(props: SettingRowProps): React.ReactElement {
             .join(" ")}
           value={typeof w.draft === "number" ? toField(spec, w.draft) : null}
           onChange={(v) => w.setDraft(v === null ? null : fromField(spec, v))}
-          unit={unit}
+          unit={fieldSuffix}
           min={min}
           max={max}
           step={spec.unit === "bytes" ? "any" : 1}
@@ -241,6 +263,9 @@ export function SettingRow(props: SettingRowProps): React.ReactElement {
 
   const footer = (
     <>
+      {props.meta ? (
+        <p className="mt-2 text-xs text-fg-muted">{props.meta}</p>
+      ) : null}
       {footnote ? (
         <p className="mt-2 text-xs text-fg-muted">{footnote}</p>
       ) : null}
@@ -292,15 +317,18 @@ export function SettingRow(props: SettingRowProps): React.ReactElement {
           ) : null}
         </p>
       ) : null}
-      {notes ? <div className="mt-3 space-y-2">{notes}</div> : null}
       <ConflictNote
         state={w.conflict}
         reloading={w.reloading}
-        onReload={() => void w.reload()}
+        onReload={() =>
+          // The Reload button unmounts with the refusal: the field takes the focus.
+          void w.reload().then(() => document.getElementById(id)?.focus())
+        }
         onDismiss={w.clearConflict}
         now={`${fmt(value)}${reloadedBy ? `, ${reloadedBy}` : ""}`}
         draft={draftText}
       />
+      {notes ? <div className="mt-3 space-y-2">{notes}</div> : null}
       {w.dialog}
     </>
   );

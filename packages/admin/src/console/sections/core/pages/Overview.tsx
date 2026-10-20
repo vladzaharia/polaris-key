@@ -179,7 +179,7 @@ function OverviewBody({
 
   const fallback = on(p, "license") ? (
     <Button asChild>
-      <Link to={r.licenses(slug)}>Create license</Link>
+      <Link to={r.newLicense(slug)}>New license</Link>
     </Button>
   ) : on(p, "config") ? (
     <Button asChild>

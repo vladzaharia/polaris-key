@@ -70,8 +70,8 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] A private-range or non-HTTPS URL is refused (test).
-- [ ] Alerts go to the product override when set (test).
+- [x] A private-range or non-HTTPS URL is refused (test: `test/alertDestinations.test.ts`, "webhook URL guard", route 422 `url_refused`, and a redirect is refused at delivery).
+- [x] Alerts go to the product override when set (test: `test/alertDestinations.test.ts` "delivery", and `test/autoHalt.test.ts`).
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify
@@ -87,3 +87,38 @@ mise exec node@22 -- pnpm --filter @polaris-key/worker test
 The role agent sets `--set ST-27 in-review` when it hands off. After review, the lead adds the last
 commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set ST-27 done`.
+
+## Built (2026-10-17)
+
+- **Storage.** `notify_destinations` (address or `https://host/…`, alert kinds, enabled, version,
+  last outcome) and `notify_destination_secrets` (the webhook URL and the `whsec_` signing secret
+  sealed together under `PLATFORM_KEK`, kind `notify-destination`, re-sealed by the KEK sweep).
+  Migration `0123_notify_destinations.sql`; the lead renumbers it at merge time.
+- **Registry.** `alerts.destinations` (platform) and `core.alerts.destinations` (product): rich
+  entries, written through dedicated routes rather than the scalar settings route, so the secret
+  never passes through `writeSetting()` and its audit.
+- **Routes** (rule 10, in the OpenAPI spec): `/platform/alerts[/:id[/test]]` and
+  `/products/:slug/alerts[/:id[/test]]`. `POST` and `PATCH` are step-up rows (`STEP_UP_ROUTES`).
+- **Delivery.** `raiseAlert()` (`core/notify/alertDestinations.ts`): the product's destinations for
+  the kind replace the platform's; email goes through `deliverEmail`, a webhook through
+  `core/notify/alertWebhook.ts` (both URL guards, redirects refused, Standard Webhooks signature).
+  Wired to the auto-halt (halt and store-rollout alert). The other kinds (`store_connection`,
+  `commerce`, `access_changed`) are defined and deliverable; their emit sites belong to the
+  packages that own those events (P0-51 readiness, ST-44's attention read).
+- **Console.** `console/sections/notify/AlertDestinations.tsx` in Platform → Settings → Email and
+  alerts and in a product's Settings → Alerts.
+- **Threat model.** "Notification destinations: operator alerts (ST-27)".
+
+## Fix round 2026-10-19
+
+- Security review: DELETE is a step-up row; atomic guarded update; per-scope test caps from the audit
+  trail; no test send to a product's email address until confirmation exists; parallel delivery;
+  tests do not move `failures`; a product's `notifications_failing` stays in its scope.
+- UX review: PATCH checks the step-up in its handler (only `enabled: true` skips it); one
+  page-level sign-in callout, shown once an action needs it; one-line rows with a ⋯ menu; an Edit
+  dialog (URL write-only behind Replace URL); field errors under the field; "5 of 5"; `retryAfter`
+  countdown on a throttled test; the last delivery error (`last_error`, host and status only); the
+  per-kind routing summary; focus after Remove, Done and a new secret.
+- **Follow-up, not built:** dual-secret signing for 24 h on rotate (sign with the old and the new
+  secret, as Stripe's roll does), so a rotation has no gap. Today a new secret ends the old one at
+  once.

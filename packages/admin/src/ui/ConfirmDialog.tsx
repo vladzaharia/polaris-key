@@ -28,6 +28,8 @@ export interface ConfirmDialogProps {
   title: React.ReactNode;
   description?: React.ReactNode;
   consequences?: string[];
+  /** Leads the body, before the consequences (what the action reaches). */
+  lead?: React.ReactNode;
   /** Repeats the verb: "Yank 2.4.0". */
   confirmLabel?: string;
   cancelLabel?: string;
@@ -72,6 +74,7 @@ export function ConfirmDialog({
   title,
   description,
   consequences,
+  lead,
   confirmLabel = "Confirm",
   cancelLabel = "Cancel",
   typedConfirmation,
@@ -128,17 +131,29 @@ export function ConfirmDialog({
       role="alertdialog"
       title={
         <span className="flex items-start gap-2">
-          {ICON[intent] ? <span className="mt-0.5">{ICON[intent]}</span> : null}
-          <span>{title}</span>
+          {ICON[intent] ? (
+            // The intent shows in the button too; a phone at large text needs the width.
+            <span className="mt-0.5 max-sm:hidden">{ICON[intent]}</span>
+          ) : null}
+          <span className="min-w-0 [overflow-wrap:anywhere]">{title}</span>
         </span>
       }
       description={description}
+      className="max-sm:overflow-y-auto"
       dismissible={!busy}
       initialFocusRef={cancelRef}
     >
-      {consequences?.length || children || err || typedConfirmation ? (
-        <DialogBody className="space-y-4 text-sm">
-          {consequences?.length ? (
+      {lead || consequences?.length || children || err || typedConfirmation ? (
+        <DialogBody className="space-y-4 text-sm max-sm:flex-none max-sm:overflow-y-visible">
+          {lead}
+          {consequences?.length && lead ? (
+            // After a lead, the lines are plain text, not a list of one.
+            <div className="space-y-1 text-fg-muted">
+              {consequences.map((c) => (
+                <p key={c}>{c}</p>
+              ))}
+            </div>
+          ) : consequences?.length ? (
             <ul className="list-disc space-y-1 pl-5 text-fg">
               {consequences.map((c) => (
                 <li key={c}>{c}</li>
@@ -205,6 +220,8 @@ export function ConfirmDialog({
         </Button>
         <Button
           variant={variant}
+          // A long label (a count in it) wraps on a phone rather than spill out of the button.
+          className="max-sm:h-auto max-sm:min-h-9 max-sm:whitespace-normal max-sm:py-2 max-sm:text-balance"
           loading={busy}
           disabled={confirmDisabled}
           disabledReason={

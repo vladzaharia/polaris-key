@@ -2,8 +2,8 @@
  * Why each step-up route needs one, and the gate that reads it. A route that is irreversible,
  * exports personal data, forces a key change or leaves a long-lived credential behind is listed
  * here. Since ST-29 the route table (`./routes.ts`, `stepUp: true`) is what the dispatcher
- * enforces, before the handler runs. The one row whose step-up depends on the request body (a
- * break-glass key activation) keeps its own `requireStepUp` in the handler, and `(a|b)` spells two
+ * enforces, before the handler runs. The rows whose step-up depends on the request body (a
+ * break-glass key activation; an alert destination PATCH, marked `(body)`) keep their own `requireStepUp` in the handler, and `(a|b)` spells two
  * table rows. `test/rbacRouteMatrix.test.ts` keeps this list and the table's step-up rows in step.
  *
  * A step-up is `session.stepUpAt` (see ./session.ts): set only by a `prompt=login` flow the IdP
@@ -18,7 +18,7 @@ import type { AdminSession } from "../core/console/session.js";
 import { err } from "../core/console/respond.js";
 
 export interface StepUpRoute {
-  method: "GET" | "POST" | "DELETE";
+  method: "GET" | "POST" | "PATCH" | "DELETE";
   /** Path under `/manage/api`, with `:slug`, `:subject`, `:id` placeholders. */
   path: string;
   /** Why it is gated. */
@@ -26,6 +26,36 @@ export interface StepUpRoute {
 }
 
 export const STEP_UP_ROUTES: readonly StepUpRoute[] = [
+  {
+    method: "POST",
+    path: "/platform/alerts",
+    why: "aims the platform's alerts at a new address or URL",
+  },
+  {
+    method: "DELETE",
+    path: "/platform/alerts/:id",
+    why: "removes an alert destination, which can silence alerts",
+  },
+  {
+    method: "DELETE",
+    path: "/products/:slug/alerts/:id",
+    why: "removes an alert destination, which can silence alerts",
+  },
+  {
+    method: "PATCH",
+    path: "/platform/alerts/:id (body)",
+    why: "retargets, re-secrets, narrows or turns off an alert destination (only turning one on skips it)",
+  },
+  {
+    method: "POST",
+    path: "/products/:slug/alerts",
+    why: "aims a product's alerts at a new address or URL",
+  },
+  {
+    method: "PATCH",
+    path: "/products/:slug/alerts/:id (body)",
+    why: "retargets, re-secrets, narrows or turns off an alert destination (only turning one on skips it)",
+  },
   {
     method: "GET",
     path: "/products/:slug/users/:subject/export",

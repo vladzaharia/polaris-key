@@ -47,6 +47,10 @@
       "types": "./dist/generated/kit-copy/index.d.ts",
       "default": "./dist/generated/kit-copy/index.js"
     },
+    "./email-copy": {
+      "types": "./dist/emailCopy.d.ts",
+      "default": "./dist/emailCopy.js"
+    },
     "./accent": {
       "types": "./dist/accent.d.ts",
       "default": "./dist/accent.js"

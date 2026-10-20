@@ -81,7 +81,8 @@ export interface SealContext {
     | "outlet-credential"
     | "platform-credential"
     | "signin-provider-secret"
-    | "identity-connection";
+    | "identity-connection"
+    | "notify-destination";
   id: string;
 }
 
