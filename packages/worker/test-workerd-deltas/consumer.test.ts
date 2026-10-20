@@ -196,11 +196,19 @@ describe("the consumer Worker", () => {
         P,
         { schemaVersion: 1, entries: [] },
       );
-      await db.run(
-        "INSERT INTO lazy_delta_settings (product, enabled, hot_devices, daily_cap, updated_at) VALUES (?, 1, 1, 5, ?)",
-        P,
-        NOW,
-      );
+      // ST-11: the opt-in is three `product_settings` rows.
+      for (const [key, value] of [
+        ["deltas.lazy.enabled", '"on"'],
+        ["deltas.lazy.hotDevices", "1"],
+        ["deltas.lazy.dailyCap", "5"],
+      ] as const)
+        await db.run(
+          "INSERT INTO product_settings (product, key, value_json, source, version, updated_at, updated_by) VALUES (?, ?, ?, 'console', 1, ?, 'test')",
+          P,
+          key,
+          value,
+          NOW,
+        );
       // Over 1 MiB, so a delta can save the 1 MiB the policy asks for against the full object.
       const v1 = bytes(3_000_000, 7);
       const v2 = v1.slice();
