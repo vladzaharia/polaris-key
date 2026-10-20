@@ -106,7 +106,10 @@ describe("GET /manage/api/attention", () => {
       ["credential.expiring", "danger", "djdl"],
       ["credential.expiring", "warning", "djdl"],
     ]);
-    expect(items[0]!.lines).toEqual(["Resync failed.", "line 14 names switch"]);
+    expect(items[0]!.lines).toEqual([
+      "Resync failed.",
+      "The manifest did not validate.",
+    ]);
     expect(items[1]!.lines).toEqual([
       `Steam publisher key expired ${day(NOW - DAY)}.`,
     ]);
