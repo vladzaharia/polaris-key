@@ -71,6 +71,8 @@ export interface Me {
    * the environment badge then stays hidden, as it does in production.
    */
   environment?: ConsoleEnvironment | null;
+  /** The customer site (Polaris Locker) the console links to; `null` while there is none. */
+  customerOrigin?: string | null;
   /** When the admin session ends, epoch seconds (A-1; the session is a hard 8 h). */
   sessionExpiresAt?: number;
   /** When the operator last signed in interactively (I-12 step-up); `null` on an older session. */
@@ -839,14 +841,23 @@ export interface PlatformConnection {
 
 export interface PlatformConnectionsPage {
   connections: PlatformConnection[];
-  /** The redirect URI to register at every provider. */
+  /** The primary redirect URI to register at every provider. */
   redirectUri: string;
+  /** Every address a person may sign in at: Polaris Locker first when set, then the console. */
+  redirectUris?: { site: "locker" | "console"; label: string; value: string }[];
   builtIns: {
     kind: "google" | "apple" | "steam";
     label: string;
     configured: boolean;
     /** What to register at the provider: one exact URI, or (Steam) the realm. */
     registration: { kind: "redirect-uri" | "realm"; value: string };
+    /** One per place a person may sign in (Polaris Locker first when set). */
+    registrations?: {
+      site: "locker" | "console";
+      label: string;
+      kind: "redirect-uri" | "realm";
+      value: string;
+    }[];
   }[];
   email: { configured: boolean };
   turnstile: { enabled: boolean };

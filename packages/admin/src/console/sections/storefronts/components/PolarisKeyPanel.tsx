@@ -18,14 +18,13 @@
  */
 
 import * as React from "react";
-import { AlertTriangle, Check, Eye, X } from "lucide-react";
+import { ExternalLink, Eye } from "lucide-react";
 import type {
   ObtainPathKind,
   PolarisKeyAnalyticsResponse,
   PolarisKeyListed,
   PolarisKeyPersona,
   PolarisKeyPreviewResponse,
-  PolarisKeyReadinessCheck,
   PolarisKeyStatusResponse,
   PolarisKeyTile,
   UpdatePortalSettingsBody,
@@ -60,6 +59,10 @@ import {
   SettingsSection,
   SettingsTemplate,
 } from "../../../templates/Settings.js";
+import { useMe } from "../../../data/hooks.js";
+import { lockerUrl } from "../model/badges.js";
+import { LockerBadges } from "./LockerBadges.js";
+import { ReadinessList } from "./PolarisKeyReadiness.js";
 import { usePolarisKey, usePolarisKeyAnalytics } from "../data.js";
 import {
   AUDIENCE_CHOICES,
@@ -93,6 +96,7 @@ export function PolarisKeyPanel({
   slug: string;
 }): React.ReactElement {
   const q = usePolarisKey(slug);
+  const lockerPage = lockerUrl(useMe().data?.customerOrigin, slug);
   const header = (
     <PageHeader
       eyebrow={
@@ -112,11 +116,21 @@ export function PolarisKeyPanel({
         ) : null
       }
       primaryAction={
-        <Button variant="outline" asChild>
-          <Link to={r.listing(slug, { tab: "fit", store: POLARIS_KEY })}>
-            Edit the listing
-          </Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {lockerPage ? (
+            <Button variant="outline" asChild>
+              <a href={lockerPage} target="_blank" rel="noreferrer">
+                Open on Polaris Locker
+                <ExternalLink aria-hidden />
+              </a>
+            </Button>
+          ) : null}
+          <Button variant="outline" asChild>
+            <Link to={r.listing(slug, { tab: "fit", store: POLARIS_KEY })}>
+              Edit the listing
+            </Link>
+          </Button>
+        </div>
       }
     />
   );
@@ -299,6 +313,7 @@ function PanelBody({
     ...(showGroups ? [{ id: "pk-groups", title: "Group labels" }] : []),
     { id: "pk-who", title: "Who can see this?" },
     { id: "pk-analytics", title: "Last 28 days" },
+    { id: "pk-badges", title: "Get a badge" },
   ];
   const listingId = `pk-${slug}-listed`;
   const audienceId = `pk-${slug}-audience`;
@@ -396,6 +411,8 @@ function PanelBody({
         <Analytics slug={slug} />
       </SettingsSection>
 
+      <LockerBadges slug={slug} status={status} />
+
       <PendingDialog
         slug={slug}
         status={status}
@@ -405,81 +422,6 @@ function PanelBody({
     </SettingsTemplate>
   );
 }
-
-// ── Readiness ────────────────────────────────────────────────────────────────────────────────
-
-const CHECK_TITLES: Record<PolarisKeyReadinessCheck["id"], string> = {
-  portal: "Polaris Locker",
-  listing: "Listing",
-  "obtain-path": "A way to add it",
-  "get-it": "Get it",
-  "licence-tier": "Licence tiers",
-};
-
-const STATE_WORDS: Record<PolarisKeyReadinessCheck["state"], string> = {
-  pass: "Ready",
-  warn: "Ready, with a note",
-  fail: "Needs a fix",
-};
-
-function ReadinessList({
-  slug,
-  checks,
-}: {
-  slug: string;
-  checks: PolarisKeyReadinessCheck[];
-}): React.ReactElement {
-  const fix = (c: PolarisKeyReadinessCheck): React.ReactNode => {
-    if (c.state === "pass") return null;
-    if (c.id === "portal")
-      return (
-        <Button size="sm" variant="outline" asChild>
-          <Link to={r.portal(slug)}>Open Locker</Link>
-        </Button>
-      );
-    if (c.id === "listing")
-      return (
-        <Button size="sm" variant="outline" asChild>
-          <Link to={r.listing(slug)}>Open Listing</Link>
-        </Button>
-      );
-    return null;
-  };
-  return (
-    <ul aria-label="Readiness" className="divide-y divide-border">
-      {checks.map((c) => (
-        <li
-          key={c.id}
-          data-check={c.id}
-          data-state={c.state}
-          className="flex min-h-14 items-center justify-between gap-3 px-5 py-3"
-        >
-          <div className="flex min-w-0 items-start gap-3">
-            <span className="mt-0.5 shrink-0">
-              {c.state === "pass" ? (
-                <Check aria-hidden className="size-4 text-success" />
-              ) : c.state === "warn" ? (
-                <AlertTriangle aria-hidden className="size-4 text-warning" />
-              ) : (
-                <X aria-hidden className="size-4 text-danger" />
-              )}
-            </span>
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-fg-strong">
-                {CHECK_TITLES[c.id]}
-                <span className="sr-only">: {STATE_WORDS[c.state]}</span>
-              </p>
-              <p className="text-sm text-fg-muted">{c.reason}</p>
-            </div>
-          </div>
-          <div className="ml-auto shrink-0">{fix(c)}</div>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-// ── Ways to add ──────────────────────────────────────────────────────────────────────────────
 
 function WaysToAdd({
   slug,

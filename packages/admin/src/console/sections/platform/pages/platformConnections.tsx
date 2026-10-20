@@ -23,7 +23,7 @@ import {
   type PlatformConnectionsPage,
 } from "../../../../api.js";
 import { Button } from "../../../../ui/Button.js";
-import { CopyButton } from "../../../../ui/CopyButton.js";
+import { RegisterAddresses } from "./RegisterAddresses.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
@@ -277,25 +277,20 @@ export function ConnectionsPage(): React.ReactElement {
                         <p className="mt-2 break-words text-xs text-fg-muted">
                           Worker values: {SETUP[b.kind].env}
                         </p>
-                        <div className="mt-2 space-y-1">
-                          <p className="text-xs text-fg-muted">
-                            {b.registration.kind === "realm"
-                              ? "Realm"
-                              : "Redirect URI"}
-                          </p>
-                          <div className="flex items-center gap-2">
-                            <code className="min-w-0 break-all text-xs">
-                              {b.registration.value}
-                            </code>
-                            <CopyButton
-                              value={b.registration.value}
-                              label={
-                                b.registration.kind === "realm"
-                                  ? "Copy realm"
-                                  : "Copy redirect URI"
-                              }
-                            />
-                          </div>
+                        <div className="mt-2">
+                          <RegisterAddresses
+                            title={
+                              b.registration.kind === "realm"
+                                ? "Realm"
+                                : "Redirect URI"
+                            }
+                            copyLabel={
+                              b.registration.kind === "realm"
+                                ? "Copy realm"
+                                : "Copy redirect URI"
+                            }
+                            addresses={b.registrations ?? [b.registration]}
+                          />
                         </div>
                         <p className="mt-2 text-xs">
                           <a

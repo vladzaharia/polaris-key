@@ -196,6 +196,54 @@ describe("built-in providers", () => {
   });
 });
 
+describe("two places to sign in", () => {
+  it("lists Polaris Locker first, then the Polaris Key Console, each with its own copy button", async () => {
+    const page = {
+      ...PAGE,
+      builtIns: PAGE.builtIns.map((b) =>
+        b.kind === "apple"
+          ? {
+              ...b,
+              registrations: [
+                {
+                  site: "locker",
+                  label: "Polaris Locker",
+                  kind: "redirect-uri",
+                  value: "https://polaris.locker/login/apple/callback",
+                },
+                {
+                  site: "console",
+                  label: "Polaris Key Console",
+                  kind: "redirect-uri",
+                  value: "https://key.plrs.im/login/apple/callback",
+                },
+              ],
+            }
+          : b,
+      ),
+    };
+    boot("#/platform/connections", { me: ME, extra: { [BASE]: page } });
+    await within(main()).findByText("Set up Apple");
+    const text = main().textContent!;
+    expect(
+      text.indexOf("https://polaris.locker/login/apple/callback"),
+    ).toBeGreaterThan(-1);
+    expect(text.indexOf("Polaris Locker")).toBeLessThan(
+      text.indexOf("Polaris Key Console"),
+    );
+    expect(
+      within(main()).getByRole("button", {
+        name: "Copy redirect URI (Polaris Locker)",
+      }),
+    ).toBeTruthy();
+    expect(
+      within(main()).getByRole("button", {
+        name: "Copy redirect URI (Polaris Key Console)",
+      }),
+    ).toBeTruthy();
+  });
+});
+
 describe("a refused change", () => {
   it("keeps the dialog and the typed values, with the words inside it", async () => {
     boot(`#/platform/connections/conn_work`, {
