@@ -237,7 +237,7 @@ describe("customer portal", () => {
     expect(JSON.stringify(body)).not.toContain(key);
   });
 
-  it("hides and rejects license-key claim when the module is disabled", async () => {
+  it("hides and rejects license-key claim when the portal is off", async () => {
     const db = makeTestDb();
     const env = portalEnv();
     await seedProduct(db, "djdl");
@@ -248,10 +248,10 @@ describe("customer portal", () => {
           license_key_claim_enabled, releases_enabled, branding_json, created_at, modified_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       "djdl",
-      1,
-      1,
-      1,
       0,
+      1,
+      1,
+      1,
       1,
       null,
       NOW,

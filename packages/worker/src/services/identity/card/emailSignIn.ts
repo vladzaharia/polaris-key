@@ -305,7 +305,7 @@ export async function handleSigninEmailStart(
   );
   if (!allowed) return cardJson({ error: "rate_limited" }, 429);
   const caps = await portalAuthCapabilities(db);
-  if (!caps.portalEnabled || !caps.magicEnabled) {
+  if (!caps.portalEnabled) {
     return cardJson(
       { error: "auth_method_disabled", message: "email sign-in is disabled" },
       404,
@@ -505,7 +505,7 @@ export async function handleSigninEmailResend(
   );
   if (!allowed) return resendLater(60);
   const caps = await portalAuthCapabilities(db);
-  if (!caps.portalEnabled || !caps.magicEnabled) {
+  if (!caps.portalEnabled) {
     return cardJson(
       { error: "auth_method_disabled", message: "email sign-in is disabled" },
       404,
@@ -772,7 +772,7 @@ export async function handleMagicLanding(
   const token = new URL(req.url).searchParams.get("token");
   if (!token) return expiredLinkPage();
   const caps = await portalAuthCapabilities(db);
-  if (!caps.portalEnabled || !caps.magicEnabled) {
+  if (!caps.portalEnabled) {
     return signInOffPage();
   }
   const magicRef = await portalMagicKey(env, token);
@@ -814,7 +814,7 @@ export async function handleMagicConfirm(
   now: number,
 ): Promise<Response> {
   const caps = await portalAuthCapabilities(db);
-  if (!caps.portalEnabled || !caps.magicEnabled) {
+  if (!caps.portalEnabled) {
     return signInOffPage();
   }
   let token: string | null = null;

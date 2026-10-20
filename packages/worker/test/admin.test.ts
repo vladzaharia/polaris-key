@@ -395,10 +395,7 @@ describe("admin api", () => {
         csrf,
         body: {
           portalEnabled: true,
-          oidcEnabled: false,
-          magicEnabled: true,
-          licenseKeyClaimEnabled: false,
-          releasesEnabled: false,
+          keyReissueEnabled: true,
         },
       }),
       env,
@@ -409,19 +406,16 @@ describe("admin api", () => {
     const settingsBody = (await updated.json()) as {
       settings: {
         portalEnabled: boolean;
-        oidcEnabled: boolean;
-        magicEnabled: boolean;
-        licenseKeyClaimEnabled: boolean;
-        releasesEnabled: boolean;
+        keyReissueEnabled: boolean;
       };
     };
     expect(settingsBody.settings).toMatchObject({
       portalEnabled: true,
-      oidcEnabled: false,
-      magicEnabled: true,
-      licenseKeyClaimEnabled: false,
-      releasesEnabled: false,
+      keyReissueEnabled: true,
     });
+    // I-29: the retired toggles are not part of the settings at all.
+    expect(settingsBody.settings).not.toHaveProperty("oidcEnabled");
+    expect(settingsBody.settings).not.toHaveProperty("magicEnabled");
 
     const detail = await dispatch(
       mkReq("GET", "/api/products/djdl", { cookie }),
