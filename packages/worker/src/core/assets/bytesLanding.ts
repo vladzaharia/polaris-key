@@ -92,7 +92,7 @@ function palette(theme: "dark" | "light"): string {
     `--edge:${t.border.strong}`,
     `--accent:${accent.fg}`,
     `--accent-subtle:${accent.subtle}`,
-    `--focus:${t.focus}`,
+    `--focus:${t.text.strong}`,
   ].join(";");
 }
 

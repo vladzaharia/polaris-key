@@ -153,9 +153,6 @@ export function renderEmail(c: EmailContent): string {
     : "";
   const secondary = c.secondary
     ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 0"><tr>` +
-      (c.origin
-        ? `<td style="padding:0 10px 0 0"><img class="pk-logo-light" src="${escapeHtml(lockupSrc("light"))}" width="90" height="${locker ? 25 : 30}" alt="${brandName}" style="display:block;border:0;width:90px;height:auto"><!--[if !mso]><!--><img class="pk-logo-dark" src="${escapeHtml(lockupSrc("dark"))}" width="90" height="${locker ? 25 : 30}" alt="${brandName}" style="display:none;max-height:0;overflow:hidden;mso-hide:all;border:0;width:90px;height:auto"><!--<![endif]--></td>`
-        : "") +
       `<td style="font-family:${font};font-size:15px;line-height:22px"><a class="pk-link" href="${escapeHtml(c.secondary.url)}" style="color:${linkFg};text-decoration:underline">${escapeHtml(c.secondary.label)}</a></td></tr></table>`
     : "";
   const hero = c.hero
