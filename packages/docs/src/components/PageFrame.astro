@@ -2,9 +2,8 @@
 /**
  * Starlight's page frame inside a section wrapper. `data-service` re-points the brand's
  * --pk-accent* tokens (and, through global.css, Starlight's accent variables) at the page's
- * section: service pages take their service accent. Everything else is the Locker context
- * (`data-brand="locker"`, D9a): coral for identity, neutral ink for state; core pages carry no
- * `data-service`. The wrapper is `display: contents`, so Starlight's layout is unchanged.
+ * section: service pages take their service accent, everything else stays core. The wrapper is
+ * `display: contents`, so Starlight's layout is unchanged.
  */
 import Default from "@astrojs/starlight/components/PageFrame.astro";
 import { sectionFor } from "../lib/section";
@@ -12,11 +11,7 @@ import { sectionFor } from "../lib/section";
 const section = sectionFor(Astro.locals.starlightRoute.id);
 ---
 
-<div
-  class="pk-section"
-  data-brand="locker"
-  data-service={section.slug === "core" ? undefined : section.slug}
->
+<div class="pk-section" data-service={section.slug}>
   <Default>
     <slot name="header" slot="header" />
     <slot name="sidebar" slot="sidebar" />
