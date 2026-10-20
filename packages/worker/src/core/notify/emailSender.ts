@@ -32,6 +32,13 @@ export const LEGACY_EMAIL_ADDRESS = "noreply@plrs.im";
 export const PLATFORM_SENDER_NAME = "Polaris Key";
 /** The fixed suffix of every passthrough display name. */
 export const PASSTHROUGH_SENDER_SUFFIX = " via Polaris Key";
+/**
+ * The display name once the brand is Polaris Locker (LK-07, D6; the address never changes).
+ * Operator and member mail use it always (A3 §14.4); customer mail only while `customer.host` is on.
+ */
+export const LOCKER_SENDER_NAME = "Polaris Locker";
+/** The passthrough suffix while the brand is Polaris Locker. */
+export const LOCKER_PASSTHROUGH_SENDER_SUFFIX = " via Polaris Locker";
 /** The longest product display name (in code points) accepted into a sender name. */
 export const SENDER_APP_NAME_MAX = 40;
 
@@ -55,6 +62,7 @@ const RESERVED_WHOLE_NAMES = new Set([
   "billing",
   "account",
   "accounts",
+  "locker",
 ]);
 
 /**
@@ -202,9 +210,15 @@ export function senderAddress(env: Env): string {
   return bareAddress(legacy) ?? LEGACY_EMAIL_ADDRESS;
 }
 
-/** The `From` of platform mail: "Polaris Key", never " via". */
-export function platformSender(env: Env): EmailAddress {
-  return { name: PLATFORM_SENDER_NAME, email: senderAddress(env) };
+/**
+ * The `From` of platform mail: "Polaris Key", never " via"; "Polaris Locker" when `locker` (mail
+ * to operators and members always, customer mail while `customer.host` is on).
+ */
+export function platformSender(env: Env, locker = false): EmailAddress {
+  return {
+    name: locker ? LOCKER_SENDER_NAME : PLATFORM_SENDER_NAME,
+    email: senderAddress(env),
+  };
 }
 
 /**
@@ -217,12 +231,13 @@ export function passthroughSender(
   env: Env,
   displayName: string | null | undefined,
   slug: string,
+  locker = false,
 ): EmailAddress | null {
   for (const candidate of [displayName, slug]) {
     const check = checkSenderAppName(candidate);
     if (check.ok)
       return {
-        name: `${check.name}${PASSTHROUGH_SENDER_SUFFIX}`,
+        name: `${check.name}${locker ? LOCKER_PASSTHROUGH_SENDER_SUFFIX : PASSTHROUGH_SENDER_SUFFIX}`,
         email: senderAddress(env),
       };
   }
