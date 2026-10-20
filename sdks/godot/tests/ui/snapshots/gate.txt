@@ -124,7 +124,7 @@ Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeySig
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeySignInDialog/Card/Scroll/Stack/Body/Info/Header/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeySignInDialog/Card/Scroll/Stack/Body/Info/Header/TitleRow/Title: Label "Sign in"
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeySignInDialog/Card/Scroll/Stack/Body/Info/Steps/Where/Instructions: Label "Go to"
-Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeySignInDialog/Card/Scroll/Stack/Body/Info/Steps/Where/Address: Label "key.plrs.im/device"
+Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeySignInDialog/Card/Scroll/Stack/Body/Info/Steps/Where/Address: Label "polaris.locker/device"
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeySignInDialog/Card/Scroll/Stack/Body/Info/Steps/UserCode: Label "WDJB-MJHT"
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeySignInDialog/Card/Scroll/Stack/Body/Info/Steps/Timing/Expires: Label "The code expires in 2:05."
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeySignInDialog/Card/Scroll/Stack/Body/Info/Steps/Timing/DeviceLabel: Label "The sign-in page will show “Living room TV”."
