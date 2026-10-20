@@ -334,6 +334,11 @@ export function useProductDownloads(
     queryFn: () => fetchDownloads(product),
     staleTime: DOWNLOADS_STALE_MS,
     enabled,
+    // Get it mounts this beside the Library's observer of the same query. Retrying a failed read
+    // on mount resets it to pending, which the Library reads as the page pending: the page swaps
+    // to its skeleton, Get it unmounts, the read fails again, and the cycle repeats. Try again
+    // retries on purpose.
+    retryOnMount: false,
   });
 }
 
@@ -458,6 +463,8 @@ export function useDownloadsFor(
       queryFn: () => fetchDownloads(p),
       staleTime: DOWNLOADS_STALE_MS,
       enabled,
+      // See useProductDownloads: a failed read is never retried just because a view mounted.
+      retryOnMount: false,
     })),
   });
   const key = results.map((r) => r.dataUpdatedAt).join(",");
