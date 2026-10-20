@@ -83,7 +83,7 @@ Entries are ordered by how often they happen. Every code is in the [error codes]
 
 ## step_up_required
 
-**Cause** A portal action, such as a new key, a method change or an export, needs a sign-in within 5 minutes.
+**Cause** A Polaris Locker action, such as a new key, a method change or an export, needs a sign-in within 5 minutes.
 
 **Fix** Sign in again, then retry.
 
@@ -107,7 +107,7 @@ Entries are ordered by how often they happen. Every code is in the [error codes]
 
 ## email_in_use
 
-**Cause** The proven address belongs to another Polaris Key account. Nothing was created or joined.
+**Cause** The proven address belongs to another Polaris Locker account. Nothing was created or joined.
 
 **Fix** Choose the join offer and prove the other account in the same browser, or use a different email.
 
@@ -115,7 +115,7 @@ Entries are ordered by how often they happen. Every code is in the [error codes]
 
 ## auth_method_disabled
 
-**Cause** The requested method is off: the portal's sign-in method for the product, or email codes for an enforced single sign-on domain.
+**Cause** The requested method is off: Polaris Locker's sign-in method for the product, or email codes for an enforced single sign-on domain.
 
 **Fix** Turn the method on under **Identity → Portal**, or sign in through the organization's connection.
 

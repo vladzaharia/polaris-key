@@ -348,8 +348,8 @@ lastVerifiedAt, highWaterMark }` — the snapshot the React bridge renders from.
 ## When every seat is taken
 
 A refused activation or enrolment returns `{ kind: "device-limit", limit, deviceCount, manageUrl? }`.
-`manageUrl` is the customer-portal link that frees a seat (WIRE-CONTRACT-V4 §5.3), present while
-the product's portal is on and already validated. It is never an auth failure: nothing is wiped,
+`manageUrl` is the Polaris Locker link that frees a seat (WIRE-CONTRACT-V4 §5.3), present while
+the product's Polaris Locker is on and already validated. It is never an auth failure: nothing is wiped,
 and the app offers it behind a user action.
 
 ```ts
@@ -364,7 +364,7 @@ if (r.kind === "device-limit" && r.manageUrl) {
 ```
 
 `withManageKey` adds `#key=` only to an `/activate` link (a fragment never reaches a server);
-`withManageReturn` adds `return=`, which the portal honours only for a declared return target. The
+`withManageReturn` adds `return=`, which Polaris Locker honours only for a declared return target. The
 CLI prints the link on a device-limit refusal.
 
 ## Device-code sign-in
@@ -678,7 +678,7 @@ const dir = await client.update.packs.path("diceroll.l10n"); // the running tree
 
 `@polaris-key/node/cli` is the Node terminal kit. One call adds every Polaris Key verb to a
 **commander** or **yargs** program and draws it on the kit's rail: the product chip in its accent,
-masked key entry, sign-in in the browser or with a code (never a QR), the device limit's portal
+masked key entry, sign-in in the browser or with a code (never a QR), the device limit's Polaris Locker
 hand-off, spinners and progress bars, grouped help and shell completion, and `--json` on every
 verb. Both adapters build from one verb table (`CLI_VERBS`), so they never diverge.
 
@@ -743,7 +743,7 @@ kit and sign-in), `node-electron` (main, preload and the React kit over the brid
 `ui/terminal-node` (`tidewater`, the terminal kit's sample, on fixtures or `--live`).
 
 - **Device limit reached.** `activateWithKey` answers `device-limit` with `limit` and
-  `deviceCount`. The new device holds no credential, so a seat is freed from the account portal
+  `deviceCount`. The new device holds no credential, so a seat is freed from Polaris Locker
   or from a device that holds one (`client.deauthorizeDevice(id)`, `devices deauthorize <id>`),
   then the key is entered again.
 - **Attestation-gated products.** A product whose device-trust policy requires platform

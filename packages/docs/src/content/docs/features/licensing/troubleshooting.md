@@ -13,7 +13,7 @@ Entries are ordered by how often they happen. Every code is in the [error codes]
 
 **Cause** Every seat on the license is taken. Devices not seen for 90 days no longer count. A tier downgrade also leaves existing devices in place and refuses new ones.
 
-**Fix** Free a seat. The user deauthorizes a device from another activated device, or from the portal through the response's `manageUrl`. A member can **Deauthorize** a device or raise the limit with **Device limit…** on the license. See [Handle the device limit](/docs/features/licensing/device-limit/).
+**Fix** Free a seat. The user deauthorizes a device from another activated device, or from Polaris Locker through the response's `manageUrl`. A member can **Deauthorize** a device or raise the limit with **Device limit…** on the license. See [Handle the device limit](/docs/features/licensing/device-limit/).
 
 **Check it works** Activation succeeds, and the license's **Seats** meter shows a free seat.
 
@@ -51,7 +51,7 @@ Entries are ordered by how often they happen. Every code is in the [error codes]
 
 ## license_owned
 
-**Cause** The license is in a Polaris Key account, and an owned license never moves by presenting its key.
+**Cause** The license is in a Polaris Locker account, and an owned license never moves by presenting its key.
 
 **Fix** Sign in to the account that holds the license. The response carries `signInUrl`.
 

@@ -121,7 +121,7 @@ cookie, or they are top-level navigations:
 - `/{product}/identity/auth/device/verify`
 - `/{product}/config/mint/{mintId}/auth`
 
-The console (`/manage/*`), the customer portal (`/`, `/api/*`, `/login`, `/download/*`), the
+The console (`/manage/*`), Polaris Locker (`/`, `/api/*`, `/login`, `/download/*`), the
 docs site (`/docs/*`) and the GitHub webhook never answer CORS for any origin. They share the
 Worker's origin with the admin session cookie.
 

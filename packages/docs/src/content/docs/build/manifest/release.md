@@ -91,7 +91,7 @@ release:
 ## How builds are labelled
 
 Every surface that shows a build or a release file to a person — the console's release
-detail, artifact lists and distribution matrix, release health, the customer portal's
+detail, artifact lists and distribution matrix, release health, Polaris Locker's
 downloads, the public download page and `pkey release publish` — names it by **platform and
 architecture together**, through one formatter (`buildLabel` in `@polaris-key/manifest`). The
 stored and signed values (`platform: macos`, `arch: arm64`) never change; only the text a

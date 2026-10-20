@@ -44,7 +44,7 @@ After activation, the SDK keeps working offline from its verified cache until th
 
 ## Which services a product runs
 
-A product's enabled services are stored once, and every surface reads that one record: route mounting, the discovery document, the console's navigation and the portal. A product starts with License and Config on and everything else off.
+A product's enabled services are stored once, and every surface reads that one record: route mounting, the discovery document, the console's navigation and Polaris Locker. A product starts with License and Config on and everything else off.
 
 The manifest's `modules` block sets the services. So does **Core → Services** in the console. A console edit takes ownership from the manifest, so later pushes don't rewrite the services. **Revert to manifest…** hands ownership back, and the manifest's values apply at the next resync.
 

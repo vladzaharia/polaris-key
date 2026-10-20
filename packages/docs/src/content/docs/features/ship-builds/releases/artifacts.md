@@ -23,7 +23,7 @@ GitHub — a download's selector resolution is cached for 90 seconds, the change
 one of the three the edge cache holds, and a download is streamed through every time —
 while the installer is rendered from
 stored configuration and touches GitHub not at all. What none of them read is the
-truth store, which exists for the portal and the
+truth store, which exists for Polaris Locker and the
 console, not for these routes. The newer [build, file and blob routes](#builds-files-and-blobs)
 are the opposite: they resolve from the truth store and touch GitHub only for the bytes.
 
@@ -88,7 +88,7 @@ work all the way to GitHub's storage backend. The response is always forced to a
 gateway-chosen `Content-Type` (`application/x-apple-diskimage` for a DMG, plain
 `application/octet-stream` otherwise) and a forced `Content-Disposition: attachment`, never
 whatever the uploader originally declared — this origin also serves the admin console and
-the customer portal, so an artifact is never allowed to be sniffed as something
+Polaris Locker, so an artifact is never allowed to be sniffed as something
 same-origin scripts could execute.
 
 ### Checksums
@@ -202,7 +202,7 @@ the exact 401/403 outcomes — are covered on Update's
 the feed.
 
 The changelog and the install script are governed by **metadata access**; the downloads, the
-appcast and the customer portal's download mint by **delivery access**, one answer read by all
+appcast and Polaris Locker's download mint by **delivery access**, one answer read by all
 three, so the feed can no longer offer what the download refuses. A product can, for instance,
 let anyone read its changelog while requiring a license to actually download the binary it
 describes. `release_config.artifacts_access`, where the artifacts mode used to live, is no
@@ -331,7 +331,7 @@ descriptor owns its builds and classification; later syncs refresh only the serv
 **Title, notes and publication date.** A descriptor's `title`, `notes` and `publishedAt` are
 written when it creates a release. Where the release also exists on GitHub under the same tag,
 every truth-store sync rewrites those three columns from the GitHub release, so GitHub's text is
-what the changelog, the portal and the appcast show (edit the release notes on GitHub, not in the
+what the changelog, Polaris Locker and the appcast show (edit the release notes on GitHub, not in the
 descriptor). A release CI published to the blob store with no GitHub release keeps the
 descriptor's values, because no sync touches it. This is deliberate: two sources for the same
 prose would drift, and GitHub's is the one an author can correct after publishing.

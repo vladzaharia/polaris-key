@@ -238,7 +238,7 @@ updater feeds follow the platforms the product's releases ship: the Sparkle appc
 release has a macOS build or file, WinSparkle when one has a Windows one. While no release names a
 platform, every updater feed is listed.
 
-**Artifact access** — who may read the appcast, the downloads and the customer portal's download
+**Artifact access** — who may read the appcast, the downloads and Polaris Locker's download
 mint — is Distribution's [delivery access](/docs/features/ship-builds/channels/delivery/#delivery-access).
 The Feed page shows it read-only and links to **Distribution → Access**, where it is set, saved to
 the `/manage/api/products/<product>/distribution/access` route (`PUT`) with its own owner and revert;
