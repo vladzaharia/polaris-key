@@ -95,7 +95,7 @@ export const PREREQUISITES: {
     label: "Library",
     name: "the Library (I-11)",
     wp: "I-11",
-    help: "The portal's Library, where a customer adds a license key to their account.",
+    help: "Polaris Locker's Library, where a customer adds a license key to their account.",
   },
 ];
 

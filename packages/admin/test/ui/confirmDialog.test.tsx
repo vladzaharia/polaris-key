@@ -36,7 +36,9 @@ describe("ConfirmDialog", () => {
     );
     const dialog = await screen.findByRole("alertdialog");
     const confirm = screen.getByRole("button", { name: "Delete product" });
-    expect(confirm.className).toContain("bg-accent");
+    expect(confirm.className).toContain(
+      "bg-[var(--pk-primary-fill,var(--pk-accent))]",
+    );
     expect(confirm.className).not.toContain("bg-danger");
     expect(dialog.querySelectorAll("li")).toHaveLength(2);
     await waitFor(() =>

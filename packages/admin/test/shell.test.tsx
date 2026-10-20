@@ -500,10 +500,9 @@ describe("accents and the section bit (BRAND.md §6)", () => {
       act(() => {
         window.location.hash = `#/p/djdl${page.path ? `/${page.path}` : ""}`;
       });
-      // Core carries no data-service: the Locker context applies (D9a).
       await waitFor(() =>
         expect(document.documentElement.getAttribute("data-service")).toBe(
-          section.accent === "core" ? null : section.accent,
+          section.accent,
         ),
       );
       expect(brand.querySelector(`path[d="${BIT_D}"]`), page.page).toBeNull();

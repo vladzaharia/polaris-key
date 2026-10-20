@@ -28,7 +28,7 @@ export function BrandBlock({
       )}
     >
       <LogoMark size={32} title="" className="sm:hidden" />
-      <LogoLockup height={32} className="hidden sm:block" />
+      <LogoLockup height={40} className="hidden sm:block" />
     </Link>
   );
 }

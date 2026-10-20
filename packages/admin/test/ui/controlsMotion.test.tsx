@@ -69,7 +69,7 @@ describe("Button: press, and a hover that never snaps", () => {
 
   it("the filled variants lighten their token colour instead of using a filter", () => {
     expect(buttonVariants({ variant: "primary" })).toContain(
-      "var(--pk-accent),white_10%",
+      "var(--pk-accent)),white_10%",
     );
     expect(buttonVariants({ variant: "danger" })).toContain(
       "var(--pk-danger),white_10%",

@@ -155,7 +155,7 @@ export function DeleteLicenseDialog({
           : devices === 1
             ? "Its device stops authenticating right away and is removed."
             : `Its ${devices} devices stop authenticating right away and are removed.`,
-        `${keys === 1 ? "Its key" : keys ? `Its ${keys} keys` : "Its keys"}, registry tokens, purchase binding and portal links are removed.`,
+        `${keys === 1 ? "Its key" : keys ? `Its ${keys} keys` : "Its keys"}, registry tokens, purchase binding and Locker links are removed.`,
         ...(reissuedOnSignIn(license) ? [REISSUE_WARNING] : []),
         "Its activity history is kept, with a “license deleted” entry.",
         "This can't be undone. To keep the record, disable the license instead.",
@@ -204,7 +204,7 @@ export function BulkDeleteDialog({
       intent={policy.intent as "danger"}
       title={`Delete ${plural(n, "license")}?`}
       consequences={[
-        "Their devices stop authenticating right away and are removed, with their keys, registry tokens, purchase bindings and portal links.",
+        "Their devices stop authenticating right away and are removed, with their keys, registry tokens, purchase bindings and Locker links.",
         ...(reissued
           ? [
               `${plural(reissued, "of them is a disabled sign-in license", "of them are disabled sign-in licenses")}: if a holder signs in again, they get a new license.`,

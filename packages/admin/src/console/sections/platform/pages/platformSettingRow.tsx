@@ -190,12 +190,12 @@ function consequencesOf(
     case "ASSET_HOSTING":
       return after === "on"
         ? [
-            "The portal, the AltStore and SideStore sources and the download page show Polaris Key's own copies of products' images from the image host again.",
+            "Polaris Locker, the AltStore and SideStore sources and the download page show Polaris Key's own copies of products' images from the image host again.",
             "Release files are mirrored again, and the legacy download serves the copies.",
             reach,
           ]
         : [
-            "Every surface goes back to the developer's own image URLs and the portal's media proxy, as before hosted assets.",
+            "Every surface goes back to the developer's own image URLs and Locker's media proxy, as before hosted assets.",
             "Release-file mirroring stops and the legacy download streams from GitHub; release files already copied keep serving from their copies. The stored copies stay, and image URLs already handed out keep working.",
             reach,
           ];

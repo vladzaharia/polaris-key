@@ -215,9 +215,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
   // The sidebar group holding the page: its product section, or the Platform section.
   const group = page ? groupOf(page) : null;
   const accent = page ? accentOf(page) : "core";
-  // Core pages carry no `data-service`: the Locker context (`data-brand` on <html>, D9a) applies
-  // there. A service section's `data-service` still wins (LK-00 §14.5, B17).
-  const scope = accent === "core" ? undefined : accent;
+
   const productPageId: ProductPageId | null =
     route.kind === "product" ? route.page : null;
   // The page the product switcher keeps. A not-found page under a known product keeps the
@@ -226,13 +224,12 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
     productPageId ?? (slug !== null ? "overview" : null);
 
   // The section rides <html> too, so what Radix portals out of this tree (dialogs, menus) takes
-  // the section's accent, (core: none, so the Locker context applies).
+  // the section's accent, (core takes the Locker context: styles.css).
   React.useEffect(() => {
     const root = document.documentElement;
-    if (scope === undefined) root.removeAttribute("data-service");
-    else root.setAttribute("data-service", scope);
+    root.setAttribute("data-service", accent);
     return () => root.removeAttribute("data-service");
-  }, [scope]);
+  }, [accent]);
 
   // A page the member's role does not include renders NoAccessPage, so its title says so.
   const refused =
@@ -366,7 +363,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
       <TooltipProvider delayDuration={300}>
         <>
           <div
-            data-service={scope}
+            data-service={accent}
             style={
               {
                 "--sidebar-w": rail ? "3.5rem" : "15rem",
@@ -413,7 +410,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
               className="relative min-h-0 overflow-y-auto outline-hidden pk-scroll"
             >
               <div
-                data-service={scope}
+                data-service={accent}
                 className="mx-auto w-full max-w-[110rem] px-4 py-6 sm:px-6 lg:px-8"
               >
                 <PageContent

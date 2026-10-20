@@ -414,7 +414,7 @@ export function PlatformSettingsPage(): React.ReactElement {
             id="platform-identity"
             headingLevel={3}
             title="Identity provider"
-            description="Deploy-time, read-only: the console's own client above the platform client the portal and products use."
+            description="Deploy-time, read-only: the console's own client above the platform client Polaris Locker and products use."
           >
             {IDENTITY_VARS.map((n) => (
               <DeployRow key={n} item={deploy.get(n)} />

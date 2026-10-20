@@ -172,7 +172,7 @@ describe("the Platform section in the sidebar", () => {
         .getByRole("link", { name: "Deployment" })
         .getAttribute("aria-current"),
     ).toBe("page");
-    expect(document.title).toBe("Deployment · Polaris Key");
+    expect(document.title).toBe("Deployment · Polaris Locker console");
   });
 });
 
@@ -590,7 +590,7 @@ describe("Operations", () => {
         .getByRole("link", { name: "Operations" })
         .getAttribute("aria-current"),
     ).toBe("page");
-    expect(document.title).toBe("Operations · Polaris Key");
+    expect(document.title).toBe("Operations · Polaris Locker console");
   });
 
   it("reads Healthy when every check passes, with the figures in tiles", async () => {

@@ -157,7 +157,7 @@ export function RelinkDialog({
       title={`Relink ${license?.name || license?.id || "license"}?`}
       description="Move this license to another user of this product."
       consequences={[
-        "The license moves to the other user's Polaris Key account.",
+        "The license moves to the other user's Polaris Locker account.",
         "Both accounts are emailed before it moves.",
         "You can undo it for 72 hours.",
       ]}
@@ -206,7 +206,7 @@ export function RelinkDialog({
           <p id="relink-target-help" className="text-xs text-fg-muted">
             Their user id for this product. They get it by signing in to the
             product, or with Get a support code on the product's page in their
-            Polaris Key account.
+            Polaris Locker account.
           </p>
         </div>
         <ReasonField id="relink-reason" value={reason} onChange={setReason} />

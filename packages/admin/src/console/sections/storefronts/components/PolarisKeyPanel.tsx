@@ -99,11 +99,11 @@ export function PolarisKeyPanel({
         <Breadcrumbs
           items={[
             { label: "Storefronts", to: r.storefronts(slug) },
-            { label: "Polaris Key" },
+            { label: "Polaris Locker" },
           ]}
         />
       }
-      title="Polaris Key"
+      title="Polaris Locker"
       titleAside={
         q.data && !q.data.enabled ? (
           <StatusPill tone="warning" size="sm">
@@ -135,7 +135,7 @@ export function PolarisKeyPanel({
         <ErrorState
           error={q.error}
           onRetry={() => void q.refetch()}
-          context={{ area: "distribution", thing: "Polaris Key" }}
+          context={{ area: "distribution", thing: "Polaris Locker" }}
         />
       </div>
     );
@@ -152,7 +152,7 @@ type Pending =
 function describe(e: unknown) {
   return errorCopy(e, {
     area: "distribution",
-    thing: "The Polaris Key listing",
+    thing: "The Polaris Locker listing",
   });
 }
 
@@ -199,7 +199,7 @@ function PendingDialog({
   let policy = confirmFor("storefront.listing");
   if (p?.kind === "listed") {
     const choice = LISTED_CHOICES.find((c) => c.value === p.value)!;
-    title = `Set the Polaris Key listing to ${choice.label.toLowerCase()}?`;
+    title = `Set the Polaris Locker listing to ${choice.label.toLowerCase()}?`;
     consequences = [
       choice.description,
       "Every signed-in person's Discover follows the change at once.",
@@ -207,7 +207,7 @@ function PendingDialog({
     confirmLabel = `Set to ${choice.label.toLowerCase()}`;
     onConfirm = async () => {
       await save(slug, { storeListed: p.value });
-      toast.success(`Polaris Key listing set to ${choice.label.toLowerCase()}`);
+      toast.success(`Locker listing set to ${choice.label.toLowerCase()}`);
     };
   } else if (p?.kind === "everyone") {
     policy = confirmFor("storefront.audienceEveryone");
@@ -307,8 +307,8 @@ function PanelBody({
     <SettingsTemplate header={header} sections={sections}>
       {!status.enabled ? (
         <Callout tone="warning" title="Off for this deployment">
-          A platform admin turned the Polaris Key storefront off, so no product
-          is shown on Discover. Licences, sign-in and auto-issue keep working.
+          A platform admin turned the Locker storefront off, so no product is
+          shown on Discover. Licences, sign-in and auto-issue keep working.
         </Callout>
       ) : null}
 
@@ -409,7 +409,7 @@ function PanelBody({
 // ── Readiness ────────────────────────────────────────────────────────────────────────────────
 
 const CHECK_TITLES: Record<PolarisKeyReadinessCheck["id"], string> = {
-  portal: "Customer portal",
+  portal: "Polaris Locker",
   listing: "Listing",
   "obtain-path": "A way to add it",
   "get-it": "Get it",
@@ -434,7 +434,7 @@ function ReadinessList({
     if (c.id === "portal")
       return (
         <Button size="sm" variant="outline" asChild>
-          <Link to={r.portal(slug)}>Open Portal</Link>
+          <Link to={r.portal(slug)}>Open Locker</Link>
         </Button>
       );
     if (c.id === "listing")
@@ -705,7 +705,7 @@ function PersonaPreview({
         <fieldset className="space-y-3">
           <legend className="sr-only">The person</legend>
           <Switch
-            label="Signed in with the Polaris Key sign-in"
+            label="Signed in with the Polaris Locker sign-in"
             description="Off: an account that only ever used an email link."
             checked={persona.platformAccount}
             onCheckedChange={(on) => set({ platformAccount: on })}
@@ -862,7 +862,7 @@ function Analytics({ slug }: { slug: string }): React.ReactElement {
         <ErrorState
           error={q.error}
           onRetry={() => void q.refetch()}
-          context={{ area: "distribution", thing: "Polaris Key analytics" }}
+          context={{ area: "distribution", thing: "Polaris Locker analytics" }}
         />
       </div>
     );
@@ -952,7 +952,7 @@ function Analytics({ slug }: { slug: string }): React.ReactElement {
         </ScrollTable>
       ) : data ? (
         <p className="text-sm text-fg-muted">
-          No one was shown it on Polaris Key in the last 28 days.
+          No one was shown it on Polaris Locker in the last 28 days.
         </p>
       ) : null}
       <p className="text-sm text-fg-muted">

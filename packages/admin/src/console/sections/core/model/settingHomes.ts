@@ -81,22 +81,22 @@ export const SETTING_HOMES: Readonly<Record<string, SettingHome>> = {
   "assets.quota.releaseBytes": at("presentation", "Hosting and quotas"),
   "storefront.polarisKey.listed": at(
     "storefronts",
-    "Polaris Key → Listing",
+    "Polaris Locker → Listing",
     POLARIS_KEY,
   ),
   "storefront.polarisKey.audience": at(
     "storefronts",
-    "Polaris Key → Listing",
+    "Polaris Locker → Listing",
     POLARIS_KEY,
   ),
   "storefront.polarisKey.offerPaths": at(
     "storefronts",
-    "Polaris Key → Ways to add",
+    "Polaris Locker → Ways to add",
     POLARIS_KEY,
   ),
   "storefront.polarisKey.groupLabels": at(
     "storefronts",
-    "Polaris Key → Group labels",
+    "Polaris Locker → Group labels",
     POLARIS_KEY,
   ),
 
@@ -167,7 +167,7 @@ export const SETTING_HOMES: Readonly<Record<string, SettingHome>> = {
 
   // ── Identity ───────────────────────────────────────────────────────────────────────────────
   "identity.keyEntry.limit": manifest("product"),
-  // Sign-in shows it read-only and links to Portal, where the switch is.
+  // Sign-in shows it read-only and links to Locker, where the switch is.
   "identity.keyEntry.claimByKey": at("portal", "License keys"),
   "identity.terms": manifest("product"),
   // The paths a web app's sign-in may return to (I-08's `authorize` reads them).

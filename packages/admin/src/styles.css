@@ -117,6 +117,37 @@
   --pk-admin-fill: var(--pk-surface-sunken);
 }
 
+/* Polaris Locker context (LK-00 §14.5, D9a). The console root is data-brand="locker"; core pages
+   and the Platform group carry data-service="core", which would bring back core violet, so core
+   under Locker takes the Locker tokens (the same block as tokens.css's [data-brand="locker"]).
+   A service section's data-service still wins. Coral is identity only: a primary button is
+   neutral ink in the Locker context and the section accent inside a service section or tile. */
+[data-brand="locker"][data-service="core"],
+[data-brand="locker"] [data-service="core"] {
+  --pk-accent: var(--pk-locker-accent);
+  --pk-accent-fg: var(--pk-text-strong);
+  --pk-accent-on: var(--pk-locker-on);
+  --pk-accent-subtle: var(--pk-locker-subtle);
+  --pk-focus: var(--pk-text-strong);
+  --pk-state-ring: var(--pk-text-strong);
+  --pk-state-selected-fill: var(--pk-locker-subtle);
+  --pk-state-hover-tint: var(--pk-locker-hover);
+  --pk-state-checked-fill: var(--pk-action);
+  --pk-state-checked-on: var(--pk-action-on);
+  --pk-state-checked-edge: var(--pk-action);
+  --pk-state-context-edge: var(--pk-locker-accent);
+  --pk-primary-fill: var(--pk-action);
+  --pk-primary-on: var(--pk-action-on);
+}
+[data-brand="locker"] {
+  --pk-primary-fill: var(--pk-action);
+  --pk-primary-on: var(--pk-action-on);
+}
+[data-service]:not([data-service="core"]) {
+  --pk-primary-fill: var(--pk-accent);
+  --pk-primary-on: var(--pk-accent-on);
+}
+
 /* The admin's one colour token of its own: the neutral fill above (hover rows, the sidebar's
    active row, secondary fills). The brand's `accent` is the section colour, so this is `hover`. */
 @theme inline {
