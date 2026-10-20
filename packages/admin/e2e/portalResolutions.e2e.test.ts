@@ -199,7 +199,7 @@ describe("the signed-in header (PORTAL.md §3.2, §8)", () => {
           expect
             .soft(visible, `header controls at ${width}`)
             .toBe(
-              `Polaris Locker: your library · Library12 · Discover24 · Activate license · Account: ${name}`,
+              `Polaris Locker: your library · Library12 · Discover24 to add · Activate license · Account: ${name}`,
             );
           // From 1180 px the chip shows the full name. It truncates only once the ⌘K field has
           // given way to its 176 px floor, or the chip has reached its 18rem cap.
@@ -237,7 +237,7 @@ describe("the signed-in header (PORTAL.md §3.2, §8)", () => {
     });
   }
 
-  it("gives ⌘K, Activate and the account chip one height: 40 px, 44 on a coarse pointer", async ({
+  it("gives Activate and the account chip one height: 40 px, 44 on a coarse pointer", async ({
     expect,
   }) => {
     const o = await portal.open("twelve", "/", {
@@ -281,7 +281,7 @@ describe("the signed-in header (PORTAL.md §3.2, §8)", () => {
       };
       for (const width of [1024, 1440]) {
         await o.page.setViewportSize({ width, height: 900 });
-        expect.soft(await heights(), `at ${width}`).toEqual([40, 40, 40]);
+        expect.soft(await heights(), `at ${width}`).toEqual([40, 40]);
       }
     } finally {
       await o.close();
@@ -796,7 +796,6 @@ describe("the tablet and short-screen rules (PORTAL.md §8)", () => {
     const o = await portal.open("twelve", "/", { width: 700 });
     try {
       await h1(o.page, "Your library");
-      await o.page.locator("[data-library-grid=compact]").waitFor();
       const trigger = o.page
         .getByRole("banner")
         .getByRole("button", { name: "Jump to a product" });
@@ -822,8 +821,9 @@ describe("the tablet and short-screen rules (PORTAL.md §8)", () => {
       }
       // ⌘K from a tile's link, then Escape: back on the link.
       const link = o.page
-        .locator("[data-library-grid]")
-        .getByRole("link", { name: "Glyphsmith", exact: true });
+        .getByRole("main")
+        .getByRole("link", { name: "Glyphsmith", exact: true })
+        .first();
       await link.focus();
       await o.page.keyboard.press("Control+k");
       await dialog.waitFor();
