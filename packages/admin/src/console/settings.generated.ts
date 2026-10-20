@@ -242,9 +242,9 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     service: "platform",
     area: "storefront",
     rbacArea: "platform",
-    label: "Polaris Key storefront",
+    label: "Polaris Locker storefront",
     description:
-      "Lets products be listed in the Polaris Key library (Discover and the storefront page). Off hides every listing on this deployment; licenses, sign-in and auto-issue keep working.",
+      "Lets products be listed in the Polaris Locker library (Discover and the storefront page). Off hides every listing on this deployment; licenses, sign-in and auto-issue keep working.",
     keywords: ["discover", "library", "storefront", "kill switch"],
     docs: "/docs/features/sign-in/customer-portal/",
     ownership: "operator",
@@ -667,7 +667,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "commerce",
     label: "Listing",
     description:
-      "Whether the Polaris Key library lists this product. Auto lists it where auto-issue or a mapped group would give it to the person (today's Discover); Listed adds every other way to obtain it; Unlisted hides it in the portal while every policy keeps working.",
+      "Whether the Polaris Locker library lists this product. Auto lists it where auto-issue or a mapped group would give it to the person (today's Discover); Listed adds every other way to obtain it; Unlisted hides it on Polaris Locker while every policy keeps working.",
     keywords: ["discover", "library", "storefront", "unlisted", "visibility"],
     docs: "/docs/features/sign-in/customer-portal/",
     ownership: "operator",

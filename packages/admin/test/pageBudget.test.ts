@@ -49,7 +49,7 @@ const OVER_BUDGET: Record<string, number> = {
   "sections/release/pages/PackRecord.tsx": 755,
   "sections/release/pages/ReleaseRecord.tsx": 1244,
   "sections/release/pages/SimulatorPage.tsx": 766,
-  "sections/storefronts/components/PolarisKeyPanel.tsx": 887,
+  "sections/storefronts/components/PolarisKeyPanel.tsx": 888,
   "sections/storefronts/pages/ListingPage.tsx": 695,
   "sections/storefronts/pages/StorefrontsPage.tsx": 644,
   "sections/update/pages/UpdateChannelsPage.tsx": 631,

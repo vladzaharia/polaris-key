@@ -110,12 +110,13 @@ export function PolarisKeyPanel({
         ) : null
       }
       primaryAction={
-        <>
+        <div className="flex flex-col gap-2 sm:flex-row">
           {lockerPage ? (
             <Button variant="outline" asChild>
               <a href={lockerPage} target="_blank" rel="noreferrer">
                 Open in Polaris Locker
                 <ExternalLink aria-hidden />
+                <span className="sr-only"> (opens a new tab)</span>
               </a>
             </Button>
           ) : null}
@@ -124,7 +125,7 @@ export function PolarisKeyPanel({
               Edit the listing
             </Link>
           </Button>
-        </>
+        </div>
       }
     />
   );
@@ -237,7 +238,7 @@ function PendingDialog({
         ]
       : [
           "People whose only way to add it is this one no longer see it, and cannot add it from Discover.",
-          "Licences already added keep working.",
+          "Licenses already added keep working.",
         ];
     confirmLabel = p.on ? "Turn on" : "Turn off";
     onConfirm = async () => {
@@ -304,7 +305,7 @@ function PanelBody({
       {!status.enabled ? (
         <Callout tone="warning" title="Off for this deployment">
           A platform admin turned the Locker storefront off, so no product is
-          shown on Discover. Licences, sign-in and auto-issue keep working.
+          shown on Discover. Licenses, sign-in and auto-issue keep working.
         </Callout>
       ) : null}
 

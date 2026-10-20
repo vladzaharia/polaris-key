@@ -50,7 +50,7 @@ export function offeredBadges(
   };
   if (visibleOnLocker(status)) {
     add("open-in", "Listed on Polaris Locker");
-    add("available-on", "Listed on Polaris Locker");
+    add("available-on", "");
   }
   if (on(product, "identity")) add("sign-in-with", "Sign-in is on");
   if (status.directDownload === true)

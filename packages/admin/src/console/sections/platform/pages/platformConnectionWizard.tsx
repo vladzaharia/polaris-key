@@ -427,7 +427,7 @@ export function AddConnectionPage(): React.ReactElement {
               />
               <p className="text-xs text-fg-muted">
                 {clientAddresses.length > 1
-                  ? "Register both at the provider as allowed redirects."
+                  ? "Register them at the provider as allowed redirects."
                   : "Register it at the provider as an allowed redirect."}
               </p>
             </div>

@@ -16,7 +16,12 @@ import { CopyButton } from "../../../../ui/CopyButton.js";
 import { Select } from "../../../../ui/Select.js";
 import { SettingsSection } from "../../../templates/Settings.js";
 import { useMe, useProduct } from "../../../data/hooks.js";
-import { badgeHtml, lockerUrl, offeredBadges } from "../model/badges.js";
+import {
+  badgeHtml,
+  lockerUrl,
+  offeredBadges,
+  visibleOnLocker,
+} from "../model/badges.js";
 
 type Theme = NonNullable<LockerBadgeOptions["theme"]>;
 type Treatment = NonNullable<LockerBadgeOptions["treatment"]>;
@@ -53,16 +58,51 @@ function Picker<T extends string>({
 }): React.ReactElement {
   const id = React.useId();
   return (
-    <div className="flex items-center gap-2 text-sm text-fg">
+    <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm text-fg">
       <label htmlFor={id}>{label}</label>
       <Select
         id={id}
-        className="w-36"
+        className="w-full max-w-36"
         value={value}
         options={options}
         onChange={(v) => v && onChange(v as T)}
       />
     </div>
+  );
+}
+
+/** The art on its ground; a tab stop only when the column is narrower than the art. */
+function Preview({
+  name,
+  svg,
+  ground,
+}: {
+  name: string;
+  svg: string;
+  ground: string;
+}): React.ReactElement {
+  const ref = React.useRef<HTMLDivElement>(null);
+  const [scrolls, setScrolls] = React.useState(false);
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const check = (): void => setScrolls(el.scrollWidth > el.clientWidth + 1);
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [svg]);
+  return (
+    <div
+      ref={ref}
+      {...(scrolls
+        ? { role: "region", "aria-label": `${name} preview`, tabIndex: 0 }
+        : {})}
+      className="flex justify-center overflow-x-auto rounded-md @[344px]:p-3"
+      style={{ background: ground }}
+      // The kit's own paths: no script, no style, no external reference.
+      dangerouslySetInnerHTML={{ __html: svg }}
+    />
   );
 }
 
@@ -77,20 +117,25 @@ export function LockerBadges({
   const me = useMe().data;
   const [theme, setTheme] = React.useState<Theme>("dark");
   const [treatment, setTreatment] = React.useState<Treatment>("sticker");
-  const url = lockerUrl(me?.customerOrigin, slug);
+  const visible = visibleOnLocker(status);
+  const home = me?.customerOrigin ? `${me.customerOrigin}/` : null;
+  // Not visible there yet: the badge still links, to Polaris Locker's home.
+  const url = visible ? lockerUrl(me?.customerOrigin, slug) : home;
   const offered = offeredBadges(status, product);
   return (
     <SettingsSection id="pk-badges" title="Get a badge">
       <div className="@container min-w-0 py-4">
         <p className="mb-4 px-5 text-sm text-fg-muted">
           Only what this product does is offered.{" "}
-          {url
-            ? "Each badge links to its page on Polaris Locker."
-            : "There is no Polaris Locker address to link yet, so only the art copies."}
+          {!url
+            ? "There is no Polaris Locker address to link yet, so only the art copies."
+            : visible
+              ? "Each badge links to its page on Polaris Locker."
+              : "This product is not visible on Polaris Locker, so each badge links to its home."}
         </p>
         <div className="mb-4 flex flex-wrap gap-4 px-5">
           <Picker
-            label="Colour"
+            label="Color"
             value={theme}
             options={COLOURS}
             onChange={setTheme}
@@ -109,22 +154,13 @@ export function LockerBadges({
             return (
               <li
                 key={b.kind}
-                className="min-w-0 space-y-2 [&>:not([role=region])]:px-5 @[720px]:[&>:not([role=region])]:px-0 @[720px]:rounded-lg @[720px]:border @[720px]:border-border @[720px]:p-3"
+                className="flex min-w-0 flex-col gap-2 [&>:not(:first-child)]:px-5 @[720px]:[&>:not(:first-child)]:px-0 @[720px]:rounded-lg @[720px]:border @[720px]:border-border @[720px]:p-3"
               >
-                <div
-                  role="region"
-                  aria-label={`${name} preview`}
-                  // Scrolls only when the column is narrower than the 320 px art.
-                  tabIndex={0}
-                  className="overflow-x-auto rounded-md"
-                  style={{ background: groundOf(theme) }}
-                  // The kit's own paths: no script, no style, no external reference.
-                  dangerouslySetInnerHTML={{ __html: svg }}
-                />
+                <Preview name={name} svg={svg} ground={groundOf(theme)} />
                 {b.because ? (
                   <p className="text-xs text-fg-muted">{b.because}</p>
                 ) : null}
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="mt-auto flex flex-wrap items-center gap-3">
                   <CopyButton
                     showLabel
                     text="Copy SVG"

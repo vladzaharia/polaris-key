@@ -25,17 +25,20 @@ export function RegisterAddresses({
   /** The code box fills its row (the connection page) instead of hugging its text. */
   inline?: boolean;
 }): React.ReactElement {
-  const many = addresses.length > 1;
-  const heading = !many
-    ? title
-    : title === "Realm"
+  // Steam takes one domain per API key: list Polaris Locker's realm only (it is first).
+  const shown = title === "Realm" ? addresses.slice(0, 1) : addresses;
+  const many = shown.length > 1;
+  const heading =
+    title === "Realm" && addresses.length > 1
       ? "Realm: Steam takes one domain per API key, so give Polaris Locker's"
-      : "Add both redirect URIs";
+      : many
+        ? "Add both redirect URIs"
+        : title;
   return (
     <div className="space-y-1">
       <p className="text-xs text-fg-muted">{heading}</p>
       <ul className="space-y-2">
-        {addresses.map((a) => (
+        {shown.map((a) => (
           <li key={a.value} className="space-y-0.5">
             {many && a.label ? (
               <p className="text-xs font-medium text-fg-strong">{a.label}</p>

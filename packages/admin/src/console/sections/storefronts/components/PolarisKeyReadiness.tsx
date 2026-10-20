@@ -8,11 +8,11 @@ import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
 
 const CHECK_TITLES: Record<PolarisKeyReadinessCheck["id"], string> = {
-  portal: "Polaris Locker",
+  portal: "Locker page",
   listing: "Listing",
   "obtain-path": "A way to add it",
   "get-it": "Get it",
-  "licence-tier": "Licence tiers",
+  "licence-tier": "License tiers",
 };
 
 const STATE_WORDS: Record<PolarisKeyReadinessCheck["state"], string> = {

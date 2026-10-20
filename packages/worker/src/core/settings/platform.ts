@@ -355,9 +355,9 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     scope: "platform",
     service: "platform",
     area: "storefront",
-    label: "Polaris Key storefront",
+    label: "Polaris Locker storefront",
     description:
-      "Lets products be listed in the Polaris Key library (Discover and the storefront page). Off hides every listing on this deployment; licenses, sign-in and auto-issue keep working.",
+      "Lets products be listed in the Polaris Locker library (Discover and the storefront page). Off hides every listing on this deployment; licenses, sign-in and auto-issue keep working.",
     keywords: ["discover", "library", "storefront", "kill switch"],
     docs: "/docs/features/sign-in/customer-portal/",
     value: { kind: "switch" },

@@ -1667,7 +1667,7 @@ const POLARIS_KEY_ROUTES: Record<string, unknown> = {
     stores: [
       {
         id: "polaris-key",
-        label: "Polaris Key",
+        label: "Polaris Locker",
         builtIn: true,
         listingStore: "polaris-key",
         connection: {
@@ -1702,7 +1702,7 @@ const POLARIS_KEY_ROUTES: Record<string, unknown> = {
         prerequisites: [],
         steps: [],
         pushListing: null,
-        confirmationLabel: "Polaris Key",
+        confirmationLabel: "Polaris Locker",
       },
     ],
   },
@@ -1719,7 +1719,7 @@ const POLARIS_KEY_ROUTES: Record<string, unknown> = {
     active: ["group", "auto_issue", "open"],
     everyone: false,
     identityEligible: true,
-    directDownload: true,
+    directDownload: false,
     licenseEnabled: true,
     groups: [
       { group: "aperture-beta", tier: "beta", label: "Aperture Seven" },
