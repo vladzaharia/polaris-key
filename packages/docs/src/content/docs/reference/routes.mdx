@@ -173,6 +173,8 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/{product}/license/document` | license | The signed license document (pkey-license+jws) |
 | POST | `/{product}/license/enroll` | license | Keyless enrollment (auto-issue policy) |
 | POST | `/{product}/license/token` | license | Rotate/re-acquire the device token |
+| GET | `/.well-known/webauthn` | portal | WebAuthn related origins (console host) |
+| HEAD | `/.well-known/webauthn` | portal | WebAuthn related origins, headers only |
 | GET | `/api/device-login/{requestId}` | portal | Wait for the other device to approve this one |
 | POST | `/api/device-login/approve` | portal | Approve or deny a device asking to sign in |
 | POST | `/api/device-login/lookup` | portal | See what is asking to sign in, before deciding |

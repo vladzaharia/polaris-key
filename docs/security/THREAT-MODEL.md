@@ -7242,8 +7242,23 @@ choice view's links, the identity-off card redirect, the licence-key and account
 - _A rollback._ `permanent` is the 301 phase of the old-URL redirects (LK-11); a cached 301
   outlives a rollback, which is why `on` (302) comes first.
 
+**Passkeys on the customer host: Related Origin Requests (LK-05, D2).** The RP id stays
+`key.plrs.im`, so no credential is re-enrolled. `GET /.well-known/webauthn` on the console host
+answers `{"origins":["<CUSTOMER_ORIGIN>"]}` while the customer host is usable, else the plain
+not-found; it is built from configuration only, never from stored data, and holds nothing secret.
+`passkeyRelyingParty` serves a ceremony on the console origin or the listed customer origin, always
+with `rp.id` = the console host, and both verifications pin that exact origin list (and the RP id
+hash), so an assertion from any other origin, a subdomain or a look-alike is refused. The ceremony
+record keeps `rpId` and a credential keeps its stored `rp_id`: one RP id per ceremony. Adding an
+origin to the list is the whole trust change: that origin's page can start a passkey sign-in for
+every account, so the customer origin is a deploy-time value, never a request or database one.
+Firefox does not support ROR: a browser without it cannot use a passkey on the customer host, and
+the card offers email and the providers instead (LK-06 detects it). Accounts whose only sign-in
+method is a passkey are an O10 preflight count before the cutover. Tests:
+`test/webauthnRelatedOrigins.test.ts`, `test-workerd/passkeys.test.ts` (customer origin).
+
 Still to come, each in its own package with its own entry here: the cross-host bind hop (LK-04),
-Related Origin Requests for passkeys (LK-05), the old-URL redirects and cookie expiry (LK-11).
+the old-URL redirects and cookie expiry (LK-11).
 Tests: `test/customerHost.test.ts`, `test/customerOrigin.test.ts`, `test/routeCoverage.test.ts`
 (`CUSTOMER_PATHS`).
 

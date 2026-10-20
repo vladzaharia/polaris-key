@@ -7,9 +7,12 @@
  *
  *   - **One relying party: the console host.** `rp.id` is the host of `CONSOLE_ORIGIN`
  *     (`key.plrs.im` in production; the request's own origin where it is unset, as for every
- *     portal link), and a ceremony is served only on that origin. Both verifications pin the
- *     exact origin (`https://key.plrs.im`, no subdomain, no port) and the SHA-256 of the RP id in
- *     the authenticator data, so an assertion made for a look-alike site is refused here.
+ *     portal link), and a ceremony is served only on that origin, or on the customer origin
+ *     while it is usable (LK-05: WebAuthn Related Origin Requests, listed at
+ *     `/.well-known/webauthn`; the RP id is still the console host). Both verifications pin the
+ *     exact origin list (`https://key.plrs.im`, plus `CUSTOMER_ORIGIN` when usable; no subdomain,
+ *     no port) and the SHA-256 of the RP id in the authenticator data, so an assertion made for
+ *     a look-alike site is refused here.
  *   - **User verification required** at registration and at sign-in (a biometric or the device
  *     PIN, the UV flag), and user presence: a passkey is a whole sign-in on its own, never a
  *     second factor, so it must prove the person, not just the device.
@@ -39,6 +42,7 @@ import {
 import { isoBase64URL } from "@simplewebauthn/server/helpers";
 import { hashKey } from "../../../platform/crypto.js";
 import type { Env } from "../../../platform/env.js";
+import { relatedOrigins } from "../../../core/customerHost.js";
 import { portalOriginOf } from "../../../core/licensing/manageUrl.js";
 import {
   artefactRef,
@@ -54,6 +58,8 @@ export const PASSKEY_CEREMONY_TTL_SECONDS = 5 * 60;
 export const PASSKEY_ALGORITHMS = [-8, -7, -257];
 /** The name an authenticator shows for the relying party. */
 export const PASSKEY_RP_NAME = "Polaris Key";
+/** The name while the customer host is usable (LK-05): the card people see is Polaris Locker. */
+export const PASSKEY_RP_NAME_LOCKER = "Polaris Locker";
 
 /** base64url, as WebAuthn's JSON forms carry it. */
 const B64URL = /^[A-Za-z0-9_-]+$/;
@@ -70,8 +76,11 @@ const MAX_ATTESTATION_OBJECT = 64 * 1024;
 export interface RelyingParty {
   /** The RP id: the console host (`key.plrs.im`). */
   id: string;
-  /** The one origin a ceremony may come from (`https://key.plrs.im`). */
+  /** The origin this ceremony runs on: the console origin, or the customer origin (LK-05). */
   origin: string;
+  /** The exact origins a response may name: the console origin, plus the customer origin while
+   *  the customer host is usable. Both verifications pin this list. */
+  origins: string[];
   name: string;
 }
 
@@ -92,8 +101,16 @@ export function passkeyRelyingParty(
   } catch {
     return null;
   }
-  if (here.origin !== origin) return null;
-  return { id: here.hostname, origin, name: PASSKEY_RP_NAME };
+  // The customer origin (LK-05) is allowed only while usable, and its ceremonies still use the
+  // console host as the RP id: the browser accepts that through Related Origin Requests.
+  const related = relatedOrigins(env) ?? [];
+  if (here.origin !== origin && !related.includes(here.origin)) return null;
+  return {
+    id: new URL(origin).hostname,
+    origin: here.origin,
+    origins: [origin, ...related],
+    name: related.length > 0 ? PASSKEY_RP_NAME_LOCKER : PASSKEY_RP_NAME,
+  };
 }
 
 // ── Challenge records (I-02's single-use store) ─────────────────────────────────────────────
@@ -337,7 +354,7 @@ export async function verifyAssertion(input: {
     result = await verifyAuthenticationResponse({
       response: input.response,
       expectedChallenge: input.challenge,
-      expectedOrigin: input.rp.origin,
+      expectedOrigin: input.rp.origins,
       expectedRPID: input.rp.id,
       expectedType: "webauthn.get",
       credential: {
@@ -396,7 +413,7 @@ export async function verifyRegistration(input: {
     result = await verifyRegistrationResponse({
       response: input.response,
       expectedChallenge: input.challenge,
-      expectedOrigin: input.rp.origin,
+      expectedOrigin: input.rp.origins,
       expectedRPID: input.rp.id,
       expectedType: "webauthn.create",
       requireUserPresence: true,

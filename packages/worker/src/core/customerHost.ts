@@ -18,8 +18,8 @@
  */
 
 import type { Env } from "../platform/env.js";
-import { methodNotAllowed } from "./errors.js";
-import { usableOrigin, type CustomerHostMode } from "./hosts.js";
+import { methodNotAllowed, notFound } from "./errors.js";
+import { hostOrigin, usableOrigin, type CustomerHostMode } from "./hosts.js";
 
 /** The route kinds the customer host serves: the root portal and the platform entry pages. */
 export const CUSTOMER_ROUTE_KINDS: ReadonlySet<string> = new Set([
@@ -90,4 +90,32 @@ export function customerHostOwnResponse(
  */
 export function apiOrigin(env: Pick<Env, "CONSOLE_ORIGIN">): string | null {
   return usableOrigin(env.CONSOLE_ORIGIN?.trim() ?? "");
+}
+
+/**
+ * WebAuthn Related Origin Requests (LK-05, plans/LK-00.md §7.7): the passkey RP id stays the
+ * console host, and `GET /.well-known/webauthn` on it lists the customer origin so a browser lets
+ * a ceremony on `polaris.locker` use that RP id. Built from `CUSTOMER_ORIGIN` alone, never from
+ * stored data, and only while the customer host is usable. `null` otherwise.
+ */
+export function relatedOrigins(env: Env): string[] | null {
+  const origin = hostOrigin("customer", env);
+  return origin === null ? null : [origin];
+}
+
+/** The well-known answer: the list, or the plain not-found while there is no usable customer host. */
+export function relatedOriginsResponse(req: Request, env: Env): Response {
+  if (req.method !== "GET" && req.method !== "HEAD") return methodNotAllowed();
+  const origins = relatedOrigins(env);
+  if (origins === null) return notFound();
+  return new Response(
+    req.method === "HEAD" ? null : JSON.stringify({ origins }),
+    {
+      headers: {
+        "content-type": "application/json; charset=utf-8",
+        "cache-control": "public, max-age=300",
+        "x-content-type-options": "nosniff",
+      },
+    },
+  );
 }

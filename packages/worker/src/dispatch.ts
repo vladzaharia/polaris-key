@@ -73,6 +73,7 @@ import {
   isCustomerHostOwnPath,
 } from "./core/customerHost.js";
 import { isCustomerHost } from "./core/hosts.js";
+import { relatedOriginsResponse } from "./core/customerHost.js";
 import { customerHostMode } from "./core/licensing/manageUrl.js";
 import {
   drainRenderQueue,
@@ -252,6 +253,9 @@ async function routeRequest(
     // under the prefix — assets and machine-readable artifacts included.
     case "docs":
       return handleDocs(req, env, now);
+    // WebAuthn Related Origin Requests (LK-05): the customer origin may use this host's RP id.
+    case "webauthnOrigins":
+      return relatedOriginsResponse(req, env);
     // The platform device-code entry pages: no product, no session, no database.
     case "signInEntry":
       return handleSignInEntry(req);
