@@ -983,10 +983,10 @@ wait for the owner's go and are never listed by `--ready` (see `deferred` in wor
 
 2 work packages, 0.7–1.2 weeks.
 
-| Id                                         | Title                                                                                                                        | Depends on | Role        | Weeks   | Status |
-| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- | ---------- | ----------- | ------- | ------ |
-| [MK-L1](wp/MK-L1-locker-auth-mockups.md)   | Locker auth mockups: re-skin the identity and portal.signin mockups to Polaris Locker and apply the SIGN-IN.md wording fixes | —          | implementer | 0.4–0.7 | done   |
-| [MK-L2](wp/MK-L2-locker-portal-mockups.md) | Locker portal mockups: re-skin the 13 portal mockups to Polaris Locker                                                       | —          | implementer | 0.3–0.5 | todo   |
+| Id                                         | Title                                                                                                                        | Depends on | Role        | Weeks   | Status    |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- | ---------- | ----------- | ------- | --------- |
+| [MK-L1](wp/MK-L1-locker-auth-mockups.md)   | Locker auth mockups: re-skin the identity and portal.signin mockups to Polaris Locker and apply the SIGN-IN.md wording fixes | —          | implementer | 0.4–0.7 | done      |
+| [MK-L2](wp/MK-L2-locker-portal-mockups.md) | Locker portal mockups: re-skin the 13 portal mockups to Polaris Locker                                                       | —          | implementer | 0.3–0.5 | in-review |
 
 ## Plans
 
