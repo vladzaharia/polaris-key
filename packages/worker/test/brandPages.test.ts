@@ -82,7 +82,7 @@ async function expectBrandedPage(
     // Every page a customer sees: the Polaris Locker lockup at 48 px tall, never Polaris Key.
     expect(html).toContain('data-brand="locker"');
     expect(html).toMatch(
-      /<div class="ac-brand" role="img" aria-label="Polaris Locker">/,
+      /<header class="ac-brand"><div role="img" aria-label="Polaris Locker">/,
     );
     expect(html).toContain('<svg class="mark"');
     expect(html).not.toContain("Polaris&nbsp;Key");
@@ -160,7 +160,7 @@ describe("the branded page shell", () => {
     expect(
       renderBrandPage({ title: "t", heading: "h", surface: "device" }),
     ).toContain(
-      '<div class="ac-brand" role="img" aria-label="Polaris Locker">',
+      '<header class="ac-brand"><div role="img" aria-label="Polaris Locker">',
     );
     expect(renderBrandPage({ title: "t", heading: "h" })).not.toContain(
       'class="surface"',

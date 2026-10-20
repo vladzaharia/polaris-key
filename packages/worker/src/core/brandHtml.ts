@@ -541,7 +541,7 @@ export function renderAuthCard(opts: AuthCardOptions): string {
     `<style>${BRAND_PAGE_CSS_LOCKER}</style>`,
     `</head>`,
     opts.variant === "tv" ? `<body class="tv">` : `<body>`,
-    `<div class="ac-brand" role="img" aria-label="Polaris Locker">${lockerLockup}</div>`,
+    `<header class="ac-brand"><div role="img" aria-label="Polaris Locker">${lockerLockup}</div></header>`,
     `<main class="ac">`,
     header,
     `<div class="ac-body">`,

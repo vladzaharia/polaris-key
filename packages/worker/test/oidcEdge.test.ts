@@ -1040,9 +1040,10 @@ describe("the RFC 8628 user-code page", () => {
       expect(res.status).toBe(404);
       expectStaticHtmlHeaders(res);
       const html = await res.text();
-      expect(html).toContain("That code isn't valid or has expired.");
+      expect(html).toContain("No device is waiting for that code.");
       expect(html).not.toMatch(/<script/i);
-      pages.push(html);
+      // What was typed stays in the field; everything else is the same page.
+      pages.push(html.replace(/ value="[^"]*"/, ""));
     }
     // One message, whatever the reason: the page never says WHICH.
     expect(new Set(pages).size).toBe(1);
