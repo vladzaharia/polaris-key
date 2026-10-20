@@ -616,7 +616,7 @@ describe("I-11 fence: product sign-in through the platform IdP", () => {
     const html = await res.text();
     expect(html).toMatch(/This account can(&#39;|&#x27;|')t sign in/);
     expect(html).toContain(
-      '<a class="button" href="/">Sign in with another account</a>',
+      '<a class="button" href="/login">Sign in with another account</a>',
     );
   }
 
