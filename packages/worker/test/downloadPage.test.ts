@@ -705,7 +705,7 @@ describe("the page on the bytes host", () => {
         .map((a) => a.kind)
         .sort(),
     ).toEqual(["altstore", "altstore-pal", "fdroid", "sidestore"]);
-    // Four QR codes, plus the footer's Locker lockup and the Star Cut Delivery symbol.
+    // Four QR codes, plus the top bar's Locker lockup and the Star Cut Delivery symbol.
     expect((html.match(/<svg [^>]*class="qr"/g) ?? []).length).toBe(4);
     expect((html.match(/<svg /g) ?? []).length).toBe(6);
     for (const needle of [

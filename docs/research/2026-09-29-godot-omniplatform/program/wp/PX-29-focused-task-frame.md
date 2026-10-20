@@ -110,3 +110,7 @@ Reconciled against main in the 2026-10-16 audit. Remaining:
 - UX review in BUILT mode
 - distribution.download-page: restyle hosted dl.plrs.im page (worker page/render.ts) to the task frame, if still in scope
 - Gate acceptance line
+
+## Progress (2026-10-20)
+
+Hosted download page (worker page/render.ts) restyled to the task frame: top bar with the one 40 px lockup, centred 46 rem column, breadcrumb, 56 px identity row, ink primary, recommended label, labelled scroll region for the files table. The brief's "safeReturnTo" is the Worker's gate; the SPA's equivalents are allowedReturn and cardReturn, now guarded by a source-scan test. Not done: truncated SHA with Copy and the install hint on the hosted page (the page is script-free under its CSP); the hero cover art (the page's policy allows only the icon). Mockup-drift check of the three portal frames was not repeated beyond the e2e already ticked.

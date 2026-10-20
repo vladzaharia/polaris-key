@@ -111,18 +111,28 @@ export const PAGE_CSS = [
   `*{box-sizing:border-box}`,
   `html{background:var(--bg)}`,
   `body{margin:0;background:var(--bg);color:var(--fg);font-family:${FONT.sans};font-synthesis:none;font-size:16px;line-height:1.5;-webkit-text-size-adjust:100%}`,
-  `main,header,footer{max-width:56rem;margin:0 auto;padding:0 1rem}`,
-  `header{padding-top:2.5rem}`,
-  `.icon{display:block;width:4rem;height:4rem;margin:0 0 1rem;border-radius:22%;object-fit:contain}`,
-  `h1{margin:0;color:var(--strong);font-size:2rem;line-height:2.5rem;font-weight:700;letter-spacing:-.01em}`,
+  // The task frame (PORTAL.md §3.3): a top bar with the one lockup, then a centred column that
+  // never pins left: breadcrumb, a 56 px identity row, the action card, the rest.
+  `.top,main,header,footer{max-width:46rem;margin:0 auto;padding-left:1rem;padding-right:1rem}`,
+  `.top{display:flex;align-items:center;min-height:4.5rem;padding-top:.5rem;padding-bottom:.5rem}`,
+  `.top svg{display:block;max-width:100%;height:auto}`,
+  `header{padding-top:1.5rem}`,
+  `.crumbs{margin:0 0 1rem;color:var(--muted);font-size:.75rem;line-height:1rem}`,
+  `.identity{display:flex;align-items:center;gap:1rem;min-width:0}`,
+  `.identity>div{min-width:0}`,
+  `.icon{display:block;flex:none;width:3.5rem;height:3.5rem;border-radius:22%;object-fit:contain}`,
+  `h1{margin:0;color:var(--strong);font-size:1.75rem;line-height:2.25rem;font-weight:700;letter-spacing:-.01em;overflow-wrap:anywhere}`,
+  `.rec{margin:0 0 .25rem;color:var(--muted);font-size:.875rem}`,
   `h2{margin:2rem 0 .75rem;color:var(--strong);font-size:1.25rem;line-height:1.75rem;font-weight:700}`,
   `h3{margin:1.25rem 0 .5rem;color:var(--strong);font-size:1rem;font-weight:700}`,
   `.sub,.by,.meta,.note,footer{color:var(--muted)}`,
-  `.sub{margin:.25rem 0 0;font-size:1.125rem}`,
-  `.by{margin:.25rem 0 0;font-size:.875rem}`,
-  `.primary{margin:1.5rem 0;padding:1.25rem;border:1px solid var(--line);border-radius:10px;background:var(--card)}`,
+  `.sub{margin:1rem 0 0;font-size:1rem}`,
+  `.by{margin:0;font-size:.875rem}`,
+  `.primary{margin:1.5rem 0;min-width:0;padding:1.25rem;border:1px solid var(--line);border-radius:10px;background:var(--card)}`,
   `.primary h2{margin-top:0}`,
-  `.button{display:inline-flex;align-items:center;min-height:44px;padding:.625rem 1.25rem;border-radius:6px;background:var(--accent);color:var(--accent-fg);font-weight:700;text-decoration:none}`,
+  `.button{display:inline-flex;align-items:center;min-height:44px;padding:.625rem 1.25rem;border-radius:6px;background:var(--strong);color:var(--bg);font-weight:700;text-decoration:none}`,
+  `.button:focus-visible{outline:2px solid var(--focus);outline-offset:3px}`,
+  `@media (max-width:480px){.button{display:flex;justify-content:center;width:100%}}`,
   `.meta{margin:.5rem 0 0;font-size:.875rem}`,
   `.touch-only{display:none}`,
   `@media (hover:none) and (pointer:coarse){.touch-only{display:block}.pointer-only{display:none}}`,
@@ -138,15 +148,14 @@ export const PAGE_CSS = [
   `.cmd{display:block;padding:.5rem .75rem;border-radius:6px;background:var(--sunken);border:1px solid var(--line);color:var(--strong)}`,
   `.qr{width:9rem;height:9rem;border-radius:4px}`,
   `.scroll{overflow-x:auto}`,
-  `table{border-collapse:collapse;width:100%;font-size:.875rem;font-variant-numeric:tabular-nums}`,
+  `.scroll:focus-visible{outline:2px solid var(--focus);outline-offset:2px}`,
+  `table{border-collapse:collapse;width:100%;min-width:44rem;font-size:.875rem;font-variant-numeric:tabular-nums}`,
   `th,td{text-align:left;padding:.5rem .75rem;border-top:1px solid var(--line);vertical-align:top}`,
   `th{color:var(--muted);font-weight:400;font-size:.75rem}`,
   `.sha{word-break:break-all}`,
   `.summary{white-space:pre-line}`,
   `footer{padding:2.5rem 1rem 3rem;font-size:.875rem}`,
   `footer p{margin:0 0 1rem}`,
-  `.delivery{display:block;line-height:0}`,
-  `.delivery svg{display:block;max-width:100%;height:auto}`,
   LOCKER_SHELL_CSS,
 ].join("\n");
 
@@ -281,12 +290,16 @@ function primaryBlock(
   group: PagePlatformGroup,
   detected: DetectedPlatform,
   cls: string,
+  recommended = false,
 ): string {
   const a = model.actions.find((x) => x.id === group.primary);
   if (!a) return "";
   const body = primaryBody(a, group, detected);
   if (!body) return "";
-  return `<div class="primary${cls ? ` ${cls}` : ""}" data-platform="${esc(group.platform)}" data-action="${esc(a.kind)}"><h2>${esc(group.label)}</h2>${body}</div>`;
+  const rec = recommended
+    ? `<p class="rec">Recommended for your device</p>`
+    : "";
+  return `<div class="primary${cls ? ` ${cls}` : ""}" data-platform="${esc(group.platform)}" data-action="${esc(a.kind)}">${rec}<h2>${esc(group.label)}</h2>${body}</div>`;
 }
 
 /** One entry of "Other ways to get it". */
@@ -359,7 +372,7 @@ function way(a: PageAction, group: PagePlatformGroup): string {
 function iconTag(url: string | null): string {
   const src = url && url.startsWith("https:") ? safeHref(url) : null;
   return src
-    ? `<img class="icon" src="${src}" alt="" width="64" height="64" decoding="async">`
+    ? `<img class="icon" src="${src}" alt="" width="56" height="56" decoding="async">`
     : "";
 }
 
@@ -403,10 +416,11 @@ export function renderDownloadPage(
   if (mine?.primary) {
     const touch =
       detected.touchAmbiguous && detected.platform === "macos" && ios?.primary
-        ? primaryBlock(model, ios, detected, "touch-only")
+        ? primaryBlock(model, ios, detected, "touch-only", true)
         : "";
     lead =
-      primaryBlock(model, mine, detected, touch ? "pointer-only" : "") + touch;
+      primaryBlock(model, mine, detected, touch ? "pointer-only" : "", true) +
+      touch;
   }
   if (!lead) {
     const items = model.platforms
@@ -462,7 +476,7 @@ export function renderDownloadPage(
     "Checksums of every file in this release",
   );
   const files = rows.length
-    ? `<section aria-labelledby="files-title"><h2 id="files-title">All downloads</h2><div class="scroll"><table><thead><tr><th>Version</th><th>Platform</th><th>Arch</th><th>File</th><th>Size</th><th>Minimum OS</th><th>SHA-256</th></tr></thead><tbody>${rows.join(
+    ? `<section aria-labelledby="files-title"><h2 id="files-title">All downloads</h2><div class="scroll" role="region" aria-label="All downloads, scrolls sideways" tabindex="0"><table><thead><tr><th>Version</th><th>Platform</th><th>Arch</th><th>File</th><th>Size</th><th>Minimum OS</th><th>SHA-256</th></tr></thead><tbody>${rows.join(
         "",
       )}</tbody></table></div>${
         sums
@@ -504,13 +518,16 @@ export function renderDownloadPage(
     `<link rel="icon" type="image/svg+xml" href="${lockerFaviconHref()}">`,
     `<style>${PAGE_CSS}</style>`,
     "</head><body>",
-    `<header>${iconTag(extras.iconUrl ?? null)}<h1>${esc(name)}</h1>${
-      model.listing.subtitle
-        ? `<p class="sub">${esc(model.listing.subtitle)}</p>`
-        : ""
-    }${
+    `<div class="top">${lockerLockup(40, "lockup")}</div>`,
+    `<header><p class="crumbs">${esc(name)} / Download</p><div class="identity">${iconTag(
+      extras.iconUrl ?? null,
+    )}<div><h1>${esc(name)}</h1>${
       model.listing.developerName
         ? `<p class="by">by ${esc(model.listing.developerName)}</p>`
+        : ""
+    }</div></div>${
+      model.listing.subtitle
+        ? `<p class="sub">${esc(model.listing.subtitle)}</p>`
         : ""
     }</header>`,
     `<main>${lead}${release}${
@@ -518,7 +535,7 @@ export function renderDownloadPage(
         ? `<section aria-labelledby="ways-title"><h2 id="ways-title">Other ways to get it</h2>${ways}</section>`
         : ""
     }${files}${keys}${about}</main>`,
-    `<footer><p>Verify a download's SHA-256 before you install it.</p><p class="delivery">${lockerLockup(40, "lockup")}</p>${serviceRow()}</footer>`,
+    `<footer><p>Verify a download's SHA-256 before you install it.</p>${serviceRow()}</footer>`,
     "</body></html>",
     "",
   ].join("\n");
