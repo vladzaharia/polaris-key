@@ -15085,7 +15085,7 @@
         "consolidation alias CQW-14"
       ],
       "brief": "wp/CM-29-commerce-service.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "CM-29b",
@@ -15108,7 +15108,7 @@
         "section changes brand-01, admin-3-01, site-01, overview-01"
       ],
       "brief": "wp/CM-29b-commerce-accent.md",
-      "status": "todo",
+      "status": "done",
       "planRef": "CM-29"
     },
     {
