@@ -72,7 +72,7 @@ import {
   customerHostOwnResponse,
   isCustomerHostOwnPath,
 } from "./core/customerHost.js";
-import { isCustomerHost } from "./core/hosts.js";
+import { customerHostname, isCustomerHost } from "./core/hosts.js";
 import { relatedOriginsResponse } from "./core/customerHost.js";
 import { customerHostMode } from "./core/licensing/manageUrl.js";
 import {
@@ -203,15 +203,15 @@ async function routeRequest(
   const route = matchRoute(url.pathname);
   if (onCustomerHost && !CUSTOMER_ROUTE_KINDS.has(route.kind))
     return notFound();
-  // The API host's root is the console's front door while `customer.host` is on (the customer
-  // site lives on its own host then). While `off`, `/` is still the customer portal. A hash route
+  // The API host's root is the console's front door once `CUSTOMER_ORIGIN` is set (hard cutover: the
+  // customer site lives on its own host then, no switch). Unset, `/` is still the customer portal. A hash route
   // (`/#/library`) never reaches the Worker; those old bookmarks need LK-11's client redirect.
   if (
     !onCustomerHost &&
     route.kind === "portalSpa" &&
     (url.pathname === "/" || url.pathname === "/index.html") &&
     (req.method === "GET" || req.method === "HEAD") &&
-    (await customerHostMode(env, db)) !== "off"
+    customerHostname(env) !== null
   )
     return new Response(null, {
       status: 302,
