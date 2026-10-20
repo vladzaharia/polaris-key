@@ -78,9 +78,38 @@ apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1�
 ## Acceptance criteria
 
 - [ ] `pkey-ux-reviewer` passes the built screens in BUILT mode (a real browser, dark and light, 390 and 1440 px), against the matching Locker mockup.
-- [ ] A product with Identity off renders the `identity_disabled` card (test); a spoofed name never renders.
-- [ ] The LicenseChoice rows of `ui-matrix.json` pass against `portal/model` (admin unit test).
+- [x] A product with Identity off renders the `identity_disabled` card (test); a spoofed name never renders.
+- [x] The LicenseChoice rows of `ui-matrix.json` pass against `portal/model` (admin unit test).
 - [ ] The scoped green gate passes (AGENTS.md); the header's gates hold.
+
+## Built (2026-10-20) and corrections to the brief
+
+Built in the portal SPA on P0-38's AuthCard: `CardHeader` app and device variants (`ui/auth`),
+`RequestHeader`/`RequestFooter`, `LicenseChoiceStep`, `ReplaceDeviceStep` (devices as a radio group,
+nothing preselected, one ink primary **Replace and sign in**, the error under the group, the safety
+line), `ConsentStep` (equal Allow and Don't allow, no toggles), `ReplacedDone` (names both devices),
+`NoneStep`, `RequestFlow` (the signed-in half at `/signin?request=rq_…`) and PX-12's `AccountUpgrade`
+on the key on-ramp (`POST /api/key/preview`; skippable while entries remain and only where an app sent
+the person, forced at zero; a neutral ink meter). The model is `portal/model/signInRequest.ts`; the
+LicenseChoice rows of `ui-matrix.json` run against it in `test/portalSignInRequestModel.test.ts`.
+
+Corrections (the code is the fact):
+
+- **The Worker answered 404 to `GET /signin?request=`** ("until PX-14"), so the card was unreachable.
+  `dispatch.ts` now serves the portal shell there to a browser that holds a `__Host-pk_req` binder
+  (not on the bind hop, not without a binder: those stay 404). Test: `worker/test/signInCardShell.test.ts`.
+- **The ReplaceDevice and licence-list preselection follow the lead's decision, not §3.7**: no device
+  is preselected ("Least recent" is a tag only). A licence list keeps the server's preselection,
+  except that with every row full nothing is chosen (one lone row is chosen for the person).
+- **Replace writes at Continue**, as §3.7 says: "Replace and sign in" goes to consent ("<licence> ·
+  replaces <device>"), and Continue to <App> applies it; the done state then names both devices.
+- **A store or purchase row names no origin** (`LicenseChoice` carries no store name).
+- **The passport pane (>= 960 px landscape) is not built**; neither are native return variants and
+  toggles (PX-14b). See the report's follow-ups.
+- New catalog keys (nine locales): `signin.choice.{pickOne,pickDevice,replaceAndSignIn,replaceSafety,
+  replacedTitle,replacedBody}`, `signin.request.{goneTitle,gone}`, `signin.header.onDevice`,
+  `signin.thisBrowser`, `signin.consent.{deny,cloudSync,newLicense}`,
+  `signin.key.{upgradeTitle,upgradeLede,createAccount,signInInstead,noEntriesTitle,noEntriesKeeps,meter,keyWorks}`.
 
 ## Hand-off
 
