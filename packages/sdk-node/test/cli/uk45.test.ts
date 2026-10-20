@@ -628,9 +628,6 @@ describe("activate reads a piped key within a bound", () => {
 
 describe("no kit string names Polaris Key where the product fits", () => {
   const SRC = join(HERE, "../../src/cli");
-  /** Catalog keys the kit may show with the service's name: the footer line is the service's
-   *  own credit, and a failure to reach it names what could not be reached. */
-  const BRAND_ALLOWED = new Set(["part.poweredBy"]);
 
   function sources(dir: string): string[] {
     return readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
@@ -651,7 +648,7 @@ describe("no kit string names Polaris Key where the product fits", () => {
         used.add(m[1]!);
     const en = KIT_COPY.en as Record<string, string>;
     const hits = [...used]
-      .filter((k) => k in en && !BRAND_ALLOWED.has(k))
+      .filter((k) => k in en)
       .filter((k) => /Polaris Key/i.test(en[k]!));
     expect(hits).toEqual([]);
   });

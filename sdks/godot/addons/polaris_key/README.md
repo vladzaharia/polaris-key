@@ -40,5 +40,5 @@ Requires Godot 4.4 or later; 4.6 or later is recommended. Version: see `plugin.c
 
 MIT (see `LICENSE`); the bundled Ed25519 and SHA-512 code's notices are in
 `core/crypto/THIRD_PARTY_NOTICES`. `brand/` holds the Polaris Key editor glyph and the
-"Powered by Polaris Key" credit screens and badges (dark and light) for your game's credits; it
-is never imported, so copy the file you want into your project to use it.
+Polaris Locker "Powered by" badge (`powered-by-badge-*`, 320 × 104, dark and light) and micro mark
+(`locker-micro-*`) for your game's credits; it is never imported, so copy the file you want into your project to use it.

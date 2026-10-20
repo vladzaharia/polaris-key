@@ -71,6 +71,7 @@ interface Run {
   headless?: boolean;
   /** The terminal answers a cursor-position request (default); false is one that stays silent. */
   cpr?: boolean;
+  poweredBy?: "line" | "badge";
 }
 
 interface Harness {
@@ -116,7 +117,10 @@ async function run(
       now: () => (clock += 150),
       openUrl: () => true,
     },
-    theme: o.locale ? { copy: { locale: o.locale } } : {},
+    theme: {
+      ...(o.locale ? { copy: { locale: o.locale } } : {}),
+      ...(o.poweredBy ? { poweredBy: o.poweredBy } : {}),
+    },
     presentation: { presentation: () => ({ ...TIDEWATER, name: v.name }) },
     bundle: {},
     queryScheme: false,
@@ -849,6 +853,50 @@ describe("a screen too tall for a 32×8 window", () => {
     expect(joined(snaps[0]!)).toContain(shown(LONG.url));
     expect(snaps[0]!.some((r) => /\bEsc\b/.test(r.text))).toBe(true);
     expect(joined(snaps[0]!)).toContain(LONG.code);
+  });
+});
+
+describe("the Powered by line (LK-16)", () => {
+  it.each(["line", "badge"] as const)(
+    "poweredBy %s prints the Locker glyph and the phrase under the status, once",
+    async (poweredBy) => {
+      const status = await run(
+        { columns: 80, rows: 24, poweredBy },
+        async (h) => statusFlow(h.ctx, stubClient()),
+      );
+      const rows = status.screen.all().map((r) => r.text);
+      expect(rows.filter((r) => r.includes("Powered by"))).toHaveLength(1);
+      expect(rows.join("\n")).toContain("✦ Powered by Polaris Locker");
+      expect(rows.join("\n")).not.toContain("Polaris Key");
+    },
+  );
+
+  it("is never drawn on a gate: needs-activation and revoked print no attribution", async () => {
+    for (const status of ["needs-activation", "revoked"]) {
+      const out = await run(
+        { columns: 80, rows: 24, poweredBy: "line" },
+        async (h) =>
+          statusFlow(h.ctx, stubClient({ status: () => ({ status }) })),
+      );
+      expect(
+        out.screen
+          .all()
+          .map((r) => r.text)
+          .join("\n"),
+      ).not.toContain("Powered by");
+    }
+  });
+
+  it("is absent by default", async () => {
+    const status = await run({ columns: 80, rows: 24 }, async (h) =>
+      statusFlow(h.ctx, stubClient()),
+    );
+    expect(
+      status.screen
+        .all()
+        .map((r) => r.text)
+        .join("\n"),
+    ).not.toContain("Powered by");
   });
 });
 

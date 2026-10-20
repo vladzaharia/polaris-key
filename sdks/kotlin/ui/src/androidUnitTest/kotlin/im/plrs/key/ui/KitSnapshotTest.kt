@@ -17,6 +17,10 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -93,6 +97,7 @@ internal fun ComposeTestRule.capture(
     name: String,
     variant: SnapshotVariant,
     showPoweredBy: Boolean = false,
+    poweredByStyle: PolarisPoweredByStyle = PolarisPoweredByStyle.Line,
     keyboard: Boolean = false,
     accent: Color? = null,
     host: ColorScheme? = null,
@@ -111,7 +116,7 @@ internal fun ComposeTestRule.capture(
                 CompositionLocalProvider(LocalInputModeManager provides FixedInputMode(mode)) {
                     val scheme = host ?: if (variant.dark) darkColorScheme() else lightColorScheme()
                     MaterialTheme(colorScheme = scheme) {
-                        PolarisTheme(branding = variant.branding, showPoweredBy = showPoweredBy, copy = sampleCopy, darkTheme = variant.dark, accent = accent) {
+                        PolarisTheme(branding = variant.branding, showPoweredBy = showPoweredBy, poweredByStyle = poweredByStyle, copy = sampleCopy, darkTheme = variant.dark, accent = accent) {
                             content()
                         }
                     }
@@ -148,7 +153,10 @@ class KitSnapshotTest(private val variant: SnapshotVariant) {
     }
 }
 
-/** The optional badge, off by default, in both brandings. */
+/**
+ * The optional attribution on an about screen, off by default, in both brandings: the line by default,
+ * the Locker badge with `Badge` where 320 dp are free.
+ */
 @RunWith(org.robolectric.RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [35])
@@ -157,10 +165,33 @@ class PoweredBySnapshotTest {
     val rule = createEmptyComposeRule()
 
     @Test
-    fun badgeInBothBrandings() {
-        val activation = kitScreens.first { it.first == "gate-activation" }.second
-        rule.capture("powered-by/phone-neutral-light", snapshotVariants[0], showPoweredBy = true, content = activation)
-        rule.capture("powered-by/phone-branded-dark", snapshotVariants[2], showPoweredBy = true, content = activation)
-        rule.capture("powered-by/phone-branded-light", snapshotVariants[3], showPoweredBy = true, content = activation)
+    fun attributionInBothBrandings() {
+        val about: @Composable () -> Unit = {
+            PolarisScreen {
+                PolarisTitle("About Diceroll")
+                PolarisBody("Version 2.4.1")
+                Spacer(Modifier.height(16.dp))
+                PolarisPoweredBy()
+            }
+        }
+        rule.capture("powered-by/phone-neutral-light", snapshotVariants[0], showPoweredBy = true, content = about)
+        rule.capture("powered-by/phone-branded-dark", snapshotVariants[2], showPoweredBy = true, content = about)
+        rule.capture("powered-by/phone-branded-light", snapshotVariants[3], showPoweredBy = true, content = about)
+        rule.capture(
+            "powered-by/phone-badge-branded-dark", snapshotVariants[2], showPoweredBy = true,
+            poweredByStyle = PolarisPoweredByStyle.Badge, content = about,
+        )
+        rule.capture(
+            "powered-by/tablet-badge-neutral-light", snapshotVariants[5], showPoweredBy = true,
+            poweredByStyle = PolarisPoweredByStyle.Badge, content = about,
+        )
+        rule.capture("powered-by/tablet-branded-dark", snapshotVariants[6], showPoweredBy = true, content = about)
+        // The kit's own account pane: the line after the controls.
+        val account: @Composable () -> Unit = {
+            val inputs = KitInputs.of(mapOf("account" to kotlinx.serialization.json.buildJsonObject { put("signedIn", kotlinx.serialization.json.JsonPrimitive(true)) }))
+            PolarisKitScreen(KitStates.resolve(KitComponent.accountAndLicense, inputs))
+        }
+        rule.capture("powered-by/account-pane-branded-dark", snapshotVariants[2], showPoweredBy = true, content = account)
+        rule.capture("powered-by/account-pane-neutral-light", snapshotVariants[0], showPoweredBy = true, content = account)
     }
 }

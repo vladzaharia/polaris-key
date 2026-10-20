@@ -44,6 +44,7 @@ SYMBOLS = {
         "barEmpty": "─",
         "separator": "·",
         "ellipsis": "…",
+        "lockerMark": "✦",
         "arrows": "↑↓",
     },
     "ascii": {
@@ -61,6 +62,7 @@ SYMBOLS = {
         "barEmpty": "-",
         "separator": "-",
         "ellipsis": "...",
+        "lockerMark": "*",
         "arrows": "^v",
     },
 }

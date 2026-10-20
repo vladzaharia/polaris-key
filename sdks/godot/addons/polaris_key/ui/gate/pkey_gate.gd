@@ -75,7 +75,6 @@ var _aside: VBoxContainer
 var _head: VBoxContainer
 var _main: VBoxContainer
 var _product: PKeyProductHeader
-var _powered_by: TextureRect
 var _glyph: TextureRect
 var _title: Label
 var _body: Label
@@ -153,7 +152,6 @@ func _build() -> void:
 	_update = button(_actions, "UpdateAction", _on_update, "PKeyPrimary")
 	_retry = button(_actions, "Retry", _on_retry, "PKeyPrimary")
 	_offline_btn = button(_actions, "ContinueOffline", _on_continue_offline)
-	_powered_by = brand_node(box, "PoweredBy", BRAND_POWERED_BY)
 	_banner_slot = MarginContainer.new()
 	_banner_slot.name = "BannerSlot"
 	_banner_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -246,27 +244,11 @@ func _arrange(m: Dictionary) -> void:
 			_card.remove_theme_stylebox_override("panel")
 		_card.theme_type_variation = &"PKeyCard"
 	super(m)
-	_fit_brand()
 	fit_scrolls(available_height(), outer_view() == self or embedded)
 
 
 ## A label's own start alignment (mirrored with the layout direction).
 var _title_start: HorizontalAlignment
-
-
-## The Powered-by badge shows at its kit minimum or not at all: it gives way when the card would
-## not fit the screen with it.
-func _fit_brand() -> void:
-	if _powered_by.texture == null:
-		return
-	if _card.size.x < 1.0:
-		# Not laid out yet: wrapped text has no width to measure against; decide on the next pass.
-		_powered_by.visible = true
-		return
-	_powered_by.visible = false
-	var room := content_room().y
-	var need := _card.get_combined_minimum_size().y + _powered_by.custom_minimum_size.y + role("section_gap")
-	_powered_by.visible = need <= room
 
 
 func _ready() -> void:

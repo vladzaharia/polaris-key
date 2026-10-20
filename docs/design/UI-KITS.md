@@ -450,7 +450,7 @@ screen:
   in both themes. The fixture Tidewater Studio resolves to teal; it is never "violet with a teal
   icon pasted in".
 
-- **Polaris Key appears only as an optional "Powered by Polaris Key"** line or badge (`poweredBy`,
+- **Polaris Locker appears only as an optional "Powered by Polaris Locker"** line or badge (`poweredBy`,
   off by default, §4.5). No kit screen shows the Pinned K, the Star Cut or the "Polaris Key" name
   otherwise. Two exceptions, both true statements about who handles a step:
   - the sign-in footnote "Polaris Key signs you in for <App>. <Developer> never sees your codes or
@@ -724,9 +724,13 @@ that breaks one does not ship.
 - Kit screens show **no Polaris Key mark and no Polaris Locker mark or coral**. Kits may name Polaris Locker as a destination in words ("Manage in Polaris Locker", the sign-in footer, the device-code address); they never draw its mark. The Locker name reaches kits through the copy tables when `CUSTOMER_ORIGIN` is set. The Powered-by line says Polaris Locker (the Locker mark and coral appear only inside it). The optional Powered-by
   line or badge is the only place a mark is drawn; the Star Cut does not appear in SDK UI at all. This supersedes BRAND §7.1's two
   "SDK UI" rows (§9).
-- The Powered-by line is `<Locker micro mark, 16 px> Powered by Polaris Locker` in live text, `text-subtle` at 12–13 px,
-  or the Locker `powered-by` badge at ≥ 320 × 104 where 320 px is free, else the line (BRAND §1.5). It is off by
-  default and sits only at the foot of settings, about and credits screens, never on the gate. Default
+- The Powered-by line is `<Locker micro mark> Powered by Polaris Locker` in live text, `text-subtle` at 12–13 px.
+  The mark is 16 px at the default text size and scales with the text (1.25 em, a 16 px floor). `poweredBy: true`
+  means `"line"`, everywhere. The Locker `powered-by` badge (≥ 320 × 104, where 320 px is free, else the line) is
+  opt-in (`"badge"`) and only on About and credits screens; AccountAndLicense and settings always draw the line.
+  It is off by default, is the last item of the pane (centred in its column, inside the scroll where the pane
+  scrolls), and is never on the gate, boot or a message screen. Terminals print the line on the signed-in
+  and grace branches only. Default
   mockups show the default: no Powered-by.
 
 ---
@@ -1390,8 +1394,10 @@ WCAG 2.2 AA in both themes (BRAND §9) plus:
 
 ### 4.5 Powered by
 
-`poweredBy: "line"` adds the 12 px line at the foot of AccountAndLicense and About; `"badge"` adds the
-compact badge at its minimum on About. Off by default in every kit and in both presets.
+`poweredBy: true` or `"line"` adds the 12 px line (the Locker micro mark and the phrase) at the foot of
+AccountAndLicense, settings and About; `"badge"` adds the Locker `powered-by` badge at 320 × 104 on About
+(and credits) where 320 px are free, else the line. Off by default in every kit and in both presets; never
+on the gate (§1.6).
 
 ### 4.6 States and copy are data
 

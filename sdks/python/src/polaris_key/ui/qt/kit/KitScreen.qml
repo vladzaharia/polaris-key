@@ -186,6 +186,49 @@ Rectangle {
                         }
                     }
                 }
+
+                // UI-KITS §1.6: the Locker micro mark (16) and the phrase; with poweredBy "badge",
+                // the 320 x 104 badge where 320 px is free, else the line.
+                Image {
+                    id: poweredBadge
+                    readonly property bool shown: spec.poweredBy === "badge" && spec.component === "About" && column.width >= 320
+                    visible: shown
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.topMargin: 8
+                    Layout.preferredWidth: shown ? 320 : 0
+                    Layout.preferredHeight: shown ? 104 : 0
+                    sourceSize.width: 640
+                    sourceSize.height: 208
+                    source: shown ? kit.poweredByBadge : ""
+                    Accessible.role: Accessible.Graphic
+                    Accessible.name: spec.poweredByText
+                }
+                RowLayout {
+                    visible: spec.poweredBy !== "" && !poweredBadge.shown
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.topMargin: 8
+                    spacing: 8
+                    Image {
+                        // 16 px floor, growing with the text (UI-KITS 1.6).
+                        readonly property real side: Math.max(16, Theme.typeMeta.size * root.fs * 1.25)
+                        Layout.preferredWidth: side
+                        Layout.preferredHeight: side
+                        sourceSize.width: side * 2
+                        sourceSize.height: side * 2
+                        source: kit.poweredByMark
+                        Accessible.ignored: true
+                    }
+                    Text {
+                        text: spec.poweredByText
+                        wrapMode: Text.Wrap
+                        Layout.maximumWidth: column.width - 40
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.typeMeta.size * root.fs
+                        color: Theme.textSubtle
+                        Accessible.role: Accessible.StaticText
+                        Accessible.name: text
+                    }
+                }
             }
         }
     }

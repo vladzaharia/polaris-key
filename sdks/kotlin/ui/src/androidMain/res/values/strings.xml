@@ -171,6 +171,6 @@
     <string name="pkey_ui_bytes_kb">%1$s KB</string>
     <string name="pkey_ui_bytes_mb">%1$s MB</string>
     <string name="pkey_ui_bytes_gb">%1$s GB</string>
-    <string name="pkey_ui_powered_by">Powered by Polaris Key</string>
+    <string name="pkey_ui_powered_by">Powered by Polaris Locker</string>
     <string name="pkey_ui_polaris_key_mark">Polaris Key</string>
 </resources>

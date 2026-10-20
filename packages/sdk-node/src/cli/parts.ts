@@ -135,6 +135,17 @@ export function textRow(text: string | Line, style?: string[]): RailRow {
   };
 }
 
+/**
+ * The optional attribution (UI-KITS §1.6): the Locker mark's one-cell glyph and "Powered by Polaris
+ * Locker", muted. A terminal cannot draw the badge, so `"badge"` prints the line too.
+ */
+export function poweredByRow(
+  ctx: KitContext,
+  t: (key: string) => string,
+): RailRow {
+  return textRow(`${ctx.symbols.lockerMark} ${t("part.poweredBy")}`, ["muted"]);
+}
+
 /** A catalog key-hint string as the end row (or a rail row). */
 export function hintsRow(
   ctx: KitContext,

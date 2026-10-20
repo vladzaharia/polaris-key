@@ -37,7 +37,7 @@ import {
   type KitTypeRole,
   type Radius,
 } from "../src/tokens/kit.js";
-import { BRAND, KIT_VERSION } from "../src/tokens/primitives.js";
+import { BRAND, KIT_VERSION, POWERED_BY } from "../src/tokens/primitives.js";
 import { resolveTokens, type ResolvedTheme } from "../src/tokens/resolve.js";
 import { FONT_WEIGHT, MOTION, RADIUS, SPACE } from "../src/tokens/scales.js";
 import {
@@ -1009,6 +1009,36 @@ CONCENTRIC_MIN = ${KIT_CONCENTRIC_MIN}
 
 #: Component measures per desktop platform (px; points on macOS).
 KIT = ${pyLiteral(Object.fromEntries(PY_PLATFORMS.map((p) => [p, pyComponents(p)])))}
+
+#: "Powered by Polaris Locker" (LK-00 §14.2): the exact phrase, the line's mark size and the badge's
+#: minimum (px), and the Locker kit's micro mark and badge as SVG per ground ("dark" is FOR dark).
+POWERED_BY = ${pyLiteral({
+    phrase: POWERED_BY.phrase,
+    mark_size: POWERED_BY.markSize,
+    badge_min: [POWERED_BY.minimum.width, POWERED_BY.minimum.height],
+    mark_svg: Object.fromEntries(
+      (["dark", "light"] as const).map((g) => [
+        g,
+        readFileSync(
+          join(ctx.pkg, "locker-kit", `logos/svg/locker-mark-${g}-micro.svg`),
+          "utf8",
+        ),
+      ]),
+    ),
+    badge_svg: Object.fromEntries(
+      (["dark", "light"] as const).map((g) => [
+        g,
+        readFileSync(
+          join(
+            ctx.pkg,
+            "locker-kit",
+            `badges/locker-powered-by-${g}-transparent.svg`,
+          ),
+          "utf8",
+        ),
+      ]),
+    ),
+  })}
 
 #: The QSS placeholders polaris_key.ui.qt fills in qt/polaris_key_{dark,light}.qss, as "@pk-<name>@".
 QSS_PLACEHOLDERS = ${pyLiteral([...QSS_PLACEHOLDERS])}

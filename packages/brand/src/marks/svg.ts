@@ -27,7 +27,7 @@ import {
   type OpticalCut,
 } from "../tokens/primitives.js";
 import {
-  badgeSize,
+  keyBadgeSize,
   bitVisible,
   isNoBit,
   isServiceId,
@@ -47,6 +47,8 @@ import {
   lockerMarkParts,
   refuseBit,
   type LockerBadgeOptions,
+  type LockerBadgeTheme,
+  type LockerBadgeTreatment,
   type LockerLockupTheme,
 } from "./locker.js";
 import type {
@@ -429,41 +431,74 @@ export function deliveryLockupSvg(
   return kitLayout(LOCKUP_TEMPLATES.delivery[layout], KIT_PALETTES[variant]);
 }
 
-// ── "Powered by Polaris Key" ────────────────────────────────────────────────────────────────
+// ── "Powered by Polaris Locker" (the public attribution, LK-00 §14.2) ───────────────────────
 
 export type BadgeTreatment = "transparent" | "sticker" | "outline";
 export type BadgeTheme = "dark" | "light" | "mono-black" | "mono-white";
 
-export interface BadgeOptions {
-  layout?: BadgeLayout;
+/** The Locker `powered-by` badge: one 320 × 104 canvas, so no layout. */
+export interface PoweredByOptions {
   /** transparent (on a clean matching ground), sticker (carries its own plate), outline. */
+  treatment?: LockerBadgeTreatment;
+  /** Which ground it is FOR: dark, light, or white. */
+  theme?: LockerBadgeTheme;
+  /** Rendered width in CSS px; clamped up to the 320 minimum. */
+  width?: number;
+  /** Accessible name; defaults to "Powered by Polaris Locker". "" marks it decorative. */
+  title?: string;
+}
+
+/** The inner markup of the Locker `powered-by` badge. */
+export function poweredByInner(opts: PoweredByOptions = {}): string {
+  return badgeInner({
+    kind: "locker-powered-by",
+    treatment: opts.treatment,
+    theme: opts.theme,
+    title: opts.title ?? ALT.poweredBy,
+  });
+}
+
+/** The Locker `powered-by` badge as an SVG string; the same markup `<PoweredByBadge>` renders. */
+export function poweredBySvg(opts: PoweredByOptions = {}): string {
+  return badgeSvg({
+    kind: "locker-powered-by",
+    treatment: opts.treatment,
+    theme: opts.theme,
+    width: opts.width,
+    title: opts.title ?? ALT.poweredBy,
+  });
+}
+
+// ── "Powered by Polaris Key": platform references, not offered to integrators ───────────────
+
+/** A Key badge's options (kit/03-powered-by). */
+export interface KeyBadgeOptions {
+  layout?: BadgeLayout;
   treatment?: BadgeTreatment;
-  /** Which ground it is FOR (dark / light), or single-ink mono-black / mono-white. */
   theme?: BadgeTheme;
-  /** Rendered width in CSS px; clamped up to the layout's minimum. */
   width?: number;
   /** Accessible name; defaults to "Powered by Polaris Key". "" marks it decorative. */
   title?: string;
 }
 
-export function poweredByInner(opts: BadgeOptions = {}): string {
+export function keyPoweredByInner(opts: KeyBadgeOptions = {}): string {
   const {
     layout = "compact",
     treatment = "transparent",
     theme = "dark",
   } = opts;
   const t = BADGE_TEMPLATES[treatment][layout];
-  const title = opts.title ?? ALT.poweredBy;
+  const title = opts.title ?? ALT.keyPoweredBy;
   return `${title ? `<title>${escapeHtml(title)}</title>` : ""}${fill(t, KIT_PALETTES[theme])}`;
 }
 
-/** A badge as an SVG string; the same markup `<PoweredByBadge>` renders. */
-export function poweredBySvg(opts: BadgeOptions = {}): string {
+/** A Key badge as an SVG string (a platform reference). */
+export function keyPoweredBySvg(opts: KeyBadgeOptions = {}): string {
   const { layout = "compact", treatment = "transparent" } = opts;
   const t = BADGE_TEMPLATES[treatment][layout];
-  const size = badgeSize(layout, opts.width);
-  const head = a11y(opts.title ?? ALT.poweredBy);
-  return `<svg xmlns="${SVG_NS}" width="${fmt(size.width)}" height="${fmt(size.height)}" viewBox="0 0 ${t.width} ${t.height}"${head.attrs}>${poweredByInner(opts)}</svg>`;
+  const size = keyBadgeSize(layout, opts.width);
+  const head = a11y(opts.title ?? ALT.keyPoweredBy);
+  return `<svg xmlns="${SVG_NS}" width="${fmt(size.width)}" height="${fmt(size.height)}" viewBox="0 0 ${t.width} ${t.height}"${head.attrs}>${keyPoweredByInner(opts)}</svg>`;
 }
 
 /** One of the kit's badge files (kit/03-powered-by), byte for byte. */

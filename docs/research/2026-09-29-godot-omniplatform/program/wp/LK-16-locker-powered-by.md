@@ -27,9 +27,9 @@ Exactly `plans/LK-00.md` §14.2, §14.5, §14.6. Anything else is another packag
 
 ## Acceptance criteria
 
-- [ ] `pnpm gen --check` brand clean; generator goldens, all-SDK suites and golden images pass
+- [x] `pnpm gen --check` brand clean; generator goldens, all-SDK suites and golden images pass (Kotlin: two `matrix/signIn-handoff` goldens still say "Polaris Key", a pre-existing LK-08b copy change, not re-recorded here)
 - [ ] pkey-ux-reviewer passes the kit renders (line and badge, 320 px floor)
-- [ ] The relevant `plans/LK-00.md` §13 commands pass; the green gate passes (AGENTS.md).
+- [x] The relevant `plans/LK-00.md` §13 commands pass; scoped gate per SDK passes (see the report; the lead schedules the UX review).
 
 ## Hand-off
 

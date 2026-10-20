@@ -286,19 +286,13 @@ function badges(): string {
       `<div class="ground" data-theme="${theme}">${(
         ["transparent", "sticker", "outline"] as const
       )
-        .map((treatment) =>
-          (["compact", "horizontal", "stacked"] as const)
-            .map((layout) => poweredBySvg({ layout, treatment, theme }))
-            .join(""),
-        )
+        .map((treatment) => poweredBySvg({ treatment, theme }))
         .join("")}</div>`,
     );
   out.push(
-    `<div class="row"><div class="ground" style="background:#7a5f3a">${poweredBySvg({ layout: "compact", treatment: "sticker", theme: "dark" })}${poweredBySvg({ layout: "compact", treatment: "sticker", theme: "light" })}</div><div class="ground" style="background:#060912">${poweredBySvg({ layout: "compact", theme: "mono-white" })}</div><div class="ground" style="background:#ffffff">${poweredBySvg({ layout: "compact", theme: "mono-black" })}</div></div>`,
+    `<div class="row"><div class="ground" style="background:#7a5f3a">${poweredBySvg({ treatment: "sticker", theme: "dark" })}${poweredBySvg({ treatment: "sticker", theme: "light" })}</div><div class="ground" style="background:#060912">${poweredBySvg({ theme: "white" })}</div></div>`,
   );
-  return `${out.join("")}<p>Minimums: ${Object.entries(POWERED_BY.minimum)
-    .map(([k, v]) => `${k} ${v.width}×${v.height}`)
-    .join(", ")} CSS px. Requesting less renders at the minimum.</p>`;
+  return `${out.join("")}<p>Minimum: ${POWERED_BY.minimum.width}×${POWERED_BY.minimum.height} CSS px. Requesting less renders at the minimum.</p>`;
 }
 
 function assets(): string {

@@ -1,9 +1,10 @@
 // The launch kit's artwork, as SwiftUI views: the Pinned K (for a host's own about or credits
-// screen; kit screens lead with the product and show no mark, UI-KITS §1.6) and the
-// "Powered by Polaris Key" badge. Both render the kit's own PNGs, bundled unchanged in
-// `Resources/Brand/` (tools/sync-brand-assets.sh copies them; BrandThemeTests checks the bytes), so
-// the marks are never redrawn. "dark" artwork is FOR dark grounds: each view picks its variant from
-// the `colorScheme` environment.
+// screen; kit screens lead with the product and show no mark, UI-KITS §1.6) and the Polaris Locker
+// "Powered by" attribution. The Pinned K renders the kit's own PNG, bundled unchanged in
+// `Resources/Brand/` (tools/sync-brand-assets.sh copies it; BrandThemeTests checks the bytes). The
+// Locker micro mark and badge are the Locker kit's own vector artwork (BrandMarks.generated.swift,
+// written by `pnpm gen brand`), so they are never redrawn. "dark" artwork is FOR dark grounds: each
+// view picks its variant from the `colorScheme` environment.
 
 import Foundation
 import SwiftUI
@@ -88,59 +89,32 @@ public struct PolarisMark: View {
     }
 }
 
-/// The "Powered by Polaris Key" badge, for a product's own surfaces: its about or credits screen,
-/// its licence or account screen. Polaris Key's own surfaces never show it (BRAND.md §7.2).
+/// The Polaris Locker "Powered by" badge (the kit's `powered-by` label, transparent treatment), for
+/// a product's own surfaces: its about or credits screen. Polaris Key's own surfaces never show it
+/// (BRAND.md §7.2). Key's "Powered by" badges are platform references and are not offered here.
 ///
-/// The badge is the kit artwork, padding included (never cropped), and never smaller than the kit
-/// minimum for its layout: a smaller `width` is raised to the minimum.
+/// The badge is the kit artwork on its 320 × 104 canvas, padding included (never cropped), and
+/// never narrower than 320 points: a smaller `width` is raised to it. Where 320 points are not
+/// free, use `PolarisPoweredByAttribution`, which falls back to the line.
 public struct PolarisPoweredByBadge: View {
-    /// The kit's badge layouts: compact for app UI, horizontal for footers and credits, stacked for
-    /// square placements.
-    public enum Layout: String, Sendable, CaseIterable {
-        case compact, horizontal, stacked
-
-        /// The kit minimum, in points.
-        public var minimumSize: CGSize {
-            let m: (width: Double, height: Double)
-            switch self {
-            case .compact: m = PolarisBrand.badgeMinCompact
-            case .horizontal: m = PolarisBrand.badgeMinHorizontal
-            case .stacked: m = PolarisBrand.badgeMinStacked
-            }
-            return CGSize(width: m.width, height: m.height)
-        }
-    }
-
-    /// Transparent and outline need a clean ground of matching contrast; sticker carries its own
-    /// plate, for busy imagery.
-    public enum Treatment: String, Sendable, CaseIterable {
-        case transparent, outline, sticker
-    }
-
     @Environment(\.colorScheme) private var colorScheme
-    private let layout: Layout
-    private let treatment: Treatment
     private let size: CGSize
 
-    /// - Parameter width: the displayed width in points; nil, or anything below the minimum,
-    ///   renders at the kit minimum. The height follows the artwork's aspect ratio.
-    nonisolated public init(
-        layout: Layout = .compact, treatment: Treatment = .transparent, width: CGFloat? = nil
-    ) {
-        self.layout = layout
-        self.treatment = treatment
-        self.size = PolarisPoweredByBadge.size(layout: layout, width: width)
+    /// - Parameter width: the displayed width in points; nil, or anything below 320, renders at 320.
+    ///   The height follows the artwork's aspect ratio.
+    nonisolated public init(width: CGFloat? = nil) {
+        self.size = PolarisPoweredByBadge.size(width: width)
     }
 
-    /// The rendered size for a requested width: the minimum, or the requested width at the
-    /// artwork's aspect ratio when that is larger.
-    nonisolated public static func size(layout: Layout, width: CGFloat?) -> CGSize {
-        let minimum = layout.minimumSize
+    /// The rendered size for a requested width: 320 × 104, or the requested width at the artwork's
+    /// aspect ratio when that is larger.
+    nonisolated public static func size(width: CGFloat?) -> CGSize {
+        let minimum = CGSize(width: PolarisBrand.badgeMin.width, height: PolarisBrand.badgeMin.height)
         guard let width, width > minimum.width else {
             #if DEBUG
                 if let width, width < minimum.width {
                     Logger(subsystem: "PolarisKeyUI", category: "brand").warning(
-                        "Powered-by badge width \(Double(width)) is below the \(layout.rawValue) minimum \(Double(minimum.width)); rendering at the minimum"
+                        "Powered-by badge width \(Double(width)) is below the minimum \(Double(minimum.width)); rendering at the minimum"
                     )
                 }
             #endif
@@ -150,30 +124,77 @@ public struct PolarisPoweredByBadge: View {
     }
 
     public var body: some View {
-        let variant = colorScheme == .light ? "light" : "dark"
-        if let image = brandImage("powered-by/\(treatment.rawValue)/\(layout.rawValue)-\(variant)") {
-            image.resizable().interpolation(.high)
-                .frame(width: size.width, height: size.height)
-                .accessibilityElement()
-                .accessibilityLabel(PolarisBrand.poweredByPhrase)
-                .accessibilityAddTraits(.isImage)
-        } else {
-            Text(PolarisBrand.poweredByPhrase)
-                .frame(width: size.width, height: size.height)
-        }
+        BrandVectorView(
+            vector: colorScheme == .light
+                ? PolarisBrandMarkData.lockerPoweredByLight : PolarisBrandMarkData.lockerPoweredByDark
+        )
+        .frame(width: size.width, height: size.height)
+        .accessibilityElement()
+        .accessibilityLabel(PolarisBrand.poweredByPhrase)
+        .accessibilityAddTraits(.isImage)
     }
 }
 
-/// Which "Powered by" badge the gate shows under its activation card, when a product opts in.
-public struct PolarisPoweredBy: Sendable, Equatable {
-    public var layout: PolarisPoweredByBadge.Layout
-    public var treatment: PolarisPoweredByBadge.Treatment
+/// The Locker micro mark at `PolarisBrand.poweredByMarkSize` points, decorative.
+struct PolarisLockerMicroMark: View {
+    @Environment(\.colorScheme) private var colorScheme
+    /// The kit's scheme (`style.dark`); nil follows the environment.
+    var dark: Bool?
+    /// 16 points at the default text size, growing with Dynamic Type (the em rule, UI-KITS §1.6).
+    @ScaledMetric(relativeTo: .footnote) private var side = PolarisBrand.poweredByMarkSize
 
-    public init(
-        layout: PolarisPoweredByBadge.Layout = .compact,
-        treatment: PolarisPoweredByBadge.Treatment = .transparent
-    ) {
-        self.layout = layout
-        self.treatment = treatment
+    var body: some View {
+        BrandVectorView(
+            vector: (dark ?? (colorScheme == .dark))
+                ? PolarisBrandMarkData.lockerMicroDark : PolarisBrandMarkData.lockerMicroLight
+        )
+        .frame(width: side, height: side)
+        .accessibilityHidden(true)
+    }
+}
+
+/// How the attribution is drawn when a product opts in.
+public enum PolarisPoweredByStyle: String, Sendable, Equatable {
+    /// `<Locker micro mark, 16 pt> Powered by Polaris Locker` in live text.
+    case line
+    /// The 320 × 104 badge where 320 points are free, else the line.
+    case badge
+}
+
+/// The attribution (UI-KITS §1.6) for an about or credits screen: the line, or the badge where 320
+/// points are free and the line where they are not. The line's text is `text`, the catalog's
+/// "Powered by Polaris Locker", in the kit's subtle text colour.
+public struct PolarisPoweredByAttribution: View {
+    private let style: PolarisPoweredByStyle
+    private let text: String
+
+    public init(style: PolarisPoweredByStyle = .line, text: String = PolarisBrand.poweredByPhrase) {
+        self.style = style
+        self.text = text
+    }
+
+    public var body: some View {
+        switch style {
+        case .line:
+            line
+        case .badge:
+            ViewThatFits(in: .horizontal) {
+                PolarisPoweredByBadge()
+                line
+            }
+        }
+    }
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var line: some View {
+        HStack(spacing: 6) {
+            PolarisLockerMicroMark()
+            Text(text).font(.footnote)
+                .foregroundStyle(
+                    (colorScheme == .dark ? PolarisBrand.Dark.textSubtle : PolarisBrand.Light.textSubtle).color)
+        }
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .combine)
     }
 }

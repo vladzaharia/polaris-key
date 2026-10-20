@@ -630,10 +630,12 @@ Overrides apply in either mode and win over the branding: `accent:` / `accentOn:
 primary button in both schemes, `palette:` replaces every color per scheme, `typography:` picks
 `.system`, `.brand` or `.custom(regular:bold:)`, and `logo:` replaces the product icon.
 
-**"Powered by Polaris Key" is optional and off by default** in both modes. Opt in with
-`poweredBy: PolarisPoweredBy()` to show the kit's compact badge centred under the activation card,
-or place `PolarisPoweredByBadge` on your about or credits screen. It renders the kit artwork at no
-less than the kit minimum (compact 232 × 88, horizontal 376 × 144, stacked 288 × 336 points).
+**"Powered by Polaris Locker" is optional and off by default** in both modes, and never on the gate
+(UI-KITS §1.6). The kit's account pane draws the line (the Locker micro mark, which grows with Dynamic
+Type from 16 points, and the phrase) as its last section footer when the theme opts in. On your
+about or credits screen place `PolarisPoweredByAttribution(style: .badge)`: the Locker `powered-by`
+badge (320 × 104 points, never narrower) where 320 points are free, else the line. `PolarisPoweredByBadge`
+draws the badge alone.
 
 Xcode previews in `PolarisLoginView.swift` cover every gate state, native and branded, in dark and
 light, at iPhone, iPad and Mac sizes and at an accessibility Dynamic Type size. The layout tests

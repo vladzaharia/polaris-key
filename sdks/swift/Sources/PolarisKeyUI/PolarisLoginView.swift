@@ -475,10 +475,6 @@ struct PolarisGateSurface<Content: View>: View {
                 freeDeviceQR(url)
             }
 
-            if let badge = theme.poweredBy {
-                PolarisPoweredByBadge(layout: badge.layout, treatment: badge.treatment)
-                    .padding(.top, PolarisSpace.l)
-            }
         }
     }
 
@@ -1141,7 +1137,7 @@ private struct OptionalTint: ViewModifier {
                 .needsActivation,
                 theme: PolarisTheme(
                     branding: .polarisKey,
-                    copy: PolarisCopy(productName: "Aurora"), poweredBy: PolarisPoweredBy())
+                    copy: PolarisCopy(productName: "Aurora"))
             )
             .previewLayout(.fixed(width: 393, height: 852))
             .previewDisplayName("Branded with Powered-by badge")

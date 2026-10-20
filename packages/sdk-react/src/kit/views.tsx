@@ -28,6 +28,7 @@ import {
   openOnChecked,
   shimmer,
   statusLine,
+  attribution,
   successMark,
   text,
   titles,
@@ -317,6 +318,7 @@ function screen(c: KitCtx, layout: Layout): ReactNode {
         {links(c, p.links)}
         {a11yOnly(c)}
         {p.footnote.length ? paragraphs(c, p.footnote, "footnote") : null}
+        {attribution(c, p.meta)}
       </div>
     </Stage>
   );
@@ -366,6 +368,7 @@ function pane(c: KitCtx, layout: Layout): ReactNode {
       {actions(c, p.controls, true)}
       {links(c, p.links)}
       {a11yOnly(c)}
+      {attribution(c, p.meta)}
     </section>
   );
 }

@@ -159,8 +159,13 @@ const DEFAULT_SETTINGS_PATH := "user://pkey_settings.cfg"
 @export var ui_accent := Color(0, 0, 0, 0)
 ## A Theme of your own for every kit scene, whatever `ui_branding` says. Null: none.
 @export var ui_theme: Theme = null
-## Show the "Powered by Polaris Key" badge on the gate, boot and settings scenes (off by default).
+## Show "Powered by Polaris Locker" at the foot of the settings scene (off by default; never on the gate or boot).
 @export var ui_powered_by := false
+## How it is drawn (UI-KITS.md §1.6): `line` (the default: the Locker micro mark and the phrase) or
+## `badge` (the 320 x 104 Locker badge on a credits or about scene you place with `PKeyPoweredBy`,
+## where 320 px are free, else the line). The kit's own scenes (settings) draw the line only, and
+## never the gate or boot.
+@export_enum("line", "badge") var ui_powered_by_style := "line"
 ## The kit's spacing (PKeyUiTheme.DENSITIES; UI-KITS.md §3.1): `spacious` (the default, for a
 ## game at TV distance), `comfortable` or `compact`. A screen too small for it steps down.
 @export_enum("spacious", "comfortable", "compact") var ui_density := "spacious"

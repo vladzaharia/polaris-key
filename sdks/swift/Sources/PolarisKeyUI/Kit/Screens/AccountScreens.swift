@@ -251,10 +251,15 @@ public struct AccountAndLicenseSection: View {
                         Button(
                             strings.string("common.signOut"), role: .destructive, action: onSignOut)
                     }
+                } footer: {
+                    // The attribution is the pane's last item, a section footer (UI-KITS §1.6).
+                    if screen.shows("part.poweredBy") { PoweredBy() }
                 }
-            }
-            if screen.shows("part.poweredBy") {
-                Section { PoweredBy() }
+            } else if screen.shows("part.poweredBy") {
+                Section {
+                } footer: {
+                    PoweredBy()
+                }
             }
         }
     }

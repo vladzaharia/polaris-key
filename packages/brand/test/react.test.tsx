@@ -70,17 +70,8 @@ describe(`React ${React.version}`, () => {
 
   const badgeCases = [
     {},
-    {
-      layout: "horizontal" as const,
-      treatment: "sticker" as const,
-      theme: "light" as const,
-    },
-    {
-      layout: "stacked" as const,
-      treatment: "outline" as const,
-      theme: "mono-white" as const,
-      width: 576,
-    },
+    { treatment: "sticker" as const, theme: "light" as const },
+    { treatment: "outline" as const, theme: "white" as const, width: 640 },
   ];
   it.each(badgeCases.map((c) => [JSON.stringify(c), c] as const))(
     "PoweredByBadge %s renders poweredBySvg's markup",
@@ -91,8 +82,8 @@ describe(`React ${React.version}`, () => {
 
   it("PoweredByBadge raises a too-small width to the minimum and warns outside production", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const html = render(<PoweredByBadge layout="compact" width={100} />);
-    expect(html).toContain('width="232" height="88"');
+    const html = render(<PoweredByBadge width={100} />);
+    expect(html).toContain('width="320" height="104"');
     expect(warn).toHaveBeenCalledOnce();
     warn.mockRestore();
   });
