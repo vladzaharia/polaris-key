@@ -3560,7 +3560,10 @@ Five controls make that true. The first, the fourth and the fifth are the ones t
    or mint, and a record that is not provably approved (absent, malformed, or written by an
    older Worker) is unapproved. The page is found only through the `__Host-pk_lcb` binder of the
    browser that confirmed the code and signed in; no request field, label, user code, request
-   handle or `state` maps to the marker. Tests: `deviceApproval.test.ts`.
+   handle or `state` maps to the marker. **A chooser choice is an approval:** it sets the same
+   marker, so the chooser shows the same facts first (account, code, where and when the request
+   started, and the callout when the place differs) and its primary names the device ("Use this
+   license on {device}"). Tests: `deviceApproval.test.ts`, `oidcLicenseChoice.test.ts`.
 
 **Cross-site POSTs.** Both device pages carry `referrer-policy: no-referrer`, and under that
 policy a browser sends a same-origin form POST with `Origin: null`. The origin check therefore

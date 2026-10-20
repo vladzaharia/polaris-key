@@ -7625,7 +7625,6 @@ paths:
                       <input type="hidden" name="token" value="Qm9sZC1hcHByb3ZlLXRva2Vu">
                       <button class="button" type="submit" name="decision" value="approve">Sign in on Studio Mac</button>
                       <button class="button secondary" type="submit" name="decision" value="deny">Deny</button>
-                      <button class="button link" type="submit" name="decision" value="deny">Not you?</button>
                     </form>
         "303":
           description: "The licence chooser is still open, and it is the explicit step. `Location` is the chooser."
@@ -7657,7 +7656,7 @@ paths:
         exactly one wins. `approve` sets the server-side marker the poll requires (`ready`
         follows on the device's next poll, with the account's own licence: the starter's licence
         is never attached to it, so `confirm.attachable` is always `false`) and shows the done
-        page. `deny` (also **Not you?**) sets the poll's answer to the generic `error`, drops the
+        page. `deny` sets the poll's answer to the generic `error`, drops the
         signed-in identity and shows "Sign-in denied". Either way the binder is cleared. A
         missing or unknown `decision`, or a spent, stale or foreign `token`, is a `303` back to
         the GET and writes nothing. Audited as `identity.signin.device_approved` and
@@ -7885,7 +7884,7 @@ paths:
         identity, and the poll that completes the flow activates it. **`pending` lasts until the
         person approves** (I-37): the browser that signed in must press **Sign in on {device}**
         on `deviceAuthApprovePage` first, and until it has this route discloses no identity,
-        activates no licence and mints no token. **Deny** (or **Not you?**, or Cancel on the
+        activates no licence and mints no token. **Deny** (or Cancel on the
         licence chooser) makes the poll answer `error`. An ordinary poll after approval yields
         the identity's own licence (or a new one) and nothing else, and its `ready` carries the
         `identity` (name, verified e-mail) for the device to show the player.

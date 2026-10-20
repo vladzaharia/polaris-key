@@ -40,7 +40,7 @@ import {
   type ArtefactRef,
 } from "../../../core/singleUse.js";
 import { legacyRelyingParty } from "./browserFlow.js";
-import { beginLicenseChoice, choiceKey } from "./chooser.js";
+import { beginLicenseChoice, choiceKey, startAgainPage } from "./chooser.js";
 import { redirectToApprove } from "./deviceApproval.js";
 import {
   FLOW_TTL_SECONDS,
@@ -60,6 +60,7 @@ import {
 import {
   joinOfferNotice,
   platformSignInEndedPage,
+  signInRefusalPage,
   productAccountDisabledPage,
   signedInPage,
   flowView,
@@ -316,7 +317,11 @@ export async function handleAuthCallback(
   if (isDeviceCodeFlow(flow)) {
     if (await identityRefusal(db, product, identity, now)) {
       await deleteArtefact(env, stateKey);
-      return errorResponse(403, "forbidden", "not entitled");
+      // A person in a browser gets a page, never raw JSON.
+      return signInRefusalPage(
+        "You can't sign in here",
+        `<p>This account isn't entitled to use this app. Try another account on your device.</p>`,
+      );
     }
     // I-37: the verified identity is stored and the flow STOPS. Nothing is activated, shown to
     // the device or minted until the person presses **Sign in on {device}** on the approval
@@ -324,7 +329,7 @@ export async function handleAuthCallback(
     // reached through the binder cookie alone, so the URL carries nothing.
     flow.identity = identity;
     const stored = await updateArtefact(env, stateKey, { set: { identity } });
-    if (!stored.ok) return errorResponse(400, "bad_request", "unknown state");
+    if (!stored.ok) return startAgainPage();
     await putArtefact(
       env,
       choiceKey(

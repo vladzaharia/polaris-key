@@ -473,7 +473,7 @@ describe("I-26 device-code flow", () => {
     expect(page.html).toContain(
       '<legend class="sr-only">Licenses for djdl</legend>',
     );
-    expect(page.html).toContain(">Use this license and continue</button>");
+    expect(page.html).toContain(">Use this license on ");
     // The page never names the flow.
     expect(page.html).not.toContain(flow.state);
     expect(page.rows).toEqual([
@@ -486,7 +486,7 @@ describe("I-26 device-code flow", () => {
       license: "lic_std",
     });
     expect(chosen.status).toBe(200);
-    expect(await chosen.text()).toContain("You&#x27;re signed in");
+    expect(await chosen.text()).toContain("it continues by itself");
     expect(cookieOf(chosen, LICENSE_CHOICE_BINDER_COOKIE)).toBe("");
 
     const ready = await devicePoll(flow, NOW + 30);
@@ -890,7 +890,7 @@ describe("I-26 browser binder", () => {
       choice: page.token,
       action: "cancel",
     });
-    expect(await res.text()).toContain("Sign-in cancelled");
+    expect(await res.text()).toContain("Sign-in denied");
     // Cancel is Deny for a device-code flow (I-37): the device's poll ends in the generic error.
     expect((await devicePoll(flow, NOW + 10)).status).toBe("error");
   });
@@ -909,7 +909,7 @@ describe("I-26 outside the trigger", () => {
     expect((await devicePoll(flow, NOW + 6)).status).toBe("pending");
     const pressed = await pressSignIn(flow);
     expect(pressed.status).toBe(200);
-    expect(await pressed.text()).toContain("You&#x27;re signed in");
+    expect(await pressed.text()).toContain("it continues by itself");
     const ready = await devicePoll(flow, NOW + 10);
     expect(ready.status).toBe("ready");
     // Today's behaviour: the identity's own `sub`-keyed licence, minted.

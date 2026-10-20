@@ -148,11 +148,12 @@ describe("the code entry", () => {
 });
 
 describe("the confirm step", () => {
-  it("offers Continue to sign in and Deny, with the static expiry", async () => {
+  it("offers Continue to sign in and Deny, as a statement", async () => {
     const { userCode } = await start();
     const { html } = await confirmPage(userCode);
     // Before sign-in this page approves nothing (I-37): the explicit step is after sign-in.
-    expect(html).toContain("Continue to sign in?");
+    expect(html).toContain("Sign in to continue");
+    expect(html).toContain("showed the code");
     expect(html).not.toContain("Sign in on");
     expect(html).toContain('name="decision" value="approve" autofocus');
     expect(html).toContain('name="decision" value="deny">Deny</button>');
@@ -160,7 +161,6 @@ describe("the confirm step", () => {
     // The passport pane (shown at 960 px landscape) and the strip (narrower) name the device.
     expect(html).toContain('class="ac-passport"');
     expect(html).toContain("on <bdi>Living room PC</bdi>");
-    expect(html).toMatch(/Expires \d\d:\d\d UTC\./);
     expect(html).toContain("never sees your codes or passkeys.");
     expect(html).not.toMatch(/<script|\sstyle=/i);
   });

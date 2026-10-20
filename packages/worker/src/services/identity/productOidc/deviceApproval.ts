@@ -40,19 +40,13 @@ import { requestLocation } from "../place.js";
 import { choiceKey, redirectToChooser, startAgainPage } from "./chooser.js";
 import {
   CHOICE_FIELDS,
-  FLOW_TTL_SECONDS,
   type FlowRecord,
   flowKey,
   isDeviceCodeFlow,
   rateLimited,
 } from "./config.js";
 import { sameOriginPost } from "./deviceFlow.js";
-import {
-  deviceHtmlHeaders,
-  listingDeveloper,
-  signedInPage,
-  type PageView,
-} from "./pages.js";
+import { deviceHtmlHeaders, listingDeveloper, type PageView } from "./pages.js";
 
 /** A name inside a sentence, isolated so a right-to-left label cannot scramble the line. */
 function isolate(name: string): string {
@@ -201,11 +195,16 @@ function approvePath(req: Request, product: Product): string {
   return `${new URL(req.url).origin}/${product.slug}/identity/auth/device/approve`;
 }
 
-export function redirectToApprove(req: Request, product: Product): Response {
+export function redirectToApprove(
+  req: Request,
+  product: Product,
+  again = false,
+): Response {
   return new Response(null, {
     status: 303,
     headers: {
-      location: approvePath(req, product),
+      // `?again=1` carries no state: the page only adds "check and choose again".
+      location: approvePath(req, product) + (again ? "?again=1" : ""),
       "referrer-policy": "no-referrer",
       "cache-control": "no-store",
     },
@@ -254,13 +253,22 @@ export async function handleAuthDeviceApprove(
   const view: PageView = { tv: flow.tv === true, app: app.app };
 
   if (req.method === "GET")
-    return renderApproval(req, env, product, stateKey, flow, app, now);
+    return renderApproval(
+      req,
+      env,
+      product,
+      stateKey,
+      flow,
+      app,
+      now,
+      new URL(req.url).searchParams.get("again") === "1",
+    );
 
   const form = new URLSearchParams(await readBodyText(req).catch(() => ""));
   const token = form.get("token") ?? "";
   const decision = form.get("decision");
   if (!token || (decision !== "approve" && decision !== "deny"))
-    return redirectToApprove(req, product);
+    return redirectToApprove(req, product, true);
   const won = await decideDeviceFlow(
     env,
     db,
@@ -271,16 +279,47 @@ export async function handleAuthDeviceApprove(
     decision,
     now,
   );
-  if (!won) return redirectToApprove(req, product);
+  if (!won) return redirectToApprove(req, product, true);
   // Finished with the browser either way: the index and the binder go.
   await deleteArtefact(env, indexKey);
   const cookies = [binderClearCookie()];
   if (decision === "deny") return deniedPage(flow, view, cookies);
-  return signedInPage(
-    cookies,
-    `<p class="muted"><bdi>${escapeHtml(deviceLabelOf(flow))}</bdi> signs in by itself.</p>`,
-    view,
-  );
+  return deviceDonePage(deviceLabelOf(flow), view, cookies);
+}
+
+/** The done page (SIGN-IN.md §3.13): "{App} is signed in on {device}", and where to look. */
+export function deviceDonePage(
+  label: string,
+  view: PageView,
+  cookies: string[],
+  replaced?: string,
+): Response {
+  const shown = pageApp(view.app ?? { name: "" });
+  const heading = view.app?.name
+    ? `${isolate(view.app.name)} is signed in on ${isolate(label)}`
+    : `Signed in on ${isolate(label)}`;
+  const html = renderAuthCard({
+    ...(view.tv ? { variant: "tv" as const } : {}),
+    title: view.app?.name ? `${view.app.name} is signed in` : "Signed in",
+    heading,
+    ...(view.app?.name
+      ? {
+          header: appHeader({
+            name: view.app.name,
+            iconUrl: shown.app.iconUrl,
+          }),
+        }
+      : {}),
+    body:
+      callout(
+        "check-circle",
+        `Look at ${isolate(label)}: it continues by itself.`,
+        replaced ? `${isolate(replaced)} was signed out.` : undefined,
+      ) + `<p class="muted small">You can close this page.</p>`,
+  });
+  const headers = deviceHtmlHeaders(undefined, shown.imgOrigin);
+  for (const c of cookies) headers.append("set-cookie", c);
+  return new Response(html, { status: 200, headers });
 }
 
 /** The app as the page draws it: the neutral frame (the slug) when its name fails the display
@@ -318,6 +357,54 @@ async function approvalApp(
   };
 }
 
+/**
+ * The anti-phishing facts the person decides on (SIGN-IN.md §3.13): the signed-in account, the
+ * code, "Started {ago} from {place}", and the callout when the start country differs from this
+ * request's or either is unknown (D4: shown, never a refusal). Shared by the approval page and
+ * the licence chooser, whose choice is an approval too. TRUSTED markup, every value escaped.
+ */
+export function approvalFacts(
+  req: Request,
+  flow: FlowRecord,
+  now: number,
+): string {
+  const dev = isolate(deviceLabelOf(flow));
+  const identity = flow.identity;
+  const who = identity?.name || identity?.email || "your account";
+  const startedAt = typeof flow.startedAt === "number" ? flow.startedAt : null;
+  const place = flow.startPlace?.label ?? null;
+  const here = requestLocation(req);
+  const startCountry = flow.startPlace?.country ?? null;
+  const mismatch =
+    !startCountry || !here.country || startCountry !== here.country;
+  const started =
+    startedAt === null
+      ? ""
+      : place
+        ? `${agoText(now - startedAt)} from ${place}`
+        : agoText(now - startedAt);
+  const rows =
+    `<dt>Account</dt><dd>${escapeHtml(who)}${
+      identity?.email && identity.email !== who
+        ? `<br><span class="muted">${escapeHtml(identity.email)}</span>`
+        : ""
+    }</dd>` +
+    (flow.userCode
+      ? `<dt>Code</dt><dd><span class="code">${escapeHtml(flow.userCode)}</span></dd>`
+      : "") +
+    (started ? `<dt>Started</dt><dd>${escapeHtml(started)}</dd>` : "");
+  // Both countries known and different: "not where you are". The approver's unknown: just where.
+  const title = place
+    ? here.country && startCountry && here.country !== startCountry
+      ? `This sign-in started in ${place}, not where you are.`
+      : `This sign-in started in ${place}.`
+    : "We can't tell where this sign-in started.";
+  const warn = mismatch
+    ? callout("shield", title, `Only continue if ${dev} is with you.`)
+    : "";
+  return `<dl>${rows}</dl>${warn}`;
+}
+
 async function renderApproval(
   req: Request,
   env: Env,
@@ -326,6 +413,7 @@ async function renderApproval(
   flow: FlowRecord,
   app: Awaited<ReturnType<typeof approvalApp>>,
   now: number,
+  again = false,
 ): Promise<Response> {
   const token = randomToken(32);
   // A new render replaces the previous token; a flow decided meanwhile renders nothing.
@@ -337,48 +425,9 @@ async function renderApproval(
 
   const label = deviceLabelOf(flow);
   const dev = isolate(label);
-  const identity = flow.identity!;
-  const who = identity.name || identity.email || "your account";
-  const startedAt = typeof flow.startedAt === "number" ? flow.startedAt : null;
-  const place = flow.startPlace?.label ?? null;
-  const here = requestLocation(req);
-  const startCountry = flow.startPlace?.country ?? null;
-  // D4: show, never refuse. Different countries, or either unknown, says so.
-  const mismatch =
-    !startCountry || !here.country || startCountry !== here.country;
-  const started =
-    startedAt === null
-      ? ""
-      : place
-        ? `${agoText(now - startedAt)} from ${place}`
-        : agoText(now - startedAt);
-  const expiry =
-    startedAt === null
-      ? ""
-      : `Expires at ${new Date((startedAt + FLOW_TTL_SECONDS) * 1000)
-          .toISOString()
-          .slice(11, 16)} UTC.`;
-  const rows =
-    `<dt>Account</dt><dd>${escapeHtml(who)}${
-      identity.email && identity.email !== who
-        ? `<br><span class="muted">${escapeHtml(identity.email)}</span>`
-        : ""
-    }</dd>` +
-    (flow.userCode
-      ? `<dt>Code</dt><dd><span class="code">${escapeHtml(flow.userCode)}</span></dd>`
-      : "") +
-    (started ? `<dt>Started</dt><dd>${escapeHtml(started)}</dd>` : "");
-  const warn = mismatch
-    ? callout(
-        "info",
-        place
-          ? `This sign-in started in ${place}, not where you are.`
-          : "We can't tell where this sign-in started.",
-        `Only continue if ${dev} is with you.`,
-      )
-    : "";
+  const facts = approvalFacts(req, flow, now);
   const html = renderAuthCard({
-    title: `Sign in on ${dev}?`,
+    title: `Sign in on ${label}?`,
     heading: `Sign in on ${dev}?`,
     ...(flow.tv ? { variant: "tv" as const } : {}),
     passport: {
@@ -389,13 +438,17 @@ async function renderApproval(
       action: "wants you to sign in",
     },
     body:
-      `<dl>${rows}</dl>${warn}` +
+      (again
+        ? `<p class="note">Check the details, then choose again.</p>`
+        : "") +
+      facts +
       `<form method="post" action="${escapeHtml(approvePath(req, product))}">` +
       `<input type="hidden" name="token" value="${escapeHtml(token)}">` +
-      `<div class="stack"><button class="button" type="submit" name="decision" value="approve" autofocus><span>Sign in on <bdi>${escapeHtml(label)}</bdi></span></button>` +
+      `<div class="stack"><button class="button" type="submit" name="decision" value="approve"><span>Sign in on <bdi>${escapeHtml(label)}</bdi></span></button>` +
       `<button class="button secondary" type="submit" name="decision" value="deny">Deny</button>` +
-      `<button class="button link" type="submit" name="decision" value="deny">Not you?</button></div></form>` +
-      (expiry ? `<p class="muted small">${escapeHtml(expiry)}</p>` : ""),
+      `</div></form>` +
+      `<p class="muted small">Only sign in if ${escapeHtml(dev)} is in front of you. Didn't start this? Deny.</p>`,
+    focusHeading: true,
     footer: {
       icon: "lock",
       text: `Polaris Locker signs you in for ${isolate(app.app.name)}. ${isolate(app.developer ?? app.app.name)} never sees your codes or passkeys.`,
@@ -406,7 +459,7 @@ async function renderApproval(
 }
 
 /** Deny: the device's poll answers `error`, and nothing was signed in. */
-function deniedPage(
+export function deniedPage(
   flow: FlowRecord,
   view: PageView,
   cookies: string[],

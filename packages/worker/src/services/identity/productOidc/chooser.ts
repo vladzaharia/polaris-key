@@ -38,7 +38,12 @@ import {
 } from "../../../core/singleUse.js";
 import { readBodyText } from "../../../core/cappedBody.js";
 import { completeBrowserFlow } from "./callback.js";
-import { denyChosenDeviceFlow } from "./deviceApproval.js";
+import {
+  approvalFacts,
+  deniedPage,
+  deviceDonePage,
+  denyChosenDeviceFlow,
+} from "./deviceApproval.js";
 import {
   CHOICE_FIELDS,
   FLOW_TTL_SECONDS,
@@ -54,7 +59,7 @@ import {
 } from "../../../core/licensing/issue.js";
 import { sameOriginPost } from "./deviceFlow.js";
 import { isReplaceGroup } from "../licenseChoice.js";
-import { flowView, listingDeveloper, signedInPage } from "./pages.js";
+import { flowView, listingDeveloper } from "./pages.js";
 import { appForPage, pageApp } from "../../../core/brandPage.js";
 
 export { CHOICE_FIELDS };
@@ -103,7 +108,7 @@ export function startAgainPage(): Response {
   return choicePage(403, {
     title: "Start again",
     heading: "Start again on your device",
-    body: `<p class="muted">This sign-in can't be finished in this browser. Go back to the app and sign in again.</p>`,
+    body: `<p class="muted">This page is no longer active. If your device still asks, start again there.</p>`,
   });
 }
 
@@ -303,11 +308,16 @@ export async function handleAuthChoose(
   };
 
   if (action === "cancel") {
-    // For a device-code flow Cancel is Deny (I-37): the device's poll answers `error`. A browser
-    // flow is simply dropped.
-    if (isDeviceCodeFlow(flow))
+    // For a device-code flow Cancel is Deny (I-37): the device's poll answers `error`, and the
+    // ending is the one "denied" page. A browser flow is simply dropped.
+    if (isDeviceCodeFlow(flow)) {
       await denyChosenDeviceFlow(env, db, product, stateKey, flow, now);
-    else await deleteArtefact(env, stateKey);
+      await deleteArtefact(env, indexKey);
+      return deniedPage(flow, await flowView(env, db, product, flow), [
+        binderClearCookie(),
+      ]);
+    }
+    await deleteArtefact(env, stateKey);
     await deleteArtefact(env, indexKey);
     return choicePage(
       200,
@@ -488,7 +498,9 @@ export async function renderChooser(
       heading: isReplaceGroup(view)
         ? "Replace a device"
         : "Choose a license for this device",
+      // I-37: a choice on a device-code flow IS the approval, so it shows the same facts first.
       body:
+        (isDeviceCodeFlow(c.flow) ? approvalFacts(req, c.flow, now) : "") +
         chooserBody({
           productName: product.name,
           deviceLabel: c.deviceLabel,
@@ -499,7 +511,11 @@ export async function renderChooser(
           now,
           namedByDevice: Boolean(isDeviceCodeFlow(c.flow)),
           developerName: developer,
-        }) + cancelNote,
+          ...(isDeviceCodeFlow(c.flow)
+            ? { primaryLabel: `Use this license on ${c.deviceLabel}` }
+            : {}),
+        }) +
+        cancelNote,
     },
     [],
     shown.imgOrigin,
@@ -522,9 +538,6 @@ export async function completeChoice(
 ): Promise<Response> {
   const { flow, identity } = c;
   const view = await flowView(env, db, product, flow);
-  const doneNote = replaced
-    ? { thisDevice: c.deviceLabel, replaced }
-    : undefined;
   // Through the identity's own activation: a new licence, or the identity's own `sub`-keyed one
   // (the deferred P1-07 activation, attach opt-in included, stays as it is today).
   const activate = choice === "create" || choice.own;
@@ -564,7 +577,7 @@ export async function completeChoice(
     });
     if (!done.ok) return startAgainPage();
     await audit();
-    return signedInPage(cookies, null, view, doneNote);
+    return deviceDonePage(c.deviceLabel, view, cookies, replaced);
   }
 
   let licenseId: string;

@@ -33,7 +33,6 @@ import { updateArtefact } from "../../../core/singleUse.js";
 import {
   type DeviceFlowRecord,
   type FlowRecord,
-  FLOW_TTL_SECONDS,
   deviceFlowKey,
 } from "./config.js";
 
@@ -168,18 +167,13 @@ export async function renderDeviceConfirmation(
         `<input type="hidden" name="${escapeHtml(name)}" value="${escapeHtml(value)}">`,
     )
     .join("");
-  // A static expiry, never a ticking countdown (the page has no script): "Expires 14:32 UTC".
-  const expiry =
-    typeof record.startedAt === "number"
-      ? ` Expires ${new Date((record.startedAt + FLOW_TTL_SECONDS) * 1000).toISOString().slice(11, 16)} UTC.`
-      : "";
   // Before sign-in: this page approves NOTHING (I-37). "Continue" only hands the browser to the
   // IdP; the explicit step is the approval page after sign-in (`deviceApproval.ts`), the only
   // thing that sets `approvedAt`.
   const who = app?.developer?.trim() || product.name;
   const html = renderAuthCard({
-    title: "Continue to sign in?",
-    heading: "Continue to sign in?",
+    title: "Sign in to continue",
+    heading: "Sign in to continue",
     ...(tv ? { variant: "tv" as const } : {}),
     passport: {
       name: product.name,
@@ -189,7 +183,7 @@ export async function renderDeviceConfirmation(
       action: "wants you to sign in",
     },
     body:
-      `<p>It showed the code <span class="code">${escapeHtml(record.userCode)}</span>.${expiry}</p>` +
+      `<p>${escapeHtml(isolate(deviceLabel))} showed the code <span class="code">${escapeHtml(record.userCode)}</span>. You'll confirm after you sign in.</p>` +
       `<form method="post" action="${escapeHtml(action)}" data-request="${escapeHtml(signInRequest.handle)}">${hiddenInputs}` +
       `<input type="hidden" name="csrf" value="${escapeHtml(csrf)}">` +
       `<div class="stack"><button class="button" type="submit" name="decision" value="approve" autofocus><span>Continue to sign in</span></button>` +

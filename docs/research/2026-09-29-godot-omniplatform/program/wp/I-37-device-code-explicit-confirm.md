@@ -41,7 +41,7 @@ The `__Host-pk_lcb` binder proves which browser confirmed the code. It cannot pr
 - [x] After the callback, every poll answers `pending`: no identity, no `confirm`, no token; licence, device and audit counts are unchanged until approval. After approval the next poll is `ready` with exactly one device row (`deviceApproval.test.ts`).
 - [x] Approval comes only from the browser that confirmed the code and signed in: a missing, foreign or index-less binder, a cross-site POST, a request handle or `__Host-pk_req` alone, a label, user code or `state` are refused with the generic page and write nothing.
 - [x] A missing, replayed, stale or foreign page token, and an expired flow, write nothing; of two racing decisions exactly one wins.
-- [x] Deny and **Not you?** make the poll answer `error` and drop the identity; Cancel on the chooser is Deny; a choice sets `approvedAt` in the update that records it.
+- [x] Deny makes the poll answer `error` and drop the identity; Cancel on the chooser is Deny; a choice sets `approvedAt` in the update that records it.
 - [x] The attach is retired on device code (`attachable: false`, `attachLicense: true` read as `false`); the `OPEN (R1-07 / R8-03, P1-07 …)` cases are `FIXED`, and a `RESIDUAL (R1-07)` case asserts the approved-phish outcome (one seat-checked device, no claim, no migrate).
 - [x] A legacy record (a device id but no `viaDeviceCode`, or a malformed `approvedAt`) is unapproved and never reaches `activateFromIdentity`.
 - [x] `/device/verify` answers the start-again page and reads nothing; neither entry page names the product before the code resolves (B9.3).

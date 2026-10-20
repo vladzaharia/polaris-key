@@ -51,7 +51,7 @@ The person then signs in as in the browser flow, landing on `/identity/auth/call
 
 `GET` or `POST /<product>/identity/auth/device/approve` is the explicit step. Only the browser that confirmed the code and signed in reaches it, through its `__Host-` cookie; the URL carries nothing. The page shows the app and developer, the signed-in account, the device label, the code, when and from where the request started, and when it expires. The place is the edge's coarse guess, and a VPN can choose it, so the page also warns when it differs from where the person is. The device label is the starter's own text, never a trust signal.
 
-**Sign in on {device}** sets a server-side marker, and the device's next poll is `ready`. **Deny** (and **Not you?**, and Cancel on the license chooser) makes the poll answer `error`, and nothing is signed in. A page token is single-use: a replayed, stale or foreign one changes nothing. The flow's own 600 seconds bound all of it.
+**Sign in on {device}** sets a server-side marker, and the device's next poll is `ready`. **Deny** (and Cancel on the license chooser) makes the poll answer `error`, and nothing is signed in. A page token is single-use: a replayed, stale or foreign one changes nothing. The flow's own 600 seconds bound all of it.
 
 Until the person approves, the poll answers `pending`: no identity is disclosed, no license is created and no token is minted. A flow that began before this step existed waits and then times out; the device shows a new code.
 

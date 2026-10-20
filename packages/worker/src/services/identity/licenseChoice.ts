@@ -557,6 +557,8 @@ export function chooserBody(input: {
   developerName?: string | null;
   /** Where the flow's own "Use a license key instead" goes, when the flow has one; none: omitted. */
   keyHref?: string | null;
+  /** The primary's label; a device-code flow says whose device it is (I-37: the choice approves). */
+  primaryLabel?: string;
 }): string {
   const { view } = input;
   // signin.choice.noneReplaceable
@@ -616,7 +618,7 @@ export function chooserBody(input: {
     empty +
     `<div class="actions stack">` +
     (canContinue
-      ? `<button class="button" type="submit" name="action" value="use">Use this license and continue</button>` // signin.choice.continue
+      ? `<button class="button" type="submit" name="action" value="use">${escapeHtml(input.primaryLabel ?? "Use this license and continue")}</button>` // signin.choice.continue
       : "") +
     keyLink(input.keyHref) +
     `<button class="button secondary" type="submit" name="action" value="cancel" formnovalidate>Cancel</button>` +

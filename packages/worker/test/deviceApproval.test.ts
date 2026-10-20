@@ -24,6 +24,10 @@ import {
 } from "../src/services/identity/oidc.js";
 import { choiceKey } from "../src/services/identity/productOidc/chooser.js";
 import { hashKey } from "../src/platform/crypto.js";
+import {
+  decideDeviceFlow,
+  denyChosenDeviceFlow,
+} from "../src/services/identity/productOidc/deviceApproval.js";
 import type { Env } from "../src/platform/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 import { artefacts } from "./singleUseMock.js";
@@ -329,7 +333,7 @@ describe("the gate: nothing account-bound until the person approves", () => {
     const { c, token } = await atApprovalPage();
     const done = await postApprove(c.cookie, { token, decision: "approve" });
     expect(done.status).toBe(200);
-    expect(await done.text()).toContain("You&#x27;re signed in");
+    expect(await done.text()).toContain("is signed in on");
     expect(done.headers.get("set-cookie")).toContain("Max-Age=0");
     const out = await poll(c);
     expect(out.status).toBe("ready");
@@ -364,11 +368,8 @@ describe("the gate: nothing account-bound until the person approves", () => {
   });
 });
 
-describe("Deny and Not you?", () => {
-  for (const [label, press] of [
-    ["Deny", "deny"],
-    ["Not you?", "deny"],
-  ] as const) {
+describe("Deny", () => {
+  for (const [label, press] of [["Deny", "deny"]] as const) {
     it(`${label}: the poll answers error, nothing is written, the identity is gone`, async () => {
       const { c, token } = await atApprovalPage();
       const before = {
@@ -468,7 +469,7 @@ describe("forgery: each is refused generically and writes nothing", () => {
     ]) {
       const res = await postApprove(c.cookie, fields as Record<string, string>);
       expect(res.status).toBe(303);
-      expect(res.headers.get("location")).toBe(APPROVE);
+      expect(res.headers.get("location")).toBe(`${APPROVE}?again=1`);
     }
     await untouched(c);
   });
@@ -483,6 +484,18 @@ describe("forgery: each is refused generically and writes nothing", () => {
       decision: "approve",
     });
     expect(stale.status).toBe(303);
+    // The redirect carries no state, only "again".
+    expect(stale.headers.get("location")).toBe(`${APPROVE}?again=1`);
+    const again = await handleAuthDeviceApprove(
+      req(`${APPROVE}?again=1`, { headers: { cookie: c.cookie } }),
+      env,
+      db,
+      product,
+      NOW,
+    );
+    const againHtml = await again.text();
+    expect(againHtml).toContain("Check the details, then choose again.");
+    const current = /name="token" value="([^"]+)"/.exec(againHtml)![1]!;
     // A token minted for ANOTHER flow is foreign.
     const other = await atApprovalPage(await startFlow("tv-9", "Other"));
     const foreign = await postApprove(c.cookie, {
@@ -493,12 +506,12 @@ describe("forgery: each is refused generically and writes nothing", () => {
     await untouched(c);
     // The current token still works once, and a replay of it is refused.
     const ok = await postApprove(c.cookie, {
-      token: second,
+      token: current,
       decision: "approve",
     });
     expect(ok.status).toBe(200);
     const replay = await postApprove(c.cookie, {
-      token: second,
+      token: current,
       decision: "approve",
     });
     expect(replay.status).toBe(403);
@@ -732,14 +745,17 @@ describe("what the page shows", () => {
   it("shows the app, account, device, code, place and expiry, and posts only a token", async () => {
     const { html, c, page } = await atApprovalPage();
     expect(html).toContain("Sign in on \u2068Living room PC\u2069?");
-    expect(html).toContain('name="decision" value="approve" autofocus');
+    // Initial focus is the heading, so a carried-over Enter cannot approve unread.
+    expect(html).toContain('<h1 tabindex="-1" autofocus>');
+    expect(html).not.toContain("autofocus><span>");
     expect(html).toContain('name="decision" value="deny">Deny</button>');
-    expect(html).toContain(">Not you?</button>");
+    expect(html).not.toContain("Not you?");
+    expect(html).toContain("Only sign in if");
+    expect(html).toContain("Didn't start this? Deny.");
     expect(html).toContain("Ada");
     expect(html).toContain("ada@example.com");
     expect(html).toContain(`<span class="code">${c.userCode}</span>`);
     expect(html).toMatch(/just now from Portugal/);
-    expect(html).toMatch(/Expires at \d\d:\d\d UTC\./);
     expect(html).toContain("wants you to sign in");
     expect(html).toContain('class="ac-passport"');
     expect(html).toContain("Polaris Locker signs you in for");
@@ -794,9 +810,8 @@ describe("what the page shows", () => {
     // Started in PT.
     const same = await atApprovalPage();
     // The approver's request carries no country: unknown, so the callout shows.
-    expect(same.html).toContain(
-      "This sign-in started in Portugal, not where you are.",
-    );
+    expect(same.html).toContain("This sign-in started in Portugal.");
+    expect(same.html).not.toContain("not where you are");
     expect(same.html).toContain("Only continue if");
     const sameRes = await getApprove(same.c.cookie, { "cf-ipcountry": "PT" });
     expect(await sameRes.text()).not.toContain("not where you are");
@@ -843,5 +858,103 @@ describe("what the page shows", () => {
     expect(flow!.startPlace).toEqual({ country: "PT", label: "Portugal" });
     const html = await (await getApprove(c.cookie)).text();
     expect(html).not.toContain("Paris");
+  });
+});
+
+describe("the compare-and-sets pin their expectations (each fails if its check is removed)", () => {
+  async function setFlow(c: Confirmed, over: Record<string, unknown>) {
+    const key = await flowKey(env, "djdl", c.state);
+    const flow = JSON.parse((await artefacts(env).get(key))!);
+    await artefacts(env).put(key, JSON.stringify({ ...flow, ...over }));
+    return { key, flow: { ...flow, ...over } };
+  }
+
+  it("a page bound to another browser's binder is 'Start again' (binder equality)", async () => {
+    const { c } = await atApprovalPage();
+    await setFlow(c, {
+      binder: await hashKey("someone-else", env.KEY_HASH_PEPPER),
+    });
+    expect((await getApprove(c.cookie)).status).toBe(403);
+    expect(
+      (await postApprove(c.cookie, { token: "x", decision: "approve" })).status,
+    ).toBe(403);
+  });
+
+  it("decide refuses a flow already denied, even with the current token", async () => {
+    const { c, token } = await atApprovalPage();
+    const { key, flow } = await setFlow(c, { error: "denied" });
+    const ok = await decideDeviceFlow(
+      env,
+      db,
+      product,
+      key,
+      flow,
+      await hashKey(token, env.KEY_HASH_PEPPER),
+      "approve",
+      NOW,
+    );
+    expect(ok).toBe(false);
+    expect(
+      JSON.parse((await artefacts(env).get(key))!).approvedAt,
+    ).toBeUndefined();
+  });
+
+  it("decide refuses a flow already approved, so a deny cannot overwrite it", async () => {
+    const { c, token } = await atApprovalPage();
+    const { key, flow } = await setFlow(c, { approvedAt: NOW });
+    const ok = await decideDeviceFlow(
+      env,
+      db,
+      product,
+      key,
+      flow,
+      await hashKey(token, env.KEY_HASH_PEPPER),
+      "deny",
+      NOW,
+    );
+    expect(ok).toBe(false);
+    expect(JSON.parse((await artefacts(env).get(key))!).error).toBeUndefined();
+  });
+
+  it("a chooser Cancel cannot deny a flow that was already approved", async () => {
+    const { c } = await atApprovalPage();
+    const { key, flow } = await setFlow(c, { approvedAt: NOW });
+    expect(await denyChosenDeviceFlow(env, db, product, key, flow, NOW)).toBe(
+      false,
+    );
+    expect(JSON.parse((await artefacts(env).get(key))!).error).toBeUndefined();
+  });
+});
+
+describe("the endings are pages", () => {
+  it("not entitled is a Locker refusal page, not JSON", async () => {
+    await db
+      .run(
+        "UPDATE products SET auto_issue_json = NULL, default_tier_json = NULL WHERE slug = 'djdl'",
+      )
+      .catch(() => undefined);
+    const c = await confirmCode(await startFlow());
+    const res = await callback(c, c.cookie, { ...PERSON, groups: ["randos"] });
+    {
+      expect(res.status).toBe(403);
+      expect(res.headers.get("content-type")).toContain("text/html");
+      expect(await res.text()).toContain("You can&#x27;t sign in here");
+    }
+  });
+
+  it("the done page names the app and where to look", async () => {
+    const { c, token } = await atApprovalPage();
+    const done = await postApprove(c.cookie, { token, decision: "approve" });
+    const html = await done.text();
+    expect(html).toContain("is signed in on");
+    expect(html).toContain("it continues by itself.");
+    expect(html).toContain("You can close this page.");
+    expect(html).not.toContain("<title>Sign in on");
+  });
+
+  it("the page title carries no bidi isolates", async () => {
+    const { html } = await atApprovalPage();
+    const title = /<title>([^<]*)<\/title>/.exec(html)![1]!;
+    expect(title).not.toMatch(/[\u2068\u2069]/);
   });
 });
