@@ -328,7 +328,7 @@ describe("GET /<p>/identity/authorize (§12.4)", () => {
     expect(html).toContain(escapeHtml(copy.message));
     expect(html).toContain(escapeHtml(CLOSE_PAGE));
     // The app is named above the card, from the product's path, whatever client_id said.
-    expect(html).toContain(`<strong>${SLUG}</strong>`);
+    expect(html).toContain(`<strong><bdi>${SLUG}</bdi></strong>`);
     expect(html).not.toContain("<script");
   });
 
@@ -350,7 +350,7 @@ describe("GET /<p>/identity/authorize (§12.4)", () => {
       const copy = codeCopy("redirect_uri_mismatch");
       expect(html).toContain(escapeHtml(copy.message));
       expect(html).toContain(escapeHtml(CLOSE_PAGE));
-      expect(html).toContain(`<strong>${SLUG}</strong>`);
+      expect(html).toContain(`<strong><bdi>${SLUG}</bdi></strong>`);
     },
   );
 
