@@ -26,9 +26,21 @@ Exactly `plans/LK-00.md` §3, §5, §7.8–7.9. Anything else is another package
 
 ## Acceptance criteria
 
-- [ ] transcripts: 46 existing byte-identical plus four new `locker-*.json`; `pnpm gen --check` transcripts, corpus, docs-reference clean
-- [ ] worker `test` and `test:workerd` pass; the device page and index are extended, not rebuilt (A1)
-- [ ] The relevant `plans/LK-00.md` §13 commands pass; the green gate passes (AGENTS.md).
+- [x] transcripts: 46 existing byte-identical plus four new `locker-*.json`; `pnpm gen --check` transcripts, corpus, docs-reference clean
+- [x] worker `test` and `test:workerd` pass; the device page and index are extended, not rebuilt (A1)
+- [x] The relevant `plans/LK-00.md` §13 commands pass; the green gate passes (AGENTS.md).
+
+## Corrections to the brief (2026-10-19, from the code)
+
+- The plan's bind hop covers `authorize` only. A device confirmation made on the customer host
+  would also lose its flow binder: the IdP calls back on the API host, and `__Host-pk_lcb` set on
+  the customer host never reaches it. LK-04 adds a second hop of the same kind
+  (`GET /<p>/identity/auth/device/continue?bind=`, one new route: OpenAPI, `routeCoverage`,
+  CORS-excluded) and widens the device page's `form-action` to the API host.
+- The device page was already served by LK-03/A1 with a 302 to the API host; it is now served on
+  the customer host by running the product's own device handler there (`dispatch.ts`), and the
+  product's page on the API host 303s to `<customer>/device`.
+- `apiOrigin()` in `core/customerHost.ts` is gone: nothing reads it.
 
 ## Hand-off
 
