@@ -40,6 +40,7 @@ import { portalKeys, useCapabilities } from "../data.js";
 import { portalErrorCopy } from "../errors.js";
 import { checkKey, formatVerdict, productLabel } from "../model/key.js";
 import { setParams, useDocumentTitle, useRoute } from "../router.js";
+import { FinishStep } from "../components/signin/FinishStep.js";
 import { DeviceStep } from "../components/signin/DeviceStep.js";
 import {
   PasskeyError,
@@ -99,7 +100,9 @@ type Step =
   | { kind: "sso"; email: string; next: PortalSsoNext }
   | { kind: "key" }
   /** Sign in with another device (§3.11): this browser asks, a signed-in device approves. */
-  | { kind: "device" };
+  | { kind: "device" }
+  /** FinishStep (§3.5): a provider's first sign-in, or a new address's code, finishes here. */
+  | { kind: "finish" };
 
 /** The countdown when an answer carries no `resendIn` (a Worker from before PX-W4). */
 const RESEND_FALLBACK_S = 60;
@@ -153,7 +156,13 @@ function useCarriedKey(): string | null {
 export function SignInPage(): React.ReactElement {
   const [product] = React.useState(productFromUrl);
   const caps = useCapabilities(product);
-  const [step, setStep] = React.useState<Step>({ kind: "methods" });
+  const [step, setStep] = React.useState<Step>(() =>
+    // A front door's redirect (`/?signin=confirm-email`) opens the finish step.
+    new URLSearchParams(window.location.search).get("signin") ===
+    "confirm-email"
+      ? { kind: "finish" }
+      : { kind: "methods" },
+  );
   const [direction, setDirection] = React.useState<"forward" | "back">(
     "forward",
   );
@@ -167,13 +176,15 @@ export function SignInPage(): React.ReactElement {
       ? t("signin.code.title")
       : step.kind === "refused"
         ? "This account can't sign in"
-        : step.kind === "device"
-          ? t("signin.approve.title")
-          : step.kind === "key"
-            ? t("signin.link.key")
-            : step.kind === "sso"
-              ? step.next.connection.label
-              : t("signin.methods.titleApp"),
+        : step.kind === "finish"
+          ? t("signin.gate.title")
+          : step.kind === "device"
+            ? t("signin.approve.title")
+            : step.kind === "key"
+              ? t("signin.link.key")
+              : step.kind === "sso"
+                ? step.next.connection.label
+                : t("signin.methods.titleApp"),
   );
   /** The card's step key: a connection step is keyed by its route, so a change re-announces. */
   const ssoKey =
@@ -217,6 +228,7 @@ export function SignInPage(): React.ReactElement {
           onChangeEmail={() => go({ kind: "methods" }, "back")}
           onRefused={() => go({ kind: "refused", email: step.email })}
           onRouted={(next) => go({ kind: "sso", email: step.email, next })}
+          onFinish={() => go({ kind: "finish" })}
           onExpired={() =>
             go(
               {
@@ -256,6 +268,17 @@ export function SignInPage(): React.ReactElement {
         <RefusedStep
           email={step.email}
           onChangeEmail={() => go({ kind: "methods" }, "back")}
+        />
+      ) : step.kind === "finish" ? (
+        <FinishStep
+          onLeave={() => {
+            window.history.replaceState(null, "", "/");
+            go({ kind: "methods" }, "back");
+          }}
+          onExpired={() => {
+            window.history.replaceState(null, "", "/");
+            go({ kind: "methods", notice: sc("signin.gate.expired") }, "back");
+          }}
         />
       ) : step.kind === "device" ? (
         <DeviceStep onOther={() => go({ kind: "methods" }, "back")} />
@@ -667,6 +690,7 @@ function CodeStep({
   onRefused,
   onRouted,
   onExpired,
+  onFinish,
 }: {
   email: string;
   /** Seconds before the first "Send a new code" (the start's `resendIn`). */
@@ -678,6 +702,8 @@ function CodeStep({
   onRouted: (next: PortalSsoNext) => void;
   /** The sign-in itself is gone (the resend answered `signin_expired`): back to the email. */
   onExpired: () => void;
+  /** A new address: the account is created in FinishStep (the verify answered `finish`). */
+  onFinish: () => void;
 }): React.ReactElement {
   const qc = useQueryClient();
   const [code, setCode] = React.useState("");
@@ -705,7 +731,12 @@ function CodeStep({
     setError(null);
     setStatus(null);
     try {
-      await portalApi.verifySignInCode(value);
+      const out = await portalApi.verifySignInCode(value);
+      // A new address finishes first (I-33): the account is created there.
+      if (out?.status === "finish") {
+        onFinish();
+        return;
+      }
       await qc.invalidateQueries({ queryKey: portalKeys.me });
     } catch (err) {
       // I-30: the domain requires its connection now (enforced after this code was sent).

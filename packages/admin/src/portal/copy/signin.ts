@@ -35,6 +35,30 @@ export const SIGNIN_COPY = {
   "signin.passkey.failed":
     "Your passkey didn't work. Try again, or use another way.",
   "signin.approve.failed": "That didn't go through. Try again.",
+  "signin.gate.stripNoIdentity": "Signed in with {provider}",
+  "signin.gate.done": "Done",
+  "signin.gate.termsTitle": "One more step",
+  "signin.gate.name": "Your name",
+  "signin.gate.useEmail": "Use {email}",
+  "signin.gate.relay": "Your private Apple address",
+  "signin.gate.emailChoice": "Email",
+  "signin.gate.pictureInitials": "Use my initials",
+  "signin.gate.pictureProvider": "Use my {provider} picture",
+  "signin.gate.birthdate": "Add my birth date from {from}",
+  "signin.gate.birthdateHelp": "Only you can see it. Apps never get it.",
+  "signin.gate.productTerms": "I agree to the {product}",
+  "signin.gate.platformTerms": "By continuing you agree to the Polaris Locker",
+  "signin.gate.termsLink": "terms",
+  "signin.gate.termsRequired": "Agree to the terms to continue.",
+  "signin.gate.cancelled": "That sign-in was cancelled.",
+  "signin.gate.expired": "That sign-in has expired. Sign in again.",
+  "signin.gate.joinTitle": "Join your accounts",
+  "signin.gate.joinLede":
+    "{email} already belongs to a Polaris Locker account. Join this sign-in to it, or use a different email.",
+  "signin.gate.joinProve":
+    "To join, sign in to that account in this browser first, then add this sign-in from Account.",
+  "signin.gate.emailUsed": "A Polaris Locker account already uses this email.",
+  "signin.gate.codeSent": "We sent a code to {email}.",
 } as const;
 
 export type SigninCopyKey = keyof typeof SIGNIN_COPY;

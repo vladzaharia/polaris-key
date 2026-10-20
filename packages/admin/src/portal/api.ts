@@ -1005,6 +1005,48 @@ export interface PortalPasskeyOptions {
   expiresIn: number;
 }
 
+/** `GET /api/signin/confirm-email` (I-27, I-33): the finish step's state. No account id in it. */
+export interface PortalGate {
+  status: "gate";
+  /** `google`, `apple`, `steam`, `email`, … */
+  provider: string;
+  stage: "choose" | "code_sent" | "join_offer";
+  expiresAt: number;
+  /** False when the account has an email and only the profile and terms are asked. */
+  emailRequired: boolean;
+  email: {
+    provider: string | null;
+    providerVerified: boolean;
+    relay: boolean;
+    pending: string | null;
+    confirmed: string | null;
+  };
+  profile: {
+    name: string | null;
+    nameExplicit: boolean;
+    suggestions?: { name: string; source: string }[];
+    /** Same-origin proxy path, or null. */
+    picture: string | null;
+    initials?: boolean;
+    birthdate?: { value: string; offered: string; from: string } | null;
+  };
+  terms: { url: string; version: string } | null;
+  platformTerms?: { url: string; version: string } | null;
+  product: { slug: string; name: string | null } | null;
+  join?: { email: string | null; proven: boolean };
+}
+
+/** What a gate POST sends: only what the step asked. */
+export interface PortalGateChoice {
+  choice?: "provider" | "typed";
+  email?: string;
+  name?: string;
+  picture?: "provider" | "initials";
+  birthdate?: string;
+  termsVersion?: string;
+  platformTermsVersion?: string;
+}
+
 /** `POST /api/device-login/start` (PX-W14): the code, its QR and the poll handle. */
 export interface PortalDeviceLoginStart {
   id: string;
@@ -1469,6 +1511,37 @@ export const portalApi = {
     call<{ status: string; next?: string }>("/api/signin/passkey/verify", {
       method: "POST",
       body: JSON.stringify({ response }),
+    }),
+  /** The email gate's state (the finish step); a 400 means it expired or was never opened. */
+  gate: () => call<PortalGate>("/api/signin/confirm-email"),
+  /** Confirm the provider's email or a typed one, with the profile and terms choices. */
+  gateChoose: (body: PortalGateChoice) =>
+    call<
+      | { status: "signed_in"; next: string; nudge: boolean }
+      | {
+          status: "code_sent";
+          email: string;
+          expiresIn: number;
+          codeLength: number;
+        }
+    >("/api/signin/confirm-email", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  gateVerify: (code: string) =>
+    call<{ status: "signed_in"; next: string; nudge: boolean }>(
+      "/api/signin/confirm-email/verify",
+      { method: "POST", body: JSON.stringify({ code }) },
+    ),
+  gateJoin: () =>
+    call<{ status: "signed_in"; next: string; nudge: boolean }>(
+      "/api/signin/confirm-email/join",
+      { method: "POST", body: JSON.stringify({}) },
+    ),
+  gateCancel: () =>
+    call<{ status: "cancelled" }>("/api/signin/confirm-email/cancel", {
+      method: "POST",
+      body: JSON.stringify({}),
     }),
   /** PX-W14: ask to sign in on this browser by approving it from a signed-in device. */
   deviceLoginStart: () =>

@@ -96,6 +96,37 @@ const DEVICE_REQUEST = {
   newLocation: false,
   stepUpRequired: false,
 };
+/** `GET /api/signin/confirm-email` (I-33): the finish step's view, with what each case changes. */
+const gateView = (over: Record<string, unknown>) => ({
+  "GET /api/signin/confirm-email": {
+    body: {
+      status: "gate",
+      provider: "google",
+      stage: "choose",
+      expiresAt: FIXTURE_NOW + 900,
+      emailRequired: true,
+      email: {
+        provider: "mara@fennick.studio",
+        providerVerified: true,
+        relay: false,
+        pending: null,
+        confirmed: null,
+      },
+      profile: {
+        name: "Mara Fennick",
+        nameExplicit: false,
+        suggestions: [{ name: "Mara", source: "email" }],
+        picture: null,
+        initials: false,
+        birthdate: null,
+      },
+      terms: null,
+      platformTerms: null,
+      product: null,
+      ...over,
+    },
+  },
+});
 const NIGHTFALL_CONTEXT = {
   body: {
     auth: { oidc: false, magic: true, providers: ["google", "steam"] },
@@ -344,6 +375,133 @@ export const SHIPPED: ShippedState[] = [
         .getByRole("button", { name: "Sign in with another device" })
         .click();
       await p.getByText("That request was denied").waitFor();
+    },
+  },
+  {
+    section: "4.29",
+    id: "signin-finish-google",
+    title:
+      "Finish: Google's verified address (no code), product terms, platform terms",
+    scenario: "signedOut",
+    path: "/?signin=confirm-email",
+    routes: gateView({
+      terms: { url: "https://lanternworks.example/terms", version: "2" },
+      platformTerms: { url: "https://polaris.locker/terms", version: "1" },
+      product: { slug: "nightfall", name: "Nightfall" },
+      profile: {
+        name: "Mara Fennick",
+        nameExplicit: false,
+        suggestions: [{ name: "Mara", source: "email" }],
+        picture: null,
+        initials: false,
+        birthdate: {
+          value: "1991-04-02",
+          offered: "1991-04-02",
+          from: "Lakeside University",
+        },
+      },
+    }),
+    ready: async (p) => {
+      await h1(p, "Confirm your email");
+      await p.getByRole("button", { name: "Continue" }).waitFor();
+    },
+  },
+  {
+    section: "4.29",
+    id: "signin-finish-steam",
+    title: "Finish: Steam shares no email (field empty, Send code)",
+    scenario: "signedOut",
+    path: "/?signin=confirm-email",
+    routes: gateView({
+      provider: "steam",
+      email: {
+        provider: null,
+        providerVerified: false,
+        relay: false,
+        pending: null,
+        confirmed: null,
+      },
+      profile: {
+        name: "marafox",
+        nameExplicit: false,
+        suggestions: [],
+        picture: null,
+        initials: false,
+        birthdate: null,
+      },
+    }),
+    ready: async (p) => {
+      await h1(p, "Confirm your email");
+      await p.getByRole("button", { name: "Send code" }).waitFor();
+    },
+  },
+  {
+    section: "4.29",
+    id: "signin-finish-register",
+    title: "Finish: Create your account (email already verified)",
+    scenario: "signedOut",
+    path: "/?signin=confirm-email",
+    routes: gateView({
+      provider: "email",
+      emailRequired: false,
+      email: {
+        provider: null,
+        providerVerified: false,
+        relay: false,
+        pending: null,
+        confirmed: "mara@fennick.studio",
+      },
+      platformTerms: { url: "https://polaris.locker/terms", version: "1" },
+      profile: {
+        name: null,
+        nameExplicit: false,
+        suggestions: [{ name: "mara", source: "email" }],
+        picture: null,
+        initials: false,
+        birthdate: null,
+      },
+    }),
+    ready: async (p) => {
+      await h1(p, "Create your account");
+      await p
+        .getByRole("button", { name: "Create account and continue" })
+        .waitFor();
+    },
+  },
+  {
+    section: "4.29",
+    id: "signin-finish-code",
+    title: "Finish: the code for a typed address",
+    scenario: "signedOut",
+    path: "/?signin=confirm-email",
+    routes: gateView({
+      stage: "code_sent",
+      email: {
+        provider: null,
+        providerVerified: false,
+        relay: false,
+        pending: "mara@fennick.studio",
+        confirmed: null,
+      },
+    }),
+    ready: async (p) => {
+      await h1(p, "Check your email");
+      await p.getByRole("textbox", { name: "6-digit code" }).waitFor();
+    },
+  },
+  {
+    section: "4.11",
+    id: "signin-finish-join",
+    title: "Finish: the join offer for an address another account uses",
+    scenario: "signedOut",
+    path: "/?signin=confirm-email",
+    routes: gateView({
+      stage: "join_offer",
+      join: { email: "mara@fennick.studio", proven: true },
+    }),
+    ready: async (p) => {
+      await h1(p, "Join your accounts");
+      await p.getByRole("button", { name: "Join into one account" }).waitFor();
     },
   },
   {
@@ -1462,7 +1620,6 @@ export const PENDING: PendingState[] = [
     title: "Add another way to sign in (nudge)",
     wp: ["PX-15"],
   },
-  { section: "4.11", title: "Link an existing account: join", wp: ["PX-15"] },
   { section: "4.20", title: "Product page with Cloud Sync", wp: ["PX-18"] },
   {
     section: "4.20",
@@ -1486,12 +1643,6 @@ export const PENDING: PendingState[] = [
     title:
       "Account → Sign-in methods: Make primary, passkey Rename, products per email (API and controls built; linux baselines and UX review not recorded yet)",
     wp: ["PX-W19"],
-  },
-  {
-    section: "4.29",
-    title:
-      "Email gate: provider verified, typed code, Steam empty, product terms",
-    wp: ["PX-21"],
   },
   {
     section: "4.29",
