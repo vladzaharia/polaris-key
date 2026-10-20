@@ -5247,6 +5247,30 @@
       "status": "todo"
     },
     {
+      "id": "I-41",
+      "title": "Readable support codes (XXX-XXX-XXX) and support-code search in the Polaris Key Console",
+      "phase": "I",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.6, 1],
+      "deps": ["I-11"],
+      "planMode": false,
+      "gates": [
+        "migration",
+        "table-owners",
+        "rule-10",
+        "threat-model",
+        "console-csp-parity",
+        "pkey-ux-reviewer"
+      ],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["Owner request 2026-10-20"],
+      "brief": "wp/I-41-readable-support-codes.md",
+      "status": "in-progress"
+    },
+    {
       "id": "U-01",
       "title": "Plan Cloud Sync: decision record, glossary, data model, WIRE-CONTRACT-V4 Cloud Sync section with the op table and push rules, browser principal, errors, parity ids, manifest schema, scenario-corpus format, ceilings, threat rows",
       "phase": "U",
