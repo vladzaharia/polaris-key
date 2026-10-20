@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
-import { makeEnv, seedProduct } from "./seed.js";
+import { makeEnv, seedOperatorPolicy, seedProduct } from "./seed.js";
 import type { Db } from "../src/db/types.js";
 import type { Product } from "../src/core/products.js";
 import {
@@ -114,6 +114,7 @@ async function seedReleaseConfig(
     row.operator_policy_json,
   );
   await seedDeliveryAccess(db, row.product, row.artifacts_access);
+  await seedOperatorPolicy(db, row.product, row.operator_policy_json);
 }
 
 function makeProduct(): Product {

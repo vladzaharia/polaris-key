@@ -714,7 +714,7 @@ export interface ReleaseCatalog {
    * already carries a record delta of the same `from` and `method`, when its descriptor fails the
    * feed member's rules (plans/P4-29.md §2.2), or when its frame's `windowLog` exceeds
    * `max(10, min(30, ⌈log2(memBytes)⌉))`. Empty while the deployment's `LAZY_DELTAS` is not `on`
-   * or the product's `lazy_delta_settings.enabled` is 0. Unranked and uncapped: the composer
+   * or the product's `deltas.lazy.enabled` is off. Unranked and uncapped: the composer
    * ranks, caps and sizes the menu. One indexed read of the ready rows, then the named records.
    * Reads no device counts: the feed hashes this set on every request, and the rank (which the
    * hash leaves out) is read through `lazyDeltaDevices` only when a document is signed.

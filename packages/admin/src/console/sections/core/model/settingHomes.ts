@@ -76,6 +76,12 @@ export const SETTING_HOMES: Readonly<Record<string, SettingHome>> = {
   "core.keys": at("keys", "Signing keys"),
   // The manifest names the secrets and the console sets each value, sealed.
   "core.secrets": at("keys", "Secrets"),
+  // ST-11: moved out of SQL into registry rows; the settings route writes them, no page has a
+  // control yet (follow-up: a Settings editor).
+  "deltas.lazy.enabled": API,
+  "deltas.lazy.hotDevices": API,
+  "deltas.lazy.dailyCap": API,
+  "email.dailyCap": API,
   "assets.releases.mirror": at("presentation", "Hosting and quotas"),
   "assets.quota.mediaBytes": at("presentation", "Hosting and quotas"),
   "assets.quota.releaseBytes": at("presentation", "Hosting and quotas"),

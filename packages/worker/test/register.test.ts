@@ -766,7 +766,8 @@ describe("Core surfaces accept a registered device when License is disabled", ()
       },
     ) as R2Bucket;
     await w.db.run(
-      "INSERT INTO lazy_delta_settings (product, enabled, updated_at) VALUES ('djdl', 1, ?)",
+      `INSERT INTO product_settings (product, key, value_json, source, version, updated_at, updated_by)
+       VALUES ('djdl', 'deltas.lazy.enabled', '"on"', 'console', 1, ?, 'test')`,
       NOW,
     );
     const FROM = "1".repeat(64);

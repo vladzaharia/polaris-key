@@ -3850,7 +3850,7 @@ delivery. All mail goes through one choke point, `deliverEmail` (`src/core/notif
   comment, quoted local part or route), when it is parsed and again in `deliverEmail` before the
   provider, so the string that is rate-limited and suppression-checked is the string mailed.
 - _Draining the shared quota._ A per-product daily cap on passthrough mail (default 500, the
-  `EMAIL_PRODUCT_DAILY_CAP` var, or the product's `email_product_caps` row), charged after
+  platform default `email.dailyCapDefault`, a console value over the `EMAIL_PRODUCT_DAILY_CAP` var, or the product's own `email.dailyCap` setting, both operator-owned and audited since ST-11; a raise needs L1), charged after
   suppression so it counts only mail that leaves; over it the product answers
   `email_unavailable`, which names no recipient. Platform mail (account notices, the
   dormant-account warning, merge and join notices) is never capped (owner, 2026-10-04).
@@ -4265,7 +4265,7 @@ event-notification rule on the payload prefixes, and a **second Worker script**,
 (`polaris-key-deltas-<env>`, `wrangler.deltas.toml`), which encodes `zstd-patch-from` deltas in
 WebAssembly (`@polaris-key/zstd-wasm/encoder`, level 9, levels above 15 refused, 32 MiB per side).
 It adds no route and no wire member. Off by default twice: the `LAZY_DELTAS` var in both scripts
-and a per-product `lazy_delta_settings` row.
+and a per-product `deltas.lazy.enabled` setting (ST-11: a registry entry, audited; it was a SQL-only row).
 
 - **A lazy delta carries no trust of its own.** It is in no CI-signed record. A device that is
   offered one checks the artifact's SHA-256 and length, that its base is the installed payload,
@@ -9344,7 +9344,7 @@ Poison the release channel
 ├── Write access to a linked repo
 │   ├── set `.pkey/release` sparkleEd25519Pub to a key you hold  (the verifying key is repo-sourced: resync rewrites `sparkle_ed25519_pub` on every push-triggered resync, with no operator guard)
 │   ├── publish a DMG + a .sig made with that key (the appcast verifies the sidecar over the DMG bytes against `sparkle_ed25519_pub`, so a repo writer who swapped the key passes; only the client-side Sparkle `SUPublicEDKey` pin stops it)
-│   └── set `.pkey/release` requireSparkleSignature:false  (no effect: the requirement is operator-owned, read from `operator_policy_json`, which no manifest path writes)
+│   └── set `.pkey/release` requireSparkleSignature:false  (no effect: the requirement is operator-owned, read from the `update.operatorPolicy` setting (ST-11: a `product_settings` row), which no manifest path writes)
 ├── Publish through a trusted publisher (P2-02)
 │   ├── run the declared workflow in the declared environment on a protected ref   (= repo write + whatever the rulesets/environment reviewers allow; the intended path)
 │   ├── present another repository's OIDC token  (refused: numeric repository_id/owner_id pinned from GitHub)

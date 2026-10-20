@@ -170,23 +170,36 @@ function byWranglerOrder(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0;
 }
 
-/** Every migration in `migrations/`, in wrangler's order, as one SQL text. A file whose last
- *  statement (ignoring trailing blank and `--` comment lines) lacks its `;` gets one, so it
- *  cannot run into the next file; one that has it gets nothing, so no empty statement is made. */
-function allMigrations(): string {
+/** Every migration in `migrations/`, in wrangler's order, as SQL texts of at most `CHUNK` bytes
+ *  (whole files, never split). A file whose last statement (ignoring trailing blank and `--`
+ *  comment lines) lacks its `;` gets one, so it cannot run into the next file; one that has it
+ *  gets nothing, so no empty statement is made.
+ *
+ *  Chunks, because wrangler's local D1 refuses one `execute --file` whose SQL is past a size
+ *  (`SQLITE_TOOBIG: statement too long`) that the whole schema now reaches: any new migration tips
+ *  it. The chunks run in order against the same database, so the schema is the same. */
+const CHUNK = 150_000;
+function allMigrations(): string[] {
   const dir = join(WORKER, "migrations");
-  return readdirSync(dir)
+  const chunks: string[] = [];
+  let current = "";
+  for (const f of readdirSync(dir)
     .filter((f) => f.endsWith(".sql") && !f.startsWith("."))
-    .sort(byWranglerOrder)
-    .map((f) => {
-      const sql = readFileSync(join(dir, f), "utf8");
-      const lines = sql.split("\n");
-      while (lines.length && /^\s*(--.*)?$/.test(lines[lines.length - 1]!))
-        lines.pop();
-      const closed = (lines[lines.length - 1] ?? "").trimEnd().endsWith(";");
-      return `${sql}\n${closed ? "" : ";\n"}`;
-    })
-    .join("");
+    .sort(byWranglerOrder)) {
+    const sql = readFileSync(join(dir, f), "utf8");
+    const lines = sql.split("\n");
+    while (lines.length && /^\s*(--.*)?$/.test(lines[lines.length - 1]!))
+      lines.pop();
+    const closed = (lines[lines.length - 1] ?? "").trimEnd().endsWith(";");
+    const text = `${sql}\n${closed ? "" : ";\n"}`;
+    if (current && current.length + text.length > CHUNK) {
+      chunks.push(current);
+      current = "";
+    }
+    current += text;
+  }
+  if (current) chunks.push(current);
+  return chunks;
 }
 
 beforeAll(async () => {
@@ -197,10 +210,16 @@ beforeAll(async () => {
   // same order builds the same schema (compared table by table) in 0.8 s idle and 2.5 s under
   // that load, so the suite's default hook timeout holds. The check reads only the product
   // tables, never `d1_migrations`.
+  const migrations = allMigrations();
+  for (const [i, sql] of migrations.entries()) {
+    const file = join(persistTo, `migrations-${i}.sql`);
+    writeFileSync(file, sql);
+    await wrangler("d1", "execute", "polaris_key_prod", "--file", file);
+  }
   const setup = join(persistTo, "setup.sql");
   writeFileSync(
     setup,
-    `${allMigrations()}${[
+    `${[
       // A clean product: every checked column holds an ordinary value.
       `INSERT INTO products (slug, name, signing_kid, signing_pub, compat_min, compat_max,
          default_max_offline_days, default_device_limit, created_at, modified_at)
