@@ -1,6 +1,6 @@
 # @polaris-key/admin
 
-Two React + Vite single-page apps in one package: the operator console at `/manage` and the customer portal at `/`.
+Two React + Vite single-page apps in one package: the operator console at `/manage` and Polaris Locker, the customer site, at `/`.
 
 ## Where it sits
 
@@ -80,5 +80,5 @@ Generator families that read or write files here (a family regenerates with `pnp
 - [Customer portal specification](../../docs/design/PORTAL.md): portal states and the quality bar the e2e suite holds.
 - [Brand](../../docs/design/BRAND.md): marks, color, theme mechanics.
 - [Console section of the docs](../docs/src/content/docs/operate/console/products.md): what each console page is for, written for operators.
-- [Customer portal](../docs/src/content/docs/features/sign-in/customer-portal.md): the portal as the docs describe it.
+- [Polaris Locker](../docs/src/content/docs/features/sign-in/customer-portal.md): the customer site as the docs describe it.
 - [Monorepo layout](../docs/src/content/docs/contribute/layout.md): where the package sits.

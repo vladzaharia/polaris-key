@@ -29,10 +29,14 @@ Exactly `plans/LK-00.md` §14.1, §14.2, §14.6. Anything else is another packag
 
 ## Acceptance criteria
 
-- [ ] `lint:docs`, `check:links` and the docs build pass; `pnpm gen --check` docs-csp and docs-reference clean
+- [x] `lint:docs`, `check:links` and the docs build pass; `pnpm gen --check` docs-csp and docs-reference clean
 - [ ] pkey-ux-reviewer passes the built docs chrome
 - [ ] The relevant `plans/LK-00.md` §13 commands pass; the green gate passes (AGENTS.md).
 
 ## Hand-off
 
 The role agent sets `--set LK-15 in-review` when it hands off; the lead sets `done` after review.
+
+## Re-scope (owner direction, 2026-10-19)
+
+Locker (`polaris.locker`) is the customer-facing site; Polaris Key Console and the developer docs (`key.plrs.im`) stay Key. The docs chrome is unchanged from main (Key title, mark, favicon, no `data-brand="locker"`). The prose sweep keeps only the sentences that mean the customer site (portal words, the storefront listing, end-user accounts). The landing says: "Polaris Key is the platform and its console. Your customers use Polaris Locker."

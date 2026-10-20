@@ -45,6 +45,6 @@ The spec's file name, `v3`, versions the API description. The signed documents c
 
 The console's list routes that page take `limit` and `cursor`, and answer a page with a `nextCursor`. Pass the previous page's `nextCursor` as `cursor` to get the next page. A `nextCursor` of `null` is the last page. A `cursor` or `limit` outside its range is a `422`.
 
-## The console and portal APIs
+## The console and Polaris Locker APIs
 
-`/manage/api/*` and `/api/*` are session-authenticated browser surfaces for the platform's own screens. They are not in the OpenAPI spec, except the admin token roster, the create probes and the portal's library, product and media routes. The portal's routes are in the [Portal API](/docs/reference/portal-api/).
+`/manage/api/*` and `/api/*` are session-authenticated browser surfaces for the platform's own screens. They are not in the OpenAPI spec, except the admin token roster, the create probes and Polaris Locker's library, product and media routes. Polaris Locker's routes are in the [Polaris Locker API](/docs/reference/portal-api/).

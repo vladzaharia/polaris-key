@@ -22,11 +22,11 @@ A device stopped at the limit holds no token, so it can't list or deauthorize an
 ## Steps
 
 1. **App** Catch the device-limit result and show the limit and the count when they are present. Both can be missing.
-2. **App** Offer the portal link. `manageUrl` is the customer-portal link that frees a seat. The server sends it only while the product's portal is on, and it never carries a key, an account id or a device id. In Node, `withManageReturn` adds your app's return link and `withManageKey` adds the key for an activate link. Offer it behind a user action such as **Replace a device**. The refusal isn't an auth failure, so keep the app's state.
+2. **App** Offer the Polaris Locker link. `manageUrl` is the Locker link that frees a seat. The server sends it only while Locker is on for the product, and it never carries a key, an account id or a device id. In Node, `withManageReturn` adds your app's return link and `withManageKey` adds the key for an activate link. Offer it behind a user action such as **Replace a device**. The refusal isn't an auth failure, so keep the app's state.
 3. **App** Tell the user the other way to free a seat: from another activated device, in that app's devices screen. Node and Python expose `client.devices.list()` and `client.devices.deauthorize(id)`. The UI kits ship a devices screen.
 4. **App** Retry activation on this device once the user says a seat is free.
 
-When the license is in no account and Identity is on, an activation can also be refused with `key_entry_limit`, which points at the same portal link to add the key to an account. See [Activation](/docs/features/licensing/activation/).
+When the license is in no account and Identity is on, an activation can also be refused with `key_entry_limit`, which points at the same Locker link to add the key to an account. See [Activation](/docs/features/licensing/activation/).
 
 ## Check it works
 
