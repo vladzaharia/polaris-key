@@ -5,7 +5,7 @@
 | Phase       | PX: Customer portal (docs/design/PORTAL.md)                                                          |
 | Size        | 0.5–0.8 engineer-weeks                                                                               |
 | Depends on  | [PX-24](PX-24-library-added-just-now.md), [ST-36](ST-36-owner-polish-portal-fixes-simple-product.md) |
-| Unblocks    | none                                                                                                 |
+| Unblocks    | [PX-34](PX-34-library-discover-locker.md)                                                            |
 | Role        | `pkey-implementer`                                                                                   |
 | Plan mode   | no (no wire change)                                                                                  |
 | Gates       | portal-e2e, ui-snapshots                                                                             |

@@ -1,16 +1,16 @@
 # LK-04 Cross-host sign-in: bind hop, extends the device page and global index (A1), Locker transcripts, contract text
 
-| Field       | Value                                                                             |
-| ----------- | --------------------------------------------------------------------------------- |
-| Phase       | LK: Polaris Locker                                                                |
-| Size        | 0.75–1 engineer-weeks                                                             |
-| Depends on  | [LK-00](LK-00-polaris-locker-plan.md), [LK-03](LK-03-customer-host-and-origin.md) |
-| Unblocks    | [LK-11](LK-11-cutover.md)                                                         |
-| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)             |
-| Plan mode   | yes: executes plans/LK-00.md                                                      |
-| Gates       | plan-mode, drift-gate, rule-10, workerd, threat-model, docs-generated             |
-| Human input | none                                                                              |
-| Repo        | `vladzaharia/polaris-key`                                                         |
+| Field       | Value                                                                                                                    |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | LK: Polaris Locker                                                                                                       |
+| Size        | 0.75–1 engineer-weeks                                                                                                    |
+| Depends on  | [LK-00](LK-00-polaris-locker-plan.md), [LK-03](LK-03-customer-host-and-origin.md)                                        |
+| Unblocks    | [I-38a](I-38a-hosted-worker-pages-locker.md), [PX-14a](PX-14a-card-header-licence-consent.md), [LK-11](LK-11-cutover.md) |
+| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                    |
+| Plan mode   | yes: executes plans/LK-00.md                                                                                             |
+| Gates       | plan-mode, drift-gate, rule-10, workerd, threat-model, docs-generated                                                    |
+| Human input | none                                                                                                                     |
+| Repo        | `vladzaharia/polaris-key`                                                                                                |
 
 ## Goal
 

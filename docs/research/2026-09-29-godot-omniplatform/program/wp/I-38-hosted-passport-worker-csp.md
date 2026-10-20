@@ -1,16 +1,18 @@
-# I-38 Hosted passport and Worker CSP image origin
+# I-38 Dropped (widened 2026-10-19 into I-38a): Hosted passport and Worker CSP image origin
 
-| Field       | Value                                                                                     |
-| ----------- | ----------------------------------------------------------------------------------------- |
-| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16)                        |
-| Size        | 0.4–0.8 engineer-weeks                                                                    |
-| Depends on  | [P0-38](P0-38-authcard-in-ui-auth-ux-40.md), [I-37](I-37-device-code-explicit-confirm.md) |
-| Unblocks    | [I-39](I-39-emails-brand-v2.md)                                                           |
-| Role        | `pkey-implementer`                                                                        |
-| Plan mode   | no (no wire change)                                                                       |
-| Gates       | ui-snapshots, console-csp-parity                                                          |
-| Human input | none                                                                                      |
-| Repo        | `vladzaharia/polaris-key`                                                                 |
+| Field       | Value                                                              |
+| ----------- | ------------------------------------------------------------------ |
+| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) |
+| Size        | 0.4–0.8 engineer-weeks                                             |
+| Depends on  | none                                                               |
+| Unblocks    | none                                                               |
+| Role        | `pkey-implementer`                                                 |
+| Plan mode   | no (no wire change)                                                |
+| Gates       | ui-snapshots, console-csp-parity                                   |
+| Human input | none                                                               |
+| Repo        | `vladzaharia/polaris-key`                                          |
+
+> **Superseded 2026-10-19 by [I-38a](I-38a-hosted-worker-pages-locker.md), which widens the scope to all Worker sign-in pages and drops the I-37 dependency. This brief stays as the original spec.**
 
 ## Goal
 

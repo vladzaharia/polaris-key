@@ -278,7 +278,15 @@
       "source": "_brand/sections/admin-1/changes.json [licenses.list]",
       "area": "admin-1",
       "resolution": "applied-to-docs-only",
-      "owners": ["LX-30", "LX-13", "LX-15", "LX-38", "LX-41", "LX-29", "P0-29"],
+      "owners": [
+        "LX-30",
+        "LX-13",
+        "PX-28b",
+        "LX-38",
+        "LX-41",
+        "LX-29",
+        "P0-29"
+      ],
       "built": "mockup-only",
       "evidence": "searched packages/admin/src for 'workbench': nothing; ST-48/LX-13.. todo",
       "exempt": "doc/mockup edit applied"
@@ -1470,7 +1478,7 @@
       "source": "_brand/sections/auth/changes.json [docs/design/SIGN-IN.md#31-the-card]",
       "area": "auth",
       "resolution": "applied-to-docs-only",
-      "owners": ["I-38"],
+      "owners": ["I-38a"],
       "built": "mockup-only",
       "evidence": "derived: target=docs/design/SIGN-IN.md#31-the-card; res=E2: applied (threshold 960 px landscape per B8, not 840; art 16:10; su; briefs citing=I-38",
       "exempt": "doc/mockup edit applied"
@@ -1494,7 +1502,7 @@
       "source": "_brand/sections/auth/changes.json [identity.sign-in]",
       "area": "auth",
       "resolution": "applied-to-docs-only",
-      "owners": ["I-29", "I-30", "I-32", "I-08", "PX-14"],
+      "owners": ["I-29", "I-30", "I-32", "I-08", "PX-14a"],
       "built": "mockup-only",
       "evidence": "derived: target=identity.sign-in; res=E2: deferred(mockup edit owned by the mockups editor) ;; E5: applied (; briefs citing=none",
       "exempt": "doc/mockup edit applied"
@@ -1518,7 +1526,7 @@
       "source": "_brand/sections/auth/changes.json [identity.consent]",
       "area": "auth",
       "resolution": "applied-to-docs-only",
-      "owners": ["I-34", "I-08", "PX-14"],
+      "owners": ["I-34", "I-08", "PX-14a", "PX-14b"],
       "built": "mockup-only",
       "evidence": "derived: target=identity.consent; res=E2: deferred(mockup edit owned by the mockups editor) ;; E5: applied (; briefs citing=none",
       "exempt": "doc/mockup edit applied"
@@ -1554,7 +1562,7 @@
       "source": "_brand/sections/auth/changes.json [docs/design/SIGN-IN.md#36-licensechoicestep (Full row, rule 5, rule 7)]",
       "area": "auth",
       "resolution": "applied-to-docs-only",
-      "owners": ["I-38"],
+      "owners": ["I-38a"],
       "built": "mockup-only",
       "evidence": "derived: target=docs/design/SIGN-IN.md#36-licensechoicestep (Full row, rule 5, rule 7); res=E2: applied (B8 DL6 neutral callout for all refusals, no disabled-prim; briefs citing=I-38",
       "exempt": "doc/mockup edit applied"
@@ -1602,7 +1610,7 @@
       "source": "_brand/sections/auth/changes.json [docs/design/SIGN-IN.md#42-app-passthrough-device-code-and-qr + wp I-08]",
       "area": "auth",
       "resolution": "applied-to-WP",
-      "owners": ["I-08", "I-37", "PX-14"],
+      "owners": ["I-08", "I-37", "PX-14a"],
       "built": "mockup-only",
       "evidence": "derived: target=docs/design/SIGN-IN.md#42-app-passthrough-device-code-and-qr + wp I-08; res=E2: applied (B9 as a plain UX rule in SIGN-IN §4.2/D-22 and PORTAL §4.; briefs citing=I-08,I-37,PX-14"
     },
@@ -1613,7 +1621,7 @@
       "source": "_brand/sections/auth/changes.json [wp PX-14 (and P0-38)]",
       "area": "auth",
       "resolution": "applied-to-WP",
-      "owners": ["I-37", "PX-14", "P0-38"],
+      "owners": ["I-37", "PX-14a", "P0-38"],
       "built": "mockup-only",
       "evidence": "derived: target=wp PX-14 (and P0-38); res=E2: deferred(wp-brief edit owned by E4; acceptance additions forced co; briefs citing=I-37,PX-14"
     },
@@ -1624,7 +1632,7 @@
       "source": "_brand/sections/auth/changes.json [wp P0-38 (UX-43 Worker twin) + packages/worker/src/securityHeaders.ts ]",
       "area": "auth",
       "resolution": "applied-to-WP",
-      "owners": ["I-38", "P0-38", "PX-14"],
+      "owners": ["I-38a", "P0-38", "PX-14a"],
       "built": "mockup-only",
       "evidence": "derived: target=wp P0-38 (UX-43 Worker twin) + packages/worker/src/securityHeaders.ts ; res=E2: applied (Worker CSP image origin via cspImageOrigin(), script-free; briefs citing=I-38,P0-38"
     },
@@ -1652,7 +1660,8 @@
         "I-30",
         "I-32",
         "I-08",
-        "PX-14",
+        "PX-14a",
+        "PX-14b",
         "I-34",
         "I-35",
         "I-14",
@@ -1670,7 +1679,7 @@
       "source": "_brand/sections/auth/changes.json [wp PX-14 + wp PX-12 + wp PX-21 + wp ST-30]",
       "area": "auth",
       "resolution": "applied-to-WP",
-      "owners": ["PX-12", "PX-14", "PX-21", "ST-30"],
+      "owners": ["PX-12", "PX-14a", "PX-21", "ST-30"],
       "built": "mockup-only",
       "evidence": "derived: target=wp PX-14 + wp PX-12 + wp PX-21 + wp ST-30; res=E2: deferred(wp-brief edit owned by E4; acceptance additions forced co; briefs citing=PX-12,PX-14,PX-21,ST-30"
     },
@@ -2377,7 +2386,7 @@
       "owners": [
         "LX-30",
         "LX-13",
-        "LX-15",
+        "PX-28b",
         "LX-38",
         "LX-41",
         "LX-29",
@@ -2423,7 +2432,7 @@
       "source": "_brand/sections/overview/changes.json [docs/design/SIGN-IN.md §3.1; PX-12, PX-14, P0-38 briefs; dx-mockups id]",
       "area": "overview",
       "resolution": "merged-into auth-01",
-      "owners": ["PX-12", "PX-14", "P0-38", "I-38"],
+      "owners": ["PX-12", "PX-14a", "P0-38", "I-38a"],
       "built": "mockup-only",
       "evidence": "derived: target=docs/design/SIGN-IN.md §3.1; PX-12, PX-14, P0-38 briefs; dx-mockups id; res=E2: merged-into(auth-01) (840 px threshold dropped: B8 sets landscape ; briefs citing=none",
       "exempt": "doc/mockup edit applied"
@@ -2660,7 +2669,7 @@
       "source": "_brand/sections/portal/changes.json [PX-28]",
       "area": "portal",
       "resolution": "applied-to-WP",
-      "owners": ["MO-06", "PX-28"],
+      "owners": ["MO-06", "PX-28a"],
       "built": "mockup-only",
       "evidence": "PX-28 todo; MO-06 done only covers devices/activation moments; no license page v2 in packages/admin/src/portal/pages"
     },
@@ -2682,7 +2691,7 @@
       "source": "_brand/sections/portal/changes.json [PX-14]",
       "area": "portal",
       "resolution": "applied-to-WP",
-      "owners": ["PX-14"],
+      "owners": ["PX-14a"],
       "built": "mockup-only",
       "evidence": "derived: target=PX-14; res=E2: deferred(wp-brief edit owned by E4; matching spec text applied in ; briefs citing=PX-14"
     },
@@ -2693,7 +2702,7 @@
       "source": "_brand/sections/portal/changes.json [LX-15]",
       "area": "portal",
       "resolution": "applied-to-WP",
-      "owners": ["LX-15"],
+      "owners": ["PX-28b"],
       "built": "mockup-only",
       "evidence": "derived: target=LX-15; res=E2: deferred(wp-brief edit owned by E4; matching spec text applied in ; briefs citing=LX-15"
     },
@@ -2739,8 +2748,8 @@
       "resolution": "applied-to-docs-only",
       "owners": [
         "PX-27",
-        "PX-28",
-        "LX-15",
+        "PX-28a",
+        "PX-28b",
         "ST-36",
         "P0-36",
         "LX-38",
@@ -2761,7 +2770,7 @@
       "source": "_brand/sections/portal/changes.json [dx-mockups portal.activate, portal.free-device, portal.download (new)]",
       "area": "portal",
       "resolution": "applied-to-docs-only",
-      "owners": ["PX-29", "LX-38", "PX-W19", "LX-15", "P0-36", "P2-13"],
+      "owners": ["PX-29", "LX-38", "PX-W19", "PX-28b", "P0-36", "P2-13"],
       "built": "mockup-only",
       "evidence": "derived: target=dx-mockups portal.activate, portal.free-device, portal.download (new); res=E2: deferred(mockup edit owned by the mockups editor) ;; E5: applied (; briefs citing=none",
       "exempt": "doc/mockup edit applied"
@@ -2786,15 +2795,17 @@
       "area": "portal",
       "resolution": "applied-to-docs-only",
       "owners": [
-        "PX-31",
+        "PX-31a",
+        "PX-31b",
         "I-34",
         "F-33",
         "PX-W19",
         "PX-27",
-        "LX-15",
+        "PX-28b",
         "P0-36",
         "LX-38",
-        "PX-32",
+        "PX-32a",
+        "PX-32b",
         "PS-05b",
         "PS-12"
       ],
@@ -2809,7 +2820,7 @@
       "source": "_brand/sections/portal/changes.json [PX-31]",
       "area": "portal",
       "resolution": "applied-to-WP",
-      "owners": ["PX-31"],
+      "owners": ["PX-31a"],
       "built": "mockup-only",
       "evidence": "derived: target=PX-31; res=E2: deferred(new WP registration owned by E4; the spec text is applied; briefs citing=PX-31"
     },
@@ -2820,7 +2831,7 @@
       "source": "_brand/sections/portal/changes.json [PX-32]",
       "area": "portal",
       "resolution": "applied-to-WP",
-      "owners": ["PX-32"],
+      "owners": ["PX-32a", "PX-32b"],
       "built": "mockup-only",
       "evidence": "derived: target=PX-32; res=E2: deferred(new WP registration owned by E4; the spec text is applied; briefs citing=PX-32"
     },
@@ -4571,7 +4582,7 @@
       "gap": "owner-wrong-scope",
       "resolvedBy": ["UK-58"],
       "resolution": "Flip the shared ui/Button for the console AND the portal; PX-26..PX-32 must not reintroduce an accent primary.",
-      "owners": ["UK-58", "PX-30", "PX-31"],
+      "owners": ["UK-58", "PX-30", "PX-31a"],
       "built": "mockup-only",
       "evidence": "packages/admin/src/ui/Button.tsx shared by portal; primary = section/core accent today"
     },
@@ -4581,7 +4592,7 @@
       "title": "Hosted sign-in (Worker HTML) primary is neutral ink",
       "source": "_brand/DECISIONS.md B2",
       "area": "decisions",
-      "owners": ["I-38", "PX-12", "P0-38"],
+      "owners": ["I-38a", "PX-12", "P0-38"],
       "built": "mockup-only",
       "evidence": "packages/worker/src/core/brandHtml.ts BRAND_PAGE_CSS (single <style>) still accent-primary; I-38/PX-12 todo"
     },
@@ -5060,7 +5071,7 @@
       "title": "No floating header bar",
       "source": "_brand/DECISIONS.md B6",
       "area": "decisions",
-      "owners": ["ST-48", "PX-31"],
+      "owners": ["ST-48", "PX-31a"],
       "built": "mockup-only",
       "evidence": "no assertion; portal header docked (PortalShell.tsx)"
     },
@@ -5070,7 +5081,7 @@
       "title": "No phone tabs in a second header row (portal keeps bottom bar)",
       "source": "_brand/DECISIONS.md B6",
       "area": "decisions",
-      "owners": ["PX-31", "PX-27"],
+      "owners": ["PX-31a", "PX-27"],
       "built": "built",
       "evidence": "packages/admin/src/portal/components/PortalShell.tsx:150 fixed bottom bar desk:hidden"
     },
@@ -5080,7 +5091,7 @@
       "title": "No chartreuse fills in the core-violet portal",
       "source": "_brand/DECISIONS.md B6",
       "area": "decisions",
-      "owners": ["PX-30", "PX-31"],
+      "owners": ["PX-30", "PX-31a"],
       "built": "partial",
       "evidence": "no lint; portal uses core accent but chartreuse use not asserted"
     },
@@ -5203,7 +5214,7 @@
       "title": "Hosted card uses neutral ink primary",
       "source": "_brand/DECISIONS.md B8",
       "area": "decisions",
-      "owners": ["I-38", "PX-12"],
+      "owners": ["I-38a", "PX-12"],
       "built": "mockup-only",
       "evidence": "packages/worker/src/core/brandHtml.ts BRAND_PAGE_CSS accent primary"
     },
@@ -5213,7 +5224,7 @@
       "title": "DL6 neutral callout for ALL refusals (device limit, all-full, email mismatch, key-entry limit)",
       "source": "_brand/DECISIONS.md B8",
       "area": "decisions",
-      "owners": ["PX-12", "PX-15", "I-38"],
+      "owners": ["PX-12", "PX-15", "I-38a"],
       "built": "mockup-only",
       "evidence": "packages/worker/src/services/identity/licenseChoice.ts, portal/index.ts: refusal copy exists, not DL6 callout"
     },
@@ -5233,7 +5244,7 @@
       "title": "Passport = neutral SUNKEN identity pane in both themes",
       "source": "_brand/DECISIONS.md B8",
       "area": "decisions",
-      "owners": ["I-38"],
+      "owners": ["I-38a"],
       "built": "mockup-only",
       "evidence": "searched worker/src/services/identity for passport: nothing"
     },
@@ -5243,7 +5254,7 @@
       "title": "Two panes ONLY landscape >=960 px; never portrait/tablet-portrait",
       "source": "_brand/DECISIONS.md B8",
       "area": "decisions",
-      "owners": ["I-38"],
+      "owners": ["I-38a"],
       "built": "mockup-only",
       "evidence": "searched: nothing"
     },
@@ -5253,7 +5264,7 @@
       "title": "Developer and device on separate lines; no eyebrow; full-width trust-receipt footer",
       "source": "_brand/DECISIONS.md B8",
       "area": "decisions",
-      "owners": ["I-38", "PX-14"],
+      "owners": ["I-38a", "PX-14a"],
       "built": "mockup-only",
       "evidence": "searched: nothing"
     },
@@ -5263,7 +5274,7 @@
       "title": "<img> art same-origin: Worker CSP img-src widened exactly like the app policy via cspImageOrigin()",
       "source": "_brand/DECISIONS.md B8",
       "area": "decisions",
-      "owners": ["I-38"],
+      "owners": ["I-38a"],
       "built": "mockup-only",
       "evidence": "packages/worker/src/securityHeaders.ts:50 app policy has IMG_ORIGIN; hosted pages (core/brandHtml.ts, securityHeaders.ts:96 \"img-src 'self' data:\") do not"
     },
@@ -5273,7 +5284,7 @@
       "title": "No inline style/script on hosted pages",
       "source": "_brand/DECISIONS.md B8",
       "area": "decisions",
-      "owners": ["I-38"],
+      "owners": ["I-38a"],
       "built": "built",
       "evidence": "packages/worker/src/core/brandHtml.ts:11 pages are script-free, no style= attribute, one <style>"
     },
@@ -5283,7 +5294,7 @@
       "title": "Key on-ramp and Done header \"<Product> · <Developer>\" (no \"wants you to sign in\")",
       "source": "_brand/DECISIONS.md B8",
       "area": "decisions",
-      "owners": ["PX-12", "PX-14", "I-38"],
+      "owners": ["PX-12", "PX-14a", "I-38a"],
       "built": "mockup-only",
       "evidence": "packages/brand/kit-copy/en.json:1380 still \"{app} wants you to sign in\"; worker/src/services/identity/passthrough/request.ts:4 same"
     },
@@ -5293,7 +5304,7 @@
       "title": "Consent Allow/Deny equal size, scopes listed before the buttons",
       "source": "_brand/DECISIONS.md B8",
       "area": "decisions",
-      "owners": ["PX-14", "I-34"],
+      "owners": ["PX-14a", "PX-14b", "I-34"],
       "built": "mockup-only",
       "evidence": "todo owners; not verified"
     },
@@ -5303,7 +5314,7 @@
       "title": "Provider button fills only from Apple/Google/Steam allowed sets, never the host tint",
       "source": "_brand/DECISIONS.md B8",
       "area": "decisions",
-      "owners": ["PX-12", "I-38"],
+      "owners": ["PX-12", "I-38a"],
       "built": "mockup-only",
       "evidence": "todo owners; not verified"
     },
@@ -5313,7 +5324,7 @@
       "title": "Phone-only lilac hairline rejected",
       "source": "_brand/DECISIONS.md B8",
       "area": "decisions",
-      "owners": ["I-38", "PX-12"],
+      "owners": ["I-38a", "PX-12"],
       "built": "mockup-only",
       "evidence": "not verified"
     },
@@ -5323,7 +5334,7 @@
       "title": "Sign-in star field stays",
       "source": "_brand/DECISIONS.md B8",
       "area": "decisions",
-      "owners": ["I-38", "PX-12"],
+      "owners": ["I-38a", "PX-12"],
       "built": "partial",
       "evidence": "packages/worker/src/core/brandHtml.ts is the sign-in HTML base; star field presence not verified"
     },
@@ -5356,7 +5367,7 @@
       "gap": "needs-ux-gate",
       "resolvedBy": ["I-37"],
       "resolution": "Negative test: the device-code page cannot name the product before the code resolves.",
-      "owners": ["I-37", "PX-14"],
+      "owners": ["I-37", "PX-14a"],
       "built": "partial",
       "evidence": "not verified in worker/src/services/identity/portal/deviceLogin.ts"
     },
@@ -5608,7 +5619,7 @@
       "title": "Docked portal header",
       "source": "_brand/DECISIONS.md B12",
       "area": "decisions",
-      "owners": ["PX-31", "PX-27"],
+      "owners": ["PX-31a", "PX-27"],
       "built": "built",
       "evidence": "packages/admin/src/portal/components/PortalShell.tsx"
     },
@@ -5618,7 +5629,7 @@
       "title": "H1 48/52 desktop, 32/36 phone, no full stop, no slogan label",
       "source": "_brand/DECISIONS.md B12",
       "area": "decisions",
-      "owners": ["PX-27", "PX-31"],
+      "owners": ["PX-27", "PX-31a"],
       "built": "mockup-only",
       "evidence": "portal pages not at display scale (searched portal/pages for text-5xl: nothing)"
     },
@@ -5638,7 +5649,7 @@
       "title": "No chartreuse in the portal",
       "source": "_brand/DECISIONS.md B12",
       "area": "decisions",
-      "owners": ["PX-30", "PX-31"],
+      "owners": ["PX-30", "PX-31a"],
       "built": "partial",
       "evidence": "not asserted by any test"
     },
@@ -5648,7 +5659,7 @@
       "title": "Account nav: Profile - Sign-in methods - Connected apps - Packages - Where you are signed in - Appearance - Your data",
       "source": "_brand/DECISIONS.md B12",
       "area": "decisions",
-      "owners": ["PX-31", "PX-W19", "I-34"],
+      "owners": ["PX-31a", "PX-31b", "PX-W19", "I-34"],
       "built": "partial",
       "evidence": "portal/components/account/SessionsCard.tsx (\"Where you're signed in\") built; Connected apps/Packages/Your data pending"
     },
@@ -5658,7 +5669,7 @@
       "title": "Package tokens ONLY in Account > Packages + one pointer row on product page",
       "source": "_brand/DECISIONS.md B12",
       "area": "decisions",
-      "owners": ["PX-31", "PX-28"],
+      "owners": ["PX-31a", "PX-28a"],
       "built": "partial",
       "evidence": "portal/components/product/ PackageAccessCard exists on product page (PX-11 done); not moved"
     },
@@ -5668,7 +5679,7 @@
       "title": "Lapsed page: state once, no \"Not included\" row, Renew only in License card",
       "source": "_brand/DECISIONS.md B12",
       "area": "decisions",
-      "owners": ["PX-28"],
+      "owners": ["PX-28a"],
       "built": "mockup-only",
       "evidence": "PX-28 todo"
     },
@@ -5688,7 +5699,7 @@
       "title": "Take/Activate: account row, anti-phishing line on device code, \"No license needed\" for open products, no Add-on for store-only listings, focus to Open after claim, state checklist p246",
       "source": "_brand/DECISIONS.md B12",
       "area": "decisions",
-      "owners": ["PX-29", "PX-12", "I-37", "PX-32"],
+      "owners": ["PX-29", "PX-12", "I-37", "PX-32a"],
       "built": "mockup-only",
       "evidence": "portal/components/ActivateDialog.tsx pre-v2; I-37/PX-29 todo"
     },
@@ -7841,7 +7852,7 @@
       "title": "Model",
       "source": "docs/design/PORTAL.md 3.1 Model",
       "area": "PORTAL",
-      "owners": ["PX-W12", "PX-W17", "PX-13", "I-05", "PX-W19", "PX-31"],
+      "owners": ["PX-W12", "PX-W17", "PX-13", "I-05", "PX-W19", "PX-31a"],
       "built": "partial",
       "evidence": "packages/admin/src/portal/components/account/SignInMethods.tsx, model/methods.ts",
       "note": "Account model: methods and profile built; connected products (Identity services) card absent from AccountPage SECTIONS."
@@ -7874,7 +7885,7 @@
       "title": "Entry points",
       "source": "docs/design/PORTAL.md 3.4 Entry points",
       "area": "PORTAL",
-      "owners": ["PX-W8", "PX-17", "PX-10", "PX-14"],
+      "owners": ["PX-W8", "PX-17", "PX-10", "PX-14a"],
       "built": "partial",
       "evidence": "packages/admin/src/portal/router.ts (activateLinkParams, free-device/download focused)",
       "note": "Free-device, activate deep link built; app sign-in /authorize entry (header) not."
@@ -7896,7 +7907,7 @@
       "title": "The login card",
       "source": "docs/design/PORTAL.md 4.1 The login card",
       "area": "PORTAL",
-      "owners": ["PX-05", "PX-12", "PX-14", "UK-02b"],
+      "owners": ["PX-05", "PX-12", "PX-14a", "UK-02b"],
       "built": "partial",
       "evidence": "packages/admin/src/portal/pages/SignInPage.tsx, components/signin/LoginCard.tsx, ProviderRow.tsx",
       "note": "Card with email + Continue, code step, provider row, license-key link built; identifier-first with passkey button/conditional UI, per-product providers, UsualMethodHint not (PX-12 todo)."
@@ -7962,7 +7973,7 @@
       "title": "App sign-in: the card header",
       "source": "docs/design/PORTAL.md 4.7 App sign-in: the card header",
       "area": "PORTAL",
-      "owners": ["PX-14", "PX-W13", "PX-33", "I-13", "I-16"],
+      "owners": ["PX-14a", "PX-W13", "PX-33", "I-13", "I-16"],
       "built": "mockup-only",
       "evidence": "packages/admin/src/portal/components/signin/LoginCard.tsx (only variant 'context')",
       "note": "App sign-in card header (app/device variants, AppConsent) not built. PX-33 optional cover parked."
@@ -7973,7 +7984,7 @@
       "title": "App sign-in: native app steps",
       "source": "docs/design/PORTAL.md 4.8 App sign-in: native app steps",
       "area": "PORTAL",
-      "owners": ["PX-14", "PX-12"],
+      "owners": ["PX-14a", "PX-12"],
       "built": "mockup-only",
       "evidence": "searched portal/ for AppConsent, native steps: nothing",
       "note": "Native app steps, consent, return screen not built."
@@ -7984,7 +7995,7 @@
       "title": "App sign-in: device code (TV, console)",
       "source": "docs/design/PORTAL.md 4.9 App sign-in: device code (TV, console)",
       "area": "PORTAL",
-      "owners": ["PX-14", "PX-15"],
+      "owners": ["PX-14a", "PX-15"],
       "built": "mockup-only",
       "evidence": "searched portal/ for device code panel, /tv: only worker oidc.ts has device flow",
       "note": "Device-code sign-in page (code panel, anti-phishing line per B12) not in portal."
@@ -8105,7 +8116,7 @@
       "title": "Product page",
       "source": "docs/design/PORTAL.md 4.20 Product page",
       "area": "PORTAL",
-      "owners": ["PX-04", "PX-09", "PX-18", "PX-28", "LX-15", "PX-W6"],
+      "owners": ["PX-04", "PX-09", "PX-18", "PX-28a", "PX-28b", "PX-W6"],
       "built": "partial",
       "evidence": "packages/admin/src/portal/pages/ProductPage.tsx, components/product/*",
       "note": "Header, SectionNav, LicenseCard, Devices, What's new, GetItPanel, help built; Get-it per platform (PX-09) todo, Cloud Sync card (PX-18) absent though 'sync' section routed, license v2 (PX-28) todo."
@@ -8172,9 +8183,9 @@
       "source": "docs/design/PORTAL.md 4.26 Account",
       "area": "PORTAL",
       "gap": "owner-wrong-scope",
-      "resolvedBy": ["PX-31"],
+      "resolvedBy": ["PX-31a"],
       "resolution": "Acceptance carries the full B12 account nav (Profile, Sign-in methods, Connected apps, Packages, Where you're signed in, Appearance, Your data) and PX-W19's emails Make primary, passkey Rename and Download my data.",
-      "owners": ["PX-07", "PX-13", "PX-22", "PX-W19", "PX-31"],
+      "owners": ["PX-07", "PX-13", "PX-22", "PX-W19", "PX-31a"],
       "built": "partial",
       "evidence": "packages/admin/src/portal/pages/AccountPage.tsx (SECTIONS: profile, methods, sessions, appearance, data)",
       "note": "Profile, methods w/ step-up, sessions, appearance, delete built; B12 nav (Connected apps, Packages) and connected products, emails Make primary, passkey Rename, Download my data absent (PX-W19/PX-31 todo; PX-25 dropped into PX-W19)."
@@ -8251,7 +8262,15 @@
       "title": "New components",
       "source": "docs/design/PORTAL.md 5.2 New components",
       "area": "PORTAL",
-      "owners": ["PX-01", "PX-05", "PX-12", "PX-14", "PX-15", "PX-18", "PX-21"],
+      "owners": [
+        "PX-01",
+        "PX-05",
+        "PX-12",
+        "PX-14a",
+        "PX-15",
+        "PX-18",
+        "PX-21"
+      ],
       "built": "partial",
       "evidence": "packages/admin/src/portal/components/ (PortalShell, AccountMenu, LoginCard, CardHeader, KeyField, SeatMeter, ProductArt, ... present)",
       "note": "Many components built; UsualMethodHint, AccountUpgrade, AppConsent, AddMethodNudge, LinkAccounts, DeviceApproval, EmailGate, ProfileImport, CloudSyncCard absent."
@@ -8263,9 +8282,9 @@
       "source": "docs/design/PORTAL.md 4.4 Product pages and focused flows (the lapsed-license page)",
       "area": "PORTAL",
       "gap": "needs-ux-gate",
-      "resolvedBy": ["PX-28"],
+      "resolvedBy": ["PX-28a"],
       "resolution": "Build the owner's 2026-10-08 lapsed-page decision that PORTAL 4.4 states: Updates ended once, no 'Not included' row, Renew only in the License card.",
-      "owners": ["PX-02", "PX-08", "PX-28"],
+      "owners": ["PX-02", "PX-08", "PX-28a"],
       "built": "partial",
       "evidence": "packages/admin/src/portal/model/library.ts (suspended, expired, etc.), components/ProductStatus.tsx",
       "note": "Status model built; B12 lapsed-page owner decision (state once, no 'Not included' row, Renew only in License card) belongs to PX-28 (todo)."
@@ -8491,7 +8510,15 @@
       "title": "Phase B: features on the new API, S-16 and S-17",
       "source": "docs/design/PORTAL.md 11.3 Phase B: features on the new API, S-16 and S-17",
       "area": "PORTAL",
-      "owners": ["PX-08", "PX-09", "PX-12", "PX-14", "PX-15", "PX-18", "PX-21"],
+      "owners": [
+        "PX-08",
+        "PX-09",
+        "PX-12",
+        "PX-14a",
+        "PX-15",
+        "PX-18",
+        "PX-21"
+      ],
       "built": "partial",
       "evidence": "graph.tsv: PX-09,12,14,15,18,21 todo; 08,10,11,13,16,17,20,22 done",
       "note": "Phase B half built; UI for sign-in v2, passthrough, after-sign-in, email gate, Cloud Sync, Get it complete still todo."
@@ -8546,7 +8573,7 @@
       "title": "Appendix C · Owner decisions applied (2026-10-04)",
       "source": "docs/design/PORTAL.md Appendix C · Owner decisions applied (2026-10-04)",
       "area": "PORTAL",
-      "owners": ["PX-12", "PX-13", "PX-14", "PX-15", "PX-W17"],
+      "owners": ["PX-12", "PX-13", "PX-14a", "PX-15", "PX-W17"],
       "built": "partial",
       "evidence": "see §4 items",
       "note": "Decisions 1-5,6,10 built; 7 (login v2), 8 (passthrough), 9 (nudge/approve) not."
@@ -9305,7 +9332,7 @@
       "title": "Portal license and devices",
       "source": "docs/design/ADMIN.md 6.10.3 License and devices",
       "area": "ADMIN",
-      "owners": ["PX-28", "LX-15"],
+      "owners": ["PX-28a", "PX-28b"],
       "built": "built",
       "evidence": "packages/admin/src/portal/pages/ProductPage.tsx, portal/components/product/",
       "note": "Product page, devices, license card built; v2 (What you own, duration) is PX-28/LX-15 (todo)."
@@ -9316,7 +9343,7 @@
       "title": "Portal downloads and Account",
       "source": "docs/design/ADMIN.md 6.10.4 Downloads and Account",
       "area": "ADMIN",
-      "owners": ["PX-09", "PX-31"],
+      "owners": ["PX-09", "PX-31a"],
       "built": "built",
       "evidence": "packages/admin/src/portal/pages/AccountPage.tsx, DownloadFlowPage.tsx",
       "note": "Built; Get it per channel (PX-09) and Account v3 (PX-31) todo."
@@ -9806,7 +9833,7 @@
       "title": "P1 First sign-in to activation and download",
       "source": "docs/design/EXPERIENCE.md P1 First sign-in from an app, through activation and download",
       "area": "EXPERIENCE",
-      "owners": ["PX-12", "PX-14", "PX-21", "I-37"],
+      "owners": ["PX-12", "PX-14a", "PX-21", "I-37"],
       "built": "partial",
       "evidence": "packages/admin/src/portal/components/signin/LoginCard.tsx, ActivateDialog.tsx, portal/pages/SignInPage.tsx",
       "note": "Card with methods/email code, Activate confirm (PX-17 done) built; AuthCard in ui/auth, email gate, passthrough header, license choice not (PX-12/14/21 todo). SIGN-IN.md owns detail."
@@ -9839,7 +9866,7 @@
       "title": "P4 What you own and devices",
       "source": "docs/design/EXPERIENCE.md P4 What you own, devices and the device limit",
       "area": "EXPERIENCE",
-      "owners": ["PX-28", "LX-15"],
+      "owners": ["PX-28a", "PX-28b"],
       "built": "partial",
       "evidence": "packages/admin/src/portal/components/product/DevicesCard.tsx, LicenseCard.tsx",
       "note": "Devices, This device, owner polish built; What you own is LX-15/PX-28 (todo)."
@@ -9850,7 +9877,7 @@
       "title": "P5 Account",
       "source": "docs/design/EXPERIENCE.md P5 Account",
       "area": "EXPERIENCE",
-      "owners": ["PX-13", "PX-22", "PX-31"],
+      "owners": ["PX-13", "PX-22", "PX-31a"],
       "built": "built",
       "evidence": "packages/admin/src/portal/pages/AccountPage.tsx, portal/components/account/, ProfileEditor.tsx",
       "note": "Methods, sessions, Profile/Avatar built; v3 composition PX-31 todo."
@@ -10070,7 +10097,7 @@
       "title": "Portal consolidation",
       "source": "docs/design/EXPERIENCE.md 10.2 Portal",
       "area": "EXPERIENCE",
-      "owners": ["PX-27", "PX-28", "PX-29", "PX-31"],
+      "owners": ["PX-27", "PX-28a", "PX-29", "PX-31a"],
       "built": "partial",
       "evidence": "packages/admin/src/portal/",
       "note": "Pill/facts sweeps and one device source built (ST-36 done); v2 composition todo."
@@ -10205,7 +10232,7 @@
       "owners": [
         "I-08",
         "I-09",
-        "PX-14",
+        "PX-14a",
         "PX-12",
         "P0-38",
         "I-10a",
@@ -10254,7 +10281,7 @@
       "title": "What a sign-in flow carries (flow record, binder, chosen licence)",
       "source": "docs/design/SIGN-IN.md §2.2",
       "area": "SIGN-IN",
-      "owners": ["I-08", "I-09", "PX-14"],
+      "owners": ["I-08", "I-09", "PX-14a"],
       "built": "partial",
       "evidence": "packages/worker/src/services/identity/passthrough/request.ts (handle, __Host-pk_req binder, device label, user code) and oidc.ts (__Host-pk_lcb binder on legacy flow) exist; no chosen-licence/consent state on a hosted-card flow record"
     },
@@ -10274,7 +10301,7 @@
       "title": "Two ways to integrate: hosted card (A) and kit/headless primitives (B)",
       "source": "docs/design/SIGN-IN.md §2.4",
       "area": "SIGN-IN",
-      "owners": ["PX-14", "I-10a", "I-10b", "UK-05", "I-36"],
+      "owners": ["PX-14a", "I-10a", "I-10b", "UK-05", "I-36"],
       "built": "mockup-only",
       "evidence": "searched packages/sdk-react/src/components/PolarisLogin.tsx, sdks/*/ui: no hosted passthrough card at /signin?request= and no presentation option"
     },
@@ -10294,7 +10321,7 @@
       "title": "The card: ui/auth/AuthCard (28.5rem, 56px app header, footer)",
       "source": "docs/design/SIGN-IN.md §3.1",
       "area": "SIGN-IN",
-      "owners": ["P0-38", "PX-12", "PX-14"],
+      "owners": ["P0-38", "PX-12", "PX-14a"],
       "built": "partial",
       "evidence": "packages/admin/src/portal/components/signin/LoginCard.tsx is the built LoginCard (header slot, footer, star field, morph); packages/admin/src/ui/auth does not exist (P0-38 todo); persistent \"<App> wants you to sign in\" header not hosted in portal"
     },
@@ -10345,7 +10372,7 @@
       "title": "LicenseChoiceStep (every app sign-in, row anatomy, create-new row)",
       "source": "docs/design/SIGN-IN.md §3.6",
       "area": "SIGN-IN",
-      "owners": ["PX-14", "I-08", "I-09", "LX-10"],
+      "owners": ["PX-14a", "I-08", "I-09", "LX-10"],
       "built": "partial",
       "evidence": "packages/worker/src/services/identity/licenseChoice.ts is a no-JS Worker page for the legacy /identity/auth flow only (I-26); hosted-card LicenseChoiceStep (PX-14) absent"
     },
@@ -10355,7 +10382,7 @@
       "title": "ReplaceDevice (in-card, one confirm, shared budget)",
       "source": "docs/design/SIGN-IN.md §3.7",
       "area": "SIGN-IN",
-      "owners": ["PX-14", "I-09"],
+      "owners": ["PX-14a", "I-09"],
       "built": "partial",
       "evidence": "packages/worker/src/services/identity/licenseChoice.ts has inline Replace a device / Least recent / Replace and continue on the legacy page; hosted-card step with morph absent"
     },
@@ -10365,7 +10392,7 @@
       "title": "ConsentStep (Continue to <App> as <name>?)",
       "source": "docs/design/SIGN-IN.md §3.8",
       "area": "SIGN-IN",
-      "owners": ["PX-14", "I-34", "I-08"],
+      "owners": ["PX-14a", "PX-14b", "I-34", "I-08"],
       "built": "partial",
       "evidence": "packages/worker/src/services/identity/passthrough/routes.ts (GET /api/signin/requests/:handle/consent API); no portal UI (searched admin/src/portal for Consent: nothing)"
     },
@@ -10375,7 +10402,15 @@
       "title": "KeyStep (key entry before/after auth, entry limit, Continue without account)",
       "source": "docs/design/SIGN-IN.md §3.9",
       "area": "SIGN-IN",
-      "owners": ["PX-17", "PX-W9", "PX-23", "PX-12", "PX-14", "UK-42", "UK-43"],
+      "owners": [
+        "PX-17",
+        "PX-W9",
+        "PX-23",
+        "PX-12",
+        "PX-14a",
+        "UK-42",
+        "UK-43"
+      ],
       "built": "partial",
       "evidence": "packages/admin/src/portal/pages/SignInPage.tsx KeyStep, packages/admin/src/portal/components/ActivateDialog.tsx (key_entry_limit outcome, 'Add your key here, then you go back to signing in'), packages/admin/src/portal/carriedKey.ts; in-card 'Add and use on thi..."
     },
@@ -10385,7 +10420,7 @@
       "title": "ReturnStep variants (<Product> is yours, Return to app)",
       "source": "docs/design/SIGN-IN.md §3.10",
       "area": "SIGN-IN",
-      "owners": ["PX-14", "I-08", "I-15"],
+      "owners": ["PX-14a", "PX-14b", "I-08", "I-15"],
       "built": "mockup-only",
       "evidence": "searched packages/admin/src/portal, worker/src/services/identity: no ReturnStep"
     },
@@ -10415,7 +10450,7 @@
       "title": "Worker pages: renderAuthCard(), no eyebrow, request-handle header",
       "source": "docs/design/SIGN-IN.md §3.13",
       "area": "SIGN-IN",
-      "owners": ["P0-38", "I-07", "PX-14"],
+      "owners": ["P0-38", "I-07", "PX-14a"],
       "built": "partial",
       "evidence": "packages/worker/src/core/brandHtml.ts exports renderBrandPage only (no renderAuthCard); card pages use copy keys (card/emailSignIn.ts, portal/auth.ts 'took too long', licenseChoice.ts ACCOUNT_DISABLED_HEADING); oidc.ts still 'Authorize <Product>' titles"
     },
@@ -10521,7 +10556,7 @@
       "title": "Storyboard: App passthrough, web redirect",
       "source": "docs/design/SIGN-IN.md §4.3",
       "area": "SIGN-IN",
-      "owners": ["I-08", "I-21", "PX-14"],
+      "owners": ["I-08", "I-21", "PX-14a"],
       "built": "partial",
       "evidence": "packages/worker/src/services/identity/oidc.ts (legacy /<p>/identity/authorize); hosted card with app header + choice + consent absent"
     },
@@ -10561,7 +10596,7 @@
       "title": "Storyboard: license choice 0/1/many/full/Replace",
       "source": "docs/design/SIGN-IN.md §4.7",
       "area": "SIGN-IN",
-      "owners": ["PX-14", "I-09", "LX-10", "PX-20"],
+      "owners": ["PX-14a", "I-09", "LX-10", "PX-20"],
       "built": "partial",
       "evidence": "packages/worker/src/services/identity/licenseChoice.ts (legacy page only)"
     },
@@ -10611,7 +10646,7 @@
       "title": "Storyboard: expired or used links, Identity off",
       "source": "docs/design/SIGN-IN.md §4.12",
       "area": "SIGN-IN",
-      "owners": ["I-07", "PX-W17", "PX-14"],
+      "owners": ["I-07", "PX-W17", "PX-14a"],
       "built": "partial",
       "evidence": "packages/worker/src/services/identity/card/emailSignIn.ts (expired/used pages, signin.off.*); product-context card (identity_disabled frame 16) not in portal"
     },
@@ -10664,7 +10699,7 @@
       "title": "The integrated web flow (one card start to finish)",
       "source": "docs/design/SIGN-IN.md §4.16",
       "area": "SIGN-IN",
-      "owners": ["PX-14", "I-08", "PX-12"],
+      "owners": ["PX-14a", "I-08", "PX-12"],
       "built": "mockup-only",
       "evidence": "searched admin/src/portal for /signin?request=: SignInPage.tsx has no request handle handling"
     },
@@ -10717,7 +10752,7 @@
       "title": "Wire for planned steps (capabilities, me, consent, approve...)",
       "source": "docs/design/SIGN-IN.md §6.1",
       "area": "SIGN-IN",
-      "owners": ["I-08", "PX-14", "PX-15", "PX-W13", "PX-W14"],
+      "owners": ["I-08", "PX-14a", "PX-15", "PX-W13", "PX-W14"],
       "built": "partial",
       "evidence": "GET /api/capabilities, /api/signin/requests/*, device-login routes exist (worker/src/services/identity/portal/api.ts); I-08 endpoints do not"
     },
@@ -10737,7 +10772,7 @@
       "title": "Changes to planned contracts",
       "source": "docs/design/SIGN-IN.md §6.3",
       "area": "SIGN-IN",
-      "owners": ["I-08", "I-13", "I-15", "PX-14"],
+      "owners": ["I-08", "I-13", "I-15", "PX-14a", "PX-14b"],
       "built": "mockup-only",
       "evidence": "contract amendments to unbuilt packages"
     },
@@ -11923,7 +11958,7 @@
       "title": "Portal and Worker sign-in flows (card, Worker pages, device code, licence choice)",
       "source": "docs/design/FLOWS.md §1.3 P-1..P-4",
       "area": "FLOWS",
-      "owners": ["PX-12", "P0-38", "PX-21", "I-07", "PX-14"],
+      "owners": ["PX-12", "P0-38", "PX-21", "I-07", "PX-14a"],
       "built": "partial",
       "evidence": "packages/admin/src/portal/pages/SignInPage.tsx; packages/worker/src/services/identity/licenseChoice.ts"
     },
@@ -11943,7 +11978,7 @@
       "title": "Portal flows: linked methods, library empty, Discover, jump, approve device, passthrough",
       "source": "docs/design/FLOWS.md §1.3 P-11..P-16",
       "area": "FLOWS",
-      "owners": ["PX-13", "PX-15", "PX-14", "PX-21", "PX-16"],
+      "owners": ["PX-13", "PX-15", "PX-14a", "PX-21", "PX-16"],
       "built": "partial",
       "evidence": "packages/admin/src/portal/components/account/SignInMethods.tsx built; P-15/P-16 (approve, passthrough card) absent"
     },
@@ -14776,7 +14811,15 @@
       "area": "licenses",
       "surface": "console",
       "overlays": ["ST-48", "ST-50", "UK-58"],
-      "owners": ["LX-14", "LX-32", "LX-33", "LX-35", "LX-38", "LX-41", "LX-15"],
+      "owners": [
+        "LX-14",
+        "LX-32",
+        "LX-33",
+        "LX-35",
+        "LX-38",
+        "LX-41",
+        "PX-28b"
+      ],
       "built": "partial",
       "brandV2": "no",
       "evidence": "pages/license/LicenseRecord.tsx, LicenseTerms.tsx, LicenseConfig.tsx, LicenseDevices.tsx, LicenseKeys.tsx: record with terms/config overrides/devices exist; no limit-source table with per-field Override, Duration/keeps-last-version, add-ons, Automatic grant ca..."
@@ -14802,7 +14845,15 @@
       "area": "licenses",
       "surface": "console",
       "overlays": ["ST-48", "ST-50", "UK-58"],
-      "owners": ["LX-30", "LX-13", "LX-15", "LX-38", "LX-41", "LX-29", "P0-29"],
+      "owners": [
+        "LX-30",
+        "LX-13",
+        "PX-28b",
+        "LX-38",
+        "LX-41",
+        "LX-29",
+        "P0-29"
+      ],
       "built": "partial",
       "brandV2": "no",
       "evidence": "pages/license/LicensesPage.tsx: Holder column and holder/batch/tier facets, CSV, bulk disable/delete (LX-30 done); lacks tier pill on every row, duration line, resolved device limit, Automatic grant origin, 'Create keys in bulk' | brandV2=no: shell on font-bol..."
@@ -15188,7 +15239,7 @@
       "source": "mockups/screens/identity/identity.connected-apps.json",
       "area": "identity",
       "surface": "portal",
-      "owners": ["I-34", "I-11", "PX-31"],
+      "owners": ["I-34", "I-11", "PX-31a", "PX-31b"],
       "built": "mockup-only",
       "brandV2": "no",
       "evidence": "searched admin/src/portal for Connected apps / Change what: nothing; AccountPage uses account/SignInMethods.tsx and SessionsCard.tsx only; worker identity/passthrough/routes.ts serves the consent read API but no portal UI"
@@ -15291,7 +15342,7 @@
       "source": "mockups/screens/identity/identity.consent.json",
       "area": "identity",
       "surface": "portal",
-      "owners": ["I-34", "I-08", "PX-14", "I-37", "I-38", "P0-38"],
+      "owners": ["I-34", "I-08", "PX-14a", "PX-14b", "I-37", "I-38a", "P0-38"],
       "built": "mockup-only",
       "brandV2": "no",
       "evidence": "worker identity/passthrough/routes.ts serves GET /api/signin/requests/:handle/consent but portal/pages/SignInPage.tsx steps are methods|code|refused|key: no consent step UI"
@@ -15303,7 +15354,7 @@
       "source": "mockups/screens/identity/identity.device-code-states.json",
       "area": "identity",
       "surface": "dialog",
-      "owners": ["PX-14", "P0-38", "I-37", "I-38"],
+      "owners": ["PX-14a", "P0-38", "I-37", "I-38a"],
       "built": "partial",
       "brandV2": "no",
       "evidence": "worker identity/oidc.ts renderDeviceEntry: one generic \"isn't valid or has expired\" alert; no separate expired / too-many-tries callouts"
@@ -15315,7 +15366,7 @@
       "source": "mockups/screens/identity/identity.device-code.json",
       "area": "identity",
       "surface": "portal",
-      "owners": ["PX-14", "P0-38", "I-37", "I-38"],
+      "owners": ["PX-14a", "P0-38", "I-37", "I-38a"],
       "built": "partial",
       "brandV2": "no",
       "evidence": "worker identity/oidc.ts renderDeviceEntry (/identity/auth/device, script-free brand page); heading names the product, no big mono groups, no anti-phishing line"
@@ -15327,7 +15378,7 @@
       "source": "mockups/screens/identity/identity.device-confirm.json",
       "area": "identity",
       "surface": "portal",
-      "owners": ["I-37", "PX-14", "P0-38", "I-38"],
+      "owners": ["I-37", "PX-14a", "P0-38", "I-38a"],
       "built": "partial",
       "brandV2": "no",
       "evidence": "oidc.ts renderDeviceConfirmation: code/device/product table + 'Continue to sign in'; no 'Sign in on <device>?' with Deny (I-37 todo)"
@@ -15352,7 +15403,7 @@
       "source": "mockups/screens/identity/identity.finish.json",
       "area": "identity",
       "surface": "portal",
-      "owners": ["I-33", "PX-21", "I-37", "I-38", "P0-38"],
+      "owners": ["I-33", "PX-21", "I-37", "I-38a", "P0-38"],
       "built": "mockup-only",
       "brandV2": "no",
       "evidence": "worker identity/card/finish.ts is the session finish, not a profile step; SignInPage.tsx has no FinishStep (screen name, terms); searched 'Screen name': nothing"
@@ -15364,7 +15415,7 @@
       "source": "mockups/screens/identity/identity.key-step.json",
       "area": "identity",
       "surface": "portal",
-      "owners": ["PX-14", "I-08", "P0-38", "I-37", "I-38"],
+      "owners": ["PX-14a", "I-08", "P0-38", "I-37", "I-38a"],
       "built": "partial",
       "brandV2": "no",
       "evidence": "portal/pages/SignInPage.tsx step kind 'key' exists; header, entries meter and passport not per mockup"
@@ -15376,7 +15427,7 @@
       "source": "mockups/screens/identity/identity.refusals.json",
       "area": "identity",
       "surface": "dialog",
-      "owners": ["P0-38", "PX-14", "I-08", "I-15", "I-37", "I-38"],
+      "owners": ["P0-38", "PX-14a", "PX-14b", "I-08", "I-15", "I-37", "I-38a"],
       "built": "partial",
       "brandV2": "no",
       "evidence": "SignInPage.tsx has only a 'refused' step (disabled account); device-limit / all-full / other-email refusals are not on the hosted card"
@@ -15402,7 +15453,7 @@
       "area": "identity",
       "surface": "dialog",
       "overlays": ["ST-48"],
-      "owners": ["I-30", "I-29", "I-31", "I-37", "I-38", "P0-38"],
+      "owners": ["I-30", "I-29", "I-31", "I-37", "I-38a", "P0-38"],
       "built": "mockup-only",
       "brandV2": "no",
       "evidence": "searched SignInPage.tsx and worker identity/card/emailSignIn.ts for identifier routing to connections: nothing"
@@ -15419,9 +15470,9 @@
         "I-30",
         "I-32",
         "I-08",
-        "PX-14",
+        "PX-14a",
         "I-37",
-        "I-38",
+        "I-38a",
         "P0-38"
       ],
       "built": "partial",
@@ -16385,7 +16436,7 @@
       "area": "packages",
       "surface": "portal",
       "overlays": ["UK-58"],
-      "owners": ["F-33", "F-37", "F-34", "F-35", "PX-31"],
+      "owners": ["F-33", "F-37", "F-34", "F-35", "PX-31a", "PX-31b"],
       "built": "partial",
       "brandV2": "no",
       "evidence": "packages/admin/src/portal/components/product/PackageAccessCard.tsx (per-product card with feeds, tokens, setup, Create token); no Account -> Packages page grouped by product with combined setup"
@@ -16542,7 +16593,7 @@
       "source": "docs/design/mockups/screens/portal/portal.library",
       "area": "portal",
       "surface": "portal",
-      "owners": ["LX-15", "ST-36", "P0-36", "LX-38", "LX-39", "LX-10"],
+      "owners": ["PX-28b", "ST-36", "P0-36", "LX-38", "LX-39", "LX-10"],
       "built": "partial",
       "brandV2": "no",
       "evidence": "packages/admin/src/portal/pages/LibraryPage.tsx, components/LibraryTile.tsx, LibraryHero.tsx, AttentionShelf.tsx (ST-36 done: art tiles); no ink primary, no 'Missing a license?' strip (grep: nothing)"
@@ -16554,7 +16605,7 @@
       "source": "docs/design/mockups/screens/portal/portal.library-12",
       "area": "portal",
       "surface": "portal",
-      "owners": ["PX-27", "LX-15", "P0-36"],
+      "owners": ["PX-27", "PX-28b", "P0-36"],
       "built": "partial",
       "brandV2": "no",
       "evidence": "packages/admin/src/portal/components/LibraryToolbar.tsx, LibraryList.tsx, AttentionShelf.tsx exist; PX-27 (presence/count/dot) todo"
@@ -16590,7 +16641,7 @@
       "source": "docs/design/mockups/screens/portal/portal.discover-detail",
       "area": "portal",
       "surface": "portal",
-      "owners": ["PX-32", "PS-05b", "PS-12"],
+      "owners": ["PX-32a", "PX-32b", "PS-05b", "PS-12"],
       "built": "partial",
       "brandV2": "no",
       "evidence": "packages/admin/src/portal/pages/StorefrontPage.tsx (storefront page exists; grep 'decision'/'No license needed': nothing, so the one decision panel is not built)"
@@ -16626,7 +16677,7 @@
       "source": "docs/design/mockups/screens/portal/portal.download",
       "area": "portal",
       "surface": "portal",
-      "owners": ["PX-29", "P2-13", "LX-15"],
+      "owners": ["PX-29", "P2-13", "PX-28b"],
       "built": "partial",
       "brandV2": "no",
       "evidence": "packages/admin/src/portal/pages/DownloadFlowPage.tsx (focused flow, PX-10 done); no SHA-256/Copy row (grep: nothing, P2-13 todo)"
@@ -16638,7 +16689,7 @@
       "source": "docs/design/mockups/screens/portal/portal.free-device",
       "area": "portal",
       "surface": "portal",
-      "owners": ["PX-29", "LX-15", "P0-36"],
+      "owners": ["PX-29", "PX-28b", "P0-36"],
       "built": "partial",
       "brandV2": "no",
       "evidence": "packages/admin/src/portal/pages/FreeDevicePage.tsx (radio cards, 'Remove <device>' primary, least-recent preselected; PX-10 done); two-column short-desktop and identity-row frame are PX-29"
@@ -16650,7 +16701,7 @@
       "source": "docs/design/mockups/screens/portal/portal.license",
       "area": "portal",
       "surface": "portal",
-      "owners": ["ST-36", "LX-41", "LX-15", "P0-36", "LX-38", "P2-13"],
+      "owners": ["ST-36", "LX-41", "PX-28b", "P0-36", "LX-38", "P2-13"],
       "built": "partial",
       "brandV2": "no",
       "evidence": "packages/admin/src/portal/pages/ProductPage.tsx, components/product/{LicenseCard,GetItPanel,SectionNav,DevicesCard}.tsx; duration line/term block depend on LX-41/LX-15 (todo)"
@@ -16662,7 +16713,7 @@
       "source": "docs/design/mockups/screens/portal/portal.license-lapsed",
       "area": "portal",
       "surface": "portal",
-      "owners": ["LX-41", "LX-15", "P0-36"],
+      "owners": ["LX-41", "PX-28b", "P0-36"],
       "built": "partial",
       "brandV2": "no",
       "evidence": "packages/admin/src/portal/model/library.ts:611 formats 'Updates ended at <ver>' (derived client-side); Worker licenseState/keepVersion (LX-41) todo, so no real lapsed state/term block"
@@ -16674,7 +16725,7 @@
       "source": "docs/design/mockups/screens/portal/portal.account",
       "area": "portal",
       "surface": "portal",
-      "owners": ["PX-31", "I-34", "F-33", "PX-W19"],
+      "owners": ["PX-31a", "PX-31b", "I-34", "F-33", "PX-W19"],
       "built": "partial",
       "brandV2": "no",
       "evidence": "packages/admin/src/portal/pages/AccountPage.tsx SECTIONS = Profile, Sign-in methods, Where you're signed in, Appearance, Your data; Connected apps and Packages sections absent (I-34, F-33 todo); no display h1"
@@ -16793,7 +16844,7 @@
       "title": "Sign-in card: methods + code steps (SPA, key.plrs.im)",
       "source": "docs/design/SIGN-IN.md §3.1-3.4; identity.sign-in; portal.signin",
       "area": "hosted",
-      "owners": ["PX-12", "P0-38", "PX-14", "I-08"],
+      "owners": ["PX-12", "P0-38", "PX-14a", "I-08"],
       "built": "partial",
       "brandV2": "no",
       "evidence": "packages/admin/src/portal/pages/SignInPage.tsx + components/signin/LoginCard.tsx (built by PX-05/I-07/PX-W4, done); Worker routes packages/worker/src/services/identity/card/*; no AuthCard (grep AuthCard: nothing), primary is section accent not ink, no app head..."
@@ -16804,7 +16855,7 @@
       "title": "App-request header and passport pane (landscape >=960)",
       "source": "identity.sign-in, device-confirm, key-step; B8; I-38",
       "area": "hosted",
-      "owners": ["PX-14", "I-38", "P0-38", "PX-33"],
+      "owners": ["PX-14a", "I-38a", "P0-38", "PX-33"],
       "built": "mockup-only",
       "brandV2": "no",
       "evidence": "searched passport in packages/worker/src, admin/src: nothing; packages/worker/src/securityHeaders.ts brandedHtmlCsp() img-src 'self' data: only (no cspImageOrigin widening on branded pages; cspImageOrigin exists at :63 for the app policy)"
@@ -16815,7 +16866,7 @@
       "title": "Branded-page CSP img-src image-host origin",
       "source": "BRAND-TRANSITION B8; I-38",
       "area": "hosted",
-      "owners": ["I-38"],
+      "owners": ["I-38a"],
       "built": "mockup-only",
       "brandV2": "no",
       "evidence": "packages/worker/src/securityHeaders.ts:110 brandedHtmlCsp img-src 'self' data:, unchanged; test packages/worker/test/brandPages.test.ts has no img-src assertion"
@@ -16826,7 +16877,7 @@
       "title": "Device code: enter the code (script-free Worker page /device)",
       "source": "identity.device-code; SIGN-IN.md §3.13",
       "area": "hosted",
-      "owners": ["PX-14", "P0-38", "I-37"],
+      "owners": ["PX-14a", "P0-38", "I-37"],
       "built": "partial",
       "brandV2": "no",
       "evidence": "packages/worker/src/services/identity/oidc.ts renderDeviceEntry (~l.1870): script-free form, POST self, generic error; lacks the anti-phishing line ('Only use a code from your own product'), big mono groups, brand-v2 look (renderBrandPage from core/brandHtml.t..."
@@ -16837,7 +16888,7 @@
       "title": "Device code: wrong, expired, too many tries",
       "source": "identity.device-code-states",
       "area": "hosted",
-      "owners": ["PX-14", "P0-38"],
+      "owners": ["PX-14a", "P0-38"],
       "built": "partial",
       "brandV2": "no",
       "evidence": "packages/worker/src/services/identity/oidc.ts renderDeviceEntry: one generic 404 line in .alert (danger-subtle) for any bad code; no separate neutral DL6 expired or rate-limited frames"
@@ -16848,7 +16899,7 @@
       "title": "Sign in on <device>?: explicit confirm with Deny",
       "source": "identity.device-confirm; B9",
       "area": "hosted",
-      "owners": ["I-37", "PX-14", "P0-38"],
+      "owners": ["I-37", "PX-14a", "P0-38"],
       "built": "partial",
       "brandV2": "no",
       "evidence": "packages/worker/src/services/identity/oidc.ts renderDeviceConfirmation (~l.1802): 'Authorize <Product>', code/device/product dl, one 'Continue to sign in' button; no 'Sign in on <device>?', no Deny, no account row; test packages/worker/test/portalDeviceLogin.t..."
@@ -16859,7 +16910,7 @@
       "title": "Consent with partial grants (Allow/Deny equal)",
       "source": "identity.consent; SIGN-IN.md §3.8",
       "area": "hosted",
-      "owners": ["I-34", "I-08", "PX-14"],
+      "owners": ["I-34", "I-08", "PX-14a", "PX-14b"],
       "built": "mockup-only",
       "brandV2": "no",
       "evidence": "searched consent in packages/worker/src, admin/src: only passthrough anchor dry-run comments and no consent UI or granted-scopes store"
@@ -16870,7 +16921,7 @@
       "title": "License choice / Replace a device (Worker HTML)",
       "source": "SIGN-IN.md §3.7/3.14; identity.refusals",
       "area": "hosted",
-      "owners": ["I-08", "PX-14", "P0-38"],
+      "owners": ["I-08", "PX-14a", "P0-38"],
       "built": "built",
       "brandV2": "no",
       "evidence": "packages/worker/src/services/identity/licenseChoice.ts (I-26 done): radio rows, 'No free devices' tag, Replace a device details, Free a device link, Create new; styled by core/brandHtml.ts (violet accent, .choice-note in danger colour, not DL6 neutral); test p..."
@@ -16881,7 +16932,7 @@
       "title": "Key on-ramp (KeyStep)",
       "source": "identity.key-step",
       "area": "hosted",
-      "owners": ["PX-14", "I-08", "P0-38"],
+      "owners": ["PX-14a", "I-08", "P0-38"],
       "built": "partial",
       "brandV2": "no",
       "evidence": "packages/admin/src/portal/pages/SignInPage.tsx KeyStep (~l.750): key field, Continue carries key to #/?activate=; no '<Product> · <Developer>' header, no entries-left meter, no 'Sign in instead' link as specified"
@@ -16892,7 +16943,7 @@
       "title": "Refusals on the hosted card (device limit, all-full, other email, key entries used up)",
       "source": "identity.refusals; B8 DL6",
       "area": "hosted",
-      "owners": ["P0-38", "PX-14", "I-08", "I-15"],
+      "owners": ["P0-38", "PX-14a", "PX-14b", "I-08", "I-15"],
       "built": "partial",
       "brandV2": "no",
       "evidence": "packages/worker/src/services/identity/licenseChoice.ts (full / all-full variants), oidc.ts signInRefusalPage (:2406) and packages/admin/src/portal/pages/SignInPage.tsx RefusedStep; other-email and key-entries-used-up neutral callouts not found (grep otherEmail..."
@@ -16914,7 +16965,7 @@
       "title": "Magic-link landing and 'Confirm it was you' page (Worker)",
       "source": "SIGN-IN.md §3.4 link opened on another device",
       "area": "hosted",
-      "owners": ["PX-14", "P0-38"],
+      "owners": ["PX-14a", "P0-38"],
       "built": "built",
       "brandV2": "no",
       "evidence": "packages/worker/src/services/identity/card/emailSignIn.ts handleMagicLanding/handleMagicConfirm (~l.597-615) via renderBrandPage; old look; tests packages/worker/test/identityCardEmail.test.ts"
@@ -16925,7 +16976,7 @@
       "title": "Worker branded page shell (all server-rendered hosted/error pages)",
       "source": "core/brandHtml.ts renderBrandPage; admin/auth.ts; portal/auth.ts; card/http.ts",
       "area": "hosted",
-      "owners": ["P0-38", "I-38"],
+      "owners": ["P0-38", "I-38a"],
       "built": "built",
       "brandV2": "no",
       "evidence": "packages/worker/src/core/brandHtml.ts BRAND_PAGE_CSS: dark-first palette, accent button (var(--accent)), danger .alert, dl sunken; tests packages/worker/test/brandPages.test.ts; no ink primary / DL6 callout class"
@@ -16948,9 +16999,9 @@
       "source": "SIGN-IN.md §3.15",
       "area": "hosted",
       "gap": "no-owner",
-      "resolvedBy": ["I-39"],
+      "resolvedBy": ["LK-07b"],
       "resolution": "Emails on brand v2 and HTML snapshots: new package I-39.",
-      "owners": ["I-39"],
+      "owners": ["LK-07b"],
       "built": "built",
       "brandV2": "no",
       "evidence": "packages/worker/src/services/identity/portal/email.ts renderEmail: table layout, violet accent button (LIGHT.accent.violet.solid), dark palette via prefers-color-scheme, 'Wasn't you?' secure link; wordmark text or lockup image; no WP owns email brand-v2 (ink b..."
@@ -16962,7 +17013,7 @@
       "source": "SIGN-IN.md §3.4/§3.15; signin.email.*",
       "area": "hosted",
       "resolution": "Emails on brand v2 and HTML snapshots: new package I-39.",
-      "owners": ["PX-W7", "I-07", "I-39"],
+      "owners": ["PX-W7", "I-07", "LK-07b"],
       "built": "built",
       "brandV2": "no",
       "evidence": "packages/worker/src/services/identity/portal/email.ts sendSignInEmail: code in subject, large code first, Sign in button, 10-minute footer; test packages/worker/test/identityCardEmail.test.ts, portalEmailCode.test.ts"
@@ -16974,7 +17025,7 @@
       "source": "legacy portal link email",
       "area": "hosted",
       "resolution": "Emails on brand v2 and HTML snapshots: new package I-39.",
-      "owners": ["PX-W7", "I-39"],
+      "owners": ["PX-W7", "LK-07b"],
       "built": "built",
       "brandV2": "no",
       "evidence": "packages/worker/src/services/identity/portal/email.ts sendMagicLink (subject 'Sign in to Polaris Key')"
@@ -16986,7 +17037,7 @@
       "source": "SIGN-IN.md §3.15",
       "area": "hosted",
       "resolution": "Emails on brand v2 and HTML snapshots: new package I-39.",
-      "owners": ["PX-W7", "I-05", "I-39"],
+      "owners": ["PX-W7", "I-05", "LK-07b"],
       "built": "built",
       "brandV2": "no",
       "evidence": "packages/worker/src/services/identity/portal/notices.ts (newDeviceSignInNotice, signInMethodAdded/Removed, accountDeleted, accountsMerged/Separated); test packages/worker/test/portalNotices.test.ts"
@@ -16998,7 +17049,7 @@
       "source": "PORTAL.md notices",
       "area": "hosted",
       "resolution": "Emails on brand v2 and HTML snapshots: new package I-39.",
-      "owners": ["PX-W7", "LX-10", "I-39"],
+      "owners": ["PX-W7", "LX-10", "LK-07b"],
       "built": "built",
       "brandV2": "no",
       "evidence": "packages/worker/src/services/identity/portal/notices.ts (licenseAdded/Attached/KeyReplaced, deviceRemoved, licenseLinkSuperseded, Relinked*, MadeFloating, ReassignedAway, AssignedToYou)"
@@ -17010,7 +17061,7 @@
       "source": "identity portal download flow",
       "area": "hosted",
       "resolution": "Emails on brand v2 and HTML snapshots: new package I-39.",
-      "owners": ["PX-W7", "P2-13", "I-39"],
+      "owners": ["PX-W7", "P2-13", "LK-07b"],
       "built": "built",
       "brandV2": "no",
       "evidence": "packages/worker/src/services/identity/portal/notices.ts downloadLinkEmail (l.190)"
@@ -17022,9 +17073,9 @@
       "source": "packages/worker/test",
       "area": "hosted",
       "gap": "no-owner",
-      "resolvedBy": ["I-39"],
+      "resolvedBy": ["LK-07b"],
       "resolution": "Emails on brand v2 and HTML snapshots: new package I-39.",
-      "owners": ["I-39"],
+      "owners": ["LK-07b"],
       "built": "partial",
       "brandV2": "no",
       "evidence": "packages/worker/test/portalNotices.test.ts + __snapshots__/portalNotices.test.ts.snap snapshot subject+plain text of every notice template and the HTML of only 2 (licenseAdded, methodRemoved) plus dark-palette/escaping assertions; sign-in code/magic-link email..."
