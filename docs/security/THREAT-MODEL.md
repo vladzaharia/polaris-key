@@ -8679,6 +8679,60 @@ and `choice-*.json`.
 - **R1-07 for device code.** Device code's own binding is I-37's (it fails closed under D1.A);
   this section covers the web redirect only.
 
+### Platform → Connections: the operator's side of connections (I-31)
+
+The console adds, changes, turns off and deletes platform connections, claims their email domains
+and runs a test sign-in (`console/handlers/platformConnections.ts`,
+`services/identity/connections/{admin,testSignIn}.ts`). The attacker is a hostile or careless
+operator session, a stolen session, and a hostile issuer an operator is talked into adding.
+
+- **Authority.** Every route is the `platform` area (`ADMIN_ROUTES`, `rbac-route-areas.json`). A
+  change (add, change, delete, claim, verify, enforce, release) is a **step-up** write, and a
+  token reaches none of them. Discovery and the test are not step-up (they save nothing) but are
+  rate-limited per operator (`credentialCheck`, fail closed).
+- **Secrets.** A client secret goes in once, is sealed under PLATFORM_KEK with
+  `connectionSecretContext(id)`, and is never read back: views carry `hasSecret`, the audit rows
+  carry the same boolean, and a test's draft secret is sealed to its flow and lives only in the
+  single-use store for ten minutes. `test/connectionsAdmin.test.ts` greps responses, rows and
+  audit text for the plaintext.
+- **Issuers (SSRF).** `isSafeIssuerUrl` plus no port; discovery runs through the one gated fetch
+  (https, the issuer's host and a `jwks_uri` host only, no redirect, capped, timed out), and a
+  document whose endpoints point elsewhere is refused. A row is written only after discovery
+  answered. Test: private, loopback, link-local, port, credential, query and non-https issuers
+  make no request.
+- **Audience.** `operators` and `both` are refused (403 `audience_not_available`) until ST-32's
+  Superadmin gate exists. A seeded row keeps its audience; its issuer and client cannot move.
+- **Audit.** Each change is one batch with its `platform_audit` row
+  (`identity.connection.create|update|rotate_secret|enable|disable|delete|domain_*`), so a change
+  cannot land unrecorded (a domain's add, release and enforce included; a verification that finds
+  the record gone is audited as `domain_unverify`). No audit field holds a secret. An issuer cannot
+  move while people sign in through the connection.
+- **Test sign-in (admin-3-19).** The flow is the portal's own with a `test` record: bound to the
+  starting browser by the SSO cookie, and its result is read once, by the starting operator's `sub`
+  and the wizard's draft id only (a wrong reader leaves it in place). Claims are shown and never
+  stored in D1; the preview is the mapped values and claim _names_. A provider's error is plain
+  text, capped at 200 characters, control characters removed and secret-shaped runs redacted. The
+  same-tab return is one fixed path. A test runs when the portal is off; an ordinary sign-in still
+  needs it on.
+- **The key-set host and the secret.** A connection may name a `jwks_uri` on a second host, and
+  that host joins the gated fetch's allowlist. If the provider's discovery document then names it
+  as `token_endpoint`, the code exchange (which carries the client secret) is sent there. The
+  operator already trusts the issuer's document; an operator who adds a `jwks_uri` trusts that host
+  with the secret too. The console does not offer the field, and the API refuses a non-https or
+  private address.
+- **Enforcement and lockout recovery.** **Require this connection** on a verified domain removes
+  email codes and magic links for its addresses. If the provider is then down or the connection is
+  removed, those people can sign in only with a passkey or another link already on their account.
+  Recovery is an operator's: **Stop requiring** (step-up), or releasing the domain; the console
+  asks for a confirmation that says so. Verification that lapses (the TXT record gone, or 72 hours
+  of resolver errors) stops enforcement by itself; a console check that finds the record gone is audited as `domain_unverify`.
+- **Delete.** Refused while people sign in through a connection (their links are keyed to its
+  issuer) and for the seeded row: turn it off instead.
+- **Residual.** An operator with the platform area and a fresh step-up can add a provider whose
+  claims a later access rule trusts; that rule names its connection (LX-36), and an unverified
+  domain neither routes, vouches nor enforces. The built-in providers (Google, Apple, Steam)
+  still read their `SIGNIN_*` Worker values; sealing them in rows is a follow-up.
+
 ### Product backends: `X-PKey-License` (SP-53)
 
 An app can send its signed licence document to its developer's own backend, which decides the
