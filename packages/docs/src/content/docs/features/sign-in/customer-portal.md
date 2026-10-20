@@ -7,7 +7,7 @@ sidebar:
   order: 6
 ---
 
-Polaris Locker is a self-service account surface. A customer signs in once, sees every license they hold across every product on the deployment, adds more by key, manages their own devices and downloads the releases they are entitled to. Its code lives in the Identity service, but its routes aren't product-scoped. The route table is in [Locker API](/docs/reference/portal-api/). Customers see the name Locker once the Worker's `customer.host` switch is on; until then the same pages say Polaris Key.
+Polaris Locker is a self-service account surface. A customer signs in once, sees every license they hold across every product on the deployment, adds more by key, manages their own devices and downloads the releases they are entitled to. Its code lives in the Identity service, but its routes aren't product-scoped. The route table is in [Locker API](/docs/reference/portal-api/). Customers use it at polaris.locker.
 
 ## Root-level routes
 
