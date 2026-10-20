@@ -1589,6 +1589,66 @@
     <string name="signin_rateLimitedFew">Troppi codici. Riprova tra qualche minuto.</string>
     <!-- Sign-in card, code step: the address belongs to another account that does not use it as a sign-in method. Polaris Locker is never translated. -->
     <string name="signin_code_emailInUse">Un altro account Polaris Locker usa questa email. Accedi come prima.</string>
+    <!-- Portal, next visit after a first platform sign-in: the Add another way to sign in nudge (SIGN-IN.md D-40). -->
+    <string name="signin_nudge_title">Aggiungi un altro modo per accedere</string>
+    <!-- Nudge body. -->
+    <string name="signin_nudge_body">Così potrai sempre rientrare.</string>
+    <!-- Nudge primary: opens Account → Sign-in methods. -->
+    <string name="signin_nudge_add">Aggiungi</string>
+    <string name="signin_nudge_add__macos">Aggiungi</string>
+    <!-- Nudge dismiss. -->
+    <string name="signin_nudge_later">Non ora</string>
+    <string name="signin_nudge_later__macos">Non ora</string>
+    <!-- Account → Link an existing account dialog (PORTAL.md §4.11). -->
+    <string name="signin_join_title">Collega un account esistente</string>
+    <!-- Link dialog, before the second sign-in. -->
+    <string name="signin_join_lede">Accedi all'altro account per unire i due. Nulla cambia finché non confermi.</string>
+    <!-- Link dialog primary: starts the second sign-in. -->
+    <string name="signin_join_start">Accedi all'altro account</string>
+    <string name="signin_join_start__macos">Accedi all'altro account</string>
+    <!-- Link dialog: the account the person started from. -->
+    <string name="signin_join_thisAccount">Questo account</string>
+    <!-- Link dialog: the account signed in second. -->
+    <string name="signin_join_otherAccount">Altro account</string>
+    <!-- Link dialog: products on one account. Arguments: 1=count. -->
+    <plurals name="signin_join_products">
+        <item quantity="one">%1$d prodotto</item>
+        <item quantity="many">%1$d di prodotti</item>
+        <item quantity="other">%1$d prodotti</item>
+    </plurals>
+    <!-- Link dialog: what joining leaves. Arguments: 1=email, 2=count. -->
+    <plurals name="signin_join_result">
+        <item quantity="one">Un account: %1$s, con %2$d prodotto.</item>
+        <item quantity="many">Un account: %1$s, con %2$d di prodotti.</item>
+        <item quantity="other">Un account: %1$s, con %2$d prodotti.</item>
+    </plurals>
+    <!-- Link dialog: joined. -->
+    <string name="signin_join_done">Uniti. Puoi annullare per 72 ore.</string>
+    <!-- Link dialog: undo a join. -->
+    <string name="signin_join_undo">Annulla unione</string>
+    <string name="signin_join_undo__macos">Annulla unione</string>
+    <!-- Link dialog: join undone. -->
+    <string name="signin_join_undone">Unione annullata.</string>
+    <!-- Link dialog: a join that can still be undone. Arguments: 1=email, 2=date. -->
+    <string name="signin_join_undoable">Unito %1$s. Annulla entro %2$s.</string>
+    <!-- Link dialog: the link flow is gone. -->
+    <string name="signin_join_expired">Il collegamento ha richiesto troppo. Ricomincia.</string>
+    <!-- Link dialog: confirm before the second sign-in. -->
+    <string name="signin_join_signInOther">Prima accedi all'altro account.</string>
+    <!-- Link dialog: a proof is older than 5 minutes. -->
+    <string name="signin_join_reasonStepUp">Accedi di nuovo a entrambi gli account, poi uniscili.</string>
+    <!-- Link dialog: an account was joined in the last 72 hours. -->
+    <string name="signin_join_reasonPending">Un account è stato unito nelle ultime 72 ore. Riprova dopo.</string>
+    <!-- Link dialog: a scheduled deletion blocks the join. -->
+    <string name="signin_join_reasonUnavailable">Annulla prima l'eliminazione programmata, poi unisci.</string>
+    <!-- Link dialog: the second sign-in was the same account. -->
+    <string name="signin_join_sameAccount">È l'account da cui sei partito. Accedi all'altro account.</string>
+    <!-- Link dialog: a request failed. -->
+    <string name="signin_join_failed">Unione non riuscita. Riprova.</string>
+    <!-- Activate dialog, license_owned refusal, signed in on the portal (SIGN-IN.md D-27). -->
+    <string name="signin_join_ownedNotice">Se anche quell'account è tuo, accedi e unisci i due.</string>
+    <!-- Approve dialog: Find it pressed with an incomplete code. -->
+    <string name="signin_approve_codeShort">Inserisci tutte le 8 lettere del codice.</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">Si è verificato un problema</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

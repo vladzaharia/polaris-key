@@ -1569,6 +1569,62 @@
     <string name="signin_rateLimitedFew">코드가 너무 많습니다. 몇 분 후 다시 시도하세요.</string>
     <!-- Sign-in card, code step: the address belongs to another account that does not use it as a sign-in method. Polaris Locker is never translated. -->
     <string name="signin_code_emailInUse">다른 Polaris Locker 계정이 이 이메일을 사용하고 있습니다. 이전에 쓰던 방법으로 로그인하세요.</string>
+    <!-- Portal, next visit after a first platform sign-in: the Add another way to sign in nudge (SIGN-IN.md D-40). -->
+    <string name="signin_nudge_title">다른 로그인 방법 추가</string>
+    <!-- Nudge body. -->
+    <string name="signin_nudge_body">언제든 다시 로그인할 수 있습니다.</string>
+    <!-- Nudge primary: opens Account → Sign-in methods. -->
+    <string name="signin_nudge_add">추가</string>
+    <string name="signin_nudge_add__macos">추가</string>
+    <!-- Nudge dismiss. -->
+    <string name="signin_nudge_later">나중에</string>
+    <string name="signin_nudge_later__macos">나중에</string>
+    <!-- Account → Link an existing account dialog (PORTAL.md §4.11). -->
+    <string name="signin_join_title">기존 계정 연결</string>
+    <!-- Link dialog, before the second sign-in. -->
+    <string name="signin_join_lede">다른 계정에 로그인해 두 계정을 하나로 합칩니다. 확인하기 전에는 아무것도 옮겨지지 않습니다.</string>
+    <!-- Link dialog primary: starts the second sign-in. -->
+    <string name="signin_join_start">다른 계정에 로그인</string>
+    <string name="signin_join_start__macos">다른 계정에 로그인</string>
+    <!-- Link dialog: the account the person started from. -->
+    <string name="signin_join_thisAccount">이 계정</string>
+    <!-- Link dialog: the account signed in second. -->
+    <string name="signin_join_otherAccount">다른 계정</string>
+    <!-- Link dialog: products on one account. Arguments: 1=count. -->
+    <plurals name="signin_join_products">
+        <item quantity="other">제품 %1$d개</item>
+    </plurals>
+    <!-- Link dialog: what joining leaves. Arguments: 1=email, 2=count. -->
+    <plurals name="signin_join_result">
+        <item quantity="other">계정 하나: %1$s, 제품 %2$d개.</item>
+    </plurals>
+    <!-- Link dialog: joined. -->
+    <string name="signin_join_done">합쳤습니다. 72시간 동안 되돌릴 수 있습니다.</string>
+    <!-- Link dialog: undo a join. -->
+    <string name="signin_join_undo">합치기 되돌리기</string>
+    <string name="signin_join_undo__macos">합치기 되돌리기</string>
+    <!-- Link dialog: join undone. -->
+    <string name="signin_join_undone">되돌렸습니다.</string>
+    <!-- Link dialog: a join that can still be undone. Arguments: 1=email, 2=date. -->
+    <string name="signin_join_undoable">%1$s 합침. %2$s까지 되돌릴 수 있습니다.</string>
+    <!-- Link dialog: the link flow is gone. -->
+    <string name="signin_join_expired">연결이 너무 오래 걸렸습니다. 다시 시작하세요.</string>
+    <!-- Link dialog: confirm before the second sign-in. -->
+    <string name="signin_join_signInOther">먼저 다른 계정에 로그인하세요.</string>
+    <!-- Link dialog: a proof is older than 5 minutes. -->
+    <string name="signin_join_reasonStepUp">두 계정에 다시 로그인한 뒤 합치세요.</string>
+    <!-- Link dialog: an account was joined in the last 72 hours. -->
+    <string name="signin_join_reasonPending">한 계정이 최근 72시간 안에 합쳐졌습니다. 그 이후에 다시 시도하세요.</string>
+    <!-- Link dialog: a scheduled deletion blocks the join. -->
+    <string name="signin_join_reasonUnavailable">예약된 삭제를 먼저 취소한 뒤 합치세요.</string>
+    <!-- Link dialog: the second sign-in was the same account. -->
+    <string name="signin_join_sameAccount">처음 시작한 계정입니다. 다른 계정에 로그인하세요.</string>
+    <!-- Link dialog: a request failed. -->
+    <string name="signin_join_failed">합치지 못했습니다. 다시 시도하세요.</string>
+    <!-- Activate dialog, license_owned refusal, signed in on the portal (SIGN-IN.md D-27). -->
+    <string name="signin_join_ownedNotice">그 계정도 본인 것이면 로그인해 두 계정을 합치세요.</string>
+    <!-- Approve dialog: Find it pressed with an incomplete code. -->
+    <string name="signin_approve_codeShort">코드 8글자를 모두 입력하세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">문제가 발생했어요</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

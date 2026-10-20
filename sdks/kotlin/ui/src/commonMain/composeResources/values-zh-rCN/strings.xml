@@ -1569,6 +1569,62 @@
     <string name="signin_rateLimitedFew">验证码过多。请几分钟后重试。</string>
     <!-- Sign-in card, code step: the address belongs to another account that does not use it as a sign-in method. Polaris Locker is never translated. -->
     <string name="signin_code_emailInUse">另一个 Polaris Locker 账户正在使用此邮箱。请使用之前的方式登录。</string>
+    <!-- Portal, next visit after a first platform sign-in: the Add another way to sign in nudge (SIGN-IN.md D-40). -->
+    <string name="signin_nudge_title">添加另一种登录方式</string>
+    <!-- Nudge body. -->
+    <string name="signin_nudge_body">这样你随时都能重新登录。</string>
+    <!-- Nudge primary: opens Account → Sign-in methods. -->
+    <string name="signin_nudge_add">添加</string>
+    <string name="signin_nudge_add__macos">添加</string>
+    <!-- Nudge dismiss. -->
+    <string name="signin_nudge_later">暂不</string>
+    <string name="signin_nudge_later__macos">暂不</string>
+    <!-- Account → Link an existing account dialog (PORTAL.md §4.11). -->
+    <string name="signin_join_title">关联现有账户</string>
+    <!-- Link dialog, before the second sign-in. -->
+    <string name="signin_join_lede">登录你的另一个账户，把两者合并。确认前不会移动任何内容。</string>
+    <!-- Link dialog primary: starts the second sign-in. -->
+    <string name="signin_join_start">登录另一个账户</string>
+    <string name="signin_join_start__macos">登录另一个账户</string>
+    <!-- Link dialog: the account the person started from. -->
+    <string name="signin_join_thisAccount">此账户</string>
+    <!-- Link dialog: the account signed in second. -->
+    <string name="signin_join_otherAccount">另一个账户</string>
+    <!-- Link dialog: products on one account. Arguments: 1=count. -->
+    <plurals name="signin_join_products">
+        <item quantity="other">%1$d个产品</item>
+    </plurals>
+    <!-- Link dialog: what joining leaves. Arguments: 1=email, 2=count. -->
+    <plurals name="signin_join_result">
+        <item quantity="other">一个账户：%1$s，含%2$d个产品。</item>
+    </plurals>
+    <!-- Link dialog: joined. -->
+    <string name="signin_join_done">已合并。72 小时内可撤销。</string>
+    <!-- Link dialog: undo a join. -->
+    <string name="signin_join_undo">撤销合并</string>
+    <string name="signin_join_undo__macos">撤销合并</string>
+    <!-- Link dialog: join undone. -->
+    <string name="signin_join_undone">已撤销合并。</string>
+    <!-- Link dialog: a join that can still be undone. Arguments: 1=email, 2=date. -->
+    <string name="signin_join_undoable">已合并 %1$s。%2$s 前可撤销。</string>
+    <!-- Link dialog: the link flow is gone. -->
+    <string name="signin_join_expired">关联耗时过长，请重新开始。</string>
+    <!-- Link dialog: confirm before the second sign-in. -->
+    <string name="signin_join_signInOther">请先登录你的另一个账户。</string>
+    <!-- Link dialog: a proof is older than 5 minutes. -->
+    <string name="signin_join_reasonStepUp">请重新登录两个账户，然后合并。</string>
+    <!-- Link dialog: an account was joined in the last 72 hours. -->
+    <string name="signin_join_reasonPending">其中一个账户在过去 72 小时内已合并。请稍后再试。</string>
+    <!-- Link dialog: a scheduled deletion blocks the join. -->
+    <string name="signin_join_reasonUnavailable">请先取消已安排的删除，再合并。</string>
+    <!-- Link dialog: the second sign-in was the same account. -->
+    <string name="signin_join_sameAccount">这是你开始时的账户。请登录另一个账户。</string>
+    <!-- Link dialog: a request failed. -->
+    <string name="signin_join_failed">无法合并，请重试。</string>
+    <!-- Activate dialog, license_owned refusal, signed in on the portal (SIGN-IN.md D-27). -->
+    <string name="signin_join_ownedNotice">如果那个账户也是你的，请登录并合并两者。</string>
+    <!-- Approve dialog: Find it pressed with an incomplete code. -->
+    <string name="signin_approve_codeShort">请输入完整的 8 个字母。</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">出现问题</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

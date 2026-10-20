@@ -4212,6 +4212,154 @@ msgstr "Trop de codes. Réessayez dans quelques minutes."
 msgid "signin.code.emailInUse"
 msgstr "Un autre compte Polaris Locker utilise cet e-mail. Connectez-vous comme avant."
 
+#. Add another way to sign in
+#. Portal, next visit after a first platform sign-in: the Add another way to sign in nudge (SIGN-IN.md D-40).
+msgid "signin.nudge.title"
+msgstr "Ajouter une autre façon de se connecter"
+
+#. So you can always get back in.
+#. Nudge body.
+msgid "signin.nudge.body"
+msgstr "Pour toujours pouvoir revenir."
+
+#. Add a way
+#. Nudge primary: opens Account → Sign-in methods.
+msgid "signin.nudge.add"
+msgstr "Ajouter"
+
+#. macos: Add a Way
+msgctxt "macos"
+msgid "signin.nudge.add"
+msgstr "Ajouter"
+
+#. Not now
+#. Nudge dismiss.
+msgid "signin.nudge.later"
+msgstr "Plus tard"
+
+#. macos: Not Now
+msgctxt "macos"
+msgid "signin.nudge.later"
+msgstr "Plus tard"
+
+#. Link an existing account
+#. Account → Link an existing account dialog (PORTAL.md §4.11).
+msgid "signin.join.title"
+msgstr "Lier un compte existant"
+
+#. Sign in to your other account to join the two. Nothing moves until you confirm.
+#. Link dialog, before the second sign-in.
+msgid "signin.join.lede"
+msgstr "Connectez-vous à votre autre compte pour réunir les deux. Rien ne bouge avant votre confirmation."
+
+#. Sign in to the other account
+#. Link dialog primary: starts the second sign-in.
+msgid "signin.join.start"
+msgstr "Se connecter à l'autre compte"
+
+#. macos: Sign In to the Other Account
+msgctxt "macos"
+msgid "signin.join.start"
+msgstr "Se connecter à l'autre compte"
+
+#. This account
+#. Link dialog: the account the person started from.
+msgid "signin.join.thisAccount"
+msgstr "Ce compte"
+
+#. Other account
+#. Link dialog: the account signed in second.
+msgid "signin.join.otherAccount"
+msgstr "Autre compte"
+
+#. {count, plural, one {# product} other {# products}}
+#. Link dialog: products on one account.
+#. Plural on {count}.
+msgid "signin.join.products"
+msgid_plural "signin.join.products"
+msgstr[0] "{count} produit"
+msgstr[1] "{count} de produits"
+msgstr[2] "{count} produits"
+
+#. One account: {email}, with {count, plural, one {# product} other {# products}}.
+#. Link dialog: what joining leaves.
+#. Plural on {count}.
+msgid "signin.join.result"
+msgid_plural "signin.join.result"
+msgstr[0] "Un compte : {email}, avec {count} produit."
+msgstr[1] "Un compte : {email}, avec {count} de produits."
+msgstr[2] "Un compte : {email}, avec {count} produits."
+
+#. Joined. You can undo this for 72 hours.
+#. Link dialog: joined.
+msgid "signin.join.done"
+msgstr "Réunis. Vous pouvez annuler pendant 72 heures."
+
+#. Undo join
+#. Link dialog: undo a join.
+msgid "signin.join.undo"
+msgstr "Annuler la réunion"
+
+#. macos: Undo Join
+msgctxt "macos"
+msgid "signin.join.undo"
+msgstr "Annuler la réunion"
+
+#. Join undone.
+#. Link dialog: join undone.
+msgid "signin.join.undone"
+msgstr "Réunion annulée."
+
+#. Joined {email}. Undo until {date}.
+#. Link dialog: a join that can still be undone.
+msgid "signin.join.undoable"
+msgstr "{email} réuni. Annulable jusqu'au {date}."
+
+#. Linking took too long. Start again.
+#. Link dialog: the link flow is gone.
+msgid "signin.join.expired"
+msgstr "Le lien a pris trop de temps. Recommencez."
+
+#. Sign in to your other account first.
+#. Link dialog: confirm before the second sign-in.
+msgid "signin.join.signInOther"
+msgstr "Connectez-vous d'abord à votre autre compte."
+
+#. Sign in to both accounts again, then join.
+#. Link dialog: a proof is older than 5 minutes.
+msgid "signin.join.reasonStepUp"
+msgstr "Reconnectez-vous aux deux comptes, puis réunissez-les."
+
+#. One account was joined in the last 72 hours. Try again after that.
+#. Link dialog: an account was joined in the last 72 hours.
+msgid "signin.join.reasonPending"
+msgstr "Un compte a été réuni ces 72 dernières heures. Réessayez ensuite."
+
+#. Cancel the scheduled deletion first, then join.
+#. Link dialog: a scheduled deletion blocks the join.
+msgid "signin.join.reasonUnavailable"
+msgstr "Annulez d'abord la suppression planifiée, puis réunissez."
+
+#. That's the account you started from. Sign in to your other account.
+#. Link dialog: the second sign-in was the same account.
+msgid "signin.join.sameAccount"
+msgstr "C'est le compte de départ. Connectez-vous à votre autre compte."
+
+#. Couldn't join. Try again.
+#. Link dialog: a request failed.
+msgid "signin.join.failed"
+msgstr "Réunion impossible. Réessayez."
+
+#. If that account is yours too, sign in to it and join the two.
+#. Activate dialog, license_owned refusal, signed in on the portal (SIGN-IN.md D-27).
+msgid "signin.join.ownedNotice"
+msgstr "Si ce compte est aussi le vôtre, connectez-vous et réunissez les deux."
+
+#. Enter all 8 letters of the code.
+#. Approve dialog: Find it pressed with an incomplete code.
+msgid "signin.approve.codeShort"
+msgstr "Saisissez les 8 lettres du code."
+
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).
 msgid "core.fallback.title"

@@ -3545,6 +3545,126 @@
       "value": "Another Polaris Locker account uses this email. Sign in the way you did before.",
       "role": "body",
       "note": "Sign-in card, code step: the address belongs to another account that does not use it as a sign-in method. Polaris Locker is never translated."
+    },
+    "signin.nudge.title": {
+      "value": "Add another way to sign in",
+      "role": "title",
+      "note": "Portal, next visit after a first platform sign-in: the Add another way to sign in nudge (SIGN-IN.md D-40)."
+    },
+    "signin.nudge.body": {
+      "value": "So you can always get back in.",
+      "role": "body",
+      "note": "Nudge body."
+    },
+    "signin.nudge.add": {
+      "value": "Add a way",
+      "role": "button",
+      "note": "Nudge primary: opens Account → Sign-in methods."
+    },
+    "signin.nudge.later": {
+      "value": "Not now",
+      "role": "button",
+      "note": "Nudge dismiss."
+    },
+    "signin.join.title": {
+      "value": "Link an existing account",
+      "role": "title",
+      "note": "Account → Link an existing account dialog (PORTAL.md §4.11)."
+    },
+    "signin.join.lede": {
+      "value": "Sign in to your other account to join the two. Nothing moves until you confirm.",
+      "role": "body",
+      "note": "Link dialog, before the second sign-in."
+    },
+    "signin.join.start": {
+      "value": "Sign in to the other account",
+      "role": "button",
+      "note": "Link dialog primary: starts the second sign-in."
+    },
+    "signin.join.thisAccount": {
+      "value": "This account",
+      "role": "label",
+      "note": "Link dialog: the account the person started from."
+    },
+    "signin.join.otherAccount": {
+      "value": "Other account",
+      "role": "label",
+      "note": "Link dialog: the account signed in second."
+    },
+    "signin.join.products": {
+      "value": "{count, plural, one {# product} other {# products}}",
+      "role": "body",
+      "note": "Link dialog: products on one account."
+    },
+    "signin.join.result": {
+      "value": "One account: {email}, with {count, plural, one {# product} other {# products}}.",
+      "role": "body",
+      "note": "Link dialog: what joining leaves."
+    },
+    "signin.join.done": {
+      "value": "Joined. You can undo this for 72 hours.",
+      "role": "body",
+      "note": "Link dialog: joined."
+    },
+    "signin.join.undo": {
+      "value": "Undo join",
+      "role": "button",
+      "note": "Link dialog: undo a join."
+    },
+    "signin.join.undone": {
+      "value": "Join undone.",
+      "role": "body",
+      "note": "Link dialog: join undone."
+    },
+    "signin.join.undoable": {
+      "value": "Joined {email}. Undo until {date}.",
+      "role": "body",
+      "note": "Link dialog: a join that can still be undone."
+    },
+    "signin.join.expired": {
+      "value": "Linking took too long. Start again.",
+      "role": "body",
+      "note": "Link dialog: the link flow is gone."
+    },
+    "signin.join.signInOther": {
+      "value": "Sign in to your other account first.",
+      "role": "body",
+      "note": "Link dialog: confirm before the second sign-in."
+    },
+    "signin.join.reasonStepUp": {
+      "value": "Sign in to both accounts again, then join.",
+      "role": "body",
+      "note": "Link dialog: a proof is older than 5 minutes."
+    },
+    "signin.join.reasonPending": {
+      "value": "One account was joined in the last 72 hours. Try again after that.",
+      "role": "body",
+      "note": "Link dialog: an account was joined in the last 72 hours."
+    },
+    "signin.join.reasonUnavailable": {
+      "value": "Cancel the scheduled deletion first, then join.",
+      "role": "body",
+      "note": "Link dialog: a scheduled deletion blocks the join."
+    },
+    "signin.join.sameAccount": {
+      "value": "That's the account you started from. Sign in to your other account.",
+      "role": "body",
+      "note": "Link dialog: the second sign-in was the same account."
+    },
+    "signin.join.failed": {
+      "value": "Couldn't join. Try again.",
+      "role": "body",
+      "note": "Link dialog: a request failed."
+    },
+    "signin.join.ownedNotice": {
+      "value": "If that account is yours too, sign in to it and join the two.",
+      "role": "body",
+      "note": "Activate dialog, license_owned refusal, signed in on the portal (SIGN-IN.md D-27)."
+    },
+    "signin.approve.codeShort": {
+      "value": "Enter all 8 letters of the code.",
+      "role": "body",
+      "note": "Approve dialog: Find it pressed with an incomplete code."
     }
   }
 }

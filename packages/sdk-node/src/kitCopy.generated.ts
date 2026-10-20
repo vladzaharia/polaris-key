@@ -841,6 +841,37 @@ export const KIT_COPY: Readonly<
     "signin.rateLimitedFew": "Too many codes. Try again in a few minutes.",
     "signin.code.emailInUse":
       "Another Polaris Locker account uses this email. Sign in the way you did before.",
+    "signin.nudge.title": "Add another way to sign in",
+    "signin.nudge.body": "So you can always get back in.",
+    "signin.nudge.add": "Add a way",
+    "signin.nudge.later": "Not now",
+    "signin.join.title": "Link an existing account",
+    "signin.join.lede":
+      "Sign in to your other account to join the two. Nothing moves until you confirm.",
+    "signin.join.start": "Sign in to the other account",
+    "signin.join.thisAccount": "This account",
+    "signin.join.otherAccount": "Other account",
+    "signin.join.products":
+      "{count, plural, one {# product} other {# products}}",
+    "signin.join.result":
+      "One account: {email}, with {count, plural, one {# product} other {# products}}.",
+    "signin.join.done": "Joined. You can undo this for 72 hours.",
+    "signin.join.undo": "Undo join",
+    "signin.join.undone": "Join undone.",
+    "signin.join.undoable": "Joined {email}. Undo until {date}.",
+    "signin.join.expired": "Linking took too long. Start again.",
+    "signin.join.signInOther": "Sign in to your other account first.",
+    "signin.join.reasonStepUp": "Sign in to both accounts again, then join.",
+    "signin.join.reasonPending":
+      "One account was joined in the last 72 hours. Try again after that.",
+    "signin.join.reasonUnavailable":
+      "Cancel the scheduled deletion first, then join.",
+    "signin.join.sameAccount":
+      "That's the account you started from. Sign in to your other account.",
+    "signin.join.failed": "Couldn't join. Try again.",
+    "signin.join.ownedNotice":
+      "If that account is yours too, sign in to it and join the two.",
+    "signin.approve.codeShort": "Enter all 8 letters of the code.",
     "core.fallback.title": "Something went wrong",
     "core.fallback.message": "Something went wrong ({code}). Try again.",
     "core.codes.unauthorized.title": "Not signed in",
@@ -2290,6 +2321,42 @@ export const KIT_COPY: Readonly<
       "Zu viele Codes. Versuchen Sie es in ein paar Minuten erneut.",
     "signin.code.emailInUse":
       "Ein anderes Konto bei Polaris Locker verwendet diese E-Mail-Adresse. Melden Sie sich auf dem bisherigen Weg an.",
+    "signin.nudge.title": "Weitere Anmeldemethode hinzufügen",
+    "signin.nudge.body": "So kommen Sie immer wieder hinein.",
+    "signin.nudge.add": "Hinzufügen",
+    "signin.nudge.later": "Nicht jetzt",
+    "signin.join.title": "Bestehendes Konto verknüpfen",
+    "signin.join.lede":
+      "Melden Sie sich bei Ihrem anderen Konto an, um beide zusammenzuführen. Nichts wird verschoben, bevor Sie bestätigen.",
+    "signin.join.start": "Beim anderen Konto anmelden",
+    "signin.join.thisAccount": "Dieses Konto",
+    "signin.join.otherAccount": "Anderes Konto",
+    "signin.join.products":
+      "{count, plural, one {# Produkt} other {# Produkte}}",
+    "signin.join.result":
+      "Ein Konto: {email}, mit {count, plural, one {# Produkt} other {# Produkte}}.",
+    "signin.join.done":
+      "Zusammengeführt. Sie können das 72 Stunden lang rückgängig machen.",
+    "signin.join.undo": "Zusammenführung rückgängig",
+    "signin.join.undone": "Zusammenführung rückgängig gemacht.",
+    "signin.join.undoable": "{email} zusammengeführt. Rückgängig bis {date}.",
+    "signin.join.expired":
+      "Das Verknüpfen hat zu lange gedauert. Beginnen Sie neu.",
+    "signin.join.signInOther":
+      "Melden Sie sich zuerst bei Ihrem anderen Konto an.",
+    "signin.join.reasonStepUp":
+      "Melden Sie sich bei beiden Konten erneut an und führen Sie sie dann zusammen.",
+    "signin.join.reasonPending":
+      "Eines der Konten wurde in den letzten 72 Stunden zusammengeführt. Versuchen Sie es danach erneut.",
+    "signin.join.reasonUnavailable":
+      "Brechen Sie zuerst die geplante Löschung ab und führen Sie dann zusammen.",
+    "signin.join.sameAccount":
+      "Das ist das Konto, bei dem Sie begonnen haben. Melden Sie sich bei Ihrem anderen Konto an.",
+    "signin.join.failed":
+      "Zusammenführen fehlgeschlagen. Versuchen Sie es erneut.",
+    "signin.join.ownedNotice":
+      "Wenn das Konto auch Ihnen gehört, melden Sie sich dort an und führen Sie beide zusammen.",
+    "signin.approve.codeShort": "Geben Sie alle 8 Buchstaben des Codes ein.",
     "core.fallback.title": "Ein Fehler ist aufgetreten",
     "core.fallback.message":
       "Ein Fehler ist aufgetreten ({code}). Versuchen Sie es erneut.",
@@ -3740,6 +3807,38 @@ export const KIT_COPY: Readonly<
     "signin.rateLimitedFew": "Trop de codes. Réessayez dans quelques minutes.",
     "signin.code.emailInUse":
       "Un autre compte Polaris Locker utilise cet e-mail. Connectez-vous comme avant.",
+    "signin.nudge.title": "Ajouter une autre façon de se connecter",
+    "signin.nudge.body": "Pour toujours pouvoir revenir.",
+    "signin.nudge.add": "Ajouter",
+    "signin.nudge.later": "Plus tard",
+    "signin.join.title": "Lier un compte existant",
+    "signin.join.lede":
+      "Connectez-vous à votre autre compte pour réunir les deux. Rien ne bouge avant votre confirmation.",
+    "signin.join.start": "Se connecter à l'autre compte",
+    "signin.join.thisAccount": "Ce compte",
+    "signin.join.otherAccount": "Autre compte",
+    "signin.join.products":
+      "{count, plural, one {# produit} many {# de produits} other {# produits}}",
+    "signin.join.result":
+      "Un compte : {email}, avec {count, plural, one {# produit} many {# de produits} other {# produits}}.",
+    "signin.join.done": "Réunis. Vous pouvez annuler pendant 72 heures.",
+    "signin.join.undo": "Annuler la réunion",
+    "signin.join.undone": "Réunion annulée.",
+    "signin.join.undoable": "{email} réuni. Annulable jusqu'au {date}.",
+    "signin.join.expired": "Le lien a pris trop de temps. Recommencez.",
+    "signin.join.signInOther": "Connectez-vous d'abord à votre autre compte.",
+    "signin.join.reasonStepUp":
+      "Reconnectez-vous aux deux comptes, puis réunissez-les.",
+    "signin.join.reasonPending":
+      "Un compte a été réuni ces 72 dernières heures. Réessayez ensuite.",
+    "signin.join.reasonUnavailable":
+      "Annulez d'abord la suppression planifiée, puis réunissez.",
+    "signin.join.sameAccount":
+      "C'est le compte de départ. Connectez-vous à votre autre compte.",
+    "signin.join.failed": "Réunion impossible. Réessayez.",
+    "signin.join.ownedNotice":
+      "Si ce compte est aussi le vôtre, connectez-vous et réunissez les deux.",
+    "signin.approve.codeShort": "Saisissez les 8 lettres du code.",
     "core.fallback.title": "Something went wrong",
     "core.fallback.message": "Something went wrong ({code}). Try again.",
     "core.codes.unauthorized.title": "Not signed in",
@@ -5162,6 +5261,38 @@ export const KIT_COPY: Readonly<
       "Demasiados códigos. Inténtalo de nuevo en unos minutos.",
     "signin.code.emailInUse":
       "Otra cuenta de Polaris Locker usa este correo. Inicia sesión como antes.",
+    "signin.nudge.title": "Añade otra forma de iniciar sesión",
+    "signin.nudge.body": "Así siempre podrás volver a entrar.",
+    "signin.nudge.add": "Añadir",
+    "signin.nudge.later": "Ahora no",
+    "signin.join.title": "Vincular una cuenta existente",
+    "signin.join.lede":
+      "Inicia sesión en tu otra cuenta para unir las dos. Nada se mueve hasta que confirmes.",
+    "signin.join.start": "Iniciar sesión en la otra cuenta",
+    "signin.join.thisAccount": "Esta cuenta",
+    "signin.join.otherAccount": "Otra cuenta",
+    "signin.join.products":
+      "{count, plural, one {# producto} many {# de productos} other {# productos}}",
+    "signin.join.result":
+      "Una cuenta: {email}, con {count, plural, one {# producto} many {# de productos} other {# productos}}.",
+    "signin.join.done": "Unidas. Puedes deshacerlo durante 72 horas.",
+    "signin.join.undo": "Deshacer unión",
+    "signin.join.undone": "Unión deshecha.",
+    "signin.join.undoable": "Unida {email}. Deshacer hasta {date}.",
+    "signin.join.expired": "Vincular tardó demasiado. Empieza de nuevo.",
+    "signin.join.signInOther": "Primero inicia sesión en tu otra cuenta.",
+    "signin.join.reasonStepUp":
+      "Inicia sesión de nuevo en ambas cuentas y únelas.",
+    "signin.join.reasonPending":
+      "Una cuenta se unió en las últimas 72 horas. Inténtalo después.",
+    "signin.join.reasonUnavailable":
+      "Cancela primero la eliminación programada y luego une.",
+    "signin.join.sameAccount":
+      "Es la cuenta de la que partiste. Inicia sesión en tu otra cuenta.",
+    "signin.join.failed": "No se pudo unir. Inténtalo de nuevo.",
+    "signin.join.ownedNotice":
+      "Si esa cuenta también es tuya, inicia sesión en ella y une las dos.",
+    "signin.approve.codeShort": "Introduce las 8 letras del código.",
     "core.fallback.title": "Algo salió mal",
     "core.fallback.message": "Algo salió mal ({code}). Vuelve a intentarlo.",
     "core.codes.unauthorized.title": "Sin sesión iniciada",
@@ -6599,6 +6730,37 @@ export const KIT_COPY: Readonly<
       "Muitos códigos. Tente novamente em alguns minutos.",
     "signin.code.emailInUse":
       "Outra conta do Polaris Locker usa este e-mail. Entre como você fazia antes.",
+    "signin.nudge.title": "Adicione outra forma de entrar",
+    "signin.nudge.body": "Assim você sempre consegue voltar.",
+    "signin.nudge.add": "Adicionar",
+    "signin.nudge.later": "Agora não",
+    "signin.join.title": "Vincular uma conta existente",
+    "signin.join.lede":
+      "Entre na sua outra conta para unir as duas. Nada muda até você confirmar.",
+    "signin.join.start": "Entrar na outra conta",
+    "signin.join.thisAccount": "Esta conta",
+    "signin.join.otherAccount": "Outra conta",
+    "signin.join.products":
+      "{count, plural, one {# produto} many {# de produtos} other {# produtos}}",
+    "signin.join.result":
+      "Uma conta: {email}, com {count, plural, one {# produto} many {# de produtos} other {# produtos}}.",
+    "signin.join.done": "Unidas. Você pode desfazer por 72 horas.",
+    "signin.join.undo": "Desfazer união",
+    "signin.join.undone": "União desfeita.",
+    "signin.join.undoable": "{email} unida. Desfazer até {date}.",
+    "signin.join.expired": "A vinculação demorou demais. Comece de novo.",
+    "signin.join.signInOther": "Entre primeiro na sua outra conta.",
+    "signin.join.reasonStepUp": "Entre de novo nas duas contas e una-as.",
+    "signin.join.reasonPending":
+      "Uma conta foi unida nas últimas 72 horas. Tente depois.",
+    "signin.join.reasonUnavailable":
+      "Cancele primeiro a exclusão agendada e depois una.",
+    "signin.join.sameAccount":
+      "É a conta de onde você começou. Entre na sua outra conta.",
+    "signin.join.failed": "Não foi possível unir. Tente de novo.",
+    "signin.join.ownedNotice":
+      "Se essa conta também é sua, entre nela e una as duas.",
+    "signin.approve.codeShort": "Digite as 8 letras do código.",
     "core.fallback.title": "Algo deu errado",
     "core.fallback.message": "Algo deu errado ({code}). Tente novamente.",
     "core.codes.unauthorized.title": "Não conectado",
@@ -8025,6 +8187,38 @@ export const KIT_COPY: Readonly<
     "signin.rateLimitedFew": "Troppi codici. Riprova tra qualche minuto.",
     "signin.code.emailInUse":
       "Un altro account Polaris Locker usa questa email. Accedi come prima.",
+    "signin.nudge.title": "Aggiungi un altro modo per accedere",
+    "signin.nudge.body": "Così potrai sempre rientrare.",
+    "signin.nudge.add": "Aggiungi",
+    "signin.nudge.later": "Non ora",
+    "signin.join.title": "Collega un account esistente",
+    "signin.join.lede":
+      "Accedi all'altro account per unire i due. Nulla cambia finché non confermi.",
+    "signin.join.start": "Accedi all'altro account",
+    "signin.join.thisAccount": "Questo account",
+    "signin.join.otherAccount": "Altro account",
+    "signin.join.products":
+      "{count, plural, one {# prodotto} many {# di prodotti} other {# prodotti}}",
+    "signin.join.result":
+      "Un account: {email}, con {count, plural, one {# prodotto} many {# di prodotti} other {# prodotti}}.",
+    "signin.join.done": "Uniti. Puoi annullare per 72 ore.",
+    "signin.join.undo": "Annulla unione",
+    "signin.join.undone": "Unione annullata.",
+    "signin.join.undoable": "Unito {email}. Annulla entro {date}.",
+    "signin.join.expired": "Il collegamento ha richiesto troppo. Ricomincia.",
+    "signin.join.signInOther": "Prima accedi all'altro account.",
+    "signin.join.reasonStepUp":
+      "Accedi di nuovo a entrambi gli account, poi uniscili.",
+    "signin.join.reasonPending":
+      "Un account è stato unito nelle ultime 72 ore. Riprova dopo.",
+    "signin.join.reasonUnavailable":
+      "Annulla prima l'eliminazione programmata, poi unisci.",
+    "signin.join.sameAccount":
+      "È l'account da cui sei partito. Accedi all'altro account.",
+    "signin.join.failed": "Unione non riuscita. Riprova.",
+    "signin.join.ownedNotice":
+      "Se anche quell'account è tuo, accedi e unisci i due.",
+    "signin.approve.codeShort": "Inserisci tutte le 8 lettere del codice.",
     "core.fallback.title": "Si è verificato un problema",
     "core.fallback.message": "Si è verificato un problema ({code}). Riprova.",
     "core.codes.unauthorized.title": "Accesso non effettuato",
@@ -9472,6 +9666,39 @@ export const KIT_COPY: Readonly<
       "コードが多すぎます。数分後にもう一度お試しください。",
     "signin.code.emailInUse":
       "別の Polaris Locker アカウントがこのメールアドレスを使用しています。以前の方法でサインインしてください。",
+    "signin.nudge.title": "別のサインイン方法を追加",
+    "signin.nudge.body": "いつでもサインインし直せます。",
+    "signin.nudge.add": "追加する",
+    "signin.nudge.later": "今はしない",
+    "signin.join.title": "既存のアカウントをリンク",
+    "signin.join.lede":
+      "もう一方のアカウントにサインインして、2つを1つにまとめます。確認するまで何も移動しません。",
+    "signin.join.start": "もう一方のアカウントにサインイン",
+    "signin.join.thisAccount": "このアカウント",
+    "signin.join.otherAccount": "もう一方のアカウント",
+    "signin.join.products": "{count, plural, other {#個の製品}}",
+    "signin.join.result":
+      "1つのアカウント：{email}（{count, plural, other {#個の製品}}）。",
+    "signin.join.done": "まとめました。72時間は元に戻せます。",
+    "signin.join.undo": "まとめを元に戻す",
+    "signin.join.undone": "元に戻しました。",
+    "signin.join.undoable": "{email} をまとめました。{date}まで元に戻せます。",
+    "signin.join.expired":
+      "リンクに時間がかかりすぎました。最初からやり直してください。",
+    "signin.join.signInOther":
+      "先にもう一方のアカウントにサインインしてください。",
+    "signin.join.reasonStepUp":
+      "両方のアカウントにもう一度サインインしてから、まとめてください。",
+    "signin.join.reasonPending":
+      "どちらかのアカウントが過去72時間以内にまとめられています。その後にもう一度お試しください。",
+    "signin.join.reasonUnavailable":
+      "先に予定されている削除を取り消してから、まとめてください。",
+    "signin.join.sameAccount":
+      "最初のアカウントです。もう一方のアカウントにサインインしてください。",
+    "signin.join.failed": "まとめられませんでした。もう一度お試しください。",
+    "signin.join.ownedNotice":
+      "そのアカウントもあなたのものなら、サインインして2つをまとめてください。",
+    "signin.approve.codeShort": "コードの8文字をすべて入力してください。",
     "core.fallback.title": "問題が発生しました",
     "core.fallback.message":
       "問題が発生しました（{code}）。もう一度お試しください。",
@@ -10883,6 +11110,35 @@ export const KIT_COPY: Readonly<
     "signin.rateLimitedFew": "코드가 너무 많습니다. 몇 분 후 다시 시도하세요.",
     "signin.code.emailInUse":
       "다른 Polaris Locker 계정이 이 이메일을 사용하고 있습니다. 이전에 쓰던 방법으로 로그인하세요.",
+    "signin.nudge.title": "다른 로그인 방법 추가",
+    "signin.nudge.body": "언제든 다시 로그인할 수 있습니다.",
+    "signin.nudge.add": "추가",
+    "signin.nudge.later": "나중에",
+    "signin.join.title": "기존 계정 연결",
+    "signin.join.lede":
+      "다른 계정에 로그인해 두 계정을 하나로 합칩니다. 확인하기 전에는 아무것도 옮겨지지 않습니다.",
+    "signin.join.start": "다른 계정에 로그인",
+    "signin.join.thisAccount": "이 계정",
+    "signin.join.otherAccount": "다른 계정",
+    "signin.join.products": "{count, plural, other {제품 #개}}",
+    "signin.join.result":
+      "계정 하나: {email}, {count, plural, other {제품 #개}}.",
+    "signin.join.done": "합쳤습니다. 72시간 동안 되돌릴 수 있습니다.",
+    "signin.join.undo": "합치기 되돌리기",
+    "signin.join.undone": "되돌렸습니다.",
+    "signin.join.undoable": "{email} 합침. {date}까지 되돌릴 수 있습니다.",
+    "signin.join.expired": "연결이 너무 오래 걸렸습니다. 다시 시작하세요.",
+    "signin.join.signInOther": "먼저 다른 계정에 로그인하세요.",
+    "signin.join.reasonStepUp": "두 계정에 다시 로그인한 뒤 합치세요.",
+    "signin.join.reasonPending":
+      "한 계정이 최근 72시간 안에 합쳐졌습니다. 그 이후에 다시 시도하세요.",
+    "signin.join.reasonUnavailable": "예약된 삭제를 먼저 취소한 뒤 합치세요.",
+    "signin.join.sameAccount":
+      "처음 시작한 계정입니다. 다른 계정에 로그인하세요.",
+    "signin.join.failed": "합치지 못했습니다. 다시 시도하세요.",
+    "signin.join.ownedNotice":
+      "그 계정도 본인 것이면 로그인해 두 계정을 합치세요.",
+    "signin.approve.codeShort": "코드 8글자를 모두 입력하세요.",
     "core.fallback.title": "문제가 발생했어요",
     "core.fallback.message": "문제가 발생했어요({code}). 다시 시도하세요.",
     "core.codes.unauthorized.title": "로그인되지 않음",
@@ -12213,6 +12469,33 @@ export const KIT_COPY: Readonly<
     "signin.rateLimitedFew": "验证码过多。请几分钟后重试。",
     "signin.code.emailInUse":
       "另一个 Polaris Locker 账户正在使用此邮箱。请使用之前的方式登录。",
+    "signin.nudge.title": "添加另一种登录方式",
+    "signin.nudge.body": "这样你随时都能重新登录。",
+    "signin.nudge.add": "添加",
+    "signin.nudge.later": "暂不",
+    "signin.join.title": "关联现有账户",
+    "signin.join.lede":
+      "登录你的另一个账户，把两者合并。确认前不会移动任何内容。",
+    "signin.join.start": "登录另一个账户",
+    "signin.join.thisAccount": "此账户",
+    "signin.join.otherAccount": "另一个账户",
+    "signin.join.products": "{count, plural, other {#个产品}}",
+    "signin.join.result":
+      "一个账户：{email}，含{count, plural, other {#个产品}}。",
+    "signin.join.done": "已合并。72 小时内可撤销。",
+    "signin.join.undo": "撤销合并",
+    "signin.join.undone": "已撤销合并。",
+    "signin.join.undoable": "已合并 {email}。{date} 前可撤销。",
+    "signin.join.expired": "关联耗时过长，请重新开始。",
+    "signin.join.signInOther": "请先登录你的另一个账户。",
+    "signin.join.reasonStepUp": "请重新登录两个账户，然后合并。",
+    "signin.join.reasonPending":
+      "其中一个账户在过去 72 小时内已合并。请稍后再试。",
+    "signin.join.reasonUnavailable": "请先取消已安排的删除，再合并。",
+    "signin.join.sameAccount": "这是你开始时的账户。请登录另一个账户。",
+    "signin.join.failed": "无法合并，请重试。",
+    "signin.join.ownedNotice": "如果那个账户也是你的，请登录并合并两者。",
+    "signin.approve.codeShort": "请输入完整的 8 个字母。",
     "core.fallback.title": "出现问题",
     "core.fallback.message": "出现问题（{code}）。请重试。",
     "core.codes.unauthorized.title": "未登录",
@@ -12828,4 +13111,8 @@ export const KIT_COPY_VARIANTS: Readonly<
   "signin.key.withoutKey": { macos: "Sign In Without the Key" },
   "signin.sso.codeIn": { macos: "Email Me a Code in {time}" },
   "signin.sso.code": { macos: "Email Me a Code Instead" },
+  "signin.nudge.add": { macos: "Add a Way" },
+  "signin.nudge.later": { macos: "Not Now" },
+  "signin.join.start": { macos: "Sign In to the Other Account" },
+  "signin.join.undo": { macos: "Undo Join" },
 };

@@ -719,6 +719,30 @@ export type KitCopyKey =
   | "signin.provider.connectGroup"
   | "signin.rateLimitedFew"
   | "signin.code.emailInUse"
+  | "signin.nudge.title"
+  | "signin.nudge.body"
+  | "signin.nudge.add"
+  | "signin.nudge.later"
+  | "signin.join.title"
+  | "signin.join.lede"
+  | "signin.join.start"
+  | "signin.join.thisAccount"
+  | "signin.join.otherAccount"
+  | "signin.join.products"
+  | "signin.join.result"
+  | "signin.join.done"
+  | "signin.join.undo"
+  | "signin.join.undone"
+  | "signin.join.undoable"
+  | "signin.join.expired"
+  | "signin.join.signInOther"
+  | "signin.join.reasonStepUp"
+  | "signin.join.reasonPending"
+  | "signin.join.reasonUnavailable"
+  | "signin.join.sameAccount"
+  | "signin.join.failed"
+  | "signin.join.ownedNotice"
+  | "signin.approve.codeShort"
   | "core.fallback.title"
   | "core.fallback.message"
   | "core.codes.unauthorized.title"
@@ -1232,6 +1256,10 @@ export const KIT_COPY_VARIANTS: Readonly<
   "signin.key.withoutKey": { macos: "Sign In Without the Key" },
   "signin.sso.codeIn": { macos: "Email Me a Code in {time}" },
   "signin.sso.code": { macos: "Email Me a Code Instead" },
+  "signin.nudge.add": { macos: "Add a Way" },
+  "signin.nudge.later": { macos: "Not Now" },
+  "signin.join.start": { macos: "Sign In to the Other Account" },
+  "signin.join.undo": { macos: "Undo Join" },
 };
 
 /** Locales whose core.* strings are English until their core pack lands. */
