@@ -168,7 +168,7 @@ describe("notice templates: copy", () => {
     );
     // SIGN-IN.md §3.15: signin.mail.newDevice.subject.
     expect(TEMPLATES.newDeviceSignIn!().subject).toBe(
-      "A new device signed in to your Polaris Key account",
+      "A new device signed in to your Polaris Locker account",
     );
   });
 });
