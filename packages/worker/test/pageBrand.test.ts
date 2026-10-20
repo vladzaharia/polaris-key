@@ -9,6 +9,8 @@ import {
   renderBrandPage,
 } from "../src/core/brandHtml.js";
 import { brandedHtmlSecurityHeaders } from "../src/core/securityHeaders.js";
+import { THEME_TOKENS } from "@polaris-key/brand";
+import { contrastRatio as contrast } from "@polaris-key/brand/color";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv } from "./seed.js";
@@ -52,6 +54,17 @@ describe("the shell", () => {
     expect(tail).toContain("--mb:#ff7869");
     expect(tail).toContain("text-decoration-color:var(--mb)");
     expect(tail).not.toMatch(/--(accent|focus|accent-fg):#(ff7869|c44438)/);
+  });
+
+  it("a link button keeps its own label colour: the link rule skips anchors with .button", () => {
+    const tail = BRAND_PAGE_CSS_LOCKER.slice(BRAND_PAGE_CSS.length);
+    expect(tail).toContain("[data-brand=locker] a:not(.button){");
+    expect(tail).not.toMatch(/\[data-brand=locker\] a\{/);
+    // The label (on-accent) against the fill (accent) in each theme, as the tail sets them.
+    for (const theme of ["dark", "light"] as const) {
+      const t = THEME_TOKENS[theme];
+      expect(contrast(t.action.on, t.action.fill)).toBeGreaterThanOrEqual(4.5);
+    }
   });
 
   it("each identity's policy names its own stylesheet", () => {
