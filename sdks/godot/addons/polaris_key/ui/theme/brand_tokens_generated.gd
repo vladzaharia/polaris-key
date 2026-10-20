@@ -33,10 +33,9 @@ const FAVICON_BELOW := 24
 const SERVICE_MAX := 32
 const GOLD_MINIMUM_GLYPH := 48
 const CLEAR_SPACE_RATIO := 0.25
-const POWERED_BY_PHRASE := "Powered by Polaris Key"
-const BADGE_MIN_HORIZONTAL := Vector2i(376, 144)
-const BADGE_MIN_COMPACT := Vector2i(232, 88)
-const BADGE_MIN_STACKED := Vector2i(288, 336)
+const POWERED_BY_PHRASE := "Powered by Polaris Locker"
+const BADGE_MIN := Vector2i(320, 104)
+const POWERED_BY_MARK_SIZE := 16
 
 ## Section ids: core plus every service slug.
 const SERVICE_IDS: Array[String] = ["core", "license", "config", "release", "distribution", "update", "identity", "sync", "commerce"]

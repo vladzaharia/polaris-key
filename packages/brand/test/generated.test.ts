@@ -84,7 +84,8 @@ describe("generator drift", () => {
     }
     expect(kt).toMatch(/"core" to BrandAccent\([^\n]*, bit = null\)/);
     expect(kt).toContain("public val pinnedKDark: BrandVector");
-    expect(kt).toContain("public val poweredByCompactLight: BrandVector");
+    expect(kt).toContain("public val lockerPoweredByLight: BrandVector");
+    expect(kt).toContain("public val lockerMicroDark: BrandVector");
     // The display-cut Pinned K without the terminal bit: no gold in the mark.
     const pinned = kt.slice(
       kt.indexOf("public val pinnedKDark"),
@@ -153,13 +154,20 @@ describe("generator drift", () => {
     const dir = join(PKG, "../../sdks/godot/addons/polaris_key/brand");
     expect(readFileSync(join(dir, ".gdignore"), "utf8")).toContain("GENERATED");
     const copies: [string, string][] = [
-      ["polaris_key-dark.svg", "06-games/key/dark/key-16.svg"],
-      ["powered-by-credit-light.svg", "06-games/powered-by-credit-light.svg"],
+      ["polaris_key-dark.svg", "kit/06-games/key/dark/key-16.svg"],
+      [
+        "powered-by-credit-light.svg",
+        "locker-kit/badges/locker-powered-by-light-transparent.svg",
+      ],
+      [
+        "locker-micro-dark.svg",
+        "locker-kit/logos/svg/locker-mark-dark-micro.svg",
+      ],
     ];
     for (const [name, kit] of copies) {
       const svg = readFileSync(join(dir, name), "utf8");
       expect(svg.startsWith("<!--\n  GENERATED FILE")).toBe(true);
-      const original = readFileSync(join(PKG, "kit", kit), "utf8").trimEnd();
+      const original = readFileSync(join(PKG, kit), "utf8").trimEnd();
       expect(svg.trimEnd().endsWith(original)).toBe(true);
     }
     // The default Pinned K has no terminal bit (BRAND.md owner decisions, 2026-10-03).
@@ -206,18 +214,19 @@ describe("generator drift", () => {
     expect(gd.startsWith("# GENERATED FILE")).toBe(true);
     expect(gd).toContain("class_name PKeyBrandMarks");
     const marks: [string, string][] = [
-      ["PINNED_K_DARK", "01-marks/key/svg/key-display-dark.svg"],
-      ["PINNED_K_LIGHT", "01-marks/key/svg/key-display-light.svg"],
+      ["PINNED_K_DARK", "kit/01-marks/key/svg/key-display-dark.svg"],
+      ["PINNED_K_LIGHT", "kit/01-marks/key/svg/key-display-light.svg"],
+      ["LOCKER_MICRO_DARK", "locker-kit/logos/svg/locker-mark-dark-micro.svg"],
       [
-        "POWERED_BY_COMPACT_DARK",
-        "03-powered-by/transparent/powered-by-compact-dark.svg",
+        "LOCKER_POWERED_BY_LIGHT",
+        "locker-kit/badges/locker-powered-by-light-transparent.svg",
       ],
     ];
     for (const [name, kitPath] of marks) {
       const m = new RegExp(`const ${name} := (".*")$`, "m").exec(gd);
       expect(m, name).not.toBeNull();
       expect(JSON.parse(m![1]!)).toBe(
-        readFileSync(join(PKG, "kit", kitPath), "utf8").trim(),
+        readFileSync(join(PKG, kitPath), "utf8").trim(),
       );
     }
     for (const line of gd.match(/const PINNED_K_(DARK|LIGHT) := .*/g) ?? []) {

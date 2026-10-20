@@ -2,6 +2,7 @@ export * from "./marks/svg.js";
 export * from "./marks/icons.js";
 export {
   badgeSize,
+  keyBadgeSize,
   bitVisible,
   clearSpace,
   opticalCut,

@@ -58,12 +58,12 @@ public enum PolarisBrand {
     public static let serviceMax: Double = 32
     public static let goldMinimumGlyph: Double = 48
     public static let clearSpaceRatio: Double = 0.25
-    public static let poweredByPhrase = "Powered by Polaris Key"
+    public static let poweredByPhrase = "Powered by Polaris Locker"
 
-    /// "Powered by" badge minimum sizes in points (CSS-pixel equivalents): never render smaller.
-    public static let badgeMinHorizontal: (width: Double, height: Double) = (376, 144)
-    public static let badgeMinCompact: (width: Double, height: Double) = (232, 88)
-    public static let badgeMinStacked: (width: Double, height: Double) = (288, 336)
+    /// The Locker "Powered by" badge's minimum size in points (CSS-pixel equivalents): never render
+    /// smaller. The line draws the Locker micro mark at `poweredByMarkSize` points.
+    public static let badgeMin: (width: Double, height: Double) = (320, 104)
+    public static let poweredByMarkSize: Double = 16
 
     /// Section ids: core plus every service slug.
     public static let serviceIds: [String] = ["core", "license", "config", "release", "distribution", "update", "identity", "sync", "commerce"]

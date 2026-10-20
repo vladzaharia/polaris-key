@@ -16,11 +16,11 @@ import {
   lockupMetrics,
   markParts,
   poweredByInner,
-  type BadgeOptions,
+  type PoweredByOptions,
   type LockupOptions,
   type MarkOptions,
 } from "./svg.js";
-import { BADGE_TEMPLATES } from "../generated/layouts.js";
+import { lockerBadgeTemplate } from "./locker.js";
 import {
   serviceIconInner,
   serviceIconTileInner,
@@ -114,41 +114,36 @@ export function PolarisLockup({
   );
 }
 
-export type PoweredByBadgeProps = SvgProps & BadgeOptions;
+export type PoweredByBadgeProps = SvgProps & PoweredByOptions;
 
-function warnBelowMinimum(
-  layout: keyof typeof POWERED_BY.minimum,
-  width: number | undefined,
-) {
+function warnBelowMinimum(width: number | undefined) {
   if (width === undefined) return;
-  const min = POWERED_BY.minimum[layout].width;
+  const min = POWERED_BY.minimum.width;
   if (width >= min) return;
   const env = (
     globalThis as { process?: { env?: Record<string, string | undefined> } }
   ).process?.env;
   if (env?.NODE_ENV === "production") return;
   console.warn(
-    `PoweredByBadge: width ${width} is below the ${layout} minimum of ${min} CSS px; rendering at ${min}.`,
+    `PoweredByBadge: width ${width} is below the minimum of ${min} CSS px; rendering at ${min}.`,
   );
 }
 
 /**
- * "Powered by Polaris Key", from the kit's badges. Never smaller than the layout's minimum
- * (horizontal 376×144, compact 232×88, stacked 288×336): a smaller `width` is raised to it.
- * The badge's built-in padding is part of the artwork; do not crop it.
+ * "Powered by Polaris Locker", the Locker `powered-by` badge (320 × 104 canvas). Never narrower
+ * than 320 CSS px: a smaller `width` is raised to it. The badge's built-in padding is part of the
+ * artwork; do not crop it. Where 320 px is not free, draw the line instead (UI-KITS §1.6).
  */
 export function PoweredByBadge({
-  layout,
   treatment,
   theme,
   width,
   title,
   ...rest
 }: PoweredByBadgeProps) {
-  const l = layout ?? "compact";
-  const t = BADGE_TEMPLATES[treatment ?? "transparent"][l];
-  const size = badgeSize(l, width);
-  warnBelowMinimum(l, width);
+  const t = lockerBadgeTemplate(treatment ?? "transparent");
+  const size = badgeSize(width);
+  warnBelowMinimum(width);
   const name = title ?? POWERED_BY.phrase;
   return (
     <svg
@@ -161,7 +156,7 @@ export function PoweredByBadge({
       aria-hidden={name ? undefined : true}
       {...rest}
       dangerouslySetInnerHTML={{
-        __html: poweredByInner({ layout, treatment, theme, width, title }),
+        __html: poweredByInner({ treatment, theme, width, title }),
       }}
     />
   );

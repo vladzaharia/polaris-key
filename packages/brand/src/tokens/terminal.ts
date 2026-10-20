@@ -48,6 +48,7 @@ export const TERMINAL_SYMBOLS = {
     barEmpty: "─",
     separator: "·",
     ellipsis: "…",
+    lockerMark: "✦",
     arrows: "↑↓",
   },
   ascii: {
@@ -65,6 +66,7 @@ export const TERMINAL_SYMBOLS = {
     barEmpty: "-",
     separator: "-",
     ellipsis: "...",
+    lockerMark: "*",
     arrows: "^v",
   },
 } as const;

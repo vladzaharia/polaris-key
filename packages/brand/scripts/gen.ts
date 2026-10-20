@@ -977,9 +977,8 @@ const SERVICE_MAX := ${OPTICAL.serviceMax}
 const GOLD_MINIMUM_GLYPH := ${OPTICAL.goldMinimumGlyphSize}
 const CLEAR_SPACE_RATIO := ${CLEAR_SPACE_RATIO}
 const POWERED_BY_PHRASE := "${POWERED_BY.phrase}"
-const BADGE_MIN_HORIZONTAL := Vector2i(${POWERED_BY.minimum.horizontal.width}, ${POWERED_BY.minimum.horizontal.height})
-const BADGE_MIN_COMPACT := Vector2i(${POWERED_BY.minimum.compact.width}, ${POWERED_BY.minimum.compact.height})
-const BADGE_MIN_STACKED := Vector2i(${POWERED_BY.minimum.stacked.width}, ${POWERED_BY.minimum.stacked.height})
+const BADGE_MIN := Vector2i(${POWERED_BY.minimum.width}, ${POWERED_BY.minimum.height})
+const POWERED_BY_MARK_SIZE := ${POWERED_BY.markSize}
 
 ## Section ids: core plus every service slug.
 const SERVICE_IDS: Array[String] = [${SERVICE_IDS.map((s) => `"${s}"`).join(", ")}]
@@ -1164,14 +1163,10 @@ public enum PolarisBrand {
     public static let clearSpaceRatio: Double = ${CLEAR_SPACE_RATIO}
     public static let poweredByPhrase = "${POWERED_BY.phrase}"
 
-    /// "Powered by" badge minimum sizes in points (CSS-pixel equivalents): never render smaller.
-${(["horizontal", "compact", "stacked"] as const)
-  .map((layout) => {
-    const { width, height } = POWERED_BY.minimum[layout];
-    const name = layout[0]!.toUpperCase() + layout.slice(1);
-    return `    public static let badgeMin${name}: (width: Double, height: Double) = (${width}, ${height})`;
-  })
-  .join("\n")}
+    /// The Locker "Powered by" badge's minimum size in points (CSS-pixel equivalents): never render
+    /// smaller. The line draws the Locker micro mark at \`poweredByMarkSize\` points.
+    public static let badgeMin: (width: Double, height: Double) = (${POWERED_BY.minimum.width}, ${POWERED_BY.minimum.height})
+    public static let poweredByMarkSize: Double = ${POWERED_BY.markSize}
 
     /// Section ids: core plus every service slug.
     public static let serviceIds: [String] = [${SERVICE_IDS.map((s) => `"${s}"`).join(", ")}]
@@ -1206,6 +1201,66 @@ ${table("light")}
         if size <= serviceMax { return "service" }
         return "display"
     }
+}
+`;
+}
+
+// ── Swift: the Locker attribution art as vector data ────────────────────────────────────────
+
+const SWIFT_MARKS: [string, string, string][] = [
+  [
+    "lockerMicroDark",
+    "logos/svg/locker-mark-dark-micro.svg",
+    "The Polaris Locker mark, micro cut, for dark grounds (the Powered-by line's mark).",
+  ],
+  [
+    "lockerMicroLight",
+    "logos/svg/locker-mark-light-micro.svg",
+    "The Polaris Locker mark, micro cut, for light grounds (the Powered-by line's mark).",
+  ],
+  [
+    "lockerPoweredByDark",
+    "badges/locker-powered-by-dark-transparent.svg",
+    'The Locker "Powered by" badge, transparent treatment, for dark grounds.',
+  ],
+  [
+    "lockerPoweredByLight",
+    "badges/locker-powered-by-light-transparent.svg",
+    'The Locker "Powered by" badge, transparent treatment, for light grounds.',
+  ],
+];
+
+function swiftNodes(nodes: SvgNode[], indent: string): string {
+  return nodes
+    .map((n) => {
+      const fill = n.fill ? `${swiftRgb(n.fill)}` : "nil";
+      if (n.kind === "path")
+        return `${indent}.path(fill: ${fill}, d: "${n.d}"),`;
+      return `${indent}.group(
+${indent}    tx: ${n.tx}, ty: ${n.ty}, sx: ${n.sx}, sy: ${n.sy}, fill: ${fill},
+${indent}    children: [
+${swiftNodes(n.children, `${indent}        `)}
+${indent}    ]),`;
+    })
+    .join("\n");
+}
+
+/** The vector types (`BrandVector`) live in PolarisBrandMarks.swift; this file is their data. */
+function swiftMarks(): string {
+  const vectors = SWIFT_MARKS.map(([name, path, doc]) => {
+    const tree = svgTree(readFileSync(join(PKG, "locker-kit", path), "utf8"));
+    return `    /// ${doc} locker-kit/${path}.
+    public static let ${name} = BrandVector(
+        width: ${tree.width}, height: ${tree.height},
+        nodes: [
+${swiftNodes(tree.nodes, "            ")}
+        ])`;
+  }).join("\n\n");
+  return `${banner("//")}
+
+/// The Polaris Locker attribution artwork, as vector data (LK-00 §14.2).
+public enum PolarisBrandMarkData {
+${vectors}
 }
 `;
 }
@@ -1383,6 +1438,12 @@ ${indent}),`;
     .join("\n");
 }
 
+/** Which kit folder a mark path is under: the Locker kit's logos and badges, else the Key kit. */
+const kitRoot = (kitPath: string): string =>
+  kitPath.startsWith("logos/") || kitPath.startsWith("badges/")
+    ? "locker-kit"
+    : "kit";
+
 /** The kit SVGs the Compose kit draws when branding is on (PolarisBrandMarks). */
 const KOTLIN_MARKS: [string, string, string][] = [
   [
@@ -1396,21 +1457,33 @@ const KOTLIN_MARKS: [string, string, string][] = [
     "The Pinned K, display cut, for light grounds; no terminal bit.",
   ],
   [
-    "poweredByCompactDark",
-    "03-powered-by/transparent/powered-by-compact-dark.svg",
-    'The compact "Powered by Polaris Key" badge, transparent treatment, for dark grounds.',
+    "lockerMicroDark",
+    "logos/svg/locker-mark-dark-micro.svg",
+    "The Polaris Locker mark, micro cut, for dark grounds (the Powered-by line's mark).",
   ],
   [
-    "poweredByCompactLight",
-    "03-powered-by/transparent/powered-by-compact-light.svg",
-    'The compact "Powered by Polaris Key" badge, transparent treatment, for light grounds.',
+    "lockerMicroLight",
+    "logos/svg/locker-mark-light-micro.svg",
+    "The Polaris Locker mark, micro cut, for light grounds (the Powered-by line's mark).",
+  ],
+  [
+    "lockerPoweredByDark",
+    "badges/locker-powered-by-dark-transparent.svg",
+    'The Locker "Powered by" badge, transparent treatment, for dark grounds.',
+  ],
+  [
+    "lockerPoweredByLight",
+    "badges/locker-powered-by-light-transparent.svg",
+    'The Locker "Powered by" badge, transparent treatment, for light grounds.',
   ],
 ];
 
 function ktMarks(): string {
   return KOTLIN_MARKS.map(([name, kitPath, doc]) => {
-    const tree = svgTree(readFileSync(join(PKG, "kit", kitPath), "utf8"));
-    return `    /** ${doc} kit/${kitPath}. */
+    const tree = svgTree(
+      readFileSync(join(PKG, kitRoot(kitPath), kitPath), "utf8"),
+    );
+    return `    /** ${doc} ${kitRoot(kitPath)}/${kitPath}. */
     public val ${name}: BrandVector = BrandVector(
         width = ${ktFloat(tree.width)},
         height = ${ktFloat(tree.height)},
@@ -1428,13 +1501,8 @@ function kotlinSource(): string {
       const bit = sectionBit(theme, id);
       return `        "${id}" to BrandAccent(solid = ${ktColor(a.solid)}, fg = ${ktColor(a.fg)}, on = ${ktColor(a.on)}, subtle = ${ktColor(a.subtle)}, bit = ${bit === null ? "null" : ktColor(bit)}),`;
     }).join("\n");
-  const badge = (["horizontal", "compact", "stacked"] as const)
-    .map((layout) => {
-      const { width, height } = POWERED_BY.minimum[layout];
-      const name = layout[0]!.toUpperCase() + layout.slice(1);
-      return `    public val badgeMin${name}: BrandSize = BrandSize(${ktFloat(width)}, ${ktFloat(height)})`;
-    })
-    .join("\n");
+  const badge = `    public val badgeMin: BrandSize = BrandSize(${ktFloat(POWERED_BY.minimum.width)}, ${ktFloat(POWERED_BY.minimum.height)})
+    public const val POWERED_BY_MARK_SIZE: Float = ${ktFloat(POWERED_BY.markSize)}`;
   const radius = Object.entries(RADIUS)
     .filter(([k]) => k !== "full")
     .map(
@@ -1511,7 +1579,7 @@ public object PolarisBrandTokens {
     public const val CLEAR_SPACE_RATIO: Float = ${ktFloat(CLEAR_SPACE_RATIO)}
     public const val POWERED_BY_PHRASE: String = "${POWERED_BY.phrase}"
 
-    /** "Powered by" badge minimum sizes in dp: never render smaller. */
+    /** The Locker "Powered by" badge's minimum size in dp: never render smaller; the line's mark is 16 dp. */
 ${badge}
 
     /** Corner radii in dp (controls use md, cards lg, the badge frame xl). */
@@ -1658,24 +1726,32 @@ const GODOT_BRAND_DIR = "sdks/godot/addons/polaris_key/brand";
 const GODOT_BRAND_ASSETS: [string, string][] = [
   ["polaris_key-dark.svg", "06-games/key/dark/key-16.svg"],
   ["polaris_key-light.svg", "06-games/key/light/key-16.svg"],
-  ["powered-by-credit-dark.svg", "06-games/powered-by-credit-dark.svg"],
-  ["powered-by-credit-light.svg", "06-games/powered-by-credit-light.svg"],
+];
+
+/**
+ * The Locker attribution art the addon ships (LK-00 §14.2), copied verbatim from locker-kit/: the
+ * `powered-by` badge for a game's credits screen and the micro mark for the Powered-by line. Key's
+ * `06-games/powered-by-credit-*` stay platform references and are not shipped.
+ */
+const GODOT_LOCKER_ASSETS: [string, string][] = [
   [
-    "powered-by-compact-dark.svg",
-    "03-powered-by/transparent/powered-by-compact-dark.svg",
+    "powered-by-credit-dark.svg",
+    "badges/locker-powered-by-dark-transparent.svg",
   ],
   [
-    "powered-by-compact-light.svg",
-    "03-powered-by/transparent/powered-by-compact-light.svg",
+    "powered-by-credit-light.svg",
+    "badges/locker-powered-by-light-transparent.svg",
   ],
+  ["locker-micro-dark.svg", "logos/svg/locker-mark-dark-micro.svg"],
+  ["locker-micro-light.svg", "logos/svg/locker-mark-light-micro.svg"],
 ];
 
 /** A kit SVG with the GENERATED banner as an XML comment in front of it (after any prolog). */
-export function godotBrandSvg(kitPath: string): string {
-  const svg = readFileSync(join(PKG, "kit", kitPath), "utf8");
+export function godotBrandSvg(kitPath: string, root = "kit"): string {
+  const svg = readFileSync(join(PKG, root, kitPath), "utf8");
   const lines = BANNER_LINES.map((l) =>
     l.startsWith("packages/brand/src/tokens/")
-      ? `packages/brand/kit/${kitPath}, verbatim.`
+      ? `packages/brand/${root}/${kitPath}, verbatim.`
       : l,
   );
   const comment = `<!--\n${lines.map((l) => (l ? `  ${l}` : "")).join("\n")}\n-->\n`;
@@ -1730,38 +1806,35 @@ export function godotFontTres(ttf: string): string {
 
 /** The kit SVGs the Godot UI kit draws (PKeyBrandMarks), as GDScript string constants. */
 const GODOT_MARKS: [string, string][] = [
-  ["PINNED_K_DARK", "01-marks/key/svg/key-display-dark.svg"],
-  ["PINNED_K_LIGHT", "01-marks/key/svg/key-display-light.svg"],
+  ["PINNED_K_DARK", "kit/01-marks/key/svg/key-display-dark.svg"],
+  ["PINNED_K_LIGHT", "kit/01-marks/key/svg/key-display-light.svg"],
+  ["LOCKER_MICRO_DARK", "locker-kit/logos/svg/locker-mark-dark-micro.svg"],
+  ["LOCKER_MICRO_LIGHT", "locker-kit/logos/svg/locker-mark-light-micro.svg"],
   [
-    "POWERED_BY_COMPACT_DARK",
-    "03-powered-by/transparent/powered-by-compact-dark.svg",
+    "LOCKER_POWERED_BY_DARK",
+    "locker-kit/badges/locker-powered-by-dark-transparent.svg",
   ],
   [
-    "POWERED_BY_COMPACT_LIGHT",
-    "03-powered-by/transparent/powered-by-compact-light.svg",
+    "LOCKER_POWERED_BY_LIGHT",
+    "locker-kit/badges/locker-powered-by-light-transparent.svg",
   ],
 ];
 
 export function godotMarks(): string {
-  const consts = GODOT_MARKS.map(([name, kitPath]) => {
-    const svg = readFileSync(join(PKG, "kit", kitPath), "utf8").trim();
-    return `## kit/${kitPath}, verbatim.\nconst ${name} := ${JSON.stringify(svg)}`;
+  const consts = GODOT_MARKS.map(([name, path]) => {
+    const svg = readFileSync(join(PKG, path), "utf8").trim();
+    return `## ${path}, verbatim.\nconst ${name} := ${JSON.stringify(svg)}`;
   }).join("\n");
-  const compact = readFileSync(
-    join(PKG, "kit", "03-powered-by/transparent/powered-by-compact-dark.svg"),
-    "utf8",
-  );
-  const width = /<svg[^>]* width="(\d+)"/.exec(compact)?.[1];
-  if (!width) throw new Error("gen: the compact badge SVG has no width");
   return `${banner("#")}
 class_name PKeyBrandMarks
 extends RefCounted
-## The kit artwork the UI kit rasterises when Polaris Key branding is on (PKeyUiTheme.branded()):
-## the Pinned K's display cut without the terminal bit (BRAND.md owner decisions, 2026-10-03) and
-## the compact "Powered by Polaris Key" badge, transparent treatment, for dark and light grounds.
+## The artwork the UI kit rasterises at run time: the Pinned K's display cut without the terminal
+## bit (BRAND.md owner decisions, 2026-10-03) when Polaris Key branding is on, and the Polaris
+## Locker micro mark (the Powered-by line's 16 px mark) and "Powered by" badge, transparent
+## treatment, for dark and light grounds (LK-00 §14.2). The badge is 320 x 104 (BADGE_MIN).
 
-## The compact badge's SVG width (its minimum, BADGE_MIN_COMPACT.x).
-const POWERED_BY_COMPACT_WIDTH := ${width}.0
+## The Locker badge's SVG width (its minimum, BADGE_MIN.x).
+const LOCKER_POWERED_BY_WIDTH := ${POWERED_BY.minimum.width}.0
 ${consts}
 `;
 }
@@ -1871,6 +1944,10 @@ const TARGETS: Target[] = [
     render: swiftSource,
   },
   {
+    path: "sdks/swift/Sources/PolarisKeyUI/BrandMarks.generated.swift",
+    render: swiftMarks,
+  },
+  {
     path: `sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/brand/PolarisBrandTokens.generated.kt`,
     render: kotlinSource,
   },
@@ -1887,6 +1964,10 @@ const TARGETS: Target[] = [
   ...GODOT_BRAND_ASSETS.map(([name, kitPath]) => ({
     path: `${GODOT_BRAND_DIR}/${name}`,
     render: () => godotBrandSvg(kitPath),
+  })),
+  ...GODOT_LOCKER_ASSETS.map(([name, path]) => ({
+    path: `${GODOT_BRAND_DIR}/${name}`,
+    render: () => godotBrandSvg(path, "locker-kit"),
   })),
   {
     path: "sdks/godot/addons/polaris_key/ui/theme/brand_marks_generated.gd",
