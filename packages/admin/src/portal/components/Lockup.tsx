@@ -3,8 +3,8 @@ import { PolarisLockup } from "@polaris-key/brand/react";
 import { useTheme } from "../../components/theme.js";
 
 /**
- * The kit's compact Polaris Key lockup (PORTAL.md §0.3): the Pinned K with no section bit, in the
- * active theme. Decorative here: the link around it carries the name.
+ * The Polaris Locker horizontal lockup (BRAND §15: 120 px minimum width) in the active theme.
+ * Decorative here: the link around it carries the name.
  */
 export function Lockup({
   height = 32,
@@ -16,8 +16,8 @@ export function Lockup({
   const { theme } = useTheme();
   return (
     <PolarisLockup
-      kind="key"
-      layout="compact"
+      kind="locker"
+      layout="horizontal"
       theme={theme}
       height={height}
       title=""

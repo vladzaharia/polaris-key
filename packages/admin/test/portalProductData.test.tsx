@@ -298,7 +298,7 @@ describe("Remove my data from a product (I-11)", () => {
     const dialog = await openRemove(card);
     expect(
       within(dialog).getByText(
-        "This only affects Mossgarden. Your Polaris Key account and your other apps stay as they are.",
+        "This only affects Mossgarden. Your Polaris Locker account and your other apps stay as they are.",
       ),
     ).toBeTruthy();
     expect(
@@ -306,7 +306,7 @@ describe("Remove my data from a product (I-11)", () => {
         .getAllByRole("listitem")
         .map((li) => li.textContent),
     ).toEqual([
-      "Polaris Key deletes your settings and activity for Mossgarden. This can't be undone.",
+      "Polaris Locker deletes your settings and activity for Mossgarden. This can't be undone.",
       "Little Fern is told, so they can delete their own copy.",
       "Your license stays in your library. While it does, Little Fern can still connect you to your old records through it.",
     ]);
@@ -771,7 +771,7 @@ describe("an open product's page (I-11)", () => {
         .getAllByRole("listitem")
         .map((li) => li.textContent),
     ).toEqual([
-      "Polaris Key deletes your settings and activity for Driftwood Notes. This can't be undone.",
+      "Polaris Locker deletes your settings and activity for Driftwood Notes. This can't be undone.",
       "Tern Studio is told, so they can delete their own copy.",
       "Driftwood Notes stays in your library.",
     ]);

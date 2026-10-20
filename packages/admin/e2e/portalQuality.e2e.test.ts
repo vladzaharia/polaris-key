@@ -104,6 +104,27 @@ describe.concurrent("every shipped §4 state passes the quality bar", () => {
           });
           try {
             await state.ready(o.page);
+            expect(
+              await o.page.evaluate(() =>
+                document.documentElement.getAttribute("data-brand"),
+              ),
+              "the customer site is Polaris Locker",
+            ).toBe("locker");
+            const marker = await o.page.evaluate(() => {
+              const m = document.querySelector<HTMLElement>(
+                "header nav a[aria-current=page]",
+              );
+              if (!m || m.offsetParent === null) return true;
+              const probe = document.body.appendChild(
+                document.createElement("i"),
+              );
+              probe.style.background = "var(--pk-locker-accent)";
+              const coral = getComputedStyle(probe).backgroundColor;
+              probe.remove();
+              const after = getComputedStyle(m, "::after");
+              return after.backgroundColor === coral && after.height === "3px";
+            });
+            expect(marker, "selected-nav marker").toBe(true);
             const name = `${state.id}-${w.label}-${theme}`;
             await shoot(o.page, name);
             expect.soft(await o.violations(), "CSP violations").toEqual([]);

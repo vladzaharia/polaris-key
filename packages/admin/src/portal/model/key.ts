@@ -38,7 +38,7 @@ const CUT_SHORT_NO_SLUG =
 export function keyProblem(check: KeyCheck): string | null {
   if (check.kind === "notKey")
     return (
-      "That isn't a Polaris Key license key. Ours start with pkey_." +
+      `That isn't a Polaris Locker license key. Ours start with pkey_.` +
       (check.steam
         ? " This one looks like a Steam key: activate it in Steam."
         : "")
@@ -207,7 +207,7 @@ export function claimVerdict(
     return {
       code: "format",
       tone: "danger",
-      message: "That isn't a Polaris Key license key. Ours start with pkey_.",
+      message: `That isn't a Polaris Locker license key. Ours start with pkey_.`,
     };
   if (err.status === 429)
     return {

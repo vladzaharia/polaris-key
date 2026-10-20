@@ -199,7 +199,7 @@ describe("the signed-in header (PORTAL.md §3.2, §8)", () => {
           expect
             .soft(visible, `header controls at ${width}`)
             .toBe(
-              `Polaris Key: your library · Library12 · Discover24 · Jump to a product · Activate license · Account: ${name}`,
+              `Polaris Locker: your library · Library12 · Discover24 · Jump to a product · Activate license · Account: ${name}`,
             );
           // From 1180 px the chip shows the full name. It truncates only once the ⌘K field has
           // given way to its 176 px floor, or the chip has reached its 18rem cap.

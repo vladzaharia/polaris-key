@@ -165,7 +165,7 @@ describe("LoginCard (SIGN-IN.md §3.1–§3.4, §3.9)", () => {
     expect(
       screen.getByText("Or open the link in the email. Keep this tab open."),
     ).toBeTruthy();
-    expect(document.title).toBe("Check your email · Polaris Key");
+    expect(document.title).toBe("Check your email · Polaris Locker");
     // The live region announces the new step once.
     await waitFor(() =>
       expect(document.querySelector("[data-step-announcer]")?.textContent).toBe(
@@ -783,7 +783,7 @@ describe("Connections on the card (I-30; mockup identity.sign-in-routes)", () =>
     expect(screen.getByTitle("dana@example.edu").textContent).toBe(
       "dana@example.edu",
     );
-    expect(document.title).toBe("Lakeside University · Polaris Key");
+    expect(document.title).toBe("Lakeside University · Polaris Locker");
     expect(await axeViolations()).toEqual([]);
     // Change goes back to the email step, with the address kept and the field focused.
     await userEvent.click(screen.getByRole("button", { name: "Change email" }));

@@ -403,7 +403,7 @@ describe("the storefront product page, #/discover/:product (PS-05)", () => {
       level: 1,
       name: "Lumen RAW",
     });
-    expect(document.title).toBe("Lumen RAW · Polaris Key");
+    expect(document.title).toBe("Lumen RAW · Polaris Locker");
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(screen.getByText("RAW development for night skies")).toBeTruthy();
     expect(screen.getByText(/Develop RAW files\./)).toBeTruthy();
@@ -540,7 +540,7 @@ describe("the storefront product page, #/discover/:product (PS-05)", () => {
         level: 1,
         name: "There's nothing to add here",
       });
-      expect(document.title).toBe("Not available · Polaris Key");
+      expect(document.title).toBe("Not available · Polaris Locker");
       texts.push(h1.closest("section")!.textContent ?? "");
       expect(
         screen
@@ -590,7 +590,7 @@ describe("the storefront product page, #/discover/:product (PS-05)", () => {
     await screen.findByRole("heading", { level: 1, name: "Starfall Arena" });
     expect(
       screen.getByText(
-        "Comet Forge shows it to everyone with a Polaris Key account.",
+        "Comet Forge shows it to everyone with a Polaris Locker account.",
       ),
     ).toBeTruthy();
     expect(screen.queryByText(/above\./)).toBeNull();
@@ -878,7 +878,7 @@ describe("the storefront's words (model/discover.ts, notes/S-21 §6.5)", () => {
     const p = (over: Partial<PortalObtainPath> & { kind: string }) =>
       pathCopy(path(over)).text;
     expect(p({ kind: "auto_issue", reason: "free_with_account" })).toBe(
-      "Free with a Polaris Key account",
+      "Free with a Polaris Locker account",
     );
     expect(p({ kind: "auto_issue", terms: TRIAL })).toBe(
       "Free trial · 14 days",

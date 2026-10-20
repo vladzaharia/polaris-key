@@ -808,9 +808,9 @@ export function setParams(
   window.dispatchEvent(new Event(ROUTE_EVENT));
 }
 
-/** `document.title` as "<Page> · Polaris Key" (PORTAL.md naming). */
+/** `document.title` as "<Page> · <brand>" (PORTAL.md naming). */
 export function useDocumentTitle(page: string | null): void {
   React.useEffect(() => {
-    document.title = page ? `${page} · Polaris Key` : "Polaris Key";
+    document.title = page ? `${page} · Polaris Locker` : "Polaris Locker";
   }, [page]);
 }
