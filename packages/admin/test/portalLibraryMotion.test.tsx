@@ -718,23 +718,23 @@ describe("Discover tiles: lift, and the just-added ring and plate come in once",
     rerender(tile("added"));
     const ring = container.querySelector("[data-ring]")!;
     expect(ring.getAttribute("aria-hidden")).toBe("true");
-    expect(ring.className).toMatch(/\bring-1 ring-success\b/);
+    expect(ring.className).toMatch(/\bring-1 ring-fg-strong\b/);
     // The ring only fades (a scaled 1 px ring would pass inside the card's edge); the plate pops.
     expect(ring.className).toMatch(/\bpk-content-in\b/);
     expect(ring.className).not.toMatch(/\bpk-pop-in\b/);
     // The words carry the meaning; the plate pops with the ring.
     const plate = screen.getByText("In your library");
     expect(plate.className).toMatch(/\bpk-pop-in\b/);
-    // The card keeps its green edge; the ring left it, so the card's clip can't cut it.
+    // The card keeps its ink edge; the ring left it, so the card's clip can't cut it.
     const card = screen.getByRole("article", { name: "Mossgarden" });
-    expect(card.className).toMatch(/\bborder-success\b/);
+    expect(card.className).toMatch(/\bborder-fg-strong\b/);
     expect(card.className).not.toMatch(/\bring-/);
   });
 
   it("just shows them on a tile that is already added when it mounts (?added= after a reload)", () => {
     const { container } = render(tile("added"));
     const ring = container.querySelector("[data-ring]")!;
-    expect(ring.className).toMatch(/\bring-1 ring-success\b/);
+    expect(ring.className).toMatch(/\bring-1 ring-fg-strong\b/);
     expect(ring.className).not.toMatch(/\bpk-(pop|content)-in\b/);
     expect(screen.getByText("In your library").className).not.toMatch(
       /\bpk-pop-in\b/,

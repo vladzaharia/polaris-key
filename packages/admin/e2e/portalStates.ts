@@ -370,12 +370,12 @@ export const SHIPPED: ShippedState[] = [
   {
     section: "4.12",
     id: "library-empty",
-    title: "Library, empty, with the Discover teaser",
+    title: "Library, empty, with the way into Discover",
     scenario: "empty",
     path: "/",
     ready: async (p) => {
       await h1(p, "Your library");
-      await p.getByRole("region", { name: /Ready to add/ }).waitFor();
+      await p.getByRole("heading", { name: "Nothing here yet" }).waitFor();
     },
   },
   {

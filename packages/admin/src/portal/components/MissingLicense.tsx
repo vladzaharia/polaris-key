@@ -1,9 +1,10 @@
 import * as React from "react";
 import { Mail, Store } from "lucide-react";
 import { href } from "../router.js";
+import { SteamGlyph } from "./Glyphs.js";
 
 /**
- * "Missing a license?" (B12): the two other ways a license reaches the account, as a quiet strip
+ * "Missing a license?" (B12): the other ways a license reaches the account, as a quiet strip
  * under the library. A license sent to another email joins through Account → Sign-in methods;
  * a store purchase (Steam through a sign-in method, the App Store and Google Play through the
  * product's own sign-in).
@@ -13,17 +14,14 @@ const LINK = "font-medium text-accent-fg underline underline-offset-2";
 
 export function MissingLicense(): React.ReactElement {
   return (
-    <section
-      aria-labelledby="missing-h"
-      className="space-y-4 border-t border-border pt-8"
-    >
+    <section aria-labelledby="missing-h" className="space-y-4">
       <h2 id="missing-h" className="text-lg font-semibold text-fg-strong">
         Missing a license?
       </h2>
-      <ul className="grid gap-4 desk:grid-cols-2">
+      <ul className="grid gap-4 desk:grid-cols-3">
         <li className="flex gap-3">
           <Glyph>
-            <Mail aria-hidden className="size-5" />
+            <Mail aria-hidden className="size-4" />
           </Glyph>
           <p className="text-sm text-fg-muted">
             <strong className="block font-medium text-fg-strong">
@@ -38,17 +36,28 @@ export function MissingLicense(): React.ReactElement {
         </li>
         <li className="flex gap-3">
           <Glyph>
-            <Store aria-hidden className="size-5" />
+            <SteamGlyph className="size-4" />
           </Glyph>
           <p className="text-sm text-fg-muted">
             <strong className="block font-medium text-fg-strong">
-              Bought in a store?
+              Bought on Steam?
             </strong>
             Add Steam under{" "}
             <a href={href.account("methods")} className={LINK}>
               Sign-in methods
             </a>
-            . For the App Store or Google Play, sign in to the app once.
+            .
+          </p>
+        </li>
+        <li className="flex gap-3">
+          <Glyph>
+            <Store aria-hidden className="size-4" />
+          </Glyph>
+          <p className="text-sm text-fg-muted">
+            <strong className="block font-medium text-fg-strong">
+              Bought on the App Store or Google Play?
+            </strong>
+            Sign in to the game once.
           </p>
         </li>
       </ul>
@@ -64,7 +73,7 @@ function Glyph({
   return (
     <span
       aria-hidden
-      className="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-surface-sunken text-fg-muted"
+      className="inline-flex size-7 shrink-0 items-center justify-center rounded-md bg-surface-sunken text-fg-muted"
     >
       {children}
     </span>

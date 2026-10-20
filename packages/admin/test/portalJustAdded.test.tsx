@@ -155,9 +155,7 @@ describe("the rule on the tile (2–7 products)", () => {
     const card = screen.getByRole("article", { name: "Tidewater Studio" });
     // The words carry the meaning, at the head of the reason line.
     expect(within(card).getByText("Added just now")).toBeTruthy();
-    expect(textOf(card)!.parentElement!.textContent).toMatch(
-      /^Added just now · /,
-    );
+    expect(textOf(card)!.parentElement!.textContent).toBe("Added just now");
     // The ring is decoration, outside the card (which clips its art).
     const ring = ringOf(fresh)!;
     expect(ring.getAttribute("aria-hidden")).toBe("true");

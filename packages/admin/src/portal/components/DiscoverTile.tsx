@@ -2,6 +2,7 @@ import * as React from "react";
 import {
   AlertCircle,
   ArrowRight,
+  ArrowUpRight,
   AtSign,
   Check,
   Clock,
@@ -23,11 +24,12 @@ import {
   offerPlatforms,
   offerReason,
   storeLinkLabel,
-  termsLine,
   type ReasonKind,
 } from "../model/discover.js";
+import { discoverTileFacts } from "../model/tileFacts.js";
 import { href } from "../router.js";
-import { PlatformGlyphs } from "./Glyphs.js";
+import { SteamGlyph } from "./Glyphs.js";
+import { TileFacts } from "./TileFacts.js";
 import { ProductArt } from "./ProductArt.js";
 import { ProductIcon } from "./ProductIcon.js";
 
@@ -99,7 +101,8 @@ export function DiscoverTile({
   const page = added
     ? href.product(offer.product)
     : href.storefront(offer.product);
-  const what = offer.offer ? termsLine(offer.offer) : offer.shortDescription;
+  const facts = discoverTileFacts(offer);
+  const stores = !link && !added && offer.cta === "add" ? offer.stores : [];
   return (
     <div className="pk-lift pk-pressable-card relative grid rounded-xl">
       <article
@@ -108,7 +111,7 @@ export function DiscoverTile({
         data-cta={offer.cta}
         className={cn(
           "relative flex flex-col overflow-hidden rounded-xl border bg-surface-raised shadow-elevation-1",
-          added ? "border-success" : "border-border",
+          added ? "border-fg-strong" : "border-border",
         )}
       >
         <ProductArt
@@ -149,37 +152,38 @@ export function DiscoverTile({
               className="relative border-[3px] border-surface-raised shadow-elevation-2"
             />
             <div className="min-w-0 flex-1 pt-9">
-              <h3
-                id={id}
-                dir="auto"
-                className="truncate text-lg font-semibold text-fg-strong"
-              >
-                <a
-                  href={page}
-                  // block: the name's full line is the link (24 px or taller), so a short name
-                  // still meets the target size (WCAG 2.5.8; PS-05). Its focus ring is the
-                  // card's, which it stretches over (styles.css, .pk-press-link).
-                  className="pk-press-link block truncate rounded-sm after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
+              <div className="flex min-w-0 items-baseline gap-2">
+                <h3
+                  id={id}
+                  dir="auto"
+                  className="min-w-0 shrink-0 truncate text-lg font-semibold text-fg-strong"
                 >
-                  {offer.name}
-                </a>
-              </h3>
-              {offer.developerName ? (
-                <p dir="auto" className="truncate text-sm text-fg-muted">
-                  {offer.developerName}
-                </p>
-              ) : null}
+                  <a
+                    href={page}
+                    // block: the name's full line is the link (24 px or taller), so a short name
+                    // still meets the target size (WCAG 2.5.8; PS-05). Its focus ring is the
+                    // card's, which it stretches over (styles.css, .pk-press-link).
+                    className="pk-press-link block truncate rounded-sm after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
+                  >
+                    {offer.name}
+                  </a>
+                </h3>
+                {offer.developerName ? (
+                  <p
+                    dir="auto"
+                    className="min-w-0 truncate text-sm text-fg-muted"
+                  >
+                    {offer.developerName}
+                  </p>
+                ) : null}
+              </div>
             </div>
           </div>
-          {what || offer.platforms.length ? (
-            <div className="mt-4 flex items-center justify-between gap-3 text-sm text-fg-muted">
-              <span className="min-w-0">{what}</span>
-              <PlatformGlyphs
-                platforms={offerPlatforms(offer.platforms)}
-                className="shrink-0"
-              />
-            </div>
-          ) : null}
+          <TileFacts
+            className="mt-4"
+            facts={facts}
+            platforms={offerPlatforms(offer.platforms)}
+          />
           {reason && ReasonIcon ? (
             <p className="mt-3 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 rounded-md bg-surface-sunken px-3 py-2.5 text-md text-fg-strong">
               <span className="flex min-w-0 flex-1 gap-2.5">
@@ -249,15 +253,18 @@ export function DiscoverTile({
               )}
             </div>
           )}
+          {stores.length > 0 ? (
+            <StoreLinks offer={offer} stores={stores} />
+          ) : null}
         </div>
       </article>
       {added ? (
-        // The green ring around the card (outside its border, where the card can't clip it).
+        // The ink ring around the card (form, not colour) (outside its border, where the card can't clip it).
         <span
           aria-hidden
           data-ring
           className={cn(
-            "pointer-events-none absolute inset-0 rounded-xl ring-1 ring-success",
+            "pointer-events-none absolute inset-0 rounded-xl ring-1 ring-fg-strong",
             pop && "pk-content-in",
           )}
         />
@@ -334,5 +341,38 @@ function ExternalButton({
         <span className="truncate">{label}</span>
       </a>
     </Button>
+  );
+}
+
+/** The other places to get it (the kit's `.stores`): quieter than Add to library. */
+function StoreLinks({
+  offer,
+  stores,
+}: {
+  offer: PortalDiscoverOffer;
+  stores: PortalDiscoverOffer["stores"];
+}): React.ReactElement {
+  return (
+    <p className="relative mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-fg-muted">
+      <span>Also on</span>
+      {stores.map((st) => (
+        <a
+          key={st.id}
+          href={st.url}
+          target="_blank"
+          rel="noreferrer"
+          aria-label={`${st.label}: ${offer.name} (opens in a new tab)`}
+          className="inline-flex items-center gap-1.5 font-medium text-accent-fg underline decoration-accent-fg/35 underline-offset-[3px]"
+        >
+          {st.kind === "steam" ? (
+            <SteamGlyph className="size-4" />
+          ) : (
+            <ShoppingBag aria-hidden className="size-4" />
+          )}
+          {st.label}
+          <ArrowUpRight aria-hidden className="size-3.5 text-fg-subtle" />
+        </a>
+      ))}
+    </p>
   );
 }

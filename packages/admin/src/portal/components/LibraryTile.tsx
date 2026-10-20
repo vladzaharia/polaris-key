@@ -8,7 +8,8 @@ import {
 } from "../model/library.js";
 import { href } from "../router.js";
 import { useCueOnce } from "../stagger.js";
-import { PlatformGlyphs } from "./Glyphs.js";
+import { libraryTileFacts } from "../model/tileFacts.js";
+import { TileFacts } from "./TileFacts.js";
 import { ProductArt } from "./ProductArt.js";
 import { ProductIcon } from "./ProductIcon.js";
 import { ProductMenu } from "./ProductMenu.js";
@@ -52,7 +53,6 @@ export function LibraryTile({
 }): React.ReactElement {
   const { presentation: pres } = product;
   const cue = useCueOnce(product.slug, product.justAdded);
-  const statusNote = product.status.note;
   // How many times Remove was chosen; 0 = no confirmation (choosing it again refocuses Keep it).
   const [ask, setAsk] = React.useState(0);
   const confirming = ask > 0;
@@ -111,7 +111,9 @@ export function LibraryTile({
               noArt && "bottom-auto right-3 top-3",
             )}
           >
-            <ProductStatusPill status={product.status} onArt />
+            {product.status.kind === "deviceLimit" ? null : (
+              <ProductStatusPill status={product.status} onArt />
+            )}
           </span>
         </ProductArt>
         <div
@@ -164,35 +166,25 @@ export function LibraryTile({
               </h3>
             </div>
           </div>
-          <div className="mt-4 flex items-center justify-between gap-3 text-sm text-fg-muted">
-            {/* Two lines on a compact tile, so the device count is never cut off. */}
-            <span
-              className={cn(
-                "min-w-0",
-                product.justAdded || compact ? "line-clamp-2" : "truncate",
-              )}
-            >
-              {product.justAdded ? (
-                <>
-                  <span
-                    data-cue="text"
-                    className={cn(
-                      "inline-block font-medium text-accent-fg",
-                      cue.animate && "pk-pop-in",
-                    )}
-                  >
-                    Added just now
-                  </span>
-                  {statusNote ? " · " : null}
-                </>
-              ) : null}
-              {statusNote}
-            </span>
-            <PlatformGlyphs
-              platforms={product.platforms}
-              className="shrink-0"
-            />
-          </div>
+          {product.justAdded ? (
+            <p className="mt-4 text-sm text-fg-muted">
+              <span
+                data-cue="text"
+                className={cn(
+                  "inline-block font-medium text-accent-fg",
+                  cue.animate && "pk-pop-in",
+                )}
+              >
+                Added just now
+              </span>
+            </p>
+          ) : null}
+          <TileFacts
+            className="mt-4"
+            facts={libraryTileFacts(product)}
+            platforms={product.platforms}
+            compact={compact}
+          />
           {note ? (
             <p className="mt-3 flex gap-2 text-sm text-fg-muted">
               <Info aria-hidden className="mt-0.5 size-4 shrink-0" />

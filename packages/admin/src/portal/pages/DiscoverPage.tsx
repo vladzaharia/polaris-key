@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Info, LayoutGrid } from "lucide-react";
+import { LayoutGrid } from "lucide-react";
 import { cn } from "../../lib/cn.js";
 import { Button } from "../../ui/Button.js";
 import { StationaryStar } from "../../ui/EmptyState.js";
@@ -180,11 +180,10 @@ export function DiscoverPage({
         <h1 className="text-page-title-sm font-semibold text-fg-strong desk:text-page-title">
           Discover
         </h1>
-        <p className="text-fg-muted">Products you can add for free</p>
       </div>
       {pending ? (
         // Two columns on tablets, three from 1180 px (§4.16), as the loaded grid.
-        <div className="grid gap-5 desk:grid-cols-2 wide:grid-cols-3" aria-busy>
+        <div className="grid gap-6 desk:grid-cols-2 wide:grid-cols-3" aria-busy>
           <Skeleton className="h-96 rounded-xl" />
           <Skeleton className="hidden h-96 rounded-xl desk:block" />
           <Skeleton className="hidden h-96 rounded-xl wide:block" />
@@ -226,9 +225,7 @@ export function DiscoverPage({
             <ul
               ref={stagger.ref}
               className={cn(
-                "grid gap-5 desk:grid-cols-2",
-                // Two or four tiles at three columns leave a row mostly empty (3 + 1).
-                tiles.length !== 2 && tiles.length !== 4 && "wide:grid-cols-3",
+                "grid gap-6 desk:grid-cols-2 wide:grid-cols-3",
                 stagger.className,
               )}
             >
@@ -254,10 +251,6 @@ export function DiscoverPage({
               })}
             </ul>
           </section>
-          <p className="flex gap-2 text-sm text-fg-muted">
-            <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
-            Purchases appear in your library automatically.
-          </p>
         </>
       )}
     </section>

@@ -352,7 +352,7 @@ describe("the tablet and short-screen rules (PORTAL.md §8)", () => {
     const o = await portal.open("twelve", "/", { width: 900 });
     try {
       await h1(o.page, "Your library");
-      await o.page.getByRole("region", { name: /Needs attention/ }).waitFor();
+      await o.page.getByRole("region", { name: /Needs you/ }).waitFor();
       const SHELF = "section[aria-labelledby=attention-h]";
       for (const width of [390, 768, 900, 1280, 1440, 2560]) {
         await o.page.setViewportSize({ width, height: 900 });
@@ -399,25 +399,6 @@ describe("the tablet and short-screen rules (PORTAL.md §8)", () => {
           shelf.rows.every((r, i) => i === 0 || r.top > shelf.rows[i - 1]!.top),
         ).toBe(true);
       }
-    } finally {
-      await o.close();
-    }
-  });
-
-  it("Ready to add: on tablets the odd third offer spans both columns", async ({
-    expect,
-  }) => {
-    const o = await portal.open("empty", "/", { width: 768, height: 1024 });
-    try {
-      await o.page.getByRole("region", { name: /Ready to add/ }).waitFor();
-      const grid = await rowsOf(
-        o.page,
-        "section[aria-labelledby=ready-h] > ul",
-        "",
-      );
-      expect(grid.columns).toBe(2);
-      expect(grid.items).toHaveLength(3);
-      expect(grid.items[2]!.width).toBeCloseTo(grid.width, 0);
     } finally {
       await o.close();
     }

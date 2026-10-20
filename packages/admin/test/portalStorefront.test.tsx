@@ -309,9 +309,9 @@ describe("Discover tiles on the storefront (PS-05)", () => {
     expect(
       within(lumen).getByText("Included with Aperture Seven"),
     ).toBeTruthy();
-    expect(
-      within(lumen).getByText("Standard · Lifetime · 3 devices"),
-    ).toBeTruthy();
+    expect(within(lumen).getByText("Standard")).toBeTruthy();
+    expect(within(lumen).getByText("Lifetime")).toBeTruthy();
+    expect(within(lumen).getByText("3 devices")).toBeTruthy();
     const more = within(lumen).getByRole("link", {
       name: "+1 more way to add Lumen RAW",
     });

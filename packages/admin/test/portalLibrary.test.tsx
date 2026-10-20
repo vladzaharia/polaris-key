@@ -185,9 +185,7 @@ describe("Library on today's data (PX-02)", () => {
     expect(
       screen.getByRole("button", { name: "More for Nightfall" }),
     ).toBeTruthy();
-    expect(
-      screen.queryByRole("region", { name: /Needs attention/ }),
-    ).toBeNull();
+    expect(screen.queryByRole("region", { name: /Needs you/ })).toBeNull();
     expect(await axeViolations()).toEqual([]);
   });
 
@@ -218,7 +216,7 @@ describe("Library on today's data (PX-02)", () => {
     expect(
       await screen.findByRole("heading", { name: /All products/ }),
     ).toBeTruthy();
-    const shelf = screen.getByRole("region", { name: /Needs attention/ });
+    const shelf = screen.getByRole("region", { name: /Needs you/ });
     expect(
       within(shelf)
         .getByRole("link", { name: "Renew with Northpaw Type" })
@@ -258,7 +256,7 @@ describe("Library on today's data (PX-02)", () => {
     renderPortal();
     await library();
     const shelf = await screen.findByRole("region", {
-      name: /Needs attention/,
+      name: /Needs you/,
     });
     const actions = within(shelf).getAllByRole("link", { name: /^Renew with/ });
     expect(actions).toHaveLength(2);
@@ -279,9 +277,8 @@ describe("Library on today's data (PX-02)", () => {
     const tile = await screen.findByRole("listitem", {
       name: "Have a license key?",
     });
-    expect(
-      within(tile).getByText("Activate it to add its product here."),
-    ).toBeTruthy();
+    // The title and the button only (portal.library): no line between them.
+    expect(within(tile).queryByText(/Activate it to add/)).toBeNull();
     // Three products: it fills the fourth place at two columns and spans the row at three.
     expect(tile.className).toMatch(/desk:col-span-1/);
     expect(tile.className).toMatch(/wide:col-span-3/);
@@ -303,7 +300,10 @@ describe("Library on today's data (PX-02)", () => {
       expect(a.className).toContain("underline");
     }
     expect(within(strip).getByText("Sent to another email?")).toBeTruthy();
-    expect(within(strip).getByText("Bought in a store?")).toBeTruthy();
+    expect(within(strip).getByText("Bought on Steam?")).toBeTruthy();
+    expect(
+      within(strip).getByText("Bought on the App Store or Google Play?"),
+    ).toBeTruthy();
     await userEvent.click(
       within(tile).getByRole("button", { name: "Activate license" }),
     );
