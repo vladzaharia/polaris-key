@@ -6,7 +6,8 @@
  * state or an action (the primary fill, rings, checked borders) goes back to neutral ink, because
  * coral states read as errors (ΔE00 0.6 to 2.8 against the danger tokens).
  */
-[data-brand="locker"] {
+/* :root[...] to match the brand scope's specificity; this file loads after it. */
+:root[data-brand="locker"] {
   --pk-accent: var(--pk-action);
   --pk-accent-on: var(--pk-action-on);
 }
