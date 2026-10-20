@@ -128,7 +128,10 @@ describe("the download page", () => {
     expect(html).toContain('data-brand="locker"');
     expect(html).toContain('rel="icon"');
     expect(html).toContain('aria-label="Polaris Locker"');
-    expect(html).toContain('<div class="svc">');
+    // Customer-facing: no Delivery service row, neutral links with the coral underline.
+    expect(html).not.toContain('<div class="svc">');
+    expect(html).not.toContain("--accent");
+    expect(html).toContain("Polaris Locker · Questions about Tidewater?");
     expect(html).toContain("Download from Polaris Locker");
     expect(html).not.toContain("Polaris Key");
     expect(html).not.toMatch(/<script/i);

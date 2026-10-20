@@ -398,9 +398,9 @@ async function activate(
   await dialog.getByRole("textbox", { name: "License key" }).fill(key);
   await dialog.getByRole("button", { name: "Continue" }).click();
   const confirm = page.getByRole("dialog", {
-    name: `Add ${name} to your account?`,
+    name: `Add ${name} to your library?`,
   });
-  await confirm.getByRole("button", { name: `Add ${name}` }).click();
+  await confirm.getByRole("button", { name: "Add to my library" }).click();
   if (held)
     try {
       await held.check();
@@ -616,7 +616,7 @@ describe("motion on: devices and activation under the Worker's CSP", () => {
     const dialog = page.getByRole("dialog", { name: "Activate a license" });
     await dialog.getByRole("textbox", { name: "License key" }).fill(KEY);
     await dialog.getByRole("button", { name: "Continue" }).click();
-    const add = page.getByRole("button", { name: "Add Mossgarden" });
+    const add = page.getByRole("button", { name: "Add to my library" });
     await add.waitFor();
     await atRest(page);
     await strip(page, "activate-done", () => add.click(), 8, 250);

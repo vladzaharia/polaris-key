@@ -357,9 +357,9 @@ describe("the Activate link from an app (PX-17)", () => {
     await dialog.getByText(/then free one up for macOS arm64/).waitFor();
     await dialog.getByRole("button", { name: "Continue" }).click();
     const confirm = o.page.getByRole("dialog", {
-      name: "Add Mossgarden to your account?",
+      name: "Add Mossgarden to your library?",
     });
-    await confirm.getByRole("button", { name: "Add Mossgarden" }).click();
+    await confirm.getByRole("button", { name: "Add to my library" }).click();
     await h1(o.page, "Your license has a free device");
     expect(await o.page.evaluate(() => location.hash)).toBe(
       "#/p/mossgarden/free-device?license=lic_mossgarden&for=macOS+arm64&return=mossgarden%3A%2F%2Fretry",
@@ -390,8 +390,8 @@ describe("the Activate link from an app (PX-17)", () => {
     await dialog.getByText(/Signing in to Mossgarden/).waitFor();
     await dialog.getByRole("button", { name: "Continue" }).click();
     await o.page
-      .getByRole("dialog", { name: "Add Mossgarden to your account?" })
-      .getByRole("button", { name: "Add Mossgarden" })
+      .getByRole("dialog", { name: "Add Mossgarden to your library?" })
+      .getByRole("button", { name: "Add to my library" })
       .click();
     await o.page.waitForURL(/\/signin\?request=rq_0123456789abcdef$/);
     expect(o.requests).toContain("POST /api/claim/license-key");
@@ -502,7 +502,7 @@ describe("portal flow conformance (UX-79)", () => {
           .poll(() =>
             o.page.evaluate(() => document.activeElement?.textContent),
           )
-          .toBe("Add Mossgarden to your account?");
+          .toBe("Add Mossgarden to your library?");
         await shoot(o.page, `activate-confirm-${width}-${theme}`);
         expect(await o.violations()).toEqual([]);
         await o.close();
@@ -883,18 +883,18 @@ describe("main flows", () => {
     await shoot(o.page, "activate-key-desktop-dark");
     await dialog.getByRole("button", { name: "Continue" }).click();
     const confirm = o.page.getByRole("dialog", {
-      name: "Add Mossgarden to your account?",
+      name: "Add Mossgarden to your library?",
     });
     await confirm.waitFor();
     await confirm.getByText("Lifetime · up to 5 devices").waitFor();
     // Focus follows the step to its heading (FLOWS.md §2 C18, P-5).
     await expect
       .poll(() => o.page.evaluate(() => document.activeElement?.textContent))
-      .toBe("Add Mossgarden to your account?");
+      .toBe("Add Mossgarden to your library?");
     await shoot(o.page, "activate-confirm-desktop-dark");
     expect(o.requests).toContain("POST /api/activate/preview");
     expect(o.requests).not.toContain("POST /api/claim/license-key");
-    await confirm.getByRole("button", { name: "Add Mossgarden" }).click();
+    await confirm.getByRole("button", { name: "Add to my library" }).click();
     const done = o.page.getByRole("dialog", {
       name: "Mossgarden is in your library",
     });
@@ -1091,7 +1091,7 @@ describe("main flows", () => {
       .fill("pkey_mossgarden_Q7xZr2Lk9vT3mN8pB1cY4w");
     await dialog.getByRole("button", { name: "Continue" }).click();
     const confirm = o.page.getByRole("dialog", {
-      name: "Add Mossgarden to your account?",
+      name: "Add Mossgarden to your library?",
     });
     await confirm
       .getByText(
@@ -1099,7 +1099,7 @@ describe("main flows", () => {
       )
       .waitFor();
     await shoot(o.page, "activate-confirm-devices-desktop-dark");
-    await confirm.getByRole("button", { name: "Add Mossgarden" }).click();
+    await confirm.getByRole("button", { name: "Add to my library" }).click();
     const done = o.page.getByRole("dialog", {
       name: "Mossgarden is in your library",
     });

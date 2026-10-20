@@ -634,7 +634,7 @@ describe("the page on the bytes host", () => {
     const html = await (
       await onBytes(w, `/${SLUG}`, { headers: { "user-agent": UA.bot } })
     ).text();
-    const table = html.slice(html.indexOf('id="files-title"'));
+    const table = html.slice(html.indexOf('class="files"'));
     const cells = [
       ...table.matchAll(
         /<tr><td>[^<]*<\/td><td>([^<]*)<\/td><td>([^<]*)<\/td>/g,
@@ -705,9 +705,9 @@ describe("the page on the bytes host", () => {
         .map((a) => a.kind)
         .sort(),
     ).toEqual(["altstore", "altstore-pal", "fdroid", "sidestore"]);
-    // Four QR codes, plus the top bar's Locker lockup and the Star Cut Delivery symbol.
+    // Four QR codes, plus the top bar's Locker lockup (no Delivery service row on a customer page).
     expect((html.match(/<svg [^>]*class="qr"/g) ?? []).length).toBe(4);
-    expect((html.match(/<svg /g) ?? []).length).toBe(6);
+    expect((html.match(/<svg /g) ?? []).length).toBe(5);
     for (const needle of [
       "altstore://source?url=",
       "sidestore://source?url=",
@@ -730,7 +730,7 @@ describe("the page on the bytes host", () => {
         await onBytes(w, `/${SLUG}`, { headers: { "user-agent": ua } })
       ).text();
       expect(html).toContain(
-        '<span class="way-head">Download from Polaris Locker</span>',
+        '<span class="row-title">Download from Polaris Locker</span>',
       );
       expect(html).not.toMatch(/direct download/i);
     }

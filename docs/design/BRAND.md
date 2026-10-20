@@ -820,6 +820,22 @@ route that is not a byte route):
   games, the platform's first audience. The page `<title>` is "Polaris Key Delivery" (with the
   environment in parentheses on staging and dev).
 
+### Customer download page (Polaris Locker)
+
+The per-product download page (`dl.plrs.im/<product>`) is customer-facing, so it is **Polaris Locker**
+(§15), not Delivery (lead decision, 2026-10-20). It overrides the identity bullets above:
+
+- One 40 px Locker lockup in a top bar with a rule under it; the page title is "Download <Product> ·
+  Polaris Locker". No Delivery service row, no Star Cut, no Distribution green.
+- Actions and links are neutral ink: the filled primary is ink, the other actions are outlined, and links are
+  `text-strong` with a 2 px coral underline (the lockup's coral is identity only, never a state).
+- The foot reads "Polaris Locker · Questions about <Product>? …" and nothing else about the platform.
+- The layout is the focused task frame (PORTAL.md §3.3): a centred column, a breadcrumb, the product's
+  cover band (decorative, never under text) and a 56 px identity row, the h1 at the display step (48/52,
+  32/36 under 640 px), then the recommendation and one outlined card per platform.
+
+The bare landings (`/` on the bytes and registry hosts) keep the Delivery contract above.
+
 ### The registry host, pkg.plrs.im
 
 The registry host (`https://pkg.plrs.im`, with `pkg-staging` and `pkg-dev`, F-02) serves package

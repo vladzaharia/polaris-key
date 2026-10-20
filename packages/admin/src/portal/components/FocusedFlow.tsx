@@ -66,7 +66,7 @@ export function FocusedFlow({
             className="inline-flex min-h-11 min-w-0 items-center gap-2 rounded-md px-2 text-sm text-fg hover:text-fg-strong"
           >
             <ArrowLeft aria-hidden className="size-4 shrink-0" />
-            <span className="truncate">
+            <span className="min-w-0 [overflow-wrap:anywhere]">
               {back.label}
               {back.tail ? (
                 <span className="hidden sm:inline"> {back.tail}</span>

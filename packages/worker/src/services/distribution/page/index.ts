@@ -71,6 +71,7 @@ import {
 import { feedResponse } from "../feeds/index.js";
 import { detectPlatform } from "../../../core/platformDetect.js";
 import {
+  PRESENTATION_HEADER_SLOTS,
   PRESENTATION_ICON_SLOTS,
   firstHostedImage,
   hostedImageOrigin,
@@ -132,6 +133,23 @@ async function pageIcon(
   );
   return icon ? hostedImageUrl(env, product, icon, PAGE_ICON_WIDTH) : null;
 }
+
+/** The cover (the product's header image) on the image host, or `null`; drawn as a plain band. */
+async function pageCover(
+  env: Env,
+  db: Db,
+  product: string,
+): Promise<string | null> {
+  if ((await hostedImageOrigin(env, db)) === null) return null;
+  const image = firstHostedImage(
+    await hostedImages(env, db, product, PRESENTATION_HEADER_SLOTS),
+    PRESENTATION_HEADER_SLOTS,
+  );
+  return image ? hostedImageUrl(env, product, image, PAGE_COVER_WIDTH) : null;
+}
+
+/** The cover's drawn width in CSS px (the page's column) times two. */
+export const PAGE_COVER_WIDTH = 1472;
 
 /** The icon's drawn size in CSS px (`.icon` in `PAGE_CSS`) times two. */
 export const PAGE_ICON_WIDTH = 128;
@@ -275,15 +293,17 @@ async function handlePage(
   if (text === null) return notFound();
   const model = JSON.parse(text) as DownloadModel;
   const iconUrl = await pageIcon(env, db, product.slug);
+  const coverUrl = await pageCover(env, db, product.slug);
   const html = renderDownloadPage(model, detectPlatform(req.headers), {
     iconUrl,
+    coverUrl,
   });
   return new Response(req.method === "HEAD" ? null : html, {
     status: 200,
     headers: {
       "content-type": "text/html; charset=utf-8",
       "content-security-policy": await pageCsp(
-        iconUrl ? await hostedImageOrigin(env, db) : null,
+        iconUrl || coverUrl ? await hostedImageOrigin(env, db) : null,
       ),
       "cache-control": PAGE_CACHE,
       // The page differs by platform: a shared cache must key on what detection read.
