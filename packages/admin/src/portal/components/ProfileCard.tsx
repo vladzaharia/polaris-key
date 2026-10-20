@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Lock, Pencil, Upload } from "lucide-react";
+import { Lock, Upload } from "lucide-react";
 import { Button } from "../../ui/Button.js";
 import { Skeleton } from "../../ui/Skeleton.js";
 import { toast } from "../../ui/toast.js";
@@ -57,17 +57,16 @@ export function ProfileCard({
     <SectionCard
       id="profile"
       title={C["profile.title"]}
-      subtitle={C["profile.subtitle"]}
       aside={
         profile && !editing ? (
           <Button
             ref={editRef}
             variant="outline"
-            iconStart={<Pencil aria-hidden />}
+            aria-label={C["profile.edit"]}
             onClick={() => setEditing("name")}
             className="shrink-0"
           >
-            {C["profile.edit"]}
+            {C["profile.editShort"]}
           </Button>
         ) : null
       }
@@ -135,7 +134,6 @@ export function ProfileCard({
               <span className="text-danger">{C["profile.loadError"]}</span>
               <Button
                 variant="outline"
-                size="sm"
                 loading={q.isFetching}
                 onClick={() => void q.refetch()}
               >

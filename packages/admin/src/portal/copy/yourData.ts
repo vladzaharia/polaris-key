@@ -4,9 +4,8 @@ import { t } from "../../lib/copy.js";
  * Your data's copy (S-16 §5.5, §5.7; I-11): Account's **Download my data**, and each product page's
  * "Your data in <Product>" card with its **Remove my data from <Product>** confirmation.
  *
- * The catalog (`lib/copy.ts` `t()`) holds no `yourData.*` keys yet, so, like `profile.ts` and
- * `getIt.ts`, the strings live here under the keys they will take, and the sentences that change
- * with the data (a plural, a license kept or removed) are the functions below the table. US
+ * The table reads the `yourData.*` keys of the kit copy catalog (nine locales); the sentences
+ * that change with the data (a plural, a license kept or removed) are the functions below it. US
  * spelling, sentence case, no jargon (§6.1): "your data in an app", never a subject or a
  * pairwise id.
  *
@@ -15,18 +14,17 @@ import { t } from "../../lib/copy.js";
  * account, another product or the account's deletion (the 14-day erasure stays on Account).
  */
 export const YOUR_DATA_COPY = {
-  "yourData.account.copy.title": "Download my data",
-  "yourData.account.copy.body":
-    "Account, sign-in methods, licenses, devices and each app's data. No keys or tokens.",
-  "yourData.account.copy.button": "Download my data",
-  "yourData.copy.private": "It holds personal details, so keep it private.",
-  "yourData.copy.started": "Your download has started",
-  "yourData.product.copy.title": "Download my data",
-  "yourData.product.remove.title": "Remove my data",
-  "yourData.product.remove.body": `Polaris Locker deletes your settings and activity here. This can't be undone.`,
-  "yourData.product.support.title": "Support code",
-  "yourData.product.support.body": "Read it to the app's support team.",
-  "yourData.remove.keep": "Keep my data",
+  "yourData.account.copy.title": t("yourData.account.copy.title"),
+  "yourData.account.copy.body": t("yourData.account.copy.body"),
+  "yourData.account.copy.button": t("yourData.account.copy.button"),
+  "yourData.copy.private": t("yourData.copy.private"),
+  "yourData.copy.started": t("yourData.copy.started"),
+  "yourData.product.copy.title": t("yourData.product.copy.title"),
+  "yourData.product.remove.title": t("yourData.product.remove.title"),
+  "yourData.product.remove.body": t("yourData.product.remove.body"),
+  "yourData.product.support.title": t("yourData.product.support.title"),
+  "yourData.product.support.body": t("yourData.product.support.body"),
+  "yourData.remove.keep": t("yourData.remove.keep"),
 } as const;
 
 /** What a product's file holds: its licenses only when the person has one. */

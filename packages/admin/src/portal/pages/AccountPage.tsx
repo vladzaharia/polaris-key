@@ -50,6 +50,14 @@ import { t } from "../../lib/copy.js";
  * for sessions. Connected products wait for their API (PX-13's brief); until then neither the nav
  * nor the page points at them. Download my data sits inside Your data, not in a section of its own.
  */
+/**
+ * Extension points (PX-15 and PX-31b add files under `components/account/` and one line here):
+ * a section is a row of SECTIONS plus a card in the column below, in the canonical order (Profile,
+ * Sign-in methods, Connected apps, Packages, Where you're signed in, Appearance, Your data); the
+ * after-sign-in nudge and the link-accounts offer render above the column's first card; the
+ * Approve-a-device dialog opens from SessionsCard and the `approve` route. Connected apps
+ * (PX-31b) goes between Sign-in methods and Packages.
+ */
 const SECTIONS: { id: AccountSection; label: string }[] = [
   { id: "profile", label: "Profile" },
   { id: "methods", label: "Sign-in methods" },
@@ -125,12 +133,11 @@ export function AccountPage({
       `${window.location.pathname}${href.account(s)}`,
     );
   };
-  const showName = account.name && account.name !== account.email;
 
   return (
     <div className="space-y-6 desk:space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="space-y-1">
+        <div>
           {/* Focus lands here after a navigation (the router, MO-05): no ring on a heading. */}
           <h1
             tabIndex={-1}
@@ -138,10 +145,6 @@ export function AccountPage({
           >
             Account
           </h1>
-          <p className="text-fg-muted">
-            {showName ? `${account.name} · ` : ""}
-            <span className="text-fg-strong">{account.email}</span>
-          </p>
         </div>
         <form method="post" action="/logout">
           <Button
