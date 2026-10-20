@@ -31,7 +31,7 @@ describe("the shell", () => {
     expect(html).toContain("· Polaris Locker</title>");
     expect(html).toContain('href="/assets/branding/locker/favicon.svg"');
     expect(html).toContain('aria-label="Polaris Locker"');
-    expect(html).not.toContain('class="surface"');
+    expect(html).not.toContain("device</");
     expect(html).toContain("<title>Polaris Locker</title>");
     expect(html).not.toContain("Polaris Key");
     expect(html).not.toContain("Polaris&nbsp;Key");

@@ -23,7 +23,8 @@ import type { Env } from "../src/platform/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 
 const ORIGIN = "https://key.plrs.im";
-const MISS = "That code didn't match or has expired. Check it and try again.";
+const MISS =
+  "No device is waiting for that code. Check your device's screen: codes last 10 minutes.";
 
 describe("the platform device-code entry pages", () => {
   let db: SqliteDb;
@@ -89,7 +90,12 @@ describe("the platform device-code entry pages", () => {
       expect(csp).not.toContain("script-src");
       const html = await res.text();
       expect(html).not.toMatch(/<script/i);
-      expect(html).toContain("Enter the code your app shows.");
+      expect(html).toContain("Enter the code from your device");
+      // The anti-phishing line and the footer (identity.device-code).
+      expect(html).toContain("not one somebody sent you.");
+      expect(html).toContain(
+        "signs you in on the device that shows this code.",
+      );
       expect(html).toContain(`<form method="get" action="${path}">`);
       expect(html.includes('<body class="tv">')).toBe(path === "/tv");
     }
@@ -108,7 +114,9 @@ describe("the platform device-code entry pages", () => {
       for (const path of ["/device", "/tv"]) {
         const res = await get(`${path}?user_code=${encodeURIComponent(raw)}`);
         expect(res.status).toBe(302);
-        expect(res.headers.get("location")).toBe(target);
+        expect(res.headers.get("location")).toBe(
+          path === "/tv" ? `${target}&tv=1` : target,
+        );
         expect(res.headers.get("cache-control")).toBe("no-store");
         expect(res.headers.get("referrer-policy")).toBe("no-referrer");
       }
@@ -132,6 +140,11 @@ describe("the platform device-code entry pages", () => {
       const html = await res.text();
       expect(html).toContain(MISS.replace("'", "&#x27;"));
       expect(html).toContain('<form method="get"');
+      // The reason sits under the field, not in an alert above the form, and the field is flagged.
+      expect(html).not.toContain('role="alert"');
+      expect(html).toContain(
+        'aria-invalid="true" aria-describedby="user_code-err"',
+      );
       expect(html.toLowerCase()).not.toContain("djdl");
       expect(res.headers.get("location")).toBeNull();
     }

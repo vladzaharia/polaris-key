@@ -88,7 +88,8 @@ describe("the device entry on the customer host", () => {
       );
       expect(res.status).toBe(302);
       expect(res.headers.get("location")).toBe(
-        `${API}/djdl/identity/auth/device?user_code=${f.userCode}`,
+        // `/tv` keeps its large-type variant through the redirect (`tv=1`).
+        `${API}/djdl/identity/auth/device?user_code=${f.userCode}${path === "/tv" ? "&tv=1" : ""}`,
       );
       expect(res.headers.get("set-cookie")).toBeNull();
     }

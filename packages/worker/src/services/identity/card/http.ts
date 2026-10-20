@@ -47,6 +47,25 @@ export function signInAgainAction(href = "/"): string {
   return `<p class="actions"><a class="button" href="${escapeHtml(href)}">Sign in again</a></p>`;
 }
 
+/** "This email already has an account" (SIGN-IN.md §3.13): a short heading and the way on, which
+ *  is the sign-in page (or a same-origin `href` already checked). The JSON refusals keep their
+ *  long message; the page does not repeat it. */
+export function emailInUsePage(
+  href = "/",
+  status = 409,
+  cookies: readonly string[] = [],
+): Response {
+  return cardPage(
+    status,
+    {
+      title: "Sign in",
+      heading: "This email already has an account",
+      body: `<p>Sign in with the method you used before.</p><p class="actions"><a class="button" href="${escapeHtml(href)}">Sign in</a></p>`,
+    },
+    cookies,
+  );
+}
+
 /** The heading of the Account disabled page and the start of its JSON message (SIGN-IN.md
  *  §3.13). `// signin.disabled.title` */
 export const ACCOUNT_DISABLED_HEADING = "This account can't sign in";
@@ -73,6 +92,8 @@ export const ACCOUNT_DISABLED_MESSAGE = `${ACCOUNT_DISABLED_HEADING}.`;
  */
 export function accountDisabledPage(
   opts: {
+    /** The app the sign-in was for, drawn as the card's header (a product's own sign-in). */
+    app?: { name: string; iconUrl?: string | null } | null;
     signInHref?: string | null;
     back?: { href: string; productName: string } | null;
   } = {},
@@ -86,6 +107,7 @@ export function accountDisabledPage(
     {
       title: "Sign in",
       heading: ACCOUNT_DISABLED_HEADING,
+      ...(opts.app ? { app: opts.app } : {}),
       body:
         `<p class="actions stack"><a class="button" href="${escapeHtml(opts.signInHref || "/")}">Sign in with another account</a>` + // signin.disabled.another
         `${back}</p>`,

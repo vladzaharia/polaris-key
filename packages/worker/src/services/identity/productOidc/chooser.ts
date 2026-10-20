@@ -9,7 +9,7 @@ import { randomToken } from "../../../platform/random.js";
 import { parseFlowRecord } from "../../../platform/json.js";
 import type { Db } from "../../../db/types.js";
 import { type Product } from "../../../core/products.js";
-import { renderBrandPage } from "../../../core/brandHtml.js";
+import { appHeader, renderBrandPage } from "../../../core/brandHtml.js";
 import { errorResponse, methodNotAllowed } from "../../../core/errors.js";
 import { clientNetwork } from "../../../core/rateLimit.js";
 import { appendAudit } from "../../../core/audit.js";
@@ -50,7 +50,9 @@ import {
   identityTier,
 } from "../../../core/licensing/issue.js";
 import { sameOriginPost } from "./deviceFlow.js";
-import { signedInPage } from "./pages.js";
+import { isReplaceGroup } from "../licenseChoice.js";
+import { flowView, listingDeveloper, signedInPage } from "./pages.js";
+import { appForPage, pageApp } from "../../../core/brandPage.js";
 
 /** Flow fields the chooser owns, dropped when the choice is recorded. */
 export const CHOICE_FIELDS = [
@@ -74,8 +76,15 @@ export function choosePath(req: Request, product: Product): string {
 /** A branded chooser-family page: no caching, no Referer, optional cookies. */
 export function choicePage(
   status: number,
-  opts: { title: string; heading: string; body: string },
+  opts: {
+    title: string;
+    heading: string;
+    body: string;
+    header?: string;
+    variant?: "tv";
+  },
   cookies: string[] = [],
+  imgOrigin: string | null = null,
 ): Response {
   const headers = brandedHtmlSecurityHeaders(
     new Headers({
@@ -83,6 +92,7 @@ export function choicePage(
       "referrer-policy": "no-referrer",
       "cache-control": "no-store",
     }),
+    { imgOrigin },
   );
   for (const c of cookies) headers.append("set-cookie", c);
   // No surface label or eyebrow on sign-in pages (SIGN-IN.md §3.13, D-32).
@@ -302,6 +312,7 @@ export async function handleAuthChoose(
     return choicePage(
       200,
       {
+        ...(flow.tv ? { variant: "tv" as const } : {}),
         title: "Sign-in cancelled",
         heading: "Sign-in cancelled",
         body: `<p class="muted">Nothing was changed. You can close this tab.</p>`,
@@ -329,8 +340,18 @@ export async function handleAuthChoose(
     return redirectToChooser(req, product);
   }
 
-  if (action === "replace") {
-    const pending = flow.choiceReplace;
+  if (action === "replace" || action === "replace-pick") {
+    let pending = flow.choiceReplace;
+    if (action === "replace-pick") {
+      // The all-full group: one press picks the device and replaces it (no second step).
+      const raw = form.get("replaceDevice") ?? "";
+      if (!raw) return notice({ kind: "pick_device" });
+      const [licenseId = "", deviceId = ""] = raw.split("|");
+      const picked = view.rows.find((r) => r.id === licenseId);
+      if (!picked?.replace?.some((d) => d.id === deviceId))
+        return notice({ kind: "unavailable" });
+      pending = { licenseId, deviceId };
+    }
     if (!pending) return redirectToChooser(req, product);
     const row = view.rows.find((r) => r.id === pending.licenseId);
     if (!row) return notice({ kind: "unavailable" });
@@ -363,7 +384,16 @@ export async function handleAuthChoose(
       if (!after) return endChooser(env, c);
       const fresh = after.rows.find((r) => r.id === pending.licenseId);
       if (fresh?.state !== "free") return notice({ kind: "unavailable" });
-      return completeChoice(req, env, db, product, c, fresh, now);
+      return completeChoice(
+        req,
+        env,
+        db,
+        product,
+        c,
+        fresh,
+        now,
+        row.replace?.find((d) => d.id === pending.deviceId)?.label,
+      );
     }
     return completeChoice(req, env, db, product, c, row, now);
   }
@@ -398,59 +428,78 @@ export async function renderChooser(
   });
   if (!minted.ok) return startAgainPage();
   const action = choosePath(req, product);
+  // The app's strip on every step of the chooser (identity.refusals): who is asking, and where.
+  const developer = await listingDeveloper(hooks);
+  const shown = pageApp(
+    await appForPage({ product, env, db, hooks }).catch(() => ({
+      name: product.name,
+    })),
+  );
+  const header = appHeader({
+    name: product.name,
+    iconUrl: shown.app.iconUrl,
+    action: "wants you to sign in",
+    ...(developer ? { sub: developer } : {}),
+    device: c.flow.viaDeviceCode ? c.deviceLabel : "this browser",
+  });
+  const tvOpt = c.flow.tv ? { variant: "tv" as const } : {};
   const pending = c.flow.choiceReplace;
   if (pending) {
     const row = view.rows.find((r) => r.id === pending.licenseId);
     const device = row?.replace?.find((d) => d.id === pending.deviceId);
     if (row && device) {
-      return choicePage(200, {
-        title: `Replace ${device.label}?`,
-        heading: `Replace ${device.label}?`, // signin.replace.title
-        body: replaceConfirmBody({
-          action,
-          token,
-          device: device.label,
-          productName: product.name,
-          thisDevice: c.flow.viaDeviceCode ? c.deviceLabel : "this browser",
-          activeNow: device.activeNow,
-        }),
-      });
+      return choicePage(
+        200,
+        {
+          header,
+          title: `Replace ${device.label}?`,
+          heading: `Replace ${device.label}?`, // signin.replace.title
+          body: replaceConfirmBody({
+            action,
+            token,
+            device: device.label,
+            productName: product.name,
+            thisDevice: c.flow.viaDeviceCode ? c.deviceLabel : "this browser",
+            activeNow: device.activeNow,
+          }),
+        },
+        [],
+        shown.imgOrigin,
+      );
     }
     await updateArtefact(env, c.stateKey, { unset: ["choiceReplace"] });
   }
   // No eyebrow (SIGN-IN.md §3.13, D-32): the lede names the product.
-  return choicePage(200, {
-    title: "Choose a license for this device",
-    heading: "Choose a license for this device", // signin.choice.title
-    body: chooserBody({
-      productName: product.name,
-      deviceLabel: c.deviceLabel,
-      action,
-      token,
-      view,
-      notice: c.flow.choiceNotice ?? null,
-      now,
-      namedByDevice: Boolean(c.flow.viaDeviceCode),
-      developerName: await listingDeveloper(hooks),
-    }),
-  });
+  return choicePage(
+    200,
+    {
+      header,
+      ...tvOpt,
+      title: isReplaceGroup(view)
+        ? "Replace a device"
+        : "Choose a license for this device",
+      // signin.replace.open when the page is the replace group, else signin.choice.title
+      heading: isReplaceGroup(view)
+        ? "Replace a device"
+        : "Choose a license for this device",
+      body: chooserBody({
+        productName: product.name,
+        deviceLabel: c.deviceLabel,
+        action,
+        token,
+        view,
+        notice: c.flow.choiceNotice ?? null,
+        now,
+        namedByDevice: Boolean(c.flow.viaDeviceCode),
+        developerName: developer,
+      }),
+    },
+    [],
+    shown.imgOrigin,
+  );
 }
 
-/** The developer's name from the product's listing (Distribution's hook), or null. */
-export async function listingDeveloper(
-  hooks: ServiceHooks | undefined,
-): Promise<string | null> {
-  try {
-    const listing = (await hooks?.delivery()?.listing()) as
-      | Record<string, unknown>
-      | null
-      | undefined;
-    const name = listing?.developerName;
-    return typeof name === "string" && name.trim() ? name.trim() : null;
-  } catch {
-    return null;
-  }
-}
+export { listingDeveloper } from "./pages.js";
 
 /** Record the person's choice and complete the flow (see `handleAuthChoose`). */
 export async function completeChoice(
@@ -461,8 +510,14 @@ export async function completeChoice(
   c: ChooserContext,
   choice: LegacyChoiceRow | "create",
   now: number,
+  /** After a Replace: the device that was signed out (the done page names both). */
+  replaced?: string,
 ): Promise<Response> {
   const { flow, identity } = c;
+  const view = await flowView(env, db, product, flow);
+  const doneNote = replaced
+    ? { thisDevice: c.deviceLabel, replaced }
+    : undefined;
   // Through the identity's own activation: a new licence, or the identity's own `sub`-keyed one
   // (the deferred P1-07 activation, attach opt-in included, stays as it is today).
   const activate = choice === "create" || choice.own;
@@ -498,7 +553,7 @@ export async function completeChoice(
     });
     if (!done.ok) return startAgainPage();
     await audit();
-    return signedInPage(cookies);
+    return signedInPage(cookies, null, view, doneNote);
   }
 
   let licenseId: string;

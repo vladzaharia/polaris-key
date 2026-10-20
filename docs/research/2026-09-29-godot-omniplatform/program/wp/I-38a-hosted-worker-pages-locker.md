@@ -77,9 +77,13 @@ apply says why in one line. One home: EXPERIENCE.md ยง7.3; kits also follow DL1โ
 ## Acceptance criteria
 
 - [ ] `pkey-ux-reviewer` passes the built screens in BUILT mode (a real browser, dark and light, 390 and 1440 px), against the matching Locker mockup. The pages are Worker-rendered: review them in the running Worker.
-- [ ] `pnpm --filter @polaris-key/worker test adminCspParity` and the UI snapshots pass.
+- [x] `pnpm --filter @polaris-key/worker test adminCspParity` and the UI snapshots pass.
 - [ ] The scoped green gate passes (AGENTS.md); the header's gates hold.
 
 ## Hand-off
 
 The role agent sets `--set I-38a in-review` when it hands off; the lead sets done after review. Branch from integ/next after the packages in Depends on have merged.
+
+## Built (2026-10-20)
+
+`renderAuthCard()` (core/brandHtml.ts) is the AuthCard's Worker twin: lockup, 28.5 rem card with app header, body and footer slots, `callout`/`note`/`appHeader`/`icon` helpers. Built on it: `/device` and `/tv` (entry, miss with the typed code kept and the reason under the field, too-many-tries callout, `/tv` large type), the product device page, the "Sign in on <device>?" confirm with Sign in and Deny through one function (`confirmDeviceFlow(..., decision)`; I-37 adds the approval marker there), expired or stale device links as pages (JSON clients keep JSON), email-in-use short h1 with Sign in, chooser (app strip, neutral 7 % selected row with coral 3 px marker, 44 px "Free a device"), refusal cards and magic-link pages through the shared shell. Not built: the two-pane confirm with hero art (PX-14a's React passport), legal links (no destination pages exist), the unified "expired" vs "wrong" split on `/device` (the Worker must not tell them apart).

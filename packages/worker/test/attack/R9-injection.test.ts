@@ -1766,7 +1766,16 @@ describe("R9-12 escapeHtml coverage", () => {
     // user-code page, so the action is a parameter and the form may carry extra hidden fields
     // (the user code). Every one of those interpolations is still double-quoted and escaped.
     expect(src).toContain(
-      '<form method="post" action="${escapeHtml(action)}">',
+      '<form method="post" action="${escapeHtml(action)}" data-request=',
+    );
+    // I-38a: the user-code entry form moved to `core/deviceEntry.ts` (`codeEntryBody`, shared with
+    // `/device`); its action is still double-quoted and escaped.
+    const entry = readFileSync(
+      join(HERE, "..", "..", "src", "core", "deviceEntry.ts"),
+      "utf8",
+    );
+    expect(entry).toContain(
+      '<form method="${opts.method}" action="${escapeHtml(opts.action)}">',
     );
     expect(src).toContain('name="csrf" value="${escapeHtml(csrf)}"');
     expect(src).toContain(

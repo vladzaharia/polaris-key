@@ -18,21 +18,36 @@ import { resolvePresentation } from "./presentation.js";
 import type { ProductPublic } from "./products.js";
 import type { ServiceHooks } from "./hooks.js";
 
+/**
+ * An app's icon as a page may draw it: the icon's origin when the policy can allow it
+ * (`cspImageOrigin`), else the app without its icon. Whatever the policy would block is not drawn.
+ */
+export function pageApp(app: { name: string; iconUrl?: string | null }): {
+  app: { name: string; iconUrl?: string | null };
+  imgOrigin: string | null;
+} {
+  if (app.iconUrl) {
+    try {
+      const imgOrigin = cspImageOrigin(new URL(app.iconUrl).origin);
+      if (imgOrigin !== null) return { app, imgOrigin };
+    } catch {
+      /* fall through */
+    }
+  }
+  return { app: { name: app.name }, imgOrigin: null };
+}
+
 /** A branded page. `body` is TRUSTED markup: every value in it already escaped. */
 export function brandPageResponse(
   status: number,
-  page: Pick<BrandPageOptions, "title" | "heading" | "body" | "app">,
+  page: Pick<BrandPageOptions, "title" | "heading" | "body" | "app" | "header">,
   cookies: readonly string[] = [],
 ): Response {
   let imgOrigin: string | null = null;
-  if (page.app?.iconUrl) {
-    try {
-      imgOrigin = cspImageOrigin(new URL(page.app.iconUrl).origin);
-    } catch {
-      imgOrigin = null;
-    }
-    // An icon the policy would block is not drawn.
-    if (imgOrigin === null) page = { ...page, app: { name: page.app.name } };
+  if (page.app) {
+    const shown = pageApp(page.app);
+    imgOrigin = shown.imgOrigin;
+    page = { ...page, app: shown.app };
   }
   const headers = brandedHtmlSecurityHeaders(
     new Headers({

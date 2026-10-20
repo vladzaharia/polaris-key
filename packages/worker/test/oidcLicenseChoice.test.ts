@@ -451,11 +451,12 @@ describe("I-26 device-code flow", () => {
     const page = await readChooser(flow.binder!);
     expect(page.res.status).toBe(200);
     expect(page.html).toContain("Choose a license for this device");
-    // SIGN-IN.md §3.6: the lede names the product and the device; no eyebrow (D-32).
-    expect(page.html).toContain("djdl will use it on Steam Deck.");
+    // The device is named once, in the header strip (identity.refusals); no lede, no eyebrow (D-32).
+    expect(page.html).toContain("on <bdi>Steam Deck</bdi>");
+    expect(page.html).not.toContain("will use it on");
     expect(page.html).not.toContain('class="eyebrow"');
     expect(page.html).toContain('<span class="tag">Standard</span>');
-    expect(page.html).toContain("Named by the device");
+    expect(page.html).not.toContain("Named by the device");
     expect(page.html).toContain("0 of 3 devices");
     expect(page.html).toContain("Lifetime");
     expect(page.html).toContain(
@@ -590,7 +591,7 @@ describe("I-26 browser and state-poll flows", () => {
     expect(await licenseCount()).toBe(before);
 
     const page = await readChooser(binder);
-    expect(page.html).toContain("djdl will use it in this browser.");
+    expect(page.html).toContain("on <bdi>this browser</bdi>");
     const done = await postChooser(binder, {
       choice: page.token,
       action: "use",
@@ -719,8 +720,9 @@ describe("I-26 rows", () => {
     expect(page.html).toContain(
       "A separate license · created when you continue",
     );
+    expect(page.html).toContain("Your licenses are on all their devices.");
     expect(page.html).toContain(
-      "Your licenses are on all their devices. Replace a device, or create a new free license.",
+      "Replace a device, or create a new free license.",
     );
     expect(page.html).not.toContain("free free");
     expect(page.rows).toContainEqual({
@@ -969,7 +971,7 @@ describe("I-26 Replace a device", () => {
     const flow = await fullFlow();
     let page = await readChooser(flow.binder!);
     expect(page.html).toMatch(
-      /name="device:lic_start" value="work-laptop" checked>.*Work laptop<span class="tag">Least recent<\/span><span class="tag">Active now<\/span>/,
+      /name="replaceDevice" value="lic_start\|work-laptop"[^>]*>.*Work laptop<\/bdi><span class="tag">Least recent<\/span><span class="tag">Active now<\/span>/,
     );
     const staged = await postChooser(flow.binder, {
       choice: page.token,
@@ -1014,6 +1016,56 @@ describe("I-26 Replace a device", () => {
     expect(await deviceLicense("dev-new")).toBe("lic_start");
   });
 
+  it("Replace and sign in with no choice names it under the group and frees nothing", async () => {
+    const flow = await fullFlow();
+    let page = await readChooser(flow.binder!);
+    // Every licence full and one replaceable (a lead decision of 2026-10-20): the devices are a
+    // radio group with nothing preselected, and Replace and sign in is the one primary.
+    expect(page.html).not.toContain("<summary>Replace a device</summary>");
+    expect(page.html).toContain(
+      "Choose one to sign out. \u2068Steam Deck\u2069 takes its seat.",
+    );
+    expect(page.html).toContain("<h1>Replace a device</h1>");
+    expect(page.html).toContain(
+      "The device you choose signs out of djdl. It can sign in again later if a seat is free. We'll email you about it.",
+    );
+    expect(page.html.match(/Least recent/g)).toHaveLength(1);
+    expect(page.html.match(/Active now/g)).toHaveLength(1);
+    expect(page.html).toContain('name="replaceDevice"');
+    expect(page.html).not.toMatch(/name="replaceDevice"[^>]*checked/);
+    expect(page.html).toContain(
+      'name="action" value="replace-pick">Replace and sign in</button>',
+    );
+    const none = await postChooser(flow.binder, {
+      choice: page.token,
+      action: "replace-pick",
+    });
+    expect(none.status).toBe(303);
+    page = await readChooser(flow.binder!);
+    expect(page.html).toContain("Choose a device to replace.");
+    expect(page.html).toContain('aria-invalid="true"');
+    expect(page.html).toMatch(/name="replaceDevice"[^>]*autofocus/);
+    expect(page.html).toContain('id="rg-err"');
+    expect(page.html).not.toMatch(/<button[^>]*disabled/);
+    expect(
+      (await db.first<{ status: string }>(
+        "SELECT status FROM devices WHERE device_id = 'work-laptop'",
+      ))!.status,
+    ).toBe("authorized");
+    const done = await postChooser(flow.binder, {
+      choice: page.token,
+      action: "replace-pick",
+      replaceDevice: "lic_start|work-laptop",
+    });
+    expect(done.status).toBe(200);
+    expect(await done.text()).toContain("was signed out.");
+    expect(
+      (await db.first<{ status: string }>(
+        "SELECT status FROM devices WHERE device_id = 'work-laptop'",
+      ))!.status,
+    ).toBe("deauthorized");
+  });
+
   it("Back returns to the chooser without freeing anything", async () => {
     const flow = await fullFlow();
     let page = await readChooser(flow.binder!);
@@ -1025,7 +1077,7 @@ describe("I-26 Replace a device", () => {
     page = await readChooser(flow.binder!);
     await postChooser(flow.binder, { choice: page.token, action: "back" });
     page = await readChooser(flow.binder!);
-    expect(page.html).toContain("Choose a license for this device");
+    expect(page.html).toContain("Replace a device");
   });
 
   it("shares the portal's portalDeviceDisconnect budget", async () => {
@@ -1124,11 +1176,15 @@ describe("I-26 chooser copy", () => {
 
   it("names the developer in noneReplaceable when the listing has one (§5.2)", () => {
     expect(body("Harbor Audio")).toContain(
-      "Harbor Audio manages devices for these licenses. Ask Harbor Audio to free one, or use another license.",
+      "Harbor Audio manages devices for these licenses.",
+    );
+    expect(body("Harbor Audio")).toContain(
+      "Ask Harbor Audio to free one, or use another license.",
     );
     expect(body(null)).toContain(
-      "The developer manages devices for these licenses. Ask the developer to free one",
+      "The developer manages devices for these licenses.",
     );
+    expect(body(null)).toContain("Ask the developer to free one");
   });
 
   it("labels a full row's group by the product name alone (its tag describes it)", () => {

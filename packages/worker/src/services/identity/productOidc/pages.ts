@@ -3,6 +3,7 @@
 import { normalizeDeviceLabel } from "@polaris-key/client-core";
 import { createSignInRequest } from "../passthrough/request.js";
 import { type Env } from "../../../platform/env.js";
+import type { ServiceHooks } from "../../../core/hooks.js";
 import { brandedHtmlSecurityHeaders } from "../../../core/securityHeaders.js";
 import {
   // The product sign-in pages have always escaped `& < > "` and let an apostrophe through;
@@ -11,7 +12,21 @@ import {
 } from "../../../platform/html.js";
 import { randomToken } from "../../../platform/random.js";
 import { type Product } from "../../../core/products.js";
-import { renderBrandPage } from "../../../core/brandHtml.js";
+import {
+  appHeader,
+  callout,
+  note,
+  renderAuthCard,
+  renderBrandPage,
+} from "../../../core/brandHtml.js";
+import { appForPage, pageApp } from "../../../core/brandPage.js";
+import type { Db } from "../../../db/types.js";
+import {
+  ENTRY_FOOTER,
+  codeEntryBody,
+  tooManyBody,
+  typedCode,
+} from "../../../core/deviceEntry.js";
 import { accountDisabledPage } from "../card/http.js";
 import { errorResponse } from "../../../core/errors.js";
 import { PLATFORM_SIGNIN_ENDED } from "../accounts/platformMigration.js";
@@ -19,14 +34,51 @@ import { updateArtefact } from "../../../core/singleUse.js";
 import {
   type DeviceFlowRecord,
   type FlowRecord,
+  FLOW_TTL_SECONDS,
   deviceFlowKey,
 } from "./config.js";
+
+/** The developer's name from the product's listing (Distribution's hook), or null. */
+export async function listingDeveloper(
+  hooks: ServiceHooks | undefined,
+): Promise<string | null> {
+  try {
+    const listing = (await hooks?.delivery()?.listing()) as
+      | Record<string, unknown>
+      | null
+      | undefined;
+    const name = listing?.developerName;
+    return typeof name === "string" && name.trim() ? name.trim() : null;
+  } catch {
+    return null;
+  }
+}
+
+/** What every step after the confirm shares: the TV variant and the app the confirm drew. */
+export interface PageView {
+  tv?: boolean;
+  app?: { name: string; iconUrl?: string | null } | undefined;
+}
+
+/** The view for a flow that is already confirmed (`tv` is stored on the flow at confirm). */
+export async function flowView(
+  env: Env,
+  db: Db,
+  product: Product,
+  flow: { tv?: boolean },
+): Promise<PageView> {
+  const app = await appForPage({ product, env, db }).catch(() => undefined);
+  return { tv: flow.tv === true, app };
+}
 
 /** Headers for the device-flow HTML pages: the branded-page bundle, no Referer, no caching.
  *  `formTarget` widens `form-action` by exactly one origin — the IdP the confirmation POST
  *  303s to — because browsers apply `form-action` to every redirect a form submission follows,
  *  so `'self'` alone would block the hand-off the confirmation button exists to make. */
-export function deviceHtmlHeaders(formTarget?: string): Headers {
+export function deviceHtmlHeaders(
+  formTarget?: string,
+  imgOrigin?: string | null,
+): Headers {
   // R1-09: `index.ts`'s `secureResponse` backstop would supply this policy anyway, but a
   // handler that emits HTML should not depend on the dispatcher — a direct call (a test, or a
   // future internal caller) must be hardened too. `brandedHtmlSecurityHeaders` preserves the
@@ -39,6 +91,7 @@ export function deviceHtmlHeaders(formTarget?: string): Headers {
       "referrer-policy": "no-referrer",
       "cache-control": "no-store",
     }),
+    { imgOrigin: imgOrigin ?? null },
   );
   let idp: string | null = null;
   try {
@@ -61,6 +114,11 @@ export function deviceHtmlHeaders(formTarget?: string): Headers {
  *  product, the device label and the user code, and one button. `hidden` are the extra fields
  *  the form posts back alongside `csrf` — the user code on `/device`, nothing on `/verify`
  *  (whose action URL already carries the device code). */
+/** A name inside a sentence, isolated so a right-to-left label cannot scramble the line. */
+function isolate(name: string): string {
+  return `\u2068${name}\u2069`;
+}
+
 export async function renderDeviceConfirmation(
   req: Request,
   env: Env,
@@ -70,7 +128,11 @@ export async function renderDeviceConfirmation(
   action: string,
   hidden: Record<string, string>,
   now: number,
+  /** The app's display data (`appForPage`): its icon and the developer's name. */
+  app?: { name: string; iconUrl?: string | null; developer?: string | null },
+  tv = false,
 ): Promise<Response> {
+  const shown = pageApp(app ?? { name: product.name });
   const csrf = randomToken(16);
   record.csrf = csrf;
   // An update, never a put: it cannot resurrect a record a poll redeemed meanwhile.
@@ -79,7 +141,7 @@ export async function renderDeviceConfirmation(
     await deviceFlowKey(env, product.slug, deviceCode),
     { set: { csrf } },
   );
-  if (!minted.ok) return errorResponse(404, "not_found", "device code expired");
+  if (!minted.ok) return deviceGonePage(product, 404, "expired", { tv, app });
   // Never the raw device id: with `state` it was half of what the retired `/identity/auth/poll`
   // checked, and it is a device identifier the user-code holder has no need for (R8-02, P1-06).
   // §12.7.1: the label is stored normalised at `/device/start`; it is normalised again here so a
@@ -107,46 +169,138 @@ export async function renderDeviceConfirmation(
         `<input type="hidden" name="${escapeHtml(name)}" value="${escapeHtml(value)}">`,
     )
     .join("");
-  const html = renderBrandPage({
-    title: `Authorize ${product.name}`,
-    heading: `Authorize ${product.name}`,
+  // A static expiry, never a ticking countdown (the page has no script): "Expires 14:32 UTC".
+  const expiry =
+    typeof record.startedAt === "number"
+      ? ` Expires ${new Date((record.startedAt + FLOW_TTL_SECONDS) * 1000).toISOString().slice(11, 16)} UTC.`
+      : "";
+  // The explicit step (SIGN-IN.md §4.2, identity.device-confirm): the person decides here, and
+  // both buttons post the same form. The decision is read in one place (`decideDeviceFlow`).
+  const who = app?.developer?.trim() || product.name;
+  const dev = isolate(deviceLabel);
+  const html = renderAuthCard({
+    title: `Sign in on ${dev}?`,
+    heading: `Sign in on ${dev}?`,
+    ...(tv ? { variant: "tv" as const } : {}),
+    passport: {
+      name: product.name,
+      iconUrl: shown.app.iconUrl,
+      developer: app?.developer ?? null,
+      device: deviceLabel,
+      action: "wants you to sign in",
+    },
     body:
-      `<p>An app is asking to activate this device. Check that the code and device match what the app shows before signing in.</p>` +
-      `<dl><dt>Code</dt><dd class="code">${escapeHtml(record.userCode)}</dd>` +
-      `<dt>Device</dt><dd>${escapeHtml(deviceLabel)}</dd>` +
-      `<dt>Product</dt><dd>${escapeHtml(product.slug)}</dd></dl>` +
+      `<p>It showed the code <span class="code">${escapeHtml(record.userCode)}</span>.${expiry}</p>` +
       `<form method="post" action="${escapeHtml(action)}" data-request="${escapeHtml(signInRequest.handle)}">${hiddenInputs}` +
       `<input type="hidden" name="csrf" value="${escapeHtml(csrf)}">` +
-      `<button class="button" type="submit">Continue to sign in</button></form>`,
+      `<div class="stack"><button class="button" type="submit" name="decision" value="approve" autofocus><span>Sign in on <bdi>${escapeHtml(deviceLabel)}</bdi></span></button>` +
+      `<button class="button secondary" type="submit" name="decision" value="deny">Deny</button></div></form>` +
+      note("info", "Didn't start this? Deny, and nothing signs in."),
+    footer: {
+      icon: "lock",
+      text: `Polaris Locker signs you in for ${isolate(product.name)}. ${isolate(who)} never sees your codes or passkeys.`,
+    },
   });
-  const headers = deviceHtmlHeaders(record.authorizeUrl);
+  const headers = deviceHtmlHeaders(record.authorizeUrl, shown.imgOrigin);
   if (signInRequest.setCookie)
     headers.append("set-cookie", signInRequest.setCookie);
   return new Response(html, { status: 200, headers });
 }
 
-/** The code-entry form: one text field, posted back to `/device`. `error` renders the single
- *  generic "not valid or expired" line — the page never says WHICH (RFC 8628 §5.1). */
+/** The code-entry form: one text field, posted back to `/device`. A miss keeps the typed code
+ *  and renders the single generic "no device is waiting" line under the field: the page never
+ *  says WHICH reason (RFC 8628 §5.1). `status` 429 is the neutral too-many-tries card. */
 export function renderDeviceEntry(
   product: Product,
   action: string,
-  status: 200 | 404,
+  status: 200 | 404 | 429,
+  typed?: string | null,
+  app?: { name: string; iconUrl?: string | null },
+  tv = false,
 ): Response {
-  const error =
-    status === 404
-      ? `<p class="alert" role="alert">That code isn't valid or has expired. Check the code on your device.</p>` // SIGN-IN.md §3.13
-      : "";
-  const html = renderBrandPage({
-    title: `Connect a device to ${product.name}`,
-    heading: `Connect a device to ${product.name}`,
+  const shown = pageApp(app ?? { name: product.name });
+  const html = renderAuthCard({
+    title: "Enter your code",
+    heading: "Enter the code from your device",
+    ...(tv ? { variant: "tv" as const } : {}),
+    header: appHeader({ name: product.name, iconUrl: shown.app.iconUrl }),
     body:
-      `<p class="muted">Enter the code shown on your device.</p>${error}` +
-      `<form method="post" action="${escapeHtml(action)}">` +
-      `<label for="user_code">Code</label>` +
-      `<input id="user_code" name="user_code" type="text" required autofocus autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="32" placeholder="XXXX-XXXX">` +
-      `<button class="button" type="submit">Continue</button></form>`,
+      status === 429
+        ? tooManyBody(action)
+        : codeEntryBody({
+            action,
+            method: "post",
+            typed: typedCode(typed),
+            miss: status === 404,
+          }),
+    footer: ENTRY_FOOTER,
   });
-  return new Response(html, { status, headers: deviceHtmlHeaders() });
+  const headers = deviceHtmlHeaders(undefined, shown.imgOrigin);
+  if (status === 429) headers.set("retry-after", "60");
+  return new Response(html, { status, headers });
+}
+
+/** The code has gone: expired, already used, or the page is out of date. A Locker page with the
+ *  way on (type the code the device shows now), never a bare JSON error: the people who reach it
+ *  pressed a button in a browser. `status` is the refusal's own (404 gone, 403 stale form). */
+export function deviceGonePage(
+  product: Product | null,
+  status: 403 | 404,
+  kind: "expired" | "stale" = "expired",
+  view: PageView = {},
+): Response {
+  const expired = kind === "expired";
+  const shown = pageApp(view.app ?? { name: product?.name ?? "" });
+  const html = renderAuthCard({
+    ...(view.tv ? { variant: "tv" as const } : {}),
+    title: expired ? "That code expired" : "This page is out of date",
+    heading: expired ? "That code expired" : "This page is out of date",
+    ...(product
+      ? {
+          header: appHeader({
+            name: product.name,
+            iconUrl: shown.app.iconUrl,
+          }),
+        }
+      : {}),
+    body:
+      (expired
+        ? callout(
+            "clock",
+            "Your device shows a new code",
+            "Codes last 10 minutes.",
+          )
+        : callout("info", "Enter the code again", "Nothing was signed in.")) +
+      `<a class="button" href="/device">${expired ? "Enter the new code" : "Enter the code"}</a>`,
+    footer: ENTRY_FOOTER,
+  });
+  return new Response(html, {
+    status,
+    headers: deviceHtmlHeaders(undefined, shown.imgOrigin),
+  });
+}
+
+/** Deny: the code no longer works here and nothing signed in. */
+export function deviceDeniedPage(
+  product: Product,
+  view: PageView = {},
+): Response {
+  const shown = pageApp(view.app ?? { name: product.name });
+  const html = renderAuthCard({
+    ...(view.tv ? { variant: "tv" as const } : {}),
+    title: "Nothing was signed in",
+    heading: "Nothing was signed in",
+    header: appHeader({ name: product.name, iconUrl: shown.app.iconUrl }),
+    body: callout(
+      "check-circle",
+      "You denied the request",
+      "That code no longer works. You can close this page.",
+    ),
+  });
+  return new Response(html, {
+    status: 200,
+    headers: deviceHtmlHeaders(undefined, shown.imgOrigin),
+  });
 }
 
 /** A branded 403 sign-in refusal page: no caching, no retry on this route. `body` is TRUSTED. */
@@ -184,8 +338,10 @@ export function platformSignInEndedPage(): Response {
 export function productAccountDisabledPage(
   product: Product,
   flow: FlowRecord,
+  view: PageView = {},
 ): Response {
   return accountDisabledPage({
+    app: view.app ?? { name: product.name },
     signInHref: "/login",
     back: flow.returnTo
       ? { href: flow.returnTo, productName: product.name }
@@ -199,11 +355,15 @@ export function joinOfferNotice(email: string): string {
   return `<p>A Polaris Locker account already uses ${escapeHtml(email)}. To add this sign-in to it, <a href="/login">continue with single sign-on on Polaris Locker</a>, then sign in to that account when asked.</p>`;
 }
 
-/** The callback's "return to the app" page. `notice` is TRUSTED markup (I-17's join offer). */
+/** The callback's "return to the app" page. `notice` is TRUSTED markup (I-17's join offer).
+ *  `done` names the devices after a Replace: "Signed in on <this>. <replaced> was signed out." */
 export function signedInPage(
   cookies: string[] = [],
   notice: string | null = null,
+  view: PageView = {},
+  done?: { thisDevice: string; replaced: string },
 ): Response {
+  const shown = pageApp(view.app ?? { name: "" });
   // R1-09 — see the device-authorization page above: set the policy at the sink as well as in
   // the dispatcher backstop.
   const headers = brandedHtmlSecurityHeaders(
@@ -211,22 +371,27 @@ export function signedInPage(
       "content-type": "text/html; charset=utf-8",
       "cache-control": "no-store",
     }),
+    { imgOrigin: shown.imgOrigin },
   );
   for (const c of cookies) headers.append("set-cookie", c);
+  const lede = done
+    ? `<p>Signed in on ${escapeHtml(isolate(done.thisDevice))}. ${escapeHtml(isolate(done.replaced))} was signed out.</p>`
+    : "";
   return new Response(
-    renderBrandPage({
+    renderAuthCard({
       title: "Signed in",
       heading: "You're signed in",
-      body: `<p class="muted">You can close this tab and return to the app.</p>${notice ?? ""}`,
+      ...(view.tv ? { variant: "tv" as const } : {}),
+      ...(view.app?.name
+        ? {
+            header: appHeader({
+              name: view.app.name,
+              iconUrl: shown.app.iconUrl,
+            }),
+          }
+        : {}),
+      body: `${lede}<p class="muted">You can close this tab and return to the app.</p>${notice ?? ""}`,
     }),
     { status: 200, headers },
   );
 }
-
-// ── the licence chooser (I-26) ───────────────────────────────────────────────
-//
-// See `licenseChoice.ts` for the rule. The page is rendered only by `GET /identity/auth/choose`
-// and changed only by its `POST` (post/redirect/get), so a reload never resubmits. Neither the
-// page nor its URL names the flow: the browser binder (`__Host-pk_lcb`) finds it through the
-// `oidc-choice` index, and each render carries a fresh single-use token stored (hashed) on the
-// flow record.
