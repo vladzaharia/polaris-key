@@ -17854,7 +17854,7 @@
       "optional": false,
       "refs": ["plans/LK-00.md §16"],
       "brief": "wp/LK-17-hard-cutover.md",
-      "status": "in-progress"
+      "status": "done"
     }
   ]
 }
