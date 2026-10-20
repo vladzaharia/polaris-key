@@ -253,7 +253,7 @@ const LOCKER_PAGE_CSS_TAIL = [
   // React original): the lockup above, one 28.5 rem card (22 px radius) with an optional header,
   // the step body (one primary), and an optional footer. Phones: the card goes edge to edge
   // under a 56 px lockup row.
-  `[data-brand=locker] body{display:block;min-height:100dvh;padding:clamp(1.5rem,7vh,3.5rem) 1rem 3rem}`,
+  `[data-brand=locker] body{display:block;place-items:normal;min-height:100dvh;padding:clamp(1.5rem,7vh,3.5rem) 1rem 3rem}`,
   `.ac-brand{display:flex;justify-content:center;margin:0 0 1.5rem;color:var(--strong)}`,
   `.ac-brand svg{display:block;max-width:100%}`,
   `main.ac{display:block;width:100%;max-width:28.5rem;min-width:0;margin:0 auto;overflow:hidden;border:1px solid var(--rule);border-radius:1.375rem;background:var(--raised);box-shadow:0 8px 24px rgb(0 0 0 / .18)}`,
