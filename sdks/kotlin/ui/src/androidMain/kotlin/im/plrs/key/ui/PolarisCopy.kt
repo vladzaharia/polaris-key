@@ -231,8 +231,8 @@ public data class PolarisCopy(
     val bytesGb: String = "%1\$s GB",
 
     // ── Chrome ───────────────────────────────────────────────────────────────────────────────
-    /** The accessible name of the "Powered by Polaris Key" badge (the brand phrase). */
-    val poweredBy: String = "Powered by Polaris Key",
+    /** The "Powered by Polaris Locker" phrase: the line's text and the badge's accessible name. */
+    val poweredBy: String = "Powered by Polaris Locker",
     /** The accessible name of the Pinned K when branding is on. */
     val polarisKeyMark: String = "Polaris Key",
 ) {

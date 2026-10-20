@@ -263,7 +263,7 @@ internal fun PolarisScaffold(
                             content()
                             if (theme.showPoweredBy) {
                                 Spacer(Modifier.height(window.section))
-                                PolarisPoweredByBadge()
+                                PolarisPoweredBy()
                             }
                         }
                         Column(
@@ -335,7 +335,7 @@ internal fun PolarisScaffold(
                     }
                     if (theme.showPoweredBy) {
                         Spacer(Modifier.height(window.section))
-                        PolarisPoweredByBadge(Modifier.align(Alignment.CenterHorizontally))
+                        PolarisPoweredBy(Modifier.align(Alignment.CenterHorizontally))
                     }
                 }
             }
@@ -756,7 +756,7 @@ internal fun PolarisMessageLayout(
             }
             if (PolarisTheme.current.showPoweredBy) {
                 Spacer(Modifier.height(window.section))
-                PolarisPoweredByBadge()
+                PolarisPoweredBy()
             }
         }
         CompositionLocalProvider(LocalPolarisTextAlign provides align) {

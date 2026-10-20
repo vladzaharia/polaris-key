@@ -32,18 +32,20 @@ indicators, Rubik at 400, 500 and 600, full-round buttons and radius-16 fields:
 PolarisTheme(branding = PolarisBranding.PolarisKey) { ... }
 ```
 
-The "Powered by Polaris Key" badge is a separate switch. It is off by default and does not depend
-on branding:
+"Powered by Polaris Locker" is a separate switch. It is off by default and does not depend on
+branding. The default draws the 320 x 104 badge where 320 dp are free and the line (the Locker micro
+mark at 16 dp and the phrase) where they are not; `poweredByStyle = PolarisPoweredByStyle.Line`
+always draws the line:
 
 ```kotlin
-PolarisTheme(showPoweredBy = true) { ... }                                        // neutral + badge
-PolarisTheme(branding = PolarisBranding.PolarisKey, showPoweredBy = true) { ... } // branded + badge
+PolarisTheme(showPoweredBy = true) { ... }                                        // neutral + attribution
+PolarisTheme(branding = PolarisBranding.PolarisKey, showPoweredBy = true) { ... } // branded + attribution
 ```
 
 Your product is the hero, in either mode. `logo = { Image(...) }` is your product's icon: at hero
 size on the welcome, beside your product's name on focused steps and on the update prompt. Without
-one the kit draws a monogram tile of your product's initial. The Pinned K appears only inside the
-optional Powered-by badge.
+one the kit draws a monogram tile of your product's initial. The Locker mark appears only inside the
+optional Powered-by line and badge.
 `accent = Color(0xFF369186)` applies your product's color in either mode. It replaces the primary
 roles (the core violet when branded, your scheme's primary when neutral) after the accent resolver
 has adjusted it for contrast in the current scheme. Without it, neutral keeps your scheme exactly,
@@ -240,4 +242,4 @@ the device-limit screens, every message screen and the update dialog every contr
 screen and at least 48 dp tall, and that the sign-in code is never cut. `FlowTest` covers sign-in
 resuming after the screen leaves composition, no browser, "Use another license" and inline sign-in.
 
-The badge has its own references under `powered-by/`.
+The attribution has its own references under `powered-by/`.

@@ -2,7 +2,7 @@
 //
 //     PolarisTheme { PolarisBoot(boot) { MyApp() } }                       // neutral: the host's look
 //     PolarisTheme(branding = PolarisBranding.PolarisKey) { ... }          // the Polaris Key look
-//     PolarisTheme(showPoweredBy = true) { ... }                           // adds the badge, either way
+//     PolarisTheme(showPoweredBy = true) { ... }                           // adds the attribution, either way
 //
 // NEUTRAL MEANS INHERITED. With PolarisBranding.None (the default) the kit sets no MaterialTheme of
 // its own: every colour, shape and text style a screen draws comes from the host app's
@@ -14,13 +14,13 @@
 // PolarisBranding.PolarisKey wraps the subtree in a MaterialTheme built from the generated brand
 // tokens (PolarisBrandTokens: dark first, light supported, the core violet as primary, the service
 // accents for the small section indicators), Rubik at 400, 500 and 600 (bundled under the OFL),
-// full-round buttons and radius-16 fields. The "Powered by Polaris Key" badge is a separate switch,
+// full-round buttons and radius-16 fields. The "Powered by Polaris Locker" attribution is a separate switch,
 // off by default, independent of branding (owner decision 2).
 //
 // THE PRODUCT IS THE HERO (UI-KITS.md §1.2). `logo` is the product's own icon. Without one, the
 // kit draws the verified icon discovery's presentation names (`presentation`, PolarisPresentation.kt),
 // else a monogram tile (the product's initial); the Pinned K appears only inside the optional
-// Powered-by badge, in either preset.
+// Powered-by attribution, in either preset.
 //
 // THE PRODUCT ACCENT. `accent` (a product's colour) replaces the primary roles in either mode,
 // run through the accent resolver (UI-KITS.md §3.3, brand/PolarisAccent.kt) so the fill, its
@@ -56,6 +56,15 @@ import im.plrs.key.core.PresentationSource
 import im.plrs.key.ui.brand.BrandAccent
 import im.plrs.key.ui.brand.PolarisAccent
 import im.plrs.key.ui.brand.PolarisBrandTokens
+
+/** How the opt-in "Powered by Polaris Locker" attribution is drawn (UI-KITS.md section 1.6). */
+public enum class PolarisPoweredByStyle {
+    /** The Locker micro mark (16 dp) and the phrase, in live text. */
+    Line,
+
+    /** The Locker `powered-by` badge (320 x 104 dp) where 320 dp are free, else the line. */
+    Badge,
+}
 
 /** The look the kit renders in. */
 public enum class PolarisBranding {
@@ -142,6 +151,8 @@ public data class PolarisStatusColors(
 public class PolarisUiConfig internal constructor(
     public val branding: PolarisBranding,
     public val showPoweredBy: Boolean,
+    /** How the attribution is drawn when [showPoweredBy] is on (UI-KITS.md section 1.6). */
+    public val poweredByStyle: PolarisPoweredByStyle = PolarisPoweredByStyle.Badge,
     public val copy: PolarisCopy,
     public val logo: (@Composable () -> Unit)?,
     public val dark: Boolean,
@@ -168,8 +179,11 @@ internal val LocalPolarisUi = staticCompositionLocalOf<PolarisUiConfig?> { null 
  *
  * @param branding [PolarisBranding.None] (the default) inherits the host's MaterialTheme;
  *   [PolarisBranding.PolarisKey] applies the Polaris Key brand. The one switch.
- * @param showPoweredBy shows the "Powered by Polaris Key" badge at the foot of the kit's screens.
- *   Off by default, and independent of [branding].
+ * @param showPoweredBy shows "Powered by Polaris Locker" at the foot of the kit's screens. Off by
+ *   default, and independent of [branding].
+ * @param poweredByStyle [PolarisPoweredByStyle.Badge] (the default) draws the 320 x 104 badge where 320 dp
+ *   are free and the line elsewhere; [PolarisPoweredByStyle.Line] always draws the line (the Locker
+ *   micro mark and the phrase).
  * @param copy every string the kit renders; the default reads the string resources, so an app's
  *   translations apply.
  * @param logo the product's icon: the hero of the welcome, beside the product name on focused
@@ -192,6 +206,7 @@ internal val LocalPolarisUi = staticCompositionLocalOf<PolarisUiConfig?> { null 
 public fun PolarisTheme(
     branding: PolarisBranding = PolarisBranding.None,
     showPoweredBy: Boolean = false,
+    poweredByStyle: PolarisPoweredByStyle = PolarisPoweredByStyle.Badge,
     copy: PolarisCopy = PolarisCopy.localized(),
     logo: (@Composable () -> Unit)? = null,
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -207,6 +222,7 @@ public fun PolarisTheme(
     PolarisThemeResolved(
         branding = branding,
         showPoweredBy = showPoweredBy,
+        poweredByStyle = poweredByStyle,
         copy = copy,
         logo = logo ?: art?.let { presentationLogo(it) },
         darkTheme = darkTheme,
@@ -221,6 +237,7 @@ public fun PolarisTheme(
 private fun PolarisThemeResolved(
     branding: PolarisBranding,
     showPoweredBy: Boolean,
+    poweredByStyle: PolarisPoweredByStyle,
     copy: PolarisCopy,
     logo: (@Composable () -> Unit)?,
     darkTheme: Boolean,
@@ -244,6 +261,7 @@ private fun PolarisThemeResolved(
             val config = PolarisUiConfig(
                 branding = branding,
                 showPoweredBy = showPoweredBy,
+                poweredByStyle = poweredByStyle,
                 copy = copy,
                 logo = logo,
                 dark = dark,
@@ -272,6 +290,7 @@ private fun PolarisThemeResolved(
             val config = PolarisUiConfig(
                 branding = branding,
                 showPoweredBy = showPoweredBy,
+                poweredByStyle = poweredByStyle,
                 copy = copy,
                 logo = logo,
                 dark = darkTheme,

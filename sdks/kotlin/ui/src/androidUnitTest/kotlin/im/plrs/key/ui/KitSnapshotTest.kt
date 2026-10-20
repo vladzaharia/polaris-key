@@ -93,6 +93,7 @@ internal fun ComposeTestRule.capture(
     name: String,
     variant: SnapshotVariant,
     showPoweredBy: Boolean = false,
+    poweredByStyle: PolarisPoweredByStyle = PolarisPoweredByStyle.Badge,
     keyboard: Boolean = false,
     accent: Color? = null,
     host: ColorScheme? = null,
@@ -111,7 +112,7 @@ internal fun ComposeTestRule.capture(
                 CompositionLocalProvider(LocalInputModeManager provides FixedInputMode(mode)) {
                     val scheme = host ?: if (variant.dark) darkColorScheme() else lightColorScheme()
                     MaterialTheme(colorScheme = scheme) {
-                        PolarisTheme(branding = variant.branding, showPoweredBy = showPoweredBy, copy = sampleCopy, darkTheme = variant.dark, accent = accent) {
+                        PolarisTheme(branding = variant.branding, showPoweredBy = showPoweredBy, poweredByStyle = poweredByStyle, copy = sampleCopy, darkTheme = variant.dark, accent = accent) {
                             content()
                         }
                     }
@@ -148,7 +149,10 @@ class KitSnapshotTest(private val variant: SnapshotVariant) {
     }
 }
 
-/** The optional badge, off by default, in both brandings. */
+/**
+ * The optional attribution, off by default, in both brandings: the line where 320 dp are not free (a
+ * phone), the Locker badge where they are (a tablet), and the line always with `Line`.
+ */
 @RunWith(org.robolectric.RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [35])
@@ -157,10 +161,16 @@ class PoweredBySnapshotTest {
     val rule = createEmptyComposeRule()
 
     @Test
-    fun badgeInBothBrandings() {
+    fun attributionInBothBrandings() {
         val activation = kitScreens.first { it.first == "gate-activation" }.second
         rule.capture("powered-by/phone-neutral-light", snapshotVariants[0], showPoweredBy = true, content = activation)
         rule.capture("powered-by/phone-branded-dark", snapshotVariants[2], showPoweredBy = true, content = activation)
         rule.capture("powered-by/phone-branded-light", snapshotVariants[3], showPoweredBy = true, content = activation)
+        rule.capture("powered-by/tablet-branded-dark", snapshotVariants[6], showPoweredBy = true, content = activation)
+        rule.capture("powered-by/tablet-neutral-light", snapshotVariants[5], showPoweredBy = true, content = activation)
+        rule.capture(
+            "powered-by/tablet-neutral-light-line", snapshotVariants[5], showPoweredBy = true,
+            poweredByStyle = PolarisPoweredByStyle.Line, content = activation,
+        )
     }
 }
