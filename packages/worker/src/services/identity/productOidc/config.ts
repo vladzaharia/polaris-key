@@ -93,6 +93,8 @@ export interface DeviceFlowRecord {
   userCode: string;
   authorizeUrl: string;
   deviceName?: string;
+  /** Unix seconds the code was issued: the confirmation page shows its static expiry. */
+  startedAt?: number;
   confirmedAt?: number;
   /** Minted on the GET render and required by the POST confirmation, so the state-mutating
    *  half of device verification cannot be driven cross-site (R8-02). */

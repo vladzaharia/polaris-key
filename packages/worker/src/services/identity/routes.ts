@@ -195,8 +195,8 @@ export const IDENTITY_ROUTES = serviceRoutes("identity", [
     path: "auth/device",
     methods: ["GET", "POST"],
     auth: { kind: "code" },
-    handler: ({ req, env, product }) =>
-      handleAuthDeviceEntry(req, env, product),
+    handler: ({ req, env, db, product, hooks }) =>
+      handleAuthDeviceEntry(req, env, product, { db, hooks }),
   },
   {
     path: "auth/choose",
@@ -216,8 +216,8 @@ export const IDENTITY_ROUTES = serviceRoutes("identity", [
     path: "auth/device/verify",
     methods: ["GET", "POST"],
     auth: { kind: "code" },
-    handler: ({ req, env, product }) =>
-      handleAuthDeviceVerify(req, env, product),
+    handler: ({ req, env, db, product, hooks }) =>
+      handleAuthDeviceVerify(req, env, product, { db, hooks }),
   },
   {
     path: "auth/device/poll",

@@ -633,7 +633,7 @@ export function replaceConfirmBody(input: {
     // signin.replace.consequence
     `<p>${d} signs out of ${escapeHtml(input.productName)} and ${escapeHtml(input.thisDevice)} takes its seat. ${d} can sign in again later if a seat is free. We'll email you about it.</p>` +
     (input.activeNow
-      ? `<p class="alert" role="alert">${d} is in use right now.</p>` // signin.replace.inUse
+      ? `<p class="notice">${d} is in use right now.</p>` // signin.replace.inUse
       : "") +
     `<form method="post" action="${escapeHtml(input.action)}">` +
     `<input type="hidden" name="choice" value="${escapeHtml(input.token)}">` +

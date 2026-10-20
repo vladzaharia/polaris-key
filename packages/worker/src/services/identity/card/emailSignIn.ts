@@ -102,6 +102,7 @@ import {
   ACCOUNT_DISABLED_MESSAGE,
   accountDisabledPage,
   cardPage,
+  emailInUsePage,
   cardRedirect,
   parseEmail,
   readJsonObject,
@@ -705,7 +706,7 @@ async function completeEmailSignIn(
           [clearFlow()],
         )
       : inUse
-        ? cardPage(409, { title: "Sign in", heading: message }, [clearFlow()])
+        ? emailInUsePage(record.returnTo ?? "/", 409, [clearFlow()])
         : accountDisabledPage({ signInHref: record.returnTo }, [clearFlow()]);
   }
   const finished = await finishSignIn(

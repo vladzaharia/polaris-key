@@ -6,6 +6,8 @@ import { HEADER_DEVICE } from "@polaris-key/protocol/core";
 import { hashKey } from "../../../platform/crypto.js";
 import { type Env } from "../../../platform/env.js";
 import { hostOrigin } from "../../../core/hosts.js";
+import { appForPage } from "../../../core/brandPage.js";
+import type { ServiceHooks } from "../../../core/hooks.js";
 import { randomToken } from "../../../platform/random.js";
 import { parseFlowRecord, tryParseJson } from "../../../platform/json.js";
 import type { Db } from "../../../db/types.js";
@@ -29,7 +31,13 @@ import {
   flowKey,
   rateLimited,
 } from "./config.js";
-import { renderDeviceConfirmation, renderDeviceEntry } from "./pages.js";
+import {
+  deviceDeniedPage,
+  listingDeveloper,
+  deviceGonePage,
+  renderDeviceConfirmation,
+  renderDeviceEntry,
+} from "./pages.js";
 import {
   claimUserCode,
   deleteUserCodeIndex,
@@ -104,6 +112,7 @@ export async function handleAuthDeviceStart(
     userCode,
     authorizeUrl: flow.authorizeUrl,
     deviceName,
+    startedAt: Math.floor(Date.now() / 1000),
   };
   await putArtefact(
     env,
@@ -134,15 +143,72 @@ export async function handleAuthDeviceStart(
   });
 }
 
-/** The CSRF token the confirmation form posts back, from either an HTML form body or JSON. */
-export async function readConfirmToken(req: Request): Promise<string | null> {
+/** What the pages need to draw the app: its icon and the developer's name (display data). */
+export interface DevicePageContext {
+  db: Db;
+  hooks?: ServiceHooks;
+}
+
+async function appFor(
+  env: Env,
+  product: Product,
+  ctx: DevicePageContext | undefined,
+): Promise<{ name: string; iconUrl: string | null; developer: string | null }> {
+  if (!ctx) return { name: product.name, iconUrl: null, developer: null };
+  const app = await appForPage({ product, env, db: ctx.db, hooks: ctx.hooks });
+  return { ...app, developer: await listingDeveloper(ctx.hooks) };
+}
+
+/** The decision the confirmation form posts (`decision=approve|deny`). Absent or unknown reads
+ *  as approve, as every form did before the Deny button existed: the CSRF token is what proves
+ *  the press. */
+export type DeviceDecision = "approve" | "deny";
+
+/** The CSRF token and decision the confirmation form posts back, from either an HTML form body
+ *  or JSON. */
+export async function readConfirmForm(
+  req: Request,
+): Promise<{ token: string | null; decision: DeviceDecision }> {
   const text = await readBodyText(req).catch(() => "");
-  if (!text) return null;
+  if (!text) return { token: null, decision: "approve" };
+  let token: string | null;
+  let decision: unknown;
   if ((req.headers.get("content-type") ?? "").includes("application/json")) {
     const body = tryParseJson(text) as Record<string, unknown> | undefined;
-    return typeof body?.csrf === "string" ? body.csrf : null;
+    token = typeof body?.csrf === "string" ? body.csrf : null;
+    decision = body?.decision;
+  } else {
+    const form = new URLSearchParams(text);
+    token = form.get("csrf") || null;
+    decision = form.get("decision");
   }
-  return new URLSearchParams(text).get("csrf") || null;
+  return { token, decision: decision === "deny" ? "deny" : "approve" };
+}
+
+/** The CSRF token the confirmation form posts back, from either an HTML form body or JSON. */
+export async function readConfirmToken(req: Request): Promise<string | null> {
+  return (await readConfirmForm(req)).token;
+}
+
+/** A JSON client (not a browser form): it keeps getting JSON errors. Everyone else is a person
+ *  who pressed a button, and gets a page. */
+function wantsJson(req: Request): boolean {
+  if ((req.headers.get("content-type") ?? "").includes("application/json"))
+    return true;
+  const accept = req.headers.get("accept") ?? "";
+  return accept.includes("application/json") && !accept.includes("text/html");
+}
+
+/** The end of a device flow that cannot go on: a Locker page for a browser, the JSON `fallback`
+ *  for a JSON client. */
+function gone(
+  req: Request,
+  product: Product,
+  status: 403 | 404,
+  kind: "expired" | "stale",
+  fallback: Response,
+): Response {
+  return wantsJson(req) ? fallback : deviceGonePage(product, status, kind);
 }
 
 /** POST half of device verification: mark the flow user-confirmed and hand the browser on to
@@ -157,11 +223,27 @@ export async function confirmDeviceFlow(
   record: DeviceFlowRecord,
   token: string | null,
   now: number,
+  decision: DeviceDecision = "approve",
 ): Promise<Response> {
   if (!sameOriginPost(req))
     return errorResponse(403, "forbidden", "confirmation failed");
+  const refused = errorResponse(403, "forbidden", "confirmation failed");
   if (!record.csrf || !token || !constantTimeEqual(token, record.csrf))
-    return errorResponse(403, "forbidden", "confirmation failed");
+    return gone(req, product, 403, "stale", refused);
+
+  // THE decision (identity.device-confirm: Sign in on <device> / Deny). I-37 adds the approval
+  // marker here, in the one branch each outcome takes.
+  if (decision === "deny") {
+    // Spend the token and the user code: the code stops resolving, and nothing is signed in.
+    const spentDeny = await updateArtefact(
+      env,
+      await deviceFlowKey(env, product.slug, deviceCode),
+      { expect: { csrf: token }, unset: ["csrf"] },
+    );
+    if (!spentDeny.ok) return gone(req, product, 403, "stale", refused);
+    await deleteUserCodeIndex(env, product.slug, record.userCode);
+    return deviceDeniedPage(product);
+  }
 
   // The confirmation is an authorization input for the poll, so it is recorded on
   // the flow the pollers actually read, not only on the device record (R8-01). The flow must
@@ -171,7 +253,13 @@ export async function confirmDeviceFlow(
   const flowRaw = await getArtefact(env, stateKey);
   const flowRecord = flowRaw ? parseFlowRecord<FlowRecord>(flowRaw) : null;
   if (!flowRecord)
-    return errorResponse(404, "not_found", "device code expired");
+    return gone(
+      req,
+      product,
+      404,
+      "expired",
+      errorResponse(404, "not_found", "device code expired"),
+    );
   // Spend the CSRF token atomically (single-use): of two racing POSTs carrying it, one
   // confirms and the other is refused like any stale token.
   const spent = await updateArtefact(env, deviceKey, {
@@ -179,7 +267,7 @@ export async function confirmDeviceFlow(
     set: { confirmedAt: now },
     unset: ["csrf"],
   });
-  if (!spent.ok) return errorResponse(403, "forbidden", "confirmation failed");
+  if (!spent.ok) return gone(req, product, 403, "stale", refused);
   // I-26: the confirming browser is the one the licence chooser will answer (delegated decision
   // 13). Minted here, never at `/device/start`: that request comes from the device, not from
   // the browser that signs in.
@@ -193,7 +281,13 @@ export async function confirmDeviceFlow(
     },
   });
   if (!stamped.ok)
-    return errorResponse(404, "not_found", "device code expired");
+    return gone(
+      req,
+      product,
+      404,
+      "expired",
+      errorResponse(404, "not_found", "device code expired"),
+    );
   // A confirmed flow is done with its user code: nobody else who learns the code (a stream, a
   // photographed QR code, a guess) can re-render the page, re-mint the CSRF token or read the
   // authorize URL after the human has confirmed.
@@ -231,9 +325,11 @@ export function sameOriginPost(req: Request): boolean {
 /** The user code and CSRF token from an entry-route POST. `csrf` is `undefined` when the field
  *  is ABSENT (the entry form: look the code up and render the confirmation) and a string —
  *  possibly empty — when present (the confirmation form: confirm, and 403 unless it matches). */
-export async function readEntryForm(
-  req: Request,
-): Promise<{ userCode: string | null; csrf: string | undefined }> {
+export async function readEntryForm(req: Request): Promise<{
+  userCode: string | null;
+  csrf: string | undefined;
+  decision: DeviceDecision;
+}> {
   const text = await readBodyText(req).catch(() => "");
   if ((req.headers.get("content-type") ?? "").includes("application/json")) {
     // Only a JSON object is a form: `1`, `"x"`, `true` or `null` would make the `in` below throw
@@ -245,6 +341,7 @@ export async function readEntryForm(
         : {}
     ) as Record<string, unknown>;
     return {
+      decision: body.decision === "deny" ? "deny" : "approve",
       userCode: typeof body.user_code === "string" ? body.user_code : null,
       csrf: Object.hasOwn(body, "csrf")
         ? typeof body.csrf === "string"
@@ -255,6 +352,7 @@ export async function readEntryForm(
   }
   const form = new URLSearchParams(text);
   return {
+    decision: form.get("decision") === "deny" ? "deny" : "approve",
     userCode: form.get("user_code"),
     csrf: form.has("csrf") ? (form.get("csrf") ?? "") : undefined,
   };
@@ -284,6 +382,7 @@ export async function handleAuthDeviceEntry(
   req: Request,
   env: Env,
   product: Product,
+  ctx?: DevicePageContext,
 ): Promise<Response> {
   if (req.method !== "GET" && req.method !== "POST") return methodNotAllowed();
   const now = Math.floor(Date.now() / 1000);
@@ -297,18 +396,21 @@ export async function handleAuthDeviceEntry(
     limit: 30,
     windowSec: 60,
   });
-  if (limited) return limited;
   const url = new URL(req.url);
   const action = `${url.origin}/${product.slug}/identity/auth/device`;
+  if (limited)
+    return wantsJson(req) ? limited : renderDeviceEntry(product, action, 429);
 
   let rawCode: string | null;
   let csrf: string | undefined;
+  let decision: DeviceDecision = "approve";
   if (req.method === "POST") {
     if (!sameOriginPost(req))
       return errorResponse(403, "forbidden", "confirmation failed");
     const form = await readEntryForm(req);
     rawCode = form.userCode ?? url.searchParams.get("user_code");
     csrf = form.csrf;
+    decision = form.decision;
   } else {
     rawCode = url.searchParams.get("user_code");
   }
@@ -329,12 +431,27 @@ export async function handleAuthDeviceEntry(
   if (!userCode || !deviceCode || !record) {
     // A confirmation POST for a code that has gone away is still a refused confirmation.
     if (csrf !== undefined)
-      return errorResponse(403, "forbidden", "confirmation failed");
-    return renderDeviceEntry(product, action, 404);
+      return gone(
+        req,
+        product,
+        403,
+        "expired",
+        errorResponse(403, "forbidden", "confirmation failed"),
+      );
+    return renderDeviceEntry(product, action, 404, rawCode);
   }
 
   if (csrf !== undefined)
-    return confirmDeviceFlow(req, env, product, deviceCode, record, csrf, now);
+    return confirmDeviceFlow(
+      req,
+      env,
+      product,
+      deviceCode,
+      record,
+      csrf,
+      now,
+      decision,
+    );
   return renderDeviceConfirmation(
     req,
     env,
@@ -344,6 +461,7 @@ export async function handleAuthDeviceEntry(
     action,
     { user_code: formatUserCode(userCode) },
     now,
+    await appFor(env, product, ctx),
   );
 }
 
@@ -358,6 +476,7 @@ export async function handleAuthDeviceVerify(
   req: Request,
   env: Env,
   product: Product,
+  ctx?: DevicePageContext,
 ): Promise<Response> {
   if (req.method !== "GET" && req.method !== "POST") return methodNotAllowed();
   const now = Math.floor(Date.now() / 1000);
@@ -367,19 +486,41 @@ export async function handleAuthDeviceVerify(
     limit: 60,
     windowSec: 60,
   });
-  if (limited) return limited;
   const url = new URL(req.url);
+  if (limited)
+    return wantsJson(req)
+      ? limited
+      : renderDeviceEntry(
+          product,
+          `${url.origin}/${product.slug}/identity/auth/device`,
+          429,
+        );
   const deviceCode = url.searchParams.get("device_code");
   if (!deviceCode) return errorResponse(400, "bad_request", "missing code");
   const deviceKey = await deviceFlowKey(env, product.slug, deviceCode);
   const raw = await getArtefact(env, deviceKey);
-  if (!raw) return errorResponse(404, "not_found", "device code expired");
-  const record = parseFlowRecord<DeviceFlowRecord>(raw);
-  if (!record) return errorResponse(404, "not_found", "device code expired");
+  const record = raw ? parseFlowRecord<DeviceFlowRecord>(raw) : null;
+  if (!record)
+    return gone(
+      req,
+      product,
+      404,
+      "expired",
+      errorResponse(404, "not_found", "device code expired"),
+    );
 
   if (req.method === "POST") {
-    const token = await readConfirmToken(req);
-    return confirmDeviceFlow(req, env, product, deviceCode, record, token, now);
+    const { token, decision } = await readConfirmForm(req);
+    return confirmDeviceFlow(
+      req,
+      env,
+      product,
+      deviceCode,
+      record,
+      token,
+      now,
+      decision,
+    );
   }
   return renderDeviceConfirmation(
     req,
@@ -390,5 +531,6 @@ export async function handleAuthDeviceVerify(
     url.toString(),
     {},
     now,
+    await appFor(env, product, ctx),
   );
 }

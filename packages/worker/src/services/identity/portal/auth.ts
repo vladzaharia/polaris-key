@@ -55,7 +55,7 @@ import {
   PLATFORM_ENV_CONNECTION_ID,
   platformEnvConnection,
 } from "../connections/seed.js";
-import { accountDisabledPage } from "../card/http.js";
+import { accountDisabledPage, emailInUsePage } from "../card/http.js";
 import { emailDomain, routeForDomain } from "../../../core/oidc/connections.js";
 import { buildPortalClearCookie, portalSessionFromRequest } from "./session.js";
 import { revokeSessionByHash, sessionIdHash } from "./accountSessions.js";
@@ -556,12 +556,6 @@ async function completeConnectionCallback(
 }
 
 /** An unknown identity whose verified email another account uses, where no join is offered. */
-function emailInUsePage(): Response {
-  return htmlError(
-    409,
-    "A Polaris Locker account already uses this email address. Sign in with the method you used before. Adding another sign-in method to an account is not available yet; until it is, contact the product's support if you can no longer use that method.",
-  );
-}
 
 /**
  * The page a sign-in that did not complete answers with. A join offer (an unknown identity whose

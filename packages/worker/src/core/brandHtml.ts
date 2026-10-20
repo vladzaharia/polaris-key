@@ -247,8 +247,76 @@ function lockerPalette(theme: "dark" | "light"): string {
 const LOCKER_PAGE_CSS_TAIL = [
   `:root[data-brand=locker]{${lockerPalette("dark")}}`,
   `@media (prefers-color-scheme: light){:root[data-brand=locker]{${lockerPalette("light")}}}`,
-  `[data-brand=locker] a{color:var(--strong);text-decoration:underline;text-decoration-color:var(--mb);text-decoration-thickness:2px;text-underline-offset:.2em}`,
+  `[data-brand=locker] a:not(.button){color:var(--strong);text-decoration:underline;text-decoration-color:var(--mb);text-decoration-thickness:2px;text-underline-offset:.2em}`,
   `[data-brand=locker] .button{text-decoration:none}`,
+  // ── The AuthCard's Worker twin (`renderAuthCard`; packages/admin/src/ui/auth/AuthCard.tsx is the
+  // React original): the lockup above, one 28.5 rem card (22 px radius) with an optional header,
+  // the step body (one primary), and an optional footer. Phones: the card goes edge to edge
+  // under a 56 px lockup row.
+  `[data-brand=locker] body{display:block;min-height:100dvh;padding:clamp(1.5rem,7vh,3.5rem) 1rem 3rem}`,
+  `.ac-brand{display:flex;justify-content:center;margin:0 0 1.5rem;color:var(--strong)}`,
+  `.ac-brand svg{display:block;max-width:100%}`,
+  `main.ac{display:block;width:100%;max-width:28.5rem;min-width:0;margin:0 auto;overflow:hidden;border:1px solid var(--rule);border-radius:1.375rem;background:var(--raised);box-shadow:0 8px 24px rgb(0 0 0 / .18)}`,
+  `.ac-head{display:flex;gap:1rem;align-items:center;min-width:0;padding:1rem 1.75rem;border-bottom:1px solid var(--rule)}`,
+  `.ac-head img,.ac-mono{display:block;flex:none;width:48px;height:48px;border-radius:11px;object-fit:cover}`,
+  `.ac-mono{display:grid;place-items:center;background:var(--sunken);border:1px solid var(--rule);color:var(--strong);font-weight:700}`,
+  `.ac-head-text{display:grid;min-width:0;overflow-wrap:anywhere}`,
+  `.ac-head-text p{margin:0}`,
+  `.ac-head-title{color:var(--strong);font-size:1rem;line-height:1.5rem}`,
+  `.ac-head-sub{color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
+  `.ac-body{display:grid;gap:1.25rem;min-width:0;padding:2rem 1.75rem;overflow-wrap:anywhere}`,
+  `.ac-body>*{margin:0;min-width:0}`,
+  `.ac-body h1{font-size:1.5rem;line-height:2rem;letter-spacing:0}`,
+  `.ac-body h1+p{font-size:.9375rem;line-height:1.375rem}`,
+  `.ac-body label{margin:0 0 .5rem}`,
+  `.ac-body .actions{margin:0}`,
+  `.ac-body .actions.stack,.ac-body .stack{gap:.5rem}`,
+  `.ac-foot{display:flex;gap:.75rem;align-items:flex-start;padding:1rem 1.75rem;border-top:1px solid var(--rule);color:var(--muted);font-size:.875rem;line-height:1.25rem;overflow-wrap:anywhere}`,
+  `.ac-foot svg{margin-top:.125rem}`,
+  `.ic{flex:none;width:1.25rem;height:1.25rem;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}`,
+  `.ic.sm{width:1rem;height:1rem}`,
+  // Buttons: 48 px, ink fill, one primary per step. `.link` is the quiet third action.
+  `[data-brand=locker] .button{min-height:3rem;gap:.5rem;border-radius:.5rem;font-size:1rem;line-height:1.5rem;font-weight:600}`,
+  `[data-brand=locker] .button.secondary{border-color:var(--edge);background:transparent;color:var(--strong)}`,
+  `[data-brand=locker] .button.link{border-color:transparent;background:transparent;color:var(--strong);min-height:2.75rem}`,
+  `[data-brand=locker] .button.link:hover{text-decoration:underline;text-decoration-color:var(--mb);text-decoration-thickness:2px;text-underline-offset:.2em;filter:none}`,
+  `.ac-body form{display:grid;gap:1.25rem;min-width:0}`,
+  // A neutral callout (DL6: a refusal is information, not an alarm) and the one-line note.
+  `.callout{display:flex;gap:.75rem;align-items:flex-start;padding:1rem;border:1px solid var(--rule);border-radius:.75rem;background:var(--sunken)}`,
+  `.callout>.ic{margin-top:.125rem;color:var(--muted)}`,
+  `.callout-text{display:grid;gap:.125rem;min-width:0}`,
+  `.callout-text p{margin:0;color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
+  `.callout-text .callout-title{color:var(--strong);font-size:.9375rem;line-height:1.375rem;font-weight:600}`,
+  `.note{display:flex;gap:.5rem;align-items:flex-start;color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
+  `.note>.ic{margin-top:.125rem}`,
+  // The code field: big mono caps, centred; its error sits under it, never above the form.
+  `.field{display:grid;gap:.5rem;min-width:0}`,
+  `.field label,.field input{margin:0}`,
+  `.ac-body input[type=text]{margin:0;min-height:3.5rem;text-align:center;font-size:1.5rem}`,
+  `.ac-body input[type=text][aria-invalid=true]{border-color:var(--danger-edge)}`,
+  `.field-err{display:flex;gap:.5rem;align-items:flex-start;color:var(--danger);font-size:.875rem;line-height:1.25rem}`,
+  `.field-err .ic{margin-top:.125rem}`,
+  `.ac-body dl{margin:0}`,
+  // The licence chooser: the selected row is a neutral 7 % fill with a coral 3 px marker (D9a);
+  // a link inside a row is a 44 px target.
+  `[data-brand=locker] .choice:has(input:checked){border-color:var(--edge);background:color-mix(in srgb,var(--strong) 7%,var(--sunken));box-shadow:inset 3px 0 0 var(--mb)}`,
+  `@media (forced-colors: active){[data-brand=locker] .choice:has(input:checked){border-color:Highlight;border-left-width:3px}}`,
+  `[data-brand=locker] ul.choices a{display:inline-flex;align-items:center;min-height:2.75rem}`,
+  `[data-brand=locker] details.replace summary{display:flex;align-items:center;min-height:2.75rem}`,
+  `@media (max-width: 30rem){[data-brand=locker] body{padding:0 0 2rem}.ac-brand{height:3.5rem;align-items:center;margin:0;border-bottom:1px solid var(--rule)}main.ac{max-width:none;border-width:0 0 1px;border-radius:0;box-shadow:none;background:var(--page)}.ac-head,.ac-body,.ac-foot{padding-left:1.25rem;padding-right:1.25rem}.ac-body{padding-top:1.5rem;padding-bottom:1.5rem}}`,
+  // The TV variant (`/tv`): read from a sofa, typed with a remote. Large type and targets, the
+  // same card.
+  `.tv main.ac{max-width:46rem}`,
+  `.tv .ac-body{gap:1.75rem;padding:3rem}`,
+  `.tv .ac-body h1{font-size:2.5rem;line-height:3rem}`,
+  `.tv .ac-body h1+p,.tv .note,.tv .callout-text p,.tv .field-err,.tv .ac-foot{font-size:1.5rem;line-height:2rem}`,
+  `.tv .callout-text .callout-title{font-size:1.75rem;line-height:2.25rem}`,
+  `.tv .ac-body label{font-size:1.5rem;line-height:2rem}`,
+  `.tv .ac-body input[type=text]{min-height:5.5rem;font-size:3rem}`,
+  `[data-brand=locker] .tv .button{min-height:4.5rem;font-size:1.75rem;line-height:2rem}`,
+  `.tv .ic{width:2rem;height:2rem}`,
+  `.tv .ac-foot,.tv .ac-head{padding-left:3rem;padding-right:3rem}`,
+  `@media (max-width: 30rem){.tv .ac-body{padding:1.5rem}.tv .ac-body h1{font-size:2rem;line-height:2.5rem}.tv .ac-body input[type=text]{font-size:2rem}.tv .ac-foot,.tv .ac-head{padding-left:1.25rem;padding-right:1.25rem}}`,
 ].join("");
 
 /** The stylesheet of a Locker page: `BRAND_PAGE_CSS` and its tail. */
@@ -295,6 +363,73 @@ export interface BrandPageOptions {
   variant?: "tv";
   /** `key`: the Polaris Key console identity; the default is Polaris Locker (see the header). */
   brand?: BrandPageBrand;
+  /** Locker only: TRUSTED markup for the card's header slot (`appHeader`). Wins over `app`. */
+  header?: string;
+  /** Locker only: the card's footer line, plain text beside an icon. */
+  footer?: { icon: IconName; text: string };
+}
+
+export type AuthCardOptions = Omit<
+  BrandPageOptions,
+  "brand" | "surface" | "eyebrow"
+>;
+
+// ── Pieces the pages share (the AuthCard's slots as HTML) ───────────────────────────────────
+
+const ICON_PATHS = {
+  shield:
+    '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>',
+  lock: '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+  clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+  "x-circle":
+    '<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>',
+  info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+  "check-circle": '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+  monitor:
+    '<rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/>',
+  at: '<circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/>',
+  "arrow-right": '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+} as const;
+export type IconName = keyof typeof ICON_PATHS;
+
+/** A decorative inline icon (stroke follows the text colour). */
+export function icon(name: IconName, small = false): string {
+  return `<svg class="ic${small ? " sm" : ""}" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${ICON_PATHS[name]}</svg>`;
+}
+
+/**
+ * A neutral callout (DL6): an icon, a bold line and an optional detail. Plain text in, escaped
+ * here. `role` is for a state the person must hear when the page loads.
+ */
+export function callout(
+  name: IconName,
+  title: string,
+  detail?: string,
+): string {
+  return `<div class="callout">${icon(name)}<div class="callout-text"><p class="callout-title">${escapeHtml(title)}</p>${detail ? `<p>${escapeHtml(detail)}</p>` : ""}</div></div>`;
+}
+
+/** The one-line note under a form: an icon and muted text. */
+export function note(name: IconName, text: string): string {
+  return `<p class="note">${icon(name, true)}<span>${escapeHtml(text)}</span></p>`;
+}
+
+/**
+ * The card's app header strip: the app's icon (or its initial) and "<name> <action>" over one
+ * muted line. `title` is plain text; `bold` is the leading part drawn strong.
+ */
+export function appHeader(opts: {
+  name: string;
+  iconUrl?: string | null;
+  /** What follows the name in the title line ("wants you to sign in"); none: the name alone. */
+  action?: string;
+  /** The muted line below (developer, device); plain text. */
+  sub?: string;
+}): string {
+  const art = opts.iconUrl
+    ? `<img src="${escapeHtml(opts.iconUrl)}" alt="" width="48" height="48">`
+    : `<span class="ac-mono" aria-hidden="true">${escapeHtml([...opts.name][0]?.toUpperCase() ?? "")}</span>`;
+  return `<div class="ac-head">${art}<div class="ac-head-text"><p class="ac-head-title"><strong>${escapeHtml(opts.name)}</strong>${opts.action ? ` ${escapeHtml(opts.action)}` : ""}</p>${opts.sub ? `<p class="ac-head-sub">${escapeHtml(opts.sub)}</p>` : ""}</div></div>`;
 }
 
 let mark: string | null = null;
@@ -313,7 +448,8 @@ function brandBlock(
   const aria = surface ? ` ${surface}` : "";
   if (brand === "locker") {
     lockerLockup ??= themedLockup("locker", "horizontal", 48, "mark");
-    return `<div class="brand" role="img" aria-label="Polaris Locker${aria}">${lockerLockup}${label ? `<span class="wordmark" aria-hidden="true">${label}</span>` : ""}</div>`;
+    // The Locker lockup is its own wordmark: no surface label beside it.
+    return `<div class="brand" role="img" aria-label="Polaris Locker${aria}">${lockerLockup}</div>`;
   }
   mark ??= themedMark(48, "mark");
   return `<div class="brand" role="img" aria-label="Polaris Key${aria}">${mark}<span class="wordmark" aria-hidden="true">Polaris&nbsp;Key${label}</span></div>`;
@@ -327,7 +463,8 @@ function brandBlock(
  * than the Worker's module load.
  */
 export function renderBrandPage(opts: BrandPageOptions): string {
-  const locker = opts.brand !== "key";
+  if (opts.brand !== "key") return renderAuthCard(opts);
+  const locker = false;
   const brandName = locker ? "Polaris Locker" : "Polaris Key";
   const app = opts.app
     ? `<div class="app">${
@@ -364,6 +501,56 @@ export function renderBrandPage(opts: BrandPageOptions): string {
     `<h1>${escapeHtml(opts.heading)}</h1>`,
     opts.body ?? "",
     `</div>`,
+    `</main>`,
+    `</body>`,
+    `</html>`,
+    ``,
+  ]
+    .filter((line, i, all) => line !== "" || i === all.length - 1)
+    .join("\n");
+}
+
+/**
+ * The AuthCard's Worker twin: a Polaris Locker page (no script, no `style=` attribute) with the
+ * same slots as `packages/admin/src/ui/auth/AuthCard.tsx`: the lockup, then one card with an
+ * optional header (`header`, or the app's strip from `app`), the step (`heading` and `body`) and
+ * an optional footer. Every Worker page a customer reaches is one. `body` and `header` are
+ * TRUSTED markup built with the helpers above, every value escaped.
+ */
+export function renderAuthCard(opts: AuthCardOptions): string {
+  lockerLockup ??= themedLockup("locker", "horizontal", 48, "mark");
+  const header =
+    opts.header ??
+    (opts.app
+      ? appHeader({ name: opts.app.name, iconUrl: opts.app.iconUrl })
+      : "");
+  const dark = THEME_TOKENS.dark.surface.page;
+  const light = THEME_TOKENS.light.surface.page;
+  return [
+    `<!doctype html>`,
+    `<html lang="en" data-brand="locker">`,
+    `<head>`,
+    `<meta charset="utf-8">`,
+    `<meta name="viewport" content="width=device-width, initial-scale=1">`,
+    `<title>${escapeHtml(opts.title)} · Polaris Locker</title>`,
+    `<meta name="color-scheme" content="dark light">`,
+    `<meta name="theme-color" content="${dark}" media="(prefers-color-scheme: dark)">`,
+    `<meta name="theme-color" content="${light}" media="(prefers-color-scheme: light)">`,
+    `<meta name="robots" content="noindex, nofollow">`,
+    `<link rel="icon" type="image/svg+xml" href="${BRAND_WEB_LOCKER_PATH}/favicon.svg">`,
+    `<style>${BRAND_PAGE_CSS_LOCKER}</style>`,
+    `</head>`,
+    opts.variant === "tv" ? `<body class="tv">` : `<body>`,
+    `<div class="ac-brand" role="img" aria-label="Polaris Locker">${lockerLockup}</div>`,
+    `<main class="ac">`,
+    header,
+    `<div class="ac-body">`,
+    `<h1>${escapeHtml(opts.heading)}</h1>`,
+    opts.body ?? "",
+    `</div>`,
+    opts.footer
+      ? `<footer class="ac-foot">${icon(opts.footer.icon, true)}<span>${escapeHtml(opts.footer.text)}</span></footer>`
+      : "",
     `</main>`,
     `</body>`,
     `</html>`,

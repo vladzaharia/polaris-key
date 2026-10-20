@@ -82,7 +82,7 @@ async function expectBrandedPage(
     // Every page a customer sees: the Polaris Locker lockup at 48 px tall, never Polaris Key.
     expect(html).toContain('data-brand="locker"');
     expect(html).toMatch(
-      /<div class="brand" role="img" aria-label="Polaris Locker[^"]*">/,
+      /<div class="ac-brand" role="img" aria-label="Polaris Locker">/,
     );
     expect(html).toContain('<svg class="mark"');
     expect(html).not.toContain("Polaris&nbsp;Key");
@@ -156,10 +156,11 @@ describe("the branded page shell", () => {
     expect(html).toContain(
       'Polaris&nbsp;Key<span class="surface">console</span></span>',
     );
+    // Locker: the lockup is its own wordmark, so no surface label sits beside it.
     expect(
       renderBrandPage({ title: "t", heading: "h", surface: "device" }),
     ).toContain(
-      '<div class="brand" role="img" aria-label="Polaris Locker device">',
+      '<div class="ac-brand" role="img" aria-label="Polaris Locker">',
     );
     expect(renderBrandPage({ title: "t", heading: "h" })).not.toContain(
       'class="surface"',
@@ -321,8 +322,9 @@ describe("every server-rendered page on the console host uses the shell", () => 
       "form-action 'self' https://id.example",
     );
     const html = await expectBrandedPage(page);
-    expect(html).toContain('<dd class="code">ABCD-EFGH</dd>');
-    expect(html).toContain("Continue to sign in");
+    expect(html).toContain('<span class="code">ABCD-EFGH</span>');
+    expect(html).toContain("Sign in on Ada&#x27;s Mac?");
+    expect(html).toContain('name="decision" value="deny">Deny</button>');
   });
 });
 
