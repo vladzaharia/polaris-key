@@ -56,7 +56,7 @@ export interface AttentionItem {
 }
 
 /** A credential expiring within this many seconds is listed (14 days). */
-export const EXPIRY_WINDOW_SECONDS = 14 * 86_400;
+const EXPIRY_WINDOW_SECONDS = 14 * 86_400;
 
 const CREDENTIAL_LABELS: Readonly<Record<string, string>> = {
   "asc-api-key": "App Store Connect key",
