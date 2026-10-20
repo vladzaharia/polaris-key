@@ -4259,12 +4259,12 @@ msgid "signin.join.products"
 msgid_plural "signin.join.products"
 msgstr[0] "제품 {count}개"
 
-#. One account: {email}, with {count, plural, one {# product} other {# products}}.
+#. One library: {count, plural, one {# product} other {# products}}. {email} stays the main email.
 #. Link dialog: what joining leaves.
 #. Plural on {count}.
 msgid "signin.join.result"
 msgid_plural "signin.join.result"
-msgstr[0] "계정 하나: {email}, 제품 {count}개."
+msgstr[0] "라이브러리 하나: 제품 {count}개. 기본 이메일은 {email}로 유지됩니다."
 
 #. Joined. You can undo this for 72 hours.
 #. Link dialog: joined.
@@ -4340,6 +4340,81 @@ msgstr "코드 8글자를 모두 입력하세요."
 #. Link dialog: completes 'Use your passkey to …' in the confirm-it's-you prompt.
 msgid "signin.join.stepUpVerb"
 msgstr "계정을 연결"
+
+#. Sign in to your other account
+#. Link dialog, second sign-in card: what this sign-in is for.
+msgid "signin.join.otherTitle"
+msgstr "다른 계정에 로그인"
+
+#. Use any way to sign in to it. You'll come back here to join them.
+#. Link dialog, second sign-in card: what happens next.
+msgid "signin.join.otherLede"
+msgstr "어떤 방법이든 괜찮습니다. 이후 여기로 돌아와 합칩니다."
+
+#. Signed in now
+#. Link dialog: the account this browser is signed in to now.
+msgid "signin.join.signedNow"
+msgstr "현재 로그인됨"
+
+#. Your other account
+#. Link dialog: the account that is not the current one.
+msgid "signin.join.yourOther"
+msgstr "다른 계정"
+
+#. Signs in with {method}
+#. Link dialog: how an account signs in. {method} is a list of method names.
+msgid "signin.join.methodsLine"
+msgstr "{method}(으)로 로그인"
+
+#. Proven by {method} {when}
+#. Link dialog: how and when an account proved itself. {method}, {when}.
+msgid "signin.join.provenBy"
+msgstr "{method}(으)로 확인됨 ({when})"
+
+#. Every sign-in from both keeps working. You can undo for 72 hours.
+#. Link dialog: reassurance under the result.
+msgid "signin.join.keepsWorking"
+msgstr "두 계정의 모든 로그인이 계속 작동합니다. 72시간 동안 되돌릴 수 있습니다."
+
+#. Joined. You can undo until {date}.
+#. Link dialog: joined.
+msgid "signin.join.doneUntil"
+msgstr "합쳤습니다. {date}까지 되돌릴 수 있습니다."
+
+#. Sign in to {email} again
+#. Link dialog: re-prove an account whose sign-in is older than 5 minutes. {email}.
+msgid "signin.join.again"
+msgstr "{email}에 다시 로그인"
+
+#. macos: Sign In to {email} Again
+msgctxt "macos"
+msgid "signin.join.again"
+msgstr "{email}에 다시 로그인"
+
+#. Start again
+#. Link dialog: forget the flow and begin again.
+msgid "signin.join.startAgain"
+msgstr "다시 시작"
+
+#. macos: Start Again
+msgctxt "macos"
+msgid "signin.join.startAgain"
+msgstr "다시 시작"
+
+#. This join can no longer be undone.
+#. Link dialog: the join cannot be undone any more.
+msgid "signin.join.noUndo"
+msgstr "이 합치기는 더 이상 되돌릴 수 없습니다."
+
+#. Sign-in methods
+#. Link dialog: a link to Account → Sign-in methods.
+msgid "signin.join.methodsLink"
+msgstr "로그인 방법"
+
+#. macos: Sign-In Methods
+msgctxt "macos"
+msgid "signin.join.methodsLink"
+msgstr "로그인 방법"
 
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).

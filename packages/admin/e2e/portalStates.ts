@@ -1397,7 +1397,7 @@ export const SHIPPED: ShippedState[] = [
       // The shell is up (and has taken nothing): the Worker's flag arrives, the next visit shows it.
       await p.getByRole("heading", { level: 1 }).first().waitFor();
       await p.evaluate(() =>
-        window.sessionStorage.setItem("pk-signin-nudge", "1"),
+        window.localStorage.setItem("pk-signin-nudge", String(Date.now())),
       );
       await p.reload();
       await p
@@ -1448,6 +1448,55 @@ export const SHIPPED: ShippedState[] = [
         .getByRole("dialog", { name: "Link an existing account" })
         .waitFor();
       await p.getByRole("button", { name: "Join into one account" }).waitFor();
+    },
+  },
+  {
+    section: "4.11",
+    id: "account-link-second-signin",
+    title: "Link an existing account: the login card for the other account",
+    scenario: "three",
+    path: "/#/account/link",
+    ready: async (p) => {
+      await p
+        .getByRole("dialog", { name: "Link an existing account" })
+        .waitFor();
+      // The fixtures' session token; the dialog leaves it before it goes to /signin.
+      await p.evaluate(() =>
+        window.sessionStorage.setItem("pk-link-second", "csrf"),
+      );
+      await p.reload();
+      await p.getByText("Sign in to your other account").waitFor();
+    },
+  },
+  {
+    section: "4.11",
+    id: "account-link-stale",
+    title:
+      "Link an existing account: a proof older than 5 minutes, sign in again",
+    scenario: "three",
+    path: "/#/account/link",
+    routes: {
+      "/api/me/link": {
+        body: {
+          flow: {
+            expiresAt: 1_800_000_900,
+            started: LINK_ACCOUNT("started"),
+            other: {
+              ...LINK_ACCOUNT("other"),
+              proven: { by: "email", at: 1_799_999_000, fresh: false },
+            },
+            canJoin: false,
+            reason: "step_up_required",
+            keep: "other",
+            result: { products: 3, primaryEmail: "mara@old.example" },
+          },
+          undoable: [],
+        },
+      },
+    },
+    ready: async (p) => {
+      await p.getByRole("button", { name: "Join into one account" }).click();
+      await p.getByRole("button", { name: "Start again" }).waitFor();
     },
   },
   {

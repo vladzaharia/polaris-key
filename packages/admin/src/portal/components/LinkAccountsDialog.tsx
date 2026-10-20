@@ -1,10 +1,10 @@
 import * as React from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Check, UserRound } from "lucide-react";
 import { Button } from "../../ui/Button.js";
 import { Dialog, DialogBody, DialogFooter } from "../../ui/Dialog.js";
 import { Skeleton } from "../../ui/Skeleton.js";
-import { formatDate } from "../../lib/format.js";
+import { formatDate, formatRelative } from "../../lib/format.js";
 import { t } from "../../lib/copy.js";
 import {
   portalApi,
@@ -13,9 +13,15 @@ import {
   type PortalLinkReason,
   type PortalLinkView,
 } from "../api.js";
-import { refreshAfterMethodChange } from "../data.js";
+import {
+  portalKeys,
+  refreshAfterMethodChange,
+  useLinkView,
+  useSession,
+} from "../data.js";
 import { isStepUpRequired, portalErrorCopy } from "../errors.js";
-import { Avatar } from "./Avatar.js";
+import { beginSecondSignIn } from "../linkSecond.js";
+import { focusPageHeading, href, navigate } from "../router.js";
 import { ErrorPanel } from "./States.js";
 import { StepUpInline } from "./account/StepUpInline.js";
 
@@ -26,9 +32,11 @@ import { StepUpInline } from "./account/StepUpInline.js";
  * `#/account/link` when the sign-in to the other account comes back.
  *
  * Proof of both, in this browser: the person is signed in to this account (fresh, else "Confirm
- * it's you" first), signs in to the other one on the login card, and returns here to see both and
- * join. Nothing moves until **Join into one account**, which is always pressable: a refusal shows
- * as text at the button and never as a disabled control. Joins are undoable for 72 hours.
+ * it's you" first), signs in to the other one (the login card in "other account" mode while still
+ * signed in, `linkSecond.ts`; the Worker's `/signin` sends the browser back here) and returns to
+ * see both and join. Nothing moves until **Join into one account**, which is always pressable: a
+ * refusal shows as text at the button and never as a disabled control. A proof older than 5
+ * minutes is re-made from here, per account. Joins are undoable for 72 hours.
  */
 const SIGN_IN_OTHER = "/signin?return_to=%2F%23%2Faccount%2Flink";
 
@@ -39,11 +47,24 @@ const REASON_COPY: Record<PortalLinkReason, () => string> = {
   unavailable: () => t("signin.join.reasonUnavailable"),
 };
 
+const METHOD_NAME: Record<string, string> = {
+  email: "email",
+  passkey: "passkey",
+  google: "Google",
+  apple: "Apple",
+  steam: "Steam",
+  gamecenter: "Game Center",
+  pgs: "Play Games",
+  oidc: "single sign-on",
+  sso: "single sign-on",
+};
+const methodName = (kind: string): string => METHOD_NAME[kind] ?? kind;
+
 type Action =
-  | { kind: "idle"; error?: string }
+  | { kind: "idle"; error?: string; withMethods?: boolean; stale?: string[] }
   | { kind: "busy" }
   | { kind: "stepup"; then: "start" | "undo"; merge?: string }
-  | { kind: "joined"; undoUntil: number | null }
+  | { kind: "joined"; undoUntil: number | null; merge: string | null }
   | { kind: "undone" };
 
 export function LinkAccountsDialog({
@@ -52,14 +73,11 @@ export function LinkAccountsDialog({
   onClose: () => void;
 }): React.ReactElement {
   const qc = useQueryClient();
-  const view = useQuery<PortalLinkView>({
-    queryKey: ["portal", "link"],
-    queryFn: () => portalApi.linkView(),
-    retry: false,
-    gcTime: 0,
-  });
+  const session = useSession();
+  const view = useLinkView();
   const [action, setAction] = React.useState<Action>({ kind: "idle" });
   const flow = view.data?.flow ?? null;
+  const undoable = view.data?.undoable ?? [];
   const expired =
     view.error instanceof PortalApiError &&
     view.error.code === "signin_expired";
@@ -76,9 +94,21 @@ export function LinkAccountsDialog({
     onClose();
   };
 
+  /** The login card, in "other account" mode (App.tsx), for whichever proof is wanted. */
+  const signInOther = (): void => {
+    const token = session.data?.csrf;
+    if (token) beginSecondSignIn(token);
+    window.location.assign(SIGN_IN_OTHER);
+  };
+
   const fail = (err: unknown): void => {
     if (err instanceof PortalApiError && err.code === "signin_expired") {
-      void view.refetch();
+      // The flow was used up by the attempt: back to the start view, keeping the undo list.
+      const reset: PortalLinkView = {
+        flow: null,
+        undoable: view.data?.undoable ?? [],
+      };
+      qc.setQueryData(portalKeys.link, reset);
       return setAction({ kind: "idle", error: t("signin.join.expired") });
     }
     if (err instanceof PortalApiError && err.reason === "same_account")
@@ -88,16 +118,33 @@ export function LinkAccountsDialog({
     if (err instanceof PortalApiError && err.reason === "unavailable")
       return setAction({ kind: "idle", error: REASON_COPY.unavailable() });
     if (isStepUpRequired(err))
-      return setAction({ kind: "idle", error: REASON_COPY.step_up_required() });
-    const copy = portalErrorCopy(err);
-    setAction({ kind: "idle", error: `${copy.title}. ${copy.description}` });
+      return setAction({
+        kind: "idle",
+        error: REASON_COPY.step_up_required(),
+        stale:
+          err instanceof PortalApiError && err.stale?.length
+            ? err.stale
+            : ["started", "other"],
+      });
+    if (err instanceof PortalApiError && err.status === 409)
+      // `last_link`: the Worker's own sentence, and where to add a way.
+      return setAction({
+        kind: "idle",
+        error: err.message.startsWith("portal api")
+          ? t("signin.join.failed")
+          : err.message,
+        withMethods: true,
+      });
+    if (err instanceof PortalApiError && err.status === 0)
+      return setAction({ kind: "idle", error: portalErrorCopy(err).title });
+    setAction({ kind: "idle", error: t("signin.join.failed") });
   };
 
   const start = async (): Promise<void> => {
     setAction({ kind: "busy" });
     try {
-      const out = await portalApi.linkStart();
-      window.location.assign(out.next);
+      await portalApi.linkStart();
+      signInOther();
     } catch (err) {
       if (isStepUpRequired(err))
         return setAction({ kind: "stepup", then: "start" });
@@ -105,19 +152,37 @@ export function LinkAccountsDialog({
     }
   };
 
+  const startAgain = async (): Promise<void> => {
+    await portalApi.linkCancel().catch(() => undefined);
+    await start();
+  };
+
   const join = async (): Promise<void> => {
     // The button always answers: a join the Worker would refuse says why, here.
     if (flow && !flow.canJoin && flow.reason) {
-      return setAction({ kind: "idle", error: REASON_COPY[flow.reason]() });
+      return setAction({
+        kind: "idle",
+        error: REASON_COPY[flow.reason](),
+        stale:
+          flow.reason === "step_up_required"
+            ? [flow.started, flow.other]
+                .filter((a): a is PortalLinkAccount => !!a && !a.proven.fresh)
+                .map((a) => a.role)
+            : undefined,
+      });
     }
     setAction({ kind: "busy" });
     try {
       const out = await portalApi.linkConfirm();
       refreshAfterMethodChange(qc);
-      setAction({ kind: "joined", undoUntil: out.merge?.undoUntil ?? null });
+      void qc.invalidateQueries({ queryKey: portalKeys.link });
+      setAction({
+        kind: "joined",
+        undoUntil: out.merge?.undoUntil ?? null,
+        merge: out.merge?.id ?? null,
+      });
     } catch (err) {
       fail(err);
-      void view.refetch();
     }
   };
 
@@ -126,10 +191,15 @@ export function LinkAccountsDialog({
     try {
       await portalApi.linkUndo(merge);
       refreshAfterMethodChange(qc);
+      void qc.invalidateQueries({ queryKey: portalKeys.link });
       setAction({ kind: "undone" });
     } catch (err) {
       if (isStepUpRequired(err))
         return setAction({ kind: "stepup", then: "undo", merge });
+      if (err instanceof PortalApiError && err.status === 404) {
+        void qc.invalidateQueries({ queryKey: portalKeys.link });
+        return setAction({ kind: "idle", error: t("signin.join.noUndo") });
+      }
       fail(err);
     }
   };
@@ -137,7 +207,26 @@ export function LinkAccountsDialog({
   const busy = action.kind === "busy";
   const done = action.kind === "joined" || action.kind === "undone";
   const error = action.kind === "idle" ? action.error : undefined;
-  const undoable = view.data?.undoable ?? [];
+  const stale = action.kind === "idle" ? (action.stale ?? []) : [];
+
+  const problem = (
+    <Problem
+      id="pk-join-err"
+      text={error}
+      methods={action.kind === "idle" && action.withMethods}
+      onMethods={() => {
+        onClose();
+        navigate(href.account("methods"));
+      }}
+    />
+  );
+  const stepUpEscape = (e: KeyboardEvent): void => {
+    // Escape backs out of the confirmation, one step; the dialog stays.
+    if (action.kind === "stepup") {
+      e.preventDefault();
+      setAction({ kind: "idle" });
+    }
+  };
 
   return (
     <Dialog
@@ -148,6 +237,11 @@ export function LinkAccountsDialog({
       size="md"
       title={t("signin.join.title")}
       dismissible={!busy}
+      onEscapeKeyDown={stepUpEscape}
+      onCloseAutoFocus={(e) => {
+        e.preventDefault();
+        focusPageHeading();
+      }}
     >
       {action.kind === "stepup" ? (
         <DialogBody className="space-y-3">
@@ -163,18 +257,33 @@ export function LinkAccountsDialog({
         </DialogBody>
       ) : done ? (
         <>
-          <DialogBody>
+          <DialogBody className="space-y-3">
             <p role="status" className="flex items-start gap-2 text-fg">
               <Check
                 aria-hidden
                 className="mt-0.5 size-4 shrink-0 text-success"
               />
               {action.kind === "joined"
-                ? t("signin.join.done")
+                ? action.undoUntil
+                  ? t("signin.join.doneUntil", {
+                      date: formatDate(action.undoUntil * 1000),
+                    })
+                  : t("signin.join.done")
                 : t("signin.join.undone")}
             </p>
+            {action.kind === "joined" && action.merge ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="max-sm:min-h-11"
+                onClick={() => void undo(action.merge!)}
+              >
+                {t("signin.join.undo")}
+              </Button>
+            ) : null}
+            {problem}
           </DialogBody>
-          <DialogFooter>
+          <DialogFooter className={SHORT_FOOTER}>
             <Button variant="neutral" onClick={onClose}>
               {t("common.close")}
             </Button>
@@ -196,26 +305,37 @@ export function LinkAccountsDialog({
         <>
           <DialogBody className="space-y-4">
             <ul className="space-y-2">
-              {flow.started ? (
-                <li>
-                  <AccountCard account={flow.started} />
-                </li>
-              ) : null}
-              <li>
-                <AccountCard account={flow.other} />
-              </li>
+              {[flow.started, flow.other].map((a) =>
+                a ? (
+                  <li key={a.role}>
+                    <AccountCard account={a} />
+                  </li>
+                ) : null,
+              )}
             </ul>
             {flow.result ? (
-              <p className="text-fg">
-                {t("signin.join.result", {
-                  email: flow.result.primaryEmail ?? "",
-                  count: flow.result.products,
-                })}
-              </p>
+              <div className="space-y-1">
+                <p className="text-fg">
+                  {t("signin.join.result", {
+                    email: flow.result.primaryEmail ?? "",
+                    count: flow.result.products,
+                  })}
+                </p>
+                <p className="text-sm text-fg-muted">
+                  {t("signin.join.keepsWorking")}
+                </p>
+              </div>
             ) : null}
-            <Problem id="pk-join-err" text={error} />
+            {problem}
+            <StaleActions
+              accounts={[flow.started, flow.other]}
+              roles={stale}
+              busy={busy}
+              onSignIn={signInOther}
+              onStartAgain={() => void startAgain()}
+            />
           </DialogBody>
-          <DialogFooter>
+          <DialogFooter className={SHORT_FOOTER}>
             <Button variant="outline" disabled={busy} onClick={close}>
               {t("common.cancel")}
             </Button>
@@ -235,7 +355,7 @@ export function LinkAccountsDialog({
           <DialogBody className="space-y-4">
             <p className="text-fg-muted">{t("signin.join.lede")}</p>
             {flow?.started ? <AccountCard account={flow.started} /> : null}
-            <Problem id="pk-join-err" text={error} />
+            {problem}
             {undoable.length > 0 ? (
               <ul className="space-y-2 border-t border-border pt-4">
                 {undoable.map((u) => (
@@ -263,7 +383,7 @@ export function LinkAccountsDialog({
               </ul>
             ) : null}
           </DialogBody>
-          <DialogFooter>
+          <DialogFooter className={SHORT_FOOTER}>
             <Button variant="outline" disabled={busy} onClick={close}>
               {t("common.cancel")}
             </Button>
@@ -271,9 +391,7 @@ export function LinkAccountsDialog({
               variant="neutral"
               loading={busy}
               busyFocusable
-              onClick={() =>
-                flow ? window.location.assign(SIGN_IN_OTHER) : void start()
-              }
+              onClick={() => (flow ? signInOther() : void start())}
             >
               {t("signin.join.start")}
             </Button>
@@ -284,17 +402,82 @@ export function LinkAccountsDialog({
   );
 }
 
+/**
+ * 400 % zoom is a viewport about 200 px tall: a stacked, full-width footer would take most of it,
+ * so on a short window the footer goes back to one compact row and the body keeps the room.
+ */
+const SHORT_FOOTER =
+  "[@media(max-height:520px)]:flex-row [@media(max-height:520px)]:py-2 [@media(max-height:520px)]:mt-0";
+
+/** A proof older than 5 minutes: sign in to that account again, or start over. Never a dead end. */
+function StaleActions({
+  accounts,
+  roles,
+  busy,
+  onSignIn,
+  onStartAgain,
+}: {
+  accounts: (PortalLinkAccount | null)[];
+  roles: string[];
+  busy: boolean;
+  onSignIn: () => void;
+  onStartAgain: () => void;
+}): React.ReactElement | null {
+  if (roles.length === 0) return null;
+  return (
+    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+      {accounts
+        .filter((a): a is PortalLinkAccount => !!a && roles.includes(a.role))
+        .map((a) => (
+          <Button
+            key={a.role}
+            variant="outline"
+            size="sm"
+            className="max-sm:min-h-11"
+            disabled={busy}
+            onClick={onSignIn}
+          >
+            {t("signin.join.again", { email: a.email ?? "" })}
+          </Button>
+        ))}
+      <Button
+        variant="ghost"
+        size="sm"
+        className="max-sm:min-h-11"
+        disabled={busy}
+        onClick={onStartAgain}
+      >
+        {t("signin.join.startAgain")}
+      </Button>
+    </div>
+  );
+}
+
 function Problem({
   id,
   text,
+  methods,
+  onMethods,
 }: {
   id: string;
   text?: string;
+  methods?: boolean;
+  onMethods: () => void;
 }): React.ReactElement | null {
   return text ? (
-    <p id={id} role="alert" className="text-sm text-danger">
-      {text}
-    </p>
+    <div id={id} role="alert" className="space-y-1 text-sm">
+      <p className="text-danger">{text}</p>
+      {methods ? (
+        <Button
+          variant="link"
+          size="sm"
+          className="max-sm:min-h-11"
+          onClick={onMethods}
+        >
+          {t("signin.join.methodsLink")}
+        </Button>
+      ) : null}
+    </div>
   ) : null;
 }
 
@@ -304,19 +487,27 @@ function AccountCard({
   account: PortalLinkAccount;
 }): React.ReactElement {
   const named = account.name && account.name !== account.email;
+  const methods = account.methods.map(methodName).join(", ");
+  const by = account.proven.by ? methodName(account.proven.by) : null;
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-border bg-surface-sunken px-3 py-2.5">
-      <Avatar
-        name={account.name}
-        email={account.email ?? ""}
-        picture={account.avatarUrl}
-        size={40}
-      />
+    <div className="flex items-start gap-3 rounded-xl border border-border bg-surface-sunken px-3 py-2.5">
+      {account.avatarUrl ? (
+        <img
+          src={account.avatarUrl}
+          alt=""
+          className="size-10 shrink-0 rounded-full object-cover"
+        />
+      ) : (
+        // The same initials on two accounts read as one account: a neutral glyph instead.
+        <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-surface-overlay text-fg-muted">
+          <UserRound aria-hidden className="size-5" />
+        </span>
+      )}
       <div className="flex min-w-0 flex-col gap-0.5 text-sm [overflow-wrap:anywhere]">
         <span className="text-xs font-medium text-fg-muted">
-          {account.role === "started"
-            ? t("signin.join.thisAccount")
-            : t("signin.join.otherAccount")}
+          {account.current
+            ? t("signin.join.signedNow")
+            : t("signin.join.yourOther")}
         </span>
         {named ? (
           <span dir="auto" className="font-medium text-fg-strong">
@@ -330,7 +521,18 @@ function AccountCard({
         </span>
         <span className="text-fg-muted">
           {t("signin.join.products", { count: account.products })}
+          {methods
+            ? ` · ${t("signin.join.methodsLine", { method: methods })}`
+            : ""}
         </span>
+        {by ? (
+          <span className="text-fg-muted">
+            {t("signin.join.provenBy", {
+              method: by,
+              when: formatRelative(account.proven.at * 1000, Date.now()),
+            })}
+          </span>
+        ) : null}
       </div>
     </div>
   );

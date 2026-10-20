@@ -107,26 +107,45 @@ export async function readLastMethod(
 }
 
 const NUDGE = "pk-signin-nudge";
+/** A nudge the sign-in left before the account was known goes stale after this long. */
+const NUDGE_CLAIM_MS = 10 * 60 * 1000;
 
 /**
- * The Worker's `nudge: true` ("add another way to sign in", after a first sign-in): kept for the
- * portal visit that follows, where PX-15 shows it once. Never discarded here.
+ * The Worker's `nudge: true` ("add another way to sign in", after a first sign-in). It is kept in
+ * localStorage, not sessionStorage: a magic link opens the portal in a new tab, which has no
+ * sessionStorage of the tab that asked. The sign-in does not know the account yet, so it leaves a
+ * timestamp; the first signed-in page claims it for the account (`claimNudge`), and from then on it
+ * is the account's own (`nudge:<id>`) until the person dismisses it.
  */
 export function rememberNudge(): void {
   try {
-    window.sessionStorage.setItem(NUDGE, "1");
+    window.localStorage.setItem(NUDGE, String(Date.now()));
   } catch {
     // Storage off: the nudge waits for the next sign-in the Worker offers it on.
   }
 }
 
-/** Whether a nudge is waiting; `take` clears it. */
-export function nudgePending(take = false): boolean {
+/** Whether the nudge is waiting for this account; claims a fresh sign-in's flag first. */
+export function nudgePending(accountId: string): boolean {
   try {
-    const on = window.sessionStorage.getItem(NUDGE) === "1";
-    if (on && take) window.sessionStorage.removeItem(NUDGE);
-    return on;
+    const own = `${NUDGE}:${accountId}`;
+    const left = Number(window.localStorage.getItem(NUDGE));
+    if (left) {
+      window.localStorage.removeItem(NUDGE);
+      if (Date.now() - left < NUDGE_CLAIM_MS)
+        window.localStorage.setItem(own, "1");
+    }
+    return window.localStorage.getItem(own) === "1";
   } catch {
     return false;
+  }
+}
+
+/** The person answered it (dismissed it, or went to add a method). */
+export function clearNudge(accountId: string): void {
+  try {
+    window.localStorage.removeItem(`${NUDGE}:${accountId}`);
+  } catch {
+    // Nothing to clear.
   }
 }

@@ -297,6 +297,11 @@ export function ActivateDialog({
       focusField();
       return;
     }
+    // A refusal the same key would get again: back to the field, nothing sent.
+    if (blocksResend(serverVerdict)) {
+      focusField();
+      return;
+    }
     setServerVerdict(null);
     const slugNow = check.slug;
     preview.mutate(key, {
@@ -428,15 +433,7 @@ export function ActivateDialog({
                         verdict.code === "license_owned" ||
                         verdict.code === "email_mismatch" ? (
                           <RefusalActions
-                            signInUrl={verdict.signInUrl}
-                            onLink={
-                              verdict.code === "license_owned"
-                                ? () => {
-                                    onOpenChange(false);
-                                    navigate("#/account/link");
-                                  }
-                                : undefined
-                            }
+                            ownedNotice={verdict.code === "license_owned"}
                             onDifferentKey={() => {
                               setKey("");
                               setTouched(false);
@@ -495,19 +492,33 @@ export function ActivateDialog({
           <DialogFooter>
             <Button
               variant="outline"
-              className="font-medium"
+              className="font-medium max-sm:min-h-11"
               onClick={() => onOpenChange(false)}
             >
               {t("signin.cancel")}
             </Button>
-            <Button
-              type="submit"
-              className="font-medium"
-              loading={preview.isPending || claim.isPending || leaving}
-              disabled={check.kind === "empty" || blocksResend(serverVerdict)}
-            >
-              {t("signin.continue")}
-            </Button>
+            {serverVerdict?.code === "license_owned" ? (
+              // The refusal's lead action is the primary: join the account that holds the key.
+              <Button
+                type="button"
+                className="font-medium max-sm:min-h-11"
+                onClick={() => {
+                  onOpenChange(false);
+                  navigate("#/account/link");
+                }}
+              >
+                {t("signin.join.title")}
+              </Button>
+            ) : (
+              <Button
+                type="submit"
+                className="font-medium max-sm:min-h-11"
+                busyFocusable
+                loading={preview.isPending || claim.isPending || leaving}
+              >
+                {t("signin.continue")}
+              </Button>
+            )}
           </DialogFooter>
         </form>
       )}
@@ -523,20 +534,18 @@ export function ActivateDialog({
  * Add an email open (PX-13).
  */
 function RefusalActions({
-  signInUrl,
+  ownedNotice,
   onDifferentKey,
   onAddEmail,
-  onLink,
 }: {
-  signInUrl?: string;
+  /** Signed in on the portal, `license_owned`: say the account may be theirs (SIGN-IN.md D-27). */
+  ownedNotice?: boolean;
   onDifferentKey: () => void;
   onAddEmail?: () => void;
-  /** Signed in on the portal, `license_owned`: join the two accounts (SIGN-IN.md D-27). */
-  onLink?: () => void;
 }): React.ReactElement {
   return (
     <>
-      {onLink ? (
+      {ownedNotice ? (
         <p className="basis-full text-sm text-fg-muted">
           {t("signin.join.ownedNotice")}
         </p>
@@ -544,7 +553,7 @@ function RefusalActions({
       <Button
         variant="ghost"
         size="sm"
-        className="font-medium"
+        className="font-medium max-sm:min-h-11 max-sm:w-full"
         onClick={onDifferentKey}
       >
         {t("signin.key.differentKey")}
@@ -553,30 +562,10 @@ function RefusalActions({
         <Button
           variant="outline"
           size="sm"
-          className="font-medium"
+          className="font-medium max-sm:min-h-11 max-sm:w-full"
           onClick={onAddEmail}
         >
           Add and verify that email
-        </Button>
-      ) : null}
-      {onLink ? (
-        <Button
-          variant="outline"
-          size="sm"
-          className="font-medium"
-          onClick={onLink}
-        >
-          {t("signin.join.title")}
-        </Button>
-      ) : null}
-      {signInUrl ? (
-        <Button
-          variant="outline"
-          size="sm"
-          className="font-medium"
-          onClick={() => window.location.assign(signInUrl)}
-        >
-          {t("signin.key.ownedSignIn")}
         </Button>
       ) : null}
     </>

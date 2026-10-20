@@ -1616,11 +1616,11 @@
         <item quantity="many">%1$d de productos</item>
         <item quantity="other">%1$d productos</item>
     </plurals>
-    <!-- Link dialog: what joining leaves. Arguments: 1=email, 2=count. -->
+    <!-- Link dialog: what joining leaves. Arguments: 1=count, 2=email. -->
     <plurals name="signin_join_result">
-        <item quantity="one">Una cuenta: %1$s, con %2$d producto.</item>
-        <item quantity="many">Una cuenta: %1$s, con %2$d de productos.</item>
-        <item quantity="other">Una cuenta: %1$s, con %2$d productos.</item>
+        <item quantity="one">Una biblioteca: %1$d producto. %2$s sigue siendo el correo principal.</item>
+        <item quantity="many">Una biblioteca: %1$d de productos. %2$s sigue siendo el correo principal.</item>
+        <item quantity="other">Una biblioteca: %1$d productos. %2$s sigue siendo el correo principal.</item>
     </plurals>
     <!-- Link dialog: joined. -->
     <string name="signin_join_done">Unidas. Puedes deshacerlo durante 72 horas.</string>
@@ -1651,6 +1651,33 @@
     <string name="signin_approve_codeShort">Introduce las 8 letras del código.</string>
     <!-- Link dialog: completes 'Use your passkey to …' in the confirm-it's-you prompt. -->
     <string name="signin_join_stepUpVerb">vincular cuentas</string>
+    <!-- Link dialog, second sign-in card: what this sign-in is for. -->
+    <string name="signin_join_otherTitle">Inicia sesión en tu otra cuenta</string>
+    <!-- Link dialog, second sign-in card: what happens next. -->
+    <string name="signin_join_otherLede">Usa cualquier forma de entrar. Volverás aquí para unirlas.</string>
+    <!-- Link dialog: the account this browser is signed in to now. -->
+    <string name="signin_join_signedNow">Con sesión iniciada</string>
+    <!-- Link dialog: the account that is not the current one. -->
+    <string name="signin_join_yourOther">Tu otra cuenta</string>
+    <!-- Link dialog: how an account signs in. {method} is a list of method names. Arguments: 1=method. -->
+    <string name="signin_join_methodsLine">Entra con %1$s</string>
+    <!-- Link dialog: how and when an account proved itself. {method}, {when}. Arguments: 1=method, 2=when. -->
+    <string name="signin_join_provenBy">Verificada con %1$s %2$s</string>
+    <!-- Link dialog: reassurance under the result. -->
+    <string name="signin_join_keepsWorking">Todos los inicios de sesión de ambas siguen funcionando. Puedes deshacerlo durante 72 horas.</string>
+    <!-- Link dialog: joined. Arguments: 1=date. -->
+    <string name="signin_join_doneUntil">Unidas. Puedes deshacerlo hasta el %1$s.</string>
+    <!-- Link dialog: re-prove an account whose sign-in is older than 5 minutes. {email}. Arguments: 1=email. -->
+    <string name="signin_join_again">Iniciar sesión en %1$s de nuevo</string>
+    <string name="signin_join_again__macos">Iniciar sesión en %1$s de nuevo</string>
+    <!-- Link dialog: forget the flow and begin again. -->
+    <string name="signin_join_startAgain">Empezar de nuevo</string>
+    <string name="signin_join_startAgain__macos">Empezar de nuevo</string>
+    <!-- Link dialog: the join cannot be undone any more. -->
+    <string name="signin_join_noUndo">Esta unión ya no se puede deshacer.</string>
+    <!-- Link dialog: a link to Account → Sign-in methods. -->
+    <string name="signin_join_methodsLink">Métodos de inicio de sesión</string>
+    <string name="signin_join_methodsLink__macos">Métodos de inicio de sesión</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">Algo salió mal</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

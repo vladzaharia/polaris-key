@@ -156,7 +156,12 @@ function useCarriedKey(): string | null {
   return key && checkKey(key).kind === "valid" ? key : null;
 }
 
-export function SignInPage(): React.ReactElement {
+export function SignInPage({
+  other,
+}: {
+  /** The join's second proof (linkSecond.ts): signed in already, signing in to the other account. */
+  other?: { onCancel: () => void };
+} = {}): React.ReactElement {
   const [product] = React.useState(productFromUrl);
   const caps = useCapabilities(product);
   const [step, setStep] = React.useState<Step>(() =>
@@ -219,7 +224,14 @@ export function SignInPage(): React.ReactElement {
       : null;
 
   const ctx = caps.data?.product;
-  const header = ctx ? (
+  const header = other ? (
+    <div className="space-y-1 px-6 py-3 text-center">
+      <p className="font-semibold text-fg-strong">
+        {t("signin.join.otherTitle")}
+      </p>
+      <p className="text-sm text-fg-muted">{t("signin.join.otherLede")}</p>
+    </div>
+  ) : ctx ? (
     <CardHeader
       variant="context"
       icon={
@@ -241,6 +253,17 @@ export function SignInPage(): React.ReactElement {
       brand={<AuthBrand muted={Boolean(ctx)} />}
       focusKey={focusTick}
       header={header}
+      footer={
+        other ? (
+          <Button
+            variant="outline"
+            className="w-full max-sm:min-h-11"
+            onClick={other.onCancel}
+          >
+            {t("common.cancel")}
+          </Button>
+        ) : undefined
+      }
       stepKey={stepKey}
       direction={direction}
     >

@@ -1594,9 +1594,9 @@
     <plurals name="signin_join_products">
         <item quantity="other">%1$d个产品</item>
     </plurals>
-    <!-- Link dialog: what joining leaves. Arguments: 1=email, 2=count. -->
+    <!-- Link dialog: what joining leaves. Arguments: 1=count, 2=email. -->
     <plurals name="signin_join_result">
-        <item quantity="other">一个账户：%1$s，含%2$d个产品。</item>
+        <item quantity="other">一个资料库：%1$d个产品。%2$s 仍是主邮箱。</item>
     </plurals>
     <!-- Link dialog: joined. -->
     <string name="signin_join_done">已合并。72 小时内可撤销。</string>
@@ -1627,6 +1627,33 @@
     <string name="signin_approve_codeShort">请输入完整的 8 个字母。</string>
     <!-- Link dialog: completes 'Use your passkey to …' in the confirm-it's-you prompt. -->
     <string name="signin_join_stepUpVerb">关联账户</string>
+    <!-- Link dialog, second sign-in card: what this sign-in is for. -->
+    <string name="signin_join_otherTitle">登录你的另一个账户</string>
+    <!-- Link dialog, second sign-in card: what happens next. -->
+    <string name="signin_join_otherLede">任选一种方式登录，之后会回到这里合并。</string>
+    <!-- Link dialog: the account this browser is signed in to now. -->
+    <string name="signin_join_signedNow">当前已登录</string>
+    <!-- Link dialog: the account that is not the current one. -->
+    <string name="signin_join_yourOther">你的另一个账户</string>
+    <!-- Link dialog: how an account signs in. {method} is a list of method names. Arguments: 1=method. -->
+    <string name="signin_join_methodsLine">通过 %1$s 登录</string>
+    <!-- Link dialog: how and when an account proved itself. {method}, {when}. Arguments: 1=method, 2=when. -->
+    <string name="signin_join_provenBy">已通过 %1$s 验证（%2$s）</string>
+    <!-- Link dialog: reassurance under the result. -->
+    <string name="signin_join_keepsWorking">两个账户的所有登录方式都继续有效。72 小时内可撤销。</string>
+    <!-- Link dialog: joined. Arguments: 1=date. -->
+    <string name="signin_join_doneUntil">已合并。%1$s 前可撤销。</string>
+    <!-- Link dialog: re-prove an account whose sign-in is older than 5 minutes. {email}. Arguments: 1=email. -->
+    <string name="signin_join_again">重新登录 %1$s</string>
+    <string name="signin_join_again__macos">重新登录 %1$s</string>
+    <!-- Link dialog: forget the flow and begin again. -->
+    <string name="signin_join_startAgain">重新开始</string>
+    <string name="signin_join_startAgain__macos">重新开始</string>
+    <!-- Link dialog: the join cannot be undone any more. -->
+    <string name="signin_join_noUndo">此次合并已无法撤销。</string>
+    <!-- Link dialog: a link to Account → Sign-in methods. -->
+    <string name="signin_join_methodsLink">登录方式</string>
+    <string name="signin_join_methodsLink__macos">登录方式</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">出现问题</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

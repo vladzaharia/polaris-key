@@ -4270,13 +4270,13 @@ msgid_plural "signin.join.products"
 msgstr[0] "{count} product"
 msgstr[1] "{count} products"
 
-#. One account: {email}, with {count, plural, one {# product} other {# products}}.
+#. One library: {count, plural, one {# product} other {# products}}. {email} stays the main email.
 #. Link dialog: what joining leaves.
 #. Plural on {count}.
 msgid "signin.join.result"
 msgid_plural "signin.join.result"
-msgstr[0] "One account: {email}, with {count} product."
-msgstr[1] "One account: {email}, with {count} products."
+msgstr[0] "One library: {count} product. {email} stays the main email."
+msgstr[1] "One library: {count} products. {email} stays the main email."
 
 #. Joined. You can undo this for 72 hours.
 #. Link dialog: joined.
@@ -4352,6 +4352,81 @@ msgstr "Enter all 8 letters of the code."
 #. Link dialog: completes 'Use your passkey to …' in the confirm-it's-you prompt.
 msgid "signin.join.stepUpVerb"
 msgstr "link accounts"
+
+#. Sign in to your other account
+#. Link dialog, second sign-in card: what this sign-in is for.
+msgid "signin.join.otherTitle"
+msgstr "Sign in to your other account"
+
+#. Use any way to sign in to it. You'll come back here to join them.
+#. Link dialog, second sign-in card: what happens next.
+msgid "signin.join.otherLede"
+msgstr "Use any way to sign in to it. You'll come back here to join them."
+
+#. Signed in now
+#. Link dialog: the account this browser is signed in to now.
+msgid "signin.join.signedNow"
+msgstr "Signed in now"
+
+#. Your other account
+#. Link dialog: the account that is not the current one.
+msgid "signin.join.yourOther"
+msgstr "Your other account"
+
+#. Signs in with {method}
+#. Link dialog: how an account signs in. {method} is a list of method names.
+msgid "signin.join.methodsLine"
+msgstr "Signs in with {method}"
+
+#. Proven by {method} {when}
+#. Link dialog: how and when an account proved itself. {method}, {when}.
+msgid "signin.join.provenBy"
+msgstr "Proven by {method} {when}"
+
+#. Every sign-in from both keeps working. You can undo for 72 hours.
+#. Link dialog: reassurance under the result.
+msgid "signin.join.keepsWorking"
+msgstr "Every sign-in from both keeps working. You can undo for 72 hours."
+
+#. Joined. You can undo until {date}.
+#. Link dialog: joined.
+msgid "signin.join.doneUntil"
+msgstr "Joined. You can undo until {date}."
+
+#. Sign in to {email} again
+#. Link dialog: re-prove an account whose sign-in is older than 5 minutes. {email}.
+msgid "signin.join.again"
+msgstr "Sign in to {email} again"
+
+#. macos: Sign In to {email} Again
+msgctxt "macos"
+msgid "signin.join.again"
+msgstr "Sign In to {email} Again"
+
+#. Start again
+#. Link dialog: forget the flow and begin again.
+msgid "signin.join.startAgain"
+msgstr "Start again"
+
+#. macos: Start Again
+msgctxt "macos"
+msgid "signin.join.startAgain"
+msgstr "Start Again"
+
+#. This join can no longer be undone.
+#. Link dialog: the join cannot be undone any more.
+msgid "signin.join.noUndo"
+msgstr "This join can no longer be undone."
+
+#. Sign-in methods
+#. Link dialog: a link to Account → Sign-in methods.
+msgid "signin.join.methodsLink"
+msgstr "Sign-in methods"
+
+#. macos: Sign-In Methods
+msgctxt "macos"
+msgid "signin.join.methodsLink"
+msgstr "Sign-In Methods"
 
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).

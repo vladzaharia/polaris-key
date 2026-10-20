@@ -722,7 +722,7 @@
     "signin.join.thisAccount": "このアカウント",
     "signin.join.otherAccount": "もう一方のアカウント",
     "signin.join.products": "{count, plural, other {#個の製品}}",
-    "signin.join.result": "1つのアカウント：{email}（{count, plural, other {#個の製品}}）。",
+    "signin.join.result": "ライブラリは1つ：{count, plural, other {#個の製品}}。メインのメールは {email} のままです。",
     "signin.join.done": "まとめました。72時間は元に戻せます。",
     "signin.join.undo": "まとめを元に戻す",
     "signin.join.undone": "元に戻しました。",
@@ -736,6 +736,18 @@
     "signin.join.failed": "まとめられませんでした。もう一度お試しください。",
     "signin.join.ownedNotice": "そのアカウントもあなたのものなら、サインインして2つをまとめてください。",
     "signin.approve.codeShort": "コードの8文字をすべて入力してください。",
-    "signin.join.stepUpVerb": "アカウントをリンク"
+    "signin.join.stepUpVerb": "アカウントをリンク",
+    "signin.join.otherTitle": "もう一方のアカウントにサインイン",
+    "signin.join.otherLede": "どの方法でも構いません。その後ここに戻って2つをまとめます。",
+    "signin.join.signedNow": "現在サインイン中",
+    "signin.join.yourOther": "もう一方のアカウント",
+    "signin.join.methodsLine": "{method}でサインイン",
+    "signin.join.provenBy": "{method}で確認済み（{when}）",
+    "signin.join.keepsWorking": "両方のサインイン方法はそのまま使えます。72時間は元に戻せます。",
+    "signin.join.doneUntil": "まとめました。{date}まで元に戻せます。",
+    "signin.join.again": "{email} に再度サインイン",
+    "signin.join.startAgain": "最初からやり直す",
+    "signin.join.noUndo": "このまとめはもう元に戻せません。",
+    "signin.join.methodsLink": "サインイン方法"
   }
 }

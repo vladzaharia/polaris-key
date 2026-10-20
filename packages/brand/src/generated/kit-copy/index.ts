@@ -744,6 +744,18 @@ export type KitCopyKey =
   | "signin.join.ownedNotice"
   | "signin.approve.codeShort"
   | "signin.join.stepUpVerb"
+  | "signin.join.otherTitle"
+  | "signin.join.otherLede"
+  | "signin.join.signedNow"
+  | "signin.join.yourOther"
+  | "signin.join.methodsLine"
+  | "signin.join.provenBy"
+  | "signin.join.keepsWorking"
+  | "signin.join.doneUntil"
+  | "signin.join.again"
+  | "signin.join.startAgain"
+  | "signin.join.noUndo"
+  | "signin.join.methodsLink"
   | "core.fallback.title"
   | "core.fallback.message"
   | "core.codes.unauthorized.title"
@@ -1261,6 +1273,9 @@ export const KIT_COPY_VARIANTS: Readonly<
   "signin.nudge.later": { macos: "Not Now" },
   "signin.join.start": { macos: "Sign In to the Other Account" },
   "signin.join.undo": { macos: "Undo Join" },
+  "signin.join.again": { macos: "Sign In to {email} Again" },
+  "signin.join.startAgain": { macos: "Start Again" },
+  "signin.join.methodsLink": { macos: "Sign-In Methods" },
 };
 
 /** Locales whose core.* strings are English until their core pack lands. */

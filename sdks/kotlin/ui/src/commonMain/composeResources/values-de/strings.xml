@@ -1605,10 +1605,10 @@
         <item quantity="one">%1$d Produkt</item>
         <item quantity="other">%1$d Produkte</item>
     </plurals>
-    <!-- Link dialog: what joining leaves. Arguments: 1=email, 2=count. -->
+    <!-- Link dialog: what joining leaves. Arguments: 1=count, 2=email. -->
     <plurals name="signin_join_result">
-        <item quantity="one">Ein Konto: %1$s, mit %2$d Produkt.</item>
-        <item quantity="other">Ein Konto: %1$s, mit %2$d Produkte.</item>
+        <item quantity="one">Eine Bibliothek: %1$d Produkt. %2$s bleibt die Haupt-E-Mail-Adresse.</item>
+        <item quantity="other">Eine Bibliothek: %1$d Produkte. %2$s bleibt die Haupt-E-Mail-Adresse.</item>
     </plurals>
     <!-- Link dialog: joined. -->
     <string name="signin_join_done">Zusammengeführt. Sie können das 72 Stunden lang rückgängig machen.</string>
@@ -1639,6 +1639,33 @@
     <string name="signin_approve_codeShort">Geben Sie alle 8 Buchstaben des Codes ein.</string>
     <!-- Link dialog: completes 'Use your passkey to …' in the confirm-it's-you prompt. -->
     <string name="signin_join_stepUpVerb">Konten zu verknüpfen</string>
+    <!-- Link dialog, second sign-in card: what this sign-in is for. -->
+    <string name="signin_join_otherTitle">Melden Sie sich bei Ihrem anderen Konto an</string>
+    <!-- Link dialog, second sign-in card: what happens next. -->
+    <string name="signin_join_otherLede">Nutzen Sie dafür eine beliebige Methode. Danach kommen Sie hierher zurück, um beide zusammenzuführen.</string>
+    <!-- Link dialog: the account this browser is signed in to now. -->
+    <string name="signin_join_signedNow">Jetzt angemeldet</string>
+    <!-- Link dialog: the account that is not the current one. -->
+    <string name="signin_join_yourOther">Ihr anderes Konto</string>
+    <!-- Link dialog: how an account signs in. {method} is a list of method names. Arguments: 1=method. -->
+    <string name="signin_join_methodsLine">Anmeldung mit %1$s</string>
+    <!-- Link dialog: how and when an account proved itself. {method}, {when}. Arguments: 1=method, 2=when. -->
+    <string name="signin_join_provenBy">Bestätigt per %1$s %2$s</string>
+    <!-- Link dialog: reassurance under the result. -->
+    <string name="signin_join_keepsWorking">Alle Anmeldungen beider Konten funktionieren weiter. Sie können 72 Stunden lang rückgängig machen.</string>
+    <!-- Link dialog: joined. Arguments: 1=date. -->
+    <string name="signin_join_doneUntil">Zusammengeführt. Rückgängig bis %1$s.</string>
+    <!-- Link dialog: re-prove an account whose sign-in is older than 5 minutes. {email}. Arguments: 1=email. -->
+    <string name="signin_join_again">Erneut bei %1$s anmelden</string>
+    <string name="signin_join_again__macos">Erneut bei %1$s anmelden</string>
+    <!-- Link dialog: forget the flow and begin again. -->
+    <string name="signin_join_startAgain">Neu beginnen</string>
+    <string name="signin_join_startAgain__macos">Neu beginnen</string>
+    <!-- Link dialog: the join cannot be undone any more. -->
+    <string name="signin_join_noUndo">Diese Zusammenführung kann nicht mehr rückgängig gemacht werden.</string>
+    <!-- Link dialog: a link to Account → Sign-in methods. -->
+    <string name="signin_join_methodsLink">Anmeldemethoden</string>
+    <string name="signin_join_methodsLink__macos">Anmeldemethoden</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">Ein Fehler ist aufgetreten</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

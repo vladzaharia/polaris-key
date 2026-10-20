@@ -1160,6 +1160,8 @@ export class PortalApiError extends Error {
    * `too_large`, `unsupported_type` …). Copy is chosen from it, never from `message`.
    */
   reason?: string;
+  /** `step_up_required` on a join: which proofs are older than 5 minutes (`started`, `other`). */
+  stale?: string[];
   /** I-30: an enforced domain's refusal names the connection to use instead. */
   next?: PortalSsoNext;
   /** I-16: a passkey sign-in refused because no account here holds that credential. */
@@ -1216,6 +1218,7 @@ async function send(
     let triesLeft: number | undefined;
     let retryAfter: number | undefined;
     let reason: string | undefined;
+    let stale: string[] | undefined;
     let next: PortalSsoNext | undefined;
     let unknownCredential = false;
     try {
@@ -1225,6 +1228,7 @@ async function send(
         triesLeft?: unknown;
         retryAfter?: unknown;
         reason?: unknown;
+        stale?: unknown;
         next?: unknown;
         unknownCredential?: unknown;
       };
@@ -1234,6 +1238,8 @@ async function send(
       if (typeof body.triesLeft === "number") triesLeft = body.triesLeft;
       if (typeof body.retryAfter === "number") retryAfter = body.retryAfter;
       if (typeof body.reason === "string") reason = body.reason;
+      if (Array.isArray(body.stale))
+        stale = body.stale.filter((x): x is string => typeof x === "string");
       next = readSsoNext(body.next);
     } catch {
       // non-JSON response
@@ -1243,6 +1249,7 @@ async function send(
     if (triesLeft !== undefined) error.triesLeft = triesLeft;
     if (retryAfter !== undefined) error.retryAfter = retryAfter;
     if (reason !== undefined) error.reason = reason;
+    if (stale !== undefined) error.stale = stale;
     if (next) error.next = next;
     if (unknownCredential) error.unknownCredential = true;
     throw error;

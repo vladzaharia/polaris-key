@@ -69,6 +69,12 @@ export function ApproveDeviceDialog({
     } else if (phase.kind === "done") closeRef.current?.focus();
   }, [phase.kind]);
 
+  const codeRef = React.useRef<HTMLInputElement>(null);
+  // An answer at the field: focus goes to it, so the error is heard and the fix is one key away.
+  React.useEffect(() => {
+    if (phase.kind === "enter" && phase.error) codeRef.current?.focus();
+  }, [phase]);
+
   const look = React.useCallback(async (value: string): Promise<void> => {
     setPhase({ kind: "looking" });
     try {
@@ -83,9 +89,9 @@ export function ApproveDeviceDialog({
             : err instanceof PortalApiError &&
                 (err.status === 404 || err.status === 422)
               ? t("signin.approve.notFound")
-              : portalErrorCopy(err).title +
-                ". " +
-                portalErrorCopy(err).description,
+              : err instanceof PortalApiError && err.status === 0
+                ? portalErrorCopy(err).title
+                : t("signin.approve.failed"),
       });
     }
   }, []);
@@ -140,6 +146,13 @@ export function ApproveDeviceDialog({
       size="sm"
       title={title}
       dismissible={phase.kind !== "deciding" && phase.kind !== "looking"}
+      onEscapeKeyDown={(e) => {
+        // Escape backs out of the confirmation, one step; the dialog stays.
+        if (phase.kind === "stepup") {
+          e.preventDefault();
+          setPhase({ kind: "review", request: phase.request });
+        }
+      }}
     >
       {phase.kind === "enter" || phase.kind === "looking" ? (
         <form
@@ -163,8 +176,14 @@ export function ApproveDeviceDialog({
               </label>
               <Input
                 id="pk-approve-code"
+                ref={codeRef}
                 value={typed}
-                onValueChange={(v) => setTyped(tidyCode(v))}
+                onValueChange={(v) => {
+                  setTyped(tidyCode(v));
+                  // Editing answers the error.
+                  if (phase.kind === "enter" && phase.error)
+                    setPhase({ kind: "enter" });
+                }}
                 autoComplete="off"
                 autoCapitalize="characters"
                 spellCheck={false}
@@ -194,6 +213,7 @@ export function ApproveDeviceDialog({
               type="submit"
               variant="neutral"
               loading={phase.kind === "looking"}
+              busyFocusable
               iconStart={<ScanLine aria-hidden />}
             >
               {t("signin.approve.look")}

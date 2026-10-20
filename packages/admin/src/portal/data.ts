@@ -20,6 +20,7 @@ import {
   type PortalLicenseDetail,
   type PortalLicenseSummary,
   type PortalMe,
+  type PortalLinkView,
   type PortalMethods,
   type PortalMintTokenInput,
   type PortalPackageAccess,
@@ -66,6 +67,7 @@ const qk = {
   portalProfile: () => ["portal", "profile"] as const,
   portalMethods: () => ["portal", "methods"] as const,
   portalSessions: () => ["portal", "sessions"] as const,
+  portalLink: () => ["portal", "link"] as const,
 };
 
 export const portalKeys = {
@@ -82,6 +84,7 @@ export const portalKeys = {
   profile: qk.portalProfile(),
   methods: qk.portalMethods(),
   sessions: qk.portalSessions(),
+  link: qk.portalLink(),
 };
 
 export function createPortalQueryClient(): QueryClient {
@@ -721,6 +724,28 @@ export function useMethods(): UseQueryResult<PortalMethods | null> {
   return useQuery({
     queryKey: qk.portalMethods(),
     queryFn: fetchMethods,
+  });
+}
+
+/**
+ * `GET /api/me/link` (PX-W12): the join screen and the joins still undoable; `null` when this
+ * Worker has no such route (404), which hides every way in. Always read fresh: the answer depends
+ * on this browser's link flow.
+ */
+export function useLinkView(): UseQueryResult<PortalLinkView | null> {
+  return useQuery({
+    queryKey: qk.portalLink(),
+    queryFn: async () => {
+      try {
+        return await portalApi.linkView();
+      } catch (err) {
+        if (err instanceof PortalApiError && err.status === 404) return null;
+        throw err;
+      }
+    },
+    retry: false,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 }
 

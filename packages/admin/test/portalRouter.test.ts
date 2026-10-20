@@ -22,6 +22,12 @@ describe("portal routes (PORTAL.md §3.3)", () => {
     expect(
       approve.route.kind === "account" && approve.route.params.get("approve"),
     ).toBe("KRQP-BMXD");
+    // The Worker's `/signin` returns here: Link an existing account, a dialog over Account.
+    const link = resolveHash("#/account/link");
+    expect(link.redirect).toBe("#/account?link=1");
+    expect(link.route.kind === "account" && link.route.params.get("link")).toBe(
+      "1",
+    );
     expect(resolveHash("#/").route.kind).toBe("library");
     expect(resolveHash("#/").redirect).toBeUndefined();
   });

@@ -3597,7 +3597,7 @@
       "note": "Link dialog: products on one account."
     },
     "signin.join.result": {
-      "value": "One account: {email}, with {count, plural, one {# product} other {# products}}.",
+      "value": "One library: {count, plural, one {# product} other {# products}}. {email} stays the main email.",
       "role": "body",
       "note": "Link dialog: what joining leaves."
     },
@@ -3670,6 +3670,66 @@
       "value": "link accounts",
       "role": "body",
       "note": "Link dialog: completes 'Use your passkey to …' in the confirm-it's-you prompt."
+    },
+    "signin.join.otherTitle": {
+      "value": "Sign in to your other account",
+      "role": "body",
+      "note": "Link dialog, second sign-in card: what this sign-in is for."
+    },
+    "signin.join.otherLede": {
+      "value": "Use any way to sign in to it. You'll come back here to join them.",
+      "role": "body",
+      "note": "Link dialog, second sign-in card: what happens next."
+    },
+    "signin.join.signedNow": {
+      "value": "Signed in now",
+      "role": "label",
+      "note": "Link dialog: the account this browser is signed in to now."
+    },
+    "signin.join.yourOther": {
+      "value": "Your other account",
+      "role": "label",
+      "note": "Link dialog: the account that is not the current one."
+    },
+    "signin.join.methodsLine": {
+      "value": "Signs in with {method}",
+      "role": "body",
+      "note": "Link dialog: how an account signs in. {method} is a list of method names."
+    },
+    "signin.join.provenBy": {
+      "value": "Proven by {method} {when}",
+      "role": "body",
+      "note": "Link dialog: how and when an account proved itself. {method}, {when}."
+    },
+    "signin.join.keepsWorking": {
+      "value": "Every sign-in from both keeps working. You can undo for 72 hours.",
+      "role": "body",
+      "note": "Link dialog: reassurance under the result."
+    },
+    "signin.join.doneUntil": {
+      "value": "Joined. You can undo until {date}.",
+      "role": "body",
+      "note": "Link dialog: joined."
+    },
+    "signin.join.again": {
+      "value": "Sign in to {email} again",
+      "role": "button",
+      "note": "Link dialog: re-prove an account whose sign-in is older than 5 minutes. {email}."
+    },
+    "signin.join.startAgain": {
+      "value": "Start again",
+      "role": "button",
+      "note": "Link dialog: forget the flow and begin again."
+    },
+    "signin.join.noUndo": {
+      "value": "This join can no longer be undone.",
+      "role": "body",
+      "note": "Link dialog: the join cannot be undone any more."
+    },
+    "signin.join.methodsLink": {
+      "value": "Sign-in methods",
+      "role": "button",
+      "note": "Link dialog: a link to Account → Sign-in methods."
     }
   }
 }

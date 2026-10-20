@@ -722,7 +722,7 @@
     "signin.join.thisAccount": "Dieses Konto",
     "signin.join.otherAccount": "Anderes Konto",
     "signin.join.products": "{count, plural, one {# Produkt} other {# Produkte}}",
-    "signin.join.result": "Ein Konto: {email}, mit {count, plural, one {# Produkt} other {# Produkte}}.",
+    "signin.join.result": "Eine Bibliothek: {count, plural, one {# Produkt} other {# Produkte}}. {email} bleibt die Haupt-E-Mail-Adresse.",
     "signin.join.done": "Zusammengeführt. Sie können das 72 Stunden lang rückgängig machen.",
     "signin.join.undo": "Zusammenführung rückgängig",
     "signin.join.undone": "Zusammenführung rückgängig gemacht.",
@@ -736,6 +736,18 @@
     "signin.join.failed": "Zusammenführen fehlgeschlagen. Versuchen Sie es erneut.",
     "signin.join.ownedNotice": "Wenn das Konto auch Ihnen gehört, melden Sie sich dort an und führen Sie beide zusammen.",
     "signin.approve.codeShort": "Geben Sie alle 8 Buchstaben des Codes ein.",
-    "signin.join.stepUpVerb": "Konten zu verknüpfen"
+    "signin.join.stepUpVerb": "Konten zu verknüpfen",
+    "signin.join.otherTitle": "Melden Sie sich bei Ihrem anderen Konto an",
+    "signin.join.otherLede": "Nutzen Sie dafür eine beliebige Methode. Danach kommen Sie hierher zurück, um beide zusammenzuführen.",
+    "signin.join.signedNow": "Jetzt angemeldet",
+    "signin.join.yourOther": "Ihr anderes Konto",
+    "signin.join.methodsLine": "Anmeldung mit {method}",
+    "signin.join.provenBy": "Bestätigt per {method} {when}",
+    "signin.join.keepsWorking": "Alle Anmeldungen beider Konten funktionieren weiter. Sie können 72 Stunden lang rückgängig machen.",
+    "signin.join.doneUntil": "Zusammengeführt. Rückgängig bis {date}.",
+    "signin.join.again": "Erneut bei {email} anmelden",
+    "signin.join.startAgain": "Neu beginnen",
+    "signin.join.noUndo": "Diese Zusammenführung kann nicht mehr rückgängig gemacht werden.",
+    "signin.join.methodsLink": "Anmeldemethoden"
   }
 }

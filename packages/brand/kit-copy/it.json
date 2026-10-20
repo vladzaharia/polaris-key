@@ -722,7 +722,7 @@
     "signin.join.thisAccount": "Questo account",
     "signin.join.otherAccount": "Altro account",
     "signin.join.products": "{count, plural, one {# prodotto} many {# di prodotti} other {# prodotti}}",
-    "signin.join.result": "Un account: {email}, con {count, plural, one {# prodotto} many {# di prodotti} other {# prodotti}}.",
+    "signin.join.result": "Una libreria: {count, plural, one {# prodotto} many {# di prodotti} other {# prodotti}}. {email} resta l'email principale.",
     "signin.join.done": "Uniti. Puoi annullare per 72 ore.",
     "signin.join.undo": "Annulla unione",
     "signin.join.undone": "Unione annullata.",
@@ -736,6 +736,18 @@
     "signin.join.failed": "Unione non riuscita. Riprova.",
     "signin.join.ownedNotice": "Se anche quell'account è tuo, accedi e unisci i due.",
     "signin.approve.codeShort": "Inserisci tutte le 8 lettere del codice.",
-    "signin.join.stepUpVerb": "collegare gli account"
+    "signin.join.stepUpVerb": "collegare gli account",
+    "signin.join.otherTitle": "Accedi al tuo altro account",
+    "signin.join.otherLede": "Usa un modo qualsiasi. Tornerai qui per unirli.",
+    "signin.join.signedNow": "Connesso ora",
+    "signin.join.yourOther": "Il tuo altro account",
+    "signin.join.methodsLine": "Accede con {method}",
+    "signin.join.provenBy": "Verificato con {method} {when}",
+    "signin.join.keepsWorking": "Tutti gli accessi di entrambi continuano a funzionare. Puoi annullare per 72 ore.",
+    "signin.join.doneUntil": "Uniti. Puoi annullare entro il {date}.",
+    "signin.join.again": "Accedi di nuovo a {email}",
+    "signin.join.startAgain": "Ricomincia",
+    "signin.join.noUndo": "Questa unione non si può più annullare.",
+    "signin.join.methodsLink": "Metodi di accesso"
   }
 }

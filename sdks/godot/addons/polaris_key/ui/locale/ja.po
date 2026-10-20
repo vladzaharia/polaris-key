@@ -4259,12 +4259,12 @@ msgid "signin.join.products"
 msgid_plural "signin.join.products"
 msgstr[0] "{count}個の製品"
 
-#. One account: {email}, with {count, plural, one {# product} other {# products}}.
+#. One library: {count, plural, one {# product} other {# products}}. {email} stays the main email.
 #. Link dialog: what joining leaves.
 #. Plural on {count}.
 msgid "signin.join.result"
 msgid_plural "signin.join.result"
-msgstr[0] "1つのアカウント：{email}（{count}個の製品）。"
+msgstr[0] "ライブラリは1つ：{count}個の製品。メインのメールは {email} のままです。"
 
 #. Joined. You can undo this for 72 hours.
 #. Link dialog: joined.
@@ -4340,6 +4340,81 @@ msgstr "コードの8文字をすべて入力してください。"
 #. Link dialog: completes 'Use your passkey to …' in the confirm-it's-you prompt.
 msgid "signin.join.stepUpVerb"
 msgstr "アカウントをリンク"
+
+#. Sign in to your other account
+#. Link dialog, second sign-in card: what this sign-in is for.
+msgid "signin.join.otherTitle"
+msgstr "もう一方のアカウントにサインイン"
+
+#. Use any way to sign in to it. You'll come back here to join them.
+#. Link dialog, second sign-in card: what happens next.
+msgid "signin.join.otherLede"
+msgstr "どの方法でも構いません。その後ここに戻って2つをまとめます。"
+
+#. Signed in now
+#. Link dialog: the account this browser is signed in to now.
+msgid "signin.join.signedNow"
+msgstr "現在サインイン中"
+
+#. Your other account
+#. Link dialog: the account that is not the current one.
+msgid "signin.join.yourOther"
+msgstr "もう一方のアカウント"
+
+#. Signs in with {method}
+#. Link dialog: how an account signs in. {method} is a list of method names.
+msgid "signin.join.methodsLine"
+msgstr "{method}でサインイン"
+
+#. Proven by {method} {when}
+#. Link dialog: how and when an account proved itself. {method}, {when}.
+msgid "signin.join.provenBy"
+msgstr "{method}で確認済み（{when}）"
+
+#. Every sign-in from both keeps working. You can undo for 72 hours.
+#. Link dialog: reassurance under the result.
+msgid "signin.join.keepsWorking"
+msgstr "両方のサインイン方法はそのまま使えます。72時間は元に戻せます。"
+
+#. Joined. You can undo until {date}.
+#. Link dialog: joined.
+msgid "signin.join.doneUntil"
+msgstr "まとめました。{date}まで元に戻せます。"
+
+#. Sign in to {email} again
+#. Link dialog: re-prove an account whose sign-in is older than 5 minutes. {email}.
+msgid "signin.join.again"
+msgstr "{email} に再度サインイン"
+
+#. macos: Sign In to {email} Again
+msgctxt "macos"
+msgid "signin.join.again"
+msgstr "{email} に再度サインイン"
+
+#. Start again
+#. Link dialog: forget the flow and begin again.
+msgid "signin.join.startAgain"
+msgstr "最初からやり直す"
+
+#. macos: Start Again
+msgctxt "macos"
+msgid "signin.join.startAgain"
+msgstr "最初からやり直す"
+
+#. This join can no longer be undone.
+#. Link dialog: the join cannot be undone any more.
+msgid "signin.join.noUndo"
+msgstr "このまとめはもう元に戻せません。"
+
+#. Sign-in methods
+#. Link dialog: a link to Account → Sign-in methods.
+msgid "signin.join.methodsLink"
+msgstr "サインイン方法"
+
+#. macos: Sign-In Methods
+msgctxt "macos"
+msgid "signin.join.methodsLink"
+msgstr "サインイン方法"
 
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).

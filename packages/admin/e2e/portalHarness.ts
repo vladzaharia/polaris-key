@@ -7,6 +7,7 @@ import { chromium, type Browser, type Page } from "playwright";
 import { PNG } from "pngjs";
 import { preview, type PreviewServer } from "vite";
 import { appSecurityHeaders } from "../../worker/src/core/securityHeaders.js";
+import { handleSignInEntry } from "../../worker/src/core/signInEntry.js";
 import { mediaResponseHeaders } from "../../worker/src/services/identity/portal/media.js";
 import {
   FIXTURE_NOW,
@@ -225,6 +226,18 @@ export async function startPortal(): Promise<PortalHarness> {
         const res =
           typeof handler === "function" ? await handler(req) : handler;
         return route.fulfill({ status: res.status ?? 200, json: res.body });
+      }
+      // `/signin` as the Worker answers it (the real handler: the 302 back into the portal).
+      if (url.pathname === "/signin") {
+        requests.push(`${req.method()} ${url.pathname}${url.search}`);
+        const out = handleSignInEntry(
+          new Request(url, { method: req.method() }),
+        );
+        return route.fulfill({
+          status: out.status,
+          headers: Object.fromEntries(out.headers),
+          body: "",
+        });
       }
       // PX-08: developer art as the media proxy answers it (same origin, its own headers).
       if (url.pathname.startsWith("/media/")) {

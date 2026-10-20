@@ -4281,14 +4281,14 @@ msgstr[0] "{count} produto"
 msgstr[1] "{count} de produtos"
 msgstr[2] "{count} produtos"
 
-#. One account: {email}, with {count, plural, one {# product} other {# products}}.
+#. One library: {count, plural, one {# product} other {# products}}. {email} stays the main email.
 #. Link dialog: what joining leaves.
 #. Plural on {count}.
 msgid "signin.join.result"
 msgid_plural "signin.join.result"
-msgstr[0] "Uma conta: {email}, com {count} produto."
-msgstr[1] "Uma conta: {email}, com {count} de produtos."
-msgstr[2] "Uma conta: {email}, com {count} produtos."
+msgstr[0] "Uma biblioteca: {count} produto. {email} continua sendo o e-mail principal."
+msgstr[1] "Uma biblioteca: {count} de produtos. {email} continua sendo o e-mail principal."
+msgstr[2] "Uma biblioteca: {count} produtos. {email} continua sendo o e-mail principal."
 
 #. Joined. You can undo this for 72 hours.
 #. Link dialog: joined.
@@ -4364,6 +4364,81 @@ msgstr "Digite as 8 letras do código."
 #. Link dialog: completes 'Use your passkey to …' in the confirm-it's-you prompt.
 msgid "signin.join.stepUpVerb"
 msgstr "vincular contas"
+
+#. Sign in to your other account
+#. Link dialog, second sign-in card: what this sign-in is for.
+msgid "signin.join.otherTitle"
+msgstr "Entre na sua outra conta"
+
+#. Use any way to sign in to it. You'll come back here to join them.
+#. Link dialog, second sign-in card: what happens next.
+msgid "signin.join.otherLede"
+msgstr "Use qualquer forma de entrar. Você volta aqui para uni-las."
+
+#. Signed in now
+#. Link dialog: the account this browser is signed in to now.
+msgid "signin.join.signedNow"
+msgstr "Conectada agora"
+
+#. Your other account
+#. Link dialog: the account that is not the current one.
+msgid "signin.join.yourOther"
+msgstr "Sua outra conta"
+
+#. Signs in with {method}
+#. Link dialog: how an account signs in. {method} is a list of method names.
+msgid "signin.join.methodsLine"
+msgstr "Entra com {method}"
+
+#. Proven by {method} {when}
+#. Link dialog: how and when an account proved itself. {method}, {when}.
+msgid "signin.join.provenBy"
+msgstr "Comprovada por {method} {when}"
+
+#. Every sign-in from both keeps working. You can undo for 72 hours.
+#. Link dialog: reassurance under the result.
+msgid "signin.join.keepsWorking"
+msgstr "Todos os acessos das duas continuam funcionando. Você pode desfazer por 72 horas."
+
+#. Joined. You can undo until {date}.
+#. Link dialog: joined.
+msgid "signin.join.doneUntil"
+msgstr "Unidas. Você pode desfazer até {date}."
+
+#. Sign in to {email} again
+#. Link dialog: re-prove an account whose sign-in is older than 5 minutes. {email}.
+msgid "signin.join.again"
+msgstr "Entrar de novo em {email}"
+
+#. macos: Sign In to {email} Again
+msgctxt "macos"
+msgid "signin.join.again"
+msgstr "Entrar de novo em {email}"
+
+#. Start again
+#. Link dialog: forget the flow and begin again.
+msgid "signin.join.startAgain"
+msgstr "Começar de novo"
+
+#. macos: Start Again
+msgctxt "macos"
+msgid "signin.join.startAgain"
+msgstr "Começar de novo"
+
+#. This join can no longer be undone.
+#. Link dialog: the join cannot be undone any more.
+msgid "signin.join.noUndo"
+msgstr "Esta união não pode mais ser desfeita."
+
+#. Sign-in methods
+#. Link dialog: a link to Account → Sign-in methods.
+msgid "signin.join.methodsLink"
+msgstr "Métodos de entrada"
+
+#. macos: Sign-In Methods
+msgctxt "macos"
+msgid "signin.join.methodsLink"
+msgstr "Métodos de entrada"
 
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).

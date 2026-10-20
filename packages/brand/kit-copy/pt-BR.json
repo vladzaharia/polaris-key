@@ -722,7 +722,7 @@
     "signin.join.thisAccount": "Esta conta",
     "signin.join.otherAccount": "Outra conta",
     "signin.join.products": "{count, plural, one {# produto} many {# de produtos} other {# produtos}}",
-    "signin.join.result": "Uma conta: {email}, com {count, plural, one {# produto} many {# de produtos} other {# produtos}}.",
+    "signin.join.result": "Uma biblioteca: {count, plural, one {# produto} many {# de produtos} other {# produtos}}. {email} continua sendo o e-mail principal.",
     "signin.join.done": "Unidas. Você pode desfazer por 72 horas.",
     "signin.join.undo": "Desfazer união",
     "signin.join.undone": "União desfeita.",
@@ -736,6 +736,18 @@
     "signin.join.failed": "Não foi possível unir. Tente de novo.",
     "signin.join.ownedNotice": "Se essa conta também é sua, entre nela e una as duas.",
     "signin.approve.codeShort": "Digite as 8 letras do código.",
-    "signin.join.stepUpVerb": "vincular contas"
+    "signin.join.stepUpVerb": "vincular contas",
+    "signin.join.otherTitle": "Entre na sua outra conta",
+    "signin.join.otherLede": "Use qualquer forma de entrar. Você volta aqui para uni-las.",
+    "signin.join.signedNow": "Conectada agora",
+    "signin.join.yourOther": "Sua outra conta",
+    "signin.join.methodsLine": "Entra com {method}",
+    "signin.join.provenBy": "Comprovada por {method} {when}",
+    "signin.join.keepsWorking": "Todos os acessos das duas continuam funcionando. Você pode desfazer por 72 horas.",
+    "signin.join.doneUntil": "Unidas. Você pode desfazer até {date}.",
+    "signin.join.again": "Entrar de novo em {email}",
+    "signin.join.startAgain": "Começar de novo",
+    "signin.join.noUndo": "Esta união não pode mais ser desfeita.",
+    "signin.join.methodsLink": "Métodos de entrada"
   }
 }
