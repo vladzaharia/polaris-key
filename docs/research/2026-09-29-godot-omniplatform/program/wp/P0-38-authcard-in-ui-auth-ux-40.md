@@ -159,3 +159,19 @@ Not done (owners):
 - One `CodeEntry` for SignInPage, StepUp and SignInMethods (the cells are shared; the surrounding
   flows differ), `KeyField` promotion, conditional passkey UI, HintStep, ReturnStep and the
   passthrough header (their wire is PX-14 / PX-W13), and the console card (ST-30).
+
+## Progress, second slice (2026-10-20)
+
+Merged integ/next (Locker mockups), LK-06 and LK-08a once each. Added: FinishStep (EmailGateStep, RegisterStep,
+code, join offer; profile, birth date, product and platform terms), HintStep with `pk_last_method`
+(`portal/lastMethod.ts`: kind and a salted address hash in the cookie; the first name stays in
+localStorage), passkey conditional UI and `signalUnknownCredential`. The catalog batch landed: 61 keys in
+nine locales (unreviewed, as the others), `signin.approve.*`, `signin.passkey.*`, `signin.gate.*`,
+`signin.hint.*`, the SignInPage placeholders; `portal/copy/signin.ts` is gone, and the copy lint caught
+13 more duplicates, now `t()`.
+
+Left: FinishStep for every new email address (the Worker's `beginEmailFinish` still opens it only
+once platform terms are published; making it unconditional changes the email-verify answer and the
+transcripts, a lead call); AccountUpgrade (needs `POST /api/key/preview` in KeyStep); "Automatic grant"
+(the catalog says "From signing in"; the portal says "Automatic grant"; an owner call); the ui-qa portal
+board; `BRAND_NAME_SOURCES` reads JSON packs only, so the portal's TS copy is not covered.

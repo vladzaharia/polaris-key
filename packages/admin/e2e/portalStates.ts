@@ -387,16 +387,19 @@ export const SHIPPED: ShippedState[] = [
     ready: async (p) => {
       await h1(p, "Sign in to Polaris Locker");
       // What a past Steam sign-in left in this browser (lastMethod.ts), written the same way.
-      await p.evaluate(async (at) => {
-        localStorage.setItem("pk-hint-salt", "e2e");
-        const bytes = new TextEncoder().encode("e2e:mara@fennick.studio");
-        const digest = await crypto.subtle.digest("SHA-256", bytes);
-        const h = Array.from(new Uint8Array(digest).slice(0, 12), (x) =>
-          x.toString(16).padStart(2, "0"),
-        ).join("");
-        document.cookie = `pk_last_method=steam.${h}.${at}; Path=/`;
-        localStorage.setItem(`pk-hint-name:${h}`, "Mara");
-      }, FIXTURE_NOW - 2 * 86400);
+      await p.evaluate(
+        async (at) => {
+          localStorage.setItem("pk-hint-salt", "e2e");
+          const bytes = new TextEncoder().encode("e2e:mara@fennick.studio");
+          const digest = await crypto.subtle.digest("SHA-256", bytes);
+          const h = Array.from(new Uint8Array(digest).slice(0, 12), (x) =>
+            x.toString(16).padStart(2, "0"),
+          ).join("");
+          document.cookie = `pk_last_method=steam.${h}.${at}; Path=/`;
+          localStorage.setItem(`pk-hint-name:${h}`, "Mara");
+        },
+        FIXTURE_NOW - 2 * 86400,
+      );
       await typeEmail(p, "mara@fennick.studio");
       await h1(p, "Welcome back, Mara");
       await p.getByRole("link", { name: "Continue with Steam" }).waitFor();
