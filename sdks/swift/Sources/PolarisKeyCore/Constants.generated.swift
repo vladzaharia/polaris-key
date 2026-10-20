@@ -1422,6 +1422,18 @@ public let REQUEST_HANDLE_TTL_SECONDS = 600
 /// Signed-in subject: `PAIRWISE_SUBJECT_PATTERN` (WIRE-CONTRACT-V4 §3.2, `@polaris-key/protocol/core`).
 public let PAIRWISE_SUBJECT_PATTERN = "^ps_[A-Za-z0-9_-]{22}$"
 
+/// Customer site display fallback: `CUSTOMER_ORIGIN_DEFAULT` (LK-00 §3, `@polaris-key/protocol/core`).
+public let CUSTOMER_ORIGIN_DEFAULT = "https://polaris.locker"
+
+/// Customer site display fallback: `DEVICE_CODE_PAGE` (LK-00 §3, `@polaris-key/protocol/core`).
+public let DEVICE_CODE_PAGE = "https://polaris.locker/device"
+
+/// Customer site display fallback: `TV_CODE_PAGE` (LK-00 §3, `@polaris-key/protocol/core`).
+public let TV_CODE_PAGE = "https://polaris.locker/tv"
+
+/// Customer site display fallback: `SIGN_IN_PROVIDER_NAME` (LK-00 §3, `@polaris-key/protocol/core`).
+public let SIGN_IN_PROVIDER_NAME = "Polaris Locker"
+
 /// Product presentation: `PRESENTATION_TEXT_MAX_BYTES` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`).
 public let PRESENTATION_TEXT_MAX_BYTES = 1024
 

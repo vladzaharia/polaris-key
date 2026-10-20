@@ -78,7 +78,7 @@ export const KIT_COPY: Readonly<
     "part.qr.enlarge": "Show larger",
     "part.qr.scanInstead": "Scan with your phone instead",
     "part.seatMeter.caption": "{used} of {limit} in use",
-    "part.poweredBy": "Powered by Polaris Key",
+    "part.poweredBy": "Powered by Polaris Locker",
     "part.status.ok": "Active",
     "part.status.grace": "Offline",
     "part.status.expired": "Expired",
@@ -329,7 +329,7 @@ export const KIT_COPY: Readonly<
     "channel.locked": "{store} sets the release channel.",
     "toast.undo": "Undo",
     "toast.updateAvailable": "{product} {version} is available",
-    "signin.methods.title": "Sign in to Polaris Key",
+    "signin.methods.title": "Sign in to Polaris Locker",
     "signin.methods.titleApp": "Sign in",
     "signin.methods.ledeApp": "Use the email you bought {product} with.",
     "signin.email.label": "Email",
@@ -351,14 +351,14 @@ export const KIT_COPY: Readonly<
     "signin.header.codePanel":
       "Code on the screen · {code} · Check it matches the screen",
     "signin.footer":
-      "Polaris Key signs you in for {app}. {developer} never sees your codes or passkeys.",
+      "Polaris Locker signs you in for {app}. {developer} never sees your codes or passkeys.",
     "signin.off.product":
       "Sign-in is turned off for {product}. Contact {developer}.",
     "signin.off.any": "Sign-in is unavailable. Try again later.",
     "signin.rateLimited": "Too many codes. Try again in {minutes} minutes.",
     "signin.emailDown":
       "We can't send email right now. Try another way to sign in.",
-    "signin.network.title": "Can't reach Polaris Key",
+    "signin.network.title": "Can't reach Polaris Locker",
     "signin.retry": "Try again",
     "signin.code.title": "Check your email",
     "signin.code.sent":
@@ -372,7 +372,7 @@ export const KIT_COPY: Readonly<
     "signin.code.tooMany": "Too many tries. Send a new code.",
     "signin.code.expired": "That code has expired. Send a new code.",
     "signin.code.differentEmail": "Use a different email",
-    "signin.email.subject": "Your Polaris Key code: {code}",
+    "signin.email.subject": "Your Polaris Locker code: {code}",
     "signin.email.body":
       "Or sign in with the button. The code and the link work once, for 10 minutes.",
     "signin.confirmLink.title":
@@ -528,7 +528,7 @@ export const KIT_COPY: Readonly<
       "Choose a license · {app} is ready to finish signing in.",
     "signin.menu.signIn": "Sign in…",
     "signin.handoff.browserBody":
-      "We opened Polaris Key in your browser. Sign in there and {app} continues by itself.",
+      "We opened Polaris Locker in your browser. Sign in there and {app} continues by itself.",
     "signin.handoff.waiting": "Waiting for your browser…",
     "signin.handoff.finishing": "Finishing sign-in…",
     "signin.handoff.useCode": "Use a code instead",
@@ -550,7 +550,7 @@ export const KIT_COPY: Readonly<
       "Sign-in was cancelled in {app}. Start again from {app}.",
     "signin.return.library": "Open your library",
     "signin.choice.freed": "A device is free on this license now.",
-    "signin.replace.opensBrowser": "Opens Polaris Key in your browser",
+    "signin.replace.opensBrowser": "Opens Polaris Locker in your browser",
     "signin.cli.opening": "Opening your browser…",
     "signin.cli.ifNotOpened": "If it didn't open, go to {url}",
     "signin.cli.keys": "Enter open again · c use a code · Esc cancel",
@@ -567,7 +567,7 @@ export const KIT_COPY: Readonly<
       "Waiting for you to approve it on the other device…",
     "signin.approve.ask": "Approve a new device?",
     "signin.approve.warning":
-      "Only approve if you started this yourself, on a device in front of you. Nobody from Polaris Key or a developer will ever ask you for this.",
+      "Only approve if you started this yourself, on a device in front of you. Nobody from Polaris Locker or a developer will ever ask you for this.",
     "signin.approve.approve": "Approve and sign it in",
     "signin.approve.deny": "Deny",
     "signin.approve.denied":
@@ -585,7 +585,7 @@ export const KIT_COPY: Readonly<
     "signin.expired.body": "Codes and links work once, for 10 minutes.",
     "signin.again": "Sign in again",
     "signin.identityOff.notice":
-      "{product} doesn't use Polaris Key sign-in. Open {product} and enter your license key there.",
+      "{product} doesn't use Polaris Locker sign-in. Open {product} and enter your license key there.",
     "signin.identityOff.lede": "Sign in here to see {product} in your library.",
     "signin.signout.title": "Sign out of {product} on this device?",
     "signin.signout.released":
@@ -597,16 +597,16 @@ export const KIT_COPY: Readonly<
     "signin.session.toastBody": "Sign in again to carry on where you were.",
     "signin.session.kitEnded":
       "Your sign-in ended. Sign in again to keep using {product}.",
-    "signin.provider.manage": "Manage sign-in methods in Polaris Key",
+    "signin.provider.manage": "Manage sign-in methods in Polaris Locker",
     "signin.profile.changePicture": "Change picture",
     "signin.mail.replaced.subject": "{product} signed out on {device}",
     "signin.mail.replaced.body":
-      "{device} was replaced by {newDevice} when you signed in to {product} on {date}. It can sign in again later if a seat is free. If this wasn't you, open Polaris Key and check your devices.",
+      "{device} was replaced by {newDevice} when you signed in to {product} on {date}. It can sign in again later if a seat is free. If this wasn't you, open Polaris Locker and check your devices.",
     "signin.mail.newDevice.subject":
-      "A new device signed in to your Polaris Key account",
+      "A new device signed in to your Polaris Locker account",
     "signin.mail.newDevice.body":
-      "{device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Key under Where you're signed in.",
-    "signin.mail.open": "Open Polaris Key",
+      "{device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Locker under Where you're signed in.",
+    "signin.mail.open": "Open Polaris Locker",
     "signin.code.label": "6-digit code",
     "cli.group.license": "License",
     "cli.group.account": "Account",
@@ -890,24 +890,24 @@ export const KIT_COPY: Readonly<
       "That code isn't right. Check the email and try again.",
     "core.codes.email_in_use.title": "Email already in use",
     "core.codes.email_in_use.message":
-      "Another Polaris Key account already uses this email. Join this sign-in to that account, or use a different email.",
+      "Another Polaris Locker account already uses this email. Join this sign-in to that account, or use a different email.",
     "core.codes.terms_required.title": "Terms not accepted",
     "core.codes.terms_required.message": "Agree to the terms to continue.",
     "core.codes.license_owned.title": "License in another account",
     "core.codes.license_owned.message":
-      "This {product} license is already in another Polaris Key account. A license never moves by its key.",
+      "This {product} license is already in another Polaris Locker account. A license never moves by its key.",
     "core.codes.license_email_bound.title": "Email not verified",
     "core.codes.license_email_bound.message":
-      "This license belongs to an email address your Polaris Key account hasn't verified. Verify that email in your account, then try again.",
+      "This license belongs to an email address your Polaris Locker account hasn't verified. Verify that email in your account, then try again.",
     "core.codes.account_required.title": "Sign-in needed",
     "core.codes.account_required.message":
-      "Sign in to your Polaris Key account on this device, then try again.",
+      "Sign in to your Polaris Locker account on this device, then try again.",
     "core.codes.email_mismatch.title": "Email not verified",
     "core.codes.email_mismatch.message":
       "This license belongs to an email address your account hasn't verified. Add and verify that email, then try again.",
     "core.codes.link_conflict.title": "Already linked",
     "core.codes.link_conflict.message":
-      "That sign-in method belongs to another Polaris Key account. Sign in to that account, or join the two accounts.",
+      "That sign-in method belongs to another Polaris Locker account. Sign in to that account, or join the two accounts.",
     "core.codes.last_link.title": "Can't remove",
     "core.codes.last_link.message":
       "This is your account's only sign-in method. Add another one before removing it.",
@@ -980,7 +980,7 @@ export const KIT_COPY: Readonly<
     "core.codes.transport.message": "Check your connection and try again.",
     "core.codes.network.title": "Can't connect",
     "core.codes.network.message":
-      "Can't reach Polaris Key. Check your connection and try again.",
+      "Can't reach Polaris Locker. Check your connection and try again.",
     "core.codes.refresh-failed.title": "Couldn't refresh",
     "core.codes.refresh-failed.message":
       "Your license and settings couldn't be refreshed. Check your connection and try again.",
@@ -1030,7 +1030,7 @@ export const KIT_COPY: Readonly<
       "The service sent an answer the app couldn't use. Try again.",
     "core.codes.network-error.title": "Can't connect",
     "core.codes.network-error.message":
-      "Can't reach Polaris Key. Check your connection and try again.",
+      "Can't reach Polaris Locker. Check your connection and try again.",
     "core.codes.server-error.title": "Service problem",
     "core.codes.server-error.message":
       "The service had a problem. Try again in a few minutes.",
@@ -1244,7 +1244,7 @@ export const KIT_COPY: Readonly<
       "Connect to the internet so the app can refresh your license, then try again.",
     "core.codes.sign_in_required.title": "Sign-in needed",
     "core.codes.sign_in_required.message":
-      "Sign in to your Polaris Key account in the app, then try again.",
+      "Sign in to your Polaris Locker account in the app, then try again.",
     "core.gate.ok.title": "License active",
     "core.gate.ok.message": "Your license is active.",
     "core.gate.grace.title": "Offline grace",
@@ -1361,7 +1361,7 @@ export const KIT_COPY: Readonly<
     "part.qr.enlarge": "Größer anzeigen",
     "part.qr.scanInstead": "Stattdessen mit dem Telefon scannen",
     "part.seatMeter.caption": "{used} von {limit} belegt",
-    "part.poweredBy": "Bereitgestellt von Polaris Key",
+    "part.poweredBy": "Bereitgestellt von Polaris Locker",
     "part.status.ok": "Aktiv",
     "part.status.grace": "Offline",
     "part.status.expired": "Abgelaufen",
@@ -1634,7 +1634,7 @@ export const KIT_COPY: Readonly<
     "channel.locked": "{store} legt den Release-Kanal fest.",
     "toast.undo": "Rückgängig",
     "toast.updateAvailable": "{product} {version} ist verfügbar",
-    "signin.methods.title": "Bei Polaris Key anmelden",
+    "signin.methods.title": "Bei Polaris Locker anmelden",
     "signin.methods.titleApp": "Anmelden",
     "signin.methods.ledeApp":
       "Verwenden Sie die E-Mail-Adresse, mit der Sie {product} gekauft haben.",
@@ -1657,7 +1657,7 @@ export const KIT_COPY: Readonly<
     "signin.header.codePanel":
       "Code auf dem Bildschirm · {code} · Prüfen Sie, ob er mit dem Bildschirm übereinstimmt",
     "signin.footer":
-      "Polaris Key meldet Sie bei {app} an. {developer} sieht Ihre Codes oder Passkeys nie.",
+      "Polaris Locker meldet Sie bei {app} an. {developer} sieht Ihre Codes oder Passkeys nie.",
     "signin.off.product":
       "Die Anmeldung ist für {product} deaktiviert. Wenden Sie sich an {developer}.",
     "signin.off.any":
@@ -1666,7 +1666,7 @@ export const KIT_COPY: Readonly<
       "Zu viele Codes. Versuchen Sie es in {minutes} Minuten erneut.",
     "signin.emailDown":
       "Wir können gerade keine E-Mails senden. Melden Sie sich auf andere Weise an.",
-    "signin.network.title": "Polaris Key ist nicht erreichbar",
+    "signin.network.title": "Polaris Locker ist nicht erreichbar",
     "signin.retry": "Erneut versuchen",
     "signin.code.title": "Prüfen Sie Ihre E-Mails",
     "signin.code.sent":
@@ -1684,7 +1684,7 @@ export const KIT_COPY: Readonly<
     "signin.code.expired":
       "Dieser Code ist abgelaufen. Fordern Sie einen neuen Code an.",
     "signin.code.differentEmail": "Andere E-Mail-Adresse verwenden",
-    "signin.email.subject": "Ihr Polaris Key-Code: {code}",
+    "signin.email.subject": "Ihr Polaris Locker-Code: {code}",
     "signin.email.body":
       "Oder melden Sie sich über die Schaltfläche an. Code und Link sind einmal und 10 Minuten lang gültig.",
     "signin.confirmLink.title":
@@ -1850,7 +1850,7 @@ export const KIT_COPY: Readonly<
       "Lizenz auswählen · {app} ist bereit, die Anmeldung abzuschließen.",
     "signin.menu.signIn": "Anmelden…",
     "signin.handoff.browserBody":
-      "Wir haben Polaris Key in Ihrem Browser geöffnet. Melden Sie sich dort an, dann fährt {app} automatisch fort.",
+      "Wir haben Polaris Locker in Ihrem Browser geöffnet. Melden Sie sich dort an, dann fährt {app} automatisch fort.",
     "signin.handoff.waiting": "Warten auf Ihren Browser…",
     "signin.handoff.finishing": "Anmeldung wird abgeschlossen…",
     "signin.handoff.useCode": "Stattdessen Code verwenden",
@@ -1873,7 +1873,7 @@ export const KIT_COPY: Readonly<
       "Die Anmeldung wurde in {app} abgebrochen. Beginnen Sie erneut in {app}.",
     "signin.return.library": "Bibliothek öffnen",
     "signin.choice.freed": "Auf dieser Lizenz ist jetzt ein Gerät frei.",
-    "signin.replace.opensBrowser": "Öffnet Polaris Key in Ihrem Browser",
+    "signin.replace.opensBrowser": "Öffnet Polaris Locker in Ihrem Browser",
     "signin.cli.opening": "Ihr Browser wird geöffnet…",
     "signin.cli.ifNotOpened":
       "Falls er sich nicht geöffnet hat, öffnen Sie {url}",
@@ -1894,7 +1894,7 @@ export const KIT_COPY: Readonly<
       "Warten auf Ihre Bestätigung auf dem anderen Gerät…",
     "signin.approve.ask": "Neues Gerät bestätigen?",
     "signin.approve.warning":
-      "Bestätigen Sie nur, wenn Sie dies selbst auf einem Gerät vor Ihnen gestartet haben. Niemand von Polaris Key oder einem Entwickler wird Sie jemals danach fragen.",
+      "Bestätigen Sie nur, wenn Sie dies selbst auf einem Gerät vor Ihnen gestartet haben. Niemand von Polaris Locker oder einem Entwickler wird Sie jemals danach fragen.",
     "signin.approve.approve": "Bestätigen und anmelden",
     "signin.approve.deny": "Ablehnen",
     "signin.approve.denied":
@@ -1915,7 +1915,7 @@ export const KIT_COPY: Readonly<
       "Codes und Links sind einmal und 10 Minuten lang gültig.",
     "signin.again": "Erneut anmelden",
     "signin.identityOff.notice":
-      "{product} verwendet keine Anmeldung über Polaris Key. Öffnen Sie {product} und geben Sie dort Ihren Lizenzschlüssel ein.",
+      "{product} verwendet keine Anmeldung über Polaris Locker. Öffnen Sie {product} und geben Sie dort Ihren Lizenzschlüssel ein.",
     "signin.identityOff.lede":
       "Melden Sie sich hier an, um {product} in Ihrer Bibliothek zu sehen.",
     "signin.signout.title": "Auf diesem Gerät von {product} abmelden?",
@@ -1929,16 +1929,16 @@ export const KIT_COPY: Readonly<
       "Melden Sie sich erneut an, um dort weiterzumachen, wo Sie waren.",
     "signin.session.kitEnded":
       "Ihre Anmeldung ist abgelaufen. Melden Sie sich erneut an, um {product} weiter zu verwenden.",
-    "signin.provider.manage": "Anmeldemethoden in Polaris Key verwalten",
+    "signin.provider.manage": "Anmeldemethoden in Polaris Locker verwalten",
     "signin.profile.changePicture": "Bild ändern",
     "signin.mail.replaced.subject": "{product} auf {device} abgemeldet",
     "signin.mail.replaced.body":
-      "{device} wurde durch {newDevice} ersetzt, als Sie sich am {date} bei {product} angemeldet haben. Es kann sich später wieder anmelden, wenn ein Platz frei ist. Falls Sie das nicht waren, öffnen Sie Polaris Key und prüfen Sie Ihre Geräte.",
+      "{device} wurde durch {newDevice} ersetzt, als Sie sich am {date} bei {product} angemeldet haben. Es kann sich später wieder anmelden, wenn ein Platz frei ist. Falls Sie das nicht waren, öffnen Sie Polaris Locker und prüfen Sie Ihre Geräte.",
     "signin.mail.newDevice.subject":
-      "Ein neues Gerät hat sich bei Ihrem Polaris Key-Konto angemeldet",
+      "Ein neues Gerät hat sich bei Ihrem Polaris Locker-Konto angemeldet",
     "signin.mail.newDevice.body":
-      "{device} hat sich am {date} von {place} aus angemeldet. Falls Sie das nicht waren, melden Sie es in Polaris Key unter „Wo Sie angemeldet sind“ ab.",
-    "signin.mail.open": "Polaris Key öffnen",
+      "{device} hat sich am {date} von {place} aus angemeldet. Falls Sie das nicht waren, melden Sie es in Polaris Locker unter „Wo Sie angemeldet sind“ ab.",
+    "signin.mail.open": "Polaris Locker öffnen",
     "signin.code.label": "6-stelliger Code",
     "cli.group.license": "Lizenz",
     "cli.group.account": "Konto",
@@ -2245,25 +2245,25 @@ export const KIT_COPY: Readonly<
       "Dieser Code hat nicht funktioniert. Prüfen Sie die E-Mail und geben Sie ihn erneut ein.",
     "core.codes.email_in_use.title": "E-Mail-Adresse bereits verwendet",
     "core.codes.email_in_use.message":
-      "Ein anderes Polaris Key-Konto verwendet diese E-Mail-Adresse bereits. Verbinden Sie diese Anmeldung mit jenem Konto, oder verwenden Sie eine andere E-Mail-Adresse.",
+      "Ein anderes Polaris Locker-Konto verwendet diese E-Mail-Adresse bereits. Verbinden Sie diese Anmeldung mit jenem Konto, oder verwenden Sie eine andere E-Mail-Adresse.",
     "core.codes.terms_required.title": "Bedingungen nicht akzeptiert",
     "core.codes.terms_required.message":
       "Stimmen Sie den Bedingungen zu, um fortzufahren.",
     "core.codes.license_owned.title": "Lizenz in einem anderen Konto",
     "core.codes.license_owned.message":
-      "Diese Lizenz für {product} befindet sich bereits in einem anderen Polaris Key-Konto. Eine Lizenz wird nie über ihren Schlüssel übertragen.",
+      "Diese Lizenz für {product} befindet sich bereits in einem anderen Polaris Locker-Konto. Eine Lizenz wird nie über ihren Schlüssel übertragen.",
     "core.codes.license_email_bound.title": "E-Mail-Adresse nicht bestätigt",
     "core.codes.license_email_bound.message":
-      "Diese Lizenz gehört zu einer E-Mail-Adresse, die Ihr Polaris Key-Konto nicht bestätigt hat. Bestätigen Sie diese E-Mail-Adresse in Ihrem Konto und versuchen Sie es dann erneut.",
+      "Diese Lizenz gehört zu einer E-Mail-Adresse, die Ihr Polaris Locker-Konto nicht bestätigt hat. Bestätigen Sie diese E-Mail-Adresse in Ihrem Konto und versuchen Sie es dann erneut.",
     "core.codes.account_required.title": "Anmeldung erforderlich",
     "core.codes.account_required.message":
-      "Melden Sie sich auf diesem Gerät bei Ihrem Polaris Key-Konto an und versuchen Sie es dann erneut.",
+      "Melden Sie sich auf diesem Gerät bei Ihrem Polaris Locker-Konto an und versuchen Sie es dann erneut.",
     "core.codes.email_mismatch.title": "E-Mail-Adresse nicht bestätigt",
     "core.codes.email_mismatch.message":
       "Diese Lizenz gehört zu einer E-Mail-Adresse, die Ihr Konto nicht bestätigt hat. Fügen Sie diese E-Mail-Adresse hinzu, bestätigen Sie sie und versuchen Sie es dann erneut.",
     "core.codes.link_conflict.title": "Bereits verknüpft",
     "core.codes.link_conflict.message":
-      "Diese Anmeldemethode gehört zu einem anderen Polaris Key-Konto. Melden Sie sich bei diesem Konto an oder führen Sie die beiden Konten zusammen.",
+      "Diese Anmeldemethode gehört zu einem anderen Polaris Locker-Konto. Melden Sie sich bei diesem Konto an oder führen Sie die beiden Konten zusammen.",
     "core.codes.last_link.title": "Entfernen nicht möglich",
     "core.codes.last_link.message":
       "Dies ist die einzige Anmeldemethode Ihres Kontos. Fügen Sie eine weitere hinzu, bevor Sie sie entfernen.",
@@ -2339,7 +2339,7 @@ export const KIT_COPY: Readonly<
       "Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
     "core.codes.network.title": "Keine Verbindung",
     "core.codes.network.message":
-      "Polaris Key ist nicht erreichbar. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
+      "Polaris Locker ist nicht erreichbar. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
     "core.codes.refresh-failed.title": "Aktualisierung fehlgeschlagen",
     "core.codes.refresh-failed.message":
       "Ihre Lizenz und Einstellungen konnten nicht aktualisiert werden. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
@@ -2395,7 +2395,7 @@ export const KIT_COPY: Readonly<
       "Der Dienst hat eine Antwort gesendet, die die App nicht verarbeiten konnte. Versuchen Sie es erneut.",
     "core.codes.network-error.title": "Keine Verbindung",
     "core.codes.network-error.message":
-      "Polaris Key ist nicht erreichbar. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
+      "Polaris Locker ist nicht erreichbar. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
     "core.codes.server-error.title": "Problem mit dem Dienst",
     "core.codes.server-error.message":
       "Beim Dienst ist ein Problem aufgetreten. Versuchen Sie es in ein paar Minuten erneut.",
@@ -2614,7 +2614,7 @@ export const KIT_COPY: Readonly<
       "Stellen Sie eine Internetverbindung her, damit die App Ihre Lizenz aktualisieren kann, und versuchen Sie es dann erneut.",
     "core.codes.sign_in_required.title": "Anmeldung erforderlich",
     "core.codes.sign_in_required.message":
-      "Melden Sie sich in der App bei Ihrem Polaris Key-Konto an und versuchen Sie es dann erneut.",
+      "Melden Sie sich in der App bei Ihrem Polaris Locker-Konto an und versuchen Sie es dann erneut.",
     "core.gate.ok.title": "Lizenz aktiv",
     "core.gate.ok.message": "Ihre Lizenz ist aktiv.",
     "core.gate.grace.title": "Offline-Kulanzzeit",
@@ -2733,7 +2733,7 @@ export const KIT_COPY: Readonly<
     "part.qr.enlarge": "Agrandir",
     "part.qr.scanInstead": "Scanner plutôt avec votre téléphone",
     "part.seatMeter.caption": "{used} sur {limit} utilisés",
-    "part.poweredBy": "Propulsé par Polaris Key",
+    "part.poweredBy": "Propulsé par Polaris Locker",
     "part.status.ok": "Active",
     "part.status.grace": "Hors ligne",
     "part.status.expired": "Expirée",
@@ -2997,7 +2997,7 @@ export const KIT_COPY: Readonly<
     "channel.locked": "{store} définit le canal de publication.",
     "toast.undo": "Annuler",
     "toast.updateAvailable": "{product} {version} est disponible",
-    "signin.methods.title": "Se connecter à Polaris Key",
+    "signin.methods.title": "Se connecter à Polaris Locker",
     "signin.methods.titleApp": "Se connecter",
     "signin.methods.ledeApp":
       "Utilisez l’adresse e-mail avec laquelle vous avez acheté {product}.",
@@ -3021,14 +3021,14 @@ export const KIT_COPY: Readonly<
     "signin.header.codePanel":
       "Code à l’écran · {code} · Vérifiez qu’il correspond à l’écran",
     "signin.footer":
-      "Polaris Key vous connecte à {app}. {developer} ne voit jamais vos codes ni vos clés d’accès.",
+      "Polaris Locker vous connecte à {app}. {developer} ne voit jamais vos codes ni vos clés d’accès.",
     "signin.off.product":
       "La connexion est désactivée pour {product}. Contactez {developer}.",
     "signin.off.any": "La connexion est indisponible. Réessayez plus tard.",
     "signin.rateLimited": "Trop de codes. Réessayez dans {minutes} minutes.",
     "signin.emailDown":
       "Nous ne pouvons pas envoyer d’e-mail pour le moment. Essayez un autre moyen de vous connecter.",
-    "signin.network.title": "Impossible de joindre Polaris Key",
+    "signin.network.title": "Impossible de joindre Polaris Locker",
     "signin.retry": "Réessayer",
     "signin.code.title": "Consultez vos e-mails",
     "signin.code.sent":
@@ -3044,7 +3044,7 @@ export const KIT_COPY: Readonly<
     "signin.code.tooMany": "Trop d’essais. Envoyez un nouveau code.",
     "signin.code.expired": "Ce code a expiré. Envoyez un nouveau code.",
     "signin.code.differentEmail": "Utiliser une autre adresse e-mail",
-    "signin.email.subject": "Votre code Polaris Key : {code}",
+    "signin.email.subject": "Votre code Polaris Locker : {code}",
     "signin.email.body":
       "Ou connectez-vous avec le bouton. Le code et le lien ne fonctionnent qu’une fois, pendant 10 minutes.",
     "signin.confirmLink.title":
@@ -3210,7 +3210,7 @@ export const KIT_COPY: Readonly<
       "Choisissez une licence · {app} est prêt à terminer la connexion.",
     "signin.menu.signIn": "Se connecter…",
     "signin.handoff.browserBody":
-      "Nous avons ouvert Polaris Key dans votre navigateur. Connectez-vous-y et {app} continuera tout seul.",
+      "Nous avons ouvert Polaris Locker dans votre navigateur. Connectez-vous-y et {app} continuera tout seul.",
     "signin.handoff.waiting": "En attente de votre navigateur…",
     "signin.handoff.finishing": "Finalisation de la connexion…",
     "signin.handoff.useCode": "Utiliser plutôt un code",
@@ -3233,7 +3233,7 @@ export const KIT_COPY: Readonly<
       "La connexion a été annulée dans {app}. Recommencez depuis {app}.",
     "signin.return.library": "Ouvrir votre bibliothèque",
     "signin.choice.freed": "Un appareil est désormais libre sur cette licence.",
-    "signin.replace.opensBrowser": "Ouvre Polaris Key dans votre navigateur",
+    "signin.replace.opensBrowser": "Ouvre Polaris Locker dans votre navigateur",
     "signin.cli.opening": "Ouverture de votre navigateur…",
     "signin.cli.ifNotOpened": "S’il ne s’est pas ouvert, rendez-vous sur {url}",
     "signin.cli.keys": "Entrée rouvrir · c utiliser un code · Échap annuler",
@@ -3252,7 +3252,7 @@ export const KIT_COPY: Readonly<
       "En attente de votre approbation sur l’autre appareil…",
     "signin.approve.ask": "Approuver un nouvel appareil ?",
     "signin.approve.warning":
-      "N’approuvez que si vous êtes à l’origine de cette demande, sur un appareil qui se trouve devant vous. Personne chez Polaris Key ni aucun développeur ne vous le demandera jamais.",
+      "N’approuvez que si vous êtes à l’origine de cette demande, sur un appareil qui se trouve devant vous. Personne chez Polaris Locker ni aucun développeur ne vous le demandera jamais.",
     "signin.approve.approve": "Approuver et le connecter",
     "signin.approve.deny": "Refuser",
     "signin.approve.denied":
@@ -3273,7 +3273,7 @@ export const KIT_COPY: Readonly<
       "Les codes et les liens ne fonctionnent qu’une fois, pendant 10 minutes.",
     "signin.again": "Se reconnecter",
     "signin.identityOff.notice":
-      "{product} n’utilise pas la connexion Polaris Key. Ouvrez {product} et saisissez-y votre clé de licence.",
+      "{product} n’utilise pas la connexion Polaris Locker. Ouvrez {product} et saisissez-y votre clé de licence.",
     "signin.identityOff.lede":
       "Connectez-vous ici pour voir {product} dans votre bibliothèque.",
     "signin.signout.title": "Se déconnecter de {product} sur cet appareil ?",
@@ -3288,16 +3288,16 @@ export const KIT_COPY: Readonly<
     "signin.session.kitEnded":
       "Votre connexion a pris fin. Reconnectez-vous pour continuer à utiliser {product}.",
     "signin.provider.manage":
-      "Gérer les méthodes de connexion dans Polaris Key",
+      "Gérer les méthodes de connexion dans Polaris Locker",
     "signin.profile.changePicture": "Changer de photo",
     "signin.mail.replaced.subject": "{product} déconnecté sur {device}",
     "signin.mail.replaced.body":
-      "{device} a été remplacé par {newDevice} lorsque vous vous êtes connecté à {product} le {date}. Il pourra se reconnecter plus tard si une place se libère. Si ce n’était pas vous, ouvrez Polaris Key et vérifiez vos appareils.",
+      "{device} a été remplacé par {newDevice} lorsque vous vous êtes connecté à {product} le {date}. Il pourra se reconnecter plus tard si une place se libère. Si ce n’était pas vous, ouvrez Polaris Locker et vérifiez vos appareils.",
     "signin.mail.newDevice.subject":
-      "Un nouvel appareil s’est connecté à votre compte Polaris Key",
+      "Un nouvel appareil s’est connecté à votre compte Polaris Locker",
     "signin.mail.newDevice.body":
-      "{device} s’est connecté le {date} depuis {place}. Si ce n’était pas vous, déconnectez-le dans Polaris Key, section Où vous êtes connecté.",
-    "signin.mail.open": "Ouvrir Polaris Key",
+      "{device} s’est connecté le {date} depuis {place}. Si ce n’était pas vous, déconnectez-le dans Polaris Locker, section Où vous êtes connecté.",
+    "signin.mail.open": "Ouvrir Polaris Locker",
     "signin.code.label": "Code à 6 chiffres",
     "cli.group.license": "Licence",
     "cli.group.account": "Compte",
@@ -3595,24 +3595,24 @@ export const KIT_COPY: Readonly<
       "That code isn't right. Check the email and try again.",
     "core.codes.email_in_use.title": "Email already in use",
     "core.codes.email_in_use.message":
-      "Another Polaris Key account already uses this email. Join this sign-in to that account, or use a different email.",
+      "Another Polaris Locker account already uses this email. Join this sign-in to that account, or use a different email.",
     "core.codes.terms_required.title": "Terms not accepted",
     "core.codes.terms_required.message": "Agree to the terms to continue.",
     "core.codes.license_owned.title": "License in another account",
     "core.codes.license_owned.message":
-      "This {product} license is already in another Polaris Key account. A license never moves by its key.",
+      "This {product} license is already in another Polaris Locker account. A license never moves by its key.",
     "core.codes.license_email_bound.title": "Email not verified",
     "core.codes.license_email_bound.message":
-      "This license belongs to an email address your Polaris Key account hasn't verified. Verify that email in your account, then try again.",
+      "This license belongs to an email address your Polaris Locker account hasn't verified. Verify that email in your account, then try again.",
     "core.codes.account_required.title": "Sign-in needed",
     "core.codes.account_required.message":
-      "Sign in to your Polaris Key account on this device, then try again.",
+      "Sign in to your Polaris Locker account on this device, then try again.",
     "core.codes.email_mismatch.title": "Email not verified",
     "core.codes.email_mismatch.message":
       "This license belongs to an email address your account hasn't verified. Add and verify that email, then try again.",
     "core.codes.link_conflict.title": "Already linked",
     "core.codes.link_conflict.message":
-      "That sign-in method belongs to another Polaris Key account. Sign in to that account, or join the two accounts.",
+      "That sign-in method belongs to another Polaris Locker account. Sign in to that account, or join the two accounts.",
     "core.codes.last_link.title": "Can't remove",
     "core.codes.last_link.message":
       "This is your account's only sign-in method. Add another one before removing it.",
@@ -3685,7 +3685,7 @@ export const KIT_COPY: Readonly<
     "core.codes.transport.message": "Check your connection and try again.",
     "core.codes.network.title": "Can't connect",
     "core.codes.network.message":
-      "Can't reach Polaris Key. Check your connection and try again.",
+      "Can't reach Polaris Locker. Check your connection and try again.",
     "core.codes.refresh-failed.title": "Couldn't refresh",
     "core.codes.refresh-failed.message":
       "Your license and settings couldn't be refreshed. Check your connection and try again.",
@@ -3735,7 +3735,7 @@ export const KIT_COPY: Readonly<
       "The service sent an answer the app couldn't use. Try again.",
     "core.codes.network-error.title": "Can't connect",
     "core.codes.network-error.message":
-      "Can't reach Polaris Key. Check your connection and try again.",
+      "Can't reach Polaris Locker. Check your connection and try again.",
     "core.codes.server-error.title": "Service problem",
     "core.codes.server-error.message":
       "The service had a problem. Try again in a few minutes.",
@@ -3949,7 +3949,7 @@ export const KIT_COPY: Readonly<
       "Connect to the internet so the app can refresh your license, then try again.",
     "core.codes.sign_in_required.title": "Sign-in needed",
     "core.codes.sign_in_required.message":
-      "Sign in to your Polaris Key account in the app, then try again.",
+      "Sign in to your Polaris Locker account in the app, then try again.",
     "core.gate.ok.title": "License active",
     "core.gate.ok.message": "Your license is active.",
     "core.gate.grace.title": "Offline grace",
@@ -4066,7 +4066,7 @@ export const KIT_COPY: Readonly<
     "part.qr.enlarge": "Ampliar",
     "part.qr.scanInstead": "Escanear con tu teléfono",
     "part.seatMeter.caption": "{used} de {limit} en uso",
-    "part.poweredBy": "Con la tecnología de Polaris Key",
+    "part.poweredBy": "Con la tecnología de Polaris Locker",
     "part.status.ok": "Activa",
     "part.status.grace": "Sin conexión",
     "part.status.expired": "Vencida",
@@ -4327,7 +4327,7 @@ export const KIT_COPY: Readonly<
     "channel.locked": "{store} establece el canal de versiones.",
     "toast.undo": "Deshacer",
     "toast.updateAvailable": "{product} {version} está disponible",
-    "signin.methods.title": "Inicia sesión en Polaris Key",
+    "signin.methods.title": "Inicia sesión en Polaris Locker",
     "signin.methods.titleApp": "Iniciar sesión",
     "signin.methods.ledeApp": "Usa el correo con el que compraste {product}.",
     "signin.email.label": "Correo electrónico",
@@ -4349,7 +4349,7 @@ export const KIT_COPY: Readonly<
     "signin.header.codePanel":
       "Código en la pantalla · {code} · Comprueba que coincide con la pantalla",
     "signin.footer":
-      "Polaris Key inicia tu sesión en {app}. {developer} nunca ve tus códigos ni tus llaves de acceso.",
+      "Polaris Locker inicia tu sesión en {app}. {developer} nunca ve tus códigos ni tus llaves de acceso.",
     "signin.off.product":
       "El inicio de sesión está desactivado para {product}. Contacta con {developer}.",
     "signin.off.any":
@@ -4358,7 +4358,7 @@ export const KIT_COPY: Readonly<
       "Demasiados códigos. Vuelve a intentarlo en {minutes} minutos.",
     "signin.emailDown":
       "No podemos enviar correos ahora mismo. Prueba otra forma de iniciar sesión.",
-    "signin.network.title": "No se puede conectar con Polaris Key",
+    "signin.network.title": "No se puede conectar con Polaris Locker",
     "signin.retry": "Reintentar",
     "signin.code.title": "Revisa tu correo",
     "signin.code.sent":
@@ -4373,7 +4373,7 @@ export const KIT_COPY: Readonly<
     "signin.code.tooMany": "Demasiados intentos. Envía un código nuevo.",
     "signin.code.expired": "Ese código venció. Envía un código nuevo.",
     "signin.code.differentEmail": "Usar otro correo",
-    "signin.email.subject": "Tu código de Polaris Key: {code}",
+    "signin.email.subject": "Tu código de Polaris Locker: {code}",
     "signin.email.body":
       "O inicia sesión con el botón. El código y el enlace funcionan una sola vez, durante 10 minutos.",
     "signin.confirmLink.title":
@@ -4535,7 +4535,7 @@ export const KIT_COPY: Readonly<
       "Elige una licencia · {app} está listo para terminar de iniciar sesión.",
     "signin.menu.signIn": "Iniciar sesión…",
     "signin.handoff.browserBody":
-      "Abrimos Polaris Key en tu navegador. Inicia sesión allí y {app} continuará solo.",
+      "Abrimos Polaris Locker en tu navegador. Inicia sesión allí y {app} continuará solo.",
     "signin.handoff.waiting": "Esperando a tu navegador…",
     "signin.handoff.finishing": "Terminando de iniciar sesión…",
     "signin.handoff.useCode": "Usar un código",
@@ -4557,7 +4557,7 @@ export const KIT_COPY: Readonly<
       "Se canceló el inicio de sesión en {app}. Vuelve a empezar desde {app}.",
     "signin.return.library": "Abrir tu biblioteca",
     "signin.choice.freed": "Ya hay un dispositivo libre en esta licencia.",
-    "signin.replace.opensBrowser": "Abre Polaris Key en tu navegador",
+    "signin.replace.opensBrowser": "Abre Polaris Locker en tu navegador",
     "signin.cli.opening": "Abriendo tu navegador…",
     "signin.cli.ifNotOpened": "Si no se abrió, ve a {url}",
     "signin.cli.keys": "Intro abrir de nuevo · c usar un código · Esc cancelar",
@@ -4576,7 +4576,7 @@ export const KIT_COPY: Readonly<
       "Esperando a que lo apruebes en el otro dispositivo…",
     "signin.approve.ask": "¿Aprobar un dispositivo nuevo?",
     "signin.approve.warning":
-      "Apruébalo solo si lo iniciaste tú, en un dispositivo que tienes delante. Nadie de Polaris Key ni ningún desarrollador te lo pedirá nunca.",
+      "Apruébalo solo si lo iniciaste tú, en un dispositivo que tienes delante. Nadie de Polaris Locker ni ningún desarrollador te lo pedirá nunca.",
     "signin.approve.approve": "Aprobar e iniciar sesión",
     "signin.approve.deny": "Denegar",
     "signin.approve.denied":
@@ -4596,7 +4596,7 @@ export const KIT_COPY: Readonly<
       "Los códigos y enlaces funcionan una sola vez, durante 10 minutos.",
     "signin.again": "Vuelve a iniciar sesión",
     "signin.identityOff.notice":
-      "{product} no usa el inicio de sesión de Polaris Key. Abre {product} y escribe allí tu clave de licencia.",
+      "{product} no usa el inicio de sesión de Polaris Locker. Abre {product} y escribe allí tu clave de licencia.",
     "signin.identityOff.lede":
       "Inicia sesión aquí para ver {product} en tu biblioteca.",
     "signin.signout.title": "¿Cerrar sesión en {product} en este dispositivo?",
@@ -4611,17 +4611,17 @@ export const KIT_COPY: Readonly<
     "signin.session.kitEnded":
       "Tu sesión terminó. Vuelve a iniciar sesión para seguir usando {product}.",
     "signin.provider.manage":
-      "Administrar métodos de inicio de sesión en Polaris Key",
+      "Administrar métodos de inicio de sesión en Polaris Locker",
     "signin.profile.changePicture": "Cambiar imagen",
     "signin.mail.replaced.subject":
       "Se cerró la sesión de {product} en {device}",
     "signin.mail.replaced.body":
-      "{newDevice} reemplazó a {device} cuando iniciaste sesión en {product} el {date}. {device} podrá volver a iniciar sesión más tarde si hay una plaza libre. Si no fuiste tú, abre Polaris Key y revisa tus dispositivos.",
+      "{newDevice} reemplazó a {device} cuando iniciaste sesión en {product} el {date}. {device} podrá volver a iniciar sesión más tarde si hay una plaza libre. Si no fuiste tú, abre Polaris Locker y revisa tus dispositivos.",
     "signin.mail.newDevice.subject":
-      "Un dispositivo nuevo inició sesión en tu cuenta de Polaris Key",
+      "Un dispositivo nuevo inició sesión en tu cuenta de Polaris Locker",
     "signin.mail.newDevice.body":
-      "{device} inició sesión el {date} desde {place}. Si no fuiste tú, cierra su sesión en Polaris Key, en Dónde has iniciado sesión.",
-    "signin.mail.open": "Abrir Polaris Key",
+      "{device} inició sesión el {date} desde {place}. Si no fuiste tú, cierra su sesión en Polaris Locker, en Dónde has iniciado sesión.",
+    "signin.mail.open": "Abrir Polaris Locker",
     "signin.code.label": "Código de 6 dígitos",
     "cli.group.license": "Licencia",
     "cli.group.account": "Cuenta",
@@ -4932,25 +4932,25 @@ export const KIT_COPY: Readonly<
       "Ese código no funcionó. Revisa el correo y vuelve a escribirlo.",
     "core.codes.email_in_use.title": "Correo ya en uso",
     "core.codes.email_in_use.message":
-      "Otra cuenta de Polaris Key ya usa este correo. Une este inicio de sesión a esa cuenta o usa otro correo.",
+      "Otra cuenta de Polaris Locker ya usa este correo. Une este inicio de sesión a esa cuenta o usa otro correo.",
     "core.codes.terms_required.title": "Condiciones no aceptadas",
     "core.codes.terms_required.message":
       "Acepta las condiciones para continuar.",
     "core.codes.license_owned.title": "Licencia en otra cuenta",
     "core.codes.license_owned.message":
-      "Esta licencia de {product} ya está en otra cuenta de Polaris Key. Una licencia nunca se transfiere con su clave.",
+      "Esta licencia de {product} ya está en otra cuenta de Polaris Locker. Una licencia nunca se transfiere con su clave.",
     "core.codes.license_email_bound.title": "Correo no verificado",
     "core.codes.license_email_bound.message":
-      "Esta licencia pertenece a una dirección de correo que tu cuenta de Polaris Key no ha verificado. Verifica ese correo en tu cuenta y vuelve a intentarlo.",
+      "Esta licencia pertenece a una dirección de correo que tu cuenta de Polaris Locker no ha verificado. Verifica ese correo en tu cuenta y vuelve a intentarlo.",
     "core.codes.account_required.title": "Es necesario iniciar sesión",
     "core.codes.account_required.message":
-      "Inicia sesión en tu cuenta de Polaris Key en este dispositivo y vuelve a intentarlo.",
+      "Inicia sesión en tu cuenta de Polaris Locker en este dispositivo y vuelve a intentarlo.",
     "core.codes.email_mismatch.title": "Correo no verificado",
     "core.codes.email_mismatch.message":
       "Esta licencia pertenece a una dirección de correo que tu cuenta no ha verificado. Añade y verifica ese correo, y vuelve a intentarlo.",
     "core.codes.link_conflict.title": "Ya vinculado",
     "core.codes.link_conflict.message":
-      "Ese método de inicio de sesión pertenece a otra cuenta de Polaris Key. Inicia sesión en esa cuenta o une las dos cuentas.",
+      "Ese método de inicio de sesión pertenece a otra cuenta de Polaris Locker. Inicia sesión en esa cuenta o une las dos cuentas.",
     "core.codes.last_link.title": "No se puede quitar",
     "core.codes.last_link.message":
       "Es el único método de inicio de sesión de tu cuenta. Añade otro antes de quitarlo.",
@@ -5025,7 +5025,7 @@ export const KIT_COPY: Readonly<
     "core.codes.transport.message": "Revisa tu conexión y vuelve a intentarlo.",
     "core.codes.network.title": "No se puede conectar",
     "core.codes.network.message":
-      "No se puede conectar con Polaris Key. Revisa tu conexión y vuelve a intentarlo.",
+      "No se puede conectar con Polaris Locker. Revisa tu conexión y vuelve a intentarlo.",
     "core.codes.refresh-failed.title": "No se pudo actualizar",
     "core.codes.refresh-failed.message":
       "No se pudieron actualizar tu licencia y tus ajustes. Revisa tu conexión y vuelve a intentarlo.",
@@ -5080,7 +5080,7 @@ export const KIT_COPY: Readonly<
       "El servicio envió una respuesta que la app no pudo usar. Vuelve a intentarlo.",
     "core.codes.network-error.title": "No se puede conectar",
     "core.codes.network-error.message":
-      "No se puede conectar con Polaris Key. Revisa tu conexión y vuelve a intentarlo.",
+      "No se puede conectar con Polaris Locker. Revisa tu conexión y vuelve a intentarlo.",
     "core.codes.server-error.title": "Problema del servicio",
     "core.codes.server-error.message":
       "El servicio tuvo un problema. Inténtalo de nuevo en unos minutos.",
@@ -5297,7 +5297,7 @@ export const KIT_COPY: Readonly<
       "Conéctate a internet para que la app pueda actualizar tu licencia y vuelve a intentarlo.",
     "core.codes.sign_in_required.title": "Es necesario iniciar sesión",
     "core.codes.sign_in_required.message":
-      "Inicia sesión en tu cuenta de Polaris Key en la app y vuelve a intentarlo.",
+      "Inicia sesión en tu cuenta de Polaris Locker en la app y vuelve a intentarlo.",
     "core.gate.ok.title": "Licencia activa",
     "core.gate.ok.message": "Tu licencia está activa.",
     "core.gate.grace.title": "Periodo de gracia sin conexión",
@@ -5417,7 +5417,7 @@ export const KIT_COPY: Readonly<
     "part.qr.enlarge": "Ampliar",
     "part.qr.scanInstead": "Escanear com o celular",
     "part.seatMeter.caption": "{used} de {limit} em uso",
-    "part.poweredBy": "Com tecnologia Polaris Key",
+    "part.poweredBy": "Com tecnologia Polaris Locker",
     "part.status.ok": "Ativa",
     "part.status.grace": "Offline",
     "part.status.expired": "Expirada",
@@ -5682,7 +5682,7 @@ export const KIT_COPY: Readonly<
     "channel.locked": "{store} define o canal de lançamento.",
     "toast.undo": "Desfazer",
     "toast.updateAvailable": "{product} {version} está disponível",
-    "signin.methods.title": "Entrar no Polaris Key",
+    "signin.methods.title": "Entrar no Polaris Locker",
     "signin.methods.titleApp": "Entrar",
     "signin.methods.ledeApp": "Use o e-mail com que você comprou {product}.",
     "signin.email.label": "E-mail",
@@ -5704,7 +5704,7 @@ export const KIT_COPY: Readonly<
     "signin.header.codePanel":
       "Código na tela · {code} · Confira se é igual ao da tela",
     "signin.footer":
-      "O Polaris Key faz seu acesso ao {app}. {developer} nunca vê seus códigos nem suas chaves de acesso.",
+      "O Polaris Locker faz seu acesso ao {app}. {developer} nunca vê seus códigos nem suas chaves de acesso.",
     "signin.off.product":
       "O acesso está desativado para {product}. Contate {developer}.",
     "signin.off.any": "O acesso está indisponível. Tente novamente mais tarde.",
@@ -5712,7 +5712,7 @@ export const KIT_COPY: Readonly<
       "Códigos demais. Tente novamente em {minutes} minutos.",
     "signin.emailDown":
       "Não conseguimos enviar e-mails agora. Tente outra forma de entrar.",
-    "signin.network.title": "Não foi possível acessar o Polaris Key",
+    "signin.network.title": "Não foi possível acessar o Polaris Locker",
     "signin.retry": "Tentar novamente",
     "signin.code.title": "Verifique seu e-mail",
     "signin.code.sent":
@@ -5726,7 +5726,7 @@ export const KIT_COPY: Readonly<
     "signin.code.tooMany": "Tentativas demais. Envie um novo código.",
     "signin.code.expired": "Esse código expirou. Envie um novo código.",
     "signin.code.differentEmail": "Usar outro e-mail",
-    "signin.email.subject": "Seu código do Polaris Key: {code}",
+    "signin.email.subject": "Seu código do Polaris Locker: {code}",
     "signin.email.body":
       "Ou entre com o botão. O código e o link funcionam uma vez, por 10 minutos.",
     "signin.confirmLink.title":
@@ -5888,7 +5888,7 @@ export const KIT_COPY: Readonly<
       "Escolha uma licença · O {app} está pronto para concluir o acesso.",
     "signin.menu.signIn": "Entrar…",
     "signin.handoff.browserBody":
-      "Abrimos o Polaris Key no seu navegador. Entre por lá e {app} continua sozinho.",
+      "Abrimos o Polaris Locker no seu navegador. Entre por lá e {app} continua sozinho.",
     "signin.handoff.waiting": "Aguardando o navegador…",
     "signin.handoff.finishing": "Concluindo o acesso…",
     "signin.handoff.useCode": "Usar um código",
@@ -5910,7 +5910,7 @@ export const KIT_COPY: Readonly<
       "O acesso foi cancelado em {app}. Comece de novo pelo {app}.",
     "signin.return.library": "Abrir sua biblioteca",
     "signin.choice.freed": "Agora há um dispositivo livre nesta licença.",
-    "signin.replace.opensBrowser": "Abre o Polaris Key no navegador",
+    "signin.replace.opensBrowser": "Abre o Polaris Locker no navegador",
     "signin.cli.opening": "Abrindo o navegador…",
     "signin.cli.ifNotOpened": "Se não abrir, acesse {url}",
     "signin.cli.keys": "Enter abre de novo · c usa um código · Esc cancela",
@@ -5926,7 +5926,7 @@ export const KIT_COPY: Readonly<
     "signin.approve.waiting": "Aguardando sua aprovação no outro dispositivo…",
     "signin.approve.ask": "Aprovar um novo dispositivo?",
     "signin.approve.warning":
-      "Só aprove se foi você que iniciou isto, em um dispositivo à sua frente. Ninguém do Polaris Key nem nenhum desenvolvedor vai pedir isso a você.",
+      "Só aprove se foi você que iniciou isto, em um dispositivo à sua frente. Ninguém do Polaris Locker nem nenhum desenvolvedor vai pedir isso a você.",
     "signin.approve.approve": "Aprovar e conectar",
     "signin.approve.deny": "Recusar",
     "signin.approve.denied":
@@ -5945,7 +5945,7 @@ export const KIT_COPY: Readonly<
     "signin.expired.body": "Códigos e links funcionam uma vez, por 10 minutos.",
     "signin.again": "Entre novamente",
     "signin.identityOff.notice":
-      "{product} não usa o acesso do Polaris Key. Abra {product} e digite sua chave de licença nele.",
+      "{product} não usa o acesso do Polaris Locker. Abra {product} e digite sua chave de licença nele.",
     "signin.identityOff.lede":
       "Entre aqui para ver {product} na sua biblioteca.",
     "signin.signout.title": "Sair de {product} neste dispositivo?",
@@ -5958,16 +5958,16 @@ export const KIT_COPY: Readonly<
     "signin.session.toastBody": "Entre novamente para continuar de onde parou.",
     "signin.session.kitEnded":
       "Seu acesso terminou. Entre novamente para continuar usando {product}.",
-    "signin.provider.manage": "Gerenciar métodos de acesso no Polaris Key",
+    "signin.provider.manage": "Gerenciar métodos de acesso no Polaris Locker",
     "signin.profile.changePicture": "Alterar foto",
     "signin.mail.replaced.subject": "{product} foi desconectado em {device}",
     "signin.mail.replaced.body":
-      "{device} foi substituído por {newDevice} quando você entrou no {product} em {date}. Ele poderá entrar novamente depois, se houver uma vaga livre. Se não foi você, abra o Polaris Key e verifique seus dispositivos.",
+      "{device} foi substituído por {newDevice} quando você entrou no {product} em {date}. Ele poderá entrar novamente depois, se houver uma vaga livre. Se não foi você, abra o Polaris Locker e verifique seus dispositivos.",
     "signin.mail.newDevice.subject":
-      "Um novo dispositivo entrou na sua conta do Polaris Key",
+      "Um novo dispositivo entrou na sua conta do Polaris Locker",
     "signin.mail.newDevice.body":
-      "{device} entrou em {date} de {place}. Se não foi você, desconecte-o no Polaris Key em Onde você está conectado.",
-    "signin.mail.open": "Abrir o Polaris Key",
+      "{device} entrou em {date} de {place}. Se não foi você, desconecte-o no Polaris Locker em Onde você está conectado.",
+    "signin.mail.open": "Abrir o Polaris Locker",
     "signin.code.label": "Código de 6 dígitos",
     "cli.group.license": "Licença",
     "cli.group.account": "Conta",
@@ -6269,24 +6269,24 @@ export const KIT_COPY: Readonly<
       "Esse código não funcionou. Confira o e-mail e digite de novo.",
     "core.codes.email_in_use.title": "E-mail já em uso",
     "core.codes.email_in_use.message":
-      "Outra conta do Polaris Key já usa este e-mail. Junte este acesso a essa conta ou use outro e-mail.",
+      "Outra conta do Polaris Locker já usa este e-mail. Junte este acesso a essa conta ou use outro e-mail.",
     "core.codes.terms_required.title": "Termos não aceitos",
     "core.codes.terms_required.message": "Aceite os termos para continuar.",
     "core.codes.license_owned.title": "Licença em outra conta",
     "core.codes.license_owned.message":
-      "Esta licença de {product} já está em outra conta do Polaris Key. Uma licença nunca é transferida pela chave.",
+      "Esta licença de {product} já está em outra conta do Polaris Locker. Uma licença nunca é transferida pela chave.",
     "core.codes.license_email_bound.title": "E-mail não verificado",
     "core.codes.license_email_bound.message":
-      "Esta licença pertence a um endereço de e-mail que sua conta do Polaris Key não verificou. Verifique esse e-mail na sua conta e tente novamente.",
+      "Esta licença pertence a um endereço de e-mail que sua conta do Polaris Locker não verificou. Verifique esse e-mail na sua conta e tente novamente.",
     "core.codes.account_required.title": "É preciso entrar",
     "core.codes.account_required.message":
-      "Entre na sua conta do Polaris Key neste dispositivo e tente novamente.",
+      "Entre na sua conta do Polaris Locker neste dispositivo e tente novamente.",
     "core.codes.email_mismatch.title": "E-mail não verificado",
     "core.codes.email_mismatch.message":
       "Esta licença pertence a um endereço de e-mail que sua conta não verificou. Adicione e verifique esse e-mail e tente novamente.",
     "core.codes.link_conflict.title": "Já vinculado",
     "core.codes.link_conflict.message":
-      "Esse método de acesso pertence a outra conta do Polaris Key. Entre nessa conta ou una as duas contas.",
+      "Esse método de acesso pertence a outra conta do Polaris Locker. Entre nessa conta ou una as duas contas.",
     "core.codes.last_link.title": "Não é possível remover",
     "core.codes.last_link.message":
       "Este é o único método de acesso da sua conta. Adicione outro antes de removê-lo.",
@@ -6360,7 +6360,7 @@ export const KIT_COPY: Readonly<
     "core.codes.transport.message": "Verifique sua conexão e tente novamente.",
     "core.codes.network.title": "Não é possível conectar",
     "core.codes.network.message":
-      "Não foi possível acessar o Polaris Key. Verifique sua conexão e tente novamente.",
+      "Não foi possível acessar o Polaris Locker. Verifique sua conexão e tente novamente.",
     "core.codes.refresh-failed.title": "Não foi possível atualizar",
     "core.codes.refresh-failed.message":
       "Não foi possível atualizar sua licença e suas configurações. Verifique sua conexão e tente novamente.",
@@ -6414,7 +6414,7 @@ export const KIT_COPY: Readonly<
       "O serviço enviou uma resposta que o app não pôde usar. Tente novamente.",
     "core.codes.network-error.title": "Não é possível conectar",
     "core.codes.network-error.message":
-      "Não foi possível acessar o Polaris Key. Verifique sua conexão e tente novamente.",
+      "Não foi possível acessar o Polaris Locker. Verifique sua conexão e tente novamente.",
     "core.codes.server-error.title": "Problema no serviço",
     "core.codes.server-error.message":
       "O serviço teve um problema. Tente novamente em alguns minutos.",
@@ -6630,7 +6630,7 @@ export const KIT_COPY: Readonly<
       "Conecte-se à internet para que o app possa atualizar sua licença e tente novamente.",
     "core.codes.sign_in_required.title": "É preciso entrar",
     "core.codes.sign_in_required.message":
-      "Entre na sua conta do Polaris Key no app e tente novamente.",
+      "Entre na sua conta do Polaris Locker no app e tente novamente.",
     "core.gate.ok.title": "Licença ativa",
     "core.gate.ok.message": "Sua licença está ativa.",
     "core.gate.grace.title": "Período offline",
@@ -6749,7 +6749,7 @@ export const KIT_COPY: Readonly<
     "part.qr.enlarge": "Ingrandisci",
     "part.qr.scanInstead": "Scansiona con il telefono",
     "part.seatMeter.caption": "{used} di {limit} in uso",
-    "part.poweredBy": "Con tecnologia Polaris Key",
+    "part.poweredBy": "Con tecnologia Polaris Locker",
     "part.status.ok": "Attiva",
     "part.status.grace": "Offline",
     "part.status.expired": "Scaduta",
@@ -7006,7 +7006,7 @@ export const KIT_COPY: Readonly<
     "channel.locked": "Il canale di rilascio è impostato da {store}.",
     "toast.undo": "Annulla",
     "toast.updateAvailable": "{product} {version} è disponibile",
-    "signin.methods.title": "Accedi a Polaris Key",
+    "signin.methods.title": "Accedi a Polaris Locker",
     "signin.methods.titleApp": "Accedi",
     "signin.methods.ledeApp": "Usa l'email con cui hai acquistato {product}.",
     "signin.email.label": "Email",
@@ -7028,14 +7028,14 @@ export const KIT_COPY: Readonly<
     "signin.header.codePanel":
       "Codice sullo schermo · {code} · Verifica che corrisponda a quello sullo schermo",
     "signin.footer":
-      "Polaris Key gestisce il tuo accesso a {app}. {developer} non vede mai i tuoi codici o le tue passkey.",
+      "Polaris Locker gestisce il tuo accesso a {app}. {developer} non vede mai i tuoi codici o le tue passkey.",
     "signin.off.product":
       "L'accesso è disattivato per {product}. Contatta {developer}.",
     "signin.off.any": "L'accesso non è disponibile. Riprova più tardi.",
     "signin.rateLimited": "Troppi codici. Riprova tra {minutes} minuti.",
     "signin.emailDown":
       "Al momento non possiamo inviare email. Prova un altro modo per accedere.",
-    "signin.network.title": "Impossibile raggiungere Polaris Key",
+    "signin.network.title": "Impossibile raggiungere Polaris Locker",
     "signin.retry": "Riprova",
     "signin.code.title": "Controlla la tua email",
     "signin.code.sent":
@@ -7051,7 +7051,7 @@ export const KIT_COPY: Readonly<
     "signin.code.tooMany": "Troppi tentativi. Invia un nuovo codice.",
     "signin.code.expired": "Il codice è scaduto. Invia un nuovo codice.",
     "signin.code.differentEmail": "Usa un'altra email",
-    "signin.email.subject": "Il tuo codice Polaris Key: {code}",
+    "signin.email.subject": "Il tuo codice Polaris Locker: {code}",
     "signin.email.body":
       "Oppure accedi con il pulsante. Il codice e il link funzionano una sola volta, per 10 minuti.",
     "signin.confirmLink.title":
@@ -7214,7 +7214,7 @@ export const KIT_COPY: Readonly<
       "Scegli una licenza · {app} è pronto a completare l'accesso.",
     "signin.menu.signIn": "Accedi…",
     "signin.handoff.browserBody":
-      "Abbiamo aperto Polaris Key nel browser. Accedi lì e {app} continuerà da solo.",
+      "Abbiamo aperto Polaris Locker nel browser. Accedi lì e {app} continuerà da solo.",
     "signin.handoff.waiting": "In attesa del browser…",
     "signin.handoff.finishing": "Completamento dell'accesso…",
     "signin.handoff.useCode": "Usa invece un codice",
@@ -7236,7 +7236,7 @@ export const KIT_COPY: Readonly<
       "L'accesso è stato annullato in {app}. Ricomincia da {app}.",
     "signin.return.library": "Apri la tua libreria",
     "signin.choice.freed": "Ora c'è un dispositivo libero su questa licenza.",
-    "signin.replace.opensBrowser": "Apre Polaris Key nel browser",
+    "signin.replace.opensBrowser": "Apre Polaris Locker nel browser",
     "signin.cli.opening": "Apertura del browser…",
     "signin.cli.ifNotOpened": "Se non si è aperto, vai su {url}",
     "signin.cli.keys": "Invio riapri · c usa un codice · Esc annulla",
@@ -7255,7 +7255,7 @@ export const KIT_COPY: Readonly<
       "In attesa della tua approvazione sull'altro dispositivo…",
     "signin.approve.ask": "Approvare un nuovo dispositivo?",
     "signin.approve.warning":
-      "Approva solo se hai avviato tu questa operazione, su un dispositivo che hai davanti. Nessuno di Polaris Key o di uno sviluppatore te lo chiederà mai.",
+      "Approva solo se hai avviato tu questa operazione, su un dispositivo che hai davanti. Nessuno di Polaris Locker o di uno sviluppatore te lo chiederà mai.",
     "signin.approve.approve": "Approva e fai accedere",
     "signin.approve.deny": "Rifiuta",
     "signin.approve.denied":
@@ -7276,7 +7276,7 @@ export const KIT_COPY: Readonly<
       "Codici e link funzionano una sola volta, per 10 minuti.",
     "signin.again": "Accedi di nuovo",
     "signin.identityOff.notice":
-      "{product} non usa l'accesso Polaris Key. Apri {product} e inserisci lì la tua chiave di licenza.",
+      "{product} non usa l'accesso Polaris Locker. Apri {product} e inserisci lì la tua chiave di licenza.",
     "signin.identityOff.lede":
       "Accedi qui per vedere {product} nella tua libreria.",
     "signin.signout.title": "Uscire da {product} su questo dispositivo?",
@@ -7290,16 +7290,16 @@ export const KIT_COPY: Readonly<
       "Accedi di nuovo per riprendere da dove eri rimasto.",
     "signin.session.kitEnded":
       "Il tuo accesso è terminato. Accedi di nuovo per continuare a usare {product}.",
-    "signin.provider.manage": "Gestisci i metodi di accesso in Polaris Key",
+    "signin.provider.manage": "Gestisci i metodi di accesso in Polaris Locker",
     "signin.profile.changePicture": "Cambia immagine",
     "signin.mail.replaced.subject": "{product} è uscito su {device}",
     "signin.mail.replaced.body":
-      "{device} è stato sostituito da {newDevice} quando hai effettuato l'accesso a {product} il {date}. Potrà accedere di nuovo in seguito se si libera un posto. Se non sei stato tu, apri Polaris Key e controlla i tuoi dispositivi.",
+      "{device} è stato sostituito da {newDevice} quando hai effettuato l'accesso a {product} il {date}. Potrà accedere di nuovo in seguito se si libera un posto. Se non sei stato tu, apri Polaris Locker e controlla i tuoi dispositivi.",
     "signin.mail.newDevice.subject":
-      "Un nuovo dispositivo ha effettuato l'accesso al tuo account Polaris Key",
+      "Un nuovo dispositivo ha effettuato l'accesso al tuo account Polaris Locker",
     "signin.mail.newDevice.body":
-      "{device} ha effettuato l'accesso il {date} da {place}. Se non sei stato tu, disconnettilo in Polaris Key nella sezione Dove hai effettuato l'accesso.",
-    "signin.mail.open": "Apri Polaris Key",
+      "{device} ha effettuato l'accesso il {date} da {place}. Se non sei stato tu, disconnettilo in Polaris Locker nella sezione Dove hai effettuato l'accesso.",
+    "signin.mail.open": "Apri Polaris Locker",
     "signin.code.label": "Codice a 6 cifre",
     "cli.group.license": "Licenza",
     "cli.group.account": "Account",
@@ -7603,25 +7603,25 @@ export const KIT_COPY: Readonly<
       "Quel codice non ha funzionato. Controlla l'email e digitalo di nuovo.",
     "core.codes.email_in_use.title": "Email già in uso",
     "core.codes.email_in_use.message":
-      "Un altro account Polaris Key usa già questa email. Unisci questo accesso a quell'account oppure usa un'altra email.",
+      "Un altro account Polaris Locker usa già questa email. Unisci questo accesso a quell'account oppure usa un'altra email.",
     "core.codes.terms_required.title": "Condizioni non accettate",
     "core.codes.terms_required.message":
       "Accetta le condizioni per continuare.",
     "core.codes.license_owned.title": "Licenza in un altro account",
     "core.codes.license_owned.message":
-      "Questa licenza di {product} è già in un altro account Polaris Key. Una licenza non si sposta mai tramite la sua chiave.",
+      "Questa licenza di {product} è già in un altro account Polaris Locker. Una licenza non si sposta mai tramite la sua chiave.",
     "core.codes.license_email_bound.title": "Email non verificata",
     "core.codes.license_email_bound.message":
-      "Questa licenza appartiene a un indirizzo email che il tuo account Polaris Key non ha verificato. Verifica quell'email nel tuo account, poi riprova.",
+      "Questa licenza appartiene a un indirizzo email che il tuo account Polaris Locker non ha verificato. Verifica quell'email nel tuo account, poi riprova.",
     "core.codes.account_required.title": "Accesso richiesto",
     "core.codes.account_required.message":
-      "Accedi al tuo account Polaris Key su questo dispositivo, poi riprova.",
+      "Accedi al tuo account Polaris Locker su questo dispositivo, poi riprova.",
     "core.codes.email_mismatch.title": "Email non verificata",
     "core.codes.email_mismatch.message":
       "Questa licenza appartiene a un indirizzo email che il tuo account non ha verificato. Aggiungi e verifica quell'email, poi riprova.",
     "core.codes.link_conflict.title": "Già collegato",
     "core.codes.link_conflict.message":
-      "Questo metodo di accesso appartiene a un altro account Polaris Key. Accedi a quell'account o unisci i due account.",
+      "Questo metodo di accesso appartiene a un altro account Polaris Locker. Accedi a quell'account o unisci i due account.",
     "core.codes.last_link.title": "Impossibile rimuovere",
     "core.codes.last_link.message":
       "Questo è l'unico metodo di accesso del tuo account. Aggiungine un altro prima di rimuoverlo.",
@@ -7696,7 +7696,7 @@ export const KIT_COPY: Readonly<
     "core.codes.transport.message": "Controlla la connessione e riprova.",
     "core.codes.network.title": "Impossibile connettersi",
     "core.codes.network.message":
-      "Impossibile raggiungere Polaris Key. Controlla la connessione e riprova.",
+      "Impossibile raggiungere Polaris Locker. Controlla la connessione e riprova.",
     "core.codes.refresh-failed.title": "Impossibile aggiornare",
     "core.codes.refresh-failed.message":
       "Impossibile aggiornare la tua licenza e le impostazioni. Controlla la connessione e riprova.",
@@ -7750,7 +7750,7 @@ export const KIT_COPY: Readonly<
       "Il servizio ha inviato una risposta che l'app non può usare. Riprova.",
     "core.codes.network-error.title": "Impossibile connettersi",
     "core.codes.network-error.message":
-      "Impossibile raggiungere Polaris Key. Controlla la connessione e riprova.",
+      "Impossibile raggiungere Polaris Locker. Controlla la connessione e riprova.",
     "core.codes.server-error.title": "Problema del servizio",
     "core.codes.server-error.message":
       "Il servizio ha avuto un problema. Riprova tra qualche minuto.",
@@ -7965,7 +7965,7 @@ export const KIT_COPY: Readonly<
       "Connettiti a internet per consentire all'app di aggiornare la tua licenza, poi riprova.",
     "core.codes.sign_in_required.title": "Accesso richiesto",
     "core.codes.sign_in_required.message":
-      "Accedi al tuo account Polaris Key nell'app, poi riprova.",
+      "Accedi al tuo account Polaris Locker nell'app, poi riprova.",
     "core.gate.ok.title": "Licenza attiva",
     "core.gate.ok.message": "La tua licenza è attiva.",
     "core.gate.grace.title": "Periodo di tolleranza offline",
@@ -8086,7 +8086,7 @@ export const KIT_COPY: Readonly<
     "part.qr.enlarge": "拡大表示",
     "part.qr.scanInstead": "代わりにスマートフォンでスキャン",
     "part.seatMeter.caption": "{limit}台中{used}台を使用中",
-    "part.poweredBy": "Powered by Polaris Key",
+    "part.poweredBy": "Powered by Polaris Locker",
     "part.status.ok": "有効",
     "part.status.grace": "オフライン",
     "part.status.expired": "期限切れ",
@@ -8349,7 +8349,7 @@ export const KIT_COPY: Readonly<
     "channel.locked": "リリースチャンネルは{store}で設定されます。",
     "toast.undo": "取り消す",
     "toast.updateAvailable": "{product} {version}が利用可能です",
-    "signin.methods.title": "Polaris Keyにサインイン",
+    "signin.methods.title": "Polaris Lockerにサインイン",
     "signin.methods.titleApp": "サインイン",
     "signin.methods.ledeApp":
       "{product}を購入したときのメールアドレスを使用してください。",
@@ -8372,7 +8372,7 @@ export const KIT_COPY: Readonly<
     "signin.header.codePanel":
       "画面上のコード · {code} · 画面と一致することを確認してください",
     "signin.footer":
-      "Polaris Keyが{app}へのサインインを行います。{developer}にコードやパスキーが知られることはありません。",
+      "Polaris Lockerが{app}へのサインインを行います。{developer}にコードやパスキーが知られることはありません。",
     "signin.off.product":
       "{product}のサインインは無効になっています。{developer}に問い合わせてください。",
     "signin.off.any":
@@ -8381,7 +8381,7 @@ export const KIT_COPY: Readonly<
       "コードのリクエストが多すぎます。{minutes}分後にもう一度お試しください。",
     "signin.emailDown":
       "現在メールを送信できません。別の方法でサインインしてください。",
-    "signin.network.title": "Polaris Keyに接続できません",
+    "signin.network.title": "Polaris Lockerに接続できません",
     "signin.retry": "再試行",
     "signin.code.title": "メールを確認してください",
     "signin.code.sent":
@@ -8397,7 +8397,7 @@ export const KIT_COPY: Readonly<
     "signin.code.expired":
       "コードの有効期限が切れました。新しいコードを送信してください。",
     "signin.code.differentEmail": "別のメールアドレスを使う",
-    "signin.email.subject": "Polaris Keyのコード：{code}",
+    "signin.email.subject": "Polaris Lockerのコード：{code}",
     "signin.email.body":
       "またはボタンからサインインしてください。コードとリンクは1回限り、10分間有効です。",
     "signin.confirmLink.title":
@@ -8560,7 +8560,7 @@ export const KIT_COPY: Readonly<
       "ライセンスを選択 · {app}でサインインを完了できます。",
     "signin.menu.signIn": "サインイン…",
     "signin.handoff.browserBody":
-      "ブラウザでPolaris Keyを開きました。そこでサインインすると、{app}が自動的に続行します。",
+      "ブラウザでPolaris Lockerを開きました。そこでサインインすると、{app}が自動的に続行します。",
     "signin.handoff.waiting": "ブラウザを待っています…",
     "signin.handoff.finishing": "サインインを完了しています…",
     "signin.handoff.useCode": "代わりにコードを使う",
@@ -8582,7 +8582,7 @@ export const KIT_COPY: Readonly<
       "{app}でサインインがキャンセルされました。{app}からやり直してください。",
     "signin.return.library": "ライブラリを開く",
     "signin.choice.freed": "このライセンスのデバイス枠が1つ空きました。",
-    "signin.replace.opensBrowser": "ブラウザでPolaris Keyが開きます",
+    "signin.replace.opensBrowser": "ブラウザでPolaris Lockerが開きます",
     "signin.cli.opening": "ブラウザを開いています…",
     "signin.cli.ifNotOpened": "開かない場合は{url}にアクセスしてください",
     "signin.cli.keys": "Enter もう一度開く · c コードを使う · Esc キャンセル",
@@ -8601,7 +8601,7 @@ export const KIT_COPY: Readonly<
     "signin.approve.waiting": "もう一方のデバイスで承認されるのを待っています…",
     "signin.approve.ask": "新しいデバイスを承認しますか？",
     "signin.approve.warning":
-      "ご自身が目の前のデバイスで開始した場合にのみ承認してください。Polaris Keyや開発者がこれを求めることは絶対にありません。",
+      "ご自身が目の前のデバイスで開始した場合にのみ承認してください。Polaris Lockerや開発者がこれを求めることは絶対にありません。",
     "signin.approve.approve": "承認してサインイン",
     "signin.approve.deny": "拒否",
     "signin.approve.denied":
@@ -8621,7 +8621,7 @@ export const KIT_COPY: Readonly<
     "signin.expired.body": "コードとリンクは1回限り、10分間有効です。",
     "signin.again": "もう一度サインイン",
     "signin.identityOff.notice":
-      "{product}はPolaris Keyのサインインを使用しません。{product}を開いて、そこでライセンスキーを入力してください。",
+      "{product}はPolaris Lockerのサインインを使用しません。{product}を開いて、そこでライセンスキーを入力してください。",
     "signin.identityOff.lede":
       "ここでサインインすると、ライブラリに{product}が表示されます。",
     "signin.signout.title": "このデバイスで{product}からサインアウトしますか？",
@@ -8635,17 +8635,17 @@ export const KIT_COPY: Readonly<
       "もう一度サインインして、中断したところから続けてください。",
     "signin.session.kitEnded":
       "サインインが終了しました。{product}を引き続き使うには、もう一度サインインしてください。",
-    "signin.provider.manage": "Polaris Keyでサインイン方法を管理",
+    "signin.provider.manage": "Polaris Lockerでサインイン方法を管理",
     "signin.profile.changePicture": "写真を変更",
     "signin.mail.replaced.subject":
       "{device}で{product}がサインアウトされました",
     "signin.mail.replaced.body":
-      "{date}に{product}にサインインした際、{device}は{newDevice}に置き換えられました。枠が空けば、後で再びサインインできます。心当たりがない場合は、Polaris Keyを開いてデバイスを確認してください。",
+      "{date}に{product}にサインインした際、{device}は{newDevice}に置き換えられました。枠が空けば、後で再びサインインできます。心当たりがない場合は、Polaris Lockerを開いてデバイスを確認してください。",
     "signin.mail.newDevice.subject":
-      "Polaris Keyアカウントに新しいデバイスがサインインしました",
+      "Polaris Lockerアカウントに新しいデバイスがサインインしました",
     "signin.mail.newDevice.body":
-      "{date}に{place}から{device}がサインインしました。心当たりがない場合は、Polaris Keyの「サインイン中のデバイス」からサインアウトしてください。",
-    "signin.mail.open": "Polaris Keyを開く",
+      "{date}に{place}から{device}がサインインしました。心当たりがない場合は、Polaris Lockerの「サインイン中のデバイス」からサインアウトしてください。",
+    "signin.mail.open": "Polaris Lockerを開く",
     "signin.code.label": "6桁のコード",
     "cli.group.license": "ライセンス",
     "cli.group.account": "アカウント",
@@ -8947,25 +8947,25 @@ export const KIT_COPY: Readonly<
       "そのコードは使用できませんでした。メールを確認して、もう一度入力してください。",
     "core.codes.email_in_use.title": "メールアドレスは使用中です",
     "core.codes.email_in_use.message":
-      "別のPolaris Keyアカウントがすでにこのメールアドレスを使用しています。このサインインをそのアカウントに統合するか、別のメールアドレスを使用してください。",
+      "別のPolaris Lockerアカウントがすでにこのメールアドレスを使用しています。このサインインをそのアカウントに統合するか、別のメールアドレスを使用してください。",
     "core.codes.terms_required.title": "規約に同意していません",
     "core.codes.terms_required.message": "続行するには規約に同意してください。",
     "core.codes.license_owned.title": "別のアカウントのライセンス",
     "core.codes.license_owned.message":
-      "この{product}のライセンスは、すでに別のPolaris Keyアカウントにあります。ライセンスがキーによって移動することはありません。",
+      "この{product}のライセンスは、すでに別のPolaris Lockerアカウントにあります。ライセンスがキーによって移動することはありません。",
     "core.codes.license_email_bound.title":
       "メールアドレスが確認されていません",
     "core.codes.license_email_bound.message":
-      "このライセンスは、お使いのPolaris Keyアカウントで確認されていないメールアドレスに紐付いています。アカウントでそのメールアドレスを確認してから、もう一度お試しください。",
+      "このライセンスは、お使いのPolaris Lockerアカウントで確認されていないメールアドレスに紐付いています。アカウントでそのメールアドレスを確認してから、もう一度お試しください。",
     "core.codes.account_required.title": "サインインが必要です",
     "core.codes.account_required.message":
-      "このデバイスでPolaris Keyアカウントにサインインしてから、もう一度お試しください。",
+      "このデバイスでPolaris Lockerアカウントにサインインしてから、もう一度お試しください。",
     "core.codes.email_mismatch.title": "メールアドレスが確認されていません",
     "core.codes.email_mismatch.message":
       "このライセンスは、お使いのアカウントで確認されていないメールアドレスに紐付いています。そのメールアドレスを追加して確認してから、もう一度お試しください。",
     "core.codes.link_conflict.title": "すでに連携済みです",
     "core.codes.link_conflict.message":
-      "このサインイン方法は別のPolaris Keyアカウントに連携されています。そのアカウントにサインインするか、2つのアカウントを統合してください。",
+      "このサインイン方法は別のPolaris Lockerアカウントに連携されています。そのアカウントにサインインするか、2つのアカウントを統合してください。",
     "core.codes.last_link.title": "削除できません",
     "core.codes.last_link.message":
       "これはアカウントで唯一のサインイン方法です。削除する前に別の方法を追加してください。",
@@ -9045,7 +9045,7 @@ export const KIT_COPY: Readonly<
     "core.codes.transport.message": "接続を確認して、もう一度お試しください。",
     "core.codes.network.title": "接続できません",
     "core.codes.network.message":
-      "Polaris Keyに接続できません。接続を確認して、もう一度お試しください。",
+      "Polaris Lockerに接続できません。接続を確認して、もう一度お試しください。",
     "core.codes.refresh-failed.title": "更新できませんでした",
     "core.codes.refresh-failed.message":
       "ライセンスと設定を更新できませんでした。接続を確認して、もう一度お試しください。",
@@ -9100,7 +9100,7 @@ export const KIT_COPY: Readonly<
       "サービスから、アプリで使用できない応答が返されました。もう一度お試しください。",
     "core.codes.network-error.title": "接続できません",
     "core.codes.network-error.message":
-      "Polaris Keyに接続できません。接続を確認して、もう一度お試しください。",
+      "Polaris Lockerに接続できません。接続を確認して、もう一度お試しください。",
     "core.codes.server-error.title": "サービスの問題",
     "core.codes.server-error.message":
       "サービスで問題が発生しました。数分後にもう一度お試しください。",
@@ -9318,7 +9318,7 @@ export const KIT_COPY: Readonly<
       "アプリがライセンスを更新できるようにインターネットに接続してから、もう一度お試しください。",
     "core.codes.sign_in_required.title": "サインインが必要です",
     "core.codes.sign_in_required.message":
-      "アプリでPolaris Keyアカウントにサインインしてから、もう一度お試しください。",
+      "アプリでPolaris Lockerアカウントにサインインしてから、もう一度お試しください。",
     "core.gate.ok.title": "ライセンス有効",
     "core.gate.ok.message": "ライセンスは有効です。",
     "core.gate.grace.title": "オフライン猶予期間",
@@ -9439,7 +9439,7 @@ export const KIT_COPY: Readonly<
     "part.qr.enlarge": "크게 보기",
     "part.qr.scanInstead": "대신 휴대폰으로 스캔",
     "part.seatMeter.caption": "{limit}대 중 {used}대 사용 중",
-    "part.poweredBy": "Polaris Key 제공",
+    "part.poweredBy": "Polaris Locker 제공",
     "part.status.ok": "활성",
     "part.status.grace": "오프라인",
     "part.status.expired": "만료됨",
@@ -9694,7 +9694,7 @@ export const KIT_COPY: Readonly<
     "channel.locked": "{store}에서 릴리스 채널을 설정해요.",
     "toast.undo": "실행 취소",
     "toast.updateAvailable": "{product} {version} 업데이트가 있어요",
-    "signin.methods.title": "Polaris Key에 로그인",
+    "signin.methods.title": "Polaris Locker에 로그인",
     "signin.methods.titleApp": "로그인",
     "signin.methods.ledeApp":
       "{product}을(를) 구매할 때 사용한 이메일을 사용하세요.",
@@ -9717,7 +9717,7 @@ export const KIT_COPY: Readonly<
     "signin.header.codePanel":
       "화면의 코드 · {code} · 화면과 일치하는지 확인하세요",
     "signin.footer":
-      "Polaris Key가 {app} 로그인을 처리해요. {developer}에게는 코드나 패스키가 절대 공개되지 않아요.",
+      "Polaris Locker가 {app} 로그인을 처리해요. {developer}에게는 코드나 패스키가 절대 공개되지 않아요.",
     "signin.off.product":
       "{product}의 로그인이 꺼져 있어요. {developer}에 문의하세요.",
     "signin.off.any": "로그인을 사용할 수 없어요. 나중에 다시 시도하세요.",
@@ -9725,7 +9725,7 @@ export const KIT_COPY: Readonly<
       "코드를 너무 많이 요청했어요. {minutes}분 후에 다시 시도하세요.",
     "signin.emailDown":
       "지금은 이메일을 보낼 수 없어요. 다른 방법으로 로그인하세요.",
-    "signin.network.title": "Polaris Key에 연결할 수 없어요",
+    "signin.network.title": "Polaris Locker에 연결할 수 없어요",
     "signin.retry": "다시 시도",
     "signin.code.title": "이메일을 확인하세요",
     "signin.code.sent":
@@ -9738,7 +9738,7 @@ export const KIT_COPY: Readonly<
     "signin.code.tooMany": "시도 횟수가 너무 많아요. 새 코드를 요청하세요.",
     "signin.code.expired": "코드가 만료됐어요. 새 코드를 요청하세요.",
     "signin.code.differentEmail": "다른 이메일 사용",
-    "signin.email.subject": "Polaris Key 코드: {code}",
+    "signin.email.subject": "Polaris Locker 코드: {code}",
     "signin.email.body":
       "또는 버튼으로 로그인하세요. 코드와 링크는 10분 동안 한 번만 사용할 수 있어요.",
     "signin.confirmLink.title": "{place}에서 {time}에 요청한 로그인 확인",
@@ -9893,7 +9893,7 @@ export const KIT_COPY: Readonly<
       "라이선스 선택 · {app}에서 로그인을 마칠 준비가 됐어요.",
     "signin.menu.signIn": "로그인…",
     "signin.handoff.browserBody":
-      "브라우저에서 Polaris Key를 열었어요. 거기서 로그인하면 {app}에서 자동으로 계속 진행돼요.",
+      "브라우저에서 Polaris Locker를 열었어요. 거기서 로그인하면 {app}에서 자동으로 계속 진행돼요.",
     "signin.handoff.waiting": "브라우저를 기다리는 중…",
     "signin.handoff.finishing": "로그인을 완료하는 중…",
     "signin.handoff.useCode": "대신 코드 사용",
@@ -9915,7 +9915,7 @@ export const KIT_COPY: Readonly<
       "{app}에서 로그인이 취소됐어요. {app}에서 다시 시작하세요.",
     "signin.return.library": "내 라이브러리 열기",
     "signin.choice.freed": "이제 이 라이선스에 빈 기기 자리가 있어요.",
-    "signin.replace.opensBrowser": "브라우저에서 Polaris Key가 열려요",
+    "signin.replace.opensBrowser": "브라우저에서 Polaris Locker가 열려요",
     "signin.cli.opening": "브라우저를 여는 중…",
     "signin.cli.ifNotOpened": "열리지 않았다면 {url}에 접속하세요",
     "signin.cli.keys": "Enter 다시 열기 · c 코드 사용 · Esc 취소",
@@ -9933,7 +9933,7 @@ export const KIT_COPY: Readonly<
     "signin.approve.waiting": "다른 기기에서 승인하기를 기다리는 중…",
     "signin.approve.ask": "새 기기를 승인할까요?",
     "signin.approve.warning":
-      "직접 시작했고 기기가 눈앞에 있을 때만 승인하세요. Polaris Key나 개발자는 절대 이것을 요청하지 않아요.",
+      "직접 시작했고 기기가 눈앞에 있을 때만 승인하세요. Polaris Locker나 개발자는 절대 이것을 요청하지 않아요.",
     "signin.approve.approve": "승인하고 로그인",
     "signin.approve.deny": "거부",
     "signin.approve.denied": "요청이 거부됐어요. 다른 방법으로 로그인하세요.",
@@ -9951,7 +9951,7 @@ export const KIT_COPY: Readonly<
     "signin.expired.body": "코드와 링크는 10분 동안 한 번만 사용할 수 있어요.",
     "signin.again": "다시 로그인",
     "signin.identityOff.notice":
-      "{product}에서는 Polaris Key 로그인을 사용하지 않아요. {product}을(를) 열어 라이선스 키를 입력하세요.",
+      "{product}에서는 Polaris Locker 로그인을 사용하지 않아요. {product}을(를) 열어 라이선스 키를 입력하세요.",
     "signin.identityOff.lede":
       "여기서 로그인하면 라이브러리에서 {product}을(를) 볼 수 있어요.",
     "signin.signout.title": "이 기기의 {product}에서 로그아웃할까요?",
@@ -9964,16 +9964,16 @@ export const KIT_COPY: Readonly<
     "signin.session.toastBody": "다시 로그인하여 하던 작업을 이어서 하세요.",
     "signin.session.kitEnded":
       "로그인이 종료됐어요. {product}을(를) 계속 사용하려면 다시 로그인하세요.",
-    "signin.provider.manage": "Polaris Key에서 로그인 방법 관리",
+    "signin.provider.manage": "Polaris Locker에서 로그인 방법 관리",
     "signin.profile.changePicture": "사진 변경",
     "signin.mail.replaced.subject": "{device}에서 {product} 로그아웃됨",
     "signin.mail.replaced.body":
-      "{date}에 {product}에 로그인하면서 {device} 대신 {newDevice} 기기가 등록됐어요. 자리가 비면 나중에 다시 로그인할 수 있어요. 본인이 아니라면 Polaris Key를 열고 기기를 확인하세요.",
+      "{date}에 {product}에 로그인하면서 {device} 대신 {newDevice} 기기가 등록됐어요. 자리가 비면 나중에 다시 로그인할 수 있어요. 본인이 아니라면 Polaris Locker를 열고 기기를 확인하세요.",
     "signin.mail.newDevice.subject":
-      "Polaris Key 계정에 새 기기가 로그인했어요",
+      "Polaris Locker 계정에 새 기기가 로그인했어요",
     "signin.mail.newDevice.body":
-      "{date}에 {place}에서 {device}에 로그인했어요. 본인이 아니라면 Polaris Key의 “로그인된 위치”에서 해당 기기를 로그아웃하세요.",
-    "signin.mail.open": "Polaris Key 열기",
+      "{date}에 {place}에서 {device}에 로그인했어요. 본인이 아니라면 Polaris Locker의 “로그인된 위치”에서 해당 기기를 로그아웃하세요.",
+    "signin.mail.open": "Polaris Locker 열기",
     "signin.code.label": "6자리 코드",
     "cli.group.license": "라이선스",
     "cli.group.account": "계정",
@@ -10257,24 +10257,24 @@ export const KIT_COPY: Readonly<
       "그 코드는 작동하지 않았어요. 이메일을 확인하고 다시 입력하세요.",
     "core.codes.email_in_use.title": "이미 사용 중인 이메일",
     "core.codes.email_in_use.message":
-      "다른 Polaris Key 계정이 이미 이 이메일을 사용하고 있어요. 이 로그인을 그 계정에 연결하거나 다른 이메일을 사용하세요.",
+      "다른 Polaris Locker 계정이 이미 이 이메일을 사용하고 있어요. 이 로그인을 그 계정에 연결하거나 다른 이메일을 사용하세요.",
     "core.codes.terms_required.title": "약관 미동의",
     "core.codes.terms_required.message": "계속하려면 약관에 동의하세요.",
     "core.codes.license_owned.title": "다른 계정의 라이선스",
     "core.codes.license_owned.message":
-      "이 {product} 라이선스는 이미 다른 Polaris Key 계정에 있어요. 라이선스는 키로 옮겨지지 않아요.",
+      "이 {product} 라이선스는 이미 다른 Polaris Locker 계정에 있어요. 라이선스는 키로 옮겨지지 않아요.",
     "core.codes.license_email_bound.title": "인증되지 않은 이메일",
     "core.codes.license_email_bound.message":
-      "이 라이선스는 회원님의 Polaris Key 계정에서 인증하지 않은 이메일 주소에 속해 있어요. 계정에서 해당 이메일을 인증한 후 다시 시도하세요.",
+      "이 라이선스는 회원님의 Polaris Locker 계정에서 인증하지 않은 이메일 주소에 속해 있어요. 계정에서 해당 이메일을 인증한 후 다시 시도하세요.",
     "core.codes.account_required.title": "로그인 필요",
     "core.codes.account_required.message":
-      "이 기기에서 Polaris Key 계정에 로그인한 후 다시 시도하세요.",
+      "이 기기에서 Polaris Locker 계정에 로그인한 후 다시 시도하세요.",
     "core.codes.email_mismatch.title": "인증되지 않은 이메일",
     "core.codes.email_mismatch.message":
       "이 라이선스는 회원님 계정에서 인증하지 않은 이메일 주소에 속해 있어요. 해당 이메일을 추가하고 인증한 후 다시 시도하세요.",
     "core.codes.link_conflict.title": "이미 연결됨",
     "core.codes.link_conflict.message":
-      "해당 로그인 방법은 다른 Polaris Key 계정에 속해 있어요. 그 계정으로 로그인하거나 두 계정을 합치세요.",
+      "해당 로그인 방법은 다른 Polaris Locker 계정에 속해 있어요. 그 계정으로 로그인하거나 두 계정을 합치세요.",
     "core.codes.last_link.title": "제거할 수 없음",
     "core.codes.last_link.message":
       "계정의 유일한 로그인 방법이에요. 제거하기 전에 다른 방법을 추가하세요.",
@@ -10347,7 +10347,7 @@ export const KIT_COPY: Readonly<
     "core.codes.transport.message": "연결 상태를 확인하고 다시 시도하세요.",
     "core.codes.network.title": "연결할 수 없음",
     "core.codes.network.message":
-      "Polaris Key에 연결할 수 없어요. 연결 상태를 확인하고 다시 시도하세요.",
+      "Polaris Locker에 연결할 수 없어요. 연결 상태를 확인하고 다시 시도하세요.",
     "core.codes.refresh-failed.title": "새로고침하지 못함",
     "core.codes.refresh-failed.message":
       "라이선스와 설정을 새로고침하지 못했어요. 연결 상태를 확인하고 다시 시도하세요.",
@@ -10399,7 +10399,7 @@ export const KIT_COPY: Readonly<
       "서비스에서 앱이 사용할 수 없는 응답을 보냈어요. 다시 시도하세요.",
     "core.codes.network-error.title": "연결할 수 없음",
     "core.codes.network-error.message":
-      "Polaris Key에 연결할 수 없어요. 연결 상태를 확인하고 다시 시도하세요.",
+      "Polaris Locker에 연결할 수 없어요. 연결 상태를 확인하고 다시 시도하세요.",
     "core.codes.server-error.title": "서비스 문제",
     "core.codes.server-error.message":
       "서비스에 문제가 발생했어요. 몇 분 후에 다시 시도하세요.",
@@ -10615,7 +10615,7 @@ export const KIT_COPY: Readonly<
       "앱이 라이선스를 새로 고칠 수 있도록 인터넷에 연결한 후 다시 시도하세요.",
     "core.codes.sign_in_required.title": "로그인 필요",
     "core.codes.sign_in_required.message":
-      "앱에서 Polaris Key 계정에 로그인한 후 다시 시도하세요.",
+      "앱에서 Polaris Locker 계정에 로그인한 후 다시 시도하세요.",
     "core.gate.ok.title": "라이선스 활성",
     "core.gate.ok.message": "라이선스가 활성 상태예요.",
     "core.gate.grace.title": "오프라인 유예",
@@ -10731,7 +10731,7 @@ export const KIT_COPY: Readonly<
     "part.qr.enlarge": "放大显示",
     "part.qr.scanInstead": "改用手机扫描",
     "part.seatMeter.caption": "已使用{used}/{limit}",
-    "part.poweredBy": "由Polaris Key提供支持",
+    "part.poweredBy": "由Polaris Locker提供支持",
     "part.status.ok": "有效",
     "part.status.grace": "离线",
     "part.status.expired": "已过期",
@@ -10964,7 +10964,7 @@ export const KIT_COPY: Readonly<
     "channel.locked": "发布渠道由{store}设置。",
     "toast.undo": "撤销",
     "toast.updateAvailable": "{product} {version}现已推出",
-    "signin.methods.title": "登录Polaris Key",
+    "signin.methods.title": "登录Polaris Locker",
     "signin.methods.titleApp": "登录",
     "signin.methods.ledeApp": "使用你购买{product}时所用的电子邮件。",
     "signin.email.label": "电子邮件",
@@ -10984,12 +10984,12 @@ export const KIT_COPY: Readonly<
     "signin.header.contextLine": "你的许可证、下载和设备",
     "signin.header.codePanel": "屏幕上的代码 · {code} · 请确认与屏幕上的一致",
     "signin.footer":
-      "Polaris Key为{app}提供登录服务。{developer}永远不会看到你的验证码或通行密钥。",
+      "Polaris Locker为{app}提供登录服务。{developer}永远不会看到你的验证码或通行密钥。",
     "signin.off.product": "{product}已关闭登录功能。请联系{developer}。",
     "signin.off.any": "登录暂不可用。请稍后重试。",
     "signin.rateLimited": "验证码请求过多。请在{minutes}分钟后重试。",
     "signin.emailDown": "我们目前无法发送电子邮件。请换一种方式登录。",
-    "signin.network.title": "无法连接到Polaris Key",
+    "signin.network.title": "无法连接到Polaris Locker",
     "signin.retry": "重试",
     "signin.code.title": "查收你的电子邮件",
     "signin.code.sent":
@@ -11002,7 +11002,7 @@ export const KIT_COPY: Readonly<
     "signin.code.tooMany": "尝试次数过多。请发送新验证码。",
     "signin.code.expired": "验证码已过期。请发送新验证码。",
     "signin.code.differentEmail": "使用其他电子邮件",
-    "signin.email.subject": "你的Polaris Key验证码：{code}",
+    "signin.email.subject": "你的Polaris Locker验证码：{code}",
     "signin.email.body":
       "或点击按钮登录。验证码和链接仅可使用一次，10分钟内有效。",
     "signin.confirmLink.title": "确认于{time}从{place}发起的登录请求",
@@ -11151,7 +11151,7 @@ export const KIT_COPY: Readonly<
     "signin.desktop.notifyChoose": "选择许可证 · {app}已准备好完成登录。",
     "signin.menu.signIn": "登录…",
     "signin.handoff.browserBody":
-      "我们已在你的浏览器中打开Polaris Key。在那里登录后，{app}会自动继续。",
+      "我们已在你的浏览器中打开Polaris Locker。在那里登录后，{app}会自动继续。",
     "signin.handoff.waiting": "正在等待你的浏览器…",
     "signin.handoff.finishing": "正在完成登录…",
     "signin.handoff.useCode": "改用代码",
@@ -11170,7 +11170,7 @@ export const KIT_COPY: Readonly<
     "signin.return.cancelled": "已在{app}中取消登录。请从{app}重新开始。",
     "signin.return.library": "打开你的资料库",
     "signin.choice.freed": "此许可证现在有一台空余设备。",
-    "signin.replace.opensBrowser": "在浏览器中打开Polaris Key",
+    "signin.replace.opensBrowser": "在浏览器中打开Polaris Locker",
     "signin.cli.opening": "正在打开浏览器…",
     "signin.cli.ifNotOpened": "如果未打开，请前往{url}",
     "signin.cli.keys": "Enter 再次打开 · c 使用代码 · Esc 取消",
@@ -11186,7 +11186,7 @@ export const KIT_COPY: Readonly<
     "signin.approve.waiting": "正在等待你在另一台设备上批准…",
     "signin.approve.ask": "要批准新设备吗？",
     "signin.approve.warning":
-      "仅当是你本人在面前的设备上发起时才批准。Polaris Key或任何开发者都不会向你索要此信息。",
+      "仅当是你本人在面前的设备上发起时才批准。Polaris Locker或任何开发者都不会向你索要此信息。",
     "signin.approve.approve": "批准并登录",
     "signin.approve.deny": "拒绝",
     "signin.approve.denied": "该请求已被拒绝。请换一种方式登录。",
@@ -11203,7 +11203,7 @@ export const KIT_COPY: Readonly<
     "signin.expired.body": "验证码和链接仅可使用一次，10分钟内有效。",
     "signin.again": "重新登录",
     "signin.identityOff.notice":
-      "{product}不使用Polaris Key登录。请打开{product}并在其中输入你的许可证密钥。",
+      "{product}不使用Polaris Locker登录。请打开{product}并在其中输入你的许可证密钥。",
     "signin.identityOff.lede": "在此登录即可在你的资料库中看到{product}。",
     "signin.signout.title": "要在此设备上退出登录{product}吗？",
     "signin.signout.released":
@@ -11214,15 +11214,15 @@ export const KIT_COPY: Readonly<
     "signin.session.toastBody": "请重新登录，从上次离开的地方继续。",
     "signin.session.kitEnded":
       "你的登录已结束。请重新登录以继续使用{product}。",
-    "signin.provider.manage": "在Polaris Key中管理登录方式",
+    "signin.provider.manage": "在Polaris Locker中管理登录方式",
     "signin.profile.changePicture": "更换头像",
     "signin.mail.replaced.subject": "{product}已在{device}上退出登录",
     "signin.mail.replaced.body":
-      "你于{date}登录{product}时，{device}被{newDevice}替换。如有空余席位，它之后可以重新登录。如果这不是你本人操作，请打开Polaris Key检查你的设备。",
-    "signin.mail.newDevice.subject": "有新设备登录了你的Polaris Key账户",
+      "你于{date}登录{product}时，{device}被{newDevice}替换。如有空余席位，它之后可以重新登录。如果这不是你本人操作，请打开Polaris Locker检查你的设备。",
+    "signin.mail.newDevice.subject": "有新设备登录了你的Polaris Locker账户",
     "signin.mail.newDevice.body":
-      "{device}于{date}从{place}登录。如果这不是你本人操作，请在Polaris Key的“你的登录位置”中将其退出登录。",
-    "signin.mail.open": "打开Polaris Key",
+      "{device}于{date}从{place}登录。如果这不是你本人操作，请在Polaris Locker的“你的登录位置”中将其退出登录。",
+    "signin.mail.open": "打开Polaris Locker",
     "signin.code.label": "6位验证码",
     "cli.group.license": "许可证",
     "cli.group.account": "账户",
@@ -11489,24 +11489,24 @@ export const KIT_COPY: Readonly<
       "该验证码无效。请检查电子邮件后重新输入。",
     "core.codes.email_in_use.title": "电子邮件已被使用",
     "core.codes.email_in_use.message":
-      "另一个Polaris Key账户已在使用此电子邮件。请将此次登录合并到该账户，或使用其他电子邮件。",
+      "另一个Polaris Locker账户已在使用此电子邮件。请将此次登录合并到该账户，或使用其他电子邮件。",
     "core.codes.terms_required.title": "未接受条款",
     "core.codes.terms_required.message": "请同意条款以继续。",
     "core.codes.license_owned.title": "许可证在另一个账户中",
     "core.codes.license_owned.message":
-      "此{product}许可证已在另一个Polaris Key账户中。许可证不会通过密钥转移。",
+      "此{product}许可证已在另一个Polaris Locker账户中。许可证不会通过密钥转移。",
     "core.codes.license_email_bound.title": "电子邮件未验证",
     "core.codes.license_email_bound.message":
-      "此许可证属于你的Polaris Key账户尚未验证的电子邮件地址。请在账户中验证该电子邮件，然后重试。",
+      "此许可证属于你的Polaris Locker账户尚未验证的电子邮件地址。请在账户中验证该电子邮件，然后重试。",
     "core.codes.account_required.title": "需要登录",
     "core.codes.account_required.message":
-      "请在此设备上登录你的Polaris Key账户，然后重试。",
+      "请在此设备上登录你的Polaris Locker账户，然后重试。",
     "core.codes.email_mismatch.title": "电子邮件未验证",
     "core.codes.email_mismatch.message":
       "此许可证属于你的账户尚未验证的电子邮件地址。请添加并验证该电子邮件，然后重试。",
     "core.codes.link_conflict.title": "已被关联",
     "core.codes.link_conflict.message":
-      "该登录方式属于另一个Polaris Key账户。请登录那个账户，或将两个账户合并。",
+      "该登录方式属于另一个Polaris Locker账户。请登录那个账户，或将两个账户合并。",
     "core.codes.last_link.title": "无法移除",
     "core.codes.last_link.message":
       "这是你账户唯一的登录方式。请先添加其他登录方式再移除它。",
@@ -11572,7 +11572,7 @@ export const KIT_COPY: Readonly<
     "core.codes.transport.message": "请检查网络连接后重试。",
     "core.codes.network.title": "无法连接",
     "core.codes.network.message":
-      "无法连接到Polaris Key。请检查网络连接后重试。",
+      "无法连接到Polaris Locker。请检查网络连接后重试。",
     "core.codes.refresh-failed.title": "无法刷新",
     "core.codes.refresh-failed.message":
       "无法刷新你的许可证和设置。请检查网络连接后重试。",
@@ -11616,7 +11616,7 @@ export const KIT_COPY: Readonly<
     "core.codes.bad_response.message": "服务返回了应用无法使用的响应。请重试。",
     "core.codes.network-error.title": "无法连接",
     "core.codes.network-error.message":
-      "无法连接到Polaris Key。请检查网络连接后重试。",
+      "无法连接到Polaris Locker。请检查网络连接后重试。",
     "core.codes.server-error.title": "服务出现问题",
     "core.codes.server-error.message": "服务出现问题。请几分钟后重试。",
     "core.codes.cancelled.title": "登录已取消",
@@ -11810,7 +11810,7 @@ export const KIT_COPY: Readonly<
       "请连接互联网，以便应用刷新你的许可证，然后重试。",
     "core.codes.sign_in_required.title": "需要登录",
     "core.codes.sign_in_required.message":
-      "请在应用中登录你的Polaris Key账户，然后重试。",
+      "请在应用中登录你的Polaris Locker账户，然后重试。",
     "core.gate.ok.title": "许可证有效",
     "core.gate.ok.message": "你的许可证有效。",
     "core.gate.grace.title": "离线宽限期",
@@ -11963,6 +11963,8 @@ export const KIT_COPY_VARIANTS: Readonly<
   "signin.approve.approve": { macos: "Approve and Sign It In" },
   "signin.again": { macos: "Sign In Again" },
   "signin.signout.waitSync": { macos: "Wait for Sync" },
-  "signin.provider.manage": { macos: "Manage Sign-In Methods in Polaris Key" },
+  "signin.provider.manage": {
+    macos: "Manage Sign-In Methods in Polaris Locker",
+  },
   "signin.profile.changePicture": { macos: "Change Picture" },
 };

@@ -236,7 +236,7 @@ const BANNED_EN = /\b(licences?|grants?|retry|machines?|plans?)\b/i;
 
 const KEY_PATTERN = /^[a-z][A-Za-z0-9]*(\.[a-z][A-Za-z0-9]*)+$/;
 const STATE_PATTERN = /^[a-z]+(-[a-z]+)*$/;
-const BRAND = "Polaris Key";
+const BRAND = "Polaris Locker";
 
 /** D13: words macOS title case leaves lower case unless first or last. */
 /** D13: a particle after one of these verbs is part of a phrasal verb and keeps its capital ("Sign In"). */

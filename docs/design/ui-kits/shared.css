@@ -87,7 +87,8 @@
   --kit-card-shadow-light:
     0 0 0 1px rgb(6 9 18 / 0.05), 0 1px 2px rgb(6 9 18 / 0.04),
     0 24px 48px -16px rgb(6 9 18 / 0.14);
-  --kit-group-shadow-light: 0 0 0 1px rgb(6 9 18 / 0.05), 0 1px 2px rgb(6 9 18 / 0.04);
+  --kit-group-shadow-light:
+    0 0 0 1px rgb(6 9 18 / 0.05), 0 1px 2px rgb(6 9 18 / 0.04);
   --kit-seg-on: #fff;
 }
 
@@ -258,7 +259,11 @@ body {
 }
 .k-btn.danger:hover,
 .k-btn.danger.hover {
-  background: color-mix(in oklab, var(--kit-danger-solid) 90%, var(--kit-white));
+  background: color-mix(
+    in oklab,
+    var(--kit-danger-solid) 90%,
+    var(--kit-white)
+  );
 }
 .k-btn.block {
   width: 100%;
@@ -519,7 +524,11 @@ body {
   background: var(--kit-tonal);
 }
 .k-item[role="radio"].sel:hover {
-  background: color-mix(in oklab, var(--kit-accent-subtle) 88%, var(--pk-text-strong));
+  background: color-mix(
+    in oklab,
+    var(--kit-accent-subtle) 88%,
+    var(--pk-text-strong)
+  );
 }
 .k-item[role="radio"]:active {
   background: var(--kit-tonal-hover);

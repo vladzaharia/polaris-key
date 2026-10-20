@@ -43,7 +43,7 @@ static func clock(seconds: float) -> String:
 	return "%d:%02d" % [s / 60, s % 60]
 
 
-## The address the player types, without the scheme ("key.plrs.im/device").
+## The address the player types, without the scheme ("polaris.locker/device").
 static func short_uri(uri: String) -> String:
 	for p in ["https://", "http://"]:
 		if uri.begins_with(p):

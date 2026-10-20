@@ -367,8 +367,8 @@
         let snapshots = ProcessInfo.processInfo.environment["PKEY_KIT_SNAPSHOTS"]
 
         static let prompt = SignInPrompt(
-            deviceCode: "dc", userCode: "WDJB-MJHT", verificationUri: "https://key.plrs.im/device",
-            verificationUriComplete: "https://key.plrs.im/device?user_code=WDJB-MJHT",
+            deviceCode: "dc", userCode: "WDJB-MJHT", verificationUri: "https://polaris.locker/device",
+            verificationUriComplete: "https://polaris.locker/device?user_code=WDJB-MJHT",
             expiresIn: 600, interval: 5, expiresAt: Int(Date().timeIntervalSince1970) + 252)
 
         /// The sizes this platform runs: everything (the Mac sizes are windows on macOS, and a
@@ -735,7 +735,7 @@
 
         func testTheCodeViewShowsThePageAsPeopleTypeIt() {
             XCTAssertEqual(
-                PolarisSignInSurface.displayURL("https://key.plrs.im/device"), "key.plrs.im/device")
+                PolarisSignInSurface.displayURL("https://polaris.locker/device"), "polaris.locker/device")
             XCTAssertEqual(
                 PolarisSignInSurface.displayURL("HTTP://example.com/tv/"), "example.com/tv")
         }

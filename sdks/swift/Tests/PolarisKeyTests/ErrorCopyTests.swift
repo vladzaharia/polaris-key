@@ -115,10 +115,10 @@ final class ErrorCopyTests: XCTestCase {
         XCTAssertTrue(COPY_CODES["license_owned"]!.message.contains("{product}"))
         XCTAssertEqual(
             ErrorCopy.message(ErrorCode.licenseOwned, params: ["product": "DJDL"]),
-            "This DJDL license is already in another Polaris Key account. A license never moves by its key.")
+            "This DJDL license is already in another Polaris Locker account. A license never moves by its key.")
         XCTAssertEqual(
             ErrorCopy.message(ErrorCode.licenseOwned),
-            "This license is already in another Polaris Key account. A license never moves by its key.")
+            "This license is already in another Polaris Locker account. A license never moves by its key.")
         XCTAssertEqual(
             ErrorCopy.fill("Wait {retryAfterSeconds} s ({code}).", code: "rate_limited", params: [:]),
             "Wait s (rate_limited).")

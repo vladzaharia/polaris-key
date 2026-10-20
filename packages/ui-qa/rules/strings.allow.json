@@ -38,7 +38,11 @@
       "reason": "Store prices, percentages, counts, versions and the status-bar time: formatted values."
     },
     {
-      "pattern": "key\\.plrs\\.im/activate|tidewater\\.app/(link|releases/2\\.5)|driftkart\\.gg/tv",
+      "pattern": "Or go to polaris\\.locker/(device|tv)",
+      "reason": "signin.handoff.url around the customer site's device-code address: the address is a long fixture word, which the matcher's argument-weight guard rejects (it counts letters)."
+    },
+    {
+      "pattern": "polaris\\.locker/(activate|device|tv)|key\\.plrs\\.im/activate|tidewater\\.app/(link|releases/2\\.5)|driftkart\\.gg/tv",
       "reason": "Device-code and release-notes URLs (theme value product.deviceCodeUrl, release data)."
     },
     {
