@@ -322,10 +322,11 @@ and checks that the router dispatches every declared path to that service. Add a
 the spec **and** the descriptor's `surface` (or, for a core route, the `routeCoverage` table).
 
 **11. The docs site is tiered; the repo is the agent-readable source.** `key.plrs.im/docs`
-serves its landing page and the developer sections (`start/`, `build/`, `features/`,
-`reference/`) with no session; Help and Operate → Console need a console session; Operate →
-Platform (the runbook included), Contribute and the search index need `can(platform, docs)`
-(`packages/worker/src/docs.ts`, `DOCS_TIERS`). There is no `llms.txt`. An agent reads this file
+serves its landing page, the access page, Help (`help/`) and the developer sections (`start/`,
+`build/`, `features/`, `reference/`) with no session; Operate → Console needs a console session;
+Operate → Platform (the runbook included), Contribute and the full search bundle need
+`can(platform, docs)` (`packages/worker/src/docs.ts`, `DOCS_TIERS`; search is one Pagefind bundle
+per tier). A sessionless reader of a gated page is sent to `/docs/access/`. There is no `llms.txt`. An agent reads this file
 and the repo, not the deployed site.
 
 ## Where docs live, and how to build the site

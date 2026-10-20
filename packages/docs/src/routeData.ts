@@ -6,6 +6,7 @@ import {
   messageToc,
   type TocItem,
 } from "./lib/helpMessages";
+import { doorOf } from "./lib/doors";
 import { slugifyHeading } from "./lib/runbook";
 
 /**
@@ -78,7 +79,15 @@ async function runbookItems(body: string, maxDepth: number) {
 }
 
 export const onRequest = defineRouteMiddleware(async (context) => {
-  const { toc, id, entry } = context.locals.starlightRoute;
+  const { toc, id, entry, head } = context.locals.starlightRoute;
+  // A gated page is never indexed: a crawler that reaches one gets the access page, but a
+  // shared link or a cached copy must not put its text in a search result.
+  const tier = doorOf(id)?.tier ?? "admin";
+  if (
+    tier !== "public" &&
+    !head.some((h) => h.tag === "meta" && h.attrs?.name === "robots")
+  )
+    head.push({ tag: "meta", attrs: { name: "robots", content: "noindex" } });
   // The list is off for the page, or does not show level 2.
   if (toc === undefined || toc.minHeadingLevel > 2 || toc.maxHeadingLevel < 2)
     return;

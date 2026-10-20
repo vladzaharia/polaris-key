@@ -9580,16 +9580,28 @@ dotted path from that root, so `GET /manage/docs/<file>` served gated docs with 
 **Control.** `isPublicSpaAssetPath` (`http.ts`) is an allowlist: the proxies fetch only
 `/assets/<literal file>`, and every other path is the SPA shell. Docs are served only by
 `handleDocs`. Since ST-29 it serves by tier (`DOCS_TIERS`, docs plan §3.1 and D2): the landing
-page, the developer sections and the site's shared assets need no session; Operate → Console (and
-Help, until the owner's support address exists, D4) need a console member; Operate → Platform,
-Contribute, the search index (one bundle holds every tier's text until DOC-03b splits it) and
-every path no row names need `can(platform, docs)`. The gate runs before anything is fetched. Tests:
+page, the access page, Help (public since DOC-03b), the developer sections, the site's shared
+assets and the public search bundle need no session; Operate → Console and its search bundle need
+a console member; Operate → Platform, Contribute, the full search bundle and every path no row
+names need `can(platform, docs)`. A sessionless request for a gated path is a 302 to
+`/docs/access/`, which leaks nothing (the path is not echoed). Search is one Pagefind bundle per
+tier (`SEARCH_BUNDLES`, built by `packages/docs/scripts/build-search-bundles.ts`): each holds its
+tier's pages and those below it, so no bundle carries text its reader may not open, and a test
+reads every fragment of every bundle and fails on a page above the bundle's tier. Gated pages are
+`noindex` and out of the sitemap. The gate runs before anything is fetched. Tests:
 `test/docsGateBypass.test.ts` walks every file in the assembled tree through encoded, cased,
 doubled-slash, traversal, HEAD and Range variants: a gated file is denied anonymously by every
 route, a public one is served at `/docs` only, and with an admin session every file is served at
-`/docs` only; `test/docsGate.test.ts` pins the tier table to the docs site's `TIER_PREFIXES`.
+`/docs` only; `test/docsGate.test.ts` pins the tier table to the docs site's `TIER_PREFIXES` and
+the bundle directories to the build's. The docs `check:links` adds the tier rule: a public page's
+content links only to public pages (existing exceptions are held in `link-tier-debt.json`, which
+only shrinks).
 
-**Residual.** Anything placed under `/assets/` in the admin build is public by design. The
-developer door is public since ST-29, and a file under `/docs/_astro/` that only a gated page
-uses (an imported image) is public with it until DOC-03b gives assets their pages' tier; the
-repository that builds them is public too.
+**Residual.** Until DOC-02b scopes the sidebar to the page's door, a public page's sidebar lists
+gated pages' titles and URLs; no gated page text leaks (the docs source is public anyway).
+Anything placed under `/assets/` in the admin build is public by design. The
+developer door and Help are public, and a file under `/docs/_astro/` that only a gated page uses
+(an imported image) is public with it; the repository that builds them is public too. The search
+UI still loads the public bundle for every reader until DOC-02c picks the bundle by tier, so a
+member searching sees public results only. `robots.txt` for the docs host is not served yet (it
+needs a route, with its OpenAPI row).

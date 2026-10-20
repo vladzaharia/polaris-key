@@ -53,6 +53,8 @@ export const RESERVED_PRODUCT_SLUGS: readonly string[] = [
   "tv",
   // The platform sign-in entry, `/signin`.
   "signin",
+  // DOC-03b: `/help` redirects to the public Help site, `/docs/help/`.
+  "help",
 ];
 
 /**

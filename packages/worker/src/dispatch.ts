@@ -272,6 +272,17 @@ async function routeRequest(
     case "docs":
       return handleDocs(req, env, now);
     // WebAuthn Related Origin Requests (LK-05): the customer origin may use this host's RP id.
+    // `/help` → the public Help; no session, no database.
+    case "helpAlias":
+      return req.method === "GET" || req.method === "HEAD"
+        ? new Response(null, {
+            status: 302,
+            headers: { location: "/docs/help/", "cache-control": "no-store" },
+          })
+        : new Response(null, {
+            status: 405,
+            headers: { allow: "GET, HEAD", "cache-control": "no-store" },
+          });
     case "webauthnOrigins":
       return relatedOriginsResponse(req, env);
     // The platform device-code entry pages: no product, no session, no database.
