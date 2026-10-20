@@ -39,6 +39,8 @@ export function stringArray(raw: unknown): string[] | undefined {
 export const PREF_KEYS = {
   /** The sidebar rail (icons only), per viewer. */
   sidebarRail: "pk-admin-sidebar-rail",
+  /** Home's product view: `cards` or `table` (ST-44). */
+  homeView: "pk-admin-home-view",
   /** The product switcher's recent products. */
   recentProducts: "pk-admin-recent-products",
   /** The command palette's recent commands. */

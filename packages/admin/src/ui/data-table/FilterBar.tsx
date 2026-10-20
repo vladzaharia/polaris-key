@@ -38,6 +38,8 @@ export interface FilterBarProps {
   /** Trailing controls: Columns, density, Export CSV. */
   actions?: React.ReactNode;
   className?: string;
+  /** Below `sm` the search field takes a row of its own, full width (Home). */
+  stackSearch?: boolean;
 }
 
 /** A debounced text value that follows outside changes (Back restoring `?q=`). */
@@ -215,6 +217,7 @@ export function FilterBar({
   dateRange,
   actions,
   className,
+  stackSearch,
 }: FilterBarProps): React.ReactElement {
   const [q, setQ] = useDebouncedField(
     search?.value ?? "",
@@ -235,7 +238,12 @@ export function FilterBar({
     <div className={cn("space-y-2", className)}>
       <div className="flex flex-wrap items-center gap-2">
         {search ? (
-          <label className="relative flex min-w-48 flex-1 items-center sm:max-w-sm">
+          <label
+            className={cn(
+              "relative flex min-w-[min(12rem,100%)] flex-1 items-center sm:max-w-sm",
+              stackSearch && "max-sm:basis-full",
+            )}
+          >
             <span className="sr-only">
               {search.label ?? search.placeholder}
             </span>

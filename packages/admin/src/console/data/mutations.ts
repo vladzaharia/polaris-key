@@ -194,14 +194,13 @@ export type MutationTable = {
 
 /** §5.4 "channel policy (promote/pin/…/floor), yank, unyank". */
 /**
- * Every product's per-service facts (`GET /summary`): active licences, the release a channel
- * serves, storefronts and users, in one read (Home's card showed them until 2026-10-07). Every write that can move one of them, or
- * the registry itself, refreshes it.
+ * What needs the operator (`GET /attention`, Home): every write that can open or close an item
+ * (a secret, a recipe's approval, a resync, a credential) refreshes it.
  */
-const summary = (): Target => exact(qk.summary());
+const attention = (): Target => exact(qk.attention());
 
 const releasePolicy = (slug: string): Target[] => [
-  summary(),
+  attention(),
   prefix(qk.releases(slug)),
   prefix(qk.channels(slug)),
   prefix(qk.releaseHealth(slug)),
@@ -232,7 +231,7 @@ const license = (slug: string): Target[] => [
   prefix(qk.devicesSummary(slug)),
   // LX-30: a batch counts its licences' states (unused, disabled), and a deletion its rows.
   prefix(qk.licenseBatches(slug)),
-  summary(),
+  attention(),
 ];
 
 /**
@@ -255,7 +254,7 @@ const device = (slug: string, licenseId?: string): Target[] =>
  * row's data size. Every user row, since a relink touches two subjects.
  */
 const users = (slug: string): Target[] => [
-  summary(),
+  attention(),
   prefix(qk.users(slug)),
   prefix(qk.licenses(slug)),
   prefix(qk.devices(slug)),
@@ -304,7 +303,7 @@ const hostedAssets = (slug: string): Target[] => [
   prefix(qk.hostedAssets(slug)),
   exact(qk.products()),
   exact(qk.product(slug)),
-  summary(),
+  attention(),
   prefix(qk.activity(slug)),
   prefix(qk.storefronts(slug)),
   prefix(qk.listing(slug)),
@@ -467,11 +466,11 @@ export const MUTATIONS: MutationTable = {
   },
   createManualProduct: {
     label: "product create (manual)",
-    invalidates: () => [exact(qk.me()), exact(qk.products()), summary()],
+    invalidates: () => [exact(qk.me()), exact(qk.products()), attention()],
   },
   linkRepo: {
     label: "product create (link a repository)",
-    invalidates: () => [exact(qk.me()), exact(qk.products()), summary()],
+    invalidates: () => [exact(qk.me()), exact(qk.products()), attention()],
   },
   checkRepoCreate: {
     label: "product create check (dry run)",
@@ -489,7 +488,7 @@ export const MUTATIONS: MutationTable = {
   },
   deleteProduct: {
     label: "product delete",
-    invalidates: () => [exact(qk.me()), exact(qk.products()), summary()],
+    invalidates: () => [exact(qk.me()), exact(qk.products()), attention()],
   },
   resyncProduct: {
     label: "resync from repo",
@@ -498,7 +497,7 @@ export const MUTATIONS: MutationTable = {
     invalidates: (slug) => [
       exact(qk.products()),
       prefix(qk.product(slug)),
-      summary(),
+      attention(),
     ],
   },
   planResync: {
@@ -514,7 +513,7 @@ export const MUTATIONS: MutationTable = {
       exact(qk.me()),
       exact(qk.products()),
       prefix(qk.product(slug)),
-      summary(),
+      attention(),
     ],
   },
   checkRepoLink: {
@@ -530,7 +529,7 @@ export const MUTATIONS: MutationTable = {
       exact(qk.me()),
       exact(qk.products()),
       prefix(qk.product(slug)),
-      summary(),
+      attention(),
     ],
   },
   updateReleaseChannel: {
@@ -669,7 +668,7 @@ export const MUTATIONS: MutationTable = {
     invalidates: (slug) => [
       exact(qk.products()),
       prefix(qk.product(slug)),
-      summary(),
+      attention(),
     ],
   },
   revertServices: {
@@ -677,7 +676,7 @@ export const MUTATIONS: MutationTable = {
     invalidates: (slug) => [
       exact(qk.products()),
       prefix(qk.product(slug)),
-      summary(),
+      attention(),
     ],
   },
   servicesDryRun: {
@@ -1015,7 +1014,7 @@ export const MUTATIONS: MutationTable = {
       prefix(qk.connectors(slug)),
       prefix(qk.credentials(slug)),
       prefix(qk.platformStores()),
-      summary(),
+      attention(),
     ],
   },
   storefrontCheck: {

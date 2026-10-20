@@ -162,7 +162,7 @@ describe("today's operator (the root rule)", () => {
     boot("#/", { me: { permissions: ROOT } });
     const nav = await screen.findByRole("navigation", { name: "Console" });
     expect(within(nav).getByText("Platform")).toBeTruthy();
-    expect(within(nav).getByRole("link", { name: "Products" })).toBeTruthy();
+    expect(within(nav).getByRole("link", { name: "Home" })).toBeTruthy();
   });
 });
 
@@ -242,7 +242,7 @@ describe("NoAccessPage", () => {
     const nav = screen.getByRole("navigation", { name: "Console" });
     expect(within(nav).queryByText("Platform")).toBeNull();
     // Home is the only page: there is no product to list.
-    expect(within(nav).queryByRole("link", { name: "Products" })).toBeNull();
+    expect(within(nav).queryByRole("link", { name: "API tokens" })).toBeNull();
   });
 
   it("answers a Platform page for a member without the Platform area", async () => {
@@ -257,17 +257,12 @@ describe("NoAccessPage", () => {
     ).toBeTruthy();
   });
 
-  it("disables New product for a member without the Platform area, naming who can help", async () => {
-    boot("#/products", {
+  it("offers no New product to a member without the Platform area (ST-44)", async () => {
+    boot("#/", {
       me: SHIP_ONLY,
       extra: { "/manage/api/access/admins": ADMINS },
     });
-    const create = await screen.findByRole("link", { name: /New product/ });
-    expect(create.getAttribute("aria-disabled")).toBe("true");
-    await waitFor(() =>
-      expect(document.body.textContent).toContain(
-        "Ask Kenji Mori (kenji@example.com) or Ada Lindqvist for Platform access.",
-      ),
-    );
+    await screen.findByRole("heading", { level: 1, name: "Home" });
+    expect(screen.queryByRole("link", { name: /New product/ })).toBeNull();
   });
 });

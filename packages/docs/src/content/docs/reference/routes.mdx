@@ -17,6 +17,7 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | --- | --- | --- | --- |
 | DELETE | `/manage/api/account-tokens/{tokenId}` | admin | Revoke a person's personal token |
 | GET | `/manage/api/account-tokens` | admin | List people's personal tokens |
+| GET | `/manage/api/attention` | admin | What needs the operator across every product the session can see |
 | GET | `/manage/api/github/repositories` | admin | The repositories the Polaris Key GitHub App can read |
 | POST | `/manage/api/platform/alerts/{id}/test` | admin | Send a test alert to a destination |
 | PATCH | `/manage/api/platform/alerts/{id}` | admin | Change, disable or re-secret an alert destination (step-up) |
@@ -35,6 +36,7 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/manage/api/platform/override-migration/report` | admin | The migration report (90 days) |
 | POST | `/manage/api/platform/override-migration/run` | admin | Start or continue the run (owner-scheduled; step-up) |
 | GET | `/manage/api/platform/override-migration` | admin | The licence-override migration's state and inventory |
+| GET | `/manage/api/platform/ready` | admin | Platform ready, the first-run checklist for platform admins |
 | POST | `/manage/api/products/{product}/alerts/{id}/test` | admin | Send a test alert to a destination |
 | PATCH | `/manage/api/products/{product}/alerts/{id}` | admin | Change, disable or re-secret an alert destination (step-up) |
 | DELETE | `/manage/api/products/{product}/alerts/{id}` | admin | Remove an alert destination |
@@ -70,7 +72,6 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/manage/api/products/slug-check` | admin | Is a slug free for a new product |
 | GET | `/manage/api/products` | admin | Every registered product, as the console's registry, Home and switcher read it |
 | POST | `/manage/api/products` | admin | Create a product by hand, ready for an SDK in one call |
-| GET | `/manage/api/summary` | admin | One fact per service for every product, for Home's product cards |
 | DELETE | `/manage/api/tokens/{tokenId}` | admin | Revoke an admin API token |
 | GET | `/manage/api/tokens` | admin | List admin API tokens |
 | POST | `/manage/api/tokens` | admin | Mint an admin API token (step-up) |

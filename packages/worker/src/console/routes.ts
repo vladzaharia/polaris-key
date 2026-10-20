@@ -37,7 +37,7 @@ import { revokeAdminSessions } from "../core/console/sessionRevocation.js";
 import { buildClearCookie } from "../core/console/session.js";
 import type { Method, RouteDecl } from "./routeMatch.js";
 import { handleMe } from "./handlers/me.js";
-import { handleSummary } from "./handlers/summary.js";
+import { handleAttention } from "./handlers/attention.js";
 import { handleAccessAdmins } from "./handlers/access.js";
 import { handleGithub } from "./handlers/github.js";
 import { handlePlatformStoreConnections } from "./handlers/platformStoreConnections.js";
@@ -99,8 +99,8 @@ async function logout(c: AdminCtx): Promise<Response> {
 }
 
 const me: AdminHandler = (c) => handleMe(c.env, c.db, c.session);
-const summary: AdminHandler = (c) =>
-  handleSummary(c.req, c.env, c.db, c.session, [], c.now);
+const attention: AdminHandler = (c) =>
+  handleAttention(c.req, c.env, c.db, c.session, [], c.now);
 const github: AdminHandler = (c) =>
   handleGithub(c.req, c.env, c.db, c.session, c.segments.slice(1), c.now);
 const platform: AdminHandler = (c) =>
@@ -145,8 +145,8 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   // ── Membership: what every console member may use ─────────────────────────────────────────
   ...rows(["GET"], "/me", "console", me),
   ...rows(["POST"], "/logout", "console", logout),
-  // Home's product cards, filtered to the products the principal can see.
-  ...rows(["GET"], "/summary", "console", summary),
+  // Home's Needs attention: composed on the server, filtered by product and by fix area.
+  ...rows(["GET"], "/attention", "console", attention),
   // The product list, filtered the same way.
   ...rows(["GET"], "/products", "console", registry),
   // NoAccessPage: who can give the caller access to a scope and area.
@@ -160,6 +160,7 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   ...rows(["POST"], "/products/kek", "platform", registry, { stepUp: true }),
   ...rows(["POST"], "/products/link-repo", "platform", registry),
   ...rows(["GET"], "/platform/version", "platform", platform),
+  ...rows(["GET"], "/platform/ready", "platform", platform),
   ...rows(["GET"], "/platform/deployment", "platform", platform),
   ...rows(["GET"], "/platform/operations", "platform", platform),
   ...rows(["GET"], "/platform/activity", "platform", platform),

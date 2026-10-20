@@ -13,7 +13,7 @@ import {
   ConsoleQueryProvider,
   createQueryClient,
 } from "../src/console/data/queryClient.js";
-import { Products } from "../src/console/sections/global/pages/Products.js";
+import { Home as Products } from "../src/console/sections/global/pages/Home.js";
 import {
   ALL_ON,
   ME,

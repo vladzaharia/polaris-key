@@ -28,7 +28,8 @@
  *                   button) ends where its label and icon end, not where its padding does.
  *                   pill-right: a pill in a card header (`[data-card-header]`) sits at the
  *                   header's right edge: nothing but controls after it, and the header's ink
- *                   ends at its content edge (pills mean attention, ADMIN.md §5.11).
+ *                   ends at its content edge (pills mean attention, ADMIN.md §5.11). A head
+ *                   count beside its title (`[data-head-count]`) is exempt.
  *   overflow        The page or a scroll container scrolls sideways, a table scrolls sideways inside
  *                   its own wrapper (at desktop width; on a phone, a DataTable not drawn as cards),
  *                   a text box clips or spills its text without an intended scroller or a way to
@@ -633,6 +634,9 @@ export function probeLayout(opts: ProbeOptions): ProbeResult {
           (s.display === "flex" || s.display === "inline-flex") &&
           s.flexDirection.startsWith("row");
         if (!grid && !rowFlex) continue;
+        // A row of cards drawn top-aligned on purpose (`data-top-aligned`: Home's Needs attention
+        // beside Platform ready, products.home): each is as tall as its own content.
+        if (c.hasAttribute("data-top-aligned")) continue;
         const kids = Array.from(c.children).filter(
           (k) => !hidden(k) && !["absolute", "fixed"].includes(cs(k).position),
         );
@@ -1015,8 +1019,11 @@ export function probeLayout(opts: ProbeOptions): ProbeResult {
   for (const root of roots) {
     for (const h of Array.from(root.querySelectorAll("[data-card-header]"))) {
       if (hidden(h)) continue;
+      // A head count beside its title (`[data-head-count]`, Home's Needs attention) is the one
+      // pill that is not at the far right: every head count sits beside its title (the owner,
+      // docs/design/mockups products.home), so it is not the attention pill this rule is for.
       const pills = Array.from(h.querySelectorAll("[data-status=pill]")).filter(
-        (p) => !hidden(p),
+        (p) => !hidden(p) && !p.closest("[data-head-count]"),
       );
       if (pills.length === 0) continue;
       const hr = h.getBoundingClientRect();

@@ -43,6 +43,11 @@ export interface ProductIconView {
 /** `ProductDetail.presentation`. HA-12 adds `accent` and `accentDark`. */
 export interface ProductPresentationView {
   icon: ProductIconView | null;
+  /**
+   * The product's hosted header art (`listing.header`) as image-host URLs: the cover banner on
+   * Home's cards (ST-44), present on the list only. `null` when none is served.
+   */
+  header?: ProductIconView | null;
 }
 
 interface IconRow {
@@ -55,6 +60,7 @@ interface IconRow {
 }
 
 const ICON_SLOTS: readonly string[] = IMG_ALIASES.icon;
+const HEADER_SLOTS: readonly string[] = IMG_ALIASES.header;
 
 /** `blobs/sha256/`: the ungated blob key prefix the image host reads (`blobKey`). */
 const BLOB_PREFIX = blobKey("0".repeat(64)).slice(0, -64);
@@ -75,9 +81,26 @@ function iconView(env: Env, row: IconRow): ProductIconView | null {
  * Icons by product slug: every product's (one query), or one product's. A product with no copy
  * the image host would serve, or an environment with no image host, has no entry.
  */
-export async function productIcons(
+export function productIcons(
   env: Env,
   db: Db,
+  product?: string,
+): Promise<Map<string, ProductIconView>> {
+  return productImages(env, db, ICON_SLOTS, product);
+}
+
+/** Header art by product slug (the same read as the icons, over `listing.header`). */
+export function productHeaders(
+  env: Env,
+  db: Db,
+): Promise<Map<string, ProductIconView>> {
+  return productImages(env, db, HEADER_SLOTS);
+}
+
+async function productImages(
+  env: Env,
+  db: Db,
+  slots: readonly string[],
   product?: string,
 ): Promise<Map<string, ProductIconView>> {
   const out = new Map<string, ProductIconView>();
@@ -87,19 +110,19 @@ export async function productIcons(
     `SELECT h.product AS product, h.slot AS slot, h.sha256 AS sha256,
             h.content_type AS content_type, h.variants_json AS variants_json, h.status AS status
        FROM hosted_assets h
-      WHERE h.locale = '' AND h.slot IN (${ICON_SLOTS.map(() => "?").join(", ")})
+      WHERE h.locale = '' AND h.slot IN (${slots.map(() => "?").join(", ")})
         AND h.sha256 IS NOT NULL
         AND EXISTS (SELECT 1 FROM blob_refs r
                      WHERE r.product = h.product AND r.ref_kind = ?
                        AND r.ref_id = h.slot || '@' || h.locale
                        AND r.storage_key = ? || h.sha256)${product === undefined ? "" : "\n        AND h.product = ?"}`,
-    ...ICON_SLOTS,
+    ...slots,
     HOSTED_ASSET_REF,
     BLOB_PREFIX,
     ...(product === undefined ? [] : [product]),
   );
   // First slot wins: `presentation.icon`, then `listing.icon`.
-  for (const slot of ICON_SLOTS) {
+  for (const slot of slots) {
     for (const row of rows) {
       if (row.slot !== slot || out.has(row.product)) continue;
       const view = iconView(env, row);

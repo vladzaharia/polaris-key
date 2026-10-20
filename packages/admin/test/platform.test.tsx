@@ -215,9 +215,9 @@ describe("the Platform section inside a product (owner, 2026-10-04)", () => {
     expect(chip.getAttribute("href")).toBe("#/platform/deployment");
   });
 
-  it("comes back on Products and on the Platform pages", async () => {
-    boot("#/products", { extra: platformRoutes() });
-    await screen.findByRole("heading", { level: 1, name: "Products" });
+  it("comes back on Home and on the Platform pages", async () => {
+    boot("#/", { extra: platformRoutes() });
+    await screen.findByRole("heading", { level: 1, name: "Home" });
     expect(
       within(nav()).getByRole("button", { name: "Platform" }),
     ).toBeTruthy();

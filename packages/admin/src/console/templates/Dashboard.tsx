@@ -23,6 +23,7 @@ import { ArrowRight } from "lucide-react";
 import { cn } from "../../lib/cn.js";
 import { Button } from "../../ui/Button.js";
 import { StatusPill } from "../../ui/StatusPill.js";
+import { inlineCode } from "../../lib/inline.js";
 import { Link } from "../router.js";
 import { useCanOpenHref } from "../access/context.js";
 
@@ -142,6 +143,13 @@ export interface AttentionItem {
   objectTitle?: string;
   /** One line: why it needs the operator. */
   reason: string;
+  /**
+   * One fact per line (Home): what happened, then its cause or consequence. Each shows in full,
+   * never cut; `reason` stays the text when absent.
+   */
+  lines?: string[];
+  /** The service the fix belongs to: the row's links and focus take its accent. */
+  service?: string;
   /** One action: a link (`href`) or a handler. */
   action?: { label: string; href?: string; onSelect?: () => void };
   /** For ordering within a tone: newest first. */
@@ -234,13 +242,39 @@ function useListStagger(
   return { className: on ? "pk-stagger" : undefined, ref };
 }
 
+/**
+ * A count beside its title, a filled chip (every head count sits beside its title, never at the
+ * far right). The word it counts is for assistive technology: "3 items".
+ */
+export function HeadCount({
+  tone,
+  noun,
+  children,
+}: {
+  tone: AttentionTone;
+  noun: string;
+  children: React.ReactNode;
+}): React.ReactElement {
+  return (
+    <StatusPill
+      tone={tone}
+      icon={false}
+      size="sm"
+      className="border-transparent font-semibold"
+    >
+      {children}
+      <span className="sr-only"> {noun}</span>
+    </StatusPill>
+  );
+}
+
 const TONE_ORDER: Record<AttentionTone, number> = {
   danger: 0,
   warning: 1,
   info: 2,
 };
 const TONE_WORD: Record<AttentionTone, string> = {
-  danger: "Urgent",
+  danger: "Error",
   warning: "Warning",
   info: "Note",
 };
@@ -284,72 +318,106 @@ export function AttentionList({
   const sorted = sortAttention(visible);
   const shown = all ? sorted : sorted.slice(0, max);
   return (
+    // The card is its own container: the row layout follows the width of the column the card
+    // sits in (a split beside Platform ready, the full page, a phone), not the viewport, so a
+    // 200 % text size or a narrow column stacks the rows instead of crushing them.
     <section
       aria-labelledby={id}
-      className="rounded-xl border border-border bg-surface-raised light:shadow-elevation-1"
+      className="@container rounded-xl border border-border bg-surface-raised light:shadow-elevation-1"
     >
       <div
         data-card-header=""
-        className="flex items-center justify-between border-b border-border px-5 py-2"
+        className="flex items-center justify-between border-b border-border px-5 py-3"
       >
-        <h2 id={id} className="text-sm font-semibold text-fg-strong">
-          {title}
-        </h2>
-        <StatusPill tone="warning" icon={false} size="sm">
-          {visible.length}
-        </StatusPill>
+        <div data-head-count="" className="flex items-baseline gap-2">
+          <h2
+            id={id}
+            tabIndex={-1}
+            className="text-lg font-semibold leading-6 text-fg-strong outline-hidden"
+          >
+            {title}
+          </h2>
+          <HeadCount
+            tone={
+              visible.some((i) => i.tone === "danger") ? "danger" : "warning"
+            }
+            noun={visible.length === 1 ? "item" : "items"}
+          >
+            {visible.length}
+          </HeadCount>
+        </div>
       </div>
       <ul
         ref={motion.ref}
-        className={cn("divide-y divide-border", motion.className)}
+        className={cn(
+          // From a 36rem card the rows share four columns (pill, subject, message, link), so
+          // every subject and message starts at one x whatever its pill word.
+          "divide-y divide-border @xl:grid @xl:grid-cols-[auto_fit-content(11rem)_minmax(0,1fr)_auto]",
+          motion.className,
+        )}
       >
         {shown.map((item) => (
           <li
             key={item.id}
-            className="flex flex-col items-start gap-2 px-5 py-2.5 sm:flex-row sm:items-center"
+            data-service={item.service}
+            className="grid grid-cols-1 gap-x-3 gap-y-1.5 px-5 py-3 @xl:col-span-full @xl:grid-cols-subgrid @xl:items-start"
           >
-            <StatusPill tone={item.tone}>{TONE_WORD[item.tone]}</StatusPill>
-            {/* The object never takes the reason's width: from 640 px it is capped at 40 % of the
-                row and truncates (full text in the tooltip), and the reason keeps a 16ch floor so
-                a long name cannot crush it to a letter per line. */}
-            <span
-              className="min-w-0 max-w-full truncate text-sm font-medium text-fg-strong sm:max-w-[40%]"
-              title={
-                item.objectTitle ??
-                (typeof item.object === "string" ? item.object : undefined)
-              }
-            >
-              {item.object}
-            </span>
-            <span className="min-w-0 flex-1 text-sm text-fg sm:min-w-[16ch]">
-              {item.reason}
+            {/* Narrow: the pill and its subject read as one group; wide they are columns. */}
+            <div className="flex min-w-0 flex-wrap items-start gap-x-2 gap-y-1 @xl:contents">
+              <StatusPill tone={item.tone} className="justify-self-start">
+                {TONE_WORD[item.tone]}
+              </StatusPill>
+              <span
+                className="min-w-[min(8rem,100%)] max-w-full break-words text-sm font-medium leading-6 text-fg-strong"
+                title={
+                  item.objectTitle ??
+                  (typeof item.object === "string" ? item.object : undefined)
+                }
+              >
+                {item.object}
+              </span>
+            </div>
+            {/* The message wraps in full: nothing the row says is cut with an ellipsis. */}
+            <span className="min-w-0 space-y-0.5 text-sm leading-6 text-fg">
+              {(item.lines ?? [item.reason]).map((line, i) => (
+                <span key={i} className="block break-words">
+                  {inlineCode(line)}
+                </span>
+              ))}
             </span>
             {item.action ? (
               item.action.href ? (
                 <Link
                   to={item.action.href}
-                  className="inline-flex shrink-0 items-center gap-1 text-sm text-accent-fg underline-offset-4 hover:underline"
+                  className="flex min-h-6 min-w-0 max-w-full items-center gap-1 text-sm leading-6 text-fg-strong underline-offset-4 hover:underline @xl:justify-self-end"
                 >
-                  {item.action.label}
-                  <ArrowRight aria-hidden className="size-3.5" />
+                  <span className="min-w-0 truncate">{item.action.label}</span>
+                  <ArrowRight aria-hidden className="size-3.5 shrink-0" />
                 </Link>
               ) : (
                 <Button
                   variant="outline"
                   size="sm"
-                  className="shrink-0"
+                  className="shrink-0 @xl:justify-self-end"
                   onClick={item.action.onSelect}
                 >
                   {item.action.label}
                 </Button>
               )
-            ) : null}
+            ) : (
+              <span />
+            )}
           </li>
         ))}
       </ul>
       {sorted.length > max ? (
         <div className="border-t border-border px-5 py-2">
-          <Button variant="link" size="sm" onClick={() => setAll((v) => !v)}>
+          <Button
+            variant="link"
+            size="sm"
+            className="min-h-6"
+            onClick={() => setAll((v) => !v)}
+          >
             {all ? "Show fewer" : `Show all ${sorted.length}`}
           </Button>
         </div>

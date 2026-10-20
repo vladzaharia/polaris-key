@@ -12,7 +12,8 @@ import {
 import {
   api,
   setCsrf,
-  type AdminSummary,
+  type AttentionItemDto,
+  type PlatformReadyDto,
   type Me,
   type PlatformIdentity,
   type ProductDetail,
@@ -46,17 +47,33 @@ export function useProducts(): UseQueryResult<ProductDetail[]> {
   return useQuery({ queryKey: qk.products(), queryFn: fetchProducts });
 }
 
-export function fetchSummary(): Promise<AdminSummary> {
-  return api.summary().then((r) => ({ products: r?.products ?? {} }));
+export function fetchAttention(): Promise<AttentionItemDto[]> {
+  return api.attention().then((r) => r?.items ?? []);
 }
 
 /**
- * Every product's per-service facts (`GET /manage/api/summary`) in one read. Home's product card
- * showed them until the owner polish of 2026-10-07 simplified it to its services' icons; nothing
- * reads them now, and the read is kept for the fleet facts A-8 plans (ADMIN.md §6.1).
+ * What needs the operator across every product (`GET /manage/api/attention`): one server read,
+ * already filtered to the products the member sees and the fixes they can open. Home's list and
+ * the switcher's per-product badge read it.
  */
-export function useSummary(): UseQueryResult<AdminSummary> {
-  return useQuery({ queryKey: qk.summary(), queryFn: fetchSummary, retry: 1 });
+export function useAttention(): UseQueryResult<AttentionItemDto[]> {
+  return useQuery({
+    queryKey: qk.attention(),
+    queryFn: fetchAttention,
+    retry: 1,
+  });
+}
+
+/** Platform ready (`GET /manage/api/platform/ready`); `enabled` is the member's Platform area. */
+export function usePlatformReady(
+  enabled = true,
+): UseQueryResult<PlatformReadyDto> {
+  return useQuery({
+    queryKey: qk.platformReady(),
+    queryFn: () => api.platformReady(),
+    retry: 1,
+    enabled,
+  });
 }
 
 export function fetchProduct(slug: string): Promise<ProductDetail> {

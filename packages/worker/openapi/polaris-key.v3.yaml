@@ -15498,28 +15498,44 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
-  /manage/api/summary:
+  /manage/api/attention:
     get:
-      operationId: getAdminSummary
+      operationId: getAdminAttention
       tags: [admin]
-      summary: One fact per service for every product, for Home's product cards
+      summary: What needs the operator across every product the session can see
       description: >
-        The slice of ADMIN.md's A-8 that Home's product cards need, keyed by product slug: the
-        active (not expired) licences, the newest app release a channel serves and that channel
-        (`stable` first on a tie; `null` when no channel serves one), the storefronts the product
-        has a live outlet for, and the users its Users page lists. A member is present only when
-        the product runs that service. Each fact is one grouped query across all products, so the
-        read costs the same however many products there are. Visibility is the registry list's:
-        exactly the products `GET /manage/api/products` returns to the session, never another's.
-        Config's fact (the catalog's schema version) is on `GET /manage/api/me`; Update has none,
-        and Cloud Sync has none until its usage is stored. Platform admins only; admin session
-        cookie.
+        Home's Needs attention list (UX-12), composed on the server: a failed resync, a required
+        secret with no value, a missing signing key, an edge-mint recipe awaiting approval, a store
+        credential expiring within 14 days or expired. Only broken things appear; what a product
+        has not set up yet does not. Each item states one fact per line, names its product, and
+        carries the page its fix lives in. Visibility is the registry list's, then each item's own
+        area: a member who cannot open the fix never sees the item. The worst first. Admin session
+        cookie or an admin API token.
       responses:
         "200":
-          description: The facts, by product slug.
+          description: The items, danger before warning.
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/AdminSummary" }
+              schema: { $ref: "#/components/schemas/AdminAttention" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+  /manage/api/platform/ready:
+    get:
+      operationId: getAdminPlatformReady
+      tags: [admin]
+      summary: Platform ready, the first-run checklist for platform admins
+      description: >
+        UX-67: one row per fact the Worker holds (keyring loads, portal sessions signed, a console
+        sign-in client of its own, a scheduled run in the last 20 minutes, an email sender, store
+        accounts for the stores products ship to, the platform's own packages). A row is done
+        while its fact holds, so it can reopen. An open row carries one detail line and the
+        Platform page that fixes it. Platform admins only; admin session cookie.
+      responses:
+        "200":
+          description: The rows, with the done count.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminPlatformReady" }
         "401": { $ref: "#/components/responses/AdminUnauthorized" }
         "403": { $ref: "#/components/responses/AdminForbidden" }
   /manage/api/products:
@@ -15529,14 +15545,14 @@ paths:
       summary: Every registered product, as the console's registry, Home and switcher read it
       description: >
         The product registry: one row per product that is not deleted, with its enablement
-        (`services`), its server-computed setup state (`setup`, the source of Home's Needs
-        attention list) and, for the console's logo, `presentation.icon`: the hosted copy of the
+        (`services`) and, for the console's logo, `presentation.icon`: the hosted copy of the
         product's `presentation.icon` slot, else `listing.icon`, as image-host URLs (HA-02) with
         the 64 and 128 px WebP variants (HA-03) for a `srcset`. Every product's icon is read in
         one statement. `icon` is `null` when there is no copy the image host serves (nothing
         declared, the first pull still pending or refused) or the environment has no image host;
-        a refused re-pull keeps its last good copy, which keeps showing. The schema below names
-        the members the console relies on; the row carries more (signing, onboarding, claims).
+        a refused re-pull keeps its last good copy, which keeps showing. The list is the slim projection: setup, signing, claims and portal settings are on the
+        detail row, and what needs attention is `GET /manage/api/attention`. `presentation.header`
+        is the hosted `listing.header` copy, read in one statement as the icons are.
         Platform admins only; admin session cookie.
       responses:
         "200":
@@ -21045,54 +21061,79 @@ components:
         arch: { type: string }
         sdkVersion: { type: [string, "null"] }
         lastOkAt: { type: [integer, "null"] }
-    AdminSummary:
+    AdminAttention:
       type: object
-      required: [products]
+      required: [items]
       properties:
-        products:
-          type: object
-          description: Each visible product's facts, keyed by slug.
-          additionalProperties:
+        items:
+          type: array
+          items:
             type: object
+            required:
+              [id, product, kind, tone, service, short, lines, action, area]
             properties:
-              license:
+              id: { type: string, description: "`<slug>:<kind>[:<subject>]`." }
+              product:
                 type: object
-                required: [active]
-                properties:
-                  active:
-                    {
-                      type: integer,
-                      minimum: 0,
-                      description: "Licences that are active and not expired.",
-                    }
-              release:
-                oneOf:
-                  - type: object
-                    required: [version, channel]
-                    properties:
-                      version: { type: string }
-                      channel: { type: string }
-                  - { type: "null" }
-              distribution:
+                required: [slug, name]
+                properties: { slug: { type: string }, name: { type: string } }
+              kind:
+                type: string
+                enum:
+                  [
+                    sync.failed,
+                    secret.missing,
+                    secret.usage,
+                    signing.missing,
+                    mint.pending,
+                    credential.expiring,
+                  ]
+              tone: { type: string, enum: [danger, warning] }
+              service: { type: [string, "null"] }
+              short: { type: string }
+              lines: { type: array, items: { type: string } }
+              action:
                 type: object
-                required: [storefronts]
+                required: [label, page]
                 properties:
-                  storefronts:
+                  label: { type: string }
+                  page:
                     {
-                      type: integer,
-                      minimum: 0,
-                      description: "Storefronts the product has a live outlet for; storefronts that share one outlet kind (Homebrew, Scoop and Polaris Key ride `direct`) count once.",
+                      type: string,
+                      description: "A product page id of the console.",
                     }
-              identity:
+                  query:
+                    { type: object, additionalProperties: { type: string } }
+              area: { type: string }
+    AdminPlatformReady:
+      type: object
+      required: [rows, done, total]
+      properties:
+        done: { type: integer, minimum: 0 }
+        total: { type: integer, minimum: 0 }
+        rows:
+          type: array
+          items:
+            type: object
+            required: [id, title, done]
+            properties:
+              id: { type: string }
+              title: { type: string }
+              done: { type: boolean }
+              detail: { type: string }
+              action:
                 type: object
-                required: [users]
+                required: [label, to]
                 properties:
-                  users:
-                    {
-                      type: integer,
-                      minimum: 0,
-                      description: "Users the product's Users page lists.",
-                    }
+                  {
+                    label: { type: string },
+                    to: { type: string },
+                    store:
+                      {
+                        type: string,
+                        description: "Set when exactly one store needs an account.",
+                      },
+                  }
     AdminProductList:
       type: object
       required: [products]
@@ -21103,10 +21144,10 @@ components:
     AdminProduct:
       type: object
       description: >
-        One registry row (`console/lib/shape.ts` `productView`). Only the members the console's Home
-        and Products pages read are listed; the row carries more.
-      required:
-        [slug, name, services, setup, presentation, createdAt, modifiedAt]
+        One registry row. The list answers the slim projection (`productListView`: no setup state,
+        signing block or claims); `GET /manage/api/products/{slug}` answers the full row
+        (`productView`), including `setup`.
+      required: [slug, name, services, presentation, createdAt, modifiedAt]
       additionalProperties: true
       properties:
         slug: { type: string }
@@ -21117,6 +21158,9 @@ components:
             description: "The platform's own product (F-03), kept out of the registry views.",
           }
         releaseSource: { type: string, enum: [github, manual] }
+        verified:
+          type: boolean
+          description: List only. An SDK has been seen calling one of the product's services.
         services:
           type: object
           description: Enablement per service slug.
@@ -21126,7 +21170,7 @@ components:
             properties: { enabled: { type: boolean } }
         setup:
           type: object
-          description: The server-computed setup state (next actions, missing secrets, modules, sync).
+          description: The server-computed setup state; on the detail row only.
           additionalProperties: true
         presentation: { $ref: "#/components/schemas/AdminProductPresentation" }
         createdAt: { type: integer }
@@ -21134,11 +21178,16 @@ components:
     AdminProductPresentation:
       type: object
       description: >
-        What the console draws for the product's identity. `icon` only today; the accent arrives
-        with HA-12 (`products.presentation_json`).
+        What the console draws for the product's identity: `icon`, and on the list `header`, the
+        hosted `listing.header` art Home's cover cards show. The accent arrives with HA-12
+        (`products.presentation_json`).
       required: [icon]
       properties:
         icon:
+          oneOf:
+            - { $ref: "#/components/schemas/AdminProductIcon" }
+            - { type: "null" }
+        header:
           oneOf:
             - { $ref: "#/components/schemas/AdminProductIcon" }
             - { type: "null" }

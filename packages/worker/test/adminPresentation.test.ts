@@ -234,7 +234,7 @@ describe("presentation.icon on the registry", () => {
     expect(body.product.presentation.icon.url).toBe(`${IMG}/djdl/a/${A}`);
   });
 
-  it("reads every product's icon in one statement, however many products there are", async () => {
+  it("reads every product's icon and header in one statement each, however many products there are", async () => {
     const count = async (): Promise<number> => {
       let n = 0;
       const counting = new Proxy(db, {
@@ -259,7 +259,8 @@ describe("presentation.icon on the registry", () => {
     const two = await count();
     for (let i = 0; i < 6; i++) await seedProduct(db, `p${i}`);
     expect(await count()).toBe(two);
-    expect(two).toBe(1);
+    // The icons' read and the headers' (ST-44): two statements for any number of products.
+    expect(two).toBe(2);
   });
 });
 

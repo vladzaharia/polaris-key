@@ -196,8 +196,9 @@ const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
 const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
   adminApi: [
     ["/manage/api/github/repositories", ["get"]],
-    // Home's product cards: one fact per service for every product (A-8, sliced).
-    ["/manage/api/summary", ["get"]],
+    // Home's Needs attention (UX-12) and Platform ready (UX-67).
+    ["/manage/api/attention", ["get"]],
+    ["/manage/api/platform/ready", ["get"]],
     // U-03: the licence-override migration (notes/S-17 §5.12, decision 21).
     // P0-49: the data-migration runner.
     ["/manage/api/platform/migrations", ["get"]],

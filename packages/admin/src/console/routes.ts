@@ -285,6 +285,19 @@ export function parseLocation(hash: string): ParsedLocation {
   if (globalPath === PLATFORM_GROUP.key) {
     return redirectTo(globalHref(platformItems()[0]!.page, suffix));
   }
+  // ST-44: the Products page retired into Home; its address, with any filters, lands there.
+  if (globalPath === "products") {
+    // The retired Setup facet is Home's Attention facet (`setup=attention` is "needs attention").
+    const carried = new URLSearchParams(query);
+    const setup = carried.get("setup");
+    if (setup !== null) {
+      carried.delete("setup");
+      if (setup === "attention") carried.set("attention", "yes");
+      else if (setup === "complete") carried.set("attention", "no");
+    }
+    const q2 = carried.toString();
+    return redirectTo(globalHref("home", q2 ? `?${q2}` : ""));
+  }
   const global = GLOBAL_PAGES.find((p) => p.path === globalPath);
   if (global) {
     return {
@@ -447,7 +460,6 @@ export function productPage(
  */
 export const r = {
   home: (query?: QueryInit) => globalPage("home", query),
-  products: (query?: QueryInit) => globalPage("products", query),
   productNew: (query?: QueryInit) => globalPage("product-new", query),
   apiTokens: () => globalPage("api-tokens"),
   personalTokens: () => globalPage("personal-tokens"),

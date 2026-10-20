@@ -383,7 +383,7 @@ describe("the stale-cache bugs stay fixed", () => {
 
   it("a licence create refreshes Home's card facts, and so does every write that moves one", () => {
     const keys = {
-      summary: qk.summary(),
+      summary: qk.attention(),
       products: qk.products(),
       catalog: qk.catalog("djdl"),
     };

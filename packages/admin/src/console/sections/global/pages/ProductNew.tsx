@@ -442,7 +442,7 @@ export function ProductNew(): React.ReactElement {
         title="New product"
         titleAside={
           <Button variant="ghost" size="sm" asChild>
-            <Link to={r.products()}>Cancel</Link>
+            <Link to={r.home()}>Cancel</Link>
           </Button>
         }
       />

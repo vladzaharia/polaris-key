@@ -179,6 +179,83 @@ export async function productView(
 }
 
 /**
+ * The slim row `GET /products` answers (ST-44): what the shell, the switcher and Home's cards
+ * draw, and nothing that costs a query per product beyond enablement. The setup state, the signing
+ * block, the claims and the portal settings ride `GET /products/:slug` (`productView`); what
+ * needs the operator is the attention read's (`GET /attention`, `./attention.ts`).
+ */
+export async function productListView(
+  db: Db,
+  p: ProductRow,
+  icons: Map<string, ProductIconView>,
+  headers: Map<string, ProductIconView>,
+  verified: ReadonlySet<string>,
+): Promise<Record<string, unknown>> {
+  const services = serviceStateOf(p);
+  const presentation: ProductPresentationView = {
+    icon: icons.get(p.slug) ?? null,
+    header: headers.get(p.slug) ?? null,
+  };
+  return {
+    slug: p.slug,
+    name: p.name,
+    presentation,
+    system: p.system === 1,
+    packageFeeds: (await packageFeedsOf(db, p.slug)).enabled,
+    releaseSource: p.release_source ?? "manual",
+    services: services.services,
+    effectiveRegistration: services.effectiveRegistration,
+    servicesSource: services.source,
+    // Integration verified (Home's facet): an SDK has been seen calling a service
+    // (`verifiedProducts`); the Integration page has the per-feature answer.
+    verified: verified.has(p.slug),
+    // Plain columns, no query: the one-product read's placeholder (`useProduct`) shows them until
+    // the full row arrives.
+    signingKid: p.signing_kid,
+    jwksUrl: `/${p.slug}/.well-known/jwks.json`,
+    compatMin: p.compat_min,
+    compatMax: p.compat_max,
+    defaultMaxOfflineDays: p.default_max_offline_days,
+    defaultDeviceLimit: p.default_device_limit,
+    adminGroup: p.admin_group,
+    webOrigins: parseWebOrigins(p.web_origins_json),
+    createdAt: p.created_at,
+    modifiedAt: p.modified_at,
+  };
+}
+
+/** The products an SDK has been seen calling a service of, in one statement. */
+export async function verifiedProducts(db: Db): Promise<Set<string>> {
+  const rows = await db.all<{ product: string }>(
+    "SELECT DISTINCT product FROM sdk_sightings WHERE services_ok != 0",
+  );
+  return new Set(rows.map((r) => r.product));
+}
+
+/** One product's server-computed setup state: the source of its attention items. */
+export async function productSetupFor(
+  env: Env,
+  db: Db,
+  p: ProductRow,
+): Promise<Record<string, unknown>> {
+  const activeKey = await loadPublicSigningKey(db, p.slug);
+  const services = serviceStateOf(p);
+  return productSetupView(
+    env,
+    db,
+    p.slug,
+    Boolean(activeKey?.publicKey ?? p.signing_pub),
+    services.services.update.enabled,
+    {
+      slug: p.slug,
+      registration: services.effectiveRegistration,
+      autoIssue: parseAutoIssue(p.auto_issue_json),
+      services: services.services,
+    },
+  );
+}
+
+/**
  * Which product secrets the product's configuration names, and what names each (a custom OIDC
  * provider's client secret, each edge-mint recipe's signing key). Shared by the setup projection
  * and the secrets inventory (A-5), so both say the same thing.

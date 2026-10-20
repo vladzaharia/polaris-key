@@ -203,7 +203,7 @@ describe("no page pulses", () => {
       "console/sections/platform/pages/platformOperations.tsx",
       "console/sections/platform/pages/platformSettings.tsx",
       "console/sections/platform/pages/platformStores.tsx",
-      "console/sections/global/pages/Home.tsx",
+      "console/sections/global/components/ProductShelf.tsx",
     ])
       // `PageSkeleton` is a `pk-skeleton-group` (ui/Skeleton.tsx).
       expect(read(f), f).toMatch(/pk-skeleton|PageSkeleton/);

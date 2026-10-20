@@ -76,8 +76,11 @@ collection; tabs listed here are route tabs, not promises of a future informatio
 
 ### Platform context
 
-Outside a product, the sidebar exposes **Home** (`#/`), **Products** (`#/products`), and the
-**Platform** group:
+Outside a product, the sidebar exposes **Home** (`#/`) and the **Platform** group. Home is the one
+place for attention, Platform ready and the products, as cards or a table (ST-44); `#/products`
+redirects to it with its filters. What needs attention is the server read
+`GET /manage/api/attention`. `GET /manage/api/summary` and the A-8 fleet facts it carried (active
+licences, newest release, storefronts, users per product) are dropped, not planned.
 
 | Page              | Path                           |
 | ----------------- | ------------------------------ |

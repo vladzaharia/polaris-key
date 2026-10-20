@@ -7,24 +7,30 @@ sidebar:
   order: 3
 ---
 
-`#/products` is the platform product registry — every product a session with platform-admin
-authority can see: every product. This page covers registering one,
-turning its services on and off, and the setup-health checklist the
-[Overview page](/docs/operate/console/tour/#core) and Home are built from. Resync, linking a
-repository and deleting are on [Product actions](/docs/operate/console/product-actions/).
+Products live on **Home** (`#/`); `#/products` opens it, filters kept. This page covers registering
+a product, turning its services on and off, and the setup-health checklist the
+[Overview page](/docs/operate/console/tour/#core) is built from. Resync, linking a repository and
+deleting are on [Product actions](/docs/operate/console/product-actions/).
 
-The registry is a table: each product's logo and name (a link to its Overview; a click anywhere on
-the row follows it), slug, the services it runs, whether its setup is complete, where it comes from
-(GitHub or manual) and when it last changed. Search, the Setup and Source filters, and the sort
-live in the URL, so a filtered view can be bookmarked or shared.
+**Home** shows, in this order:
 
-**Home** (`#/`) is the cross-product view of the same registry: a **Needs attention** list (every
-product's open setup items, each with the one link that fixes it), live figures (products,
-products needing attention, repository-linked) and a card for each of the six products changed last,
-with **All products** opening this table. A card shows the product's logo, its name and slug, and one
-icon for each service it runs. Each icon is named and links to that service's page; the name opens
-the product's **Overview**. A product that needs something shows a pill beside its name: the one
-issue, or the number of issues. A healthy card shows no status at all.
+- **Needs attention**: what is broken across your products, one fact per line, each with the one
+  link that fixes it. A failed resync, a required secret with no value, a missing signing key, an
+  edge-mint recipe awaiting approval and a store credential expiring within 14 days appear. What a
+  product has not set up yet does not: that is its Overview. You see only items whose fix you can
+  open.
+- **Platform ready**, for platform admins until every step is done: the open steps with their fix,
+  and the done ones behind **Show done steps**.
+- **Products**, as cards or a table (the choice is kept). Search, **Integration verified** and
+  **Needs attention** filter both and live in the URL, so a filtered view can be bookmarked or
+  shared.
+
+A card shows the product's cover (its hosted `listing.header` art, else its icon on a plain tile),
+its logo, name and slug, and one icon for each feature it runs. Each icon is named and links to the
+feature's page; a dot marks the one with a problem. The name opens the product's **Overview**. A
+product that needs something shows a pill: the one issue, or the number of issues. A healthy card
+shows no status at all. On a phone the cover goes and the icons become one dot each. The table's
+row menu holds Resync and Delete.
 
 The logo is the product's hosted icon: the copy Polaris Key keeps of the `presentation.icon` in
 `.pkey/product`, or of the store listing's icon. Until a copy exists, or when it cannot load, the

@@ -92,7 +92,6 @@ const PRODUCT_PAGE_AREAS: Record<ProductPageId, AreaId> = {
 /** The area of every global page: Home and the product list are every member's. */
 const GLOBAL_PAGE_AREAS: Record<GlobalPageId, AreaId> = {
   home: "console",
-  products: "console",
   "api-tokens": "platform",
   "personal-tokens": "platform",
   "product-new": "platform",
@@ -148,9 +147,6 @@ export function canOpenPage(
   page: PageId,
   slug: string | null,
 ): boolean {
-  // A member with no product and no Platform area has nothing to list: Home is the only page.
-  if (page === "products")
-    return canIn(me, "platform") || (me?.products.length ?? 0) > 0;
   const area = areaOfPage(page);
   return canIn(me, area, isPlatformArea(area) ? null : slug);
 }

@@ -496,7 +496,7 @@ describe("New product from scratch", () => {
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Discard" }),
     );
-    await waitFor(() => expect(window.location.hash).toBe("#/products"));
+    await waitFor(() => expect(window.location.hash).toBe("#/"));
     expect(window.sessionStorage.getItem(DRAFT_KEY)).toBeNull();
   });
 });

@@ -122,14 +122,14 @@ describe("/me.permissions", () => {
     ]);
   });
 
-  it("shows Console access no product, and the product list and summary agree", async () => {
+  it("shows Console access no product, and the product list and attention agree", async () => {
     const who = PRINCIPALS.consoleOnly.memberId;
     const me = await get(who, "/me");
     expect(me.body.products).toEqual([]);
     expect((me.body.permissions as never)["products"]).toEqual({});
     expect((await get(who, "/products")).body.products).toEqual([]);
-    // Home's summary is keyed by slug.
-    expect((await get(who, "/summary")).body.products).toEqual({});
+    // Home's attention read lists nothing for a product the member does not hold.
+    expect((await get(who, "/attention")).body.items).toEqual([]);
     // A member who holds a product sees it in all three.
     const alpha = PRINCIPALS.alphaAdmin.memberId;
     expect(

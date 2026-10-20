@@ -16,7 +16,7 @@ function Probe(): React.ReactElement {
   return (
     <>
       <output aria-label="hash">{hash}</output>
-      <Link to="#/products">Products</Link>
+      <Link to="#/tokens">Products</Link>
     </>
   );
 }
@@ -35,10 +35,10 @@ describe("the navigation blocker", () => {
     const guard = vi.fn(() => false);
     render(<Probe />);
     const unblock = blockNavigation(guard);
-    expect(navigate("#/products?section=a")).toBe(false);
-    expect(
-      navigate("#/products?section=a", { force: true, replace: true }),
-    ).toBe(true);
+    expect(navigate("#/tokens?section=a")).toBe(false);
+    expect(navigate("#/tokens?section=a", { force: true, replace: true })).toBe(
+      true,
+    );
     expect(guard).toHaveBeenCalledTimes(1);
     unblock();
   });
@@ -49,10 +49,10 @@ describe("the navigation blocker", () => {
     const unblock = blockNavigation(guard);
     await userEvent.click(screen.getByRole("link", { name: "Products" }));
     await waitFor(() =>
-      expect(screen.getByLabelText("hash").textContent).toBe("#/products"),
+      expect(screen.getByLabelText("hash").textContent).toBe("#/tokens"),
     );
     expect(guard).toHaveBeenCalledTimes(1);
-    expect(guard).toHaveBeenCalledWith("#/products");
+    expect(guard).toHaveBeenCalledWith("#/tokens");
     unblock();
   });
 
@@ -78,9 +78,9 @@ describe("the navigation blocker", () => {
     const guard = vi.fn(() => true);
     render(<Probe />);
     const unblock = blockNavigation(guard);
-    navigate("#/products");
+    navigate("#/tokens");
     await waitFor(() =>
-      expect(screen.getByLabelText("hash").textContent).toBe("#/products"),
+      expect(screen.getByLabelText("hash").textContent).toBe("#/tokens"),
     );
     expect(guard).toHaveBeenCalledTimes(1);
     unblock();

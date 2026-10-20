@@ -7,7 +7,8 @@ import { sameViewIn, type ProductPageId, type ServiceState } from "../nav.js";
 import { navigate } from "../router.js";
 import { productPage, r } from "../routes.js";
 import { PREF_KEYS, readPref, stringArray, writePref } from "../storage.js";
-import { attentionCount, ServiceDots, type ProductLike } from "./bits.js";
+import { ServiceDots, type ProductLike } from "./bits.js";
+import { useAttention } from "../data/hooks.js";
 
 const RECENT_MAX = 5;
 
@@ -52,6 +53,14 @@ export function ProductSwitcher({
   React.useEffect(() => {
     if (!open) setQuery("");
   }, [open]);
+  // The server's attention read, counted per product (ST-44); none until it answers.
+  const attentionItems = useAttention();
+  const counts = React.useMemo(() => {
+    const m = new Map<string, number>();
+    for (const a of attentionItems.data ?? [])
+      m.set(a.product.slug, (m.get(a.product.slug) ?? 0) + 1);
+    return m;
+  }, [attentionItems.data]);
 
   const select = (p: ProductLike): void => {
     pushRecent(p.slug);
@@ -71,7 +80,7 @@ export function ProductSwitcher({
     p.slug.toLowerCase().includes(q);
 
   const row = (p: ProductLike, group: string): React.ReactElement => {
-    const attention = attentionCount(p);
+    const attention = counts.get(p.slug) ?? 0;
     return (
       <Command.Item
         key={`${group}:${p.slug}`}
@@ -184,7 +193,7 @@ export function ProductSwitcher({
               like the product list above it: a two-column grid left New product alone on a row. */}
           <div className="mt-1 flex flex-col gap-0.5 border-t border-border pt-1">
             <a
-              href={r.products()}
+              href={r.home()}
               onClick={() => onOpenChange(false)}
               className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-hover focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
             >

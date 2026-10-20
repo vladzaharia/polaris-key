@@ -15,7 +15,7 @@ const LONG =
   "Northwind Broadcast Audio Workstation — Enterprise Edition for Studios";
 
 describe("AttentionList", () => {
-  it("caps a long object and keeps a floor under the reason (overflow/text-crush)", () => {
+  it("caps a long object to its column and lets the reason wrap in full (overflow/text-crush)", () => {
     render(
       <AttentionList
         items={[
@@ -36,14 +36,17 @@ describe("AttentionList", () => {
     const object = screen.getByRole("link", { name: LONG }).parentElement!;
     // The full name is the truncated span's tooltip, and the span may shrink (no shrink-0).
     expect(object.getAttribute("title")).toBe(LONG);
-    expect(object.className).toContain("truncate");
-    expect(object.className).toContain("min-w-0");
-    expect(object.className).toContain("sm:max-w-[40%]");
+    expect(object.className).toContain("break-words");
+    expect(object.className).toContain("max-w-full");
     expect(object.className).not.toContain("shrink-0");
+    // The subject has its own grid column from `sm`, so a long name cannot crush the message.
+    expect(object.closest("li")!.className).toContain("@xl:grid-cols-subgrid");
     const reason = screen.getByText(
       "Missing required secret OIDC_CLIENT_SECRET",
     );
-    expect(reason.className).toContain("sm:min-w-[16ch]");
+    // Wrapped, never cut: no truncation or line clamp on the message.
+    expect(reason.parentElement!.className).toContain("min-w-0");
+    expect(reason.parentElement!.className).not.toMatch(/truncate|line-clamp/);
   });
 
   it("titles a plain-text object by its own text", () => {

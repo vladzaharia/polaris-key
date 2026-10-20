@@ -41,8 +41,10 @@ export const qk = {
   githubRepositories: (q: string): QueryKey => ["new-product", "repos", q],
   createCheck: (repo: string): QueryKey => ["new-product", "check", repo],
   slugCheck: (slug: string): QueryKey => ["new-product", "slug", slug],
-  /** Every product's per-service facts (`GET /summary`); no reader since the 2026-10-07 polish. */
-  summary: (): QueryKey => ["summary"],
+  /** What needs the operator across every product (`GET /attention`; Home, the switcher). */
+  attention: (): QueryKey => ["attention"],
+  /** Platform ready (`GET /platform/ready`; Home, platform admins). */
+  platformReady: (): QueryKey => ["platform", "ready"],
 
   // platform (instance-wide; notes/S-13 §9.2)
   platformVersion: (): QueryKey => ["platform", "version"],

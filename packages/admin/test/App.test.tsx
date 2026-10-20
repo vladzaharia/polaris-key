@@ -83,11 +83,15 @@ describe("admin SPA", () => {
     ).toBeTruthy();
   });
 
-  it("shows the Products registry", async () => {
+  it("opens Home, with the products on it, from the retired Products address", async () => {
     boot("#/products");
     expect(
-      await screen.findByRole("heading", { level: 1, name: "Products" }),
+      await screen.findByRole("heading", { level: 1, name: "Home" }),
     ).toBeTruthy();
+    expect(
+      await screen.findByRole("heading", { level: 2, name: "Products" }),
+    ).toBeTruthy();
+    await waitFor(() => expect(window.location.hash).toBe("#/"));
   });
 
   it("refreshes the session after a product is created, so the switcher sees it (SH-1, CC-1)", async () => {

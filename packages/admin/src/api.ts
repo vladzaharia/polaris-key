@@ -1362,6 +1362,8 @@ export interface ProductIconRef {
 export interface ProductPresentation {
   /** The hosted icon, or `null` when there is no copy the image host serves. */
   icon: ProductIconRef | null;
+  /** The hosted header art (`listing.header`): the cover on Home's cards. List rows only. */
+  header?: ProductIconRef | null;
   /** HA-12: `presentation.accent` (`#rrggbb`). Not served yet, so always absent today. */
   accent?: string | null;
   /** HA-12: the accent on a dark ground. */
@@ -1459,17 +1461,41 @@ export type HostedAssetOutcome =
   | { outcome: "reverted"; pulling: boolean }
   | { outcome: "deleted" };
 
-/** One product's facts for Home's card (`GET /manage/api/summary`; a member per service it runs). */
-export interface ProductSummary {
-  license?: { active: number };
-  /** The newest app release a channel serves and that channel; `null` when none is served yet. */
-  release?: { version: string; channel: string } | null;
-  distribution?: { storefronts: number };
-  identity?: { users: number };
+/** One thing that needs the operator (`GET /manage/api/attention`; worker `console/lib/attention.ts`). */
+export interface AttentionItemDto {
+  id: string;
+  product: { slug: string; name: string };
+  kind:
+    | "sync.failed"
+    | "secret.missing"
+    | "secret.usage"
+    | "signing.missing"
+    | "mint.pending"
+    | "credential.expiring";
+  tone: "danger" | "warning";
+  /** The service the fix belongs to (the row's accent); `null` for the product itself. */
+  service: ServiceSlug | null;
+  /** The product card's pill: the problem in two or three words. */
+  short: string;
+  /** One fact per line. */
+  lines: string[];
+  action: { label: string; page: string; query?: Record<string, string> };
+  area: string;
 }
 
-export interface AdminSummary {
-  products: Record<string, ProductSummary>;
+/** One row of Platform ready (`GET /manage/api/platform/ready`). */
+export interface PlatformReadyRow {
+  id: string;
+  title: string;
+  done: boolean;
+  detail?: string;
+  action?: { label: string; to: string; store?: string };
+}
+
+export interface PlatformReadyDto {
+  rows: PlatformReadyRow[];
+  done: number;
+  total: number;
 }
 
 export interface ProductDetail {
@@ -1482,6 +1508,8 @@ export interface ProductDetail {
   /** The platform's own product (F-03: the package-feeds owner of our SDKs); kept out of the
    *  product switcher and the Products registry. */
   system?: boolean;
+  /** List rows only: an SDK has been seen calling one of the product's services (Home's facet). */
+  verified?: boolean;
   /** The operator-owned `packageFeeds` sub-capability (F-11): Distribution → Package feeds shows
    *  only while it is on. */
   packageFeeds?: boolean;
@@ -5249,8 +5277,10 @@ const rawApi = {
 
   // ── products (platform registry) ──────────────────────────────────────────────
   products: () => call<{ products: ProductDetail[] }>("/manage/api/products"),
-  /** Home's product-card facts, every product in one read (A-8, sliced). */
-  summary: () => call<AdminSummary>("/manage/api/summary"),
+  /** Home's Needs attention: composed on the server, filtered to what the member can open. */
+  attention: () => call<{ items: AttentionItemDto[] }>("/manage/api/attention"),
+  /** Platform ready: the first-run checklist (platform admins). */
+  platformReady: () => call<PlatformReadyDto>("/manage/api/platform/ready"),
   product: (slug: string) => call<{ product: ProductDetail }>(p(slug)),
   createManualProduct: (body: CreateManualProductBody) =>
     call<CreateManualProductResult>("/manage/api/products", {
