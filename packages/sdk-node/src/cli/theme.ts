@@ -19,7 +19,8 @@
 //   motion       "reduced" / "none" stop the spinner and redraws (lines print once).
 //   product      the integrator's ProductIdentity, which wins over every other source.
 //   copy         `{ locale, overrides }` (§4.7).
-//   poweredBy    "line" or "badge" add the Powered by line under `status` and `doctor`.
+//   poweredBy    "line" or "badge" add the Powered by Polaris Locker line (the Locker mark's glyph
+//                and the phrase) under `status` and `doctor`; a terminal has no badge.
 //   symbols      the terminal's restyle hook (§3.2): "unicode" (default) or "ascii".
 //   serviceCues, radius, typography, ambient, platform: accepted for one theme value across kits,
 //                and without effect here (a terminal has no tiles, radii, faces or ambient art).
