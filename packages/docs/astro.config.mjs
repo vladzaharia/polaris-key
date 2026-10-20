@@ -1,4 +1,4 @@
-// The Polaris Key docs site. Built once, served by the worker at key.plrs.im/docs behind the
+// The Polaris Locker docs site. Built once, served by the worker at key.plrs.im/docs behind the
 // platform-admin session gate (packages/worker/src/docs.ts) — there is no public docs origin,
 // which is why the site may carry the real runbook/deployment material.
 //
@@ -44,9 +44,9 @@ export default defineConfig({
   },
   integrations: [
     starlight({
-      title: "Polaris Key",
+      title: "Polaris Locker docs",
       description:
-        "Licensing, managed config, releases, distribution, updates and sign-in for apps built on Polaris Key.",
+        "Licensing, managed config, releases, distribution, updates and sign-in for apps built on Polaris Locker.",
       // The brand (docs/design/BRAND.md §2): tokens and Rubik from @polaris-key/brand, then the
       // Starlight mapping in global.css. All three are bundled stylesheets (no inline style).
       customCss: [
@@ -54,9 +54,9 @@ export default defineConfig({
         "@polaris-key/brand/fonts.css",
         "./src/styles/global.css",
       ],
-      // The launch kit's Pinned K web identity, copied into public/branding/key/ by
-      // scripts/copy-artifacts.mjs (no terminal bit on favicons; BRAND.md §6 rule 0).
-      favicon: "/branding/key/favicon.svg",
+      // The Locker kit's web identity, copied into public/branding/locker/ by
+      // scripts/copy-artifacts.mjs (LK-00 §14.2).
+      favicon: "/branding/locker/favicon.svg",
       head: [
         {
           tag: "link",
@@ -64,7 +64,7 @@ export default defineConfig({
             rel: "icon",
             type: "image/x-icon",
             sizes: "16x16 24x24 32x32 48x48 64x64 128x128 256x256",
-            href: "/docs/branding/key/favicon.ico",
+            href: "/docs/branding/locker/favicon.ico",
           },
         },
         {
@@ -72,7 +72,23 @@ export default defineConfig({
           attrs: {
             rel: "apple-touch-icon",
             sizes: "180x180",
-            href: "/docs/branding/key/app-icon-dark-180.png",
+            href: "/docs/branding/locker/apple-touch-icon.png",
+          },
+        },
+        {
+          tag: "meta",
+          attrs: {
+            property: "og:image",
+            content:
+              "https://key.plrs.im/docs/branding/locker/social-landscape-1200.png",
+          },
+        },
+        {
+          tag: "meta",
+          attrs: {
+            name: "twitter:image",
+            content:
+              "https://key.plrs.im/docs/branding/locker/social-landscape-1200.png",
           },
         },
         {

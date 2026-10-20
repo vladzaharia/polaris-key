@@ -1,6 +1,6 @@
 /**
- * The docs site on the Polaris Key design system (docs/design/BRAND.md; the package is
- * @polaris-key/brand).
+ * The docs site on the Polaris Locker identity (docs/design/BRAND.md §15, LK-00 §14.2), built
+ * on the Polaris Key design system (the package is @polaris-key/brand).
  *
  * astro.config.mjs loads the brand's tokens.css and fonts.css (self-hosted Rubik) before this
  * file. Here Starlight's --sl-* variables are pointed at the --pk-* tokens, so the site is dark
@@ -8,10 +8,12 @@
  * choice (both set data-theme on <html>, which tokens.css keys on) and has full light parity.
  * Nothing in this file is a colour of its own: every value is a token.
  *
- * Sections: src/components/PageFrame.astro puts data-service="<slug>" around every page, and
- * feature pages (features/<feature>/) take the feature's service accent. The accent mapping below is
- * declared on [data-service] as well as :root, because a custom property that references another
- * one is resolved where it is declared.
+ * Sections: src/components/PageFrame.astro puts data-brand="locker" around every page and, on
+ * feature pages (features/<feature>/), data-service="<slug>" for the feature's service accent. The
+ * Locker context is D9a: coral is identity only (the mark, the 3 px selected-nav marker, the 2 px
+ * link underline, the context edge); links, focus, selection and hover are neutral ink. The accent
+ * mapping below is declared on [data-brand] and [data-service] as well as :root, because a custom
+ * property that references another one is resolved where it is declared.
  *
  * The rules are unlayered on purpose: Starlight's own styles live in cascade layers, so these
  * win without !important.
@@ -105,6 +107,7 @@
 /* ---- The section accent ---------------------------------------------------------------------- */
 
 :root,
+[data-brand],
 [data-service] {
   --sl-color-accent-low: var(--pk-accent-subtle);
   --sl-color-accent: var(--pk-accent);
@@ -158,6 +161,13 @@ h6,
 .sl-markdown-content a {
   color: var(--pk-accent-fg);
   text-underline-offset: 0.18em;
+}
+
+/* Locker context: link text is neutral ink; the 2 px coral underline is the identity (D9a). */
+[data-brand="locker"]:not([data-service]) .sl-markdown-content a {
+  text-decoration-line: underline;
+  text-decoration-thickness: 2px;
+  text-decoration-color: var(--pk-accent);
 }
 
 .sl-markdown-content a:hover {
@@ -309,7 +319,7 @@ h6,
   background-color: var(--pk-accent);
 }
 
-.pk-section:not([data-service="core"]) h1#_top {
+.pk-section[data-service] h1#_top {
   padding-bottom: var(--pk-space-3);
   border-bottom: 3px solid var(--pk-accent);
 }
