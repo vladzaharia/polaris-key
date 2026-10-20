@@ -59,5 +59,7 @@ export {
   SIGNIN_PROVIDER_KINDS,
   signInProviderConfigured,
   signInRegistration,
+  signInRegistrations,
+  signInSites,
 } from "./providers/config.js";
 export { turnstileEnabled } from "./card/turnstile.js";
