@@ -284,6 +284,11 @@
       "verdict": "pass",
       "date": "2026-10-20",
       "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/ST-08/rebuild/ (built re-check 2026-10-20 after one fix round; notes are ST-08n follow-ups)"
+    },
+    "LK-16": {
+      "verdict": "pass",
+      "date": "2026-10-20",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/LK-16/recheck/ (BUILT review FAIL -> one fix round -> re-check FAIL on 1 small blocker (Compose showPoweredBy) -> lead fix list 01465b426 verified by the lead)"
     }
   }
 }
