@@ -340,7 +340,7 @@ function TokensTable({
             : "Revoke every registry token?"
         }
         consequences={[
-          `${live.length} active token${live.length === 1 ? "" : "s"} stop${live.length === 1 ? "s" : ""} working within 30 seconds, including those licensees minted in the portal.`,
+          `${live.length} active token${live.length === 1 ? "" : "s"} stop${live.length === 1 ? "s" : ""} working within 30 seconds, including those licensees minted in Polaris Locker.`,
           "Clients of feeds that are not public need a new token.",
         ]}
         confirmLabel="Revoke all"

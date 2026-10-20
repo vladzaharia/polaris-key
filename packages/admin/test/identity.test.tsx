@@ -314,13 +314,14 @@ describe("App sign-in", () => {
     // Tier sync and License keys are the settings hub's rows: absent while a product has none.
     const titles = (await screen.findAllByRole("heading", { level: 2 }))
       .map((h) => h.textContent)
-      .filter((t) => t !== "Tier sync" && t !== "License keys");
+      .filter((t) => t !== "Tier sync");
     expect(titles).toEqual([
       "Status",
       "Sign-in methods",
       "Product connection",
       "Terms",
-      "Customer portal",
+      "License keys",
+      "Polaris Locker",
       "Presentation",
     ]);
   });
@@ -417,13 +418,16 @@ describe("App sign-in", () => {
     expect(saveButton()).toBeNull();
     await userEvent.click(toggle("Show a lost key again"));
     expect(screen.getByText(/1 change: lost key shown/)).toBeTruthy();
+    expect(screen.getAllByText("Not saved").length).toBeGreaterThan(0);
     await userEvent.click(saveButton()!);
     await waitFor(() => expect(updatePortalSettings).toHaveBeenCalledTimes(1));
     expect(updatePortalSettings.mock.calls[0]).toEqual([
       "djdl",
-      { portalEnabled: true, keyReissueEnabled: true },
+      { keyReissueEnabled: true },
     ]);
-    expect(await screen.findByText("Customer portal saved")).toBeTruthy();
+    expect(
+      await screen.findByText("Saved 1 change to App sign-in"),
+    ).toBeTruthy();
   });
 
   it("keeps the draft and says why when a save fails", async () => {
@@ -456,27 +460,84 @@ describe("App sign-in", () => {
     const dialog = await screen.findByRole("alertdialog");
     expect(updateServices).not.toHaveBeenCalled();
     expect(checked(status)).toBe(true);
+    expect(within(dialog).getByText("Turn off Sign-in for DJDL?")).toBeTruthy();
+    expect(within(dialog).getAllByText(/On → Off/)).toHaveLength(2);
     await userEvent.click(
       within(dialog).getByRole("button", { name: /^Turn off Sign-in and/ }),
     );
     await waitFor(() => expect(updateServices).toHaveBeenCalledTimes(1));
     expect(updateServices.mock.calls[0]![1]).toEqual({
-      services: { identity: { enabled: false } },
+      services: { identity: { enabled: false }, sync: { enabled: false } },
     });
+    // The switch gets focus back when the dialog closes.
+    await waitFor(() => expect(document.activeElement).toBe(status));
   });
 
-  it("shows only Status and the service-off state while Sign-in is off", async () => {
-    services.mockResolvedValue({
-      ...SERVICES,
-      services: { ...SERVICES.services, identity: { enabled: false } },
+  it("renders every card but Product connection when Managed config is out of reach (403)", async () => {
+    const { ApiError } = await import("../src/api.js");
+    edgeMintRecipes.mockRejectedValue(new ApiError(403, [], "forbidden"));
+    renderPage();
+    expect(await screen.findByText(/Needs Managed config access/)).toBeTruthy();
+    expect(screen.getByText("Always on")).toBeTruthy();
+    expect(
+      screen.getByRole("switch", { name: "Sign-in for DJDL" }),
+    ).toBeTruthy();
+  });
+
+  it("says who sets the methods when the platform is out of reach", async () => {
+    platformConnections.mockRejectedValue(new Error("403"));
+    renderPage();
+    await waitFor(() =>
+      expect(screen.getAllByText("Set by the platform")).toHaveLength(5),
+    );
+    expect(screen.queryByText("Unavailable")).toBeNull();
+    expect(screen.queryByRole("link", { name: /Connections/ })).toBeNull();
+    for (const label of ["Apple", "Google", "Steam"])
+      expect(screen.getByText(label)).toBeTruthy();
+  });
+
+  it("shows a compact error in Terms when its read fails, never a false 'None'", async () => {
+    productSettings.mockImplementation(async (_s, area) => {
+      if (area === "identity.signIn") throw new Error("boom");
+      return { settings: [] };
     });
     renderPage();
+    const terms = (
+      await screen.findByRole("heading", { name: "Terms" })
+    ).closest("section")!;
+    await within(terms).findByRole("button", { name: /try again|retry/i });
+    expect(within(terms).queryByText(/None\. Set identity\.terms/)).toBeNull();
+  });
+
+  it("shows the key-entry limit as 5 / 10 / 25 / No limit, with the manifest's value after a console change", async () => {
+    productSettings.mockImplementation(async (_s, area) => ({
+      settings:
+        area === "identity.keyEntry"
+          ? [
+              {
+                key: "identity.keyEntry.limit",
+                spec: { kind: "integer", unit: "count", min: 1, max: 100 },
+                value: 10,
+                source: "console",
+                manifestValue: 5,
+                version: 3,
+              },
+            ]
+          : [],
+    }));
+    renderPage();
+    expect(await screen.findByText(/says\s+5/)).toBeTruthy();
+    const group = screen.getByRole("radiogroup", {
+      name: "Key entries before an account is needed",
+    });
     expect(
-      await screen.findByText("Sign-in is off for this product"),
+      within(group)
+        .getAllByRole("radio")
+        .map((e) => e.textContent),
+    ).toEqual(["5", "10", "25", "No limit"]);
+    expect(
+      screen.getByRole("button", { name: "Revert to manifest…" }),
     ).toBeTruthy();
-    expect(
-      screen.queryByRole("heading", { name: "Sign-in methods" }),
-    ).toBeNull();
   });
 
   it("shows a loading state, then an error state with a working retry", async () => {

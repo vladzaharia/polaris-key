@@ -105,7 +105,7 @@ const KEY_ENTRY_LIMIT: SettingDef = setting({
   area: "identity.keyEntry",
   label: "Key-entry limit",
   description:
-    "How many times the key of a license that is in no account may be entered on new devices while Identity is on. Past it, with key-entry refusals on, key entry is refused with a link to the portal.",
+    "How many times the key of a license that is in no account may be entered on new devices while Identity is on. Past it, with key-entry refusals on, key entry is refused with a link to Polaris Locker.",
   keywords: ["key entry", "key_entry_limit", "activations"],
   docs: "/docs/features/sign-in/",
   value: {

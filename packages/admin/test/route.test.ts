@@ -267,6 +267,20 @@ describe("section roots redirect to the section's first page", () => {
     }
   });
 
+  it("the retired Identity pages say they moved to App sign-in (I-29)", () => {
+    for (const old of [
+      "#/p/djdl/identity/portal",
+      "#/p/djdl/identity/sign-in",
+    ]) {
+      const { route } = parseLocation(old);
+      expect(route.kind, old).toBe("not-found");
+      if (route.kind !== "not-found") continue;
+      expect(movedHref(route.slug!, route.moved!, route.query), old).toBe(
+        "#/p/djdl/identity/app-sign-in",
+      );
+    }
+  });
+
   it("only an old tab, or an old tab and an id its page has records for, is moved", () => {
     for (const hash of [
       "#/p/djdl/nope",

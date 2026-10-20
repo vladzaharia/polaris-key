@@ -429,14 +429,14 @@ describe("Services feature groups", () => {
     expect(screen.getAllByText(/Catalog v4/)).toHaveLength(1);
   });
 
-  it("loads Customer portal settings and retries the failed requested state", async () => {
+  it("loads Polaris Locker settings and retries the failed requested state", async () => {
     const user = userEvent.setup();
     updatePortalSettings.mockRejectedValueOnce(
-      new Error("Customer portal write failed"),
+      new Error("Polaris Locker write failed"),
     );
     mount();
     const customerPortal = await screen.findByRole("switch", {
-      name: /Customer portal/i,
+      name: /Polaris Locker/i,
     });
     await waitFor(() => expect(portalSettings).toHaveBeenCalledWith("djdl"));
     expect(customerPortal.getAttribute("aria-describedby")).toBeNull();

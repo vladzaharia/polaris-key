@@ -58,6 +58,15 @@ import {
  */
 export const STOREFRONT_AUDIENCE_CONFIRM = "storefront.polarisKey.audience";
 
+/** Per-product switches I-29 retired: `PATCH …/identity/portal` answers 422 for each. */
+const RETIRED_PORTAL_KEYS = [
+  "oidcEnabled",
+  "magicEnabled",
+  "licenseKeyClaimEnabled",
+  "releasesEnabled",
+  "autoLinkEnabled",
+] as const;
+
 export async function handleIdentityAdmin(
   ctx: ServiceContext & { session: AdminSession },
 ): Promise<Response | null> {
@@ -202,6 +211,8 @@ async function handlePortalSettings(
   const listing: ListingPatch = {};
   const booleans = ["portalEnabled", "keyReissueEnabled"] as const;
   const fields: string[] = [];
+  // I-29: the retired per-product toggles are refused, not ignored, so a stale client learns.
+  for (const key of RETIRED_PORTAL_KEYS) if (key in body) fields.push(key);
   for (const key of booleans) {
     if (body[key] === undefined) continue;
     if (typeof body[key] !== "boolean") fields.push(key);

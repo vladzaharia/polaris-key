@@ -35,7 +35,7 @@ export function CustomerPortalControl({
         portalEnabled: next,
       });
       queryClient.setQueryData(qk.portal(slug), result.settings);
-      toast.success(`Customer portal turned ${next ? "on" : "off"}`);
+      toast.success(`Polaris Locker turned ${next ? "on" : "off"}`);
     } catch (failure) {
       setError(failure);
       setFailedRequested(next);
@@ -58,9 +58,9 @@ export function CustomerPortalControl({
   const errorId = `${switchId}-error`;
   return (
     <SettingsRow
-      label="Customer portal"
+      label="Polaris Locker"
       htmlFor={switchId}
-      help="Lets customers manage their licenses and devices in the portal."
+      help="Lets customers manage their licenses and devices in Polaris Locker."
       footer={
         error ? (
           <div className="mt-2 flex items-center gap-3">

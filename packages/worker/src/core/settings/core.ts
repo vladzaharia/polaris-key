@@ -51,7 +51,7 @@ export const CORE_SLICE: readonly SettingDef[] = [
     area: "general",
     label: "Product name",
     description:
-      "The display name shown in the console, the portal and the discovery document.",
+      "The display name shown in the console, Polaris Locker and the discovery document.",
     docs: "/docs/operate/console/products/",
     value: { kind: "string", maxLength: 200 },
     defaultValue: "",
@@ -245,7 +245,7 @@ export const CORE_SLICE: readonly SettingDef[] = [
     area: "general",
     label: "Icon and accent",
     description:
-      "The product's icon and accent colours (light and dark), declared in .pkey/product and shown by the console, the portal and the SDK UI kits. Manifest-only.",
+      "The product's icon and accent colours (light and dark), declared in .pkey/product and shown by the console, Polaris Locker and the SDK UI kits. Manifest-only.",
     keywords: ["icon", "accent", "brand", "colour", "color"],
     docs: "/docs/build/manifest/",
     value: {
@@ -307,7 +307,7 @@ export const CORE_SLICE: readonly SettingDef[] = [
     area: "storefront",
     label: "Listing",
     description:
-      "Whether the Polaris Key library lists this product. Auto lists it where auto-issue or a mapped group would give it to the person (today's Discover); Listed adds every other way to obtain it; Unlisted hides it in the portal while every policy keeps working.",
+      "Whether the Polaris Key library lists this product. Auto lists it where auto-issue or a mapped group would give it to the person (today's Discover); Listed adds every other way to obtain it; Unlisted hides it in Polaris Locker while every policy keeps working.",
     keywords: ["discover", "library", "storefront", "unlisted", "visibility"],
     docs: STOREFRONT_DOCS,
     value: { kind: "enum", values: LISTING_STATES },

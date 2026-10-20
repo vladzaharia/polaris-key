@@ -378,6 +378,39 @@ describe("admin api", () => {
     expect(djdl!.signing).toBeNull();
   });
 
+  it("refuses the retired per-product toggles with 422, naming each (I-29)", async () => {
+    const db = makeTestDb();
+    const env = adminEnv(new KvMock(), ["djdl"]);
+    await seedProduct(db, "djdl");
+    const { cookie, csrf } = await sessionCookie(env, {
+      sub: "u1",
+      name: "Ada",
+      email: "ada@x.io",
+      groups: [PLATFORM_GROUP],
+    });
+    const retired = [
+      "oidcEnabled",
+      "magicEnabled",
+      "licenseKeyClaimEnabled",
+      "releasesEnabled",
+      "autoLinkEnabled",
+    ];
+    for (const key of retired) {
+      const res = await dispatch(
+        mkReq("PATCH", "/api/products/djdl/identity/portal", {
+          cookie,
+          csrf,
+          body: { [key]: false },
+        }),
+        env,
+        db,
+        "/api/products/djdl/identity/portal",
+      );
+      expect(res.status, key).toBe(422);
+      expect(JSON.stringify(await res.json())).toContain(key);
+    }
+  });
+
   it("reads and updates per-product customer portal settings", async () => {
     const db = makeTestDb();
     const env = adminEnv(new KvMock(), ["djdl"]);
