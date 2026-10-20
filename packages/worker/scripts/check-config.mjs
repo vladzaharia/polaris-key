@@ -15,7 +15,7 @@ const REQUIRED = [
   "PORTAL_SESSION_SECRET",
   "PLATFORM_KEK",
 ];
-const ORIGINS = ["BLOB_ORIGIN", "PKG_ORIGIN", "IMG_ORIGIN"];
+const ORIGINS = ["BLOB_ORIGIN", "PKG_ORIGIN", "IMG_ORIGIN", "CUSTOMER_ORIGIN"];
 
 /** Pure: returns the list of problems. */
 export function check(env, secretNames, toml) {

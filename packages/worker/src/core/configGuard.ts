@@ -31,7 +31,12 @@ export const OPTIONAL_STRONG_SECRETS = [
 
 /** Origin vars that, when set, must be an absolute `https://host` URL (a bare hostname parses to
  *  nothing, which turns the host split off). */
-export const ORIGIN_VARS = ["BLOB_ORIGIN", "PKG_ORIGIN", "IMG_ORIGIN"] as const;
+export const ORIGIN_VARS = [
+  "BLOB_ORIGIN",
+  "PKG_ORIGIN",
+  "IMG_ORIGIN",
+  "CUSTOMER_ORIGIN",
+] as const;
 
 /** Is `value` an absolute https URL with a host? */
 export function isHttpsOrigin(value: string): boolean {

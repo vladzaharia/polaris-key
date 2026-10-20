@@ -244,6 +244,9 @@ jobs:
           # router, D1, product load AND opening the signing key under PLATFORM_KEK, so a
           # missing or wrong KEK fails the deploy instead of silently 404ing every route.
           echo "smoke=https://key.plrs.im/djdl/.well-known/jwks.json" >> "$GITHUB_OUTPUT"
+          # LK-11: the customer host (docs/DEPLOYMENT.md "Customer host"), attached and inert
+          # until the customer.host switch is turned on; the smoke check proves it is serving.
+          echo "customer=https://polaris.locker" >> "$GITHUB_OUTPUT"
       # RUNBOOK "Representability check": a value stored before the signer's checks existed can
       # turn a product's documents into 500 document_not_representable. Run it here, with this
       # environment's token, before anything changes, so a flagged value fails the deploy instead
@@ -345,6 +348,7 @@ jobs:
         id: smoke
         env:
           SMOKE_URL: ${{ steps.target.outputs.smoke }}
+          CUSTOMER_URL: ${{ steps.target.outputs.customer }}
         run: |
           BODY=$(curl --fail --silent --show-error --retry 3 --retry-delay 5 "$SMOKE_URL")
           # Assert on content, not just status. A 200 carrying an error body, an empty key
@@ -396,6 +400,46 @@ jobs:
             exit 1
           fi
           echo "Docs gate OK via /manage proxy."
+          # The customer host (LK-11) is the same Worker on a second custom domain. The first
+          # deploy attaches it and Cloudflare issues its certificate, which can take minutes, so
+          # poll (curl exit 35/60 are TLS errors, not responses) for up to ~5 minutes. Every
+          # assertion is on an answer the host gives with the switch off.
+          CUSTOMER_OK=""
+          for attempt in $(seq 1 30); do
+            HEADERS=$(curl --silent --dump-header - --output /dev/null "$CUSTOMER_URL/" || true)
+            HOSTDOC=$(curl --silent "$CUSTOMER_URL/.well-known/polaris-host.json" || true)
+            if printf '%s' "$HEADERS" | head -n 1 | grep -q ' 200' \
+              && [ "$(printf '%s' "$HOSTDOC" | jq -r '.host' 2>/dev/null)" = "customer" ]; then
+              CUSTOMER_OK=1; break
+            fi
+            echo "Customer host not ready (attempt $attempt/30) — retrying in 10s"
+            sleep 10
+          done
+          if [ -z "$CUSTOMER_OK" ]; then
+            echo "Smoke check failed: $CUSTOMER_URL did not serve / (200) and polaris-host.json." >&2
+            exit 1
+          fi
+          printf '%s' "$HEADERS" | grep -qi '^content-security-policy:' || {
+            echo "Smoke check failed: $CUSTOMER_URL/ carries no Content-Security-Policy." >&2
+            exit 1
+          }
+          if printf '%s' "$HEADERS" | grep -qi '^set-cookie:'; then
+            echo "Smoke check failed: $CUSTOMER_URL/ set a cookie." >&2
+            exit 1
+          fi
+          CUSTOMER_MANAGE=$(curl --silent --output /dev/null --write-out '%{http_code}' "$CUSTOMER_URL/manage")
+          if [ "$CUSTOMER_MANAGE" != "404" ]; then
+            echo "Smoke check failed: $CUSTOMER_URL/manage returned $CUSTOMER_MANAGE, not 404." >&2
+            exit 1
+          fi
+          # Related Origin Requests: the API host lists the customer origin while the host is
+          # usable (CUSTOMER_ORIGIN set), whatever the switch says.
+          RELATED=$(curl --silent "$ORIGIN/.well-known/webauthn")
+          echo "$RELATED" | jq -e --arg o "$CUSTOMER_URL" '.origins == [$o]' > /dev/null || {
+            echo "Smoke check failed: $ORIGIN/.well-known/webauthn is not the customer origin: $RELATED" >&2
+            exit 1
+          }
+          echo "Customer host OK (portal CSP, no cookie, /manage 404, related origins)."
           echo "Smoke check OK: data plane is serving a non-empty JWKS."
       # F-10 automation (owner decision 2026-10-04): keep the platform's own SDKs registered on
       # its package feeds, on every deploy and safe to rerun. The deploy hook bootstraps the system
