@@ -139,7 +139,7 @@ public struct PolarisCopy: Sendable {
 /// - `palette` replaces every colour, per colour scheme;
 /// - `typography` picks the system font, Rubik or the product's own faces;
 /// - `logo` replaces the product icon the kit would show;
-/// - `poweredBy` opts in to the kit's "Powered by Polaris Key" badge under the activation card.
+/// - `poweredBy` opts in to "Powered by Polaris Locker" under the activation card: the 320 × 104 badge where 320 points are free, else the line.
 public struct PolarisTheme: Sendable {
     /// The branding for this gate; nil (the default) follows the `polarisKeyBranding`
     /// environment, which is `.native` unless the host opts in.

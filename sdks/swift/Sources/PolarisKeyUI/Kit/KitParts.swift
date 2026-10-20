@@ -522,19 +522,25 @@ public struct LoadingIndicator: View {
     }
 }
 
-/// "Powered by Polaris Key" (UI-KITS §1.6, §4.5): off by default, only at the foot of settings
-/// and about screens, never on the gate.
+/// "Powered by Polaris Locker" (UI-KITS §1.6, §4.5): off by default, only at the foot of settings
+/// and about screens, never on the gate. The line is the Locker micro mark (16 pt) and the phrase in
+/// live text; `poweredBy: .badge` draws the Locker `powered-by` badge instead where 320 pt are free.
 public struct PoweredBy: View {
     public init() {}
 
     public var body: some View {
         kitStyle { style in
-            HStack(spacing: 6) {
-                if let mark = brandImage(style.dark ? "marks/key-dark-192" : "marks/key-light-192")
-                {
-                    mark.resizable().frame(width: 16, height: 16).accessibilityHidden(true)
-                }
+            let line = HStack(spacing: 6) {
+                PolarisLockerMicroMark()
                 KitText("part.poweredBy", [:], .footnote, color: .subtle)
+            }
+            if style.poweredBy == .badge {
+                ViewThatFits(in: .horizontal) {
+                    PolarisPoweredByBadge()
+                    line
+                }
+            } else {
+                line
             }
         }
     }

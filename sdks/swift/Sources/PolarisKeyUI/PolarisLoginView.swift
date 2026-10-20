@@ -476,7 +476,7 @@ struct PolarisGateSurface<Content: View>: View {
             }
 
             if let badge = theme.poweredBy {
-                PolarisPoweredByBadge(layout: badge.layout, treatment: badge.treatment)
+                PolarisPoweredByAttribution(style: badge.style)
                     .padding(.top, PolarisSpace.l)
             }
         }

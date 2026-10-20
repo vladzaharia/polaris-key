@@ -195,23 +195,40 @@
         }
 
         func testBadgeNeverRendersBelowTheKitMinimum() {
-            XCTAssertEqual(
-                PolarisPoweredByBadge.Layout.compact.minimumSize, CGSize(width: 232, height: 88))
-            XCTAssertEqual(
-                PolarisPoweredByBadge.Layout.horizontal.minimumSize,
-                CGSize(width: 376, height: 144))
-            XCTAssertEqual(
-                PolarisPoweredByBadge.Layout.stacked.minimumSize, CGSize(width: 288, height: 336))
-            for layout in PolarisPoweredByBadge.Layout.allCases {
-                XCTAssertEqual(
-                    PolarisPoweredByBadge.size(layout: layout, width: nil), layout.minimumSize)
-                XCTAssertEqual(
-                    PolarisPoweredByBadge.size(layout: layout, width: 10), layout.minimumSize)
-            }
+            let minimum = CGSize(width: 320, height: 104)
+            XCTAssertEqual(PolarisPoweredByBadge.size(width: nil), minimum)
+            XCTAssertEqual(PolarisPoweredByBadge.size(width: 10), minimum)
+            XCTAssertEqual(PolarisPoweredByBadge.size(width: 319), minimum)
             // Larger keeps the artwork's aspect ratio.
-            XCTAssertEqual(
-                PolarisPoweredByBadge.size(layout: .compact, width: 464),
-                CGSize(width: 464, height: 176))
+            XCTAssertEqual(PolarisPoweredByBadge.size(width: 640), CGSize(width: 640, height: 208))
+            XCTAssertEqual(PolarisBrand.poweredByMarkSize, 16)
+        }
+
+        /// Every shipped drawing parses completely: each path is non-empty and the micro mark and
+        /// the badge land inside their viewBox.
+        func testTheLockerVectorsParse() {
+            let vectors: [(BrandVector, Double)] = [
+                (PolarisBrandMarkData.lockerMicroDark, 128), (PolarisBrandMarkData.lockerMicroLight, 128),
+                (PolarisBrandMarkData.lockerPoweredByDark, 320), (PolarisBrandMarkData.lockerPoweredByLight, 320),
+            ]
+            for (vector, width) in vectors {
+                XCTAssertEqual(vector.width, width)
+                let paths = vector.paths()
+                XCTAssertGreaterThanOrEqual(paths.count, 2)
+                let bounds = paths.reduce(CGRect.null) { $0.union($1.path.boundingBoxOfPath) }
+                XCTAssertFalse(bounds.isNull)
+                XCTAssertGreaterThanOrEqual(bounds.minX, -0.5)
+                XCTAssertGreaterThanOrEqual(bounds.minY, -0.5)
+                XCTAssertLessThanOrEqual(bounds.maxX, vector.width + 0.5)
+                XCTAssertLessThanOrEqual(bounds.maxY, vector.height + 0.5)
+            }
+            // The micro mark: the locker body and the star, in the kit's coral on dark.
+            let micro = PolarisBrandMarkData.lockerMicroDark.paths()
+            XCTAssertEqual(micro.map { $0.fill.hex }, [0xff7869, 0xffffff])
+            XCTAssertEqual(micro[0].path.boundingBoxOfPath.minX, 8, accuracy: 0.01)
+            XCTAssertEqual(micro[0].path.boundingBoxOfPath.maxX, 120, accuracy: 0.01)
+            // The badge's type is outlined: many glyph paths, all inside the 320 × 104 canvas.
+            XCTAssertGreaterThan(PolarisBrandMarkData.lockerPoweredByDark.paths().count, 10)
         }
 
         func testMarkStaysInTheDisplayCut() {
@@ -222,7 +239,7 @@
 
         func testPoweredByIsOptInAndUsesTheExactPhrase() {
             XCTAssertNil(PolarisTheme().poweredBy)
-            XCTAssertEqual(PolarisBrand.poweredByPhrase, "Powered by Polaris Key")
+            XCTAssertEqual(PolarisBrand.poweredByPhrase, "Powered by Polaris Locker")
         }
 
         /// Every bundled kit file, against its source in packages/brand/kit. A difference means the
@@ -265,15 +282,6 @@
             ]
             for theme in ["dark", "light"] {
                 copies.append(("marks/key-\(theme)-192.png", "01-marks/key/png/\(theme)/key-192.png"))
-                for treatment in ["transparent", "outline", "sticker"] {
-                    for (layout, px) in [("compact", 696), ("horizontal", 1128), ("stacked", 864)] {
-                        copies.append(
-                            (
-                                "powered-by/\(treatment)/\(layout)-\(theme).png",
-                                "03-powered-by/\(treatment)/powered-by-\(layout)-\(theme)-\(px).png"
-                            ))
-                    }
-                }
             }
             return copies
         }()
