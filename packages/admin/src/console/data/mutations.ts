@@ -554,7 +554,7 @@ export const MUTATIONS: MutationTable = {
     invalidates: (slug) => releasePolicy(slug),
   },
   updatePortalSettings: {
-    label: "portal settings",
+    label: "Locker settings",
     // PS-06: the listing state is in this row, so the Polaris Key panel (its paths, readiness
     // and the storefront tile) reads it too.
     invalidates: (slug) => [
@@ -563,7 +563,7 @@ export const MUTATIONS: MutationTable = {
     ],
   },
   polarisKeyPreview: {
-    label: "Polaris Key preview",
+    label: "Polaris Locker preview",
     invalidates: () => [],
     why: "A dry run for a persona: the Worker evaluates it in memory and writes nothing.",
   },

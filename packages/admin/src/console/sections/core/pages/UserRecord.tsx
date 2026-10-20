@@ -314,7 +314,7 @@ function UserRecordBody({
         title="Delete this user's data for this product?"
         consequences={[
           "Every store of this product's data for this user is emptied: config overrides and Cloud Sync data.",
-          "The user, their licenses and their Polaris Key account stay.",
+          "The user, their licenses and their Polaris Locker account stay.",
           "This can't be undone. Export first if you need a copy.",
         ]}
         typedConfirmation={

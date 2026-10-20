@@ -110,7 +110,7 @@ const SIGN_IN_ROWS: { key: ToggleKey; label: string }[] = [
   { key: "licenseKeyClaimEnabled", label: "License-key claim" },
 ];
 
-const PORTAL_OFF = "Turn on the customer portal to change this.";
+const PORTAL_OFF = "Turn on Polaris Locker to change this.";
 
 export function PortalPage({ slug }: { slug: string }): React.ReactElement {
   // Identity's own endpoint, not the copy on the product row: `identity/portal` owns the table, so
@@ -123,7 +123,7 @@ export function PortalPage({ slug }: { slug: string }): React.ReactElement {
 
   const header = (
     <PageHeader
-      title="Portal"
+      title="Locker"
       titleAside={
         settings.data ? (
           // `modifiedAt` 0: no row was ever written, so these are the defaults.
@@ -146,7 +146,7 @@ export function PortalPage({ slug }: { slug: string }): React.ReactElement {
     return (
       <div className="space-y-6">
         {header}
-        <PageSkeleton template="form" label="portal settings" />
+        <PageSkeleton template="form" label="Locker settings" />
       </div>
     );
   }
@@ -205,13 +205,13 @@ function PortalForm({
         toast.error(err);
         throw err;
       }
-      toast.success("Portal settings saved");
+      toast.success("Locker settings saved");
     },
     // Errors show in the toast; this resource has no per-field errors worth mapping.
     mapServerErrors: () => null,
   });
   const guard = useUnsavedChangesGuard(form.isDirty, {
-    message: "Discard unsaved portal settings?",
+    message: "Discard unsaved Locker settings?",
     onDiscard: form.discard,
   });
 
@@ -258,9 +258,9 @@ function PortalForm({
   return (
     // Four short sections: no "On this page" rail.
     <SettingsTemplate header={header} sections={[]}>
-      <Form form={form} aria-label="Portal settings" className="space-y-6">
+      <Form form={form} aria-label="Locker settings" className="space-y-6">
         <SettingsSection id="portal-access" title="Availability">
-          {toggle("portalEnabled", "Customer portal", null, false)}
+          {toggle("portalEnabled", "Polaris Locker", null, false)}
         </SettingsSection>
 
         <SettingsSection
@@ -351,8 +351,8 @@ function PortalForm({
 
         <SaveBar
           form={form}
-          saveLabel="Save portal settings"
-          section="Portal"
+          saveLabel="Save Locker settings"
+          section="Locker"
         />
       </Form>
 
@@ -363,12 +363,12 @@ function PortalForm({
         >
           {settings.branding == null ? (
             <p className="text-fg-muted">
-              None. The portal shows the product name in the Polaris Key theme.
+              None. Polaris Locker shows the product name in its own theme.
             </p>
           ) : (
             <JsonViewer
               value={settings.branding}
-              label="Portal branding"
+              label="Locker branding"
               collapsedDepth={2}
             />
           )}

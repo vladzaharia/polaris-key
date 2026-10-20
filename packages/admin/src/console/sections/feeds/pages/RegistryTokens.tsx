@@ -93,7 +93,7 @@ const STATUS_PILL: Record<
 /** Who minted a token, in words: an operator's address, or "Portal" for a licensee. */
 function creatorOf(t: RegistryTokenDto): string {
   if (t.createdBy.startsWith("admin:")) return t.createdBy.slice(6);
-  if (t.createdBy.startsWith("portal:")) return "Licensee, in the portal";
+  if (t.createdBy.startsWith("portal:")) return "Licensee, in Polaris Locker";
   return t.createdBy;
 }
 
