@@ -1603,12 +1603,6 @@ export const SHIPPED: ShippedState[] = [
 
 export const PENDING: PendingState[] = [
   {
-    section: "4.1",
-    title: "Login card: passkey button and conditional UI",
-    wp: ["PX-12"],
-  },
-  {
-      {
     section: "4.4",
     title: "Enter the code (wrong, expired, too many tries, resend)",
     wp: ["PX-12", "PX-W4"],
