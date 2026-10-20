@@ -10,7 +10,7 @@
 <text x="21" y="60.2" text-anchor="middle" fill="#ef6b73">✗</text>
 <text x="42" y="60.2" textLength="109.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">Can&#x27;t connect</text>
 <rect x="20.5" y="64.4" width="1" height="16.8" fill="#d7dae0"/>
-<text x="42" y="77" textLength="512.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Can&#x27;t reach Polaris Key. Check your connection and try again.</text>
+<text x="42" y="77" textLength="537.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Can&#x27;t reach Polaris Locker. Check your connection and try again.</text>
 <rect x="20.5" y="81.2" width="1" height="16.8" fill="#d7dae0"/>
 <rect x="20.5" y="98" width="1" height="8.4" fill="#d7dae0"/>
 <rect x="20.5" y="105.9" width="4.7" height="1" fill="#d7dae0"/>

@@ -81,10 +81,10 @@ describe("license keys (§4.17)", () => {
 
   it("names a Steam-shaped key", () => {
     expect(keyProblem(checkKey("5XKQ7-B2M9P-HT4LZ"))).toBe(
-      "That isn't a Polaris Key license key. Ours start with pkey_. This one looks like a Steam key: activate it in Steam.",
+      "That isn't a Polaris Locker license key. Ours start with pkey_. This one looks like a Steam key: activate it in Steam.",
     );
     expect(keyProblem(checkKey("hello"))).toBe(
-      "That isn't a Polaris Key license key. Ours start with pkey_.",
+      "That isn't a Polaris Locker license key. Ours start with pkey_.",
     );
   });
 
@@ -147,7 +147,7 @@ describe("key verdicts (UX-05)", () => {
       code: "license_owned",
       tone: "danger",
       message:
-        "This Mossgarden license is already in another Polaris Key account. A license never moves by its key.",
+        "This Mossgarden license is already in another Polaris Locker account. A license never moves by its key.",
     });
     expect(
       previewVerdict(
@@ -581,7 +581,7 @@ describe("Activate license modal (PX-06)", () => {
     for (const [answer, copy] of [
       [
         { verdict: "license_owned", product: PREVIEW_PRODUCT },
-        "This Mossgarden license is already in another Polaris Key account. A license never moves by its key.",
+        "This Mossgarden license is already in another Polaris Locker account. A license never moves by its key.",
       ],
       [
         {
@@ -870,7 +870,7 @@ describe("Activate license modal (PX-06)", () => {
     await pasteAndContinue(dialog);
     const alert = await within(dialog).findByRole("alert");
     expect(alert.textContent).toBe(
-      "This Mossgarden license is already in another Polaris Key account. A license never moves by its key.",
+      "This Mossgarden license is already in another Polaris Locker account. A license never moves by its key.",
     );
     // The same key gets the same answer: Continue waits for a new one.
     expect(

@@ -104,7 +104,8 @@ export async function pageCsp(
   return [
     "default-src 'none'",
     `style-src 'sha256-${await cssHash}'`,
-    ...(img ? [`img-src ${img}`] : []),
+    // The favicon is a `data:` URI (`core/assets/lockerShell.ts`); the icon may add its host.
+    `img-src data:${img ? ` ${img}` : ""}`,
     "base-uri 'none'",
     "form-action 'none'",
     "frame-ancestors 'none'",

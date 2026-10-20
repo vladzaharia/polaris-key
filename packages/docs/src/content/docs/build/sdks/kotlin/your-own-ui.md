@@ -97,7 +97,7 @@ suspend fun activate(client: PolarisKeyClient, key: String): Refusal? {
     if (r is ActivationResult.Ok) return null
     val message = Copy.activationMessage(kindOf(r), code = r.code)
     return when (r) {
-        // Replace a device: the portal frees a seat. Nothing was wiped.
+        // Replace a device: Polaris Locker frees a seat. Nothing was wiped.
         is ActivationResult.DeviceLimit -> Refusal(
             message,
             link = r.manageUrl?.let { ManageLink.withReturn(ManageLink.withKey(it, key), "myapp://activated") },

@@ -183,11 +183,11 @@ describe("§4.19 Activate license errors: every case, inline, never a toast", ()
     for (const [typed, copy] of [
       [
         "5XKQ7-B2M9P-HT4LZ",
-        "That isn't a Polaris Key license key. Ours start with pkey_. This one looks like a Steam key: activate it in Steam.",
+        "That isn't a Polaris Locker license key. Ours start with pkey_. This one looks like a Steam key: activate it in Steam.",
       ],
       [
         "ABCD-1234",
-        "That isn't a Polaris Key license key. Ours start with pkey_.",
+        "That isn't a Polaris Locker license key. Ours start with pkey_.",
       ],
     ] as const) {
       const dialog = await openFromHeader();
@@ -234,7 +234,7 @@ describe("§4.19 Activate license errors: every case, inline, never a toast", ()
     [
       "Owned by another account",
       { verdict: "license_owned", product: PRODUCT, entries: null },
-      "This Mossgarden license is already in another Polaris Key account. A license never moves by its key.",
+      "This Mossgarden license is already in another Polaris Locker account. A license never moves by its key.",
       ["Use a different key"],
     ],
     [
@@ -339,7 +339,7 @@ describe("§4.19 Activate license errors: every case, inline, never a toast", ()
     ],
     [
       { status: 403, body: { error: "license_owned" } },
-      /already in another Polaris Key account/,
+      /already in another Polaris Locker account/,
     ],
     [
       { status: 403, body: { error: "email_mismatch" } },

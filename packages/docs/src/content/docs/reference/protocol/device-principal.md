@@ -228,7 +228,7 @@ A device token authenticates **one device**, not the license. Listing siblings i
 self-service; mutating one is not — any device could otherwise relabel or deauthorize every
 other install on the same license, and the DELETE arm purges the victim's fingerprint, so the
 eviction would not even be recoverable by re-activating the same hardware. Cross-device
-management belongs on the portal, which authenticates the license _owner_.
+management belongs on Polaris Locker, which authenticates the license _owner_.
 
 - **`PATCH`** sets the label: a non-empty string, trimmed and truncated to 120 characters, or
   `null`. Invalid JSON is `400 bad_request`.

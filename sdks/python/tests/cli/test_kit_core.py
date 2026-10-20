@@ -342,7 +342,7 @@ def test_sign_in_model_walks_its_states() -> None:
     class P:
         userCode = "WDJB-MJHT"
         verificationUri = "https://key.plrs.im/device"
-        verificationUriComplete = "https://key.plrs.im/device?user_code=WDJB-MJHT"
+        verificationUriComplete = "https://polaris.locker/device?user_code=WDJB-MJHT"
         expiresAt = 600
 
     m = SignInModel()
@@ -466,5 +466,5 @@ def test_the_fallback_device_page_carries_the_code_but_shows_bare() -> None:
     view = SignInView("SignInHandoff", "code", user_code="WDJB-MJHT", headless=True)
     lines = screens.sign_in(kit(env("truecolor", "unicode", 80, "dark")), view, "login", frame=0)
     links = [sp for ln in lines for sp in ln.spans if sp.link]
-    assert [sp.text for sp in links] == ["key.plrs.im/device"]
-    assert links[0].link == "https://key.plrs.im/device?user_code=WDJB-MJHT"
+    assert [sp.text for sp in links] == ["polaris.locker/device"]
+    assert links[0].link == "https://polaris.locker/device?user_code=WDJB-MJHT"

@@ -379,6 +379,7 @@ export function lockupSvg(opts: LockupOptions = {}): string {
 // ── Polaris Locker badges ───────────────────────────────────────────────────────────────────
 
 export type { LockerBadgeOptions } from "./locker.js";
+export { LOCKER_LOCKUP_PALETTES } from "../generated/locker.js";
 export {
   LOCKER_BADGE_KINDS,
   lockerKitBadgeSvg,

@@ -2549,9 +2549,11 @@ nav. `identity.sign-in`, `identity.consent`, `identity.connection`, `identity.co
 `identity.app-sign-in` are the references.
 
 ```html
-<!-- the hosted card: lockup, card, legal links on the star field; 456 wide, edge to edge on phone -->
-<div class="hosted" data-service="core">
-  <div class="hosted-brand"><i class="pk-mark sm"></i>Polaris Key</div>
+<!-- the hosted card: Locker lockup, card, legal links; 456 wide, edge to edge on phone -->
+<div class="hosted" data-brand="locker">
+  <div class="hosted-brand">
+    <i class="lk-lockup" role="img" aria-label="Polaris Locker"></i>
+  </div>
   <main class="hosted-card">
     <header class="hosted-head">
       <span class="logo lg" data-product="djdl"></span>

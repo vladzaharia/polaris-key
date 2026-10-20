@@ -27,7 +27,7 @@ Each entry starts from a license status or an error code your app reports. For t
 
 ## `device_limit`
 
-**Cause:** The license has no free device seat. The body may carry `limit`, `deviceCount` and a customer-portal link that frees a seat.
+**Cause:** The license has no free device seat. The body may carry `limit`, `deviceCount` and a Polaris Locker link that frees a seat.
 
 **Fix:** Deauthorize a device the customer no longer uses, or raise the license's device limit. [Device-limit recovery](/docs/features/licensing/device-limit/) shows what to put on screen.
 

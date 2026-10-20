@@ -1143,7 +1143,9 @@ export const KIT_COPY_VARIANTS: Readonly<
   "signin.approve.approve": { macos: "Approve and Sign It In" },
   "signin.again": { macos: "Sign In Again" },
   "signin.signout.waitSync": { macos: "Wait for Sync" },
-  "signin.provider.manage": { macos: "Manage Sign-In Methods in Polaris Key" },
+  "signin.provider.manage": {
+    macos: "Manage Sign-In Methods in Polaris Locker",
+  },
   "signin.profile.changePicture": { macos: "Change Picture" },
 };
 

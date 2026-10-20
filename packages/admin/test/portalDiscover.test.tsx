@@ -216,7 +216,7 @@ describe("Discover (PX-16)", () => {
     expect(within(moss).getByText("Little Fern")).toBeTruthy();
     expect(within(moss).getByText("Lifetime · 5 devices")).toBeTruthy();
     expect(
-      within(moss).getByText("Free with a Polaris Key account"),
+      within(moss).getByText("Free with a Polaris Locker account"),
     ).toBeTruthy();
     expect(
       within(moss).getByRole("img", { name: "Runs on Windows, macOS" }),
@@ -537,8 +537,8 @@ describe("the empty Library's Discover teaser (PX-16, §4.12)", () => {
     const rows = within(ready).getAllByRole("listitem");
     // The thumbs are the fallback art (no media here): the tint and the product's letter first.
     expect(rows.map((r) => r.textContent)).toEqual([
-      "QQuillFree with a Polaris Key account",
-      "MMossgardenFree with a Polaris Key account",
+      "QQuillFree with a Polaris Locker account",
+      "MMossgardenFree with a Polaris Locker account",
       "LLumen RAWFor members of aperture-seven-customers",
     ]);
     // Each row opens its storefront page (PS-05); Discover is linked once, from the empty state.
@@ -616,7 +616,7 @@ describe("Discover's words (model/discover.ts)", () => {
 
   it("words every reason, known or not", () => {
     expect(reasonCopy("free_with_account").text).toBe(
-      "Free with a Polaris Key account",
+      "Free with a Polaris Locker account",
     );
     expect(reasonCopy("group:beta-testers").text).toBe(
       "For members of beta-testers",

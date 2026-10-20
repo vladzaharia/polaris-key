@@ -237,7 +237,7 @@ function LicenseFacts({
             <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
             {key.last4
               ? "Only the last 4 characters are kept, so a key can’t be shown in full."
-              : "Polaris Key keeps only a fingerprint of your key, so it can’t be shown again. Keep the copy from your email or store."}
+              : `Polaris Locker keeps only a fingerprint of your key, so it can’t be shown again. Keep the copy from your email or store.`}
           </p>
         </div>
       ) : null}

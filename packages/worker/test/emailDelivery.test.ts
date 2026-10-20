@@ -51,7 +51,7 @@ function setup(opts: { throwCode?: string } = {}): {
 
 const platform = (to: string): OutgoingEmail => ({
   to,
-  subject: "Sign in to Polaris Key",
+  subject: "Sign in to Polaris Locker",
   text: "code 123456",
   sender: { kind: "platform" },
 });
@@ -63,21 +63,21 @@ const passthrough = (to: string, product = "acme"): OutgoingEmail => ({
 });
 
 describe("senders", () => {
-  it("platform mail goes out as 'Polaris Key' from the shared address", async () => {
+  it("platform mail goes out as 'Polaris Locker' from the shared address", async () => {
     const { env, db, sent } = setup();
     expect(await deliverEmail(env, db, platform("a@example.com"), NOW)).toEqual(
       { ok: true },
     );
     expect(sent[0]!.from).toEqual({
-      name: "Polaris Key",
+      name: "Polaris Locker",
       email: "noreply@auth.plrs.im",
     });
   });
 
-  it("passthrough mail goes out as '<App> via Polaris Key'", async () => {
+  it("passthrough mail goes out as '<App> via Polaris Locker'", async () => {
     const { env, db, sent } = setup();
     await deliverEmail(env, db, passthrough("a@example.com"), NOW);
-    expect(sent[0]!.from.name).toBe("Acme Games via Polaris Key");
+    expect(sent[0]!.from.name).toBe("Acme Games via Polaris Locker");
   });
 
   it("a product whose name and slug are both reserved sends nothing", async () => {

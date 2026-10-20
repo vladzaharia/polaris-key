@@ -101,7 +101,7 @@ platform names suggest: the **download route** serves only extension-less binari
 (`<binaryName>-<arch>`) and `.dmg` files, so a `.zip`, `.tar.gz`, `.exe` or `.pkg` asset has no
 route under `/release/dl/`. The **truth store** does classify every asset of a release by kind
 (`dmg`, `pkg`, `archive`, `cli`, `signature`, `checksum`, `other`) and platform from its name,
-and that classification is what the customer portal lists (the portal hands out a listed file
+and that classification is what Polaris Locker lists (Locker hands out a listed file
 by redirecting to its GitHub URL) — but classification is a store concern only; it adds no
 route under `/release/dl/`. Only the DMG path and the Sparkle appcast assume
 Apple's update mechanism, so a product that ships no DMG has nothing for
@@ -114,7 +114,7 @@ release carries one.
 A GitHub release marked as a draft is not published software, and Release treats it that
 way everywhere: it is visible to the installation token (drafts are readable through the
 same API), but it is never ingested into the truth store, never offered by channel
-resolution, and never listed in the console or the customer portal. Publishing a draft on
+resolution, and never listed in the console or Locker. Publishing a draft on
 GitHub is what makes Polaris Key aware it exists — there is no separate "publish" step on
 this side.
 

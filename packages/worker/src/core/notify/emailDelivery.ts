@@ -61,7 +61,11 @@ export type SuppressionReason =
   | "operator";
 
 export type EmailSender =
-  | { kind: "platform" }
+  /**
+   * Platform mail: customer mail is "Polaris Locker" (LK-07). `audience: "operator"` (alerts,
+   * invites, member notices: the console side) is "Polaris Key".
+   */
+  | { kind: "platform"; audience?: "operator" }
   | {
       kind: "passthrough";
       product: string;
@@ -284,7 +288,7 @@ export async function deliverEmail(
 
   const from =
     msg.sender.kind === "platform"
-      ? platformSender(env)
+      ? platformSender(env, msg.sender.audience)
       : passthroughSender(env, msg.sender.displayName, msg.sender.product);
   if (!from) return unavailable;
 

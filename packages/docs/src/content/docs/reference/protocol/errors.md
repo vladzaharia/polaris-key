@@ -134,7 +134,7 @@ Over-limit is a `429`. On `POST /<p>/devices/register` it is the nested
 | `releaseArtifact`       | Artifact downloads                   | 60 / 120 s per IP                         | open      |
 | `releaseUpstream`       | GitHub API calls, **per product**    | 4000 / 3600 s per product                 | open      |
 
-The OIDC legs, both interactive logins, the portal surfaces, and the admin API have their own
+The OIDC legs, both interactive logins, Polaris Locker surfaces, and the admin API have their own
 buckets; the authoritative table is the fail-mode map in `packages/worker/src/core/rateLimit.ts`.
 
 `releaseUpstream` is not keyed on the caller, because the caller is not what it protects. It is

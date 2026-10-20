@@ -254,6 +254,21 @@
       "verdict": "pass",
       "date": "2026-10-20",
       "evidence": "Lead-verified MOCKUP pass 2026-10-19: identity.* + portal.signin re-skinned (Locker lockup, D9a neutral ink, coral identity only, no star field); screenshots _scratch/MK-L1/."
+    },
+    "LK-06": {
+      "verdict": "pass",
+      "date": "2026-10-20",
+      "evidence": "UX review FAIL B1–B3/M1/M2 fixed (ff070dcea; hard cutover: always Locker); lead-verified library-12 baseline; card heading follows LK-08a."
+    },
+    "MK-L2": {
+      "verdict": "pass",
+      "date": "2026-10-20",
+      "evidence": "Lead-verified MOCKUP pass (portal.library Locker re-skin)."
+    },
+    "LK-15": {
+      "verdict": "pass",
+      "date": "2026-10-20",
+      "evidence": "UX review PASS-WITH-NOTES 2026-10-19 (_mockups/review/LK-15/); notes fixed (8bd71e72b); A4 re-scope to Key chrome (f5936e16d, chrome = main); switch notes dropped (4f7a06bcd)."
     }
   }
 }

@@ -161,12 +161,12 @@ final class PreviewStateTests: XCTestCase {
     }
 
     func testLinksFailClosed() {
-        XCTAssertNotNil(KitLinks.valid("https://key.plrs.im/device"))
-        XCTAssertNil(KitLinks.valid("http://key.plrs.im/device"))
+        XCTAssertNotNil(KitLinks.valid("https://polaris.locker/device"))
+        XCTAssertNil(KitLinks.valid("http://polaris.locker/device"))
         XCTAssertNil(KitLinks.valid("javascript:alert(1)"))
         XCTAssertNil(KitLinks.valid(nil))
         XCTAssertNotNil(KitLinks.valid("http://127.0.0.1:5173/cb"))
-        XCTAssertEqual(KitLinks.display("https://key.plrs.im/device/"), "key.plrs.im/device")
+        XCTAssertEqual(KitLinks.display("https://polaris.locker/device/"), "polaris.locker/device")
         let id = KitIdentity.resolve(
             PolarisKeyPreviewState.base {
                 $0.integrator = KitIntegrator(deviceCodeUrl: "https://driftkart.gg/tv")
@@ -180,7 +180,7 @@ final class PreviewStateTests: XCTestCase {
             })
         XCTAssertEqual(
             KitLinks.deviceCodePage(bad, platform: PolarisKeyPreviewState.iPhone),
-            "https://key.plrs.im/device")
+            "https://polaris.locker/device")
     }
 
     func testPluralRulesMatchCLDROnIntegers() {

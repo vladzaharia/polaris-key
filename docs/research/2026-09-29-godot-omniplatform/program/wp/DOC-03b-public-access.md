@@ -59,6 +59,22 @@ The owner asked for "first class documentation, thorough but not overly so" on o
 - Build the tiered gate and the bundles at once. The **public switch** (Help served without a session) waits for D4 and for DOC-04a, DOC-04b, DOC-05a, DOC-05b and DOC-05c to have no stubs; the package is done when the switch is on.
 - Nothing describes unbuilt behaviour as shipped; P2 lines belong to the consolidation packages that ship them (§10).
 
+## Progress and corrections (2026-10-19)
+
+Done: Help public (`HELP_TIER` removed; lead override of the D4 wait for the customer site);
+a sessionless reader of a gated page goes to /docs/access/; three Pagefind bundles (`pagefind`,
+`pagefind-member`, `pagefind-admin`; `scripts/build-search-bundles.ts`, `SEARCH_BUNDLES` in
+doors.ts and docs.ts); `dist/docs-access.json`; gated pages noindex and out of the sitemap;
+check:links tier rule (page content only; existing violations in `link-tier-debt.json`,
+shrink-only); rule 11 and THREAT-MODEL text.
+
+Round 2: `help` reserved as a product slug (productSlug.ts, schema, test), `/help` -> `/docs/help/` alias (router kind `helpAlias`, OpenAPI, routeCoverage); sitemap filter parses `<url>` blocks; redirect-tier test (3 known public-to-gated moves listed in searchBundles.test.ts).
+
+Not done: the search UI still loads the public bundle for every reader (DOC-02c); `robots.txt`
+for the docs host needs a route and an OpenAPI row (follow-up); `/docs/help/code/<id>/` is a follow-up; DOC-02b's per-door
+sidebar lets the tier rule cover the chrome; the host move to polaris.locker is LK-09; the C-51
+text is not in this repo's docs.
+
 ## Steps
 
 1. Verify this brief against the code and the docs site (the code is the fact) and record any correction here, in the same branch.

@@ -5,6 +5,7 @@ import {
   foldForReserve,
   LEGACY_EMAIL_ADDRESS,
   passthroughSender,
+  CUSTOMER_SENDER_NAME,
   PLATFORM_SENDER_NAME,
   platformSender,
   SENDER_APP_NAME_MAX,
@@ -14,7 +15,7 @@ import type { Env } from "../src/platform/env.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv } from "./seed.js";
 
-// I-18: the "<App> via Polaris Key" sender name and the reserved-name validator (S-16 §5.2
+// I-18: the "<App> via Polaris Locker" sender name and the reserved-name validator (S-16 §5.2
 // "Branding", §5.4 item 7). A tenant can neither send as the platform nor break the header.
 
 const env = (): Env => makeEnv(new KvMock(), []);
@@ -45,6 +46,7 @@ describe("the sender-name validator", () => {
       "Polaris",
       "Polaris Key",
       "Polaris Key Security",
+      "Locker",
       "polariskey",
       "P0LARIS",
       "P o l a r i s",
@@ -115,19 +117,24 @@ describe("the sender-name validator", () => {
 });
 
 describe("the sender identities", () => {
-  it("platform mail is exactly 'Polaris Key', never ' via'", () => {
+  it("customer mail is exactly 'Polaris Locker', never ' via'; operator mail is 'Polaris Key'", () => {
     expect(platformSender(env())).toEqual({
+      name: CUSTOMER_SENDER_NAME,
+      email: LEGACY_EMAIL_ADDRESS,
+    });
+    expect(CUSTOMER_SENDER_NAME).toBe("Polaris Locker");
+    expect(platformSender(env(), "operator")).toEqual({
       name: PLATFORM_SENDER_NAME,
       email: LEGACY_EMAIL_ADDRESS,
     });
     expect(PLATFORM_SENDER_NAME).toBe("Polaris Key");
   });
 
-  it("passthrough mail is '<App> via Polaris Key' with the fixed suffix", () => {
+  it("passthrough mail is '<App> via Polaris Locker' with the fixed suffix", () => {
     const e = env();
     e.EMAIL_SENDER_ADDRESS = AUTH_EMAIL_ADDRESS;
     expect(passthroughSender(e, "  Lantern  Works ", "lantern")).toEqual({
-      name: "Lantern Works via Polaris Key",
+      name: "Lantern Works via Polaris Locker",
       email: "noreply@auth.plrs.im",
     });
   });
@@ -135,13 +142,13 @@ describe("the sender identities", () => {
   it("a refused display name falls back to the slug, never to the platform's name", () => {
     const e = env();
     expect(passthroughSender(e, "Polaris Key Security", "acme")?.name).toBe(
-      "acme via Polaris Key",
+      "acme via Polaris Locker",
     );
     expect(passthroughSender(e, "Acme\r\nBcc: x@y.z", "acme")?.name).toBe(
-      "acme via Polaris Key",
+      "acme via Polaris Locker",
     );
     expect(passthroughSender(e, null, "acme")?.name).toBe(
-      "acme via Polaris Key",
+      "acme via Polaris Locker",
     );
     expect(passthroughSender(e, "Polaris", "polaris-tools")).toBeNull();
   });
@@ -157,7 +164,7 @@ describe("the sender identities", () => {
     e.EMAIL_SENDER_ADDRESS = "Evil <noreply@auth.plrs.im>";
     expect(senderAddress(e)).toBe("mail@example.com");
     // Only the address of PORTAL_EMAIL_FROM is honoured, never its name.
-    expect(platformSender(e).name).toBe("Polaris Key");
+    expect(platformSender(e).name).toBe("Polaris Locker");
   });
 });
 

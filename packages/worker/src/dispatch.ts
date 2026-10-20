@@ -58,7 +58,11 @@ import { handleAssetsPush } from "./core/assets/hostedAssetUploads.js";
 // HA-06: a CI push into a listing-model slot also writes Distribution's listing row; Core takes
 // the writer from here rather than importing the service.
 import { listingSlotMirror } from "./services/distribution/api.js";
-import { handleSignInEntry } from "./core/signInEntry.js";
+import {
+  handleSignInBind,
+  handleSignInEntry,
+  isBindHop,
+} from "./core/signInEntry.js";
 import { handleDeviceEntry } from "./core/deviceEntry.js";
 import { dispatchBytesHost, isBytesHost } from "./core/assets/bytesHost.js";
 import {
@@ -268,11 +272,24 @@ async function routeRequest(
     case "docs":
       return handleDocs(req, env, now);
     // WebAuthn Related Origin Requests (LK-05): the customer origin may use this host's RP id.
+    // `/help` → the public Help; no session, no database.
+    case "helpAlias":
+      return req.method === "GET" || req.method === "HEAD"
+        ? new Response(null, {
+            status: 302,
+            headers: { location: "/docs/help/", "cache-control": "no-store" },
+          })
+        : new Response(null, {
+            status: 405,
+            headers: { allow: "GET, HEAD", "cache-control": "no-store" },
+          });
     case "webauthnOrigins":
       return relatedOriginsResponse(req, env);
     // The platform device-code entry pages: no product, no session, no database.
     case "signInEntry":
-      return handleSignInEntry(req);
+      return onCustomerHost && isBindHop(req)
+        ? handleSignInBind(req, env)
+        : handleSignInEntry(req);
     case "deviceEntry":
       return handleDeviceEntry(
         req,
@@ -280,7 +297,9 @@ async function routeRequest(
         route.tv,
         now,
         // On the customer host the product's page lives on the API host: a fixed origin from
-        // configuration, never from the request (LK-00 §7.13).
+        // configuration, never from the request. The confirmation, the IdP leg and the callback
+        // stay in one browser on one host, so the flow's binder is set by the confirming browser
+        // (R1-07; LK-04 security review).
         onCustomerHost ? apiOrigin(env) : null,
       );
     case "portalSpa":

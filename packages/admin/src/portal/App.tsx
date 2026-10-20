@@ -99,7 +99,7 @@ function Boot(): React.ReactElement {
       qc.removeQueries({ queryKey: ["portal", key] });
   }, [signedOut, qc]);
   if (session.isPending) {
-    return <StarScreen title="Opening Polaris Key" busy />;
+    return <StarScreen title="Opening Polaris Locker" busy />;
   }
   if (session.error) {
     const copy = portalErrorCopy(session.error);

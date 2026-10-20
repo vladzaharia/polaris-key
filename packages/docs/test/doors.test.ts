@@ -95,7 +95,11 @@ describe("the sidebar", () => {
 
   it("lists every live page, except unfinished deferred ones", () => {
     const unlisted = live.filter(
-      (id) => !listed.includes(id) && !deferred.has(id) && id !== "index",
+      (id) =>
+        !listed.includes(id) &&
+        !deferred.has(id) &&
+        id !== "index" &&
+        id !== "access",
     );
     expect(
       unlisted,

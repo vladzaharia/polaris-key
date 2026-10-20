@@ -33,7 +33,7 @@ Every SDK has a drop-in lane and an own-UI lane. The drop-in lane gives you the 
 
 ## Other ways in
 
-- [Customer portal](/docs/reference/portal-api/): your customers manage their own licenses and devices, with no code from you.
+- [Polaris Locker](/docs/reference/portal-api/): your customers manage their own licenses and devices, with no code from you.
 - [Server verification](/docs/features/licensing/server-verification/): check a license from your backend.
 - [HTTP API](/docs/reference/http-api/): call Polaris Key from any language.
 - [The pkey CLI](/docs/reference/cli/) and [GitHub Action](/docs/reference/github-action/): manifests, releases and CI.

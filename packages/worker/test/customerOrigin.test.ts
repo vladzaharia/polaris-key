@@ -15,10 +15,7 @@ const OK_ORIGIN =
   /^(origin|customer|input\.origin|customerOrigin\([^)]*\) \?\? new URL\(req\.url\)\.origin)$/;
 
 /** Sites that stay on the request's origin on purpose, each with the package that moves it. */
-const ALLOWED: Record<string, string> = {
-  // The card redirect of `authorize` goes through the bind hop on the customer host (LK-04).
-  "services/identity/passthrough/authorize.ts": "LK-04",
-};
+const ALLOWED: Record<string, string> = {};
 
 function files(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) =>

@@ -1,0 +1,37 @@
+{
+  "/build/go-live/index.html": ["/docs/operate/console/keys-and-secrets/"],
+  "/build/manifest/catalog/index.html": ["/docs/operate/platform/settings/"],
+  "/build/manifest/product/index.html": ["/docs/operate/platform/settings/"],
+  "/build/manifest/register/index.html": [
+    "/docs/operate/console/product-actions/"
+  ],
+  "/features/commerce/index.html": ["/docs/operate/console/keys-and-secrets/"],
+  "/features/ship-builds/channels/app-store/index.html": [
+    "/docs/operate/console/keys-and-secrets/"
+  ],
+  "/features/ship-builds/channels/google-play/index.html": [
+    "/docs/operate/console/keys-and-secrets/"
+  ],
+  "/features/ship-builds/channels/index.html": [
+    "/docs/operate/console/keys-and-secrets/"
+  ],
+  "/features/ship-builds/channels/microsoft-store/index.html": [
+    "/docs/operate/console/keys-and-secrets/"
+  ],
+  "/features/ship-builds/ci-stores/index.html": [
+    "/docs/operate/console/presentation/"
+  ],
+  "/features/ship-builds/releases/github-sync/index.html": [
+    "/docs/operate/console/product-actions/"
+  ],
+  "/features/sign-in/oidc/index.html": [
+    "/docs/operate/platform/sign-in-connections/"
+  ],
+  "/reference/protocol/corpus/index.html": ["/docs/operate/"],
+  "/reference/settings/index.html": [
+    "/docs/operate/platform/settings/",
+    "/docs/operate/console/presentation/",
+    "/docs/operate/console/products/",
+    "/docs/operate/console/keys-and-secrets/"
+  ]
+}

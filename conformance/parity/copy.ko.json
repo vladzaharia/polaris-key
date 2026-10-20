@@ -199,7 +199,7 @@
     },
     "email_in_use": {
       "title": "이미 사용 중인 이메일",
-      "message": "다른 Polaris Key 계정이 이미 이 이메일을 사용하고 있어요. 이 로그인을 그 계정에 연결하거나 다른 이메일을 사용하세요."
+      "message": "다른 Polaris Locker 계정이 이미 이 이메일을 사용하고 있어요. 이 로그인을 그 계정에 연결하거나 다른 이메일을 사용하세요."
     },
     "terms_required": {
       "title": "약관 미동의",
@@ -207,15 +207,15 @@
     },
     "license_owned": {
       "title": "다른 계정의 라이선스",
-      "message": "이 {product} 라이선스는 이미 다른 Polaris Key 계정에 있어요. 라이선스는 키로 옮겨지지 않아요."
+      "message": "이 {product} 라이선스는 이미 다른 Polaris Locker 계정에 있어요. 라이선스는 키로 옮겨지지 않아요."
     },
     "license_email_bound": {
       "title": "인증되지 않은 이메일",
-      "message": "이 라이선스는 회원님의 Polaris Key 계정에서 인증하지 않은 이메일 주소에 속해 있어요. 계정에서 해당 이메일을 인증한 후 다시 시도하세요."
+      "message": "이 라이선스는 회원님의 Polaris Locker 계정에서 인증하지 않은 이메일 주소에 속해 있어요. 계정에서 해당 이메일을 인증한 후 다시 시도하세요."
     },
     "account_required": {
       "title": "로그인 필요",
-      "message": "이 기기에서 Polaris Key 계정에 로그인한 후 다시 시도하세요."
+      "message": "이 기기에서 Polaris Locker 계정에 로그인한 후 다시 시도하세요."
     },
     "email_mismatch": {
       "title": "인증되지 않은 이메일",
@@ -223,7 +223,7 @@
     },
     "link_conflict": {
       "title": "이미 연결됨",
-      "message": "해당 로그인 방법은 다른 Polaris Key 계정에 속해 있어요. 그 계정으로 로그인하거나 두 계정을 합치세요."
+      "message": "해당 로그인 방법은 다른 Polaris Locker 계정에 속해 있어요. 그 계정으로 로그인하거나 두 계정을 합치세요."
     },
     "last_link": {
       "title": "제거할 수 없음",
@@ -323,7 +323,7 @@
     },
     "network": {
       "title": "연결할 수 없음",
-      "message": "Polaris Key에 연결할 수 없어요. 연결 상태를 확인하고 다시 시도하세요."
+      "message": "Polaris Locker에 연결할 수 없어요. 연결 상태를 확인하고 다시 시도하세요."
     },
     "refresh-failed": {
       "title": "새로고침하지 못함",
@@ -395,7 +395,7 @@
     },
     "network-error": {
       "title": "연결할 수 없음",
-      "message": "Polaris Key에 연결할 수 없어요. 연결 상태를 확인하고 다시 시도하세요."
+      "message": "Polaris Locker에 연결할 수 없어요. 연결 상태를 확인하고 다시 시도하세요."
     },
     "server-error": {
       "title": "서비스 문제",
@@ -687,7 +687,7 @@
     },
     "sign_in_required": {
       "title": "로그인 필요",
-      "message": "앱에서 Polaris Key 계정에 로그인한 후 다시 시도하세요."
+      "message": "앱에서 Polaris Locker 계정에 로그인한 후 다시 시도하세요."
     }
   },
   "gate": {

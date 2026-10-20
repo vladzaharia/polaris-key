@@ -199,7 +199,7 @@
     },
     "email_in_use": {
       "title": "E-Mail-Adresse bereits verwendet",
-      "message": "Ein anderes Polaris Key-Konto verwendet diese E-Mail-Adresse bereits. Verbinden Sie diese Anmeldung mit jenem Konto, oder verwenden Sie eine andere E-Mail-Adresse."
+      "message": "Ein anderes Polaris Locker-Konto verwendet diese E-Mail-Adresse bereits. Verbinden Sie diese Anmeldung mit jenem Konto, oder verwenden Sie eine andere E-Mail-Adresse."
     },
     "terms_required": {
       "title": "Bedingungen nicht akzeptiert",
@@ -207,15 +207,15 @@
     },
     "license_owned": {
       "title": "Lizenz in einem anderen Konto",
-      "message": "Diese Lizenz für {product} befindet sich bereits in einem anderen Polaris Key-Konto. Eine Lizenz wird nie über ihren Schlüssel übertragen."
+      "message": "Diese Lizenz für {product} befindet sich bereits in einem anderen Polaris Locker-Konto. Eine Lizenz wird nie über ihren Schlüssel übertragen."
     },
     "license_email_bound": {
       "title": "E-Mail-Adresse nicht bestätigt",
-      "message": "Diese Lizenz gehört zu einer E-Mail-Adresse, die Ihr Polaris Key-Konto nicht bestätigt hat. Bestätigen Sie diese E-Mail-Adresse in Ihrem Konto und versuchen Sie es dann erneut."
+      "message": "Diese Lizenz gehört zu einer E-Mail-Adresse, die Ihr Polaris Locker-Konto nicht bestätigt hat. Bestätigen Sie diese E-Mail-Adresse in Ihrem Konto und versuchen Sie es dann erneut."
     },
     "account_required": {
       "title": "Anmeldung erforderlich",
-      "message": "Melden Sie sich auf diesem Gerät bei Ihrem Polaris Key-Konto an und versuchen Sie es dann erneut."
+      "message": "Melden Sie sich auf diesem Gerät bei Ihrem Polaris Locker-Konto an und versuchen Sie es dann erneut."
     },
     "email_mismatch": {
       "title": "E-Mail-Adresse nicht bestätigt",
@@ -223,7 +223,7 @@
     },
     "link_conflict": {
       "title": "Bereits verknüpft",
-      "message": "Diese Anmeldemethode gehört zu einem anderen Polaris Key-Konto. Melden Sie sich bei diesem Konto an oder führen Sie die beiden Konten zusammen."
+      "message": "Diese Anmeldemethode gehört zu einem anderen Polaris Locker-Konto. Melden Sie sich bei diesem Konto an oder führen Sie die beiden Konten zusammen."
     },
     "last_link": {
       "title": "Entfernen nicht möglich",
@@ -323,7 +323,7 @@
     },
     "network": {
       "title": "Keine Verbindung",
-      "message": "Polaris Key ist nicht erreichbar. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut."
+      "message": "Polaris Locker ist nicht erreichbar. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut."
     },
     "refresh-failed": {
       "title": "Aktualisierung fehlgeschlagen",
@@ -395,7 +395,7 @@
     },
     "network-error": {
       "title": "Keine Verbindung",
-      "message": "Polaris Key ist nicht erreichbar. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut."
+      "message": "Polaris Locker ist nicht erreichbar. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut."
     },
     "server-error": {
       "title": "Problem mit dem Dienst",
@@ -687,7 +687,7 @@
     },
     "sign_in_required": {
       "title": "Anmeldung erforderlich",
-      "message": "Melden Sie sich in der App bei Ihrem Polaris Key-Konto an und versuchen Sie es dann erneut."
+      "message": "Melden Sie sich in der App bei Ihrem Polaris Locker-Konto an und versuchen Sie es dann erneut."
     }
   },
   "gate": {

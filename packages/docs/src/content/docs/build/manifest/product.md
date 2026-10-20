@@ -175,7 +175,7 @@ is on.
 
 To set the list without a repository, open **Core → Settings → Web origins** and edit **Allowed origins**. An edit there takes the field from the manifest, so later pushes leave it alone. **Revert to manifest** hands it back, and the manifest's list applies at the next resync.
 
-Entries must be spelled exactly as a browser sends `Origin`, and ingest refuses anything else (`invalid_web_origins`, `invalid_web_origin`). Credentials are never allowed, and the cookie-bearing identity routes, the console, the portal and the docs never answer CORS. The rules, headers and covered routes are at [Web apps and CORS](/docs/build/web-apps/).
+Entries must be spelled exactly as a browser sends `Origin`, and ingest refuses anything else (`invalid_web_origins`, `invalid_web_origin`). Credentials are never allowed, and the cookie-bearing identity routes, the console, Polaris Locker and the docs never answer CORS. The rules, headers and covered routes are at [Web apps and CORS](/docs/build/web-apps/).
 
 ```jsonc title=".pkey/product"
 {

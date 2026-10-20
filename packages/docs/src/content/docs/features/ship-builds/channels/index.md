@@ -68,7 +68,7 @@ A manifest that names `release` and `update` without `distribution` is refused w
   also answer on the bytes host. See
   [Byte delivery and delivery access](/docs/features/ship-builds/channels/delivery/).
 - **Delivery access** per deliverable — who may download it — read by the downloads, the
-  Sparkle appcast and the customer portal alike.
+  Sparkle appcast and Polaris Locker alike.
 - **Outlet rollouts and halts**, controlled from CI and the console, and read by the signed
   feed, the app-updater feeds, the storefront feeds and the download page; see
   [Rollouts and halts](/docs/features/ship-builds/channels/rollouts/#what-a-halt-reaches).
