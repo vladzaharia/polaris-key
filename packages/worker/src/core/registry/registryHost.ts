@@ -88,6 +88,7 @@ import {
 } from "./registryTokens.js";
 
 import { registryHostname, registryOrigin } from "../hosts.js";
+import { customerHostMode } from "../licensing/manageUrl.js";
 
 export { isRegistryHost, registryHostname, registryOrigin } from "../hosts.js";
 
@@ -614,7 +615,11 @@ async function answer(
   if (isRegistryLandingPath(pathname)) {
     if (req.method === "OPTIONS") return plain(registryMethodNotAllowed(null));
     if (!readOnly) return plain(notFound());
-    const res = await registryLandingResponse(req, env);
+    const res = await registryLandingResponse(
+      req,
+      env,
+      (await customerHostMode(env, db)) !== "off",
+    );
     const csp = res.headers.get("content-security-policy");
     if (
       res.headers.get("content-type") === "text/html; charset=utf-8" &&

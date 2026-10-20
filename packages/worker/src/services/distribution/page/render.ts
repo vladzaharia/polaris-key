@@ -26,6 +26,12 @@
 import { BRAND, FONT, SERVICE_ACCENTS, THEME_TOKENS } from "@polaris-key/brand";
 import { buildLabel, type BuildLabel } from "@polaris-key/manifest";
 import { themedLockup } from "../../../core/brandHtml.js";
+import {
+  LOCKER_SHELL_CSS,
+  lockerFaviconHref,
+  lockerLockup,
+  serviceRow,
+} from "../../../core/assets/lockerShell.js";
 import type {
   DetectedPlatform,
   PagePlatform,
@@ -147,6 +153,9 @@ export const PAGE_CSS = [
   `.delivery svg{display:block;max-width:100%;height:auto}`,
   `.mb{fill:var(--mb)}.ms{fill:var(--ms)}.mt{fill:var(--mt)}`,
 ].join("\n");
+
+/** The Polaris Locker shell's stylesheet (LK-07): `PAGE_CSS` and the shell's tail. */
+export const PAGE_CSS_LOCKER = PAGE_CSS + "\n" + LOCKER_SHELL_CSS;
 
 const KEY_LABELS: Readonly<Record<string, string>> = {
   "android-app-signing": "Android app signing certificate",
@@ -288,11 +297,15 @@ function primaryBlock(
 }
 
 /** One entry of "Other ways to get it". */
-function way(a: PageAction, group: PagePlatformGroup): string {
+function way(
+  a: PageAction,
+  group: PagePlatformGroup,
+  brandName: string,
+): string {
   const parts: string[] = [];
   // The `direct` outlet is presented as Polaris Key (S-21 §6.8); its id stays `direct`.
   const head =
-    a.kind === "download" && a.build ? `Download from Polaris Key` : a.label;
+    a.kind === "download" && a.build ? `Download from ${brandName}` : a.label;
   parts.push(
     `<span class="way-head">${esc(head)}</span>${
       a.version ? ` <span class="meta">Version ${esc(a.version)}</span>` : ""
@@ -394,6 +407,12 @@ export interface PageExtras {
    * `https:` URL `safeHref` accepts; it is decorative (the name is the heading beside it).
    */
   iconUrl?: string | null;
+  /**
+   * `locker`: the Polaris Locker shell (title, lockup, favicon, "Download from Polaris Locker"),
+   * with the Star Cut kept as Delivery's symbol (LK-07; `core/assets/lockerShell.ts`). Omitted:
+   * the page of old, byte for byte. The caller sets it while `customer.host` is on.
+   */
+  brand?: "locker";
 }
 
 /** Render the page. */
@@ -403,6 +422,7 @@ export function renderDownloadPage(
   extras: PageExtras = {},
 ): string {
   const name = model.listing.name;
+  const locker = extras.brand === "locker";
   const groupOf = (p: PagePlatform | null) =>
     p === null ? undefined : model.platforms.find((g) => g.platform === p);
   const mine = groupOf(detected.platform);
@@ -446,7 +466,7 @@ export function renderDownloadPage(
       const items = g.actions
         .map((id) => model.actions.find((a) => a.id === id))
         .filter((a): a is PageAction => a !== undefined)
-        .map((a) => way(a, g));
+        .map((a) => way(a, g, locker ? "Polaris Locker" : "Polaris Key"));
       return items.length
         ? `<h3>${esc(g.label)}</h3><ul class="ways">${items.join("")}</ul>`
         : "";
@@ -506,11 +526,18 @@ export function renderDownloadPage(
 
   return [
     "<!doctype html>",
-    '<html lang="en"><head><meta charset="utf-8">',
+    locker
+      ? '<html lang="en" data-brand="locker"><head><meta charset="utf-8">'
+      : '<html lang="en"><head><meta charset="utf-8">',
     '<meta name="viewport" content="width=device-width, initial-scale=1">',
     '<meta name="referrer" content="no-referrer">',
-    `<title>Download ${esc(name)}</title>`,
-    `<style>${PAGE_CSS}</style>`,
+    locker
+      ? `<title>Download ${esc(name)} · Polaris Locker</title>`
+      : `<title>Download ${esc(name)}</title>`,
+    ...(locker
+      ? [`<link rel="icon" type="image/svg+xml" href="${lockerFaviconHref()}">`]
+      : []),
+    `<style>${locker ? PAGE_CSS_LOCKER : PAGE_CSS}</style>`,
     "</head><body>",
     `<header>${iconTag(extras.iconUrl ?? null)}<h1>${esc(name)}</h1>${
       model.listing.subtitle
@@ -526,7 +553,7 @@ export function renderDownloadPage(
         ? `<section aria-labelledby="ways-title"><h2 id="ways-title">Other ways to get it</h2>${ways}</section>`
         : ""
     }${files}${keys}${about}</main>`,
-    `<footer><p>Verify a download's SHA-256 before you install it.</p><p class="delivery">${deliveryMark()}</p></footer>`,
+    `<footer><p>Verify a download's SHA-256 before you install it.</p><p class="delivery">${locker ? lockerLockup(40, "lockup") + serviceRow() : deliveryMark()}</p></footer>`,
     "</body></html>",
     "",
   ].join("\n");

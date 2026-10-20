@@ -7,6 +7,7 @@
  * lane with an in-memory `Db`; `index.ts` keeps only the Worker entry points and the
  * origin-wide `secureResponse` backstop it wraps around this function.
  */
+import { applyPageBrand } from "./core/pageBrand.js";
 import type { Env } from "./platform/env.js";
 import type { Db } from "./db/types.js";
 import { matchRoute, type Route } from "./router.js";
@@ -150,7 +151,13 @@ export async function dispatchWith(
   exec?: DispatchExecution,
 ): Promise<Response> {
   try {
-    return await routeRequest(req, env, db, now, exec);
+    // LK-07: a customer page takes the Polaris Locker identity while `customer.host` is on.
+    return await applyPageBrand(
+      req,
+      await routeRequest(req, env, db, now, exec),
+      env,
+      db,
+    );
   } catch (e) {
     if (e instanceof URIError) return malformedUrl();
     throw e;

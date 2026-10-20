@@ -9,7 +9,12 @@ import { KIT_COPY_EN } from "@polaris-key/brand/kit-copy";
 import { escapeHtml } from "../platform/html.js";
 import type { Env } from "../platform/env.js";
 import type { Db } from "../db/types.js";
-import { renderBrandPage, type BrandPageOptions } from "./brandHtml.js";
+import {
+  renderBrandPage,
+  type BrandPageBrand,
+  type BrandPageOptions,
+} from "./brandHtml.js";
+import { customerHostMode } from "./licensing/manageUrl.js";
 import {
   cspImageOrigin,
   brandedHtmlSecurityHeaders,
@@ -18,10 +23,22 @@ import { resolvePresentation } from "./presentation.js";
 import type { ProductPublic } from "./products.js";
 import type { ServiceHooks } from "./hooks.js";
 
+/**
+ * The identity of a customer-facing Worker page: `"locker"` while `customer.host` is on
+ * (LK-07; plans/LK-00.md §7.12), else `undefined`, the Polaris Key page of old. One read of the
+ * switch; a caller that has a request in hand reads it once and passes it down.
+ */
+export async function pageBrand(
+  env: Env,
+  db: Db,
+): Promise<BrandPageBrand | undefined> {
+  return (await customerHostMode(env, db)) === "off" ? undefined : "locker";
+}
+
 /** A branded page. `body` is TRUSTED markup: every value in it already escaped. */
 export function brandPageResponse(
   status: number,
-  page: Pick<BrandPageOptions, "title" | "heading" | "body" | "app">,
+  page: Pick<BrandPageOptions, "title" | "heading" | "body" | "app" | "brand">,
   cookies: readonly string[] = [],
 ): Response {
   let imgOrigin: string | null = null;
@@ -39,7 +56,7 @@ export function brandPageResponse(
       "content-type": "text/html; charset=utf-8",
       "cache-control": "no-store",
     }),
-    { imgOrigin },
+    { imgOrigin, ...(page.brand ? { brand: page.brand } : {}) },
   );
   for (const c of cookies) headers.append("set-cookie", c);
   // No surface label beside the wordmark: sign-in pages carry no eyebrow (SIGN-IN.md §3.13).
@@ -67,6 +84,7 @@ export function codeRefusalPage(
   status: number,
   code: string,
   app?: { name: string; iconUrl?: string | null },
+  brand?: BrandPageBrand,
 ): Response {
   const { title, message } = codeCopy(code);
   return brandPageResponse(status, {
@@ -74,6 +92,7 @@ export function codeRefusalPage(
     heading: title,
     body: `<p>${escapeHtml(message)}</p><p class="muted small">${CLOSE_PAGE}</p>`,
     ...(app ? { app } : {}),
+    ...(brand ? { brand } : {}),
   });
 }
 

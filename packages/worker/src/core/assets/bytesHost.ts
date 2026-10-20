@@ -48,6 +48,7 @@ import { BLOB_CSP, BYTES_HOST_TYPES } from "./blobs.js";
 import { corsPreflight, withCors } from "../cors.js";
 import { loadProductPublic, type ProductPublic } from "../products.js";
 import { isLandingPath, landingResponse } from "./bytesLanding.js";
+import { customerHostMode } from "../licensing/manageUrl.js";
 import { hostedImageOrigin } from "./hostedImages.js";
 import { cspImageOrigin } from "../securityHeaders.js";
 import {
@@ -388,7 +389,11 @@ async function answer(
   // method on `/` keeps the plain not-found, and no other path can reach it.
   if (isLandingPath(pathname)) {
     if (req.method !== "GET" && req.method !== "HEAD") return plain(notFound());
-    const res = await landingResponse(req, env);
+    const res = await landingResponse(
+      req,
+      env,
+      (await customerHostMode(env, db)) !== "off",
+    );
     const csp = await documentPolicy(res, env, db);
     if (csp !== null) return { res, documentCsp: csp };
     await res.body?.cancel().catch(() => undefined);

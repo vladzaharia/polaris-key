@@ -15,7 +15,9 @@
  *   - A STATIC document. No request input reaches the body: the markup is built from the brand
  *     package's marks and tokens (the lockups once, on the first request) and two deployment variables
  *     (`CONSOLE_ORIGIN`, `BLOB_ORIGIN`), both validated, the one dynamic word escaped. No
- *     product, release, file, token or key is read; no D1, KV or R2 call is made.
+ *     product, release, file, token or key is read. The one read is the `customer.host` switch
+ *     (the dispatcher's, `bytesHost.ts`), which picks between two static documents (LK-07):
+ *     the Polaris Locker shell (`lockerShell.ts`) while it is on, this one while it is off.
  *   - NO SCRIPT, NO REQUESTS. The policy is the inert-document policy `bytesHost.ts` already
  *     checks for the download page (`inertDocumentPolicy`), and the dispatcher runs this answer
  *     through that same check: `sandbox` with no tokens (an opaque origin; no script, forms,
@@ -53,6 +55,12 @@ import type { Env } from "../../platform/env.js";
 import { bytesHostname, normalizeHostname } from "../hosts.js";
 import { escapeHtml } from "../../platform/html.js";
 import { sha256Base64 } from "../../platform/hash.js";
+import {
+  LOCKER_SHELL_CSS,
+  lockerFaviconHref,
+  lockerLockup,
+  serviceRow,
+} from "./lockerShell.js";
 
 /** The landing page's Cache-Control: the page changes only with a deploy. */
 export const LANDING_CACHE = "public, max-age=3600";
@@ -167,12 +175,22 @@ export const LANDING_CSS = [
   `@media (prefers-reduced-motion: no-preference){nav a{transition:background-color 120ms ease,border-color 120ms ease}}`,
 ].join("");
 
-let cspPromise: Promise<string> | null = null;
+/** The Locker shell's stylesheet (LK-07): `LANDING_CSS` and `LOCKER_SHELL_CSS`. */
+export const LANDING_CSS_LOCKER = LANDING_CSS + LOCKER_SHELL_CSS;
 
-/** The page's Content-Security-Policy: the inert-document policy `bytesHost.ts` checks. */
-export function landingCsp(): Promise<string> {
+const cspPromises = new Map<string, Promise<string>>();
+
+/**
+ * The page's Content-Security-Policy: the inert-document policy `bytesHost.ts` checks. With
+ * `locker`, the hash of the Locker shell's stylesheet.
+ */
+export function landingCsp(locker = false): Promise<string> {
+  const key = locker ? "locker" : "key";
+  let cspPromise = cspPromises.get(key);
   cspPromise ??= (async () => {
-    const styleHash = await sha256Base64(LANDING_CSS);
+    const styleHash = await sha256Base64(
+      locker ? LANDING_CSS_LOCKER : LANDING_CSS,
+    );
     return [
       "sandbox",
       "default-src 'none'",
@@ -183,6 +201,7 @@ export function landingCsp(): Promise<string> {
       "form-action 'none'",
     ].join("; ");
   })();
+  cspPromises.set(key, cspPromise);
   return cspPromise;
 }
 
@@ -260,19 +279,44 @@ export function landingArt(): LandingArt {
   return art;
 }
 
-/** The landing page's HTML for this deployment. */
-export function renderLandingPage(env: Env): string {
-  const { lockups, faviconHref } = landingArt();
+/**
+ * The head and heading of a landing page under the Locker shell (LK-07): title, lockup with the
+ * Star Cut as Delivery's symbol, favicon. Shared with the registry host's page.
+ */
+export function lockerLandingShell(environment: string | null): {
+  title: string;
+  heading: string;
+  faviconHref: string;
+} {
+  return {
+    title: `Delivery${environment ? ` (${environment})` : ""} · Polaris Locker`,
+    heading: lockerLockup(48, "lockup-full") + serviceRow(),
+    faviconHref: lockerFaviconHref(),
+  };
+}
+
+/**
+ * The landing page's HTML for this deployment. `locker`: the Polaris Locker shell, while
+ * `customer.host` is on (`landingResponse`); otherwise the page of old, byte for byte.
+ */
+export function renderLandingPage(env: Env, locker = false): string {
   const consoleOrigin = landingConsoleOrigin(env);
   const environment = landingEnvironment(env);
-  const title = environment
-    ? `Polaris Key Delivery (${environment})`
-    : "Polaris Key Delivery";
-  const description =
-    "The download host for games and apps built on Polaris Key.";
+  const shell = locker ? lockerLandingShell(environment) : null;
+  const { lockups, faviconHref } = shell
+    ? { lockups: shell.heading, faviconHref: shell.faviconHref }
+    : landingArt();
+  const title =
+    shell?.title ??
+    (environment
+      ? `Polaris Key Delivery (${environment})`
+      : "Polaris Key Delivery");
+  const description = locker
+    ? "The download host for games and apps."
+    : "The download host for games and apps built on Polaris Key.";
   return [
     `<!doctype html>`,
-    `<html lang="en">`,
+    locker ? `<html lang="en" data-brand="locker">` : `<html lang="en">`,
     `<head>`,
     `<meta charset="utf-8">`,
     `<meta name="viewport" content="width=device-width, initial-scale=1">`,
@@ -283,7 +327,7 @@ export function renderLandingPage(env: Env): string {
     `<meta name="theme-color" content="${THEME_TOKENS.light.surface.page}" media="(prefers-color-scheme: light)">`,
     environment ? `<meta name="robots" content="noindex, nofollow">` : "",
     `<link rel="icon" type="image/svg+xml" href="${escapeHtml(faviconHref)}">`,
-    `<style>${LANDING_CSS}</style>`,
+    `<style>${locker ? LANDING_CSS_LOCKER : LANDING_CSS}</style>`,
     `</head>`,
     `<body>`,
     `<main>`,
@@ -293,7 +337,7 @@ export function renderLandingPage(env: Env): string {
       : "",
     `<p class="lede">${escapeHtml(description)}</p>`,
     `<p class="about">Files here are signed release artifacts and packs, fetched by apps and their updaters. There is nothing to browse.</p>`,
-    `<nav aria-label="Polaris Key">`,
+    `<nav aria-label="${locker ? "Polaris Locker" : "Polaris Key"}">`,
     `<ul>`,
     `<li><a href="${escapeHtml(`${consoleOrigin}/`)}">Open the console</a></li>`,
     `<li><a href="${escapeHtml(`${consoleOrigin}/docs/`)}">Read the docs <small>(sign-in required)</small></a></li>`,
@@ -312,13 +356,14 @@ export function renderLandingPage(env: Env): string {
 export async function landingResponse(
   req: Request,
   env: Env,
+  locker = false,
 ): Promise<Response> {
-  const html = renderLandingPage(env);
+  const html = renderLandingPage(env, locker);
   return new Response(req.method === "HEAD" ? null : html, {
     status: 200,
     headers: {
       "content-type": "text/html; charset=utf-8",
-      "content-security-policy": await landingCsp(),
+      "content-security-policy": await landingCsp(locker),
       "cache-control": LANDING_CACHE,
       "x-frame-options": "DENY",
     },

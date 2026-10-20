@@ -56,6 +56,7 @@ import type {
 import { bytesHostname } from "../../../core/assets/bytesHost.js";
 import { normalizeHostname } from "../../../core/hosts.js";
 import { cspImageOrigin } from "../../../core/securityHeaders.js";
+import { customerHostMode } from "../../../core/licensing/manageUrl.js";
 import { sha256Base64 } from "../../../platform/hash.js";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
@@ -78,7 +79,7 @@ import {
   hostedImages,
 } from "../../../core/assets/hostedImages.js";
 import { buildDownloadModel, memoHooks, type DownloadModel } from "./model.js";
-import { PAGE_CSS, renderDownloadPage } from "./render.js";
+import { PAGE_CSS, PAGE_CSS_LOCKER, renderDownloadPage } from "./render.js";
 
 /** The page's public per-IP budget: the storefront feeds' (a D1-read budget, fails open). */
 const PAGE_RATE_LIMIT = { limit: 60, windowSec: 60 } as const;
@@ -89,6 +90,7 @@ export const PAGE_SANDBOX =
   "sandbox allow-downloads allow-top-navigation-to-custom-protocols";
 
 let cssHash: Promise<string> | null = null;
+let lockerCssHash: Promise<string> | null = null;
 
 /**
  * The page's Content-Security-Policy: script-free, sandboxed, the stylesheet by hash. With
@@ -98,13 +100,17 @@ let cssHash: Promise<string> | null = null;
  */
 export async function pageCsp(
   imgOrigin: string | null = null,
+  locker = false,
 ): Promise<string> {
   cssHash ??= sha256Base64(PAGE_CSS);
+  lockerCssHash ??= sha256Base64(PAGE_CSS_LOCKER);
   const img = cspImageOrigin(imgOrigin);
+  // The Locker shell's favicon is a `data:` URI (`core/assets/lockerShell.ts`).
+  const imgSrc = [...(locker ? ["data:"] : []), ...(img ? [img] : [])];
   return [
     "default-src 'none'",
-    `style-src 'sha256-${await cssHash}'`,
-    ...(img ? [`img-src ${img}`] : []),
+    `style-src 'sha256-${await (locker ? lockerCssHash : cssHash)}'`,
+    ...(imgSrc.length ? [`img-src ${imgSrc.join(" ")}`] : []),
     "base-uri 'none'",
     "form-action 'none'",
     "frame-ancestors 'none'",
@@ -274,8 +280,11 @@ async function handlePage(
   if (text === null) return notFound();
   const model = JSON.parse(text) as DownloadModel;
   const iconUrl = await pageIcon(env, db, product.slug);
+  // LK-07: the Polaris Locker shell while `customer.host` is on.
+  const locker = (await customerHostMode(env, db)) !== "off";
   const html = renderDownloadPage(model, detectPlatform(req.headers), {
     iconUrl,
+    ...(locker ? { brand: "locker" as const } : {}),
   });
   return new Response(req.method === "HEAD" ? null : html, {
     status: 200,
@@ -283,6 +292,7 @@ async function handlePage(
       "content-type": "text/html; charset=utf-8",
       "content-security-policy": await pageCsp(
         iconUrl ? await hostedImageOrigin(env, db) : null,
+        locker,
       ),
       "cache-control": PAGE_CACHE,
       // The page differs by platform: a shared cache must key on what detection read.
