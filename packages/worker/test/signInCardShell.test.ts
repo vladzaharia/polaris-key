@@ -33,16 +33,11 @@ describe("GET /signin?request=", () => {
   const BINDER = `__Host-pk_req=${"A".repeat(43)}`;
 
   it("serves the portal shell to a browser that holds a binder", async () => {
-    const res = await get(
-      "/signin?request=rq_AAAAAAAAAAAAAAAAAAAAAA",
-      BINDER,
-    );
+    const res = await get("/signin?request=rq_AAAAAAAAAAAAAAAAAAAAAA", BINDER);
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toContain("text/html");
     expect(await res.text()).toContain('<div id="root">');
-    expect(res.headers.get("content-security-policy")).toContain(
-      "default-src",
-    );
+    expect(res.headers.get("content-security-policy")).toContain("default-src");
   });
 
   it("is a plain not-found with no binder, and on the bind hop", async () => {
