@@ -1287,6 +1287,27 @@ describe("licence origins and Remove from my library (PX-23)", () => {
 });
 
 describe("product page correctness (UX-04)", () => {
+  it("a failed downloads read settles: no remount loop, no request storm", async () => {
+    // The Library hook counts a pending downloads query as the page pending, and Get it mounts a
+    // second observer on the same query. With retry-on-mount, that observer reset the failed
+    // query to pending, the page swapped to its skeleton, Get it unmounted, the read failed
+    // again and the page remounted: about 100 requests a second, forever.
+    let calls = 0;
+    mockFetch(
+      routes({
+        "/api/products/nightfall/downloads": () => {
+          calls += 1;
+          return { status: 500, body: { error: "internal" } };
+        },
+      }),
+    );
+    renderPortal();
+    await page();
+    await act(() => new Promise((r) => setTimeout(r, 400)));
+    expect(calls).toBeLessThanOrEqual(2);
+    expect(screen.getByRole("heading", { level: 1 })).toBeTruthy();
+  });
+
   it("one OS source: the header's action and Get it name the OS the Worker detected", async () => {
     // The browser says Mac; the Worker (UA-CH) says Windows. Both read the Worker's answer.
     mockFetch(
