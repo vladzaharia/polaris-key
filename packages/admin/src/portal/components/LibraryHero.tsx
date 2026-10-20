@@ -1,3 +1,4 @@
+import { libraryTileFacts } from "../model/tileFacts.js";
 import * as React from "react";
 import { ArrowRight } from "lucide-react";
 import type { LibraryProduct, QuickAction } from "../model/library.js";
@@ -34,6 +35,10 @@ export function LibraryHero({
 }): React.ReactElement {
   const { best, presentation: pres } = product;
   const tier = best ? tierLabel(best.tier) : null;
+  const term =
+    libraryTileFacts(product)
+      .lines.map((l) => l.text)
+      .join(" · ") || null;
   const includes = (best?.entitlements ?? [])
     .filter((e) => e.key !== "channels")
     .map((e) => e.label);
@@ -99,8 +104,14 @@ export function LibraryHero({
             </>
           ) : (
             <>
-              <dt className="text-fg-muted">License</dt>
-              <dd className="text-fg-strong">{product.status.note}</dd>
+              {/* The tier is the badge above and the devices have their row below: the license row
+                  says only its term, and is absent when there is none. */}
+              {term ? (
+                <>
+                  <dt className="text-fg-muted">License</dt>
+                  <dd className="text-fg-strong">{term}</dd>
+                </>
+              ) : null}
               <dt className="text-fg-muted">{t("account.devices")}</dt>
               <dd className="space-y-2 text-fg-strong">
                 <span className="block">

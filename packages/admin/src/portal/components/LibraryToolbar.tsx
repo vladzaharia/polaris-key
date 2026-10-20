@@ -40,6 +40,16 @@ export function LibraryToolbar({
   const searchRef = React.useRef<HTMLInputElement>(null);
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
+      // ⌘K / Ctrl K focuses and selects the search here (App's palette yields while it is on
+      // screen); "/" is the alias, and not while typing in a field.
+      const k =
+        (e.metaKey || e.ctrlKey) && !e.altKey && e.key.toLowerCase() === "k";
+      if (k) {
+        e.preventDefault();
+        searchRef.current?.focus();
+        searchRef.current?.select();
+        return;
+      }
       if (e.key !== "/" || e.metaKey || e.ctrlKey || e.altKey) return;
       const t = e.target as HTMLElement | null;
       if (
@@ -63,7 +73,7 @@ export function LibraryToolbar({
     { id: "all", label: "All", count: total },
     {
       id: "attention",
-      label: "Needs attention",
+      label: "Needs you",
       count: attentionCount,
       dot: true,
     },
@@ -71,53 +81,34 @@ export function LibraryToolbar({
   const label = "Search your library";
 
   return (
-    <div className="flex flex-col gap-3 wide:flex-row wide:items-center">
-      <div className="flex gap-2 wide:contents">
-        <label className="relative flex h-11 min-w-0 flex-1 items-center rounded-md border border-border-strong bg-surface-page wide:w-80 wide:flex-none">
-          <Search
-            aria-hidden
-            className="pointer-events-none absolute left-3 size-4 text-fg-muted"
-          />
-          <input
-            ref={searchRef}
-            type="search"
-            aria-label={label}
-            placeholder={label}
-            value={q}
-            onChange={(e) => onChange({ q: e.target.value })}
-            className="h-full w-full min-w-0 bg-transparent pl-10 pr-10 text-md text-fg-strong outline-none placeholder:text-fg-subtle focus-visible:ring-0 focus-visible:ring-offset-0"
-          />
-          <Kbd keys="/" className="absolute right-3 hidden desk:flex" />
-        </label>
-        <SegmentedControl
-          aria-label="View"
-          className="h-11 shrink-0 wide:order-last"
-          value={mode}
-          onChange={onMode}
-          options={[
-            {
-              value: "grid",
-              label: (
-                <span className="flex items-center gap-2">
-                  <LayoutGrid aria-hidden className="size-4" />
-                  <span className="sr-only sm:not-sr-only">Grid</span>
-                </span>
-              ),
-            },
-            {
-              value: "list",
-              label: (
-                <span className="flex items-center gap-2">
-                  <List aria-hidden className="size-4" />
-                  <span className="sr-only sm:not-sr-only">List</span>
-                </span>
-              ),
-            },
-          ]}
+    <div className="flex flex-wrap items-center gap-3">
+      <label className="relative order-1 wide:order-none flex h-11 min-w-0 flex-1 items-center rounded-md border border-border-strong bg-surface-page wide:w-80 wide:flex-none">
+        <Search
+          aria-hidden
+          className="pointer-events-none absolute left-3 size-4 text-fg-muted"
         />
-      </div>
-      <div className="flex min-w-0 items-center gap-2 overflow-x-auto wide:flex-1">
-        <div role="group" aria-label="Filter" className="flex shrink-0 gap-2">
+        <input
+          ref={searchRef}
+          data-library-search=""
+          type="search"
+          aria-label={label}
+          placeholder={label}
+          value={q}
+          onChange={(e) => onChange({ q: e.target.value })}
+          className="h-full w-full min-w-0 bg-transparent pl-10 pr-10 text-md text-fg-strong outline-none placeholder:text-fg-subtle focus-visible:ring-0 focus-visible:ring-offset-0"
+        />
+        <Kbd
+          keys={
+            typeof navigator !== "undefined" &&
+            /Mac|iPhone|iPad/.test(navigator.userAgent)
+              ? "⌘K"
+              : "Ctrl K"
+          }
+          className="absolute right-3 hidden desk:flex"
+        />
+      </label>
+      <div className="order-3 flex w-full min-w-0 flex-wrap items-center gap-2 wide:order-none wide:w-auto wide:flex-1 wide:basis-72">
+        <div role="group" aria-label="Filter" className="flex flex-wrap gap-2">
           {chips
             .filter((c) => c.count > 0)
             .map((c) => {
@@ -149,7 +140,7 @@ export function LibraryToolbar({
               );
             })}
         </div>
-        <label className="ml-auto flex shrink-0 items-center">
+        <label className="ml-auto flex items-center">
           <span className="sr-only">Sort</span>
           <select
             value={sort}
@@ -161,6 +152,32 @@ export function LibraryToolbar({
           </select>
         </label>
       </div>
+      <SegmentedControl
+        aria-label="View"
+        className="order-2 h-11 shrink-0 wide:order-none"
+        value={mode}
+        onChange={onMode}
+        options={[
+          {
+            value: "grid",
+            label: (
+              <span className="flex items-center gap-2">
+                <LayoutGrid aria-hidden className="size-4" />
+                <span className="sr-only sm:not-sr-only">Grid</span>
+              </span>
+            ),
+          },
+          {
+            value: "list",
+            label: (
+              <span className="flex items-center gap-2">
+                <List aria-hidden className="size-4" />
+                <span className="sr-only sm:not-sr-only">List</span>
+              </span>
+            ),
+          },
+        ]}
+      />
     </div>
   );
 }

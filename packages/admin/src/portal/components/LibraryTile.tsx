@@ -8,7 +8,8 @@ import {
 } from "../model/library.js";
 import { href } from "../router.js";
 import { useCueOnce } from "../stagger.js";
-import { PlatformGlyphs } from "./Glyphs.js";
+import { libraryTileFacts } from "../model/tileFacts.js";
+import { TileFacts } from "./TileFacts.js";
 import { ProductArt } from "./ProductArt.js";
 import { ProductIcon } from "./ProductIcon.js";
 import { ProductMenu } from "./ProductMenu.js";
@@ -52,7 +53,6 @@ export function LibraryTile({
 }): React.ReactElement {
   const { presentation: pres } = product;
   const cue = useCueOnce(product.slug, product.justAdded);
-  const statusNote = product.status.note;
   // How many times Remove was chosen; 0 = no confirmation (choosing it again refocuses Keep it).
   const [ask, setAsk] = React.useState(0);
   const confirming = ask > 0;
@@ -111,7 +111,9 @@ export function LibraryTile({
               noArt && "bottom-auto right-3 top-3",
             )}
           >
-            <ProductStatusPill status={product.status} onArt />
+            {product.status.kind === "deviceLimit" ? null : (
+              <ProductStatusPill status={product.status} onArt />
+            )}
           </span>
         </ProductArt>
         <div
@@ -121,7 +123,7 @@ export function LibraryTile({
           )}
         >
           <div
-            className={cn("flex items-start gap-3", noArt ? "mt-4" : "-mt-7")}
+            className={cn("flex items-start gap-3", noArt ? "mt-4" : "-mt-5")}
           >
             {noArt ? null : (
               <ProductIcon
@@ -129,7 +131,7 @@ export function LibraryTile({
                 name={product.name}
                 tint={pres.tint}
                 src={pres.iconUrl}
-                size={64}
+                size={56}
                 lift
                 className="relative"
                 tileClassName="border-[3px] border-surface-raised"
@@ -137,12 +139,12 @@ export function LibraryTile({
             )}
             {/* Below the art, never over it: the icon overlaps the art by 1.75 rem. The
                 rest of the row is the name's, so its link spans it (PS-05 review v2). */}
-            <div className={cn("min-w-0 flex-1", !noArt && "pt-9")}>
+            <div className={cn("min-w-0 flex-1", !noArt && "pt-8")}>
               <h3
                 id={`tile-${product.slug}`}
                 dir="auto"
                 className={cn(
-                  "truncate font-medium text-fg-strong",
+                  "line-clamp-2 break-words font-semibold text-fg-strong",
                   compact
                     ? "text-base @max-[17rem]/tile:whitespace-normal"
                     : "text-lg",
@@ -154,7 +156,7 @@ export function LibraryTile({
                   // still meets the target size (WCAG 2.5.8; PS-05). Its focus ring is the
                   // card's, which it stretches over (styles.css, .pk-press-link).
                   className={cn(
-                    "pk-press-link block truncate rounded-sm after:absolute after:inset-0 after:content-[''] focus-visible:outline-none",
+                    "pk-press-link block rounded-sm after:absolute after:inset-0 after:content-[''] focus-visible:outline-none",
                     compact &&
                       "@max-[17rem]/tile:line-clamp-2 @max-[17rem]/tile:whitespace-normal @max-[17rem]/tile:break-words",
                   )}
@@ -164,35 +166,25 @@ export function LibraryTile({
               </h3>
             </div>
           </div>
-          <div className="mt-4 flex items-center justify-between gap-3 text-sm text-fg-muted">
-            {/* Two lines on a compact tile, so the device count is never cut off. */}
-            <span
-              className={cn(
-                "min-w-0",
-                product.justAdded || compact ? "line-clamp-2" : "truncate",
-              )}
-            >
-              {product.justAdded ? (
-                <>
-                  <span
-                    data-cue="text"
-                    className={cn(
-                      "inline-block font-medium text-accent-fg",
-                      cue.animate && "pk-pop-in",
-                    )}
-                  >
-                    Added just now
-                  </span>
-                  {statusNote ? " · " : null}
-                </>
-              ) : null}
-              {statusNote}
-            </span>
-            <PlatformGlyphs
-              platforms={product.platforms}
-              className="shrink-0"
-            />
-          </div>
+          {product.justAdded ? (
+            <p className="mt-4 text-sm text-fg-muted">
+              <span
+                data-cue="text"
+                className={cn(
+                  "inline-block font-medium text-accent-fg",
+                  cue.animate && "pk-pop-in",
+                )}
+              >
+                Added just now
+              </span>
+            </p>
+          ) : null}
+          <TileFacts
+            className="mt-4"
+            facts={libraryTileFacts(product)}
+            platforms={product.platforms}
+            compact={compact}
+          />
           {note ? (
             <p className="mt-3 flex gap-2 text-sm text-fg-muted">
               <Info aria-hidden className="mt-0.5 size-4 shrink-0" />

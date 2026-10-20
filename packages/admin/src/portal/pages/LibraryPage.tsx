@@ -6,7 +6,6 @@ import { viewTransition } from "../../ui/motion/index.js";
 import { Skeleton } from "../../ui/Skeleton.js";
 import type { PortalAccount } from "../api.js";
 import { AttentionShelf } from "../components/AttentionShelf.js";
-import { DiscoverTeaser } from "../components/DiscoverTeaser.js";
 import { LibraryEmpty } from "../components/LibraryEmpty.js";
 import { LibraryKeyTile } from "../components/LibraryKeyTile.js";
 import { MissingLicense } from "../components/MissingLicense.js";
@@ -89,10 +88,7 @@ export function LibraryPage({
       ) : lib.error ? (
         <ErrorPanel error={lib.error} onRetry={lib.retry} />
       ) : count === 0 ? (
-        <>
-          <LibraryEmpty discoverCount={lib.discoverCount} />
-          <DiscoverTeaser discoverCount={lib.discoverCount} />
-        </>
+        <LibraryEmpty discoverCount={lib.discoverCount} />
       ) : (
         <>
           <LibraryBody
@@ -238,6 +234,11 @@ function ScaledLibrary({
   const productsSection = React.useRef<HTMLElement>(null);
   return (
     <>
+      {filtered ? null : (
+        <AttentionShelf
+          items={attentionItems(products, (s) => href.product(s, "devices"))}
+        />
+      )}
       <LibraryToolbar
         total={products.length}
         q={v.q}
@@ -272,24 +273,17 @@ function ScaledLibrary({
         }}
       />
       <LiveRegion message={filtered ? summary : ""} />
-      {filtered ? null : (
-        <AttentionShelf
-          items={attentionItems(products, (s) => href.product(s, "devices"))}
-        />
-      )}
       <section
         ref={productsSection}
         aria-labelledby="all-h"
         className="space-y-4"
       >
         <div className="flex flex-wrap items-baseline justify-between gap-3">
-          <h2
-            id="all-h"
-            className="flex items-baseline gap-3 text-lg font-semibold text-fg-strong"
-          >
+          <h2 id="all-h" className="sr-only">
             All products
-            <span className="text-sm font-normal text-fg-muted">
-              {v.sort === "name" ? "By name" : "Recently added first"}
+            <span>
+              {" "}
+              · {v.sort === "name" ? "By name" : "Recently added first"}
             </span>
           </h2>
           {filtered ? (
@@ -329,7 +323,7 @@ function ScaledLibrary({
             ref={stagger.ref}
             data-library-grid="compact"
             className={cn(
-              "grid gap-5 desk:grid-cols-3 wide:grid-cols-4",
+              "grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(min(100%,17rem),1fr))]",
               stagger.className,
             )}
           >

@@ -308,7 +308,7 @@ export const SHIPPED: ShippedState[] = [
     scenario: "signedOut",
     path: "/",
     routes: { "/api/capabilities": "abort" },
-    ready: (p) => h1(p, "Can't reach Polaris Key"),
+    ready: (p) => h1(p, "Can't reach Polaris Locker"),
   },
   // §4.1 Where the address goes (I-30; mockup identity.sign-in-routes pins 1 and 2).
   {
@@ -370,12 +370,12 @@ export const SHIPPED: ShippedState[] = [
   {
     section: "4.12",
     id: "library-empty",
-    title: "Library, empty, with the Discover teaser",
+    title: "Library, empty, with the way into Discover",
     scenario: "empty",
     path: "/",
     ready: async (p) => {
       await h1(p, "Your library");
-      await p.getByRole("region", { name: /Ready to add/ }).waitFor();
+      await p.getByRole("heading", { name: "Nothing here yet" }).waitFor();
     },
   },
   {
@@ -1204,13 +1204,17 @@ export const SHIPPED: ShippedState[] = [
     id: "switcher",
     title: "Jump to a product (⌘K)",
     scenario: "twelve",
-    path: "/",
+    // Off the Library: its toolbar search takes ⌘K there.
+    path: "/#/p/nightfall",
     ready: async (p) => {
-      await h1(p, "Your library");
+      await h1(p, "Nightfall");
       // ⌘K listens only once the library has loaded (8+ products), after the h1 shows.
-      await p.getByText("Glyphsmith").first().waitFor();
-      await p.keyboard.press("Control+k");
-      await p.getByRole("dialog", { name: "Jump to a product" }).waitFor();
+      const dialog = p.getByRole("dialog", { name: "Jump to a product" });
+      for (let i = 0; i < 40 && !(await dialog.isVisible()); i++) {
+        await p.keyboard.press("Control+k");
+        await p.waitForTimeout(250);
+      }
+      await dialog.waitFor();
       await p.keyboard.type("glyph");
       await p
         .getByRole("option", { name: /Glyphsmith/ })
@@ -1230,11 +1234,11 @@ export const SHIPPED: ShippedState[] = [
   {
     section: "4.28",
     id: "boot-unreachable",
-    title: "Can't reach Polaris Key",
+    title: "Can't reach Polaris Locker",
     scenario: "three",
     path: "/",
     routes: { "/api/me": "abort" },
-    ready: (p) => h1(p, "Can't reach Polaris Key"),
+    ready: (p) => h1(p, "Can't reach Polaris Locker"),
   },
   {
     section: "4.28",

@@ -6,11 +6,7 @@ import { Announcer } from "../ui/LiveRegion.js";
 import { AppToaster, toast } from "../ui/toast.js";
 import type { PortalAccount } from "./api.js";
 import { ActivateProvider, useActivate } from "./activate.js";
-import {
-  JumpIconButton,
-  JumpPalette,
-  JumpTrigger,
-} from "./components/JumpPalette.js";
+import { JumpIconButton, JumpPalette } from "./components/JumpPalette.js";
 import { PortalShell } from "./components/PortalShell.js";
 import { useLibrary } from "./library.js";
 import { SCALE_THRESHOLD } from "./model/libraryView.js";
@@ -198,6 +194,8 @@ function SignedInShell({
     if (!scaled) return;
     const onKey = (e: KeyboardEvent): void => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        // The Library's toolbar search takes ⌘K while it is on screen (LibraryToolbar).
+        if (document.querySelector("[data-library-search]")) return;
         e.preventDefault();
         setJumpOpen((o) => !o);
       }
@@ -212,11 +210,10 @@ function SignedInShell({
       route={route}
       libraryCount={libraryCount}
       discoverCount={lib.discoverCount}
-      headerExtra={
-        scaled ? <JumpTrigger onOpen={() => setJumpOpen(true)} /> : null
-      }
       phoneHeaderExtra={
-        scaled ? <JumpIconButton onOpen={() => setJumpOpen(true)} /> : null
+        scaled && route.kind !== "library" ? (
+          <JumpIconButton onOpen={() => setJumpOpen(true)} />
+        ) : null
       }
     >
       <Page route={route} account={account} />

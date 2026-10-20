@@ -1,3 +1,5 @@
+import { AlertCircle } from "lucide-react";
+import { deviceCount } from "../model/tileFacts.js";
 import * as React from "react";
 import { ChevronRight } from "lucide-react";
 import { cn } from "../../lib/cn.js";
@@ -147,7 +149,15 @@ function LibraryRow({
           </span>
         ) : null}
         <span className="mt-1 block desk:hidden">
-          <ProductStatusPill status={p.status} />
+          {p.status.kind === "deviceLimit" && p.seats ? (
+            // As the grid says it: the device pill at its limit ("2/2 devices").
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-warning-border bg-warning-subtle px-2.5 py-0.5 text-xs font-medium text-warning">
+              <AlertCircle aria-hidden className="size-3.5" />
+              {deviceCount(p.seats.inUse, p.seats.limit)}
+            </span>
+          ) : (
+            <ProductStatusPill status={p.status} />
+          )}
         </span>
       </td>
       <td className="hidden px-2 py-3 desk:table-cell">
