@@ -299,6 +299,21 @@
       "verdict": "pass",
       "date": "2026-10-20",
       "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/PX-34/recheck/ (BUILT re-check PASS-WITH-NOTES after one fix round; lead polish 7c9a52ac4)"
+    },
+    "LK-14": {
+      "verdict": "pass",
+      "date": "2026-10-20",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/LK-10/recheck/ (console BUILT re-check PASS-WITH-NOTES after one fix round; lead polish fd3f50737)"
+    },
+    "LK-10": {
+      "verdict": "pass",
+      "date": "2026-10-20",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/LK-10/recheck/ (console BUILT re-check PASS-WITH-NOTES after one fix round; lead polish fd3f50737)"
+    },
+    "ST-44": {
+      "verdict": "pass",
+      "date": "2026-10-20",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/ST-44/recheck/ (re-check FAIL on 2 small blockers -> lead fix list 5cdd4c8fa + fixture restore 11d6ad80d, lead-verified)"
     }
   }
 }

@@ -10090,7 +10090,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/rbac-admin.md"
       ],
       "brief": "wp/ST-44-one-home-delete-get-manage-api-summary.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "ST-45",
@@ -17979,7 +17979,7 @@
       "optional": false,
       "refs": ["plans/LK-00.md §7, §10, §16"],
       "brief": "wp/LK-10-console-locker-words.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "LK-11",
@@ -18063,7 +18063,7 @@
       "optional": false,
       "refs": ["plans/LK-00.md §14"],
       "brief": "wp/LK-14-console-locker-identity.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "LK-15",
