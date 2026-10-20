@@ -19,7 +19,8 @@ import {
   renderAuthCard,
   renderBrandPage,
 } from "../../../core/brandHtml.js";
-import { pageApp } from "../../../core/brandPage.js";
+import { appForPage, pageApp } from "../../../core/brandPage.js";
+import type { Db } from "../../../db/types.js";
 import {
   ENTRY_FOOTER,
   codeEntryBody,
@@ -51,6 +52,23 @@ export async function listingDeveloper(
   } catch {
     return null;
   }
+}
+
+/** What every step after the confirm shares: the TV variant and the app the confirm drew. */
+export interface PageView {
+  tv?: boolean;
+  app?: { name: string; iconUrl?: string | null } | undefined;
+}
+
+/** The view for a flow that is already confirmed (`tv` is stored on the flow at confirm). */
+export async function flowView(
+  env: Env,
+  db: Db,
+  product: Product,
+  flow: { tv?: boolean },
+): Promise<PageView> {
+  const app = await appForPage({ product, env, db }).catch(() => undefined);
+  return { tv: flow.tv === true, app };
 }
 
 /** Headers for the device-flow HTML pages: the branded-page bundle, no Referer, no caching.
@@ -123,7 +141,7 @@ export async function renderDeviceConfirmation(
     await deviceFlowKey(env, product.slug, deviceCode),
     { set: { csrf } },
   );
-  if (!minted.ok) return deviceGonePage(product, 404, "expired", tv);
+  if (!minted.ok) return deviceGonePage(product, 404, "expired", { tv, app });
   // Never the raw device id: with `state` it was half of what the retired `/identity/auth/poll`
   // checked, and it is a device identifier the user-code holder has no need for (R8-02, P1-06).
   // §12.7.1: the label is stored normalised at `/device/start`; it is normalised again here so a
@@ -229,14 +247,22 @@ export function deviceGonePage(
   product: Product | null,
   status: 403 | 404,
   kind: "expired" | "stale" = "expired",
-  tv = false,
+  view: PageView = {},
 ): Response {
   const expired = kind === "expired";
+  const shown = pageApp(view.app ?? { name: product?.name ?? "" });
   const html = renderAuthCard({
-    ...(tv ? { variant: "tv" as const } : {}),
+    ...(view.tv ? { variant: "tv" as const } : {}),
     title: expired ? "That code expired" : "This page is out of date",
     heading: expired ? "That code expired" : "This page is out of date",
-    ...(product ? { header: appHeader({ name: product.name }) } : {}),
+    ...(product
+      ? {
+          header: appHeader({
+            name: product.name,
+            iconUrl: shown.app.iconUrl,
+          }),
+        }
+      : {}),
     body:
       (expired
         ? callout(
@@ -248,23 +274,33 @@ export function deviceGonePage(
       `<a class="button" href="/device">${expired ? "Enter the new code" : "Enter the code"}</a>`,
     footer: ENTRY_FOOTER,
   });
-  return new Response(html, { status, headers: deviceHtmlHeaders() });
+  return new Response(html, {
+    status,
+    headers: deviceHtmlHeaders(undefined, shown.imgOrigin),
+  });
 }
 
 /** Deny: the code no longer works here and nothing signed in. */
-export function deviceDeniedPage(product: Product, tv = false): Response {
+export function deviceDeniedPage(
+  product: Product,
+  view: PageView = {},
+): Response {
+  const shown = pageApp(view.app ?? { name: product.name });
   const html = renderAuthCard({
-    ...(tv ? { variant: "tv" as const } : {}),
+    ...(view.tv ? { variant: "tv" as const } : {}),
     title: "Nothing was signed in",
     heading: "Nothing was signed in",
-    header: appHeader({ name: product.name }),
+    header: appHeader({ name: product.name, iconUrl: shown.app.iconUrl }),
     body: callout(
       "check-circle",
       "You denied the request",
       "That code no longer works. You can close this page.",
     ),
   });
-  return new Response(html, { status: 200, headers: deviceHtmlHeaders() });
+  return new Response(html, {
+    status: 200,
+    headers: deviceHtmlHeaders(undefined, shown.imgOrigin),
+  });
 }
 
 /** A branded 403 sign-in refusal page: no caching, no retry on this route. `body` is TRUSTED. */
@@ -302,9 +338,10 @@ export function platformSignInEndedPage(): Response {
 export function productAccountDisabledPage(
   product: Product,
   flow: FlowRecord,
+  view: PageView = {},
 ): Response {
   return accountDisabledPage({
-    app: { name: product.name },
+    app: view.app ?? { name: product.name },
     signInHref: "/login",
     back: flow.returnTo
       ? { href: flow.returnTo, productName: product.name }
@@ -318,11 +355,15 @@ export function joinOfferNotice(email: string): string {
   return `<p>A Polaris Locker account already uses ${escapeHtml(email)}. To add this sign-in to it, <a href="/login">continue with single sign-on on Polaris Locker</a>, then sign in to that account when asked.</p>`;
 }
 
-/** The callback's "return to the app" page. `notice` is TRUSTED markup (I-17's join offer). */
+/** The callback's "return to the app" page. `notice` is TRUSTED markup (I-17's join offer).
+ *  `done` names the devices after a Replace: "Signed in on <this>. <replaced> was signed out." */
 export function signedInPage(
   cookies: string[] = [],
   notice: string | null = null,
+  view: PageView = {},
+  done?: { thisDevice: string; replaced: string },
 ): Response {
+  const shown = pageApp(view.app ?? { name: "" });
   // R1-09 — see the device-authorization page above: set the policy at the sink as well as in
   // the dispatcher backstop.
   const headers = brandedHtmlSecurityHeaders(
@@ -330,22 +371,27 @@ export function signedInPage(
       "content-type": "text/html; charset=utf-8",
       "cache-control": "no-store",
     }),
+    { imgOrigin: shown.imgOrigin },
   );
   for (const c of cookies) headers.append("set-cookie", c);
+  const lede = done
+    ? `<p>Signed in on ${escapeHtml(isolate(done.thisDevice))}. ${escapeHtml(isolate(done.replaced))} was signed out.</p>`
+    : "";
   return new Response(
-    renderBrandPage({
+    renderAuthCard({
       title: "Signed in",
       heading: "You're signed in",
-      body: `<p class="muted">You can close this tab and return to the app.</p>${notice ?? ""}`,
+      ...(view.tv ? { variant: "tv" as const } : {}),
+      ...(view.app?.name
+        ? {
+            header: appHeader({
+              name: view.app.name,
+              iconUrl: shown.app.iconUrl,
+            }),
+          }
+        : {}),
+      body: `${lede}<p class="muted">You can close this tab and return to the app.</p>${notice ?? ""}`,
     }),
     { status: 200, headers },
   );
 }
-
-// ── the licence chooser (I-26) ───────────────────────────────────────────────
-//
-// See `licenseChoice.ts` for the rule. The page is rendered only by `GET /identity/auth/choose`
-// and changed only by its `POST` (post/redirect/get), so a reload never resubmits. Neither the
-// page nor its URL names the flow: the browser binder (`__Host-pk_lcb`) finds it through the
-// `oidc-choice` index, and each render carries a fresh single-use token stored (hashed) on the
-// flow record.

@@ -1025,8 +1025,14 @@ describe("I-26 Replace a device", () => {
     // radio group with nothing preselected, and Replace and sign in is the one primary.
     expect(page.html).not.toContain("<summary>Replace a device</summary>");
     expect(page.html).toContain(
-      "Choose one to sign out. Steam Deck takes its seat.",
+      "Choose one to sign out. \u2068Steam Deck\u2069 takes its seat.",
     );
+    expect(page.html).toContain("<h1>Replace a device</h1>");
+    expect(page.html).toContain(
+      "The device you choose signs out of djdl. It can sign in again later if a seat is free. We'll email you about it.",
+    );
+    expect(page.html.match(/Least recent/g)).toHaveLength(1);
+    expect(page.html.match(/Active now/g)).toHaveLength(1);
     expect(page.html).toContain('name="replaceDevice"');
     expect(page.html).not.toMatch(/name="replaceDevice"[^>]*checked/);
     expect(page.html).toContain(
@@ -1039,6 +1045,8 @@ describe("I-26 Replace a device", () => {
     expect(none.status).toBe(303);
     page = await readChooser(flow.binder!);
     expect(page.html).toContain("Choose a device to replace.");
+    expect(page.html).toContain('aria-invalid="true"');
+    expect(page.html).toMatch(/name="replaceDevice"[^>]*autofocus/);
     expect(page.html).toContain('id="rg-err"');
     expect(page.html).not.toMatch(/<button[^>]*disabled/);
     expect(
@@ -1052,6 +1060,7 @@ describe("I-26 Replace a device", () => {
       replaceDevice: "lic_start|work-laptop",
     });
     expect(done.status).toBe(200);
+    expect(await done.text()).toContain("was signed out.");
     expect(
       (await db.first<{ status: string }>(
         "SELECT status FROM devices WHERE device_id = 'work-laptop'",
@@ -1070,7 +1079,7 @@ describe("I-26 Replace a device", () => {
     page = await readChooser(flow.binder!);
     await postChooser(flow.binder, { choice: page.token, action: "back" });
     page = await readChooser(flow.binder!);
-    expect(page.html).toContain("Choose a license for this device");
+    expect(page.html).toContain("Replace a device");
   });
 
   it("shares the portal's portalDeviceDisconnect budget", async () => {

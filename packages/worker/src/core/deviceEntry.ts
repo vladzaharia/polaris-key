@@ -74,7 +74,7 @@ export function codeEntryBody(opts: {
     `</div>` +
     note(
       "shield",
-      "Only use a code from your own product, not one somebody sent you.",
+      "Only use a code your own device shows, not one somebody sent you.",
     ) +
     `<button class="button" type="submit">Continue${icon("arrow-right")}</button></form>`
   );

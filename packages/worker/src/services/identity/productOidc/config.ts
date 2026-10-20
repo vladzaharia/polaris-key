@@ -51,6 +51,8 @@ export interface FlowRecord {
    *  handle for anyone who holds the user code (R8-02, P1-06). The one such surface,
    *  `/identity/auth/poll`, is retired; `/device/poll` is the only poll. */
   viaDeviceCode?: boolean;
+  /** The confirm came from `/tv`: every later page keeps the large-type variant. */
+  tv?: boolean;
   /** A device-code flow's verified identity, stored by the callback INSTEAD of activating it
    *  (P1-07). Activation happens at `/device/poll`, where the device-code holder decides whether
    *  the device's anonymous enrolled licence is attached; until then no licence row is created,

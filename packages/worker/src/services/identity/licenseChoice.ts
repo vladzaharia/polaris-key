@@ -587,7 +587,7 @@ export function chooserBody(input: {
   const allFull =
     view.rows.length > 0 && view.rows.every((r) => r.state === "full");
   const replaceable = view.rows.some((r) => r.replace && r.replace.length > 0);
-  if (allFull && replaceable && !view.create) {
+  if (isReplaceGroup(view)) {
     return replaceGroupBody(input, ctx.thisDevice);
   }
   // signin.choice.allFull / allFullCreate, or noneReplaceable when no row offers Replace.
@@ -643,50 +643,67 @@ function replaceGroupBody(
 ): string {
   const rows = input.view.rows.filter((r) => r.replace && r.replace.length > 0);
   const many = rows.length > 1;
-  const items = rows
-    .flatMap((r) =>
-      (r.replace ?? []).map((d) => {
-        const tags = [
-          d.leastRecent ? "Least recent" : null,
-          d.activeNow ? "Active now" : null,
-        ]
-          .filter((t): t is string => t !== null)
-          .map((t) => `<span class="tag">${t}</span>`)
-          .join("");
-        return (
-          `<li><label class="choice"><input type="radio" name="replaceDevice" value="${escapeHtml(`${r.id}|${d.id}`)}" aria-describedby="rg-err">` +
-          `<span class="choice-body"><span class="choice-title"><bdi>${escapeHtml(d.label)}</bdi>${tags}</span>` +
-          meta([
-            ...(many ? [r.tierName] : []),
-            ...(d.platform ? [d.platform] : []),
-            lastUsedText(d.lastSeen, input.now),
-          ]) +
-          `</span></label></li>`
-        );
-      }),
-    )
+  const all = rows.flatMap((r) => (r.replace ?? []).map((d) => ({ r, d })));
+  // One "Least recent" across the merged list: the overall least recently used device.
+  const oldest = all.reduce<(typeof all)[number] | null>(
+    (m, x) => (m === null || x.d.lastSeen < m.d.lastSeen ? x : m),
+    null,
+  );
+  const bad = input.notice?.kind === "pick_device";
+  const items = all
+    .map(({ r, d }, i) => {
+      const tags = [
+        d === oldest?.d ? "Least recent" : null, // signin.replace.leastRecent
+        d.activeNow ? "Active now" : null, // signin.replace.activeNow
+      ]
+        .filter((t): t is string => t !== null)
+        .map((t) => `<span class="tag">${t}</span>`)
+        .join("");
+      return (
+        `<li><label class="choice"><input type="radio" name="replaceDevice" value="${escapeHtml(`${r.id}|${d.id}`)}" aria-describedby="rg-err"${bad ? ' aria-invalid="true"' : ""}${bad && i === 0 ? " autofocus" : ""}>` +
+        `<span class="choice-body"><span class="choice-title"><bdi>${escapeHtml(d.label)}</bdi>${tags}</span>` +
+        // "Active now" is said once: the tag, not the last-used line too.
+        meta([
+          ...(many ? [r.tierName] : []),
+          ...(d.platform ? [d.platform] : []),
+          ...(d.activeNow ? [] : [lastUsedText(d.lastSeen, input.now)]),
+        ]) +
+        `</span></label></li>`
+      );
+    })
     .join("");
-  const err =
-    input.notice?.kind === "pick_device"
-      ? `<p class="field-err" id="rg-err">${icon("x-circle", true)}<span>Choose a device to replace.</span></p>`
-      : `<p class="sr-only" id="rg-err"></p>`;
-  const other =
-    input.notice?.kind === "pick_device" ? "" : noticeHtml(input.notice);
+  const err = bad
+    ? `<p class="field-err" id="rg-err">${icon("x-circle", true)}<span>Choose a device to replace.</span></p>`
+    : `<p class="sr-only" id="rg-err"></p>`;
+  const other = bad ? "" : noticeHtml(input.notice);
+  const iso = (n: string) => `\u2068${n}\u2069`;
   return (
     callout(
       "devices",
       "Your licenses are on all their devices.",
-      `Choose one to sign out. ${thisDevice} takes its seat.`,
+      `Choose one to sign out. ${iso(thisDevice)} takes its seat.`,
     ) +
     other +
     `<form method="post" action="${escapeHtml(input.action)}">` +
     `<input type="hidden" name="choice" value="${escapeHtml(input.token)}">` +
     `<div class="field"><fieldset class="choices"><legend class="sr-only">Devices to replace</legend><ul class="choices">${items}</ul></fieldset>${err}</div>` +
+    // signin.replace.consequence, said once for the group (§3.7).
+    `<p class="note">${icon("info", true)}<span>The device you choose signs out of ${escapeHtml(input.productName)}. It can sign in again later if a seat is free. We'll email you about it.</span></p>` +
     `<div class="actions stack">` +
     `<button class="button" type="submit" name="action" value="replace-pick">Replace and sign in</button>` +
     keyLink(input.keyHref) +
     `<button class="button secondary" type="submit" name="action" value="cancel" formnovalidate>Cancel</button>` +
     `</div></form>`
+  );
+}
+
+/** Whether the chooser shows the all-full replace group (the heading is then "Replace a device"). */
+export function isReplaceGroup(view: LegacyChoiceView): boolean {
+  return (
+    view.rows.length > 0 &&
+    view.rows.every((r) => r.state === "full") &&
+    view.rows.some((r) => r.replace && r.replace.length > 0) &&
+    !view.create
   );
 }
 

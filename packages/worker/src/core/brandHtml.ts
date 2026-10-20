@@ -267,7 +267,6 @@ const LOCKER_PAGE_CSS_TAIL = [
   `.ac-dev{display:flex;gap:.375rem;align-items:center}`,
   `.ac-dev .ic{margin:0}`,
   `.ac-brand.quiet{opacity:.8}`,
-  `.ac-brand.quiet svg{height:24px;width:auto}`,
   `.ac-passport{display:none}`,
   `.ac-body{display:grid;gap:1.25rem;min-width:0;padding:2rem 1.75rem;overflow-wrap:anywhere}`,
   `.ac-body>*{margin:0;min-width:0}`,
@@ -323,6 +322,11 @@ const LOCKER_PAGE_CSS_TAIL = [
   `.tv .ac-body input[type=text]{min-height:5.5rem;font-size:min(3rem,8vw)}`,
   `[data-brand=locker] .tv .button{min-height:4.5rem;font-size:1.75rem;line-height:2rem}`,
   `.tv .ic{width:2rem;height:2rem}`,
+  `.tv .ac-brand svg{height:56px;width:auto}`,
+  `.tv .ac-head img,.tv .ac-head .ac-mono{width:64px;height:64px}`,
+  `.tv .ac-head-title{font-size:1.5rem;line-height:2rem}`,
+  `.tv .ac-head-sub{font-size:1.25rem;line-height:1.75rem}`,
+  `.tv .ac-head .ic,.tv .ac-dev .ic{width:1.5rem;height:1.5rem}`,
   `.tv .ac-foot,.tv .ac-head{padding-left:3rem;padding-right:3rem}`,
   `@media (max-width: 30rem){.tv .ac-body{padding:1.5rem}.tv .ac-body h1{font-size:2rem;line-height:2.5rem}.tv .ac-body input[type=text]{font-size:min(2rem,7vw)}.tv .ac-foot,.tv .ac-head{padding-left:1.25rem;padding-right:1.25rem}}`,
 ].join("");
@@ -487,7 +491,6 @@ function passportPane(f: AppFacts): string {
 
 let mark: string | null = null;
 let lockerLockup: string | null = null;
-let lockerLockupSmall: string | null = null;
 
 /**
  * The brand block above the card. `surface` is the already-escaped surface label, or "". Key:
@@ -572,8 +575,7 @@ export function renderBrandPage(opts: BrandPageOptions): string {
  * TRUSTED markup built with the helpers above, every value escaped.
  */
 export function renderAuthCard(opts: AuthCardOptions): string {
-  lockerLockup ??= themedLockup("locker", "horizontal", 48, "mark");
-  lockerLockupSmall ??= themedLockup("locker", "horizontal", 24, "mark");
+  lockerLockup ??= themedLockup("locker", "horizontal", 40, "mark");
   const header =
     opts.header ??
     (opts.app
@@ -589,9 +591,10 @@ export function renderAuthCard(opts: AuthCardOptions): string {
             device: opts.passport.device ?? null,
           })
         : "");
-  // In an app's context (SIGN-IN.md §3.1) the brand row is the quiet 18 px one; the full lockup
-  // is for pages with no app.
-  const inApp = header !== "" || opts.passport !== undefined;
+  // One 40 px Locker lockup on every page (no size jump between steps): muted in an app's
+  // context, full on `/tv` and on pages with no app (SIGN-IN.md §3.1).
+  const inApp =
+    (header !== "" || opts.passport !== undefined) && opts.variant !== "tv";
   const wide = opts.passport !== undefined && opts.variant !== "tv";
   const dark = THEME_TOKENS.dark.surface.page;
   const light = THEME_TOKENS.light.surface.page;
@@ -610,7 +613,7 @@ export function renderAuthCard(opts: AuthCardOptions): string {
     `<style>${BRAND_PAGE_CSS_LOCKER}</style>`,
     `</head>`,
     opts.variant === "tv" ? `<body class="tv">` : `<body>`,
-    `<header class="${inApp ? "ac-brand quiet" : "ac-brand"}"><div role="img" aria-label="Polaris Locker">${inApp ? lockerLockupSmall : lockerLockup}</div></header>`,
+    `<header class="${inApp ? "ac-brand quiet" : "ac-brand"}"><div role="img" aria-label="Polaris Locker">${lockerLockup}</div></header>`,
     wide ? `<main class="ac ac-wide">` : `<main class="ac">`,
     header,
     wide ? passportPane(opts.passport!) : "",

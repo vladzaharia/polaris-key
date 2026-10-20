@@ -58,6 +58,7 @@ import {
   platformSignInEndedPage,
   productAccountDisabledPage,
   signedInPage,
+  flowView,
 } from "./pages.js";
 
 export function mapClaims(payload: Record<string, unknown>): OidcIdentity {
@@ -250,7 +251,11 @@ export async function handleAuthCallback(
     )
   ) {
     await deleteArtefact(env, stateKey);
-    return productAccountDisabledPage(product, flow);
+    return productAccountDisabledPage(
+      product,
+      flow,
+      await flowView(env, db, product, flow),
+    );
   }
 
   // I-17: moving end users off the platform IdP. With `PLATFORM_OIDC_MIGRATION` off (the
@@ -311,7 +316,11 @@ export async function handleAuthCallback(
     }
     flow.identity = identity;
     await updateArtefact(env, stateKey, { set: { identity } });
-    return signedInPage([], migration.notice);
+    return signedInPage(
+      [],
+      migration.notice,
+      await flowView(env, db, product, flow),
+    );
   }
   const result = await activateFromIdentity(db, product, identity, now, {
     env,
@@ -397,7 +406,11 @@ export async function migratePlatformSubject(
     case "refused":
       if (claim.result.reason === "account_disabled") {
         await deleteArtefact(env, stateKey);
-        return productAccountDisabledPage(product, flow);
+        return productAccountDisabledPage(
+          product,
+          flow,
+          await flowView(env, db, product, flow),
+        );
       }
       return { notice: null };
     default:
@@ -516,5 +529,9 @@ export async function completeBrowserFlow(
     });
   }
   await updateArtefact(env, stateKey, { set: { licenseId } });
-  return signedInPage(extraCookies, notice);
+  return signedInPage(
+    extraCookies,
+    notice,
+    await flowView(env, db, product, flow),
+  );
 }
