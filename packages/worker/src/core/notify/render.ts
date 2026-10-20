@@ -57,6 +57,7 @@ function darkCss(locker: boolean): string {
     `.pk-text{color:${DARK.text.default} !important}`,
     `.pk-muted{color:${DARK.text.muted} !important}`,
     `.pk-key{background-color:${DARK.surface.page} !important;border-color:${DARK.border.subtle} !important}`,
+    `.pk-callout{background-color:${DARK.surface.page} !important;border-color:${DARK.border.subtle} !important}`,
     `.pk-btn{background-color:${locker ? act.fill : DARK.accent.violet.solid} !important}`,
     `.pk-btn-a{color:${locker ? act.on : DARK.accent.violet.on} !important}`,
     `.pk-link{color:${locker ? DARK.text.strong : DARK.accent.violet.fg} !important}`,
@@ -83,6 +84,11 @@ export interface EmailContent {
   paragraphs: string[];
   /** One call to action, a URL the Worker built. */
   action?: { label: string; url: string };
+  /**
+   * A neutral callout (D9a: ink on the page ground with a quiet border, never a status or accent
+   * colour) for the one fact the reader must not miss, placed after the paragraphs. Plain text.
+   */
+  callout?: string;
   /** A security notice's "Wasn't you? Secure your account" line, a URL the Worker built. */
   secure?: { label: string; url: string };
   /**
@@ -156,8 +162,19 @@ export function renderEmail(c: EmailContent): string {
         : "") +
       `<td><h1 class="pk-strong" style="margin:0;font-family:${font};font-size:24px;line-height:32px;font-weight:700;letter-spacing:-0.01em;color:${LIGHT.text.strong}">${escapeHtml(c.hero.name)}</h1></td></tr></table>`
     : "";
+  const calloutBox = (inner: string, top: number) =>
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:${top}px 0 16px"><tr><td class="pk-callout" bgcolor="${LIGHT.surface.page}" style="padding:12px 16px;background-color:${LIGHT.surface.page};border:1px solid ${LIGHT.border.subtle};border-radius:6px;font-family:${font};font-size:15px;line-height:22px;color:${LIGHT.text.default}">${inner}</td></tr></table>`;
+  const callout = c.callout
+    ? calloutBox(
+        `<span class="pk-text">${escapeHtml(c.callout).replace(/\n/g, "<br>")}</span>`,
+        8,
+      )
+    : "";
   const secure = c.secure
-    ? `<p class="pk-text" style="margin:24px 0 0;font-family:${font};font-size:15px;line-height:22px;color:${LIGHT.text.default}"><strong>Wasn&#x27;t you?</strong> <a class="pk-link" href="${escapeHtml(c.secure.url)}" style="color:${linkFg};text-decoration:underline">${escapeHtml(c.secure.label)}</a></p>`
+    ? calloutBox(
+        `<span class="pk-text"><strong>Wasn&#x27;t you?</strong> <a class="pk-link" href="${escapeHtml(c.secure.url)}" style="color:${linkFg};text-decoration:underline">${escapeHtml(c.secure.label)}</a></span>`,
+        24,
+      )
     : "";
   return [
     `<!doctype html>`,
@@ -189,6 +206,7 @@ export function renderEmail(c: EmailContent): string {
     ...c.paragraphs.map((t) => para(t)),
     secret,
     ...(c.paragraphsAfter ?? []).map((t) => para(t)),
+    callout,
     action,
     secondary,
     secure,

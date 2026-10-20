@@ -37,7 +37,7 @@ export async function sendMagicLink(
       to,
       subject,
       text:
-        `Use this link to sign in to Polaris Locker:\n\n${link}\n\n` +
+        `Sign in to Polaris Locker\n\nUse this link to sign in:\n\n${link}\n\n` +
         `This link expires in 10 minutes and works once. If you did not ask to sign in, you can ignore this email.`,
       html: renderEmail({
         subject,
