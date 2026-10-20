@@ -1,16 +1,16 @@
 # UK-58 Brand expression tokens: action-neutral role, display scale, weights 400/500/600
 
-| Field       | Value                                                                                                                                      |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md)                                                                      |
-| Size        | 0.4–1 engineer-weeks                                                                                                                       |
-| Depends on  | none                                                                                                                                       |
-| Unblocks    | [I-39](I-39-emails-brand-v2.md), [ST-48](ST-48-console-shell-v2.md), [DOC-02a](DOC-02a-shared-components.md), [DOC-02b](DOC-02b-chrome.md) |
-| Role        | `pkey-implementer`                                                                                                                         |
-| Plan mode   | no (no wire change)                                                                                                                        |
-| Gates       | drift-gate, golden-images                                                                                                                  |
-| Human input | none                                                                                                                                       |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                  |
+| Field       | Value                                                                                                                                                 |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md)                                                                                 |
+| Size        | 0.4–1 engineer-weeks                                                                                                                                  |
+| Depends on  | none                                                                                                                                                  |
+| Unblocks    | [ST-48](ST-48-console-shell-v2.md), [DOC-02a](DOC-02a-shared-components.md), [DOC-02b](DOC-02b-chrome.md), [LK-07b](LK-07b-locker-customer-emails.md) |
+| Role        | `pkey-implementer`                                                                                                                                    |
+| Plan mode   | no (no wire change)                                                                                                                                   |
+| Gates       | drift-gate, golden-images                                                                                                                             |
+| Human input | none                                                                                                                                                  |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                             |
 
 ## Goal
 

@@ -214,7 +214,7 @@ function UsersCollection({ slug }: { slug: string }): React.ReactElement {
               description={
                 identityOn
                   ? "A user appears here once they hold a license of this product or sign in to it."
-                  : "A user appears here once a license of this product is in their Polaris Key account."
+                  : "A user appears here once a license of this product is in their Polaris Locker account."
               }
               docs="/docs/admin/users/"
             />

@@ -66,6 +66,22 @@ const BRAND_LOCKER_WEB_FILES: readonly string[] = [
  * build constant allowed by its hash, so it cannot follow Vite's content-hashed font names. The
  * SPAs themselves keep loading the hashed copies their CSS imports.
  */
+/**
+ * The Polaris Locker web identity (LK-06), for the portal shell while `customer.host` is on: the
+ * Worker swaps the Key links for these (`services/identity/portal/lockerShell.ts`). Same icon `src`
+ * convention as the Key set: the manifest's are relative.
+ */
+const LOCKER_WEB_DIR = "assets/branding/locker";
+const LOCKER_WEB_FILES: readonly string[] = [
+  "favicon.svg",
+  "favicon.ico",
+  "apple-touch-icon.png",
+  "site.webmanifest",
+  "icon-192.png",
+  "icon-512.png",
+  "maskable-512.png",
+];
+
 const BRAND_FONT_DIR = "assets/branding/fonts";
 const BRAND_FONT_FILES: readonly string[] = [
   "rubik-var-latin.woff2",
@@ -83,6 +99,12 @@ const brandFonts = dirname(
 const brandWebKey = dirname(
   createRequire(import.meta.url).resolve(
     "@polaris-key/brand/web/key/favicon.svg",
+  ),
+);
+
+const brandWebLocker = dirname(
+  createRequire(import.meta.url).resolve(
+    "@polaris-key/brand/web/locker/favicon.svg",
   ),
 );
 
@@ -119,6 +141,7 @@ const BRAND_DIRS: readonly {
   from: string;
 }[] = [
   { dir: BRAND_WEB_DIR, files: BRAND_WEB_FILES, from: brandWebKey },
+  { dir: LOCKER_WEB_DIR, files: LOCKER_WEB_FILES, from: brandWebLocker },
   { dir: BRAND_WEB_DIR, files: BRAND_LOCKUP_FILES, from: brandLockupKey },
   { dir: BRAND_FONT_DIR, files: BRAND_FONT_FILES, from: brandFonts },
   {

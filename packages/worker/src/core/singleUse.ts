@@ -24,6 +24,8 @@ export type SingleUseKind =
   | "portal-magic"
   /** A login-card provider sign-in (Google, Apple, Steam; I-06), by `state`. */
   | "provider-flow"
+  /** A console connection test sign-in's result (I-31), by the hash of its `state`. */
+  | "connection-test"
   /** Console (admin) OIDC sign-in, by `state`. */
   | "admin-flow"
   /** Console sign-out mark: an operator's sessions minted at or before it are void. */
@@ -56,6 +58,8 @@ export type SingleUseKind =
   | "auth-code"
   /** A passthrough sign-in request handle (PX-W13, WIRE-CONTRACT-V4 §12.7.2), by its hash. */
   | "signin-request"
+  /** A cross-host bind token (LK-04, plans/LK-00.md §7.8), by its hash: the request handle and binder to hand to the customer host. */
+  | "signin-bind"
   /** An app passthrough authorization code (I-08, WIRE-CONTRACT-V4 §12.4), by its hash. */
   | "signin-code"
   /** A pending sign-in grant (I-08b, WIRE-CONTRACT-V4 §12.5.1), by the hash of the grant. */

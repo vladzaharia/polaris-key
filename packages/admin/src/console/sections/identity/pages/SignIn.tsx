@@ -230,7 +230,7 @@ function SignInBody({
         id="sign-in-provider"
         title="Provider"
         description={
-          custom ? undefined : "Shared with the customer portal's sign-in."
+          custom ? undefined : "Shared with Polaris Locker's sign-in."
         }
       >
         <div className="px-5 py-4">
@@ -474,7 +474,7 @@ function SignInThroughForm({
         <SettingsSection
           id="sign-in-through"
           title="Sign-in through this product"
-          description="What a person sees when your app sends them to sign in with their Polaris Key account."
+          description="What a person sees when your app sends them to sign in with their Polaris Locker account."
         >
           <SettingsRow
             label="App name"
@@ -502,7 +502,7 @@ function SignInThroughForm({
                 to={r.portal(slug)}
                 className="text-accent-fg underline underline-offset-2"
               >
-                Change on Portal
+                Change in Locker
               </Link>
             </span>
           </SettingsRow>

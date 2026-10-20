@@ -1,16 +1,18 @@
-# I-39 Transactional emails on brand v2: ink action button, neutral callouts, lockup, HTML snapshots for every template
+# I-39 Dropped (folded 2026-10-19 into LK-07b): Transactional emails on brand v2: ink action button, neutral callouts, lockup, HTML snapshots for every template
 
 | Field       | Value                                                                                         |
 | ----------- | --------------------------------------------------------------------------------------------- |
 | Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (UX coverage (2026-10-09)) |
 | Size        | 0.6–1 engineer-weeks                                                                          |
-| Depends on  | [UK-58](UK-58-brand-expression-tokens.md), [I-38](I-38-hosted-passport-worker-csp.md)         |
+| Depends on  | none                                                                                          |
 | Unblocks    | none                                                                                          |
 | Role        | `pkey-implementer`                                                                            |
 | Plan mode   | no (no wire change)                                                                           |
 | Gates       | `email-snapshots`, `ui-snapshots`                                                             |
 | Human input | none                                                                                          |
 | Repo        | vladzaharia/polaris-key                                                                       |
+
+> **Folded 2026-10-19 into [LK-07b](LK-07b-locker-customer-emails.md) (built on LK-07's rewritten templates; the I-38 dependency is dropped). This brief stays as the original spec.**
 
 ## Goal
 

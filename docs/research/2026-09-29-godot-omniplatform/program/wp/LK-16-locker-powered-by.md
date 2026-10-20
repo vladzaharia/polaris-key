@@ -25,8 +25,6 @@ Powered by Polaris Locker in every kit: the micro mark from `gen brand` (TS, Swi
 
 Exactly `plans/LK-00.md` §14.2, §14.5, §14.6. Anything else is another package's row in §14.6.
 
-Deferred until: customer.host is on in prod.
-
 ## Acceptance criteria
 
 - [ ] `pnpm gen --check` brand clean; generator goldens, all-SDK suites and golden images pass

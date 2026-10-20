@@ -282,7 +282,7 @@ export function ReassignDialog({
       description="Give this license to someone else. It keeps its key, devices and terms."
       consequences={[
         inAccount
-          ? "It leaves the Polaris Key account it is in. Devices signed in through that account lose the sign-in; devices that entered the key keep working."
+          ? "It leaves the Polaris Locker account it is in. Devices signed in through that account lose the sign-in; devices that entered the key keep working."
           : `It stops waiting for ${current}.`,
         "The current holder and the new address are emailed before it moves.",
         "You can undo it for 72 hours.",
@@ -396,7 +396,7 @@ export function MakeFloatingDialog({
       consequences={[
         "Its name and email are removed, so anyone with the key can use it.",
         inAccount
-          ? "It leaves the Polaris Key account it is in and is not added back to it automatically."
+          ? "It leaves the Polaris Locker account it is in and is not added back to it automatically."
           : `It stops waiting for ${email}.`,
         inAccount
           ? "The account is emailed before it changes."

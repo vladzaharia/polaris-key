@@ -127,7 +127,7 @@ describe("product page on today's data (PX-04)", () => {
     mockFetch(routes());
     renderPortal();
     await page();
-    expect(document.title).toBe("Nightfall · Polaris Key");
+    expect(document.title).toBe("Nightfall · Polaris Locker");
     expect(
       within(screen.getByRole("main"))
         .getByRole("link", { name: "Library" })

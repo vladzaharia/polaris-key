@@ -5,7 +5,7 @@
 | Phase       | PS: Polaris Key storefront: the Library as a distribution channel (S-21) (phase 2: engine and portal)                     |
 | Size        | 0.4–0.8 engineer-weeks                                                                                                    |
 | Depends on  | [PS-04](PS-04-storefront-portal-api.md), [PS-05](PS-05-storefront-portal-ui.md), [A-26](A-26-customer-channel-actions.md) |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [PX-32](PX-32-storefront-decision-panel.md)                                       |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [PX-32b](PX-32b-storefront-downloads-visibility.md)                               |
 | Role        | `pkey-implementer`                                                                                                        |
 | Plan mode   | no                                                                                                                        |
 | Gates       | rule 10 (OpenAPI and `routeCoverage`); THREAT-MODEL                                                                       |

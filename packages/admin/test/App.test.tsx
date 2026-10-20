@@ -39,7 +39,9 @@ describe("admin SPA", () => {
     expect(
       await screen.findByRole("heading", { level: 1, name: "Home" }),
     ).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Polaris Key home" })).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "Polaris Key Console home" }),
+    ).toBeTruthy();
   });
 
   it("shows a retryable error with a way to sign in when the session can't load", async () => {

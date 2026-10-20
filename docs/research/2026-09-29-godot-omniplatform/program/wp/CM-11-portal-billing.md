@@ -1,16 +1,16 @@
 # CM-11 Portal Polaris Key orders on Account -> Purchases
 
-| Field       | Value                                                                                                                  |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Phase       | CM: Commerce: store commerce (required) and Polaris Key checkout (deferred)                                            |
-| Size        | 1.2–1.6 engineer-weeks                                                                                                 |
-| Depends on  | [CM-08](CM-08-subscriptions.md), [LX-15](LX-15-portal-licensing.md), [CM-26](CM-26-portal-account-purchases-across.md) |
-| Unblocks    | [CM-17](CM-17-commerce-closeout.md)                                                                                    |
-| Role        | `pkey-implementer`                                                                                                     |
-| Plan mode   | no (executes its sections of the approved [`plans/CM-01.md`](../plans/CM-01.md))                                       |
-| Gates       | `portal-e2e`, `ui-snapshots`, `rule-10`, `docs-links`, `console-csp-parity`                                            |
-| Human input | the owner's go signal (removes `deferred`)                                                                             |
-| Repo        | `vladzaharia/polaris-key`                                                                                              |
+| Field       | Value                                                                                                                           |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | CM: Commerce: store commerce (required) and Polaris Key checkout (deferred)                                                     |
+| Size        | 1.2–1.6 engineer-weeks                                                                                                          |
+| Depends on  | [CM-08](CM-08-subscriptions.md), [CM-26](CM-26-portal-account-purchases-across.md), [PX-28b](PX-28b-license-duration-addons.md) |
+| Unblocks    | [CM-17](CM-17-commerce-closeout.md)                                                                                             |
+| Role        | `pkey-implementer`                                                                                                              |
+| Plan mode   | no (executes its sections of the approved [`plans/CM-01.md`](../plans/CM-01.md))                                                |
+| Gates       | `portal-e2e`, `ui-snapshots`, `rule-10`, `docs-links`, `console-csp-parity`                                                     |
+| Human input | the owner's go signal (removes `deferred`)                                                                                      |
+| Repo        | `vladzaharia/polaris-key`                                                                                                       |
 
 > **Deferred. Do not dispatch.** This package is optional and carries `deferred` in
 > `workpackages.json`: the owner asked for the commerce plan on 2026-10-05 but not for its

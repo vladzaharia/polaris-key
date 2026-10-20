@@ -577,7 +577,7 @@ describe("Sign-in methods (PX-13)", () => {
     const region = await methodsRegion();
     expect(
       await within(region).findByText(
-        /That Google account is connected to another Polaris Key account/,
+        /That Google account is connected to another Polaris Locker account/,
       ),
     ).toBeTruthy();
     await waitFor(() => expect(window.location.hash).toBe("#/account/methods"));
@@ -1073,7 +1073,7 @@ describe("Where you're signed in (PX-13 on I-07)", () => {
     await waitFor(() => expect(document.activeElement).toBe(heading));
     expect(
       within(region).getByText(
-        "This browser and 1 other sign out of Polaris Key.",
+        "This browser and 1 other sign out of Polaris Locker.",
       ),
     ).toBeTruthy();
     expect(fetchedRequests()).not.toContain(

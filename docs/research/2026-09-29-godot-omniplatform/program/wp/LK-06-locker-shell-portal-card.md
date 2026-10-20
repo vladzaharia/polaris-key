@@ -1,16 +1,16 @@
 # LK-06 Locker shell: the portal and the card on the Locker identity and `data-brand`; copy says `{brandName}`
 
-| Field       | Value                                                                          |
-| ----------- | ------------------------------------------------------------------------------ |
-| Phase       | LK: Polaris Locker                                                             |
-| Size        | 1–1.5 engineer-weeks                                                           |
-| Depends on  | [LK-01](LK-01-brand-locker-kit.md), [LK-03](LK-03-customer-host-and-origin.md) |
-| Unblocks    | [LK-08a](LK-08a-locker-copy-constants.md), [LK-11](LK-11-cutover.md)           |
-| Role        | `pkey-implementer`                                                             |
-| Plan mode   | no                                                                             |
-| Gates       | console-csp-parity, portal-e2e, ui-snapshots                                   |
-| Human input | none                                                                           |
-| Repo        | `vladzaharia/polaris-key`                                                      |
+| Field       | Value                                                                                                                                                                                                                                                                                      |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | LK: Polaris Locker                                                                                                                                                                                                                                                                         |
+| Size        | 1–1.5 engineer-weeks                                                                                                                                                                                                                                                                       |
+| Depends on  | [LK-01](LK-01-brand-locker-kit.md), [LK-03](LK-03-customer-host-and-origin.md)                                                                                                                                                                                                             |
+| Unblocks    | [PX-14a](PX-14a-card-header-licence-consent.md), [PX-28a](PX-28a-license-page-v2.md), [PX-31a](PX-31a-account-v3-shell.md), [PX-32a](PX-32a-storefront-decision-panel.md), [PX-34](PX-34-library-discover-locker.md), [LK-08a](LK-08a-locker-copy-constants.md), [LK-11](LK-11-cutover.md) |
+| Role        | `pkey-implementer`                                                                                                                                                                                                                                                                         |
+| Plan mode   | no                                                                                                                                                                                                                                                                                         |
+| Gates       | console-csp-parity, portal-e2e, ui-snapshots                                                                                                                                                                                                                                               |
+| Human input | none                                                                                                                                                                                                                                                                                       |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                  |
 
 ## Goal
 

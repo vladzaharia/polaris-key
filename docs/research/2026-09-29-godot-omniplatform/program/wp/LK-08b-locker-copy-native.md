@@ -26,8 +26,6 @@ Exactly `plans/LK-00.md` §6. Anything else is another package's row in §9.
 
 Re-scoped by Amendment A3: the same keys in Swift, Kotlin and Godot; see `plans/LK-00.md` §14.6.
 
-Deferred until: customer.host is on in prod.
-
 ## Acceptance criteria
 
 - [ ] `swift test`; `sdks/godot/tools/run_tests.sh`; Kotlin `:ui-core:test :conformance:test` (see §13)

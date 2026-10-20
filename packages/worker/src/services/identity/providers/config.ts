@@ -39,6 +39,23 @@ export function isSignInProviderKind(v: unknown): v is SignInProviderKind {
   );
 }
 
+/**
+ * What an operator registers at the provider, from one place so the login flow and the console
+ * never disagree: Google and Apple take the exact callback URI; Steam (OpenID 2.0) takes a realm,
+ * the origin. `origin` is the customer-facing origin the flow itself builds URLs from.
+ */
+export function signInCallbackPath(kind: "google" | "apple"): string {
+  return `/login/${kind}/callback`;
+}
+export function signInRegistration(
+  kind: SignInProviderKind,
+  origin: string,
+): { kind: "redirect-uri" | "realm"; value: string } {
+  return kind === "steam"
+    ? { kind: "realm", value: origin }
+    : { kind: "redirect-uri", value: `${origin}${signInCallbackPath(kind)}` };
+}
+
 /** The sealed slots. */
 export const SIGNIN_SECRET_IDS = {
   google: "google-client-secret",

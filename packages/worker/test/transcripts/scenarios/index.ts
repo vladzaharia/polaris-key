@@ -63,6 +63,7 @@ import {
 } from "./redirect.js";
 
 import { CHOICE_SCENARIOS } from "./choice.js";
+import { LOCKER_SCENARIOS } from "./locker.js";
 
 export const SCENARIOS: Scenario[] = [
   discoveryCapabilities,
@@ -107,4 +108,5 @@ export const SCENARIOS: Scenario[] = [
   redirectWebErrors,
   identityRequestHints,
   ...CHOICE_SCENARIOS,
+  ...LOCKER_SCENARIOS,
 ];

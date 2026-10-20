@@ -228,7 +228,7 @@ describe("registry auth (F-21)", () => {
       name: "Registry tokens",
     });
     expect(table.textContent).toContain("CI pull");
-    expect(table.textContent).toContain("Licensee, in the portal");
+    expect(table.textContent).toContain("Licensee, in Polaris Locker");
     await userEvent.click(
       within(main()).getByRole("button", { name: /New token/ }),
     );

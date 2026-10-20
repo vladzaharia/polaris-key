@@ -4,6 +4,7 @@ import { applyStoredMotionPreference } from "../components/motionPreference.js";
 import { PortalApp } from "./App.js";
 import "../styles.css";
 import "../motion.css";
+import "./locker.css";
 
 // The reduce-motion preference (MO-12) lands on <html data-motion> before the first render.
 applyStoredMotionPreference();

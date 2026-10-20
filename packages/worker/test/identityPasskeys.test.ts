@@ -222,7 +222,7 @@ describe("passkey enrolment", () => {
       };
     };
     const o = firstBody.options;
-    expect(o.rp).toEqual({ id: "key.plrs.im", name: "Polaris Locker" });
+    expect(o.rp).toEqual({ id: "key.plrs.im", name: "Polaris Key" });
     expect(o.user.name).toBe("ada@example.com");
     expect(o.attestation).toBe("none");
     expect(o.authenticatorSelection).toMatchObject({
