@@ -1,0 +1,19 @@
+:root {
+  --locker-page: #060912;
+  --locker-surface: #0d111b;
+  --locker-text: #dbe4ff;
+  --locker-muted: #b5bed3;
+  --locker-controlBoundary: #61697b;
+  --locker-accent: #ff7869;
+  --locker-onAccent: #060912;
+  --locker-font: Rubik, system-ui, sans-serif;
+}
+[data-theme="light"] {
+  --locker-page: #f6f8ff;
+  --locker-surface: #ffffff;
+  --locker-text: #262d40;
+  --locker-muted: #48536b;
+  --locker-controlBoundary: #7e8699;
+  --locker-accent: #c44438;
+  --locker-onAccent: #ffffff;
+}

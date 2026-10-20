@@ -61,6 +61,7 @@ Assets resolve through the exports map: `@polaris-key/brand/web/key/favicon.svg`
 | `./kit-copy`                                                                                                   | the UI kit copy tables, nine locales (generated, see below)  |
 | `./web/*`, `./games/*`, `./social/*`, `./marks/*`, `./lockups/*`, `./powered-by/*`, `./app-icons/*`, `./kit/*` | launch-kit files, verbatim                                   |
 | `./lockups/delivery/*`                                                                                         | the Polaris Key Delivery lockups (generated, see below)      |
+| `./locker.css`, `./{marks,lockups,badges,social,app-icons,web}/locker/*`, `./locker-kit/*`                     | Polaris Locker: tokens, artwork and the kit copy (BRAND §15) |
 
 ## Work on it
 
@@ -144,6 +145,11 @@ so it is identical on every platform; export `./GENERATED.sha256`). No generated
   the kit's; the cards' wordmark is re-set in Rubik Bold and centred as the kit centres its own
   (`scripts/assets.ts` re-sets every kit card first and requires it back byte for byte). The kit
   originals stay in `kit/`.
+- **Polaris Locker** (`locker-kit/`, `css/locker.css`, `web/locker/`, `src/generated/locker.ts`): the
+  Locker launch kit v1.3 copied except `fonts/`, two Key-guide PDFs and the badge PNG/PDF renderings, hash-checked against its
+  `manifest.json`. `scripts/locker.ts` turns its lockups and badges into role templates and
+  requires each variant back byte for byte before writing. `kind: "locker"` has two cuts and no
+  bit; `--pk-locker-*` and `data-brand="locker"` are in `tokens.css`. The kit's `build.py` is never run.
 - **Portrait cards** (`social/{key,delivery}/portrait-{dark,light}.svg`): 1080 x 1350, the kit's
   square composition moved down by half the extra height; essential content is more than 8 %
   inside every edge. The key card is the kit's square, so it carries the kit's gold bit.

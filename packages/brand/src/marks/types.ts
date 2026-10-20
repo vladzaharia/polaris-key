@@ -18,3 +18,11 @@ export interface KitTemplate {
   readonly desc: string;
   readonly body: string;
 }
+
+/** A Locker layout SVG with its colours replaced by `{role}` placeholders (locker-kit/). */
+export interface LockerTemplate {
+  readonly width: number;
+  readonly height: number;
+  readonly title: string;
+  readonly body: string;
+}

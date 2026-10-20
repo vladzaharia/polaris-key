@@ -212,6 +212,11 @@
   --pk-brand-text: #ffffff;
   --pk-brand-muted: #dbe4ff;
   --pk-brand-rose: #ff6fa6;
+  --pk-locker-accent: #ff7869;
+  --pk-locker-fg: #ff7869;
+  --pk-locker-on: #060912;
+  --pk-locker-subtle: #171a23;
+  --pk-locker-hover: #10131b;
   --pk-service-core: #9a5cff;
   --pk-service-core-fg: #9a5cff;
   --pk-service-core-on: #060912;
@@ -362,6 +367,11 @@
     --pk-brand-text: #060912;
     --pk-brand-muted: #48536b;
     --pk-brand-rose: #e0348a;
+    --pk-locker-accent: #c44438;
+    --pk-locker-fg: #b8382e;
+    --pk-locker-on: #ffffff;
+    --pk-locker-subtle: #e5e7ee;
+    --pk-locker-hover: #eceef6;
     --pk-service-core: #7a2fff;
     --pk-service-core-fg: #7a2fff;
     --pk-service-core-on: #ffffff;
@@ -512,6 +522,11 @@
   --pk-brand-text: #060912;
   --pk-brand-muted: #48536b;
   --pk-brand-rose: #e0348a;
+  --pk-locker-accent: #c44438;
+  --pk-locker-fg: #b8382e;
+  --pk-locker-on: #ffffff;
+  --pk-locker-subtle: #e5e7ee;
+  --pk-locker-hover: #eceef6;
   --pk-service-core: #7a2fff;
   --pk-service-core-fg: #7a2fff;
   --pk-service-core-on: #ffffff;
@@ -595,6 +610,24 @@
   --pk-state-context-edge: var(--pk-state-core-context-edge);
   --pk-section-bit: none;
   --pk-section-bit-display: none;
+}
+
+/* Polaris Locker (BRAND.md §15, D9a): coral is identity only: the mark, the 3 px selected-nav
+   marker, a 2 px link underline and the context edge. Selection, hover, focus, links and checked
+   controls are neutral ink. --pk-action stays neutral ink. */
+[data-brand="locker"] {
+  --pk-accent: var(--pk-locker-accent);
+  --pk-accent-fg: var(--pk-text-strong);
+  --pk-accent-on: var(--pk-locker-on);
+  --pk-accent-subtle: var(--pk-locker-subtle);
+  --pk-focus: var(--pk-text-strong);
+  --pk-state-ring: var(--pk-text-strong);
+  --pk-state-selected-fill: var(--pk-locker-subtle);
+  --pk-state-hover-tint: var(--pk-locker-hover);
+  --pk-state-checked-fill: var(--pk-action);
+  --pk-state-checked-on: var(--pk-action-on);
+  --pk-state-checked-edge: var(--pk-action);
+  --pk-state-context-edge: var(--pk-locker-accent);
 }
 
 [data-service="license"] {

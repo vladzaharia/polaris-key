@@ -215,6 +215,7 @@ export const GENERATORS: Generator[] = [
       "packages/brand/scripts/**",
       "packages/brand/src/tokens/**",
       "packages/brand/kit/**",
+      "packages/brand/locker-kit/**",
       "packages/brand/kit-copy/**",
       "packages/brand/fixtures/**",
       "conformance/parity/copy.*.json",
