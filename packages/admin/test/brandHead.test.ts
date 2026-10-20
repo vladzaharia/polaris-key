@@ -96,3 +96,23 @@ describe("the brand head snippet", () => {
     }
   });
 });
+
+describe("the Locker web identity (LK-06)", () => {
+  const brandWebLocker = join(pkg, "..", "brand", "web", "locker");
+  const files = Array.from(
+    (
+      viteConfig.match(/LOCKER_WEB_FILES[^=]*=\s*\[([\s\S]*?)\]/)?.[1] ?? ""
+    ).matchAll(/"([^"]+)"/g),
+    (m) => m[1]!,
+  );
+
+  it("emits only files @polaris-key/brand/web/locker ships, and the manifest's icons", () => {
+    expect(files.length).toBeGreaterThan(0);
+    for (const name of files)
+      expect(existsSync(join(brandWebLocker, name)), name).toBe(true);
+    const manifest = JSON.parse(
+      readFileSync(join(brandWebLocker, "site.webmanifest"), "utf8"),
+    ) as { icons: { src: string }[] };
+    for (const icon of manifest.icons) expect(files).toContain(icon.src);
+  });
+});

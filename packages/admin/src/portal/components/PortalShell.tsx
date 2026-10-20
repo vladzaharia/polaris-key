@@ -1,4 +1,5 @@
 import * as React from "react";
+import { brandName, portalBrand } from "../brand.js";
 import { Compass, KeyRound, Library, TriangleAlert } from "lucide-react";
 import { Button } from "../../ui/Button.js";
 import { TOAST_BOTTOM_INSET_VAR } from "../../ui/toast.js";
@@ -81,7 +82,7 @@ export function PortalShell({
         <div className="mx-auto flex h-14 w-full max-w-[82rem] items-center gap-4 px-4 desk:h-16 desk:gap-6 desk:px-8 mid:gap-8">
           <a
             href={href.library()}
-            aria-label="Polaris Key: your library"
+            aria-label={`${brandName()}: your library`}
             className="flex shrink-0 items-center rounded-md"
           >
             <Lockup height={44} className="hidden mid:block" />
@@ -169,7 +170,11 @@ export function PortalShell({
       </main>
       <footer className="border-t border-border pb-24 desk:pb-0">
         <div className="mx-auto flex w-full max-w-[82rem] flex-wrap items-center justify-between gap-2 px-4 py-6 text-sm text-fg-muted desk:px-8">
-          <span>Polaris Key · key.plrs.im</span>
+          <span>
+            {portalBrand() === "locker"
+              ? "Polaris Locker"
+              : "Polaris Key · key.plrs.im"}
+          </span>
         </div>
       </footer>
       <nav

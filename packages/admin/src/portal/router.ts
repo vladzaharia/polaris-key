@@ -8,6 +8,7 @@ import {
   viewTransition,
   viewTransitionsSupported,
 } from "../ui/motion/index.js";
+import { brandName } from "./brand.js";
 import { pendingHeadingFocus } from "./focus.js";
 
 /**
@@ -799,9 +800,9 @@ export function setParams(
   window.dispatchEvent(new Event(ROUTE_EVENT));
 }
 
-/** `document.title` as "<Page> · Polaris Key" (PORTAL.md naming). */
+/** `document.title` as "<Page> · <brand>" (PORTAL.md naming). */
 export function useDocumentTitle(page: string | null): void {
   React.useEffect(() => {
-    document.title = page ? `${page} · Polaris Key` : "Polaris Key";
+    document.title = page ? `${page} · ${brandName()}` : brandName();
   }, [page]);
 }
