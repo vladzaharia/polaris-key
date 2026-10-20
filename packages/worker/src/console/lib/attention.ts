@@ -88,6 +88,29 @@ interface SetupShape {
   modules?: { id: string; pendingApproval?: string[] }[];
 }
 
+/**
+ * A failed resync's stored message can carry whatever the upstream answered (an error body, a
+ * header, a token echoed back). Home never repeats it: the message is only classified, and one of
+ * these fixed reasons is shown. The full result is on the Releases page, behind its own gate.
+ */
+export function syncReason(message: string | null): string {
+  const m = (message ?? "").toLowerCase();
+  if (
+    /\b(401|403)\b|unauthori[sz]ed|forbidden|permission|credential|token|bad credentials/.test(
+      m,
+    )
+  )
+    return "GitHub refused access to the repository.";
+  if (/\b404\b|not found|no such|missing/.test(m))
+    return "The repository or its .pkey/ directory was not found.";
+  if (/\b429\b|rate.?limit/.test(m)) return "GitHub rate-limited the request.";
+  if (/manifest|invalid|schema|line \d+|validation|parse/.test(m))
+    return "The manifest did not validate.";
+  if (/\b5\d\d\b|timeout|timed out|network|fetch/.test(m))
+    return "GitHub could not be reached.";
+  return "The last resync did not finish.";
+}
+
 /** One product's items, unfiltered by who is asking. */
 export async function productAttention(
   env: Env,
@@ -109,7 +132,7 @@ export async function productAttention(
       tone: "danger",
       service: "release",
       short: "Resync failed",
-      lines: ["Resync failed.", sync.message ?? "See the last sync's errors."],
+      lines: ["Resync failed.", syncReason(sync.message)],
       action: { label: "Open error", page: "releases" },
       area: "ship",
     });

@@ -81,7 +81,7 @@ describe("GET /manage/api/attention", () => {
   it("lists a failed resync and an expiring or expired store credential, worst first", async () => {
     await db.run(
       `INSERT INTO product_sync_state (product, source, status, last_checked_at, message)
-            VALUES ('acme', 'manual', 'error', ?, 'line 14 names switch')`,
+            VALUES ('acme', 'manual', 'error', ?, 'validation failed: line 14 names switch')`,
       NOW,
     );
     for (const [id, expires] of [
@@ -117,6 +117,25 @@ describe("GET /manage/api/attention", () => {
 
   it("answers a session with no grant 403", async () => {
     expect((await get("/api/attention", ["nobody"])).status).toBe(403);
+  });
+});
+
+describe("a failed resync's message", () => {
+  it("is never repeated: a token or body in it cannot reach Home", async () => {
+    const secret = "ghs_16C7e42F292c6912E7710c838347Ae178B4a";
+    await db.run(
+      `INSERT INTO product_sync_state (product, source, status, last_checked_at, message)
+            VALUES ('acme', 'manual', 'error', ?, ?)`,
+      NOW,
+      `GitHub 401 Bad credentials: Authorization: token ${secret} {"message":"Bad credentials"}`,
+    );
+    const res = await get("/api/attention");
+    const text = JSON.stringify(res.json);
+    expect(text).not.toContain(secret);
+    expect(text).not.toContain("Authorization");
+    expect((res.json.items as Item[])[0]!.lines[1]).toBe(
+      "GitHub refused access to the repository.",
+    );
   });
 });
 
