@@ -106,7 +106,8 @@ const STATIC_HTML_CSP = [
 /**
  * Branded-page policy: the static-page policy with the inline-style allowance replaced by the
  * one stylesheet's hash, plus the brand font from this origin. `form-action 'self'` stays a
- * literal token: the device pages widen it by one IdP origin (`oidc.ts`).
+ * literal token: the device pages widen it by one origin (the IdP in `oidc.ts`, the API host in
+ * `deviceEntry.ts`).
  */
 function brandedHtmlCsp(
   imgOrigin: string | null = null,

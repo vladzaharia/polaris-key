@@ -835,7 +835,7 @@ describe("claim at next sign-in through a provider: platform product", () => {
       expect(html).toMatch(/This account can(&#39;|&#x27;|')t sign in/);
       expect(html).not.toContain("Polaris Locker support");
       expect(html).toContain(
-        '<a class="button" href="/">Sign in with another account</a>',
+        '<a class="button" href="/login">Sign in with another account</a>',
       );
       if (back)
         expect(html).toContain(
