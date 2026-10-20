@@ -252,9 +252,10 @@ static var accent := Color(0, 0, 0, 0):
 static var override: Theme = null
 ## Show "Powered by Polaris Locker" where the scenes offer it (gate, boot, settings).
 static var powered_by := false
-## How it is drawn (UI-KITS.md §1.6): "badge" (the 320 x 104 badge where 320 px are free, else the
-## line; the default) or "line" (the Locker micro mark and the phrase).
-static var powered_by_mode := "badge"
+## How it is drawn (UI-KITS.md §1.6), `PKeyOptions.ui_powered_by_style`: "line" (the default: the
+## Locker micro mark and the phrase) or "badge" (the 320 x 104 badge on a credits or about scene the
+## game places, where 320 px are free, else the line). The kit's own scenes draw the line only.
+static var powered_by_style := "line"
 ## The density the scenes use where the screen has room for it (UI-KITS.md §3.1): "spacious" (the
 ## Godot default), "comfortable" or "compact". A screen too small for it steps down on its own.
 static var density := DEFAULT_DENSITY
@@ -311,7 +312,7 @@ static func apply_options(opts: Resource) -> void:
 	override = opts.get("ui_theme") as Theme
 	powered_by = opts.get("ui_powered_by") == true
 	var pm = opts.get("ui_powered_by_style")
-	powered_by_mode = pm if pm is String and pm in ["line", "badge"] else "badge"
+	powered_by_style = pm if pm is String and pm in ["line", "badge"] else "line"
 	var d = opts.get("ui_density")
 	density = d if d is String and DENSITIES.has(d) else DEFAULT_DENSITY
 	var rm = opts.get("ui_reduce_motion")
@@ -339,7 +340,7 @@ static func reset() -> void:
 	accent = Color(0, 0, 0, 0)
 	override = null
 	powered_by = false
-	powered_by_mode = "badge"
+	powered_by_style = "line"
 	density = DEFAULT_DENSITY
 	product_name = ""
 	product_icon = null
@@ -1088,11 +1089,6 @@ static func palette(dark: bool) -> Dictionary:
 
 
 # ── Marks ────────────────────────────────────────────────────────────────────────────────
-
-## The attribution in effect: "" (off), "line" or "badge".
-static func powered_by_style() -> String:
-	return powered_by_mode if powered_by else ""
-
 
 ## The Locker `powered-by` badge (the kit's transparent treatment) for a dark or light ground,
 ## rasterised at 2x its 320 x 104 minimum. Show it at powered_by_size() or larger.

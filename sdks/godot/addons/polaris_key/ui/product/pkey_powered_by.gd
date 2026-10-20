@@ -7,6 +7,10 @@ extends BoxContainer
 ## SVGs, rasterised at 2x). `texture` is the art being drawn, or null when nothing is shown, so a
 ## screen that makes room for the attribution asks `texture == null` and `custom_minimum_size`.
 
+## Draw the badge where 320 px are free (a credits or about scene the game places); the kit's own
+## scenes leave this off and draw the line (UI-KITS.md §1.6).
+var allow_badge := false
+
 ## The art in use: the badge, the micro mark, or null (off or not rasterised).
 var texture: Texture2D = null
 
@@ -57,12 +61,11 @@ func render(phrase: String, dark: bool, free_width: float) -> void:
 	var parent := get_parent_control()
 	if parent != null and not parent.resized.is_connected(_refit):
 		parent.resized.connect(_refit)
-	var style := PKeyUiTheme.powered_by_style()
-	if style == "":
+	if not PKeyUiTheme.powered_by:
 		texture = null
 		visible = false
 		return
-	var use_badge := style == "badge" and free_width >= float(PKeyBrand.BADGE_MIN.x)
+	var use_badge := allow_badge and PKeyUiTheme.powered_by_style == "badge" and free_width >= float(PKeyBrand.BADGE_MIN.x)
 	_badge.visible = use_badge
 	_mark.visible = not use_badge
 	_label.visible = not use_badge
@@ -86,7 +89,7 @@ func render(phrase: String, dark: bool, free_width: float) -> void:
 ## The parent was resized: swap the badge and the line when 320 px became free or stopped being.
 func _refit() -> void:
 	var parent := get_parent_control()
-	if parent == null or PKeyUiTheme.powered_by_style() != "badge":
+	if parent == null or not allow_badge or not PKeyUiTheme.powered_by or PKeyUiTheme.powered_by_style != "badge":
 		return
 	var want_badge := parent.size.x >= float(PKeyBrand.BADGE_MIN.x)
 	if want_badge != _badge.visible:

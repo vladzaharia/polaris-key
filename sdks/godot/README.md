@@ -363,7 +363,7 @@ gamepad or a TV remote.
   options.ui_accent = Color("#39d075")  # your accent for the primary action and chips (optional)
   options.ui_theme = load("res://ui/my_theme.tres")  # or your whole Theme, whatever the branding
   options.ui_powered_by = true          # "Powered by Polaris Locker" (off by default)
-  options.ui_powered_by_style = "line"  # "badge" (default; the line where 320 px are not free) or "line"
+  options.ui_powered_by_style = "line"  # "line" (default) or "badge" (a credits node you place; see below)
   ```
 
   The same switches exist on `PKeyUiTheme` (`branding`, `scheme`, `accent`, `override`,
@@ -373,9 +373,11 @@ gamepad or a TV remote.
   calls `PolarisKey.boot()` gets its UI options from `res://polaris_key.tres`, which boot
   configures from once its view is showing: put `ui_branding`, `ui_powered_by` and the rest in
   that resource (the setup dock's file), not in statics set before `boot()`. With `ui_powered_by`,
-  the gate, boot and settings scenes end with "Powered by Polaris Locker": the Locker badge at its
-  320 × 104 minimum or larger and never cropped where 320 px are free, else the line (the Locker
-  micro mark at 16 px and the phrase); it is off unless you turn it on, with or without branding.
+  the settings scene ends with "Powered by Polaris Locker" (the line: the Locker micro mark at 16 px,
+  growing with the text, and the phrase), the last item inside its scroll; never the gate or boot. It is
+  off unless you turn it on, with or without branding. For a credits or about scene of your own, add a
+  `PKeyPoweredBy` node with `allow_badge = true`: with `ui_powered_by_style = "badge"` it draws the Locker
+  badge at 320 × 104 or larger, never cropped, where 320 px are free, else the line.
 
 - **Your own theme.** A scene given a Theme of its own (in the inspector or in code) keeps it; only
   a scene still on the kit's stock theme follows the options. `ui_theme` is layered: your Theme
@@ -398,7 +400,7 @@ bold_font)` makes the Polaris Key theme with your accent or fonts if you want a 
   gettext tables in `ui/locale/` are keyed on the shared catalog ids and only the headless view
   models read them: a scene does not load them, so they do not translate the kit yet.
 - **Credits.** `addons/polaris_key/brand/` holds the Locker "Powered by" badge
-  (`powered-by-credit-*`, 320 × 104, dark and light) and the Locker micro mark (`locker-micro-*`) for your credits or about screen. The folder is
+  (`powered-by-badge-*`, 320 × 104, dark and light; renamed from `powered-by-credit-*`, which were 1920 × 1080 screens) and the Locker micro mark (`locker-micro-*`) for your credits or about screen. The folder is
   never imported (`.gdignore`); copy the file you need into your project. (The kit scenes show
   the attribution only with `ui_powered_by`.) Use the dark file on a dark ground and the light file
   on a light one; never cropped, never recoloured, and never smaller than the kit minimum

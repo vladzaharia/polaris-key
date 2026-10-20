@@ -156,7 +156,7 @@ describe("generator drift", () => {
     const copies: [string, string][] = [
       ["polaris_key-dark.svg", "kit/06-games/key/dark/key-16.svg"],
       [
-        "powered-by-credit-light.svg",
+        "powered-by-badge-light.svg",
         "locker-kit/badges/locker-powered-by-light-transparent.svg",
       ],
       [

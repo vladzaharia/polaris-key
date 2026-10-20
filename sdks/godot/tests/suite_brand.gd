@@ -365,20 +365,40 @@ func _overrides(t: PKeyTestContext) -> void:
 	# The badge shows where the card has the room for it, once the layout has settled.
 	for i in 3:
 		await tree.process_frame
-	t.check("powered by: shown when asked", shown.call(v, "PoweredBy"))
-	var badge := v.find_child("PoweredBy", true, false) as PKeyPoweredBy
-	t.check("powered by: the line (mark 16 px and phrase) or the badge, never smaller than its art", badge != null and badge.texture != null and (badge.custom_minimum_size.x >= 320 and badge.custom_minimum_size.y >= 104 or badge.custom_minimum_size.y >= 16))
-	t.check("powered by: the phrase is Powered by Polaris Locker", badge != null and (badge.find_child("Phrase", true, false) as Label).text == "Powered by Polaris Locker" or badge.tooltip_text == "Powered by Polaris Locker")
+	t.check("powered by: never on the gate (UI-KITS.md §1.6)", not shown.call(v, "PoweredBy") and v.find_child("PoweredBy", true, false) == null)
 	unmount.call(v)
-	opts.ui_powered_by_style = "line"
-	PKeyUiTheme.apply_options(opts)
-	v = mount.call()
-	for i in 3:
-		await tree.process_frame
-	badge = v.find_child("PoweredBy", true, false) as PKeyPoweredBy
-	t.check("powered by: style line draws the micro mark and the phrase, never the badge", badge != null and badge.visible and (badge.find_child("LockerBadge", true, false) as Control).visible == false and (badge.find_child("Phrase", true, false) as Label).visible and badge.texture.get_width() == 2 * PKeyBrand.POWERED_BY_MARK_SIZE)
-	unmount.call(v)
+	# Settings carries it: the line, the last item inside the scroll, whatever the style option says.
+	var settings_scene := load("res://addons/polaris_key/ui/settings/pkey_settings_panel.tscn") as PackedScene
+	for style in ["line", "badge"]:
+		opts.ui_powered_by_style = style
+		PKeyUiTheme.apply_options(opts)
+		var sv: Control = settings_scene.instantiate()
+		sv.set("auto_sdk", false)
+		tree.root.add_child(sv)
+		for i in 3:
+			await tree.process_frame
+		var badge := sv.find_child("PoweredBy", true, false) as PKeyPoweredBy
+		t.check("powered by: settings draws the line (style %s): the micro mark and the phrase, never the badge" % style, badge != null and badge.visible and not (badge.find_child("LockerBadge", true, false) as Control).visible and (badge.find_child("Phrase", true, false) as Label).text == "Powered by Polaris Locker" and badge.texture.get_width() == 2 * PKeyBrand.POWERED_BY_MARK_SIZE)
+		var scroll := badge.get_parent() if badge != null else null
+		t.check("powered by: it is the last item inside the scroll, not a fixed footer", scroll != null and scroll.get_child(scroll.get_child_count() - 1) == badge and scroll.find_parent("*Scroll*") != null or scroll is VBoxContainer)
+		tree.root.remove_child(sv)
+		sv.free()
+	# A credits scene the game places may draw the badge where 320 px are free.
+	var credits := PKeyPoweredBy.new()
+	credits.allow_badge = true
+	var holder := Control.new()
+	holder.size = Vector2(400, 200)
+	tree.root.add_child(holder)
+	holder.add_child(credits)
 	opts.ui_powered_by_style = "badge"
+	PKeyUiTheme.apply_options(opts)
+	credits.render(PKeyBrand.POWERED_BY_PHRASE, true, 400.0)
+	t.check("powered by: a placed credits node draws the 320 x 104 badge where 320 px are free", (credits.find_child("LockerBadge", true, false) as Control).visible and credits.custom_minimum_size.x >= 320 and credits.custom_minimum_size.y >= 104)
+	credits.render(PKeyBrand.POWERED_BY_PHRASE, true, 300.0)
+	t.check("powered by: and the line where they are not", not (credits.find_child("LockerBadge", true, false) as Control).visible and (credits.find_child("Phrase", true, false) as Label).visible)
+	tree.root.remove_child(holder)
+	holder.free()
+	opts.ui_powered_by_style = "line"
 	PKeyUiTheme.apply_options(opts)
 
 	opts.ui_accent = Brand.service_accent("release", false)

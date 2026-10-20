@@ -1735,11 +1735,11 @@ const GODOT_BRAND_ASSETS: [string, string][] = [
  */
 const GODOT_LOCKER_ASSETS: [string, string][] = [
   [
-    "powered-by-credit-dark.svg",
+    "powered-by-badge-dark.svg",
     "badges/locker-powered-by-dark-transparent.svg",
   ],
   [
-    "powered-by-credit-light.svg",
+    "powered-by-badge-light.svg",
     "badges/locker-powered-by-light-transparent.svg",
   ],
   ["locker-micro-dark.svg", "logos/svg/locker-mark-dark-micro.svg"],
