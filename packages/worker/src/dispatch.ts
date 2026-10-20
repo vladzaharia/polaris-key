@@ -58,7 +58,11 @@ import { handleAssetsPush } from "./core/assets/hostedAssetUploads.js";
 // HA-06: a CI push into a listing-model slot also writes Distribution's listing row; Core takes
 // the writer from here rather than importing the service.
 import { listingSlotMirror } from "./services/distribution/api.js";
-import { handleSignInEntry } from "./core/signInEntry.js";
+import {
+  handleSignInBind,
+  handleSignInEntry,
+  isBindHop,
+} from "./core/signInEntry.js";
 import { handleDeviceEntry } from "./core/deviceEntry.js";
 import { dispatchBytesHost, isBytesHost } from "./core/assets/bytesHost.js";
 import {
@@ -71,10 +75,10 @@ import {
   apiOrigin,
   customerHostOwnResponse,
   isCustomerHostOwnPath,
+  oldCustomerUrlRedirect,
 } from "./core/customerHost.js";
 import { customerHostname, isCustomerHost } from "./core/hosts.js";
 import { relatedOriginsResponse } from "./core/customerHost.js";
-import { customerHostMode } from "./core/licensing/manageUrl.js";
 import {
   drainRenderQueue,
   watchRenderEnqueues,
@@ -194,12 +198,7 @@ async function routeRequest(
   // routing is exactly what it was before the customer host existed.
   const onCustomerHost = isCustomerHost(url, env);
   if (onCustomerHost && isCustomerHostOwnPath(url.pathname))
-    return customerHostOwnResponse(
-      req,
-      env,
-      url.pathname,
-      await customerHostMode(env, db),
-    );
+    return customerHostOwnResponse(req, env, url.pathname);
   const route = matchRoute(url.pathname);
   if (onCustomerHost && !CUSTOMER_ROUTE_KINDS.has(route.kind))
     return notFound();
@@ -217,6 +216,11 @@ async function routeRequest(
       status: 302,
       headers: { location: "/manage", "cache-control": "no-store" },
     });
+  // LK-17: with a usable customer host, the old customer URLs on the console host redirect to it.
+  if (!onCustomerHost) {
+    const moved = oldCustomerUrlRedirect(req, env, route, url);
+    if (moved) return moved;
+  }
   // The portal is one account across every product, so it has no product to dispatch on; when
   // it reaches a product's downloads it asks for that product's hooks (P2b-04: the delivery
   // access every download surface reads), built here from the composition root's registry under
@@ -272,7 +276,9 @@ async function routeRequest(
       return relatedOriginsResponse(req, env);
     // The platform device-code entry pages: no product, no session, no database.
     case "signInEntry":
-      return handleSignInEntry(req);
+      return onCustomerHost && isBindHop(req)
+        ? handleSignInBind(req, env)
+        : handleSignInEntry(req);
     case "deviceEntry":
       return handleDeviceEntry(
         req,
@@ -280,7 +286,9 @@ async function routeRequest(
         route.tv,
         now,
         // On the customer host the product's page lives on the API host: a fixed origin from
-        // configuration, never from the request (LK-00 §7.13).
+        // configuration, never from the request. The confirmation, the IdP leg and the callback
+        // stay in one browser on one host, so the flow's binder is set by the confirming browser
+        // (R1-07; LK-04 security review).
         onCustomerHost ? apiOrigin(env) : null,
       );
     case "portalSpa":

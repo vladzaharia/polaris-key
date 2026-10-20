@@ -128,9 +128,12 @@ crons = ["17 3 * * *", "*/15 * * * *"]
 # deploy attaches the route and creates its DNS record.
 #
 # The customer host (LK-03; plans/LK-00.md §7) is the same Worker on a FIFTH custom domain,
-# polaris.locker, with CUSTOMER_ORIGIN naming it so src/core/customerHost.ts can confine that host to
-# the customer routes. CUSTOMER_ORIGIN and CUSTOMER_HOST (the customer.host switch, `runtime` or
-# `off`) are deliberately NOT in any [vars] block yet: unset, nothing changes. LK-11 adds them.
+# polaris.locker (staging.polaris.locker, dev.polaris.locker), with CUSTOMER_ORIGIN naming it so
+# src/core/customerHost.ts can confine that host to the customer routes. LK-11 attaches the three
+# hosts and sets CUSTOMER_ORIGIN in each [vars]. LK-17: there is no switch; a usable
+# CUSTOMER_ORIGIN IS the cutover (customer links move, the old customer URLs on the console host
+# 301 to it). Rollback: remove CUSTOMER_ORIGIN and the routes, redeploy. The zone polaris.locker
+# lives in the same Cloudflare account as the Worker.
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
@@ -166,6 +169,9 @@ pattern = "pkg.plrs.im"
 custom_domain = true
 [[env.prod.routes]]
 pattern = "img.plrs.im"
+custom_domain = true
+[[env.prod.routes]]
+pattern = "polaris.locker"
 custom_domain = true
 [[env.prod.durable_objects.bindings]]
 name = "RL"
@@ -230,6 +236,9 @@ BLOB_ORIGIN = "https://dl.plrs.im"
 PKG_ORIGIN = "https://pkg.plrs.im"
 # HA-02: the image host (core/assets/imgHost.ts); it answers only the hosted-image routes.
 IMG_ORIGIN = "https://img.plrs.im"
+# LK-11: the customer host (core/customerHost.ts); it answers only the customer routes. Setting
+# CUSTOMER_ORIGIN is the cutover (LK-17).
+CUSTOMER_ORIGIN = "https://polaris.locker"
 # P2b-06: the console host, where the download page on dl.plrs.im links the storefront feeds.
 CONSOLE_ORIGIN = "https://key.plrs.im"
 # P2-02: the bucket name the upload tickets' R2 temporary credentials are scoped to (the
@@ -284,6 +293,9 @@ pattern = "pkg-staging.plrs.im"
 custom_domain = true
 [[env.staging.routes]]
 pattern = "img-staging.plrs.im"
+custom_domain = true
+[[env.staging.routes]]
+pattern = "staging.polaris.locker"
 custom_domain = true
 [[env.staging.durable_objects.bindings]]
 name = "RL"
@@ -348,6 +360,9 @@ BLOB_ORIGIN = "https://dl-staging.plrs.im"
 PKG_ORIGIN = "https://pkg-staging.plrs.im"
 # HA-02: the image host (core/assets/imgHost.ts); it answers only the hosted-image routes.
 IMG_ORIGIN = "https://img-staging.plrs.im"
+# LK-11: the customer host (core/customerHost.ts); it answers only the customer routes. Setting
+# CUSTOMER_ORIGIN is the cutover (LK-17).
+CUSTOMER_ORIGIN = "https://staging.polaris.locker"
 # P2b-06: the console host, where the download page on dl-staging.plrs.im links the storefront feeds.
 CONSOLE_ORIGIN = "https://key-staging.plrs.im"
 # P2-02: the bucket name the upload tickets' R2 temporary credentials are scoped to (the
@@ -384,6 +399,9 @@ pattern = "pkg-dev.plrs.im"
 custom_domain = true
 [[env.dev.routes]]
 pattern = "img-dev.plrs.im"
+custom_domain = true
+[[env.dev.routes]]
+pattern = "dev.polaris.locker"
 custom_domain = true
 [[env.dev.durable_objects.bindings]]
 name = "RL"
@@ -448,6 +466,9 @@ BLOB_ORIGIN = "https://dl-dev.plrs.im"
 PKG_ORIGIN = "https://pkg-dev.plrs.im"
 # HA-02: the image host (core/assets/imgHost.ts); it answers only the hosted-image routes.
 IMG_ORIGIN = "https://img-dev.plrs.im"
+# LK-11: the customer host (core/customerHost.ts); it answers only the customer routes. Setting
+# CUSTOMER_ORIGIN is the cutover (LK-17).
+CUSTOMER_ORIGIN = "https://dev.polaris.locker"
 # P2b-06: the console host, where the download page on dl-dev.plrs.im links the storefront feeds.
 CONSOLE_ORIGIN = "https://key-dev.plrs.im"
 # P2-02: the bucket name the upload tickets' R2 temporary credentials are scoped to (the

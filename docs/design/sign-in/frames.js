@@ -17,6 +17,7 @@
   const S = (d, extra = "") =>
     `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ${extra}>${d}</svg>`;
   const I = {
+    lmark: `<i class="lmark" aria-hidden="true"></i>`,
     mark: `<svg class="mark" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 4 L9 1 L9 19 L3 22 Z"/><path fill="currentColor" d="M11 12 L15 12 L21 18 L18 21 L11 14 Z"/><path fill="currentColor" d="M17 1 L19 4 L23 6 L19 8 L17 11 L15 8 L11 6 L15 4 Z"/></svg>`,
     apple: `<svg viewBox="0 0 24 24"><path fill="currentColor" d="M16.36 12.62c-.02-2.2 1.8-3.26 1.88-3.31-1.03-1.5-2.62-1.7-3.18-1.73-1.35-.14-2.64.8-3.33.8-.69 0-1.74-.78-2.87-.76-1.47.02-2.83.86-3.59 2.18-1.53 2.66-.39 6.59 1.1 8.75.73 1.05 1.6 2.24 2.73 2.2 1.1-.05 1.51-.71 2.84-.71 1.32 0 1.7.71 2.86.69 1.18-.02 1.93-1.07 2.65-2.13.84-1.22 1.18-2.4 1.2-2.46-.03-.01-2.3-.88-2.32-3.5zM14.18 6.15c.6-.73 1.01-1.75.9-2.76-.87.04-1.92.58-2.54 1.31-.56.65-1.05 1.68-.92 2.67.97.08 1.96-.49 2.56-1.22z"/></svg>`,
     google: `<svg viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>`,
@@ -111,7 +112,9 @@
 
   // ---------- building blocks ----------
   const lockup = (surface) =>
-    `<div class="lockup">${I.mark}<span class="word">Polaris Key</span>${surface ? `<span class="sep"></span><span class="surface">${surface}</span>` : ""}</div>`;
+    surface
+      ? `<div class="lockup">${I.mark}<span class="word">Polaris Key</span><span class="sep"></span><span class="surface">${surface}</span></div>`
+      : `<div class="lockup"><i class="lk" role="img" aria-label="Polaris Locker"></i></div>`;
   const appHeader = ({ icon, app, dev, where, whereIcon, code }) =>
     `<div class="card-head"><div class="icon">${art[icon]}</div><div><div class="t"><b>${app}</b> wants you to sign in</div><div class="w">${dev}<span>·</span>${I[whereIcon] || ""}<span>${where}</span></div>${
       code
@@ -121,7 +124,7 @@
   const contextHeader = ({ icon, product, dev, line }) =>
     `<div class="card-head"><div class="icon">${art[icon]}</div><div><div class="t"><b>${product}</b> · ${dev}</div><div class="w">${line}</div></div></div>`;
   const footer = (app, dev) =>
-    `<div class="card-foot">${I.lock}<span>Polaris Key signs you in for ${app}. ${dev} never sees your codes or passkeys.</span></div>`;
+    `<div class="card-foot">${I.lock}<span>Polaris Locker signs you in for ${app}. ${dev} never sees your codes or passkeys.</span></div>`;
   const providers = (list) =>
     `<div class="providers ${list.length === 1 ? "one" : ""}" role="group" aria-label="Or continue with">${list
       .map(
@@ -202,7 +205,7 @@
   // 01 Portal direct: MethodsStep
   F({
     id: "01-methods-portal",
-    body: `<h1>Sign in to Polaris Key</h1>
+    body: `<h1>Sign in to Polaris Locker</h1>
       ${field("Email", "", { ph: "you@example.com" })}
       ${btn("primary", "Continue", "arrow")}
       <div class="or">or</div>
@@ -276,7 +279,7 @@
       ${field("Email", "", { ph: "you@example.com", focus: true, help: "Steam doesn't share an email. Add one so you can get back in without Steam." })}
       ${btn("primary", "Send code")}
       <p class="small center"><span class="link">Cancel sign-in</span></p>
-      <p class="small">By continuing you agree to the Polaris Key Terms and Privacy Policy.</p>`,
+      <p class="small">By continuing you agree to the Polaris Locker Terms and Privacy Policy.</p>`,
     foot: footer("Saltwind", "Tern Works"),
   });
 
@@ -512,7 +515,7 @@
       dev: "Little Fern",
       line: "Your license, downloads and devices",
     }),
-    body: `<div class="notice info">${I.info}<span>Mossgarden doesn't use Polaris Key sign-in. Open Mossgarden and enter your license key there.</span></div>
+    body: `<div class="notice info">${I.info}<span>Mossgarden doesn't use Polaris Locker sign-in. Open Mossgarden and enter your license key there.</span></div>
       <h1>Sign in</h1>
       <p class="lede">Sign in here to see Mossgarden in your library.</p>
       ${field("Email", "")}
@@ -525,7 +528,7 @@
   F({
     id: "17-another-device",
     body: `<h1>Sign in with another device</h1>
-      <p class="lede">On a phone or computer where you're signed in to Polaris Key, scan the code, or open Account → Approve a new device and type it.</p>
+      <p class="lede">On a phone or computer where you're signed in to Polaris Locker, scan the code, or open Account → Approve a new device and type it.</p>
       <div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap">${qr(11)}<div><div class="bigcode">KRQP-BMXD</div><div class="small">Works for 4:52</div></div></div>
       <div class="notice info"><span class="spinner"></span><span>Waiting for you to approve it on the other device…</span></div>
       ${btn("ghost", "Use another way to sign in")}`,
@@ -546,7 +549,7 @@
       <p class="small center"><span class="link">Use a license key instead</span> · <span class="link">Cancel</span></p>
       <div class="grow"></div>
       ${btn("primary", "Use this license and continue")}
-      <p class="small center">Polaris Key signs you in for Saltwind. Tern Works never sees your codes or passkeys.</p>`,
+      <p class="small center">Polaris Locker signs you in for Saltwind. Tern Works never sees your codes or passkeys.</p>`,
   });
 
   // 19 Every license full on an auto-issue product: Create a new free license is explicit, never preselected
@@ -689,7 +692,7 @@
   const gnomeWin = ({ x, y, w, h, title, body, dialog }) =>
     `<div class="win gnome" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px"><div class="tb"><span class="tt">${title}</span><span class="close">${S('<path d="M7 7l10 10M17 7L7 17"/>')}</span></div><div class="wc">${body}</div>${dialog ? `<div class="dim"></div><div class="adlg">${dialog}</div>` : ""}</div>`;
   const browserWin = ({ x, y, w, h, url, tab, content, cls = "" }) =>
-    `<div class="win browser ${cls}" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px"><div class="tabs"><i class="r"></i><i class="y"></i><i class="g"></i><div class="tab">${I.mark}<span>${tab}</span><span class="x">×</span></div></div><div class="bar"><span class="nav">${S('<path d="M15 6l-6 6 6 6"/>')}${S('<path d="M9 6l6 6-6 6"/>')}${S('<path d="M19 12a7 7 0 1 1-2.1-5M19 4v4h-4"/>')}</span><div class="url">${I.lock}<span><b>key.plrs.im</b>${url}</span></div></div><div class="bc app">${stars(w, h)}${content}</div></div>`;
+    `<div class="win browser ${cls}" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px"><div class="tabs"><i class="r"></i><i class="y"></i><i class="g"></i><div class="tab">${I.lmark}<span>${tab}</span><span class="x">×</span></div></div><div class="bar"><span class="nav">${S('<path d="M15 6l-6 6 6 6"/>')}${S('<path d="M9 6l6 6-6 6"/>')}${S('<path d="M19 12a7 7 0 1 1-2.1-5M19 4v4h-4"/>')}</span><div class="url">${I.lock}<span><b>key.plrs.im</b>${url}</span></div></div><div class="bc app">${stars(w, h)}${content}</div></div>`;
   const termWin = ({ x, y, w, h, title, lines }) =>
     `<div class="win term" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px"><div class="tb"><i class="r"></i><i class="y"></i><i class="g"></i><span class="tt">${title}</span></div><pre class="tc">${lines}</pre></div>`;
   const scene = (os, inner) => `<div class="wall ${os}"></div>${inner}`;
@@ -732,7 +735,7 @@
       <div class="or">or</div>
       ${dkProviders(provs)}
       <div class="dk-links"><span>${I.key} ${T(os, "Have a License Key?", "Have a license key?")}</span></div>
-      ${os === "mac" ? `<p class="fine">${I.lock} Polaris Key signs you in for ${app}. Harbor Audio never sees your codes or passkeys.</p>` : ""}`;
+      ${os === "mac" ? `<p class="fine">${I.lock} Polaris Locker signs you in for ${app}. Harbor Audio never sees your codes or passkeys.</p>` : ""}`;
   // Step 2: Finish in your browser, in place of step 1's body (D-78)
   const waitRow = (text = "Waiting for your browser…") =>
     `<div class="wait" role="status"><span class="breath" aria-hidden="true"></span>${text}</div>`;
@@ -749,14 +752,14 @@
         : `<div class="dk-foot">${useCode}<span class="sp"></span>${cancel}${again}</div>`;
     return `${heroIcon(icon)}
       <h2 class="big">Finish in your browser</h2>
-      <p>We opened Polaris Key in your browser. Sign in there and ${app} continues by itself.</p>
+      <p>We opened Polaris Locker in your browser. Sign in there and ${app} continues by itself.</p>
       ${waitRow()}
       ${foot}`;
   };
   // The code view, in place (D-67: no QR on desktop)
   const paneCode = (os, icon) => `${heroIcon(icon)}
       <h2 class="big">Sign in with a code</h2>
-      <p>On any phone or computer, go to <b>key.plrs.im/device</b> and enter this code.</p>
+      <p>On any phone or computer, go to <b>polaris.locker/device</b> and enter this code.</p>
       <div class="dcode"><code>WDJB-MJHT</code><span class="db secondary sm">${copyI}Copy</span></div>
       <div class="wait"><span class="ring"></span>Waiting · code expires in 4:12</div>
       <p class="fine">Check the code there matches this one.</p>
@@ -792,7 +795,7 @@
     const useCode = `<span class="link">${T(os, "Use a Code Instead", "Use a code instead")}</span>`;
     const body = `${dkHead(icon, app)}
       <h2>Finish in your browser</h2>
-      <p>We opened Polaris Key in your browser. Sign in there and ${app} continues by itself.</p>
+      <p>We opened Polaris Locker in your browser. Sign in there and ${app} continues by itself.</p>
       ${waitRow()}`;
     if (os === "w11")
       return `<div class="cb">${body}${useCode}</div><div class="cf">${db("primary", "Open browser again")}${db("secondary", "Cancel")}</div>`;
@@ -900,7 +903,7 @@
           y: 24,
           w: 960,
           h: 852,
-          tab: "Sign in · Polaris Key",
+          tab: "Sign in · Polaris Locker",
           url: "/signin?request=rq_8F2K…QW",
           content: `${lockup()}<div class="card">${appHeader({ icon: "tidewater", app: "Tidewater Studio", dev: "Harbor Audio", where: "on Mara's MacBook Pro", whereIcon: "laptop" })}<div class="body"><h1>Sign in</h1>
             <p class="lede">Use the email you bought Tidewater Studio with.</p>
@@ -924,7 +927,7 @@
         y: 28,
         w: 1080,
         h: 844,
-        tab: "Signed in · Polaris Key",
+        tab: "Signed in · Polaris Locker",
         url: "/signin/return?request=rq_8F2K…QW",
         content: `${lockup()}<div class="card">${appHeader({ icon: "tidewater", app: "Tidewater Studio", dev: "Harbor Audio", where: "on Mara's MacBook Pro", whereIcon: "laptop" })}<div class="body">
           <div class="success-mark">${I.check}</div>
@@ -949,7 +952,7 @@
         w: 780,
         h: 640,
         cls: "behind",
-        tab: "Signed in · Polaris Key",
+        tab: "Signed in · Polaris Locker",
         url: "/signin/return?request=rq_8F2K…QW",
         content: `${lockup()}<div class="card scaled"><div class="body"><div class="success-mark">${I.check}</div><h1 class="center">You're signed in</h1><p class="lede center">Go back to Tidewater Studio to choose a license. You can close this tab.</p></div></div>`,
       }) +
@@ -1065,8 +1068,8 @@
           ``,
           `${c("acc", "◆")}  ${c("tchip", " Tidewater Studio ")} ${c("strong", "Sign in")}`,
           `${c("mute", "│")}`,
-          `${c("acc", "◇")}  Opening Polaris Key in your browser…`,
-          `${c("mute", "│")}  If it didn't open, go to ${c("lnk", "key.plrs.im/signin?request=rq_8F…QW")}`,
+          `${c("acc", "◇")}  Opening Polaris Locker in your browser…`,
+          `${c("mute", "│")}  If it didn't open, go to ${c("lnk", "polaris.locker/signin?request=rq_8F…QW")}`,
           `${c("mute", "│")}`,
           `${c("mute", "◒")}  Waiting for your browser`,
           `${c("mute", "│")}  ${c("strong", "Enter")} ${c("mute", "open again ·")} ${c("strong", "c")} ${c("mute", "use a code ·")} ${c("strong", "Esc")} ${c("mute", "cancel")}`,
@@ -1090,7 +1093,7 @@
             `${c("acc", "◆")}  ${c("tchip", " Tidewater Studio ")} ${c("strong", "Sign in")}`,
             `${c("mute", "│")}`,
             `${c("acc", "◇")}  No browser on this machine. Use a code instead:`,
-            `${c("mute", "│")}  On any phone or computer, go to ${c("lnk", "key.plrs.im/device")}`,
+            `${c("mute", "│")}  On any phone or computer, go to ${c("lnk", "polaris.locker/device")}`,
             `${c("mute", "│")}  and enter this code.`,
             `${c("mute", "│")}`,
             `${c("mute", "│")}      ${c("rev", " WDJB-MJHT ")}`,
@@ -1405,7 +1408,7 @@
         body: splitWith(
           "tidewater",
           `${heroIcon("tidewater")}
-      <h2 class="big">This license is in a Polaris Key account</h2>
+      <h2 class="big">This license is in a Polaris Locker account</h2>
       <p>Sign in with the email it was sent to. Tidewater Studio starts on this PC as soon as you do.</p>
       <div class="keycard"><div class="icon">${art.tidewater}</div><div style="flex:1"><div class="ln" style="color:var(--pk-text-strong);font-weight:500">Tidewater Studio · Pro</div><div class="small mono">pkey_tidewater_…3WPLDA</div></div></div>
       ${db("primary xl", "Continue in browser", upRight)}

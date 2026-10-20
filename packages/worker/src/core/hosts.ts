@@ -127,9 +127,6 @@ export function customerSiteOrigin(env: HostsEnv): string | null {
 export const isCustomerHost = (url: URL, env: HostsEnv): boolean =>
   isHost("customer", url, env);
 
-/** `customer.host`: `off` → `on` → `permanent` (the redirect status of the old URLs, D3). */
-export type CustomerHostMode = "off" | "on" | "permanent";
-
 /**
  * `raw` as an origin a link may be built on: `https:` (or `http:` to a loopback host, for local
  * development), no credentials. `null` otherwise.
@@ -151,19 +148,13 @@ export function usableOrigin(raw: string): string | null {
 }
 
 /**
- * The ONE source for every customer-facing URL (LK-00 §7.2): `CUSTOMER_ORIGIN` while `mode` is not
- * `off` and the host is usable, else the portal origin of old: `CONSOLE_ORIGIN` when usable, else
- * the origin of `fallback` (the request, or an absolute URL the Worker was reached on).
+ * The console origin of old: `CONSOLE_ORIGIN` when usable, else the origin of `fallback` (the
+ * request, or an absolute URL the Worker was reached on). The passkey RP id stays here (LK-05).
  */
-export function customerOrigin(
+export function consoleOrigin(
   env: HostsEnv,
-  mode: CustomerHostMode,
   fallback: Request | string,
 ): string | null {
-  if (mode !== "off") {
-    const own = usableOrigin(env.CUSTOMER_ORIGIN ?? "");
-    if (own !== null && hostname("customer", env) !== null) return own;
-  }
   const console =
     typeof env.CONSOLE_ORIGIN === "string" && env.CONSOLE_ORIGIN.trim() !== ""
       ? usableOrigin(env.CONSOLE_ORIGIN.trim())
@@ -172,6 +163,19 @@ export function customerOrigin(
     console ??
     usableOrigin(typeof fallback === "string" ? fallback : fallback.url)
   );
+}
+
+/**
+ * The ONE source for every customer-facing URL (LK-00 §7.2): `CUSTOMER_ORIGIN` when the host is
+ * usable (LK-17: that is the whole switch, there is no setting), else {@link consoleOrigin}.
+ */
+export function customerOrigin(
+  env: HostsEnv,
+  fallback: Request | string,
+): string | null {
+  const own = usableOrigin(env.CUSTOMER_ORIGIN ?? "");
+  if (own !== null && hostname("customer", env) !== null) return own;
+  return consoleOrigin(env, fallback);
 }
 
 // ── The named forms the callers read ───────────────────────────────────────────────────────────

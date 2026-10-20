@@ -5,7 +5,7 @@
 | Phase       | LK: Polaris Locker                                                     |
 | Size        | 1–1.25 engineer-weeks                                                  |
 | Depends on  | [LK-01](LK-01-brand-locker-kit.md), [LK-13](LK-13-locker-words-v13.md) |
-| Unblocks    | none                                                                   |
+| Unblocks    | [LK-11](LK-11-cutover.md)                                              |
 | Role        | `pkey-implementer`                                                     |
 | Plan mode   | no                                                                     |
 | Gates       | console-csp-parity, ui-snapshots                                       |
@@ -15,6 +15,8 @@
 ## Goal
 
 Console on the Locker identity: shell lockup, `document.title`, favicon and manifest, sign-in moment, `data-brand="locker"`, the copy sweep, and `pkey` output words. Executes `plans/LK-00.md` §14.1, §14.2, §14.6; do not restate the plan.
+
+Amendment A4 (`plans/LK-00.md` §15) re-scopes this package: the console stays the Polaris Key Console (Key mark with the section bit, no `data-brand="locker"`); only customer-site words say Locker; add the root front door.
 
 ## Read first
 

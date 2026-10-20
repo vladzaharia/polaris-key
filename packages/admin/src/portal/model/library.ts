@@ -311,7 +311,7 @@ const STORE_NAMES: Record<string, string> = {
   steam: "Steam",
   "microsoft-store": "Microsoft Store",
   itch: "itch.io",
-  "polaris-key": "Polaris Key",
+  "polaris-key": "Polaris Locker",
 };
 
 /** What a licence's origin is read from: the summary, its keys' known last characters (G7),

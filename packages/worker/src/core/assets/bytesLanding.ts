@@ -27,14 +27,12 @@
  *
  * ── DESIGN CHOICES ──────────────────────────────────────────────────────────────────────────
  *
- * The "Polaris Key Delivery" horizontal lockup (the Star Cut service mark, BRAND §1.1) at 80 px
- * tall, so its glyph is the display cut at 48 px (BRAND §1.3-1.4), and the compact lockup below
- * 400 px of width, where the full one would shrink its glyph under 48 px. The lockup is the
- * brand package's geometry (`lockupMetrics`: the kit's Star Cut and a Rubik Bold wordmark
- * outlined from the bundled font), with its colour roles turned into classes so one inline SVG
- * follows the system theme: dark first, light under `prefers-color-scheme: light`, no toggle
- * (BRAND §8, a one-screen page). The lockups are built on the first request to `/` and kept,
- * so a template the page cannot theme fails that request, never the Worker's module load.
+ * The Polaris Locker horizontal lockup at 48 px tall, with the Star Cut (Delivery's service
+ * symbol, BRAND §1.1) and "Delivery" in a row under it (LK-07, plans/LK-00.md §14.2: services keep
+ * their symbols under a Locker header). Both are the brand package's geometry, inline SVG whose
+ * colour roles are classes the stylesheet fills, so one drawing follows the system theme: dark
+ * first, light under `prefers-color-scheme: light`, no toggle (BRAND §8, a one-screen page).
+ * They are built where `lockerShell.ts` draws them, per request (a few kilobytes of strings).
  *
  * TYPE: the system stack behind Rubik (`FONT.sans`), with no `@font-face`. The wordmark is
  * outlined in the lockup, so the brand's own type is exact where it identifies the service;
@@ -43,16 +41,21 @@
  * WOFF2: each widens the one check that keeps HTML on this host inert, for no gain in identity.
  * A visitor who has Rubik installed sees it.
  *
- * FAVICON: the kit's adaptive Star Cut favicon (`web/update/favicon.svg`), redrawn from the
+ * FAVICON: the kit's adaptive Locker favicon (`locker-kit/web/favicon.svg`), redrawn from the
  * brand geometry and inlined as a `data:` URI, so no icon route or icon type is needed.
  */
 
-import { BRAND, FONT, SERVICE_ACCENTS, THEME_TOKENS } from "@polaris-key/brand";
-import { lockupMetrics, markParts } from "@polaris-key/brand/svg";
+import { FONT, SERVICE_ACCENTS, THEME_TOKENS } from "@polaris-key/brand";
 import type { Env } from "../../platform/env.js";
 import { bytesHostname, normalizeHostname } from "../hosts.js";
 import { escapeHtml } from "../../platform/html.js";
 import { sha256Base64 } from "../../platform/hash.js";
+import {
+  LOCKER_SHELL_CSS,
+  lockerFaviconHref,
+  lockerLockup,
+  serviceRow,
+} from "./lockerShell.js";
 
 /** The landing page's Cache-Control: the page changes only with a deploy. */
 export const LANDING_CACHE = "public, max-age=3600";
@@ -66,54 +69,11 @@ export function isLandingPath(pathname: string): boolean {
 }
 
 // ── Artwork ──────────────────────────────────────────────────────────────────────────────────
+//
+// The Polaris Locker shell (`lockerShell.ts`): the Locker lockup with the Star Cut as Delivery's
+// service symbol under it, and the Locker favicon inlined as a `data:` URI.
 
-/** The lockup's colour roles, as classes the stylesheet fills per theme. */
-const ROLE_CLASS = { body: "mb", star: "ms", text: "mt" } as const;
-
-/**
- * A Polaris Key Delivery lockup as inline SVG whose colours come from the page's stylesheet.
- * The geometry is the brand template's, untouched; only `fill="{role}"` becomes a class. A
- * template with any other placeholder (a gold bit, a plate) is a brand change this page must
- * not follow silently, so it throws (on the first request; the tests fail).
- */
-function themedLockup(
-  layout: "horizontal" | "compact",
-  height: number,
-  className: string,
-): string {
-  const m = lockupMetrics({ kind: "delivery", layout, height });
-  const body = m.template.body.replace(
-    /fill="\{(\w+)\}"/g,
-    (_, role: string) => {
-      const cls = ROLE_CLASS[role as keyof typeof ROLE_CLASS];
-      if (!cls) throw new Error(`landing: unexpected lockup role ${role}`);
-      return `class="${cls}"`;
-    },
-  );
-  if (body.includes("{"))
-    throw new Error("landing: unresolved lockup placeholder");
-  const w = Math.round(m.width * 100) / 100;
-  return `<svg class="${className}" xmlns="http://www.w3.org/2000/svg" width="${w}" height="${height}" viewBox="0 0 ${m.template.width} ${m.template.height}" role="img" aria-label="${escapeHtml(m.template.title)}"><title>${escapeHtml(m.template.title)}</title>${body}</svg>`;
-}
-
-/**
- * The kit's adaptive favicon (`web/update/favicon.svg`): the 16 px Star Cut drawing, light
- * inks by default and dark inks under `prefers-color-scheme: dark`, as the kit file does.
- */
-export function landingFaviconSvg(): string {
-  const { parts } = markParts({ kind: "update", size: 16, theme: "light" });
-  const paths = parts
-    .map(
-      (p) =>
-        `<path class="${p.role === "star" ? "star" : "body"}" d="${p.d}"/>`,
-    )
-    .join("");
-  return (
-    `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">` +
-    `<style>.body,.star{fill:${BRAND.violet.light}}@media(prefers-color-scheme:dark){.body{fill:${BRAND.violet.dark}}.star{fill:${BRAND.star.dark}}}</style>` +
-    `${paths}</svg>`
-  );
-}
+export { lockerFaviconSvg as landingFaviconSvg } from "./lockerShell.js";
 
 // ── Stylesheet ───────────────────────────────────────────────────────────────────────────────
 
@@ -132,10 +92,7 @@ function palette(theme: "dark" | "light"): string {
     `--edge:${t.border.strong}`,
     `--accent:${accent.fg}`,
     `--accent-subtle:${accent.subtle}`,
-    `--focus:${t.focus}`,
-    `--mb:${BRAND.violet[theme]}`,
-    `--ms:${BRAND.star[theme]}`,
-    `--mt:${BRAND.text[theme]}`,
+    `--focus:${t.text.strong}`,
   ].join(";");
 }
 
@@ -152,9 +109,6 @@ export const LANDING_CSS = [
   `main{width:100%;max-width:34rem}`,
   `h1{margin:0;padding:20px 0;line-height:0}`,
   `h1 svg{display:block;max-width:100%;height:auto}`,
-  `.mb{fill:var(--mb)}.ms{fill:var(--ms)}.mt{fill:var(--mt)}`,
-  `.lockup-compact{display:none}`,
-  `@media (max-width: 399.98px){.lockup-full{display:none}.lockup-compact{display:block}}`,
   `.env{margin:.25rem 0 0;color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
   `.lede{margin:1.5rem 0 0;color:var(--strong);font-size:1.25rem;line-height:1.75rem;font-weight:700;letter-spacing:-.01em}`,
   `.about{margin:.75rem 0 0;color:var(--muted)}`,
@@ -165,6 +119,7 @@ export const LANDING_CSS = [
   `nav a:focus-visible{outline:2px solid var(--focus);outline-offset:2px}`,
   `nav small{color:var(--muted);font-weight:400;font-size:.875rem}`,
   `@media (prefers-reduced-motion: no-preference){nav a{transition:background-color 120ms ease,border-color 120ms ease}}`,
+  LOCKER_SHELL_CSS,
 ].join("");
 
 let cspPromise: Promise<string> | null = null;
@@ -237,42 +192,33 @@ export function landingEnvironment(env: Env): string | null {
   return word.charAt(0).toUpperCase() + word.slice(1);
 }
 
-export interface LandingArt {
-  lockups: string;
-  faviconHref: string;
-}
-
-let art: LandingArt | null = null;
-
 /**
- * The page's artwork, built on first use and kept for the isolate's life. Lazy so that a brand
- * template this page cannot theme fails the first request to `/`, not the Worker's module load
- * (which would take every route on both hosts down with it). Shared with the registry host's
- * page (`registryLanding.ts`), which shows the same Polaris Key Delivery lockup.
+ * The head and heading of a Delivery landing page: title, the Locker lockup, the Star Cut as
+ * Delivery's symbol, the favicon. Shared with the registry host's page.
  */
-export function landingArt(): LandingArt {
-  art ??= {
-    lockups:
-      themedLockup("horizontal", 80, "lockup-full") +
-      themedLockup("compact", 64, "lockup-compact"),
-    faviconHref: `data:image/svg+xml,${encodeURIComponent(landingFaviconSvg())}`,
+export function landingShell(environment: string | null): {
+  title: string;
+  lockups: string;
+  service: string;
+  faviconHref: string;
+} {
+  return {
+    title: `Delivery${environment ? ` (${environment})` : ""} · Polaris Locker`,
+    lockups: lockerLockup(48, "lockup"),
+    service: serviceRow(),
+    faviconHref: lockerFaviconHref(),
   };
-  return art;
 }
 
 /** The landing page's HTML for this deployment. */
 export function renderLandingPage(env: Env): string {
-  const { lockups, faviconHref } = landingArt();
   const consoleOrigin = landingConsoleOrigin(env);
   const environment = landingEnvironment(env);
-  const title = environment
-    ? `Polaris Key Delivery (${environment})`
-    : "Polaris Key Delivery";
-  const description =
-    "The download host for games and apps built on Polaris Key.";
+  const { title, lockups, service, faviconHref } = landingShell(environment);
+  const description = "The download host for games and apps.";
   return [
     `<!doctype html>`,
-    `<html lang="en">`,
+    `<html lang="en" data-brand="locker">`,
     `<head>`,
     `<meta charset="utf-8">`,
     `<meta name="viewport" content="width=device-width, initial-scale=1">`,
@@ -288,12 +234,13 @@ export function renderLandingPage(env: Env): string {
     `<body>`,
     `<main>`,
     `<h1>${lockups}</h1>`,
+    service,
     environment
       ? `<p class="env">${escapeHtml(environment)} environment</p>`
       : "",
     `<p class="lede">${escapeHtml(description)}</p>`,
     `<p class="about">Files here are signed release artifacts and packs, fetched by apps and their updaters. There is nothing to browse.</p>`,
-    `<nav aria-label="Polaris Key">`,
+    `<nav aria-label="Polaris Locker">`,
     `<ul>`,
     `<li><a href="${escapeHtml(`${consoleOrigin}/`)}">Open the console</a></li>`,
     `<li><a href="${escapeHtml(`${consoleOrigin}/docs/`)}">Read the docs <small>(sign-in required)</small></a></li>`,

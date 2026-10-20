@@ -1,4 +1,4 @@
-# LK-10 Console: Locker words and links, the switch with its preflight, Connections callbacks, "Get a badge"
+# LK-10 Console: Locker words and links, Connections callbacks, "Get a badge"
 
 | Field       | Value                                                                          |
 | ----------- | ------------------------------------------------------------------------------ |
@@ -14,7 +14,7 @@
 
 ## Goal
 
-Console: Locker words and links, the switch with its preflight, Connections callbacks, "Get a badge". Executes `plans/LK-00.md` §7, §10; do not restate the plan.
+Console: Locker words and links, Connections callbacks, "Get a badge". Executes `plans/LK-00.md` §7, §10; do not restate the plan.
 
 ## Read first
 
@@ -27,10 +27,7 @@ Exactly `plans/LK-00.md` §7, §10. Anything else is another package's row in §
 
 Re-scoped by Amendment A3: "Get a badge" offers only labels the product backs, previews at 320 px or wider; see `plans/LK-00.md` §14.6.
 
-Required, before LK-11's cutover (LK-03 security review): a server-side fresh sign-in step-up for
-changing `customer.host` (today L2 is a typed-key confirmation only), and the health-check
-preflight before `on`. LK-03's `/.well-known/polaris-host.json` now answers only `{host:
-"customer"}`; the preflight checks that, not `environment` or `version`.
+Amendment A5 (`plans/LK-00.md` §16): the switch preflight and the fresh step-up are moot (no switch). Keep Connections callbacks and "Get a badge".
 
 ## Correction (A5, built)
 

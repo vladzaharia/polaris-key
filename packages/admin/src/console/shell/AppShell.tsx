@@ -23,6 +23,7 @@ import {
   type ServiceState,
 } from "../nav.js";
 import { navigate, useLocation } from "../router.js";
+import { portalHandOff } from "../portalHandOff.js";
 import {
   pageOfRoute,
   productPage,
@@ -192,6 +193,14 @@ function useRouteFocus(key: string, title: string): string {
 export function AppShell({ me }: { me: Me }): React.ReactElement {
   const { route } = useLocation();
   const page = pageOfRoute(route);
+  const handOff = portalHandOff(
+    route,
+    typeof window === "undefined" ? "" : window.location.hash,
+    me.customerOrigin,
+  );
+  React.useEffect(() => {
+    if (handOff) window.location.replace(handOff);
+  }, [handOff]);
   const routeSlug = slugOfRoute(route);
   const knownProduct =
     routeSlug !== null && me.products.some((p) => p.slug === routeSlug);

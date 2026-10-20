@@ -775,11 +775,11 @@ describe("overlays under the Worker's CSP", () => {
     await page.context().close();
   });
 
-  it("Polaris Key (PS-06): the panel, its confirmations, the persona preview and the store switcher", async () => {
+  it("Polaris Locker (PS-06): the panel, its confirmations, the persona preview and the store switcher", async () => {
     const page = await open({ width: 1440, height: 900 });
     await violations(page);
     for (const [hash, title] of [
-      ["#/p/djdl/distribution/storefronts/polaris-key", "Polaris Key"],
+      ["#/p/djdl/distribution/storefronts/polaris-key", "Polaris Locker"],
       ["#/p/djdl/distribution/listing?tab=fit&store=polaris-key", "Listing"],
     ] as const) {
       await page.evaluate((h) => {
@@ -796,11 +796,11 @@ describe("overlays under the Worker's CSP", () => {
       location.hash = "#/p/djdl/distribution/storefronts/polaris-key";
     });
     await page.getByRole("radio", { name: /^Listed/ }).waitFor();
-    await check(page, "Polaris Key listing confirm", async () => {
+    await check(page, "Polaris Locker listing confirm", async () => {
       await page.getByRole("radio", { name: /^Listed/ }).click();
       await page.getByRole("alertdialog").waitFor();
     });
-    await check(page, "Polaris Key typed audience confirm", async () => {
+    await check(page, "Polaris Locker typed audience confirm", async () => {
       await page.getByRole("radio", { name: /Everyone signed in/ }).click();
       await page.getByRole("alertdialog").waitFor();
     });

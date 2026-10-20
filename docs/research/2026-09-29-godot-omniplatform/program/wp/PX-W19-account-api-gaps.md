@@ -5,7 +5,7 @@
 | Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase W: Worker additions)            |
 | Size        | 0.4–0.8 engineer-weeks                                                             |
 | Depends on  | [PX-W12](PX-W12-sign-in-methods-api.md), [PX-13](PX-13-account-v2.md)              |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [PX-31](PX-31-account-composition-v3.md)   |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [PX-31a](PX-31a-account-v3-shell.md)       |
 | Role        | `pkey-implementer`                                                                 |
 | Plan mode   | no                                                                                 |
 | Gates       | rule 10 (OpenAPI and `routeCoverage`); migration (`00XX_<name>.sql`); THREAT-MODEL |

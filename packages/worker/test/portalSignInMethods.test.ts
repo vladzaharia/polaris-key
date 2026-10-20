@@ -259,7 +259,7 @@ describe("DELETE /api/me/methods/<id>: never orphan, step-up, audit and notice",
     expect(w.mail).toEqual([
       expect.objectContaining({
         to: "ada@example.com",
-        subject: "Steam was disconnected from your Polaris Key account",
+        subject: "Steam was disconnected from your Polaris Locker account",
       }),
     ]);
   });
@@ -291,11 +291,11 @@ describe("DELETE /api/me/methods/<id>: never orphan, step-up, audit and notice",
     expect(w.mail.map((m) => [m.to, m.subject]).sort()).toEqual([
       [
         "ada@example.com",
-        "An email address was disconnected from your Polaris Key account",
+        "An email address was disconnected from your Polaris Locker account",
       ],
       [
         "ada@work.example",
-        "An email address was disconnected from your Polaris Key account",
+        "An email address was disconnected from your Polaris Locker account",
       ],
     ]);
   });
@@ -394,11 +394,11 @@ describe("connect an email by code", () => {
     expect(notices.map((m) => [m.to, m.subject]).sort()).toEqual([
       [
         "ada@example.com",
-        "An email address was connected to your Polaris Key account",
+        "An email address was connected to your Polaris Locker account",
       ],
       [
         "ada@work.example",
-        "An email address was connected to your Polaris Key account",
+        "An email address was connected to your Polaris Locker account",
       ],
     ]);
   });

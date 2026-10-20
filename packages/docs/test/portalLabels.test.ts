@@ -28,7 +28,7 @@ const portalSource = sourceFiles(portalRoot)
 const QUOTED: Record<string, string[]> = {
   "delete-account.mdx": [
     "Delete account…",
-    "Schedule your Polaris Key account for deletion?",
+    "Schedule your Polaris Locker account for deletion?",
     "Schedule deletion",
     "Cancel deletion",
     "Deletion canceled",

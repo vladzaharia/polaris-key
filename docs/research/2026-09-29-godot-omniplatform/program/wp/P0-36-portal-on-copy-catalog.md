@@ -1,16 +1,16 @@
 # P0-36 Portal on the copy catalog
 
-| Field       | Value                                                                                                                                                    |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P0: Hygiene, unblockers and code quality (DX consolidation B: Foundations (code quality the feature tracks build on))                                    |
-| Size        | 0.8–1.2 engineer-weeks                                                                                                                                   |
-| Depends on  | [UK-14](UK-14-node-terminal.md), [ST-36](ST-36-owner-polish-portal-fixes-simple-product.md)                                                              |
-| Unblocks    | [P0-38](P0-38-authcard-in-ui-auth-ux-40.md), [P0-51](P0-51-1-0-readiness-review.md), [PX-12](PX-12-login-card-v2.md), [LX-15](LX-15-portal-licensing.md) |
-| Role        | `pkey-implementer`                                                                                                                                       |
-| Plan mode   | no                                                                                                                                                       |
-| Gates       | `portal-e2e`, `console-csp-parity`                                                                                                                       |
-| Human input | none                                                                                                                                                     |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                |
+| Field       | Value                                                                                                                                                                                                                                                                                     |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P0: Hygiene, unblockers and code quality (DX consolidation B: Foundations (code quality the feature tracks build on))                                                                                                                                                                     |
+| Size        | 0.8–1.2 engineer-weeks                                                                                                                                                                                                                                                                    |
+| Depends on  | [UK-14](UK-14-node-terminal.md), [ST-36](ST-36-owner-polish-portal-fixes-simple-product.md)                                                                                                                                                                                               |
+| Unblocks    | [P0-38](P0-38-authcard-in-ui-auth-ux-40.md), [P0-51](P0-51-1-0-readiness-review.md), [PX-12](PX-12-login-card-v2.md), [PX-28a](PX-28a-license-page-v2.md), [PX-31a](PX-31a-account-v3-shell.md), [PX-32a](PX-32a-storefront-decision-panel.md), [PX-34](PX-34-library-discover-locker.md) |
+| Role        | `pkey-implementer`                                                                                                                                                                                                                                                                        |
+| Plan mode   | no                                                                                                                                                                                                                                                                                        |
+| Gates       | `portal-e2e`, `console-csp-parity`                                                                                                                                                                                                                                                        |
+| Human input | none                                                                                                                                                                                                                                                                                      |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                 |
 
 ## Consolidation 2026-10-07
 

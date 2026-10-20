@@ -7201,7 +7201,7 @@ is missing or disagrees with its name is the not-found, as in `blobResponse`.
 Residual risk: an operator can host abusive or illegal images, now served from a Polaris Key host.
 The operator terms apply, and HA-06's delete-a-copy (below) takes effect at the next request.
 
-### The customer host and the `customer.host` switch (LK-03)
+### The customer host and the hard cutover (LK-03, LK-17)
 
 **What it is.** `CUSTOMER_ORIGIN` (`https://polaris.locker`; `staging.` and `dev.` elsewhere) is
 the same Worker on a fifth custom domain (plans/LK-00.md §7). `core/customerHost.ts` confines it
@@ -7213,24 +7213,31 @@ every product route and every webhook are the plain not-found there. Unset, not 
 unusable, equal to the console host or equal to an earlier auxiliary host, the origin names no host and routing is what
 it was. It is deploy-time only (`DENIED_PLATFORM_NAMES`).
 
-**The switch.** `customer.host` is `off`, `on` or `permanent`, off by default; `[vars]`
-`CUSTOMER_HOST=off` is a hard off no console value overrides; unset or `runtime` leaves the
-console in charge, so a stored `on` goes live the moment `CUSTOMER_ORIGIN` is deployed. Every
-change is a typed-key confirmation (L2) and audited. **Gap:** there is no fresh sign-in
-requirement yet. A stolen console session with the settings permission can flip the switch.
-The server-side fresh step-up for `customer.host`, and the health-check preflight before `on`, are
-required LK-10 items before LK-11's cutover. It is effectively `off` while the host is unusable, without a database read. While it is
-not `off`, `customerOrigin()` (`core/hosts.ts`) is the one source of every customer link: refusal
-`manageUrl` and `signInUrl`, discovery's `accountPortal`, the device code's `verificationUri`, the
-choice view's links, the identity-off card redirect, the licence-key and account mail links.
-`test/customerOrigin.test.ts` fails on a customer path literal built on any other origin.
+**No switch (LK-17).** The host is on exactly when `CUSTOMER_ORIGIN` is usable; there is no
+setting, no `CUSTOMER_HOST` and no console value, so no console session can move customers. The cutover is a deploy
+(a reviewed `wrangler.toml` change). While it is on, `customerOrigin()` (`core/hosts.ts`) is the one
+source of every customer link: refusal `manageUrl` and `signInUrl`, discovery's `accountPortal`, the
+device code's `verificationUri`, the choice view's links, the identity-off card redirect, the
+licence-key and account mail links. `test/customerOrigin.test.ts` fails on a customer path literal
+built on any other origin.
+
+**Old-URL redirects.** On the console host, `oldCustomerUrlRedirect` (`core/customerHost.ts`)
+answers GET and HEAD to the old customer pages with a redirect to the same path and query on the
+configured customer origin: never a request-supplied host, so there is no open redirect. Pages are `301`; a
+path that carries a credential (`/callback`, `/login/<provider>[/…]`, `/magic/verify`,
+`/download/<token>`, `/logout`, a legacy `/activate?key=`) is `302` with `no-store`, so a token is not
+cached by the browser or an intermediary beyond its one hop (the Location header of such a hop is
+the same request line the caller already sent). `/signin?request=` (the bind hop) is left alone.
+The console's `/api/me` names the customer origin so the SPA sends an old portal hash
+(`#/library`, `#/account`, `#/discover`, `#/p/<slug>/free-device`) there; the origin comes from
+configuration.
 
 **What an attacker gets.**
 
 - _A host-header or request-supplied origin._ Customer links come from configuration
   (`CUSTOMER_ORIGIN`, else `CONSOLE_ORIGIN`); the request's origin is only the last fallback it
-  always was. The customer host's redirect to a product's device page (`/device` after a code
-  hit) uses `CONSOLE_ORIGIN`, never a request value: a fixed map with no request-supplied host.
+  always was. No redirect the customer host or the bind hops make takes a host, path or target
+  from the request: each `Location` is built from configuration or from a value this Worker stored.
 - _The health check._ `polaris-host.json` holds `{host: "customer"}` and nothing else: no
   environment, no version. CORS names the console origin only and allows no credentials, so
   another site cannot read it from a browser.
@@ -7239,8 +7246,9 @@ choice view's links, the identity-off card redirect, the licence-key and account
 - _Cookies._ Both hosts keep the same `__Host-` names, so each is host-only. The customer realm
   leaves the console's site entirely, so R1-09's shared-origin caveat stops covering customers once
   customers are served there. No session crosses hosts (LK-00 D10).
-- _A rollback._ `permanent` is the 301 phase of the old-URL redirects (LK-11); a cached 301
-  outlives a rollback, which is why `on` (302) comes first.
+- _A rollback._ Removing `CUSTOMER_ORIGIN` stops the redirects, but a browser keeps a `301` it has
+  seen. That is the accepted cost of the hard cutover (owner direction, 2026-10-19); the
+  credential-bearing paths are `302` so they never cache.
 
 **Passkeys on the customer host: Related Origin Requests (LK-05, D2).** The RP id stays
 `key.plrs.im`, so no credential is re-enrolled. `GET /.well-known/webauthn` on the console host
@@ -7252,8 +7260,7 @@ hash), so an assertion from any other origin, a subdomain or a look-alike is ref
 record keeps `rpId` and a credential keeps its stored `rp_id`: one RP id per ceremony. Adding an
 origin to the list is the whole trust change: that origin's page can start a passkey sign-in for
 every account, so the customer origin is a deploy-time value, never a request or database one.
-The customer origin is trusted whenever the customer host is usable, whatever the
-`customer.host` mode (`off` included). Removing `CUSTOMER_ORIGIN` stops server verification at
+The customer origin is trusted whenever the customer host is usable. Removing `CUSTOMER_ORIGIN` stops server verification at
 once, but a browser may keep the cached list for up to 5 minutes (`max-age=300`). Both
 verifications also refuse client data with `crossOrigin: true` (the library does not check it),
 and the card's `frame-ancestors 'none'` already blocks cross-origin ceremonies. Firefox does not
@@ -7262,10 +7269,51 @@ the card offers email and the providers instead (LK-06 detects it). Accounts who
 method is a passkey are an O10 preflight count before the cutover. Tests:
 `test/webauthnRelatedOrigins.test.ts`, `test-workerd/passkeys.test.ts` (customer origin).
 
-Still to come, each in its own package with its own entry here: the cross-host bind hop (LK-04),
-the old-URL redirects and cookie expiry (LK-11).
+Still to come, each in its own package with its own entry here: the old-URL redirects and cookie
+expiry (LK-11). The request bind hop is below.
 Tests: `test/customerHost.test.ts`, `test/customerOrigin.test.ts`, `test/routeCoverage.test.ts`
 (`CUSTOMER_PATHS`).
+
+### The cross-host bind hop (LK-04)
+
+**What it is.** Once `CUSTOMER_ORIGIN` is usable, the sign-in card lives on the customer host, but
+`authorize` stays on the API host, and `__Host-` cookies are host-only. So the request is bound to
+its browser through a single-use **bind token** instead of a cookie set from the wrong host
+(plans/LK-00.md §7.8; WIRE-CONTRACT-V4 §12.9). `authorize` stores the request under a handle bound to
+a fresh binder and 303s to `<customer>/signin?request=rq_…&bind=<token>`, setting no cookie. The
+customer host redeems the token and sets `__Host-pk_req` itself, then 303s to
+`/signin?request=rq_…`. The token is 32 random bytes, stored (kind `signin-bind`) under its
+peppered hash for 120 seconds and consumed in one atomic step.
+
+**What an attacker gets.**
+
+- _Replay._ A token works once: the second visit is the plain `404` and sets nothing. A token for
+  another handle than the one in the URL is refused and still spent (fail closed). `HEAD` does not
+  redeem.
+- _Fixation._ Whoever opens a bind URL binds their browser to that request, which is worth what
+  the `authorize` URL is worth (R1-07). A victim sent a bind URL is signed in to the attacker's
+  request only if they press Continue on the card with their own session, which names the app. The
+  token expires in 120 s and the URL holds no `state`, challenge or redirect URI.
+- _Open redirect._ Nothing in the query chooses a target: the `Location` is `/signin?request=` plus
+  the handle read from the store.
+- _Token in logs and Referer._ The response sets `Referrer-Policy: no-referrer` and
+  `Cache-Control: no-store`, and the token is dead after the first request.
+
+**The device confirmation does not hop.** An earlier design carried the device flow's binder across
+hosts the same way. That reopens R1-07: an attacker who starts a device flow could confirm it
+without following the redirect and send the victim the token URL, so the victim's browser would
+carry the attacker's binder through a silent IdP login. The device page therefore stays on the API
+host, where the confirming browser itself receives the binder and the callback finds it.
+`/device` and `/tv` on the customer host only look the code up and 302 to the product's page on the
+API host (a fixed origin from configuration). `test/customerDevicePage.test.ts` pins that a
+confirmation sets the binder on the response to the confirming browser only, that a stranger's
+callback is refused, and that the retired continue route answers `404`.
+
+Residual risk: a token read from a log or history within its 120 seconds and used before the
+owner does binds the attacker's browser instead of the owner's. The attacker still needs the
+owner's session to finish a sign-in, and the owner's second visit shows the `404`.
+
+Tests: `test/signInBind.test.ts`, `test/customerDevicePage.test.ts`, the `locker-*` transcripts.
 
 ### The console loads product logos from the image host (console product card)
 

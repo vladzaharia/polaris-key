@@ -5,7 +5,7 @@
 | Phase       | P2: Release truth, publishing and release tracks (DX consolidation I: Packages, updates and packs)                                         |
 | Size        | 0.4–0.6 engineer-weeks                                                                                                                     |
 | Depends on  | [P2-08](P2-08-built-in-dev-release-track-default-store.md), [A-26](A-26-customer-channel-actions.md), [A-30](A-30-generated-sha256sums.md) |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [PX-28](PX-28-license-page-v2.md)                                                                  |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [PX-28b](PX-28b-license-duration-addons.md)                                                        |
 | Role        | `pkey-implementer`                                                                                                                         |
 | Plan mode   | no                                                                                                                                         |
 | Gates       | `portal-e2e`, `console-csp-parity`                                                                                                         |

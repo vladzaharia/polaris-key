@@ -1,16 +1,18 @@
-# PX-28 License page v2
+# PX-28 Dropped (split 2026-10-19 into PX-28a and PX-28b): License page v2
 
-| Field       | Value                                                                                                                                      |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Phase       | PX: Customer portal (docs/design/PORTAL.md)                                                                                                |
-| Size        | 0.5–0.8 engineer-weeks                                                                                                                     |
-| Depends on  | [LX-15](LX-15-portal-licensing.md), [LX-41](LX-41-durations-subscriptions-core-trials.md), [P2-13](P2-13-portal-channel-picker-sha-256.md) |
-| Unblocks    | none                                                                                                                                       |
-| Role        | `pkey-implementer`                                                                                                                         |
-| Plan mode   | no (no wire change)                                                                                                                        |
-| Gates       | portal-e2e, ui-snapshots                                                                                                                   |
-| Human input | none                                                                                                                                       |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                  |
+| Field       | Value                                       |
+| ----------- | ------------------------------------------- |
+| Phase       | PX: Customer portal (docs/design/PORTAL.md) |
+| Size        | 0.5–0.8 engineer-weeks                      |
+| Depends on  | none                                        |
+| Unblocks    | none                                        |
+| Role        | `pkey-implementer`                          |
+| Plan mode   | no (no wire change)                         |
+| Gates       | portal-e2e, ui-snapshots                    |
+| Human input | none                                        |
+| Repo        | `vladzaharia/polaris-key`                   |
+
+> **Superseded 2026-10-19 by [PX-28a](PX-28a-license-page-v2.md) and [PX-28b](PX-28b-license-duration-addons.md). This brief stays as the original spec.**
 
 ## Goal
 

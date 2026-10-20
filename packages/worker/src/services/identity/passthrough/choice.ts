@@ -39,10 +39,8 @@ import {
   type AnchorCandidates,
 } from "../../../core/licensing/anchor.js";
 import { accountGrant } from "../../../core/licensing/issueAccount.js";
-import {
-  buildManageUrl,
-  customerOriginOf,
-} from "../../../core/licensing/manageUrl.js";
+import { buildManageUrl } from "../../../core/licensing/manageUrl.js";
+import { customerOrigin } from "../../../core/hosts.js";
 import type { OidcIdentity } from "../../../core/licensing/issue.js";
 import { getAccountRow } from "../accounts/repo.js";
 import { discoverIdentity } from "../portal/store/obtain.js";
@@ -159,8 +157,7 @@ export async function licenseChoiceView(
   const portal =
     (await getPortalProductSettings(db, product.slug)).portal_enabled === 1;
 
-  const customer =
-    (await customerOriginOf(cx.env, db, req)) ?? new URL(req.url).origin;
+  const customer = customerOrigin(cx.env, req) ?? new URL(req.url).origin;
   const choices: LicenseChoice[] = [];
   for (const c of offer.candidates) {
     const license = await getLicense(db, product.slug, c.licenseId);

@@ -49,7 +49,7 @@ import type { JsonValue } from "../format.js";
 const IDENTITY: ServicesMap = servicesOn("license", "config", "identity");
 
 /** The player who signs in, and the IdP group that entitles them. */
-const PLAYER = {
+export const PLAYER = {
   sub: "transcript-player",
   email: "player@example.com",
   name: "Transcript Player",
@@ -58,7 +58,7 @@ const PLAYER = {
 
 /** The product's sign-in configuration: a repo-owned (`custom`) IdP whose `players` group maps
  *  onto the `pro` tier. */
-async function identityWorld(): Promise<World> {
+export async function identityWorld(): Promise<World> {
   const w = await productWorld(IDENTITY);
   await seedTier(w.db, PRODUCT, "pro");
   await w.db.run(
@@ -161,9 +161,9 @@ function lapseFlowRecords(w: World): void {
 }
 
 const POLL = `/${PRODUCT}/identity/auth/device/poll`;
-const START = `/${PRODUCT}/identity/auth/device/start`;
+export const START = `/${PRODUCT}/identity/auth/device/start`;
 
-interface Started {
+export interface Started {
   deviceCode: string;
   userCode: string;
   verificationUri: string;
@@ -176,7 +176,7 @@ interface Started {
 
 /** What `beginSignIn` hands the host: everything it shows the player, never the device code
  *  (that is the poll credential and stays between the SDK and the server). */
-function promptOf(b: Started): JsonValue {
+export function promptOf(b: Started): JsonValue {
   return {
     userCode: b.userCode,
     verificationUri: b.verificationUri,
@@ -189,7 +189,7 @@ function promptOf(b: Started): JsonValue {
 
 /** `POST …/device/poll`: the device code the start answered, and this device's id. The device
  *  code is server-chosen, so it is held literally: the client must echo it. */
-function pollSpec(deviceCode: string) {
+export function pollSpec(deviceCode: string) {
   return {
     method: "POST" as const,
     path: POLL,

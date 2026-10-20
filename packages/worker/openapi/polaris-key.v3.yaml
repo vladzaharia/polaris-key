@@ -19787,8 +19787,8 @@ paths:
       tags: [customer]
       summary: Customer host health check (customer host only)
       description: >
-        LK-03. `{host: "customer"}`: the document the console reads before it lets `customer.host`
-        turn on. It names nothing else. `access-control-allow-origin`
+        LK-03. `{host: "customer"}`: the document the deploy smoke check reads to prove the host is
+        serving. It names nothing else. `access-control-allow-origin`
         names the console origin only, and no credentials are allowed. `cache-control: no-store`.
         `GET` and `HEAD` only.
       responses:

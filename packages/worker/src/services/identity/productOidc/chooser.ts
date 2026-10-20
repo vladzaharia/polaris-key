@@ -3,7 +3,7 @@
 import { activateFromIdentity } from "./activate.js";
 import { hashKey, randomId } from "../../../platform/crypto.js";
 import { type Env } from "../../../platform/env.js";
-import { customerOriginOf } from "../../../core/licensing/manageUrl.js";
+import { customerOrigin } from "../../../core/hosts.js";
 import { brandedHtmlSecurityHeaders } from "../../../core/securityHeaders.js";
 import { randomToken } from "../../../platform/random.js";
 import { parseFlowRecord } from "../../../platform/json.js";
@@ -204,7 +204,7 @@ export async function chooserView(
     deviceId: c.flow.deviceId ?? null,
     grantTierId: "error" in grant ? undefined : grant.tierId,
     hooks,
-    origin: (await customerOriginOf(env, db, req)) ?? new URL(req.url).origin,
+    origin: customerOrigin(env, req) ?? new URL(req.url).origin,
     deviceLabel: c.deviceLabel,
     now,
   });

@@ -441,7 +441,7 @@ function codeErrorText(err: unknown): string {
 function commonErrorText(err: unknown): string {
   if (err instanceof PortalApiError) {
     if (err.code === "other_account")
-      return "That signed you in to a different Polaris Key account. Nothing was changed.";
+      return `That signed you in to a different Polaris Locker account. Nothing was changed.`;
     if (err.status === 401 && err.code === "unauthorized")
       return "That didn't confirm it's you. Try again, or use another way.";
     if (err.status === 429)
