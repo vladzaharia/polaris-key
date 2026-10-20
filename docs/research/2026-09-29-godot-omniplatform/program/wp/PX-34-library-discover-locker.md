@@ -82,3 +82,10 @@ apply says why in one line. One home: EXPERIENCE.md ยง7.3; kits also follow DL1โ
 ## Hand-off
 
 The role agent sets `--set PX-34 in-review` when it hands off; the lead sets done after review. Branch from integ/next after the packages in Depends on have merged. Do not start while LK-06 or P0-36 is unmerged.
+
+## Build notes (2026-10-20)
+
+- Library tiles: tier and device count as pills (warning at the limit, no second pill on the art), platform glyphs on the first line, one fact per line from today's data (end/until date, "Bought on <store>"). The 8+ grid shows the tier pill only. Duration, add-ons and "Automatic grant" stay out (PX-28b, LX-38).
+- Correction to the brief: the empty Library no longer lists "Ready to add" rows (portal-17 draws the two buttons only); `DiscoverTeaser` is removed and "See N in Discover" is the one way in.
+- Discover: no subtitle, no closing line, three columns from 1180 px, developer beside the name, ink outline on an added tile, store links as a quiet row.
+- Not drawn: the added tile's Download before Open (needs the library's download data on Discover), the filters Updates/Games/Apps and "Recently used" sort (no API data), "Needs you" body copy "is on 3 of 3 devices".

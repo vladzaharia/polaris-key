@@ -1,3 +1,4 @@
+import { t } from "../../lib/copy.js";
 import type { PortalDiscoverOffer } from "../api.js";
 import {
   formatDay,
@@ -106,7 +107,7 @@ export function discoverTileFacts(o: PortalDiscoverOffer): TileFacts {
   else if (terms.expiresAt !== null)
     lines.push({ kind: "term", text: `Until ${formatDay(terms.expiresAt)}` });
   else if (!tier || tier.toLowerCase() !== "lifetime")
-    lines.push({ kind: "term", text: "Lifetime" });
+    lines.push({ kind: "term", text: t("signin.term.lifetime") });
   return {
     tier,
     devices:
