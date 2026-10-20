@@ -488,13 +488,14 @@ p {
 .powered-by-line {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: var(--pk-space-2);
   margin: 0;
 }
 .powered-by-line svg {
   flex: none;
-  inline-size: 16px;
-  block-size: 16px;
+  inline-size: max(16px, 1.25em);
+  block-size: max(16px, 1.25em);
 }
 .powered-by {
   container-type: inline-size;
@@ -504,6 +505,7 @@ p {
 }
 .powered-by-badge svg {
   display: block;
+  margin-inline: auto;
   max-inline-size: 100%;
   block-size: auto;
 }

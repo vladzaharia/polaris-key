@@ -371,7 +371,8 @@ function attribution(
  */
 function poweredBy(c: RenderCtx): TemplateResult {
   const scheme = c.resolved.theme.scheme;
-  const badge = c.input.integrator?.poweredBy === "badge";
+  const badge =
+    c.input.integrator?.poweredBy === "badge" && c.view.component === "About";
   const line = html`<p
     class="status-line powered-by-line"
     data-part="powered-by"

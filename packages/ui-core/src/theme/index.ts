@@ -46,7 +46,8 @@ export interface ThemeOptions {
   ambient?: boolean;
   /** The integrator's ProductIdentity: it wins over the presentation and the bundle. */
   product?: IntegratorIdentity;
-  poweredBy?: false | "line" | "badge";
+  /** `true` and `"line"`: the line; `"badge"`: the badge on About (UI-KITS §1.6). */
+  poweredBy?: boolean | "line" | "badge";
   /** Web and Qt Quick kits: the platform variant to render (`auto`: the one the kit runs on). */
   platform?: "auto" | "ios" | "android" | "macos" | "windows" | "linux" | "web";
 }

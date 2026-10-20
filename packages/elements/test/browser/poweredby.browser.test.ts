@@ -62,13 +62,14 @@ const q = <T extends Element = HTMLElement>(el: PkElement, s: string) =>
 
 async function draw(
   mode: "line" | "badge",
+  tag: keyof typeof TAGS,
   w: number,
   h: number,
   scheme: "dark" | "light",
 ): Promise<PkElement> {
   await page.viewport(w, h);
   document.body.style.background = scheme === "dark" ? "#060912" : "#f6f8ff";
-  const el = document.createElement(TAGS.AccountAndLicense) as PkElement;
+  const el = document.createElement(TAGS[tag]) as PkElement;
   el.colorScheme = scheme;
   el.input = input(mode);
   el.style.display = "grid";
@@ -90,7 +91,7 @@ describe("Powered by Polaris Locker", () => {
       [1440, 900],
     ] as const) {
       it(`line at ${w} ${scheme}: the 16 px mark and the phrase, no sideways scroll`, async () => {
-        const el = await draw("line", w, h, scheme);
+        const el = await draw("line", "AccountAndLicense", w, h, scheme);
         const line = q(el, '[data-part="powered-by"]')!;
         const mark = line.querySelector("svg")!.getBoundingClientRect();
         expect(Math.round(mark.width)).toBe(16);
@@ -101,7 +102,7 @@ describe("Powered by Polaris Locker", () => {
       });
 
       it(`badge at ${w} ${scheme}: 320 x 104 where 320 px are free, else the line`, async () => {
-        const el = await draw("badge", w, h, scheme);
+        const el = await draw("badge", "About", w, h, scheme);
         const wrap = q(el, ".powered-by")!;
         const badge = q(el, '[data-part="powered-by-badge"]')!;
         const line = q(el, '[data-part="powered-by"]')!;
