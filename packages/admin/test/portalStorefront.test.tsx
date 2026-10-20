@@ -424,7 +424,7 @@ describe("the storefront product page, #/discover/:product (PS-05)", () => {
       name: /Free trial · 14 days/,
     }) as HTMLInputElement;
     expect(group.checked).toBe(true);
-    expect(within(ways).getByText("Trial · 14 days · 1 device")).toBeTruthy();
+    expect(within(ways).getByText("1 device")).toBeTruthy();
     // Where else it is.
     expect(
       within(ways)
@@ -592,6 +592,11 @@ describe("the storefront product page, #/discover/:product (PS-05)", () => {
     );
     expect(screen.queryByRole("button", { name: "Add to library" })).toBeNull();
     expect(window.location.hash).toBe("#/discover/lumen-raw");
+    expect(
+      screen
+        .getByRole("link", { name: "Back to Discover" })
+        .getAttribute("href"),
+    ).toBe("#/discover");
   });
 
   it("sends a product the library holds to its library page", async () => {

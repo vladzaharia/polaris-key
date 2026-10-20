@@ -137,6 +137,13 @@ describe.concurrent("the storefront's flows (PS-05)", () => {
               .getByRole("img")
               .count(),
           ).toBe(2);
+          if (w.width === 390) {
+            // The one primary is in the first screen of a phone.
+            const box = await page
+              .getByRole("button", { name: "Add to library" })
+              .boundingBox();
+            expect(box!.y + box!.height).toBeLessThanOrEqual(844 - 64);
+          }
           await clean(expect, o, w.width, "storefront page");
 
           await ways
@@ -187,6 +194,22 @@ describe.concurrent("the storefront's flows (PS-05)", () => {
           await add.scrollIntoViewIfNeeded();
           expect(await add.isVisible()).toBe(true);
           expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
+          // Nothing inside the panel reaches past its edge.
+          const past = await page.evaluate(() => {
+            const box = document
+              .querySelector("#section-get")!
+              .getBoundingClientRect();
+            return [...document.querySelectorAll("#section-get *")]
+              .filter((e) => {
+                const r = e.getBoundingClientRect();
+                return (
+                  r.width > 0 &&
+                  (r.right > box.right + 1 || r.left < box.left - 1)
+                );
+              })
+              .map((e) => e.tagName + "." + String(e.className).slice(0, 40));
+          });
+          expect(past).toEqual([]);
         } finally {
           await o.close();
         }
