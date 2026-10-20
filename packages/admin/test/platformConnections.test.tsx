@@ -223,6 +223,7 @@ describe("two places to sign in", () => {
       ),
     };
     boot("#/platform/connections", { me: ME, extra: { [BASE]: page } });
+    await screen.findByRole("heading", { level: 1, name: "Connections" });
     await within(main()).findByText("Set up Apple");
     const text = main().textContent!;
     expect(
