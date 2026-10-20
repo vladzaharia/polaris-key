@@ -284,7 +284,7 @@ export const SECTIONS: NavSection[] = [
       },
       {
         page: "services",
-        label: "Services",
+        label: "Features",
         path: "settings/features",
         icon: Blocks,
         docs: "/docs/operate/console/products/",

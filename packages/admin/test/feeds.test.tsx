@@ -1142,11 +1142,10 @@ describe("Core → Services: the package feeds switch", () => {
         },
       },
     });
-    await screen.findByRole("heading", { level: 2, name: "Services" });
-    const section = await within(await mainReady()).findByText("Packages");
-    const row = (section.closest("[data-section]") ??
-      section.parentElement!) as HTMLElement;
-    const sw = await within(row).findByRole("switch", { name: /Packages/ });
+    await screen.findByRole("heading", { level: 1, name: "Settings" });
+    const main = await mainReady();
+    const section = await within(main).findByText("Packages");
+    const sw = await within(main).findByRole("switch", { name: /Packages/ });
     await waitFor(() => expect(sw.getAttribute("aria-checked")).toBe("true"));
     await userEvent.click(sw);
     // No save bar: the switch's own L1 confirm is the only step.

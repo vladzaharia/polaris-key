@@ -16,6 +16,7 @@ import { DISTRIBUTION_ROUTES } from "../test/distributionData.js";
 import { feedRoutes } from "../test/feedsFixture.js";
 import { CHANNELS, STORE } from "../test/releaseFixture.js";
 import { DATA_ROUTES, PACK_ID } from "./layoutData.js";
+import { SETTINGS_ROUTES } from "./layoutSettings.js";
 
 export { DEVICE_ID, PACK_ID };
 
@@ -156,6 +157,7 @@ const ROUTES: Record<string, unknown> = {
   ...CORE_ROUTES,
   ...DISTRIBUTION_ROUTES,
   ...DATA_ROUTES,
+  ...SETTINGS_ROUTES,
   [`${P}/devices`]: { devices, nextCursor: null },
   [`${P}/devices/summary`]: { ...core("/devices/summary"), total: 40 },
   [`${P}/activity`]: { items: activity, nextCursor: null },

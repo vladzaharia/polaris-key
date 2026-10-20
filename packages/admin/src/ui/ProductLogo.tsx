@@ -5,12 +5,13 @@ import { useTheme } from "../components/theme.js";
 import { cn } from "../lib/cn.js";
 import { iconShape, letterOf, type IconShape } from "../lib/productArt.js";
 
-export type ProductLogoSize = 24 | 32 | 40;
+export type ProductLogoSize = 24 | 32 | 40 | 48;
 
 const SIZE: Record<ProductLogoSize, string> = {
   24: "size-6",
   32: "size-8",
   40: "size-10",
+  48: "size-12",
 };
 
 /** The corner mask a store applies to a full-bleed square, and the monogram tile's radius. */
@@ -18,12 +19,14 @@ const RADIUS: Record<ProductLogoSize, string> = {
   24: "rounded-md",
   32: "rounded-md",
   40: "rounded-lg",
+  48: "rounded-lg",
 };
 
 const LETTER: Record<ProductLogoSize, string> = {
   24: "text-xs",
   32: "text-sm",
   40: "text-lg",
+  48: "text-xl",
 };
 
 /**

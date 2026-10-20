@@ -2531,6 +2531,26 @@ describe("A product's alert routing (ST-27)", () => {
         stepUpMaxAgeSeconds: 300,
       },
       extra: {
+        // The product's own settings unfold under Features, which reads the services first.
+        "/manage/api/products/djdl/services": {
+          services: {},
+          effectiveRegistration: "requires-license",
+          source: "manifest",
+          facts: {
+            licensing: { tiers: 0, licenses: 0 },
+            managedConfig: { catalogVersion: null },
+            shipBuilds: { latest: null },
+            commerce: { storefronts: 0, storeGrants: 0 },
+          },
+        },
+        "/manage/api/products/djdl/blob-gc": {
+          enabled: false,
+          graceSeconds: 0,
+          lockAgeSeconds: 0,
+          drops: { packObject: 0, packUpload: 0, truncated: false, listed: [] },
+          restores: { count: 0, listed: [] },
+          earliestDeletion: null,
+        },
         "/manage/api/products/djdl/alerts": {
           ...ALERTS_NONE,
           destinations: [

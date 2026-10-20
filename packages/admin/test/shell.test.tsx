@@ -812,7 +812,7 @@ describe("state pages (T8)", () => {
       ],
       [
         "#/p/djdl/secrets",
-        "This page moved to Core\u00a0→\u00a0Keys & secrets",
+        "This page moved to Settings\u00a0→\u00a0Keys & secrets",
         "Go to Keys & secrets",
         "#/p/djdl/settings/keys",
       ],
