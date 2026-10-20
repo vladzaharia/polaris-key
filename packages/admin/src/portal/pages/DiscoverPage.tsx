@@ -1,5 +1,6 @@
 import * as React from "react";
 import { LayoutGrid } from "lucide-react";
+import { t } from "../../lib/copy.js";
 import { cn } from "../../lib/cn.js";
 import { Button } from "../../ui/Button.js";
 import { StationaryStar } from "../../ui/EmptyState.js";
@@ -20,13 +21,7 @@ import {
   withAdded,
 } from "../model/discover.js";
 import { withoutHeld } from "../model/owned.js";
-import {
-  currentParams,
-  href,
-  navigate,
-  setParams,
-  useDocumentTitle,
-} from "../router.js";
+import { currentParams, href, setParams, useDocumentTitle } from "../router.js";
 import { useFirstLoad, useFirstLoadStagger } from "../stagger.js";
 
 interface TileError {
@@ -150,12 +145,8 @@ export function DiscoverPage({
       setFocusOpen(slug);
       // Read now, not from this render: another add may have finished meanwhile.
       setParams({ added: withAdded(addedParam(currentParams()), slug) });
-      toast.success(`${offer.name} is in your library`, {
-        action: {
-          label: "Open",
-          onClick: () => navigate(href.product(slug)),
-        },
-      });
+      // The tile says "Open"; the toast only confirms.
+      toast.success(`${offer.name} is in your library`);
     } catch (err) {
       const failed = tileError(offer, err);
       setErrors((m) => new Map(m).set(slug, failed));
@@ -225,7 +216,9 @@ export function DiscoverPage({
             <ul
               ref={stagger.ref}
               className={cn(
-                "grid gap-6 desk:grid-cols-2 wide:grid-cols-3",
+                "grid gap-6 desk:grid-cols-2",
+                // Two or four tiles at three columns leave a row with a hole (3 + 1).
+                tiles.length !== 2 && tiles.length !== 4 && "wide:grid-cols-3",
                 stagger.className,
               )}
             >
@@ -269,6 +262,11 @@ function tileError(offer: PortalDiscoverOffer, err: unknown): TileError {
       ended: true,
     };
   }
+  // The button stays "Add to library" and the words say what to do, once.
+  const offline = err instanceof PortalApiError && err.status === 0;
   const copy = portalErrorCopy(err);
-  return { text: `${copy.title}. ${copy.description}`, ended: false };
+  return {
+    text: `Couldn't add ${offer.name}. ${offline ? t("core.codes.transport.message") : copy.description}`,
+    ended: false,
+  };
 }

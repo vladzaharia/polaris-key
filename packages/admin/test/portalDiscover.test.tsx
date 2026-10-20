@@ -267,7 +267,7 @@ describe("Discover (PX-16)", () => {
     const nav = screen.getByRole("navigation", { name: "Main" });
     expect(
       within(nav).getByRole("link", { name: /Discover/ }).textContent,
-    ).toBe("Discover4");
+    ).toBe("Discover4 to add");
     expect(await axeViolations()).toEqual([]);
   });
 
@@ -366,7 +366,7 @@ describe("Discover (PX-16)", () => {
     await waitFor(() =>
       expect(
         within(nav).getByRole("link", { name: /Discover/ }).textContent,
-      ).toBe("Discover1"),
+      ).toBe("Discover1 to add"),
     );
     expect(within(nav).getByRole("link", { name: /Library/ }).textContent).toBe(
       "Library1",
@@ -488,11 +488,11 @@ describe("Discover (PX-16)", () => {
       within(moss).getByRole("button", { name: "Add to library: Mossgarden" }),
     );
     expect((await within(moss).findByRole("alert")).textContent).toBe(
-      "Too many tries. Wait a minute, then try again.",
+      "Couldn't add Mossgarden. Wait a minute, then try again.",
     );
-    // Back on the button, relabelled, with the error tied to it and focus returned to it.
+    // Back on the button, still "Add to library", with the error tied to it and focus returned.
     const retry = within(moss).getByRole("button", {
-      name: "Try again: Mossgarden",
+      name: "Add to library: Mossgarden",
     });
     expect(retry.getAttribute("aria-describedby")).toBe(
       within(moss).getByRole("alert").id,

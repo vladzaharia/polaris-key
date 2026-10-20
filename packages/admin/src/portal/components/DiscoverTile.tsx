@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import { Button } from "../../ui/Button.js";
 import { cn } from "../../lib/cn.js";
-import { t } from "../../lib/copy.js";
 import type { PortalDiscoverOffer } from "../api.js";
 import {
   moreWaysText,
@@ -142,21 +141,21 @@ export function DiscoverTile({
           ) : null}
         </ProductArt>
         <div className="flex flex-1 flex-col px-5 pb-5">
-          <div className="-mt-7 flex items-start gap-3">
+          <div className="-mt-5 flex items-start gap-3">
             <ProductIcon
               slug={offer.product}
               name={offer.name}
               tint={offer.tintColor}
               src={offer.iconUrl}
-              size={64}
+              size={56}
               className="relative border-[3px] border-surface-raised shadow-elevation-2"
             />
-            <div className="min-w-0 flex-1 pt-9">
-              <div className="flex min-w-0 items-baseline gap-2">
+            <div className="min-w-0 flex-1 pt-8">
+              <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
                 <h3
                   id={id}
                   dir="auto"
-                  className="min-w-0 shrink-0 truncate text-lg font-semibold text-fg-strong"
+                  className="min-w-0 max-w-full truncate text-lg font-semibold text-fg-strong"
                 >
                   <a
                     href={page}
@@ -171,7 +170,7 @@ export function DiscoverTile({
                 {offer.developerName ? (
                   <p
                     dir="auto"
-                    className="min-w-0 truncate text-sm text-fg-muted"
+                    className="min-w-0 max-w-full truncate text-sm text-fg-muted"
                   >
                     {offer.developerName}
                   </p>
@@ -245,16 +244,21 @@ export function DiscoverTile({
                   iconStart={<Plus aria-hidden />}
                   loading={state === "adding"}
                   aria-describedby={error ? errorId : undefined}
-                  aria-label={`${error ? t("common.tryAgain") : "Add to library"}: ${offer.name}`}
+                  aria-label={`Add to library: ${offer.name}`}
                   onClick={onAdd}
                 >
-                  {error ? t("common.tryAgain") : "Add to library"}
+                  {state === "adding" ? "Adding…" : "Add to library"}
                 </Button>
               )}
             </div>
           )}
-          {stores.length > 0 ? (
-            <StoreLinks offer={offer} stores={stores} />
+          {/* The row is kept for every addable tile, so Add sits level across a row of tiles. */}
+          {!link && !added && offer.cta === "add" ? (
+            <div className="mt-4 min-h-9">
+              {stores.length > 0 ? (
+                <StoreLinks offer={offer} stores={stores} />
+              ) : null}
+            </div>
           ) : null}
         </div>
       </article>
@@ -353,7 +357,7 @@ function StoreLinks({
   stores: PortalDiscoverOffer["stores"];
 }): React.ReactElement {
   return (
-    <p className="relative mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-fg-muted">
+    <p className="relative flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-fg-muted">
       <span>Also on</span>
       {stores.map((st) => (
         <a

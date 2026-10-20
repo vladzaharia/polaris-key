@@ -40,40 +40,40 @@ export function LibraryKeyTile({
     <li
       aria-labelledby="key-tile-h"
       className={cn(
-        "grid @container",
+        "grid",
         SPAN[2][keyTileSpan(count, 2) as 1 | 2],
         SPAN[3][keyTileSpan(count, 3)],
       )}
     >
       {/* A phone: the key beside the text, the button full width under them. In a one-cell tile
           (from 900 px) a flat well stands where a product's art would be, the key at its centre,
-          and the button sits at the foot, level with the tiles' actions; beside a wide span the
-          tile lays out as one row. */}
-      <div className="flex flex-col gap-4 overflow-hidden rounded-xl border border-dashed border-border-strong bg-transparent p-4 desk:gap-0 desk:p-0 @2xl:flex-row @2xl:items-center @2xl:gap-6 @2xl:p-6">
+          and the button sits at the foot, level with the tiles' actions. A tile that spans cells
+          keeps this layout: the well stays capped at 280 px. */}
+      <div className="flex flex-col gap-4 overflow-hidden rounded-xl border border-dashed border-border-strong bg-transparent p-4 desk:gap-0 desk:p-0">
         <div
           aria-hidden
-          className="hidden aspect-video max-h-[17.5rem] w-full items-center justify-center bg-surface-sunken desk:flex @2xl:hidden"
+          className="hidden min-h-40 max-h-[17.5rem] w-full flex-1 items-center justify-center bg-surface-sunken desk:flex"
         >
           <span className="inline-flex size-16 items-center justify-center rounded-2xl bg-accent-subtle text-accent-fg">
             <KeyRound className="size-7" />
           </span>
         </div>
-        <div className="flex min-w-0 flex-1 items-center gap-3 desk:px-5 desk:pt-5 @2xl:flex-1 @2xl:p-0">
+        <div className="flex min-w-0 items-center gap-3 desk:px-5 desk:pt-5">
           <span
             aria-hidden
-            className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent-subtle text-accent-fg desk:hidden @2xl:inline-flex @2xl:size-12"
+            className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent-subtle text-accent-fg desk:hidden"
           >
             <KeyRound className="size-5" />
           </span>
-          <h3 id="key-tile-h" className="text-lg font-medium text-fg-strong">
+          <h3 id="key-tile-h" className="text-lg font-semibold text-fg-strong">
             {t("signin.link.key")}
           </h3>
         </div>
-        <div className="desk:mt-auto desk:p-5 @2xl:mt-0 @2xl:p-0">
+        <div className="desk:mt-auto desk:p-5">
           <Button
             variant="quiet"
             size="lg"
-            className="h-11 w-full shrink-0 @2xl:w-auto"
+            className="h-11 w-full shrink-0"
             iconStart={<KeyRound aria-hidden />}
             onClick={() => activate.open()}
           >

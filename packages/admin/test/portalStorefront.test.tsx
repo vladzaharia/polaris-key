@@ -354,7 +354,7 @@ describe("Discover tiles on the storefront (PS-05)", () => {
     const nav = screen.getByRole("navigation", { name: "Main" });
     expect(
       within(nav).getByRole("link", { name: /Discover/ }).textContent,
-    ).toBe("Discover2");
+    ).toBe("Discover2 to add");
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(await axeViolations()).toEqual([]);
   });
@@ -385,7 +385,7 @@ describe("Discover tiles on the storefront (PS-05)", () => {
     );
     expect(
       within(nav).getByRole("link", { name: /Discover/ }).textContent,
-    ).toBe("Discover1");
+    ).toBe("Discover1 to add");
   });
 });
 

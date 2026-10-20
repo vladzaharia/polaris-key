@@ -131,7 +131,11 @@ export function AppToaster({
       }
       {...(phoneBottom
         ? {
-            offset: { bottom: `var(${TOAST_BOTTOM_INSET_VAR}, 24px)` },
+            // The portal's toasts sit inside its content column (82rem, 2rem gutters), not the window's edge.
+            offset: {
+              bottom: `var(${TOAST_BOTTOM_INSET_VAR}, 24px)`,
+              right: "max(2rem, calc((100vw - 82rem) / 2 + 2rem))",
+            },
             mobileOffset: { bottom: `var(${TOAST_BOTTOM_INSET_VAR}, 16px)` },
           }
         : {})}

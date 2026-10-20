@@ -234,6 +234,11 @@ function ScaledLibrary({
   const productsSection = React.useRef<HTMLElement>(null);
   return (
     <>
+      {filtered ? null : (
+        <AttentionShelf
+          items={attentionItems(products, (s) => href.product(s, "devices"))}
+        />
+      )}
       <LibraryToolbar
         total={products.length}
         q={v.q}
@@ -268,11 +273,6 @@ function ScaledLibrary({
         }}
       />
       <LiveRegion message={filtered ? summary : ""} />
-      {filtered ? null : (
-        <AttentionShelf
-          items={attentionItems(products, (s) => href.product(s, "devices"))}
-        />
-      )}
       <section
         ref={productsSection}
         aria-labelledby="all-h"

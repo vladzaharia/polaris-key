@@ -34,7 +34,9 @@ describe("portal shell and data layer (PX-01)", () => {
     mockFetch({ "/api/me": "network", "/api/capabilities": "network" });
     renderPortal();
     expect(
-      await screen.findByRole("heading", { name: "Can't reach Polaris Locker" }),
+      await screen.findByRole("heading", {
+        name: "Can't reach Polaris Locker",
+      }),
     ).toBeTruthy();
     expect(screen.queryByRole("heading", { name: /sign in/i })).toBeNull();
     expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();

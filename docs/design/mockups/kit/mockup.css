@@ -11162,16 +11162,22 @@ a.card:focus-visible {
 }
 
 /* A tile's name beside its icon: the tiles are the page's blocks, so it titles at 18/24; a
-   quiet second fact (the developer) shares its line and is cut short before it wraps. */
+   quiet second fact (the developer) shares its line, and wraps under the name when the two do
+   not fit; a name longer than the tile ends in an ellipsis, never mid-letter. */
 .ptile-title {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: var(--sp-2);
+  gap: 0 var(--sp-2);
   min-width: 0;
   white-space: nowrap;
 }
 .ptile-title > :is(h2, h3) {
-  flex: none;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: var(--fs-section);
   line-height: var(--lh-section);
   font-weight: 600;

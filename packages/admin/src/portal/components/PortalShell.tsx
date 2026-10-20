@@ -170,6 +170,17 @@ export function PortalShell({
       <footer className="border-t border-border pb-24 desk:pb-0">
         <div className="mx-auto flex w-full max-w-[82rem] flex-wrap items-center justify-between gap-2 px-4 py-6 text-sm text-fg-muted desk:px-8">
           <span>Polaris Locker</span>
+          <nav aria-label="Help and policies" className="flex gap-4">
+            {FOOT_LINKS.map((l) => (
+              <a
+                key={l.href}
+                href={l.href}
+                className="inline-flex min-h-6 items-center underline decoration-[var(--pk-locker-accent)] underline-offset-4 hover:text-fg-strong"
+              >
+                {l.label}
+              </a>
+            ))}
+          </nav>
         </div>
       </footer>
       <nav
@@ -256,6 +267,12 @@ function usePhoneBarToastInset(): void {
   }, []);
 }
 
+/** The footer's links: the public Help door and the page on what the site keeps (no terms page exists yet). */
+const FOOT_LINKS = [
+  { label: "Help", href: "/docs/help/" },
+  { label: "Privacy", href: "/docs/help/your-data/" },
+] as const;
+
 function NavLink({
   href: to,
   active,
@@ -287,12 +304,15 @@ function NavLink({
           className={cn(
             "inline-flex min-w-6 items-center justify-center rounded-full px-2 py-0.5 text-xs font-normal tabular-nums",
             // Discover's count of offers is always the small violet count (§4.16).
-            active || accentCount
-              ? "bg-accent-subtle text-accent-fg"
-              : "bg-surface-raised text-fg-muted ring-1 ring-inset ring-border",
+            accentCount
+              ? "bg-fg-strong text-surface-page"
+              : active
+                ? "bg-accent-subtle text-accent-fg"
+                : "bg-surface-raised text-fg-muted ring-1 ring-inset ring-border",
           )}
         >
           {count}
+          {accentCount ? <span className="sr-only"> to add</span> : null}
         </span>
       ) : null}
     </a>

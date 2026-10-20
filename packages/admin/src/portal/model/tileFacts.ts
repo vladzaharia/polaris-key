@@ -39,9 +39,8 @@ export function libraryTileFacts(p: LibraryProduct): TileFacts {
       lines: [{ kind: "free", text: "Free to use" }],
     };
   const l = p.best;
-  const tier =
-    tierLabel(l.tier) ??
-    (l.identityProvider === "oidc" && l.keyCount === 0 ? "Standard" : null);
+  // A license with no tier is "Standard", as on the product page (model/product.ts).
+  const tier = tierLabel(l.tier) ?? "Standard";
   const seats = p.seats;
   const count = seats ? seats.inUse : p.deviceCount;
   const devices =
@@ -97,7 +96,7 @@ export function discoverTileFacts(o: PortalDiscoverOffer): TileFacts {
         ? [{ kind: "about", text: o.shortDescription }]
         : [],
     };
-  const tier = terms.tierLabel ?? tierLabel(terms.tier);
+  const tier = terms.tierLabel ?? tierLabel(terms.tier) ?? "Standard";
   const lines: TileFact[] = [];
   if (terms.expiryDays !== null)
     lines.push({

@@ -63,7 +63,7 @@ export function LibraryToolbar({
     { id: "all", label: "All", count: total },
     {
       id: "attention",
-      label: "Needs attention",
+      label: "Needs you",
       count: attentionCount,
       dot: true,
     },
@@ -87,7 +87,15 @@ export function LibraryToolbar({
             onChange={(e) => onChange({ q: e.target.value })}
             className="h-full w-full min-w-0 bg-transparent pl-10 pr-10 text-md text-fg-strong outline-none placeholder:text-fg-subtle focus-visible:ring-0 focus-visible:ring-offset-0"
           />
-          <Kbd keys="/" className="absolute right-3 hidden desk:flex" />
+          <Kbd
+            keys={
+              typeof navigator !== "undefined" &&
+              /Mac|iPhone|iPad/.test(navigator.userAgent)
+                ? "⌘K"
+                : "Ctrl K"
+            }
+            className="absolute right-3 hidden desk:flex"
+          />
         </label>
         <SegmentedControl
           aria-label="View"

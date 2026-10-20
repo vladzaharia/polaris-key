@@ -86,12 +86,12 @@ describe("scale features from 8 products (PX-03)", () => {
     expect(document.activeElement).toBe(screen.getByRole("searchbox"));
   });
 
-  it("filters to Needs attention with counts, hiding zero-count chips", async () => {
+  it("filters to Needs you with counts, hiding zero-count chips", async () => {
     mockFetch(signedIn(TWELVE));
     renderPortal();
     await ready();
     const group = screen.getByRole("group", { name: "Filter" });
-    const chip = within(group).getByRole("button", { name: /Needs attention/ });
+    const chip = within(group).getByRole("button", { name: /Needs you/ });
     expect(chip.textContent).toContain("2");
     expect(within(group).queryByRole("button", { name: /Games/ })).toBeNull();
     await userEvent.click(chip);

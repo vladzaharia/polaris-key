@@ -6,11 +6,7 @@ import { Announcer } from "../ui/LiveRegion.js";
 import { AppToaster, toast } from "../ui/toast.js";
 import type { PortalAccount } from "./api.js";
 import { ActivateProvider, useActivate } from "./activate.js";
-import {
-  JumpIconButton,
-  JumpPalette,
-  JumpTrigger,
-} from "./components/JumpPalette.js";
+import { JumpIconButton, JumpPalette } from "./components/JumpPalette.js";
 import { PortalShell } from "./components/PortalShell.js";
 import { useLibrary } from "./library.js";
 import { SCALE_THRESHOLD } from "./model/libraryView.js";
@@ -212,9 +208,6 @@ function SignedInShell({
       route={route}
       libraryCount={libraryCount}
       discoverCount={lib.discoverCount}
-      headerExtra={
-        scaled ? <JumpTrigger onOpen={() => setJumpOpen(true)} /> : null
-      }
       phoneHeaderExtra={
         scaled ? <JumpIconButton onOpen={() => setJumpOpen(true)} /> : null
       }

@@ -98,7 +98,9 @@ describe("LoginCard (SIGN-IN.md §3.1–§3.4, §3.9)", () => {
     mockFetch({ "/api/me": { status: 401 }, "/api/capabilities": "network" });
     renderPortal();
     expect(
-      await screen.findByRole("heading", { name: "Can't reach Polaris Locker" }),
+      await screen.findByRole("heading", {
+        name: "Can't reach Polaris Locker",
+      }),
     ).toBeTruthy();
     expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
   });

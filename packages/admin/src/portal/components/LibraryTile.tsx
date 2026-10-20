@@ -123,7 +123,7 @@ export function LibraryTile({
           )}
         >
           <div
-            className={cn("flex items-start gap-3", noArt ? "mt-4" : "-mt-7")}
+            className={cn("flex items-start gap-3", noArt ? "mt-4" : "-mt-5")}
           >
             {noArt ? null : (
               <ProductIcon
@@ -131,7 +131,7 @@ export function LibraryTile({
                 name={product.name}
                 tint={pres.tint}
                 src={pres.iconUrl}
-                size={64}
+                size={56}
                 lift
                 className="relative"
                 tileClassName="border-[3px] border-surface-raised"
@@ -139,12 +139,12 @@ export function LibraryTile({
             )}
             {/* Below the art, never over it: the icon overlaps the art by 1.75 rem. The
                 rest of the row is the name's, so its link spans it (PS-05 review v2). */}
-            <div className={cn("min-w-0 flex-1", !noArt && "pt-9")}>
+            <div className={cn("min-w-0 flex-1", !noArt && "pt-8")}>
               <h3
                 id={`tile-${product.slug}`}
                 dir="auto"
                 className={cn(
-                  "truncate font-medium text-fg-strong",
+                  "truncate font-semibold text-fg-strong",
                   compact
                     ? "text-base @max-[17rem]/tile:whitespace-normal"
                     : "text-lg",
