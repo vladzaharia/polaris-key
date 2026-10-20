@@ -428,7 +428,7 @@ describe("forgery: each is refused generically and writes nothing", () => {
       await postApprove(null, { token, decision: "approve" }),
     ]) {
       expect(res.status).toBe(403);
-      expect(await res.text()).toContain("Start again on your device");
+      expect(await res.text()).toContain("This page has expired");
     }
     await untouched(c);
   });
@@ -684,7 +684,7 @@ describe("the other routes", () => {
       ),
     );
     expect(res.status).toBe(403);
-    expect(await res.text()).toContain("Start again on your device");
+    expect(await res.text()).toContain("This page has expired");
     expect(
       await artefacts(env).get(await deviceFlowKey(env, "djdl", s.deviceCode)),
     ).toBe(before);
@@ -753,7 +753,7 @@ describe("what the page shows", () => {
     expect(html).toContain("Only sign in if");
     expect(html).toContain("Didn't start this? Deny.");
     expect(html).toContain("Ada");
-    expect(html).toContain("ada@example.com");
+    expect(html).toContain("ada<wbr>@example<wbr>.com");
     expect(html).toContain(`<span class="code">${c.userCode}</span>`);
     expect(html).toMatch(/just now from Portugal/);
     expect(html).toContain("wants you to sign in");
@@ -956,5 +956,39 @@ describe("the endings are pages", () => {
     const { html } = await atApprovalPage();
     const title = /<title>([^<]*)<\/title>/.exec(html)![1]!;
     expect(title).not.toMatch(/[\u2068\u2069]/);
+  });
+});
+
+describe("the facts list keeps each label with its value (TV and 200% text)", () => {
+  it("the stylesheet gives dd a full-row basis, so a dt/dd pair cannot share a line with the next dt", async () => {
+    const { brandPageStyleSource } = await import("../src/core/brandHtml.js");
+    expect(brandPageStyleSource).toBeTruthy();
+    const { BRAND_PAGE_CSS_LOCKER } = await import("../src/core/brandHtml.js");
+    expect(BRAND_PAGE_CSS_LOCKER).toContain(
+      ".ac-body dd{flex:1 1 calc(100% - 7rem);min-width:min(100%,12rem);overflow-wrap:break-word}",
+    );
+    expect(BRAND_PAGE_CSS_LOCKER).toContain(".ac-body dt{flex:0 0 6rem}");
+    expect(BRAND_PAGE_CSS_LOCKER).toContain("white-space:nowrap");
+  });
+
+  it("the TV approval page is the same pairs, in order, with a breakable email", async () => {
+    const st = await startFlow("tv-w", "Living room TV");
+    const c = await confirmCode(st);
+    await callback(c);
+    const key = await flowKey(env, "djdl", c.state);
+    const f = JSON.parse((await artefacts(env).get(key))!);
+    await artefacts(env).put(key, JSON.stringify({ ...f, tv: true }));
+    const html = await (await getApprove(c.cookie)).text();
+    expect(html).toContain('<body class="tv">');
+    const dl = /<dl>(.*?)<\/dl>/s.exec(html)![1]!;
+    expect([...dl.matchAll(/<(dt|dd)>/g)].map((m) => m[1])).toEqual([
+      "dt",
+      "dd",
+      "dt",
+      "dd",
+      "dt",
+      "dd",
+    ]);
+    expect(dl).toContain("ada<wbr>@example<wbr>.com");
   });
 });

@@ -248,7 +248,7 @@ describe("the end of a device flow is a page", () => {
       );
       expect(res.status).toBe(403);
       expect(res.headers.get("content-type")).toContain("text/html");
-      expect(await res.text()).toContain("Start again on your device");
+      expect(await res.text()).toContain("This page has expired");
     }
   });
 

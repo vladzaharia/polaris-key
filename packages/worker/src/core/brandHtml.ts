@@ -169,7 +169,7 @@ export const BRAND_PAGE_CSS = [
   `dl{display:grid;grid-template-columns:6rem 1fr;gap:.5rem 1rem;margin:1.5rem 0;padding:1rem;border-radius:6px;background:var(--sunken)}`,
   `dt{color:var(--muted)}`,
   `dd{margin:0;color:var(--strong);overflow-wrap:anywhere}`,
-  `.code{font-family:${FONT.mono};font-weight:700;letter-spacing:.08em}`,
+  `.code{font-family:${FONT.mono};font-weight:700;letter-spacing:.08em;white-space:nowrap}`,
   `form{margin:0}`,
   `label{display:block;margin:1.5rem 0 .5rem;color:var(--strong);font-size:.875rem;line-height:1.25rem;font-weight:700}`,
   `input[type=text]{display:block;width:100%;min-height:44px;padding:0 .75rem;margin:0 0 1rem;border:1px solid var(--edge);border-radius:6px;background:var(--sunken);color:var(--strong);font-family:${FONT.mono};font-size:1.25rem;letter-spacing:.08em;text-transform:uppercase}`,
@@ -302,7 +302,7 @@ const LOCKER_PAGE_CSS_TAIL = [
   `.field-err .ic{margin-top:.125rem}`,
   `.ac-body dl{display:flex;flex-wrap:wrap;gap:.5rem 1rem;margin:0}`,
   `.ac-body dt{flex:0 0 6rem}`,
-  `.ac-body dd{flex:1 1 12rem;min-width:0;overflow-wrap:break-word}`,
+  `.ac-body dd{flex:1 1 calc(100% - 7rem);min-width:min(100%,12rem);overflow-wrap:break-word}`,
   `.ac-body h1:focus{outline:none}`,
   `@media (forced-colors: active){[data-brand=locker] .button:not(.secondary):not(.link){border:3px solid Highlight}}`,
   // The licence chooser: the selected row is a neutral 7 % fill with a coral 3 px marker (D9a);

@@ -41,7 +41,8 @@ import {
 } from "../../../core/singleUse.js";
 import { legacyRelyingParty } from "./browserFlow.js";
 import { beginLicenseChoice, choiceKey, startAgainPage } from "./chooser.js";
-import { redirectToApprove } from "./deviceApproval.js";
+import { deviceLabelOf, redirectToApprove } from "./deviceApproval.js";
+import { escapeHtmlKeepApostrophe as escapeHtml } from "../../../platform/html.js";
 import {
   FLOW_TTL_SECONDS,
   type FlowRecord,
@@ -320,7 +321,7 @@ export async function handleAuthCallback(
       // A person in a browser gets a page, never raw JSON.
       return signInRefusalPage(
         "You can't sign in here",
-        `<p>This account isn't entitled to use this app. Try another account on your device.</p>`,
+        `<p>${escapeHtml(identity.name || identity.email || "This account")} doesn't have access to ${escapeHtml(product.name)}. On ${escapeHtml(deviceLabelOf(flow))}, start again and sign in with another account.</p>`,
       );
     }
     // I-37: the verified identity is stored and the flow STOPS. Nothing is activated, shown to

@@ -386,7 +386,7 @@ export function approvalFacts(
   const rows =
     `<dt>Account</dt><dd>${escapeHtml(who)}${
       identity?.email && identity.email !== who
-        ? `<br><span class="muted">${escapeHtml(identity.email)}</span>`
+        ? `<br><span class="muted">${escapeHtml(identity.email).replace(/[@.]/g, "<wbr>$&")}</span>`
         : ""
     }</dd>` +
     (flow.userCode

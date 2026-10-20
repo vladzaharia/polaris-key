@@ -107,7 +107,7 @@ export function choicePage(
 export function startAgainPage(): Response {
   return choicePage(403, {
     title: "Start again",
-    heading: "Start again on your device",
+    heading: "This page has expired",
     body: `<p class="muted">This page is no longer active. If your device still asks, start again there.</p>`,
   });
 }
@@ -512,7 +512,12 @@ export async function renderChooser(
           namedByDevice: Boolean(isDeviceCodeFlow(c.flow)),
           developerName: developer,
           ...(isDeviceCodeFlow(c.flow)
-            ? { primaryLabel: `Use this license on ${c.deviceLabel}` }
+            ? {
+                primaryLabel:
+                  view.preselected === "create"
+                    ? `Create a license on ${c.deviceLabel}`
+                    : `Use this license on ${c.deviceLabel}`,
+              }
             : {}),
         }) +
         cancelNote,

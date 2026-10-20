@@ -685,7 +685,7 @@ describe("R8-02 device-code flow weaknesses", () => {
       expect(res.status).toBe(403);
       expect(res.headers.get("location")).toBeNull();
       const html = await res.text();
-      expect(html).toContain("Start again on your device");
+      expect(html).toContain("This page has expired");
       expect(html).not.toContain(deviceCode);
       expect(html).not.toContain("nonce=");
     }
