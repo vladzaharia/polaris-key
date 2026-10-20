@@ -126,7 +126,7 @@ describe("contrast (BRAND §5.1)", () => {
   });
 });
 
-// §0.5 of plans/LOCKER.md: coral cannot be a section accent. Pinned so a palette change reopens
+// §0.5 of plans/LK-00.md: coral cannot be a section accent. Pinned so a palette change reopens
 // D9 (coral stays identity, nav marker, focus and links; the primary action stays neutral ink).
 describe("why coral is not a section accent or a status (D9)", () => {
   const near = (a: number, b: number, d = 0.1) => Math.abs(a - b) <= d;
