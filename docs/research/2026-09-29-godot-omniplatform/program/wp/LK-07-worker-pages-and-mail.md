@@ -1,16 +1,16 @@
 # LK-07 Worker pages and customer mail on the Locker identity
 
-| Field       | Value                                                                          |
-| ----------- | ------------------------------------------------------------------------------ |
-| Phase       | LK: Polaris Locker                                                             |
-| Size        | 1–1.25 engineer-weeks                                                          |
-| Depends on  | [LK-01](LK-01-brand-locker-kit.md), [LK-03](LK-03-customer-host-and-origin.md) |
-| Unblocks    | [LK-11](LK-11-cutover.md)                                                      |
-| Role        | `pkey-implementer`                                                             |
-| Plan mode   | no                                                                             |
-| Gates       | email-snapshots, workerd                                                       |
-| Human input | none                                                                           |
-| Repo        | `vladzaharia/polaris-key`                                                      |
+| Field       | Value                                                                                                                                                                |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | LK: Polaris Locker                                                                                                                                                   |
+| Size        | 1–1.25 engineer-weeks                                                                                                                                                |
+| Depends on  | [LK-01](LK-01-brand-locker-kit.md), [LK-03](LK-03-customer-host-and-origin.md)                                                                                       |
+| Unblocks    | [I-38a](I-38a-hosted-worker-pages-locker.md), [PX-14a](PX-14a-card-header-licence-consent.md), [LK-07b](LK-07b-locker-customer-emails.md), [LK-11](LK-11-cutover.md) |
+| Role        | `pkey-implementer`                                                                                                                                                   |
+| Plan mode   | no                                                                                                                                                                   |
+| Gates       | email-snapshots, workerd                                                                                                                                             |
+| Human input | none                                                                                                                                                                 |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                            |
 
 ## Goal
 
