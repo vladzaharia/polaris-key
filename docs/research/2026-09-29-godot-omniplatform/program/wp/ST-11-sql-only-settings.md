@@ -72,9 +72,16 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] Every `PENDING` entry listed under "PENDING entries to remove" is registered and gone from `settings-coverage.ts`, `PENDING_CEILING` is 3 lower, and `settings-coverage.test.ts` passes.
-- [ ] Every moved value reads back identically through the resolver (test).
+- [x] Every `PENDING` entry listed under "PENDING entries to remove" is registered and gone from `settings-coverage.ts`, `PENDING_CEILING` is 3 lower, and `settings-coverage.test.ts` passes.
+- [x] Every moved value reads back identically through the resolver (test).
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
+
+## Delivered (2026-10-20)
+
+- Keys: `deltas.lazy.enabled|hotDevices|dailyCap` and `email.dailyCap` (Core, product scope, operator, rows in `product_settings`), `email.dailyCapDefault` (platform, `EMAIL_PRODUCT_DAILY_CAP`, editable), `update.operatorPolicy` now a scalar row (was a column adapter).
+- Migration `0124_sql_settings_to_registry.sql` (lead renumbers): one copy plus one `origin = 'system'` audit row per value. The old tables and `operator_policy_json` stay unread until ST-25.
+- Corrections to the brief: the table `TABLE_OWNERS` and `SEAMS` needed no change (no new table; the readers only read Core's `product_settings`). The two old tables are explained by a `NOT_A_SETTING` row, not PENDING, until ST-25 drops them. `checkRepresentable.test.ts` now runs the migrations in chunks: wrangler's local D1 refuses one `--file` past a size the schema reached.
+- No console component changed; the new rows render through the registry-driven product and platform settings pages.
 
 ## Verify
 
