@@ -3,7 +3,9 @@
 exports[`notice templates: copy > accountDeleted: subject and plain text 1`] = `
 {
   "subject": "Your Polaris Locker account has been deleted",
-  "text": "Your Polaris Locker account, its email addresses and its sign-in methods have been erased, as you asked.
+  "text": "Your Polaris Locker account has been deleted
+
+Your Polaris Locker account, its email addresses and its sign-in methods have been erased, as you asked.
 
 Deleting it doesn't cancel your licenses: they stay with each developer, and you can add them again with a new account. To have a developer erase its own records, contact that developer's support.
 
@@ -14,7 +16,9 @@ You are receiving this because your Polaris Locker account was deleted. We sent 
 exports[`notice templates: copy > accountDeletionCancelled: subject and plain text 1`] = `
 {
   "subject": "Your Polaris Locker account deletion was cancelled",
-  "text": "Your Polaris Locker account will stay active. No account data will be erased.
+  "text": "Your Polaris Locker account deletion was cancelled
+
+Your Polaris Locker account will stay active. No account data will be erased.
 
 Review account settings: https://key.plrs.im/#/account/data
 
@@ -27,9 +31,13 @@ You are receiving this because of a change to your Polaris Locker account. We se
 exports[`notice templates: copy > accountDeletionScheduled: subject and plain text 1`] = `
 {
   "subject": "Your Polaris Locker account is scheduled for deletion",
-  "text": "Your Polaris Locker account is scheduled to be erased on 2023-11-28 22:13 UTC unless you cancel the deletion before then.
+  "text": "Your Polaris Locker account is scheduled for deletion
+
+Your Polaris Locker account is scheduled to be erased unless you cancel the deletion before then.
 
 Your account stays active during that 14-day period. Deleting it does not cancel your licenses: they stay with each developer, and you can add them again with a new account.
+
+Erased on 2023-11-28 22:13 UTC.
 
 Review account settings: https://key.plrs.im/#/account/data
 
@@ -42,7 +50,9 @@ You are receiving this because of a change to your Polaris Locker account. We se
 exports[`notice templates: copy > assignedToYou: subject and plain text 1`] = `
 {
   "subject": "A Mossgarden license was assigned to you",
-  "text": "The developer of Mossgarden assigned one of its licenses to this email address.
+  "text": "A Mossgarden license was assigned to you
+
+The developer of Mossgarden assigned one of its licenses to this email address.
 
 Sign in to Polaris Locker with this email address to find it in your library.
 
@@ -55,7 +65,9 @@ You are receiving this because a developer issued a license to this email addres
 exports[`notice templates: copy > deviceRemoved: subject and plain text 1`] = `
 {
   "subject": "Studio PC was removed from Tidewater Studio",
-  "text": "Studio PC was removed from your Tidewater Studio license and no longer counts toward its device limit.
+  "text": "Studio PC was removed from Tidewater Studio
+
+Studio PC was removed from your Tidewater Studio license and no longer counts toward its device limit.
 
 To use Tidewater Studio on it again, sign in to Tidewater Studio on that device.
 
@@ -70,7 +82,9 @@ You are receiving this because of a change to your Polaris Locker account. We se
 exports[`notice templates: copy > downloadLink: subject and plain text 1`] = `
 {
   "subject": "Download Mossgarden for macOS",
-  "text": "Here is the macOS download you asked for. Open this email on the device you want to install Mossgarden on.
+  "text": "Download Mossgarden for macOS
+
+Here is the macOS download you asked for. Open this email on the device you want to install Mossgarden on.
 
 The link opens your Polaris Locker library, so you may be asked to sign in first.
 
@@ -89,7 +103,7 @@ exports[`notice templates: copy > full HTML of a plain notice and a security not
 <meta name="color-scheme" content="light dark">
 <meta name="supported-color-schemes" content="light dark">
 <title>Mossgarden is in your library</title>
-<style>:root{color-scheme:light dark;supported-color-schemes:light dark}body{margin:0;padding:0}@media (max-width:480px){.pk-key{font-size:14px!important;line-height:22px!important;padding:12px!important}}@media (prefers-color-scheme: dark){.pk-bg{background-color:#060912 !important}.pk-card{background-color:#0d111b !important;border-color:#212633 !important}.pk-strong{color:#ffffff !important}.pk-text{color:#dbe4ff !important}.pk-muted{color:#b5bed3 !important}.pk-key{background-color:#060912 !important;border-color:#212633 !important}.pk-btn{background-color:#f6f8ff !important}.pk-btn-a{color:#060912 !important}.pk-link{color:#ffffff !important}.pk-logo-light{display:none !important}.pk-logo-dark{display:block !important;max-height:none !important}}[data-ogsc] .pk-bg{background-color:#060912 !important}[data-ogsc] .pk-card{background-color:#0d111b !important;border-color:#212633 !important}[data-ogsc] .pk-strong{color:#ffffff !important}[data-ogsc] .pk-text{color:#dbe4ff !important}[data-ogsc] .pk-muted{color:#b5bed3 !important}[data-ogsc] .pk-key{background-color:#060912 !important;border-color:#212633 !important}[data-ogsc] .pk-btn{background-color:#f6f8ff !important}[data-ogsc] .pk-btn-a{color:#060912 !important}[data-ogsc] .pk-link{color:#ffffff !important}[data-ogsc] .pk-logo-light{display:none !important}[data-ogsc] .pk-logo-dark{display:block !important;max-height:none !important}</style>
+<style>:root{color-scheme:light dark;supported-color-schemes:light dark}body{margin:0;padding:0}@media (max-width:480px){.pk-key{font-size:14px!important;line-height:22px!important;padding:12px!important}}@media (prefers-color-scheme: dark){.pk-bg{background-color:#060912 !important}.pk-card{background-color:#0d111b !important;border-color:#212633 !important}.pk-strong{color:#ffffff !important}.pk-text{color:#dbe4ff !important}.pk-muted{color:#b5bed3 !important}.pk-key{background-color:#060912 !important;border-color:#212633 !important}.pk-callout{background-color:#060912 !important;border-color:#212633 !important}.pk-btn{background-color:#f6f8ff !important}.pk-btn-a{color:#060912 !important}.pk-link{color:#ffffff !important}.pk-logo-light{display:none !important}.pk-logo-dark{display:block !important;max-height:none !important}}[data-ogsc] .pk-bg{background-color:#060912 !important}[data-ogsc] .pk-card{background-color:#0d111b !important;border-color:#212633 !important}[data-ogsc] .pk-strong{color:#ffffff !important}[data-ogsc] .pk-text{color:#dbe4ff !important}[data-ogsc] .pk-muted{color:#b5bed3 !important}[data-ogsc] .pk-key{background-color:#060912 !important;border-color:#212633 !important}[data-ogsc] .pk-callout{background-color:#060912 !important;border-color:#212633 !important}[data-ogsc] .pk-btn{background-color:#f6f8ff !important}[data-ogsc] .pk-btn-a{color:#060912 !important}[data-ogsc] .pk-link{color:#ffffff !important}[data-ogsc] .pk-logo-light{display:none !important}[data-ogsc] .pk-logo-dark{display:block !important;max-height:none !important}</style>
 </head>
 <body class="pk-bg" style="margin:0;padding:0;background-color:#f6f8ff">
 <table role="presentation" class="pk-bg" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f6f8ff" style="width:100%;background-color:#f6f8ff">
@@ -118,7 +132,7 @@ exports[`notice templates: copy > full HTML of a plain notice and a security not
 <meta name="color-scheme" content="light dark">
 <meta name="supported-color-schemes" content="light dark">
 <title>Steam was disconnected from your Polaris Locker account</title>
-<style>:root{color-scheme:light dark;supported-color-schemes:light dark}body{margin:0;padding:0}@media (max-width:480px){.pk-key{font-size:14px!important;line-height:22px!important;padding:12px!important}}@media (prefers-color-scheme: dark){.pk-bg{background-color:#060912 !important}.pk-card{background-color:#0d111b !important;border-color:#212633 !important}.pk-strong{color:#ffffff !important}.pk-text{color:#dbe4ff !important}.pk-muted{color:#b5bed3 !important}.pk-key{background-color:#060912 !important;border-color:#212633 !important}.pk-btn{background-color:#f6f8ff !important}.pk-btn-a{color:#060912 !important}.pk-link{color:#ffffff !important}.pk-logo-light{display:none !important}.pk-logo-dark{display:block !important;max-height:none !important}}[data-ogsc] .pk-bg{background-color:#060912 !important}[data-ogsc] .pk-card{background-color:#0d111b !important;border-color:#212633 !important}[data-ogsc] .pk-strong{color:#ffffff !important}[data-ogsc] .pk-text{color:#dbe4ff !important}[data-ogsc] .pk-muted{color:#b5bed3 !important}[data-ogsc] .pk-key{background-color:#060912 !important;border-color:#212633 !important}[data-ogsc] .pk-btn{background-color:#f6f8ff !important}[data-ogsc] .pk-btn-a{color:#060912 !important}[data-ogsc] .pk-link{color:#ffffff !important}[data-ogsc] .pk-logo-light{display:none !important}[data-ogsc] .pk-logo-dark{display:block !important;max-height:none !important}</style>
+<style>:root{color-scheme:light dark;supported-color-schemes:light dark}body{margin:0;padding:0}@media (max-width:480px){.pk-key{font-size:14px!important;line-height:22px!important;padding:12px!important}}@media (prefers-color-scheme: dark){.pk-bg{background-color:#060912 !important}.pk-card{background-color:#0d111b !important;border-color:#212633 !important}.pk-strong{color:#ffffff !important}.pk-text{color:#dbe4ff !important}.pk-muted{color:#b5bed3 !important}.pk-key{background-color:#060912 !important;border-color:#212633 !important}.pk-callout{background-color:#060912 !important;border-color:#212633 !important}.pk-btn{background-color:#f6f8ff !important}.pk-btn-a{color:#060912 !important}.pk-link{color:#ffffff !important}.pk-logo-light{display:none !important}.pk-logo-dark{display:block !important;max-height:none !important}}[data-ogsc] .pk-bg{background-color:#060912 !important}[data-ogsc] .pk-card{background-color:#0d111b !important;border-color:#212633 !important}[data-ogsc] .pk-strong{color:#ffffff !important}[data-ogsc] .pk-text{color:#dbe4ff !important}[data-ogsc] .pk-muted{color:#b5bed3 !important}[data-ogsc] .pk-key{background-color:#060912 !important;border-color:#212633 !important}[data-ogsc] .pk-callout{background-color:#060912 !important;border-color:#212633 !important}[data-ogsc] .pk-btn{background-color:#f6f8ff !important}[data-ogsc] .pk-btn-a{color:#060912 !important}[data-ogsc] .pk-link{color:#ffffff !important}[data-ogsc] .pk-logo-light{display:none !important}[data-ogsc] .pk-logo-dark{display:block !important;max-height:none !important}</style>
 </head>
 <body class="pk-bg" style="margin:0;padding:0;background-color:#f6f8ff">
 <table role="presentation" class="pk-bg" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f6f8ff" style="width:100%;background-color:#f6f8ff">
@@ -129,7 +143,7 @@ exports[`notice templates: copy > full HTML of a plain notice and a security not
 <h1 class="pk-strong" style="margin:0 0 16px;font-family:'Rubik', 'Rubik Fallback', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;font-size:24px;line-height:32px;font-weight:700;letter-spacing:-0.01em;color:#060912">Steam was disconnected from your Polaris Locker account</h1>
 <p class="pk-text" style="margin:0 0 16px;font-family:'Rubik', 'Rubik Fallback', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;font-size:16px;line-height:24px;color:#262d40">Steam can no longer be used to sign in to your Polaris Locker account.</p>
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 24px"><tr><td class="pk-btn" bgcolor="#060912" style="border-radius:6px;background-color:#060912"><a class="pk-btn-a" href="https://key.plrs.im/#/account/methods" style="display:inline-block;padding:12px 24px;font-family:'Rubik', 'Rubik Fallback', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;font-size:16px;line-height:20px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:6px">See your sign-in methods</a></td></tr></table><p class="pk-muted" style="margin:0 0 16px;font-family:'Rubik', 'Rubik Fallback', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;font-size:16px;line-height:24px;color:#48536b">If the button does not work, paste this link into your browser:</p><p style="margin:0;font-family:'JetBrains Mono', 'JetBrains Mono Fallback', ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;font-size:13px;line-height:20px;word-break:break-all"><a class="pk-link" href="https://key.plrs.im/#/account/methods" style="color:#060912;text-decoration:underline">https://key.plrs.im/#/account/methods</a></p>
-<p class="pk-text" style="margin:24px 0 0;font-family:'Rubik', 'Rubik Fallback', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;font-size:15px;line-height:22px;color:#262d40"><strong>Wasn&#x27;t you?</strong> <a class="pk-link" href="https://key.plrs.im/#/account/methods" style="color:#060912;text-decoration:underline">Secure your account</a></p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 16px"><tr><td class="pk-callout" bgcolor="#f6f8ff" style="padding:12px 16px;background-color:#f6f8ff;border:1px solid #dadee9;border-radius:6px;font-family:'Rubik', 'Rubik Fallback', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;font-size:15px;line-height:22px;color:#262d40"><span class="pk-text"><strong>Wasn&#x27;t you?</strong> <a class="pk-link" href="https://key.plrs.im/#/account/methods" style="color:#060912;text-decoration:underline">Secure your account</a></span></td></tr></table>
 </td></tr>
 <tr><td class="pk-muted" style="padding:24px 8px 0;font-family:'Rubik', 'Rubik Fallback', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;font-size:13px;line-height:20px;color:#48536b">You are receiving this because of a change to your Polaris Locker account. We sent it to every verified email on the account.</td></tr>
 </table>
@@ -142,7 +156,9 @@ exports[`notice templates: copy > full HTML of a plain notice and a security not
 exports[`notice templates: copy > licenseAdded: subject and plain text 1`] = `
 {
   "subject": "Mossgarden is in your library",
-  "text": "Mossgarden was added to your Polaris Locker account with a license key.
+  "text": "Mossgarden is in your library
+
+Mossgarden was added to your Polaris Locker account with a license key.
 
 Open Mossgarden: https://key.plrs.im/#/p/mossgarden
 
@@ -153,7 +169,9 @@ You are receiving this because of a change to your Polaris Locker account.",
 exports[`notice templates: copy > madeFloating: subject and plain text 1`] = `
 {
   "subject": "The developer removed a Mossgarden license from your account",
-  "text": "The developer of Mossgarden removed one of its licenses from your Polaris Locker account, at the request of its support. It is no longer in your library.
+  "text": "The developer removed a Mossgarden license from your account
+
+The developer of Mossgarden removed one of its licenses from your Polaris Locker account, at the request of its support. It is no longer in your library.
 
 If you did not expect this, contact the developer's support now: they can undo it for 72 hours.
 
@@ -166,7 +184,9 @@ You are receiving this because of a change to your Polaris Locker account. We se
 exports[`notice templates: copy > madeFloatingWaiting: subject and plain text 1`] = `
 {
   "subject": "A Mossgarden license is no longer assigned to you",
-  "text": "The developer of Mossgarden removed your name and email address from one of its licenses, at the request of its support.
+  "text": "A Mossgarden license is no longer assigned to you
+
+The developer of Mossgarden removed your name and email address from one of its licenses, at the request of its support.
 
 If you did not expect this, contact the developer's support now: they can undo it for 72 hours.
 
@@ -177,7 +197,9 @@ You are receiving this because a developer issued a license to this email addres
 exports[`notice templates: copy > methodAdded: subject and plain text 1`] = `
 {
   "subject": "Steam was connected to your Polaris Locker account",
-  "text": "Steam was added as a way to sign in to your Polaris Locker account.
+  "text": "Steam was connected to your Polaris Locker account
+
+Steam was added as a way to sign in to your Polaris Locker account.
 
 See your sign-in methods: https://key.plrs.im/#/account/methods
 
@@ -190,7 +212,9 @@ You are receiving this because of a change to your Polaris Locker account. We se
 exports[`notice templates: copy > methodRemoved: subject and plain text 1`] = `
 {
   "subject": "Steam was disconnected from your Polaris Locker account",
-  "text": "Steam can no longer be used to sign in to your Polaris Locker account.
+  "text": "Steam was disconnected from your Polaris Locker account
+
+Steam can no longer be used to sign in to your Polaris Locker account.
 
 See your sign-in methods: https://key.plrs.im/#/account/methods
 
@@ -203,7 +227,9 @@ You are receiving this because of a change to your Polaris Locker account. We se
 exports[`notice templates: copy > newDeviceSignIn: subject and plain text 1`] = `
 {
   "subject": "A new device signed in to your Polaris Locker account",
-  "text": "Mara's MacBook Pro signed in from Lisbon, Portugal. If this wasn't you, sign it out in Polaris Locker under Where you're signed in.
+  "text": "A new device signed in to your Polaris Locker account
+
+Mara's MacBook Pro signed in from Lisbon, Portugal. If this wasn't you, sign it out in Polaris Locker under Where you're signed in.
 
 Open Polaris Locker: https://key.plrs.im/#/account/sessions
 
@@ -216,7 +242,9 @@ You are receiving this because of a change to your Polaris Locker account. We se
 exports[`notice templates: copy > reassignedAway: subject and plain text 1`] = `
 {
   "subject": "The developer assigned your Mossgarden license to someone else",
-  "text": "The developer of Mossgarden assigned one of its licenses in your Polaris Locker account to someone else, at the request of its support. It is no longer in your library.
+  "text": "The developer assigned your Mossgarden license to someone else
+
+The developer of Mossgarden assigned one of its licenses in your Polaris Locker account to someone else, at the request of its support. It is no longer in your library.
 
 If you did not expect this, contact the developer's support now: they can undo it for 72 hours.
 
@@ -229,7 +257,9 @@ You are receiving this because of a change to your Polaris Locker account. We se
 exports[`notice templates: copy > reassignedAwayWaiting: subject and plain text 1`] = `
 {
   "subject": "The developer assigned your Mossgarden license to someone else",
-  "text": "The developer of Mossgarden assigned one of its licenses, issued to this email address, to someone else, at the request of its support.
+  "text": "The developer assigned your Mossgarden license to someone else
+
+The developer of Mossgarden assigned one of its licenses, issued to this email address, to someone else, at the request of its support.
 
 If you did not expect this, contact the developer's support now: they can undo it for 72 hours.
 
