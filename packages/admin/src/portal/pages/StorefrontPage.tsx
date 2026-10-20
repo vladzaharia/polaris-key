@@ -17,8 +17,6 @@ import {
   type PortalObtainPath,
   type PortalStorefrontProduct,
 } from "../api.js";
-import { REASON_ICON } from "../components/DiscoverTile.js";
-import { PlatformGlyphs } from "../components/Glyphs.js";
 import { ProductArt } from "../components/ProductArt.js";
 import { ProductIcon } from "../components/ProductIcon.js";
 import { SectionCard } from "../components/product/Card.js";
@@ -39,6 +37,7 @@ import {
 import { mediaUrl } from "../model/library.js";
 import { href, useDocumentTitle } from "../router.js";
 import { t } from "../../lib/copy.js";
+import { platformConsumerName } from "../../lib/vocab/platforms.js";
 
 /**
  * The storefront product page, `#/discover/:product` (PS-05; notes/S-21 §6.5): a product the
@@ -148,7 +147,6 @@ function StorefrontBody({
   const [error, setError] = React.useState<AddError | null>(null);
   // A double click fires twice before React re-renders the button as busy.
   const inFlight = React.useRef(false);
-  const errorId = "storefront-add-error";
 
   const add = async (): Promise<void> => {
     if (inFlight.current) return;
@@ -175,99 +173,216 @@ function StorefrontBody({
   const shots = product.screenshots.flatMap((s) => mediaUrl(s) ?? []);
   const platforms = offerPlatforms(product.platforms);
   const canAdd = product.cta === "add" && !error?.ended;
+  const hasPanel =
+    product.cta === "add" ||
+    platforms.length > 0 ||
+    product.stores.length > 0 ||
+    siteOf(product) !== null;
   return (
-    <div className="space-y-6 desk:space-y-8">
-      <StorefrontHeader product={product}>
-        {product.cta === "link" ? (
-          <StoreButtons product={product} lead />
-        ) : canAdd ? (
-          <Button
-            size="lg"
-            className="h-12 w-full px-6 font-medium desk:w-auto"
-            iconStart={<Plus aria-hidden />}
-            loading={claim.isPending}
-            aria-describedby={error ? errorId : undefined}
-            onClick={() => void add()}
-          >
-            Add to library
-          </Button>
+    <div className="flex flex-col gap-6 desk:grid desk:grid-cols-[minmax(0,1fr)_21.25rem] desk:items-start desk:gap-x-8 desk:gap-y-8 wide:grid-cols-[minmax(0,1fr)_24rem]">
+      <div className="flex min-w-0 flex-col gap-6 desk:col-start-1 desk:row-start-1 desk:gap-8">
+        <StorefrontHeader product={product} />
+        {product.description ? (
+          <p className="max-w-prose whitespace-pre-line text-fg [overflow-wrap:anywhere]">
+            {product.description}
+          </p>
         ) : null}
-      </StorefrontHeader>
-      {error ? (
-        <p
-          id={errorId}
-          role="alert"
-          className="flex gap-2 rounded-lg border border-danger-border bg-surface-raised p-4 text-danger"
+      </div>
+      {hasPanel ? (
+        <aside className="min-w-0 desk:sticky desk:top-24 desk:col-start-2 desk:row-span-2 desk:row-start-1">
+          <DecisionPanel
+            product={product}
+            platforms={platforms}
+            chosen={chosen}
+            onChoose={setChosen}
+            canAdd={canAdd}
+            adding={claim.isPending}
+            error={error}
+            onAdd={() => void add()}
+          />
+        </aside>
+      ) : null}
+      {shots.length ? (
+        <SectionCard
+          id="screenshots"
+          title="Screenshots"
+          className="min-w-0 desk:col-start-1 desk:row-start-2"
         >
-          <AlertCircle aria-hidden className="mt-0.5 size-5 shrink-0" />
-          {error.text}
+          <ul className="grid gap-3 desk:grid-cols-2">
+            {shots.map((src, i) => (
+              <li key={src}>
+                <img
+                  src={src}
+                  alt={`${product.name}, screenshot ${i + 1} of ${shots.length}`}
+                  decoding="async"
+                  className="aspect-video w-full rounded-lg border border-border bg-surface-sunken object-cover"
+                />
+              </li>
+            ))}
+          </ul>
+        </SectionCard>
+      ) : null}
+      {product.cta === "link" && !product.stores.length && !siteOf(product) ? (
+        <p className="text-sm text-fg-muted">
+          {`${product.developerName ?? "Its developer"} shows it to everyone with a Polaris Locker account.`}
         </p>
       ) : null}
-      <div className="flex flex-col gap-6 desk:grid desk:grid-cols-[minmax(0,1fr)_21.25rem] desk:items-start wide:grid-cols-[minmax(0,1fr)_24rem]">
-        <div className="flex min-w-0 flex-col gap-6">
-          {product.description || platforms.length ? (
-            <SectionCard id="about" title={`About ${product.name}`}>
-              <div className="space-y-4">
-                {product.description ? (
-                  <p className="whitespace-pre-line text-fg [overflow-wrap:anywhere]">
-                    {product.description}
-                  </p>
-                ) : null}
-                {platforms.length ? (
-                  <p className="flex flex-wrap items-center gap-3 text-sm text-fg-muted">
-                    Runs on
-                    <PlatformGlyphs platforms={platforms} />
-                  </p>
-                ) : null}
-              </div>
-            </SectionCard>
+    </div>
+  );
+}
+
+/**
+ * The one decision panel (PX-32a, portal-19): where it runs, what the person would get, why they
+ * qualify, and the one action. With several ways to add it, the rows become a choice. Add is the
+ * one primary; a store-only listing has no Add, its store links are the action.
+ */
+function DecisionPanel({
+  product,
+  platforms,
+  chosen,
+  onChoose,
+  canAdd,
+  adding,
+  error,
+  onAdd,
+}: {
+  product: PortalStorefrontProduct;
+  platforms: ReturnType<typeof offerPlatforms>;
+  chosen: string | null;
+  onChoose: (kind: string) => void;
+  canAdd: boolean;
+  adding: boolean;
+  error: AddError | null;
+  onAdd: () => void;
+}): React.ReactElement {
+  const errorId = "storefront-add-error";
+  const paths = product.paths;
+  const several = paths.length > 1;
+  const path = paths.find((p) => p.kind === chosen) ?? paths[0] ?? null;
+  const lockedIn = adding || error?.ended === true;
+  return (
+    <SectionCard id="get" title={`Get ${product.name}`}>
+      <div className="-mx-5 -mb-5 desk:-mx-6 desk:-mb-6">
+        <dl className="divide-y divide-border border-t border-border text-sm">
+          {platforms.length ? (
+            <Row term="Runs on">
+              {platforms.map((p) => platformConsumerName(p)).join(", ")}
+            </Row>
           ) : null}
-          {shots.length ? (
-            <SectionCard id="screenshots" title="Screenshots">
-              <ul className="grid gap-3 desk:grid-cols-2">
-                {shots.map((src, i) => (
-                  <li key={src}>
-                    <img
-                      src={src}
-                      alt={`${product.name}, screenshot ${i + 1} of ${shots.length}`}
-                      decoding="async"
-                      className="aspect-video w-full rounded-lg border border-border bg-surface-sunken object-cover"
-                    />
-                  </li>
-                ))}
-              </ul>
-            </SectionCard>
+          {product.cta === "add" && !several && path ? (
+            <>
+              <Row term="You’d get">{pathTermsLine(path)}</Row>
+              <Row term="You qualify">{pathCopy(path).text}</Row>
+            </>
           ) : null}
-        </div>
-        <div className="flex min-w-0 flex-col gap-6">
-          {product.cta === "add" ? (
-            <WaysToAdd
-              paths={product.paths}
-              chosen={chosen}
-              onChoose={setChosen}
-              disabled={claim.isPending || error?.ended === true}
-            />
+        </dl>
+        {product.cta === "add" && several ? (
+          <div className="border-t border-border px-5 py-4 desk:px-6">
+            <fieldset disabled={lockedIn} className="space-y-2">
+              <legend className="mb-2 text-sm text-fg-muted">
+                Ways to add it
+              </legend>
+              {paths.map((p) => (
+                <label
+                  key={p.kind}
+                  className={cn(
+                    "flex min-h-11 cursor-pointer gap-3 rounded-lg border p-3",
+                    chosen === p.kind
+                      ? "border-border-strong bg-surface-sunken"
+                      : "border-border hover:bg-hover",
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name="storefront-path"
+                    value={p.kind}
+                    checked={chosen === p.kind}
+                    onChange={() => onChoose(p.kind)}
+                    className="mt-1 size-4 shrink-0 accent-[var(--pk-fg-strong,currentColor)]"
+                  />
+                  <PathLines path={p} />
+                </label>
+              ))}
+            </fieldset>
+          </div>
+        ) : null}
+        <div className="space-y-3 border-t border-border px-5 py-4 desk:px-6 desk:py-5">
+          {product.cta === "link" ? (
+            <StoreButtons product={product} lead />
+          ) : canAdd ? (
+            <Button
+              size="lg"
+              className="h-12 w-full px-6 font-medium"
+              iconStart={<Plus aria-hidden />}
+              loading={adding}
+              aria-describedby={error ? errorId : undefined}
+              onClick={onAdd}
+            >
+              {adding ? "Adding…" : "Add to library"}
+            </Button>
+          ) : null}
+          {error ? (
+            <p
+              id={errorId}
+              role="alert"
+              className="flex gap-2 text-sm text-danger"
+            >
+              <AlertCircle aria-hidden className="mt-0.5 size-4 shrink-0" />
+              {error.text}
+            </p>
           ) : null}
           {product.cta === "add" && product.stores.length ? (
-            <SectionCard id="stores" title="Also on">
-              <StoreButtons product={product} />
-            </SectionCard>
+            <AlsoOn product={product} />
           ) : null}
         </div>
       </div>
-      <p className="flex gap-2 text-sm text-fg-muted">
-        <Compass aria-hidden className="mt-0.5 size-4 shrink-0" />
-        {product.cta === "add"
-          ? "Adding it is free and puts it in your library."
-          : `${product.developerName ?? "Its developer"} shows it to everyone with a Polaris Locker account.${
-              product.stores.length
-                ? " Get it from a store above."
-                : siteOf(product)
-                  ? " Get it from their website above."
-                  : ""
-            }`}
-      </p>
+    </SectionCard>
+  );
+}
+
+function Row({
+  term,
+  children,
+}: {
+  term: string;
+  children: React.ReactNode;
+}): React.ReactElement {
+  return (
+    <div className="flex flex-wrap gap-x-4 gap-y-1 px-5 py-3 desk:px-6">
+      <dt className="w-[6.5rem] shrink-0 text-fg-muted">{term}</dt>
+      <dd className="min-w-0 flex-[1_1_8rem] text-fg [overflow-wrap:anywhere]">
+        {children}
+      </dd>
     </div>
+  );
+}
+
+/** "Also on the App Store, Google Play and Steam": each store name a link to its page. */
+function AlsoOn({
+  product,
+}: {
+  product: PortalStorefrontProduct;
+}): React.ReactElement {
+  const n = product.stores.length;
+  return (
+    <p className="text-sm text-fg-muted">
+      Also on{" "}
+      {product.stores.map((s, i) => (
+        <React.Fragment key={s.id}>
+          {i > 0 ? (i === n - 1 ? " and " : ", ") : null}
+          <a
+            href={s.url}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={`${s.label}: ${product.name} (opens in a new tab)`}
+            className="rounded-sm font-medium text-fg-strong underline decoration-fg-subtle underline-offset-[3px] hover:decoration-fg-strong"
+          >
+            {s.label}
+          </a>
+        </React.Fragment>
+      ))}
+      .
+    </p>
   );
 }
 
@@ -280,23 +395,23 @@ function StorefrontBody({
  */
 function StorefrontHeader({
   product,
-  children,
 }: {
   product: PortalStorefrontProduct;
-  children: React.ReactNode;
 }): React.ReactElement {
   const [coverFailed, setCoverFailed] = React.useState(false);
   const cover = mediaUrl(product.headerUrl);
   const hasCover = Boolean(cover) && !coverFailed;
   return (
     <div>
-      <a
-        href={href.discover()}
-        className="mb-4 inline-flex items-center gap-2 rounded-sm text-sm text-fg-muted hover:text-fg-strong"
-      >
-        <ArrowLeft aria-hidden className="size-4" />
-        Discover
-      </a>
+      <nav aria-label="Breadcrumb" className="mb-4">
+        <a
+          href={href.discover()}
+          className="inline-flex min-h-11 items-center gap-2 rounded-sm text-sm text-fg-muted hover:text-fg-strong"
+        >
+          <ArrowLeft aria-hidden className="size-4" />
+          Discover
+        </a>
+      </nav>
       {hasCover ? (
         <ProductArt
           slug={product.product}
@@ -310,130 +425,41 @@ function StorefrontHeader({
       ) : null}
       <div
         data-cover={hasCover ? "image" : "none"}
-        className={cn(
-          "flex gap-4 desk:gap-6",
-          hasCover
-            ? "flex-col desk:flex-row desk:items-end desk:px-6"
-            : "flex-row flex-wrap items-center pt-2 desk:flex-nowrap",
-        )}
+        className={cn("flex items-center gap-4", hasCover ? "mt-5" : "pt-2")}
       >
         <ProductIcon
           slug={product.product}
           name={product.name}
           tint={product.tintColor}
           src={mediaUrl(product.iconUrl)}
-          size={112}
-          lift={hasCover}
-          tileClassName="border-4 border-surface-page max-desk:text-3xl"
-          className={cn(
-            "pk-vt-hero-icon relative z-10 max-desk:size-20",
-            hasCover && "-mt-10 desk:-mt-16 desk:self-start",
-          )}
+          size={64}
+          className="pk-vt-hero-icon shrink-0"
         />
-        <div className="min-w-0 flex-1 space-y-2 desk:pb-1">
+        <div className="min-w-0 flex-1 space-y-1">
           <h1
             tabIndex={-1}
-            className="pk-vt-hero-title w-fit text-headline font-semibold leading-tight text-fg-strong outline-none desk:text-4xl"
+            className="pk-vt-hero-title w-fit max-w-full text-headline [overflow-wrap:anywhere] font-semibold leading-tight text-fg-strong outline-none desk:text-4xl"
           >
             {product.name}
           </h1>
           {product.developerName ? (
-            <p className="text-fg-muted">
-              by{" "}
-              <span className="font-medium text-accent-fg">
-                {product.developerName}
-              </span>
-            </p>
-          ) : null}
-          {product.shortDescription ? (
-            <p className="max-w-prose text-fg [overflow-wrap:anywhere]">
-              {product.shortDescription}
-            </p>
+            <p className="text-fg-muted">by {product.developerName}</p>
           ) : null}
         </div>
-        <div className="flex max-desk:w-full desk:pb-1">{children}</div>
       </div>
+      {product.shortDescription ? (
+        <p className="mt-5 max-w-prose text-fg [overflow-wrap:anywhere]">
+          {product.shortDescription}
+        </p>
+      ) : null}
     </div>
   );
 }
 
-/**
- * Every way to add the product, each with why and what it gives (S-21 §6.5). With more than one,
- * a choice; the first (the Worker's order) is preselected.
- */
-function WaysToAdd({
-  paths,
-  chosen,
-  onChoose,
-  disabled,
-}: {
-  paths: readonly PortalObtainPath[];
-  chosen: string | null;
-  onChoose: (kind: string) => void;
-  disabled: boolean;
-}): React.ReactElement {
-  const several = paths.length > 1;
-  return (
-    <SectionCard
-      id="ways"
-      title={several ? "Ways to add it" : "Why you can add it"}
-      subtitle={several ? "Pick the one Add uses." : undefined}
-    >
-      {several ? (
-        <fieldset disabled={disabled} className="space-y-2">
-          <legend className="sr-only">Choose how to add it</legend>
-          {paths.map((p) => (
-            <label
-              key={p.kind}
-              className={cn(
-                "flex cursor-pointer gap-3 rounded-lg border p-3",
-                chosen === p.kind
-                  ? "border-accent bg-accent-subtle"
-                  : "border-border hover:bg-hover",
-              )}
-            >
-              <input
-                type="radio"
-                name="storefront-path"
-                value={p.kind}
-                checked={chosen === p.kind}
-                onChange={() => onChoose(p.kind)}
-                className="mt-1 size-4 shrink-0 accent-[var(--pk-accent)]"
-              />
-              <PathLines path={p} />
-            </label>
-          ))}
-        </fieldset>
-      ) : (
-        <ul className="space-y-2">
-          {paths.map((p) => (
-            <li
-              key={p.kind}
-              className="flex gap-3 rounded-lg bg-surface-sunken p-3"
-            >
-              <PathLines path={p} icon />
-            </li>
-          ))}
-        </ul>
-      )}
-    </SectionCard>
-  );
-}
-
-function PathLines({
-  path,
-  icon = false,
-}: {
-  path: PortalObtainPath;
-  icon?: boolean;
-}): React.ReactElement {
+function PathLines({ path }: { path: PortalObtainPath }): React.ReactElement {
   const copy = pathCopy(path);
-  const Icon = REASON_ICON[copy.kind];
   return (
     <>
-      {icon ? (
-        <Icon aria-hidden className="mt-0.5 size-4 shrink-0 text-accent-fg" />
-      ) : null}
       <span className="min-w-0">
         <span className="block font-medium text-fg-strong">{copy.text}</span>
         <span className="block text-sm text-fg-muted">
@@ -514,6 +540,11 @@ function addError(product: PortalStorefrontProduct, err: unknown): AddError {
       text: `${product.developerName ?? "The developer"} no longer gives ${product.name} to your account.`,
       ended: true,
     };
+  // The words PX-34 settled on Discover's tile.
+  const offline = err instanceof PortalApiError && err.status === 0;
   const copy = portalErrorCopy(err);
-  return { text: `${copy.title}. ${copy.description}`, ended: false };
+  return {
+    text: `Couldn't add ${product.name}. ${offline ? t("core.codes.transport.message") : copy.description}`,
+    ended: false,
+  };
 }

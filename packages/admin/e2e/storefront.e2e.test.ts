@@ -122,7 +122,7 @@ describe.concurrent("the storefront's flows (PS-05)", () => {
             .click();
           await page.waitForURL(/#\/discover\/lumen-raw$/);
           await h1(page, "Lumen RAW");
-          const ways = page.getByRole("region", { name: "Ways to add it" });
+          const ways = page.getByRole("region", { name: "Get Lumen RAW" });
           await ways
             .getByRole("radio", { name: /Included with Aperture Seven/ })
             .waitFor();
@@ -162,6 +162,31 @@ describe.concurrent("the storefront's flows (PS-05)", () => {
           await page.goBack();
           await page.waitForURL(/#\/discover$/);
           await h1(page, "Discover");
+        } finally {
+          await o.close();
+        }
+      });
+
+      it(`the decision panel reflows at 320 px and 200 % text: ${theme}, ${w.width} px`, async ({
+        expect,
+      }) => {
+        const o = await portal.open(
+          "storefront",
+          "/#/discover/lumen-raw",
+          opts,
+        );
+        try {
+          const { page } = o;
+          await h1(page, "Lumen RAW");
+          await page.setViewportSize({ width: 320, height: 640 });
+          await page.evaluate(() => {
+            document.documentElement.style.fontSize = "200%";
+          });
+          await page.waitForTimeout(150);
+          const add = page.getByRole("button", { name: "Add to library" });
+          await add.scrollIntoViewIfNeeded();
+          expect(await add.isVisible()).toBe(true);
+          expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
         } finally {
           await o.close();
         }
