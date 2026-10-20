@@ -475,10 +475,6 @@ struct PolarisGateSurface<Content: View>: View {
                 freeDeviceQR(url)
             }
 
-            if let badge = theme.poweredBy {
-                PolarisPoweredByAttribution(style: badge.style)
-                    .padding(.top, PolarisSpace.l)
-            }
         }
     }
 

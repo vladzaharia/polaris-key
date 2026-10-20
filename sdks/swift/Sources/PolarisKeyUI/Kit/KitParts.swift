@@ -530,18 +530,13 @@ public struct PoweredBy: View {
 
     public var body: some View {
         kitStyle { style in
-            let line = HStack(spacing: 6) {
-                PolarisLockerMicroMark()
+            // The line on the account pane; the badge is for about and credits screens, which the
+            // host places (`PolarisPoweredByAttribution(style: .badge)`).
+            HStack(spacing: 6) {
+                PolarisLockerMicroMark(dark: style.dark)
                 KitText("part.poweredBy", [:], .footnote, color: .subtle)
             }
-            if style.poweredBy == .badge {
-                ViewThatFits(in: .horizontal) {
-                    PolarisPoweredByBadge()
-                    line
-                }
-            } else {
-                line
-            }
+            .frame(maxWidth: .infinity)
         }
     }
 }

@@ -138,13 +138,17 @@ public struct PolarisPoweredByBadge: View {
 /// The Locker micro mark at `PolarisBrand.poweredByMarkSize` points, decorative.
 struct PolarisLockerMicroMark: View {
     @Environment(\.colorScheme) private var colorScheme
+    /// The kit's scheme (`style.dark`); nil follows the environment.
+    var dark: Bool?
+    /// 16 points at the default text size, growing with Dynamic Type (the em rule, UI-KITS §1.6).
+    @ScaledMetric(relativeTo: .footnote) private var side = PolarisBrand.poweredByMarkSize
 
     var body: some View {
         BrandVectorView(
-            vector: colorScheme == .light
-                ? PolarisBrandMarkData.lockerMicroLight : PolarisBrandMarkData.lockerMicroDark
+            vector: (dark ?? (colorScheme == .dark))
+                ? PolarisBrandMarkData.lockerMicroDark : PolarisBrandMarkData.lockerMicroLight
         )
-        .frame(width: PolarisBrand.poweredByMarkSize, height: PolarisBrand.poweredByMarkSize)
+        .frame(width: side, height: side)
         .accessibilityHidden(true)
     }
 }
@@ -157,8 +161,9 @@ public enum PolarisPoweredByStyle: String, Sendable, Equatable {
     case badge
 }
 
-/// The attribution (UI-KITS §1.6): the line, or the badge where 320 points are free and the line
-/// where they are not. The line's text is `text`, the catalog's "Powered by Polaris Locker".
+/// The attribution (UI-KITS §1.6) for an about or credits screen: the line, or the badge where 320
+/// points are free and the line where they are not. The line's text is `text`, the catalog's
+/// "Powered by Polaris Locker", in the kit's subtle text colour.
 public struct PolarisPoweredByAttribution: View {
     private let style: PolarisPoweredByStyle
     private let text: String
@@ -180,20 +185,27 @@ public struct PolarisPoweredByAttribution: View {
         }
     }
 
+    @Environment(\.colorScheme) private var colorScheme
+
     private var line: some View {
         HStack(spacing: 6) {
             PolarisLockerMicroMark()
-            Text(text).font(.footnote).foregroundStyle(.secondary)
+            Text(text).font(.footnote)
+                .foregroundStyle(
+                    (colorScheme == .dark ? PolarisBrand.Dark.textSubtle : PolarisBrand.Light.textSubtle).color)
         }
+        .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)
     }
 }
 
-/// Which attribution the gate shows under its activation card, when a product opts in.
+/// Which attribution a product opts in to. The legacy gate never draws it (UI-KITS §1.6: only on
+/// account, settings, about and credits screens); place `PolarisPoweredByAttribution(style:)` there.
+/// `.line` is the default; the badge is opt-in.
 public struct PolarisPoweredBy: Sendable, Equatable {
     public var style: PolarisPoweredByStyle
 
-    public init(style: PolarisPoweredByStyle = .badge) {
+    public init(style: PolarisPoweredByStyle = .line) {
         self.style = style
     }
 }

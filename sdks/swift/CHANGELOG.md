@@ -4,6 +4,14 @@ All notable changes to the Polaris Key Swift SDK. Versions follow the monorepo's
 tags; before 1.0 a minor version may change the API, and a changed API ships as the only API (no
 deprecated aliases).
 
+## Unreleased (LK-16)
+
+- **Breaking: Powered by Polaris Locker.** `PolarisPoweredByBadge` draws the Locker `powered-by` badge
+  (320 × 104 points minimum); its `Layout` and `Treatment` options and `PolarisPoweredByBadge.size(layout:width:)`
+  are gone (`size(width:)` replaces it). `PolarisPoweredBy(layout:treatment:)` is now
+  `PolarisPoweredBy(style:)`, default `.line`. New: `PolarisPoweredByAttribution`, `PolarisPoweredByStyle`.
+  The legacy gate no longer draws the attribution, and the Key "Powered by" PNGs are no longer bundled.
+
 ## Unreleased
 
 - **Client backend (`core.backend`, SP-59).** `client.backend.data(for:)` and `headers()` send
