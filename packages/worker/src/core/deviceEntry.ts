@@ -44,7 +44,6 @@ function page(
   const html = renderBrandPage({
     title: "Enter your code",
     heading: "Enter your code",
-    surface: "device",
     ...(tv ? { variant: "tv" as const } : {}),
     body:
       `<p>Enter the code your app shows.</p>` +
