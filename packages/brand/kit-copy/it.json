@@ -711,6 +711,27 @@
     "signin.key.empty": "Incolla la tua chiave di licenza per continuare.",
     "signin.provider.connectGroup": "Oppure collega un altro account",
     "signin.rateLimitedFew": "Troppi codici. Riprova tra qualche minuto.",
-    "signin.code.emailInUse": "Un altro account Polaris Locker usa questa email. Accedi come prima."
+    "signin.code.emailInUse": "Un altro account Polaris Locker usa questa email. Accedi come prima.",
+    "signin.choice.pickOne": "Scegli una licenza per continuare.",
+    "signin.choice.pickDevice": "Scegli un dispositivo da sostituire.",
+    "signin.choice.replaceAndSignIn": "Sostituisci e accedi",
+    "signin.choice.replaceSafety": "Il dispositivo scelto esce da {app}. Potrà accedere di nuovo più tardi se c'è un posto libero. Ti avviseremo via e-mail.",
+    "signin.choice.replacedTitle": "Dispositivo sostituito",
+    "signin.choice.replacedBody": "{device} è uscito da {app}. {thisDevice} ha effettuato l'accesso.",
+    "signin.request.goneTitle": "Questo accesso è terminato",
+    "signin.request.gone": "Torna all'app e accedi di nuovo.",
+    "signin.header.onDevice": "su {device}",
+    "signin.thisBrowser": "questo browser",
+    "signin.consent.deny": "Non consentire",
+    "signin.consent.cloudSync": "Cloud Sync",
+    "signin.consent.newLicense": "Nuova: licenza {tier}, creata quando continui",
+    "signin.key.upgradeTitle": "Tieni {product} in un account",
+    "signin.key.upgradeLede": "La tua chiave funziona. In un account puoi recuperarla e spostarla su un nuovo dispositivo da solo.",
+    "signin.key.createAccount": "Crea account",
+    "signin.key.signInInstead": "Accedi invece",
+    "signin.key.noEntriesTitle": "Crea un account per tenere {product}",
+    "signin.key.noEntriesKeeps": "{product} continua a funzionare sui dispositivi in cui è già. Solo inserire di nuovo la chiave richiede un account.",
+    "signin.key.meter": "{used} di {limit} inserimenti della chiave usati",
+    "signin.key.keyWorks": "La chiave funziona"
   }
 }

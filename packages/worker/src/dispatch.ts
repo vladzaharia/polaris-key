@@ -287,9 +287,21 @@ async function routeRequest(
       return relatedOriginsResponse(req, env);
     // The platform device-code entry pages: no product, no session, no database.
     case "signInEntry":
-      return onCustomerHost && isBindHop(req)
-        ? handleSignInBind(req, env)
-        : handleSignInEntry(req);
+      if (onCustomerHost && isBindHop(req)) return handleSignInBind(req, env);
+      // PX-14a: an app's sign-in (`/signin?request=rq_…`) is the portal SPA's card, for the browser
+      // that holds a request binder (the bind hop sets it). The SPA reads the handle itself and the
+      // API answers only that browser; any other visit is the plain not-found it was.
+      if (
+        (req.method === "GET" || req.method === "HEAD") &&
+        url.searchParams.has("request") &&
+        !url.searchParams.has("bind") &&
+        /(?:^|;\s*)__Host-pk_req=/.test(req.headers.get("cookie") ?? "")
+      )
+        return handlePortal(req, env, db, "/", {
+          hooksFor,
+          settings: SETTINGS,
+        });
+      return handleSignInEntry(req);
     case "deviceEntry":
       return handleDeviceEntry(
         req,

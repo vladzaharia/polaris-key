@@ -1589,6 +1589,52 @@
     <string name="signin_rateLimitedFew">Trop de codes. Réessayez dans quelques minutes.</string>
     <!-- Sign-in card, code step: the address belongs to another account that does not use it as a sign-in method. Polaris Locker is never translated. -->
     <string name="signin_code_emailInUse">Un autre compte Polaris Locker utilise cet e-mail. Connectez-vous comme avant.</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
+    <string name="signin_choice_pickOne">Choisissez une licence pour continuer.</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
+    <string name="signin_choice_pickDevice">Choisissez un appareil à remplacer.</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
+    <string name="signin_choice_replaceAndSignIn">Remplacer et se connecter</string>
+    <string name="signin_choice_replaceAndSignIn__macos">Remplacer et se connecter</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_choice_replaceSafety">L'appareil choisi sera déconnecté de %1$s. Il pourra se reconnecter plus tard si une place est libre. Nous vous préviendrons par e-mail.</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
+    <string name="signin_choice_replacedTitle">Appareil remplacé</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {device} = the replaced device's label; {app} = the requesting app's name (never translated); {thisDevice} = this device's label or "this browser". Arguments: 1=device, 2=app, 3=thisDevice. -->
+    <string name="signin_choice_replacedBody">%1$s est déconnecté de %2$s. %3$s est connecté.</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
+    <string name="signin_request_goneTitle">Cette connexion est terminée</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
+    <string name="signin_request_gone">Retournez dans l'app et reconnectez-vous.</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {device} = a device's friendly name. Arguments: 1=device. -->
+    <string name="signin_header_onDevice">sur %1$s</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
+    <string name="signin_thisBrowser">ce navigateur</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
+    <string name="signin_consent_deny">Ne pas autoriser</string>
+    <string name="signin_consent_deny__macos">Ne pas autoriser</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
+    <string name="signin_consent_cloudSync">Cloud Sync</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
+    <string name="signin_consent_newLicense">Nouvelle : licence %1$s, créée quand vous continuez</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_key_upgradeTitle">Gardez %1$s dans un compte</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
+    <string name="signin_key_upgradeLede">Votre clé fonctionne. Dans un compte, vous la retrouvez et la déplacez vous-même vers un nouvel appareil.</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
+    <string name="signin_key_createAccount">Créer un compte</string>
+    <string name="signin_key_createAccount__macos">Créer un compte</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
+    <string name="signin_key_signInInstead">Se connecter à la place</string>
+    <string name="signin_key_signInInstead__macos">Se connecter à la place</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_key_noEntriesTitle">Créez un compte pour garder %1$s</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_key_noEntriesKeeps">%1$s continue de fonctionner sur les appareils où il est déjà. Seule la saisie de la clé demande un compte.</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {used} and {limit} = numbers. Arguments: 1=used, 2=limit. -->
+    <string name="signin_key_meter">%1$s saisies de clé sur %2$s utilisées</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
+    <string name="signin_key_keyWorks">La clé fonctionne</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">Something went wrong</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

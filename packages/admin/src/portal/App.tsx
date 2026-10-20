@@ -27,6 +27,8 @@ import { ProductPage } from "./pages/ProductPage.js";
 import { ApproveDeviceDialog } from "./components/ApproveDeviceDialog.js";
 import { commitLastMethod } from "./lastMethod.js";
 import { SignInPage } from "./pages/SignInPage.js";
+import { RequestFlow } from "./components/signin/RequestFlow.js";
+import { requestHandleFromUrl } from "./model/signInRequest.js";
 import { StorefrontPage } from "./pages/StorefrontPage.js";
 import { restoreCarriedKey } from "./carriedKey.js";
 import {
@@ -112,6 +114,11 @@ function Boot(): React.ReactElement {
     );
   }
   if (!session.data) return <SignInPage />;
+  // An app's sign-in (`/signin?request=rq_…`) continues in the card, not in the library.
+  if (window.location.pathname === "/signin") {
+    const handle = requestHandleFromUrl();
+    if (handle) return <RequestFlow handle={handle} />;
+  }
   return (
     <ActivateProvider>
       <SignedIn account={session.data.account} />

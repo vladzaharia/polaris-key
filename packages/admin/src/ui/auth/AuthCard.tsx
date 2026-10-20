@@ -1,6 +1,7 @@
 import * as React from "react";
 import { cn } from "../../lib/cn.js";
-import { t } from "../../lib/copy.js";
+import { Globe, Monitor, Tv } from "lucide-react";
+import { t, tParts } from "../../lib/copy.js";
 
 /**
  * The one sign-in frame (SIGN-IN.md §3.1, PORTAL.md §5.2 `AuthCard`; UX-40 promoted the portal's
@@ -164,36 +165,106 @@ function motionMs(name: string): number {
 }
 
 /**
- * The card header, data only (§3.1, §5.2 `CardHeader`): today only the product-context variant,
- * "<Product> · <Developer>" over "Your license, downloads and devices".
+ * The card header, data only (§3.1, §5.2 `CardHeader`). Product context: "<Product> · <Developer>"
+ * over "Your license, downloads and devices". App request (PX-14a): a 56 px icon, "<App> wants
+ * you to sign in" with the name semibold, the developer, then where (a globe and the registered
+ * origin, or a device glyph and "on <device>"); the `device` variant adds the code panel. Every
+ * string is server data or the catalog's; the caller never passes a query value.
  */
-export function CardHeader({
-  variant,
-  icon,
-  name,
-  developer,
-}: {
-  variant: "context";
-  /** The product's icon, drawn by the host (48 px). */
-  icon: React.ReactNode;
-  name: string;
-  developer: string | null;
-}): React.ReactElement {
-  return (
-    <div
-      data-variant={variant}
-      className="flex items-center gap-4 px-5 py-4 sm:px-7"
-    >
-      {icon}
-      <div className="min-w-0">
-        <p className="text-fg-strong">
-          <span className="font-medium">{name}</span>
-          {developer ? ` · ${developer}` : null}
-        </p>
-        <p className="text-sm text-fg-muted">
-          {t("signin.header.contextLine")}
-        </p>
+export type CardHeaderProps =
+  | {
+      variant: "context";
+      /** The product's icon, drawn by the host (48 px). */
+      icon: React.ReactNode;
+      name: string;
+      developer: string | null;
+    }
+  | {
+      variant: "app" | "device";
+      /** The app's icon (56 px), or null for the neutral frame. */
+      icon: React.ReactNode;
+      name: string;
+      developer: string | null;
+      where: { glyph: "globe" | "device" | "tv"; text: string } | null;
+      /** The device-code panel's code (the `device` variant). */
+      code?: string | null;
+    };
+
+const WHERE_GLYPH = { globe: Globe, device: Monitor, tv: Tv } as const;
+
+export function CardHeader(props: CardHeaderProps): React.ReactElement {
+  if (props.variant === "context") {
+    const { variant, icon, name, developer } = props;
+    return (
+      <div
+        data-variant={variant}
+        className="flex items-center gap-4 px-5 py-4 sm:px-7"
+      >
+        {icon}
+        <div className="min-w-0">
+          <p className="text-fg-strong">
+            <span className="font-medium">{name}</span>
+            {developer ? ` · ${developer}` : null}
+          </p>
+          <p className="text-sm text-fg-muted">
+            {t("signin.header.contextLine")}
+          </p>
+        </div>
       </div>
+    );
+  }
+  const { variant, icon, name, developer, where, code } = props;
+  const Glyph = where ? WHERE_GLYPH[where.glyph] : null;
+  return (
+    <div data-variant={variant} className="space-y-3 px-5 py-4 sm:px-7">
+      <div className="flex items-center gap-4">
+        {icon}
+        <div className="min-w-0">
+          <p className="text-lg/6 text-fg-strong [overflow-wrap:anywhere]">
+            {tParts("signin.header.app", ["app"], {}).map((part, i) =>
+              typeof part === "string" ? (
+                part
+              ) : (
+                <strong key={i} className="font-semibold">
+                  {name}
+                </strong>
+              ),
+            )}
+          </p>
+          {developer ? (
+            <p className="text-sm text-fg-muted [overflow-wrap:anywhere]">
+              {developer}
+            </p>
+          ) : null}
+          {Glyph && where ? (
+            <p className="flex items-center gap-1.5 text-sm text-fg-muted">
+              <Glyph aria-hidden className="size-4 shrink-0" />
+              <span className="min-w-0 [overflow-wrap:anywhere]">
+                {where.text}
+              </span>
+            </p>
+          ) : null}
+        </div>
+      </div>
+      {code ? (
+        <p
+          data-code-panel
+          className="rounded-md bg-surface-sunken px-4 py-3 text-sm text-fg-muted"
+        >
+          {tParts("signin.header.codePanel", ["code"], {}).map((part, i) =>
+            typeof part === "string" ? (
+              part
+            ) : (
+              <span
+                key={i}
+                className="font-mono text-base font-semibold tracking-wider text-fg-strong"
+              >
+                {code}
+              </span>
+            ),
+          )}
+        </p>
+      ) : null}
     </div>
   );
 }

@@ -711,6 +711,27 @@
     "signin.key.empty": "続行するにはライセンスキーを貼り付けてください。",
     "signin.provider.connectGroup": "または別のアカウントを接続",
     "signin.rateLimitedFew": "コードが多すぎます。数分後にもう一度お試しください。",
-    "signin.code.emailInUse": "別の Polaris Locker アカウントがこのメールアドレスを使用しています。以前の方法でサインインしてください。"
+    "signin.code.emailInUse": "別の Polaris Locker アカウントがこのメールアドレスを使用しています。以前の方法でサインインしてください。",
+    "signin.choice.pickOne": "続けるにはライセンスを選んでください。",
+    "signin.choice.pickDevice": "置き換えるデバイスを選んでください。",
+    "signin.choice.replaceAndSignIn": "置き換えてサインイン",
+    "signin.choice.replaceSafety": "選んだデバイスは {app} からサインアウトされます。空きがあれば、後でもう一度サインインできます。メールでお知らせします。",
+    "signin.choice.replacedTitle": "デバイスを置き換えました",
+    "signin.choice.replacedBody": "{device} は {app} からサインアウトしました。{thisDevice} はサインイン済みです。",
+    "signin.request.goneTitle": "このサインインは終了しました",
+    "signin.request.gone": "アプリに戻って、もう一度サインインしてください。",
+    "signin.header.onDevice": "{device} で",
+    "signin.thisBrowser": "このブラウザ",
+    "signin.consent.deny": "許可しない",
+    "signin.consent.cloudSync": "クラウド同期",
+    "signin.consent.newLicense": "新規: {tier} ライセンス。続けると作成されます",
+    "signin.key.upgradeTitle": "{product} をアカウントに保管",
+    "signin.key.upgradeLede": "キーは有効です。アカウントに保管すると、再取得したり、新しいデバイスへ自分で移したりできます。",
+    "signin.key.createAccount": "アカウントを作成",
+    "signin.key.signInInstead": "代わりにサインイン",
+    "signin.key.noEntriesTitle": "{product} を保管するにはアカウントを作成",
+    "signin.key.noEntriesKeeps": "{product} は、すでに入っているデバイスでそのまま使えます。キーをもう一度入力する場合だけアカウントが必要です。",
+    "signin.key.meter": "キー入力 {limit} 回のうち {used} 回を使用",
+    "signin.key.keyWorks": "キーは有効です"
   }
 }

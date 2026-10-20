@@ -38,7 +38,15 @@ import { ProductIcon } from "../components/ProductIcon.js";
 import { KeyField } from "../components/KeyField.js";
 import { portalKeys, useCapabilities } from "../data.js";
 import { portalErrorCopy } from "../errors.js";
-import { checkKey, formatVerdict, productLabel } from "../model/key.js";
+import {
+  blocksResend,
+  checkKey,
+  claimVerdict,
+  formatVerdict,
+  previewVerdict,
+  productLabel,
+  type KeyVerdict,
+} from "../model/key.js";
 import { setParams, useDocumentTitle, useRoute } from "../router.js";
 import { FinishStep } from "../components/signin/FinishStep.js";
 import { DeviceStep } from "../components/signin/DeviceStep.js";
@@ -48,6 +56,14 @@ import { usePasskeySignIn } from "../components/signin/usePasskeySignIn.js";
 import { HintStep } from "../components/signin/HintStep.js";
 import { useSessionRecheck } from "../session.js";
 import { returnUrl, stashCarriedKey } from "../carriedKey.js";
+import type { KeyPreview } from "../api.js";
+import { AccountUpgrade } from "../components/signin/AccountUpgrade.js";
+import {
+  RequestFooter,
+  RequestHeader,
+} from "../components/signin/RequestHeader.js";
+import { requestHandleFromUrl } from "../model/signInRequest.js";
+import { useSignInRequest } from "../requestData.js";
 
 /**
  * Sign in (SIGN-IN.md §3.1–§3.4, §3.9; PORTAL.md §4.1): the login card's steps, replacing each
@@ -96,6 +112,8 @@ type Step =
   /** I-30: the address's domain routes to a connection (`next` from the start or a refusal). */
   | { kind: "sso"; email: string; next: PortalSsoNext }
   | { kind: "key" }
+  /** AccountUpgrade (§3.9, PX-12): what the previewed key leads to, before sign-in. */
+  | { kind: "upgrade"; key: string; preview: KeyPreview }
   /** Sign in with another device (§3.11): this browser asks, a signed-in device approves. */
   | { kind: "device" }
   /** FinishStep (§3.5): a provider's first sign-in, or a new address's code, finishes here. */
@@ -157,8 +175,16 @@ function useCarriedKey(): string | null {
 }
 
 export function SignInPage(): React.ReactElement {
-  const [product] = React.useState(productFromUrl);
+  const [urlProduct] = React.useState(productFromUrl);
+  // An app's sign-in (`/signin?request=rq_…`, PX-14a): the header is the request's data, and the
+  // product is the request's, never a query value.
+  const [handle] = React.useState(requestHandleFromUrl);
+  const request = useSignInRequest(handle);
+  const product = urlProduct ?? request.data?.client.product ?? null;
   const caps = useCapabilities(product);
+  const identityOff =
+    new URLSearchParams(window.location.search).get("error") ===
+    "identity_disabled";
   const [step, setStep] = React.useState<Step>(() =>
     // A front door's redirect (`/?signin=confirm-email`) opens the finish step.
     new URLSearchParams(window.location.search).get("signin") ===
@@ -182,13 +208,16 @@ export function SignInPage(): React.ReactElement {
   );
   // Escape backs out of the steps that have somewhere to go back to.
   React.useEffect(() => {
-    if (!["key", "code", "device", "hint"].includes(step.kind)) return;
+    if (!["key", "upgrade", "code", "device", "hint"].includes(step.kind))
+      return;
     const onKey = (e: KeyboardEvent): void => {
       if (e.key !== "Escape" || e.defaultPrevented) return;
       go(
         step.kind === "code" || step.kind === "hint"
           ? { kind: "methods", email: step.email, focusEmail: true }
-          : { kind: "methods" },
+          : step.kind === "upgrade"
+            ? { kind: "key" }
+            : { kind: "methods" },
         "back",
       );
     };
@@ -208,9 +237,13 @@ export function SignInPage(): React.ReactElement {
               ? t("signin.approve.title")
               : step.kind === "key"
                 ? t("signin.link.key")
-                : step.kind === "sso"
-                  ? step.next.connection.label
-                  : t("signin.methods.titleApp"),
+                : step.kind === "upgrade"
+                  ? t("signin.key.upgradeTitle", {
+                      product: step.preview.product.name,
+                    })
+                  : step.kind === "sso"
+                    ? step.next.connection.label
+                    : t("signin.methods.titleApp"),
   );
   /** The card's step key: a connection step is keyed by its route, so a change re-announces. */
   const ssoKey =
@@ -219,7 +252,13 @@ export function SignInPage(): React.ReactElement {
       : null;
 
   const ctx = caps.data?.product;
-  const header = ctx ? (
+  // The key on-ramp works without an account: it keeps the product header, not "wants you to sign
+  // in" (§3.1). Every other step of an app's request keeps the request's header and footer.
+  const onRamp = step.kind === "key" || step.kind === "upgrade";
+  const appRequest = handle !== null && request.data && !onRamp;
+  const header = appRequest ? (
+    <RequestHeader view={request.data!} />
+  ) : ctx ? (
     <CardHeader
       variant="context"
       icon={
@@ -230,22 +269,40 @@ export function SignInPage(): React.ReactElement {
     />
   ) : undefined;
 
-  const stepKey = caps.isPending
-    ? "loading"
-    : caps.error
-      ? "unreachable"
-      : (ssoKey ?? step.kind);
+  // A request that is gone (expired, unknown, Identity off, no binder) has nothing to sign in to.
+  const requestGone =
+    handle !== null &&
+    request.error instanceof PortalApiError &&
+    request.error.status === 404;
+  const stepKey =
+    handle !== null && request.isPending
+      ? "loading"
+      : requestGone
+        ? "gone"
+        : caps.isPending
+          ? "loading"
+          : caps.error
+            ? "unreachable"
+            : (ssoKey ?? step.kind);
 
   return (
     <AuthCard
-      brand={<AuthBrand muted={Boolean(ctx)} />}
+      brand={<AuthBrand muted={Boolean(ctx) || handle !== null} />}
       focusKey={focusTick}
       header={header}
+      footer={appRequest ? <RequestFooter view={request.data!} /> : undefined}
       stepKey={stepKey}
       direction={direction}
     >
-      {caps.isPending ? (
+      {(handle !== null && request.isPending) || caps.isPending ? (
         <MethodsSkeleton />
+      ) : requestGone ? (
+        <>
+          <div className="space-y-2">
+            <Title>{t("signin.request.goneTitle")}</Title>
+            <p className="text-fg-muted">{t("signin.request.gone")}</p>
+          </div>
+        </>
       ) : caps.error ? (
         <Unreachable
           error={caps.error}
@@ -344,6 +401,20 @@ export function SignInPage(): React.ReactElement {
         />
       ) : step.kind === "device" ? (
         <DeviceStep onOther={() => go({ kind: "methods" }, "back")} />
+      ) : step.kind === "upgrade" ? (
+        <AccountUpgrade
+          preview={step.preview}
+          canSkip={handle !== null}
+          onCreate={() => {
+            setParams({ activate: step.key });
+            go({ kind: "methods" });
+          }}
+          onSignIn={() => {
+            setParams({ activate: step.key });
+            go({ kind: "methods" });
+          }}
+          onSkip={() => go({ kind: "methods" })}
+        />
       ) : step.kind === "key" ? (
         <KeyStep
           onBack={() => go({ kind: "methods" }, "back")}
@@ -351,6 +422,7 @@ export function SignInPage(): React.ReactElement {
             setParams({ activate: key });
             go({ kind: "methods" });
           }}
+          onPreview={(key, preview) => go({ kind: "upgrade", key, preview })}
         />
       ) : (
         <MethodsStep
@@ -358,7 +430,12 @@ export function SignInPage(): React.ReactElement {
           context={ctx ?? null}
           initialEmail={step.email}
           focusEmail={step.focusEmail}
-          notice={step.notice}
+          notice={
+            step.notice ??
+            (identityOff && ctx
+              ? t("signin.identityOff.notice", { product: ctx.name })
+              : undefined)
+          }
           onSent={(email, sent) =>
             go(
               sent?.next
@@ -1193,18 +1270,60 @@ function RefusedStep({
 function KeyStep({
   onBack,
   onContinue,
+  onPreview,
 }: {
   onBack: () => void;
   onContinue: (key: string) => void;
+  /** The signed-out preview (PX-W9) found an addable key: AccountUpgrade says what it leads to. */
+  onPreview: (key: string, preview: KeyPreview) => void;
 }): React.ReactElement {
   const [key, setKey] = React.useState("");
   const [touched, setTouched] = React.useState(false);
+  const [checking, setChecking] = React.useState(false);
+  /** A refusal from the preview, until the key changes (a retry-able one clears on the next send). */
+  const [refused, setRefused] = React.useState<KeyVerdict | null>(null);
   const check = checkKey(key);
-  const verdict = touched
-    ? key.trim() === ""
-      ? { message: t("signin.key.empty") }
-      : formatVerdict(check)
-    : null;
+  const verdict =
+    refused ??
+    (touched
+      ? key.trim() === ""
+        ? { message: t("signin.key.empty") }
+        : formatVerdict(check)
+      : null);
+
+  const submit = async (): Promise<void> => {
+    setTouched(true);
+    if (check.kind !== "valid") {
+      document.getElementById("pk-signin-key")?.focus();
+      return;
+    }
+    if (refused && blocksResend(refused)) return;
+    setChecking(true);
+    setRefused(null);
+    try {
+      const preview = await portalApi.previewKeySignedOut(key);
+      if (preview.verdict === "addable") return onPreview(key, preview);
+      if (preview.verdict === "portal_off") return onContinue(key);
+      setRefused(
+        previewVerdict(
+          { verdict: preview.verdict, product: preview.product },
+          preview.product.name,
+        ),
+      );
+    } catch (err) {
+      const status = err instanceof PortalApiError ? err.status : 0;
+      setRefused(
+        claimVerdict({ status }, productLabel(check.slug)) ?? {
+          code: "failed",
+          tone: "danger",
+          message: `${portalErrorCopy(err, { account: true }).title}. ${portalErrorCopy(err, { account: true }).description}`,
+        },
+      );
+    } finally {
+      setChecking(false);
+    }
+    document.getElementById("pk-signin-key")?.focus();
+  };
   return (
     <>
       <div className="space-y-2">
@@ -1217,9 +1336,7 @@ function KeyStep({
         className="space-y-4"
         onSubmit={(e) => {
           e.preventDefault();
-          setTouched(true);
-          if (check.kind === "valid") onContinue(key);
-          else document.getElementById("pk-signin-key")?.focus();
+          void submit();
         }}
       >
         <KeyField
@@ -1232,6 +1349,7 @@ function KeyStep({
           onBlur={() => setTouched(true)}
           onChange={(v, how) => {
             setKey(v);
+            setRefused(null);
             if (how === "paste") setTouched(true);
           }}
           hint={
@@ -1247,6 +1365,7 @@ function KeyStep({
           type="submit"
           variant="neutral"
           size="lg"
+          loading={checking}
           className="h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-semibold"
           iconEnd={<ArrowRight aria-hidden />}
         >
