@@ -1195,6 +1195,10 @@ describe("workflow hardening", () => {
       );
       expect(smoke?.run).toContain('"$CUSTOMER_URL/manage"');
       expect(smoke?.run).toContain('"$ORIGIN/.well-known/webauthn"');
+      // LK-17: the old customer URL on the API host redirects to the customer host.
+      expect(smoke?.run).toContain('"$ORIGIN/activate"');
+      expect(smoke?.run).toContain('"301 $CUSTOMER_URL/activate"');
+      expect(smoke?.run).toContain('"302 $ORIGIN/manage"');
       expect(smoke?.run).toContain("content-security-policy");
     });
 

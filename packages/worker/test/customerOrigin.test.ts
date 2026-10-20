@@ -12,7 +12,7 @@ const LITERAL =
 
 /** Origins the builders may use: the resolved customer origin, or a parameter that carries one. */
 const OK_ORIGIN =
-  /^(origin|customer|input\.origin|\(await customerOriginOf\([^)]*\)\) \?\? new URL\(req\.url\)\.origin)$/;
+  /^(origin|customer|input\.origin|customerOrigin\([^)]*\) \?\? new URL\(req\.url\)\.origin)$/;
 
 /** Sites that stay on the request's origin on purpose, each with the package that moves it. */
 const ALLOWED: Record<string, string> = {

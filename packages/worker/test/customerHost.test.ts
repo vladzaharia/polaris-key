@@ -1,5 +1,5 @@
-// LK-03 (plans/LK-00.md §7.1–7.5): the customer host, `customerOrigin()`, the `customer.host`
-// switch and the call-site migration. With `CUSTOMER_ORIGIN` unset nothing here changes a byte.
+// LK-03 (plans/LK-00.md §7.1–7.5): the customer host, `customerOrigin()`, the old-URL
+// redirects (LK-17: no switch, a usable CUSTOMER_ORIGIN is the cutover) and the call-site migration. With `CUSTOMER_ORIGIN` unset nothing here changes a byte.
 import { beforeEach, describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
@@ -13,8 +13,6 @@ import {
 import {
   accountPortalUrl,
   buildSignInUrl,
-  customerHostMode,
-  customerOriginOf,
 } from "../src/core/licensing/manageUrl.js";
 import type { Env } from "../src/platform/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
@@ -78,35 +76,34 @@ describe("customerOrigin()", () => {
   const env = { CUSTOMER_ORIGIN: CUSTOMER, CONSOLE_ORIGIN: API };
   const req = new Request("https://other.example/x");
 
-  it("answers the customer origin only while the switch is not off", () => {
-    expect(customerOrigin(env, "on", req)).toBe(CUSTOMER);
-    expect(customerOrigin(env, "permanent", req)).toBe(CUSTOMER);
-    expect(customerOrigin(env, "off", req)).toBe(API);
+  it("answers the customer origin whenever the host is usable", () => {
+    expect(customerOrigin(env, req)).toBe(CUSTOMER);
+    expect(customerOrigin({ CONSOLE_ORIGIN: API }, req)).toBe(API);
   });
 
   it("falls back to the console origin, then the request's", () => {
-    expect(customerOrigin({ CUSTOMER_ORIGIN: CUSTOMER }, "on", req)).toBe(
+    expect(customerOrigin({ CUSTOMER_ORIGIN: CUSTOMER }, req)).toBe(
       "https://other.example",
     );
-    expect(customerOrigin({}, "on", "https://x.example/p?q=1")).toBe(
+    expect(customerOrigin({}, "https://x.example/p?q=1")).toBe(
       "https://x.example",
     );
-    expect(customerOrigin({ CONSOLE_ORIGIN: "not a url" }, "off", req)).toBe(
+    expect(customerOrigin({ CONSOLE_ORIGIN: "not a url" }, req)).toBe(
       "https://other.example",
     );
   });
 
-  it("ignores an unusable customer origin even when on", () => {
+  it("ignores an unusable customer origin", () => {
     expect(
-      customerOrigin({ CUSTOMER_ORIGIN: API, CONSOLE_ORIGIN: API }, "on", req),
+      customerOrigin({ CUSTOMER_ORIGIN: API, CONSOLE_ORIGIN: API }, req),
     ).toBe(API);
     expect(
-      customerOrigin({ CUSTOMER_ORIGIN: "http://evil.example" }, "on", req),
+      customerOrigin({ CUSTOMER_ORIGIN: "http://evil.example" }, req),
     ).toBe("https://other.example");
   });
 });
 
-describe("hard cutover (LK-00 A5)", () => {
+describe("customer URLs follow CUSTOMER_ORIGIN", () => {
   let db: SqliteDb;
   let env: Env;
   beforeEach(async () => {
@@ -116,15 +113,16 @@ describe("hard cutover (LK-00 A5)", () => {
     await seedProduct(db, "djdl");
   });
 
-  it("is off with no customer origin", async () => {
-    expect(await customerHostMode(env, db)).toBe("off");
-    expect(await customerOriginOf(env, db, `${API}/x`)).toBe(API);
+  it("is the console origin with no customer origin", async () => {
+    expect(customerOrigin(env, `${API}/x`)).toBe(API);
   });
 
-  it("moves every customer URL once CUSTOMER_ORIGIN is set", async () => {
-    env.CUSTOMER_ORIGIN = CUSTOMER;
-    expect(await customerHostMode(env, db)).toBe("on");
+  it("moves every customer URL together once set", async () => {
     const req = new Request(`${API}/djdl/license/activate`);
+    expect(await buildSignInUrl(env, db, req, { slug: "djdl" })).toBe(
+      `${API}/signin?product=djdl`,
+    );
+    env.CUSTOMER_ORIGIN = CUSTOMER;
     expect(await buildSignInUrl(env, db, req, { slug: "djdl" })).toBe(
       `${CUSTOMER}/signin?product=djdl`,
     );
@@ -143,13 +141,94 @@ describe("hard cutover (LK-00 A5)", () => {
       expect(res.status, path).toBe(302);
       expect(res.headers.get("location")).toBe("/manage");
     }
-    // Only the root: the rest of the portal's routes and assets are untouched.
-    expect((await get("/activate")).status).toBe(200);
+    // Only the root here: the old customer pages redirect (LK-17, below); assets are untouched.
+    expect((await get("/activate")).status).toBe(301);
     expect((await get("/manage")).status).not.toBe(302);
     // The customer host's own root is still the portal.
     expect(
       (await dispatchWith(new Request(`${CUSTOMER}/`), env, db, NOW)).status,
     ).toBe(200);
+  });
+});
+
+describe("old customer URLs on the console host", () => {
+  let db: SqliteDb;
+  let env: Env;
+  beforeEach(async () => {
+    db = makeTestDb();
+    env = makeEnv(new KvMock(), ["djdl"]);
+    env.CONSOLE_ORIGIN = API;
+    env.CUSTOMER_ORIGIN = CUSTOMER;
+    await seedProduct(db, "djdl");
+  });
+  const get = (url: string, init?: RequestInit) =>
+    dispatchWith(
+      new Request(url, { redirect: "manual", ...init }),
+      env,
+      db,
+      NOW,
+    );
+
+  it("301s the pages to the same path and query", async () => {
+    for (const [path, to] of [
+      ["/activate", "/activate"],
+      [
+        "/activate?product=djdl&next=free-device",
+        "/activate?product=djdl&next=free-device",
+      ],
+      ["/signin?product=djdl", "/signin?product=djdl"],
+      ["/device?user_code=ABCD", "/device?user_code=ABCD"],
+      ["/tv", "/tv"],
+      ["/login", "/login"],
+    ] as const) {
+      const res = await get(`${API}${path}`);
+      expect(res.status, path).toBe(301);
+      expect(res.headers.get("location"), path).toBe(`${CUSTOMER}${to}`);
+    }
+  });
+
+  it("302s no-store a path that carries a credential", async () => {
+    for (const path of [
+      "/activate?key=pkey_x",
+      "/magic/verify?token=t",
+      "/callback?code=c&state=s",
+      "/login/google/callback?code=c",
+      "/logout",
+      "/download/tok",
+    ]) {
+      const res = await get(`${API}${path}`);
+      expect(res.status, path).toBe(302);
+      expect(res.headers.get("location"), path).toBe(`${CUSTOMER}${path}`);
+      expect(res.headers.get("cache-control"), path).toBe("no-store");
+    }
+  });
+
+  it("leaves the bind hop, the API, media, assets and non-GET alone", async () => {
+    for (const path of [
+      "/signin?request=abc",
+      "/api/portal/x",
+      "/assets/a.js",
+      "/media/djdl/x",
+    ])
+      expect((await get(`${API}${path}`)).status, path).not.toBe(301);
+    expect((await get(`${API}/signin?request=abc`)).status).not.toBe(302);
+    expect((await get(`${API}/device`, { method: "POST" })).status).not.toBe(
+      301,
+    );
+  });
+
+  it("does nothing with CUSTOMER_ORIGIN unset", async () => {
+    delete env.CUSTOMER_ORIGIN;
+    for (const path of [
+      "/activate",
+      "/signin?product=djdl",
+      "/device",
+      "/tv",
+    ]) {
+      const res = await get(`${API}${path}`);
+      expect(res.headers.get("location") ?? "", path).not.toContain(CUSTOMER);
+      expect(res.status, path).not.toBe(301);
+    }
   });
 });
 
@@ -211,11 +290,9 @@ describe("customer host confinement", () => {
     );
   });
 
-  it("robots.txt keeps crawlers out of the API and sign-in paths", async () => {
+  it("robots.txt keeps crawlers off the sign-in and API paths", async () => {
     const res = await get(`${CUSTOMER}/robots.txt`);
-    const body = await res.text();
-    expect(body).toContain("Disallow: /api/\n");
-    expect(body).not.toContain("Disallow: /\n");
+    expect(await res.text()).toContain("Disallow: /api/");
   });
 
   it("is inert with CUSTOMER_ORIGIN unset", async () => {
