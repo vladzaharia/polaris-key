@@ -452,6 +452,15 @@ ${SERVICE_IDS.filter((id) => id !== "core")
   )
   .join("\n")}
 
+/*
+ * Kit rule (B1, CM-29b): Commerce shares Distribution's green, which reads close to success, so a
+ * link in a Commerce page's content (inside main, so dialogs, the sidebar and other sections are untouched) is strong text (underlined by the kit), never the accent. The accent never
+ * encodes status. A link styled as a button (a background utility) keeps its own colours.
+ */
+main [data-service="commerce"] a:not([class*="bg-"]) {
+  color: var(--pk-text-strong);
+}
+
 /* Where linear() is unsupported, the spring easing falls back to standard. */
 @supports not (transition-timing-function: linear(0, 1)) {
   :root {

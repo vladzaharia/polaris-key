@@ -83,6 +83,7 @@ const SERVICE_ORDER: ServiceSlug[] = [
   "update",
   "identity",
   "sync",
+  "commerce",
 ];
 
 /** The licenses query, made once by the page and shared with the License tile. */

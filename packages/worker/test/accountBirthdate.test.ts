@@ -671,6 +671,9 @@ describe("the Worker reads the birth date in the person's own paths only", () =>
       "core/oidc/connections.ts",
       "services/identity/connections/claims.ts",
       "services/identity/portal/auth.ts",
+      // I-31: the console validates the claim map it writes, `birthdate` key included
+      // (connections/admin.ts); it reads no value.
+      "services/identity/connections/admin.ts",
     ]);
     const src = join(WORKER, "src");
     const walk = (dir: string): string[] =>

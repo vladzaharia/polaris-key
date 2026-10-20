@@ -7,8 +7,8 @@ export function CommerceTile({ slug }: { slug: string }): React.ReactElement {
   return (
     <TileFrame
       service="commerce"
-      href={r.commerce(slug)}
-      linkLabel="In-app purchases"
+      href={r.commerceOverview(slug)}
+      linkLabel="Overview"
       loading={false}
     >
       <Line>Store purchases that give licenses and add-ons.</Line>

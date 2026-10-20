@@ -126,6 +126,11 @@ crons = ["17 3 * * *", "*/15 * * * *"]
 # /<p>/screenshots/<n> aliases). Public, inline, cookie-less raster images only, read from the
 # same BLOBS bucket under blobs/ (test/imgHost.test.ts). No new bucket and no new Worker: the
 # deploy attaches the route and creates its DNS record.
+#
+# The customer host (LK-03; plans/LK-00.md §7) is the same Worker on a FIFTH custom domain,
+# polaris.locker, with CUSTOMER_ORIGIN naming it so src/core/customerHost.ts can confine that host to
+# the customer routes. CUSTOMER_ORIGIN and CUSTOMER_HOST (the customer.host switch, `runtime` or
+# `off`) are deliberately NOT in any [vars] block yet: unset, nothing changes. LK-11 adds them.
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------

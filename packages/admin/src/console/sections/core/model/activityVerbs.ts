@@ -92,6 +92,15 @@ const VERBS: Record<string, string> = {
   "config.mint.approve": "approved edge-mint recipe",
   "config.mint.revoke": "revoked the approval of edge-mint recipe",
   "config.mint.invalidate": "invalidated the approval of edge-mint recipe",
+  // CM-29: Commerce's own names. Rows written before it are `distribution.commerce.*`: the verbs
+  // read the same, but the "Commerce" filter's prefix (`commerce.`) does not reach them.
+  "commerce.settings": "changed store settings",
+  "commerce.product.set": "mapped store product",
+  "commerce.product.delete": "removed the mapping of store product",
+  "distribution.commerce.settings": "changed store settings",
+  "distribution.commerce.product.set": "mapped store product",
+  "distribution.commerce.product.delete":
+    "removed the mapping of store product",
   "distribution.package_feeds.update": "switched package feeds",
   "feed.settings.update": "changed the settings of feed",
   "feed.rebuild": "rebuilt feed",
@@ -132,6 +141,7 @@ export const ACTION_GROUPS: { value: string; label: string }[] = [
   { value: "config.", label: "Edge mint" },
   { value: "release.", label: "Release" },
   { value: "update.", label: "Update" },
+  { value: "commerce.", label: "Commerce" },
   { value: "portal.", label: "Customer portal" },
   { value: "storefront.", label: "Polaris Locker storefront" },
   { value: "outlet_credential.", label: "Outlet credentials" },

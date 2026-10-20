@@ -30,8 +30,12 @@ import {
   sweepErasures,
 } from "./accounts/deletion.js";
 import { sweepAccountDeletions } from "./accounts/lifecycle.js";
+import { customerOriginOf } from "../../core/licensing/manageUrl.js";
+import type { Db } from "../../db/types.js";
 
-const origin = (env: Env): string => env.CONSOLE_ORIGIN ?? "";
+/** The origin account mail links to: the customer site while `customer.host` is on. */
+const originOf = async (env: Env, db: Db): Promise<string> =>
+  (await customerOriginOf(env, db, env.CONSOLE_ORIGIN ?? "")) ?? "";
 
 /**
  * I-11: one bounded pass of the erasure ledger replay (`accounts/erasureLedger.ts`). The count is
@@ -45,7 +49,12 @@ async function erasureLedgerReplay(
   rec: MaintenanceRecorder,
 ): Promise<void> {
   await rec.step("erasureLedger", async () => {
-    const r = await replayErasures({ db, env, now, origin: origin(env) });
+    const r = await replayErasures({
+      db,
+      env,
+      now,
+      origin: await originOf(env, db),
+    });
     if (r.failures.length > 0)
       throw new Error(
         `${r.failures.length} erasure ledger repair(s) failed: ` +
@@ -74,7 +83,7 @@ async function accountDeletionSweep(
       db,
       env,
       now,
-      origin: origin(env),
+      origin: await originOf(env, db),
     });
     return r.started;
   });
@@ -93,7 +102,12 @@ async function erasureSweep(
   reportStuck: boolean,
 ): Promise<void> {
   await rec.step("erasures", async () => {
-    const r = await sweepErasures({ db, env, now, origin: origin(env) });
+    const r = await sweepErasures({
+      db,
+      env,
+      now,
+      origin: await originOf(env, db),
+    });
     if (reportStuck) {
       const stuck = await stuckErasures(db);
       if (stuck.length > 0)
@@ -155,8 +169,13 @@ export const identityMaintenance: MaintenanceContribution = {
   async late(ctx, rec) {
     const { db, env, now } = ctx;
     if (env)
-      await rec.step("accountOwnership", () =>
-        settleOwnershipConflicts({ db, env, now, origin: origin(env) }),
+      await rec.step("accountOwnership", async () =>
+        settleOwnershipConflicts({
+          db,
+          env,
+          now,
+          origin: await originOf(env, db),
+        }),
       );
     // PX-W16: account pictures nothing has used for a day (a disconnected provider's copy, an
     // upload never saved, a merged account's leftovers, a write that died half way).

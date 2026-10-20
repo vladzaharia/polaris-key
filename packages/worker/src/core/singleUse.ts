@@ -24,6 +24,8 @@ export type SingleUseKind =
   | "portal-magic"
   /** A login-card provider sign-in (Google, Apple, Steam; I-06), by `state`. */
   | "provider-flow"
+  /** A console connection test sign-in's result (I-31), by the hash of its `state`. */
+  | "connection-test"
   /** Console (admin) OIDC sign-in, by `state`. */
   | "admin-flow"
   /** Console sign-out mark: an operator's sessions minted at or before it are void. */

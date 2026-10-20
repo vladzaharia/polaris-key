@@ -86,6 +86,7 @@ const state = (over: Partial<ServicesResponse> = {}): ServicesResponse => ({
     licensing: { tiers: 2, licenses: 3 },
     managedConfig: { catalogVersion: 4 },
     shipBuilds: { latest: null },
+    commerce: { storefronts: 0, storeGrants: 0 },
   },
   ...over,
 });

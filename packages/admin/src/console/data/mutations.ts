@@ -54,6 +54,15 @@ export type WriteMethod =
   | "deleteAlertDestination"
   | "testAlertDestination"
   | "revokePersonalToken"
+  | "createPlatformConnection"
+  | "updatePlatformConnection"
+  | "deletePlatformConnection"
+  | "discoverConnection"
+  | "startConnectionTest"
+  | "addConnectionDomain"
+  | "verifyConnectionDomain"
+  | "setConnectionDomainEnforce"
+  | "removeConnectionDomain"
   | "putOverrideMigrationPrerequisites"
   | "startOverrideMigrationNotice"
   | "withdrawOverrideMigrationNotice"
@@ -354,6 +363,66 @@ export const MUTATIONS: MutationTable = {
     invalidates: (scope) => [
       prefix(qk.alertDestinations(scope)),
       ...activity(scope),
+    ],
+  },
+  createPlatformConnection: {
+    label: "connection add",
+    invalidates: () => [
+      prefix(qk.platformConnections()),
+      prefix(qk.platformActivity()),
+    ],
+  },
+  updatePlatformConnection: {
+    label: "connection change",
+    invalidates: () => [
+      prefix(qk.platformConnections()),
+      prefix(qk.platformActivity()),
+    ],
+  },
+  deletePlatformConnection: {
+    label: "connection delete",
+    invalidates: () => [
+      prefix(qk.platformConnections()),
+      prefix(qk.platformActivity()),
+    ],
+  },
+  // Dry checks: nothing is written, so nothing goes stale.
+  discoverConnection: {
+    label: "connection discovery",
+    invalidates: () => [],
+    why: "A dry check: it reads the provider and writes nothing.",
+  },
+  startConnectionTest: {
+    label: "connection test",
+    invalidates: () => [],
+    why: "It starts a sign-in at the provider; nothing is saved.",
+  },
+  addConnectionDomain: {
+    label: "connection domain claim",
+    invalidates: () => [
+      prefix(qk.platformConnections()),
+      prefix(qk.platformActivity()),
+    ],
+  },
+  verifyConnectionDomain: {
+    label: "connection domain check",
+    invalidates: () => [
+      prefix(qk.platformConnections()),
+      prefix(qk.platformActivity()),
+    ],
+  },
+  setConnectionDomainEnforce: {
+    label: "connection domain enforce",
+    invalidates: () => [
+      prefix(qk.platformConnections()),
+      prefix(qk.platformActivity()),
+    ],
+  },
+  removeConnectionDomain: {
+    label: "connection domain release",
+    invalidates: () => [
+      prefix(qk.platformConnections()),
+      prefix(qk.platformActivity()),
     ],
   },
   revokePersonalToken: {

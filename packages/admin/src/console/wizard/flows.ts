@@ -72,12 +72,31 @@ export const NEW_LICENSE_FLOW: FlowDef = {
   ],
 };
 
+/**
+ * Platform → Connections → Add connection (I-31). Nothing is saved until the last step: the
+ * provider is checked (discovery), the client is entered, a test sign-in shows the claims, and
+ * the mapping is set. Domains are claimed on the saved connection, where the TXT record lives.
+ */
+export const CONNECTION_FLOW: FlowDef = {
+  id: "connection",
+  title: "Add a connection",
+  steps: [
+    { id: "provider", label: "Provider", kind: "form" },
+    { id: "client", label: "Client", kind: "form" },
+    { id: "test", label: "Test sign-in", kind: "custom" },
+    { id: "mapping", label: "Claims", kind: "form" },
+    { id: "save", label: "Add", kind: "confirm" },
+    { id: "done", label: "Done", kind: "done" },
+  ],
+};
+
 export const FLOWS: readonly FlowDef[] = [
   STOREFRONTS_FLOW,
   APPSTORE_FLOW,
   NEW_LICENSE_FLOW,
   NEW_PRODUCT_REPO_FLOW,
   NEW_PRODUCT_SCRATCH_FLOW,
+  CONNECTION_FLOW,
 ];
 
 /** Flows longer than five steps today: the most they may have, and who splits them. */

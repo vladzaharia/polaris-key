@@ -5,6 +5,7 @@
  *   bytes     `BLOB_ORIGIN`  the content-addressed bytes host (P2-01)
  *   registry  `PKG_ORIGIN`   the package-registry host (F-02)
  *   img       `IMG_ORIGIN`   the hosted-image host (HA-02)
+ *   customer  `CUSTOMER_ORIGIN`  the customer site, Polaris Locker (LK-03)
  *
  * A host's name is lowercase with trailing dots removed, and the port is ignored. The kinds are
  * listed in precedence order: a host whose origin names an EARLIER kind's hostname answers `null`,
@@ -20,16 +21,24 @@ import type { Env } from "../platform/env.js";
 import { isAllowedStorageHost } from "../platform/http.js";
 
 /** The env members the table reads. */
-export type HostsEnv = Pick<Env, "BLOB_ORIGIN" | "PKG_ORIGIN" | "IMG_ORIGIN">;
+export type HostsEnv = Pick<
+  Env,
+  | "BLOB_ORIGIN"
+  | "PKG_ORIGIN"
+  | "IMG_ORIGIN"
+  | "CUSTOMER_ORIGIN"
+  | "CONSOLE_ORIGIN"
+>;
 
 /** One auxiliary host kind. */
-export type HostKind = "bytes" | "registry" | "img";
+export type HostKind = "bytes" | "registry" | "img" | "customer";
 
 /** The kinds and the env variable that names each, in precedence order. */
 export const HOSTS: readonly { kind: HostKind; origin: keyof HostsEnv }[] = [
   { kind: "bytes", origin: "BLOB_ORIGIN" },
   { kind: "registry", origin: "PKG_ORIGIN" },
   { kind: "img", origin: "IMG_ORIGIN" },
+  { kind: "customer", origin: "CUSTOMER_ORIGIN" },
 ];
 
 /**
@@ -60,6 +69,27 @@ export function hostname(kind: HostKind, env: HostsEnv): string | null {
   const at = HOSTS.findIndex((h) => h.kind === kind);
   const own = hostOf(env[HOSTS[at]!.origin]);
   if (own === null) return null;
+  // The customer host is a second host for the SAME Worker, never the console's own: naming the
+  // console host would confine the console to customer routes (LK-03).
+  if (kind === "customer") {
+    // Usable means a bare https (or loopback http) origin, and only with a usable console origin
+    // beside it: without one a misconfigured deploy could confine the console, and the customer
+    // host's hand-off to the API host would have no origin to name.
+    if (
+      hostOf(env.CONSOLE_ORIGIN) === null ||
+      hostOf(env.CONSOLE_ORIGIN) === own
+    )
+      return null;
+    const raw = env.CUSTOMER_ORIGIN!.trim();
+    const u = new URL(raw);
+    if (
+      usableOrigin(raw) === null ||
+      u.pathname !== "/" ||
+      u.search !== "" ||
+      u.hash !== ""
+    )
+      return null;
+  }
   for (const earlier of HOSTS.slice(0, at))
     if (hostname(earlier.kind, env) === own) return null;
   return own;
@@ -77,6 +107,60 @@ export function hostOrigin(kind: HostKind, env: HostsEnv): string | null {
   if (hostname(kind, env) === null) return null;
   const origin = env[HOSTS.find((h) => h.kind === kind)!.origin];
   return new URL(origin!).origin;
+}
+
+// ── The customer host (LK-03) ──────────────────────────────────────────────────────────────────
+
+export const customerHostname = (env: HostsEnv): string | null =>
+  hostname("customer", env);
+export const isCustomerHost = (url: URL, env: HostsEnv): boolean =>
+  isHost("customer", url, env);
+
+/** `customer.host`: `off` → `on` → `permanent` (the redirect status of the old URLs, D3). */
+export type CustomerHostMode = "off" | "on" | "permanent";
+
+/**
+ * `raw` as an origin a link may be built on: `https:` (or `http:` to a loopback host, for local
+ * development), no credentials. `null` otherwise.
+ */
+export function usableOrigin(raw: string): string | null {
+  try {
+    const u = new URL(raw);
+    if (u.username !== "" || u.password !== "") return null;
+    if (u.protocol === "https:") return u.origin;
+    if (
+      u.protocol === "http:" &&
+      (u.hostname === "localhost" || u.hostname === "127.0.0.1")
+    )
+      return u.origin;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The ONE source for every customer-facing URL (LK-00 §7.2): `CUSTOMER_ORIGIN` while `mode` is not
+ * `off` and the host is usable, else the portal origin of old: `CONSOLE_ORIGIN` when usable, else
+ * the origin of `fallback` (the request, or an absolute URL the Worker was reached on).
+ */
+export function customerOrigin(
+  env: HostsEnv,
+  mode: CustomerHostMode,
+  fallback: Request | string,
+): string | null {
+  if (mode !== "off") {
+    const own = usableOrigin(env.CUSTOMER_ORIGIN ?? "");
+    if (own !== null && hostname("customer", env) !== null) return own;
+  }
+  const console =
+    typeof env.CONSOLE_ORIGIN === "string" && env.CONSOLE_ORIGIN.trim() !== ""
+      ? usableOrigin(env.CONSOLE_ORIGIN.trim())
+      : null;
+  return (
+    console ??
+    usableOrigin(typeof fallback === "string" ? fallback : fallback.url)
+  );
 }
 
 // ── The named forms the callers read ───────────────────────────────────────────────────────────

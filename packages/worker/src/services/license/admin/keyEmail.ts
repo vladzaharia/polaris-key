@@ -41,7 +41,7 @@ import {
 } from "../../../core/notify/templates.js";
 import {
   portalEnabled,
-  portalOriginOf,
+  customerOriginOf,
 } from "../../../core/licensing/manageUrl.js";
 import type { LicenseRow } from "../../../core/repo.js";
 import type { LicenseAdminContext } from "./index.js";
@@ -142,7 +142,8 @@ export async function emailLicenseKey(
   if (blocked) return { email: "failed", reason: blocked };
   const { env, db, product, req, now } = ctx;
   try {
-    const origin = portalOriginOf(env, req) ?? new URL(req.url).origin;
+    const origin =
+      (await customerOriginOf(env, db, req)) ?? new URL(req.url).origin;
     const download =
       ctx.hooks.releaseCatalog() !== null &&
       (await portalEnabled(db, product.slug))

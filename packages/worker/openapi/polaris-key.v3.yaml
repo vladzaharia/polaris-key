@@ -106,6 +106,12 @@ tags:
       SwiftPM, Maven and Gradle, OCI, Godot). Same Worker, third custom domain; every path here
       carries a `servers` override. No cookies, no CORS, GET and HEAD only, a sandbox CSP on
       every answer and an explicit type allowlist (`core/registry/registryHost.ts`).
+  - name: customer
+    description: >
+      The customer host, `polaris.locker` (LK-03; the `CUSTOMER_ORIGIN` host). Same Worker, fifth
+      custom domain. It serves only the customer routes (the portal, `/signin`, `/device`, `/tv`)
+      and the paths here, which carry a `servers` override; everything else is the plain
+      not-found (`core/customerHost.ts`).
   - name: img
     description: >
       The image host, `img.plrs.im` (HA-02): a product's public hosted images, content-addressed
@@ -13282,7 +13288,8 @@ paths:
         device page (a UI kit's fallback link). With no `user_code`: a script-free code-entry form
         that `GET`s back here. With one: the code is normalised (upper-cased, spaces and hyphens
         dropped), looked up across all products, and a hit answers `302` to
-        `/{product}/identity/auth/device?user_code=` on the same host, whatever the product's
+        `/{product}/identity/auth/device?user_code=` on the same host (on the customer host, on
+        the API host: an absolute `Location` from configuration), whatever the product's
         state; that page owns every later state. A miss, an expired code and a malformed code all
         render the form again with one line and name no product. Lookups are limited per client
         network (30 per minute). `cache-control: no-store`, `referrer-policy: no-referrer`.
@@ -19771,6 +19778,72 @@ paths:
         "404": { description: No such destination. }
         "429": { $ref: "#/components/responses/AdminRateLimited" }
 
+  /.well-known/polaris-host.json:
+    servers:
+      - url: https://polaris.locker
+        description: The customer host (polaris.locker; staging.polaris.locker and dev.polaris.locker in the other environments).
+    get:
+      operationId: getCustomerHostDocument
+      tags: [customer]
+      summary: Customer host health check (customer host only)
+      description: >
+        LK-03. `{host: "customer"}`: the document the console reads before it lets `customer.host`
+        turn on. It names nothing else. `access-control-allow-origin`
+        names the console origin only, and no credentials are allowed. `cache-control: no-store`.
+        `GET` and `HEAD` only.
+      responses:
+        "200":
+          description: The host answers.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [host]
+                properties:
+                  host: { type: string, enum: [customer] }
+        "405":
+          { description: "Any method but GET and HEAD (`Allow: GET, HEAD`)." }
+    head:
+      operationId: getCustomerHostDocumentHead
+      tags: [customer]
+      summary: Customer host health check, headers only (customer host only)
+      description: LK-03. As `GET /.well-known/polaris-host.json`.
+      responses:
+        "200": { description: The host answers. }
+  /.well-known/webauthn:
+    get:
+      operationId: getWebauthnRelatedOrigins
+      tags: [portal]
+      summary: WebAuthn related origins (console host)
+      description: >
+        LK-05. The WebAuthn Related Origin Requests list: the origins that may run a passkey
+        ceremony with this host's RP id (`key.plrs.im`). It names the customer origin
+        (`CUSTOMER_ORIGIN`, e.g. `https://polaris.locker`), built from configuration and never from
+        stored data, and only while the customer host is usable. Otherwise the plain not-found.
+        `GET` and `HEAD` only; `cache-control: public, max-age=300`.
+      responses:
+        "200":
+          description: The related origins.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [origins]
+                properties:
+                  origins:
+                    type: array
+                    items: { type: string, format: uri }
+        "404": { description: No customer host is configured. }
+        "405":
+          { description: "Any method but GET and HEAD (`Allow: GET, HEAD`)." }
+    head:
+      operationId: getWebauthnRelatedOriginsHead
+      tags: [portal]
+      summary: WebAuthn related origins, headers only
+      description: LK-05. As `GET /.well-known/webauthn`.
+      responses:
+        "200": { description: The related origins. }
+        "404": { description: No customer host is configured. }
 components:
   securitySchemes:
     ciToken:

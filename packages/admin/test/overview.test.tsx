@@ -274,6 +274,22 @@ describe("Core → Overview", () => {
     expect(await screen.findByText("7 devices")).toBeTruthy();
   });
 
+  it("draws Commerce's tile and counts it among the services the product runs", async () => {
+    fns.product.mockResolvedValue({
+      product: product({
+        services: {
+          ...enablement(["license"]),
+          commerce: { enabled: true },
+        } as Record<ServiceSlug, { enabled: boolean }>,
+      }),
+    });
+    mount();
+    expect(
+      await screen.findByRole("heading", { level: 2, name: "Commerce" }),
+    ).toBeTruthy();
+    expect(screen.getByText(/Runs 2 services/)).toBeTruthy();
+  });
+
   it("replaces the checklist, Trust & SDK and the welcome with the Integration card", async () => {
     mount();
     const card = (

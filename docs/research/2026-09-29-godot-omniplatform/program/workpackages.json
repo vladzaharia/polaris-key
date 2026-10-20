@@ -4950,7 +4950,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/identity.md"
       ],
       "brief": "wp/I-31-platform-connections-setup-wizards.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "I-32",
@@ -15085,7 +15085,7 @@
         "consolidation alias CQW-14"
       ],
       "brief": "wp/CM-29-commerce-service.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "CM-29b",
@@ -15108,7 +15108,7 @@
         "section changes brand-01, admin-3-01, site-01, overview-01"
       ],
       "brief": "wp/CM-29b-commerce-accent.md",
-      "status": "todo",
+      "status": "done",
       "planRef": "CM-29"
     },
     {
@@ -17558,7 +17558,7 @@
       "optional": false,
       "refs": ["plans/LK-00.md §4, §7.1–7.5, §7.13"],
       "brief": "wp/LK-03-customer-host-and-origin.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "LK-04",
@@ -17602,7 +17602,7 @@
       "optional": false,
       "refs": ["plans/LK-00.md §7.7"],
       "brief": "wp/LK-05-passkeys-related-origins.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "LK-06",

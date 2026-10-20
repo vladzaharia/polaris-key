@@ -100,6 +100,7 @@ export type GlobalPageId =
   | "platform-deployment"
   | "platform-operations"
   | "platform-stores"
+  | "platform-connections"
   | "platform-feeds"
   | "platform-override-migration";
 
@@ -152,7 +153,9 @@ export type ProductPageId =
   | "portal"
   | "sign-in"
   // sync
-  | "sync-data";
+  | "sync-data"
+  // commerce
+  | "commerce-overview";
 
 export type PageId = GlobalPageId | ProductPageId;
 
@@ -725,6 +728,14 @@ export const SECTIONS: NavSection[] = [
     docs: "/docs/features/commerce/",
     items: [
       {
+        page: "commerce-overview",
+        label: "Overview",
+        path: "commerce",
+        icon: LayoutDashboard,
+        docs: "/docs/features/commerce/",
+        inNav: true,
+      },
+      {
         // A-17g: the commerce mappings beside the store's own products (App Store products, T2),
         // moved from Distribution by CM-29. CM-23 adds the offers, purchases and sales pages.
         page: "commerce",
@@ -774,6 +785,19 @@ const PLATFORM_PAGES: NavPage[] = [
     docs: "/docs/operate/platform/jobs/",
     inNav: true,
     group: "platform",
+  },
+  {
+    // I-31: the platform's sign-in connections (SSO providers, the built-in providers, email and
+    // Turnstile status) and their add wizard. Stores join this page with P0-28.
+    page: "platform-connections",
+    label: "Connections",
+    keywords: "sso oidc identity provider sign-in google apple steam domain",
+    path: "platform/connections",
+    icon: KeyRound,
+    docs: "/docs/operate/platform/sign-in-connections/",
+    inNav: true,
+    group: "platform",
+    record: { noun: "Connection" },
   },
   {
     page: "platform-stores",

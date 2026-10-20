@@ -239,6 +239,16 @@
       "verdict": "pass",
       "date": "2026-10-20",
       "evidence": "Brand review 2026-10-19 (_mockups/review/LK-01/): kit fidelity PASS; colour-state FAIL fixed by D9a (9b124751f, neutral states; ΔE00 vs danger 6.7–48); v1.3 re-import 45ec070d6; lead-verified preview _scratch/LK-01/locker-light-1440.png."
+    },
+    "CM-29": {
+      "verdict": "pass",
+      "date": "2026-10-20",
+      "evidence": "Built review 2026-10-19 (_mockups/review/CM-29/): FAIL B1 ready-count mismatch, B2 tile missing -> fixed 9074d769b with tests; notes 1,2,4,6–10 fixed; lead-verified overview 1440 light (_scratch/CM-29/); layout e2e 0 violations over 60 loads."
+    },
+    "I-31": {
+      "verdict": "pass",
+      "date": "2026-10-20",
+      "evidence": "Re-review 2026-10-19 (_mockups/review/I-31/rr/): first-round B1–B4 fixed; new PageHeader blocker + majors 1–9 fixed in the lead round (470710fe6): layout e2e 0 violations at 768x1024, 1280x800 and zoom rows."
     }
   }
 }
