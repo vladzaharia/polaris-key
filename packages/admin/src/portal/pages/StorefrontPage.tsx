@@ -195,7 +195,7 @@ function StorefrontBody({
         <div className="min-w-0 desk:col-start-1 desk:row-start-1">
           <StorefrontHeader product={product} />
         </div>
-        <aside className="min-w-0 desk:sticky desk:top-24 desk:col-start-2 desk:row-span-2 desk:row-start-1">
+        <aside className="@container min-w-0 desk:sticky desk:top-24 desk:col-start-2 desk:row-span-2 desk:row-start-1">
           <DecisionPanel
             product={product}
             platforms={platforms}
@@ -210,7 +210,7 @@ function StorefrontBody({
         {product.description || shots.length ? (
           <div className="flex min-w-0 flex-col gap-6 desk:col-start-1 desk:row-start-2 desk:gap-8">
             {product.description ? (
-              <p className="max-w-prose whitespace-pre-line text-fg [overflow-wrap:anywhere]">
+              <p className="max-w-prose whitespace-pre-line text-fg break-words hyphens-auto">
                 {product.description}
               </p>
             ) : null}
@@ -270,6 +270,12 @@ function DecisionPanel({
   const several = paths.length > 1;
   const path = paths.find((p) => p.kind === chosen) ?? paths[0] ?? null;
   const lockedIn = adding || error?.ended === true;
+  // Add unmounts once the offer has ended: focus goes to the way out.
+  const backRef = React.useRef<HTMLAnchorElement>(null);
+  const ended = error?.ended === true;
+  React.useEffect(() => {
+    if (ended) backRef.current?.focus();
+  }, [ended]);
   const hasLinks = product.stores.length > 0 || siteOf(product) !== null;
   const hasFooter =
     product.cta === "link"
@@ -294,7 +300,7 @@ function DecisionPanel({
           </dl>
         ) : null}
         {product.cta === "add" && several ? (
-          <div className="border-t border-border px-5 py-4 desk:px-6">
+          <div className="border-t border-border px-5 py-4 @max-[20rem]:px-3 desk:px-6">
             <fieldset disabled={lockedIn} className="min-w-0 space-y-2">
               <legend className="mb-1 text-sm text-fg-muted">
                 Ways to add it
@@ -303,7 +309,7 @@ function DecisionPanel({
                 <label
                   key={p.kind}
                   className={cn(
-                    "flex min-h-11 cursor-pointer gap-3 rounded-lg border p-2.5",
+                    "flex min-h-11 cursor-pointer gap-3 rounded-lg border p-2.5 @max-[20rem]:gap-2 @max-[20rem]:p-2",
                     chosen === p.kind
                       ? "border-border-strong bg-surface-sunken"
                       : "border-border hover:bg-hover",
@@ -329,7 +335,7 @@ function DecisionPanel({
           </p>
         ) : null}
         {hasFooter ? (
-          <div className="space-y-3 border-t border-border px-5 py-4 desk:px-6 desk:py-5">
+          <div className="space-y-3 border-t border-border px-5 py-4 @max-[20rem]:px-3 desk:px-6 desk:py-5">
             {product.cta === "link" ? (
               <StoreButtons product={product} lead />
             ) : canAdd ? (
@@ -362,7 +368,9 @@ function DecisionPanel({
                     size="lg"
                     className="h-auto min-h-12 w-full whitespace-normal px-6 py-2 font-medium"
                   >
-                    <a href={href.discover()}>Back to Discover</a>
+                    <a ref={backRef} href={href.discover()}>
+                      Back to Discover
+                    </a>
                   </Button>
                 ) : null}
               </div>
@@ -385,9 +393,9 @@ function Row({
   children: React.ReactNode;
 }): React.ReactElement {
   return (
-    <div className="flex flex-wrap gap-x-4 gap-y-1 px-5 py-3 desk:px-6">
+    <div className="flex flex-wrap gap-x-4 gap-y-1 px-5 py-3 @max-[20rem]:px-3 desk:px-6">
       <dt className="w-[6.5rem] shrink-0 text-fg-muted">{term}</dt>
-      <dd className="min-w-0 flex-[1_1_8rem] text-fg [overflow-wrap:anywhere]">
+      <dd className="min-w-0 flex-[1_1_8rem] text-fg break-words hyphens-auto">
         {children}
       </dd>
     </div>
@@ -438,8 +446,10 @@ function StorefrontHeader({
   const [coverFailed, setCoverFailed] = React.useState(false);
   const cover = mediaUrl(product.headerUrl);
   const hasCover = Boolean(cover) && !coverFailed;
+  // On a phone the icon stands for the cover, so the panel reaches the first screen.
+  const hasIcon = Boolean(mediaUrl(product.iconUrl));
   return (
-    <div>
+    <div className="@container">
       {hasCover ? (
         <ProductArt
           slug={product.product}
@@ -448,14 +458,17 @@ function StorefrontHeader({
           src={cover}
           variant="banner"
           onError={() => setCoverFailed(true)}
-          className="pk-vt-hero aspect-[3/1] rounded-xl desk:aspect-[3/1] desk:max-h-[26rem]"
+          className={cn(
+            "pk-vt-hero aspect-[3/1] rounded-xl desk:aspect-[3/1] desk:max-h-[26rem]",
+            hasIcon && "max-desk:hidden",
+          )}
         />
       ) : null}
       <div
         data-cover={hasCover ? "image" : "none"}
         className={cn(
-          "flex flex-col gap-3 min-[360px]:flex-row min-[360px]:items-start min-[360px]:gap-4",
-          hasCover ? "mt-5" : "pt-2",
+          "flex flex-col gap-3 @[20rem]:flex-row @[20rem]:items-start @[20rem]:gap-4",
+          hasCover ? (hasIcon ? "desk:mt-5" : "mt-5") : "pt-2",
         )}
       >
         <ProductIcon
@@ -466,10 +479,10 @@ function StorefrontHeader({
           size={64}
           className="pk-vt-hero-icon shrink-0"
         />
-        <div className="min-w-0 flex-1 space-y-1 min-[360px]:pt-1">
+        <div className="min-w-0 flex-1 space-y-1 @[20rem]:pt-1">
           <h1
             tabIndex={-1}
-            className="pk-vt-hero-title w-fit max-w-full text-headline [overflow-wrap:anywhere] font-semibold leading-tight text-fg-strong outline-none desk:text-4xl"
+            className="pk-vt-hero-title w-fit max-w-full text-headline break-words hyphens-auto font-semibold leading-tight text-fg-strong outline-none desk:text-4xl"
           >
             {product.name}
           </h1>
@@ -479,7 +492,7 @@ function StorefrontHeader({
         </div>
       </div>
       {product.shortDescription ? (
-        <p className="mt-5 max-w-prose text-fg [overflow-wrap:anywhere]">
+        <p className="mt-5 max-w-prose text-fg break-words hyphens-auto">
           {product.shortDescription}
         </p>
       ) : null}

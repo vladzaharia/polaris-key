@@ -138,11 +138,27 @@ describe.concurrent("the storefront's flows (PS-05)", () => {
               .count(),
           ).toBe(2);
           if (w.width === 390) {
-            // The one primary is in the first screen of a phone.
-            const box = await page
-              .getByRole("button", { name: "Add to library" })
-              .boundingBox();
-            expect(box!.y + box!.height).toBeLessThanOrEqual(844 - 64);
+            // The one primary is in the first screen of a phone, above the tab bar.
+            for (const [vw, vh] of [
+              [390, 844],
+              [360, 780],
+              [360, 800],
+            ] as const) {
+              await page.setViewportSize({ width: vw, height: vh });
+              await page.evaluate(() => window.scrollTo(0, 0));
+              await page.waitForTimeout(100);
+              const box = await page
+                .getByRole("button", { name: "Add to library" })
+                .boundingBox();
+              const bar = await page
+                .getByRole("navigation", { name: "Phone" })
+                .boundingBox();
+              expect(
+                box!.y + box!.height,
+                `${vw}x${vh}: Add above the tab bar`,
+              ).toBeLessThanOrEqual(bar!.y);
+            }
+            await page.setViewportSize({ width: 390, height: 844 });
           }
           await clean(expect, o, w.width, "storefront page");
 

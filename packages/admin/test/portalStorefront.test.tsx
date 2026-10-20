@@ -597,6 +597,9 @@ describe("the storefront product page, #/discover/:product (PS-05)", () => {
         .getByRole("link", { name: "Back to Discover" })
         .getAttribute("href"),
     ).toBe("#/discover");
+    expect(document.activeElement).toBe(
+      screen.getByRole("link", { name: "Back to Discover" }),
+    );
   });
 
   it("sends a product the library holds to its library page", async () => {
