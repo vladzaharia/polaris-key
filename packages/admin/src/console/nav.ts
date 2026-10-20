@@ -687,7 +687,7 @@ export const SECTIONS: NavSection[] = [
         label: "App sign-in",
         path: "identity/app-sign-in",
         icon: LogIn,
-        docs: "/docs/features/sign-in/",
+        docs: "/docs/features/sign-in/customer-portal/",
         inNav: true,
       },
     ],

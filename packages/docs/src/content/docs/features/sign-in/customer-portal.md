@@ -74,7 +74,7 @@ Every email is from Polaris Key (`PORTAL_EMAIL_FROM`) and names the product and 
 | New device signed in  | Every verified address |
 | Account deleted       | Every verified address |
 
-## Per-product settings
+## App sign-in settings
 
 Each product has portal settings, edited on **App sign-in**. They default on for a product that never wrote a row: `portalEnabled` and `discoverEnabled`. These default off:
 
