@@ -101,8 +101,7 @@ function describePortalError(err: unknown): PortalErrorCopy {
       return DOWNLOAD_REFUSALS[err.code]!;
     if (err.status === 0)
       return {
-        // The customer site is Polaris Locker; the catalog string (and the console) say Key.
-        title: "Can't reach Polaris Locker",
+        title: t("signin.network.title"),
         description: "Check your connection, then try again.",
         retry: true,
       };

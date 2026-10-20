@@ -645,7 +645,7 @@ footer ([storyboard](experience/15-story-portal-desktop-dark.png)):
    shown on every sign-in that binds this installation, even with one license (a one-tap confirm).
    - Each row reads "Tidewater Studio", then the tier as a neutral pill ("Pro") with "2 of 3
      devices" for every license, then its origin and term in plain words: "App Store key ending
-     7Q2MXA · Lifetime", "From the App Store · Lifetime", "From signing in · Lifetime" (SIGN-IN.md
+     7Q2MXA · Lifetime", "From the App Store · Lifetime", "Automatic grant · Lifetime" (v1.3 words, LK-13; SIGN-IN.md
      O-11; owner decision, 2026-10-05: no "Account-wide" label). Sign-in licenses stay
      device-limited (owner, 2026-10-05; SIGN-IN.md D-53). Key and seat licenses hide the counter
      when the account also holds a sign-in license (D-54). Rank-first only orders and preselects; the device's
