@@ -166,7 +166,11 @@ export function ProductCard({
             </div>
           </div>
           {attention.length > 0 ? (
-            <StatusPill tone={worstTone(attention)} size="sm">
+            <StatusPill
+              tone={worstTone(attention)}
+              size="sm"
+              className="ml-auto"
+            >
               {pillLabel(attention)}
             </StatusPill>
           ) : null}

@@ -157,6 +157,34 @@ describe("GET /manage/api/platform/ready", () => {
     expect(res.rows.filter((r) => r.done).every((r) => !r.detail)).toBe(true);
   });
 
+  it("names the product and the store a missing account blocks, with one Connect action", async () => {
+    await seedProduct(db, "diceroll");
+    await db.run(
+      `UPDATE products SET name = 'Diceroll' WHERE slug = 'diceroll'`,
+    );
+    await db.run(
+      `INSERT INTO dist_outlets (product, outlet_id, kind, created_at, modified_at)
+            VALUES ('diceroll', 'o1', 'steam', ?, ?)`,
+      NOW,
+      NOW,
+    );
+    const res = (await get("/api/platform/ready")).json as {
+      rows: {
+        id: string;
+        title: string;
+        done: boolean;
+        detail?: string;
+        action?: { label: string };
+      }[];
+    };
+    const row = res.rows.find((r) => r.id === "store-accounts")!;
+    expect(row.done).toBe(false);
+    expect(row.detail).toBe(
+      "Diceroll's Steam uploads need a Steamworks publisher key.",
+    );
+    expect(row.action?.label).toBe("Connect Steam");
+  });
+
   it("is the platform's: a product member is refused", async () => {
     expect((await get("/api/platform/ready", ["nobody"])).status).toBe(403);
   });

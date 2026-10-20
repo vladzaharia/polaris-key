@@ -132,11 +132,20 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
   acknowledgement; the member roster is groups plus role bindings).
 - Not built from products.home: the Polaris Key system product card (the console list keeps the
   system product out, F-03); the checklist has seven rows, not nine; per-product `tintColor` (HA-12 has not
-  stored one: a cover without hosted art is the icon on the neutral subtle surface, as the brand
-  transition says); the Platform sidebar context, breadcrumb and 3px context rule (ST-45).
+  stored one: a cover without hosted art is a neutral band one step lighter than the card with no
+  second logo, the UX review's decision, which amends the brand-transition note's "icon on the
+  subtle surface"); the Platform sidebar context, breadcrumb and 3px context rule (ST-45).
 - Layout lint: `data-head-count` (a count beside its title is not a far-right pill) and
   `data-top-aligned` (a row of cards drawn top-aligned on purpose) are narrow exemptions in
   `layoutProbe.ts`, both from products.home.
+
+- UX round 1 (2026-10-20): a failed attention or readiness read keeps its card with Try again;
+  skeletons hold both slots, and the split is decided by the member's Platform area; the Home
+  split and the attention rows follow container widths (60rem and 80rem content, 36rem card), so
+  200 % text stacks instead of scrolling sideways; phone cards keep logo, slug with pips, and the
+  pill; a failed resync's stored message is only classified into a fixed reason (it can carry an
+  upstream body), with a test. Not done: the phone Refresh name and "Updated" meta line
+  (PageHeader-wide, all pages) and a SegmentedControl change (Radix already selects on arrow keys).
 
 ## Acceptance criteria
 
