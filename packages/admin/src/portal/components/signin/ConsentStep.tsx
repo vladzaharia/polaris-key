@@ -121,7 +121,6 @@ export function ConsentStep({
           size="lg"
           className={PRIMARY_CLASS}
           loading={busy === "continue"}
-          busyFocusable
           aria-disabled={busy === "deny" || undefined}
           onClick={onContinue}
         >
@@ -132,7 +131,6 @@ export function ConsentStep({
           size="lg"
           className={PRIMARY_CLASS}
           loading={busy === "deny"}
-          busyFocusable
           aria-disabled={busy === "continue" || undefined}
           onClick={onDeny}
         >

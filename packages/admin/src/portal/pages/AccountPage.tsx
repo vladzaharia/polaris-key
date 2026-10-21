@@ -425,7 +425,6 @@ function YourData({ account }: { account: PortalAccount }): React.ReactElement {
                 variant="outline"
                 className="max-sm:min-h-11"
                 loading={cancel.isPending}
-                busyFocusable
                 onClick={cancelDeletion}
               >
                 {t("locker.delete.cancel")}
@@ -495,7 +494,6 @@ function YourData({ account }: { account: PortalAccount }): React.ReactElement {
                   className="max-sm:min-h-11"
                   disabled={!matches}
                   loading={del.isPending}
-                  busyFocusable
                   iconStart={<Trash2 aria-hidden />}
                   onClick={schedule}
                 >

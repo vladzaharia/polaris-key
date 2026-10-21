@@ -137,7 +137,6 @@ export function ProfileCard({
               <Button
                 variant="outline"
                 loading={q.isFetching}
-                busyFocusable
                 onClick={() => void q.refetch()}
               >
                 {C["profile.retry"]}

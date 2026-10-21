@@ -126,7 +126,6 @@ export function MakePrimaryTool({
       variant="outline"
       className="h-11 font-medium"
       loading={mutation.isPending}
-      busyFocusable
       aria-label={t("locker.methods.makePrimaryName", { email })}
       // A disclosure only when the click opens the panel (a stale sign-in).
       aria-expanded={fresh ? undefined : false}
@@ -375,7 +374,6 @@ export function RenamePasskeyTool({
             <Button
               type="submit"
               loading={mutation.isPending}
-              busyFocusable
               disabled={needsStepUp}
             >
               {t("common.save")}

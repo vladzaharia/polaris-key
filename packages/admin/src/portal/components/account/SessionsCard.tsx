@@ -178,7 +178,6 @@ function SessionRow({
             variant="ghost"
             className="ml-auto h-10 font-medium max-sm:h-11"
             loading={end.isPending}
-            busyFocusable
             aria-label={t("locker.sessions.signOutOne", { name, when: meta })}
             onClick={() =>
               end.mutate(session.id, {
@@ -268,7 +267,6 @@ function Everywhere({
               variant="danger"
               className="max-sm:min-h-11"
               loading={all.isPending}
-              busyFocusable
               iconStart={<LogOut aria-hidden />}
               onClick={() =>
                 all.mutate(undefined, {

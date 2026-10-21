@@ -236,7 +236,6 @@ export function StepUp({
         <Button
           variant={tone}
           loading={busy}
-          busyFocusable
           iconStart={<Fingerprint aria-hidden />}
           className={MAIN_BUTTON}
           onClick={() => void withPasskey()}
@@ -249,7 +248,6 @@ export function StepUp({
         <Button
           variant={tone}
           loading={busy}
-          busyFocusable
           iconStart={<Mail aria-hidden />}
           className={MAIN_BUTTON}
           onClick={() => void sendCode()}
@@ -302,7 +300,6 @@ export function StepUp({
               type="submit"
               variant={tone}
               loading={busy}
-              busyFocusable
               disabled={code.length !== CODE_LENGTH}
               className={MAIN_BUTTON}
               aria-label={t("locker.stepUp.confirmTo", { verb })}

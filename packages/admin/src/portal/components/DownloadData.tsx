@@ -115,7 +115,6 @@ export function DownloadData({
         className="w-full max-sm:min-h-11 sm:w-auto"
         iconStart={<Download aria-hidden />}
         loading={download.isPending}
-        busyFocusable
         aria-label={label}
         onClick={start}
       >

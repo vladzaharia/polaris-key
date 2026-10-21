@@ -1298,7 +1298,6 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
           <Button
             data-search-all=""
             loading={unloaded.searchingAll}
-            busyFocusable
             onClick={startSearchAll}
           >
             {searchFailed
@@ -1565,7 +1564,6 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
               size="sm"
               className="w-28 justify-center"
               loading={pagination.loadingMore}
-              busyFocusable
               disabled={pagination.searchingAll}
               onClick={() => {
                 loadMoreFrom.current = data.length;

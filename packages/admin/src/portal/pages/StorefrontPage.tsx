@@ -353,7 +353,6 @@ function DecisionPanel({
               <Button
                 size="lg"
                 className="h-auto min-h-12 w-full whitespace-normal px-6 py-2 font-medium"
-                busyFocusable
                 iconStart={<Plus aria-hidden />}
                 loading={adding}
                 aria-describedby={error ? errorId : undefined}

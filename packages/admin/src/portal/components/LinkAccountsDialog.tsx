@@ -315,7 +315,6 @@ export function LinkAccountsDialog({
               <Button
                 variant="outline"
                 size="sm"
-                busyFocusable
                 className="max-sm:min-h-11"
                 onClick={() => void undo(action.merge!)}
               >
@@ -392,7 +391,6 @@ export function LinkAccountsDialog({
             <Button
               variant="neutral"
               loading={busy}
-              busyFocusable
               aria-describedby={error ? "pk-join-err" : undefined}
               onClick={() => void join()}
             >
@@ -419,7 +417,6 @@ export function LinkAccountsDialog({
             <Button
               variant="neutral"
               loading={busy}
-              busyFocusable
               onClick={() => void undo(confirmUndo.id)}
             >
               {t("signin.join.undo")}
@@ -449,7 +446,6 @@ export function LinkAccountsDialog({
                       variant="outline"
                       size="sm"
                       className="max-sm:min-h-11"
-                      busyFocusable
                       disabled={busy}
                       onClick={() => void undo(u.id)}
                     >
@@ -467,7 +463,6 @@ export function LinkAccountsDialog({
             <Button
               variant="neutral"
               loading={busy}
-              busyFocusable
               onClick={() => (flow ? signInOther() : void start())}
             >
               {t("signin.join.start")}

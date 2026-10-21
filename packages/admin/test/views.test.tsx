@@ -52,10 +52,57 @@ describe("Button primitive", () => {
         Save
       </Button>,
     );
-    expect(
-      (screen.getByRole("button", { name: /Save/ }) as HTMLButtonElement)
-        .disabled,
-    ).toBe(true);
+    const busy = screen.getByRole("button", { name: /Save/ });
+    expect((busy as HTMLButtonElement).disabled).toBe(false);
+    expect(busy.getAttribute("aria-disabled")).toBe("true");
+    expect(busy.getAttribute("aria-busy")).toBe("true");
+  });
+
+  it("keeps focus and ignores clicks while loading, and a caller cannot re-enable it", async () => {
+    const onClick = vi.fn();
+    const { rerender } = render(<Button onClick={onClick}>Save</Button>);
+    const button = screen.getByRole("button", { name: "Save" });
+    button.focus();
+    rerender(
+      <Button onClick={onClick} loading disabled={false}>
+        Save
+      </Button>,
+    );
+    expect(document.activeElement).toBe(button);
+    await userEvent.click(button);
+    expect(onClick).not.toHaveBeenCalled();
+    expect(button.getAttribute("aria-disabled")).toBe("true");
+    rerender(<Button onClick={onClick}>Save</Button>);
+    expect(button.hasAttribute("aria-disabled")).toBe(false);
+  });
+
+  it("a loading primary keeps its variant fill and shows the spinner", () => {
+    const { container } = render(<Button loading>Save</Button>);
+    const busy = screen.getByRole("button", { name: /Save/ });
+    expect(busy.className).toContain("bg-accent");
+    expect(busy.className).not.toMatch(
+      /(^|\s)aria-disabled:bg-action-disabled/,
+    );
+    expect(busy.className).toContain(
+      "aria-disabled:not-aria-busy:bg-action-disabled",
+    );
+    expect(busy.getAttribute("aria-busy")).toBe("true");
+    expect(container.querySelector("button .animate-pk-spin")).not.toBeNull();
+  });
+
+  it("gives an aria-disabled (locked) filled button the disabled look and keeps it focusable", () => {
+    render(<Button disabledReason="View only">Prepare</Button>);
+    const locked = screen.getByRole("button", { name: "Prepare" });
+    expect(locked.getAttribute("aria-disabled")).toBe("true");
+    expect((locked as HTMLButtonElement).disabled).toBe(false);
+    expect(locked.className).toContain(
+      "aria-disabled:not-aria-busy:bg-action-disabled",
+    );
+    expect(locked.className).toContain(
+      "aria-disabled:not-aria-busy:text-action-disabled-on",
+    );
+    locked.focus();
+    expect(document.activeElement).toBe(locked);
   });
 });
 

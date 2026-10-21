@@ -534,7 +534,6 @@ export function ActivateDialog({
               <Button
                 type="submit"
                 className="font-medium max-sm:min-h-11"
-                busyFocusable
                 loading={preview.isPending || claim.isPending || leaving}
               >
                 {t("signin.continue")}
