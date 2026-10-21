@@ -359,6 +359,9 @@ const CONSOLE_PAGE_CSS_TAIL = [
   `.ac-body .fine{color:var(--muted);font-size:.875rem;line-height:1.25rem;overflow-wrap:anywhere}`,
   `.ac-brand .ac-surface{margin-left:.75rem;padding-left:.75rem;border-left:1px solid var(--edge);color:var(--muted);font-size:1rem;line-height:1.5rem}`,
   `@media (forced-colors: active){.ac-brand .ac-surface{color:CanvasText;border-color:CanvasText}}`,
+  // On a tall window the card sits near the optical centre (about 40% from the top), not under
+  // the top edge with half a screen empty below; the phone layout keeps its own padding.
+  `@media (min-width: 30.0625rem) and (min-height: 44rem){[data-brand=console] body{padding-top:clamp(1.5rem,16vh,11rem)}}`,
 ].join("");
 
 /** The stylesheet of a console page. */

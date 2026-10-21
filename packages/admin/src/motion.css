@@ -418,7 +418,9 @@
     position: relative;
     overflow: hidden;
     border-radius: var(--pk-radius-sm);
-    background: var(--pk-surface-sunken);
+    /* The neutral fill that stands off the page and a raised card in either theme (styles.css),
+       not the near-black sunken step. */
+    background: var(--pk-admin-fill, var(--pk-surface-sunken));
   }
   .pk-skeleton::after {
     content: "";

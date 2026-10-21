@@ -98,6 +98,9 @@ const ICON_CLASS = "size-4 shrink-0";
 /** The bottom inset a page sets while a bar is fixed to the bottom edge (the portal's phone bar). */
 export const TOAST_BOTTOM_INSET_VAR = "--pk-toast-bottom-inset";
 
+/** The height a sticky save bar occupies at the bottom edge (set by `SaveBar` while it shows). */
+export const SAVE_BAR_INSET_VAR = "--pk-savebar-inset";
+
 /**
  * Mount once near the root. Bottom-end on desktop, top on phones. When the last toaster unmounts
  * (a test tree, a full reload), the toasts still showing are dismissed, so none is replayed into
@@ -138,7 +141,13 @@ export function AppToaster({
             },
             mobileOffset: { bottom: `var(${TOAST_BOTTOM_INSET_VAR}, 16px)` },
           }
-        : {})}
+        : {
+            // Above a sticky save bar while one is up.
+            offset: { bottom: `calc(24px + var(${SAVE_BAR_INSET_VAR}, 0px))` },
+            mobileOffset: {
+              bottom: `calc(16px + var(${SAVE_BAR_INSET_VAR}, 0px))`,
+            },
+          })}
       visibleToasts={3}
       closeButton
       containerAriaLabel="Notifications"

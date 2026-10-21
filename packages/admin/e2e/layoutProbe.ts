@@ -1153,7 +1153,11 @@ export function probeLayout(opts: ProbeOptions): ProbeResult {
       const lineH = h1 ? px(cs(h1).lineHeight) : 0;
       const twoLines =
         h1 !== null && h1.getBoundingClientRect().height > lineH * 1.5;
-      const limit = twoLines || W < 640 ? 176 : 140;
+      // The budget is lines of text: it grows with the root font size (200 % text doubles it),
+      // while a browser zoom keeps the root at 16 px and so keeps the budget as it was.
+      const textScale =
+        px(cs(document.documentElement).fontSize || "16px") / 16;
+      const limit = (twoLines || W < 640 ? 176 : 140) * textScale;
       const height = mast.getBoundingClientRect().height - tabsH;
       if (height > limit + 0.5)
         out.push({
