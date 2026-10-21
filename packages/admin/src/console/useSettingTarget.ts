@@ -5,6 +5,9 @@ import { SETTINGS_INDEX } from "./settings.generated.js";
 /** Dispatched when a jump names the setting the page is already on: land on it again. */
 export const LAND_EVENT = "pk-land";
 
+/** Dispatched on `window` once a jump has landed on an element: a section rail follows it (B-044). */
+export const LANDED_EVENT = "pk-landed";
+
 /**
  * Scroll to an element, focus it and mark it for a moment, so a pointer user sees where they
  * arrived as well as a keyboard user (`:focus-visible` is false after a click). The mark is a
@@ -19,6 +22,7 @@ export function landOnElement(el: HTMLElement): void {
   )
     el.setAttribute("tabindex", "-1");
   el.focus({ preventScroll: true });
+  window.dispatchEvent(new CustomEvent(LANDED_EVENT, { detail: el }));
   if (typeof el.animate !== "function") return;
   const reduce = window.matchMedia?.(
     "(prefers-reduced-motion: reduce)",

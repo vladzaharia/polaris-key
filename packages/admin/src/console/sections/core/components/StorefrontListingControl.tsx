@@ -145,7 +145,8 @@ export function StorefrontListingControl({
                     ? `${id}-error`
                     : undefined
               }
-              disabled={blocked || locked || pending || query.isPending}
+              // Read-only, not disabled: a locked or busy choice stays in the tab order (B-031).
+              readOnly={blocked || locked || pending || query.isPending}
               onChange={request}
             />
           </span>

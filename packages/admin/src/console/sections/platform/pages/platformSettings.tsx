@@ -19,6 +19,11 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSettingTarget } from "../../../useSettingTarget.js";
+import {
+  OPEN_ADVANCED,
+  platformRowId,
+  useOpenAdvancedFor,
+} from "./platformDeepLink.js";
 import { History } from "lucide-react";
 import {
   api,
@@ -121,8 +126,6 @@ const WARNING_TARGETS: Record<string, string> = {
   kek_legacy_open_only: "platform-keyring",
   portal_session_secret_unset: "platform-secrets",
 };
-
-const OPEN_ADVANCED = "platform-open-advanced";
 
 function jump(id: string): void {
   const el = document.getElementById(id);
@@ -236,7 +239,8 @@ export function PlatformSettingsPage(): React.ReactElement {
     queryFn: fetchPlatformSettings,
   });
   const view = query.data;
-  useSettingTarget(view !== undefined, (k) => `platform-setting-${k}`);
+  useSettingTarget(view !== undefined, platformRowId);
+  useOpenAdvancedFor(view);
   const header = (
     <PageHeader
       title="Settings"

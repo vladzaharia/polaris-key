@@ -159,6 +159,7 @@ export function DeployRow({
   const value = item.value;
   return (
     <SettingsRow
+      id={`platform-setting-${item.name}`}
       compact
       label={meta.label}
       chip={item.name}

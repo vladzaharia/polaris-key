@@ -84,12 +84,12 @@ function PreviewBody({
   return (
     <div
       data-theme={theme}
-      className="grid gap-4 rounded-md bg-surface-page p-4 text-fg md:grid-cols-3 xl:grid-cols-1 [&>*]:min-w-0"
+      className="grid gap-4 rounded-md bg-surface-page p-4 text-fg lg:grid-cols-3 xl:grid-cols-1 [&>*]:min-w-0"
     >
       <Frame caption="Sign-in card">
         <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
           <ProductLogo name={name} presentation={presentation} size={24} />
-          <span className="min-w-0 truncate text-sm">
+          <span className="line-clamp-2 min-w-0 text-sm">
             <strong className="font-semibold text-fg-strong">{name}</strong>{" "}
             wants you to sign in
           </span>

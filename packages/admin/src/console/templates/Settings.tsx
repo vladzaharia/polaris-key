@@ -18,6 +18,7 @@ import * as React from "react";
 import { cn } from "../../lib/cn.js";
 import { Section, type SectionProps } from "../../ui/Section.js";
 import { codecs, useSearchParam } from "../router.js";
+import { LANDED_EVENT } from "../useSettingTarget.js";
 
 export interface SettingsSectionRef {
   id: string;
@@ -222,12 +223,31 @@ export function SettingsTemplate({
     // and the unsaved-changes guard is not asked.
     setWanted(id, { replace: true, force: true });
   };
+  // A jump that lands on a row marks the section that holds it: the scroll position alone would
+  // name the section above when the row is centred under a short section's top (B-044).
+  React.useEffect(() => {
+    if (!jump) return;
+    const on = (e: Event): void => {
+      for (
+        let n = (e as CustomEvent<Element>).detail as Element | null;
+        n;
+        n = n.parentElement
+      ) {
+        if (n.id && ids.includes(n.id)) {
+          choose(n.id);
+          return;
+        }
+      }
+    };
+    window.addEventListener(LANDED_EVENT, on);
+    return () => window.removeEventListener(LANDED_EVENT, on);
+  }, [jump, ids, choose]);
   const current = jump ? active : null;
   return (
-    <div className="space-y-6" data-template="settings">
+    <div className="@container space-y-6" data-template="settings">
       {header}
       {rail && jump ? (
-        <div className="sticky top-0 z-10 -mx-1 bg-surface-page px-1 py-2 xl:hidden">
+        <div className="sticky top-0 z-10 -mx-1 bg-surface-page px-1 py-2 @min-[60rem]:hidden">
           <nav aria-label="Jump to section" className="hidden md:block">
             <FadeEdge>
               {(ref) => (
@@ -275,11 +295,11 @@ export function SettingsTemplate({
       <div
         className={cn(
           "mx-auto grid w-full max-w-[72rem] grid-cols-1 gap-6",
-          rail && "xl:grid-cols-[12rem_minmax(0,1fr)]",
+          rail && "@min-[60rem]:grid-cols-[12rem_minmax(0,1fr)]",
         )}
       >
         {rail ? (
-          <nav aria-label="On this page" className="hidden xl:block">
+          <nav aria-label="On this page" className="hidden @min-[60rem]:block">
             <p className="mb-2 text-xs font-medium text-fg-muted">
               On this page
             </p>

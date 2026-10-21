@@ -142,6 +142,17 @@ describe("Services feature groups", () => {
     expect(screen.getAllByText(/Catalog v4/)).toHaveLength(1);
   });
 
+  it("B-047: a feature that is off does not repeat Off beside its Off switch", async () => {
+    mount();
+    const sw = await screen.findByRole("switch", { name: /^Licensing/i });
+    const off = (await screen.findAllByRole("switch")).filter(
+      (el) => el.getAttribute("aria-checked") === "false",
+    );
+    expect(off.length).toBeGreaterThan(0);
+    expect(sw).toBeTruthy();
+    expect(screen.queryByText(/^Off$/)).toBeNull();
+  });
+
   it("enables Ship builds with one audited three-service PATCH and retains GET facts", async () => {
     const user = userEvent.setup();
     const next = state({

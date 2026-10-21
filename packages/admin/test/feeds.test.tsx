@@ -823,7 +823,7 @@ describe("a feed page", () => {
     ).toBeNull();
     const link = within(main_).getByRole("link", { name: "Platform settings" });
     expect(link.getAttribute("href")).toBe(
-      "#/platform/settings?section=platform-hosting",
+      "#/platform/settings?setting=feeds.policy.oci.enabled",
     );
     expect(confirmFor("feed.policyOff").intent).toBe("danger");
   });
