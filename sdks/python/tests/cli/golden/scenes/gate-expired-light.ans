@@ -1,65 +1,65 @@
 ── truecolor · 80 ──
 [33m▲[0m  [1mLicense expired[0m
-[2m│[0m  Your license has expired. Connect to the internet or renew it to continue.
+[2m│[0m  Connect to the internet or renew your license to continue.
 [2m│[0m
 [2m│[0m  [1mtidewater activate[0m   Use a license key
 [2m└[0m  [1mtidewater login[0m      Sign in
 ── ansi16 · 80 ──
 [33m▲[0m  [1mLicense expired[0m
-[2m│[0m  Your license has expired. Connect to the internet or renew it to continue.
+[2m│[0m  Connect to the internet or renew your license to continue.
 [2m│[0m
 [2m│[0m  [1mtidewater activate[0m   Use a license key
 [2m└[0m  [1mtidewater login[0m      Sign in
 ── no-color · 80 ──
 ▲  [1mLicense expired[0m
-│  Your license has expired. Connect to the internet or renew it to continue.
+│  Connect to the internet or renew your license to continue.
 │
 │  [1mtidewater activate[0m   Use a license key
 └  [1mtidewater login[0m      Sign in
 ── ascii · 80 ──
 [33m![0m  [1mLicense expired[0m
-[2m|[0m  Your license has expired. Connect to the internet or renew it to continue.
+[2m|[0m  Connect to the internet or renew your license to continue.
 [2m|[0m
 [2m|[0m  [1mtidewater activate[0m   Use a license key
 [2m`[0m  [1mtidewater login[0m      Sign in
 ── truecolor · 60 ──
 [33m▲[0m  [1mLicense expired[0m
-[2m│[0m  Your license has expired. Connect to the internet or
-[2m│[0m  renew it to continue.
+[2m│[0m  Connect to the internet or renew your license
+[2m│[0m  to continue.
 [2m│[0m
 [2m│[0m  [1mtidewater activate[0m   Use a license key
 [2m└[0m  [1mtidewater login[0m      Sign in
 ── ansi16 · 60 ──
 [33m▲[0m  [1mLicense expired[0m
-[2m│[0m  Your license has expired. Connect to the internet or
-[2m│[0m  renew it to continue.
+[2m│[0m  Connect to the internet or renew your license
+[2m│[0m  to continue.
 [2m│[0m
 [2m│[0m  [1mtidewater activate[0m   Use a license key
 [2m└[0m  [1mtidewater login[0m      Sign in
 ── no-color · 60 ──
 ▲  [1mLicense expired[0m
-│  Your license has expired. Connect to the internet or
-│  renew it to continue.
+│  Connect to the internet or renew your license
+│  to continue.
 │
 │  [1mtidewater activate[0m   Use a license key
 └  [1mtidewater login[0m      Sign in
 ── ascii · 60 ──
 [33m![0m  [1mLicense expired[0m
-[2m|[0m  Your license has expired. Connect to the internet or
-[2m|[0m  renew it to continue.
+[2m|[0m  Connect to the internet or renew your license
+[2m|[0m  to continue.
 [2m|[0m
 [2m|[0m  [1mtidewater activate[0m   Use a license key
 [2m`[0m  [1mtidewater login[0m      Sign in
 ── pipe · 80 ──
 License expired
-Your license has expired. Connect to the internet or renew it to continue.
+Connect to the internet or renew your license to continue.
 
 tidewater activate   Use a license key
 tidewater login      Sign in
 ── truecolor · 40 ──
 [33m▲[0m  [1mLicense expired[0m
-[2m│[0m  Your license has expired. Connect to
-[2m│[0m  the internet or renew it to continue.
+[2m│[0m  Connect to the internet or renew your
+[2m│[0m  license to continue.
 [2m│[0m
 [2m│[0m  [1mtidewater activate[0m
 [2m│[0m    Use a license key
@@ -67,8 +67,8 @@ tidewater login      Sign in
 [2m└[0m    Sign in
 ── no-color · 40 ──
 ▲  [1mLicense expired[0m
-│  Your license has expired. Connect to
-│  the internet or renew it to continue.
+│  Connect to the internet or renew your
+│  license to continue.
 │
 │  [1mtidewater activate[0m
 │    Use a license key
@@ -76,9 +76,9 @@ tidewater login      Sign in
 └    Sign in
 ── truecolor · 32 ──
 [33m▲[0m  [1mLicense expired[0m
-[2m│[0m  Your license has expired.
 [2m│[0m  Connect to the internet or
-[2m│[0m  renew it to continue.
+[2m│[0m  renew your license
+[2m│[0m  to continue.
 [2m│[0m
 [2m│[0m  [1mtidewater activate[0m
 [2m│[0m    Use a license key
@@ -86,9 +86,9 @@ tidewater login      Sign in
 [2m└[0m    Sign in
 ── no-color · 32 ──
 ▲  [1mLicense expired[0m
-│  Your license has expired.
 │  Connect to the internet or
-│  renew it to continue.
+│  renew your license
+│  to continue.
 │
 │  [1mtidewater activate[0m
 │    Use a license key

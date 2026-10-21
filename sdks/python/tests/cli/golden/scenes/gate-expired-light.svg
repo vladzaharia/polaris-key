@@ -4,7 +4,7 @@
 <text x="21" y="26.6" text-anchor="middle" fill="#9a6700">▲</text>
 <text x="42" y="26.6" textLength="126" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">License expired</text>
 <rect x="20.5" y="30.8" width="1" height="16.8" fill="#24292f"/>
-<text x="42" y="43.4" textLength="621.6" lengthAdjust="spacingAndGlyphs" fill="#24292f">Your license has expired. Connect to the internet or renew it to continue.</text>
+<text x="42" y="43.4" textLength="487.2" lengthAdjust="spacingAndGlyphs" fill="#24292f">Connect to the internet or renew your license to continue.</text>
 <rect x="20.5" y="47.6" width="1" height="16.8" fill="#24292f"/>
 <rect x="20.5" y="64.4" width="1" height="16.8" fill="#24292f"/>
 <text x="42" y="77" textLength="151.2" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">tidewater activate</text>

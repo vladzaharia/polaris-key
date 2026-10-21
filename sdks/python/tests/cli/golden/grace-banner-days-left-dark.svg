@@ -8,9 +8,9 @@
 <text x="201.6" y="26.6" textLength="67.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">· status</text>
 <rect x="20.5" y="30.8" width="1" height="16.8" fill="#d7dae0"/>
 <text x="21" y="60.2" text-anchor="middle" fill="#e5c07b">▲</text>
-<text x="42" y="60.2" textLength="285.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">Offline · 3 days left to reconnect</text>
+<text x="42" y="60.2" textLength="176.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">Offline · 3 days left</text>
 <rect x="20.5" y="64.4" width="1" height="16.8" fill="#d7dae0"/>
-<text x="42" y="77" textLength="151.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Reconnect by Oct 6</text>
+<text x="42" y="77" textLength="210" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Works offline until Oct 6</text>
 <rect x="20.5" y="81.2" width="1" height="16.8" fill="#d7dae0"/>
 <text x="21" y="110.6" text-anchor="middle" fill="#5fd38d">✓</text>
 <text x="42" y="110.6" textLength="58.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">License</text>

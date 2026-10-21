@@ -25,6 +25,9 @@ _KEY_SHAPE = re.compile(r"^pkey_([a-z0-9-]+)_([A-Za-z0-9_-]*)$")
 _PREFIX_SHAPE = re.compile(r"^pkey_[a-z0-9-]*$")
 _FIELD = "part.keyField.label"
 _SUBMIT = "activate.submit"
+# The results that mean the input itself is wrong (DL7): the danger stroke. Every other refusal of
+# a well-formed key is a neutral callout (DL6).
+_WRONG_KEY = frozenset(("unauthorized", "error"))
 # What every field-state screen carries: its heading, lede and the key field (ui-matrix v4).
 _BASE = ("activate.title", "activate.lede", _FIELD, "part.keyField.placeholder", "common.paste")
 
@@ -211,7 +214,7 @@ def activate_view(ctx: Context) -> View:
             _BASE + _message_only(activation_copy(result_name, activation.get("code"))),
             args={"product": product},
             primary=_SUBMIT,
-            tone="danger" if result_name == "error" else "neutral",
+            tone="danger" if result_name in _WRONG_KEY else "neutral",
             error_slot=_FIELD,
             focus=_FIELD,
         )

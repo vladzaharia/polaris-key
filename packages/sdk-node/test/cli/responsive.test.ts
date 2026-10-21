@@ -976,7 +976,7 @@ describe("the end of a flow draws no empty closing row", () => {
       },
     );
     const rows = screen.all().map((r) => r.text);
-    expect(rows.at(-2)).toMatch(/^✗ {2}Update cancelled\.$/);
+    expect(rows.at(-2)).toMatch(/^✗ {2}Update canceled\.$/);
     expect(rows.at(-1)).toMatch(/^└ {2}Nothing was installed\.$/);
   });
 });
@@ -1096,7 +1096,7 @@ describe("a flow's end states leave one result block under one header", () => {
       .all()
       .map((r) => r.text)
       .join("\n");
-    expect(text).toContain("Sign-in cancelled");
+    expect(text).toContain("Sign-in canceled");
     expect(text).toMatch(/tidewater login\n└\s+Sign in again/);
     expect(text).not.toContain("WDJB-MJHT");
   });
