@@ -357,3 +357,17 @@ def test_the_key_on_the_command_line_warns_under_the_header_not_above_it(capsys:
     assert capsys.readouterr().err == "", "nothing is printed above the screen"
     text = "\n".join(result.lines)
     assert "shell history" in text and text.index("shell history") < text.index("License key")
+
+
+def test_ascii_mode_spells_the_catalog_in_ascii() -> None:
+    # B-120: grace lines and hints print "-" and "...", never "·" or "…".
+    from polaris_key.ui.core.copy import Copy
+
+    assert "·" in Copy("en")("devices.meta", platform="macOS", when="today")
+    spelled = Copy("en", ascii=True)("devices.meta", platform="macOS", when="today")
+    assert spelled.isascii() and " - " in spelled
+    from .fixtures import kit
+    from .golden_support import env
+
+    k = kit(env("none", "ascii", 80, "dark"))
+    assert k.copy.ascii and k.s("update.current", version="2.5", size="61 MB").isascii()

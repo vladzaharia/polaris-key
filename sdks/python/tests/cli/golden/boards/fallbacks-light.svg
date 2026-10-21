@@ -111,7 +111,5 @@
 <text x="42" y="648.2" textLength="302.4" lengthAdjust="spacingAndGlyphs" fill="#24292f" text-decoration="underline">key.plrs.im/portal/tidewater/devices</text>
 <text x="16.8" y="665" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#24292f">`</text>
 <text x="42" y="665" textLength="42" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">Enter</text>
-<text x="92.4" y="665" textLength="142.8" lengthAdjust="spacingAndGlyphs" fill="#24292f">open in browser -</text>
-<text x="243.6" y="665" textLength="25.2" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">Esc</text>
-<text x="277.2" y="665" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#24292f">cancel</text>
+<text x="92.4" y="665" textLength="235.2" lengthAdjust="spacingAndGlyphs" fill="#24292f">open in browser - Esc cancel</text>
 </g></svg>

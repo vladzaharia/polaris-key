@@ -118,7 +118,7 @@ class Kit:
     ) -> "Kit":
         th = theme or Theme()
         ident = resolve_identity(integrator=th.product, source=source, slug=product, accent=th.accent)
-        return cls(env=env, copy=Copy(th.locale, th.copy_overrides), identity=ident, theme=th, prog=prog, slug=product)
+        return cls(env=env, copy=Copy(th.locale, th.copy_overrides, ascii=env.symbols == "ascii"), identity=ident, theme=th, prog=prog, slug=product)
 
     # ── Copy and data spans ───────────────────────────────────────────────────────────────
 
