@@ -51,7 +51,7 @@ const shared = (cc: string | null): boolean =>
   /\bpublic\b/.test(cc ?? "") || /s-maxage/.test(cc ?? "");
 
 describe("docsCacheControl", () => {
-  it("is shared-cacheable only for the public tier, 2xx only", () => {
+  it("is shared-cacheable only for the public tier, whole 200s only", () => {
     expect(docsCacheControl("/docs/help/x/index.html", "public", 200)).toBe(
       DOCS_PUBLIC_HTML_CACHE,
     );
@@ -62,6 +62,10 @@ describe("docsCacheControl", () => {
       "public, no-cache",
     );
     expect(docsCacheControl("/docs/help/x/index.html", "public", 404)).toBe(
+      "no-store",
+    );
+    // A range answer is partial content: never shared, not even for a public immutable asset.
+    expect(docsCacheControl("/docs/_astro/a.css", "public", 206)).toBe(
       "no-store",
     );
     for (const tier of ["member", "admin"] as const) {

@@ -99,7 +99,8 @@ export function docsCacheControl(
   tier: DocsTier,
   status: number,
 ): string {
-  if (status < 200 || status > 299) return "no-store";
+  // Only a whole 200 is cacheable: errors, redirects and partial (206) answers are never stored.
+  if (status !== 200) return "no-store";
   const html = assetPath.endsWith(".html");
   if (tier === "public") {
     if (html) return DOCS_PUBLIC_HTML_CACHE;
