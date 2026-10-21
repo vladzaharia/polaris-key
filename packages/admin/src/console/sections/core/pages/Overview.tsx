@@ -54,18 +54,21 @@ import {
 import { PageHeader } from "../../../../ui/PageHeader.js";
 import { useAttention, useProduct } from "../../../data/hooks.js";
 import { qk } from "../../../data/queries.js";
+import { OverviewAttention } from "../components/OverviewAttention.js";
 import { Link, navigate } from "../../../router.js";
 import { Big, Line, TileFrame } from "../components/TileFrame.js";
 import { CommerceTile } from "../../commerce/CommerceTile.js";
-import { reviewHref, usePendingRecipes } from "../../config/model/pending.js";
+import { pendingRecipesOf, reviewHref } from "../../config/model/pending.js";
 import { r } from "../../../routes.js";
 import {
-  AttentionList,
   DashboardTemplate,
   Panel,
   useFirstLoad,
 } from "../../../templates/Dashboard.js";
-import { productAttentionItems } from "./overviewAttention.js";
+import {
+  productAttentionItems,
+  useAttentionPending,
+} from "./overviewAttention.js";
 import { ActivityTarget, actorName, useActivityFeed } from "./Activity.js";
 import { verbFor } from "../model/activityVerbs.js";
 import { fetchDeviceSummary } from "./Devices.js";
@@ -94,15 +97,11 @@ const on = (p: ProductDetail, s: ServiceSlug): boolean =>
 
 export function OverviewPage({ slug }: { slug: string }): React.ReactElement {
   const product = useProduct(slug);
-  useLoadingAnnouncement("overview", product.isPending);
-  // The attention list staggers in on this page's first load in the document (MO-11).
-  // The attention read arrives on its own; the list is part of the first load until it has.
-  const attention = useAttention();
-  const firstLoad = useFirstLoad(
-    `overview:${slug}`,
-    product.isPending || attention.isPending,
-  );
-  if (product.isPending) {
+  // The attention read is part of the first load (MO-11).
+  const pending = useAttentionPending() || product.isPending;
+  useLoadingAnnouncement("overview", pending);
+  const firstLoad = useFirstLoad(`overview:${slug}`, pending);
+  if (pending) {
     return (
       <div className="space-y-6">
         <PageHeader title="Overview" />
@@ -167,8 +166,8 @@ function OverviewBody({
         }
       : UNKNOWN;
   const sync = p.sync;
-  const { recipes: pending } = usePendingRecipes(slug);
   const serverAttention = useAttention();
+  const pending = pendingRecipesOf(serverAttention.data, slug);
   const next = view
     ? nextStep(slug, view, Boolean(p.signing?.publicKey), pending)
     : null;
@@ -261,9 +260,11 @@ function OverviewBody({
       attention={
         <>
           <OverviewMoments slug={slug} product={p} launched={launched} />
-          {serverAttention.isPending ? null : (
-            <AttentionList items={attention} stagger={firstLoad} />
-          )}
+          <OverviewAttention
+            read={serverAttention}
+            items={attention}
+            stagger={firstLoad}
+          />
         </>
       }
       firstRun={

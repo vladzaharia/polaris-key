@@ -320,7 +320,7 @@
       "products": [
         {
           "table": "products",
-          "sql": "INSERT INTO products (slug, name, signing_kid, signing_pub, compat_min, compat_max, default_max_offline_days, default_device_limit, admin_group, branding_json, release_source, services_json, services_source, compat_source, web_origins_json, presentation_json, created_at, modified_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "sql": "INSERT INTO products (slug, name, signing_kid, signing_pub, compat_min, compat_max, default_max_offline_days, default_device_limit, admin_group, release_source, services_json, services_source, compat_source, web_origins_json, presentation_json, created_at, modified_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
           "params": [
             "acme",
             "Acme",
@@ -331,7 +331,6 @@
             14,
             3,
             "acme-admins",
-            null,
             "github",
             "{\"license\":{\"enabled\":true},\"config\":{\"enabled\":true},\"release\":{\"enabled\":true},\"distribution\":{\"enabled\":true},\"update\":{\"enabled\":false},\"identity\":{\"enabled\":true},\"sync\":{\"enabled\":false},\"commerce\":{\"enabled\":false}}",
             "manifest",
@@ -1068,7 +1067,7 @@
       "products": [
         {
           "table": "products",
-          "sql": "INSERT INTO products (slug, name, signing_kid, signing_pub, compat_min, compat_max, default_max_offline_days, default_device_limit, admin_group, branding_json, release_source, services_json, services_source, compat_source, web_origins_json, presentation_json, created_at, modified_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "sql": "INSERT INTO products (slug, name, signing_kid, signing_pub, compat_min, compat_max, default_max_offline_days, default_device_limit, admin_group, release_source, services_json, services_source, compat_source, web_origins_json, presentation_json, created_at, modified_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
           "params": [
             "acme",
             "Acme",
@@ -1079,7 +1078,6 @@
             14,
             3,
             "acme-admins",
-            null,
             "github",
             "{\"license\":{\"enabled\":true},\"config\":{\"enabled\":true},\"release\":{\"enabled\":false},\"distribution\":{\"enabled\":false},\"update\":{\"enabled\":false},\"identity\":{\"enabled\":false},\"sync\":{\"enabled\":false},\"commerce\":{\"enabled\":false}}",
             "manifest",

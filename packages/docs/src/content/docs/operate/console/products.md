@@ -8,7 +8,7 @@ sidebar:
 ---
 
 Products live on **Home** (`#/`); `#/products` opens it, filters kept. This page covers registering
-a product, turning its services on and off, and the setup-health checklist the
+a product, turning its services on and off, and the needs-attention items the
 [Overview page](/docs/operate/console/tour/#core) is built from. Resync, linking a repository and
 deleting are on [Product actions](/docs/operate/console/product-actions/).
 

@@ -411,6 +411,20 @@ describe("the stale-cache bugs stay fixed", () => {
     ).not.toContain("summary");
   });
 
+  it("a write that fixes an attention item refreshes the attention read", () => {
+    const keys = { summary: qk.attention() };
+    for (const [method, args] of [
+      ["approveEdgeMintRecipe", ["djdl", "music", {}]],
+      ["revokeEdgeMintRecipe", ["djdl", "music"]],
+      ["putProductSecret", ["djdl", "S", {}]],
+      ["rotateProductKey", ["djdl"]],
+      ["activateProductKey", ["djdl", "kid", {}]],
+    ] as [WriteMethod, unknown[]][]) {
+      queryClient.clear();
+      expect(staleAfter(method, args, keys), method).toEqual(["summary"]);
+    }
+  });
+
   it("a catalog publish re-validates every license record", () => {
     expect(
       staleAfter("publishSchema", ["djdl", {}], {

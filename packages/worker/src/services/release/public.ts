@@ -47,5 +47,4 @@ export {
 } from "./policy.js";
 export { readLinkedManifest } from "./resync.js";
 export { screenCatalog, withStoredSecrets } from "../../core/ingest/shared.js";
-export { latestReleaseHasDmg } from "./store.js";
 export { linkRepo, MAX_MANIFEST_BYTES } from "./sync.js";

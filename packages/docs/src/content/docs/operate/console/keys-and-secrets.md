@@ -69,7 +69,7 @@ requires but nobody has set: each row has its **usage**, a **Configured** or **M
 when it was last set, and what requires it (for example "OIDC client secret", or "Edge mint" and
 the recipe id). A row's **Set…** (or **Replace…**) opens the drawer with its name filled in.
 Saving over a configured secret needs **Replace the existing value** ticked first, so a stored
-value is never overwritten by accident. The required names come from the same setup computation
+value is never overwritten by accident. The required names come from the same configuration
 as Needs attention — see [Products](/docs/operate/console/products/#what-needs-attention) for exactly which
 manifest fields feed it.
 

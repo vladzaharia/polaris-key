@@ -5,6 +5,8 @@
  * budget.
  */
 
+import * as React from "react";
+import { useAttention } from "../../../data/hooks.js";
 import { formatCount } from "../../../../lib/format.js";
 import type { AttentionItemDto } from "../../../../api.js";
 import type { AttentionItem } from "../../../templates/Dashboard.js";
@@ -12,6 +14,17 @@ import { attentionHref } from "../../global/model/home.js";
 import { r } from "../../../routes.js";
 
 const DAY = 86_400;
+
+/**
+ * True until the attention read first answers. Only that first answer holds the page skeleton: a
+ * failed read refetches when the page remounts, and would otherwise flip it back in a loop.
+ */
+export function useAttentionPending(): boolean {
+  const attention = useAttention();
+  const seen = React.useRef(false);
+  if (!attention.isPending) seen.current = true;
+  return !seen.current && attention.isPending;
+}
 
 /**
  * `skip` drops the signing-key and recipe items the Integration card's next step already says.

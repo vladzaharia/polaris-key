@@ -309,7 +309,6 @@ async function prepareCreate(
       default_max_offline_days: manifest.product.defaultMaxOfflineDays,
       default_device_limit: manifest.product.defaultDeviceLimit,
       admin_group: manifest.product.adminGroup,
-      branding_json: null,
       release_source: ctx.source.repo ? "github" : null,
       // Which Polaris Key services this product runs (the registration policy is derived from
       // it, ST-38). In the SAME atomic batch as the row itself: enablement decides which routes

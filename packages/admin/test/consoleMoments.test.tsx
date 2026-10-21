@@ -190,6 +190,7 @@ beforeEach(() => {
   document.documentElement.removeAttribute("data-vt");
   for (const f of Object.values(fns)) f.mockReset();
   fns.product.mockResolvedValue({ product: product() });
+  fns.attention.mockResolvedValue({ items: [] });
   fns.licenses.mockResolvedValue({ licenses: [{ id: "l1" }] });
   fns.productDeviceSummary.mockResolvedValue({
     total: 0,

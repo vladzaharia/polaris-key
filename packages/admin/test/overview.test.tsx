@@ -416,6 +416,44 @@ describe("Core → Overview", () => {
     expect(body.expectedVersion).toBe(1);
   });
 
+  it("keeps the page skeleton until the attention read answers, so nothing mounts late", async () => {
+    let answer: (v: { items: unknown[] }) => void = () => {};
+    fns.attention.mockReturnValue(
+      new Promise((res) => {
+        answer = res;
+      }),
+    );
+    mount();
+    await waitFor(() => expect(fns.product).toHaveBeenCalled());
+    await new Promise((r) => setTimeout(r, 100));
+    expect(screen.getByText("Loading overview…")).toBeTruthy();
+    expect(screen.queryByTestId("integration-card")).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Integration" })).toBeNull();
+    answer({ items: [] });
+    expect(
+      await screen.findByRole("heading", { name: "Integration" }),
+    ).toBeTruthy();
+  });
+
+  it("says when what needs attention did not load, and tries again", async () => {
+    const user = userEvent.setup();
+    fns.attention.mockRejectedValue(new Error("boom"));
+    mount();
+    expect(
+      await screen.findByText(
+        "What needs attention didn't load.",
+        {},
+        {
+          timeout: 8000,
+        },
+      ),
+    ).toBeTruthy();
+    fns.attention.mockResolvedValue({ items: [SECRET_ITEM] });
+    await user.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("Missing secret")).toBeTruthy();
+    expect(screen.queryByText("What needs attention didn't load.")).toBeNull();
+  });
+
   it("lists licenses expiring soon under Needs attention", async () => {
     fns.licenses.mockResolvedValue({
       licenses: [{ id: "l1", status: "active", expiresAt: NOW + 3 * 86400 }],
@@ -440,7 +478,7 @@ describe("Core → Overview", () => {
   });
 
   it("a failing tile shows its own error and leaves the page standing", async () => {
-    fns.schema.mockRejectedValue(new ApiError(500));
+    fns.schema.mockRejectedValue(new Error("boom"));
     mount();
     const config = await screen.findByRole("heading", {
       level: 2,
