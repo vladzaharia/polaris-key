@@ -26,6 +26,7 @@ import {
   AuthCard,
   AuthTitle as Title,
   CardHeader,
+  HeaderSkeleton,
   usePassport,
   CodeEntry,
   type CodeResendOutcome,
@@ -64,7 +65,7 @@ import {
   RequestFooter,
   RequestHeader,
 } from "../components/signin/RequestHeader.js";
-import { headerModel, requestHandleFromUrl } from "../model/signInRequest.js";
+import { requestHandleFromUrl } from "../model/signInRequest.js";
 import { useSignInRequest } from "../requestData.js";
 
 /**
@@ -273,9 +274,13 @@ export function SignInPage({
   // The key on-ramp works without an account: it keeps the product header, not "wants you to sign
   // in" (§3.1). Every other step of an app's request keeps the request's header and footer.
   const onRamp = step.kind === "key" || step.kind === "upgrade";
-  const appRequest = handle !== null && request.data && !onRamp;
-  const header = requestGone ? undefined : appRequest ? (
-    <RequestHeader view={request.data!} />
+  // While an app's request loads the card already has the passport's width (no jump when the
+  // header arrives); a loaded request builds the header, on-ramp included, from the request alone.
+  const header = requestGone ? undefined : handle !== null &&
+    request.isPending ? (
+    <HeaderSkeleton />
+  ) : handle !== null && request.data ? (
+    <RequestHeader view={request.data} onRamp={onRamp} />
   ) : ctx ? (
     <CardHeader
       variant="context"
@@ -291,11 +296,6 @@ export function SignInPage({
       art={ctx.artUrl ?? null}
       name={ctx.name}
       developer={ctx.developerName ?? null}
-      where={
-        handle !== null && request.data
-          ? headerModel(request.data).where
-          : undefined
-      }
     />
   ) : undefined;
 
@@ -317,6 +317,9 @@ export function SignInPage({
       brand={<AuthBrand muted={Boolean(ctx) || handle !== null} />}
       focusKey={focusTick}
       header={header}
+      receipt={
+        !other && handle !== null && Boolean(request.data) && !requestGone
+      }
       footer={
         other ? (
           <Button

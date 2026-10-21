@@ -313,11 +313,14 @@ const LOCKER_PAGE_CSS_TAIL = [
   `[data-brand=locker] details.replace summary{display:flex;align-items:center;min-height:2.75rem}`,
   `@media (max-width: 30rem){[data-brand=locker] body{padding:0 0 2rem}.ac-brand{height:3.5rem;align-items:center;margin:0;border-bottom:1px solid var(--rule)}main.ac{max-width:none;border-width:0 0 1px;border-radius:0;box-shadow:none;background:var(--page)}.ac-head,.ac-body,.ac-foot{padding-left:1.25rem;padding-right:1.25rem}.ac-body{padding-top:1.5rem;padding-bottom:1.5rem}}`,
   // The hosted passport (SIGN-IN.md "the product passport"): at 960 px and wider with a width to
-  // height ratio of at least 1.2, the app sits in a neutral start pane beside the step: optional
-  // art (16:10, at most 40 % of the pane), its 56 px icon, name, developer and device, each on
-  // its own line. The trust receipt spans the form pane only. Narrower or taller: the strip.
-  `@media (min-width: 60rem) and (min-aspect-ratio: 6/5){main.ac-wide{max-width:46rem;display:grid;grid-template-columns:minmax(0,17.5rem) minmax(0,1fr);grid-template-rows:1fr auto}main.ac-wide .ac-head{display:none}main.ac-wide .ac-passport{display:flex;flex-direction:column;gap:1rem;grid-column:1;grid-row:1 / 3;min-width:0;padding:2rem 1.5rem;border-right:1px solid var(--rule);background:var(--sunken);color:var(--muted)}main.ac-wide .ac-body{grid-column:2;grid-row:1;align-content:start}main.ac-wide .ac-foot{grid-column:2;grid-row:2}.ac-art{display:block;width:100%;aspect-ratio:16/10;max-height:40%;object-fit:cover;border-radius:.5rem;background:var(--raised)}.ac-pass-text{display:grid;gap:.25rem;overflow-wrap:anywhere}.ac-pass-text p{margin:0}.ac-pass-text .ac-head-title{font-size:1.125rem;line-height:1.5rem;text-wrap:balance}main.ac-wide .ac-passport>img:not(.ac-art),main.ac-wide .ac-passport>.ac-mono{width:56px;height:56px;border-radius:14px}}`,
-  `@media (forced-colors: active){main.ac-wide .ac-passport{border-right-color:CanvasText;background:Canvas;color:CanvasText}}`,
+  // height ratio of at least 1.2, and while the page has room for 46 rem (a container query on the
+  // body, so rem follows the root font size and 200 % text stacks the strip), the app sits in a
+  // neutral start pane beside the step. Identity at the top (art edge to edge, the 56 px icon
+  // over its lower edge, name, developer), the receipt at the foot (the device line, then the
+  // safety line): the pane never ends in a void. Narrower, taller or larger text: the strip.
+  `body{container-type:inline-size}`,
+  `@media (min-width: 60rem) and (min-aspect-ratio: 6/5){@container (min-width: 46rem){main.ac-wide{max-width:46rem;display:grid;grid-template-columns:minmax(0,17.5rem) minmax(0,1fr);grid-template-rows:1fr auto}main.ac-wide .ac-head{display:none}main.ac-wide .ac-passport{display:flex;flex-direction:column;grid-column:1;grid-row:1;min-width:0;border-right:1px solid var(--rule);background:var(--sunken);color:var(--muted)}main.ac-wide .ac-body{grid-column:2;grid-row:1 / 3;align-content:start}main.ac-wide .ac-foot{grid-column:1;grid-row:2;padding-inline:1.5rem;border-top:0;border-right:1px solid var(--rule);background:var(--sunken)}.ac-art{display:block;width:100%;aspect-ratio:16/10;max-height:40%;object-fit:cover;flex:none}.ac-passport>:not(.ac-art){margin-inline:1.5rem}.ac-passport>:first-child:not(.ac-art){margin-top:2rem}.ac-art+img,.ac-art+.ac-mono{margin-top:-1.75rem;box-shadow:0 0 0 4px var(--sunken)}.ac-passport>img:not(.ac-art),.ac-passport>.ac-mono{flex:none;width:56px;height:56px;border-radius:14px;background:var(--raised)}.ac-pass-text{display:grid;gap:.25rem;margin-top:1rem;overflow-wrap:anywhere}.ac-pass-text p{margin:0}.ac-pass-text .ac-head-title{font-size:1.125rem;line-height:1.5rem;text-wrap:balance}.ac-pass-where{margin-top:auto;padding:1rem 0;align-items:flex-start}.ac-pass-where .ic{margin-top:.125rem}}}`,
+  `@media (forced-colors: active){main.ac-wide .ac-passport,main.ac-wide .ac-foot{border-right-color:CanvasText;background:Canvas;color:CanvasText}}`,
   // The TV variant (`/tv`): read from a sofa, typed with a remote. Large type and targets, the
   // same card.
   `.tv main.ac{max-width:46rem}`,
@@ -500,9 +503,12 @@ function appLines(opts: {
 /** The passport pane: art, the app's icon, developer and device, each on its own line. */
 function passportPane(f: AppFacts): string {
   const art = f.artUrl
-    ? `<img class="ac-art" src="${escapeHtml(f.artUrl)}" alt="">`
+    ? `<img class="ac-art" src="${escapeHtml(f.artUrl)}" alt="" loading="lazy">`
     : "";
-  return `<aside class="ac-passport">${art}${appArt(f.name, f.iconUrl)}<div class="ac-pass-text">${appLines({ name: f.name, ...(f.action ? { action: f.action } : {}), ...(f.developer ? { sub: f.developer } : {}), device: f.device ?? null })}</div></aside>`;
+  const where = f.device
+    ? `<p class="ac-head-sub ac-dev ac-pass-where">${icon("monitor", true)}<span>on <bdi>${escapeHtml(f.device)}</bdi></span></p>`
+    : "";
+  return `<aside class="ac-passport">${art}${appArt(f.name, f.iconUrl)}<div class="ac-pass-text">${appLines({ name: f.name, ...(f.action ? { action: f.action } : {}), ...(f.developer ? { sub: f.developer } : {}) })}</div>${where}</aside>`;
 }
 
 let mark: string | null = null;

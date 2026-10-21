@@ -29,6 +29,7 @@ export function AuthCard({
   direction = "forward",
   loadingKey = "loading",
   focusKey = 0,
+  receipt = false,
   children,
 }: {
   /** The brand row: the lockup (portal: Polaris Locker). Decorative; the page names itself. */
@@ -46,6 +47,8 @@ export function AuthCard({
    * the next h1 to appear takes focus and is announced, though no step changed.
    */
   focusKey?: number;
+  /** The footer is the app's trust receipt: in the passport it sits at the start pane's foot. */
+  receipt?: boolean;
   children: React.ReactNode;
 }): React.ReactElement {
   const bodyRef = React.useRef<HTMLDivElement>(null);
@@ -112,7 +115,7 @@ export function AuthCard({
       <div className="relative z-10 flex h-14 items-center justify-center border-b border-border sm:h-auto sm:border-0 sm:pb-4 sm:pt-[10vh]">
         {brand}
       </div>
-      <main className="relative z-10 flex flex-1 flex-col items-center sm:px-4">
+      <main className="@container relative z-10 flex flex-1 flex-col items-center sm:px-4">
         <div
           data-passport={header ? "" : undefined}
           className={cn(
@@ -125,7 +128,7 @@ export function AuthCard({
           {header ? (
             <div
               data-pane="passport"
-              className="border-b border-border passport:row-span-2 passport:border-b-0 passport:border-r passport:bg-surface-sunken"
+              className="border-b border-border passport:col-start-1 passport:row-start-1 passport:border-b-0 passport:border-r passport:bg-surface-sunken"
             >
               {header}
             </div>
@@ -134,7 +137,10 @@ export function AuthCard({
             ref={bodyRef}
             className={cn(
               "overflow-hidden",
-              header && "passport:col-start-2 passport:row-start-1",
+              header &&
+                (receipt
+                  ? "passport:col-start-2 passport:row-span-2 passport:row-start-1"
+                  : "passport:col-start-2 passport:row-start-1"),
             )}
           >
             <div
@@ -156,7 +162,11 @@ export function AuthCard({
             <div
               className={cn(
                 "border-t border-border px-5 py-4 text-sm text-fg-muted sm:px-7",
-                header && "passport:col-start-2 passport:row-start-2",
+                // The trust receipt anchors at the pane's foot (the pane never ends in a void).
+                header &&
+                  (receipt
+                    ? "passport:col-start-1 passport:row-start-2 passport:border-r passport:border-t-0 passport:bg-surface-sunken passport:px-6"
+                    : "passport:col-start-2 passport:row-start-2"),
               )}
             >
               {footer}
@@ -244,117 +254,180 @@ export type CardHeaderProps =
 const WHERE_GLYPH = { globe: Globe, device: Monitor, tv: Tv } as const;
 
 /**
- * The pane's art (SIGN-IN.md "the product passport"): a decorative 16:10 `<img>`, cover-fit, at
- * most 40 % of the pane. Mounted only in the landscape layout, so a stacked card never fetches
- * it. No art: nothing, and never a generated fill.
+ * The pane's art (SIGN-IN.md "the product passport"): a decorative 16:10 `<img>`, cover-fit, edge
+ * to edge at the top of the pane, at most 40 % of it. Hidden (and, being lazy, never fetched)
+ * outside the passport layout. No art: nothing, and never a generated fill.
  */
 function PaneArt({ src }: { src?: string | null }): React.ReactElement | null {
-  const on = usePassport();
-  if (!src || !on) return null;
+  if (!src) return null;
   return (
     <img
       data-pane-art
       src={src}
       alt=""
-      className="aspect-[16/10] max-h-[40%] w-full rounded-lg object-cover"
+      loading="lazy"
+      className="hidden aspect-[16/10] w-full object-cover passport:block passport:max-h-[40%] passport:shrink-0"
     />
   );
 }
 
-/** The header's shared pane layout: the strip's row becomes a column top-aligned with the h1. */
-const PANE = "passport:flex passport:flex-col passport:gap-4 passport:p-6";
+/**
+ * The strip's rows become the pane's column (`passport:contents`): art edge to edge, the icon
+ * overlapping the art's lower edge (or at the top with no art), name and developer, then the
+ * receipt's where-line at the foot, above the footer's safety line. The pane never ends in a void.
+ */
+function Icon({
+  children,
+  art,
+}: {
+  children: React.ReactNode;
+  art: boolean;
+}): React.ReactElement {
+  return (
+    <div
+      className={cn(
+        "shrink-0 passport:ml-6 passport:w-fit passport:rounded-[14px]",
+        art
+          ? "passport:-mt-7 passport:ring-4 passport:ring-surface-sunken"
+          : "passport:mt-8",
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+const WHERE =
+  "flex items-start gap-1.5 text-sm text-fg-muted passport:order-last passport:mt-auto passport:px-6 passport:pb-4 passport:pt-4";
+const PANE_TEXT = "passport:px-6";
+
+function Where({
+  where,
+}: {
+  where: { glyph: "globe" | "device" | "tv"; text: string } | null | undefined;
+}): React.ReactElement | null {
+  if (!where) return null;
+  const Glyph = WHERE_GLYPH[where.glyph];
+  return (
+    <p className={WHERE}>
+      <Glyph aria-hidden className="mt-0.5 size-4 shrink-0" />
+      <span className="min-w-0 [overflow-wrap:anywhere]">{where.text}</span>
+    </p>
+  );
+}
+
+/** The header's placeholder while an app's request loads: the card is the same width from the first paint. */
+export function HeaderSkeleton(): React.ReactElement {
+  return (
+    <div aria-hidden data-header="loading" className={OUTER}>
+      <div className="flex items-center gap-4 px-5 py-4 sm:px-7 passport:contents">
+        <Icon art={false}>
+          <div className="size-14 rounded-[14px] bg-hover" />
+        </Icon>
+        <div className="min-w-0 flex-1 space-y-2 passport:contents">
+          <div className="h-5 w-2/3 rounded bg-hover passport:mx-6 passport:mt-4 passport:w-auto" />
+          <div className="h-4 w-1/3 rounded bg-hover passport:mx-6 passport:w-1/2" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const OUTER = "passport:flex passport:h-full passport:flex-col";
 
 export function CardHeader(props: CardHeaderProps): React.ReactElement {
+  const hasArt = Boolean(props.art);
   if (props.variant === "context") {
     const { variant, icon, name, developer, where, art } = props;
-    const WhereGlyph = where ? WHERE_GLYPH[where.glyph] : null;
     return (
-      <div
-        data-header={variant}
-        className={cn(
-          "flex items-center gap-4 px-5 py-4 sm:px-7",
-          PANE,
-          "passport:items-start passport:px-6 passport:py-8",
-        )}
-      >
+      <div data-header={variant} className={OUTER}>
         <PaneArt src={art} />
-        {icon}
-        <div className="min-w-0">
-          <p className="text-fg-strong">
-            <span className="font-medium">{name}</span>
-            {developer ? ` · ${developer}` : null}
-          </p>
-          <p className="text-sm text-fg-muted">
-            {t("signin.header.contextLine")}
-          </p>
-          {WhereGlyph && where ? (
-            <p className="flex items-center gap-1.5 text-sm text-fg-muted">
-              <WhereGlyph aria-hidden className="size-4 shrink-0" />
-              <span className="min-w-0 [overflow-wrap:anywhere]">
-                {where.text}
-              </span>
+        <div className="flex items-center gap-4 px-5 py-4 sm:px-7 passport:contents">
+          <Icon art={hasArt}>{icon}</Icon>
+          <div className="min-w-0 passport:contents">
+            <p
+              className={cn(
+                "text-fg-strong passport:pt-4 passport:text-lg/6",
+                PANE_TEXT,
+              )}
+            >
+              <span className="font-medium">{name}</span>
+              {developer ? ` · ${developer}` : null}
             </p>
-          ) : null}
+            {where ? null : (
+              <p className={cn("text-sm text-fg-muted", PANE_TEXT)}>
+                {t("signin.header.contextLine")}
+              </p>
+            )}
+            <Where where={where} />
+          </div>
         </div>
       </div>
     );
   }
   const { variant, icon, name, developer, where, code, art } = props;
-  const Glyph = where ? WHERE_GLYPH[where.glyph] : null;
   return (
-    <div
-      data-header={variant}
-      className="space-y-3 px-5 py-4 sm:px-7 passport:space-y-4 passport:px-6 passport:py-8"
-    >
+    <div data-header={variant} className={OUTER}>
       <PaneArt src={art} />
-      <div className="flex items-center gap-4 passport:flex-col passport:items-start">
-        {icon}
-        <div className="min-w-0">
-          <p className="text-lg/6 text-fg-strong [overflow-wrap:anywhere] passport:text-balance">
-            {tParts("signin.header.app", ["app"], {}).map((part, i) =>
-              typeof part === "string" ? (
-                part
-              ) : (
-                <strong key={i} className="font-semibold">
-                  {name}
-                </strong>
-              ),
-            )}
-          </p>
-          {developer ? (
-            <p className="text-sm text-fg-muted [overflow-wrap:anywhere]">
-              {developer}
+      <div className="px-5 py-4 sm:px-7 passport:contents">
+        <div className="flex items-center gap-4 passport:contents">
+          <Icon art={hasArt}>{icon}</Icon>
+          <div className="min-w-0 passport:contents">
+            <p
+              className={cn(
+                "text-lg/6 text-fg-strong [overflow-wrap:anywhere] passport:text-balance passport:pt-4",
+                PANE_TEXT,
+              )}
+            >
+              {tParts("signin.header.app", ["app"], {}).map((part, i) =>
+                typeof part === "string" ? (
+                  part
+                ) : (
+                  <strong key={i} className="font-semibold">
+                    {name}
+                  </strong>
+                ),
+              )}
             </p>
-          ) : null}
-          {Glyph && where ? (
-            <p className="flex items-center gap-1.5 text-sm text-fg-muted">
-              <Glyph aria-hidden className="size-4 shrink-0" />
-              <span className="min-w-0 [overflow-wrap:anywhere]">
-                {where.text}
-              </span>
-            </p>
-          ) : null}
-        </div>
-      </div>
-      {code ? (
-        <p
-          data-code-panel
-          className="rounded-md bg-surface-sunken px-4 py-3 text-sm text-fg-muted passport:border passport:border-border passport:bg-surface-raised"
-        >
-          {tParts("signin.header.codePanel", ["code"], {}).map((part, i) =>
-            typeof part === "string" ? (
-              part
-            ) : (
-              <span
-                key={i}
-                className="font-mono text-base font-semibold tracking-wider text-fg-strong"
+            {developer ? (
+              <p
+                className={cn(
+                  "text-sm text-fg-muted [overflow-wrap:anywhere]",
+                  PANE_TEXT,
+                )}
               >
-                {code}
-              </span>
-            ),
-          )}
-        </p>
-      ) : null}
+                {developer}
+              </p>
+            ) : null}
+            <Where where={where} />
+          </div>
+        </div>
+        {code ? (
+          <p
+            data-code-panel
+            className="mt-3 rounded-md bg-surface-sunken px-4 py-3 text-sm text-fg-muted passport:mx-6 passport:mt-4 passport:grid passport:border passport:border-border passport:bg-surface-raised"
+          >
+            {tParts("signin.header.codePanel", ["code"], {}).map((part, i) => (
+              <React.Fragment key={i}>
+                {i > 0 ? (
+                  <span aria-hidden className="passport:hidden">
+                    {" · "}
+                  </span>
+                ) : null}
+                {typeof part === "string" ? (
+                  <span className="passport:block">
+                    {part.replace(/^[\s·]+|[\s·]+$/g, "")}
+                  </span>
+                ) : (
+                  <span className="font-mono text-base font-semibold tracking-wider text-fg-strong passport:block passport:text-xl/7">
+                    {code}
+                  </span>
+                )}
+              </React.Fragment>
+            ))}
+          </p>
+        ) : null}
+      </div>
     </div>
   );
 }

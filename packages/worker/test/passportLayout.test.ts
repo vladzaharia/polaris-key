@@ -32,7 +32,7 @@ describe("the hosted passport markup", () => {
     const html = page({ ...facts, artUrl: `${IMG}/djdl/a/bb/640.webp` });
     expect(html).toContain('<main class="ac ac-wide">');
     expect(html).toContain(
-      `<img class="ac-art" src="${IMG}/djdl/a/bb/640.webp" alt="">`,
+      `<img class="ac-art" src="${IMG}/djdl/a/bb/640.webp" alt="" loading="lazy">`,
     );
     expect(html).toContain(
       "<strong><bdi>DJDL</bdi></strong> wants you to sign in",
@@ -83,8 +83,13 @@ describe("the hosted passport stylesheet", () => {
     ),
   );
 
-  it("switches on width >= 60 rem and width:height >= 1.2, nothing else", () => {
+  it("switches on width >= 60 rem, width:height >= 1.2 and room for 46 rem, nothing else", () => {
     expect(query).toBe("@media (min-width: 60rem) and (min-aspect-ratio: 6/5)");
+    // Rem in a container query follows the root font size: 200 % text stacks the strip.
+    expect(BRAND_PAGE_CSS_LOCKER).toContain(
+      "@container (min-width: 46rem){main.ac-wide{",
+    );
+    expect(BRAND_PAGE_CSS_LOCKER).toContain("body{container-type:inline-size}");
   });
 
   it("makes a 17.5 rem neutral start pane, a 46 rem card and a 56 px icon (radius 14)", () => {
@@ -97,8 +102,10 @@ describe("the hosted passport stylesheet", () => {
     expect(rule).toContain("object-fit:cover");
   });
 
-  it("keeps the trust receipt in the form pane and handles forced colours", () => {
-    expect(rule).toContain("main.ac-wide .ac-foot{grid-column:2;grid-row:2}");
+  it("anchors the receipt at the pane's foot (no void) and handles forced colours", () => {
+    expect(rule).toContain("main.ac-wide .ac-foot{grid-column:1;grid-row:2;");
+    expect(rule).toContain(".ac-pass-where{margin-top:auto;");
+    expect(rule).toContain(".ac-art+img,.ac-art+.ac-mono{margin-top:-1.75rem");
     expect(BRAND_PAGE_CSS_LOCKER).toContain(
       "@media (forced-colors: active){main.ac-wide .ac-passport",
     );

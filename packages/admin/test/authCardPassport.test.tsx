@@ -43,6 +43,7 @@ function card(
           />
         ) : undefined
       }
+      receipt
       footer={<p>Polaris Locker signs you in for Diceroll.</p>}
     >
       <h1>Sign in</h1>
@@ -68,6 +69,17 @@ describe("the passport structure", () => {
     ).toHaveLength(1);
   });
 
+  it("anchors the trust receipt in the pane's column, under the identity", () => {
+    landscape(true);
+    const { container } = card(true);
+    const foot = [...container.querySelectorAll("[data-passport] > div")].at(
+      -1,
+    )!;
+    expect(foot.textContent).toContain("signs you in for Diceroll");
+    expect(foot.className).toContain("passport:col-start-1");
+    expect(foot.className).toContain("passport:bg-surface-sunken");
+  });
+
   it("has no pane on a portal-direct sign-in (no header)", () => {
     landscape(true);
     const { container } = card(false);
@@ -78,20 +90,23 @@ describe("the passport structure", () => {
 });
 
 describe("the pane's art", () => {
-  it("is not loaded in the stacked layout", () => {
+  it("is a hidden, lazy image outside the passport layout, so it is never fetched there", () => {
     landscape(false);
     const { container } = card(true);
-    expect(container.querySelector("[data-pane-art]")).toBeNull();
+    const img = container.querySelector<HTMLImageElement>("[data-pane-art]")!;
+    expect(img.getAttribute("loading")).toBe("lazy");
+    expect(img.className).toMatch(/(^| )hidden( |$)/);
+    expect(img.className).toContain("passport:block");
   });
 
-  it("is a decorative 16:10 cover image in landscape", () => {
+  it("is a decorative 16:10 cover image, capped at 40 % of the pane", () => {
     landscape(true);
     const { container } = card(true);
     const img = container.querySelector<HTMLImageElement>("[data-pane-art]")!;
     expect(img.getAttribute("alt")).toBe("");
     expect(img.getAttribute("src")).toBe("/media/diceroll/header?v=ab");
     expect(img.className).toContain("aspect-[16/10]");
-    expect(img.className).toContain("max-h-[40%]");
+    expect(img.className).toContain("passport:max-h-[40%]");
     expect(img.className).toContain("object-cover");
   });
 

@@ -77,13 +77,16 @@ interface Geometry {
   pane: { x: number; y: number; w: number; h: number; bg: string };
   h1: { x: number; y: number };
   art: {
+    x: number;
+    y: number;
+    visible: boolean;
     w: number;
     h: number;
     loaded: boolean;
     fit: string;
     alt: string | null;
   } | null;
-  foot: { x: number; w: number } | null;
+  foot: { x: number; y: number; w: number; h: number } | null;
   cardBg: string;
 }
 
@@ -110,6 +113,9 @@ async function geometry(page: Page): Promise<Geometry> {
       h1: { x: r(h1).x, y: r(h1).y },
       art: art
         ? {
+            x: r(art).x,
+            y: r(art).y,
+            visible: art.offsetParent !== null,
             w: r(art).width,
             h: r(art).height,
             loaded: art.complete && art.naturalWidth > 0,
@@ -117,7 +123,8 @@ async function geometry(page: Page): Promise<Geometry> {
             alt: art.getAttribute("alt"),
           }
         : null,
-      foot: foot === pane ? null : { x: rf.x, w: rf.width },
+      foot:
+        foot === pane ? null : { x: rf.x, y: rf.y, w: rf.width, h: rf.height },
       cardBg: getComputedStyle(card).backgroundColor,
     };
   });
@@ -154,9 +161,12 @@ describe("the product passport at every size", () => {
             ).toBeGreaterThanOrEqual(g.pane.x + g.pane.w);
             expect(
               Math.abs(g.pane.y - g.card.y),
-              "pane spans the card",
+              "pane starts at the card's top",
             ).toBeLessThanOrEqual(2);
-            expect(Math.abs(g.pane.h - g.card.h)).toBeLessThanOrEqual(2);
+            expect(
+              Math.abs(g.pane.h + g.foot!.h - g.card.h),
+              "the receipt closes the pane: no void under it",
+            ).toBeLessThanOrEqual(3);
             expect(g.pane.bg, "neutral pane, not the card's ground").not.toBe(
               g.cardBg,
             );
@@ -164,16 +174,33 @@ describe("the product passport at every size", () => {
             expect(g.art!.loaded, "art loads under the CSP").toBe(true);
             expect(g.art!.alt).toBe("");
             expect(g.art!.fit).toBe("cover");
-            expect(g.art!.w / g.art!.h).toBeCloseTo(1.6, 1);
+            // 16:10 unless the 40 % cap bites on a short step, then it is cropped (cover), never taller.
+            expect(g.art!.w / g.art!.h).toBeGreaterThanOrEqual(1.59);
             expect(g.art!.h, "at most 40 % of the pane").toBeLessThanOrEqual(
               g.pane.h * 0.4 + 1,
             );
             expect(
-              g.foot!.x,
-              "trust receipt is in the form pane",
-            ).toBeGreaterThanOrEqual(g.pane.x + g.pane.w);
+              g.foot!.x + g.foot!.w,
+              "trust receipt is at the pane's foot",
+            ).toBeLessThanOrEqual(g.pane.x + g.pane.w + 1);
+            expect(g.foot!.y).toBeGreaterThanOrEqual(g.pane.y + g.pane.h - 1);
+            expect(
+              Math.abs(g.art!.y - g.pane.y),
+              "art runs from the pane's top",
+            ).toBeLessThanOrEqual(2);
+            expect(
+              Math.abs(g.art!.w - g.pane.w),
+              "art runs edge to edge",
+            ).toBeLessThanOrEqual(2);
           } else {
-            expect(g.art, "no art fetched in the stacked layout").toBeNull();
+            expect(
+              g.art?.visible ?? false,
+              "art is not drawn in the stacked layout",
+            ).toBe(false);
+            expect(
+              o.requests.filter((r) => r.includes("/header")),
+              "and never fetched",
+            ).toEqual([]);
             expect(
               Math.abs(g.pane.w - g.card.w),
               "strip spans the card",
@@ -275,25 +302,112 @@ describe("what never gets a pane or art", () => {
     }
   });
 
-  it("200 % text: nothing scrolls sideways and the pane stays beside the form", async ({
+  for (const [width, height, wide] of [
+    [1440, 900, false],
+    [1280, 800, false],
+    [1024, 768, false],
+    [2560, 1440, true],
+  ] as const) {
+    it(`200 % text at ${width}x${height}: ${wide ? "the pane stays, and the form keeps 28.5 rem" : "the strip stacks, the pane is never wider than the form"}`, async ({
+      expect,
+    }) => {
+      const o = await portal.open(base.scenario, base.path, {
+        theme: "light",
+        width,
+        height,
+        routes: withArt("/media/nightfall/header"),
+      });
+      try {
+        await base.ready(o.page);
+        await o.page.evaluate(() => {
+          document.documentElement.style.fontSize = "200%";
+        });
+        await settle(o.page);
+        const g = await geometry(o.page);
+        const form = await o.page.evaluate(
+          () =>
+            document
+              .querySelector("[data-step]")!
+              .parentElement!.getBoundingClientRect().width,
+        );
+        if (wide) {
+          expect(g.h1.x).toBeGreaterThanOrEqual(g.pane.x + g.pane.w);
+          expect(form).toBeGreaterThanOrEqual(28.5 * 32 - 2);
+        } else {
+          expect(
+            g.h1.y,
+            "stacked: form below the strip",
+          ).toBeGreaterThanOrEqual(g.pane.y + g.pane.h - 1);
+          expect(g.art?.visible ?? false).toBe(false);
+        }
+        expect(
+          g.pane.w,
+          "pane never wider than the form",
+        ).toBeGreaterThanOrEqual(wide ? 0 : form - 2);
+        expect(await horizontalOverflow(o.page)).toBeLessThanOrEqual(0);
+        if (SHOTS)
+          await o.page.screenshot({
+            path: `${SHOTS}/text200-${width}x${height}.png`,
+            fullPage: true,
+          });
+      } finally {
+        await o.close();
+      }
+    });
+  }
+
+  it("production capabilities (no product): the card is 46 rem from the first paint, and the key on-ramp keeps the pane", async ({
     expect,
   }) => {
+    let release: () => void = () => {};
+    const gate = new Promise<void>((r) => (release = r));
+    const view = withArt("/media/nightfall/header")[REQ] as { body: unknown };
     const o = await portal.open(base.scenario, base.path, {
-      theme: "light",
+      theme: "dark",
       width: 1440,
       height: 900,
-      routes: withArt("/media/nightfall/header"),
+      routes: {
+        ...direct(),
+        ...withArt("/media/nightfall/header"),
+        [REQ]: async () => {
+          await gate;
+          return view as never;
+        },
+      },
     });
     try {
+      await o.page.locator("[data-header='loading']").waitFor();
+      const card = () =>
+        o.page.evaluate(() => {
+          const r = document
+            .querySelector("[data-passport]")!
+            .getBoundingClientRect();
+          return { x: Math.round(r.x), w: Math.round(r.width) };
+        });
+      const loading = await card();
+      expect(loading.w).toBe(736);
+      release();
       await base.ready(o.page);
-      await o.page.evaluate(() => {
-        document.documentElement.style.fontSize = "200%";
-      });
       await settle(o.page);
-      expect(await horizontalOverflow(o.page)).toBeLessThanOrEqual(0);
+      expect(await card()).toEqual(loading);
+      await o.page.getByRole("button", { name: "Have a license key?" }).click();
+      await h1(o.page, "Have a license key?");
+      await settle(o.page);
+      expect(await card(), "on-ramp: same card").toEqual(loading);
+      const pane = await o.page.evaluate(() => {
+        const p = document.querySelector("[data-pane='passport']")!;
+        return {
+          art: Boolean(p.querySelector("[data-pane-art]")),
+          text: p.textContent ?? "",
+        };
+      });
+      expect(pane.art, "on-ramp keeps the art").toBe(true);
+      expect(pane.text).toContain("Diceroll");
+      expect(pane.text).toContain("Mara's Pixel 8");
+      expect(pane.text).not.toContain("Your license, downloads and devices");
       if (SHOTS)
         await o.page.screenshot({
-          path: `${SHOTS}/text200-1440.png`,
+          path: `${SHOTS}/onramp-1440.png`,
           fullPage: true,
         });
     } finally {

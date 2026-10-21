@@ -14,35 +14,53 @@ import { ProductIcon } from "../ProductIcon.js";
  */
 export function RequestHeader({
   view,
+  onRamp = false,
 }: {
   view: SignInRequestView;
+  /**
+   * The key on-ramp (SIGN-IN.md §3.1): the product-context form, "<Product> · <Developer>" and
+   * the device line, from the same request, so the pane never changes between steps.
+   */
+  onRamp?: boolean;
 }): React.ReactElement {
   const m = headerModel(view);
+  const icon =
+    m.verified && view.client.iconUrl ? (
+      <ProductIcon
+        slug={m.product}
+        name={m.name}
+        tint={null}
+        size={56}
+        src={view.client.iconUrl}
+      />
+    ) : (
+      <span
+        aria-hidden
+        className="flex size-14 shrink-0 items-center justify-center rounded-[14px] border border-border bg-surface-sunken text-xl font-semibold text-fg-strong"
+      >
+        {m.verified ? (
+          (m.name[0] ?? "?").toUpperCase()
+        ) : (
+          <Shield className="size-7 text-fg-muted" />
+        )}
+      </span>
+    );
+  const art = m.verified ? (view.client.artUrl ?? null) : null;
+  if (onRamp)
+    return (
+      <CardHeader
+        variant="context"
+        icon={icon}
+        art={art}
+        name={m.name}
+        developer={m.developer}
+        where={m.where}
+      />
+    );
   return (
     <CardHeader
       variant={m.variant}
-      icon={
-        m.verified && view.client.iconUrl ? (
-          <ProductIcon
-            slug={m.product}
-            name={m.name}
-            tint={null}
-            size={56}
-            src={view.client.iconUrl}
-          />
-        ) : (
-          <span
-            aria-hidden
-            className="flex size-14 shrink-0 items-center justify-center rounded-xl border border-border bg-surface-sunken text-xl font-semibold text-fg-strong"
-          >
-            {m.verified ? (
-              (m.name[0] ?? "?").toUpperCase()
-            ) : (
-              <Shield className="size-7 text-fg-muted" />
-            )}
-          </span>
-        )
-      }
+      icon={icon}
       art={m.verified ? (view.client.artUrl ?? null) : null}
       name={m.name}
       developer={m.developer}

@@ -41,14 +41,17 @@
 }
 /*
  * The sign-in card's landscape (SIGN-IN.md "the product passport"): a window at least 60 rem
- * (960 CSS px) wide whose width to height ratio is at least 1.2. An app request or product context
- * header becomes a start pane beside the form; a tablet held upright (834 px), a phone and a
- * squarer window keep the stacked strip. `PASSPORT_QUERY` in ui/auth/AuthCard.tsx is the same
- * query for the one thing CSS cannot do, not loading art the layout would hide.
+ * (960 CSS px) wide whose width to height ratio is at least 1.2, and whose card container has room
+ * for 46 rem (rem in a container query follows the root font size, so 200 % text stacks the strip
+ * instead of squeezing the form). An app request or product context header becomes a start pane
+ * beside the form; a tablet held upright (834 px), a phone and a squarer window keep the stacked
+ * strip. `PASSPORT_QUERY` in ui/auth/AuthCard.tsx is the media half, for the icon size.
  */
 @custom-variant passport {
   @media (min-width: 60rem) and (min-aspect-ratio: 6/5) {
-    @slot;
+    @container (min-width: 46rem) {
+      @slot;
+    }
   }
 }
 /*

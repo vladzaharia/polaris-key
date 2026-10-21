@@ -21,7 +21,7 @@ const RADIUS: Record<number, string> = {
   24: "rounded-md",
   40: "rounded-lg",
   48: "rounded-xl",
-  56: "rounded-xl",
+  56: "rounded-[14px]",
   64: "rounded-2xl",
   112: "rounded-[1.75rem]",
 };
