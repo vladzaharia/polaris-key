@@ -164,6 +164,37 @@
       "pattern": "Enter a license key or sign in|to continue\\.|tidewater activate|tidewater login|Enter a license key or sign|in to continue\\.|This device was signed out\\. Sign in|or activate again to continue\\.|This device was signed out\\.|Sign in or activate again|To keep using|Tidewater Studio:|Use the license on|your account|Use a license key|Sign in|Use a different key|To keep using Tidewater Studio:|Use the license on your account",
       "boards": ["terminal"],
       "reason": "A catalog sentence or fix row wrapped at the column of the 40- and 32-column frames (gate refusal, revoked status): the Node kit's narrow renders (harness NARROW_VARIANTS) break it there, so each row is a fragment of one catalog string."
+    },
+    {
+      "pattern": "by (Harbor Audio|Lanternworks)",
+      "reason": "Fixture developer byline under the product name (ProductIdentity.developer, §4.7); the kit renders the value, the 'by' is the identity block's own label."
+    },
+    {
+      "pattern": "Mara['’]s (studio )?iPad|Mara['’]s studio workstation in the second-floor mixing room|Harbor Audio account",
+      "reason": "Fixture device and account names (Fennick Studio's devices, Harbor Audio's account), not copy."
+    },
+    {
+      "pattern": "(Work laptop|Living room PC)( Least recent)? ?(Windows 11 · last used (41 days ago|3 weeks ago))?|(This tablet )?Android 16 · in use now",
+      "reason": "Fixture device rows: a device name, its least-recent chip and the formatted platform and last-used line (devices.meta), drawn as one row title."
+    },
+    {
+      "pattern": "Cloud Sync Synced 2 min ago|lock On|Share crash reports( Set by Fennick Studio| On · set by Fennick Studio)?|Audio|General|Stable|Beta|Install updates automatically|Send anonymous usage data|Check now|Up to date · checked 2 min ago|Cloud saves|Controls|Video|Online play Set by your parent or guardian|Lifetime · m•••@fennick\\.studio|This Mac, Mara['’]s iPad · 2 of 3",
+      "reason": "Fixture settings: the developer's own config-catalog labels and values (Fennick Studio's catalog), with the kit's 'Set by' source line; the developer writes them, not the kit copy catalog."
+    },
+    {
+      "pattern": "[AB] (Select|Back|Choose|Open|Later)",
+      "boards": ["godot"],
+      "reason": "Gamepad hint bar: the controller glyph (an icon texture in the kit) and its action word; the action words are the Godot hint bar's own labels."
+    },
+    {
+      "pattern": "\\$3\\.33/mo Save 33%|14 days free, then \\$39\\.99 a year|Billed every month|Cancel anytime in Settings\\. Renews automatically\\.|Everything in Tidewater Studio, on all your devices\\.|Monthly Billed every month|Restore|Save 33%|Start free trial|Stem export with loudness matching|Terms|Unlimited tracks and plug-ins|Yearly 14 days free, then \\$39\\.99 a year",
+      "boards": ["ios"],
+      "reason": "StoreKit paywall: the host app's offer and store terms, which the host supplies (a UK-11 target frame; the kit has no paywall)."
+    },
+    {
+      "pattern": "2 sessions need a choice|3 devices · all updates|Expired Sep 30|Export every track as its own file, loudness-matched\\.|Stem export is in Pro|Syncing 3 sessions…|Tidewater Studio is now on this Mac\\.",
+      "boards": ["web"],
+      "reason": "Component gallery sample content: the host's own banner, toast and row text the kit components display."
     }
   ]
 }

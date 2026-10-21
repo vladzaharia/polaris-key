@@ -878,7 +878,15 @@
     </template>
 
     <main class="board">
+      <header class="board-head">
+        <h1>Android board: Compose kit</h1>
+        <p>
+          The built Compose kit and the targets it is measured against. Each
+          frame ends with its tier.
+        </p>
+      </header>
       <!-- 1. Gate -->
+      <h2 class="board-sec">Gate, activate and sign in</h2>
       <figure>
         <figcaption>android · gate · UK-11 target</figcaption>
         <div class="shot" data-shot="gate">
@@ -917,7 +925,7 @@
               <div style="display: grid; gap: 8px">
                 <h1 class="headline">Add your license</h1>
                 <p class="body" style="font-size: 15px; line-height: 22px">
-                  Your key is in the purchase email from Harbor Audio.
+                  You’ll find it in your purchase email.
                 </p>
               </div>
               <div>
@@ -1045,8 +1053,8 @@
                   text-wrap: balance;
                 "
               >
-                Polaris Locker handles sign-in. Harbor Audio never sees your
-                passkeys.
+                Polaris Locker signs you in for Tidewater Studio. Harbor Audio
+                never sees your codes or passkeys.
               </p>
             </div>
           </div>
@@ -1075,11 +1083,11 @@
                 >Tidewater Studio
               </div>
               <div style="display: grid; gap: 8px">
-                <h1 class="headline">Finish on another device</h1>
+                <h1 class="headline">Sign in with a code</h1>
                 <p class="body" style="font-size: 15px; line-height: 22px">
-                  Go to
+                  On any phone or computer, go to
                   <b style="font-weight: 500; color: var(--pk-text-strong)"
-                    >key.plrs.im/activate</b
+                    >polaris.locker/device</b
                   >
                   and enter this code.
                 </p>
@@ -1107,7 +1115,11 @@
                       transform="rotate(12 20 20) scale(.92) translate(1.7 1.7)"
                     /></svg
                 ></span>
-                <span class="tnum">Waiting for you · code expires in 4:12</span>
+                <span class="tnum"
+                  ><span>Waiting for you to sign in…</span><br /><span
+                    >Code expires in 4:12</span
+                  ></span
+                >
               </div>
             </div>
             <div
@@ -1120,9 +1132,8 @@
                 gap: 8px;
               "
             >
-              <div class="btn tonal">
-                <span class="ms">qr_code_2</span>Show a QR code
-              </div>
+              <div class="btn filled">Open browser</div>
+              <div class="btn tonal">Copy link</div>
               <div class="btn text" style="height: 48px; font-size: 16px">
                 Cancel
               </div>
@@ -1132,6 +1143,7 @@
       </figure>
 
       <!-- 5. Device limit -->
+      <h2 class="board-sec">Device limit, updates and settings</h2>
       <figure>
         <figcaption>android · device limit · UK-11 target</figcaption>
         <div class="shot" data-shot="device-limit">
@@ -1154,7 +1166,7 @@
                 Your license is on 3 of 3 devices
               </h1>
               <p class="body" style="margin: 10px 8px 14px; font-size: 16px">
-                To use it on this phone, remove one. You can add it back later.
+                To use it on this phone, replace one. You can add it back later.
               </p>
               <div
                 class="k-meter"
@@ -1197,7 +1209,10 @@
                   color: var(--pk-text-muted);
                 "
               >
-                Tidewater Studio signs out on Work laptop.
+                <b style="font-weight: 500; color: var(--pk-text-strong)"
+                  >Replace Work laptop?</b
+                ><br />Work laptop signs out of Tidewater Studio and this phone
+                takes its seat. We’ll email you about it.
               </p>
             </div>
             <div
@@ -1210,7 +1225,7 @@
                 gap: 8px;
               "
             >
-              <div class="btn filled">Remove Work laptop and continue</div>
+              <div class="btn filled">Replace and continue</div>
               <div class="btn text" style="height: 48px; font-size: 16px">
                 Cancel
               </div>
@@ -1271,7 +1286,7 @@
               <span
                 class="btn text accent"
                 style="justify-content: flex-start; padding: 0; margin-top: 4px"
-                >Release notes</span
+                >All changes in 2.5</span
               >
               <div id="wavy" style="margin-top: 14px"></div>
               <div
@@ -1455,8 +1470,7 @@
             <div class="pane-detail">
               <h2 class="headline">Devices</h2>
               <p class="body" style="margin: 8px 0 20px; font-size: 16px">
-                Your license works on 3 devices. Remove one to free a seat; you
-                can add it back later.
+                Devices using this license.
               </p>
               <div
                 class="k-meter"
@@ -1490,6 +1504,7 @@
       </figure>
 
       <!-- 9. 200 % font -->
+      <h2 class="board-sec">Accessibility and system</h2>
       <figure>
         <figcaption>
           android · font size 200 % (non-linear scaling; stacks, wraps, scrolls)
@@ -1556,7 +1571,7 @@
                 </div>
                 <h1 class="headline">Add your license</h1>
                 <p class="body" style="font-size: 16px; margin-top: -8px">
-                  Your key is in the purchase email from Harbor Audio.
+                  You’ll find it in your purchase email.
                 </p>
                 <div class="field">
                   <span class="mono" style="font-size: 15px"
@@ -1597,7 +1612,7 @@
       <!-- 12. Boot, status, error -->
       <figure>
         <figcaption>
-          android · boot, status (blocked) and error (offline) · UK-11 target
+          android · boot, status (expired) and error (offline) · UK-11 target
         </figcaption>
         <div class="row-shot" data-shot="states">
           <div>
@@ -1628,11 +1643,10 @@
                 <div class="stateA">
                   <div class="picon" data-art="tidewater" data-size="72"></div>
                   <h1 class="headline" style="margin-top: 16px">
-                    Your license has ended
+                    License expired
                   </h1>
                   <p class="body" style="font-size: 16px">
-                    Tidewater Studio Pro ended on 30 September. Renew to keep
-                    working on your sessions.
+                    Connect to the internet or renew your license to continue.
                   </p>
                 </div>
                 <div
@@ -1646,11 +1660,14 @@
                   "
                 >
                   <div class="btn filled">Renew</div>
-                  <div class="btn tonal">Use a different key</div>
+                  <div class="btn tonal">Use another license</div>
+                  <div class="btn text" style="height: 48px; font-size: 16px">
+                    Try again
+                  </div>
                 </div>
               </div>
             </div>
-            <span class="lbl">Status: blocked</span>
+            <span class="lbl">Status: expired</span>
           </div>
           <div>
             <div class="shot">
@@ -1658,11 +1675,11 @@
                 <div class="stateA">
                   <div class="glyphA"><span class="ms">wifi_off</span></div>
                   <h1 class="headline" style="margin-top: 12px">
-                    Can’t reach Harbor Audio
+                    Can’t connect
                   </h1>
                   <p class="body" style="font-size: 16px">
-                    Check your connection. You can keep working offline for 3
-                    more days.
+                    Can’t reach Polaris Locker. Check your connection and try
+                    again.
                   </p>
                 </div>
                 <div
@@ -1686,6 +1703,7 @@
       </figure>
 
       <!-- 13. Window shapes: the Compose kit's own snapshots (sdks/kotlin/ui/src/test/snapshots) -->
+      <h2 class="board-sec">Window shapes</h2>
       <figure>
         <figcaption>
           android · gate and activation · four window shapes from the Compose
@@ -1881,6 +1899,7 @@
       </figure>
 
       <!-- 14. Built kit renders (Compose snapshots): states, settings, list-detail, compose mockups -->
+      <h2 class="board-sec">Compose kit renders</h2>
       <figure>
         <figcaption>
           android · sdk.compose-activate · the Compose kit's welcome (Sign in

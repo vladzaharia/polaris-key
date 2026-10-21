@@ -1254,6 +1254,11 @@ Mockups: [web](ui-kits/shots/web-sign-in-light.png), [iOS](ui-kits/shots/ios-sig
   - focusable **Use a license key instead** and **Cancel**, so the screen is never a dead end
     without B.
 
+**Adopted from the built SwiftUI kit (UK-59 review, 2026-10-21; the spec was silent).** Every
+sign-in step, native or handed off, keeps the product's icon and name as a persistent header and
+morphs only the body beneath it (the iOS sheet frames on the board show it). It is a kit
+decision, not a wire or catalog change.
+
 #### DeviceLimit
 
 Mockups: [web](ui-kits/shots/web-device-limit-dark.png),
@@ -1284,6 +1289,10 @@ PORTAL §4.25 in every kit, top to bottom:
    again later if a seat is free."
 8. **Replace and continue** as the primary and **Back** (SIGN-IN.md D-08). On macOS the confirm
    reads "Replace “<device>”?". The buttons stack full width when a label runs past half the row.
+
+**Adopted from the built SwiftUI kit (UK-59 review).** The confirm block of item 7 is inline,
+under the list and above the primary, with "Replace <device>?" as its bold first line, so the
+consequence is read before the button, never in a second dialog.
 
 **Naming and data source (owner decision, 2026-10-05).** The component is titled **Replace a
 device** in every kit, matching the sign-in card's inline Replace (`plans/I-04.md`, "Owner
