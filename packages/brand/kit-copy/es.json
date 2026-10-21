@@ -310,7 +310,6 @@
     "signin.code.resent": "Enviamos un código y un enlace nuevos a {email}.",
     "signin.code.triesLeft": "{n, plural, one {Queda # intento.} many {Quedan # de intentos.} other {Quedan # intentos.}}",
     "signin.code.tooMany": "Demasiados intentos. Envía un código nuevo.",
-    "signin.code.expired": "Ese código venció. Envía un código nuevo.",
     "signin.code.differentEmail": "Usar otro correo",
     "signin.email.subject": "Tu código de Polaris Locker: {code}",
     "signin.email.body": "O inicia sesión con el botón. El código y el enlace funcionan una sola vez, durante 10 minutos.",
