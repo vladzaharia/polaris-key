@@ -632,7 +632,10 @@ html[data-shell="console"]
   background-color: var(--pk-action-pressed);
 }
 html[data-shell="console"]
-  [data-variant="primary"]:is(:disabled, [aria-disabled="true"]) {
+  [data-variant="primary"]:is(
+    :disabled,
+    [aria-disabled="true"]:not([aria-busy="true"])
+  ) {
   background-color: var(--pk-action-disabled);
   color: var(--pk-action-disabled-on);
   opacity: 1;
@@ -675,11 +678,11 @@ html[data-shell="console"]
   }
   /* A disabled, busy or locked control reads as unavailable: GrayText ink and border. */
   button:disabled,
-  [data-variant][aria-disabled="true"] {
+  [data-variant][aria-disabled="true"]:not([aria-busy="true"]) {
     color: GrayText;
     border-color: GrayText;
   }
-  [data-variant][aria-disabled="true"] svg {
+  [data-variant][aria-disabled="true"]:not([aria-busy="true"]) svg {
     color: GrayText;
   }
   :focus-visible {

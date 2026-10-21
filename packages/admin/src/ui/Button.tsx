@@ -14,8 +14,9 @@ import { useWriteLock } from "./WriteLock.js";
  * - `loading` keeps the label, swaps the start icon for a spinner and sets `aria-busy`. The
  *   button stays focusable (`aria-disabled` and a click guard, never `disabled`, so focus does
  *   not fall to `<body>` mid-request) and a click does nothing; a caller's `disabled={false}`
- *   cannot re-enable it (fixes UI-1). An `aria-disabled` button (busy, or locked with a reason)
- *   wears the disabled look: the filled variants take the action-disabled pair.
+ *   cannot re-enable it (fixes UI-1). A busy button keeps its variant look; only a locked or
+ *   disabled one (`aria-disabled` and not `aria-busy`) wears the disabled look: the filled
+ *   variants take the action-disabled pair.
  * - `disabledReason` renders `aria-disabled` instead of `disabled`, so the button stays focusable,
  *   shows the reason in a tooltip and links it with `aria-describedby`; clicks do nothing. There
  *   is no `pointer-events: none` anywhere (fixes UI-2).
@@ -33,21 +34,21 @@ export const buttonVariants = cva(
     // disabled or busy, with the colours at `micro`. Scale is paint only, so neighbours never move.
     "pk-pressable",
     "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page",
-    "disabled:cursor-not-allowed disabled:opacity-50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50",
+    "disabled:cursor-not-allowed disabled:opacity-50 aria-disabled:not-aria-busy:cursor-not-allowed aria-disabled:not-aria-busy:opacity-50",
     "[&_svg]:shrink-0",
   ].join(" "),
   {
     variants: {
       variant: {
         primary:
-          "bg-accent text-accent-on shadow-elevation-1 hover:not-disabled:not-aria-disabled:bg-[color-mix(in_oklab,var(--pk-accent),white_10%)] disabled:bg-action-disabled disabled:text-action-disabled-on disabled:opacity-100 disabled:shadow-none aria-disabled:bg-action-disabled aria-disabled:text-action-disabled-on aria-disabled:opacity-100 aria-disabled:shadow-none",
+          "bg-accent text-accent-on shadow-elevation-1 hover:not-disabled:not-aria-disabled:bg-[color-mix(in_oklab,var(--pk-accent),white_10%)] disabled:bg-action-disabled disabled:text-action-disabled-on disabled:opacity-100 disabled:shadow-none aria-disabled:not-aria-busy:bg-action-disabled aria-disabled:not-aria-busy:text-action-disabled-on aria-disabled:not-aria-busy:opacity-100 aria-disabled:not-aria-busy:shadow-none",
         /**
          * The action-neutral primary (BRAND.md B2, SIGN-IN.md §3.1): near-white ink on dark,
          * near-black on light, the label in the page colour. The sign-in card's one filled
          * action; disabled keeps the shape at the role's disabled pair.
          */
         neutral:
-          "bg-action text-action-on font-medium hover:not-disabled:not-aria-disabled:bg-action-hover active:not-disabled:not-aria-disabled:bg-action-pressed disabled:bg-action-disabled disabled:text-action-disabled-on disabled:opacity-100 aria-disabled:bg-action-disabled aria-disabled:text-action-disabled-on aria-disabled:opacity-100",
+          "bg-action text-action-on font-medium hover:not-disabled:not-aria-disabled:bg-action-hover active:not-disabled:not-aria-disabled:bg-action-pressed disabled:bg-action-disabled disabled:text-action-disabled-on disabled:opacity-100 aria-disabled:not-aria-busy:bg-action-disabled aria-disabled:not-aria-busy:text-action-disabled-on aria-disabled:not-aria-busy:opacity-100",
         secondary:
           "bg-hover text-fg-strong hover:not-disabled:not-aria-disabled:bg-surface-sunken",
         outline:
@@ -55,10 +56,10 @@ export const buttonVariants = cva(
         ghost:
           "bg-transparent text-fg hover:not-disabled:not-aria-disabled:bg-hover hover:not-disabled:not-aria-disabled:text-fg-strong",
         danger:
-          "bg-danger text-danger-on shadow-elevation-1 hover:not-disabled:not-aria-disabled:bg-[color-mix(in_oklab,var(--pk-danger),white_10%)] disabled:bg-action-disabled disabled:text-action-disabled-on disabled:opacity-100 disabled:shadow-none aria-disabled:bg-action-disabled aria-disabled:text-action-disabled-on aria-disabled:opacity-100 aria-disabled:shadow-none",
+          "bg-danger text-danger-on shadow-elevation-1 hover:not-disabled:not-aria-disabled:bg-[color-mix(in_oklab,var(--pk-danger),white_10%)] disabled:bg-action-disabled disabled:text-action-disabled-on disabled:opacity-100 disabled:shadow-none aria-disabled:not-aria-busy:bg-action-disabled aria-disabled:not-aria-busy:text-action-disabled-on aria-disabled:not-aria-busy:opacity-100 aria-disabled:not-aria-busy:shadow-none",
         /** Deprecated alias of `danger`, kept for the legacy views until chunk 11. */
         destructive:
-          "bg-danger text-danger-on shadow-elevation-1 hover:not-disabled:not-aria-disabled:bg-[color-mix(in_oklab,var(--pk-danger),white_10%)] disabled:bg-action-disabled disabled:text-action-disabled-on disabled:opacity-100 disabled:shadow-none aria-disabled:bg-action-disabled aria-disabled:text-action-disabled-on aria-disabled:opacity-100 aria-disabled:shadow-none",
+          "bg-danger text-danger-on shadow-elevation-1 hover:not-disabled:not-aria-disabled:bg-[color-mix(in_oklab,var(--pk-danger),white_10%)] disabled:bg-action-disabled disabled:text-action-disabled-on disabled:opacity-100 disabled:shadow-none aria-disabled:not-aria-busy:bg-action-disabled aria-disabled:not-aria-busy:text-action-disabled-on aria-disabled:not-aria-busy:opacity-100 aria-disabled:not-aria-busy:shadow-none",
         link: "h-auto px-0 text-accent-fg underline-offset-4 hover:underline",
         /**
          * The customer portal's outlined quick action (PORTAL.md §5.2): transparent, a

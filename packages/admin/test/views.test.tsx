@@ -76,13 +76,31 @@ describe("Button primitive", () => {
     expect(button.hasAttribute("aria-disabled")).toBe(false);
   });
 
+  it("a loading primary keeps its variant fill and shows the spinner", () => {
+    const { container } = render(<Button loading>Save</Button>);
+    const busy = screen.getByRole("button", { name: /Save/ });
+    expect(busy.className).toContain("bg-accent");
+    expect(busy.className).not.toMatch(
+      /(^|\s)aria-disabled:bg-action-disabled/,
+    );
+    expect(busy.className).toContain(
+      "aria-disabled:not-aria-busy:bg-action-disabled",
+    );
+    expect(busy.getAttribute("aria-busy")).toBe("true");
+    expect(container.querySelector("button .animate-pk-spin")).not.toBeNull();
+  });
+
   it("gives an aria-disabled (locked) filled button the disabled look and keeps it focusable", () => {
     render(<Button disabledReason="View only">Prepare</Button>);
     const locked = screen.getByRole("button", { name: "Prepare" });
     expect(locked.getAttribute("aria-disabled")).toBe("true");
     expect((locked as HTMLButtonElement).disabled).toBe(false);
-    expect(locked.className).toContain("aria-disabled:bg-action-disabled");
-    expect(locked.className).toContain("aria-disabled:text-action-disabled-on");
+    expect(locked.className).toContain(
+      "aria-disabled:not-aria-busy:bg-action-disabled",
+    );
+    expect(locked.className).toContain(
+      "aria-disabled:not-aria-busy:text-action-disabled-on",
+    );
     locked.focus();
     expect(document.activeElement).toBe(locked);
   });
