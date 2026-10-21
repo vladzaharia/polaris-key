@@ -422,8 +422,8 @@ function TokenRow({
                     when: formatRelative(lastUsedAt * 1000),
                   })
                 : t("locker.packages.neverUsed")}
+              <span aria-hidden> ·</span>
             </span>
-            <span aria-hidden>·</span>
             {expiry.soon ? (
               <span
                 className={cn(
