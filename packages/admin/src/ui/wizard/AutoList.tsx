@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Check, CircleDashed, X } from "lucide-react";
+import { Check, CircleDashed, Lock, X } from "lucide-react";
 import { cn } from "../../lib/cn.js";
 import { Spinner } from "../Spinner.js";
 
@@ -58,7 +58,10 @@ export function AutoList({
                 <Check className="size-4 text-success" />
               ) : a.state === "doing" ? (
                 <Spinner label="" className="text-fg-muted" />
-              ) : a.state === "failed" || a.state === "needs" ? (
+              ) : a.state === "needs" ? (
+                // A request for a permission is not a failure: a warning tone and a lock.
+                <Lock className="size-4 text-warning" />
+              ) : a.state === "failed" ? (
                 <X className="size-4 text-danger" />
               ) : (
                 <CircleDashed className="size-4 text-fg-muted" />
@@ -78,9 +81,11 @@ export function AutoList({
               className={cn(
                 "text-xs",
                 hideIdle && a.state === "will" && "sr-only",
-                a.state === "failed" || a.state === "needs"
+                a.state === "failed"
                   ? "text-danger"
-                  : "text-fg-muted",
+                  : a.state === "needs"
+                    ? "text-warning"
+                    : "text-fg-muted",
               )}
             >
               {WORDS[a.state]}

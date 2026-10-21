@@ -6,9 +6,8 @@
  * performs it: a plain confirm, never a review submission; Google Play can stage only; the
  * Microsoft Store keeps its pending submission uncommitted).
  *
- * Settings controls sit on the right of their label (T4); listing text is data and is shown
- * escaped, never as HTML. A store's push appears here as soon as its adapter registers one (A-18m's
- * Apple listing push included), with no console change.
+ * Settings controls sit on the right of their label (T4); listing text is data, shown escaped,
+ * never as HTML. A store's push appears here once its adapter registers one (no console change).
  */
 
 import * as React from "react";
@@ -49,6 +48,7 @@ import { FollowUpNote } from "../components/FollowUpNote.js";
 import { followUpOf } from "../components/StepDialog.js";
 import { ImportPanel } from "../components/ImportPanel.js";
 import { SlotBoard } from "../components/SlotBoard.js";
+import { docsUrl } from "../../../../lib/docsLinks.js";
 
 export const LISTING_TABS = ["text", "fit", "images", "notes", "push"] as const;
 type ListingTab = (typeof LISTING_TABS)[number];
@@ -428,7 +428,7 @@ function NotesTab({
         headingLevel={2}
         title="No releases yet"
         description="Each release's store notes are edited here once it is published."
-        docs="/docs/admin/storefront-listing/"
+        docs={docsUrl("storefrontListing")}
       />
     );
   return (
@@ -597,7 +597,7 @@ function PushTab({ slug }: { slug: string }): React.ReactElement {
         headingLevel={2}
         title="No store takes a listing push"
         description="Stores whose listing Polaris Key can write appear here."
-        docs="/docs/admin/storefronts/"
+        docs={docsUrl("storefronts")}
       />
     );
   return (

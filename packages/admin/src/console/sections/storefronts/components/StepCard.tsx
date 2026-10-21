@@ -24,6 +24,7 @@ import type {
   StorefrontStepDto,
 } from "../../../../api.js";
 import { Button } from "../../../../ui/Button.js";
+import { useWriteGate } from "../../../access/useCan.js";
 import { CapabilityBadge } from "../../../../ui/CapabilityBadge.js";
 import { CopyButton } from "../../../../ui/CopyButton.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
@@ -175,6 +176,8 @@ export function StepCard({
     !step.blockedBy;
   const verifier = useVerifier(slug, store.id, step, verifying);
   const blocked = readOnly || step.blockedBy !== null;
+  // A viewer without Ship edit sees the actions off, with who to ask (B-223): the Worker refuses them anyway.
+  const gate = useWriteGate("ship", slug).disabledReason;
 
   const actions: React.ReactNode[] = [];
   if (step.run && open)
@@ -184,6 +187,7 @@ export function StepCard({
         size="sm"
         variant={step.typed ? "danger" : "primary"}
         disabled={blocked}
+        disabledReason={gate}
         onClick={() =>
           onIntent({
             request: step.run!,
@@ -237,6 +241,7 @@ export function StepCard({
         size="sm"
         variant="outline"
         disabled={blocked}
+        disabledReason={gate}
         onClick={() =>
           step.assert
             ? onIntent({
@@ -260,6 +265,7 @@ export function StepCard({
         key="next"
         size="sm"
         disabled={readOnly}
+        disabledReason={gate}
         onClick={() =>
           onIntent({
             request: step.next!,

@@ -48,6 +48,11 @@ export interface StepperProps {
    * `segments` (a drawer): a row of segments under the title.
    */
   variant?: "list" | "segments";
+  /**
+   * The step heading the page shows under the stepper. When the current step's label is the same
+   * words, the phone toggle says only "Step n of m" rather than repeating it.
+   */
+  headingLabel?: string;
   className?: string;
 }
 
@@ -72,6 +77,7 @@ export function Stepper({
   onStep,
   label = "Steps",
   variant = "list",
+  headingLabel,
   className,
 }: StepperProps): React.ReactElement {
   const uid = React.useId();
@@ -103,7 +109,7 @@ export function Stepper({
         >
           <span>
             Step {currentIndex + 1} of {steps.length}
-            {here ? ` · ${here.label}` : ""}
+            {here && here.label !== headingLabel ? ` · ${here.label}` : ""}
           </span>
           <ChevronDown
             aria-hidden
@@ -111,6 +117,16 @@ export function Stepper({
           />
         </button>
       )}
+      {segments && here ? (
+        // In a narrow drawer (or at 200 % text) five labels cannot sit under five segments:
+        // the current step's name goes on one line above them, and the others read to assistive tech.
+        <p
+          aria-hidden
+          className="mb-1 text-xs font-medium text-fg-strong @md:hidden"
+        >
+          Step {currentIndex + 1} of {steps.length} · {here.label}
+        </p>
+      ) : null}
       <ol
         id={`${uid}-list`}
         className={cn(
@@ -224,7 +240,7 @@ export function Stepper({
                   />
                   <span
                     className={cn(
-                      "truncate text-xs",
+                      "break-words text-xs @max-md:sr-only",
                       isCurrent
                         ? "font-medium text-fg-strong"
                         : "text-fg-muted",

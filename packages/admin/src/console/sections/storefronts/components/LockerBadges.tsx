@@ -130,7 +130,9 @@ export function LockerBadges({
           {!url
             ? "There is no Polaris Locker address to link yet, so only the art copies."
             : visible
-              ? "Each badge links to its page on Polaris Locker."
+              ? status.listing.audience === "everyone"
+                ? "Each badge links to its page on Polaris Locker."
+                : "Each badge links to its page on Polaris Locker, which only people who can add the product can see. To show it to everyone signed in, change who can see it above."
               : "This product is not visible on Polaris Locker, so each badge links to its home."}
         </p>
         <div className="mb-4 flex flex-wrap gap-4 px-5">

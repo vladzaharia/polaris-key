@@ -255,6 +255,11 @@ function cases(): Case[] {
       name: "djdl:catalog-editor?entry",
       hash: "#/p/djdl/config/catalog/edit?entry=network.timeout",
     },
+    // B-217: the Add to storefronts flow, at the steps whose rows wrapped sideways at 200 %.
+    ...(["prerequisites", "assets", "run"] as const).map((step) => ({
+      name: `djdl:storefronts?flow=${step}`,
+      hash: `#/p/djdl/distribution/storefronts?flow=add&stores=google-play&step=${step}`,
+    })),
     {
       name: "dialog:set-secret",
       hash: "#/p/djdl/settings/keys",
@@ -294,6 +299,9 @@ const ZOOM_CASES = [
   "djdl:releases",
   "djdl:deliverables/record/delivery",
   "djdl:activity?table",
+  "djdl:storefronts?flow=prerequisites",
+  "djdl:storefronts?flow=assets",
+  "djdl:storefronts?flow=run",
   "long:overview",
   "dialog:set-secret",
 ];

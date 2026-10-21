@@ -30,7 +30,6 @@ import type {
   UpdatePortalSettingsBody,
 } from "../../../../api.js";
 import { Button } from "../../../../ui/Button.js";
-import { Callout } from "../../../../ui/Callout.js";
 import { Checkbox } from "../../../../ui/Checkbox.js";
 import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
@@ -63,6 +62,7 @@ import { useMe } from "../../../data/hooks.js";
 import { lockerUrl, visibleOnLocker } from "../model/badges.js";
 import { ALL_KINDS, nextOfferPaths } from "../model/offerPaths.js";
 import { LockerBadges } from "./LockerBadges.js";
+import { LockerOffCallout } from "./LockerOffCallout.js";
 import { ReadinessList } from "./PolarisKeyReadiness.js";
 import { usePolarisKey, usePolarisKeyAnalytics } from "../data.js";
 import {
@@ -302,12 +302,7 @@ function PanelBody({
 
   return (
     <SettingsTemplate header={header} sections={sections}>
-      {!status.enabled ? (
-        <Callout tone="warning" title="Off for this deployment">
-          A platform admin turned the Locker storefront off, so no product is
-          shown on Discover. Licenses, sign-in and auto-issue keep working.
-        </Callout>
-      ) : null}
+      {!status.enabled ? <LockerOffCallout /> : null}
 
       <SettingsSection id="pk-readiness" title="Readiness">
         <ReadinessList slug={slug} checks={status.readiness} />
@@ -420,8 +415,8 @@ function WaysToAdd({
         kind="first-run"
         variant="inline"
         title="No way to add this product is configured"
-        description="Map an IdP group or turn on auto-issue for signed-in people in the product's sign-in, or make it free to use: License off and every download public or for signed-in people."
-        docs={docsUrl("polarisKeyStorefront")}
+        description="Map an IdP group in Sign-in, add an autoIssue block to the product's .pkey/product file, or make it free to use: License off and every download public or for signed-in people."
+        docs={docsUrl("autoIssue")}
         className="px-5 py-4"
       />
     );

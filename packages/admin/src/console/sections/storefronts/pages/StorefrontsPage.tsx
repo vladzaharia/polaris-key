@@ -29,10 +29,6 @@ import type {
   StorefrontStepDto,
 } from "../../../../api.js";
 import { Button } from "../../../../ui/Button.js";
-import {
-  CapabilityStrip,
-  capabilitySummary,
-} from "../../../../ui/CapabilityBadge.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { Skeleton } from "../../../../ui/Skeleton.js";
@@ -46,11 +42,9 @@ import { FLOW_STEPS, type FlowStep } from "../model/flowSteps.js";
 import { PHASES_RUN, readCursor, writeCursor } from "../model/flowCursor.js";
 import {
   ChooseStep,
-  ConnectionIssue,
   PlanReview,
   Prerequisites,
   prereqRows,
-  progress,
   StorePhase,
 } from "../components/FlowPanels.js";
 import { ASIDE, SKIPPABLE, TITLE, decidedStores } from "../model/flowCopy.js";
@@ -62,6 +56,9 @@ import { Link, useLocation, useSearchParam } from "../../../router.js";
 import { codecs, globalPage, r } from "../../../routes.js";
 import { Panel } from "../../../templates/Dashboard.js";
 import { useSlots, useStorefronts } from "../data.js";
+import { StoreTile } from "../components/StoreTiles.js";
+import { FlowSkeleton } from "../components/FlowSkeleton.js";
+import { useCan } from "../../../access/useCan.js";
 import { FitReport } from "../components/FitReport.js";
 import { ImportPanel } from "../components/ImportPanel.js";
 import { SlotBoard } from "../components/SlotBoard.js";
@@ -71,6 +68,7 @@ import {
   type StepIntent,
 } from "../components/StepDialog.js";
 import { PolarisKeyPanel } from "../components/PolarisKeyPanel.js";
+import { docsUrl } from "../../../../lib/docsLinks.js";
 
 /**
  * A storefront's own page, by store id: one line per store that has one. The built-in Polaris Key
@@ -92,118 +90,6 @@ const STEPS: readonly WizardStep[] = STOREFRONTS_FLOW.steps.map((x) => ({
 const flowCodec = codecs.oneOf(["", "add"] as const, "");
 const stepCodec = codecs.oneOf(FLOW_STEPS, "choose");
 const storesCodec = codecs.string("");
-
-function StoreTile({
-  slug,
-  store,
-}: {
-  slug: string;
-  store: StorefrontDto;
-}): React.ReactElement {
-  if (store.builtIn) return <BuiltInTile slug={slug} store={store} />;
-  const p = progress(store);
-  return (
-    <section
-      aria-label={store.label}
-      data-store={store.id}
-      className="flex h-full flex-col rounded-lg border border-border bg-surface-raised"
-    >
-      <div className="flex min-h-14 items-start justify-between gap-3 border-b border-border px-4 py-3">
-        <div className="min-w-0">
-          <h2 className="text-base font-semibold text-fg-strong">
-            {store.label}
-          </h2>
-          <p className="truncate text-sm text-fg-muted">
-            {store.app
-              ? (store.app.name ?? store.app.id)
-              : store.connection.state === "keyless"
-                ? "Published from CI"
-                : "No app assigned"}
-          </p>
-        </div>
-        <ConnectionIssue store={store} />
-      </div>
-      <div className="flex-1 px-4 py-2">
-        <CapabilityStrip
-          label={`${store.label} capabilities`}
-          items={store.capabilities.filter(
-            (c) =>
-              c.op !== "connect" && c.op !== "listApps" && c.op !== "status",
-          )}
-        />
-      </div>
-      <div className="flex min-h-14 items-center justify-between gap-3 border-t border-border px-4 py-2">
-        <span className="text-sm text-fg-muted">
-          {p.total
-            ? `${p.done} of ${p.total} steps done`
-            : capabilitySummary(store.capabilities)}
-        </span>
-        <Button size="sm" variant="outline" asChild>
-          <Link
-            to={r.storefronts(slug, {
-              flow: "add",
-              stores: store.id,
-              step: "prerequisites",
-            })}
-          >
-            Set up
-          </Link>
-        </Button>
-      </div>
-    </section>
-  );
-}
-
-/**
- * A built-in store's tile: always connected (there is no credential), its capabilities from the
- * declaration ("Built in"), and **Manage**, which opens the store's own page.
- */
-function BuiltInTile({
-  slug,
-  store,
-}: {
-  slug: string;
-  store: StorefrontDto;
-}): React.ReactElement {
-  return (
-    <section
-      aria-label={store.label}
-      data-store={store.id}
-      data-built-in=""
-      className="flex h-full flex-col rounded-lg border border-border bg-surface-raised"
-    >
-      <div className="flex min-h-14 items-start justify-between gap-3 border-b border-border px-4 py-3">
-        <div className="min-w-0">
-          <h2 className="text-base font-semibold text-fg-strong">
-            {store.label}
-          </h2>
-          <p className="truncate text-sm text-fg-muted">
-            Built in: always connected
-          </p>
-        </div>
-      </div>
-      <div className="flex-1 px-4 py-2">
-        <CapabilityStrip
-          label={`${store.label} capabilities`}
-          items={store.capabilities.filter(
-            (c) =>
-              c.op !== "connect" && c.op !== "listApps" && c.op !== "status",
-          )}
-        />
-      </div>
-      <div className="flex min-h-14 items-center justify-between gap-3 border-t border-border px-4 py-2">
-        <span className="text-sm text-fg-muted">
-          {capabilitySummary(store.capabilities)}
-        </span>
-        {STORE_PANELS[store.id] ? (
-          <Button size="sm" variant="outline" asChild>
-            <Link to={r.storefront(slug, store.id)}>Manage</Link>
-          </Button>
-        ) : null}
-      </div>
-    </section>
-  );
-}
 
 export function StorefrontsPage({
   slug,
@@ -240,7 +126,7 @@ function StorePage({
             <Link to={r.storefronts(slug)}>Open Storefronts</Link>
           </Button>
         }
-        docs="/docs/admin/storefronts/"
+        docs={docsUrl("storefronts")}
       />
     </div>
   );
@@ -282,7 +168,11 @@ function Catalogue({ slug }: { slug: string }): React.ReactElement {
         }
       />
       {q.isPending ? (
-        <Skeleton className="h-64 w-full" />
+        flow ? (
+          <FlowSkeleton slug={slug} />
+        ) : (
+          <Skeleton className="h-64 w-full" />
+        )
       ) : q.isError ? (
         <ErrorState
           error={q.error}
@@ -295,7 +185,7 @@ function Catalogue({ slug }: { slug: string }): React.ReactElement {
           headingLevel={2}
           title="No storefronts are registered"
           description="Storefronts appear here as the Worker registers their adapters."
-          docs="/docs/admin/storefronts/"
+          docs={docsUrl("storefronts")}
         />
       ) : flow ? (
         // A built-in store has no flow (SETUP.md D48): it is always on.
@@ -303,7 +193,12 @@ function Catalogue({ slug }: { slug: string }): React.ReactElement {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {q.data.stores.map((s) => (
-            <StoreTile key={s.id} slug={slug} store={s} />
+            <StoreTile
+              key={s.id}
+              slug={slug}
+              store={s}
+              hasPanel={Object.hasOwn(STORE_PANELS, s.id)}
+            />
           ))}
         </div>
       )}
@@ -325,6 +220,7 @@ function AddFlow({
   const [storesRaw, setStoresRaw] = useSearchParam("stores", storesCodec);
   const [intent, setIntent] = React.useState<StepIntent | null>(null);
   const setup = useSetup(slug);
+  const canPlatform = useCan("platform", null, "view");
   const slots = useSlots(slug);
   const [skipping, setSkipping] = React.useState(false);
   const skipGuard = React.useRef(false);
@@ -478,13 +374,19 @@ function AddFlow({
         kind="first-run"
         headingLevel={2}
         title="Every storefront here is built in"
-        description="Connect a store in Store connections to add it here."
+        description={
+          canPlatform
+            ? "Connect a store in Store connections to add it here."
+            : "Ask a platform admin to connect a store in Store connections, and it appears here."
+        }
         primaryAction={
-          <Button asChild>
-            <Link to={globalPage("platform-stores")}>
-              Open Store connections
-            </Link>
-          </Button>
+          canPlatform ? (
+            <Button asChild>
+              <Link to={globalPage("platform-stores")}>
+                Open Store connections
+              </Link>
+            </Button>
+          ) : undefined
         }
       />
     );
@@ -511,7 +413,7 @@ function AddFlow({
             </h3>
             <p>{ASIDE[current]}</p>
             <a
-              href="/docs/admin/storefronts/"
+              href={docsUrl("storefronts")}
               className="text-accent-fg underline-offset-4 hover:underline"
             >
               Storefronts in the docs
@@ -540,6 +442,14 @@ function AddFlow({
           primary:
             current === "submit" ? undefined : (
               <Button
+                // Two filled buttons make two primaries: while a step's own actions are open,
+                // Continue is the quiet one (B-224).
+                variant={
+                  (current === "assets" || current === "run") &&
+                  !facts[current]?.done
+                    ? "outline"
+                    : "primary"
+                }
                 disabledReason={
                   chosen.length === 0
                     ? "Choose a storefront to continue"

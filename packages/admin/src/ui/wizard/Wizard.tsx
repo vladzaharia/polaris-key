@@ -7,6 +7,10 @@ import { Drawer, DrawerBody, DrawerFooter } from "../Drawer.js";
 import { Stepper } from "./Stepper.js";
 import type { WizardStep } from "./model.js";
 
+/** "Do this later" on a phone, page host: the last row, full width, left edge shared with the rest. */
+const PHONE_LATER =
+  "max-sm:order-4 max-sm:[&>*]:w-full max-sm:[&>*]:justify-center";
+
 export interface WizardFooter {
   /** "Do this later": a ghost link or button that leaves the wizard (progress is kept). */
   later?: React.ReactNode;
@@ -195,7 +199,12 @@ export function Wizard({
   const back = footer.onBack ? (
     <Button
       variant="outline"
-      className={cn(isDrawer && "max-sm:order-2 max-sm:ml-auto")}
+      className={cn(
+        isDrawer
+          ? "max-sm:order-2 max-sm:ml-auto"
+          : // The page host on a phone stacks: reason, primary, Back, Do this later, one left edge.
+            "max-sm:order-3 max-sm:w-full",
+      )}
       disabled={footer.backDisabled}
       onClick={footer.onBack}
     >
@@ -207,17 +216,27 @@ export function Wizard({
     <>
       {footer.backAt === "start" && (back || footer.later) ? (
         // Back and "do this later" stay together when the footer wraps.
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <div
+          className={cn(
+            "flex flex-wrap items-center gap-x-3 gap-y-2",
+            !isDrawer && "max-sm:contents",
+          )}
+        >
           {back}
-          {footer.later}
+          {footer.later ? (
+            <div className={cn(!isDrawer && PHONE_LATER)}>{footer.later}</div>
+          ) : null}
         </div>
       ) : footer.later ? (
-        <div className={cn(isDrawer && "max-sm:order-1")}>{footer.later}</div>
+        <div className={cn(isDrawer ? "max-sm:order-1" : PHONE_LATER)}>
+          {footer.later}
+        </div>
       ) : null}
       {footer.onSkip ? (
         <Button
           variant="ghost"
           onClick={footer.onSkip}
+          className={cn(!isDrawer && "max-sm:order-4 max-sm:w-full")}
           loading={footer.skipLoading}
           disabledReason={footer.skipDisabledReason}
         >
@@ -225,14 +244,20 @@ export function Wizard({
         </Button>
       ) : null}
       {footer.reason ? (
-        <span id={reasonId} className="text-sm text-fg-muted">
+        <span
+          id={reasonId}
+          className={cn(
+            "text-sm text-fg-muted",
+            !isDrawer && "max-sm:order-1 max-sm:text-center",
+          )}
+        >
           {footer.reason}
         </span>
       ) : null}
       <div
         className={cn(
           "ml-auto flex flex-wrap items-center gap-2",
-          isDrawer && "max-sm:contents",
+          "max-sm:contents",
         )}
       >
         {footer.backAt !== "start" ? back : null}
@@ -242,8 +267,11 @@ export function Wizard({
               {
                 className: cn(
                   (footer.primary.props as { className?: string }).className,
-                  isDrawer &&
-                    "max-sm:order-3 max-sm:w-full min-w-0 max-w-full whitespace-normal",
+                  // Two lines at 200 % text: the height follows the text, not Button md's fixed one.
+                  "h-auto min-h-9 py-1.5",
+                  isDrawer
+                    ? "max-sm:order-3 max-sm:w-full min-w-0 max-w-full whitespace-normal"
+                    : "max-sm:order-2 max-sm:w-full min-w-0 max-w-full whitespace-normal",
                 ),
                 "aria-describedby":
                   [footer.primary.props["aria-describedby"], reasonId]
@@ -260,7 +288,7 @@ export function Wizard({
     <div
       ref={footRef}
       data-wizard-foot=""
-      className="pinfoot:sticky pinfoot:bottom-0 pinfoot:z-10 pinfoot:-mb-6 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border bg-surface-page pb-4 pt-4"
+      className="pinfoot:sticky pinfoot:bottom-0 pinfoot:z-10 pinfoot:-mb-6 flex flex-wrap items-center gap-x-3 gap-y-2 max-sm:flex-col max-sm:items-stretch border-t border-border bg-surface-page pb-4 pt-4"
     >
       {footRow}
     </div>
@@ -321,6 +349,7 @@ export function Wizard({
           label={label}
           steps={steps}
           current={current}
+          headingLabel={title}
           done={done}
           skipped={skipped}
           unmet={unmet}
