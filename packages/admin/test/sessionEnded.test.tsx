@@ -125,6 +125,20 @@ describe("the session-ended overlay", () => {
     again.restore();
   });
 
+  it("B-004: when the element focus came from is gone, the page heading takes it, never <body>", async () => {
+    const draft = await openPage();
+    const h1 = document.querySelector<HTMLElement>("h1[data-page-title]")!;
+    expect(h1).toBeTruthy();
+    draft.focus();
+    const { restore } = await endSession();
+    // The page rebuilds under the dialog: what held focus before it opened is gone.
+    draft.remove();
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(h1));
+    restore();
+  });
+
   it("has no axe violations", async () => {
     await openPage();
     const { held } = await endSession();

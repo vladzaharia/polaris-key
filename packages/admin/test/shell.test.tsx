@@ -767,15 +767,17 @@ describe("the mobile drawer (SH-2)", () => {
 });
 
 describe("state pages (T8)", () => {
-  it("a deep link into a disabled section explains, and links to Services", async () => {
+  it("B-013: a deep link into a disabled section explains in feature words, and links to Features", async () => {
     boot("#/p/djdl/release/releases", {
       services: { ...ALL_ON, release: { enabled: false } },
     });
     expect(
-      await screen.findByText("The Release service isn’t enabled for DJDL."),
+      await screen.findByText("Ship builds is off for DJDL."),
     ).toBeTruthy();
+    expect(screen.getByText(/Turn it on in Features/)).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/service|Services/);
     expect(
-      screen.getByRole("link", { name: "Enable Release" }).getAttribute("href"),
+      screen.getByRole("link", { name: "Open Features" }).getAttribute("href"),
     ).toBe("#/p/djdl/settings/features");
   });
 
@@ -784,7 +786,7 @@ describe("state pages (T8)", () => {
       services: { ...ALL_ON, license: { enabled: false } },
     });
     expect(
-      await screen.findByText("The Licensing service isn’t enabled for DJDL."),
+      await screen.findByText("Licensing is off for DJDL."),
     ).toBeTruthy();
   });
 

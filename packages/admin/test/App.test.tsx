@@ -78,6 +78,26 @@ describe("admin SPA", () => {
     ).toBeTruthy();
   });
 
+  it("B-015: a 403 from /me says the account can't open the console, with no Try again", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("{}", { status: 403 })),
+    );
+    render(<App />);
+    expect(
+      await screen.findByRole("heading", {
+        name: "This account can’t open the console",
+      }),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+    expect(screen.queryByText(/Can’t reach Polaris Key/)).toBeNull();
+    expect(
+      screen
+        .getByRole("link", { name: "Sign in with another account" })
+        .getAttribute("href"),
+    ).toMatch(/^\/manage\/login\?returnTo=/);
+  });
+
   it("renders a product page at its new URL", async () => {
     boot("#/p/djdl", { services: ALL_ON });
     expect(
@@ -97,6 +117,9 @@ describe("admin SPA", () => {
       }),
     ).toBeTruthy();
     expect(window.location.hash).toBe("#/products");
+    // B-012: a signpost, not the not-found search glyph.
+    expect(document.querySelector("[data-empty=moved] svg.lucide-signpost")).toBeTruthy();
+    expect(document.querySelector("svg.lucide-search-x")).toBeNull();
     expect(
       screen.getByRole("link", { name: "Go to Home" }).getAttribute("href"),
     ).toBe("#/");

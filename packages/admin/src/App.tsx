@@ -5,7 +5,8 @@ import { ConsoleQueryProvider } from "./console/data/queryClient.js";
 import { useMe } from "./console/data/hooks.js";
 import { AppShell } from "./console/shell/AppShell.js";
 import { BootScreen } from "./console/shell/StatePages.js";
-import { ConsoleOffline } from "./console/shell/ConsoleSignIn.js";
+import { ApiError } from "./api.js";
+import { ConsoleOffline, ConsoleRefused } from "./console/shell/ConsoleSignIn.js";
 import { AppToaster } from "./ui/toast.js";
 import { SessionEnded, SignedInAgain } from "./console/shell/SessionEnded.js";
 import { SIGNED_IN_HASH } from "./console/shell/endedState.js";
@@ -67,6 +68,9 @@ function Boot(): React.ReactElement {
     return <SignedInAgain />;
   if (me.data) return <AppShell me={me.data} />;
   if (me.isError) {
+    // A refusal is the server answering: trying again cannot change it (B-015).
+    if (me.error instanceof ApiError && me.error.status === 403)
+      return <ConsoleRefused />;
     return <ConsoleOffline onRetry={() => me.refetch()} />;
   }
   return <BootScreen />;
