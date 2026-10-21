@@ -1,4 +1,4 @@
-# @pkey-feature ui.terminal
+# @pkey-feature ui.cli
 """A late OSC 11 answer is not a key (B-111)."""
 
 from __future__ import annotations

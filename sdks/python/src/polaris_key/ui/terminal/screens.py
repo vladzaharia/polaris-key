@@ -28,7 +28,7 @@ from ..core.models import (
     UpdateView,
 )
 from . import fmt
-from .parts import STACK_COLUMNS, Kit, _display_url
+from .parts import STACK_COLUMNS, Kit, _display_url, bind_parens
 from .text import DROP, Line, Span, cell_len, wrap
 
 __all__ = [
@@ -422,7 +422,7 @@ def sign_in(k: Kit, v: SignInView, verb: str = "sign-in", *, frame: int = 0) -> 
             browser = not v.headless and not v.no_browser
             end, hints = _code_hints(k, browser, v.copied), True
     elif v.state == "done":
-        who = k.units("signin.cli.signedIn", "strong", name=v.name, email=v.email) if (v.name and v.email) else [k.t("account.holder", name=v.name or v.email or k.product)]
+        who = bind_parens(k.units("signin.cli.signedIn", "strong", name=v.name, email=v.email)) if (v.name and v.email) else [k.t("account.holder", name=v.name or v.email or k.product)]
         body += k.step("ok", who)
         end = [k.t("signin.cli.closeTab", "muted")] if not v.headless else []
     else:

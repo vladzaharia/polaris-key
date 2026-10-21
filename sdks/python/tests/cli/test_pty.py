@@ -201,3 +201,16 @@ def test_sigterm_during_update_apply_gives_the_terminal_back() -> None:
         assert code == -signal.SIGTERM, "the termination goes on: exit status 128 + 15"
         assert run.tty_flags() == [True, True], "cooked mode and echo are back"
         assert "\x1b[?2004l" in run.raw and "\x1b[?25h" in run.raw
+
+
+@pytest.mark.parametrize("columns", [32, 40])
+def test_typing_a_key_on_a_narrow_terminal_redraws_in_place(columns: int) -> None:
+    # B-121: the masked key redraw never repeats the header at 40 columns or fewer.
+    with PtyRun(columns, 24, "activate-entry", env={"PKEY_THEME": "dark"}, answer_cpr=False) as run:
+        assert run.shows("License key")
+        for ch in b"pkey_tidewater_7Q2Mx9cLr4TbV0aZ3WPLDA7Q2Mx9cLr4TbV0aZ3WPLDA":
+            run.type(bytes([ch]))
+        run.pump(0.5)
+        assert sum(1 for r, _ in run.term.all() if r.startswith("┌")) == 1
+        run.type(b"\x1b")
+        run.wait_exit()

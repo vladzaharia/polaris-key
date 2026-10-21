@@ -371,3 +371,29 @@ def test_ascii_mode_spells_the_catalog_in_ascii() -> None:
 
     k = kit(env("none", "ascii", 80, "dark"))
     assert k.copy.ascii and k.s("update.current", version="2.5", size="61 MB").isascii()
+
+
+@pytest.mark.parametrize("columns", [32, 36, 40, 44, 50])
+def test_signed_in_as_never_leaves_a_dangling_bracket(columns: int) -> None:
+    # B-121: "Signed in as {name} ({email})" keeps "(" and ")" with the unit they wrap.
+    from polaris_key.ui.core.models import SignInModel
+    from polaris_key.ui.terminal import screens
+
+    from .fixtures import kit
+    from .golden_support import env
+
+    class Prompt:
+        userCode = "WDJB-MJHT"
+        verificationUri = "https://polaris.locker/device"
+        verificationUriComplete = "https://polaris.locker/device?user_code=WDJB-MJHT"
+        expiresAt = 10**10
+
+    for name, email in (("Mara Fennick", "mara.fennick@tidewater.example"), ("Al", "a@b.example"), ("Mara", "mara@x.io")):
+        m = SignInModel(headless=False)
+        m.prompted(Prompt(), 0)
+        ident = SimpleNamespace(name=name, email=email)
+        view = m.finished(SimpleNamespace(status="ready", identity=ident, message=""))
+        rows = [ln.text.rstrip() for ln in screens.sign_in(kit(env("none", "unicode", columns, "dark")), view, "login", frame=2)]
+        for row in rows:
+            body = row[3:] if len(row) > 3 else row
+            assert not body.startswith(")") and not row.rstrip().endswith("("), (columns, rows)

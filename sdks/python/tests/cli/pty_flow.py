@@ -1,6 +1,6 @@
 """The program the real-pty tests run (test_pty.py): one flow on the process's own terminal, with a
 stub client, so the key reader, the OSC 11 and cursor-position questions and SIGWINCH are the real
-ones. ``python pty_flow.py login|device-limit|update [long]``."""
+ones. ``python pty_flow.py login|device-limit|activate-entry|update [long]``."""
 
 from __future__ import annotations
 
@@ -75,12 +75,14 @@ def update_client() -> SimpleNamespace:
 te = detect(device_code=mode == "login")
 kit = Kit.create(te, product="tidewater", source=Source(), prog="tidewater")
 device = Device(te, kit.palette())
-t = Terminal(kit, device, {"login": "login", "device-limit": "activate", "update": "update"}[mode])
+t = Terminal(kit, device, {"login": "login", "device-limit": "activate", "activate-entry": "activate", "update": "update"}[mode])
 if mode == "login":
     out = flows.sign_in(SimpleNamespace(product="tidewater", identity=Identity(), status=lambda: SimpleNamespace(status="ok")), t)
 elif mode == "device-limit":
     limit = ActivationDeviceLimit(limit=3, deviceCount=3, manage_url=URL.replace("activate/device", "portal/devices") if long else "https://key.plrs.im/portal/tidewater/devices")
     out = flows.activate(SimpleNamespace(product="tidewater", license=SimpleNamespace(activate_with_key=lambda key: limit), status=lambda: None), t, "pkey_tidewater_7Q2Mx9cLr4TbV0aZ3WPLDA")
+elif mode == "activate-entry":
+    out = flows.activate(SimpleNamespace(product="tidewater", license=SimpleNamespace(activate_with_key=lambda key: None), status=lambda: None), t, None)
 else:
     out = flows.update(update_client(), t, ["apply"])
 sys.exit(t.finish(out))

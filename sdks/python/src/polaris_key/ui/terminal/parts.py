@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import re
 import warnings
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, List, Optional, Sequence, Tuple
 
 from ... import qr as _qr
@@ -77,6 +77,21 @@ def role_colors(colors: Any, scheme: str, color: str, native: bool) -> Tuple[Tup
                 stacklevel=2,
             )
     return tuple(out)
+
+
+def bind_parens(spans: List[Span]) -> List[Span]:
+    """Keep a parenthesis with the unit it wraps: "Mara (" never ends a line, nor ")" starts one
+    (the Node kit's ``bindParens``)."""
+    out = list(spans)
+    for i in range(len(out) - 1):
+        a, b = out[i], out[i + 1]
+        if b.unit and a.text.endswith("("):
+            out[i] = a = replace(a, text=a.text[:-1])
+            out[i + 1] = b = replace(b, text="(" + b.text)
+        if a.unit and b.text.startswith(")"):
+            out[i] = replace(a, text=a.text + ")")
+            out[i + 1] = replace(b, text=b.text[1:])
+    return [s for s in out if s.text != ""]
 
 
 @dataclass
