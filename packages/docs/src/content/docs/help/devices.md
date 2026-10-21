@@ -24,7 +24,7 @@ To ask for more devices, contact the developer. See
 
 ## See your devices
 
-1. Sign in at [key.plrs.im](https://key.plrs.im).
+1. Sign in at [polaris.locker](https://polaris.locker).
 2. Open the app's page and find **Devices**.
 
 Each device shows its name, system, app version and when it was last seen. A device with no name

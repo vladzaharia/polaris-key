@@ -41,6 +41,7 @@ export const RULES = [
   "programme-id",
   "count",
   "help-word",
+  "help-host",
   "pkey-command",
   "http-path",
 ] as const;
@@ -184,6 +185,9 @@ export interface PageInfo {
   firstLine: number;
 }
 
+/** Help is the customer's, served at polaris.locker: it names neither the console host nor the developer product. */
+const HELP_HOST = /key\.plrs\.im|Polaris Key/g;
+
 const GENERATED = /GENERATED PAGE/;
 
 export function isLinted(page: PageInfo): boolean {
@@ -228,8 +232,10 @@ export function lintPage(page: PageInfo, facts: Facts): Hit[] {
     for (const m of l.text.replace(/\]\([^)]*\)/g, "]").matchAll(PROGRAMME_ID))
       hit("programme-id", l.n, m[0]);
     for (const m of p.matchAll(COUNT)) hit("count", l.n, m[0]);
-    if (isHelp)
+    if (isHelp) {
       for (const m of p.matchAll(HELP_WORDS)) hit("help-word", l.n, m[0]);
+      for (const m of l.text.matchAll(HELP_HOST)) hit("help-host", l.n, m[0]);
+    }
   }
   if (type !== undefined) skeletonHits(type, page, all, hit);
   return hits;

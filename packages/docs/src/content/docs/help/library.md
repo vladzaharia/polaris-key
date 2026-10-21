@@ -8,7 +8,7 @@ sidebar:
   order: 1
 ---
 
-Your library at [key.plrs.im](https://key.plrs.im) lists the apps linked to your Polaris Locker account.
+Your library at [polaris.locker](https://polaris.locker) lists the apps linked to your Polaris Locker account.
 [Sign in](/docs/help/sign-in/) to see it. An app has one tile, even when you hold more than one
 license for it.
 

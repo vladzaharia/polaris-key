@@ -152,7 +152,7 @@
     },
     "invalid_client": {
       "page": "signing-in",
-      "why": "The app isn't set up to sign people in through Polaris Key, so we couldn't continue.",
+      "why": "The app isn't set up to sign people in through Polaris Locker, so we couldn't continue.",
       "fix": "Ask the app's developer."
     },
     "redirect_uri_mismatch": {
@@ -173,7 +173,7 @@
     "enroll_claimed": {
       "page": "signing-in",
       "entry": "enroll_claimed",
-      "why": "This device started with a free license from the app. That license has since been added to a Polaris Key account, so you need to sign in to use it.",
+      "why": "This device started with a free license from the app. That license has since been added to a Polaris Locker account, so you need to sign in to use it.",
       "fix": "Sign in with the account that holds the license."
     },
     "activation.enroll-claimed": {
@@ -183,13 +183,13 @@
     "account_required": {
       "page": "signing-in",
       "entry": "account_required",
-      "why": "This action needs a Polaris Key account, and no account is signed in on this device.",
+      "why": "This action needs a Polaris Locker account, and no account is signed in on this device.",
       "fix": "Sign in from the app's sign-in screen, then repeat the action."
     },
     "sign_in_required": {
       "page": "signing-in",
       "entry": "account_required",
-      "why": "This part of the app needs to know your Polaris Key account, and the license on this device doesn't name one.",
+      "why": "This part of the app needs to know your Polaris Locker account, and the license on this device doesn't name one.",
       "fix": "Sign in to your Polaris Locker account in the app, then try again."
     },
     "step_up_required": {
@@ -201,7 +201,7 @@
     "portal.status-401": {
       "page": "signing-in",
       "article": "sign-in",
-      "why": "Your sign-in to your library at key.plrs.im has ended or isn't valid any more.",
+      "why": "Your sign-in to your library at polaris.locker has ended or isn't valid any more.",
       "fix": "Sign in again.",
       "cta": "contact"
     },
@@ -285,7 +285,7 @@
     },
     "not_eligible": {
       "page": "license-key",
-      "why": "The offer was withdrawn or changed after the page loaded, or it was never offered on the **Discover** page of your library at key.plrs.im.",
+      "why": "The offer was withdrawn or changed after the page loaded, or it was never offered on the **Discover** page of your library at polaris.locker.",
       "fix": "Reload **Discover** and look for the app again. If it's gone, it isn't offered to you any more."
     },
     "activation.ok": {
@@ -414,7 +414,7 @@
       "entry": "device_limit",
       "article": "device-limit",
       "why": "A license allows a set number of devices at once, and all of them are in use.",
-      "fix": "Free one of them. Select **Replace a device** in the app when it offers it. Or remove a device you no longer use from the app's page in your library at key.plrs.im, if the app has one. Or select **Sign out** in the app on a device you no longer use, while it is online. The device you free signs out of the app. If you can't do any of these, ask the app's developer.",
+      "fix": "Free one of them. Select **Replace a device** in the app when it offers it. Or remove a device you no longer use from the app's page in your library at polaris.locker, if the app has one. Or select **Sign out** in the app on a device you no longer use, while it is online. The device you free signs out of the app. If you can't do any of these, ask the app's developer.",
       "cta": "library"
     },
     "activation.device-limit": {
@@ -475,7 +475,7 @@
       "page": "devices",
       "article": "devices",
       "why": "The app couldn't remove the device from your license.",
-      "fix": "Try again. You can also remove a device from the app's page in your library at key.plrs.im, if the app has one.",
+      "fix": "Try again. You can also remove a device from the app's page in your library at polaris.locker, if the app has one.",
       "cta": "library"
     },
     "device_rename_failed": {
@@ -795,7 +795,7 @@
     "portal.not_hosted": {
       "page": "downloads-and-updates",
       "article": "download",
-      "why": "Your license covers this file, but your library at key.plrs.im can't hand it to your browser yet.",
+      "why": "Your license covers this file, but your library at polaris.locker can't hand it to your browser yet.",
       "fix": "Look for **Get it from** next to the file, which names where to get it. If there's none, ask the app's developer for another way to get it."
     },
     "portal.license_inactive": {
@@ -807,7 +807,7 @@
     "license_owned": {
       "page": "accounts",
       "article": "add-a-license",
-      "why": "This license was added to a Polaris Key account earlier. A license in an account is used by signing in to that account, never by entering its key.",
+      "why": "This license was added to a Polaris Locker account earlier. A license in an account is used by signing in to that account, never by entering its key.",
       "fix": "Sign in with the account that holds the license. In your library, you can also select **Use a different key** to try another key. If you don't recognize that account, or have no other key, ask the app's developer."
     },
     "email_mismatch": {
@@ -828,7 +828,7 @@
       "entry": "key_entry_limit",
       "article": "add-a-license",
       "why": "A license key that isn't in an account can be entered on a limited number of new devices, and this key has used them all.",
-      "fix": "Add the license to your Polaris Key account, then sign in to the app with that account. After that, a new device can't use the key and signs in instead. Add the license only if it is yours. If you can't add it, ask the app's developer."
+      "fix": "Add the license to your Polaris Locker account, then sign in to the app with that account. After that, a new device can't use the key and signs in instead. Add the license only if it is yours. If you can't add it, ask the app's developer."
     },
     "activation.key-entry-limit": {
       "page": "accounts",
@@ -837,13 +837,13 @@
     "email_in_use": {
       "page": "accounts",
       "article": "join-accounts",
-      "why": "That email address already belongs to another Polaris Key account, but not as a way to sign in. Nothing was changed.",
+      "why": "That email address already belongs to another Polaris Locker account, but not as a way to sign in. Nothing was changed.",
       "fix": "Sign in to that account with the method you used before. Then add this email under **Sign-in methods**, or use a different email."
     },
     "link_conflict": {
       "page": "accounts",
       "article": "join-accounts",
-      "why": "That sign-in method, such as an email address or an account with another service, is already connected to a different Polaris Key account.",
+      "why": "That sign-in method, such as an email address or an account with another service, is already connected to a different Polaris Locker account.",
       "fix": "Sign in to that account, or connect a different sign-in method."
     },
     "last_link": {
@@ -864,13 +864,13 @@
     "erasure_ledger_unavailable": {
       "page": "accounts",
       "entry": "erasure_ledger_unavailable",
-      "why": "Polaris Key couldn't confirm your account's status right now, so it didn't finish the sign-in or change anything.",
+      "why": "Polaris Locker couldn't confirm your account's status right now, so it didn't finish the sign-in or change anything.",
       "fix": "Wait a few minutes, then try again."
     },
     "network": {
       "page": "other",
       "entry": "network",
-      "why": "The app couldn't reach Polaris Key, or got an error instead of an answer. Your connection may be down, something between you and the service may have blocked the request, or the service may be having a problem.",
+      "why": "The app couldn't reach Polaris Locker, or got an error instead of an answer. Your connection may be down, something between you and the service may have blocked the request, or the service may be having a problem.",
       "fix": "Check your connection and try again. If it keeps failing, try another network or try again later, then ask the app's developer."
     },
     "network-error": {
@@ -940,13 +940,13 @@
     "service-unavailable": {
       "page": "other",
       "entry": "service-unavailable",
-      "why": "The app doesn't use the Polaris Key feature that this needs.",
+      "why": "The app doesn't use the feature that this needs.",
       "fix": "Nothing is broken. If you expected it, ask the app's developer."
     },
     "service-disabled": {
       "page": "other",
       "entry": "service-unavailable",
-      "why": "The app's developer turned off the Polaris Key feature that this needs.",
+      "why": "The app's developer turned off the feature that this needs.",
       "fix": "Nothing is broken. If you expected it, ask the app's developer."
     },
     "mint-unavailable": {

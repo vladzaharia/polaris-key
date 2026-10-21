@@ -18,7 +18,7 @@ Who to ask depends on the problem.
 
 ## Start with the app's help card
 
-On an app's page in your [library](https://key.plrs.im), look for **Need help?**. When the app's
+On an app's page in your [library](https://polaris.locker), look for **Need help?**. When the app's
 developer has provided support details, the card says that the developer handles licenses and
 downloads for that app. It can show:
 

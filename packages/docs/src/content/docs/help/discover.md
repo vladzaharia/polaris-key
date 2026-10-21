@@ -14,7 +14,7 @@ itself.
 
 ## Add a free app
 
-1. Sign in at [key.plrs.im](https://key.plrs.im).
+1. Sign in at [polaris.locker](https://polaris.locker).
 2. Select **Discover** in the top bar. On a small screen, it is in the bar at the bottom.
 3. Find the app. Its card says why you can add it, for example "Free with a Polaris Locker account" or
    "Free trial · 14 days".

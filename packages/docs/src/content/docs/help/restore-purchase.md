@@ -27,7 +27,7 @@ On a Mac, buttons use capital letters, such as **Restore Purchase**. For other w
 
 ## If your library doesn't show the app
 
-Your library at [key.plrs.im](https://key.plrs.im) lists an app once a license for it is linked to your account. If you bought in a store and the app is missing, look under **Missing a license?** in your library.
+Your library at [polaris.locker](https://polaris.locker) lists an app once a license for it is linked to your account. If you bought in a store and the app is missing, look under **Missing a license?** in your library.
 
 - **Steam:** open the app from Steam and select **Restore purchase**. Adding Steam under **Sign-in methods** doesn't bring Steam purchases into your library. If that doesn't work, ask the app's developer. See [Get help with an app](/docs/help/contact/).
 - **App Store or Google Play:** sign in once in the app itself, then check your library again.

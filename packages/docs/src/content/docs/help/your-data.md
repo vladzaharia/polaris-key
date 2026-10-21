@@ -8,7 +8,7 @@ sidebar:
   order: 4
 ---
 
-Your library at key.plrs.im lets you see and download or remove information held for you. This
+Your library at polaris.locker lets you see and download or remove information held for you. This
 page says in plain words what an app that uses Polaris Locker reads from your device, what its
 developer sees, and what you can ask for.
 
