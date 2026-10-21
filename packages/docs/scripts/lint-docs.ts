@@ -6,7 +6,7 @@
  *   tsx scripts/lint-docs.ts --update   rewrite lint-debt.json from today's hits
  *
  * Rules: frontmatter (type, lastReviewed), type skeletons and budgets, banned words, time words,
- * future tense, programme ids, counts, Help's word list, `pkey` commands and HTTP paths. Stubs
+ * future tense, programme ids, UK spellings, counts, Help's word list, `pkey` commands and HTTP paths. Stubs
  * (`status: "stub"`), generated pages and unpublished templates are not linted.
  *
  * A package that writes a page clears that page's entries from `lint-debt.json` in the same
@@ -39,6 +39,7 @@ export const RULES = [
   "time-word",
   "future-tense",
   "programme-id",
+  "uk-spelling",
   "count",
   "help-word",
   "help-host",
@@ -111,6 +112,10 @@ const FUTURE = /\b(will|won't|going to)\b/gi;
 /** Programme and plan ids a reader cannot resolve. */
 const PROGRAMME_ID =
   /\b(?:(?:LX|ST|SP|CM|UK|DOC|AX|HA|PX|PS|WP|P[0-5]|[ADFIRTU])-\d{1,3}[a-z]?|P[0-5]-\d{2}[a-z]?)\b|\bplans\/[A-Za-z0-9-]+\.md|\bdocs\/research\//g;
+
+/** UK spellings; the docs write US English ("license", "canceled"). Prose only: slugs in code are untouched. */
+const UK_SPELLING =
+  /\b(?:licences?|cancell(?:ed|ing)|organis(?:e|es|ed|ing|ation|ations)|flavours?|colours?|behaviours?|favour(?:s|ed|ite|ites)?|centres?|centred|recoloured|customis(?:e|es|ed|ing|ation))\b/gi;
 
 const NUMBER_WORD =
   "two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty";
@@ -231,6 +236,7 @@ export function lintPage(page: PageInfo, facts: Facts): Hit[] {
     for (const m of p.matchAll(FUTURE)) hit("future-tense", l.n, m[0]);
     for (const m of l.text.replace(/\]\([^)]*\)/g, "]").matchAll(PROGRAMME_ID))
       hit("programme-id", l.n, m[0]);
+    for (const m of p.matchAll(UK_SPELLING)) hit("uk-spelling", l.n, m[0]);
     for (const m of p.matchAll(COUNT)) hit("count", l.n, m[0]);
     if (isHelp) {
       for (const m of p.matchAll(HELP_WORDS)) hit("help-word", l.n, m[0]);
@@ -366,8 +372,36 @@ export function readPage(id: string, root = contentRoot): PageInfo {
   return { id, data, body, firstLine };
 }
 
+/**
+ * The operator files render as pages (`<RunbookSection>`, the Deploy page), so what the lint
+ * keeps out of a page stays out of them: programme ids (also inside code fences, which render
+ * too) and UK spellings. Their ids in hits are `docs/RUNBOOK.md` and `docs/DEPLOYMENT.md`.
+ */
+export const OPERATOR_FILES = ["RUNBOOK.md", "DEPLOYMENT.md"] as const;
+
+export function lintOperatorFile(id: string, text: string): Hit[] {
+  const hits: Hit[] = [];
+  for (const l of lines(text, 1)) {
+    for (const m of l.text.replace(/\]\([^)]*\)/g, "]").matchAll(PROGRAMME_ID))
+      hits.push({ id, rule: "programme-id", line: l.n, text: m[0] });
+    if (l.fence) continue;
+    for (const m of prose(l.text).matchAll(UK_SPELLING))
+      hits.push({ id, rule: "uk-spelling", line: l.n, text: m[0] });
+  }
+  return hits;
+}
+
 export function lintSite(facts: Facts = loadFacts()): Hit[] {
-  return allIds().flatMap((id) => lintPage(readPage(id), facts));
+  const operator = OPERATOR_FILES.flatMap((file) =>
+    lintOperatorFile(
+      `docs/${file}`,
+      readFileSync(join(docsRoot, "..", "..", "docs", file), "utf8"),
+    ),
+  );
+  return [
+    ...allIds().flatMap((id) => lintPage(readPage(id), facts)),
+    ...operator,
+  ];
 }
 
 export type Ledger = Record<string, Partial<Record<Rule, number>>>;

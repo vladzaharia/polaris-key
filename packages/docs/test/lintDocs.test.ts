@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 import {
   RULES,
   compare,
+  lintOperatorFile,
   lintPage,
   lintSite,
   loadFacts,
@@ -79,6 +80,33 @@ describe("rules", () => {
       "programme-id",
     ]);
     expect(lint("The SHA-256 of the file, UTF-8, X-Forwarded.\n")).toEqual([]);
+  });
+
+  it("flags UK spellings in prose, not in code or cancellation", () => {
+    expect(
+      rules(
+        lint("A licence was cancelled; the flavour and behaviour differ.\n"),
+      ),
+    ).toEqual(["uk-spelling", "uk-spelling", "uk-spelling", "uk-spelling"]);
+    expect(
+      lint(
+        "The `core.licence-override-migration` job, a cancellation, a license.\n",
+      ),
+    ).toEqual([]);
+  });
+
+  it("applies the programme-id and spelling rules to the operator files", () => {
+    expect(
+      lintOperatorFile(
+        "docs/RUNBOOK.md",
+        "Deploy LX-08.\n\n```sh\n# after U-03\n```\n\nThe licence.\n",
+      ).map((h) => [h.rule, h.line]),
+    ).toEqual([
+      ["programme-id", 1],
+      ["programme-id", 4],
+      ["uk-spelling", 7],
+    ]);
+    expect(lintOperatorFile("docs/RUNBOOK.md", "Plain facts.\n")).toEqual([]);
   });
 
   it("flags counts of the whole set", () => {
@@ -166,7 +194,7 @@ describe("rules", () => {
   });
 
   it("every rule is exercised", () => {
-    expect(RULES).toHaveLength(12);
+    expect(RULES).toHaveLength(13);
   });
 });
 
