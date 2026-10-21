@@ -64,6 +64,7 @@ async function searchOn(
   origin: string,
   query: string,
   mutate?: (headers: Record<string, string>) => void,
+  path = "/docs/help/",
 ): Promise<{ page: any; close: () => Promise<void> }> {
   const require = createRequire(join(here, "..", "..", "docs", "package.json"));
   // playwright is the docs package's dependency, not the worker's: resolved from there, untyped here.
@@ -94,27 +95,40 @@ async function searchOn(
     });
   });
   const page = await ctx.newPage();
-  await page.goto(`${origin}/docs/help/`);
+  await page.goto(`${origin}${path}`);
   await page.locator("button[data-open-modal]").first().click();
   await page.locator("#starlight__search input").fill(query);
   return { page, close: () => browser.close() };
 }
 
 describe.skipIf(!enabled)("Help search under the Worker's docs CSP", () => {
-  it.each(["https://polaris.locker", "https://key.plrs.im"])(
-    "returns Help results on %s",
-    async (origin) => {
-      const { page, close } = await searchOn(origin, "device limit");
+  it.each([
+    ["https://polaris.locker", "/docs/help/", "/docs/help/"],
+    // The console host's developer docs (Help lives on the customer host): the full public bundle.
+    ["https://key.plrs.im", "/docs/start/", "/docs/"],
+  ])(
+    "returns results on %s%s",
+    async (origin, path, prefix) => {
+      const { page, close } = await searchOn(
+        origin,
+        "device limit",
+        undefined,
+        path,
+      );
       try {
         const first = page.locator(".pagefind-ui__result-link").first();
         await first.waitFor({ timeout: 20000 });
-        expect(await first.getAttribute("href")).toMatch(/^\/docs\/help\//);
+        expect(await first.getAttribute("href")).toMatch(
+          new RegExp(`^${prefix}`),
+        );
         expect(await page.locator(".pk-search-failed").count()).toBe(0);
-        // Help's own bundle: no developer page in the list.
-        const hrefs: string[] = await page
-          .locator(".pagefind-ui__result-link")
-          .evaluateAll((a: any[]) => a.map((x) => x.getAttribute("href")));
-        expect(hrefs.every((h) => h.startsWith("/docs/help/"))).toBe(true);
+        if (origin.endsWith("polaris.locker")) {
+          // Help's own bundle: no developer page in the list.
+          const hrefs: string[] = await page
+            .locator(".pagefind-ui__result-link")
+            .evaluateAll((a: any[]) => a.map((x) => x.getAttribute("href")));
+          expect(hrefs.every((h) => h.startsWith("/docs/help/"))).toBe(true);
+        }
       } finally {
         await close();
       }
