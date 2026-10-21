@@ -434,9 +434,9 @@ internal fun productName(copy: PolarisCopy): String? = copy.productName.takeIf {
  * product's name at weight 500, then a section gap. Nothing when there is neither.
  */
 @Composable
-internal fun PolarisProductHeader() {
+internal fun PolarisProductHeader(presentedName: String? = null) {
     val theme = PolarisTheme.current
-    val name = productName(theme.copy)
+    val name = presentedName?.takeIf { it.isNotBlank() } ?: productName(theme.copy)
     if (name == null && theme.logo == null) return
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(PolarisSpace.controls)) {
         PolarisProductIcon(32.dp)

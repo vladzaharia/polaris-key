@@ -55,8 +55,8 @@ internal fun gateUi(status: LicenseStatus, range: AllowedRange? = null, graceUnt
 internal val samplePrompt = SignInPrompt(
     deviceCode = "dc_sample",
     userCode = "WDJB-MJHT",
-    verificationUri = "https://key.plrs.im/activate",
-    verificationUriComplete = "https://key.plrs.im/activate?user_code=WDJB-MJHT",
+    verificationUri = "https://polaris.locker/device",
+    verificationUriComplete = "https://polaris.locker/device?user_code=WDJB-MJHT",
     expiresIn = 600,
     interval = 5,
     expiresAt = NOW + 461,

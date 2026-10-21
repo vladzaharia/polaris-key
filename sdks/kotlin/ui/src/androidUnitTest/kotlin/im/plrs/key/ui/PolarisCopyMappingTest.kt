@@ -12,6 +12,7 @@ import im.plrs.key.core.CopyEntry
 import im.plrs.key.core.LicenseStatus
 import im.plrs.key.license.ActivationResult
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -136,7 +137,9 @@ class PolarisCopyMappingTest {
         assertEquals(copy.bootDeclinedTitle, copy.blockedMessage(BootEmit.BlockedReason.contentDeclined).title)
         assertEquals(copy.bootOfflineBody, copy.offlineMessage(false).body)
         assertEquals(copy.bootOfflinePlayableBody, copy.offlineMessage(true).body)
-        assertEquals("The app couldn't finish starting (sync-failed).", copy.errorMessage("sync-failed").body)
+        assertEquals("Couldn't check your license", copy.errorMessage("sync-failed").title)
+        assertFalse(copy.errorMessage("sync-failed").body.contains("sync-failed"))
+        assertEquals("The app couldn't finish starting (mystery-code).", copy.errorMessage("mystery-code").body)
     }
 
     @Test
