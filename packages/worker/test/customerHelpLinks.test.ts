@@ -1,6 +1,7 @@
 // LK-09 (plans/LK-00.md D7): the Help links on Locker pages resolve on the customer host. The
-// portal footer's Help and Privacy links and `docsLinks.downloadPage` are read from their source
-// tables, then fetched on polaris.locker against the built docs site (skipped without one).
+// account menu's Help and Privacy links (PX-35 moved them out of the footer) and
+// `docsLinks.downloadPage` are read from their source tables, then fetched on polaris.locker
+// against the built docs site (skipped without one).
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -14,16 +15,16 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const dist = join(root, "docs", "dist");
 const read = (p: string) => readFileSync(join(root, p), "utf8");
 
-const footer = read("admin/src/portal/components/PortalShell.tsx");
+const menu = read("admin/src/portal/components/AccountMenu.tsx");
 const links = [
-  ...footer.matchAll(/href: "(\/docs\/help\/[^"]*)"/g),
+  ...menu.matchAll(/href: "(\/docs\/help\/[^"]*)"/g),
   ...read("admin/src/lib/docsLinks.ts").matchAll(
     /downloadPage: "(\/docs\/help\/[^"]*)"/g,
   ),
 ].map((m) => m[1]!);
 
 describe("Help links on Locker pages", () => {
-  it("name the footer's Help and Privacy and the download page", () => {
+  it("name the account menu's Help and Privacy and the download page", () => {
     expect(links).toEqual(
       expect.arrayContaining([
         "/docs/help/",

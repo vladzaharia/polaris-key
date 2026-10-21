@@ -581,7 +581,7 @@ describe("bytes host: the landing page at /", () => {
     );
   });
 
-  it("the favicon is the kit's adaptive Locker favicon, inlined", () => {
+  it("the favicon is the kit's Locker favicon (white tile), inlined", () => {
     const kit = readFileSync(
       join(
         HERE,
@@ -597,24 +597,14 @@ describe("bytes host: the landing page at /", () => {
     );
     const ours = landingFaviconSvg();
     const paths = (svg: string) =>
-      [...svg.matchAll(/<path class="(\w+)" d="([^"]+)"/g)].map((m) => [
-        m[1],
-        m[2],
-      ]);
-    // The same inks and rules, with the colour names the kit writes spelled out.
-    const style = (svg: string) =>
-      /<style>([^<]+)<\/style>/
-        .exec(svg)?.[1]
-        ?.replace(/#([0-9a-f])([0-9a-f])([0-9a-f])\b/gi, "#$1$1$2$2$3$3")
-        .replace(/:white\b/g, ":#ffffff")
-        .replace(
-          ".body,.star{fill:#c44438}",
-          ".body{fill:#c44438}.star{fill:#c44438}",
-        );
+      [...svg.matchAll(/<path d="([^"]+)"/g)].map((m) => m[1]);
+    const ink = (svg: string) => /<g fill="(#[0-9a-f]{6})"/i.exec(svg)?.[1];
+    // The same micro geometry and ink on the same white tile, and no stylesheet to unstyle.
     expect(paths(ours)).toEqual(paths(kit));
     expect(paths(ours).length).toBeGreaterThan(0);
-    expect(style(ours)).toBe(style(kit));
-    expect(ours).not.toMatch(/<script|href=|on[a-z]+=/i);
+    expect(ink(ours)?.toLowerCase()).toBe(ink(kit)?.toLowerCase());
+    expect(ours).toMatch(/<rect [^>]*fill="#fff"/);
+    expect(ours).not.toMatch(/<style|<script|href=|on[a-z]+=/i);
   });
 });
 
