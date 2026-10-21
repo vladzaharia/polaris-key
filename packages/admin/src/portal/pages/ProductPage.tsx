@@ -394,7 +394,7 @@ function ProductBody({
             <div
               className={cn(
                 group,
-                "split:col-start-2 split:row-start-1 split:row-span-2",
+                "split:col-start-2 split:row-start-1 split:row-span-2 split:gap-4",
               )}
             >
               {has("get") ? licenseCard : null}

@@ -194,7 +194,7 @@ function LicenseFacts({
   const external = renewHref !== null && !renewHref.startsWith("mailto:");
   const charted = termPlot(detail.activatedAt, detail.expiresAt) !== null;
   return (
-    <div className="space-y-5 desk:space-y-3">
+    <div className="space-y-5 desk:space-y-2">
       {status.kind === "suspended" ? (
         <p className="rounded-lg border border-danger-border bg-danger-subtle p-3 text-sm text-fg">
           {t("license.suspended", {
@@ -273,7 +273,7 @@ function LicenseFacts({
             <div className="flex flex-wrap items-center gap-x-3">
               <KeyMask slug={product.slug} last4={key.last4} />
               <details className="text-xs text-fg-muted open:basis-full">
-                <summary className="inline-flex min-h-6 cursor-pointer items-center rounded-sm underline decoration-dotted underline-offset-2 hover:text-fg-strong">
+                <summary className="inline-flex min-h-6 cursor-pointer items-center rounded-sm underline [text-decoration-style:dotted] underline-offset-2 hover:text-fg-strong">
                   {t("license.key.why")}
                 </summary>
                 <p className="mt-1">
@@ -321,7 +321,7 @@ function Fact({
   return (
     <div className={wide ? "min-[22rem]:col-span-2" : undefined}>
       <dt className="text-xs text-fg-muted">{term}</dt>
-      <dd className="mt-0.5 min-w-0 text-fg-strong [overflow-wrap:anywhere]">
+      <dd className="mt-0.5 min-w-0 text-fg-strong desk:mt-0 [overflow-wrap:anywhere]">
         {children}
       </dd>
     </div>

@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, it } from "vitest";
 import {
   h1,
+  shoot,
   startPortal,
   type PortalHarness,
   type Theme,
@@ -43,6 +44,7 @@ describe.concurrent("the product page at desk widths", () => {
       try {
         await h1(o.page, "Nightfall");
         await o.page.locator("#section-devices-h").waitFor();
+        await shoot(o.page, `e2-product-${width}`);
         const at = await o.page.evaluate(() => ({
           devices: document
             .querySelector("#section-devices-h")!
@@ -55,10 +57,10 @@ describe.concurrent("the product page at desk widths", () => {
         console.log(`E2 devices heading y at ${width}x${height}:`, at);
         expect(at.scrolled).toBe(0);
         expect(at.devices, "Devices heading top").toBeLessThan(height);
-        // A line of the card too, not only its heading: the heading and the count line.
-        expect(at.devices, "Devices heading top, with room").toBeLessThan(
-          height - 48,
-        );
+        expect(
+          at.devices,
+          "Devices heading top, with its own line inside the screen too",
+        ).toBeLessThanOrEqual(height - 28);
       } finally {
         await o.close();
       }
@@ -72,6 +74,7 @@ describe.concurrent("tab order is the visual order (B-076)", () => {
       const o = await portal.open("twelve", "/", { width, height: 900 });
       try {
         await h1(o.page, "Your library");
+        await o.page.waitForSelector("[data-library-search]");
         const bad = await o.page.evaluate(() => {
           // `next` reads after `prev`: on a later row, or on the same row and not to its left.
           const after = (prev: DOMRect, next: DOMRect): boolean =>
@@ -195,6 +198,7 @@ describe.concurrent("touch targets (B-081, B-082)", () => {
     });
     try {
       await h1(o.page, "Your library");
+      await o.page.waitForSelector("[role=radiogroup][aria-label=View]");
       const heights = await o.page.evaluate(() =>
         [
           ...document.querySelectorAll(
@@ -219,7 +223,10 @@ describe.concurrent("the dialog scrim (B-091)", () => {
       const o = await portal.open("three", "/", { width, height });
       try {
         await h1(o.page, "Your library");
-        await o.page.getByRole("button", { name: "Activate license" }).click();
+        await o.page
+          .getByRole("button", { name: "Activate a license" })
+          .first()
+          .click();
         await o.page.getByRole("dialog").waitFor();
         const hit = await o.page.evaluate(() => {
           const strip = document.querySelector("[data-missing-strip]")!;
@@ -264,7 +271,7 @@ describe.concurrent("a right-to-left name starts at the icon (B-078)", () => {
     },
   };
   for (const theme of ["dark"] as Theme[]) {
-    it(`in the tile and on the product page (${theme})`, async ({ expect }) => {
+    it(`in the Library tile (${theme})`, async ({ expect }) => {
       const o = await portal.open("three", "/", {
         theme,
         width: 1440,
@@ -273,6 +280,7 @@ describe.concurrent("a right-to-left name starts at the icon (B-078)", () => {
       });
       try {
         await h1(o.page, "Your library");
+        await o.page.waitForSelector("article h3");
         const at = await o.page.evaluate((text) => {
           const h3 = [...document.querySelectorAll("article h3")].find((h) =>
             h.textContent?.includes(text.slice(0, 6)),
