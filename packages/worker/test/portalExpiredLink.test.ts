@@ -29,6 +29,7 @@ const START = "/api/signin/email/start";
 const VERIFY = "/api/signin/email/verify";
 const RESEND = "/api/signin/email/resend";
 const FLOW = "/api/signin/flow";
+const SAME = { "sec-fetch-site": "same-origin" };
 const LATE = NOW + EMAIL_CODE_TTL_SECONDS + 5;
 
 async function started(
@@ -206,7 +207,12 @@ describe("the plain form POST into the resend", () => {
     const oldCode = lastCode(w, "ada@example.com");
     const mails = w.mail.length;
     later(LATE);
-    const res = await asker.send("POST", RESEND, {}, { form: true, now: LATE });
+    const res = await asker.send(
+      "POST",
+      RESEND,
+      {},
+      { form: true, now: LATE, headers: SAME },
+    );
     expect(res.status).toBe(303);
     expect(res.headers.get("location")).toBe("/?signin=code");
     expect(w.mail.length).toBe(mails + 1);
@@ -240,7 +246,12 @@ describe("the plain form POST into the resend", () => {
     const w = await seededWorld();
     const { asker } = await started(w, "/signin?request=rq_abc123");
     later(LATE);
-    const res = await asker.send("POST", RESEND, {}, { form: true, now: LATE });
+    const res = await asker.send(
+      "POST",
+      RESEND,
+      {},
+      { form: true, now: LATE, headers: SAME },
+    );
     expect(res.status).toBe(303);
     expect(res.headers.get("location")).toBe(
       "/signin?request=rq_abc123&signin=code",
@@ -262,7 +273,7 @@ describe("the plain form POST into the resend", () => {
       "POST",
       RESEND,
       {},
-      { form: true, now: NOW + 5 },
+      { form: true, now: NOW + 5, headers: SAME },
     );
     expect(res.status).toBe(303);
     expect(res.headers.get("location")).toBe("/?signin=code");
@@ -271,7 +282,12 @@ describe("the plain form POST into the resend", () => {
 
   it("without a flow, ends on the expired page with Sign in again", async () => {
     const w = await seededWorld();
-    const res = await new Device(w).send("POST", RESEND, {}, { form: true });
+    const res = await new Device(w).send(
+      "POST",
+      RESEND,
+      {},
+      { form: true, headers: SAME },
+    );
     expect(res.status).toBe(400);
     const html = await res.text();
     expect(html).toContain("Sign in again");
@@ -289,5 +305,49 @@ describe("the plain form POST into the resend", () => {
     );
     expect(res.status).toBe(400);
     expect(w.mail.length).toBe(1);
+  });
+});
+
+describe("the form POST must be same-origin", () => {
+  async function post(headers: Record<string, string>) {
+    const w = await seededWorld();
+    const { asker } = await started(w);
+    const res = await asker.send(
+      "POST",
+      RESEND,
+      {},
+      { form: true, now: NOW + 100, headers },
+    );
+    return { res, w, asker };
+  }
+  const refused = async (r: Awaited<ReturnType<typeof post>>) => {
+    expect(r.res.status).toBe(400);
+    const html = await r.res.text();
+    expect(html).toContain("Sign in again");
+    expect(html).not.toContain("Send a new code");
+    expect(html).not.toContain("example.com");
+    expect(r.w.mail.length).toBe(1);
+    expect(r.res.headers.get("set-cookie")).toBeNull();
+  };
+
+  it("refuses cross-site", async () => {
+    await refused(await post({ "sec-fetch-site": "cross-site" }));
+  });
+  it("refuses same-site (a sibling host)", async () => {
+    await refused(await post({ "sec-fetch-site": "same-site" }));
+  });
+  it("refuses a post with neither header", async () => {
+    await refused(await post({}));
+  });
+  it("refuses a foreign Origin when there is no fetch metadata", async () => {
+    await refused(await post({ origin: "https://other.plrs.im" }));
+  });
+  it("accepts same-origin fetch metadata", async () => {
+    const r = await post({ "sec-fetch-site": "same-origin" });
+    expect(r.res.status).toBe(303);
+  });
+  it("accepts an equal Origin from a browser without fetch metadata", async () => {
+    const r = await post({ origin: "https://key.plrs.im" });
+    expect(r.res.status).toBe(303);
   });
 });

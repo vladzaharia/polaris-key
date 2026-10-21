@@ -514,6 +514,10 @@ export async function handleSigninEmailResend(
     .toLowerCase()
     .startsWith("application/x-www-form-urlencoded");
   if (!form) return resendFlow(req, env, db, now);
+  // A plain form can be posted from any page. SameSite=Lax is site-scoped, so a sibling host
+  // could carry the cookie: only a same-origin post may retire a live code. Same answer as a
+  // missing flow, no detail.
+  if (!sameOriginPost(req)) return expiredLinkPage(env, req, undefined, true);
   const before = await currentFlow(env, req);
   const res = await resendFlow(req, env, db, now);
   // Sent, or too soon / capped / over the budget: the flow lives, and the code step says which.
@@ -527,6 +531,16 @@ export async function handleSigninEmailResend(
   if (res.status === 503) return emailUnavailablePage();
   if (res.status === 400) return expiredLinkPage(env, req);
   return signInOffPage();
+}
+
+/**
+ * `Sec-Fetch-Site: same-origin`, or (no fetch metadata, an older browser) an `Origin` equal to the
+ * request's. Neither header: refused.
+ */
+function sameOriginPost(req: Request): boolean {
+  const site = req.headers.get("sec-fetch-site");
+  if (site !== null) return site === "same-origin";
+  return req.headers.get("origin") === new URL(req.url).origin;
 }
 
 /** Where the plain form's answer lands: the page the sign-in was headed for, on its code step. */
@@ -843,8 +857,10 @@ async function expiredLinkPage(
   env: Env,
   req: Request,
   returnTo?: string,
+  /** Answer as for a browser with no flow (a refused form post names nothing). */
+  anonymous = false,
 ): Promise<Response> {
-  const flow = (await currentFlow(env, req))?.record;
+  const flow = anonymous ? undefined : (await currentFlow(env, req))?.record;
   const heading = "That code or link has expired"; // signin.expired.title
   const body = "<p>Codes and links work once, for 10 minutes.</p>"; // signin.expired.body
   if (flow && emailConfigured(env)) {

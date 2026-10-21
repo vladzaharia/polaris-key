@@ -13548,8 +13548,9 @@ paths:
         (`/?signin=code`, or `/signin?request=rq_…&signin=code`), and the new flow cookie; the sign-in
         page then reads `GET /api/signin/flow`. A resend asked too soon, or over a cap, lands there
         too, where the code step shows the wait. No live flow, or a mail failure, is a Worker page
-        (`400`, `503`), not JSON. The flow cookie is `SameSite=Lax`, so a cross-site form arrives
-        without it.
+        (`400`, `503`), not JSON. The form variant is refused (the Sign in again page, `400`) unless
+        `Sec-Fetch-Site` is `same-origin` or, without it, `Origin` equals the request's:
+        `SameSite=Lax` is site-scoped, not origin-scoped.
       requestBody:
         required: false
         content:

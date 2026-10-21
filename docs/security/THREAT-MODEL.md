@@ -6288,7 +6288,10 @@ The login card is the one place a Polaris Key account's credentials are entered
   I-02's limits. `GET /api/signin/flow` and the expired page show the address masked
   (`a•••@example.com`) and only to the browser holding the cookie; a link opened anywhere else, or
   one already used (its flow is gone), names no address. The page's form is a `POST` of the resend
-  route; the `Lax` cookie keeps a cross-site form from carrying the flow.
+  route. `SameSite=Lax` is scoped to the site, not the origin, so a sibling host on the same site
+  could carry the cookie: the form `POST` is refused unless `Sec-Fetch-Site` is `same-origin` (or,
+  without fetch metadata, `Origin` equals the request's), and a refusal is the missing-flow page
+  (Sign in again), so no live code is retired and nothing is named.
 - **The email gate and the join offer (owner decisions, 2026-10-04).** No account row and no
   session exist until the gate passes; its record is server-held and named by a host-only
   `__Host-pkey_gate` cookie, so another browser cannot drive it. A provider-asserted verified
