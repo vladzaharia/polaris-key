@@ -42,6 +42,7 @@ import {
   inputWithIdentity,
   mergeThemes,
   onCopyLoaded,
+  preloadCopy,
   resolveFor,
   themeVars,
   watchProductIdentity,
@@ -670,6 +671,8 @@ function gateScreen(view: View, step: GateStep): ComponentName | null {
  * runs. It never flashes activation during a cached-session check (the model keeps `booting`).
  */
 export function PolarisKeyGate(props: PolarisKeyGateProps): ReactNode {
+  // English's wire-code texts load now, ahead of the first fetch that could fail with one.
+  preloadCopy();
   // Inside <PolarisKeyProvider> with no `input`, the gate starts itself from the SDK.
   const provided = useContext(ThemeContext);
   const sdk = useSdkGate({

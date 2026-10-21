@@ -68,6 +68,15 @@ function ensureEnglishRest(): void {
     });
 }
 
+/**
+ * Start loading the English keys the bundled table leaves out, before any copy is asked for: a
+ * kit calls this as it mounts, so the table is normally in place by the time a wire-derived code
+ * (which needs a network round trip) renders. Safe to call again.
+ */
+export function preloadCopy(): void {
+  ensureEnglishRest();
+}
+
 /** Register a table directly (tests, or a host that preloads a pack). */
 export function provideTable(locale: string, table: CopyTable): void {
   const wanted = resolveLocale(locale);

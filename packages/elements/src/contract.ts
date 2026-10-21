@@ -23,7 +23,13 @@ export { platformLabel } from "./platforms.js";
 export { FORM_ORDER, formStep, type FormInput, type FormStep } from "./form.js";
 // The theme and copy resolution both renderers run (§1.2, §3.1, §4.7): one copy table per locale
 // on the page, one identity path through ui-core.
-export { copyFor, ensureLocale, onCopyLoaded, provideTable } from "./copy.js";
+export {
+  copyFor,
+  ensureLocale,
+  onCopyLoaded,
+  preloadCopy,
+  provideTable,
+} from "./copy.js";
 export {
   decodeIcon,
   groundPrefersDark,

@@ -15,7 +15,7 @@ import {
 import type { ResolvedIdentity } from "@polaris-key/ui-core/theme";
 import { resolveProductIdentity } from "@polaris-key/ui-core/theme";
 
-import { copyFor, onCopyLoaded } from "./copy.js";
+import { copyFor, onCopyLoaded, preloadCopy } from "./copy.js";
 import { installFonts } from "./fonts.js";
 import { actionOf, type RenderCtx } from "./render.js";
 import { sharedSheet, stylesCss } from "./styles.js";
@@ -133,6 +133,7 @@ export abstract class PkElement extends LitElement {
   override connectedCallback(): void {
     super.connectedCallback();
     installFonts();
+    preloadCopy();
     roots.add(this);
     this.provider = findProvider(this);
     const refresh = () => {
