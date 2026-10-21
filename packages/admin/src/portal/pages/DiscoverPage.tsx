@@ -12,7 +12,7 @@ import {
   type DiscoverTileState,
 } from "../components/DiscoverTile.js";
 import { ErrorPanel } from "../components/States.js";
-import { TILE_GRID } from "../components/tileGrid.js";
+import { discoverGrid } from "../components/tileGrid.js";
 import { useClaimDiscover, useDiscover, useLibraryView } from "../data.js";
 import { portalErrorCopy } from "../errors.js";
 import {
@@ -180,7 +180,7 @@ export function DiscoverPage({
       </div>
       {pending ? (
         // The loaded grid's columns (`tileGrid.ts`).
-        <div className={TILE_GRID} aria-busy>
+        <div className={discoverGrid(3)} aria-busy>
           <Skeleton className="h-72 rounded-xl" />
           <Skeleton className="h-72 rounded-xl" />
           <Skeleton className="hidden h-72 rounded-xl desk:block" />
@@ -220,7 +220,10 @@ export function DiscoverPage({
             <h2 id="offers-h" className="sr-only">
               Products you can add
             </h2>
-            <ul ref={stagger.ref} className={cn(TILE_GRID, stagger.className)}>
+            <ul
+              ref={stagger.ref}
+              className={cn(discoverGrid(tiles.length), stagger.className)}
+            >
               {tiles.map((offer) => {
                 const slug = offer.product;
                 const state: DiscoverTileState = addedSlugs.has(slug)

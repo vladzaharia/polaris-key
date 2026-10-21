@@ -1,7 +1,6 @@
 import * as React from "react";
 import { PolarisMark } from "@polaris-key/brand/react";
 import { KeyRound, Sparkles } from "lucide-react";
-import { t } from "../../lib/copy.js";
 import { Button } from "../../ui/Button.js";
 import { useTheme } from "../../components/theme.js";
 import { useActivate } from "../activate.js";
@@ -41,7 +40,7 @@ export function LibraryEmpty({
           iconStart={<KeyRound aria-hidden />}
           onClick={() => activate.open()}
         >
-          {t("activate.submit")}
+          Activate a license
         </Button>
         {discoverCount ? (
           <Button asChild size="lg" variant="outline" className="h-12">

@@ -77,11 +77,11 @@ export function LibraryKeyTile({
         </div>
         <Button
           variant="quiet"
-          className="h-10 w-full shrink-0 pointer-coarse:h-11 @2xl:w-auto"
+          className="h-auto min-h-10 w-full shrink-0 whitespace-normal py-1.5 text-center pointer-coarse:min-h-11 @max-[13rem]:[&_svg]:hidden @2xl:w-auto"
           iconStart={<KeyRound aria-hidden />}
           onClick={() => activate.open()}
         >
-          {t("activate.submit")}
+          Activate a license
         </Button>
       </div>
     </li>

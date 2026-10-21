@@ -10,6 +10,7 @@ describe("MissingLicense", () => {
     const strip = screen.getByRole("region", { name: "Missing a license?" });
     expect(strip.className).toContain("sticky");
     expect(strip.className).toContain("desk:bottom-0");
+    expect(strip.hasAttribute("data-missing-strip")).toBe(true);
     // Above the phone bar on phones.
     expect(strip.className).toContain("env(safe-area-inset-bottom)");
     expect(
@@ -17,6 +18,10 @@ describe("MissingLicense", () => {
         .getAllByRole("link")
         .map((a) => a.textContent),
     ).toEqual(["Add it in Sign-in methods", "Connect Steam"]);
+    // Its first item is Activate a license.
+    expect(within(strip).getAllByRole("button")[1]!.textContent).toBe(
+      "Activate a license",
+    );
     for (const a of within(strip).getAllByRole("link")) {
       expect(a.className).toContain("min-h-11");
       expect(a.className).toContain("underline");
@@ -26,6 +31,8 @@ describe("MissingLicense", () => {
   it("collapses to a disclosure on phones that opens the ways", async () => {
     render(<MissingLicense />);
     const toggle = screen.getByRole("button", { name: "Missing a license?" });
+    // The button comes first in the DOM; the panel opens above it (flex-col-reverse).
+    expect(toggle.nextElementSibling?.id).toBe("missing-ways");
     const list = document.getElementById("missing-ways")!;
     expect(toggle.getAttribute("aria-expanded")).toBe("false");
     expect(list.className).toContain("hidden");

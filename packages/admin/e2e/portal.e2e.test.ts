@@ -186,11 +186,14 @@ describe("library cards: 5:2 art, the status inset on its plate, no byline", () 
             const emberArt = document.querySelector<HTMLElement>(
               "article[aria-labelledby='tile-ember-tactics'] [data-art]",
             )!;
-            const plate = emberArt.querySelector<HTMLElement>("span.absolute")!;
+            // Under 11 rem a tile moves the plate from the art into its meta row (PX-35).
+            const plate = emberArt.querySelector<HTMLElement>("span.absolute");
             const a = art.getBoundingClientRect();
             const e = emberArt.getBoundingClientRect();
-            const p = plate.getBoundingClientRect();
-            const pill = plate.firstElementChild!.getBoundingClientRect();
+            const p = plate?.getBoundingClientRect() ?? e;
+            const pill = (
+              plate?.firstElementChild ?? emberArt
+            ).getBoundingClientRect();
             const icon = article.querySelector<HTMLElement>("img[data-art]")!;
             const s = getComputedStyle(icon);
             // A full-bleed square icon (Tidewater's) gets the store's corner mask, nothing more.
@@ -203,6 +206,9 @@ describe("library cards: 5:2 art, the status inset on its plate, no byline", () 
               healthyPlate:
                 (art.querySelector("span.absolute")?.childElementCount ?? 0) >
                 0,
+              inMeta:
+                !plate &&
+                !!emberArt.closest("article")!.textContent!.includes("Expired"),
               insetRight: e.right - p.right,
               insetBottom: p.top - e.top,
               plateHeight: pill.height,
@@ -222,11 +228,15 @@ describe("library cards: 5:2 art, the status inset on its plate, no byline", () 
             5 / 2,
             1,
           );
-          expect(card.insetRight).toBeGreaterThanOrEqual(8);
           expect(card.healthyPlate).toBe(false);
-          expect(card.insetBottom).toBeGreaterThanOrEqual(8);
-          expect(card.insetRight).toBe(card.insetBottom);
-          expect(card.plateHeight).toBeGreaterThanOrEqual(32);
+          if (card.inMeta) {
+            expect(width).toBeLessThan(761);
+          } else {
+            expect(card.insetRight).toBeGreaterThanOrEqual(8);
+            expect(card.insetBottom).toBeGreaterThanOrEqual(8);
+            expect(card.insetRight).toBe(card.insetBottom);
+            expect(card.plateHeight).toBeGreaterThanOrEqual(32);
+          }
           expect(card.byline).toBe(false);
           expect(card.iconFrame).toEqual(["rgba(0, 0, 0, 0)", "0px", "0px"]);
           expect(card.shapes).toEqual(["shaped", "square"]);

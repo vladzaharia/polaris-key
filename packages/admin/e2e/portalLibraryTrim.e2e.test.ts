@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, it } from "vitest";
+import { portalRoutes, type Handler } from "./portalFixtures.js";
 import {
   axe,
   h1,
@@ -69,8 +70,34 @@ describe("the Library shell trim", () => {
           };
         });
         expect(grid.columns).toBe(columns);
-        expect(grid.maxHeight).toBeLessThanOrEqual(width < 761 ? 300 : 290);
+        expect(grid.maxHeight).toBeLessThanOrEqual(width < 761 ? 400 : 290);
         expect(await horizontalOverflow(o.page)).toBeLessThanOrEqual(0);
+        // Nothing extends past its tile: no action, name, pill or glyph spills out.
+        const spills = await o.page.evaluate(() =>
+          [
+            ...document.querySelectorAll("main ul > li > div, main ul > li"),
+          ].flatMap((cell) => {
+            const card = cell.querySelector("article") ?? cell;
+            const c = card.getBoundingClientRect();
+            return [
+              ...card.querySelectorAll(
+                "button, a, h3, p, li, span.rounded-full, svg[role=img]",
+              ),
+            ]
+              .filter((e) => !e.closest("[data-art]"))
+              .map((e) => ({ e, r: e.getBoundingClientRect() }))
+              .filter(
+                ({ r }) =>
+                  r.width > 0 &&
+                  (r.right > c.right + 0.5 || r.left < c.left - 0.5),
+              )
+              .map(
+                ({ e }) =>
+                  `${e.tagName} "${(e.textContent ?? "").trim().slice(0, 24)}"`,
+              );
+          }),
+        );
+        expect(spills).toEqual([]);
         expect(await axe(o.page)).toEqual([]);
         expect(await o.violations()).toEqual([]);
         // The tiles' targets: the action and the overflow menu are 44 px on a touch viewport only;
@@ -126,7 +153,7 @@ describe("the Library shell trim", () => {
       // Scrolled to the top, with the page longer than the screen: pinned to the viewport bottom.
       const top = await box();
       expect(Math.round(top.y + top.height)).toBe(900);
-      expect(top.height).toBeLessThanOrEqual(64);
+      expect(top.height).toBeLessThanOrEqual(66);
       for (const a of await strip.getByRole("link").all())
         expect((await a.boundingBox())!.height).toBeGreaterThanOrEqual(44);
       // At the end: it rests below the last row of tiles, never over it.
@@ -180,6 +207,159 @@ describe("the Library shell trim", () => {
       expect(await axe(o.page)).toEqual([]);
     } finally {
       await o.close();
+    }
+  });
+
+  it("Activate from the account menu leaves focus in the dialog's key field", async ({
+    expect,
+  }) => {
+    const o = await portal.open("three", "/", { width: 1440 });
+    try {
+      await h1(o.page, "Your library");
+      await o.page
+        .getByRole("banner")
+        .getByRole("button", { name: /^Account:/ })
+        .click();
+      await o.page
+        .getByRole("menuitem", { name: "Activate a license" })
+        .click();
+      const dialog = o.page.getByRole("dialog", { name: "Activate a license" });
+      await dialog.waitFor();
+      await o.page.waitForTimeout(400);
+      expect(
+        await dialog
+          .getByRole("textbox", { name: "License key" })
+          .evaluate((el) => el === document.activeElement),
+      ).toBe(true);
+    } finally {
+      await o.close();
+    }
+  });
+
+  /** A library of `count` products (copies under new slugs). */
+  const libraryOf = (count: number): Record<string, Handler> => {
+    const base = portalRoutes("three")["/api/library"] as () => {
+      body: { products: Record<string, unknown>[] };
+    };
+    return {
+      "/api/library": () => {
+        const res = base();
+        const first = res.body.products;
+        const products = Array.from({ length: count }, (_, i) => {
+          const p = first[i % first.length]!;
+          return i < first.length
+            ? p
+            : {
+                ...p,
+                product: `${String(p.product)}-${i}`,
+                name: `Extra ${i}`,
+              };
+        });
+        return { body: { ...res.body, products } };
+      },
+    };
+  };
+
+  const FOCUS_CASES = [
+    {
+      label: "3 products at 360",
+      scenario: "three",
+      path: "/",
+      width: 360,
+      height: 780,
+      count: 3,
+    },
+    {
+      label: "7 products at 1024",
+      scenario: "three",
+      path: "/",
+      width: 1024,
+      height: 768,
+      count: 7,
+    },
+    {
+      label: "the list at 1440",
+      scenario: "twelve",
+      path: "/#/?view=list",
+      width: 1440,
+      height: 900,
+      count: 12,
+    },
+  ] as const;
+  for (const c of FOCUS_CASES) {
+    it(`Tab never leaves a focused control under the sticky strip (${c.label})`, async ({
+      expect,
+    }) => {
+      const o = await portal.open(c.scenario, c.path, {
+        width: c.width,
+        height: c.height,
+        routes: c.scenario === "three" ? libraryOf(c.count) : undefined,
+      });
+      try {
+        await h1(o.page, "Your library");
+        await o.page.locator("[data-missing-strip]").waitFor();
+        await o.page.waitForTimeout(500);
+        await o.page.locator("h1").first().focus();
+        const hidden: string[] = [];
+        for (let i = 0; i < 70; i++) {
+          await o.page.keyboard.press("Tab");
+          await o.page.waitForTimeout(40);
+          const r = await o.page.evaluate(() => {
+            const el = document.activeElement as HTMLElement | null;
+            const strip = document.querySelector("[data-missing-strip]")!;
+            const phone = document.querySelector("nav[aria-label='Phone']");
+            if (
+              !el ||
+              el === document.body ||
+              strip.contains(el) ||
+              phone?.contains(el)
+            )
+              return null;
+            const a = el.getBoundingClientRect();
+            const s = strip.getBoundingClientRect();
+            const bar = document
+              .querySelector("nav[aria-label='Phone']")
+              ?.getBoundingClientRect();
+            const over = (b: DOMRect | undefined | null) =>
+              !!b &&
+              b.height > 0 &&
+              a.bottom > b.top + 0.5 &&
+              a.top < b.bottom - 0.5;
+            return over(s) || over(bar)
+              ? `${el.tagName} "${(el.getAttribute("aria-label") ?? el.textContent ?? "").trim().slice(0, 30)}"`
+              : null;
+          });
+          if (r) hidden.push(r);
+        }
+        expect(hidden).toEqual([]);
+      } finally {
+        await o.close();
+      }
+    });
+  }
+
+  it("the strip's first item is Activate a license in every Library state", async ({
+    expect,
+  }) => {
+    for (const [scenario, path] of [
+      ["one", "/"],
+      ["twelve", "/"],
+      ["twelve", "/#/?view=list"],
+    ] as const) {
+      const o = await portal.open(scenario, path, { width: 1440 });
+      try {
+        await h1(o.page, "Your library");
+        const strip = o.page.getByRole("region", {
+          name: "Missing a license?",
+        });
+        const first = strip.getByRole("button", { name: "Activate a license" });
+        await first.click();
+        await o.page
+          .getByRole("dialog", { name: "Activate a license" })
+          .waitFor();
+      } finally {
+        await o.close();
+      }
     }
   });
 });

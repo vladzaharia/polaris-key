@@ -87,7 +87,7 @@ describe("Library on today's data (PX-02)", () => {
     await userEvent.click(
       within(
         screen.getByRole("region", { name: "Nothing here yet" }),
-      ).getByRole("button", { name: "Activate license" }),
+      ).getByRole("button", { name: "Activate a license" }),
     );
     expect(
       await screen.findByRole("dialog", { name: "Activate a license" }),
@@ -305,10 +305,10 @@ describe("Library on today's data (PX-02)", () => {
     expect(within(strip).getByText(/Sent to another email\?/)).toBeTruthy();
     expect(within(strip).getByText(/Bought on Steam\?/)).toBeTruthy();
     expect(
-      within(strip).getByText("App Store or Google Play? Sign in in the app"),
+      within(strip).getByText("App Store or Google Play? Sign in from the app"),
     ).toBeTruthy();
     await userEvent.click(
-      within(tile).getByRole("button", { name: "Activate license" }),
+      within(tile).getByRole("button", { name: "Activate a license" }),
     );
     expect(
       await screen.findByRole("dialog", { name: "Activate a license" }),

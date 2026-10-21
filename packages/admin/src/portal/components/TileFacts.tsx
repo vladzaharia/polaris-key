@@ -82,7 +82,7 @@ export function TileFacts({
   return (
     <div className={cn("space-y-1.5", className)}>
       {tier || devices || platforms.length ? (
-        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+        <div className="flex items-start justify-between gap-x-3 gap-y-1.5 @max-[13rem]/tile:flex-col">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             {tier ? (
               <Pill icon={KeyRound} className="text-fg-strong">
@@ -100,7 +100,7 @@ export function TileFacts({
           </div>
           <PlatformGlyphs
             platforms={platforms}
-            className="ml-auto h-5 shrink-0"
+            className="ml-auto h-5 shrink-0 @max-[13rem]/tile:ml-0"
           />
         </div>
       ) : null}

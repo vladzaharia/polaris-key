@@ -51,6 +51,8 @@ export function AccountMenu({
 }): React.ReactElement {
   const formRef = React.useRef<HTMLFormElement>(null);
   const activate = useActivate();
+  // The Activate dialog takes focus itself: the menu must not hand it back to its trigger.
+  const activating = React.useRef(false);
   // The person's name when we have one (profile import, a provider), else their email.
   const name = account.name?.trim();
   const named = Boolean(name) && name !== account.email;
@@ -93,7 +95,15 @@ export function AccountMenu({
             ) : null}
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="min-w-64">
+        <DropdownMenuContent
+          align="end"
+          className="min-w-64"
+          onCloseAutoFocus={(e) => {
+            if (!activating.current) return;
+            activating.current = false;
+            e.preventDefault();
+          }}
+        >
           <DropdownMenuLabel>
             <div className="flex items-center gap-3">
               <Avatar
@@ -118,23 +128,29 @@ export function AccountMenu({
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={() => activate.open()}>
+          <DropdownMenuItem
+            className="pointer-coarse:min-h-11"
+            onSelect={() => {
+              activating.current = true;
+              activate.open();
+            }}
+          >
             <KeyRound aria-hidden />
             Activate a license
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
+          <DropdownMenuItem asChild className="pointer-coarse:min-h-11">
             <a href={href.account()}>
               <User aria-hidden />
               Account
             </a>
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
+          <DropdownMenuItem asChild className="pointer-coarse:min-h-11">
             <a href={href.account("methods")}>
               <AtSign aria-hidden />
               Sign-in methods
             </a>
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
+          <DropdownMenuItem asChild className="pointer-coarse:min-h-11">
             <a href={href.account("appearance")}>
               <Palette aria-hidden />
               Appearance
@@ -142,7 +158,11 @@ export function AccountMenu({
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           {FOOT_LINKS.map((l) => (
-            <DropdownMenuItem key={l.href} asChild>
+            <DropdownMenuItem
+              key={l.href}
+              asChild
+              className="pointer-coarse:min-h-11"
+            >
               <a href={l.href}>
                 <l.icon aria-hidden />
                 {l.label}
@@ -150,7 +170,10 @@ export function AccountMenu({
             </DropdownMenuItem>
           ))}
           <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={() => formRef.current?.requestSubmit()}>
+          <DropdownMenuItem
+            className="pointer-coarse:min-h-11"
+            onSelect={() => formRef.current?.requestSubmit()}
+          >
             <LogOut aria-hidden />
             {t("common.signOut")}
           </DropdownMenuItem>

@@ -8,6 +8,7 @@ import {
 } from "../model/library.js";
 import { href } from "../router.js";
 import { useCueOnce } from "../stagger.js";
+import { useElementWidth } from "./useElementWidth.js";
 import { libraryTileFacts } from "../model/tileFacts.js";
 import { TileFacts } from "./TileFacts.js";
 import { ProductArt } from "./ProductArt.js";
@@ -58,11 +59,36 @@ export function LibraryTile({
   const confirming = ask > 0;
   const menuButton = React.useRef<HTMLButtonElement>(null);
   const entry = product.kind === "entry";
+  // The tile's own width (PX-35): under 13 rem the More menu joins the name row so the quick
+  // action spans the tile and drops its icon; under 11 rem the icon stacks above the name and the
+  // status pill moves from the art into the meta row. 0 (unmeasured, jsdom) is a wide tile.
+  const articleRef = React.useRef<HTMLElement>(null);
+  const width = useElementWidth(articleRef);
+  const narrow = width > 0 && width < 208;
+  const tiny = width > 0 && width < 176;
+  const menu = (
+    <ProductMenu
+      slug={product.slug}
+      name={product.name}
+      entry={entry}
+      onRemove={entry ? () => setAsk((n) => n + 1) : undefined}
+      triggerRef={menuButton}
+      className={cn(
+        "relative z-10 inline-flex shrink-0 items-center justify-center rounded-md border border-border-strong text-fg-strong hover:bg-hover",
+        "size-10 pointer-coarse:size-11",
+      )}
+    />
+  );
+  const pill =
+    product.status.kind === "deviceLimit" ? null : (
+      <ProductStatusPill status={product.status} onArt />
+    );
   // No hosted cover: the stored tint over the same field, the icon large and centred on it.
   const noArt = !pres.headerUrl;
   return (
     <div ref={cue.ref} className="pk-lift pk-pressable-card grid rounded-xl">
       <article
+        ref={articleRef}
         aria-labelledby={`tile-${product.slug}`}
         // A compact tile is a size container (`tile`): under 17rem (its content, like the action
         // row, under 15rem) the status pill moves to the art's top-right corner, clear of the icon,
@@ -101,17 +127,37 @@ export function LibraryTile({
           ) : null}
           {/* The header's safe bottom-right corner, inset by the card's own padding; the top-right
               one on a narrow compact tile, where the bottom one meets the icon. */}
-          <span className="absolute right-2 top-2">
-            {product.status.kind === "deviceLimit" ? null : (
-              <ProductStatusPill status={product.status} onArt />
-            )}
-          </span>
+          {tiny ? null : <span className="absolute right-2 top-2">{pill}</span>}
         </ProductArt>
         <div className="flex flex-1 flex-col px-3 pb-3 desk:px-3.5 desk:pb-3.5">
           <div
-            className={cn("flex items-start gap-2.5", noArt ? "mt-3" : "-mt-4")}
+            className={cn(
+              "flex items-start gap-2.5",
+              tiny && !noArt && "flex-col gap-1",
+              noArt ? "mt-1" : "-mt-4",
+            )}
           >
-            {noArt ? null : (
+            {tiny ? (
+              // The icon above the name, the More menu level with it: the name gets the whole
+              // width.
+              <div className="flex w-full items-start justify-between">
+                {noArt ? (
+                  <span />
+                ) : (
+                  <ProductIcon
+                    slug={product.slug}
+                    name={product.name}
+                    tint={pres.tint}
+                    src={pres.iconUrl}
+                    size={40}
+                    lift
+                    className="relative"
+                    tileClassName="border-[3px] border-surface-raised"
+                  />
+                )}
+                {menu}
+              </div>
+            ) : noArt ? null : (
               <ProductIcon
                 slug={product.slug}
                 name={product.name}
@@ -125,11 +171,20 @@ export function LibraryTile({
             )}
             {/* Below the art, never over it: the icon overlaps the art by 1.75 rem. The
                 rest of the row is the name's, so its link spans it (PS-05 review v2). */}
-            <div className={cn("min-w-0 flex-1", !noArt && "pt-5")}>
+            <div
+              className={cn(
+                "flex min-w-0 flex-1 items-start gap-1",
+                !noArt && !tiny && "pt-5",
+                tiny && "w-full",
+              )}
+            >
               <h3
                 id={`tile-${product.slug}`}
                 dir="auto"
-                className="line-clamp-2 break-words text-base font-semibold leading-snug text-fg-strong"
+                className={cn(
+                  "min-w-0 flex-1 line-clamp-2 break-words font-semibold leading-snug text-fg-strong",
+                  tiny ? "text-sm" : "text-base",
+                )}
               >
                 <a
                   href={href.product(product.slug)}
@@ -141,8 +196,10 @@ export function LibraryTile({
                   {product.name}
                 </a>
               </h3>
+              {narrow && !tiny ? menu : null}
             </div>
           </div>
+          {tiny && pill ? <div className="mt-2">{pill}</div> : null}
           {product.justAdded ? (
             <p className="mt-2 text-sm text-fg-muted">
               <span
@@ -176,19 +233,12 @@ export function LibraryTile({
               lead={product.justAdded && isDownloadAction(action)}
               shortLabel
               size="md"
-              className="h-10 min-w-0 flex-1 pointer-coarse:h-11"
-            />
-            <ProductMenu
-              slug={product.slug}
-              name={product.name}
-              entry={entry}
-              onRemove={entry ? () => setAsk((n) => n + 1) : undefined}
-              triggerRef={menuButton}
               className={cn(
-                "inline-flex shrink-0 items-center justify-center rounded-md border border-border-strong text-fg-strong hover:bg-hover",
-                "size-10 pointer-coarse:size-11",
+                "h-10 min-w-0 flex-1 pointer-coarse:h-11",
+                narrow && "[&_svg]:hidden",
               )}
             />
+            {narrow ? null : menu}
           </div>
           {entry && confirming ? (
             <RemoveEntryConfirm

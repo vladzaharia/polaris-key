@@ -366,6 +366,19 @@
       --pk-scroll-top: calc(4rem + 1px + 3.25rem + 1px);
     }
   }
+  /* The Library's sticky "Missing a license?" strip (MissingLicense.tsx) publishes its height as
+     --pk-strip-h: a focused control scrolls clear of it (WCAG 2.4.11), above the phone bar below
+     desk. */
+  html:has(.pk-portal-shell [data-missing-strip]) {
+    scroll-padding-bottom: calc(
+      3.25rem + 1px + env(safe-area-inset-bottom) + var(--pk-strip-h, 0px)
+    );
+  }
+  @media (width >= 47.5625rem) {
+    html:has(.pk-portal-shell [data-missing-strip]) {
+      scroll-padding-bottom: var(--pk-strip-h, 0px);
+    }
+  }
   @media (height <= 32rem) {
     html:has(.pk-portal-shell) {
       --pk-scroll-top: 0px;

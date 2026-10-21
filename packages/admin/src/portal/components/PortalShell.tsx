@@ -152,7 +152,7 @@ export function PortalShell({
           "mx-auto w-full max-w-[82rem] flex-1 px-4 pt-5 outline-none desk:px-8 desk:pt-6 short:pt-4",
           // Room for the phone bar; the Library's sticky strip ends the page, so it adds none.
           route.kind === "library"
-            ? "pb-[calc(3.25rem+1px+env(safe-area-inset-bottom))] desk:pb-0"
+            ? "pb-[calc(3.25rem+1px+env(safe-area-inset-bottom)+1.5rem)] desk:pb-8"
             : "pb-[calc(3.25rem+1px+env(safe-area-inset-bottom)+1.5rem)] desk:pb-12",
         )}
       >
@@ -221,7 +221,7 @@ function usePhoneBarToastInset(): void {
       if (barShows.matches)
         root.style.setProperty(
           TOAST_BOTTOM_INSET_VAR,
-          "calc(3.25rem + 1px + env(safe-area-inset-bottom) + 0.75rem)",
+          "calc(3.25rem + 1px + env(safe-area-inset-bottom) + var(--pk-strip-h, 0px) + 0.75rem)",
         );
       else root.style.removeProperty(TOAST_BOTTOM_INSET_VAR);
     };
