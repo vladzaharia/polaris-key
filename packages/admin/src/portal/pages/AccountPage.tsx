@@ -60,7 +60,7 @@ import { t } from "../../lib/copy.js";
  */
 const SECTIONS: { id: AccountSection; label: string }[] = [
   { id: "profile", label: t("profile.title") },
-  { id: "methods", label: "Sign-in methods" },
+  { id: "methods", label: t("signin.join.methodsLink") },
   { id: "packages", label: "Packages" },
   { id: "sessions", label: "Where you're signed in" },
   { id: "appearance", label: "Appearance" },

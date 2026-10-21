@@ -54961,6 +54961,66 @@
         }
       }
     },
+    "signin.approve.codeShort": {
+      "comment": "Approve dialog: Find it pressed with an incomplete code.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter all 8 letters of the code."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geben Sie alle 8 Buchstaben des Codes ein."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saisissez les 8 lettres du code."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Introduce las 8 letras del código."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Digite as 8 letras do código."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inserisci tutte le 8 lettere del codice."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "コードの8文字をすべて入力してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "코드 8글자를 모두 입력하세요."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请输入完整的 8 个字母。"
+          }
+        }
+      }
+    },
     "signin.approve.denied": {
       "comment": "Sign in with another device (SIGN-IN.md §3.11).",
       "extractionState": "manual",
@@ -56133,6 +56193,66 @@
           "stringUnit": {
             "state": "translated",
             "value": "使用其他设备登录"
+          }
+        }
+      }
+    },
+    "signin.approve.tooMany": {
+      "comment": "Approve dialog: too many tries (429).",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Too many tries. Wait a minute, then try again."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zu viele Versuche. Warten Sie eine Minute und versuchen Sie es erneut."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trop d'essais. Attendez une minute, puis réessayez."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Demasiados intentos. Espera un minuto e inténtalo de nuevo."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Muitas tentativas. Aguarde um minuto e tente de novo."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Troppi tentativi. Aspetta un minuto e riprova."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "試行が多すぎます。1分待ってからもう一度お試しください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "시도가 너무 많습니다. 1분 기다린 뒤 다시 시도하세요."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "尝试次数过多，请等一分钟后再试。"
           }
         }
       }
@@ -69553,6 +69673,2694 @@
         }
       }
     },
+    "signin.join.again": {
+      "comment": "Link dialog: re-prove an account whose sign-in is older than 5 minutes. {email}. Arguments: 1=email.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "device": {
+              "mac": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Sign In to %1$@ Again"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Sign in to %1$@ again"
+                }
+              }
+            }
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erneut bei %1$@ anmelden"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se reconnecter à %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iniciar sesión en %1$@ de nuevo"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entrar de novo em %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accedi di nuovo a %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ に再度サインイン"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@에 다시 로그인"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新登录 %1$@"
+          }
+        }
+      }
+    },
+    "signin.join.done": {
+      "comment": "Link dialog: joined.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Joined. You can undo this for 72 hours."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zusammengeführt. Sie können das 72 Stunden lang rückgängig machen."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réunis. Vous pouvez annuler pendant 72 heures."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unidas. Puedes deshacerlo durante 72 horas."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unidas. Você pode desfazer por 72 horas."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uniti. Puoi annullare per 72 ore."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "まとめました。72時間は元に戻せます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "합쳤습니다. 72시간 동안 되돌릴 수 있습니다."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已合并。72 小时内可撤销。"
+          }
+        }
+      }
+    },
+    "signin.join.doneUntil": {
+      "comment": "Link dialog: joined. Arguments: 1=date.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Joined. You can undo until %1$@."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zusammengeführt. Rückgängig bis %1$@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réunis. Annulable jusqu'au %1$@."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unidas. Puedes deshacerlo hasta el %1$@."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unidas. Você pode desfazer até %1$@."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uniti. Puoi annullare entro il %1$@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "まとめました。%1$@まで元に戻せます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "합쳤습니다. %1$@까지 되돌릴 수 있습니다."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已合并。%1$@ 前可撤销。"
+          }
+        }
+      }
+    },
+    "signin.join.expired": {
+      "comment": "Link dialog: the link flow is gone.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Linking took too long. Start again."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Verknüpfen hat zu lange gedauert. Beginnen Sie neu."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le lien a pris trop de temps. Recommencez."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vincular tardó demasiado. Empieza de nuevo."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A vinculação demorou demais. Comece de novo."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il collegamento ha richiesto troppo. Ricomincia."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リンクに時間がかかりすぎました。最初からやり直してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "연결이 너무 오래 걸렸습니다. 다시 시작하세요."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关联耗时过长，请重新开始。"
+          }
+        }
+      }
+    },
+    "signin.join.failed": {
+      "comment": "Link dialog: a request failed.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't join. Try again."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zusammenführen fehlgeschlagen. Versuchen Sie es erneut."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réunion impossible. Réessayez."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo unir. Inténtalo de nuevo."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível unir. Tente de novo."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unione non riuscita. Riprova."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "まとめられませんでした。もう一度お試しください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "합치지 못했습니다. 다시 시도하세요."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法合并，请重试。"
+          }
+        }
+      }
+    },
+    "signin.join.keepsWorking": {
+      "comment": "Link dialog: reassurance under the result.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Every sign-in from both keeps working. You can undo for 72 hours."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle Anmeldungen beider Konten funktionieren weiter. Sie können 72 Stunden lang rückgängig machen."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toutes les connexions des deux comptes continuent de fonctionner. Annulable pendant 72 heures."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todos los inicios de sesión de ambas siguen funcionando. Puedes deshacerlo durante 72 horas."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todos os acessos das duas continuam funcionando. Você pode desfazer por 72 horas."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tutti gli accessi di entrambi continuano a funzionare. Puoi annullare per 72 ore."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "両方のサインイン方法はそのまま使えます。72時間は元に戻せます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "두 계정의 모든 로그인이 계속 작동합니다. 72시간 동안 되돌릴 수 있습니다."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "两个账户的所有登录方式都继续有效。72 小时内可撤销。"
+          }
+        }
+      }
+    },
+    "signin.join.lede": {
+      "comment": "Link dialog, before the second sign-in.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign in to your other account to join the two. Nothing moves until you confirm."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Melden Sie sich bei Ihrem anderen Konto an, um beide zusammenzuführen. Nichts wird verschoben, bevor Sie bestätigen."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connectez-vous à votre autre compte pour réunir les deux. Rien ne bouge avant votre confirmation."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inicia sesión en tu otra cuenta para unir las dos. Nada se mueve hasta que confirmes."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entre na sua outra conta para unir as duas. Nada muda até você confirmar."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accedi all'altro account per unire i due. Nulla cambia finché non confermi."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "もう一方のアカウントにサインインして、2つを1つにまとめます。確認するまで何も移動しません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다른 계정에 로그인해 두 계정을 하나로 합칩니다. 확인하기 전에는 아무것도 옮겨지지 않습니다."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "登录你的另一个账户，把两者合并。确认前不会移动任何内容。"
+          }
+        }
+      }
+    },
+    "signin.join.methodsLine": {
+      "comment": "Link dialog: how an account signs in. {method} is a list of method names. Arguments: 1=method.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Signs in with %1$@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anmeldung mit %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se connecte avec %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entra con %1$@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entra com %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accede con %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@でサインイン"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@(으)로 로그인"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通过 %1$@ 登录"
+          }
+        }
+      }
+    },
+    "signin.join.methodsLink": {
+      "comment": "Link dialog: a link to Account → Sign-in methods.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "device": {
+              "mac": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Sign-In Methods"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Sign-in methods"
+                }
+              }
+            }
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anmeldemethoden"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Méthodes de connexion"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Métodos de inicio de sesión"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Métodos de entrada"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Metodi di accesso"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サインイン方法"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로그인 방법"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "登录方式"
+          }
+        }
+      }
+    },
+    "signin.join.noUndo": {
+      "comment": "Link dialog: the join cannot be undone any more.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This join can no longer be undone."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Zusammenführung kann nicht mehr rückgängig gemacht werden."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette réunion ne peut plus être annulée."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta unión ya no se puede deshacer."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta união não pode mais ser desfeita."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questa unione non si può più annullare."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このまとめはもう元に戻せません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 합치기는 더 이상 되돌릴 수 없습니다."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此次合并已无法撤销。"
+          }
+        }
+      }
+    },
+    "signin.join.otherAccount": {
+      "comment": "Link dialog: the account signed in second.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Other account"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anderes Konto"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autre compte"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otra cuenta"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Outra conta"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Altro account"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "もう一方のアカウント"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다른 계정"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "另一个账户"
+          }
+        }
+      }
+    },
+    "signin.join.otherLede": {
+      "comment": "Link dialog, second sign-in card: what happens next.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use any way to sign in to it. You'll come back here to join them."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nutzen Sie dafür eine beliebige Methode. Danach kommen Sie hierher zurück, um beide zusammenzuführen."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utilisez n'importe quelle méthode. Vous reviendrez ici pour les réunir."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa cualquier forma de entrar. Volverás aquí para unirlas."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use qualquer forma de entrar. Você volta aqui para uni-las."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa un modo qualsiasi. Tornerai qui per unirli."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "どの方法でも構いません。その後ここに戻って2つをまとめます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "어떤 방법이든 괜찮습니다. 이후 여기로 돌아와 합칩니다."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "任选一种方式登录，之后会回到这里合并。"
+          }
+        }
+      }
+    },
+    "signin.join.otherTitle": {
+      "comment": "Link dialog, second sign-in card: what this sign-in is for.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign in to your other account"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Melden Sie sich bei Ihrem anderen Konto an"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connectez-vous à votre autre compte"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inicia sesión en tu otra cuenta"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entre na sua outra conta"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accedi al tuo altro account"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "もう一方のアカウントにサインイン"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다른 계정에 로그인"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "登录你的另一个账户"
+          }
+        }
+      }
+    },
+    "signin.join.ownedNotice": {
+      "comment": "Activate dialog, license_owned refusal, signed in on the portal (SIGN-IN.md D-27).",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "If that account is yours too, sign in to it and join the two."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wenn das Konto auch Ihnen gehört, melden Sie sich dort an und führen Sie beide zusammen."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Si ce compte est aussi le vôtre, connectez-vous et réunissez les deux."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Si esa cuenta también es tuya, inicia sesión en ella y une las dos."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se essa conta também é sua, entre nela e una as duas."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se anche quell'account è tuo, accedi e unisci i due."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "そのアカウントもあなたのものなら、サインインして2つをまとめてください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "그 계정도 본인 것이면 로그인해 두 계정을 합치세요."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如果那个账户也是你的，请登录并合并两者。"
+          }
+        }
+      }
+    },
+    "signin.join.products": {
+      "comment": "Link dialog: products on one account. Arguments: 1=count.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@count@"
+          },
+          "substitutions": {
+            "count": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg product"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg products"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@count@"
+          },
+          "substitutions": {
+            "count": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg Produkt"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg Produkte"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@count@"
+          },
+          "substitutions": {
+            "count": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg produit"
+                    }
+                  },
+                  "many": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg de produits"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg produits"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@count@"
+          },
+          "substitutions": {
+            "count": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg producto"
+                    }
+                  },
+                  "many": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg de productos"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg productos"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@count@"
+          },
+          "substitutions": {
+            "count": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg produto"
+                    }
+                  },
+                  "many": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg de produtos"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg produtos"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@count@"
+          },
+          "substitutions": {
+            "count": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg prodotto"
+                    }
+                  },
+                  "many": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg di prodotti"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg prodotti"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@count@"
+          },
+          "substitutions": {
+            "count": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg個の製品"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@count@"
+          },
+          "substitutions": {
+            "count": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "제품 %arg개"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@count@"
+          },
+          "substitutions": {
+            "count": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg个产品"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "signin.join.provenBy": {
+      "comment": "Link dialog: how and when an account proved itself. {method}, {when}. Arguments: 1=method, 2=when.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Proven by %1$@ %2$@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bestätigt per %1$@ %2$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vérifié par %1$@ %2$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verificada con %1$@ %2$@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprovada por %1$@ %2$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verificato con %1$@ %2$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@で確認済み（%2$@）"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@(으)로 확인됨 (%2$@)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已通过 %1$@ 验证（%2$@）"
+          }
+        }
+      }
+    },
+    "signin.join.reasonPending": {
+      "comment": "Link dialog: an account was joined in the last 72 hours.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "One account was joined in the last 72 hours. Try again after that."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eines der Konten wurde in den letzten 72 Stunden zusammengeführt. Versuchen Sie es danach erneut."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un compte a été réuni ces 72 dernières heures. Réessayez ensuite."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Una cuenta se unió en las últimas 72 horas. Inténtalo después."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uma conta foi unida nas últimas 72 horas. Tente depois."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un account è stato unito nelle ultime 72 ore. Riprova dopo."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "どちらかのアカウントが過去72時間以内にまとめられています。その後にもう一度お試しください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "한 계정이 최근 72시간 안에 합쳐졌습니다. 그 이후에 다시 시도하세요."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "其中一个账户在过去 72 小时内已合并。请稍后再试。"
+          }
+        }
+      }
+    },
+    "signin.join.reasonStaleOne": {
+      "comment": "Link dialog: one account's proof is older than 5 minutes. {email}. Arguments: 1=email.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign in to %1$@ again, then join."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Melden Sie sich erneut bei %1$@ an und führen Sie dann zusammen."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reconnectez-vous à %1$@, puis réunissez."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inicia sesión de nuevo en %1$@ y luego une."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entre de novo em %1$@ e depois una."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accedi di nuovo a %1$@, poi unisci."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ に再度サインインしてから、まとめてください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@에 다시 로그인한 뒤 합치세요."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请重新登录 %1$@，然后合并。"
+          }
+        }
+      }
+    },
+    "signin.join.reasonStepUp": {
+      "comment": "Link dialog: a proof is older than 5 minutes.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign in to both accounts again, then join."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Melden Sie sich bei beiden Konten erneut an und führen Sie sie dann zusammen."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reconnectez-vous aux deux comptes, puis réunissez-les."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inicia sesión de nuevo en ambas cuentas y únelas."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entre de novo nas duas contas e una-as."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accedi di nuovo a entrambi gli account, poi uniscili."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "両方のアカウントにもう一度サインインしてから、まとめてください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "두 계정에 다시 로그인한 뒤 합치세요."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请重新登录两个账户，然后合并。"
+          }
+        }
+      }
+    },
+    "signin.join.reasonUnavailable": {
+      "comment": "Link dialog: a scheduled deletion blocks the join.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel the scheduled deletion first, then join."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brechen Sie zuerst die geplante Löschung ab und führen Sie dann zusammen."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Annulez d'abord la suppression planifiée, puis réunissez."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancela primero la eliminación programada y luego une."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancele primeiro a exclusão agendada e depois una."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Annulla prima l'eliminazione programmata, poi unisci."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "先に予定されている削除を取り消してから、まとめてください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "예약된 삭제를 먼저 취소한 뒤 합치세요."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请先取消已安排的删除，再合并。"
+          }
+        }
+      }
+    },
+    "signin.join.result": {
+      "comment": "Link dialog: what joining leaves. Arguments: 1=count, 2=email.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "One library: %#@count@. %2$@ stays the main email."
+          },
+          "substitutions": {
+            "count": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg product"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg products"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine Bibliothek: %#@count@. %2$@ bleibt die Haupt-E-Mail-Adresse."
+          },
+          "substitutions": {
+            "count": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg Produkt"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg Produkte"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Une bibliothèque : %#@count@. %2$@ reste l'adresse principale."
+          },
+          "substitutions": {
+            "count": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg produit"
+                    }
+                  },
+                  "many": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg de produits"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg produits"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Una biblioteca: %#@count@. %2$@ sigue siendo el correo principal."
+          },
+          "substitutions": {
+            "count": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg producto"
+                    }
+                  },
+                  "many": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg de productos"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg productos"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uma biblioteca: %#@count@. %2$@ continua sendo o e-mail principal."
+          },
+          "substitutions": {
+            "count": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg produto"
+                    }
+                  },
+                  "many": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg de produtos"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg produtos"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Una libreria: %#@count@. %2$@ resta l'email principale."
+          },
+          "substitutions": {
+            "count": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg prodotto"
+                    }
+                  },
+                  "many": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg di prodotti"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg prodotti"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ライブラリは1つ：%#@count@。メインのメールは %2$@ のままです。"
+          },
+          "substitutions": {
+            "count": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg個の製品"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이브러리 하나: %#@count@. 기본 이메일은 %2$@로 유지됩니다."
+          },
+          "substitutions": {
+            "count": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "제품 %arg개"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一个资料库：%#@count@。%2$@ 仍是主邮箱。"
+          },
+          "substitutions": {
+            "count": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg个产品"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "signin.join.sameAccount": {
+      "comment": "Link dialog: the second sign-in was the same account.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That's the account you started from. Sign in to your other account."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das ist das Konto, bei dem Sie begonnen haben. Melden Sie sich bei Ihrem anderen Konto an."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "C'est le compte de départ. Connectez-vous à votre autre compte."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Es la cuenta de la que partiste. Inicia sesión en tu otra cuenta."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "É a conta de onde você começou. Entre na sua outra conta."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "È l'account da cui sei partito. Accedi all'altro account."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最初のアカウントです。もう一方のアカウントにサインインしてください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "처음 시작한 계정입니다. 다른 계정에 로그인하세요."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这是你开始时的账户。请登录另一个账户。"
+          }
+        }
+      }
+    },
+    "signin.join.signInOther": {
+      "comment": "Link dialog: confirm before the second sign-in.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign in to your other account first."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Melden Sie sich zuerst bei Ihrem anderen Konto an."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connectez-vous d'abord à votre autre compte."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Primero inicia sesión en tu otra cuenta."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entre primeiro na sua outra conta."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prima accedi all'altro account."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "先にもう一方のアカウントにサインインしてください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "먼저 다른 계정에 로그인하세요."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请先登录你的另一个账户。"
+          }
+        }
+      }
+    },
+    "signin.join.signedNow": {
+      "comment": "Link dialog: the account this browser is signed in to now.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Signed in now"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jetzt angemeldet"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connecté maintenant"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Con sesión iniciada"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conectada agora"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connesso ora"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在サインイン中"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재 로그인됨"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前已登录"
+          }
+        }
+      }
+    },
+    "signin.join.staleMark": {
+      "comment": "Link dialog: marks an account whose sign-in is older than 5 minutes.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Signed in more than 5 minutes ago"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vor mehr als 5 Minuten angemeldet"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connecté il y a plus de 5 minutes"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sesión iniciada hace más de 5 minutos"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entrou há mais de 5 minutos"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accesso di oltre 5 minuti fa"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "5分以上前にサインイン"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "5분 넘게 전에 로그인함"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "登录已超过 5 分钟"
+          }
+        }
+      }
+    },
+    "signin.join.start": {
+      "comment": "Link dialog primary: starts the second sign-in.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "device": {
+              "mac": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Sign In to the Other Account"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Sign in to the other account"
+                }
+              }
+            }
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beim anderen Konto anmelden"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se connecter à l'autre compte"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iniciar sesión en la otra cuenta"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entrar na outra conta"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accedi all'altro account"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "もう一方のアカウントにサインイン"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다른 계정에 로그인"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "登录另一个账户"
+          }
+        }
+      }
+    },
+    "signin.join.startAgain": {
+      "comment": "Link dialog: forget the flow and begin again.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "device": {
+              "mac": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Start Again"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Start again"
+                }
+              }
+            }
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neu beginnen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recommencer"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Empezar de nuevo"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Começar de novo"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ricomincia"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最初からやり直す"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다시 시작"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新开始"
+          }
+        }
+      }
+    },
+    "signin.join.stepUpVerb": {
+      "comment": "Link dialog: completes 'Use your passkey to …' in the confirm-it's-you prompt.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "link accounts"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Konten zu verknüpfen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "lier des comptes"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "vincular cuentas"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "vincular contas"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "collegare gli account"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アカウントをリンク"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "계정을 연결"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关联账户"
+          }
+        }
+      }
+    },
+    "signin.join.stillSignedIn": {
+      "comment": "After cancelling the other-account sign-in: which account this browser is signed in to. Arguments: 1=email.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Still signed in as %1$@."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weiterhin angemeldet als %1$@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toujours connecté en tant que %1$@."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sigues con la sesión de %1$@."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continua conectado como %1$@."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sei ancora connesso come %1$@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "引き続き %1$@ でサインインしています。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "계속 %1$@(으)로 로그인되어 있습니다."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仍以 %1$@ 登录。"
+          }
+        }
+      }
+    },
+    "signin.join.thisAccount": {
+      "comment": "Link dialog: the account the person started from.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This account"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieses Konto"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce compte"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta cuenta"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta conta"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo account"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このアカウント"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 계정"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此账户"
+          }
+        }
+      }
+    },
+    "signin.join.title": {
+      "comment": "Account → Link an existing account dialog (PORTAL.md §4.11).",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Link an existing account"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bestehendes Konto verknüpfen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lier un compte existant"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vincular una cuenta existente"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vincular uma conta existente"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Collega un account esistente"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "既存のアカウントをリンク"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "기존 계정 연결"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关联现有账户"
+          }
+        }
+      }
+    },
+    "signin.join.undo": {
+      "comment": "Link dialog: undo a join.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "device": {
+              "mac": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Undo Join"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Undo join"
+                }
+              }
+            }
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zusammenführung rückgängig"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Annuler la réunion"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deshacer unión"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desfazer união"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Annulla unione"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "まとめを元に戻す"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "합치기 되돌리기"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "撤销合并"
+          }
+        }
+      }
+    },
+    "signin.join.undoConfirm": {
+      "comment": "Link dialog opened from the 72-hour row: confirm the undo. {email}, {date}. Arguments: 1=email, 2=date.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Undo the join with %1$@? You can until %2$@."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zusammenführung mit %1$@ rückgängig machen? Möglich bis %2$@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Annuler la réunion avec %1$@ ? Possible jusqu'au %2$@."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Deshacer la unión con %1$@? Puedes hasta el %2$@."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desfazer a união com %1$@? Você pode até %2$@."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Annullare l'unione con %1$@? Puoi fino al %2$@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ とのまとめを元に戻しますか？%2$@まで可能です。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@과(와)의 합치기를 되돌릴까요? %2$@까지 가능합니다."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "撤销与 %1$@ 的合并？%2$@ 前均可撤销。"
+          }
+        }
+      }
+    },
+    "signin.join.undoFailed": {
+      "comment": "Link dialog: an undo failed.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't undo the join. Try again."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Zusammenführung konnte nicht rückgängig gemacht werden. Versuchen Sie es erneut."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible d'annuler la réunion. Réessayez."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo deshacer la unión. Inténtalo de nuevo."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível desfazer a união. Tente de novo."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile annullare l'unione. Riprova."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "元に戻せませんでした。もう一度お試しください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "합치기를 되돌리지 못했습니다. 다시 시도하세요."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法撤销合并，请重试。"
+          }
+        }
+      }
+    },
+    "signin.join.undoable": {
+      "comment": "Link dialog: a join that can still be undone. Arguments: 1=email, 2=date.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Joined %1$@. Undo until %2$@."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ zusammengeführt. Rückgängig bis %2$@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ réuni. Annulable jusqu'au %2$@."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unida %1$@. Deshacer hasta %2$@."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ unida. Desfazer até %2$@."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unito %1$@. Annulla entro %2$@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ をまとめました。%2$@まで元に戻せます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 합침. %2$@까지 되돌릴 수 있습니다."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已合并 %1$@。%2$@ 前可撤销。"
+          }
+        }
+      }
+    },
+    "signin.join.undone": {
+      "comment": "Link dialog: join undone.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Join undone."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zusammenführung rückgängig gemacht."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réunion annulée."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unión deshecha."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "União desfeita."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unione annullata."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "元に戻しました。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "되돌렸습니다."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已撤销合并。"
+          }
+        }
+      }
+    },
+    "signin.join.yourOther": {
+      "comment": "Link dialog: the account that is not the current one.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your other account"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ihr anderes Konto"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre autre compte"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu otra cuenta"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sua outra conta"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il tuo altro account"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "もう一方のアカウント"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다른 계정"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的另一个账户"
+          }
+        }
+      }
+    },
     "signin.key.addAndUse": {
       "comment": "License key step (SIGN-IN.md §3.9).",
       "extractionState": "manual",
@@ -70005,6 +72813,66 @@
           "stringUnit": {
             "state": "translated",
             "value": "请粘贴您的许可证密钥以继续。"
+          }
+        }
+      }
+    },
+    "signin.key.enterKey": {
+      "comment": "Activate dialog: Continue pressed with an empty field.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter your license key."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geben Sie Ihren Lizenzschlüssel ein."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saisissez votre clé de licence."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Introduce tu clave de licencia."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Digite sua chave de licença."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inserisci la tua chiave di licenza."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ライセンスキーを入力してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이선스 키를 입력하세요."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请输入你的许可证密钥。"
           }
         }
       }
@@ -72441,6 +75309,270 @@
           "stringUnit": {
             "state": "translated",
             "value": "不是你？"
+          }
+        }
+      }
+    },
+    "signin.nudge.add": {
+      "comment": "Nudge primary: opens Account → Sign-in methods.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "device": {
+              "mac": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Add a Way"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Add a way"
+                }
+              }
+            }
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hinzufügen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajouter"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añadir"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adicionar"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aggiungi"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "追加する"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "추가"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加"
+          }
+        }
+      }
+    },
+    "signin.nudge.body": {
+      "comment": "Nudge body.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "So you can always get back in."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "So kommen Sie immer wieder hinein."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pour toujours pouvoir revenir."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Así siempre podrás volver a entrar."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Assim você sempre consegue voltar."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Così potrai sempre rientrare."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "いつでもサインインし直せます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "언제든 다시 로그인할 수 있습니다."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这样你随时都能重新登录。"
+          }
+        }
+      }
+    },
+    "signin.nudge.later": {
+      "comment": "Nudge dismiss.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "device": {
+              "mac": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Not Now"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Not now"
+                }
+              }
+            }
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht jetzt"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plus tard"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ahora no"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agora não"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non ora"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今はしない"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "나중에"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂不"
+          }
+        }
+      }
+    },
+    "signin.nudge.title": {
+      "comment": "Portal, next visit after a first platform sign-in: the Add another way to sign in nudge (SIGN-IN.md D-40).",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add another way to sign in"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weitere Anmeldemethode hinzufügen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajouter une autre façon de se connecter"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añade otra forma de iniciar sesión"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adicione outra forma de entrar"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aggiungi un altro modo per accedere"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "別のサインイン方法を追加"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다른 로그인 방법 추가"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加另一种登录方式"
           }
         }
       }

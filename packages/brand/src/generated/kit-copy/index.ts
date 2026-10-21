@@ -915,6 +915,50 @@ export type KitCopyKey =
   | "signin.gate.nameRequired"
   | "signin.gate.termsLede"
   | "signin.code.incomplete"
+  | "signin.nudge.title"
+  | "signin.nudge.body"
+  | "signin.nudge.add"
+  | "signin.nudge.later"
+  | "signin.join.title"
+  | "signin.join.lede"
+  | "signin.join.start"
+  | "signin.join.thisAccount"
+  | "signin.join.otherAccount"
+  | "signin.join.products"
+  | "signin.join.result"
+  | "signin.join.done"
+  | "signin.join.undo"
+  | "signin.join.undone"
+  | "signin.join.undoable"
+  | "signin.join.expired"
+  | "signin.join.signInOther"
+  | "signin.join.reasonStepUp"
+  | "signin.join.reasonPending"
+  | "signin.join.reasonUnavailable"
+  | "signin.join.sameAccount"
+  | "signin.join.failed"
+  | "signin.join.ownedNotice"
+  | "signin.approve.codeShort"
+  | "signin.join.stepUpVerb"
+  | "signin.join.otherTitle"
+  | "signin.join.otherLede"
+  | "signin.join.signedNow"
+  | "signin.join.yourOther"
+  | "signin.join.methodsLine"
+  | "signin.join.provenBy"
+  | "signin.join.keepsWorking"
+  | "signin.join.doneUntil"
+  | "signin.join.again"
+  | "signin.join.startAgain"
+  | "signin.join.noUndo"
+  | "signin.join.methodsLink"
+  | "signin.join.undoFailed"
+  | "signin.join.reasonStaleOne"
+  | "signin.join.staleMark"
+  | "signin.join.stillSignedIn"
+  | "signin.join.undoConfirm"
+  | "signin.approve.tooMany"
+  | "signin.key.enterKey"
   | "core.fallback.title"
   | "core.fallback.message"
   | "core.codes.unauthorized.title"
@@ -1440,6 +1484,13 @@ export const KIT_COPY_VARIANTS: Readonly<
   "yourData.remove.keep": { macos: "Keep My Data" },
   "getIt.flow.emailMe": { macos: "Email Me the Download" },
   "signin.gate.passkeyAdd": { macos: "Add a Passkey" },
+  "signin.nudge.add": { macos: "Add a Way" },
+  "signin.nudge.later": { macos: "Not Now" },
+  "signin.join.start": { macos: "Sign In to the Other Account" },
+  "signin.join.undo": { macos: "Undo Join" },
+  "signin.join.again": { macos: "Sign In to {email} Again" },
+  "signin.join.startAgain": { macos: "Start Again" },
+  "signin.join.methodsLink": { macos: "Sign-In Methods" },
 };
 
 /** Locales whose core.* strings are English until their core pack lands. */

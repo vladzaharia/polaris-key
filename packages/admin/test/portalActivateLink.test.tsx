@@ -266,7 +266,18 @@ describe("§4.19 Activate license errors: every case, inline, never a toast", ()
         .getByRole("textbox", { name: "License key" })
         .getAttribute("aria-invalid"),
     ).toBe("true");
-    expect(continueButton(dialog).disabled).toBe(true);
+    // Never a dead primary: Continue stays pressable (it sends nothing for a refused key), and
+    // `license_owned` leads with joining the accounts instead.
+    if (_case === "Owned by another account") {
+      expect(
+        within(dialog).queryByRole("button", { name: "Continue" }),
+      ).toBeNull();
+      expect(
+        within(dialog).getByRole("button", {
+          name: "Link an existing account",
+        }),
+      ).toBeTruthy();
+    } else expect(continueButton(dialog).disabled).toBe(false);
     for (const name of actions)
       expect(within(dialog).getByRole("button", { name })).toBeTruthy();
     expect(fetchedRequests()).not.toContain("POST /api/claim/license-key");

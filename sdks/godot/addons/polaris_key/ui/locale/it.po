@@ -5268,6 +5268,269 @@ msgstr "Accetta i termini di {app} per continuare."
 msgid "signin.code.incomplete"
 msgstr "Inserisci tutte le 6 cifre."
 
+#. Add another way to sign in
+#. Portal, next visit after a first platform sign-in: the Add another way to sign in nudge (SIGN-IN.md D-40).
+msgid "signin.nudge.title"
+msgstr "Aggiungi un altro modo per accedere"
+
+#. So you can always get back in.
+#. Nudge body.
+msgid "signin.nudge.body"
+msgstr "Così potrai sempre rientrare."
+
+#. Add a way
+#. Nudge primary: opens Account → Sign-in methods.
+msgid "signin.nudge.add"
+msgstr "Aggiungi"
+
+#. macos: Add a Way
+msgctxt "macos"
+msgid "signin.nudge.add"
+msgstr "Aggiungi"
+
+#. Not now
+#. Nudge dismiss.
+msgid "signin.nudge.later"
+msgstr "Non ora"
+
+#. macos: Not Now
+msgctxt "macos"
+msgid "signin.nudge.later"
+msgstr "Non ora"
+
+#. Link an existing account
+#. Account → Link an existing account dialog (PORTAL.md §4.11).
+msgid "signin.join.title"
+msgstr "Collega un account esistente"
+
+#. Sign in to your other account to join the two. Nothing moves until you confirm.
+#. Link dialog, before the second sign-in.
+msgid "signin.join.lede"
+msgstr "Accedi all'altro account per unire i due. Nulla cambia finché non confermi."
+
+#. Sign in to the other account
+#. Link dialog primary: starts the second sign-in.
+msgid "signin.join.start"
+msgstr "Accedi all'altro account"
+
+#. macos: Sign In to the Other Account
+msgctxt "macos"
+msgid "signin.join.start"
+msgstr "Accedi all'altro account"
+
+#. This account
+#. Link dialog: the account the person started from.
+msgid "signin.join.thisAccount"
+msgstr "Questo account"
+
+#. Other account
+#. Link dialog: the account signed in second.
+msgid "signin.join.otherAccount"
+msgstr "Altro account"
+
+#. {count, plural, one {# product} other {# products}}
+#. Link dialog: products on one account.
+#. Plural on {count}.
+msgid "signin.join.products"
+msgid_plural "signin.join.products"
+msgstr[0] "{count} prodotto"
+msgstr[1] "{count} di prodotti"
+msgstr[2] "{count} prodotti"
+
+#. One library: {count, plural, one {# product} other {# products}}. {email} stays the main email.
+#. Link dialog: what joining leaves.
+#. Plural on {count}.
+msgid "signin.join.result"
+msgid_plural "signin.join.result"
+msgstr[0] "Una libreria: {count} prodotto. {email} resta l'email principale."
+msgstr[1] "Una libreria: {count} di prodotti. {email} resta l'email principale."
+msgstr[2] "Una libreria: {count} prodotti. {email} resta l'email principale."
+
+#. Joined. You can undo this for 72 hours.
+#. Link dialog: joined.
+msgid "signin.join.done"
+msgstr "Uniti. Puoi annullare per 72 ore."
+
+#. Undo join
+#. Link dialog: undo a join.
+msgid "signin.join.undo"
+msgstr "Annulla unione"
+
+#. macos: Undo Join
+msgctxt "macos"
+msgid "signin.join.undo"
+msgstr "Annulla unione"
+
+#. Join undone.
+#. Link dialog: join undone.
+msgid "signin.join.undone"
+msgstr "Unione annullata."
+
+#. Joined {email}. Undo until {date}.
+#. Link dialog: a join that can still be undone.
+msgid "signin.join.undoable"
+msgstr "Unito {email}. Annulla entro {date}."
+
+#. Linking took too long. Start again.
+#. Link dialog: the link flow is gone.
+msgid "signin.join.expired"
+msgstr "Il collegamento ha richiesto troppo. Ricomincia."
+
+#. Sign in to your other account first.
+#. Link dialog: confirm before the second sign-in.
+msgid "signin.join.signInOther"
+msgstr "Prima accedi all'altro account."
+
+#. Sign in to both accounts again, then join.
+#. Link dialog: a proof is older than 5 minutes.
+msgid "signin.join.reasonStepUp"
+msgstr "Accedi di nuovo a entrambi gli account, poi uniscili."
+
+#. One account was joined in the last 72 hours. Try again after that.
+#. Link dialog: an account was joined in the last 72 hours.
+msgid "signin.join.reasonPending"
+msgstr "Un account è stato unito nelle ultime 72 ore. Riprova dopo."
+
+#. Cancel the scheduled deletion first, then join.
+#. Link dialog: a scheduled deletion blocks the join.
+msgid "signin.join.reasonUnavailable"
+msgstr "Annulla prima l'eliminazione programmata, poi unisci."
+
+#. That's the account you started from. Sign in to your other account.
+#. Link dialog: the second sign-in was the same account.
+msgid "signin.join.sameAccount"
+msgstr "È l'account da cui sei partito. Accedi all'altro account."
+
+#. Couldn't join. Try again.
+#. Link dialog: a request failed.
+msgid "signin.join.failed"
+msgstr "Unione non riuscita. Riprova."
+
+#. If that account is yours too, sign in to it and join the two.
+#. Activate dialog, license_owned refusal, signed in on the portal (SIGN-IN.md D-27).
+msgid "signin.join.ownedNotice"
+msgstr "Se anche quell'account è tuo, accedi e unisci i due."
+
+#. Enter all 8 letters of the code.
+#. Approve dialog: Find it pressed with an incomplete code.
+msgid "signin.approve.codeShort"
+msgstr "Inserisci tutte le 8 lettere del codice."
+
+#. link accounts
+#. Link dialog: completes 'Use your passkey to …' in the confirm-it's-you prompt.
+msgid "signin.join.stepUpVerb"
+msgstr "collegare gli account"
+
+#. Sign in to your other account
+#. Link dialog, second sign-in card: what this sign-in is for.
+msgid "signin.join.otherTitle"
+msgstr "Accedi al tuo altro account"
+
+#. Use any way to sign in to it. You'll come back here to join them.
+#. Link dialog, second sign-in card: what happens next.
+msgid "signin.join.otherLede"
+msgstr "Usa un modo qualsiasi. Tornerai qui per unirli."
+
+#. Signed in now
+#. Link dialog: the account this browser is signed in to now.
+msgid "signin.join.signedNow"
+msgstr "Connesso ora"
+
+#. Your other account
+#. Link dialog: the account that is not the current one.
+msgid "signin.join.yourOther"
+msgstr "Il tuo altro account"
+
+#. Signs in with {method}
+#. Link dialog: how an account signs in. {method} is a list of method names.
+msgid "signin.join.methodsLine"
+msgstr "Accede con {method}"
+
+#. Proven by {method} {when}
+#. Link dialog: how and when an account proved itself. {method}, {when}.
+msgid "signin.join.provenBy"
+msgstr "Verificato con {method} {when}"
+
+#. Every sign-in from both keeps working. You can undo for 72 hours.
+#. Link dialog: reassurance under the result.
+msgid "signin.join.keepsWorking"
+msgstr "Tutti gli accessi di entrambi continuano a funzionare. Puoi annullare per 72 ore."
+
+#. Joined. You can undo until {date}.
+#. Link dialog: joined.
+msgid "signin.join.doneUntil"
+msgstr "Uniti. Puoi annullare entro il {date}."
+
+#. Sign in to {email} again
+#. Link dialog: re-prove an account whose sign-in is older than 5 minutes. {email}.
+msgid "signin.join.again"
+msgstr "Accedi di nuovo a {email}"
+
+#. macos: Sign In to {email} Again
+msgctxt "macos"
+msgid "signin.join.again"
+msgstr "Accedi di nuovo a {email}"
+
+#. Start again
+#. Link dialog: forget the flow and begin again.
+msgid "signin.join.startAgain"
+msgstr "Ricomincia"
+
+#. macos: Start Again
+msgctxt "macos"
+msgid "signin.join.startAgain"
+msgstr "Ricomincia"
+
+#. This join can no longer be undone.
+#. Link dialog: the join cannot be undone any more.
+msgid "signin.join.noUndo"
+msgstr "Questa unione non si può più annullare."
+
+#. Sign-in methods
+#. Link dialog: a link to Account → Sign-in methods.
+msgid "signin.join.methodsLink"
+msgstr "Metodi di accesso"
+
+#. macos: Sign-In Methods
+msgctxt "macos"
+msgid "signin.join.methodsLink"
+msgstr "Metodi di accesso"
+
+#. Couldn't undo the join. Try again.
+#. Link dialog: an undo failed.
+msgid "signin.join.undoFailed"
+msgstr "Impossibile annullare l'unione. Riprova."
+
+#. Sign in to {email} again, then join.
+#. Link dialog: one account's proof is older than 5 minutes. {email}.
+msgid "signin.join.reasonStaleOne"
+msgstr "Accedi di nuovo a {email}, poi unisci."
+
+#. Signed in more than 5 minutes ago
+#. Link dialog: marks an account whose sign-in is older than 5 minutes.
+msgid "signin.join.staleMark"
+msgstr "Accesso di oltre 5 minuti fa"
+
+#. Still signed in as {email}.
+#. After cancelling the other-account sign-in: which account this browser is signed in to.
+msgid "signin.join.stillSignedIn"
+msgstr "Sei ancora connesso come {email}."
+
+#. Undo the join with {email}? You can until {date}.
+#. Link dialog opened from the 72-hour row: confirm the undo. {email}, {date}.
+msgid "signin.join.undoConfirm"
+msgstr "Annullare l'unione con {email}? Puoi fino al {date}."
+
+#. Too many tries. Wait a minute, then try again.
+#. Approve dialog: too many tries (429).
+msgid "signin.approve.tooMany"
+msgstr "Troppi tentativi. Aspetta un minuto e riprova."
+
+#. Enter your license key.
+#. Activate dialog: Continue pressed with an empty field.
+msgid "signin.key.enterKey"
+msgstr "Inserisci la tua chiave di licenza."
+
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).
 msgid "core.fallback.title"

@@ -4525,6 +4525,226 @@
       "value": "Enter all 6 digits.",
       "role": "body",
       "note": "Code entry: submitted with fewer than six digits."
+    },
+    "signin.nudge.title": {
+      "value": "Add another way to sign in",
+      "role": "title",
+      "note": "Portal, next visit after a first platform sign-in: the Add another way to sign in nudge (SIGN-IN.md D-40)."
+    },
+    "signin.nudge.body": {
+      "value": "So you can always get back in.",
+      "role": "body",
+      "note": "Nudge body."
+    },
+    "signin.nudge.add": {
+      "value": "Add a way",
+      "role": "button",
+      "note": "Nudge primary: opens Account → Sign-in methods."
+    },
+    "signin.nudge.later": {
+      "value": "Not now",
+      "role": "button",
+      "note": "Nudge dismiss."
+    },
+    "signin.join.title": {
+      "value": "Link an existing account",
+      "role": "title",
+      "note": "Account → Link an existing account dialog (PORTAL.md §4.11)."
+    },
+    "signin.join.lede": {
+      "value": "Sign in to your other account to join the two. Nothing moves until you confirm.",
+      "role": "body",
+      "note": "Link dialog, before the second sign-in."
+    },
+    "signin.join.start": {
+      "value": "Sign in to the other account",
+      "role": "button",
+      "note": "Link dialog primary: starts the second sign-in."
+    },
+    "signin.join.thisAccount": {
+      "value": "This account",
+      "role": "label",
+      "note": "Link dialog: the account the person started from."
+    },
+    "signin.join.otherAccount": {
+      "value": "Other account",
+      "role": "label",
+      "note": "Link dialog: the account signed in second."
+    },
+    "signin.join.products": {
+      "value": "{count, plural, one {# product} other {# products}}",
+      "role": "body",
+      "note": "Link dialog: products on one account."
+    },
+    "signin.join.result": {
+      "value": "One library: {count, plural, one {# product} other {# products}}. {email} stays the main email.",
+      "role": "body",
+      "note": "Link dialog: what joining leaves."
+    },
+    "signin.join.done": {
+      "value": "Joined. You can undo this for 72 hours.",
+      "role": "body",
+      "note": "Link dialog: joined."
+    },
+    "signin.join.undo": {
+      "value": "Undo join",
+      "role": "button",
+      "note": "Link dialog: undo a join."
+    },
+    "signin.join.undone": {
+      "value": "Join undone.",
+      "role": "body",
+      "note": "Link dialog: join undone."
+    },
+    "signin.join.undoable": {
+      "value": "Joined {email}. Undo until {date}.",
+      "role": "body",
+      "note": "Link dialog: a join that can still be undone."
+    },
+    "signin.join.expired": {
+      "value": "Linking took too long. Start again.",
+      "role": "body",
+      "note": "Link dialog: the link flow is gone."
+    },
+    "signin.join.signInOther": {
+      "value": "Sign in to your other account first.",
+      "role": "body",
+      "note": "Link dialog: confirm before the second sign-in."
+    },
+    "signin.join.reasonStepUp": {
+      "value": "Sign in to both accounts again, then join.",
+      "role": "body",
+      "note": "Link dialog: a proof is older than 5 minutes."
+    },
+    "signin.join.reasonPending": {
+      "value": "One account was joined in the last 72 hours. Try again after that.",
+      "role": "body",
+      "note": "Link dialog: an account was joined in the last 72 hours."
+    },
+    "signin.join.reasonUnavailable": {
+      "value": "Cancel the scheduled deletion first, then join.",
+      "role": "body",
+      "note": "Link dialog: a scheduled deletion blocks the join."
+    },
+    "signin.join.sameAccount": {
+      "value": "That's the account you started from. Sign in to your other account.",
+      "role": "body",
+      "note": "Link dialog: the second sign-in was the same account."
+    },
+    "signin.join.failed": {
+      "value": "Couldn't join. Try again.",
+      "role": "body",
+      "note": "Link dialog: a request failed."
+    },
+    "signin.join.ownedNotice": {
+      "value": "If that account is yours too, sign in to it and join the two.",
+      "role": "body",
+      "note": "Activate dialog, license_owned refusal, signed in on the portal (SIGN-IN.md D-27)."
+    },
+    "signin.approve.codeShort": {
+      "value": "Enter all 8 letters of the code.",
+      "role": "body",
+      "note": "Approve dialog: Find it pressed with an incomplete code."
+    },
+    "signin.join.stepUpVerb": {
+      "value": "link accounts",
+      "role": "body",
+      "note": "Link dialog: completes 'Use your passkey to …' in the confirm-it's-you prompt."
+    },
+    "signin.join.otherTitle": {
+      "value": "Sign in to your other account",
+      "role": "body",
+      "note": "Link dialog, second sign-in card: what this sign-in is for."
+    },
+    "signin.join.otherLede": {
+      "value": "Use any way to sign in to it. You'll come back here to join them.",
+      "role": "body",
+      "note": "Link dialog, second sign-in card: what happens next."
+    },
+    "signin.join.signedNow": {
+      "value": "Signed in now",
+      "role": "label",
+      "note": "Link dialog: the account this browser is signed in to now."
+    },
+    "signin.join.yourOther": {
+      "value": "Your other account",
+      "role": "label",
+      "note": "Link dialog: the account that is not the current one."
+    },
+    "signin.join.methodsLine": {
+      "value": "Signs in with {method}",
+      "role": "body",
+      "note": "Link dialog: how an account signs in. {method} is a list of method names."
+    },
+    "signin.join.provenBy": {
+      "value": "Proven by {method} {when}",
+      "role": "body",
+      "note": "Link dialog: how and when an account proved itself. {method}, {when}."
+    },
+    "signin.join.keepsWorking": {
+      "value": "Every sign-in from both keeps working. You can undo for 72 hours.",
+      "role": "body",
+      "note": "Link dialog: reassurance under the result."
+    },
+    "signin.join.doneUntil": {
+      "value": "Joined. You can undo until {date}.",
+      "role": "body",
+      "note": "Link dialog: joined."
+    },
+    "signin.join.again": {
+      "value": "Sign in to {email} again",
+      "role": "button",
+      "note": "Link dialog: re-prove an account whose sign-in is older than 5 minutes. {email}."
+    },
+    "signin.join.startAgain": {
+      "value": "Start again",
+      "role": "button",
+      "note": "Link dialog: forget the flow and begin again."
+    },
+    "signin.join.noUndo": {
+      "value": "This join can no longer be undone.",
+      "role": "body",
+      "note": "Link dialog: the join cannot be undone any more."
+    },
+    "signin.join.methodsLink": {
+      "value": "Sign-in methods",
+      "role": "button",
+      "note": "Link dialog: a link to Account → Sign-in methods."
+    },
+    "signin.join.undoFailed": {
+      "value": "Couldn't undo the join. Try again.",
+      "role": "body",
+      "note": "Link dialog: an undo failed."
+    },
+    "signin.join.reasonStaleOne": {
+      "value": "Sign in to {email} again, then join.",
+      "role": "body",
+      "note": "Link dialog: one account's proof is older than 5 minutes. {email}."
+    },
+    "signin.join.staleMark": {
+      "value": "Signed in more than 5 minutes ago",
+      "role": "a11y",
+      "note": "Link dialog: marks an account whose sign-in is older than 5 minutes."
+    },
+    "signin.join.stillSignedIn": {
+      "value": "Still signed in as {email}.",
+      "role": "body",
+      "note": "After cancelling the other-account sign-in: which account this browser is signed in to."
+    },
+    "signin.join.undoConfirm": {
+      "value": "Undo the join with {email}? You can until {date}.",
+      "role": "body",
+      "note": "Link dialog opened from the 72-hour row: confirm the undo. {email}, {date}."
+    },
+    "signin.approve.tooMany": {
+      "value": "Too many tries. Wait a minute, then try again.",
+      "role": "body",
+      "note": "Approve dialog: too many tries (429)."
+    },
+    "signin.key.enterKey": {
+      "value": "Enter your license key.",
+      "role": "body",
+      "note": "Activate dialog: Continue pressed with an empty field."
     }
   }
 }

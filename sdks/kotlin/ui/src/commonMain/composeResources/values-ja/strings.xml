@@ -1981,6 +1981,105 @@
     <string name="signin_gate_termsLede">続けるには%1$sの規約に同意してください。</string>
     <!-- Code entry: submitted with fewer than six digits. -->
     <string name="signin_code_incomplete">6桁すべてを入力してください。</string>
+    <!-- Portal, next visit after a first platform sign-in: the Add another way to sign in nudge (SIGN-IN.md D-40). -->
+    <string name="signin_nudge_title">別のサインイン方法を追加</string>
+    <!-- Nudge body. -->
+    <string name="signin_nudge_body">いつでもサインインし直せます。</string>
+    <!-- Nudge primary: opens Account → Sign-in methods. -->
+    <string name="signin_nudge_add">追加する</string>
+    <string name="signin_nudge_add__macos">追加する</string>
+    <!-- Nudge dismiss. -->
+    <string name="signin_nudge_later">今はしない</string>
+    <string name="signin_nudge_later__macos">今はしない</string>
+    <!-- Account → Link an existing account dialog (PORTAL.md §4.11). -->
+    <string name="signin_join_title">既存のアカウントをリンク</string>
+    <!-- Link dialog, before the second sign-in. -->
+    <string name="signin_join_lede">もう一方のアカウントにサインインして、2つを1つにまとめます。確認するまで何も移動しません。</string>
+    <!-- Link dialog primary: starts the second sign-in. -->
+    <string name="signin_join_start">もう一方のアカウントにサインイン</string>
+    <string name="signin_join_start__macos">もう一方のアカウントにサインイン</string>
+    <!-- Link dialog: the account the person started from. -->
+    <string name="signin_join_thisAccount">このアカウント</string>
+    <!-- Link dialog: the account signed in second. -->
+    <string name="signin_join_otherAccount">もう一方のアカウント</string>
+    <!-- Link dialog: products on one account. Arguments: 1=count. -->
+    <plurals name="signin_join_products">
+        <item quantity="other">%1$d個の製品</item>
+    </plurals>
+    <!-- Link dialog: what joining leaves. Arguments: 1=count, 2=email. -->
+    <plurals name="signin_join_result">
+        <item quantity="other">ライブラリは1つ：%1$d個の製品。メインのメールは %2$s のままです。</item>
+    </plurals>
+    <!-- Link dialog: joined. -->
+    <string name="signin_join_done">まとめました。72時間は元に戻せます。</string>
+    <!-- Link dialog: undo a join. -->
+    <string name="signin_join_undo">まとめを元に戻す</string>
+    <string name="signin_join_undo__macos">まとめを元に戻す</string>
+    <!-- Link dialog: join undone. -->
+    <string name="signin_join_undone">元に戻しました。</string>
+    <!-- Link dialog: a join that can still be undone. Arguments: 1=email, 2=date. -->
+    <string name="signin_join_undoable">%1$s をまとめました。%2$sまで元に戻せます。</string>
+    <!-- Link dialog: the link flow is gone. -->
+    <string name="signin_join_expired">リンクに時間がかかりすぎました。最初からやり直してください。</string>
+    <!-- Link dialog: confirm before the second sign-in. -->
+    <string name="signin_join_signInOther">先にもう一方のアカウントにサインインしてください。</string>
+    <!-- Link dialog: a proof is older than 5 minutes. -->
+    <string name="signin_join_reasonStepUp">両方のアカウントにもう一度サインインしてから、まとめてください。</string>
+    <!-- Link dialog: an account was joined in the last 72 hours. -->
+    <string name="signin_join_reasonPending">どちらかのアカウントが過去72時間以内にまとめられています。その後にもう一度お試しください。</string>
+    <!-- Link dialog: a scheduled deletion blocks the join. -->
+    <string name="signin_join_reasonUnavailable">先に予定されている削除を取り消してから、まとめてください。</string>
+    <!-- Link dialog: the second sign-in was the same account. -->
+    <string name="signin_join_sameAccount">最初のアカウントです。もう一方のアカウントにサインインしてください。</string>
+    <!-- Link dialog: a request failed. -->
+    <string name="signin_join_failed">まとめられませんでした。もう一度お試しください。</string>
+    <!-- Activate dialog, license_owned refusal, signed in on the portal (SIGN-IN.md D-27). -->
+    <string name="signin_join_ownedNotice">そのアカウントもあなたのものなら、サインインして2つをまとめてください。</string>
+    <!-- Approve dialog: Find it pressed with an incomplete code. -->
+    <string name="signin_approve_codeShort">コードの8文字をすべて入力してください。</string>
+    <!-- Link dialog: completes 'Use your passkey to …' in the confirm-it's-you prompt. -->
+    <string name="signin_join_stepUpVerb">アカウントをリンク</string>
+    <!-- Link dialog, second sign-in card: what this sign-in is for. -->
+    <string name="signin_join_otherTitle">もう一方のアカウントにサインイン</string>
+    <!-- Link dialog, second sign-in card: what happens next. -->
+    <string name="signin_join_otherLede">どの方法でも構いません。その後ここに戻って2つをまとめます。</string>
+    <!-- Link dialog: the account this browser is signed in to now. -->
+    <string name="signin_join_signedNow">現在サインイン中</string>
+    <!-- Link dialog: the account that is not the current one. -->
+    <string name="signin_join_yourOther">もう一方のアカウント</string>
+    <!-- Link dialog: how an account signs in. {method} is a list of method names. Arguments: 1=method. -->
+    <string name="signin_join_methodsLine">%1$sでサインイン</string>
+    <!-- Link dialog: how and when an account proved itself. {method}, {when}. Arguments: 1=method, 2=when. -->
+    <string name="signin_join_provenBy">%1$sで確認済み（%2$s）</string>
+    <!-- Link dialog: reassurance under the result. -->
+    <string name="signin_join_keepsWorking">両方のサインイン方法はそのまま使えます。72時間は元に戻せます。</string>
+    <!-- Link dialog: joined. Arguments: 1=date. -->
+    <string name="signin_join_doneUntil">まとめました。%1$sまで元に戻せます。</string>
+    <!-- Link dialog: re-prove an account whose sign-in is older than 5 minutes. {email}. Arguments: 1=email. -->
+    <string name="signin_join_again">%1$s に再度サインイン</string>
+    <string name="signin_join_again__macos">%1$s に再度サインイン</string>
+    <!-- Link dialog: forget the flow and begin again. -->
+    <string name="signin_join_startAgain">最初からやり直す</string>
+    <string name="signin_join_startAgain__macos">最初からやり直す</string>
+    <!-- Link dialog: the join cannot be undone any more. -->
+    <string name="signin_join_noUndo">このまとめはもう元に戻せません。</string>
+    <!-- Link dialog: a link to Account → Sign-in methods. -->
+    <string name="signin_join_methodsLink">サインイン方法</string>
+    <string name="signin_join_methodsLink__macos">サインイン方法</string>
+    <!-- Link dialog: an undo failed. -->
+    <string name="signin_join_undoFailed">元に戻せませんでした。もう一度お試しください。</string>
+    <!-- Link dialog: one account's proof is older than 5 minutes. {email}. Arguments: 1=email. -->
+    <string name="signin_join_reasonStaleOne">%1$s に再度サインインしてから、まとめてください。</string>
+    <!-- Link dialog: marks an account whose sign-in is older than 5 minutes. -->
+    <string name="signin_join_staleMark">5分以上前にサインイン</string>
+    <!-- After cancelling the other-account sign-in: which account this browser is signed in to. Arguments: 1=email. -->
+    <string name="signin_join_stillSignedIn">引き続き %1$s でサインインしています。</string>
+    <!-- Link dialog opened from the 72-hour row: confirm the undo. {email}, {date}. Arguments: 1=email, 2=date. -->
+    <string name="signin_join_undoConfirm">%1$s とのまとめを元に戻しますか？%2$sまで可能です。</string>
+    <!-- Approve dialog: too many tries (429). -->
+    <string name="signin_approve_tooMany">試行が多すぎます。1分待ってからもう一度お試しください。</string>
+    <!-- Activate dialog: Continue pressed with an empty field. -->
+    <string name="signin_key_enterKey">ライセンスキーを入力してください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">問題が発生しました</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

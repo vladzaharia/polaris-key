@@ -189,6 +189,15 @@ export function resolveHash(hash: string): Resolved {
           redirect: `#/account?${to.toString()}`,
         };
       }
+      // Link an existing account (PX-15): the dialog over Account; the sign-in to the other account
+      // returns here (`#/account/link`).
+      if (a === "link") {
+        const to = new URLSearchParams({ link: "1" });
+        return {
+          route: { kind: "account", section: null, params: to },
+          redirect: `#/account?${to.toString()}`,
+        };
+      }
       if (a === "emails" || a === "passkeys" || a === "linked")
         return {
           route: { kind: "account", section: "methods", params },

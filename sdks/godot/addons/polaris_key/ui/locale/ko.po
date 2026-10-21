@@ -5240,6 +5240,265 @@ msgstr "계속하려면 {app} 약관에 동의하세요."
 msgid "signin.code.incomplete"
 msgstr "6자리를 모두 입력하세요."
 
+#. Add another way to sign in
+#. Portal, next visit after a first platform sign-in: the Add another way to sign in nudge (SIGN-IN.md D-40).
+msgid "signin.nudge.title"
+msgstr "다른 로그인 방법 추가"
+
+#. So you can always get back in.
+#. Nudge body.
+msgid "signin.nudge.body"
+msgstr "언제든 다시 로그인할 수 있습니다."
+
+#. Add a way
+#. Nudge primary: opens Account → Sign-in methods.
+msgid "signin.nudge.add"
+msgstr "추가"
+
+#. macos: Add a Way
+msgctxt "macos"
+msgid "signin.nudge.add"
+msgstr "추가"
+
+#. Not now
+#. Nudge dismiss.
+msgid "signin.nudge.later"
+msgstr "나중에"
+
+#. macos: Not Now
+msgctxt "macos"
+msgid "signin.nudge.later"
+msgstr "나중에"
+
+#. Link an existing account
+#. Account → Link an existing account dialog (PORTAL.md §4.11).
+msgid "signin.join.title"
+msgstr "기존 계정 연결"
+
+#. Sign in to your other account to join the two. Nothing moves until you confirm.
+#. Link dialog, before the second sign-in.
+msgid "signin.join.lede"
+msgstr "다른 계정에 로그인해 두 계정을 하나로 합칩니다. 확인하기 전에는 아무것도 옮겨지지 않습니다."
+
+#. Sign in to the other account
+#. Link dialog primary: starts the second sign-in.
+msgid "signin.join.start"
+msgstr "다른 계정에 로그인"
+
+#. macos: Sign In to the Other Account
+msgctxt "macos"
+msgid "signin.join.start"
+msgstr "다른 계정에 로그인"
+
+#. This account
+#. Link dialog: the account the person started from.
+msgid "signin.join.thisAccount"
+msgstr "이 계정"
+
+#. Other account
+#. Link dialog: the account signed in second.
+msgid "signin.join.otherAccount"
+msgstr "다른 계정"
+
+#. {count, plural, one {# product} other {# products}}
+#. Link dialog: products on one account.
+#. Plural on {count}.
+msgid "signin.join.products"
+msgid_plural "signin.join.products"
+msgstr[0] "제품 {count}개"
+
+#. One library: {count, plural, one {# product} other {# products}}. {email} stays the main email.
+#. Link dialog: what joining leaves.
+#. Plural on {count}.
+msgid "signin.join.result"
+msgid_plural "signin.join.result"
+msgstr[0] "라이브러리 하나: 제품 {count}개. 기본 이메일은 {email}로 유지됩니다."
+
+#. Joined. You can undo this for 72 hours.
+#. Link dialog: joined.
+msgid "signin.join.done"
+msgstr "합쳤습니다. 72시간 동안 되돌릴 수 있습니다."
+
+#. Undo join
+#. Link dialog: undo a join.
+msgid "signin.join.undo"
+msgstr "합치기 되돌리기"
+
+#. macos: Undo Join
+msgctxt "macos"
+msgid "signin.join.undo"
+msgstr "합치기 되돌리기"
+
+#. Join undone.
+#. Link dialog: join undone.
+msgid "signin.join.undone"
+msgstr "되돌렸습니다."
+
+#. Joined {email}. Undo until {date}.
+#. Link dialog: a join that can still be undone.
+msgid "signin.join.undoable"
+msgstr "{email} 합침. {date}까지 되돌릴 수 있습니다."
+
+#. Linking took too long. Start again.
+#. Link dialog: the link flow is gone.
+msgid "signin.join.expired"
+msgstr "연결이 너무 오래 걸렸습니다. 다시 시작하세요."
+
+#. Sign in to your other account first.
+#. Link dialog: confirm before the second sign-in.
+msgid "signin.join.signInOther"
+msgstr "먼저 다른 계정에 로그인하세요."
+
+#. Sign in to both accounts again, then join.
+#. Link dialog: a proof is older than 5 minutes.
+msgid "signin.join.reasonStepUp"
+msgstr "두 계정에 다시 로그인한 뒤 합치세요."
+
+#. One account was joined in the last 72 hours. Try again after that.
+#. Link dialog: an account was joined in the last 72 hours.
+msgid "signin.join.reasonPending"
+msgstr "한 계정이 최근 72시간 안에 합쳐졌습니다. 그 이후에 다시 시도하세요."
+
+#. Cancel the scheduled deletion first, then join.
+#. Link dialog: a scheduled deletion blocks the join.
+msgid "signin.join.reasonUnavailable"
+msgstr "예약된 삭제를 먼저 취소한 뒤 합치세요."
+
+#. That's the account you started from. Sign in to your other account.
+#. Link dialog: the second sign-in was the same account.
+msgid "signin.join.sameAccount"
+msgstr "처음 시작한 계정입니다. 다른 계정에 로그인하세요."
+
+#. Couldn't join. Try again.
+#. Link dialog: a request failed.
+msgid "signin.join.failed"
+msgstr "합치지 못했습니다. 다시 시도하세요."
+
+#. If that account is yours too, sign in to it and join the two.
+#. Activate dialog, license_owned refusal, signed in on the portal (SIGN-IN.md D-27).
+msgid "signin.join.ownedNotice"
+msgstr "그 계정도 본인 것이면 로그인해 두 계정을 합치세요."
+
+#. Enter all 8 letters of the code.
+#. Approve dialog: Find it pressed with an incomplete code.
+msgid "signin.approve.codeShort"
+msgstr "코드 8글자를 모두 입력하세요."
+
+#. link accounts
+#. Link dialog: completes 'Use your passkey to …' in the confirm-it's-you prompt.
+msgid "signin.join.stepUpVerb"
+msgstr "계정을 연결"
+
+#. Sign in to your other account
+#. Link dialog, second sign-in card: what this sign-in is for.
+msgid "signin.join.otherTitle"
+msgstr "다른 계정에 로그인"
+
+#. Use any way to sign in to it. You'll come back here to join them.
+#. Link dialog, second sign-in card: what happens next.
+msgid "signin.join.otherLede"
+msgstr "어떤 방법이든 괜찮습니다. 이후 여기로 돌아와 합칩니다."
+
+#. Signed in now
+#. Link dialog: the account this browser is signed in to now.
+msgid "signin.join.signedNow"
+msgstr "현재 로그인됨"
+
+#. Your other account
+#. Link dialog: the account that is not the current one.
+msgid "signin.join.yourOther"
+msgstr "다른 계정"
+
+#. Signs in with {method}
+#. Link dialog: how an account signs in. {method} is a list of method names.
+msgid "signin.join.methodsLine"
+msgstr "{method}(으)로 로그인"
+
+#. Proven by {method} {when}
+#. Link dialog: how and when an account proved itself. {method}, {when}.
+msgid "signin.join.provenBy"
+msgstr "{method}(으)로 확인됨 ({when})"
+
+#. Every sign-in from both keeps working. You can undo for 72 hours.
+#. Link dialog: reassurance under the result.
+msgid "signin.join.keepsWorking"
+msgstr "두 계정의 모든 로그인이 계속 작동합니다. 72시간 동안 되돌릴 수 있습니다."
+
+#. Joined. You can undo until {date}.
+#. Link dialog: joined.
+msgid "signin.join.doneUntil"
+msgstr "합쳤습니다. {date}까지 되돌릴 수 있습니다."
+
+#. Sign in to {email} again
+#. Link dialog: re-prove an account whose sign-in is older than 5 minutes. {email}.
+msgid "signin.join.again"
+msgstr "{email}에 다시 로그인"
+
+#. macos: Sign In to {email} Again
+msgctxt "macos"
+msgid "signin.join.again"
+msgstr "{email}에 다시 로그인"
+
+#. Start again
+#. Link dialog: forget the flow and begin again.
+msgid "signin.join.startAgain"
+msgstr "다시 시작"
+
+#. macos: Start Again
+msgctxt "macos"
+msgid "signin.join.startAgain"
+msgstr "다시 시작"
+
+#. This join can no longer be undone.
+#. Link dialog: the join cannot be undone any more.
+msgid "signin.join.noUndo"
+msgstr "이 합치기는 더 이상 되돌릴 수 없습니다."
+
+#. Sign-in methods
+#. Link dialog: a link to Account → Sign-in methods.
+msgid "signin.join.methodsLink"
+msgstr "로그인 방법"
+
+#. macos: Sign-In Methods
+msgctxt "macos"
+msgid "signin.join.methodsLink"
+msgstr "로그인 방법"
+
+#. Couldn't undo the join. Try again.
+#. Link dialog: an undo failed.
+msgid "signin.join.undoFailed"
+msgstr "합치기를 되돌리지 못했습니다. 다시 시도하세요."
+
+#. Sign in to {email} again, then join.
+#. Link dialog: one account's proof is older than 5 minutes. {email}.
+msgid "signin.join.reasonStaleOne"
+msgstr "{email}에 다시 로그인한 뒤 합치세요."
+
+#. Signed in more than 5 minutes ago
+#. Link dialog: marks an account whose sign-in is older than 5 minutes.
+msgid "signin.join.staleMark"
+msgstr "5분 넘게 전에 로그인함"
+
+#. Still signed in as {email}.
+#. After cancelling the other-account sign-in: which account this browser is signed in to.
+msgid "signin.join.stillSignedIn"
+msgstr "계속 {email}(으)로 로그인되어 있습니다."
+
+#. Undo the join with {email}? You can until {date}.
+#. Link dialog opened from the 72-hour row: confirm the undo. {email}, {date}.
+msgid "signin.join.undoConfirm"
+msgstr "{email}과(와)의 합치기를 되돌릴까요? {date}까지 가능합니다."
+
+#. Too many tries. Wait a minute, then try again.
+#. Approve dialog: too many tries (429).
+msgid "signin.approve.tooMany"
+msgstr "시도가 너무 많습니다. 1분 기다린 뒤 다시 시도하세요."
+
+#. Enter your license key.
+#. Activate dialog: Continue pressed with an empty field.
+msgid "signin.key.enterKey"
+msgstr "라이선스 키를 입력하세요."
+
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).
 msgid "core.fallback.title"

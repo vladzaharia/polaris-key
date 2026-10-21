@@ -109,7 +109,7 @@ export function AccountMenu({
           <DropdownMenuItem asChild>
             <a href={href.account("methods")}>
               <KeyRound aria-hidden />
-              Sign-in methods
+              {t("signin.join.methodsLink")}
             </a>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>

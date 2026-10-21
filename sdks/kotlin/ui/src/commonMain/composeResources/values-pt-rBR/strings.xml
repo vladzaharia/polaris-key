@@ -2009,6 +2009,109 @@
     <string name="signin_gate_termsLede">Concorde com os termos de %1$s para continuar.</string>
     <!-- Code entry: submitted with fewer than six digits. -->
     <string name="signin_code_incomplete">Digite os 6 dígitos.</string>
+    <!-- Portal, next visit after a first platform sign-in: the Add another way to sign in nudge (SIGN-IN.md D-40). -->
+    <string name="signin_nudge_title">Adicione outra forma de entrar</string>
+    <!-- Nudge body. -->
+    <string name="signin_nudge_body">Assim você sempre consegue voltar.</string>
+    <!-- Nudge primary: opens Account → Sign-in methods. -->
+    <string name="signin_nudge_add">Adicionar</string>
+    <string name="signin_nudge_add__macos">Adicionar</string>
+    <!-- Nudge dismiss. -->
+    <string name="signin_nudge_later">Agora não</string>
+    <string name="signin_nudge_later__macos">Agora não</string>
+    <!-- Account → Link an existing account dialog (PORTAL.md §4.11). -->
+    <string name="signin_join_title">Vincular uma conta existente</string>
+    <!-- Link dialog, before the second sign-in. -->
+    <string name="signin_join_lede">Entre na sua outra conta para unir as duas. Nada muda até você confirmar.</string>
+    <!-- Link dialog primary: starts the second sign-in. -->
+    <string name="signin_join_start">Entrar na outra conta</string>
+    <string name="signin_join_start__macos">Entrar na outra conta</string>
+    <!-- Link dialog: the account the person started from. -->
+    <string name="signin_join_thisAccount">Esta conta</string>
+    <!-- Link dialog: the account signed in second. -->
+    <string name="signin_join_otherAccount">Outra conta</string>
+    <!-- Link dialog: products on one account. Arguments: 1=count. -->
+    <plurals name="signin_join_products">
+        <item quantity="one">%1$d produto</item>
+        <item quantity="many">%1$d de produtos</item>
+        <item quantity="other">%1$d produtos</item>
+    </plurals>
+    <!-- Link dialog: what joining leaves. Arguments: 1=count, 2=email. -->
+    <plurals name="signin_join_result">
+        <item quantity="one">Uma biblioteca: %1$d produto. %2$s continua sendo o e-mail principal.</item>
+        <item quantity="many">Uma biblioteca: %1$d de produtos. %2$s continua sendo o e-mail principal.</item>
+        <item quantity="other">Uma biblioteca: %1$d produtos. %2$s continua sendo o e-mail principal.</item>
+    </plurals>
+    <!-- Link dialog: joined. -->
+    <string name="signin_join_done">Unidas. Você pode desfazer por 72 horas.</string>
+    <!-- Link dialog: undo a join. -->
+    <string name="signin_join_undo">Desfazer união</string>
+    <string name="signin_join_undo__macos">Desfazer união</string>
+    <!-- Link dialog: join undone. -->
+    <string name="signin_join_undone">União desfeita.</string>
+    <!-- Link dialog: a join that can still be undone. Arguments: 1=email, 2=date. -->
+    <string name="signin_join_undoable">%1$s unida. Desfazer até %2$s.</string>
+    <!-- Link dialog: the link flow is gone. -->
+    <string name="signin_join_expired">A vinculação demorou demais. Comece de novo.</string>
+    <!-- Link dialog: confirm before the second sign-in. -->
+    <string name="signin_join_signInOther">Entre primeiro na sua outra conta.</string>
+    <!-- Link dialog: a proof is older than 5 minutes. -->
+    <string name="signin_join_reasonStepUp">Entre de novo nas duas contas e una-as.</string>
+    <!-- Link dialog: an account was joined in the last 72 hours. -->
+    <string name="signin_join_reasonPending">Uma conta foi unida nas últimas 72 horas. Tente depois.</string>
+    <!-- Link dialog: a scheduled deletion blocks the join. -->
+    <string name="signin_join_reasonUnavailable">Cancele primeiro a exclusão agendada e depois una.</string>
+    <!-- Link dialog: the second sign-in was the same account. -->
+    <string name="signin_join_sameAccount">É a conta de onde você começou. Entre na sua outra conta.</string>
+    <!-- Link dialog: a request failed. -->
+    <string name="signin_join_failed">Não foi possível unir. Tente de novo.</string>
+    <!-- Activate dialog, license_owned refusal, signed in on the portal (SIGN-IN.md D-27). -->
+    <string name="signin_join_ownedNotice">Se essa conta também é sua, entre nela e una as duas.</string>
+    <!-- Approve dialog: Find it pressed with an incomplete code. -->
+    <string name="signin_approve_codeShort">Digite as 8 letras do código.</string>
+    <!-- Link dialog: completes 'Use your passkey to …' in the confirm-it's-you prompt. -->
+    <string name="signin_join_stepUpVerb">vincular contas</string>
+    <!-- Link dialog, second sign-in card: what this sign-in is for. -->
+    <string name="signin_join_otherTitle">Entre na sua outra conta</string>
+    <!-- Link dialog, second sign-in card: what happens next. -->
+    <string name="signin_join_otherLede">Use qualquer forma de entrar. Você volta aqui para uni-las.</string>
+    <!-- Link dialog: the account this browser is signed in to now. -->
+    <string name="signin_join_signedNow">Conectada agora</string>
+    <!-- Link dialog: the account that is not the current one. -->
+    <string name="signin_join_yourOther">Sua outra conta</string>
+    <!-- Link dialog: how an account signs in. {method} is a list of method names. Arguments: 1=method. -->
+    <string name="signin_join_methodsLine">Entra com %1$s</string>
+    <!-- Link dialog: how and when an account proved itself. {method}, {when}. Arguments: 1=method, 2=when. -->
+    <string name="signin_join_provenBy">Comprovada por %1$s %2$s</string>
+    <!-- Link dialog: reassurance under the result. -->
+    <string name="signin_join_keepsWorking">Todos os acessos das duas continuam funcionando. Você pode desfazer por 72 horas.</string>
+    <!-- Link dialog: joined. Arguments: 1=date. -->
+    <string name="signin_join_doneUntil">Unidas. Você pode desfazer até %1$s.</string>
+    <!-- Link dialog: re-prove an account whose sign-in is older than 5 minutes. {email}. Arguments: 1=email. -->
+    <string name="signin_join_again">Entrar de novo em %1$s</string>
+    <string name="signin_join_again__macos">Entrar de novo em %1$s</string>
+    <!-- Link dialog: forget the flow and begin again. -->
+    <string name="signin_join_startAgain">Começar de novo</string>
+    <string name="signin_join_startAgain__macos">Começar de novo</string>
+    <!-- Link dialog: the join cannot be undone any more. -->
+    <string name="signin_join_noUndo">Esta união não pode mais ser desfeita.</string>
+    <!-- Link dialog: a link to Account → Sign-in methods. -->
+    <string name="signin_join_methodsLink">Métodos de entrada</string>
+    <string name="signin_join_methodsLink__macos">Métodos de entrada</string>
+    <!-- Link dialog: an undo failed. -->
+    <string name="signin_join_undoFailed">Não foi possível desfazer a união. Tente de novo.</string>
+    <!-- Link dialog: one account's proof is older than 5 minutes. {email}. Arguments: 1=email. -->
+    <string name="signin_join_reasonStaleOne">Entre de novo em %1$s e depois una.</string>
+    <!-- Link dialog: marks an account whose sign-in is older than 5 minutes. -->
+    <string name="signin_join_staleMark">Entrou há mais de 5 minutos</string>
+    <!-- After cancelling the other-account sign-in: which account this browser is signed in to. Arguments: 1=email. -->
+    <string name="signin_join_stillSignedIn">Continua conectado como %1$s.</string>
+    <!-- Link dialog opened from the 72-hour row: confirm the undo. {email}, {date}. Arguments: 1=email, 2=date. -->
+    <string name="signin_join_undoConfirm">Desfazer a união com %1$s? Você pode até %2$s.</string>
+    <!-- Approve dialog: too many tries (429). -->
+    <string name="signin_approve_tooMany">Muitas tentativas. Aguarde um minuto e tente de novo.</string>
+    <!-- Activate dialog: Continue pressed with an empty field. -->
+    <string name="signin_key_enterKey">Digite sua chave de licença.</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">Algo deu errado</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

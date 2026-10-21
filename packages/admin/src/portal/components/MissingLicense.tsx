@@ -1,4 +1,5 @@
 import * as React from "react";
+import { t } from "../../lib/copy.js";
 import { Mail, Store } from "lucide-react";
 import { href } from "../router.js";
 import { SteamGlyph } from "./Glyphs.js";
@@ -29,7 +30,7 @@ export function MissingLicense(): React.ReactElement {
             </strong>
             Add that email under{" "}
             <a href={href.account("methods")} className={LINK}>
-              Sign-in methods
+              {t("signin.join.methodsLink")}
             </a>
             .
           </p>
@@ -44,7 +45,7 @@ export function MissingLicense(): React.ReactElement {
             </strong>
             Add Steam under{" "}
             <a href={href.account("methods")} className={LINK}>
-              Sign-in methods
+              {t("signin.join.methodsLink")}
             </a>
             .
           </p>

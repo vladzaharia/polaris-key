@@ -1995,6 +1995,107 @@
     <string name="signin_gate_termsLede">Agree to %1$s’s terms to keep going.</string>
     <!-- Code entry: submitted with fewer than six digits. -->
     <string name="signin_code_incomplete">Enter all 6 digits.</string>
+    <!-- Portal, next visit after a first platform sign-in: the Add another way to sign in nudge (SIGN-IN.md D-40). -->
+    <string name="signin_nudge_title">Add another way to sign in</string>
+    <!-- Nudge body. -->
+    <string name="signin_nudge_body">So you can always get back in.</string>
+    <!-- Nudge primary: opens Account → Sign-in methods. -->
+    <string name="signin_nudge_add">Add a way</string>
+    <string name="signin_nudge_add__macos">Add a Way</string>
+    <!-- Nudge dismiss. -->
+    <string name="signin_nudge_later">Not now</string>
+    <string name="signin_nudge_later__macos">Not Now</string>
+    <!-- Account → Link an existing account dialog (PORTAL.md §4.11). -->
+    <string name="signin_join_title">Link an existing account</string>
+    <!-- Link dialog, before the second sign-in. -->
+    <string name="signin_join_lede">Sign in to your other account to join the two. Nothing moves until you confirm.</string>
+    <!-- Link dialog primary: starts the second sign-in. -->
+    <string name="signin_join_start">Sign in to the other account</string>
+    <string name="signin_join_start__macos">Sign In to the Other Account</string>
+    <!-- Link dialog: the account the person started from. -->
+    <string name="signin_join_thisAccount">This account</string>
+    <!-- Link dialog: the account signed in second. -->
+    <string name="signin_join_otherAccount">Other account</string>
+    <!-- Link dialog: products on one account. Arguments: 1=count. -->
+    <plurals name="signin_join_products">
+        <item quantity="one">%1$d product</item>
+        <item quantity="other">%1$d products</item>
+    </plurals>
+    <!-- Link dialog: what joining leaves. Arguments: 1=count, 2=email. -->
+    <plurals name="signin_join_result">
+        <item quantity="one">One library: %1$d product. %2$s stays the main email.</item>
+        <item quantity="other">One library: %1$d products. %2$s stays the main email.</item>
+    </plurals>
+    <!-- Link dialog: joined. -->
+    <string name="signin_join_done">Joined. You can undo this for 72 hours.</string>
+    <!-- Link dialog: undo a join. -->
+    <string name="signin_join_undo">Undo join</string>
+    <string name="signin_join_undo__macos">Undo Join</string>
+    <!-- Link dialog: join undone. -->
+    <string name="signin_join_undone">Join undone.</string>
+    <!-- Link dialog: a join that can still be undone. Arguments: 1=email, 2=date. -->
+    <string name="signin_join_undoable">Joined %1$s. Undo until %2$s.</string>
+    <!-- Link dialog: the link flow is gone. -->
+    <string name="signin_join_expired">Linking took too long. Start again.</string>
+    <!-- Link dialog: confirm before the second sign-in. -->
+    <string name="signin_join_signInOther">Sign in to your other account first.</string>
+    <!-- Link dialog: a proof is older than 5 minutes. -->
+    <string name="signin_join_reasonStepUp">Sign in to both accounts again, then join.</string>
+    <!-- Link dialog: an account was joined in the last 72 hours. -->
+    <string name="signin_join_reasonPending">One account was joined in the last 72 hours. Try again after that.</string>
+    <!-- Link dialog: a scheduled deletion blocks the join. -->
+    <string name="signin_join_reasonUnavailable">Cancel the scheduled deletion first, then join.</string>
+    <!-- Link dialog: the second sign-in was the same account. -->
+    <string name="signin_join_sameAccount">That's the account you started from. Sign in to your other account.</string>
+    <!-- Link dialog: a request failed. -->
+    <string name="signin_join_failed">Couldn't join. Try again.</string>
+    <!-- Activate dialog, license_owned refusal, signed in on the portal (SIGN-IN.md D-27). -->
+    <string name="signin_join_ownedNotice">If that account is yours too, sign in to it and join the two.</string>
+    <!-- Approve dialog: Find it pressed with an incomplete code. -->
+    <string name="signin_approve_codeShort">Enter all 8 letters of the code.</string>
+    <!-- Link dialog: completes 'Use your passkey to …' in the confirm-it's-you prompt. -->
+    <string name="signin_join_stepUpVerb">link accounts</string>
+    <!-- Link dialog, second sign-in card: what this sign-in is for. -->
+    <string name="signin_join_otherTitle">Sign in to your other account</string>
+    <!-- Link dialog, second sign-in card: what happens next. -->
+    <string name="signin_join_otherLede">Use any way to sign in to it. You'll come back here to join them.</string>
+    <!-- Link dialog: the account this browser is signed in to now. -->
+    <string name="signin_join_signedNow">Signed in now</string>
+    <!-- Link dialog: the account that is not the current one. -->
+    <string name="signin_join_yourOther">Your other account</string>
+    <!-- Link dialog: how an account signs in. {method} is a list of method names. Arguments: 1=method. -->
+    <string name="signin_join_methodsLine">Signs in with %1$s</string>
+    <!-- Link dialog: how and when an account proved itself. {method}, {when}. Arguments: 1=method, 2=when. -->
+    <string name="signin_join_provenBy">Proven by %1$s %2$s</string>
+    <!-- Link dialog: reassurance under the result. -->
+    <string name="signin_join_keepsWorking">Every sign-in from both keeps working. You can undo for 72 hours.</string>
+    <!-- Link dialog: joined. Arguments: 1=date. -->
+    <string name="signin_join_doneUntil">Joined. You can undo until %1$s.</string>
+    <!-- Link dialog: re-prove an account whose sign-in is older than 5 minutes. {email}. Arguments: 1=email. -->
+    <string name="signin_join_again">Sign in to %1$s again</string>
+    <string name="signin_join_again__macos">Sign In to %1$s Again</string>
+    <!-- Link dialog: forget the flow and begin again. -->
+    <string name="signin_join_startAgain">Start again</string>
+    <string name="signin_join_startAgain__macos">Start Again</string>
+    <!-- Link dialog: the join cannot be undone any more. -->
+    <string name="signin_join_noUndo">This join can no longer be undone.</string>
+    <!-- Link dialog: a link to Account → Sign-in methods. -->
+    <string name="signin_join_methodsLink">Sign-in methods</string>
+    <string name="signin_join_methodsLink__macos">Sign-In Methods</string>
+    <!-- Link dialog: an undo failed. -->
+    <string name="signin_join_undoFailed">Couldn't undo the join. Try again.</string>
+    <!-- Link dialog: one account's proof is older than 5 minutes. {email}. Arguments: 1=email. -->
+    <string name="signin_join_reasonStaleOne">Sign in to %1$s again, then join.</string>
+    <!-- Link dialog: marks an account whose sign-in is older than 5 minutes. -->
+    <string name="signin_join_staleMark">Signed in more than 5 minutes ago</string>
+    <!-- After cancelling the other-account sign-in: which account this browser is signed in to. Arguments: 1=email. -->
+    <string name="signin_join_stillSignedIn">Still signed in as %1$s.</string>
+    <!-- Link dialog opened from the 72-hour row: confirm the undo. {email}, {date}. Arguments: 1=email, 2=date. -->
+    <string name="signin_join_undoConfirm">Undo the join with %1$s? You can until %2$s.</string>
+    <!-- Approve dialog: too many tries (429). -->
+    <string name="signin_approve_tooMany">Too many tries. Wait a minute, then try again.</string>
+    <!-- Activate dialog: Continue pressed with an empty field. -->
+    <string name="signin_key_enterKey">Enter your license key.</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">Something went wrong</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

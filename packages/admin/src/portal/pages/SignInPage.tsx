@@ -175,7 +175,12 @@ function useCarriedKey(): string | null {
   return key && checkKey(key).kind === "valid" ? key : null;
 }
 
-export function SignInPage(): React.ReactElement {
+export function SignInPage({
+  other,
+}: {
+  /** The join's second proof (linkSecond.ts): signed in already, signing in to the other account. */
+  other?: { onCancel: () => void; email?: string };
+} = {}): React.ReactElement {
   const [urlProduct] = React.useState(productFromUrl);
   // An app's sign-in (`/signin?request=rq_…`, PX-14a): the header is the request's data, and the
   // product is the request's, never a query value.
@@ -191,7 +196,7 @@ export function SignInPage(): React.ReactElement {
     new URLSearchParams(window.location.search).get("signin") ===
     "confirm-email"
       ? { kind: "finish" }
-      : { kind: "methods" },
+      : { kind: "methods", email: other?.email },
   );
   const [direction, setDirection] = React.useState<"forward" | "back">(
     "forward",
@@ -310,7 +315,15 @@ export function SignInPage(): React.ReactElement {
       focusKey={focusTick}
       header={header}
       footer={
-        handle !== null && request.data && !requestGone ? (
+        other ? (
+          <Button
+            variant="outline"
+            className="w-full max-sm:min-h-11"
+            onClick={other.onCancel}
+          >
+            {t("common.cancel")}
+          </Button>
+        ) : handle !== null && request.data && !requestGone ? (
           <RequestFooter view={request.data} />
         ) : undefined
       }
@@ -474,6 +487,7 @@ export function SignInPage(): React.ReactElement {
           onKey={() => go({ kind: "key" })}
           onDevice={() => go({ kind: "device" })}
           onHint={(email, last) => go({ kind: "hint", email, last })}
+          other={other ? { email: other.email } : undefined}
         />
       )}
     </AuthCard>
@@ -546,7 +560,10 @@ function MethodsStep({
   onKey,
   onDevice,
   onHint,
+  other,
 }: {
+  /** The join's second sign-in: its own title, and no way out to a key or a device. */
+  other?: { email?: string };
   caps: PortalCapabilities;
   context: { slug: string; name: string; developerName?: string | null } | null;
   /** The address to start from: kept when an expired sign-in comes back here. */
@@ -653,16 +670,22 @@ function MethodsStep({
   const carriedCheck = carried ? checkKey(carried) : null;
   const carriedName =
     carriedCheck?.kind === "valid" ? productLabel(carriedCheck.slug) : null;
-  const title = carriedName
-    ? t("signin.key.carriedTitle", { product: carriedName })
-    : context
-      ? t("signin.methods.titleApp")
-      : t("signin.methods.title");
-  const lede = carriedName
-    ? t("signin.key.carriedLede", { product: carriedName })
-    : context
-      ? t("signin.methods.ledeApp", { product: context.name })
-      : null;
+  const title = other
+    ? other.email
+      ? t("signin.join.again", { email: other.email })
+      : t("signin.join.otherTitle")
+    : carriedName
+      ? t("signin.key.carriedTitle", { product: carriedName })
+      : context
+        ? t("signin.methods.titleApp")
+        : t("signin.methods.title");
+  const lede = other
+    ? t("signin.join.otherLede")
+    : carriedName
+      ? t("signin.key.carriedLede", { product: carriedName })
+      : context
+        ? t("signin.methods.ledeApp", { product: context.name })
+        : null;
 
   return (
     <>
@@ -779,7 +802,7 @@ function MethodsStep({
           ) : null}
         </div>
       ) : null}
-      {carried || caps.modules.claim || magic ? (
+      {!other && (carried || caps.modules.claim || magic) ? (
         <QuietLinks>
           {carried ? (
             <QuietLink

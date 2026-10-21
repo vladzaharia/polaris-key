@@ -983,6 +983,44 @@ export interface PortalPasskey {
   reason?: PortalRemoveRefusal | null;
 }
 
+/** One side of the join screen (`GET /api/me/link`): never an account id. */
+export interface PortalLinkAccount {
+  role: "started" | "other";
+  /** The account this browser is signed in to now. */
+  current: boolean;
+  name: string | null;
+  email: string | null;
+  avatarUrl: string | null;
+  methods: string[];
+  products: number;
+  proven: { by: string | null; at: number; fresh: boolean };
+}
+
+export type PortalLinkReason =
+  | "sign_in_other"
+  | "step_up_required"
+  | "merge_pending"
+  | "unavailable";
+
+/** `GET /api/me/link`: the join screen, and the joins this account can still undo. */
+export interface PortalLinkView {
+  flow: {
+    expiresAt: number;
+    started: PortalLinkAccount | null;
+    other: PortalLinkAccount | null;
+    canJoin: boolean;
+    reason: PortalLinkReason | null;
+    keep: "other" | "started";
+    result: { products: number; primaryEmail: string | null } | null;
+  } | null;
+  undoable: {
+    id: string;
+    mergedAt: number;
+    undoUntil: number;
+    joined?: { email: string | null; name: string | null };
+  }[];
+}
+
 /** `GET /api/me/methods`. */
 export interface PortalMethods {
   methods: PortalMethod[];
@@ -1143,6 +1181,8 @@ export class PortalApiError extends Error {
    * `too_large`, `unsupported_type` …). Copy is chosen from it, never from `message`.
    */
   reason?: string;
+  /** `step_up_required` on a join: which proofs are older than 5 minutes (`started`, `other`). */
+  stale?: string[];
   /** I-30: an enforced domain's refusal names the connection to use instead. */
   next?: PortalSsoNext;
   /** I-16: a passkey sign-in refused because no account here holds that credential. */
@@ -1199,6 +1239,7 @@ async function send(
     let triesLeft: number | undefined;
     let retryAfter: number | undefined;
     let reason: string | undefined;
+    let stale: string[] | undefined;
     let next: PortalSsoNext | undefined;
     let unknownCredential = false;
     try {
@@ -1208,6 +1249,7 @@ async function send(
         triesLeft?: unknown;
         retryAfter?: unknown;
         reason?: unknown;
+        stale?: unknown;
         next?: unknown;
         unknownCredential?: unknown;
       };
@@ -1217,6 +1259,8 @@ async function send(
       if (typeof body.triesLeft === "number") triesLeft = body.triesLeft;
       if (typeof body.retryAfter === "number") retryAfter = body.retryAfter;
       if (typeof body.reason === "string") reason = body.reason;
+      if (Array.isArray(body.stale))
+        stale = body.stale.filter((x): x is string => typeof x === "string");
       next = readSsoNext(body.next);
     } catch {
       // non-JSON response
@@ -1226,6 +1270,7 @@ async function send(
     if (triesLeft !== undefined) error.triesLeft = triesLeft;
     if (retryAfter !== undefined) error.retryAfter = retryAfter;
     if (reason !== undefined) error.reason = reason;
+    if (stale !== undefined) error.stale = stale;
     if (next) error.next = next;
     if (unknownCredential) error.unknownCredential = true;
     throw error;
@@ -1478,6 +1523,27 @@ export const portalApi = {
       `/api/releases/${enc(product)}/${enc(releaseId)}/artifacts/${enc(artifactId)}/token`,
       { method: "POST" },
     ),
+  /** Link an existing account (PX-W12): the join screen and the joins still undoable. */
+  linkView: () => call<PortalLinkView>("/api/me/link"),
+  /** Start a join (step-up first); `next` is where to sign in to the other account. */
+  linkStart: () =>
+    call<{ status: "started"; expiresAt: number; next: string }>(
+      "/api/me/link/start",
+      { method: "POST" },
+    ),
+  linkConfirm: () =>
+    call<{
+      status: "joined";
+      kept: "other" | "started";
+      merge?: { id: string; undoUntil: number };
+    }>("/api/me/link/confirm", { method: "POST", body: "{}" }),
+  linkCancel: () =>
+    call<{ status: "cancelled" }>("/api/me/link/cancel", { method: "POST" }),
+  linkUndo: (merge: string) =>
+    call<{ status: string }>("/api/me/link/undo", {
+      method: "POST",
+      body: JSON.stringify({ merge }),
+    }),
   /** Account → Sign-in methods (PX-W12): every method, grouped, and what each allows. */
   methods: () => call<PortalMethods>("/api/me/methods"),
   /** Connect Apple, Google or Steam: the provider URL to open (step-up first). */

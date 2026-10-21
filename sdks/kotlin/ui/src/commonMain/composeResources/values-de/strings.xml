@@ -1995,6 +1995,107 @@
     <string name="signin_gate_termsLede">Stimmen Sie den Bedingungen von %1$s zu, um fortzufahren.</string>
     <!-- Code entry: submitted with fewer than six digits. -->
     <string name="signin_code_incomplete">Geben Sie alle 6 Ziffern ein.</string>
+    <!-- Portal, next visit after a first platform sign-in: the Add another way to sign in nudge (SIGN-IN.md D-40). -->
+    <string name="signin_nudge_title">Weitere Anmeldemethode hinzufügen</string>
+    <!-- Nudge body. -->
+    <string name="signin_nudge_body">So kommen Sie immer wieder hinein.</string>
+    <!-- Nudge primary: opens Account → Sign-in methods. -->
+    <string name="signin_nudge_add">Hinzufügen</string>
+    <string name="signin_nudge_add__macos">Hinzufügen</string>
+    <!-- Nudge dismiss. -->
+    <string name="signin_nudge_later">Nicht jetzt</string>
+    <string name="signin_nudge_later__macos">Nicht jetzt</string>
+    <!-- Account → Link an existing account dialog (PORTAL.md §4.11). -->
+    <string name="signin_join_title">Bestehendes Konto verknüpfen</string>
+    <!-- Link dialog, before the second sign-in. -->
+    <string name="signin_join_lede">Melden Sie sich bei Ihrem anderen Konto an, um beide zusammenzuführen. Nichts wird verschoben, bevor Sie bestätigen.</string>
+    <!-- Link dialog primary: starts the second sign-in. -->
+    <string name="signin_join_start">Beim anderen Konto anmelden</string>
+    <string name="signin_join_start__macos">Beim anderen Konto anmelden</string>
+    <!-- Link dialog: the account the person started from. -->
+    <string name="signin_join_thisAccount">Dieses Konto</string>
+    <!-- Link dialog: the account signed in second. -->
+    <string name="signin_join_otherAccount">Anderes Konto</string>
+    <!-- Link dialog: products on one account. Arguments: 1=count. -->
+    <plurals name="signin_join_products">
+        <item quantity="one">%1$d Produkt</item>
+        <item quantity="other">%1$d Produkte</item>
+    </plurals>
+    <!-- Link dialog: what joining leaves. Arguments: 1=count, 2=email. -->
+    <plurals name="signin_join_result">
+        <item quantity="one">Eine Bibliothek: %1$d Produkt. %2$s bleibt die Haupt-E-Mail-Adresse.</item>
+        <item quantity="other">Eine Bibliothek: %1$d Produkte. %2$s bleibt die Haupt-E-Mail-Adresse.</item>
+    </plurals>
+    <!-- Link dialog: joined. -->
+    <string name="signin_join_done">Zusammengeführt. Sie können das 72 Stunden lang rückgängig machen.</string>
+    <!-- Link dialog: undo a join. -->
+    <string name="signin_join_undo">Zusammenführung rückgängig</string>
+    <string name="signin_join_undo__macos">Zusammenführung rückgängig</string>
+    <!-- Link dialog: join undone. -->
+    <string name="signin_join_undone">Zusammenführung rückgängig gemacht.</string>
+    <!-- Link dialog: a join that can still be undone. Arguments: 1=email, 2=date. -->
+    <string name="signin_join_undoable">%1$s zusammengeführt. Rückgängig bis %2$s.</string>
+    <!-- Link dialog: the link flow is gone. -->
+    <string name="signin_join_expired">Das Verknüpfen hat zu lange gedauert. Beginnen Sie neu.</string>
+    <!-- Link dialog: confirm before the second sign-in. -->
+    <string name="signin_join_signInOther">Melden Sie sich zuerst bei Ihrem anderen Konto an.</string>
+    <!-- Link dialog: a proof is older than 5 minutes. -->
+    <string name="signin_join_reasonStepUp">Melden Sie sich bei beiden Konten erneut an und führen Sie sie dann zusammen.</string>
+    <!-- Link dialog: an account was joined in the last 72 hours. -->
+    <string name="signin_join_reasonPending">Eines der Konten wurde in den letzten 72 Stunden zusammengeführt. Versuchen Sie es danach erneut.</string>
+    <!-- Link dialog: a scheduled deletion blocks the join. -->
+    <string name="signin_join_reasonUnavailable">Brechen Sie zuerst die geplante Löschung ab und führen Sie dann zusammen.</string>
+    <!-- Link dialog: the second sign-in was the same account. -->
+    <string name="signin_join_sameAccount">Das ist das Konto, bei dem Sie begonnen haben. Melden Sie sich bei Ihrem anderen Konto an.</string>
+    <!-- Link dialog: a request failed. -->
+    <string name="signin_join_failed">Zusammenführen fehlgeschlagen. Versuchen Sie es erneut.</string>
+    <!-- Activate dialog, license_owned refusal, signed in on the portal (SIGN-IN.md D-27). -->
+    <string name="signin_join_ownedNotice">Wenn das Konto auch Ihnen gehört, melden Sie sich dort an und führen Sie beide zusammen.</string>
+    <!-- Approve dialog: Find it pressed with an incomplete code. -->
+    <string name="signin_approve_codeShort">Geben Sie alle 8 Buchstaben des Codes ein.</string>
+    <!-- Link dialog: completes 'Use your passkey to …' in the confirm-it's-you prompt. -->
+    <string name="signin_join_stepUpVerb">Konten zu verknüpfen</string>
+    <!-- Link dialog, second sign-in card: what this sign-in is for. -->
+    <string name="signin_join_otherTitle">Melden Sie sich bei Ihrem anderen Konto an</string>
+    <!-- Link dialog, second sign-in card: what happens next. -->
+    <string name="signin_join_otherLede">Nutzen Sie dafür eine beliebige Methode. Danach kommen Sie hierher zurück, um beide zusammenzuführen.</string>
+    <!-- Link dialog: the account this browser is signed in to now. -->
+    <string name="signin_join_signedNow">Jetzt angemeldet</string>
+    <!-- Link dialog: the account that is not the current one. -->
+    <string name="signin_join_yourOther">Ihr anderes Konto</string>
+    <!-- Link dialog: how an account signs in. {method} is a list of method names. Arguments: 1=method. -->
+    <string name="signin_join_methodsLine">Anmeldung mit %1$s</string>
+    <!-- Link dialog: how and when an account proved itself. {method}, {when}. Arguments: 1=method, 2=when. -->
+    <string name="signin_join_provenBy">Bestätigt per %1$s %2$s</string>
+    <!-- Link dialog: reassurance under the result. -->
+    <string name="signin_join_keepsWorking">Alle Anmeldungen beider Konten funktionieren weiter. Sie können 72 Stunden lang rückgängig machen.</string>
+    <!-- Link dialog: joined. Arguments: 1=date. -->
+    <string name="signin_join_doneUntil">Zusammengeführt. Rückgängig bis %1$s.</string>
+    <!-- Link dialog: re-prove an account whose sign-in is older than 5 minutes. {email}. Arguments: 1=email. -->
+    <string name="signin_join_again">Erneut bei %1$s anmelden</string>
+    <string name="signin_join_again__macos">Erneut bei %1$s anmelden</string>
+    <!-- Link dialog: forget the flow and begin again. -->
+    <string name="signin_join_startAgain">Neu beginnen</string>
+    <string name="signin_join_startAgain__macos">Neu beginnen</string>
+    <!-- Link dialog: the join cannot be undone any more. -->
+    <string name="signin_join_noUndo">Diese Zusammenführung kann nicht mehr rückgängig gemacht werden.</string>
+    <!-- Link dialog: a link to Account → Sign-in methods. -->
+    <string name="signin_join_methodsLink">Anmeldemethoden</string>
+    <string name="signin_join_methodsLink__macos">Anmeldemethoden</string>
+    <!-- Link dialog: an undo failed. -->
+    <string name="signin_join_undoFailed">Die Zusammenführung konnte nicht rückgängig gemacht werden. Versuchen Sie es erneut.</string>
+    <!-- Link dialog: one account's proof is older than 5 minutes. {email}. Arguments: 1=email. -->
+    <string name="signin_join_reasonStaleOne">Melden Sie sich erneut bei %1$s an und führen Sie dann zusammen.</string>
+    <!-- Link dialog: marks an account whose sign-in is older than 5 minutes. -->
+    <string name="signin_join_staleMark">Vor mehr als 5 Minuten angemeldet</string>
+    <!-- After cancelling the other-account sign-in: which account this browser is signed in to. Arguments: 1=email. -->
+    <string name="signin_join_stillSignedIn">Weiterhin angemeldet als %1$s.</string>
+    <!-- Link dialog opened from the 72-hour row: confirm the undo. {email}, {date}. Arguments: 1=email, 2=date. -->
+    <string name="signin_join_undoConfirm">Zusammenführung mit %1$s rückgängig machen? Möglich bis %2$s.</string>
+    <!-- Approve dialog: too many tries (429). -->
+    <string name="signin_approve_tooMany">Zu viele Versuche. Warten Sie eine Minute und versuchen Sie es erneut.</string>
+    <!-- Activate dialog: Continue pressed with an empty field. -->
+    <string name="signin_key_enterKey">Geben Sie Ihren Lizenzschlüssel ein.</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">Ein Fehler ist aufgetreten</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

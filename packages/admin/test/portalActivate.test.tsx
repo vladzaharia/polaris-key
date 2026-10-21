@@ -330,7 +330,8 @@ describe("Activate license modal (PX-06)", () => {
     const continueBtn = within(dialog).getByRole("button", {
       name: "Continue",
     }) as HTMLButtonElement;
-    expect(continueBtn.disabled).toBe(true);
+    // Always pressable: an empty field is answered at the field, not by a dead button.
+    expect(continueBtn.disabled).toBe(false);
     fireEvent.paste(field, { clipboardData: { getData: () => KEY } });
     expect(dialog.textContent).toContain("Key for Mossgarden");
     expect(fetchedRequests().some((r) => r.includes("claim"))).toBe(false);
@@ -691,6 +692,19 @@ describe("Activate license modal (PX-06)", () => {
     await waitFor(() => expect(document.activeElement).toBe(open));
   });
 
+  it("answers an empty Continue at the field, in words", async () => {
+    mockFetch(routes());
+    renderPortal();
+    const dialog = await openFromHeader();
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Continue" }),
+    );
+    expect((await within(dialog).findByRole("alert")).textContent).toBe(
+      "Enter your license key.",
+    );
+    expect(fetchedRequests().some((r) => r.includes("preview"))).toBe(false);
+  });
+
   it("a refused Continue puts focus on the field, never on body (UX-79)", async () => {
     mockFetch({
       ...routes(),
@@ -712,7 +726,7 @@ describe("Activate license modal (PX-06)", () => {
           name: "Continue",
         }) as HTMLButtonElement
       ).disabled,
-    ).toBe(true);
+    ).toBe(false);
   });
 
   // The deep link carries the key in the fragment, which no request carries (fix/keys-out-of-logs);
@@ -872,20 +886,23 @@ describe("Activate license modal (PX-06)", () => {
     expect(alert.textContent).toBe(
       "This Mossgarden license is already in another Polaris Locker account. A license never moves by its key.",
     );
-    // The same key gets the same answer: Continue waits for a new one.
+    // The refusal's lead action is the footer primary, never a dead Continue; the portal has no
+    // "sign in to that account" (it is signed in): it joins the two.
     expect(
-      (
-        within(dialog).getByRole("button", {
-          name: "Continue",
-        }) as HTMLButtonElement
-      ).disabled,
-    ).toBe(true);
-    await userEvent.click(
-      within(dialog).getByRole("button", { name: "Sign in to that account" }),
-    );
-    expect(assign).toHaveBeenCalledWith(
-      "https://key.plrs.im/portal/login?product=mossgarden",
-    );
+      within(dialog).queryByRole("button", { name: "Continue" }),
+    ).toBeNull();
+    expect(
+      within(dialog).queryByRole("button", { name: "Sign in to that account" }),
+    ).toBeNull();
+    expect(
+      within(dialog).getByText(
+        "If that account is yours too, sign in to it and join the two.",
+      ),
+    ).toBeTruthy();
+    expect(
+      within(dialog).getByRole("button", { name: "Link an existing account" }),
+    ).toBeTruthy();
+    expect(assign).not.toHaveBeenCalled();
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Use a different key" }),
     );

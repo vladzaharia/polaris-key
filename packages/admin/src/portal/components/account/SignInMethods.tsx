@@ -30,7 +30,11 @@ import {
   type PortalProvider,
 } from "../../api.js";
 import { browser } from "../../browser.js";
-import { refreshAfterMethodChange, useMethods } from "../../data.js";
+import {
+  refreshAfterMethodChange,
+  useLinkView,
+  useMethods,
+} from "../../data.js";
 import { isStepUpRequired, portalErrorCopy } from "../../errors.js";
 import {
   PROVIDER_NAME,
@@ -44,6 +48,7 @@ import {
 import {
   focusPageHeading,
   href,
+  navigate,
   scrollBehavior,
   setParams,
 } from "../../router.js";
@@ -96,8 +101,8 @@ import { StepUp } from "./StepUp.js";
  * an older Worker gets the page without them.
  *
  * Not here yet, for want of an API: the products that know the person through a method (see
- * PX-13's brief). **Link an existing account** is PX-15's (`LinkAccounts`), so neither the header
- * nor the Hide My Email notice links to it until that screen exists.
+ * PX-13's brief). **Link an existing account** (PX-15's `LinkAccountsDialog`) is the button under
+ * the footnote; neither the header nor the Hide My Email notice links to it.
  */
 export function SignInMethods({
   account,
@@ -115,7 +120,7 @@ export function SignInMethods({
   return (
     <SectionCard
       id="methods"
-      title="Sign-in methods"
+      title={t("signin.join.methodsLink")}
       aside={
         !emailOnly && methods.data ? (
           <ActionMenu
@@ -266,6 +271,8 @@ function MethodGroups({
   params: URLSearchParams;
   cmd: { email: number; passkey: number };
 }): React.ReactElement {
+  // Link an existing account: absent on a Worker without the route (404).
+  const linkView = useLinkView();
   const ids = {
     accounts: React.useId(),
     email: React.useId(),
@@ -617,6 +624,38 @@ function MethodGroups({
           ? `Changing a method asks you to confirm it's you. Every change is recorded and emailed to ${notifyTo}.`
           : "Changing a method asks you to confirm it's you. Every change is recorded."}
       </p>
+      {linkView.data ? (
+        <div className="space-y-3">
+          {linkView.data.undoable.map((u) => (
+            <p
+              key={u.id}
+              className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-fg"
+            >
+              <span className="min-w-0 [overflow-wrap:anywhere]">
+                {t("signin.join.undoable", {
+                  email: u.joined?.email ?? u.joined?.name ?? "",
+                  date: formatDate(u.undoUntil * 1000),
+                })}
+              </span>
+              <Button
+                variant="link"
+                size="sm"
+                className="max-sm:min-h-11"
+                onClick={() => navigate(`#/account?link=1&undo=${u.id}`)}
+              >
+                {t("signin.join.undo")}
+              </Button>
+            </p>
+          ))}
+          <Button
+            variant="outline"
+            className="max-sm:min-h-11"
+            onClick={() => navigate("#/account/link")}
+          >
+            {t("signin.join.title")}
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }

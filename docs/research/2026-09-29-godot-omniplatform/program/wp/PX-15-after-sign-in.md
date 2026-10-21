@@ -134,3 +134,12 @@ none.
 
 The role agent sets `--set PX-15 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set PX-15 done`.
+
+## Build notes (2026-10-20, Locker wave)
+
+Checked against the code at integ/next (P0-38 merged):
+
+- **Approve a device** already shipped in P0-38 (`ApproveDeviceDialog`, `signin.approve.*`, the Where you're signed in entry, the QR link). PX-15 added the always-pressable **Find it** with the error at the field (`signin.approve.codeShort`) and tests that looking never approves.
+- **Add another way to sign in** is `AddMethodNudge` in the signed-in shell: it reads the Worker's `nudge: true` that P0-38 keeps in sessionStorage, shows once on the next portal page, clears it, and is not drawn on Sign-in methods. Not built: the 30-day re-show for an account with one method (needs a server-side "last shown"; proposed follow-up, owner: Worker identity lane).
+- **Link an existing account** is `LinkAccountsDialog`, a dialog over Account (`#/account?link=1`; `#/account/link` redirects there, which is the `next` the Worker's `/api/me/link/start` returns). It is not a new Account section, so PX-31a's layout is untouched. Entry points: a button under Sign-in methods and the Activate dialog's `license_owned` refusal (notice + action, per SIGN-IN.md D-27). The keep choice is not offered: the Worker's default `keep: other` is used and the result line names the email that stays.
+- No wire, route or migration change. New catalog keys: `signin.nudge.*`, `signin.join.*`, `signin.approve.codeShort` (nine locales, `pnpm gen brand`).

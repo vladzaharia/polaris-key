@@ -13,6 +13,11 @@ import { SCALE_THRESHOLD } from "./model/libraryView.js";
 import { StarScreen } from "./components/States.js";
 import { announceSignedIn } from "./session.js";
 import {
+  endSecondSignIn,
+  secondSignInEmail,
+  secondSignInFrom,
+} from "./linkSecond.js";
+import {
   consumeQuietSignOut,
   createPortalQueryClient,
   useSession,
@@ -24,7 +29,9 @@ import { DownloadFlowPage } from "./pages/DownloadFlowPage.js";
 import { FreeDevicePage } from "./pages/FreeDevicePage.js";
 import { LibraryPage } from "./pages/LibraryPage.js";
 import { ProductPage } from "./pages/ProductPage.js";
+import { AddMethodNudge } from "./components/AddMethodNudge.js";
 import { ApproveDeviceDialog } from "./components/ApproveDeviceDialog.js";
+import { LinkAccountsDialog } from "./components/LinkAccountsDialog.js";
 import { commitLastMethod } from "./lastMethod.js";
 import { SignInPage } from "./pages/SignInPage.js";
 import { RequestFlow } from "./components/signin/RequestFlow.js";
@@ -34,12 +41,15 @@ import { restoreCarriedKey } from "./carriedKey.js";
 import {
   activateContext,
   rewriteActivatePath,
+  focusPageHeading,
+  navigate,
   setParams,
   type ActivateContext,
   useDocumentTitle,
   useRoute,
   type PortalRoute,
 } from "./router.js";
+import { portalApi } from "./api.js";
 import { t } from "../lib/copy.js";
 
 /**
@@ -70,6 +80,17 @@ function Boot(): React.ReactElement {
   const session = useSession();
   const qc = useQueryClient();
   const signedOut = session.data === null;
+  // The join's second proof: the login card while still signed in (linkSecond.ts).
+  const route = useRoute();
+  const csrf = session.data?.csrf ?? null;
+  const from = secondSignInFrom();
+  const onLink = route.kind === "account" && route.params.get("link") !== null;
+  const second = from !== null && csrf !== null && from === csrf && onLink;
+  React.useEffect(() => {
+    // Somewhere else, or a different session now (the sign-in happened): the mode is over.
+    if (from !== null && (!onLink || (csrf !== null && from !== csrf)))
+      endSecondSignIn();
+  }, [from, csrf, onLink]);
   // Signed out mid-visit: say so (a toast) as the login card takes over (§4.28).
   const wasSignedIn = React.useRef(false);
   React.useEffect(() => {
@@ -120,6 +141,26 @@ function Boot(): React.ReactElement {
     if (handle)
       return <RequestFlow account={session.data.account} handle={handle} />;
   }
+  if (second)
+    return (
+      <SignInPage
+        other={{
+          email: secondSignInEmail() ?? undefined,
+          onCancel: () => {
+            endSecondSignIn();
+            void portalApi.linkCancel().catch(() => undefined);
+            navigate("#/account");
+            // Say which account this browser is still signed in to, once; focus goes to the page.
+            toast.info(
+              t("signin.join.stillSignedIn", {
+                email: session.data?.account.email ?? "",
+              }),
+            );
+            focusPageHeading();
+          },
+        }}
+      />
+    );
   return (
     <ActivateProvider>
       <SignedIn account={session.data.account} />
@@ -171,6 +212,8 @@ function SignedInShell({
   const activate = useActivate();
   // `#/account?approve=<code>` (the QR's link, or Approve a new device): the dialog over Account.
   const approve = "params" in route ? route.params.get("approve") : null;
+  // `#/account?link=1` (Link an existing account, and where the other sign-in returns).
+  const link = "params" in route ? route.params.get("link") : null;
 
   // `#/?activate=<key>` (and `/activate#key=…`, rewritten to it) opens the modal over the
   // Library with the key filled in, with what the link carried. A hash written by hand goes
@@ -232,7 +275,14 @@ function SignedInShell({
         ) : null
       }
     >
+      <AddMethodNudge route={route} accountId={account.id} />
       <Page route={route} account={account} />
+      {route.kind === "account" && link !== null ? (
+        <LinkAccountsDialog
+          undoId={route.params.get("undo") ?? undefined}
+          onClose={() => setParams({ link: null, undo: null })}
+        />
+      ) : null}
       {route.kind === "account" && approve !== null ? (
         <ApproveDeviceDialog
           code={approve}
