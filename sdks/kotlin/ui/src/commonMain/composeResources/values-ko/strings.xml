@@ -638,7 +638,7 @@
     <!-- Hosted sign-in card, method chooser (SIGN-IN.md §3.3). -->
     <string name="signin_methods_titleApp">로그인</string>
     <!-- Hosted sign-in card, method chooser (SIGN-IN.md §3.3). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="signin_methods_ledeApp">%1$s을(를) 구매할 때 사용한 이메일을 사용하세요.</string>
+    <string name="signin_methods_ledeApp">%1$s 구매 시 사용한 이메일 또는 직장·학교 이메일을 사용하세요.</string>
     <!-- Hosted sign-in card, email field (SIGN-IN.md §3.3). -->
     <string name="signin_email_label">이메일</string>
     <!-- Hosted sign-in card, email field (SIGN-IN.md §3.3). -->
@@ -1520,6 +1520,8 @@
     <string name="signin_key_onrampLede">영수증 이메일의 키를 붙여 넣으세요. 이어서 로그인하면 라이브러리에 추가됩니다.</string>
     <!-- Sign-in card, back at the email step after the sign-in ran out. -->
     <string name="signin_code_expiredRestart">이 로그인은 만료되었습니다. 계속하여 새 코드를 받으세요.</string>
+    <!-- Sign-in card, back at the email step when the single sign-on step ran out before any code was sent. -->
+    <string name="signin_sso_expiredRestart">시간이 너무 오래 걸렸습니다. 계속하여 다시 시작하세요.</string>
     <!-- Code step: the per-sign-in resend cap. -->
     <string name="signin_code_noMore">이 로그인에서는 더 이상 코드를 보낼 수 없습니다. 마지막 코드는 계속 사용할 수 있습니다.</string>
     <!-- Sign-in card, a domain routed to its connection. Arguments: {org} = the organization's name. Arguments: 1=org. -->

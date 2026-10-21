@@ -1742,10 +1742,10 @@ msgstr "Sign in to Polaris Locker"
 msgid "signin.methods.titleApp"
 msgstr "Sign in"
 
-#. Use the email you bought {product} with.
+#. Use your {product} purchase email or a work or school email.
 #. Hosted sign-in card, method chooser (SIGN-IN.md §3.3). Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "signin.methods.ledeApp"
-msgstr "Use the email you bought {product} with."
+msgstr "Use your {product} purchase email or a work or school email."
 
 #. Email
 #. Hosted sign-in card, email field (SIGN-IN.md §3.3).
@@ -4076,6 +4076,11 @@ msgstr "Paste the key from your receipt email. Sign in next, and it joins your l
 #. Sign-in card, back at the email step after the sign-in ran out.
 msgid "signin.code.expiredRestart"
 msgstr "That sign-in has expired. Continue to get a new code."
+
+#. That took too long. Continue to start again.
+#. Sign-in card, back at the email step when the single sign-on step ran out before any code was sent.
+msgid "signin.sso.expiredRestart"
+msgstr "That took too long. Continue to start again."
 
 #. No more codes can be sent for this sign-in. The latest code still works.
 #. Code step: the per-sign-in resend cap.

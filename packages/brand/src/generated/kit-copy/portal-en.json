@@ -249,7 +249,7 @@
   "locker.stepUp.passkeyInstead": "Use your passkey instead",
   "locker.stepUp.passkey": "Use your passkey",
   "locker.stepUp.passkeyTo": "Use your passkey to {verb}",
-  "locker.stepUp.emailTo": "Email a code to {email}",
+  "locker.stepUp.emailTo": "Email me a code at {email}",
   "locker.stepUp.sent": "We sent a 6-digit code to {email}. It works for 10 minutes.",
   "locker.stepUp.confirmTo": "Confirm and {verb}",
   "locker.stepUp.confirm": "Confirm",

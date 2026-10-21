@@ -1382,7 +1382,7 @@
       "note": "Hosted sign-in card, method chooser (SIGN-IN.md §3.3)."
     },
     "signin.methods.ledeApp": {
-      "value": "Use the email you bought {product} with.",
+      "value": "Use your {product} purchase email or a work or school email.",
       "role": "body",
       "note": "Hosted sign-in card, method chooser (SIGN-IN.md §3.3). Arguments: {product} = the product's name from ProductIdentity (never translated)."
     },
@@ -3426,6 +3426,11 @@
       "role": "body",
       "note": "Sign-in card, back at the email step after the sign-in ran out."
     },
+    "signin.sso.expiredRestart": {
+      "value": "That took too long. Continue to start again.",
+      "role": "body",
+      "note": "Sign-in card, back at the email step when the single sign-on step ran out before any code was sent."
+    },
     "signin.code.noMore": {
       "value": "No more codes can be sent for this sign-in. The latest code still works.",
       "role": "body",
@@ -5263,12 +5268,12 @@
     },
     "locker.stepUp.passkeyTo": {
       "value": "Use your passkey to {verb}",
-      "role": "a11y",
+      "role": "button",
       "note": "Confirming a sensitive change (step-up) (P0-36)."
     },
     "locker.stepUp.emailTo": {
-      "value": "Email a code to {email}",
-      "role": "a11y",
+      "value": "Email me a code at {email}",
+      "role": "button",
       "note": "Confirming a sensitive change (step-up) (P0-36)."
     },
     "locker.stepUp.sent": {

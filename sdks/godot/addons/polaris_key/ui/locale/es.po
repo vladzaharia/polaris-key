@@ -1747,10 +1747,10 @@ msgstr "Inicia sesión en Polaris Locker"
 msgid "signin.methods.titleApp"
 msgstr "Iniciar sesión"
 
-#. Use the email you bought {product} with.
+#. Use your {product} purchase email or a work or school email.
 #. Hosted sign-in card, method chooser (SIGN-IN.md §3.3). Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "signin.methods.ledeApp"
-msgstr "Usa el correo con el que compraste {product}."
+msgstr "Usa el correo de tu compra de {product} o un correo de trabajo o de centro educativo."
 
 #. Email
 #. Hosted sign-in card, email field (SIGN-IN.md §3.3).
@@ -4086,6 +4086,11 @@ msgstr "Pega la clave de tu correo de recibo. Inicia sesión después y se añad
 #. Sign-in card, back at the email step after the sign-in ran out.
 msgid "signin.code.expiredRestart"
 msgstr "Ese inicio de sesión ha caducado. Continúa para recibir un código nuevo."
+
+#. That took too long. Continue to start again.
+#. Sign-in card, back at the email step when the single sign-on step ran out before any code was sent.
+msgid "signin.sso.expiredRestart"
+msgstr "Tardaste demasiado. Continúa para empezar de nuevo."
 
 #. No more codes can be sent for this sign-in. The latest code still works.
 #. Code step: the per-sign-in resend cap.

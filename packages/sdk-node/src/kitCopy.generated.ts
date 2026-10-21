@@ -332,7 +332,8 @@ export const KIT_COPY: Readonly<
     "toast.updateAvailable": "{product} {version} is available",
     "signin.methods.title": "Sign in to Polaris Locker",
     "signin.methods.titleApp": "Sign in",
-    "signin.methods.ledeApp": "Use the email you bought {product} with.",
+    "signin.methods.ledeApp":
+      "Use your {product} purchase email or a work or school email.",
     "signin.email.label": "Email",
     "signin.email.invalid":
       "Enter a full email address, like name@example.com.",
@@ -811,6 +812,7 @@ export const KIT_COPY: Readonly<
       "Paste the key from your receipt email. Sign in next, and it joins your library.",
     "signin.code.expiredRestart":
       "That sign-in has expired. Continue to get a new code.",
+    "signin.sso.expiredRestart": "That took too long. Continue to start again.",
     "signin.code.noMore":
       "No more codes can be sent for this sign-in. The latest code still works.",
     "signin.sso.title": "Sign in with {org}",
@@ -1846,7 +1848,7 @@ export const KIT_COPY: Readonly<
     "signin.methods.title": "Bei Polaris Locker anmelden",
     "signin.methods.titleApp": "Anmelden",
     "signin.methods.ledeApp":
-      "Verwenden Sie die E-Mail-Adresse, mit der Sie {product} gekauft haben.",
+      "Verwenden Sie die E-Mail-Adresse Ihres Kaufs von {product} oder eine Arbeits- oder Schul-E-Mail-Adresse.",
     "signin.email.label": "E-Mail",
     "signin.email.invalid":
       "Geben Sie eine vollständige E-Mail-Adresse ein, z. B. name@example.com.",
@@ -2373,6 +2375,8 @@ export const KIT_COPY: Readonly<
       "Fügen Sie den Schlüssel aus Ihrer Bestätigungs-E-Mail ein. Melden Sie sich danach an, und er kommt in Ihre Bibliothek.",
     "signin.code.expiredRestart":
       "Diese Anmeldung ist abgelaufen. Fahren Sie fort, um einen neuen Code zu erhalten.",
+    "signin.sso.expiredRestart":
+      "Das hat zu lange gedauert. Fahren Sie fort, um neu zu beginnen.",
     "signin.code.noMore":
       "Für diese Anmeldung können keine weiteren Codes gesendet werden. Der letzte Code gilt weiterhin.",
     "signin.sso.title": "Mit {org} anmelden",
@@ -3436,7 +3440,7 @@ export const KIT_COPY: Readonly<
     "signin.methods.title": "Se connecter à Polaris Locker",
     "signin.methods.titleApp": "Se connecter",
     "signin.methods.ledeApp":
-      "Utilisez l’adresse e-mail avec laquelle vous avez acheté {product}.",
+      "Utilisez l’adresse e-mail de votre achat de {product} ou une adresse professionnelle ou scolaire.",
     "signin.email.label": "E-mail",
     "signin.email.invalid":
       "Saisissez une adresse e-mail complète, par exemple nom@exemple.com.",
@@ -3954,6 +3958,8 @@ export const KIT_COPY: Readonly<
       "Collez la clé de votre e-mail de reçu. Connectez-vous ensuite, et elle rejoint votre bibliothèque.",
     "signin.code.expiredRestart":
       "Cette connexion a expiré. Continuez pour recevoir un nouveau code.",
+    "signin.sso.expiredRestart":
+      "Cela a pris trop de temps. Continuez pour recommencer.",
     "signin.code.noMore":
       "Aucun autre code ne peut être envoyé pour cette connexion. Le dernier code fonctionne toujours.",
     "signin.sso.title": "Se connecter avec {org}",
@@ -4982,7 +4988,8 @@ export const KIT_COPY: Readonly<
     "toast.updateAvailable": "{product} {version} está disponible",
     "signin.methods.title": "Inicia sesión en Polaris Locker",
     "signin.methods.titleApp": "Iniciar sesión",
-    "signin.methods.ledeApp": "Usa el correo con el que compraste {product}.",
+    "signin.methods.ledeApp":
+      "Usa el correo de tu compra de {product} o un correo de trabajo o de centro educativo.",
     "signin.email.label": "Correo electrónico",
     "signin.email.invalid":
       "Escribe una dirección de correo completa, como nombre@example.com.",
@@ -5497,6 +5504,8 @@ export const KIT_COPY: Readonly<
       "Pega la clave de tu correo de recibo. Inicia sesión después y se añade a tu biblioteca.",
     "signin.code.expiredRestart":
       "Ese inicio de sesión ha caducado. Continúa para recibir un código nuevo.",
+    "signin.sso.expiredRestart":
+      "Tardaste demasiado. Continúa para empezar de nuevo.",
     "signin.code.noMore":
       "No se pueden enviar más códigos para este inicio de sesión. El último código sigue siendo válido.",
     "signin.sso.title": "Iniciar sesión con {org}",
@@ -6556,7 +6565,8 @@ export const KIT_COPY: Readonly<
     "toast.updateAvailable": "{product} {version} está disponível",
     "signin.methods.title": "Entrar no Polaris Locker",
     "signin.methods.titleApp": "Entrar",
-    "signin.methods.ledeApp": "Use o e-mail com que você comprou {product}.",
+    "signin.methods.ledeApp":
+      "Use o e-mail da sua compra de {product} ou um e-mail de trabalho ou escola.",
     "signin.email.label": "E-mail",
     "signin.email.invalid":
       "Digite um endereço de e-mail completo, como nome@example.com.",
@@ -7055,6 +7065,8 @@ export const KIT_COPY: Readonly<
       "Cole a chave do seu e-mail de recibo. Entre em seguida e ela entra na sua biblioteca.",
     "signin.code.expiredRestart":
       "Esse login expirou. Continue para receber um novo código.",
+    "signin.sso.expiredRestart":
+      "Demorou demais. Continue para começar de novo.",
     "signin.code.noMore":
       "Não é possível enviar mais códigos para este login. O último código ainda funciona.",
     "signin.sso.title": "Entrar com {org}",
@@ -8094,7 +8106,8 @@ export const KIT_COPY: Readonly<
     "toast.updateAvailable": "{product} {version} è disponibile",
     "signin.methods.title": "Accedi a Polaris Locker",
     "signin.methods.titleApp": "Accedi",
-    "signin.methods.ledeApp": "Usa l'email con cui hai acquistato {product}.",
+    "signin.methods.ledeApp":
+      "Usa l’email con cui hai acquistato {product} oppure un’email di lavoro o di scuola.",
     "signin.email.label": "Email",
     "signin.email.invalid":
       "Inserisci un indirizzo email completo, ad esempio nome@example.com.",
@@ -8602,6 +8615,8 @@ export const KIT_COPY: Readonly<
       "Incolla la chiave dalla email della ricevuta. Poi accedi e entra nella tua libreria.",
     "signin.code.expiredRestart":
       "Questo accesso è scaduto. Continua per ricevere un nuovo codice.",
+    "signin.sso.expiredRestart":
+      "Ci è voluto troppo tempo. Continua per ricominciare.",
     "signin.code.noMore":
       "Non è possibile inviare altri codici per questo accesso. L'ultimo codice è ancora valido.",
     "signin.sso.title": "Accedi con {org}",
@@ -9652,7 +9667,7 @@ export const KIT_COPY: Readonly<
     "signin.methods.title": "Polaris Lockerにサインイン",
     "signin.methods.titleApp": "サインイン",
     "signin.methods.ledeApp":
-      "{product}を購入したときのメールアドレスを使用してください。",
+      "{product} の購入時のメールアドレス、または職場・学校のメールアドレスを使用してください。",
     "signin.email.label": "メールアドレス",
     "signin.email.invalid":
       "name@example.comのような完全なメールアドレスを入力してください。",
@@ -10165,6 +10180,8 @@ export const KIT_COPY: Readonly<
       "領収メールのキーを貼り付けてください。次にサインインすると、ライブラリに追加されます。",
     "signin.code.expiredRestart":
       "このサインインは期限切れです。続行して新しいコードを取得してください。",
+    "signin.sso.expiredRestart":
+      "時間がかかりすぎました。続行してやり直してください。",
     "signin.code.noMore":
       "このサインインでは、これ以上コードを送信できません。最新のコードは引き続き使えます。",
     "signin.sso.title": "{org} でサインイン",
@@ -11218,7 +11235,7 @@ export const KIT_COPY: Readonly<
     "signin.methods.title": "Polaris Locker에 로그인",
     "signin.methods.titleApp": "로그인",
     "signin.methods.ledeApp":
-      "{product}을(를) 구매할 때 사용한 이메일을 사용하세요.",
+      "{product} 구매 시 사용한 이메일 또는 직장·학교 이메일을 사용하세요.",
     "signin.email.label": "이메일",
     "signin.email.invalid":
       "name@example.com처럼 전체 이메일 주소를 입력하세요.",
@@ -11699,6 +11716,8 @@ export const KIT_COPY: Readonly<
       "영수증 이메일의 키를 붙여 넣으세요. 이어서 로그인하면 라이브러리에 추가됩니다.",
     "signin.code.expiredRestart":
       "이 로그인은 만료되었습니다. 계속하여 새 코드를 받으세요.",
+    "signin.sso.expiredRestart":
+      "시간이 너무 오래 걸렸습니다. 계속하여 다시 시작하세요.",
     "signin.code.noMore":
       "이 로그인에서는 더 이상 코드를 보낼 수 없습니다. 마지막 코드는 계속 사용할 수 있습니다.",
     "signin.sso.title": "{org}(으)로 로그인",
@@ -12698,7 +12717,8 @@ export const KIT_COPY: Readonly<
     "toast.updateAvailable": "{product} {version}现已推出",
     "signin.methods.title": "登录Polaris Locker",
     "signin.methods.titleApp": "登录",
-    "signin.methods.ledeApp": "使用你购买{product}时所用的电子邮件。",
+    "signin.methods.ledeApp":
+      "请使用购买 {product} 时的邮箱，或工作或学校邮箱。",
     "signin.email.label": "电子邮件",
     "signin.email.invalid": "请输入完整的电子邮件地址，例如name@example.com。",
     "signin.continue": "继续",
@@ -13151,6 +13171,7 @@ export const KIT_COPY: Readonly<
     "signin.key.onrampLede":
       "粘贴收据邮件中的密钥。接着登录，它就会加入您的库。",
     "signin.code.expiredRestart": "此次登录已过期。请继续以获取新验证码。",
+    "signin.sso.expiredRestart": "耗时过长。请继续以重新开始。",
     "signin.code.noMore": "此次登录无法再发送验证码。最新的验证码仍然有效。",
     "signin.sso.title": "使用 {org} 登录",
     "signin.sso.required": "{host} 地址必须使用。",

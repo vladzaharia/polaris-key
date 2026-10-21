@@ -66176,55 +66176,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Use the email you bought %1$@ with."
+            "value": "Use your %1$@ purchase email or a work or school email."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Verwenden Sie die E-Mail-Adresse, mit der Sie %1$@ gekauft haben."
+            "value": "Verwenden Sie die E-Mail-Adresse Ihres Kaufs von %1$@ oder eine Arbeits- oder Schul-E-Mail-Adresse."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Utilisez l’adresse e-mail avec laquelle vous avez acheté %1$@."
+            "value": "Utilisez l’adresse e-mail de votre achat de %1$@ ou une adresse professionnelle ou scolaire."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Usa el correo con el que compraste %1$@."
+            "value": "Usa el correo de tu compra de %1$@ o un correo de trabajo o de centro educativo."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Use o e-mail com que você comprou %1$@."
+            "value": "Use o e-mail da sua compra de %1$@ ou um e-mail de trabalho ou escola."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Usa l'email con cui hai acquistato %1$@."
+            "value": "Usa l’email con cui hai acquistato %1$@ oppure un’email di lavoro o di scuola."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@を購入したときのメールアドレスを使用してください。"
+            "value": "%1$@ の購入時のメールアドレス、または職場・学校のメールアドレスを使用してください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@을(를) 구매할 때 사용한 이메일을 사용하세요."
+            "value": "%1$@ 구매 시 사용한 이메일 또는 직장·학교 이메일을 사용하세요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "使用你购买%1$@时所用的电子邮件。"
+            "value": "请使用购买 %1$@ 时的邮箱，或工作或学校邮箱。"
           }
         }
       }
@@ -71793,6 +71793,66 @@
           "stringUnit": {
             "state": "translated",
             "value": "%1$@ 后通过邮件发送验证码"
+          }
+        }
+      }
+    },
+    "signin.sso.expiredRestart": {
+      "comment": "Sign-in card, back at the email step when the single sign-on step ran out before any code was sent.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That took too long. Continue to start again."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das hat zu lange gedauert. Fahren Sie fort, um neu zu beginnen."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cela a pris trop de temps. Continuez pour recommencer."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tardaste demasiado. Continúa para empezar de nuevo."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Demorou demais. Continue para começar de novo."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ci è voluto troppo tempo. Continua per ricominciare."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "時間がかかりすぎました。続行してやり直してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "시간이 너무 오래 걸렸습니다. 계속하여 다시 시작하세요."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "耗时过长。请继续以重新开始。"
           }
         }
       }

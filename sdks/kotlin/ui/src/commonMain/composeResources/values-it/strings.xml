@@ -648,7 +648,7 @@
     <!-- Hosted sign-in card, method chooser (SIGN-IN.md §3.3). -->
     <string name="signin_methods_titleApp">Accedi</string>
     <!-- Hosted sign-in card, method chooser (SIGN-IN.md §3.3). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="signin_methods_ledeApp">Usa l'email con cui hai acquistato %1$s.</string>
+    <string name="signin_methods_ledeApp">Usa l’email con cui hai acquistato %1$s oppure un’email di lavoro o di scuola.</string>
     <!-- Hosted sign-in card, email field (SIGN-IN.md §3.3). -->
     <string name="signin_email_label">Email</string>
     <!-- Hosted sign-in card, email field (SIGN-IN.md §3.3). -->
@@ -1540,6 +1540,8 @@
     <string name="signin_key_onrampLede">Incolla la chiave dalla email della ricevuta. Poi accedi e entra nella tua libreria.</string>
     <!-- Sign-in card, back at the email step after the sign-in ran out. -->
     <string name="signin_code_expiredRestart">Questo accesso è scaduto. Continua per ricevere un nuovo codice.</string>
+    <!-- Sign-in card, back at the email step when the single sign-on step ran out before any code was sent. -->
+    <string name="signin_sso_expiredRestart">Ci è voluto troppo tempo. Continua per ricominciare.</string>
     <!-- Code step: the per-sign-in resend cap. -->
     <string name="signin_code_noMore">Non è possibile inviare altri codici per questo accesso. L'ultimo codice è ancora valido.</string>
     <!-- Sign-in card, a domain routed to its connection. Arguments: {org} = the organization's name. Arguments: 1=org. -->

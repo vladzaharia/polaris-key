@@ -648,7 +648,7 @@
     <!-- Hosted sign-in card, method chooser (SIGN-IN.md §3.3). -->
     <string name="signin_methods_titleApp">Iniciar sesión</string>
     <!-- Hosted sign-in card, method chooser (SIGN-IN.md §3.3). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="signin_methods_ledeApp">Usa el correo con el que compraste %1$s.</string>
+    <string name="signin_methods_ledeApp">Usa el correo de tu compra de %1$s o un correo de trabajo o de centro educativo.</string>
     <!-- Hosted sign-in card, email field (SIGN-IN.md §3.3). -->
     <string name="signin_email_label">Correo electrónico</string>
     <!-- Hosted sign-in card, email field (SIGN-IN.md §3.3). -->
@@ -1540,6 +1540,8 @@
     <string name="signin_key_onrampLede">Pega la clave de tu correo de recibo. Inicia sesión después y se añade a tu biblioteca.</string>
     <!-- Sign-in card, back at the email step after the sign-in ran out. -->
     <string name="signin_code_expiredRestart">Ese inicio de sesión ha caducado. Continúa para recibir un código nuevo.</string>
+    <!-- Sign-in card, back at the email step when the single sign-on step ran out before any code was sent. -->
+    <string name="signin_sso_expiredRestart">Tardaste demasiado. Continúa para empezar de nuevo.</string>
     <!-- Code step: the per-sign-in resend cap. -->
     <string name="signin_code_noMore">No se pueden enviar más códigos para este inicio de sesión. El último código sigue siendo válido.</string>
     <!-- Sign-in card, a domain routed to its connection. Arguments: {org} = the organization's name. Arguments: 1=org. -->
