@@ -127,7 +127,7 @@ export function Orientation({
             {c.to ? (
               <Link
                 to={c.to}
-                className="rounded-xs text-fg-muted underline-offset-4 hover:text-fg-strong hover:underline"
+                className="-my-0.5 inline-flex min-h-6 items-center rounded-xs text-fg-muted underline-offset-4 hover:text-fg-strong hover:underline"
               >
                 {c.label}
               </Link>
