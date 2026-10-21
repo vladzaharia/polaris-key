@@ -134,20 +134,12 @@ async function deploymentPage(): Promise<HTMLElement> {
   return main();
 }
 
-describe("the Platform section in the sidebar", () => {
-  it("is a group with no header icon whose items each carry one, shown off a product", async () => {
+describe("the Platform context in the sidebar (ST-45)", () => {
+  it("lists Home and the Platform pages, each with an icon, off a product", async () => {
     boot("#/", { extra: platformRoutes() });
     await screen.findByRole("heading", { level: 1, name: "Home" });
-    const header = within(nav()).getByRole("button", { name: "Platform" });
-    expect(header.getAttribute("data-section-header")).toBe("platform");
-    expect(
-      [...header.querySelectorAll("svg")].filter(
-        (svg) => !svg.hasAttribute("data-disclosure"),
-      ),
-    ).toEqual([]);
-    // Not the active section on Home: collapsed until peeked into.
-    expect(header.getAttribute("aria-expanded")).toBe("false");
-    await userEvent.click(header);
+    // No group header and no disclosure: the pages are the list.
+    expect(nav().querySelector("[data-section-header]")).toBeNull();
     const deployment = within(nav()).getByRole("link", { name: "Deployment" });
     expect(deployment.getAttribute("href")).toBe("#/platform/deployment");
     expect(deployment.querySelector("svg[data-nav-icon]")).not.toBeNull();
@@ -159,14 +151,9 @@ describe("the Platform section in the sidebar", () => {
     expect(feeds.querySelector("svg[data-nav-icon]")).not.toBeNull();
   });
 
-  it("is the open section on a Platform page, and shown beside a product's sections", async () => {
+  it("marks the current Platform page", async () => {
     boot("#/platform/deployment", { extra: platformRoutes() });
     await deploymentPage();
-    expect(
-      within(nav())
-        .getByRole("button", { name: "Platform" })
-        .getAttribute("aria-expanded"),
-    ).toBe("true");
     expect(
       within(nav())
         .getByRole("link", { name: "Deployment" })
@@ -176,37 +163,24 @@ describe("the Platform section in the sidebar", () => {
   });
 });
 
-describe("the Platform section inside a product (owner, 2026-10-04)", () => {
-  it("is hidden from the sidebar; the switcher, the version chip and ⌘K still reach it", async () => {
+describe("the Platform pages inside a product", () => {
+  it("never appear in the sidebar; the switcher, the version chip and ⌘K reach them", async () => {
     boot("#/p/djdl", { services: ALL_ON, extra: platformRoutes() });
     await screen.findByRole("heading", { level: 1, name: "DJDL" });
-    expect(
-      within(nav()).queryByRole("button", { name: "Platform" }),
-    ).toBeNull();
+    expect(nav().getAttribute("data-context")).toBe("product");
+    for (const name of ["Home", "Deployment", "Operations", "API tokens"]) {
+      expect(within(nav()).queryByRole("link", { name }), name).toBeNull();
+    }
     expect(nav().querySelector("[data-section=platform]")).toBeNull();
-    // The product's own sections still follow the one-open-section rule.
-    expect(
-      within(nav())
-        .getByRole("button", { name: "Core" })
-        .getAttribute("aria-expanded"),
-    ).toBe("true");
 
-    // The product switcher: a Platform entry beside All products.
+    // The context card: Platform first (back to Home), the products, New product last.
     await userEvent.click(
-      screen.getByRole("button", { name: /^Product: DJDL \(djdl\)/ }),
+      within(nav()).getByRole("button", { name: /^Product: DJDL \(djdl\)/ }),
     );
-    const entry = await screen.findByRole("link", { name: "Platform" });
-    expect(entry.getAttribute("href")).toBe("#/platform");
-    const footer = entry.parentElement!;
-    expect(
-      within(footer)
-        .getAllByRole("link")
-        .map((a) => a.textContent),
-    ).toEqual(["All products", "Platform", "New product"]);
-    // One column, like the product list above: a two-column grid left New product alone on a
-    // row beside an empty cell (the layout lint's rhythm/grid-orphan).
-    expect(footer.className).toContain("flex-col");
-    expect(footer.className).not.toMatch(/grid-cols-/);
+    const entry = await screen.findByRole("option", { name: /Platform/ });
+    expect(entry).toBeTruthy();
+    expect(screen.queryByText("All products")).toBeNull();
+    expect(screen.getByRole("link", { name: "New product" })).toBeTruthy();
     await userEvent.keyboard("{Escape}");
 
     // The account menu's version chip goes to Deployment.
@@ -215,12 +189,14 @@ describe("the Platform section inside a product (owner, 2026-10-04)", () => {
     expect(chip.getAttribute("href")).toBe("#/platform/deployment");
   });
 
-  it("comes back on Home and on the Platform pages", async () => {
+  it("the context card on Home is Platform, and opens the same switcher", async () => {
     boot("#/", { extra: platformRoutes() });
     await screen.findByRole("heading", { level: 1, name: "Home" });
-    expect(
-      within(nav()).getByRole("button", { name: "Platform" }),
-    ).toBeTruthy();
+    const card = within(nav()).getByRole("button", {
+      name: "Platform. Change product",
+    });
+    await userEvent.click(card);
+    expect(await screen.findByRole("option", { name: /DJDL/ })).toBeTruthy();
   });
 });
 

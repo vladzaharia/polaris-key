@@ -265,6 +265,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
     });
   }, []);
   const [navOpen, setNavOpen] = React.useState(false);
+  const drawerRef = React.useRef<HTMLDivElement>(null);
   const [paletteOpen, setPaletteOpen] = React.useState(false);
   // What the palette opens already searching for: a not-found page's dead segment, else nothing.
   const [paletteQuery, setPaletteQuery] = React.useState("");
@@ -286,6 +287,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
   const openable =
     refused && slug !== null
       ? visibleSections(services)
+          .filter((sec) => sec.key !== "core")
           .filter((sec) =>
             sec.items.some((item) => canOpenPage(me, item.page, slug)),
           )
@@ -329,8 +331,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
     go: (k) => {
       if (k === "h") return navigate(r.home());
       if (k === "p") {
-        if (slug && switcherPage) setSwitcherOpen(true);
-        else navigate(r.home());
+        setSwitcherOpen(true);
         return true;
       }
       if (!slug) return false;
@@ -374,6 +375,13 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
     // ST-29: what the member cannot open is absent from the sidebar, not disabled.
     canOpen: (id: PageId) => canOpenPage(me, id, slug),
   };
+  // The context header's switcher: the product in scope, or Platform off a product.
+  const switcherContext = {
+    products: productList,
+    current: slug ? product : null,
+    page: switcherPage,
+    platform: canIn(me, "platform"),
+  };
 
   return (
     <HrefAccess.Provider value={canOpenHrefForMe}>
@@ -402,11 +410,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
               className="lg:col-span-2"
               me={me}
               section={accent}
-              product={slug ? product : null}
-              products={productList}
-              page={switcherPage}
-              switcherOpen={switcherOpen}
-              onSwitcherOpenChange={setSwitcherOpen}
+              navOpen={navOpen}
               docsHref={page ? docsFor(page) : "/docs/admin/"}
               onOpenPalette={() => openPalette()}
               onOpenNav={() => setNavOpen(true)}
@@ -417,6 +421,11 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
             <aside className="hidden min-h-0 flex-col border-r border-border bg-surface-page lg:flex">
               <Sidebar
                 {...sidebarProps}
+                switcher={{
+                  ...switcherContext,
+                  open: switcherOpen,
+                  onOpenChange: setSwitcherOpen,
+                }}
                 rail={rail}
                 onToggleRail={toggleRail}
                 idPrefix="sidebar"
@@ -425,6 +434,8 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
             <main
               id="content"
               tabIndex={-1}
+              // The phone drawer is modal: the page behind it is inert while it is open.
+              inert={navOpen || undefined}
               className="relative min-h-0 overflow-y-auto outline-hidden pk-scroll"
             >
               <div
@@ -448,7 +459,18 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
             <DialogPrimitive.Portal>
               <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-black/50 animate-pk-overlay-in lg:hidden" />
               <DialogPrimitive.Content
+                ref={drawerRef}
                 aria-describedby={undefined}
+                onOpenAutoFocus={(e) => {
+                  // Opening moves focus to the first item, not the close button.
+                  e.preventDefault();
+                  const content = drawerRef.current;
+                  if (!content) return;
+                  (
+                    content.querySelector<HTMLElement>("[data-nav-list] a") ??
+                    content.querySelector<HTMLElement>("button")
+                  )?.focus();
+                }}
                 onCloseAutoFocus={(e) => {
                   // The drawer is opened from the top bar, not a Radix trigger: hand focus back.
                   e.preventDefault();
@@ -469,6 +491,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
                 </div>
                 <Sidebar
                   {...sidebarProps}
+                  switcher={switcherContext}
                   idPrefix="drawer"
                   onNavigate={() => setNavOpen(false)}
                 />
