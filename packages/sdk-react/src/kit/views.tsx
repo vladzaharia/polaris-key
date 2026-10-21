@@ -227,7 +227,6 @@ function isLoading(view: View): boolean {
 function place(c: KitCtx, layout: Layout) {
   const placed = placeKeys(c.view, layout);
   // A line whose argument the input does not carry is dropped, never drawn as "{version}".
-  // Only where the drop-in drives the part: a fixture state draws its keys as the corpus lists them.
   const whole = (k: string) => c.driven !== true || !unfilled(c, k);
   const p = {
     ...placed,

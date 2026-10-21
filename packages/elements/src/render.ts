@@ -315,8 +315,12 @@ export const GLYPHS = {
 // ── Parts ────────────────────────────────────────────────────────────────────────────────────
 
 /** MonogramIcon / the product icon (DL5): the icon, else the initial on `surface-sunken`. */
-export function productIcon(c: RenderCtx): TemplateResult {
-  const name = c.resolved.identity.name || c.resolved.theme.name;
+export function productIcon(c: RenderCtx): TemplateResult | typeof nothing {
+  // The name the title uses is the last resort ("Welcome to Tidewater Studio" from the bundle).
+  const name =
+    c.resolved.identity.name ||
+    c.resolved.theme.name ||
+    String(c.view.args?.product ?? "");
   const label = c.copy.has("a11y.productIcon")
     ? plain(c, "a11y.productIcon", { product: name })
     : "";
@@ -329,6 +333,8 @@ export function productIcon(c: RenderCtx): TemplateResult {
       alt=${label}
     />`;
   const initial = monogramOf(name);
+  // No icon and no name to take an initial from: no tile (UI-KITS §1.2 never draws an empty one).
+  if (initial === "") return nothing;
   return html`<span
     class="icon monogram"
     part="icon monogram"
@@ -347,14 +353,16 @@ export function productHeader(
 ): TemplateResult | typeof nothing {
   if (size === "none") return nothing;
   const name = c.resolved.identity.name || c.resolved.theme.name;
-  const showName = options.name ?? true;
+  const showName = (options.name ?? true) && name !== "";
+  const icon = productIcon(c);
+  if (icon === nothing && !showName && !options.developer) return nothing;
   return html`<div
     class="identity"
     part="header"
     data-part="header"
     data-size=${size}
   >
-    ${productIcon(c)}
+    ${icon}
     ${showName
       ? html`<span class="name" data-part="name"><bdi>${name}</bdi></span>`
       : nothing}

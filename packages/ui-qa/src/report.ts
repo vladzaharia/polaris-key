@@ -72,7 +72,52 @@ function splitTheme(name: string): { rest: string; theme: Shot["theme"] } {
   return { rest, theme: m[2] as "dark" | "light" };
 }
 
+/** A state id with every separator and the case gone: "Welcome.default", "welcome-default" and
+ *  "accountAndLicense-key-only" meet at the same key. */
+function squash(id: string): string {
+  return id.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+/** The registry's states by squashed id, each as the shared `component-state` form (kebab
+ *  component, then the state), the one Swift, Qt and the terminals already write. */
+export function canonicalStates(root = REPO_ROOT): Map<string, string> {
+  const comps = JSON.parse(
+    readFileSync(
+      resolve(root, "packages/brand/kit-copy/components.json"),
+      "utf8",
+    ),
+  ) as { components: Record<string, { states: Record<string, unknown> }> };
+  const out = new Map<string, string>();
+  for (const [component, c] of Object.entries(comps.components))
+    for (const state of Object.keys(c.states)) {
+      const id = `${kebab(component)}-${state}`;
+      out.set(squash(id), id);
+    }
+  return out;
+}
+
+/** The registry's id for a kit's state name: the name itself, or the longest registry id it
+ *  starts with (a variant follows it: Qt's ".narrow", the terminal's "-platform-npm"); null when
+ *  no registry state is named. */
+export function canonicalOf(
+  canon: Map<string, string>,
+  raw: string,
+): string | null {
+  const key = squash(raw);
+  const exact = canon.get(key);
+  if (exact) return exact;
+  let best: string | null = null;
+  let bestLen = 0;
+  for (const [k, id] of canon)
+    if (key.startsWith(k) && k.length > bestLen) {
+      best = id;
+      bestLen = k.length;
+    }
+  return best;
+}
+
 export function collect(root = REPO_ROOT): Report {
+  const canon = canonicalStates(root);
   const shots: Shot[] = [];
   const boardNames = BOARDS.map((b) => b.name).sort(
     (a, b) => b.length - a.length,
@@ -96,7 +141,12 @@ export function collect(root = REPO_ROOT): Report {
       const { rest, theme } = splitTheme(stem(file));
       // Either <state>-<theme>.png, or <state>/<variant>-<theme>.png (Roborazzi's layout).
       const parts = relative(base, file).split(/[\\/]/);
-      const state = parts.length > 1 ? parts[0]! : stateOf(rest);
+      // Compose keeps the registry's states one level down, under matrix/.
+      if (parts[0] === "matrix" && parts.length > 2) parts.shift();
+      const raw = parts.length > 1 ? parts[0]! : stateOf(rest);
+      // React writes Component.state, Qt lowercases the component, Compose uses camelCase: all
+      // meet the registry's id. A state no registry row names stays as the kit wrote it.
+      const state = canonicalOf(canon, raw) ?? raw;
       const variant = parts.length > 1 ? `${parts[0]} ${rest}` : rest;
       shots.push({ source: kit, state, variant, theme, file });
     }

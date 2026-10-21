@@ -121,6 +121,18 @@ describe("the default look", () => {
     ).toBe("T");
   });
 
+  it("draws no tile when no name resolves anywhere and there is no icon", () => {
+    const { container } = render(
+      <Welcome input={{ elapsedMs: 60_000, gate: { status: "none" } }} />,
+    );
+    const root = rootOf(container);
+    expect(root.querySelector('[data-part="monogram"]')).toBeNull();
+    expect(root.querySelector(".icon")).toBeNull();
+    // Not an empty header either.
+    for (const h of root.querySelectorAll('[data-part="header"]'))
+      expect(h.children.length).toBeGreaterThan(0);
+  });
+
   it("the native preset hands the look to the host and draws no ambient", () => {
     const { container } = render(
       <Welcome input={welcome} theme={{ preset: "native" }} />,
