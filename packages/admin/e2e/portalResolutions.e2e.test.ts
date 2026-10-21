@@ -435,9 +435,11 @@ describe("the tablet and short-screen rules (PORTAL.md §8)", () => {
     }
   });
 
-  it("Account → Appearance: the three theme swatches are one width", async ({
+  it("Account → Appearance: the Theme segments fit their card and are 44 px tall on a phone", async ({
     expect,
   }) => {
+    // PX-31a replaced the three equal swatches with a compact segmented radio group per row
+    // (SegmentedRow): content-sized segments that wrap inside the card, flex to fill it on a phone.
     for (const [width, height] of [
       [390, 844],
       [768, 1024],
@@ -449,22 +451,39 @@ describe("the tablet and short-screen rules (PORTAL.md §8)", () => {
       });
       try {
         await h1(o.page, "Account");
-        const widths = await o.page.evaluate(() =>
-          [...document.querySelectorAll("[data-swatch]")].map(
-            (s) => s.getBoundingClientRect().width,
-          ),
-        );
-        expect.soft(widths, `swatches at ${width}`).toHaveLength(3);
+        const seg = await o.page.evaluate(() => {
+          const group = document.querySelector(
+            '[role="radiogroup"][aria-labelledby]',
+          );
+          const card = group?.closest("section");
+          const c = card?.getBoundingClientRect();
+          return [...(group?.querySelectorAll('[role="radio"]') ?? [])].map(
+            (r) => {
+              const b = r.getBoundingClientRect();
+              return {
+                label: r.textContent,
+                height: b.height,
+                inside: !!c && b.left >= c.left - 1 && b.right <= c.right + 1,
+              };
+            },
+          );
+        });
         expect
           .soft(
-            Math.max(...widths) - Math.min(...widths),
-            `swatch widths at ${width}: ${widths.join(", ")}`,
+            seg.map((s) => s.label),
+            `theme segments at ${width}`,
           )
-          .toBeLessThanOrEqual(1);
-        // 112 px wherever the cards have room; on a tablet they shrink together, never collapse.
-        if (width !== 768)
-          expect.soft(Math.round(widths[0]!), `at ${width}`).toBe(112);
-        else expect.soft(widths[0]!, `at ${width}`).toBeGreaterThanOrEqual(64);
+          .toEqual(["Match device", "Dark", "Light"]);
+        expect
+          .soft(
+            seg.every((s) => s.inside),
+            `segments inside the card at ${width}`,
+          )
+          .toBe(true);
+        if (width === 390)
+          expect
+            .soft(Math.min(...seg.map((s) => s.height)), "phone target")
+            .toBeGreaterThanOrEqual(44);
       } finally {
         await o.close();
       }
