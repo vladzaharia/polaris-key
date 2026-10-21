@@ -41,19 +41,24 @@ export interface ReasonCopy {
 
 const GENERIC: ReasonCopy = {
   kind: "other",
-  text: "Offered to your account by its developer",
+  text: t("locker.offer.reasonOther"),
 };
 
 /** The reason line for a Worker reason code. Unknown codes get honest generic copy. */
 export function reasonCopy(reason: string): ReasonCopy {
   if (reason === ADDED_REASON)
-    return { kind: "added", text: "Added from Discover, at no cost" };
+    return { kind: "added", text: t("locker.offer.reasonAdded") };
   if (reason === "free_with_account")
-    return { kind: "account", text: `Free with a Polaris Locker account` };
-  if (reason === "open") return { kind: "open", text: "Free to use" };
+    return { kind: "account", text: t("locker.offer.reasonAccount") };
+  if (reason === "open")
+    return { kind: "open", text: t("locker.offer.reasonOpen") };
   if (reason.startsWith("group:")) {
     const group = reason.slice("group:".length).trim();
-    if (group) return { kind: "group", text: `For members of ${group}` };
+    if (group)
+      return {
+        kind: "group",
+        text: t("locker.offer.reasonGroup", { org: group }),
+      };
   }
   return GENERIC;
 }
@@ -74,18 +79,20 @@ export function pathCopy(path: PortalObtainPath): ReasonCopy {
   const detail = path.detail?.trim() || null;
   switch (path.kind) {
     case "auto_issue": {
-      const t = path.terms;
-      if (t?.expiryDays != null)
+      const terms = path.terms;
+      if (terms?.expiryDays != null)
         return {
           kind: "trial",
-          text: `Free trial · ${t.expiryDays} ${t.expiryDays === 1 ? "day" : "days"}`,
+          text: t("locker.offer.trialDays", { count: terms.expiryDays }),
         };
-      if (t?.expiresAt != null)
+      if (terms?.expiresAt != null)
         return {
           kind: "trial",
-          text: `Free trial · until ${formatDay(t.expiresAt)}`,
+          text: t("locker.offer.trialUntil", {
+            date: formatDay(terms.expiresAt),
+          }),
         };
-      return { kind: "account", text: `Free with a Polaris Locker account` };
+      return { kind: "account", text: t("locker.offer.reasonAccount") };
     }
     case "group": {
       const label = path.label?.trim();
@@ -94,26 +101,36 @@ export function pathCopy(path: PortalObtainPath): ReasonCopy {
           kind: "group",
           text: t("signin.choice.origin.org", { org: label }),
         };
-      if (detail) return { kind: "group", text: `For members of ${detail}` };
+      if (detail)
+        return {
+          kind: "group",
+          text: t("locker.offer.reasonGroup", { org: detail }),
+        };
       return reasonCopy(path.reason);
     }
     case "product_idp":
       return detail
-        ? { kind: "idp", text: `Included with your ${detail} account` }
+        ? {
+            kind: "idp",
+            text: t("locker.offer.reasonIdp", { provider: detail }),
+          }
         : GENERIC;
     case "email_domain":
       return detail
-        ? { kind: "domain", text: `For everyone with a ${detail} email` }
+        ? {
+            kind: "domain",
+            text: t("locker.offer.reasonDomain", { detail }),
+          }
         : GENERIC;
     case "store_owned":
       return {
         kind: "store",
         text: detail
-          ? `You own it on ${storeName(detail)}`
-          : "You own it in a store",
+          ? t("locker.offer.reasonStore", { store: storeName(detail) })
+          : t("locker.offer.reasonStoreAny"),
       };
     case "open":
-      return { kind: "open", text: "Free to use" };
+      return { kind: "open", text: t("locker.offer.reasonOpen") };
     default:
       return reasonCopy(path.reason);
   }
@@ -130,7 +147,7 @@ export function offerReason(offer: PortalDiscoverOffer): ReasonCopy | null {
 export function moreWaysText(offer: PortalDiscoverOffer): string | null {
   const more = offer.paths.length - 1;
   if (more < 1) return null;
-  return `+${more} more ${more === 1 ? "way" : "ways"}`;
+  return t("locker.offer.moreWays", { count: more });
 }
 
 /** What a path gives, for the product page: its licence terms, or what an open product means. */
@@ -142,9 +159,9 @@ export function pathTermsLine(path: PortalObtainPath): string {
 
 /** "Get it on Steam", "Get it on the App Store": a link-only offer's action for one store page. */
 export function storeLinkLabel(store: PortalStorefrontStore): string {
-  if (store.kind === "app-store") return "Get it on the App Store";
-  if (store.kind === "play") return "Get it on Google Play";
-  return `Get it on ${store.label}`;
+  if (store.kind === "app-store") return t("locker.offer.storeAppStore");
+  if (store.kind === "play") return t("locker.offer.storePlay");
+  return t("locker.offer.storeOther", { store: store.label });
 }
 
 /** "Lifetime · 5 devices", "Beta · 90 days · 2 devices": the tier and its terms. */
@@ -153,17 +170,13 @@ export function termsLine(terms: PortalDiscoverTerms): string {
   const parts: string[] = [];
   if (tier) parts.push(tier);
   if (terms.expiryDays !== null)
-    parts.push(
-      `${terms.expiryDays} ${terms.expiryDays === 1 ? "day" : "days"}`,
-    );
+    parts.push(t("locker.packages.days", { count: terms.expiryDays }));
   else if (terms.expiresAt !== null)
     parts.push(t("signin.term.until", { date: formatDay(terms.expiresAt) }));
   else if (!tier || tier.toLowerCase() !== "lifetime")
     parts.push(t("signin.term.lifetime"));
   if (terms.deviceLimit > 0)
-    parts.push(
-      `${terms.deviceLimit} ${terms.deviceLimit === 1 ? "device" : "devices"}`,
-    );
+    parts.push(t("devices.count", { count: terms.deviceLimit }));
   return parts.join(" · ");
 }
 

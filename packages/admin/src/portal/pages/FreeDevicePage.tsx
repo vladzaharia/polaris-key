@@ -49,7 +49,7 @@ import {
   useDocumentTitle,
 } from "../router.js";
 import { NotFoundProduct } from "./NotFoundProduct.js";
-import { t } from "../../lib/copy.js";
+import { t, tParts } from "../../lib/copy.js";
 
 /** The `for=` label as display text only (it is never markup): trimmed and bounded. */
 export function forLabel(raw: string | null): string | null {
@@ -70,10 +70,14 @@ export function flowBack(
   returnUrl: string | null,
 ): { label: string; href: string; external: boolean; tail?: string } {
   return returnUrl
-    ? { label: `Back to ${name}`, href: returnUrl, external: true }
+    ? {
+        label: t("locker.activate.backTo", { product: name }),
+        href: returnUrl,
+        external: true,
+      }
     : {
-        label: `See ${name}`,
-        tail: "in your library",
+        label: t("locker.freeDevice.see", { product: name }),
+        tail: t("locker.freeDevice.seeTail"),
         href: href.product(product),
         external: false,
       };
@@ -100,13 +104,17 @@ export function FreeDevicePage({
   const p = q.data;
   useDocumentTitle(
     p
-      ? `Free up a device · ${p.name}`
+      ? t("locker.freeDevice.titleProduct", { product: p.name })
       : q.isPending
         ? null
-        : "Free up a device",
+        : t("locker.freeDevice.title"),
   );
   const returnUrl = p ? allowedReturn(params.get("return"), p.returnTo) : null;
-  const back = flowBack(slug, p?.name ?? "the product", returnUrl);
+  const back = flowBack(
+    slug,
+    p?.name ?? t("locker.freeDevice.theProduct"),
+    returnUrl,
+  );
   // An open product's entry (PS-04) has no licence and no devices to free: its page instead.
   const nothingToFree = p != null && p.licenses.length === 0;
   React.useEffect(() => {
@@ -139,10 +147,10 @@ export function lastSeenText(
   now: number = Math.floor(Date.now() / 1000),
 ): string {
   const days = Math.floor((now - at) / 86_400);
-  if (days < 1) return "active today";
-  if (days === 1) return "active yesterday";
-  if (days < 90) return `last seen ${days} days ago`;
-  return `last seen ${formatRelative(at * 1000)}`;
+  if (days < 1) return t("locker.freeDevice.activeToday");
+  if (days === 1) return t("locker.freeDevice.activeYesterday");
+  if (days < 90) return t("locker.freeDevice.daysAgo", { count: days });
+  return t("locker.freeDevice.lastSeen", { when: formatRelative(at * 1000) });
 }
 
 function deviceName(d: PortalProductDevice): string {
@@ -219,34 +227,42 @@ function FreeDevice({
   const limit = seats.limit ?? 0;
   const inUse = seats.inUse;
   const full = seats.full;
-  const target = forDevice ?? "another device";
+  const target = forDevice ?? t("locker.methods.anotherDevice");
   const pickedDevice = holders.find((d) => d.deviceId === picked) ?? null;
   const support =
     pres.supportUrl ??
     (pres.supportEmail ? `mailto:${pres.supportEmail}` : null);
   const goBack = returnUrl ? (
     <Button asChild size="lg" className="h-12 w-full font-medium sm:w-auto">
-      <a href={returnUrl}>Back to {name}</a>
+      <a href={returnUrl}>{t("locker.activate.backTo", { product: name })}</a>
     </Button>
   ) : (
     <Button asChild size="lg" className="h-12 w-full font-medium sm:w-auto">
-      <a href={href.product(product.product, "devices")}>See your devices</a>
+      <a href={href.product(product.product, "devices")}>
+        {t("locker.freeDevice.seeDevices")}
+      </a>
     </Button>
   );
   // "press Try again" only makes sense when an app sent the person here.
   const tryAgain = returnUrl ? (
     <>
       {" "}
-      Go back to {name} and press{" "}
-      <strong className="text-fg-strong">{t("signin.retry")}</strong>.
+      {tParts("locker.freeDevice.goBack", ["detail"], { product: name }).map(
+        (part, i) =>
+          typeof part === "string" ? (
+            part
+          ) : (
+            <strong key={i} className="text-fg-strong">
+              {t("signin.retry")}
+            </strong>
+          ),
+      )}
     </>
   ) : null;
   // The seat fact is said once beside the product's identity, where no other line of the state
   // says it (the free-seat state's lede does); the meter beside it is its picture.
   const seatsFact =
-    limit > 0
-      ? `${inUse} of ${limit} ${limit === 1 ? "device" : "devices"} in use`
-      : null;
+    limit > 0 ? t("a11y.seatMeter", { used: inUse, limit }) : null;
   const frame = (
     title: React.ReactNode,
     children: React.ReactNode,
@@ -258,7 +274,7 @@ function FreeDevice({
       developer={pres.developer}
       tint={pres.tint}
       iconUrl={pres.iconUrl}
-      task="Device access"
+      task={t("locker.freeDevice.task")}
       title={title}
       titleRef={titleRef}
       titleIcon={icon}
@@ -271,10 +287,10 @@ function FreeDevice({
 
   if (removed) {
     return frame(
-      `${removed} was removed`,
+      t("locker.methods.removed", { name: removed }),
       <div className="space-y-4">
         <p className="text-fg">
-          {name} now has a free device.
+          {t("locker.freeDevice.removedNote", { product: name })}
           {tryAgain}
         </p>
         {goBack}
@@ -293,12 +309,19 @@ function FreeDevice({
 
   if (!full) {
     return frame(
-      "Your license has a free device",
+      t("locker.freeDevice.freeTitle"),
       <div className="space-y-4">
         <p className="text-fg">
           {limit > 0
-            ? `${inUse} of ${limit} ${limit === 1 ? "device is" : "devices are"} in use, so ${target} can be added.`
-            : `${target[0]!.toUpperCase()}${target.slice(1)} can be added.`}
+            ? t(
+                limit === 1
+                  ? "locker.freeDevice.freeOne"
+                  : "locker.freeDevice.freeMany",
+                { used: inUse, limit, device: target },
+              )
+            : forDevice
+              ? t("locker.freeDevice.canAdd", { device: forDevice })
+              : t("locker.freeDevice.canAddOther")}
           {tryAgain}
         </p>
         {goBack}
@@ -312,7 +335,9 @@ function FreeDevice({
     const label = deviceName(pickedDevice);
     remove.mutate(pickedDevice.deviceId, {
       onSuccess: () => {
-        announce(`${label} was removed from ${name}`);
+        announce(
+          t("locker.freeDevice.removedFrom", { device: label, product: name }),
+        );
         setRemoved(label);
       },
     });
@@ -322,13 +347,21 @@ function FreeDevice({
     t("signin.choice.freeDevice"),
     <div className="space-y-4">
       <p id="free-lede" className="text-fg">
-        To use {name} on{" "}
-        {forDevice ? (
-          <strong className="text-fg-strong">{forDevice}</strong>
-        ) : (
-          "another device"
-        )}
-        , remove one of these. You can add it back later.
+        {forDevice
+          ? tParts("locker.freeDevice.lede", ["device"], { product: name }).map(
+              (part, i) =>
+                typeof part === "string" ? (
+                  part
+                ) : (
+                  <strong key={i} className="text-fg-strong">
+                    {forDevice}
+                  </strong>
+                ),
+            )
+          : t("locker.freeDevice.lede", {
+              product: name,
+              device: t("locker.methods.anotherDevice"),
+            })}
       </p>
       <RadioCards
         aria-labelledby="free-lede"
@@ -364,15 +397,23 @@ function FreeDevice({
         <p id="free-consequence" className="flex gap-3 text-sm text-fg-muted">
           <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
           <span className="min-w-0 [overflow-wrap:anywhere]">
-            {deviceName(pickedDevice)} signs out of {name}.
-            {caps.auth.magic ? ` We'll email ${account.email} to confirm.` : ""}
+            {t("locker.freeDevice.signsOut", {
+              device: deviceName(pickedDevice),
+              product: name,
+            })}
+            {caps.auth.magic
+              ? ` ${t("locker.freeDevice.emailConfirm", { email: account.email })}`
+              : ""}
           </span>
         </p>
       ) : null}
       {remove.error ? (
         <p role="alert" className="text-sm text-danger">
-          Couldn&rsquo;t remove{" "}
-          {pickedDevice ? deviceName(pickedDevice) : "the device"}.{" "}
+          {t("locker.freeDevice.removeFailed", {
+            device: pickedDevice
+              ? deviceName(pickedDevice)
+              : t("locker.freeDevice.theDevice"),
+          })}{" "}
           {portalErrorCopy(remove.error).description}
         </p>
       ) : null}
@@ -389,7 +430,7 @@ function FreeDevice({
             className="h-12 font-medium sm:flex-none"
             loading={remove.isPending}
             disabledReason={
-              pickedDevice ? undefined : "Choose a device to remove"
+              pickedDevice ? undefined : t("locker.freeDevice.choose")
             }
             aria-describedby={pickedDevice ? "free-consequence" : undefined}
             onClick={onRemove}
@@ -397,21 +438,25 @@ function FreeDevice({
             {/* The primary names what it does (§2 C5): this flow only frees the seat, so
                 nothing "continues" (§4.25, FLOWS.md P-6). */}
             {pickedDevice
-              ? `Remove ${deviceName(pickedDevice)}`
-              : "Remove a device"}
+              ? t("locker.freeDevice.removeName", {
+                  device: deviceName(pickedDevice),
+                })
+              : t("locker.freeDevice.remove")}
           </Button>
         </div>
       </StickyActions>
       {support ? (
         <p className="text-sm text-fg-muted">
-          Need more devices?{" "}
+          {t("locker.freeDevice.more")}{" "}
           <a
             href={support}
             target="_blank"
             rel="noreferrer"
             className="font-medium text-accent-fg hover:underline"
           >
-            Ask {pres.developer ?? t("license.developerFallback")}
+            {t("locker.freeDevice.ask", {
+              developer: pres.developer ?? t("license.developerFallback"),
+            })}
           </a>
         </p>
       ) : null}

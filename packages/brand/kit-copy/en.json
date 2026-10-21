@@ -6340,6 +6340,346 @@
       "value": "{product} joins only the account with the license's email verified.",
       "role": "hint",
       "note": "License key checks in the Activate dialog (P0-36)."
+    },
+    "locker.freeDevice.title": {
+      "value": "Free up a device",
+      "role": "title",
+      "note": "Free up a device flow (P0-36)."
+    },
+    "locker.freeDevice.titleProduct": {
+      "value": "Free up a device · {product}",
+      "role": "title",
+      "note": "Free up a device flow (P0-36)."
+    },
+    "locker.freeDevice.see": {
+      "value": "See {product}",
+      "role": "button",
+      "note": "Free up a device flow (P0-36)."
+    },
+    "locker.freeDevice.seeTail": {
+      "value": "in your library",
+      "role": "button",
+      "note": "Free up a device flow (P0-36)."
+    },
+    "locker.freeDevice.theProduct": {
+      "value": "the product",
+      "role": "label",
+      "note": "Free up a device flow (P0-36)."
+    },
+    "locker.freeDevice.seeDevices": {
+      "value": "See your devices",
+      "role": "button",
+      "note": "Free up a device flow (P0-36)."
+    },
+    "locker.freeDevice.goBack": {
+      "value": "Go back to {product} and press {detail}.",
+      "role": "body",
+      "note": "Free up a device flow (P0-36)."
+    },
+    "locker.freeDevice.activeToday": {
+      "value": "active today",
+      "role": "hint",
+      "note": "Free up a device flow (P0-36)."
+    },
+    "locker.freeDevice.activeYesterday": {
+      "value": "active yesterday",
+      "role": "hint",
+      "note": "Free up a device flow (P0-36)."
+    },
+    "locker.freeDevice.daysAgo": {
+      "value": "last seen {count, plural, one {# day} other {# days}} ago",
+      "role": "hint",
+      "note": "Free up a device flow (P0-36)."
+    },
+    "locker.freeDevice.lastSeen": {
+      "value": "last seen {when}",
+      "role": "hint",
+      "note": "Free up a device flow (P0-36)."
+    },
+    "locker.freeDevice.task": {
+      "value": "Device access",
+      "role": "label",
+      "note": "Free up a device flow (P0-36)."
+    },
+    "locker.freeDevice.removedNote": {
+      "value": "{product} now has a free device.",
+      "role": "body",
+      "note": "Free up a device flow (P0-36)."
+    },
+    "locker.freeDevice.freeTitle": {
+      "value": "Your license has a free device",
+      "role": "title",
+      "note": "Free up a device flow (P0-36)."
+    },
+    "locker.freeDevice.freeOne": {
+      "value": "{used} of {limit} device is in use, so {device} can be added.",
+      "role": "body",
+      "note": "Free up a device flow (P0-36)."
+    },
+    "locker.freeDevice.freeMany": {
+      "value": "{used} of {limit} devices are in use, so {device} can be added.",
+      "role": "body",
+      "note": "Free up a device flow (P0-36)."
+    },
+    "locker.freeDevice.canAdd": {
+      "value": "{device} can be added.",
+      "role": "body",
+      "note": "Free up a device flow (P0-36)."
+    },
+    "locker.freeDevice.canAddOther": {
+      "value": "Another device can be added.",
+      "role": "body",
+      "note": "Free up a device flow (P0-36)."
+    },
+    "locker.freeDevice.removedFrom": {
+      "value": "{device} was removed from {product}",
+      "role": "a11y",
+      "note": "Free up a device flow (P0-36)."
+    },
+    "locker.freeDevice.lede": {
+      "value": "To use {product} on {device}, remove one of these. You can add it back later.",
+      "role": "body",
+      "note": "Free up a device flow (P0-36)."
+    },
+    "locker.freeDevice.signsOut": {
+      "value": "{device} signs out of {product}.",
+      "role": "hint",
+      "note": "Free up a device flow (P0-36)."
+    },
+    "locker.freeDevice.emailConfirm": {
+      "value": "We'll email {email} to confirm.",
+      "role": "hint",
+      "note": "Free up a device flow (P0-36)."
+    },
+    "locker.freeDevice.removeFailed": {
+      "value": "Couldn't remove {device}.",
+      "role": "hint",
+      "note": "Free up a device flow (P0-36)."
+    },
+    "locker.freeDevice.theDevice": {
+      "value": "the device",
+      "role": "label",
+      "note": "Free up a device flow (P0-36)."
+    },
+    "locker.freeDevice.choose": {
+      "value": "Choose a device to remove",
+      "role": "hint",
+      "note": "Free up a device flow (P0-36)."
+    },
+    "locker.freeDevice.removeName": {
+      "value": "Remove {device}",
+      "role": "button",
+      "note": "Free up a device flow (P0-36)."
+    },
+    "locker.freeDevice.remove": {
+      "value": "Remove a device",
+      "role": "button",
+      "note": "Free up a device flow (P0-36)."
+    },
+    "locker.freeDevice.more": {
+      "value": "Need more devices?",
+      "role": "hint",
+      "note": "Free up a device flow (P0-36)."
+    },
+    "locker.freeDevice.ask": {
+      "value": "Ask {developer}",
+      "role": "button",
+      "note": "Free up a device flow (P0-36)."
+    },
+    "locker.offer.why": {
+      "value": "Why you can add it:",
+      "role": "a11y",
+      "note": "Discover tiles, offers and the storefront page (P0-36)."
+    },
+    "locker.offer.moreWays": {
+      "value": "+{count, plural, one {# more way} other {# more ways}}",
+      "role": "button",
+      "note": "Discover tiles, offers and the storefront page (P0-36)."
+    },
+    "locker.offer.moreAria": {
+      "value": "to add {product}",
+      "role": "a11y",
+      "note": "Discover tiles, offers and the storefront page (P0-36)."
+    },
+    "locker.offer.addAria": {
+      "value": "Add to library: {product}",
+      "role": "a11y",
+      "note": "Discover tiles, offers and the storefront page (P0-36)."
+    },
+    "locker.offer.adding": {
+      "value": "Adding…",
+      "role": "button",
+      "note": "Discover tiles, offers and the storefront page (P0-36)."
+    },
+    "locker.offer.add": {
+      "value": "Add to library",
+      "role": "button",
+      "note": "Discover tiles, offers and the storefront page (P0-36)."
+    },
+    "locker.offer.getFrom": {
+      "value": "Get it from {developer}",
+      "role": "button",
+      "note": "Discover tiles, offers and the storefront page (P0-36)."
+    },
+    "locker.offer.seeDetails": {
+      "value": "See details",
+      "role": "button",
+      "note": "Discover tiles, offers and the storefront page (P0-36)."
+    },
+    "locker.offer.seeDetailsAria": {
+      "value": "See details: {product}",
+      "role": "a11y",
+      "note": "Discover tiles, offers and the storefront page (P0-36)."
+    },
+    "locker.offer.newTabAria": {
+      "value": "{store}: {product} (opens in a new tab)",
+      "role": "a11y",
+      "note": "Discover tiles, offers and the storefront page (P0-36)."
+    },
+    "locker.offer.alsoOn": {
+      "value": "Also on",
+      "role": "label",
+      "note": "Discover tiles, offers and the storefront page (P0-36)."
+    },
+    "locker.offer.reasonOther": {
+      "value": "Offered to your account by its developer",
+      "role": "hint",
+      "note": "Discover tiles, offers and the storefront page (P0-36)."
+    },
+    "locker.offer.reasonAdded": {
+      "value": "Added from Discover, at no cost",
+      "role": "hint",
+      "note": "Discover tiles, offers and the storefront page (P0-36)."
+    },
+    "locker.offer.reasonAccount": {
+      "value": "Free with a Polaris Locker account",
+      "role": "hint",
+      "note": "Discover tiles, offers and the storefront page (P0-36)."
+    },
+    "locker.offer.reasonOpen": {
+      "value": "Free to use",
+      "role": "hint",
+      "note": "Discover tiles, offers and the storefront page (P0-36)."
+    },
+    "locker.offer.reasonGroup": {
+      "value": "For members of {org}",
+      "role": "hint",
+      "note": "Discover tiles, offers and the storefront page (P0-36)."
+    },
+    "locker.offer.trialDays": {
+      "value": "Free trial · {count, plural, one {# day} other {# days}}",
+      "role": "hint",
+      "note": "Discover tiles, offers and the storefront page (P0-36)."
+    },
+    "locker.offer.trialUntil": {
+      "value": "Free trial · until {date}",
+      "role": "hint",
+      "note": "Discover tiles, offers and the storefront page (P0-36)."
+    },
+    "locker.offer.reasonIdp": {
+      "value": "Included with your {provider} account",
+      "role": "hint",
+      "note": "Discover tiles, offers and the storefront page (P0-36)."
+    },
+    "locker.offer.reasonDomain": {
+      "value": "For everyone with a {detail} email",
+      "role": "hint",
+      "note": "Discover tiles, offers and the storefront page (P0-36)."
+    },
+    "locker.offer.reasonStore": {
+      "value": "You own it on {store}",
+      "role": "hint",
+      "note": "Discover tiles, offers and the storefront page (P0-36)."
+    },
+    "locker.offer.reasonStoreAny": {
+      "value": "You own it in a store",
+      "role": "hint",
+      "note": "Discover tiles, offers and the storefront page (P0-36)."
+    },
+    "locker.offer.storeAppStore": {
+      "value": "Get it on the App Store",
+      "role": "button",
+      "note": "Discover tiles, offers and the storefront page (P0-36)."
+    },
+    "locker.offer.storePlay": {
+      "value": "Get it on Google Play",
+      "role": "button",
+      "note": "Discover tiles, offers and the storefront page (P0-36)."
+    },
+    "locker.offer.storeOther": {
+      "value": "Get it on {store}",
+      "role": "button",
+      "note": "Discover tiles, offers and the storefront page (P0-36)."
+    },
+    "locker.storefront.nothingTitle": {
+      "value": "There's nothing to add here",
+      "role": "title",
+      "note": "Discover tiles, offers and the storefront page (P0-36)."
+    },
+    "locker.storefront.nothingBody": {
+      "value": "This link doesn't lead to a product you can add from this account right now.",
+      "role": "body",
+      "note": "Discover tiles, offers and the storefront page (P0-36)."
+    },
+    "locker.storefront.browse": {
+      "value": "Browse Discover",
+      "role": "button",
+      "note": "Discover tiles, offers and the storefront page (P0-36)."
+    },
+    "locker.storefront.get": {
+      "value": "Get {product}",
+      "role": "title",
+      "note": "Discover tiles, offers and the storefront page (P0-36)."
+    },
+    "locker.storefront.breadcrumb": {
+      "value": "Breadcrumb",
+      "role": "a11y",
+      "note": "Discover tiles, offers and the storefront page (P0-36)."
+    },
+    "locker.storefront.screenshots": {
+      "value": "Screenshots",
+      "role": "title",
+      "note": "Discover tiles, offers and the storefront page (P0-36)."
+    },
+    "locker.storefront.shot": {
+      "value": "{product}, screenshot {n} of {total}",
+      "role": "a11y",
+      "note": "Discover tiles, offers and the storefront page (P0-36)."
+    },
+    "locker.storefront.runsOn": {
+      "value": "Runs on",
+      "role": "label",
+      "note": "Discover tiles, offers and the storefront page (P0-36)."
+    },
+    "locker.storefront.youGet": {
+      "value": "You’d get",
+      "role": "label",
+      "note": "Discover tiles, offers and the storefront page (P0-36)."
+    },
+    "locker.storefront.youQualify": {
+      "value": "You qualify",
+      "role": "label",
+      "note": "Discover tiles, offers and the storefront page (P0-36)."
+    },
+    "locker.storefront.ways": {
+      "value": "Ways to add it",
+      "role": "label",
+      "note": "Discover tiles, offers and the storefront page (P0-36)."
+    },
+    "locker.storefront.linkOnly": {
+      "value": "{developer} shows it to everyone with a Polaris Locker account.",
+      "role": "hint",
+      "note": "Discover tiles, offers and the storefront page (P0-36)."
+    },
+    "locker.storefront.itsDeveloper": {
+      "value": "Its developer",
+      "role": "label",
+      "note": "Discover tiles, offers and the storefront page (P0-36)."
+    },
+    "locker.storefront.backDiscover": {
+      "value": "Back to Discover",
+      "role": "button",
+      "note": "Discover tiles, offers and the storefront page (P0-36)."
     }
   }
 }
