@@ -96,8 +96,8 @@ apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1�
 
 ## Acceptance criteria
 
-- [ ] The webhook path records the same plan it applies (test).
-- [ ] Drift lists every claimed field with Revert and Keep (e2e).
+- [x] The webhook path records the same plan it applies (test: `syncPlan.test.ts`).
+- [x] Drift lists every claimed field with Revert and Keep (component test + drift read test; no browser e2e lane for the console).
 - [ ] A manifest with a deprecated spelling shows its warning in the dry-run plan and the Resync confirm (test).
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
@@ -115,3 +115,19 @@ mise exec node@22 -- pnpm --filter @polaris-key/admin test
 The role agent sets `--set ST-17 in-review` when it hands off. After review, the lead adds the last
 commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set ST-17 done`.
+
+## Built (ST-17, corrections to the brief)
+
+- P0-26 had already moved `planManifest` into core (`core/ingest/plan.ts`) and the resync and link
+  dry runs (`?dryRun=1`) already existed (UX-78). What was missing, and is now built: the apply
+  records the plan (`product_sync_state.plan_json`, written in the ingest pipeline's own batch, so
+  resync, link, the webhook and the deploy hook all record it); the validator's `warnings` ride in
+  the plan (`ManifestPlan.warnings`, carried from `parseManifest` through `IngestInput.warnings`);
+  `GET …/settings/drift`; and the console's "Differs from the manifest" section with Revert and
+  Keep. Migration `0127_product_sync_plan.sql` (the lead assigns the number).
+- Keep is a visit-local choice: a claim already stays until reverted, so it calls nothing and the
+  row only records "Kept" for the visit. Persisting an acknowledgement needs a schema and is a
+  follow-up.
+- Cost: an apply now reads the plan, so every captured apply scenario in
+  `test/fixtures/ingest/golden.json` gained the reads only the plan makes (+5 to +7 on a resync, +1 for the deploy hook); the header of
+  `test/ingest/golden.test.ts` lists the sanctioned edit.

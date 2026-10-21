@@ -97,6 +97,19 @@ export interface IngestInput {
   create?: CreateRequest;
   /** Reads the caller already holds (the product row, the release config), to save round trips. */
   seed?: { product?: ProductRow; releaseConfig?: unknown };
+  /**
+   * The validator's warnings for `manifest` (ST-17; `parseManifest`'s `warnings`): a deprecated or
+   * conflicting spelling and the like. They ride into the plan and never block an apply.
+   */
+  warnings?: PlanWarning[];
+}
+
+/** One validator warning as the plan carries it (`ValidationMessage`'s members). */
+export interface PlanWarning {
+  file: "product" | "schema" | "release" | "distribution";
+  path: string;
+  code: string;
+  message: string;
 }
 
 /** A refusal. `check` orders it (`REFUSAL_ORDER`); the pipeline reports the first. */
@@ -314,6 +327,22 @@ export interface ManifestPlan {
   delete: PlanItem[];
   /** What blocks the apply. Non-empty refuses the link. */
   conflicts: PlanItem[];
+  /** ST-17: the validator's warnings for the manifest. Absent when none; never blocks an apply. */
+  warnings?: PlanWarning[];
+}
+
+/**
+ * What `product_sync_state.plan_json` holds (ST-17): the plan the last APPLY recorded, written in
+ * the apply's own batch from the same function the dry runs call, so what an operator confirmed
+ * and what the log shows are one shape. `commit` is the pinned commit (null for a manifest the
+ * caller supplied without one).
+ */
+export interface StoredSyncPlan {
+  v: 1;
+  origin: "resync" | "link" | "deploy-hook";
+  commit: string | null;
+  plannedAt: number;
+  plan: ManifestPlan;
 }
 
 export interface Ingest {

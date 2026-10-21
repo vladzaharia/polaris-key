@@ -16800,6 +16800,105 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/products/{product}/settings/drift:
+    get:
+      operationId: getAdminProductSettingsDrift
+      tags: [admin]
+      summary: The console's claims against the last applied manifest, and the last apply's plan
+      description: >
+        ST-17 (notes/S-18 §4.5 items 4–5). Every live console claim on the product (the column-backed
+        keys and the row-backed ones), each with the console's value, what the last applied manifest
+        declares (`manifest`, from the snapshot) and whether they differ (`differs`; `manifestKnown`
+        is false for a product with no snapshot yet). The catalog lists the keys the manifest adds,
+        drops or changes (`changes`) instead of its value. Revert is `DELETE …/claims/<key>` for
+        `revert: claim` and `DELETE …/settings/<key>` (with `version` as `expectedVersion`) for
+        `revert: setting`; Keep is no call, since a claim stays until reverted. `lastPlan` is the
+        plan the last apply (resync, link or the deploy hook) recorded in
+        `product_sync_state.plan_json`: `apply`, `skipClaimed`, `delete`, `conflicts` and the
+        validator's `warnings`; null before one was recorded. Only the keys whose area the caller
+        holds. Admin session cookie.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The drift view.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [snapshot, items, lastPlan]
+                properties:
+                  snapshot:
+                    nullable: true
+                    type: object
+                    required: [origin, appliedAt, appliedSha]
+                    properties:
+                      origin: { type: string }
+                      appliedAt: { type: integer }
+                      appliedSha: { type: string, nullable: true }
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        [
+                          key,
+                          label,
+                          area,
+                          version,
+                          revert,
+                          manifestKnown,
+                          differs,
+                        ]
+                      properties:
+                        key: { type: string }
+                        label: { type: string }
+                        area: { type: string }
+                        claimedBy: { type: string, nullable: true }
+                        claimedAt: { type: integer, nullable: true }
+                        version: { type: integer }
+                        breakGlass:
+                          type: object
+                          properties:
+                            reason: { type: string }
+                            expiresAt: { type: integer }
+                        revert: { type: string, enum: [claim, setting] }
+                        manifestKnown: { type: boolean }
+                        differs: { type: boolean }
+                        console: {}
+                        manifest: {}
+                        changes:
+                          type: object
+                          properties:
+                            added: { type: array, items: { type: string } }
+                            removed: { type: array, items: { type: string } }
+                            changed: { type: array, items: { type: string } }
+                  lastPlan:
+                    nullable: true
+                    type: object
+                    required: [v, origin, commit, plannedAt, plan]
+                    properties:
+                      v: { type: integer, const: 1 }
+                      origin:
+                        { type: string, enum: [resync, link, deploy-hook] }
+                      commit: { type: string, nullable: true }
+                      plannedAt: { type: integer }
+                      plan:
+                        type: object
+                        required: [apply, skipClaimed, delete, conflicts]
+                        properties:
+                          apply: { type: array, items: { type: object } }
+                          skipClaimed: { type: array, items: { type: object } }
+                          delete: { type: array, items: { type: object } }
+                          conflicts: { type: array, items: { type: object } }
+                          warnings: { type: array, items: { type: object } }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
   /manage/api/products/{product}/settings/{key}:
     patch:
       operationId: updateAdminProductSetting

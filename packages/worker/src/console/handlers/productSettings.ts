@@ -40,6 +40,8 @@ import {
   type RowSettingView,
 } from "../../core/rowSettings.js";
 import { getManifestSnapshot } from "../../core/manifestSnapshot.js";
+import { getProductSyncState } from "../../core/products/store.js";
+import { driftView } from "../../core/settingsDrift.js";
 import { claimsApply } from "../../core/settingsClaims.js";
 import type { SettingDef } from "../../core/settings/types.js";
 import { SETTINGS } from "../../mount.js";
@@ -181,6 +183,36 @@ export async function handleProductSettings(
     const manifest = await snapshotManifest(db, product);
     return adminJson({
       settings: views.map((v) => dto(v, services, manifest)),
+    });
+  }
+
+  // ST-17: the claims against the last applied manifest, and the plan the last apply recorded.
+  if (segment === "drift") {
+    if (req.method !== "GET")
+      return err(405, ErrorCode.BadRequest, "method not allowed");
+    const scope = {
+      kind: "product",
+      slug: product.slug,
+      system: product.system === 1,
+    } as const;
+    const view = await driftView(
+      { env, db, registry: SETTINGS },
+      product,
+      (await getProductSyncState(db, product.slug))?.plan_json,
+      now,
+    );
+    // Only the keys whose area the caller holds, as `effective` does (ST-29). The last apply's
+    // plan summarises every area (tiers, catalog, sign-in, release), so it goes only to a caller
+    // who holds Settings, which owns the resync.
+    return adminJson({
+      ...view,
+      items: view.items.filter((i) => {
+        const d = SETTINGS.get(i.key, "product");
+        return !d || can(session.principal, scope, d.rbacArea, "view");
+      }),
+      lastPlan: can(session.principal, scope, "settings", "view")
+        ? view.lastPlan
+        : null,
     });
   }
 

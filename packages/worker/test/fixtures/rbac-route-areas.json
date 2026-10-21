@@ -72,6 +72,7 @@
   "GET /products/:slug/services": "core",
   "GET /products/:slug/settings/backfill": "settings",
   "GET /products/:slug/settings/backfill/:reportId": "settings",
+  "GET /products/:slug/settings/drift": "core",
   "GET /products/:slug/settings/effective": "core",
   "GET /products/:slug/storefronts/:store": "commerce",
   "GET /products/:slug/storefronts/:store/analytics": "commerce",
