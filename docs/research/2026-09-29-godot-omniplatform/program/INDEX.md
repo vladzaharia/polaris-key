@@ -311,7 +311,7 @@ wait for the owner's go and are never listed by `--ready` (see `deferred` in wor
 
 ## I: Identity: one Polaris Key account, then per-app identity (S-16)
 
-51 work packages, 36.7–52.9 weeks for the required ones.
+52 work packages, 37.3–53.9 weeks for the required ones.
 
 | Id                                                                   | Title                                                                                                                                                                                                                                                                                                          | Depends on                                         | Role         | Weeks    | Status  |
 | -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- | ------------ | -------- | ------- |
@@ -366,6 +366,7 @@ wait for the owner's go and are never listed by `--ready` (see `deferred` in wor
 | [I-38a](wp/I-38a-hosted-worker-pages-locker.md)                      | Hosted Worker sign-in pages on the Locker identity: device-code and device-confirm pages, DL6 refusals, magic-link cards, passport and CSP image origin (I-38 widened)                                                                                                                                         | P0-38, LK-04, LK-07, MK-L1                         | implementer  | 0.8–1.2  | done    |
 | [I-39](wp/I-39-emails-brand-v2.md)                                   | Dropped (folded 2026-10-19 into LK-07b): Transactional emails on brand v2: ink action button, neutral callouts, lockup, HTML snapshots for every template                                                                                                                                                      | —                                                  | implementer  | 0.6–1    | dropped |
 | [I-40](wp/I-40-account-initiated-pairing.md) ⚑ ✋ _optional_         | Account-initiated pairing for browserless TV and console apps                                                                                                                                                                                                                                                  | I-08, I-37                                         | wire-planner | 0.3–0.5  | todo    |
+| [I-41](wp/I-41-readable-support-codes.md)                            | Readable support codes (XXX-XXX-XXX) and support-code search in the Polaris Key Console                                                                                                                                                                                                                        | I-11                                               | implementer  | 0.6–1    | done    |
 
 ## U: Cloud Sync (S-17)
 
