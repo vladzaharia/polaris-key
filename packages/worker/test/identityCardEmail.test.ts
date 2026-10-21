@@ -334,7 +334,7 @@ describe("magic link", () => {
     // B-106: a short heading, and the time in words in the first line (no ISO timestamp).
     expect(html).toMatch(/<h1[^>]*>Confirm sign-in<\/h1>/);
     expect(html).toMatch(
-      /Requested \d{1,2} [A-Z][a-z]{2} \d{4}, \d{2}:\d{2} UTC from an unknown location\./,
+      /Requested [A-Z][a-z]{2} \d{1,2}, \d{4}, \d{1,2}:\d{2} (?:AM|PM) UTC from an unknown location\./,
     );
     expect(html).not.toMatch(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}/);
     expect(html).toContain("The device that asked signs in, not this one.");

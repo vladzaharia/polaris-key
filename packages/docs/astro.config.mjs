@@ -59,10 +59,33 @@ export default defineConfig({
             throw new Error(
               "pk-help-search-bundle: Starlight's Search.astro bundlePath line moved",
             );
-          return code.replace(
-            from,
-            `bundlePath: import.meta.env.BASE_URL.replace(/\\/$/, "") + (location.pathname.startsWith(import.meta.env.BASE_URL.replace(/\\/$/, "") + "/help") ? "/pagefind-help/" : "/pagefind/"),`,
-          );
+          const bundle = `import.meta.env.BASE_URL.replace(/\\/$/, "") + (location.pathname.startsWith(import.meta.env.BASE_URL.replace(/\\/$/, "") + "/help") ? "/pagefind-help/" : "/pagefind/")`;
+          // Pagefind logs a WASM compile failure and carries on, so the dialog would say
+          // "Searching…" forever. Probe the engine once; if it cannot answer, say so in the dialog.
+          const probe = `(async () => {
+  const box = document.querySelector("#starlight__search");
+  const note = () => box?.parentElement?.querySelector(".pk-search-failed");
+  const fail = () => {
+    if (!box || note()) return;
+    const p = document.createElement("p");
+    p.className = "pk-search-failed";
+    p.setAttribute("role", "alert");
+    p.textContent = "Search isn\u2019t working right now. Try again in a moment.";
+    box.after(p);
+  };
+  try {
+    const pf = await import(/* @vite-ignore */ ${bundle} + "pagefind.js");
+    await pf.init();
+    const timeout = new Promise((_, no) => setTimeout(no, 10000));
+    await Promise.race([pf.search("a"), timeout]);
+  } catch {
+    fail();
+  }
+})();
+new PagefindUI(`;
+          return code
+            .replace(from, `bundlePath: ${bundle},`)
+            .replace("new PagefindUI(", probe);
         },
       },
       {

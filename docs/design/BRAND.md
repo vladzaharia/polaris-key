@@ -776,44 +776,26 @@ Polaris Locker", neutral ink, and no console or docs buttons. The landing's one 
 Locker", appears only where the deployment has a customer site (`CUSTOMER_ORIGIN`). **pkg.plrs.im is
 developer-facing, so it is Polaris Key** (see [The registry host](#the-registry-host-pkgplrsim)).
 
-The Delivery identity bullets below (Star Cut, "Polaris Key Delivery", the delivery green) are the
-historical contract for the service mark and still describe Delivery's other surfaces (updater prompts,
-feed pages, the console's service sections); they no longer describe either host's landing.
-
 **Identity**
 
-- The **Star Cut**, as the **Polaris Key Delivery** service mark, never the Pinned K as the
-  primary mark. The page title is "Polaris Key Delivery".
-- Favicon and PWA: `@polaris-key/brand/web/delivery/` (the icon bytes are unchanged; favicon.svg adapts to the OS
-  theme; favicon.ico; `app-icon-dark-180.png` touch icon). No manifest install prompt is needed; include
-  the manifest only if the page is meant to be installable.
-- Page ground `--pk-surface-page` (`#060912` dark, `#f6f8ff` light), following the system theme;
-  no toggle needed on a one-screen page.
-- The Delivery lockup (`lockupSvg({ kind: "delivery", layout: "horizontal" })`, height ≥ 80 px so the
-  glyph is ≥ 48 px) or the display mark at 96 px above the wordmark; ¼-glyph clear space.
-- Rubik from `fonts.css`; text `text-default`/`text-strong`; one accent at most (the delivery
-  green `--pk-service-distribution-fg` for links; Update's tangerine is not used here), no gold (nothing on the page is a signature), no
-  gradients, no illustration beyond the static star.
-- OG card: `social/delivery/social-card-dark-1200.png` (still omitted on the host; see below).
+- The **Polaris Locker** lockup (48 px, §15), never the Star Cut or the Pinned K. The page title is
+  "Downloads · Polaris Locker" (with the environment in parentheses on staging and dev).
+- The Locker favicon, inlined as a `data:` drawing (see below). No manifest install prompt.
+- Page ground `--pk-surface-page`, following the system theme; no toggle on a one-screen page.
+- Rubik is not loaded (see below); text `text-default`/`text-strong`; neutral ink, no accent colour,
+  no gold, no gradients, no illustration.
 
 **Content**
 
-- What it is, in one line: "Polaris Key Delivery: the download host for apps built on Polaris
-  Key." One short paragraph: files here are signed release artifacts and packs, fetched by apps
-  and updaters; there is nothing to browse.
-- Links: the Polaris Key console (`https://key.plrs.im/`) and the docs
-  (`https://key.plrs.im/docs/`, sign-in required); for staging and dev hosts, say which
-  environment it is in `text-muted` under the title.
+- What it is, in one line: "The download host for games and apps." One short paragraph: files here
+  are signed release artifacts and packs, fetched by apps and their updaters; there is nothing to
+  browse. Staging and dev hosts say which environment it is in, in `text-muted`.
+- Links: "Open Polaris Locker" only, and only where the deployment has a customer site
+  (`CUSTOMER_ORIGIN`). No console or docs link.
 - **Never**: listings of products, releases, channels, files or buckets; version numbers; any
   token, key, signed URL or internal hostname; analytics or third-party scripts.
 - Status code 200 for `/` only; unknown paths keep their current behaviour. A small, static,
-  cacheable page with a strict CSP (no inline script needed; inline the few CSS variables or
-  serve tokens.css as a static asset).
-
-**What the package provides for it**: `web/delivery/` (favicons, touch and PWA icons, manifest
-template, head snippet), `markSvg({ kind: "update", size: 96, title: "Polaris Key Delivery" })` and
-`lockupSvg({ kind: "delivery" })` as strings (no React), `tokens.css`, `fonts.css` + the WOFF2
-files, and the update social card.
+  cacheable page with a strict CSP (no script).
 
 ### What the page omits, and why
 
@@ -830,22 +812,20 @@ route that is not a byte route):
   service; a visitor with Rubik installed sees it in the body too.
 - **No OG card, no `favicon.ico`, no touch icon.** Each would be a non-byte route (or an
   absolute URL to one) on a host that serves only byte routes and this one page. The favicon is
-  the kit's adaptive `web/delivery/favicon.svg` drawing, inlined as a `data:` URI, so the host gains
-  no icon route; `/favicon.ico` keeps its plain not-found. The page sets no `og:image`.
-- **The lede.** The visible lede is "The download host for games and apps built on Polaris Key."
-  The lockup above it already says "Polaris Key Delivery", so the line drops the name and names
-  games, the platform's first audience. The page `<title>` is "Polaris Key Delivery" (with the
-  environment in parentheses on staging and dev).
+  the Locker favicon drawing, inlined as a `data:` URI, so the host gains no icon route;
+  `/favicon.ico` keeps its plain not-found. The page sets no `og:image`.
 
 ### Customer download page (Polaris Locker)
 
 The per-product download page (`dl.plrs.im/<product>`) is customer-facing, so it is **Polaris Locker**
-(§15), not Delivery (lead decision, 2026-10-20). It overrides the identity bullets above:
+(§15), not Delivery (lead decision, 2026-10-20):
 
 - One 40 px Locker lockup in a top bar with a rule under it; the page title is "Download <Product> ·
   Polaris Locker". No Delivery service row, no Star Cut, no Distribution green.
 - Actions and links are neutral ink: the filled primary is ink, the other actions are outlined, and links are
   `text-strong` with a 2 px coral underline (the lockup's coral is identity only, never a state).
+- Storefront sources (Scoop, AltStore, SideStore, F-Droid, Obtainium) print `polaris.locker` URLs, never
+  `key.plrs.im`: the customer host serves the same public feeds, and the console host keeps answering them.
 - The foot reads "Polaris Locker · Questions about <Product>? …" and nothing else about the platform.
 - The layout is the focused task frame (PORTAL.md §3.3): a centred column, a breadcrumb, the product's
   cover band (decorative, never under text) and a 56 px identity row, the h1 at the display step (48/52,

@@ -111,7 +111,10 @@ tags:
       The customer host, `polaris.locker` (LK-03; the `CUSTOMER_ORIGIN` host). Same Worker, fifth
       custom domain. It serves only the customer routes (the portal, `/signin`, `/device`, `/tv`)
       and the paths here, which carry a `servers` override; everything else is the plain
-      not-found (`core/customerHost.ts`).
+      not-found (`core/customerHost.ts`). The one exception is the public storefront feeds
+      (`/{product}/distribution/{altstore,altstore-pal,obtainium,scoop,flathub,fdroid}/…`, GET
+      and HEAD): they answer on this host too, with the same bodies and headers, so the download
+      page can print `polaris.locker` sources; the console host keeps answering them.
   - name: img
     description: >
       The image host, `img.plrs.im` (HA-02): a product's public hosted images, content-addressed

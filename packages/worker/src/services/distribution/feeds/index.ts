@@ -29,6 +29,8 @@
  * (`select.ts`).
  */
 
+import type { Env } from "../../../platform/env.js";
+import { consoleOrigin } from "../../../core/hosts.js";
 import type { ServiceContext } from "../../../core/registry.js";
 import { errorResponse, notFound } from "../../../core/errors.js";
 import { appSecurityHeaders } from "../../../core/securityHeaders.js";
@@ -127,8 +129,12 @@ function selfUrl(req: Request): string {
 }
 
 /** Reverse-DNS of the request host: `key.plrs.im` → `im.plrs.key`. */
-function reverseHost(req: Request): string {
-  return new URL(req.url).hostname.split(".").reverse().join(".");
+function reverseHost(req: Request, env: Env): string {
+  // The CONSOLE host's name, whichever host serves the feed: an AltStore source identifier is the
+  // source's identity, so the same source on key.plrs.im and polaris.locker must not be two sources
+  // and existing subscribers' identifier must not change.
+  const host = consoleOrigin(env, req);
+  return new URL(host ?? req.url).hostname.split(".").reverse().join(".");
 }
 
 /**
@@ -249,7 +255,7 @@ async function renderArea(
       return renderAltStoreSource({
         flavour: area === "altstore" ? "classic" : "pal",
         sourceUrl: selfUrl(req),
-        identifier: `${reverseHost(req)}.${product.slug}.${area}.${sel.channel}${
+        identifier: `${reverseHost(req, env)}.${product.slug}.${area}.${sel.channel}${
           outletParam ? `.${sel.outlet.id}` : ""
         }`,
         productName: product.name,

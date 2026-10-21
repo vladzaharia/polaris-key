@@ -68,7 +68,7 @@ import {
   type PageAction,
   type StoreKind,
 } from "./model.js";
-import { consoleOriginOf } from "./index.js";
+import { feedOriginOf } from "./index.js";
 // The download page's own escaper (`render.ts`), so the portal's QR label matches the page's.
 import { escapeHtmlDecimalApostrophe as esc } from "../../../platform/html.js";
 
@@ -310,7 +310,7 @@ async function installSources(
     env: ctx.env,
     product: { slug: ctx.product.slug, name: ctx.product.name },
     hooks: ctx.hooks,
-    consoleOrigin: consoleOriginOf(ctx.env),
+    consoleOrigin: feedOriginOf(ctx.env),
     bytesOrigin: null,
     channel,
   });
