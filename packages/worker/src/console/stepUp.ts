@@ -18,7 +18,7 @@ import type { AdminSession } from "../core/console/session.js";
 import { err } from "../core/console/respond.js";
 
 export interface StepUpRoute {
-  method: "GET" | "POST" | "PATCH" | "DELETE";
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   /** Path under `/manage/api`, with `:slug`, `:subject`, `:id` placeholders. */
   path: string;
   /** Why it is gated. */
@@ -78,6 +78,16 @@ export const STEP_UP_ROUTES: readonly StepUpRoute[] = [
     why: "forces a signing key live, skipping the trust-cache window",
   },
   { method: "POST", path: "/products/kek", why: "re-seals stored secrets" },
+  {
+    method: "PUT",
+    path: "/products/:slug/trust-policy (body)",
+    why: "relaxes the device trust policy: fewer attested operations, log-only, or another App Attest or Play Integrity anchor",
+  },
+  {
+    method: "DELETE",
+    path: "/products/:slug/trust-policy (body)",
+    why: "resets a non-default device trust policy, which relaxes it",
+  },
   {
     method: "POST",
     path: "/products/:slug/users/:subject/licenses/:id/relink",

@@ -505,6 +505,19 @@ export const CORE_ROUTES: Record<string, unknown> = {
       },
     ],
   },
+  "/manage/api/products/djdl/trust-policy": {
+    ok: true,
+    source: "admin",
+    version: 2,
+    policy: {
+      mint: "attested",
+      gatedDelivery: "basic",
+      commerceClaim: "attested",
+      enforce: false,
+      appAttest: { teamId: "ABCDE12345", environment: "production" },
+      playIntegrity: { cloudProjectNumber: "123456789012" },
+    },
+  },
   "/manage/api/products/djdl/ci-publisher": {
     ok: true,
     policy: {

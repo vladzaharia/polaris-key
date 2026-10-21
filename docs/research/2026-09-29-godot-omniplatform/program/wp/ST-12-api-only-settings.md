@@ -94,6 +94,14 @@ apply says why in one line. One home: EXPERIENCE.md ยง7.3; kits also follow DL1โ
       D-pad focus, TV and title-safe insets, terminal keys with NO_COLOR, ascii and --json paths.
 - [ ] pkey-ux-reviewer passes the built screens (BUILT mode).
 
+## Built (ST-12, 2026-10-20)
+
+Code corrections to the brief: the `trust-policy` resource and the `core.trustPolicy` registry key
+already existed (P6-02, ST-04), so no new route, OpenAPI entry or registry row was needed. The
+editor is Keys & secrets โ’ Device trust (`SETTING_HOMES["core.trustPolicy"]`). The Worker classifies
+each change (`relaxesTrustPolicy`): relaxing is L2 (step-up, `expectedVersion`, reason, typed key),
+tightening L1. GET answers `version`; a stale one is a 409.
+
 ## Steps
 
 1. Trust policy first.
@@ -101,9 +109,9 @@ apply says why in one line. One home: EXPERIENCE.md ยง7.3; kits also follow DL1โ
 
 ## Acceptance criteria
 
-- [ ] Every `PENDING` entry listed under "PENDING entries to remove" is registered and gone from `settings-coverage.ts`, `PENDING_CEILING` is 6 lower, and `settings-coverage.test.ts` passes.
-- [ ] Relaxing the trust policy needs L2 and tightening L1 (tests).
-- [ ] THREAT-MODEL row added.
+- [-] (Moved by the consolidation: the six PENDING entries belong to A-22, P2-10 and CM-23; this package owns none.) Every `PENDING` entry listed under "PENDING entries to remove" is registered and gone from `settings-coverage.ts`, `PENDING_CEILING` is 6 lower, and `settings-coverage.test.ts` passes.
+- [x] Relaxing the trust policy needs L2 and tightening L1 (tests).
+- [x] THREAT-MODEL row added.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify

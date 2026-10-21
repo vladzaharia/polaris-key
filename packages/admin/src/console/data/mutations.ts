@@ -93,6 +93,8 @@ export type WriteMethod =
   | "retireProductKey"
   | "revokeProductKey"
   | "putCiPublisher"
+  | "putTrustPolicy"
+  | "resetTrustPolicy"
   | "issueCiToken"
   | "revokeCiToken"
   | "updateServices"
@@ -648,6 +650,14 @@ export const MUTATIONS: MutationTable = {
   revokeProductKey: {
     label: "signing key revoke",
     invalidates: (slug) => [prefix(qk.keys(slug))],
+  },
+  putTrustPolicy: {
+    label: "device trust policy save",
+    invalidates: (slug) => [prefix(qk.trustPolicy(slug))],
+  },
+  resetTrustPolicy: {
+    label: "device trust policy reset",
+    invalidates: (slug) => [prefix(qk.trustPolicy(slug))],
   },
   putCiPublisher: {
     label: "trusted publisher claim",

@@ -122,7 +122,10 @@ describe("settings homes", () => {
       { kind: "page", page: "feed", section: "Compatibility window" },
     ],
     ["core.presentation", { kind: "manifest", file: "product" }],
-    ["core.trustPolicy", { kind: "api" }],
+    [
+      "core.trustPolicy",
+      { kind: "page", page: "keys", section: "Device trust" },
+    ],
     [
       "storefront.polarisKey.listed",
       {

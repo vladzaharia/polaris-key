@@ -5530,6 +5530,19 @@ sideloaded builds, which cannot attest and stay `basic` by design.
   never used, and nothing is sent to Google. The root of trust for App Attest is the pinned Apple
   App Attestation Root CA in source (fingerprint pinned by a test); test roots enter only through a
   handler argument production dispatch never passes.
+- **The console write path is guarded (ST-12).** The policy is edited in Keys & secrets → Device
+  trust, through the same `trust-policy` resource and the same `keys` area; no new route. The
+  Worker, not the page, classifies each change (`relaxesTrustPolicy`): a change that only tightens
+  is L1; one that relaxes it (an operation drops from `attested`, `enforce` turns off, an App
+  Attest or Play Integrity block is removed or pointed at another Team ID or project, production
+  becomes development, testing responses are accepted, a non-default policy is reset, or an App Attest block is first added with a Team ID or
+  development environment, which opens an attestation path) is L2 and
+  needs a step-up sign-in from the last five minutes, `expectedVersion`, a reason and the typed key
+  `core.trustPolicy`, each refused before anything is written. A stale `expectedVersion` is a 409
+  and writes nothing, so two operators cannot overwrite each other unseen. Every write is audited
+  with the before and after and the reason by `writeSetting()`. Residual: the bare-body PUT
+  (without `expectedVersion`) still works for a tightening change, as the API's compatibility
+  form; it can only raise what devices must prove.
 - **Binding.** The client feeds the platform API
   `requestHash = base64url(SHA-256("pkey-attest/1:<product>:<deviceId>:<challenge>"))`, recomputed by
   the Worker from the stored binding, so a challenge or a verdict obtained for one device or product

@@ -204,6 +204,44 @@ export function validateTrustPolicy(input: unknown): Validation {
   return { ok: true, policy };
 }
 
+/** The typed confirmation a relaxing change needs: the setting's key (ADMIN.md §5.2, L2). */
+export const TRUST_POLICY_CONFIRM = "core.trustPolicy";
+
+/**
+ * Does `after` give a device less to prove, or move what proves it? ST-12: a relaxing change is
+ * L2 (typed confirmation, a reason, a fresh step-up); a change that only tightens is L1. The test
+ * is conservative: anything that is not provably no weaker is a relaxation. Per operation the
+ * level must not fall; `enforce` must not turn off; a configured App Attest or Play Integrity
+ * block must stay, keep its Team ID / project number (a different anchor is a different app), keep
+ * production over development, and not newly accept testing responses. Adding a block, or
+ * raising a level, tightens.
+ */
+export function relaxesTrustPolicy(
+  before: TrustPolicy,
+  after: TrustPolicy,
+): boolean {
+  for (const op of TRUST_OPERATIONS)
+    if (before[op] === "attested" && after[op] !== "attested") return true;
+  if (before.enforce && !after.enforce) return true;
+  const a = before.appAttest;
+  if (a) {
+    const b = after.appAttest;
+    if (!b || b.teamId !== a.teamId) return true;
+    if (a.environment === "production" && b.environment !== "production")
+      return true;
+  } else if (after.appAttest) {
+    // No block means no iOS device can attest; adding one opens an attestation path. Only the
+    // default shape (no Team ID pinned, production) is not a relaxation (ST-12 review N1).
+    const b = after.appAttest;
+    if (b.teamId !== null || b.environment !== "production") return true;
+  }
+  const p = before.playIntegrity;
+  const q = after.playIntegrity;
+  if (p && (!q || q.cloudProjectNumber !== p.cloudProjectNumber)) return true;
+  if (q && q.allowTestingResponses && !p?.allowTestingResponses) return true;
+  return false;
+}
+
 /**
  * The stored policy, or the default for NULL and for anything that no longer validates.
  *

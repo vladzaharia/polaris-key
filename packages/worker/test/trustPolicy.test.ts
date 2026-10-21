@@ -33,7 +33,12 @@ async function world(): Promise<{ db: Db; env: Env }> {
 async function call(
   w: { db: Db; env: Env },
   method: string,
-  opts: { body?: unknown; groups?: string[]; path?: string } = {},
+  opts: {
+    body?: unknown;
+    groups?: string[];
+    path?: string;
+    stepUp?: boolean;
+  } = {},
 ): Promise<{ status: number; body: Record<string, unknown> }> {
   const { token, session } = await issueSession(
     w.env,
@@ -42,6 +47,7 @@ async function call(
       name: "Ada",
       email: "ada@x.io",
       groups: opts.groups ?? ["platform-admins"],
+      ...(opts.stepUp ? { authTime: NOW, stepUp: true } : {}),
     },
     NOW,
   );
@@ -89,6 +95,21 @@ async function audits(db: Db): Promise<string[]> {
   ).map((r) => r.action);
 }
 
+const GUARD = (expectedVersion: number) => ({
+  expectedVersion,
+  reason: "Moving to a new Apple team",
+  confirm: "core.trustPolicy",
+});
+
+/** The first App Attest setup is a relaxation (L2): seed through the whole guard. */
+async function seed(w: { db: Db; env: Env }): Promise<void> {
+  const r = await call(w, "PUT", {
+    body: { policy: POLICY, ...GUARD(0) },
+    stepUp: true,
+  });
+  expect(r.status).toBe(200);
+}
+
 const POLICY = {
   mint: "attested",
   gatedDelivery: "basic",
@@ -127,7 +148,10 @@ describe("trust-policy admin resource", () => {
 
   it("PUT persists the policy with source admin, audits it, and the product loads it", async () => {
     const w = await world();
-    const r = await call(w, "PUT", { body: POLICY });
+    const r = await call(w, "PUT", {
+      body: { policy: POLICY, ...GUARD(0) },
+      stepUp: true,
+    });
     expect(r.status).toBe(200);
     expect(r.body).toMatchObject({ policy: POLICY, source: "admin" });
     const row = await stored(w.db);
@@ -168,8 +192,8 @@ describe("trust-policy admin resource", () => {
 
   it("DELETE returns to the default with source default, audited", async () => {
     const w = await world();
-    await call(w, "PUT", { body: POLICY });
-    const r = await call(w, "DELETE");
+    await seed(w);
+    const r = await call(w, "DELETE", { stepUp: true, body: GUARD(1) });
     expect(r.status).toBe(200);
     expect(r.body).toMatchObject({
       policy: DEFAULT_TRUST_POLICY,
@@ -251,5 +275,165 @@ describe("stored policies from a later build", () => {
     expect(
       parseTrustPolicy(JSON.stringify({ mint: "strict", enforce: true })),
     ).toEqual(DEFAULT_TRUST_POLICY);
+  });
+});
+
+// ST-12: the guarded write path. A tightening change is L1 (the area is enough); a relaxing one is
+// L2 (a fresh step-up, expectedVersion, a reason and the typed key). A version that moved is 409.
+describe("guarded writes", () => {
+  const RELAXED = { ...POLICY, enforce: false };
+
+  it("GET answers the version to send back; a tightening PUT bumps it and needs no step-up", async () => {
+    const w = await world();
+    expect((await call(w, "GET")).body.version).toBe(0);
+    const put = await call(w, "PUT", {
+      body: { policy: { mint: "attested" }, expectedVersion: 0 },
+    });
+    expect(put.status).toBe(200);
+    expect((await call(w, "GET")).body.version).toBe(1);
+  });
+
+  it("a relaxing PUT is refused without a step-up, a version, a reason or the typed key, and writes nothing", async () => {
+    const w = await world();
+    await seed(w);
+    const before = await stored(w.db);
+    const g = GUARD(1);
+    const noStep = await call(w, "PUT", {
+      body: { policy: RELAXED, ...g },
+    });
+    expect(noStep.status).toBe(403);
+    expect(noStep.body.code).toBe("step_up_required");
+    for (const [drop, reason] of [
+      ["expectedVersion", "expected_version_required"],
+      ["reason", "reason_required"],
+      ["confirm", "confirm_required"],
+    ] as const) {
+      const body = { policy: RELAXED, ...g } as Record<string, unknown>;
+      delete body[drop];
+      const r = await call(w, "PUT", { body, stepUp: true });
+      expect(r.status, drop).toBe(400);
+      expect(r.body.reason, drop).toBe(reason);
+    }
+    const wrong = await call(w, "PUT", {
+      body: { policy: RELAXED, ...g, confirm: "yes" },
+      stepUp: true,
+    });
+    expect(wrong.body.reason).toBe("confirm_required");
+    expect(await stored(w.db)).toEqual(before);
+    expect(await audits(w.db)).toEqual(["trust_policy.set"]);
+  });
+
+  it("a relaxing PUT with the whole guard writes, audits and records the reason", async () => {
+    const w = await world();
+    await seed(w);
+    const r = await call(w, "PUT", {
+      body: { policy: RELAXED, ...GUARD(1) },
+      stepUp: true,
+    });
+    expect(r.status).toBe(200);
+    expect(JSON.parse((await stored(w.db))!.trust_policy_json!).enforce).toBe(
+      false,
+    );
+    expect(await audits(w.db)).toEqual([
+      "trust_policy.set",
+      "trust_policy.set",
+    ]);
+    const row = await w.db.first<{ reason: string | null }>(
+      "SELECT reason FROM audit WHERE action = 'trust_policy.set' ORDER BY at DESC, rowid DESC",
+    );
+    expect(row?.reason).toBe("Moving to a new Apple team");
+  });
+
+  it("every relaxing shape is caught, and tightening shapes are not", async () => {
+    const { relaxesTrustPolicy } =
+      await import("../src/core/trust/deviceTrust.js");
+    const P = parseTrustPolicy(JSON.stringify(POLICY));
+    const relaxing = [
+      { ...P, mint: "basic" },
+      { ...P, enforce: false },
+      { ...P, appAttest: null },
+      { ...P, appAttest: { teamId: "ZZZZZ99999", environment: "development" } },
+      { ...P, appAttest: { teamId: "ABCDE12345", environment: "development" } },
+      { ...P, playIntegrity: null },
+      { ...P, playIntegrity: { cloudProjectNumber: "999" } },
+      {
+        ...P,
+        playIntegrity: {
+          cloudProjectNumber: "123456789012",
+          allowTestingResponses: true,
+        },
+      },
+      DEFAULT_TRUST_POLICY,
+    ] as const;
+    // `development` is the fixture's own environment, so lift it to production to compare.
+    const prod = {
+      ...P,
+      appAttest: { teamId: "ABCDE12345", environment: "production" },
+    } as typeof P;
+    for (const after of relaxing) {
+      const base = after === relaxing[4] ? prod : P;
+      expect(relaxesTrustPolicy(base, after as typeof P)).toBe(true);
+    }
+    expect(relaxesTrustPolicy(P, P)).toBe(false);
+    // Adding an App Attest block opens an attestation path (review N1): pinning a Team ID, or a
+    // development environment, is a relaxation; the default shape (production, no Team ID) is not.
+    expect(relaxesTrustPolicy(DEFAULT_TRUST_POLICY, P)).toBe(true);
+    expect(
+      relaxesTrustPolicy({ ...P, appAttest: null }, {
+        ...P,
+        appAttest: { teamId: null, environment: "production" },
+      } as typeof P),
+    ).toBe(false);
+    expect(relaxesTrustPolicy(P, { ...P, gatedDelivery: "attested" })).toBe(
+      false,
+    );
+    expect(relaxesTrustPolicy(P, prod)).toBe(false);
+  });
+
+  it("DELETE of a non-default policy is L2; of the default it is not", async () => {
+    const w = await world();
+    expect((await call(w, "DELETE")).status).toBe(200);
+    await seed(w);
+    const bare = await call(w, "DELETE", { stepUp: true });
+    expect(bare.status).toBe(400);
+    expect(bare.body.reason).toBe("expected_version_required");
+    const noStep = await call(w, "DELETE", { body: GUARD(1) });
+    expect(noStep.body.code).toBe("step_up_required");
+  });
+
+  it("a version that moved is a 409 version_conflict and writes nothing", async () => {
+    const w = await world();
+    await seed(w);
+    await call(w, "PUT", {
+      body: { policy: { ...POLICY, mint: "basic" }, ...GUARD(1) },
+      stepUp: true,
+    });
+    const stale = await call(w, "PUT", {
+      body: { policy: POLICY, expectedVersion: 1 },
+    });
+    expect(stale.status).toBe(409);
+    expect(stale.body.reason).toBe("version_conflict");
+    expect(JSON.parse((await stored(w.db))!.trust_policy_json!).mint).toBe(
+      "basic",
+    );
+  });
+
+  it("the first App Attest setup is L2: a bare PUT from the default is refused", async () => {
+    const w = await world();
+    const r = await call(w, "PUT", { body: POLICY });
+    expect(r.status).toBe(403);
+    expect(r.body.code).toBe("step_up_required");
+    expect((await stored(w.db))?.trust_policy_source).toBe("default");
+  });
+
+  it("a member without the keys area cannot write, even with the whole guard", async () => {
+    const w = await world();
+    const r = await call(w, "PUT", {
+      body: { policy: POLICY, expectedVersion: 0 },
+      groups: ["someone-else"],
+      stepUp: true,
+    });
+    expect(r.status).toBe(403);
+    expect(await audits(w.db)).toEqual([]);
   });
 });

@@ -16,6 +16,7 @@
  *   ring beside its countdown (the seconds stay in text, the ring is decoration), and the
  *   refreshed share fills a meter while its percentage counts up, once per rotation per visit.
  * - **Secrets**: the union of what is stored (A-5) and what the configuration requires (SEC-2).
+ * - **Device trust** (ST-12): the attestation policy, with a guarded write (KeysTrust.tsx).
  * - **CI publishing**: the trusted publisher and static CI tokens.
  * - Edge mint and store credentials have their own pages, under Config and Distribution.
  */
@@ -68,6 +69,7 @@ import { SettingsSection } from "../../../templates/Settings.js";
 import { intentOf } from "./confirmGate.js";
 import { CiPublishingSection } from "./KeysCi.js";
 import { SecretsSection } from "./KeysSecrets.js";
+import { TrustPolicySection } from "./KeysTrust.js";
 
 export function fetchSigningKeys(slug: string): Promise<SigningKeysResponse> {
   return api.productKeys(slug);
@@ -91,6 +93,7 @@ export function KeysPage({ slug }: { slug: string }): React.ReactElement {
       <VerificationSection product={p} />
       <SigningKeysSection slug={slug} product={p} />
       <SecretsSection slug={slug} product={p} />
+      <TrustPolicySection slug={slug} />
       <CiPublishingSection slug={slug} />
       {p.services?.release?.enabled ? <ContentKeysSection slug={slug} /> : null}
     </div>
