@@ -58,6 +58,8 @@ export interface DrawerProps {
   discard?: DiscardWords;
   /** A line above the title ("DJDL · Licenses"): where the drawer belongs. */
   eyebrow?: React.ReactNode;
+  /** The ONE leading glyph of the head (B4): the subject's mark for a record, never a service tile. */
+  glyph?: React.ReactNode;
   /**
    * What the phone header's control is. `back` (default) is a "Back" that closes; `close` is an X
    * at every width, for a drawer whose body has its own Back (a wizard).
@@ -80,6 +82,7 @@ export function Drawer({
   unsaved = false,
   discard,
   eyebrow,
+  glyph,
   closeStyle = "back",
   onCloseAutoFocus,
   children,
@@ -147,6 +150,11 @@ export function Drawer({
                 <ArrowLeft aria-hidden className="size-4" />
                 Back
               </button>
+            ) : null}
+            {glyph ? (
+              <span aria-hidden data-overlay-glyph="" className="mt-0.5 flex">
+                {glyph}
+              </span>
             ) : null}
             <div className="min-w-0 flex-1 space-y-1">
               {eyebrow ? (
