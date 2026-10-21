@@ -10,7 +10,7 @@
 import PolarisKeyUICore
 import SwiftUI
 
-/// The sign-in providers a product offers, logo-only in that order (D-21). Only Apple has a
+/// The sign-in providers a product offers, in that order, each a full-width labelled button (D-21). Only Apple has a
 /// system-drawn logo on Apple platforms; the others join with the brand assets that carry their
 /// logos.
 public enum KitProvider: String, Sendable, CaseIterable {
@@ -365,22 +365,37 @@ public struct SignInMethodsView: View {
                         errorRow(after: "Email", style)
                     }
                     if !providers.isEmpty, screen.shows("signin.provider.continue") {
-                        HStack(spacing: style.space(.sm)) {
+                        VStack(spacing: style.space(.sm)) {
                             ForEach(providers, id: \.self) { provider in
+                                let label = strings.string(
+                                    "signin.provider.continue",
+                                    ["provider": .text(provider.name)])
+                                // Apple's rules (HIG, Sign in with Apple): the logo and "Continue
+                                // with Apple" on a full-width button, white on a dark ground and
+                                // black on a light one; same height and capsule as its siblings.
                                 Button {
                                     onMethod(provider.rawValue)
                                 } label: {
-                                    Image(systemName: provider.symbol)
-                                        .font(style.font(.headline))
-                                        .frame(
-                                            maxWidth: .infinity, minHeight: style.controlHeight - 14
-                                        )
+                                    HStack(spacing: style.space(.xs)) {
+                                        Image(systemName: provider.symbol)
+                                            .font(style.font(.button))
+                                            .accessibilityHidden(true)
+                                        Text(label)
+                                            .font(style.font(.button))
+                                            .multilineTextAlignment(.center)
+                                            .fixedSize(horizontal: false, vertical: true)
+                                    }
+                                    .frame(maxWidth: .infinity, minHeight: style.controlHeight - 14)
+                                    .contentShape(Rectangle())
                                 }
-                                .modifier(KitButtonSkin(kind: .secondary, style: style))
-                                .accessibilityLabel(
-                                    strings.string(
-                                        "signin.provider.continue",
-                                        ["provider": .text(provider.name)]))
+                                .buttonStyle(
+                                    KitCapsuleStyle(
+                                        fill: AnyShapeStyle(style.dark ? Color.white : Color.black),
+                                        label: style.dark ? .black : .white,
+                                        reduceMotion: style.reduceMotion,
+                                        height: style.controlHeight,
+                                        hairline: style.dark ? nil : Color.black))
+                                .accessibilityLabel(label)
                             }
                         }
                         .accessibilityElement(children: .contain)
