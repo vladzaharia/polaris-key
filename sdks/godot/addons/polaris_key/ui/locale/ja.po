@@ -82,6 +82,11 @@ msgstr "コピー"
 msgid "common.copied"
 msgstr "コピーしました"
 
+#. Review
+#. Shared verb used across the kit's screens. Opens the changes that need a decision, like a sync conflict. Shown only when the host handles it.
+msgid "common.review"
+msgstr "確認"
+
 #. Paste
 #. Shared verb used across the kit's screens. Pastes from the clipboard into a field.
 msgid "common.paste"
@@ -696,10 +701,10 @@ msgstr "{product}にサインイン"
 msgid "signIn.noMethods"
 msgstr "{product}で利用できるサインイン方法はありません。代わりにライセンスキーを使用してください。"
 
-#. {method} sign-in didn't finish. Try another way.
+#. {method} sign-in didn't finish. Try again.
 #. SignIn: inline error under the method that failed. Arguments: {method} = a sign-in method's name (Apple, Google, passkey…).
 msgid "signIn.methodError"
-msgstr "{method}でのサインインが完了しませんでした。別の方法をお試しください。"
+msgstr "{method}でのサインインが完了しませんでした。もう一度お試しください。"
 
 #. Getting a sign-in code…
 #. SignInHandoff: sign-in continues on another device or in the browser.
@@ -711,10 +716,10 @@ msgstr "サインインコードを取得しています…"
 msgid "signInHandoff.scan"
 msgstr "スマートフォンでコードをスキャンするか、{url}にアクセスしてこのコードを入力してください。"
 
-#. Scan the QR code with your phone, or enter this code at the address below.
+#. Scan the QR code with your phone, or go to this address and enter the code below.
 #. SignInHandoff on a TV: the QR code sits beside it and the web address follows on its own line, so the sentence does not repeat it.
 msgid "signInHandoff.scanTv"
-msgstr "スマートフォンでQRコードを読み取るか、下のアドレスでこのコードを入力してください。"
+msgstr "スマートフォンでQRコードを読み取るか、このアドレスにアクセスして下のコードを入力してください。"
 
 #. Link copied
 #. SignInHandoff: sign-in continues on another device or in the browser. Confirmation after Copy link.
@@ -908,10 +913,10 @@ msgstr "このテレビで使うには、いずれかのデバイスを置き換
 msgid "deviceLimit.confirmTitle"
 msgstr "{device}を置き換えますか？"
 
-#. {device} signs out of {product} and {thisDevice} takes its seat. {device} can sign in again later if a seat is free. We'll email you about it.
+#. {device} signs out of {product} and {thisDevice} takes its seat. We'll email you about it.
 #. DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Confirm block body. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”).
 msgid "deviceLimit.consequence"
-msgstr "{device}は{product}からサインアウトし、{thisDevice}がその枠を使用します。枠が空けば、{device}は後で再びサインインできます。この件についてはメールでお知らせします。"
+msgstr "{device}は{product}からサインアウトし、{thisDevice}がその枠を使用します。この件についてはメールでお知らせします。"
 
 #. Replace and continue
 #. DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Primary button.
@@ -968,10 +973,10 @@ msgstr "お使いのデバイス"
 msgid "devices.lede"
 msgstr "このライセンスを使用しているデバイス。"
 
-#. {platform} · last seen {when}
+#. {platform} · last used {when}
 #. Devices: the list of devices using the license. Second line of a device row. Arguments: {platform} = the device's platform name (macOS, Windows, iPhone…); {when} = a relative time already formatted by the platform (“2 days ago”).
 msgid "devices.meta"
-msgstr "{platform} · 最終確認：{when}"
+msgstr "{platform} · 最終使用：{when}"
 
 #. {count, plural, one {# device} other {# devices}}
 #. Devices: the list of devices using the license. Arguments: {count} = a number of items.
@@ -1385,22 +1390,22 @@ msgstr "使用可能なバージョン：{max}まで"
 msgid "status.contact"
 msgstr "{developer}に問い合わせる"
 
-#. Offline · {days, plural, one {# day} other {# days}} left to reconnect
+#. Offline · {days, plural, one {# day} other {# days}} left
 #. GraceBanner: the product works offline for a limited time. Arguments: {days} = a number of days.
 #. Plural on {days}.
 msgid "grace.daysLeft"
 msgid_plural "grace.daysLeft"
-msgstr[0] "オフライン · 再接続まで残り{days}日"
+msgstr[0] "オフライン · 残り{days}日"
 
-#. Offline · reconnect today to keep using {product}
+#. Offline · last day to use {product}
 #. GraceBanner: the product works offline for a limited time. Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "grace.lastDay"
-msgstr "オフライン · {product}を引き続き使うには今日中に再接続してください"
+msgstr "オフライン · {product}を使えるのは今日まで"
 
-#. Reconnect by {date}
+#. Works offline until {date}
 #. GraceBanner: the product works offline for a limited time. Arguments: {date} = a date already formatted by the platform.
 msgid "grace.deadline"
-msgstr "{date}までに再接続してください"
+msgstr "{date}までオフラインで使えます"
 
 #. Account and license
 #. AccountAndLicense: the settings pane for the license and account.
@@ -1652,15 +1657,20 @@ msgstr "同期しています…"
 msgid "cloudSync.offline"
 msgstr "オフライン · 再接続すると変更が同期されます"
 
-#. Some changes conflict. Review them.
+#. Some changes conflict.
 #. CloudSyncStatus: a small sync status.
 msgid "cloudSync.conflict"
-msgstr "競合している変更があります。確認してください。"
+msgstr "競合している変更があります。"
 
 #. Couldn't sync. Try again later.
 #. CloudSyncStatus: a small sync status.
 msgid "cloudSync.error"
 msgstr "同期できませんでした。後でもう一度お試しください。"
+
+#. You're signed out.
+#. CloudSyncStatus: a small sync status. Shown instead of the error line when nobody is signed in, with Sign in to sync beside it.
+msgid "cloudSync.signedOut"
+msgstr "サインアウトしています。"
 
 #. Sign in to sync
 #. CloudSyncStatus: a small sync status. Cloud Sync needs an account.
@@ -1712,10 +1722,10 @@ msgstr "診断情報をコピーしました"
 msgid "channel.title"
 msgstr "リリースチャンネル"
 
-#. {store} sets the release channel.
+#. {store} sets the channel.
 #. ChannelPicker: the store fixes the channel. Arguments: {store} = a store's name (App Store, Google Play, Steam).
 msgid "channel.locked"
-msgstr "リリースチャンネルは{store}で設定されます。"
+msgstr "チャンネルは{store}で設定されます。"
 
 #. Undo
 #. Toast action.
@@ -2401,10 +2411,10 @@ msgstr "このブラウザ"
 msgid "signin.replace.title"
 msgstr "{device}を置き換えますか？"
 
-#. {device} signs out of {product} and {thisDevice} takes its seat. {device} can sign in again later if a seat is free. We'll email you about it.
+#. {device} signs out of {product} and {thisDevice} takes its seat. We'll email you about it.
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”).
 msgid "signin.replace.consequence"
-msgstr "{device}は{product}からサインアウトし、{thisDevice}がその枠を使用します。枠が空けば、{device}は後で再びサインインできます。この件についてはメールでお知らせします。"
+msgstr "{device}は{product}からサインアウトし、{thisDevice}がその枠を使用します。この件についてはメールでお知らせします。"
 
 #. {device} is in use right now.
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
@@ -2700,7 +2710,7 @@ msgctxt "macos"
 msgid "signin.handoff.again"
 msgstr "もう一度ブラウザを開く"
 
-#. Sign-in was cancelled. Get a new code
+#. Sign-in was canceled. Get a new code
 #. App waiting while sign-in runs in the browser (SIGN-IN.md §3.17).
 msgid "signin.handoff.cancelled"
 msgstr "サインインがキャンセルされました。新しいコードを取得してください"
@@ -2840,7 +2850,7 @@ msgstr "{app}に戻ってライセンスを選択してください。このタ�
 msgid "signin.return.signedInShort"
 msgstr "サインインしました"
 
-#. Sign-in was cancelled in {app}. Start again from {app}.
+#. Sign-in was canceled in {app}. Start again from {app}.
 #. Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated).
 msgid "signin.return.cancelled"
 msgstr "{app}でサインインがキャンセルされました。{app}からやり直してください。"
@@ -3467,7 +3477,7 @@ msgstr "{device}の名前を消去しました。"
 msgid "cli.devices.removed"
 msgstr "{device}を削除しました。枠は空いています。"
 
-#. Update cancelled.
+#. Update canceled.
 #. Terminal: the person stopped an update download. The title; 'Nothing was installed.' is the body line under it.
 msgid "cli.update.cancelled"
 msgstr "アップデートをキャンセルしました。"
@@ -4983,10 +4993,10 @@ msgstr "このバージョンはお持ちのライセンスでは使用できま
 msgid "core.codes.channel_not_allowed.title"
 msgstr "チャンネルが含まれていません"
 
-#. Your license doesn't include this release channel.
+#. Your license doesn't include this channel.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.channel_not_allowed.message"
-msgstr "お持ちのライセンスにはこのリリースチャンネルが含まれていません。"
+msgstr "お持ちのライセンスにはこのチャンネルが含まれていません。"
 
 #. Device changed
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5141,12 +5151,12 @@ msgstr "アプリから読み取れないリクエストが届きました。も
 #. Sign-in can't finish
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_client.title"
-msgstr "アプリを認識できません"
+msgstr "サインインを完了できません"
 
 #. This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_client.message"
-msgstr "このアプリはサインインに対応していません。開発元にお問い合わせください。"
+msgstr "このアプリのサインイン設定が正しくないため、アカウントを守るためにここで停止しました。開発元にお知らせください。"
 
 #. Sign-in no longer valid
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5181,12 +5191,12 @@ msgstr "アプリがこのサインインでは提供されないアクセスを
 #. Sign-in can't return to the app
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.redirect_uri_mismatch.title"
-msgstr "戻り先が許可されていません"
+msgstr "サインイン後にアプリへ戻れません"
 
 #. This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.redirect_uri_mismatch.message"
-msgstr "このアプリの戻り先が登録されていないため、移動しませんでした。開発元にお問い合わせください。"
+msgstr "このアプリのサインイン設定が正しくないため、アカウントを守るためにここで停止しました。開発元にお知らせください。"
 
 #. Choose a license
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5768,12 +5778,12 @@ msgstr "サービスの問題"
 msgid "core.codes.server-error.message"
 msgstr "サービスで問題が発生しました。数分後にもう一度お試しください。"
 
-#. Sign-in cancelled
+#. Sign-in canceled
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.cancelled.title"
 msgstr "サインインがキャンセルされました"
 
-#. Sign-in was cancelled.
+#. Sign-in was canceled.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.cancelled.message"
 msgstr "サインインはキャンセルされました。"
@@ -6513,10 +6523,10 @@ msgstr "ライセンスサービスに接続できません。猶予期間が終
 msgid "core.gate.expired.title"
 msgstr "ライセンスの期限切れ"
 
-#. Your license has expired. Connect to the internet or renew it to continue.
+#. Connect to the internet or renew your license to continue.
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.expired.message"
-msgstr "ライセンスの期限が切れています。続けるには、インターネットに接続するか、ライセンスを更新してください。"
+msgstr "続けるには、インターネットに接続するか、ライセンスを更新してください。"
 
 #. Signed out
 #. Core copy (conformance/parity/copy.en.json, gate).
@@ -6563,10 +6573,10 @@ msgstr "このビルドは、お持ちのライセンスで許可されている
 msgid "core.gate.channel-not-entitled.title"
 msgstr "チャンネルが含まれていません"
 
-#. Your license doesn't include this release channel.
+#. Your license doesn't include this channel.
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.channel-not-entitled.message"
-msgstr "お持ちのライセンスにはこのリリースチャンネルが含まれていません。"
+msgstr "お持ちのライセンスにはこのチャンネルが含まれていません。"
 
 #. No license needed
 #. Core copy (conformance/parity/copy.en.json, gate).

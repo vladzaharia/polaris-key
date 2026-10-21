@@ -40,6 +40,7 @@ export const KIT_COPY: Readonly<
     "common.tryAgain": "Try again",
     "common.copy": "Copy",
     "common.copied": "Copied",
+    "common.review": "Review",
     "common.paste": "Paste",
     "common.working": "Working…",
     "common.loading": "Loading…",
@@ -141,12 +142,12 @@ export const KIT_COPY: Readonly<
     "signIn.title": "Sign in to {product}",
     "signIn.noMethods":
       "No sign-in method is available for {product}. Use a license key instead.",
-    "signIn.methodError": "{method} sign-in didn't finish. Try another way.",
+    "signIn.methodError": "{method} sign-in didn't finish. Try again.",
     "signInHandoff.starting": "Getting a sign-in code…",
     "signInHandoff.scan":
       "Scan the code with your phone, or go to {url} and enter this code.",
     "signInHandoff.scanTv":
-      "Scan the QR code with your phone, or enter this code at the address below.",
+      "Scan the QR code with your phone, or go to this address and enter the code below.",
     "signInHandoff.linkCopied": "Link copied",
     "signInHandoff.confirm":
       "Choose Sign in on {device} on the sign-in page to finish.",
@@ -179,7 +180,7 @@ export const KIT_COPY: Readonly<
       "To use it on {formFactor, select, iphone {this iPhone} ipad {this iPad} mac {this Mac} phone {this phone} tablet {this tablet} computer {this computer} tv {this TV} other {this device}}, replace one. You can add it back later.",
     "deviceLimit.confirmTitle": "Replace {device}?",
     "deviceLimit.consequence":
-      "{device} signs out of {product} and {thisDevice} takes its seat. {device} can sign in again later if a seat is free. We'll email you about it.",
+      "{device} signs out of {product} and {thisDevice} takes its seat. We'll email you about it.",
     "deviceLimit.primary": "Replace and continue",
     "deviceLimit.removed": "{device} was replaced. {product} is continuing.",
     "deviceLimit.failed": "{device} couldn't be replaced. Try again.",
@@ -191,7 +192,7 @@ export const KIT_COPY: Readonly<
       "Sign out of {product} on another device, then try again.",
     "devices.title": "Your devices",
     "devices.lede": "Devices using this license.",
-    "devices.meta": "{platform} · last seen {when}",
+    "devices.meta": "{platform} · last used {when}",
     "devices.count": "{count, plural, one {# device} other {# devices}}",
     "devices.unnamed": "Unnamed device",
     "devices.rename": "Rename",
@@ -269,9 +270,9 @@ export const KIT_COPY: Readonly<
     "status.allowedMax": "Allowed versions: up to {max}",
     "status.contact": "Contact {developer}",
     "grace.daysLeft":
-      "Offline · {days, plural, one {# day} other {# days}} left to reconnect",
-    "grace.lastDay": "Offline · reconnect today to keep using {product}",
-    "grace.deadline": "Reconnect by {date}",
+      "Offline · {days, plural, one {# day} other {# days}} left",
+    "grace.lastDay": "Offline · last day to use {product}",
+    "grace.deadline": "Works offline until {date}",
     "account.title": "Account and license",
     "account.tier": "{tier} license",
     "account.holder": "Signed in as {name}",
@@ -318,8 +319,9 @@ export const KIT_COPY: Readonly<
     "cloudSync.synced": "Synced {time}",
     "cloudSync.syncing": "Syncing…",
     "cloudSync.offline": "Offline · changes sync when you reconnect",
-    "cloudSync.conflict": "Some changes conflict. Review them.",
+    "cloudSync.conflict": "Some changes conflict.",
     "cloudSync.error": "Couldn't sync. Try again later.",
+    "cloudSync.signedOut": "You're signed out.",
     "cloudSync.signIn": "Sign in to sync",
     "about.title": "About {product}",
     "about.version": "Version {version}",
@@ -327,7 +329,7 @@ export const KIT_COPY: Readonly<
     "about.copyDiagnostics": "Copy diagnostics",
     "about.diagnosticsCopied": "Diagnostics copied",
     "channel.title": "Release channel",
-    "channel.locked": "{store} sets the release channel.",
+    "channel.locked": "{store} sets the channel.",
     "toast.undo": "Undo",
     "toast.updateAvailable": "{product} {version} is available",
     "signin.methods.title": "Sign in to Polaris Locker",
@@ -463,7 +465,7 @@ export const KIT_COPY: Readonly<
     "signin.replace.thisBrowser": "This browser",
     "signin.replace.title": "Replace {device}?",
     "signin.replace.consequence":
-      "{device} signs out of {product} and {thisDevice} takes its seat. {device} can sign in again later if a seat is free. We'll email you about it.",
+      "{device} signs out of {product} and {thisDevice} takes its seat. We'll email you about it.",
     "signin.replace.inUse": "{device} is in use right now.",
     "signin.replace.confirm": "Replace and continue",
     "signin.replace.confirmNamed": "Replace {device} and continue",
@@ -519,7 +521,7 @@ export const KIT_COPY: Readonly<
     "signin.handoff.url": "Or go to {url}",
     "signin.handoff.expires": "Code expires in {time}",
     "signin.handoff.again": "Open browser again",
-    "signin.handoff.cancelled": "Sign-in was cancelled. Get a new code",
+    "signin.handoff.cancelled": "Sign-in was canceled. Get a new code",
     "signin.desktop.continue": "Continue in browser",
     "signin.desktop.toast": "Signed in as {name} · {tier} license",
     "signin.desktop.notifyTitle": "You're signed in",
@@ -547,7 +549,7 @@ export const KIT_COPY: Readonly<
       "Go back to {app} to choose a license. You can close this tab.",
     "signin.return.signedInShort": "You're signed in",
     "signin.return.cancelled":
-      "Sign-in was cancelled in {app}. Start again from {app}.",
+      "Sign-in was canceled in {app}. Start again from {app}.",
     "signin.return.library": "Open your library",
     "signin.choice.freed": "A device is free on this license now.",
     "signin.replace.opensBrowser": "Opens Polaris Locker in your browser",
@@ -684,7 +686,7 @@ export const KIT_COPY: Readonly<
     "cli.devices.renamed": "Renamed to {device}.",
     "cli.devices.nameCleared": "{device} has no name now.",
     "cli.devices.removed": "{device} was removed. Its seat is free.",
-    "cli.update.cancelled": "Update cancelled.",
+    "cli.update.cancelled": "Update canceled.",
     "cli.packs.none": "No content is installed.",
     "cli.packs.afterRestart": "after a restart",
     "cli.config.unset": "{name} has no value.",
@@ -1024,7 +1026,7 @@ export const KIT_COPY: Readonly<
       "This version can't be used with your license. Update the app to continue.",
     "core.codes.channel_not_allowed.title": "Channel not included",
     "core.codes.channel_not_allowed.message":
-      "Your license doesn't include this release channel.",
+      "Your license doesn't include this channel.",
     "core.codes.hardware_mismatch.title": "Device changed",
     "core.codes.hardware_mismatch.message":
       "This device's hardware changed. Activate again to use your license here.",
@@ -1249,8 +1251,8 @@ export const KIT_COPY: Readonly<
     "core.codes.server-error.title": "Service problem",
     "core.codes.server-error.message":
       "The service had a problem. Try again in a few minutes.",
-    "core.codes.cancelled.title": "Sign-in cancelled",
-    "core.codes.cancelled.message": "Sign-in was cancelled.",
+    "core.codes.cancelled.title": "Sign-in canceled",
+    "core.codes.cancelled.message": "Sign-in was canceled.",
     "core.codes.sign-in-expired.title": "Code expired",
     "core.codes.sign-in-expired.message":
       "The code expired before sign-in finished. Start again.",
@@ -1467,7 +1469,7 @@ export const KIT_COPY: Readonly<
       "The licensing service can't be reached. You can keep using the app until the grace period ends.",
     "core.gate.expired.title": "License expired",
     "core.gate.expired.message":
-      "Your license has expired. Connect to the internet or renew it to continue.",
+      "Connect to the internet or renew your license to continue.",
     "core.gate.revoked.title": "Signed out",
     "core.gate.revoked.message":
       "This device was signed out. Sign in or activate again to continue.",
@@ -1482,7 +1484,7 @@ export const KIT_COPY: Readonly<
       "This build is newer than your license allows.",
     "core.gate.channel-not-entitled.title": "Channel not included",
     "core.gate.channel-not-entitled.message":
-      "Your license doesn't include this release channel.",
+      "Your license doesn't include this channel.",
     "core.gate.not-applicable.title": "No license needed",
     "core.gate.not-applicable.message": "This app doesn't need a license.",
     "core.activation.ok.title": "Activated",
@@ -1538,6 +1540,7 @@ export const KIT_COPY: Readonly<
     "common.tryAgain": "Erneut versuchen",
     "common.copy": "Kopieren",
     "common.copied": "Kopiert",
+    "common.review": "Prüfen",
     "common.paste": "Einfügen",
     "common.working": "Wird ausgeführt…",
     "common.loading": "Wird geladen…",
@@ -1644,12 +1647,12 @@ export const KIT_COPY: Readonly<
     "signIn.noMethods":
       "Für {product} ist keine Anmeldemethode verfügbar. Verwenden Sie stattdessen einen Lizenzschlüssel.",
     "signIn.methodError":
-      "Die Anmeldung mit {method} wurde nicht abgeschlossen. Versuchen Sie es auf andere Weise.",
+      "Die Anmeldung mit {method} wurde nicht abgeschlossen. Versuchen Sie es erneut.",
     "signInHandoff.starting": "Anmeldecode wird abgerufen…",
     "signInHandoff.scan":
       "Scannen Sie den Code mit Ihrem Telefon oder öffnen Sie {url} und geben Sie diesen Code ein.",
     "signInHandoff.scanTv":
-      "Scannen Sie den QR-Code mit Ihrem Telefon oder geben Sie diesen Code unter der Adresse unten ein.",
+      "Scannen Sie den QR-Code mit Ihrem Telefon oder rufen Sie diese Adresse auf und geben Sie unten den Code ein.",
     "signInHandoff.linkCopied": "Link kopiert",
     "signInHandoff.confirm":
       "Wählen Sie auf der Anmeldeseite „Sign in on {device}“, um den Vorgang abzuschließen.",
@@ -1683,7 +1686,7 @@ export const KIT_COPY: Readonly<
       "Um sie auf {formFactor, select, iphone {diesem iPhone} ipad {diesem iPad} mac {diesem Mac} phone {diesem Telefon} tablet {diesem Tablet} computer {diesem Computer} tv {diesem Fernseher} other {diesem Gerät}} zu verwenden, ersetzen Sie eines. Sie können es später wieder hinzufügen.",
     "deviceLimit.confirmTitle": "{device} ersetzen?",
     "deviceLimit.consequence":
-      "{device} wird von {product} abgemeldet und {thisDevice} übernimmt den Platz. {device} kann sich später wieder anmelden, wenn ein Platz frei ist. Wir informieren Sie per E-Mail darüber.",
+      "{device} wird von {product} abgemeldet und {thisDevice} übernimmt den Platz. Wir informieren Sie per E-Mail darüber.",
     "deviceLimit.primary": "Ersetzen und fortfahren",
     "deviceLimit.removed":
       "{device} wurde ersetzt. {product} wird fortgesetzt.",
@@ -1698,7 +1701,7 @@ export const KIT_COPY: Readonly<
       "Melden Sie sich auf einem anderen Gerät von {product} ab und versuchen Sie es dann erneut.",
     "devices.title": "Ihre Geräte",
     "devices.lede": "Geräte, die diese Lizenz verwenden.",
-    "devices.meta": "{platform} · zuletzt aktiv {when}",
+    "devices.meta": "{platform} · zuletzt verwendet {when}",
     "devices.count": "{count, plural, one {# Gerät} other {# Geräte}}",
     "devices.unnamed": "Unbenanntes Gerät",
     "devices.rename": "Umbenennen",
@@ -1782,10 +1785,9 @@ export const KIT_COPY: Readonly<
     "status.allowedMax": "Zulässige Versionen: bis {max}",
     "status.contact": "{developer} kontaktieren",
     "grace.daysLeft":
-      "Offline · {days, plural, one {noch # Tag} other {noch # Tage}} zum erneuten Verbinden",
-    "grace.lastDay":
-      "Offline · verbinden Sie sich heute erneut, um {product} weiter zu verwenden",
-    "grace.deadline": "Verbinden Sie sich bis {date} erneut",
+      "Offline · {days, plural, one {noch # Tag} other {noch # Tage}}",
+    "grace.lastDay": "Offline · letzter Tag für {product}",
+    "grace.deadline": "Offline nutzbar bis {date}",
     "account.title": "Konto und Lizenz",
     "account.tier": "{tier}-Lizenz",
     "account.holder": "Angemeldet als {name}",
@@ -1836,10 +1838,10 @@ export const KIT_COPY: Readonly<
     "cloudSync.syncing": "Wird synchronisiert…",
     "cloudSync.offline":
       "Offline · Änderungen werden nach dem erneuten Verbinden synchronisiert",
-    "cloudSync.conflict":
-      "Einige Änderungen stehen in Konflikt. Bitte prüfen Sie sie.",
+    "cloudSync.conflict": "Einige Änderungen stehen in Konflikt.",
     "cloudSync.error":
       "Synchronisierung fehlgeschlagen. Versuchen Sie es später erneut.",
+    "cloudSync.signedOut": "Sie sind abgemeldet.",
     "cloudSync.signIn": "Zum Synchronisieren anmelden",
     "about.title": "Über {product}",
     "about.version": "Version {version}",
@@ -1847,7 +1849,7 @@ export const KIT_COPY: Readonly<
     "about.copyDiagnostics": "Diagnosedaten kopieren",
     "about.diagnosticsCopied": "Diagnosedaten kopiert",
     "channel.title": "Release-Kanal",
-    "channel.locked": "{store} legt den Release-Kanal fest.",
+    "channel.locked": "{store} legt den Kanal fest.",
     "toast.undo": "Rückgängig",
     "toast.updateAvailable": "{product} {version} ist verfügbar",
     "signin.methods.title": "Bei Polaris Locker anmelden",
@@ -1994,7 +1996,7 @@ export const KIT_COPY: Readonly<
     "signin.replace.thisBrowser": "Dieser Browser",
     "signin.replace.title": "{device} ersetzen?",
     "signin.replace.consequence":
-      "{device} wird von {product} abgemeldet und {thisDevice} übernimmt den Platz. {device} kann sich später wieder anmelden, wenn ein Platz frei ist. Wir informieren Sie per E-Mail darüber.",
+      "{device} wird von {product} abgemeldet und {thisDevice} übernimmt den Platz. Wir informieren Sie per E-Mail darüber.",
     "signin.replace.inUse": "{device} wird gerade verwendet.",
     "signin.replace.confirm": "Ersetzen und fortfahren",
     "signin.replace.confirmNamed": "{device} ersetzen und fortfahren",
@@ -2609,7 +2611,7 @@ export const KIT_COPY: Readonly<
       "Diese Version kann mit Ihrer Lizenz nicht verwendet werden. Aktualisieren Sie die App, um fortzufahren.",
     "core.codes.channel_not_allowed.title": "Kanal nicht enthalten",
     "core.codes.channel_not_allowed.message":
-      "Ihre Lizenz umfasst diesen Release-Kanal nicht.",
+      "Ihre Lizenz umfasst diesen Kanal nicht.",
     "core.codes.hardware_mismatch.title": "Gerät geändert",
     "core.codes.hardware_mismatch.message":
       "Die Hardware dieses Geräts hat sich geändert. Aktivieren Sie erneut, um Ihre Lizenz hier zu verwenden.",
@@ -2656,9 +2658,10 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid_request.title": "Anmeldeanfrage ungültig",
     "core.codes.invalid_request.message":
       "Die App hat eine Anmeldeanfrage gesendet, die wir nicht lesen können. Versuche es erneut.",
-    "core.codes.invalid_client.title": "App nicht erkannt",
+    "core.codes.invalid_client.title":
+      "Anmeldung kann nicht abgeschlossen werden",
     "core.codes.invalid_client.message":
-      "Diese App ist nicht für die Anmeldung eingerichtet. Wende dich an den Entwickler.",
+      "Die Anmeldung dieser App ist nicht richtig eingerichtet, deshalb wurde sie hier zum Schutz deines Kontos angehalten. Sag dem Entwickler Bescheid.",
     "core.codes.invalid_grant.title": "Anmeldung nicht mehr gültig",
     "core.codes.invalid_grant.message":
       "Diese Anmeldung ist abgelaufen oder wurde bereits verwendet. Melde dich erneut an.",
@@ -2668,9 +2671,10 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid_scope.title": "Zugriff nicht verfügbar",
     "core.codes.invalid_scope.message":
       "Die App hat Zugriff angefragt, den diese Anmeldung nicht bietet. Wende dich an den Entwickler.",
-    "core.codes.redirect_uri_mismatch.title": "Rücksprungadresse nicht erlaubt",
+    "core.codes.redirect_uri_mismatch.title":
+      "Anmeldung kann nicht zur App zurückkehren",
     "core.codes.redirect_uri_mismatch.message":
-      "Die Rücksprungadresse dieser App ist nicht registriert, deshalb haben wir dich nicht zurückgeleitet. Wende dich an den Entwickler.",
+      "Die Anmeldung dieser App ist nicht richtig eingerichtet, deshalb wurde sie hier zum Schutz deines Kontos angehalten. Sag dem Entwickler Bescheid.",
     "core.codes.license_choice_required.title": "Lizenz wählen",
     "core.codes.license_choice_required.message":
       "Wähle, welche Lizenz dieses Gerät verwendet, und fahre dann fort.",
@@ -3072,7 +3076,7 @@ export const KIT_COPY: Readonly<
       "Der Lizenzierungsdienst ist nicht erreichbar. Sie können die App bis zum Ende der Kulanzzeit weiter verwenden.",
     "core.gate.expired.title": "Lizenz abgelaufen",
     "core.gate.expired.message":
-      "Ihre Lizenz ist abgelaufen. Stellen Sie eine Internetverbindung her oder verlängern Sie sie, um fortzufahren.",
+      "Stellen Sie eine Internetverbindung her oder verlängern Sie die Lizenz, um fortzufahren.",
     "core.gate.revoked.title": "Abgemeldet",
     "core.gate.revoked.message":
       "Dieses Gerät wurde abgemeldet. Melden Sie sich an oder aktivieren Sie erneut, um fortzufahren.",
@@ -3087,7 +3091,7 @@ export const KIT_COPY: Readonly<
       "Dieser Build ist neuer, als Ihre Lizenz erlaubt.",
     "core.gate.channel-not-entitled.title": "Kanal nicht enthalten",
     "core.gate.channel-not-entitled.message":
-      "Ihre Lizenz umfasst diesen Release-Kanal nicht.",
+      "Ihre Lizenz umfasst diesen Kanal nicht.",
     "core.gate.not-applicable.title": "Keine Lizenz erforderlich",
     "core.gate.not-applicable.message": "Diese App benötigt keine Lizenz.",
     "core.activation.ok.title": "Aktiviert",
@@ -3145,6 +3149,7 @@ export const KIT_COPY: Readonly<
     "common.tryAgain": "Réessayer",
     "common.copy": "Copier",
     "common.copied": "Copié",
+    "common.review": "Vérifier",
     "common.paste": "Coller",
     "common.working": "En cours…",
     "common.loading": "Chargement…",
@@ -3248,12 +3253,12 @@ export const KIT_COPY: Readonly<
     "signIn.noMethods":
       "Aucune méthode de connexion n’est disponible pour {product}. Utilisez plutôt une clé de licence.",
     "signIn.methodError":
-      "La connexion avec {method} n’a pas abouti. Essayez un autre moyen.",
+      "La connexion avec {method} n’a pas abouti. Réessayez.",
     "signInHandoff.starting": "Obtention d’un code de connexion…",
     "signInHandoff.scan":
       "Scannez le code avec votre téléphone, ou rendez-vous sur {url} et saisissez ce code.",
     "signInHandoff.scanTv":
-      "Scannez le code QR avec votre téléphone, ou saisissez ce code à l’adresse ci-dessous.",
+      "Scannez le code QR avec votre téléphone, ou rendez-vous à cette adresse et saisissez le code ci-dessous.",
     "signInHandoff.linkCopied": "Lien copié",
     "signInHandoff.confirm":
       "Choisissez Sign in on {device} sur la page de connexion pour terminer.",
@@ -3288,7 +3293,7 @@ export const KIT_COPY: Readonly<
       "Pour l’utiliser sur {formFactor, select, iphone {cet iPhone} ipad {cet iPad} mac {ce Mac} phone {ce téléphone} tablet {cette tablette} computer {cet ordinateur} tv {ce téléviseur} other {cet appareil}}, remplacez-en un. Vous pourrez le rajouter plus tard.",
     "deviceLimit.confirmTitle": "Remplacer {device} ?",
     "deviceLimit.consequence":
-      "{device} sera déconnecté de {product} et {thisDevice} prendra sa place. {device} pourra se reconnecter plus tard si une place se libère. Nous vous enverrons un e-mail à ce sujet.",
+      "{device} sera déconnecté de {product} et {thisDevice} prendra sa place. Nous vous enverrons un e-mail à ce sujet.",
     "deviceLimit.primary": "Remplacer et continuer",
     "deviceLimit.removed": "{device} a été remplacé. {product} continue.",
     "deviceLimit.failed": "Impossible de remplacer {device}. Réessayez.",
@@ -3301,7 +3306,7 @@ export const KIT_COPY: Readonly<
       "Déconnectez-vous de {product} sur un autre appareil, puis réessayez.",
     "devices.title": "Vos appareils",
     "devices.lede": "Appareils utilisant cette licence.",
-    "devices.meta": "{platform} · dernière activité {when}",
+    "devices.meta": "{platform} · dernière utilisation {when}",
     "devices.count":
       "{count, plural, one {# appareil} many {# d’appareils} other {# appareils}}",
     "devices.unnamed": "Appareil sans nom",
@@ -3383,10 +3388,9 @@ export const KIT_COPY: Readonly<
     "status.allowedMax": "Versions autorisées : jusqu’à {max}",
     "status.contact": "Contacter {developer}",
     "grace.daysLeft":
-      "Hors ligne · {days, plural, one {# jour restant} many {# de jours restants} other {# jours restants}} pour vous reconnecter",
-    "grace.lastDay":
-      "Hors ligne · reconnectez-vous aujourd’hui pour continuer à utiliser {product}",
-    "grace.deadline": "Reconnectez-vous avant le {date}",
+      "Hors ligne · {days, plural, one {# jour restant} many {# de jours restants} other {# jours restants}}",
+    "grace.lastDay": "Hors ligne · dernier jour pour utiliser {product}",
+    "grace.deadline": "Utilisable hors ligne jusqu’au {date}",
     "account.title": "Compte et licence",
     "account.tier": "Licence {tier}",
     "account.holder": "Connecté en tant que {name}",
@@ -3435,9 +3439,9 @@ export const KIT_COPY: Readonly<
     "cloudSync.syncing": "Synchronisation…",
     "cloudSync.offline":
       "Hors ligne · les modifications seront synchronisées à la reconnexion",
-    "cloudSync.conflict":
-      "Certaines modifications sont en conflit. Vérifiez-les.",
+    "cloudSync.conflict": "Certaines modifications sont en conflit.",
     "cloudSync.error": "Échec de la synchronisation. Réessayez plus tard.",
+    "cloudSync.signedOut": "Vous êtes déconnecté.",
     "cloudSync.signIn": "Se connecter pour synchroniser",
     "about.title": "À propos de {product}",
     "about.version": "Version {version}",
@@ -3445,7 +3449,7 @@ export const KIT_COPY: Readonly<
     "about.copyDiagnostics": "Copier les diagnostics",
     "about.diagnosticsCopied": "Diagnostics copiés",
     "channel.title": "Canal de publication",
-    "channel.locked": "{store} définit le canal de publication.",
+    "channel.locked": "{store} définit le canal.",
     "toast.undo": "Annuler",
     "toast.updateAvailable": "{product} {version} est disponible",
     "signin.methods.title": "Se connecter à Polaris Locker",
@@ -3591,7 +3595,7 @@ export const KIT_COPY: Readonly<
     "signin.replace.thisBrowser": "Ce navigateur",
     "signin.replace.title": "Remplacer {device} ?",
     "signin.replace.consequence":
-      "{device} sera déconnecté de {product} et {thisDevice} prendra sa place. {device} pourra se reconnecter plus tard si une place se libère. Nous vous enverrons un e-mail à ce sujet.",
+      "{device} sera déconnecté de {product} et {thisDevice} prendra sa place. Nous vous enverrons un e-mail à ce sujet.",
     "signin.replace.inUse": "{device} est en cours d’utilisation.",
     "signin.replace.confirm": "Remplacer et continuer",
     "signin.replace.confirmNamed": "Remplacer {device} et continuer",
@@ -4188,7 +4192,7 @@ export const KIT_COPY: Readonly<
       "This version can't be used with your license. Update the app to continue.",
     "core.codes.channel_not_allowed.title": "Channel not included",
     "core.codes.channel_not_allowed.message":
-      "Your license doesn't include this release channel.",
+      "Your license doesn't include this channel.",
     "core.codes.hardware_mismatch.title": "Device changed",
     "core.codes.hardware_mismatch.message":
       "This device's hardware changed. Activate again to use your license here.",
@@ -4413,8 +4417,8 @@ export const KIT_COPY: Readonly<
     "core.codes.server-error.title": "Service problem",
     "core.codes.server-error.message":
       "The service had a problem. Try again in a few minutes.",
-    "core.codes.cancelled.title": "Sign-in cancelled",
-    "core.codes.cancelled.message": "Sign-in was cancelled.",
+    "core.codes.cancelled.title": "Sign-in canceled",
+    "core.codes.cancelled.message": "Sign-in was canceled.",
     "core.codes.sign-in-expired.title": "Code expired",
     "core.codes.sign-in-expired.message":
       "The code expired before sign-in finished. Start again.",
@@ -4631,7 +4635,7 @@ export const KIT_COPY: Readonly<
       "The licensing service can't be reached. You can keep using the app until the grace period ends.",
     "core.gate.expired.title": "License expired",
     "core.gate.expired.message":
-      "Your license has expired. Connect to the internet or renew it to continue.",
+      "Connect to the internet or renew your license to continue.",
     "core.gate.revoked.title": "Signed out",
     "core.gate.revoked.message":
       "This device was signed out. Sign in or activate again to continue.",
@@ -4646,7 +4650,7 @@ export const KIT_COPY: Readonly<
       "This build is newer than your license allows.",
     "core.gate.channel-not-entitled.title": "Channel not included",
     "core.gate.channel-not-entitled.message":
-      "Your license doesn't include this release channel.",
+      "Your license doesn't include this channel.",
     "core.gate.not-applicable.title": "No license needed",
     "core.gate.not-applicable.message": "This app doesn't need a license.",
     "core.activation.ok.title": "Activated",
@@ -4702,6 +4706,7 @@ export const KIT_COPY: Readonly<
     "common.tryAgain": "Reintentar",
     "common.copy": "Copiar",
     "common.copied": "Copiado",
+    "common.review": "Revisar",
     "common.paste": "Pegar",
     "common.working": "Procesando…",
     "common.loading": "Cargando…",
@@ -4804,12 +4809,12 @@ export const KIT_COPY: Readonly<
     "signIn.noMethods":
       "No hay ningún método de inicio de sesión disponible para {product}. Usa una clave de licencia.",
     "signIn.methodError":
-      "El inicio de sesión con {method} no terminó. Prueba de otra forma.",
+      "El inicio de sesión con {method} no terminó. Inténtalo de nuevo.",
     "signInHandoff.starting": "Obteniendo un código de inicio de sesión…",
     "signInHandoff.scan":
       "Escanea el código con tu teléfono, o ve a {url} y escribe este código.",
     "signInHandoff.scanTv":
-      "Escanea el código QR con tu teléfono o introduce este código en la dirección de abajo.",
+      "Escanea el código QR con tu teléfono o ve a esta dirección e introduce el código de abajo.",
     "signInHandoff.linkCopied": "Enlace copiado",
     "signInHandoff.confirm":
       "Elige Sign in on {device} en la página de inicio de sesión para terminar.",
@@ -4842,7 +4847,7 @@ export const KIT_COPY: Readonly<
       "Para usarla en {formFactor, select, iphone {este iPhone} ipad {este iPad} mac {este Mac} phone {este teléfono} tablet {esta tableta} computer {esta computadora} tv {este televisor} other {este dispositivo}}, reemplaza uno. Puedes volver a añadirlo más tarde.",
     "deviceLimit.confirmTitle": "¿Reemplazar {device}?",
     "deviceLimit.consequence":
-      "Se cerrará la sesión de {product} en {device} y {thisDevice} ocupará su plaza. {device} podrá volver a iniciar sesión más tarde si hay una plaza libre. Te lo notificaremos por correo.",
+      "Se cerrará la sesión de {product} en {device} y {thisDevice} ocupará su plaza. Te lo notificaremos por correo.",
     "deviceLimit.primary": "Reemplazar y continuar",
     "deviceLimit.removed": "Se reemplazó {device}. {product} continúa.",
     "deviceLimit.failed":
@@ -4856,7 +4861,7 @@ export const KIT_COPY: Readonly<
       "Cierra sesión en {product} en otro dispositivo y vuelve a intentarlo.",
     "devices.title": "Tus dispositivos",
     "devices.lede": "Dispositivos que usan esta licencia.",
-    "devices.meta": "{platform} · visto por última vez {when}",
+    "devices.meta": "{platform} · usado por última vez {when}",
     "devices.count":
       "{count, plural, one {# dispositivo} many {# de dispositivos} other {# dispositivos}}",
     "devices.unnamed": "Dispositivo sin nombre",
@@ -4938,10 +4943,9 @@ export const KIT_COPY: Readonly<
     "status.allowedMax": "Versiones permitidas: hasta {max}",
     "status.contact": "Contactar con {developer}",
     "grace.daysLeft":
-      "Sin conexión · {days, plural, one {queda # día} many {quedan # de días} other {quedan # días}} para reconectar",
-    "grace.lastDay":
-      "Sin conexión · reconecta hoy para seguir usando {product}",
-    "grace.deadline": "Reconecta antes del {date}",
+      "Sin conexión · {days, plural, one {queda # día} many {quedan # de días} other {quedan # días}}",
+    "grace.lastDay": "Sin conexión · último día para usar {product}",
+    "grace.deadline": "Funciona sin conexión hasta el {date}",
     "account.title": "Cuenta y licencia",
     "account.tier": "Licencia {tier}",
     "account.holder": "Sesión iniciada como {name}",
@@ -4990,8 +4994,9 @@ export const KIT_COPY: Readonly<
     "cloudSync.syncing": "Sincronizando…",
     "cloudSync.offline":
       "Sin conexión · los cambios se sincronizan al reconectar",
-    "cloudSync.conflict": "Algunos cambios entran en conflicto. Revísalos.",
+    "cloudSync.conflict": "Algunos cambios entran en conflicto.",
     "cloudSync.error": "No se pudo sincronizar. Vuelve a intentarlo más tarde.",
+    "cloudSync.signedOut": "Has cerrado sesión.",
     "cloudSync.signIn": "Iniciar sesión para sincronizar",
     "about.title": "Acerca de {product}",
     "about.version": "Versión {version}",
@@ -4999,7 +5004,7 @@ export const KIT_COPY: Readonly<
     "about.copyDiagnostics": "Copiar diagnóstico",
     "about.diagnosticsCopied": "Diagnóstico copiado",
     "channel.title": "Canal de versiones",
-    "channel.locked": "{store} establece el canal de versiones.",
+    "channel.locked": "{store} establece el canal.",
     "toast.undo": "Deshacer",
     "toast.updateAvailable": "{product} {version} está disponible",
     "signin.methods.title": "Inicia sesión en Polaris Locker",
@@ -5143,7 +5148,7 @@ export const KIT_COPY: Readonly<
     "signin.replace.thisBrowser": "Este navegador",
     "signin.replace.title": "¿Reemplazar {device}?",
     "signin.replace.consequence":
-      "Se cerrará la sesión de {product} en {device} y {thisDevice} ocupará su plaza. {device} podrá volver a iniciar sesión más tarde si hay una plaza libre. Te lo notificaremos por correo.",
+      "Se cerrará la sesión de {product} en {device} y {thisDevice} ocupará su plaza. Te lo notificaremos por correo.",
     "signin.replace.inUse": "{device} se está usando ahora mismo.",
     "signin.replace.confirm": "Reemplazar y continuar",
     "signin.replace.confirmNamed": "Reemplazar {device} y continuar",
@@ -5742,7 +5747,7 @@ export const KIT_COPY: Readonly<
       "Esta versión no se puede usar con tu licencia. Actualiza la app para continuar.",
     "core.codes.channel_not_allowed.title": "Canal no incluido",
     "core.codes.channel_not_allowed.message":
-      "Tu licencia no incluye este canal de versiones.",
+      "Tu licencia no incluye este canal.",
     "core.codes.hardware_mismatch.title": "El dispositivo cambió",
     "core.codes.hardware_mismatch.message":
       "El hardware de este dispositivo cambió. Vuelve a activarlo para usar tu licencia aquí.",
@@ -5792,9 +5797,10 @@ export const KIT_COPY: Readonly<
       "Solicitud de inicio de sesión no válida",
     "core.codes.invalid_request.message":
       "La app envió una solicitud que no podemos leer. Inténtalo de nuevo.",
-    "core.codes.invalid_client.title": "App no reconocida",
+    "core.codes.invalid_client.title":
+      "No se puede completar el inicio de sesión",
     "core.codes.invalid_client.message":
-      "Esta app no está configurada para iniciar sesión. Contacta con su desarrollador.",
+      "El inicio de sesión de esta app no está bien configurado, así que se detuvo aquí para proteger tu cuenta. Avisa a su desarrollador.",
     "core.codes.invalid_grant.title": "Inicio de sesión ya no válido",
     "core.codes.invalid_grant.message":
       "Este inicio de sesión caducó o ya se usó. Inicia sesión de nuevo.",
@@ -5806,9 +5812,9 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid_scope.message":
       "La app pidió un acceso que este inicio de sesión no ofrece. Contacta con su desarrollador.",
     "core.codes.redirect_uri_mismatch.title":
-      "Dirección de retorno no permitida",
+      "El inicio de sesión no puede volver a la app",
     "core.codes.redirect_uri_mismatch.message":
-      "La dirección de retorno de esta app no está registrada, así que no te devolvimos a ella. Contacta con su desarrollador.",
+      "El inicio de sesión de esta app no está bien configurado, así que se detuvo aquí para proteger tu cuenta. Avisa a su desarrollador.",
     "core.codes.license_choice_required.title": "Elige una licencia",
     "core.codes.license_choice_required.message":
       "Elige qué licencia usa este dispositivo y continúa.",
@@ -6207,7 +6213,7 @@ export const KIT_COPY: Readonly<
       "No se puede conectar con el servicio de licencias. Puedes seguir usando la app hasta que termine el periodo de gracia.",
     "core.gate.expired.title": "Licencia vencida",
     "core.gate.expired.message":
-      "Tu licencia venció. Conéctate a internet o renuévala para continuar.",
+      "Conéctate a internet o renueva la licencia para continuar.",
     "core.gate.revoked.title": "Sesión cerrada",
     "core.gate.revoked.message":
       "Se cerró la sesión en este dispositivo. Inicia sesión o vuelve a activarlo para continuar.",
@@ -6222,7 +6228,7 @@ export const KIT_COPY: Readonly<
       "Esta compilación es más reciente de lo que permite tu licencia.",
     "core.gate.channel-not-entitled.title": "Canal no incluido",
     "core.gate.channel-not-entitled.message":
-      "Tu licencia no incluye este canal de versiones.",
+      "Tu licencia no incluye este canal.",
     "core.gate.not-applicable.title": "No se necesita licencia",
     "core.gate.not-applicable.message": "Esta app no necesita licencia.",
     "core.activation.ok.title": "Activado",
@@ -6281,6 +6287,7 @@ export const KIT_COPY: Readonly<
     "common.tryAgain": "Tentar novamente",
     "common.copy": "Copiar",
     "common.copied": "Copiado",
+    "common.review": "Revisar",
     "common.paste": "Colar",
     "common.working": "Processando…",
     "common.loading": "Carregando…",
@@ -6384,12 +6391,12 @@ export const KIT_COPY: Readonly<
     "signIn.noMethods":
       "Nenhum método de acesso está disponível para {product}. Use uma chave de licença.",
     "signIn.methodError":
-      "O acesso com {method} não foi concluído. Tente outra forma.",
+      "O acesso com {method} não foi concluído. Tente novamente.",
     "signInHandoff.starting": "Obtendo um código de acesso…",
     "signInHandoff.scan":
       "Escaneie o código com o celular ou acesse {url} e digite este código.",
     "signInHandoff.scanTv":
-      "Escaneie o QR code com o celular ou digite este código no endereço abaixo.",
+      "Escaneie o QR code com o celular ou acesse este endereço e digite o código abaixo.",
     "signInHandoff.linkCopied": "Link copiado",
     "signInHandoff.confirm":
       "Escolha Sign in on {device} na página de acesso para concluir.",
@@ -6423,7 +6430,7 @@ export const KIT_COPY: Readonly<
       "Para usá-la {formFactor, select, iphone {neste iPhone} ipad {neste iPad} mac {neste Mac} phone {neste celular} tablet {neste tablet} computer {neste computador} tv {nesta TV} other {neste dispositivo}}, substitua um. Você pode adicioná-lo de volta depois.",
     "deviceLimit.confirmTitle": "Substituir {device}?",
     "deviceLimit.consequence":
-      "{device} sai de {product} e {thisDevice} ocupa a vaga. {device} poderá entrar novamente depois, se houver uma vaga livre. Enviaremos um e-mail sobre isso.",
+      "{device} sai de {product} e {thisDevice} ocupa a vaga. Enviaremos um e-mail sobre isso.",
     "deviceLimit.primary": "Substituir e continuar",
     "deviceLimit.removed":
       "{device} foi substituído. {product} está continuando.",
@@ -6438,7 +6445,7 @@ export const KIT_COPY: Readonly<
       "Saia de {product} em outro dispositivo e tente novamente.",
     "devices.title": "Seus dispositivos",
     "devices.lede": "Dispositivos que usam esta licença.",
-    "devices.meta": "{platform} · visto por último {when}",
+    "devices.meta": "{platform} · usado por último {when}",
     "devices.count":
       "{count, plural, one {# dispositivo} many {# de dispositivos} other {# dispositivos}}",
     "devices.unnamed": "Dispositivo sem nome",
@@ -6521,9 +6528,9 @@ export const KIT_COPY: Readonly<
     "status.allowedMax": "Versões permitidas: até {max}",
     "status.contact": "Contatar {developer}",
     "grace.daysLeft":
-      "Offline · {days, plural, one {# dia restante} many {# de dias restantes} other {# dias restantes}} para reconectar",
-    "grace.lastDay": "Offline · reconecte hoje para continuar usando {product}",
-    "grace.deadline": "Reconecte até {date}",
+      "Offline · {days, plural, one {# dia restante} many {# de dias restantes} other {# dias restantes}}",
+    "grace.lastDay": "Offline · último dia para usar {product}",
+    "grace.deadline": "Funciona offline até {date}",
     "account.title": "Conta e licença",
     "account.tier": "Licença {tier}",
     "account.holder": "Conectado como {name}",
@@ -6572,9 +6579,10 @@ export const KIT_COPY: Readonly<
     "cloudSync.syncing": "Sincronizando…",
     "cloudSync.offline":
       "Offline · as alterações serão sincronizadas quando você reconectar",
-    "cloudSync.conflict": "Algumas alterações estão em conflito. Revise-as.",
+    "cloudSync.conflict": "Algumas alterações estão em conflito.",
     "cloudSync.error":
       "Não foi possível sincronizar. Tente novamente mais tarde.",
+    "cloudSync.signedOut": "Você saiu da conta.",
     "cloudSync.signIn": "Entrar para sincronizar",
     "about.title": "Sobre {product}",
     "about.version": "Versão {version}",
@@ -6582,7 +6590,7 @@ export const KIT_COPY: Readonly<
     "about.copyDiagnostics": "Copiar diagnóstico",
     "about.diagnosticsCopied": "Diagnóstico copiado",
     "channel.title": "Canal de lançamento",
-    "channel.locked": "{store} define o canal de lançamento.",
+    "channel.locked": "{store} define o canal.",
     "toast.undo": "Desfazer",
     "toast.updateAvailable": "{product} {version} está disponível",
     "signin.methods.title": "Entrar no Polaris Locker",
@@ -6723,7 +6731,7 @@ export const KIT_COPY: Readonly<
     "signin.replace.thisBrowser": "Este navegador",
     "signin.replace.title": "Substituir {device}?",
     "signin.replace.consequence":
-      "{device} sai de {product} e {thisDevice} ocupa a vaga. {device} poderá entrar novamente depois, se houver uma vaga livre. Enviaremos um e-mail sobre isso.",
+      "{device} sai de {product} e {thisDevice} ocupa a vaga. Enviaremos um e-mail sobre isso.",
     "signin.replace.inUse": "{device} está em uso agora.",
     "signin.replace.confirm": "Substituir e continuar",
     "signin.replace.confirmNamed": "Substituir {device} e continuar",
@@ -7308,7 +7316,7 @@ export const KIT_COPY: Readonly<
       "Esta versão não pode ser usada com sua licença. Atualize o app para continuar.",
     "core.codes.channel_not_allowed.title": "Canal não incluído",
     "core.codes.channel_not_allowed.message":
-      "Sua licença não inclui este canal de lançamento.",
+      "Sua licença não inclui este canal.",
     "core.codes.hardware_mismatch.title": "Dispositivo alterado",
     "core.codes.hardware_mismatch.message":
       "O hardware deste dispositivo mudou. Ative novamente para usar sua licença aqui.",
@@ -7356,9 +7364,9 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid_request.title": "Solicitação de login inválida",
     "core.codes.invalid_request.message":
       "O app enviou uma solicitação que não conseguimos ler. Tente de novo.",
-    "core.codes.invalid_client.title": "App não reconhecido",
+    "core.codes.invalid_client.title": "Não foi possível concluir o login",
     "core.codes.invalid_client.message":
-      "Este app não está configurado para login. Fale com o desenvolvedor.",
+      "O login deste app não está configurado corretamente, então foi interrompido aqui para proteger sua conta. Avise o desenvolvedor.",
     "core.codes.invalid_grant.title": "Login não é mais válido",
     "core.codes.invalid_grant.message":
       "Este login expirou ou já foi usado. Entre de novo.",
@@ -7369,9 +7377,9 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid_scope.message":
       "O app pediu um acesso que este login não oferece. Fale com o desenvolvedor.",
     "core.codes.redirect_uri_mismatch.title":
-      "Endereço de retorno não permitido",
+      "O login não consegue voltar ao app",
     "core.codes.redirect_uri_mismatch.message":
-      "O endereço de retorno deste app não está registrado, então não redirecionamos você. Fale com o desenvolvedor.",
+      "O login deste app não está configurado corretamente, então foi interrompido aqui para proteger sua conta. Avise o desenvolvedor.",
     "core.codes.license_choice_required.title": "Escolha uma licença",
     "core.codes.license_choice_required.message":
       "Escolha qual licença este dispositivo usa e continue.",
@@ -7763,7 +7771,7 @@ export const KIT_COPY: Readonly<
       "Não é possível acessar o serviço de licenciamento. Você pode continuar usando o app até o fim do período de tolerância.",
     "core.gate.expired.title": "Licença expirada",
     "core.gate.expired.message":
-      "Sua licença expirou. Conecte-se à internet ou renove-a para continuar.",
+      "Conecte-se à internet ou renove a licença para continuar.",
     "core.gate.revoked.title": "Desconectado",
     "core.gate.revoked.message":
       "Este dispositivo foi desconectado. Entre ou ative novamente para continuar.",
@@ -7778,7 +7786,7 @@ export const KIT_COPY: Readonly<
       "Esta build é mais recente do que sua licença permite.",
     "core.gate.channel-not-entitled.title": "Canal não incluído",
     "core.gate.channel-not-entitled.message":
-      "Sua licença não inclui este canal de lançamento.",
+      "Sua licença não inclui este canal.",
     "core.gate.not-applicable.title": "Nenhuma licença necessária",
     "core.gate.not-applicable.message": "Este app não precisa de licença.",
     "core.activation.ok.title": "Ativado",
@@ -7836,6 +7844,7 @@ export const KIT_COPY: Readonly<
     "common.tryAgain": "Riprova",
     "common.copy": "Copia",
     "common.copied": "Copiato",
+    "common.review": "Controlla",
     "common.paste": "Incolla",
     "common.working": "In corso…",
     "common.loading": "Caricamento…",
@@ -7938,12 +7947,12 @@ export const KIT_COPY: Readonly<
     "signIn.noMethods":
       "Nessun metodo di accesso disponibile per {product}. Usa invece una chiave di licenza.",
     "signIn.methodError":
-      "L'accesso con {method} non è stato completato. Prova in un altro modo.",
+      "L'accesso con {method} non è stato completato. Riprova.",
     "signInHandoff.starting": "Richiesta di un codice di accesso…",
     "signInHandoff.scan":
       "Scansiona il codice con il telefono oppure vai su {url} e inserisci questo codice.",
     "signInHandoff.scanTv":
-      "Inquadra il codice QR con il telefono, oppure inserisci questo codice all'indirizzo qui sotto.",
+      "Inquadra il codice QR con il telefono, oppure vai a questo indirizzo e inserisci il codice qui sotto.",
     "signInHandoff.linkCopied": "Link copiato",
     "signInHandoff.confirm":
       "Per finire, scegli Sign in on {device} nella pagina di accesso.",
@@ -7976,7 +7985,7 @@ export const KIT_COPY: Readonly<
       "Per usarla su {formFactor, select, iphone {questo iPhone} ipad {questo iPad} mac {questo Mac} phone {questo telefono} tablet {questo tablet} computer {questo computer} tv {questa TV} other {questo dispositivo}}, sostituiscine uno. Potrai aggiungerlo di nuovo in seguito.",
     "deviceLimit.confirmTitle": "Sostituire {device}?",
     "deviceLimit.consequence":
-      "{device} esce da {product} e {thisDevice} ne prende il posto. {device} potrà accedere di nuovo in seguito se si libera un posto. Ti invieremo un'email al riguardo.",
+      "{device} esce da {product} e {thisDevice} ne prende il posto. Ti invieremo un'email al riguardo.",
     "deviceLimit.primary": "Sostituisci e continua",
     "deviceLimit.removed": "{device} è stato sostituito. {product} continua.",
     "deviceLimit.failed": "Impossibile sostituire {device}. Riprova.",
@@ -7989,7 +7998,7 @@ export const KIT_COPY: Readonly<
       "Esci da {product} su un altro dispositivo, poi riprova.",
     "devices.title": "I tuoi dispositivi",
     "devices.lede": "Dispositivi che usano questa licenza.",
-    "devices.meta": "{platform} · visto l'ultima volta {when}",
+    "devices.meta": "{platform} · usato l'ultima volta {when}",
     "devices.count":
       "{count, plural, one {# dispositivo} many {# di dispositivi} other {# dispositivi}}",
     "devices.unnamed": "Dispositivo senza nome",
@@ -8069,10 +8078,9 @@ export const KIT_COPY: Readonly<
     "status.allowedMax": "Versioni consentite: fino a {max}",
     "status.contact": "Contatta {developer}",
     "grace.daysLeft":
-      "Offline · {days, plural, one {# giorno rimasto} many {# di giorni rimasti} other {# giorni rimasti}} per riconnetterti",
-    "grace.lastDay":
-      "Offline · riconnettiti oggi per continuare a usare {product}",
-    "grace.deadline": "Riconnettiti entro il {date}",
+      "Offline · {days, plural, one {# giorno rimasto} many {# di giorni rimasti} other {# giorni rimasti}}",
+    "grace.lastDay": "Offline · ultimo giorno per usare {product}",
+    "grace.deadline": "Funziona offline fino al {date}",
     "account.title": "Account e licenza",
     "account.tier": "Licenza {tier}",
     "account.holder": "Accesso effettuato come {name}",
@@ -8120,8 +8128,9 @@ export const KIT_COPY: Readonly<
     "cloudSync.syncing": "Sincronizzazione…",
     "cloudSync.offline":
       "Offline · le modifiche verranno sincronizzate quando ti riconnetti",
-    "cloudSync.conflict": "Alcune modifiche sono in conflitto. Controllale.",
+    "cloudSync.conflict": "Alcune modifiche sono in conflitto.",
     "cloudSync.error": "Impossibile sincronizzare. Riprova più tardi.",
+    "cloudSync.signedOut": "Hai effettuato la disconnessione.",
     "cloudSync.signIn": "Accedi per sincronizzare",
     "about.title": "Informazioni su {product}",
     "about.version": "Versione {version}",
@@ -8129,7 +8138,7 @@ export const KIT_COPY: Readonly<
     "about.copyDiagnostics": "Copia diagnostica",
     "about.diagnosticsCopied": "Diagnostica copiata",
     "channel.title": "Canale di rilascio",
-    "channel.locked": "Il canale di rilascio è impostato da {store}.",
+    "channel.locked": "Il canale è impostato da {store}.",
     "toast.undo": "Annulla",
     "toast.updateAvailable": "{product} {version} è disponibile",
     "signin.methods.title": "Accedi a Polaris Locker",
@@ -8272,7 +8281,7 @@ export const KIT_COPY: Readonly<
     "signin.replace.thisBrowser": "Questo browser",
     "signin.replace.title": "Sostituire {device}?",
     "signin.replace.consequence":
-      "{device} esce da {product} e {thisDevice} ne prende il posto. {device} potrà accedere di nuovo in seguito se si libera un posto. Ti invieremo un'email al riguardo.",
+      "{device} esce da {product} e {thisDevice} ne prende il posto. Ti invieremo un'email al riguardo.",
     "signin.replace.inUse": "{device} è in uso in questo momento.",
     "signin.replace.confirm": "Sostituisci e continua",
     "signin.replace.confirmNamed": "Sostituisci {device} e continua",
@@ -8862,7 +8871,7 @@ export const KIT_COPY: Readonly<
       "Questa versione non può essere usata con la tua licenza. Aggiorna l'app per continuare.",
     "core.codes.channel_not_allowed.title": "Canale non incluso",
     "core.codes.channel_not_allowed.message":
-      "La tua licenza non include questo canale di rilascio.",
+      "La tua licenza non include questo canale.",
     "core.codes.hardware_mismatch.title": "Dispositivo cambiato",
     "core.codes.hardware_mismatch.message":
       "L'hardware di questo dispositivo è cambiato. Attiva di nuovo per usare qui la tua licenza.",
@@ -8910,9 +8919,9 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid_request.title": "Richiesta di accesso non valida",
     "core.codes.invalid_request.message":
       "L'app ha inviato una richiesta che non riusciamo a leggere. Riprova.",
-    "core.codes.invalid_client.title": "App non riconosciuta",
+    "core.codes.invalid_client.title": "Impossibile completare l'accesso",
     "core.codes.invalid_client.message":
-      "Questa app non è configurata per l'accesso. Contatta il suo sviluppatore.",
+      "L'accesso di questa app non è configurato correttamente, quindi si è fermato qui per proteggere il tuo account. Avvisa il suo sviluppatore.",
     "core.codes.invalid_grant.title": "Accesso non più valido",
     "core.codes.invalid_grant.message":
       "Questo accesso è scaduto o è già stato usato. Accedi di nuovo.",
@@ -8924,9 +8933,9 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid_scope.message":
       "L'app ha chiesto un accesso che questo accesso non offre. Contatta il suo sviluppatore.",
     "core.codes.redirect_uri_mismatch.title":
-      "Indirizzo di ritorno non consentito",
+      "L'accesso non può tornare all'app",
     "core.codes.redirect_uri_mismatch.message":
-      "L'indirizzo di ritorno di questa app non è registrato, quindi non ti abbiamo reindirizzato. Contatta il suo sviluppatore.",
+      "L'accesso di questa app non è configurato correttamente, quindi si è fermato qui per proteggere il tuo account. Avvisa il suo sviluppatore.",
     "core.codes.license_choice_required.title": "Scegli una licenza",
     "core.codes.license_choice_required.message":
       "Scegli quale licenza usa questo dispositivo, poi continua.",
@@ -9321,7 +9330,7 @@ export const KIT_COPY: Readonly<
       "Impossibile raggiungere il servizio di licenze. Puoi continuare a usare l'app fino al termine del periodo di tolleranza.",
     "core.gate.expired.title": "Licenza scaduta",
     "core.gate.expired.message":
-      "La tua licenza è scaduta. Connettiti a internet o rinnovala per continuare.",
+      "Connettiti a internet o rinnova la licenza per continuare.",
     "core.gate.revoked.title": "Disconnesso",
     "core.gate.revoked.message":
       "Questo dispositivo è stato disconnesso. Accedi o attiva di nuovo per continuare.",
@@ -9336,7 +9345,7 @@ export const KIT_COPY: Readonly<
       "Questa build è più recente di quanto consentito dalla tua licenza.",
     "core.gate.channel-not-entitled.title": "Canale non incluso",
     "core.gate.channel-not-entitled.message":
-      "La tua licenza non include questo canale di rilascio.",
+      "La tua licenza non include questo canale.",
     "core.gate.not-applicable.title": "Nessuna licenza necessaria",
     "core.gate.not-applicable.message": "Questa app non richiede una licenza.",
     "core.activation.ok.title": "Attivato",
@@ -9396,6 +9405,7 @@ export const KIT_COPY: Readonly<
     "common.tryAgain": "再試行",
     "common.copy": "コピー",
     "common.copied": "コピーしました",
+    "common.review": "確認",
     "common.paste": "ペースト",
     "common.working": "処理中…",
     "common.loading": "読み込み中…",
@@ -9499,12 +9509,12 @@ export const KIT_COPY: Readonly<
     "signIn.noMethods":
       "{product}で利用できるサインイン方法はありません。代わりにライセンスキーを使用してください。",
     "signIn.methodError":
-      "{method}でのサインインが完了しませんでした。別の方法をお試しください。",
+      "{method}でのサインインが完了しませんでした。もう一度お試しください。",
     "signInHandoff.starting": "サインインコードを取得しています…",
     "signInHandoff.scan":
       "スマートフォンでコードをスキャンするか、{url}にアクセスしてこのコードを入力してください。",
     "signInHandoff.scanTv":
-      "スマートフォンでQRコードを読み取るか、下のアドレスでこのコードを入力してください。",
+      "スマートフォンでQRコードを読み取るか、このアドレスにアクセスして下のコードを入力してください。",
     "signInHandoff.linkCopied": "リンクをコピーしました",
     "signInHandoff.confirm":
       "完了するには、サインインページで「Sign in on {device}」を選択してください。",
@@ -9538,7 +9548,7 @@ export const KIT_COPY: Readonly<
       "{formFactor, select, iphone {このiPhone} ipad {このiPad} mac {このMac} phone {このスマートフォン} tablet {このタブレット} computer {このコンピュータ} tv {このテレビ} other {このデバイス}}で使うには、いずれかのデバイスを置き換えてください。置き換えたデバイスは後で戻すこともできます。",
     "deviceLimit.confirmTitle": "{device}を置き換えますか？",
     "deviceLimit.consequence":
-      "{device}は{product}からサインアウトし、{thisDevice}がその枠を使用します。枠が空けば、{device}は後で再びサインインできます。この件についてはメールでお知らせします。",
+      "{device}は{product}からサインアウトし、{thisDevice}がその枠を使用します。この件についてはメールでお知らせします。",
     "deviceLimit.primary": "置き換えて続ける",
     "deviceLimit.removed": "{device}を置き換えました。{product}を続行します。",
     "deviceLimit.failed":
@@ -9552,7 +9562,7 @@ export const KIT_COPY: Readonly<
       "別のデバイスで{product}からサインアウトしてから、もう一度お試しください。",
     "devices.title": "お使いのデバイス",
     "devices.lede": "このライセンスを使用しているデバイス。",
-    "devices.meta": "{platform} · 最終確認：{when}",
+    "devices.meta": "{platform} · 最終使用：{when}",
     "devices.count": "{count, plural, other {#台のデバイス}}",
     "devices.unnamed": "名前のないデバイス",
     "devices.rename": "名前を変更",
@@ -9637,10 +9647,9 @@ export const KIT_COPY: Readonly<
     "status.allowedMin": "使用可能なバージョン：{min}以降",
     "status.allowedMax": "使用可能なバージョン：{max}まで",
     "status.contact": "{developer}に問い合わせる",
-    "grace.daysLeft": "オフライン · 再接続まで残り{days, plural, other {#日}}",
-    "grace.lastDay":
-      "オフライン · {product}を引き続き使うには今日中に再接続してください",
-    "grace.deadline": "{date}までに再接続してください",
+    "grace.daysLeft": "オフライン · 残り{days, plural, other {#日}}",
+    "grace.lastDay": "オフライン · {product}を使えるのは今日まで",
+    "grace.deadline": "{date}までオフラインで使えます",
     "account.title": "アカウントとライセンス",
     "account.tier": "{tier}ライセンス",
     "account.holder": "{name}としてサインイン中",
@@ -9686,8 +9695,9 @@ export const KIT_COPY: Readonly<
     "cloudSync.synced": "{time}に同期済み",
     "cloudSync.syncing": "同期しています…",
     "cloudSync.offline": "オフライン · 再接続すると変更が同期されます",
-    "cloudSync.conflict": "競合している変更があります。確認してください。",
+    "cloudSync.conflict": "競合している変更があります。",
     "cloudSync.error": "同期できませんでした。後でもう一度お試しください。",
+    "cloudSync.signedOut": "サインアウトしています。",
     "cloudSync.signIn": "サインインして同期",
     "about.title": "{product}について",
     "about.version": "バージョン{version}",
@@ -9695,7 +9705,7 @@ export const KIT_COPY: Readonly<
     "about.copyDiagnostics": "診断情報をコピー",
     "about.diagnosticsCopied": "診断情報をコピーしました",
     "channel.title": "リリースチャンネル",
-    "channel.locked": "リリースチャンネルは{store}で設定されます。",
+    "channel.locked": "チャンネルは{store}で設定されます。",
     "toast.undo": "取り消す",
     "toast.updateAvailable": "{product} {version}が利用可能です",
     "signin.methods.title": "Polaris Lockerにサインイン",
@@ -9838,7 +9848,7 @@ export const KIT_COPY: Readonly<
     "signin.replace.thisBrowser": "このブラウザ",
     "signin.replace.title": "{device}を置き換えますか？",
     "signin.replace.consequence":
-      "{device}は{product}からサインアウトし、{thisDevice}がその枠を使用します。枠が空けば、{device}は後で再びサインインできます。この件についてはメールでお知らせします。",
+      "{device}は{product}からサインアウトし、{thisDevice}がその枠を使用します。この件についてはメールでお知らせします。",
     "signin.replace.inUse": "{device}は現在使用中です。",
     "signin.replace.confirm": "置き換えて続ける",
     "signin.replace.confirmNamed": "{device}を置き換えて続ける",
@@ -10439,7 +10449,7 @@ export const KIT_COPY: Readonly<
       "このバージョンはお持ちのライセンスでは使用できません。続けるにはアプリをアップデートしてください。",
     "core.codes.channel_not_allowed.title": "チャンネルが含まれていません",
     "core.codes.channel_not_allowed.message":
-      "お持ちのライセンスにはこのリリースチャンネルが含まれていません。",
+      "お持ちのライセンスにはこのチャンネルが含まれていません。",
     "core.codes.hardware_mismatch.title": "デバイスが変更されました",
     "core.codes.hardware_mismatch.message":
       "このデバイスのハードウェアが変更されました。ここでライセンスを使うには、もう一度アクティベートしてください。",
@@ -10485,9 +10495,9 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid_request.title": "サインインリクエストが無効です",
     "core.codes.invalid_request.message":
       "アプリから読み取れないリクエストが届きました。もう一度お試しください。",
-    "core.codes.invalid_client.title": "アプリを認識できません",
+    "core.codes.invalid_client.title": "サインインを完了できません",
     "core.codes.invalid_client.message":
-      "このアプリはサインインに対応していません。開発元にお問い合わせください。",
+      "このアプリのサインイン設定が正しくないため、アカウントを守るためにここで停止しました。開発元にお知らせください。",
     "core.codes.invalid_grant.title": "サインインは無効です",
     "core.codes.invalid_grant.message":
       "このサインインは期限切れか、すでに使用されています。もう一度サインインしてください。",
@@ -10497,9 +10507,10 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid_scope.title": "アクセスできません",
     "core.codes.invalid_scope.message":
       "アプリがこのサインインでは提供されないアクセスを要求しました。開発元にお問い合わせください。",
-    "core.codes.redirect_uri_mismatch.title": "戻り先が許可されていません",
+    "core.codes.redirect_uri_mismatch.title":
+      "サインイン後にアプリへ戻れません",
     "core.codes.redirect_uri_mismatch.message":
-      "このアプリの戻り先が登録されていないため、移動しませんでした。開発元にお問い合わせください。",
+      "このアプリのサインイン設定が正しくないため、アカウントを守るためにここで停止しました。開発元にお知らせください。",
     "core.codes.license_choice_required.title": "ライセンスを選択",
     "core.codes.license_choice_required.message":
       "このデバイスで使うライセンスを選んでから続行してください。",
@@ -10903,7 +10914,7 @@ export const KIT_COPY: Readonly<
       "ライセンスサービスに接続できません。猶予期間が終わるまでアプリを引き続き使用できます。",
     "core.gate.expired.title": "ライセンスの期限切れ",
     "core.gate.expired.message":
-      "ライセンスの期限が切れています。続けるには、インターネットに接続するか、ライセンスを更新してください。",
+      "続けるには、インターネットに接続するか、ライセンスを更新してください。",
     "core.gate.revoked.title": "サインアウトされました",
     "core.gate.revoked.message":
       "このデバイスはサインアウトされました。続けるには、もう一度サインインまたはアクティベートしてください。",
@@ -10918,7 +10929,7 @@ export const KIT_COPY: Readonly<
       "このビルドは、お持ちのライセンスで許可されているバージョンより新しいものです。",
     "core.gate.channel-not-entitled.title": "チャンネルが含まれていません",
     "core.gate.channel-not-entitled.message":
-      "お持ちのライセンスにはこのリリースチャンネルが含まれていません。",
+      "お持ちのライセンスにはこのチャンネルが含まれていません。",
     "core.gate.not-applicable.title": "ライセンス不要",
     "core.gate.not-applicable.message":
       "このアプリにライセンスは必要ありません。",
@@ -10978,6 +10989,7 @@ export const KIT_COPY: Readonly<
     "common.tryAgain": "다시 시도",
     "common.copy": "복사",
     "common.copied": "복사됨",
+    "common.review": "검토",
     "common.paste": "붙여넣기",
     "common.working": "처리 중…",
     "common.loading": "불러오는 중…",
@@ -11079,12 +11091,12 @@ export const KIT_COPY: Readonly<
     "signIn.noMethods":
       "{product}에서 사용할 수 있는 로그인 방법이 없어요. 대신 라이선스 키를 사용하세요.",
     "signIn.methodError":
-      "{method} 로그인을 완료하지 못했어요. 다른 방법을 사용해 보세요.",
+      "{method} 로그인을 완료하지 못했어요. 다시 시도해 주세요.",
     "signInHandoff.starting": "로그인 코드를 받는 중…",
     "signInHandoff.scan":
       "휴대폰으로 코드를 스캔하거나 {url}에 접속해 이 코드를 입력하세요.",
     "signInHandoff.scanTv":
-      "휴대전화로 QR 코드를 스캔하거나 아래 주소에서 이 코드를 입력하세요.",
+      "휴대전화로 QR 코드를 스캔하거나, 이 주소로 이동해 아래 코드를 입력하세요.",
     "signInHandoff.linkCopied": "링크 복사됨",
     "signInHandoff.confirm":
       "로그인 페이지에서 “Sign in on {device}”를 선택해 완료하세요.",
@@ -11116,7 +11128,7 @@ export const KIT_COPY: Readonly<
       "{formFactor, select, iphone {이 iPhone} ipad {이 iPad} mac {이 Mac} phone {이 휴대폰} tablet {이 태블릿} computer {이 컴퓨터} tv {이 TV} other {이 기기}}에서 사용하려면 기기 하나를 교체하세요. 나중에 다시 추가할 수 있어요.",
     "deviceLimit.confirmTitle": "{device}을(를) 교체할까요?",
     "deviceLimit.consequence":
-      "{device}은(는) {product}에서 로그아웃되고 {thisDevice}이(가) 그 자리를 사용해요. 자리가 비면 {device}에서 나중에 다시 로그인할 수 있어요. 이 내용은 이메일로 알려 드려요.",
+      "{device}은(는) {product}에서 로그아웃되고 {thisDevice}이(가) 그 자리를 사용해요. 이 내용은 이메일로 알려 드려요.",
     "deviceLimit.primary": "교체하고 계속",
     "deviceLimit.removed":
       "{device}을(를) 교체했어요. {product}에서 계속 진행해요.",
@@ -11129,7 +11141,7 @@ export const KIT_COPY: Readonly<
       "다른 기기에서 {product}에서 로그아웃한 다음 다시 시도하세요.",
     "devices.title": "내 기기",
     "devices.lede": "이 라이선스를 사용하는 기기예요.",
-    "devices.meta": "{platform} · 마지막 접속 {when}",
+    "devices.meta": "{platform} · 마지막 사용 {when}",
     "devices.count": "{count, plural, other {기기 #대}}",
     "devices.unnamed": "이름 없는 기기",
     "devices.rename": "이름 변경",
@@ -11210,11 +11222,9 @@ export const KIT_COPY: Readonly<
     "status.allowedMin": "허용 버전: {min} 이상",
     "status.allowedMax": "허용 버전: {max} 이하",
     "status.contact": "{developer}에 문의",
-    "grace.daysLeft":
-      "오프라인 · 다시 연결까지 {days, plural, other {#일}} 남음",
-    "grace.lastDay":
-      "오프라인 · {product}을(를) 계속 사용하려면 오늘 다시 연결하세요",
-    "grace.deadline": "{date}까지 다시 연결하세요",
+    "grace.daysLeft": "오프라인 · {days, plural, other {#일}} 남음",
+    "grace.lastDay": "오프라인 · 오늘까지 {product}을(를) 사용할 수 있어요",
+    "grace.deadline": "{date}까지 오프라인으로 사용할 수 있어요",
     "account.title": "계정 및 라이선스",
     "account.tier": "{tier} 라이선스",
     "account.holder": "{name} 님으로 로그인됨",
@@ -11260,8 +11270,9 @@ export const KIT_COPY: Readonly<
     "cloudSync.synced": "{time} 동기화됨",
     "cloudSync.syncing": "동기화하는 중…",
     "cloudSync.offline": "오프라인 · 다시 연결하면 변경 사항이 동기화돼요",
-    "cloudSync.conflict": "일부 변경 사항이 충돌해요. 확인해 보세요.",
+    "cloudSync.conflict": "일부 변경 사항이 충돌해요.",
     "cloudSync.error": "동기화하지 못했어요. 나중에 다시 시도하세요.",
+    "cloudSync.signedOut": "로그아웃된 상태예요.",
     "cloudSync.signIn": "로그인하여 동기화",
     "about.title": "{product} 정보",
     "about.version": "버전 {version}",
@@ -11269,7 +11280,7 @@ export const KIT_COPY: Readonly<
     "about.copyDiagnostics": "진단 정보 복사",
     "about.diagnosticsCopied": "진단 정보 복사됨",
     "channel.title": "릴리스 채널",
-    "channel.locked": "{store}에서 릴리스 채널을 설정해요.",
+    "channel.locked": "{store}에서 채널을 설정해요.",
     "toast.undo": "실행 취소",
     "toast.updateAvailable": "{product} {version} 업데이트가 있어요",
     "signin.methods.title": "Polaris Locker에 로그인",
@@ -11404,7 +11415,7 @@ export const KIT_COPY: Readonly<
     "signin.replace.thisBrowser": "이 브라우저",
     "signin.replace.title": "{device}을(를) 교체할까요?",
     "signin.replace.consequence":
-      "{device}은(는) {product}에서 로그아웃되고 {thisDevice}이(가) 그 자리를 사용해요. 자리가 비면 {device}에서 나중에 다시 로그인할 수 있어요. 이 내용은 이메일로 알려 드려요.",
+      "{device}은(는) {product}에서 로그아웃되고 {thisDevice}이(가) 그 자리를 사용해요. 이 내용은 이메일로 알려 드려요.",
     "signin.replace.inUse": "{device}에서 지금 사용 중이에요.",
     "signin.replace.confirm": "교체하고 계속",
     "signin.replace.confirmNamed": "{device} 교체하고 계속",
@@ -11968,7 +11979,7 @@ export const KIT_COPY: Readonly<
       "이 버전은 회원님의 라이선스로 사용할 수 없어요. 계속하려면 앱을 업데이트하세요.",
     "core.codes.channel_not_allowed.title": "포함되지 않은 채널",
     "core.codes.channel_not_allowed.message":
-      "라이선스에 이 릴리스 채널이 포함되어 있지 않아요.",
+      "라이선스에 이 채널이 포함되어 있지 않아요.",
     "core.codes.hardware_mismatch.title": "기기 변경됨",
     "core.codes.hardware_mismatch.message":
       "이 기기의 하드웨어가 변경됐어요. 여기에서 라이선스를 사용하려면 다시 활성화하세요.",
@@ -12012,9 +12023,9 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid_request.title": "로그인 요청이 올바르지 않습니다",
     "core.codes.invalid_request.message":
       "앱이 읽을 수 없는 요청을 보냈습니다. 다시 시도하세요.",
-    "core.codes.invalid_client.title": "앱을 인식할 수 없습니다",
+    "core.codes.invalid_client.title": "로그인을 완료할 수 없어요",
     "core.codes.invalid_client.message":
-      "이 앱은 로그인용으로 설정되지 않았습니다. 개발자에게 문의하세요.",
+      "이 앱의 로그인이 올바르게 설정되지 않아 계정을 보호하기 위해 여기서 중단했어요. 개발자에게 알려 주세요.",
     "core.codes.invalid_grant.title": "로그인이 더 이상 유효하지 않습니다",
     "core.codes.invalid_grant.message":
       "이 로그인은 만료되었거나 이미 사용되었습니다. 다시 로그인하세요.",
@@ -12025,9 +12036,10 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid_scope.title": "액세스할 수 없습니다",
     "core.codes.invalid_scope.message":
       "앱이 이 로그인에서 제공하지 않는 액세스를 요청했습니다. 개발자에게 문의하세요.",
-    "core.codes.redirect_uri_mismatch.title": "돌아갈 주소가 허용되지 않습니다",
+    "core.codes.redirect_uri_mismatch.title":
+      "로그인 후 앱으로 돌아갈 수 없어요",
     "core.codes.redirect_uri_mismatch.message":
-      "이 앱의 돌아갈 주소가 등록되지 않아 이동하지 않았습니다. 개발자에게 문의하세요.",
+      "이 앱의 로그인이 올바르게 설정되지 않아 계정을 보호하기 위해 여기서 중단했어요. 개발자에게 알려 주세요.",
     "core.codes.license_choice_required.title": "라이선스 선택",
     "core.codes.license_choice_required.message":
       "이 기기에서 사용할 라이선스를 선택한 다음 계속하세요.",
@@ -12417,7 +12429,7 @@ export const KIT_COPY: Readonly<
       "라이선스 서비스에 연결할 수 없어요. 유예 기간이 끝날 때까지 앱을 계속 사용할 수 있어요.",
     "core.gate.expired.title": "라이선스 만료됨",
     "core.gate.expired.message":
-      "라이선스가 만료됐어요. 계속하려면 인터넷에 연결하거나 라이선스를 갱신하세요.",
+      "계속하려면 인터넷에 연결하거나 라이선스를 갱신하세요.",
     "core.gate.revoked.title": "로그아웃됨",
     "core.gate.revoked.message":
       "이 기기가 로그아웃됐어요. 계속하려면 다시 로그인하거나 활성화하세요.",
@@ -12432,7 +12444,7 @@ export const KIT_COPY: Readonly<
       "이 빌드는 라이선스에서 허용하는 버전보다 최신이에요.",
     "core.gate.channel-not-entitled.title": "포함되지 않은 채널",
     "core.gate.channel-not-entitled.message":
-      "라이선스에 이 릴리스 채널이 포함되어 있지 않아요.",
+      "라이선스에 이 채널이 포함되어 있지 않아요.",
     "core.gate.not-applicable.title": "라이선스 필요 없음",
     "core.gate.not-applicable.message": "이 앱에는 라이선스가 필요하지 않아요.",
     "core.activation.ok.title": "활성화됨",
@@ -12488,6 +12500,7 @@ export const KIT_COPY: Readonly<
     "common.tryAgain": "重试",
     "common.copy": "复制",
     "common.copied": "已复制",
+    "common.review": "查看",
     "common.paste": "粘贴",
     "common.working": "正在处理…",
     "common.loading": "正在加载…",
@@ -12584,10 +12597,10 @@ export const KIT_COPY: Readonly<
     "welcome.offline": "离线激活",
     "signIn.title": "登录{product}",
     "signIn.noMethods": "{product}没有可用的登录方式。请改用许可证密钥。",
-    "signIn.methodError": "{method}登录未完成。请换一种方式。",
+    "signIn.methodError": "{method}登录未完成。请重试。",
     "signInHandoff.starting": "正在获取登录码…",
     "signInHandoff.scan": "用手机扫描二维码，或前往{url}并输入此代码。",
-    "signInHandoff.scanTv": "用手机扫描二维码，或在下方地址输入此代码。",
+    "signInHandoff.scanTv": "用手机扫描二维码，或访问此地址并输入下方代码。",
     "signInHandoff.linkCopied": "链接已复制",
     "signInHandoff.confirm":
       "在登录页面上选择“Sign in on {device}”以完成登录。",
@@ -12617,7 +12630,7 @@ export const KIT_COPY: Readonly<
       "要在{formFactor, select, iphone {这台iPhone} ipad {这台iPad} mac {这台Mac} phone {这部手机} tablet {这台平板电脑} computer {这台电脑} tv {这台电视} other {这台设备}}上使用，请替换其中一台设备。你之后可以再将其添加回来。",
     "deviceLimit.confirmTitle": "替换{device}？",
     "deviceLimit.consequence":
-      "{device}将退出登录{product}，{thisDevice}将占用它的席位。如有空余席位，{device}之后可以重新登录。我们会通过电子邮件通知你。",
+      "{device}将退出登录{product}，{thisDevice}将占用它的席位。我们会通过电子邮件通知你。",
     "deviceLimit.primary": "替换并继续",
     "deviceLimit.removed": "{device}已被替换。{product}正在继续。",
     "deviceLimit.failed": "无法替换{device}。请重试。",
@@ -12627,7 +12640,7 @@ export const KIT_COPY: Readonly<
     "deviceLimit.noManage": "请在另一台设备上退出登录{product}，然后重试。",
     "devices.title": "你的设备",
     "devices.lede": "正在使用此许可证的设备。",
-    "devices.meta": "{platform} · 上次在线：{when}",
+    "devices.meta": "{platform} · 上次使用：{when}",
     "devices.count": "{count, plural, other {#台设备}}",
     "devices.unnamed": "未命名设备",
     "devices.rename": "重命名",
@@ -12700,9 +12713,9 @@ export const KIT_COPY: Readonly<
     "status.allowedMin": "允许的版本：{min}或更高",
     "status.allowedMax": "允许的版本：最高{max}",
     "status.contact": "联系{developer}",
-    "grace.daysLeft": "离线 · 还剩{days, plural, other {#天}}可重新连接",
-    "grace.lastDay": "离线 · 请在今天重新连接以继续使用{product}",
-    "grace.deadline": "请在{date}前重新连接",
+    "grace.daysLeft": "离线 · 还剩{days, plural, other {#天}}",
+    "grace.lastDay": "离线 · 今天是使用{product}的最后一天",
+    "grace.deadline": "离线可用至{date}",
     "account.title": "账户与许可证",
     "account.tier": "{tier}许可证",
     "account.holder": "已登录为{name}",
@@ -12748,8 +12761,9 @@ export const KIT_COPY: Readonly<
     "cloudSync.synced": "{time}已同步",
     "cloudSync.syncing": "正在同步…",
     "cloudSync.offline": "离线 · 重新连接后将同步更改",
-    "cloudSync.conflict": "部分更改存在冲突。请检查。",
+    "cloudSync.conflict": "部分更改存在冲突。",
     "cloudSync.error": "无法同步。请稍后重试。",
+    "cloudSync.signedOut": "你已退出登录。",
     "cloudSync.signIn": "登录以同步",
     "about.title": "关于{product}",
     "about.version": "版本{version}",
@@ -12757,7 +12771,7 @@ export const KIT_COPY: Readonly<
     "about.copyDiagnostics": "复制诊断信息",
     "about.diagnosticsCopied": "诊断信息已复制",
     "channel.title": "发布渠道",
-    "channel.locked": "发布渠道由{store}设置。",
+    "channel.locked": "渠道由{store}设置。",
     "toast.undo": "撤销",
     "toast.updateAvailable": "{product} {version}现已推出",
     "signin.methods.title": "登录Polaris Locker",
@@ -12884,7 +12898,7 @@ export const KIT_COPY: Readonly<
     "signin.replace.thisBrowser": "此浏览器",
     "signin.replace.title": "替换{device}？",
     "signin.replace.consequence":
-      "{device}将退出登录{product}，{thisDevice}将占用它的席位。如有空余席位，{device}之后可以重新登录。我们会通过电子邮件通知你。",
+      "{device}将退出登录{product}，{thisDevice}将占用它的席位。我们会通过电子邮件通知你。",
     "signin.replace.inUse": "{device}正在使用中。",
     "signin.replace.confirm": "替换并继续",
     "signin.replace.confirmNamed": "替换{device}并继续",
@@ -13406,7 +13420,7 @@ export const KIT_COPY: Readonly<
     "core.codes.version_blocked.message":
       "此版本无法与你的许可证一起使用。请更新应用以继续。",
     "core.codes.channel_not_allowed.title": "渠道未包含",
-    "core.codes.channel_not_allowed.message": "你的许可证不包含此发布渠道。",
+    "core.codes.channel_not_allowed.message": "你的许可证不包含此渠道。",
     "core.codes.hardware_mismatch.title": "设备已更改",
     "core.codes.hardware_mismatch.message":
       "此设备的硬件已更改。请重新激活以在此使用你的许可证。",
@@ -13447,8 +13461,9 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid_request.title": "登录请求无效",
     "core.codes.invalid_request.message":
       "应用发送了我们无法读取的请求。请重试。",
-    "core.codes.invalid_client.title": "无法识别该应用",
-    "core.codes.invalid_client.message": "该应用尚未设置登录。请联系其开发者。",
+    "core.codes.invalid_client.title": "无法完成登录",
+    "core.codes.invalid_client.message":
+      "该应用的登录设置不正确，因此在此处停止以保护你的账户。请告知其开发者。",
     "core.codes.invalid_grant.title": "登录已失效",
     "core.codes.invalid_grant.message":
       "此次登录已过期或已被使用。请重新登录。",
@@ -13458,9 +13473,9 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid_scope.title": "无法访问",
     "core.codes.invalid_scope.message":
       "应用请求的访问权限此次登录不提供。请联系其开发者。",
-    "core.codes.redirect_uri_mismatch.title": "返回地址不被允许",
+    "core.codes.redirect_uri_mismatch.title": "登录无法返回应用",
     "core.codes.redirect_uri_mismatch.message":
-      "该应用的返回地址未登记，因此我们没有跳转。请联系其开发者。",
+      "该应用的登录设置不正确，因此在此处停止以保护你的账户。请告知其开发者。",
     "core.codes.license_choice_required.title": "选择许可证",
     "core.codes.license_choice_required.message":
       "选择此设备使用的许可证，然后继续。",
@@ -13810,8 +13825,7 @@ export const KIT_COPY: Readonly<
     "core.gate.grace.message":
       "无法连接许可服务。在宽限期结束前，你可以继续使用此应用。",
     "core.gate.expired.title": "许可证已过期",
-    "core.gate.expired.message":
-      "你的许可证已过期。请连接互联网或续订以继续使用。",
+    "core.gate.expired.message": "请连接互联网或续订许可证以继续使用。",
     "core.gate.revoked.title": "已退出登录",
     "core.gate.revoked.message": "此设备已退出登录。请重新登录或激活以继续。",
     "core.gate.needs-activation.title": "激活",
@@ -13822,7 +13836,7 @@ export const KIT_COPY: Readonly<
     "core.gate.version-too-new.title": "此许可证不可用",
     "core.gate.version-too-new.message": "此版本比你的许可证允许的版本更新。",
     "core.gate.channel-not-entitled.title": "渠道未包含",
-    "core.gate.channel-not-entitled.message": "你的许可证不包含此发布渠道。",
+    "core.gate.channel-not-entitled.message": "你的许可证不包含此渠道。",
     "core.gate.not-applicable.title": "无需许可证",
     "core.gate.not-applicable.message": "此应用无需许可证。",
     "core.activation.ok.title": "已激活",

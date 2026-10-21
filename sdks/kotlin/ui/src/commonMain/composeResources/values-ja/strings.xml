@@ -36,6 +36,8 @@
     <string name="common_copy">コピー</string>
     <!-- Confirmation shown briefly after something is copied to the clipboard. -->
     <string name="common_copied">コピーしました</string>
+    <!-- Shared verb used across the kit's screens. Opens the changes that need a decision, like a sync conflict. Shown only when the host handles it. -->
+    <string name="common_review">確認</string>
     <!-- Shared verb used across the kit's screens. Pastes from the clipboard into a field. -->
     <string name="common_paste">ペースト</string>
     <!-- Busy label on a button or screen while an action runs. -->
@@ -253,13 +255,13 @@
     <!-- SignIn: shown when the build enables no sign-in method. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signIn_noMethods">%1$sで利用できるサインイン方法はありません。代わりにライセンスキーを使用してください。</string>
     <!-- SignIn: inline error under the method that failed. Arguments: {method} = a sign-in method's name (Apple, Google, passkey…). Arguments: 1=method. -->
-    <string name="signIn_methodError">%1$sでのサインインが完了しませんでした。別の方法をお試しください。</string>
+    <string name="signIn_methodError">%1$sでのサインインが完了しませんでした。もう一度お試しください。</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. -->
     <string name="signInHandoff_starting">サインインコードを取得しています…</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. TV and console layout. Arguments: {url} = a web address, shown as is. Arguments: 1=url. -->
     <string name="signInHandoff_scan">スマートフォンでコードをスキャンするか、%1$sにアクセスしてこのコードを入力してください。</string>
     <!-- SignInHandoff on a TV: the QR code sits beside it and the web address follows on its own line, so the sentence does not repeat it. -->
-    <string name="signInHandoff_scanTv">スマートフォンでQRコードを読み取るか、下のアドレスでこのコードを入力してください。</string>
+    <string name="signInHandoff_scanTv">スマートフォンでQRコードを読み取るか、このアドレスにアクセスして下のコードを入力してください。</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. Confirmation after Copy link. -->
     <string name="signInHandoff_linkCopied">リンクをコピーしました</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. The hosted approval page ends with a “Sign in on {device}” button, next to Deny; the label stays in English. Arguments: {device} = this device's friendly name. Arguments: 1=device. -->
@@ -326,7 +328,7 @@
     <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Confirm block under the selected device. On macOS the kit wraps {device} in curly quotes. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
     <string name="deviceLimit_confirmTitle">%1$sを置き換えますか？</string>
     <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Confirm block body. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”). Arguments: 1=device, 2=product, 3=thisDevice. -->
-    <string name="deviceLimit_consequence">%1$sは%2$sからサインアウトし、%3$sがその枠を使用します。枠が空けば、%1$sは後で再びサインインできます。この件についてはメールでお知らせします。</string>
+    <string name="deviceLimit_consequence">%1$sは%2$sからサインアウトし、%3$sがその枠を使用します。この件についてはメールでお知らせします。</string>
     <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Primary button. -->
     <string name="deviceLimit_primary">置き換えて続ける</string>
     <string name="deviceLimit_primary__macos">置き換えて続ける</string>
@@ -348,7 +350,7 @@
     <!-- Devices: the list of devices using the license. -->
     <string name="devices_lede">このライセンスを使用しているデバイス。</string>
     <!-- Devices: the list of devices using the license. Second line of a device row. Arguments: {platform} = the device's platform name (macOS, Windows, iPhone…); {when} = a relative time already formatted by the platform (“2 days ago”). Arguments: 1=platform, 2=when. -->
-    <string name="devices_meta">%1$s · 最終確認：%2$s</string>
+    <string name="devices_meta">%1$s · 最終使用：%2$s</string>
     <!-- Devices: the list of devices using the license. Arguments: {count} = a number of items. Arguments: 1=count. -->
     <plurals name="devices_count">
         <item quantity="other">%1$d台のデバイス</item>
@@ -505,12 +507,12 @@
     <string name="status_contact">%1$sに問い合わせる</string>
     <!-- GraceBanner: the product works offline for a limited time. Arguments: {days} = a number of days. Arguments: 1=days. -->
     <plurals name="grace_daysLeft">
-        <item quantity="other">オフライン · 再接続まで残り%1$d日</item>
+        <item quantity="other">オフライン · 残り%1$d日</item>
     </plurals>
     <!-- GraceBanner: the product works offline for a limited time. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="grace_lastDay">オフライン · %1$sを引き続き使うには今日中に再接続してください</string>
+    <string name="grace_lastDay">オフライン · %1$sを使えるのは今日まで</string>
     <!-- GraceBanner: the product works offline for a limited time. Arguments: {date} = a date already formatted by the platform. Arguments: 1=date. -->
-    <string name="grace_deadline">%1$sまでに再接続してください</string>
+    <string name="grace_deadline">%1$sまでオフラインで使えます</string>
     <!-- AccountAndLicense: the settings pane for the license and account. -->
     <string name="account_title">アカウントとライセンス</string>
     <!-- AccountAndLicense: the settings pane for the license and account. Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
@@ -607,9 +609,11 @@
     <!-- CloudSyncStatus: a small sync status. -->
     <string name="cloudSync_offline">オフライン · 再接続すると変更が同期されます</string>
     <!-- CloudSyncStatus: a small sync status. -->
-    <string name="cloudSync_conflict">競合している変更があります。確認してください。</string>
+    <string name="cloudSync_conflict">競合している変更があります。</string>
     <!-- CloudSyncStatus: a small sync status. -->
     <string name="cloudSync_error">同期できませんでした。後でもう一度お試しください。</string>
+    <!-- CloudSyncStatus: a small sync status. Shown instead of the error line when nobody is signed in, with Sign in to sync beside it. -->
+    <string name="cloudSync_signedOut">サインアウトしています。</string>
     <!-- CloudSyncStatus: a small sync status. Cloud Sync needs an account. -->
     <string name="cloudSync_signIn">サインインして同期</string>
     <string name="cloudSync_signIn__macos">サインインして同期</string>
@@ -628,7 +632,7 @@
     <!-- ChannelPicker: the release channel choice. -->
     <string name="channel_title">リリースチャンネル</string>
     <!-- ChannelPicker: the store fixes the channel. Arguments: {store} = a store's name (App Store, Google Play, Steam). Arguments: 1=store. -->
-    <string name="channel_locked">リリースチャンネルは%1$sで設定されます。</string>
+    <string name="channel_locked">チャンネルは%1$sで設定されます。</string>
     <!-- Toast action. -->
     <string name="toast_undo">取り消す</string>
     <!-- Toast: an update is available. Arguments: {product} = the product's name from ProductIdentity (never translated); {version} = a version string such as 2.4.1. Arguments: 1=product, 2=version. -->
@@ -883,7 +887,7 @@
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
     <string name="signin_replace_title">%1$sを置き換えますか？</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”). Arguments: 1=device, 2=product, 3=thisDevice. -->
-    <string name="signin_replace_consequence">%1$sは%2$sからサインアウトし、%3$sがその枠を使用します。枠が空けば、%1$sは後で再びサインインできます。この件についてはメールでお知らせします。</string>
+    <string name="signin_replace_consequence">%1$sは%2$sからサインアウトし、%3$sがその枠を使用します。この件についてはメールでお知らせします。</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
     <string name="signin_replace_inUse">%1$sは現在使用中です。</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
@@ -1877,7 +1881,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_channel_not_allowed_title">チャンネルが含まれていません</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_channel_not_allowed_message">お持ちのライセンスにはこのリリースチャンネルが含まれていません。</string>
+    <string name="core_codes_channel_not_allowed_message">お持ちのライセンスにはこのチャンネルが含まれていません。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_hardware_mismatch_title">デバイスが変更されました</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1939,9 +1943,9 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_request_message">アプリから読み取れないリクエストが届きました。もう一度お試しください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_client_title">アプリを認識できません</string>
+    <string name="core_codes_invalid_client_title">サインインを完了できません</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_client_message">このアプリはサインインに対応していません。開発元にお問い合わせください。</string>
+    <string name="core_codes_invalid_client_message">このアプリのサインイン設定が正しくないため、アカウントを守るためにここで停止しました。開発元にお知らせください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_grant_title">サインインは無効です</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1955,9 +1959,9 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_scope_message">アプリがこのサインインでは提供されないアクセスを要求しました。開発元にお問い合わせください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_redirect_uri_mismatch_title">戻り先が許可されていません</string>
+    <string name="core_codes_redirect_uri_mismatch_title">サインイン後にアプリへ戻れません</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_redirect_uri_mismatch_message">このアプリの戻り先が登録されていないため、移動しませんでした。開発元にお問い合わせください。</string>
+    <string name="core_codes_redirect_uri_mismatch_message">このアプリのサインイン設定が正しくないため、アカウントを守るためにここで停止しました。開発元にお知らせください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_choice_required_title">ライセンスを選択</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2489,7 +2493,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
     <string name="core_gate_expired_title">ライセンスの期限切れ</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
-    <string name="core_gate_expired_message">ライセンスの期限が切れています。続けるには、インターネットに接続するか、ライセンスを更新してください。</string>
+    <string name="core_gate_expired_message">続けるには、インターネットに接続するか、ライセンスを更新してください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
     <string name="core_gate_revoked_title">サインアウトされました</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
@@ -2509,7 +2513,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
     <string name="core_gate_channel_not_entitled_title">チャンネルが含まれていません</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
-    <string name="core_gate_channel_not_entitled_message">お持ちのライセンスにはこのリリースチャンネルが含まれていません。</string>
+    <string name="core_gate_channel_not_entitled_message">お持ちのライセンスにはこのチャンネルが含まれていません。</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
     <string name="core_gate_not_applicable_title">ライセンス不要</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->

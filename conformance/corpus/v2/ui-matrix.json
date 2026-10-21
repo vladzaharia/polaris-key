@@ -10856,7 +10856,7 @@
       "locale": "en",
       "key": "grace.daysLeft",
       "args": { "days": 1 },
-      "expect": "Offline \u00b7 1 day left to reconnect"
+      "expect": "Offline \u00b7 1 day left"
     },
     {
       "name": "en: devices.count, plural other",
@@ -10870,7 +10870,7 @@
       "locale": "en",
       "key": "grace.daysLeft",
       "args": { "days": 0 },
-      "expect": "Offline \u00b7 0 days left to reconnect"
+      "expect": "Offline \u00b7 0 days left"
     },
     {
       "name": "de: devices.count, plural one",
@@ -10884,7 +10884,7 @@
       "locale": "de",
       "key": "grace.daysLeft",
       "args": { "days": 1 },
-      "expect": "Offline \u00b7 noch 1 Tag zum erneuten Verbinden"
+      "expect": "Offline \u00b7 noch 1 Tag"
     },
     {
       "name": "de: devices.count, plural other",
@@ -10898,7 +10898,7 @@
       "locale": "de",
       "key": "grace.daysLeft",
       "args": { "days": 0 },
-      "expect": "Offline \u00b7 noch 0 Tage zum erneuten Verbinden"
+      "expect": "Offline \u00b7 noch 0 Tage"
     },
     {
       "name": "fr: devices.count, plural one",
@@ -10912,7 +10912,7 @@
       "locale": "fr",
       "key": "grace.daysLeft",
       "args": { "days": 1 },
-      "expect": "Hors ligne \u00b7 1 jour restant pour vous reconnecter"
+      "expect": "Hors ligne \u00b7 1 jour restant"
     },
     {
       "name": "fr: devices.count, plural many",
@@ -10926,7 +10926,7 @@
       "locale": "fr",
       "key": "grace.daysLeft",
       "args": { "days": 1000000 },
-      "expect": "Hors ligne \u00b7 1000000 de jours restants pour vous reconnecter"
+      "expect": "Hors ligne \u00b7 1000000 de jours restants"
     },
     {
       "name": "fr: devices.count, plural other",
@@ -10940,7 +10940,7 @@
       "locale": "fr",
       "key": "grace.daysLeft",
       "args": { "days": 2 },
-      "expect": "Hors ligne \u00b7 2 jours restants pour vous reconnecter"
+      "expect": "Hors ligne \u00b7 2 jours restants"
     },
     {
       "name": "es: devices.count, plural one",
@@ -10954,7 +10954,7 @@
       "locale": "es",
       "key": "grace.daysLeft",
       "args": { "days": 1 },
-      "expect": "Sin conexi\u00f3n \u00b7 queda 1 d\u00eda para reconectar"
+      "expect": "Sin conexi\u00f3n \u00b7 queda 1 d\u00eda"
     },
     {
       "name": "es: devices.count, plural many",
@@ -10968,7 +10968,7 @@
       "locale": "es",
       "key": "grace.daysLeft",
       "args": { "days": 1000000 },
-      "expect": "Sin conexi\u00f3n \u00b7 quedan 1000000 de d\u00edas para reconectar"
+      "expect": "Sin conexi\u00f3n \u00b7 quedan 1000000 de d\u00edas"
     },
     {
       "name": "es: devices.count, plural other",
@@ -10982,7 +10982,7 @@
       "locale": "es",
       "key": "grace.daysLeft",
       "args": { "days": 0 },
-      "expect": "Sin conexi\u00f3n \u00b7 quedan 0 d\u00edas para reconectar"
+      "expect": "Sin conexi\u00f3n \u00b7 quedan 0 d\u00edas"
     },
     {
       "name": "pt-BR: devices.count, plural one",
@@ -10996,7 +10996,7 @@
       "locale": "pt-BR",
       "key": "grace.daysLeft",
       "args": { "days": 1 },
-      "expect": "Offline \u00b7 1 dia restante para reconectar"
+      "expect": "Offline \u00b7 1 dia restante"
     },
     {
       "name": "pt-BR: devices.count, plural many",
@@ -11010,7 +11010,7 @@
       "locale": "pt-BR",
       "key": "grace.daysLeft",
       "args": { "days": 1000000 },
-      "expect": "Offline \u00b7 1000000 de dias restantes para reconectar"
+      "expect": "Offline \u00b7 1000000 de dias restantes"
     },
     {
       "name": "pt-BR: devices.count, plural other",
@@ -11024,7 +11024,7 @@
       "locale": "pt-BR",
       "key": "grace.daysLeft",
       "args": { "days": 2 },
-      "expect": "Offline \u00b7 2 dias restantes para reconectar"
+      "expect": "Offline \u00b7 2 dias restantes"
     },
     {
       "name": "it: devices.count, plural one",
@@ -11038,7 +11038,7 @@
       "locale": "it",
       "key": "grace.daysLeft",
       "args": { "days": 1 },
-      "expect": "Offline \u00b7 1 giorno rimasto per riconnetterti"
+      "expect": "Offline \u00b7 1 giorno rimasto"
     },
     {
       "name": "it: devices.count, plural many",
@@ -11052,7 +11052,7 @@
       "locale": "it",
       "key": "grace.daysLeft",
       "args": { "days": 1000000 },
-      "expect": "Offline \u00b7 1000000 di giorni rimasti per riconnetterti"
+      "expect": "Offline \u00b7 1000000 di giorni rimasti"
     },
     {
       "name": "it: devices.count, plural other",
@@ -11066,7 +11066,7 @@
       "locale": "it",
       "key": "grace.daysLeft",
       "args": { "days": 0 },
-      "expect": "Offline \u00b7 0 giorni rimasti per riconnetterti"
+      "expect": "Offline \u00b7 0 giorni rimasti"
     },
     {
       "name": "ja: devices.count, plural other",
@@ -11080,7 +11080,7 @@
       "locale": "ja",
       "key": "grace.daysLeft",
       "args": { "days": 1 },
-      "expect": "\u30aa\u30d5\u30e9\u30a4\u30f3 \u00b7 \u518d\u63a5\u7d9a\u307e\u3067\u6b8b\u308a1\u65e5"
+      "expect": "\u30aa\u30d5\u30e9\u30a4\u30f3 \u00b7 \u6b8b\u308a1\u65e5"
     },
     {
       "name": "ko: devices.count, plural other",
@@ -11094,7 +11094,7 @@
       "locale": "ko",
       "key": "grace.daysLeft",
       "args": { "days": 1 },
-      "expect": "\uc624\ud504\ub77c\uc778 \u00b7 \ub2e4\uc2dc \uc5f0\uacb0\uae4c\uc9c0 1\uc77c \ub0a8\uc74c"
+      "expect": "\uc624\ud504\ub77c\uc778 \u00b7 1\uc77c \ub0a8\uc74c"
     },
     {
       "name": "zh-Hans: devices.count, plural other",
@@ -11108,7 +11108,7 @@
       "locale": "zh-Hans",
       "key": "grace.daysLeft",
       "args": { "days": 1 },
-      "expect": "\u79bb\u7ebf \u00b7 \u8fd8\u52691\u5929\u53ef\u91cd\u65b0\u8fde\u63a5"
+      "expect": "\u79bb\u7ebf \u00b7 \u8fd8\u52691\u5929"
     },
     {
       "name": "en: part.thisDeviceTitle, iphone",

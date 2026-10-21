@@ -59,6 +59,11 @@
       "role": "label",
       "note": "Confirmation shown briefly after something is copied to the clipboard."
     },
+    "common.review": {
+      "value": "Review",
+      "role": "button",
+      "note": "Shared verb used across the kit's screens. Opens the changes that need a decision, like a sync conflict. Shown only when the host handles it."
+    },
     "common.paste": {
       "value": "Paste",
       "role": "button",
@@ -513,7 +518,7 @@
       "note": "SignIn: shown when the build enables no sign-in method. Arguments: {product} = the product's name from ProductIdentity (never translated)."
     },
     "signIn.methodError": {
-      "value": "{method} sign-in didn't finish. Try another way.",
+      "value": "{method} sign-in didn't finish. Try again.",
       "role": "body",
       "note": "SignIn: inline error under the method that failed. Arguments: {method} = a sign-in method's name (Apple, Google, passkey…)."
     },
@@ -528,7 +533,7 @@
       "note": "SignInHandoff: sign-in continues on another device or in the browser. TV and console layout. Arguments: {url} = a web address, shown as is."
     },
     "signInHandoff.scanTv": {
-      "value": "Scan the QR code with your phone, or enter this code at the address below.",
+      "value": "Scan the QR code with your phone, or go to this address and enter the code below.",
       "role": "body",
       "note": "SignInHandoff on a TV: the QR code sits beside it and the web address follows on its own line, so the sentence does not repeat it."
     },
@@ -658,7 +663,7 @@
       "note": "DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Confirm block under the selected device. On macOS the kit wraps {device} in curly quotes. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”."
     },
     "deviceLimit.consequence": {
-      "value": "{device} signs out of {product} and {thisDevice} takes its seat. {device} can sign in again later if a seat is free. We'll email you about it.",
+      "value": "{device} signs out of {product} and {thisDevice} takes its seat. We'll email you about it.",
       "role": "body",
       "note": "DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Confirm block body. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”)."
     },
@@ -708,7 +713,7 @@
       "note": "Devices: the list of devices using the license."
     },
     "devices.meta": {
-      "value": "{platform} · last seen {when}",
+      "value": "{platform} · last used {when}",
       "role": "body",
       "note": "Devices: the list of devices using the license. Second line of a device row. Arguments: {platform} = the device's platform name (macOS, Windows, iPhone…); {when} = a relative time already formatted by the platform (“2 days ago”)."
     },
@@ -1072,17 +1077,17 @@
       "note": "StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Arguments: {developer} = the developer's name (never translated)."
     },
     "grace.daysLeft": {
-      "value": "Offline · {days, plural, one {# day} other {# days}} left to reconnect",
+      "value": "Offline · {days, plural, one {# day} other {# days}} left",
       "role": "body",
       "note": "GraceBanner: the product works offline for a limited time. Arguments: {days} = a number of days."
     },
     "grace.lastDay": {
-      "value": "Offline · reconnect today to keep using {product}",
+      "value": "Offline · last day to use {product}",
       "role": "body",
       "note": "GraceBanner: the product works offline for a limited time. Arguments: {product} = the product's name from ProductIdentity (never translated)."
     },
     "grace.deadline": {
-      "value": "Reconnect by {date}",
+      "value": "Works offline until {date}",
       "role": "body",
       "note": "GraceBanner: the product works offline for a limited time. Arguments: {date} = a date already formatted by the platform."
     },
@@ -1312,7 +1317,7 @@
       "note": "CloudSyncStatus: a small sync status."
     },
     "cloudSync.conflict": {
-      "value": "Some changes conflict. Review them.",
+      "value": "Some changes conflict.",
       "role": "body",
       "note": "CloudSyncStatus: a small sync status."
     },
@@ -1320,6 +1325,11 @@
       "value": "Couldn't sync. Try again later.",
       "role": "body",
       "note": "CloudSyncStatus: a small sync status."
+    },
+    "cloudSync.signedOut": {
+      "value": "You're signed out.",
+      "role": "body",
+      "note": "CloudSyncStatus: a small sync status. Shown instead of the error line when nobody is signed in, with Sign in to sync beside it."
     },
     "cloudSync.signIn": {
       "value": "Sign in to sync",
@@ -1357,7 +1367,7 @@
       "note": "ChannelPicker: the release channel choice."
     },
     "channel.locked": {
-      "value": "{store} sets the release channel.",
+      "value": "{store} sets the channel.",
       "role": "body",
       "note": "ChannelPicker: the store fixes the channel. Arguments: {store} = a store's name (App Store, Google Play, Steam)."
     },
@@ -1927,7 +1937,7 @@
       "note": "Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”."
     },
     "signin.replace.consequence": {
-      "value": "{device} signs out of {product} and {thisDevice} takes its seat. {device} can sign in again later if a seat is free. We'll email you about it.",
+      "value": "{device} signs out of {product} and {thisDevice} takes its seat. We'll email you about it.",
       "role": "body",
       "note": "Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”)."
     },
@@ -2162,7 +2172,7 @@
       "note": "App waiting while sign-in runs in the browser (SIGN-IN.md §3.17)."
     },
     "signin.handoff.cancelled": {
-      "value": "Sign-in was cancelled. Get a new code",
+      "value": "Sign-in was canceled. Get a new code",
       "role": "body",
       "note": "App waiting while sign-in runs in the browser (SIGN-IN.md §3.17)."
     },
@@ -2223,7 +2233,7 @@
     },
     "signin.handoff.noBrowser": {
       "value": "We couldn't open your browser",
-      "role": "body",
+      "role": "title",
       "note": "App waiting while sign-in runs in the browser (SIGN-IN.md §3.17)."
     },
     "signin.handoff.noBrowserBody": {
@@ -2272,7 +2282,7 @@
       "note": "Return step, short form (SIGN-IN.md §3.10)."
     },
     "signin.return.cancelled": {
-      "value": "Sign-in was cancelled in {app}. Start again from {app}.",
+      "value": "Sign-in was canceled in {app}. Start again from {app}.",
       "role": "body",
       "note": "Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated)."
     },
@@ -2867,7 +2877,7 @@
       "note": "Terminal: a device was removed from the license."
     },
     "cli.update.cancelled": {
-      "value": "Update cancelled.",
+      "value": "Update canceled.",
       "role": "body",
       "note": "Terminal: the person stopped an update download. The title; 'Nothing was installed.' is the body line under it."
     },

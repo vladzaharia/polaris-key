@@ -95,7 +95,7 @@
     },
     "channel_not_allowed": {
       "title": "Kanal nicht enthalten",
-      "message": "Ihre Lizenz umfasst diesen Release-Kanal nicht."
+      "message": "Ihre Lizenz umfasst diesen Kanal nicht."
     },
     "hardware_mismatch": {
       "title": "Gerät geändert",
@@ -158,8 +158,8 @@
       "message": "Die App hat eine Anmeldeanfrage gesendet, die wir nicht lesen können. Versuche es erneut."
     },
     "invalid_client": {
-      "title": "App nicht erkannt",
-      "message": "Diese App ist nicht für die Anmeldung eingerichtet. Wende dich an den Entwickler."
+      "title": "Anmeldung kann nicht abgeschlossen werden",
+      "message": "Die Anmeldung dieser App ist nicht richtig eingerichtet, deshalb wurde sie hier zum Schutz deines Kontos angehalten. Sag dem Entwickler Bescheid."
     },
     "invalid_grant": {
       "title": "Anmeldung nicht mehr gültig",
@@ -174,8 +174,8 @@
       "message": "Die App hat Zugriff angefragt, den diese Anmeldung nicht bietet. Wende dich an den Entwickler."
     },
     "redirect_uri_mismatch": {
-      "title": "Rücksprungadresse nicht erlaubt",
-      "message": "Die Rücksprungadresse dieser App ist nicht registriert, deshalb haben wir dich nicht zurückgeleitet. Wende dich an den Entwickler."
+      "title": "Anmeldung kann nicht zur App zurückkehren",
+      "message": "Die Anmeldung dieser App ist nicht richtig eingerichtet, deshalb wurde sie hier zum Schutz deines Kontos angehalten. Sag dem Entwickler Bescheid."
     },
     "license_choice_required": {
       "title": "Lizenz wählen",
@@ -709,7 +709,7 @@
     },
     "expired": {
       "title": "Lizenz abgelaufen",
-      "message": "Ihre Lizenz ist abgelaufen. Stellen Sie eine Internetverbindung her oder verlängern Sie sie, um fortzufahren."
+      "message": "Stellen Sie eine Internetverbindung her oder verlängern Sie die Lizenz, um fortzufahren."
     },
     "revoked": {
       "title": "Abgemeldet",
@@ -729,7 +729,7 @@
     },
     "channel-not-entitled": {
       "title": "Kanal nicht enthalten",
-      "message": "Ihre Lizenz umfasst diesen Release-Kanal nicht."
+      "message": "Ihre Lizenz umfasst diesen Kanal nicht."
     },
     "not-applicable": {
       "title": "Keine Lizenz erforderlich",

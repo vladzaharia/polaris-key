@@ -95,7 +95,7 @@
     },
     "channel_not_allowed": {
       "title": "Canale non incluso",
-      "message": "La tua licenza non include questo canale di rilascio."
+      "message": "La tua licenza non include questo canale."
     },
     "hardware_mismatch": {
       "title": "Dispositivo cambiato",
@@ -158,8 +158,8 @@
       "message": "L'app ha inviato una richiesta che non riusciamo a leggere. Riprova."
     },
     "invalid_client": {
-      "title": "App non riconosciuta",
-      "message": "Questa app non è configurata per l'accesso. Contatta il suo sviluppatore."
+      "title": "Impossibile completare l'accesso",
+      "message": "L'accesso di questa app non è configurato correttamente, quindi si è fermato qui per proteggere il tuo account. Avvisa il suo sviluppatore."
     },
     "invalid_grant": {
       "title": "Accesso non più valido",
@@ -174,8 +174,8 @@
       "message": "L'app ha chiesto un accesso che questo accesso non offre. Contatta il suo sviluppatore."
     },
     "redirect_uri_mismatch": {
-      "title": "Indirizzo di ritorno non consentito",
-      "message": "L'indirizzo di ritorno di questa app non è registrato, quindi non ti abbiamo reindirizzato. Contatta il suo sviluppatore."
+      "title": "L'accesso non può tornare all'app",
+      "message": "L'accesso di questa app non è configurato correttamente, quindi si è fermato qui per proteggere il tuo account. Avvisa il suo sviluppatore."
     },
     "license_choice_required": {
       "title": "Scegli una licenza",
@@ -709,7 +709,7 @@
     },
     "expired": {
       "title": "Licenza scaduta",
-      "message": "La tua licenza è scaduta. Connettiti a internet o rinnovala per continuare."
+      "message": "Connettiti a internet o rinnova la licenza per continuare."
     },
     "revoked": {
       "title": "Disconnesso",
@@ -729,7 +729,7 @@
     },
     "channel-not-entitled": {
       "title": "Canale non incluso",
-      "message": "La tua licenza non include questo canale di rilascio."
+      "message": "La tua licenza non include questo canale."
     },
     "not-applicable": {
       "title": "Nessuna licenza necessaria",

@@ -81,6 +81,11 @@ msgstr ""
 msgid "common.copied"
 msgstr ""
 
+#. Review
+#. Shared verb used across the kit's screens. Opens the changes that need a decision, like a sync conflict. Shown only when the host handles it.
+msgid "common.review"
+msgstr ""
+
 #. Paste
 #. Shared verb used across the kit's screens. Pastes from the clipboard into a field.
 msgid "common.paste"
@@ -697,7 +702,7 @@ msgstr ""
 msgid "signIn.noMethods"
 msgstr ""
 
-#. {method} sign-in didn't finish. Try another way.
+#. {method} sign-in didn't finish. Try again.
 #. SignIn: inline error under the method that failed. Arguments: {method} = a sign-in method's name (Apple, Google, passkey…).
 msgid "signIn.methodError"
 msgstr ""
@@ -712,7 +717,7 @@ msgstr ""
 msgid "signInHandoff.scan"
 msgstr ""
 
-#. Scan the QR code with your phone, or enter this code at the address below.
+#. Scan the QR code with your phone, or go to this address and enter the code below.
 #. SignInHandoff on a TV: the QR code sits beside it and the web address follows on its own line, so the sentence does not repeat it.
 msgid "signInHandoff.scanTv"
 msgstr ""
@@ -910,7 +915,7 @@ msgstr ""
 msgid "deviceLimit.confirmTitle"
 msgstr ""
 
-#. {device} signs out of {product} and {thisDevice} takes its seat. {device} can sign in again later if a seat is free. We'll email you about it.
+#. {device} signs out of {product} and {thisDevice} takes its seat. We'll email you about it.
 #. DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Confirm block body. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”).
 msgid "deviceLimit.consequence"
 msgstr ""
@@ -970,7 +975,7 @@ msgstr ""
 msgid "devices.lede"
 msgstr ""
 
-#. {platform} · last seen {when}
+#. {platform} · last used {when}
 #. Devices: the list of devices using the license. Second line of a device row. Arguments: {platform} = the device's platform name (macOS, Windows, iPhone…); {when} = a relative time already formatted by the platform (“2 days ago”).
 msgid "devices.meta"
 msgstr ""
@@ -1388,7 +1393,7 @@ msgstr ""
 msgid "status.contact"
 msgstr ""
 
-#. Offline · {days, plural, one {# day} other {# days}} left to reconnect
+#. Offline · {days, plural, one {# day} other {# days}} left
 #. GraceBanner: the product works offline for a limited time. Arguments: {days} = a number of days.
 #. Plural on {days}.
 msgid "grace.daysLeft"
@@ -1396,12 +1401,12 @@ msgid_plural "grace.daysLeft"
 msgstr[0] ""
 msgstr[1] ""
 
-#. Offline · reconnect today to keep using {product}
+#. Offline · last day to use {product}
 #. GraceBanner: the product works offline for a limited time. Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "grace.lastDay"
 msgstr ""
 
-#. Reconnect by {date}
+#. Works offline until {date}
 #. GraceBanner: the product works offline for a limited time. Arguments: {date} = a date already formatted by the platform.
 msgid "grace.deadline"
 msgstr ""
@@ -1656,7 +1661,7 @@ msgstr ""
 msgid "cloudSync.offline"
 msgstr ""
 
-#. Some changes conflict. Review them.
+#. Some changes conflict.
 #. CloudSyncStatus: a small sync status.
 msgid "cloudSync.conflict"
 msgstr ""
@@ -1664,6 +1669,11 @@ msgstr ""
 #. Couldn't sync. Try again later.
 #. CloudSyncStatus: a small sync status.
 msgid "cloudSync.error"
+msgstr ""
+
+#. You're signed out.
+#. CloudSyncStatus: a small sync status. Shown instead of the error line when nobody is signed in, with Sign in to sync beside it.
+msgid "cloudSync.signedOut"
 msgstr ""
 
 #. Sign in to sync
@@ -1716,7 +1726,7 @@ msgstr ""
 msgid "channel.title"
 msgstr ""
 
-#. {store} sets the release channel.
+#. {store} sets the channel.
 #. ChannelPicker: the store fixes the channel. Arguments: {store} = a store's name (App Store, Google Play, Steam).
 msgid "channel.locked"
 msgstr ""
@@ -2407,7 +2417,7 @@ msgstr ""
 msgid "signin.replace.title"
 msgstr ""
 
-#. {device} signs out of {product} and {thisDevice} takes its seat. {device} can sign in again later if a seat is free. We'll email you about it.
+#. {device} signs out of {product} and {thisDevice} takes its seat. We'll email you about it.
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”).
 msgid "signin.replace.consequence"
 msgstr ""
@@ -2708,7 +2718,7 @@ msgctxt "macos"
 msgid "signin.handoff.again"
 msgstr ""
 
-#. Sign-in was cancelled. Get a new code
+#. Sign-in was canceled. Get a new code
 #. App waiting while sign-in runs in the browser (SIGN-IN.md §3.17).
 msgid "signin.handoff.cancelled"
 msgstr ""
@@ -2848,7 +2858,7 @@ msgstr ""
 msgid "signin.return.signedInShort"
 msgstr ""
 
-#. Sign-in was cancelled in {app}. Start again from {app}.
+#. Sign-in was canceled in {app}. Start again from {app}.
 #. Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated).
 msgid "signin.return.cancelled"
 msgstr ""
@@ -3476,7 +3486,7 @@ msgstr ""
 msgid "cli.devices.removed"
 msgstr ""
 
-#. Update cancelled.
+#. Update canceled.
 #. Terminal: the person stopped an update download. The title; 'Nothing was installed.' is the body line under it.
 msgid "cli.update.cancelled"
 msgstr ""
@@ -4995,7 +5005,7 @@ msgstr ""
 msgid "core.codes.channel_not_allowed.title"
 msgstr ""
 
-#. Your license doesn't include this release channel.
+#. Your license doesn't include this channel.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.channel_not_allowed.message"
 msgstr ""
@@ -5780,12 +5790,12 @@ msgstr ""
 msgid "core.codes.server-error.message"
 msgstr ""
 
-#. Sign-in cancelled
+#. Sign-in canceled
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.cancelled.title"
 msgstr ""
 
-#. Sign-in was cancelled.
+#. Sign-in was canceled.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.cancelled.message"
 msgstr ""
@@ -6525,7 +6535,7 @@ msgstr ""
 msgid "core.gate.expired.title"
 msgstr ""
 
-#. Your license has expired. Connect to the internet or renew it to continue.
+#. Connect to the internet or renew your license to continue.
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.expired.message"
 msgstr ""
@@ -6575,7 +6585,7 @@ msgstr ""
 msgid "core.gate.channel-not-entitled.title"
 msgstr ""
 
-#. Your license doesn't include this release channel.
+#. Your license doesn't include this channel.
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.channel-not-entitled.message"
 msgstr ""

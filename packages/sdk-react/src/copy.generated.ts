@@ -124,7 +124,7 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
   },
   channel_not_allowed: {
     title: "Channel not included",
-    message: "Your license doesn't include this release channel.",
+    message: "Your license doesn't include this channel.",
   },
   hardware_mismatch: {
     title: "Device changed",
@@ -469,7 +469,7 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
     title: "Service problem",
     message: "The service had a problem. Try again in a few minutes.",
   },
-  cancelled: { title: "Sign-in cancelled", message: "Sign-in was cancelled." },
+  cancelled: { title: "Sign-in canceled", message: "Sign-in was canceled." },
   "sign-in-expired": {
     title: "Code expired",
     message: "The code expired before sign-in finished. Start again.",
@@ -812,8 +812,7 @@ export const COPY_GATE: Readonly<Record<string, CopyEntry>> = {
   },
   expired: {
     title: "License expired",
-    message:
-      "Your license has expired. Connect to the internet or renew it to continue.",
+    message: "Connect to the internet or renew your license to continue.",
   },
   revoked: {
     title: "Signed out",
@@ -834,7 +833,7 @@ export const COPY_GATE: Readonly<Record<string, CopyEntry>> = {
   },
   "channel-not-entitled": {
     title: "Channel not included",
-    message: "Your license doesn't include this release channel.",
+    message: "Your license doesn't include this channel.",
   },
   "not-applicable": {
     title: "No license needed",

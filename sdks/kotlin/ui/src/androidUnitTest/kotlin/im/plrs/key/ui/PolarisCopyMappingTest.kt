@@ -35,7 +35,7 @@ class PolarisCopyMappingTest {
             copy.gateMessage(LicenseStatus.revoked),
         )
         assertEquals(
-            PolarisMessageCopy("License expired", "Your license has expired. Connect to the internet or renew it to continue.", PolarisMessageKind.Warning),
+            PolarisMessageCopy("License expired", "Connect to the internet or renew your license to continue.", PolarisMessageKind.Warning),
             copy.gateMessage(LicenseStatus.expired),
         )
         // Sign-in's stops read core.copy too.

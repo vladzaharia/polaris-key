@@ -3830,55 +3830,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ sets the release channel."
+            "value": "%1$@ sets the channel."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ legt den Release-Kanal fest."
+            "value": "%1$@ legt den Kanal fest."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ définit le canal de publication."
+            "value": "%1$@ définit le canal."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ establece el canal de versiones."
+            "value": "%1$@ establece el canal."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ define o canal de lançamento."
+            "value": "%1$@ define o canal."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Il canale di rilascio è impostato da %1$@."
+            "value": "Il canale è impostato da %1$@."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "リリースチャンネルは%1$@で設定されます。"
+            "value": "チャンネルは%1$@で設定されます。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@에서 릴리스 채널을 설정해요."
+            "value": "%1$@에서 채널을 설정해요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "发布渠道由%1$@设置。"
+            "value": "渠道由%1$@设置。"
           }
         }
       }
@@ -9590,7 +9590,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Update cancelled."
+            "value": "Update canceled."
           }
         },
         "de": {
@@ -11930,55 +11930,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Some changes conflict. Review them."
+            "value": "Some changes conflict."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Einige Änderungen stehen in Konflikt. Bitte prüfen Sie sie."
+            "value": "Einige Änderungen stehen in Konflikt."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Certaines modifications sont en conflit. Vérifiez-les."
+            "value": "Certaines modifications sont en conflit."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Algunos cambios entran en conflicto. Revísalos."
+            "value": "Algunos cambios entran en conflicto."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Algumas alterações estão em conflito. Revise-as."
+            "value": "Algumas alterações estão em conflito."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Alcune modifiche sono in conflitto. Controllale."
+            "value": "Alcune modifiche sono in conflitto."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "競合している変更があります。確認してください。"
+            "value": "競合している変更があります。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "일부 변경 사항이 충돌해요. 확인해 보세요."
+            "value": "일부 변경 사항이 충돌해요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "部分更改存在冲突。请检查。"
+            "value": "部分更改存在冲突。"
           }
         }
       }
@@ -12171,6 +12171,66 @@
           "stringUnit": {
             "state": "translated",
             "value": "登录以同步"
+          }
+        }
+      }
+    },
+    "cloudSync.signedOut": {
+      "comment": "CloudSyncStatus: a small sync status. Shown instead of the error line when nobody is signed in, with Sign in to sync beside it.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You're signed out."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sie sind abgemeldet."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous êtes déconnecté."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Has cerrado sesión."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Você saiu da conta."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hai effettuato la disconnessione."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サインアウトしています。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로그아웃된 상태예요."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你已退出登录。"
           }
         }
       }
@@ -13275,6 +13335,66 @@
           "stringUnit": {
             "state": "translated",
             "value": "重新连接"
+          }
+        }
+      }
+    },
+    "common.review": {
+      "comment": "Shared verb used across the kit's screens. Opens the changes that need a decision, like a sync conflict. Shown only when the host handles it.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Review"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prüfen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vérifier"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisar"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisar"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Controlla"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "確認"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "검토"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查看"
           }
         }
       }
@@ -17270,7 +17390,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign-in was cancelled."
+            "value": "Sign-in was canceled."
           }
         },
         "de": {
@@ -17282,7 +17402,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign-in was cancelled."
+            "value": "Sign-in was canceled."
           }
         },
         "es": {
@@ -17330,7 +17450,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign-in cancelled"
+            "value": "Sign-in canceled"
           }
         },
         "de": {
@@ -17342,7 +17462,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign-in cancelled"
+            "value": "Sign-in canceled"
           }
         },
         "es": {
@@ -17510,55 +17630,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your license doesn't include this release channel."
+            "value": "Your license doesn't include this channel."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ihre Lizenz umfasst diesen Release-Kanal nicht."
+            "value": "Ihre Lizenz umfasst diesen Kanal nicht."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your license doesn't include this release channel."
+            "value": "Your license doesn't include this channel."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tu licencia no incluye este canal de versiones."
+            "value": "Tu licencia no incluye este canal."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sua licença não inclui este canal de lançamento."
+            "value": "Sua licença não inclui este canal."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "La tua licenza non include questo canale di rilascio."
+            "value": "La tua licenza non include questo canale."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "お持ちのライセンスにはこのリリースチャンネルが含まれていません。"
+            "value": "お持ちのライセンスにはこのチャンネルが含まれていません。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "라이선스에 이 릴리스 채널이 포함되어 있지 않아요."
+            "value": "라이선스에 이 채널이 포함되어 있지 않아요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "你的许可证不包含此发布渠道。"
+            "value": "你的许可证不包含此渠道。"
           }
         }
       }
@@ -24836,7 +24956,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diese App ist nicht für die Anmeldung eingerichtet. Wende dich an den Entwickler."
+            "value": "Die Anmeldung dieser App ist nicht richtig eingerichtet, deshalb wurde sie hier zum Schutz deines Kontos angehalten. Sag dem Entwickler Bescheid."
           }
         },
         "fr": {
@@ -24848,37 +24968,37 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Esta app no está configurada para iniciar sesión. Contacta con su desarrollador."
+            "value": "El inicio de sesión de esta app no está bien configurado, así que se detuvo aquí para proteger tu cuenta. Avisa a su desarrollador."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Este app não está configurado para login. Fale com o desenvolvedor."
+            "value": "O login deste app não está configurado corretamente, então foi interrompido aqui para proteger sua conta. Avise o desenvolvedor."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Questa app non è configurata per l'accesso. Contatta il suo sviluppatore."
+            "value": "L'accesso di questa app non è configurato correttamente, quindi si è fermato qui per proteggere il tuo account. Avvisa il suo sviluppatore."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "このアプリはサインインに対応していません。開発元にお問い合わせください。"
+            "value": "このアプリのサインイン設定が正しくないため、アカウントを守るためにここで停止しました。開発元にお知らせください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이 앱은 로그인용으로 설정되지 않았습니다. 개발자에게 문의하세요."
+            "value": "이 앱의 로그인이 올바르게 설정되지 않아 계정을 보호하기 위해 여기서 중단했어요. 개발자에게 알려 주세요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "该应用尚未设置登录。请联系其开发者。"
+            "value": "该应用的登录设置不正确，因此在此处停止以保护你的账户。请告知其开发者。"
           }
         }
       }
@@ -24896,7 +25016,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "App nicht erkannt"
+            "value": "Anmeldung kann nicht abgeschlossen werden"
           }
         },
         "fr": {
@@ -24908,37 +25028,37 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "App no reconocida"
+            "value": "No se puede completar el inicio de sesión"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "App não reconhecido"
+            "value": "Não foi possível concluir o login"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "App non riconosciuta"
+            "value": "Impossibile completare l'accesso"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "アプリを認識できません"
+            "value": "サインインを完了できません"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "앱을 인식할 수 없습니다"
+            "value": "로그인을 완료할 수 없어요"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "无法识别该应用"
+            "value": "无法完成登录"
           }
         }
       }
@@ -31196,7 +31316,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Die Rücksprungadresse dieser App ist nicht registriert, deshalb haben wir dich nicht zurückgeleitet. Wende dich an den Entwickler."
+            "value": "Die Anmeldung dieser App ist nicht richtig eingerichtet, deshalb wurde sie hier zum Schutz deines Kontos angehalten. Sag dem Entwickler Bescheid."
           }
         },
         "fr": {
@@ -31208,37 +31328,37 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "La dirección de retorno de esta app no está registrada, así que no te devolvimos a ella. Contacta con su desarrollador."
+            "value": "El inicio de sesión de esta app no está bien configurado, así que se detuvo aquí para proteger tu cuenta. Avisa a su desarrollador."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "O endereço de retorno deste app não está registrado, então não redirecionamos você. Fale com o desenvolvedor."
+            "value": "O login deste app não está configurado corretamente, então foi interrompido aqui para proteger sua conta. Avise o desenvolvedor."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "L'indirizzo di ritorno di questa app non è registrato, quindi non ti abbiamo reindirizzato. Contatta il suo sviluppatore."
+            "value": "L'accesso di questa app non è configurato correttamente, quindi si è fermato qui per proteggere il tuo account. Avvisa il suo sviluppatore."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "このアプリの戻り先が登録されていないため、移動しませんでした。開発元にお問い合わせください。"
+            "value": "このアプリのサインイン設定が正しくないため、アカウントを守るためにここで停止しました。開発元にお知らせください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이 앱의 돌아갈 주소가 등록되지 않아 이동하지 않았습니다. 개발자에게 문의하세요."
+            "value": "이 앱의 로그인이 올바르게 설정되지 않아 계정을 보호하기 위해 여기서 중단했어요. 개발자에게 알려 주세요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "该应用的返回地址未登记，因此我们没有跳转。请联系其开发者。"
+            "value": "该应用的登录设置不正确，因此在此处停止以保护你的账户。请告知其开发者。"
           }
         }
       }
@@ -31256,7 +31376,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Rücksprungadresse nicht erlaubt"
+            "value": "Anmeldung kann nicht zur App zurückkehren"
           }
         },
         "fr": {
@@ -31268,37 +31388,37 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dirección de retorno no permitida"
+            "value": "El inicio de sesión no puede volver a la app"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Endereço de retorno não permitido"
+            "value": "O login não consegue voltar ao app"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Indirizzo di ritorno non consentito"
+            "value": "L'accesso non può tornare all'app"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "戻り先が許可されていません"
+            "value": "サインイン後にアプリへ戻れません"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "돌아갈 주소가 허용되지 않습니다"
+            "value": "로그인 후 앱으로 돌아갈 수 없어요"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "返回地址不被允许"
+            "value": "登录无法返回应用"
           }
         }
       }
@@ -35990,55 +36110,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your license doesn't include this release channel."
+            "value": "Your license doesn't include this channel."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ihre Lizenz umfasst diesen Release-Kanal nicht."
+            "value": "Ihre Lizenz umfasst diesen Kanal nicht."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your license doesn't include this release channel."
+            "value": "Your license doesn't include this channel."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tu licencia no incluye este canal de versiones."
+            "value": "Tu licencia no incluye este canal."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sua licença não inclui este canal de lançamento."
+            "value": "Sua licença não inclui este canal."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "La tua licenza non include questo canale di rilascio."
+            "value": "La tua licenza non include questo canale."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "お持ちのライセンスにはこのリリースチャンネルが含まれていません。"
+            "value": "お持ちのライセンスにはこのチャンネルが含まれていません。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "라이선스에 이 릴리스 채널이 포함되어 있지 않아요."
+            "value": "라이선스에 이 채널이 포함되어 있지 않아요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "你的许可证不包含此发布渠道。"
+            "value": "你的许可证不包含此渠道。"
           }
         }
       }
@@ -36110,55 +36230,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your license has expired. Connect to the internet or renew it to continue."
+            "value": "Connect to the internet or renew your license to continue."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ihre Lizenz ist abgelaufen. Stellen Sie eine Internetverbindung her oder verlängern Sie sie, um fortzufahren."
+            "value": "Stellen Sie eine Internetverbindung her oder verlängern Sie die Lizenz, um fortzufahren."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your license has expired. Connect to the internet or renew it to continue."
+            "value": "Connect to the internet or renew your license to continue."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tu licencia venció. Conéctate a internet o renuévala para continuar."
+            "value": "Conéctate a internet o renueva la licencia para continuar."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sua licença expirou. Conecte-se à internet ou renove-a para continuar."
+            "value": "Conecte-se à internet ou renove a licença para continuar."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "La tua licenza è scaduta. Connettiti a internet o rinnovala per continuare."
+            "value": "Connettiti a internet o rinnova la licenza per continuare."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ライセンスの期限が切れています。続けるには、インターネットに接続するか、ライセンスを更新してください。"
+            "value": "続けるには、インターネットに接続するか、ライセンスを更新してください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "라이선스가 만료됐어요. 계속하려면 인터넷에 연결하거나 라이선스를 갱신하세요."
+            "value": "계속하려면 인터넷에 연결하거나 라이선스를 갱신하세요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "你的许可证已过期。请连接互联网或续订以继续使用。"
+            "value": "请连接互联网或续订许可证以继续使用。"
           }
         }
       }
@@ -37190,55 +37310,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ signs out of %2$@ and %3$@ takes its seat. %1$@ can sign in again later if a seat is free. We'll email you about it."
+            "value": "%1$@ signs out of %2$@ and %3$@ takes its seat. We'll email you about it."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ wird von %2$@ abgemeldet und %3$@ übernimmt den Platz. %1$@ kann sich später wieder anmelden, wenn ein Platz frei ist. Wir informieren Sie per E-Mail darüber."
+            "value": "%1$@ wird von %2$@ abgemeldet und %3$@ übernimmt den Platz. Wir informieren Sie per E-Mail darüber."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ sera déconnecté de %2$@ et %3$@ prendra sa place. %1$@ pourra se reconnecter plus tard si une place se libère. Nous vous enverrons un e-mail à ce sujet."
+            "value": "%1$@ sera déconnecté de %2$@ et %3$@ prendra sa place. Nous vous enverrons un e-mail à ce sujet."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Se cerrará la sesión de %2$@ en %1$@ y %3$@ ocupará su plaza. %1$@ podrá volver a iniciar sesión más tarde si hay una plaza libre. Te lo notificaremos por correo."
+            "value": "Se cerrará la sesión de %2$@ en %1$@ y %3$@ ocupará su plaza. Te lo notificaremos por correo."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ sai de %2$@ e %3$@ ocupa a vaga. %1$@ poderá entrar novamente depois, se houver uma vaga livre. Enviaremos um e-mail sobre isso."
+            "value": "%1$@ sai de %2$@ e %3$@ ocupa a vaga. Enviaremos um e-mail sobre isso."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ esce da %2$@ e %3$@ ne prende il posto. %1$@ potrà accedere di nuovo in seguito se si libera un posto. Ti invieremo un'email al riguardo."
+            "value": "%1$@ esce da %2$@ e %3$@ ne prende il posto. Ti invieremo un'email al riguardo."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@は%2$@からサインアウトし、%3$@がその枠を使用します。枠が空けば、%1$@は後で再びサインインできます。この件についてはメールでお知らせします。"
+            "value": "%1$@は%2$@からサインアウトし、%3$@がその枠を使用します。この件についてはメールでお知らせします。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@은(는) %2$@에서 로그아웃되고 %3$@이(가) 그 자리를 사용해요. 자리가 비면 %1$@에서 나중에 다시 로그인할 수 있어요. 이 내용은 이메일로 알려 드려요."
+            "value": "%1$@은(는) %2$@에서 로그아웃되고 %3$@이(가) 그 자리를 사용해요. 이 내용은 이메일로 알려 드려요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@将退出登录%2$@，%3$@将占用它的席位。如有空余席位，%1$@之后可以重新登录。我们会通过电子邮件通知你。"
+            "value": "%1$@将退出登录%2$@，%3$@将占用它的席位。我们会通过电子邮件通知你。"
           }
         }
       }
@@ -38864,55 +38984,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ · last seen %2$@"
+            "value": "%1$@ · last used %2$@"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ · zuletzt aktiv %2$@"
+            "value": "%1$@ · zuletzt verwendet %2$@"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ · dernière activité %2$@"
+            "value": "%1$@ · dernière utilisation %2$@"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ · visto por última vez %2$@"
+            "value": "%1$@ · usado por última vez %2$@"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ · visto por último %2$@"
+            "value": "%1$@ · usado por último %2$@"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ · visto l'ultima volta %2$@"
+            "value": "%1$@ · usato l'ultima volta %2$@"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ · 最終確認：%2$@"
+            "value": "%1$@ · 最終使用：%2$@"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ · 마지막 접속 %2$@"
+            "value": "%1$@ · 마지막 사용 %2$@"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ · 上次在线：%2$@"
+            "value": "%1$@ · 上次使用：%2$@"
           }
         }
       }
@@ -39644,7 +39764,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Offline · %#@days@ left to reconnect"
+            "value": "Offline · %#@days@ left"
           },
           "substitutions": {
             "days": {
@@ -39672,7 +39792,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Offline · %#@days@ zum erneuten Verbinden"
+            "value": "Offline · %#@days@"
           },
           "substitutions": {
             "days": {
@@ -39700,7 +39820,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hors ligne · %#@days@ pour vous reconnecter"
+            "value": "Hors ligne · %#@days@"
           },
           "substitutions": {
             "days": {
@@ -39734,7 +39854,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sin conexión · %#@days@ para reconectar"
+            "value": "Sin conexión · %#@days@"
           },
           "substitutions": {
             "days": {
@@ -39768,7 +39888,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Offline · %#@days@ para reconectar"
+            "value": "Offline · %#@days@"
           },
           "substitutions": {
             "days": {
@@ -39802,7 +39922,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Offline · %#@days@ per riconnetterti"
+            "value": "Offline · %#@days@"
           },
           "substitutions": {
             "days": {
@@ -39836,7 +39956,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "オフライン · 再接続まで残り%#@days@"
+            "value": "オフライン · 残り%#@days@"
           },
           "substitutions": {
             "days": {
@@ -39858,7 +39978,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "오프라인 · 다시 연결까지 %#@days@ 남음"
+            "value": "오프라인 · %#@days@ 남음"
           },
           "substitutions": {
             "days": {
@@ -39880,7 +40000,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "离线 · 还剩%#@days@可重新连接"
+            "value": "离线 · 还剩%#@days@"
           },
           "substitutions": {
             "days": {
@@ -39908,55 +40028,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Reconnect by %1$@"
+            "value": "Works offline until %1$@"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Verbinden Sie sich bis %1$@ erneut"
+            "value": "Offline nutzbar bis %1$@"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Reconnectez-vous avant le %1$@"
+            "value": "Utilisable hors ligne jusqu’au %1$@"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Reconecta antes del %1$@"
+            "value": "Funciona sin conexión hasta el %1$@"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Reconecte até %1$@"
+            "value": "Funciona offline até %1$@"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Riconnettiti entro il %1$@"
+            "value": "Funziona offline fino al %1$@"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@までに再接続してください"
+            "value": "%1$@までオフラインで使えます"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@까지 다시 연결하세요"
+            "value": "%1$@까지 오프라인으로 사용할 수 있어요"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "请在%1$@前重新连接"
+            "value": "离线可用至%1$@"
           }
         }
       }
@@ -39968,55 +40088,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Offline · reconnect today to keep using %1$@"
+            "value": "Offline · last day to use %1$@"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Offline · verbinden Sie sich heute erneut, um %1$@ weiter zu verwenden"
+            "value": "Offline · letzter Tag für %1$@"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hors ligne · reconnectez-vous aujourd’hui pour continuer à utiliser %1$@"
+            "value": "Hors ligne · dernier jour pour utiliser %1$@"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sin conexión · reconecta hoy para seguir usando %1$@"
+            "value": "Sin conexión · último día para usar %1$@"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Offline · reconecte hoje para continuar usando %1$@"
+            "value": "Offline · último dia para usar %1$@"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Offline · riconnettiti oggi per continuare a usare %1$@"
+            "value": "Offline · ultimo giorno per usare %1$@"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "オフライン · %1$@を引き続き使うには今日中に再接続してください"
+            "value": "オフライン · %1$@を使えるのは今日まで"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "오프라인 · %1$@을(를) 계속 사용하려면 오늘 다시 연결하세요"
+            "value": "오프라인 · 오늘까지 %1$@을(를) 사용할 수 있어요"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "离线 · 请在今天重新连接以继续使用%1$@"
+            "value": "离线 · 今天是使用%1$@的最后一天"
           }
         }
       }
@@ -45632,55 +45752,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ sign-in didn't finish. Try another way."
+            "value": "%1$@ sign-in didn't finish. Try again."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Die Anmeldung mit %1$@ wurde nicht abgeschlossen. Versuchen Sie es auf andere Weise."
+            "value": "Die Anmeldung mit %1$@ wurde nicht abgeschlossen. Versuchen Sie es erneut."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "La connexion avec %1$@ n’a pas abouti. Essayez un autre moyen."
+            "value": "La connexion avec %1$@ n’a pas abouti. Réessayez."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El inicio de sesión con %1$@ no terminó. Prueba de otra forma."
+            "value": "El inicio de sesión con %1$@ no terminó. Inténtalo de nuevo."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "O acesso com %1$@ não foi concluído. Tente outra forma."
+            "value": "O acesso com %1$@ não foi concluído. Tente novamente."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "L'accesso con %1$@ non è stato completato. Prova in un altro modo."
+            "value": "L'accesso con %1$@ non è stato completato. Riprova."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@でのサインインが完了しませんでした。別の方法をお試しください。"
+            "value": "%1$@でのサインインが完了しませんでした。もう一度お試しください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ 로그인을 완료하지 못했어요. 다른 방법을 사용해 보세요."
+            "value": "%1$@ 로그인을 완료하지 못했어요. 다시 시도해 주세요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@登录未完成。请换一种方式。"
+            "value": "%1$@登录未完成。请重试。"
           }
         }
       }
@@ -46124,55 +46244,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Scan the QR code with your phone, or enter this code at the address below."
+            "value": "Scan the QR code with your phone, or go to this address and enter the code below."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Scannen Sie den QR-Code mit Ihrem Telefon oder geben Sie diesen Code unter der Adresse unten ein."
+            "value": "Scannen Sie den QR-Code mit Ihrem Telefon oder rufen Sie diese Adresse auf und geben Sie unten den Code ein."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Scannez le code QR avec votre téléphone, ou saisissez ce code à l’adresse ci-dessous."
+            "value": "Scannez le code QR avec votre téléphone, ou rendez-vous à cette adresse et saisissez le code ci-dessous."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Escanea el código QR con tu teléfono o introduce este código en la dirección de abajo."
+            "value": "Escanea el código QR con tu teléfono o ve a esta dirección e introduce el código de abajo."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Escaneie o QR code com o celular ou digite este código no endereço abaixo."
+            "value": "Escaneie o QR code com o celular ou acesse este endereço e digite o código abaixo."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Inquadra il codice QR con il telefono, oppure inserisci questo codice all'indirizzo qui sotto."
+            "value": "Inquadra il codice QR con il telefono, oppure vai a questo indirizzo e inserisci il codice qui sotto."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "スマートフォンでQRコードを読み取るか、下のアドレスでこのコードを入力してください。"
+            "value": "スマートフォンでQRコードを読み取るか、このアドレスにアクセスして下のコードを入力してください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "휴대전화로 QR 코드를 스캔하거나 아래 주소에서 이 코드를 입력하세요."
+            "value": "휴대전화로 QR 코드를 스캔하거나, 이 주소로 이동해 아래 코드를 입력하세요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "用手机扫描二维码，或在下方地址输入此代码。"
+            "value": "用手机扫描二维码，或访问此地址并输入下方代码。"
           }
         }
       }
@@ -59336,7 +59456,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign-in was cancelled. Get a new code"
+            "value": "Sign-in was canceled. Get a new code"
           }
         },
         "de": {
@@ -69068,55 +69188,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ signs out of %2$@ and %3$@ takes its seat. %1$@ can sign in again later if a seat is free. We'll email you about it."
+            "value": "%1$@ signs out of %2$@ and %3$@ takes its seat. We'll email you about it."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ wird von %2$@ abgemeldet und %3$@ übernimmt den Platz. %1$@ kann sich später wieder anmelden, wenn ein Platz frei ist. Wir informieren Sie per E-Mail darüber."
+            "value": "%1$@ wird von %2$@ abgemeldet und %3$@ übernimmt den Platz. Wir informieren Sie per E-Mail darüber."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ sera déconnecté de %2$@ et %3$@ prendra sa place. %1$@ pourra se reconnecter plus tard si une place se libère. Nous vous enverrons un e-mail à ce sujet."
+            "value": "%1$@ sera déconnecté de %2$@ et %3$@ prendra sa place. Nous vous enverrons un e-mail à ce sujet."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Se cerrará la sesión de %2$@ en %1$@ y %3$@ ocupará su plaza. %1$@ podrá volver a iniciar sesión más tarde si hay una plaza libre. Te lo notificaremos por correo."
+            "value": "Se cerrará la sesión de %2$@ en %1$@ y %3$@ ocupará su plaza. Te lo notificaremos por correo."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ sai de %2$@ e %3$@ ocupa a vaga. %1$@ poderá entrar novamente depois, se houver uma vaga livre. Enviaremos um e-mail sobre isso."
+            "value": "%1$@ sai de %2$@ e %3$@ ocupa a vaga. Enviaremos um e-mail sobre isso."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ esce da %2$@ e %3$@ ne prende il posto. %1$@ potrà accedere di nuovo in seguito se si libera un posto. Ti invieremo un'email al riguardo."
+            "value": "%1$@ esce da %2$@ e %3$@ ne prende il posto. Ti invieremo un'email al riguardo."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@は%2$@からサインアウトし、%3$@がその枠を使用します。枠が空けば、%1$@は後で再びサインインできます。この件についてはメールでお知らせします。"
+            "value": "%1$@は%2$@からサインアウトし、%3$@がその枠を使用します。この件についてはメールでお知らせします。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@은(는) %2$@에서 로그아웃되고 %3$@이(가) 그 자리를 사용해요. 자리가 비면 %1$@에서 나중에 다시 로그인할 수 있어요. 이 내용은 이메일로 알려 드려요."
+            "value": "%1$@은(는) %2$@에서 로그아웃되고 %3$@이(가) 그 자리를 사용해요. 이 내용은 이메일로 알려 드려요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@将退出登录%2$@，%3$@将占用它的席位。如有空余席位，%1$@之后可以重新登录。我们会通过电子邮件通知你。"
+            "value": "%1$@将退出登录%2$@，%3$@将占用它的席位。我们会通过电子邮件通知你。"
           }
         }
       }
@@ -70760,7 +70880,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign-in was cancelled in %1$@. Start again from %1$@."
+            "value": "Sign-in was canceled in %1$@. Start again from %1$@."
           }
         },
         "de": {

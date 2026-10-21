@@ -909,10 +909,10 @@
           "copy": ["cloudSync.offline"]
         },
         "conflict": {
-          "copy": ["cloudSync.conflict"]
+          "copy": ["cloudSync.conflict", "common.review"]
         },
         "error": {
-          "copy": ["cloudSync.error", "cloudSync.signIn"]
+          "copy": ["cloudSync.error", "cloudSync.signedOut", "cloudSync.signIn"]
         }
       }
     },

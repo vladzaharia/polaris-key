@@ -61,7 +61,7 @@ COPY_CODES: Mapping[str, CopyEntry] = MappingProxyType(
         "license_expired": CopyEntry("License expired", "This license has expired. Renew it to continue."),
         "not_entitled": CopyEntry("Not included", "Your license doesn't include this."),
         "version_blocked": CopyEntry("Update required", "This version can't be used with your license. Update the app to continue."),
-        "channel_not_allowed": CopyEntry("Channel not included", "Your license doesn't include this release channel."),
+        "channel_not_allowed": CopyEntry("Channel not included", "Your license doesn't include this channel."),
         "hardware_mismatch": CopyEntry("Device changed", "This device's hardware changed. Activate again to use your license here."),
         "fingerprint_required": CopyEntry("Device check failed", "This license needs a hardware fingerprint, which couldn't be read on this device."),
         "enroll_disabled": CopyEntry("No free license", "This app doesn't offer a free license. Enter a license key or sign in."),
@@ -140,7 +140,7 @@ COPY_CODES: Mapping[str, CopyEntry] = MappingProxyType(
         "bad_response": CopyEntry("Unexpected answer", "The service sent an answer the app couldn't use. Try again."),
         "network-error": CopyEntry("Can't connect", "Can't reach Polaris Locker. Check your connection and try again."),
         "server-error": CopyEntry("Service problem", "The service had a problem. Try again in a few minutes."),
-        "cancelled": CopyEntry("Sign-in cancelled", "Sign-in was cancelled."),
+        "cancelled": CopyEntry("Sign-in canceled", "Sign-in was canceled."),
         "sign-in-expired": CopyEntry("Code expired", "The code expired before sign-in finished. Start again."),
         "sign-in-denied": CopyEntry("Sign-in declined", "Sign-in was declined. Start again."),
         "sign-in-unavailable": CopyEntry("Sign-in unavailable", "Sign-in isn't available right now. Try again in a few minutes."),
@@ -221,12 +221,12 @@ COPY_GATE: Mapping[str, CopyEntry] = MappingProxyType(
     {
         "ok": CopyEntry("License active", "Your license is active."),
         "grace": CopyEntry("Offline grace", "The licensing service can't be reached. You can keep using the app until the grace period ends."),
-        "expired": CopyEntry("License expired", "Your license has expired. Connect to the internet or renew it to continue."),
+        "expired": CopyEntry("License expired", "Connect to the internet or renew your license to continue."),
         "revoked": CopyEntry("Signed out", "This device was signed out. Sign in or activate again to continue."),
         "needs-activation": CopyEntry("Activate", "Enter a license key or sign in to continue."),
         "version-too-old": CopyEntry("Update required", "This version is no longer supported. Update the app to continue."),
         "version-too-new": CopyEntry("Not available on this license", "This build is newer than your license allows."),
-        "channel-not-entitled": CopyEntry("Channel not included", "Your license doesn't include this release channel."),
+        "channel-not-entitled": CopyEntry("Channel not included", "Your license doesn't include this channel."),
         "not-applicable": CopyEntry("No license needed", "This app doesn't need a license."),
     }
 )

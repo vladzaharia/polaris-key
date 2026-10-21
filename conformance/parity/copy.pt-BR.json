@@ -95,7 +95,7 @@
     },
     "channel_not_allowed": {
       "title": "Canal não incluído",
-      "message": "Sua licença não inclui este canal de lançamento."
+      "message": "Sua licença não inclui este canal."
     },
     "hardware_mismatch": {
       "title": "Dispositivo alterado",
@@ -158,8 +158,8 @@
       "message": "O app enviou uma solicitação que não conseguimos ler. Tente de novo."
     },
     "invalid_client": {
-      "title": "App não reconhecido",
-      "message": "Este app não está configurado para login. Fale com o desenvolvedor."
+      "title": "Não foi possível concluir o login",
+      "message": "O login deste app não está configurado corretamente, então foi interrompido aqui para proteger sua conta. Avise o desenvolvedor."
     },
     "invalid_grant": {
       "title": "Login não é mais válido",
@@ -174,8 +174,8 @@
       "message": "O app pediu um acesso que este login não oferece. Fale com o desenvolvedor."
     },
     "redirect_uri_mismatch": {
-      "title": "Endereço de retorno não permitido",
-      "message": "O endereço de retorno deste app não está registrado, então não redirecionamos você. Fale com o desenvolvedor."
+      "title": "O login não consegue voltar ao app",
+      "message": "O login deste app não está configurado corretamente, então foi interrompido aqui para proteger sua conta. Avise o desenvolvedor."
     },
     "license_choice_required": {
       "title": "Escolha uma licença",
@@ -709,7 +709,7 @@
     },
     "expired": {
       "title": "Licença expirada",
-      "message": "Sua licença expirou. Conecte-se à internet ou renove-a para continuar."
+      "message": "Conecte-se à internet ou renove a licença para continuar."
     },
     "revoked": {
       "title": "Desconectado",
@@ -729,7 +729,7 @@
     },
     "channel-not-entitled": {
       "title": "Canal não incluído",
-      "message": "Sua licença não inclui este canal de lançamento."
+      "message": "Sua licença não inclui este canal."
     },
     "not-applicable": {
       "title": "Nenhuma licença necessária",

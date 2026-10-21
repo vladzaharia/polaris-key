@@ -36,6 +36,8 @@
     <string name="common_copy">복사</string>
     <!-- Confirmation shown briefly after something is copied to the clipboard. -->
     <string name="common_copied">복사됨</string>
+    <!-- Shared verb used across the kit's screens. Opens the changes that need a decision, like a sync conflict. Shown only when the host handles it. -->
+    <string name="common_review">검토</string>
     <!-- Shared verb used across the kit's screens. Pastes from the clipboard into a field. -->
     <string name="common_paste">붙여넣기</string>
     <!-- Busy label on a button or screen while an action runs. -->
@@ -253,13 +255,13 @@
     <!-- SignIn: shown when the build enables no sign-in method. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signIn_noMethods">%1$s에서 사용할 수 있는 로그인 방법이 없어요. 대신 라이선스 키를 사용하세요.</string>
     <!-- SignIn: inline error under the method that failed. Arguments: {method} = a sign-in method's name (Apple, Google, passkey…). Arguments: 1=method. -->
-    <string name="signIn_methodError">%1$s 로그인을 완료하지 못했어요. 다른 방법을 사용해 보세요.</string>
+    <string name="signIn_methodError">%1$s 로그인을 완료하지 못했어요. 다시 시도해 주세요.</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. -->
     <string name="signInHandoff_starting">로그인 코드를 받는 중…</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. TV and console layout. Arguments: {url} = a web address, shown as is. Arguments: 1=url. -->
     <string name="signInHandoff_scan">휴대폰으로 코드를 스캔하거나 %1$s에 접속해 이 코드를 입력하세요.</string>
     <!-- SignInHandoff on a TV: the QR code sits beside it and the web address follows on its own line, so the sentence does not repeat it. -->
-    <string name="signInHandoff_scanTv">휴대전화로 QR 코드를 스캔하거나 아래 주소에서 이 코드를 입력하세요.</string>
+    <string name="signInHandoff_scanTv">휴대전화로 QR 코드를 스캔하거나, 이 주소로 이동해 아래 코드를 입력하세요.</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. Confirmation after Copy link. -->
     <string name="signInHandoff_linkCopied">링크 복사됨</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. The hosted approval page ends with a “Sign in on {device}” button, next to Deny; the label stays in English. Arguments: {device} = this device's friendly name. Arguments: 1=device. -->
@@ -326,7 +328,7 @@
     <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Confirm block under the selected device. On macOS the kit wraps {device} in curly quotes. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
     <string name="deviceLimit_confirmTitle">%1$s을(를) 교체할까요?</string>
     <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Confirm block body. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”). Arguments: 1=device, 2=product, 3=thisDevice. -->
-    <string name="deviceLimit_consequence">%1$s은(는) %2$s에서 로그아웃되고 %3$s이(가) 그 자리를 사용해요. 자리가 비면 %1$s에서 나중에 다시 로그인할 수 있어요. 이 내용은 이메일로 알려 드려요.</string>
+    <string name="deviceLimit_consequence">%1$s은(는) %2$s에서 로그아웃되고 %3$s이(가) 그 자리를 사용해요. 이 내용은 이메일로 알려 드려요.</string>
     <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Primary button. -->
     <string name="deviceLimit_primary">교체하고 계속</string>
     <string name="deviceLimit_primary__macos">교체하고 계속</string>
@@ -348,7 +350,7 @@
     <!-- Devices: the list of devices using the license. -->
     <string name="devices_lede">이 라이선스를 사용하는 기기예요.</string>
     <!-- Devices: the list of devices using the license. Second line of a device row. Arguments: {platform} = the device's platform name (macOS, Windows, iPhone…); {when} = a relative time already formatted by the platform (“2 days ago”). Arguments: 1=platform, 2=when. -->
-    <string name="devices_meta">%1$s · 마지막 접속 %2$s</string>
+    <string name="devices_meta">%1$s · 마지막 사용 %2$s</string>
     <!-- Devices: the list of devices using the license. Arguments: {count} = a number of items. Arguments: 1=count. -->
     <plurals name="devices_count">
         <item quantity="other">기기 %1$d대</item>
@@ -505,12 +507,12 @@
     <string name="status_contact">%1$s에 문의</string>
     <!-- GraceBanner: the product works offline for a limited time. Arguments: {days} = a number of days. Arguments: 1=days. -->
     <plurals name="grace_daysLeft">
-        <item quantity="other">오프라인 · 다시 연결까지 %1$d일 남음</item>
+        <item quantity="other">오프라인 · %1$d일 남음</item>
     </plurals>
     <!-- GraceBanner: the product works offline for a limited time. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="grace_lastDay">오프라인 · %1$s을(를) 계속 사용하려면 오늘 다시 연결하세요</string>
+    <string name="grace_lastDay">오프라인 · 오늘까지 %1$s을(를) 사용할 수 있어요</string>
     <!-- GraceBanner: the product works offline for a limited time. Arguments: {date} = a date already formatted by the platform. Arguments: 1=date. -->
-    <string name="grace_deadline">%1$s까지 다시 연결하세요</string>
+    <string name="grace_deadline">%1$s까지 오프라인으로 사용할 수 있어요</string>
     <!-- AccountAndLicense: the settings pane for the license and account. -->
     <string name="account_title">계정 및 라이선스</string>
     <!-- AccountAndLicense: the settings pane for the license and account. Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
@@ -607,9 +609,11 @@
     <!-- CloudSyncStatus: a small sync status. -->
     <string name="cloudSync_offline">오프라인 · 다시 연결하면 변경 사항이 동기화돼요</string>
     <!-- CloudSyncStatus: a small sync status. -->
-    <string name="cloudSync_conflict">일부 변경 사항이 충돌해요. 확인해 보세요.</string>
+    <string name="cloudSync_conflict">일부 변경 사항이 충돌해요.</string>
     <!-- CloudSyncStatus: a small sync status. -->
     <string name="cloudSync_error">동기화하지 못했어요. 나중에 다시 시도하세요.</string>
+    <!-- CloudSyncStatus: a small sync status. Shown instead of the error line when nobody is signed in, with Sign in to sync beside it. -->
+    <string name="cloudSync_signedOut">로그아웃된 상태예요.</string>
     <!-- CloudSyncStatus: a small sync status. Cloud Sync needs an account. -->
     <string name="cloudSync_signIn">로그인하여 동기화</string>
     <string name="cloudSync_signIn__macos">로그인하여 동기화</string>
@@ -628,7 +632,7 @@
     <!-- ChannelPicker: the release channel choice. -->
     <string name="channel_title">릴리스 채널</string>
     <!-- ChannelPicker: the store fixes the channel. Arguments: {store} = a store's name (App Store, Google Play, Steam). Arguments: 1=store. -->
-    <string name="channel_locked">%1$s에서 릴리스 채널을 설정해요.</string>
+    <string name="channel_locked">%1$s에서 채널을 설정해요.</string>
     <!-- Toast action. -->
     <string name="toast_undo">실행 취소</string>
     <!-- Toast: an update is available. Arguments: {product} = the product's name from ProductIdentity (never translated); {version} = a version string such as 2.4.1. Arguments: 1=product, 2=version. -->
@@ -883,7 +887,7 @@
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
     <string name="signin_replace_title">%1$s을(를) 교체할까요?</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”). Arguments: 1=device, 2=product, 3=thisDevice. -->
-    <string name="signin_replace_consequence">%1$s은(는) %2$s에서 로그아웃되고 %3$s이(가) 그 자리를 사용해요. 자리가 비면 %1$s에서 나중에 다시 로그인할 수 있어요. 이 내용은 이메일로 알려 드려요.</string>
+    <string name="signin_replace_consequence">%1$s은(는) %2$s에서 로그아웃되고 %3$s이(가) 그 자리를 사용해요. 이 내용은 이메일로 알려 드려요.</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
     <string name="signin_replace_inUse">%1$s에서 지금 사용 중이에요.</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
@@ -1877,7 +1881,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_channel_not_allowed_title">포함되지 않은 채널</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_channel_not_allowed_message">라이선스에 이 릴리스 채널이 포함되어 있지 않아요.</string>
+    <string name="core_codes_channel_not_allowed_message">라이선스에 이 채널이 포함되어 있지 않아요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_hardware_mismatch_title">기기 변경됨</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1939,9 +1943,9 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_request_message">앱이 읽을 수 없는 요청을 보냈습니다. 다시 시도하세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_client_title">앱을 인식할 수 없습니다</string>
+    <string name="core_codes_invalid_client_title">로그인을 완료할 수 없어요</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_client_message">이 앱은 로그인용으로 설정되지 않았습니다. 개발자에게 문의하세요.</string>
+    <string name="core_codes_invalid_client_message">이 앱의 로그인이 올바르게 설정되지 않아 계정을 보호하기 위해 여기서 중단했어요. 개발자에게 알려 주세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_grant_title">로그인이 더 이상 유효하지 않습니다</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1955,9 +1959,9 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_scope_message">앱이 이 로그인에서 제공하지 않는 액세스를 요청했습니다. 개발자에게 문의하세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_redirect_uri_mismatch_title">돌아갈 주소가 허용되지 않습니다</string>
+    <string name="core_codes_redirect_uri_mismatch_title">로그인 후 앱으로 돌아갈 수 없어요</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_redirect_uri_mismatch_message">이 앱의 돌아갈 주소가 등록되지 않아 이동하지 않았습니다. 개발자에게 문의하세요.</string>
+    <string name="core_codes_redirect_uri_mismatch_message">이 앱의 로그인이 올바르게 설정되지 않아 계정을 보호하기 위해 여기서 중단했어요. 개발자에게 알려 주세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_choice_required_title">라이선스 선택</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2489,7 +2493,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
     <string name="core_gate_expired_title">라이선스 만료됨</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
-    <string name="core_gate_expired_message">라이선스가 만료됐어요. 계속하려면 인터넷에 연결하거나 라이선스를 갱신하세요.</string>
+    <string name="core_gate_expired_message">계속하려면 인터넷에 연결하거나 라이선스를 갱신하세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
     <string name="core_gate_revoked_title">로그아웃됨</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
@@ -2509,7 +2513,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
     <string name="core_gate_channel_not_entitled_title">포함되지 않은 채널</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
-    <string name="core_gate_channel_not_entitled_message">라이선스에 이 릴리스 채널이 포함되어 있지 않아요.</string>
+    <string name="core_gate_channel_not_entitled_message">라이선스에 이 채널이 포함되어 있지 않아요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
     <string name="core_gate_not_applicable_title">라이선스 필요 없음</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->

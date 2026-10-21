@@ -82,6 +82,11 @@ msgstr "복사"
 msgid "common.copied"
 msgstr "복사됨"
 
+#. Review
+#. Shared verb used across the kit's screens. Opens the changes that need a decision, like a sync conflict. Shown only when the host handles it.
+msgid "common.review"
+msgstr "검토"
+
 #. Paste
 #. Shared verb used across the kit's screens. Pastes from the clipboard into a field.
 msgid "common.paste"
@@ -696,10 +701,10 @@ msgstr "{product}에 로그인"
 msgid "signIn.noMethods"
 msgstr "{product}에서 사용할 수 있는 로그인 방법이 없어요. 대신 라이선스 키를 사용하세요."
 
-#. {method} sign-in didn't finish. Try another way.
+#. {method} sign-in didn't finish. Try again.
 #. SignIn: inline error under the method that failed. Arguments: {method} = a sign-in method's name (Apple, Google, passkey…).
 msgid "signIn.methodError"
-msgstr "{method} 로그인을 완료하지 못했어요. 다른 방법을 사용해 보세요."
+msgstr "{method} 로그인을 완료하지 못했어요. 다시 시도해 주세요."
 
 #. Getting a sign-in code…
 #. SignInHandoff: sign-in continues on another device or in the browser.
@@ -711,10 +716,10 @@ msgstr "로그인 코드를 받는 중…"
 msgid "signInHandoff.scan"
 msgstr "휴대폰으로 코드를 스캔하거나 {url}에 접속해 이 코드를 입력하세요."
 
-#. Scan the QR code with your phone, or enter this code at the address below.
+#. Scan the QR code with your phone, or go to this address and enter the code below.
 #. SignInHandoff on a TV: the QR code sits beside it and the web address follows on its own line, so the sentence does not repeat it.
 msgid "signInHandoff.scanTv"
-msgstr "휴대전화로 QR 코드를 스캔하거나 아래 주소에서 이 코드를 입력하세요."
+msgstr "휴대전화로 QR 코드를 스캔하거나, 이 주소로 이동해 아래 코드를 입력하세요."
 
 #. Link copied
 #. SignInHandoff: sign-in continues on another device or in the browser. Confirmation after Copy link.
@@ -908,10 +913,10 @@ msgstr "이 TV에서 사용하려면 기기 하나를 교체하세요. 나중에
 msgid "deviceLimit.confirmTitle"
 msgstr "{device}을(를) 교체할까요?"
 
-#. {device} signs out of {product} and {thisDevice} takes its seat. {device} can sign in again later if a seat is free. We'll email you about it.
+#. {device} signs out of {product} and {thisDevice} takes its seat. We'll email you about it.
 #. DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Confirm block body. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”).
 msgid "deviceLimit.consequence"
-msgstr "{device}은(는) {product}에서 로그아웃되고 {thisDevice}이(가) 그 자리를 사용해요. 자리가 비면 {device}에서 나중에 다시 로그인할 수 있어요. 이 내용은 이메일로 알려 드려요."
+msgstr "{device}은(는) {product}에서 로그아웃되고 {thisDevice}이(가) 그 자리를 사용해요. 이 내용은 이메일로 알려 드려요."
 
 #. Replace and continue
 #. DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Primary button.
@@ -968,10 +973,10 @@ msgstr "내 기기"
 msgid "devices.lede"
 msgstr "이 라이선스를 사용하는 기기예요."
 
-#. {platform} · last seen {when}
+#. {platform} · last used {when}
 #. Devices: the list of devices using the license. Second line of a device row. Arguments: {platform} = the device's platform name (macOS, Windows, iPhone…); {when} = a relative time already formatted by the platform (“2 days ago”).
 msgid "devices.meta"
-msgstr "{platform} · 마지막 접속 {when}"
+msgstr "{platform} · 마지막 사용 {when}"
 
 #. {count, plural, one {# device} other {# devices}}
 #. Devices: the list of devices using the license. Arguments: {count} = a number of items.
@@ -1385,22 +1390,22 @@ msgstr "허용 버전: {max} 이하"
 msgid "status.contact"
 msgstr "{developer}에 문의"
 
-#. Offline · {days, plural, one {# day} other {# days}} left to reconnect
+#. Offline · {days, plural, one {# day} other {# days}} left
 #. GraceBanner: the product works offline for a limited time. Arguments: {days} = a number of days.
 #. Plural on {days}.
 msgid "grace.daysLeft"
 msgid_plural "grace.daysLeft"
-msgstr[0] "오프라인 · 다시 연결까지 {days}일 남음"
+msgstr[0] "오프라인 · {days}일 남음"
 
-#. Offline · reconnect today to keep using {product}
+#. Offline · last day to use {product}
 #. GraceBanner: the product works offline for a limited time. Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "grace.lastDay"
-msgstr "오프라인 · {product}을(를) 계속 사용하려면 오늘 다시 연결하세요"
+msgstr "오프라인 · 오늘까지 {product}을(를) 사용할 수 있어요"
 
-#. Reconnect by {date}
+#. Works offline until {date}
 #. GraceBanner: the product works offline for a limited time. Arguments: {date} = a date already formatted by the platform.
 msgid "grace.deadline"
-msgstr "{date}까지 다시 연결하세요"
+msgstr "{date}까지 오프라인으로 사용할 수 있어요"
 
 #. Account and license
 #. AccountAndLicense: the settings pane for the license and account.
@@ -1652,15 +1657,20 @@ msgstr "동기화하는 중…"
 msgid "cloudSync.offline"
 msgstr "오프라인 · 다시 연결하면 변경 사항이 동기화돼요"
 
-#. Some changes conflict. Review them.
+#. Some changes conflict.
 #. CloudSyncStatus: a small sync status.
 msgid "cloudSync.conflict"
-msgstr "일부 변경 사항이 충돌해요. 확인해 보세요."
+msgstr "일부 변경 사항이 충돌해요."
 
 #. Couldn't sync. Try again later.
 #. CloudSyncStatus: a small sync status.
 msgid "cloudSync.error"
 msgstr "동기화하지 못했어요. 나중에 다시 시도하세요."
+
+#. You're signed out.
+#. CloudSyncStatus: a small sync status. Shown instead of the error line when nobody is signed in, with Sign in to sync beside it.
+msgid "cloudSync.signedOut"
+msgstr "로그아웃된 상태예요."
 
 #. Sign in to sync
 #. CloudSyncStatus: a small sync status. Cloud Sync needs an account.
@@ -1712,10 +1722,10 @@ msgstr "진단 정보 복사됨"
 msgid "channel.title"
 msgstr "릴리스 채널"
 
-#. {store} sets the release channel.
+#. {store} sets the channel.
 #. ChannelPicker: the store fixes the channel. Arguments: {store} = a store's name (App Store, Google Play, Steam).
 msgid "channel.locked"
-msgstr "{store}에서 릴리스 채널을 설정해요."
+msgstr "{store}에서 채널을 설정해요."
 
 #. Undo
 #. Toast action.
@@ -2401,10 +2411,10 @@ msgstr "이 브라우저"
 msgid "signin.replace.title"
 msgstr "{device}을(를) 교체할까요?"
 
-#. {device} signs out of {product} and {thisDevice} takes its seat. {device} can sign in again later if a seat is free. We'll email you about it.
+#. {device} signs out of {product} and {thisDevice} takes its seat. We'll email you about it.
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”).
 msgid "signin.replace.consequence"
-msgstr "{device}은(는) {product}에서 로그아웃되고 {thisDevice}이(가) 그 자리를 사용해요. 자리가 비면 {device}에서 나중에 다시 로그인할 수 있어요. 이 내용은 이메일로 알려 드려요."
+msgstr "{device}은(는) {product}에서 로그아웃되고 {thisDevice}이(가) 그 자리를 사용해요. 이 내용은 이메일로 알려 드려요."
 
 #. {device} is in use right now.
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
@@ -2700,7 +2710,7 @@ msgctxt "macos"
 msgid "signin.handoff.again"
 msgstr "브라우저 다시 열기"
 
-#. Sign-in was cancelled. Get a new code
+#. Sign-in was canceled. Get a new code
 #. App waiting while sign-in runs in the browser (SIGN-IN.md §3.17).
 msgid "signin.handoff.cancelled"
 msgstr "로그인이 취소됐어요. 새 코드 받기"
@@ -2840,7 +2850,7 @@ msgstr "{app}(으)로 돌아가 라이선스를 선택하세요. 이 탭은 닫�
 msgid "signin.return.signedInShort"
 msgstr "로그인했어요"
 
-#. Sign-in was cancelled in {app}. Start again from {app}.
+#. Sign-in was canceled in {app}. Start again from {app}.
 #. Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated).
 msgid "signin.return.cancelled"
 msgstr "{app}에서 로그인이 취소됐어요. {app}에서 다시 시작하세요."
@@ -3467,7 +3477,7 @@ msgstr "{device}의 이름을 지웠어요."
 msgid "cli.devices.removed"
 msgstr "{device}을(를) 제거했어요. 자리가 비었어요."
 
-#. Update cancelled.
+#. Update canceled.
 #. Terminal: the person stopped an update download. The title; 'Nothing was installed.' is the body line under it.
 msgid "cli.update.cancelled"
 msgstr "업데이트를 취소했어요."
@@ -4983,10 +4993,10 @@ msgstr "이 버전은 회원님의 라이선스로 사용할 수 없어요. 계�
 msgid "core.codes.channel_not_allowed.title"
 msgstr "포함되지 않은 채널"
 
-#. Your license doesn't include this release channel.
+#. Your license doesn't include this channel.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.channel_not_allowed.message"
-msgstr "라이선스에 이 릴리스 채널이 포함되어 있지 않아요."
+msgstr "라이선스에 이 채널이 포함되어 있지 않아요."
 
 #. Device changed
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5141,12 +5151,12 @@ msgstr "앱이 읽을 수 없는 요청을 보냈습니다. 다시 시도하세�
 #. Sign-in can't finish
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_client.title"
-msgstr "앱을 인식할 수 없습니다"
+msgstr "로그인을 완료할 수 없어요"
 
 #. This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_client.message"
-msgstr "이 앱은 로그인용으로 설정되지 않았습니다. 개발자에게 문의하세요."
+msgstr "이 앱의 로그인이 올바르게 설정되지 않아 계정을 보호하기 위해 여기서 중단했어요. 개발자에게 알려 주세요."
 
 #. Sign-in no longer valid
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5181,12 +5191,12 @@ msgstr "앱이 이 로그인에서 제공하지 않는 액세스를 요청했습
 #. Sign-in can't return to the app
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.redirect_uri_mismatch.title"
-msgstr "돌아갈 주소가 허용되지 않습니다"
+msgstr "로그인 후 앱으로 돌아갈 수 없어요"
 
 #. This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.redirect_uri_mismatch.message"
-msgstr "이 앱의 돌아갈 주소가 등록되지 않아 이동하지 않았습니다. 개발자에게 문의하세요."
+msgstr "이 앱의 로그인이 올바르게 설정되지 않아 계정을 보호하기 위해 여기서 중단했어요. 개발자에게 알려 주세요."
 
 #. Choose a license
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5768,12 +5778,12 @@ msgstr "서비스 문제"
 msgid "core.codes.server-error.message"
 msgstr "서비스에 문제가 발생했어요. 몇 분 후에 다시 시도하세요."
 
-#. Sign-in cancelled
+#. Sign-in canceled
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.cancelled.title"
 msgstr "로그인 취소됨"
 
-#. Sign-in was cancelled.
+#. Sign-in was canceled.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.cancelled.message"
 msgstr "로그인이 취소됐어요."
@@ -6513,10 +6523,10 @@ msgstr "라이선스 서비스에 연결할 수 없어요. 유예 기간이 끝�
 msgid "core.gate.expired.title"
 msgstr "라이선스 만료됨"
 
-#. Your license has expired. Connect to the internet or renew it to continue.
+#. Connect to the internet or renew your license to continue.
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.expired.message"
-msgstr "라이선스가 만료됐어요. 계속하려면 인터넷에 연결하거나 라이선스를 갱신하세요."
+msgstr "계속하려면 인터넷에 연결하거나 라이선스를 갱신하세요."
 
 #. Signed out
 #. Core copy (conformance/parity/copy.en.json, gate).
@@ -6563,10 +6573,10 @@ msgstr "이 빌드는 라이선스에서 허용하는 버전보다 최신이에�
 msgid "core.gate.channel-not-entitled.title"
 msgstr "포함되지 않은 채널"
 
-#. Your license doesn't include this release channel.
+#. Your license doesn't include this channel.
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.channel-not-entitled.message"
-msgstr "라이선스에 이 릴리스 채널이 포함되어 있지 않아요."
+msgstr "라이선스에 이 채널이 포함되어 있지 않아요."
 
 #. No license needed
 #. Core copy (conformance/parity/copy.en.json, gate).

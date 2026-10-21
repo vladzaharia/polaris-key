@@ -71,7 +71,7 @@ public data class PolarisCopy(
     val versionTooNewTitle: String = "Version not yet allowed",
     val versionTooNewBody: String = "This build is newer than your license allows.",
     val channelNotEntitledTitle: String = "Channel not included",
-    val channelNotEntitledBody: String = "Your license doesn't include this release channel.",
+    val channelNotEntitledBody: String = "Your license doesn't include this channel.",
     val versionAllowed: String = "Allowed versions: %1\$s",
     val versionMin: String = "%1\$s or later",
     val versionMax: String = "up to %1\$s",

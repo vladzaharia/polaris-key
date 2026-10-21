@@ -154,7 +154,7 @@ public struct PolarisKitCopy: Sendable, Equatable {
     public var removeConfirm = "Remove this device? It will need to be activated again."
     public var signOutThisDevice = "Sign out of this device"
     public var noDevices = "No devices yet."
-    public var lastSeen = "Last seen"
+    public var lastSeen = "Last used"
 
     // Account.
     public var accountTitle = "Account"
