@@ -293,7 +293,7 @@ What the step does, in order:
 3. **Ask first.** Before uploading anything, the step asks Polaris Key for the release's `seq`,
    the pack's **delivery gate** and the record hashes of the cached releases. If `.pkey/release`
    asserts an `entitlement` the gate does not have, it stops: an operator gates a pack under
-   Distribution → Access first. Otherwise every object is uploaded under the gate and the gate is
+   Ship builds → Access first. Otherwise every object is uploaded under the gate and the gate is
    signed into the record.
 4. **Delta bases** come from your own cache: `out` keeps each release's record and payloads, and
    `bases` reads them back. A cached release counts only when its record's SHA-256 is the one

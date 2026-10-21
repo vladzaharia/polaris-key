@@ -136,9 +136,9 @@ the four modes.
 
 ## The console
 
-Metadata access, the compatibility window and the artifact policy live under **Update → Feed**
+Metadata access, the compatibility window and the artifact policy live under **Ship builds → Feed**
 in the console, beside the public feed endpoints; artifact access is Distribution's delivery
-access, shown there read-only and set in **Distribution → Access**. They are read in the same
+access, shown there read-only and set in **Ship builds → Access**. They are read in the same
 breath because every one of them is intersected on the same eligibility decision. The compatibility window used to sit in the general product
 settings form, beside the display name; it moved here because it means nothing on its own
 — it is only ever read together with the access modes it is intersected against. There is

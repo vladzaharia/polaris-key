@@ -195,7 +195,7 @@ in Core, in their own sealed table, and Distribution is the only service that ca
 (`core/outletCredentials.ts`, held to that by a test); every open is audited. The JWTs and access
 tokens a connector mints from them (`core/outletTokens.ts`) are cached, sealed, and keyed by a
 non-secret version of the credential, so the cache is checked first and a credential is opened
-only when a fresh token is needed. Operators set them in **Distribution → Channel credentials** — see
+only when a fresh token is needed. Operators set them in **Ship builds → Channel credentials** — see
 Channel credentials (platform admins). The first connector is
 the [App Store Connect connector](/docs/features/ship-builds/channels/app-store/), then the
 [Google Play connector](/docs/features/ship-builds/channels/google-play/) and the read-only
@@ -255,7 +255,7 @@ A pause or halt stops offering the release on that channel in the signed release
 app-updater feeds (the Sparkle appcast, `/update/version` and the rest), the storefront feeds
 (AltStore, F-Droid, Scoop) and the public [download page](/docs/help/download/), which list
 the previous release instead. Moving download URLs apply yanks and pins, not holds: to take a
-release off every surface, yank it or pin the release track under **Release → Releases**. See
+release off every surface, yank it or pin the release track under **Ship builds → Releases**. See
 [Rollouts and halts](/docs/features/ship-builds/channels/rollouts/#what-a-halt-reaches).
 
 ## The other Distribution pages
@@ -284,4 +284,4 @@ release off every surface, yank it or pin the release track under **Release → 
   version** cannot be undone, so it asks you to type the app's name exactly as App Store Connect
   shows it; the Worker checks the name against App Store Connect before it releases.
 
-The release × channel readiness also appears on **Release → Compatibility**.
+The release × channel readiness also appears on **Ship builds → Compatibility**.

@@ -74,7 +74,7 @@ You can also publish with the client your developers already use. Each request b
 | `mvn deploy`, Gradle `maven-publish`               | `PUT` each file, then `maven-metadata.xml`    | When `maven-metadata.xml` is uploaded                       |
 | `docker push`, `podman push`, `crane`, `oras`      | The distribution spec's push workflow         | When a version tag is pushed                                |
 
-1. **Console** Open **Distribution → Package feeds → Tokens** and select **New token**. Set **Access** to **Read and publish**, name the feeds, and choose an expiry of 1 to 30 days. Copy the token: it is shown once. A read-only or license-bound token is refused with `403`.
+1. **Console** Open **Ship builds → Package feeds → Tokens** and select **New token**. Set **Access** to **Read and publish**, name the feeds, and choose an expiry of 1 to 30 days. Copy the token: it is shown once. A read-only or license-bound token is refused with `403`.
 2. **CLI** Put the token in `PKEY_PUBLISH_TOKEN` and point your client at the feed. `pkey feeds setup --ecosystem <ecosystem> --owner <slug> --token-env PKEY_PUBLISH_TOKEN` prints the client lines.
 3. **CLI** Publish with your client. For npm, `npm publish`, or `npm publish --tag beta` for the `beta` channel.
 
@@ -92,7 +92,7 @@ A publish that fails after the client was answered (a twine or Maven version, in
 
 ## Check it works
 
-Install the version from the feed with the setup lines from the console's **Setup** tab, or open the package in **Distribution → Package feeds**: **Versions** shows it **Live** with its tags, who published it and how, and its file digests. A new version shows up in index documents within about a minute.
+Install the version from the feed with the setup lines from the console's **Setup** tab, or open the package in **Ship builds → Package feeds**: **Versions** shows it **Live** with its tags, who published it and how, and its file digests. A new version shows up in index documents within about a minute.
 
 ## If it isn't working
 

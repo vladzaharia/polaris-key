@@ -1,13 +1,13 @@
 ---
 title: "Storefronts"
-description: "Distribution → Storefronts: every store's capabilities from its adapter, and the Add to storefronts flow (prerequisites, listing, assets, plan, run, submit and release) that provisions a product onto them, resumably from the ledger."
+description: "Ship builds → Storefronts: every store's capabilities from its adapter, and the Add to storefronts flow (prerequisites, listing, assets, plan, run, submit and release) that provisions a product onto them, resumably from the ledger."
 type: "reference"
 lastReviewed: "2026-10-16"
 sidebar:
   order: 15
 ---
 
-**Distribution → Storefronts** shows every storefront Polaris Key has an adapter for, and
+**Ship builds → Storefronts** shows every storefront Polaris Key has an adapter for, and
 **Add to storefronts** provisions the product onto any of them in one flow. Both are for platform
 admins.
 
@@ -110,7 +110,7 @@ Every image slot of the listing, grouped by store, from what
 
 ## Listing push
 
-**Distribution → Listing → Push** sends a store its listing text and accepted images, outside the
+**Ship builds → Listing → Push** sends a store its listing text and accepted images, outside the
 flow, with a plain confirmation. It never submits for review: Google Play always stages the change
 (it waits until you send it with the flow's typed **Submit**), and the Microsoft Store keeps its
 pending submission uncommitted. A store appears there once its adapter can push a listing.

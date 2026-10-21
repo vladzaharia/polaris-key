@@ -14,7 +14,7 @@ This page continues [App Store](/docs/features/ship-builds/channels/app-store/):
 The Distribute flow takes a build of the pinned app through TestFlight and App Review from the
 console API, under the same `/manage/api/products/<slug>/distribution/connectors/asc/` prefix.
 Uploading the build stays in CI; everything after the upload is here. In the console it is the
-**Distribution → App Store** page ([App Store: Distribute](/docs/features/ship-builds/channels/app-store/)).
+**Ship builds → App Store** page ([App Store: Distribute](/docs/features/ship-builds/channels/app-store/)).
 
 | `GET`                                 | Answers                                                                                                                                                                                                                                                                                                                      |
 | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -97,7 +97,7 @@ and none of the app's in-app purchases has passed review yet, it adds a `firstIn
 ## In-app purchases
 
 The App Store rows of the [commerce bridge](/docs/features/commerce/)'s product map
-can be created in App Store Connect from the console (**Distribution → Commerce**,
+can be created in App Store Connect from the console (**Commerce → In-app purchases**,
 [App Store products](/docs/features/ship-builds/channels/app-store/#app-store-products-in-commerce)) or its API, under the
 same prefix, as
 **non-consumable** in-app purchases of the pinned app. Only a mapped product id can be created,
@@ -144,8 +144,8 @@ refuses them (409 `first_iap_portal`). The review screenshot is added in App Sto
 ## App Store: Distribute and App Store products
 
 Two console pages drive a product's App Store app through the
-[App Store Connect connector](/docs/features/ship-builds/channels/app-store/): **Distribution →
-App Store** takes a build to TestFlight and the App Store, and **Distribution → Commerce** creates
+[App Store Connect connector](/docs/features/ship-builds/channels/app-store/): **Ship builds →
+App Store** takes a build to TestFlight and the App Store, and **Commerce → In-app purchases** creates
 the In-App Purchases the [commerce bridge](/docs/features/commerce/) maps to license
 flags. Both act only on the app the product is pinned to, and both are for platform admins.
 

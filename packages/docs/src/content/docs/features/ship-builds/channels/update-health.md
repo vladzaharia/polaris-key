@@ -87,7 +87,7 @@ per-device records (the event ids it counted) of a device idle for 30 days, are 
 
 ## The funnel
 
-**Distribution → Health** in the console shows, for every rollout, the funnel offered →
+**Ship builds → Health** in the console shows, for every rollout, the funnel offered →
 downloaded → applied → confirmed with each step's conversion, then reverted, pack failed and boot
 rollback as separate bars, in distinct devices, and the revert and boot rollback rates. **Show as
 table** on each funnel gives the numbers. The window is 1, 6, 24 (the default) or 72 hours, up to
@@ -155,7 +155,7 @@ To connect a Sentry organization:
 1. In Sentry, create an **internal integration** with the **Alert Rule Action** and webhooks
    enabled, and set its webhook URL to `https://key.plrs.im/<product>/distribution/hooks/sentry`.
 2. Store its **client secret** as a channel credential of kind `sentry-integration`
-   (**Distribution → Channel credentials**; the Health page links there while Sentry is not
+   (**Ship builds → Channel credentials**; the Health page links there while Sentry is not
    connected). Without one, the hook answers not-found.
 3. Add the integration as an action on an issue alert rule.
 

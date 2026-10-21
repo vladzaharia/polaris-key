@@ -114,7 +114,7 @@ what a payment unlocks or whose purchases are believed. As a platform admin:
 
    `productId` is the App Store product id, the Play product id, or the Steam DLC's app id.
    `flag` must be a name something reads: a `flag` entry of the product's active catalog, or the
-   deliverable's own delivery gate (the license flag set under Distribution → Access, so a pack
+   deliverable's own delivery gate (the license flag set under Ship builds → Access, so a pack
    sold as DLC maps to the flag that gates its download whether or not the catalog declares it).
    Anything else is refused `422` with `fields: ["flag"]`, since a purchase mapped to it would
    grant a name nothing reads: an undeclared name (a typo), a `config` or `secret` key, and any
