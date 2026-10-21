@@ -71,7 +71,7 @@ After install they sit at `node_modules/@polaris-key/manifest/schemas/v1/`. Each
 ## Docs
 
 - [The `.pkey/` manifest](https://key.plrs.im/docs/build/manifest/)
-- [Product manifest](https://key.plrs.im/docs/build/manifest/product/#the-pkey-directory), [catalog entries](https://key.plrs.im/docs/build/manifest/product/#the-catalog-configentry) and [release deliverables](https://key.plrs.im/docs/build/manifest/product/#release-deliverables-deliverablesapp-and-the-artifact-map); [distribution](https://key.plrs.im/docs/build/manifest/distribution/)
+- [Product manifest](https://key.plrs.im/docs/build/manifest/#the-files), [catalog entries](https://key.plrs.im/docs/build/manifest/catalog/#entries) and [release deliverables](https://key.plrs.im/docs/build/manifest/release/#release-deliverables-deliverablesapp-and-the-artifact-map); [distribution](https://key.plrs.im/docs/build/manifest/distribution/)
 - [JSON Schema and editor setup](https://key.plrs.im/docs/build/manifest/json-schema/)
 - [Validation codes](https://key.plrs.im/docs/reference/validation-codes/): every error and warning the validators emit.
 
