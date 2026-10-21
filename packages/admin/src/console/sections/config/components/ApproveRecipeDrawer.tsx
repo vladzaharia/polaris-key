@@ -368,7 +368,7 @@ export function ApproveRecipeDrawer({
                     as an edge-mint signing key in{" "}
                     <Link
                       to={r.keys(slug)}
-                      className="text-accent-fg underline underline-offset-2"
+                      className="py-1 text-accent-fg underline underline-offset-2"
                     >
                       Keys &amp; secrets
                     </Link>

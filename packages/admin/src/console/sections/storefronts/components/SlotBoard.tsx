@@ -156,7 +156,7 @@ export function SlotBoard({
           <code className="font-mono text-xs">.pkey/</code> assets and run{" "}
           <code className="font-mono text-xs">pkey listing assets</code> in CI.{" "}
           <a
-            className="text-accent-fg underline underline-offset-4"
+            className="py-1 text-accent-fg underline underline-offset-4"
             href={docsUrl("storefrontListing")}
             target="_blank"
             rel="noreferrer"

@@ -243,7 +243,7 @@ export function AlertDestinations({
               Your receiver verifies each alert&apos;s{" "}
               <code>webhook-signature</code> header with it, using any{" "}
               <a
-                className="text-accent-fg underline underline-offset-2"
+                className="py-1 text-accent-fg underline underline-offset-2"
                 href="https://www.standardwebhooks.com/"
                 target="_blank"
                 rel="noreferrer"

@@ -291,7 +291,7 @@ export function DevicesPage({
           only.
           <button
             type="button"
-            className="text-accent-fg underline-offset-4 hover:underline"
+            className="py-1 text-accent-fg underline-offset-4 hover:underline"
             onClick={() => setLicense(null)}
           >
             Show all

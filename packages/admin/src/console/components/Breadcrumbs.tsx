@@ -31,7 +31,7 @@ export function Breadcrumbs({ items }: { items: Crumb[] }): React.ReactElement {
               ) : (
                 <Link
                   to={c.to}
-                  className="rounded-xs text-accent-fg underline-offset-4 hover:underline"
+                  className="rounded-xs py-1 text-accent-fg underline-offset-4 hover:underline"
                 >
                   {c.label}
                 </Link>

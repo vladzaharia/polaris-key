@@ -358,7 +358,7 @@ function ChannelsTab({
       </ul>
       <Link
         to={r.channels(slug)}
-        className="text-sm text-accent-fg underline-offset-4 hover:underline"
+        className="text-sm py-1 text-accent-fg underline-offset-4 hover:underline"
       >
         Open Release tracks
       </Link>
@@ -453,7 +453,7 @@ function DistributionTab({
                 to={r.matrix(slug, {
                   cell: `${release.releaseId}:${o.outletId}`,
                 })}
-                className="ms-auto text-xs text-accent-fg underline-offset-4 hover:underline"
+                className="ms-auto text-xs py-1 text-accent-fg underline-offset-4 hover:underline"
               >
                 Open in matrix
               </Link>
@@ -463,7 +463,7 @@ function DistributionTab({
       </ul>
       <Link
         to={r.matrix(slug)}
-        className="text-sm text-accent-fg underline-offset-4 hover:underline"
+        className="text-sm py-1 text-accent-fg underline-offset-4 hover:underline"
       >
         Open the distribution matrix
       </Link>
@@ -737,7 +737,7 @@ function StatusTab({
               <LiveTile label="Previous release">
                 <Link
                   to={r.release(slug, previous.releaseId)}
-                  className="font-mono text-accent-fg underline-offset-4 hover:underline"
+                  className="font-mono py-1 text-accent-fg underline-offset-4 hover:underline"
                 >
                   {previous.version}
                 </Link>

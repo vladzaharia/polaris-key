@@ -1345,7 +1345,7 @@ function AppsTable({
             <div className="space-y-0.5">
               <Link
                 to={r.overview(a.assignedProduct)}
-                className="text-accent-fg underline-offset-4 hover:underline"
+                className="py-1 text-accent-fg underline-offset-4 hover:underline"
               >
                 {names.get(a.assignedProduct) ?? a.assignedProduct}
               </Link>
@@ -1770,7 +1770,7 @@ function OutcomePanel({
             . Check them and re-pin them on the product's{" "}
             <Link
               to={r.keys(res.product)}
-              className="text-accent-fg underline-offset-4 hover:underline"
+              className="py-1 text-accent-fg underline-offset-4 hover:underline"
             >
               keys and secrets
             </Link>

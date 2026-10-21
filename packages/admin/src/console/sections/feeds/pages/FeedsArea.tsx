@@ -455,7 +455,7 @@ function OwnersPanel({
               ) : (
                 <Link
                   to={r.packageFeeds(o.slug)}
-                  className="text-accent-fg underline-offset-4 hover:underline"
+                  className="py-1 text-accent-fg underline-offset-4 hover:underline"
                 >
                   {o.name}
                 </Link>

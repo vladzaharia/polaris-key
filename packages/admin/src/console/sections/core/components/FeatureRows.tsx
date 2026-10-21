@@ -145,7 +145,7 @@ function Status({
           href={STOREFRONT_DOCS}
           target="_blank"
           rel="noreferrer"
-          className="text-accent-fg underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-focus"
+          className="py-1 text-accent-fg underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-focus"
         >
           {text} →
         </a>

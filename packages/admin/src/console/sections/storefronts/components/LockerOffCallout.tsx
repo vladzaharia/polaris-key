@@ -17,7 +17,7 @@ export function LockerOffCallout(): React.ReactElement {
       {canPlatform ? (
         <>
           <Link
-            className="font-medium text-accent-fg underline underline-offset-2"
+            className="py-1 font-medium text-accent-fg underline underline-offset-2"
             to={globalPage("platform-settings", {
               setting: "storefront.polarisKey.enabled",
             })}

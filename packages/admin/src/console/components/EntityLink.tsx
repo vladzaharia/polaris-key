@@ -90,7 +90,7 @@ export function EntityLink({
       to={entityHref(slug, entity)}
       title={title}
       className={cn(
-        "text-accent-fg underline-offset-4 hover:underline",
+        "py-1 text-accent-fg underline-offset-4 hover:underline",
         label === undefined && "font-mono text-xs",
         className,
       )}

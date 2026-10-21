@@ -63,7 +63,7 @@ export function HowChannelsResolve(): React.ReactElement {
           href={docsUrl("releaseChannels")}
           target="_blank"
           rel="noreferrer"
-          className="text-accent-fg underline-offset-4 hover:underline"
+          className="py-1 text-accent-fg underline-offset-4 hover:underline"
         >
           Release tracks in the docs
         </a>
@@ -456,14 +456,14 @@ export function ChannelLane({
       <div className="flex flex-wrap gap-x-4 gap-y-1 border-t border-border pt-2 text-sm">
         <Link
           to={r.compatibility(ctx.slug)}
-          className="text-accent-fg underline-offset-4 hover:underline"
+          className="py-1 text-accent-fg underline-offset-4 hover:underline"
         >
           Compatibility
         </Link>
         {ctx.distributionOn && isApp ? (
           <Link
             to={r.matrix(ctx.slug, { deliverable: c.deliverable })}
-            className="text-accent-fg underline-offset-4 hover:underline"
+            className="py-1 text-accent-fg underline-offset-4 hover:underline"
           >
             Distribution matrix
           </Link>

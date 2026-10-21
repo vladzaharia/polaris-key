@@ -30,7 +30,7 @@ const STORES: readonly { id: CommerceStore; label: string }[] = [
   { id: "steam", label: "Steam" },
 ];
 
-const LINK = "text-accent-fg underline underline-offset-2";
+const LINK = "py-1 text-accent-fg underline underline-offset-2";
 
 /** The house vocabulary for what the server says about a store: no raw reasons. */
 function storefrontState(

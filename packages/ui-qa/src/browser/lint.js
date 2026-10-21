@@ -908,9 +908,13 @@
     )
       return false;
     const role = el.getAttribute("role");
-    // Landmarks and the container of a composite widget (a radio group, a tab list) hold the focus
-    // or the controls; the controls inside are the targets.
-    if (/^(region|group|tabpanel|radiogroup|tablist|toolbar)$/.test(role || ""))
+    // Landmarks, the container of a composite widget (a radio group, a tab list) and a grid's cell
+    // (the roving tab stop) hold the focus; the controls inside are the targets.
+    if (
+      /^(region|group|tabpanel|radiogroup|tablist|toolbar|gridcell)$/.test(
+        role || "",
+      )
+    )
       return true;
     const cs = getComputedStyle(el);
     return (
@@ -961,20 +965,23 @@
       const w = parseFloat(ps.width);
       const h = parseFloat(ps.height);
       if ([x, y, w, h].some(Number.isNaN)) continue;
-      // What an ancestor clips away cannot be pressed: cut the area to the nearest clipping box.
+      // What an ancestor clips away cannot be pressed: cut the area to the hidden or clipped
+      // boxes up to the nearest scroll container (which only moves it into view).
       let x0 = x;
       let y0 = y;
       let x1 = x + w;
       let y1 = y + h;
+      const clips = (v) => v === "hidden" || v === "clip";
       for (let a = cb; a && a !== document.body; a = a.parentElement) {
         const as = getComputedStyle(a);
-        if (as.overflowX === "visible" && as.overflowY === "visible") continue;
+        // Past a scroll container the boxes are in scrolled coordinates: stop.
+        if (/auto|scroll/.test(as.overflowX + as.overflowY)) break;
         const ar = a.getBoundingClientRect();
-        if (as.overflowX !== "visible") {
+        if (clips(as.overflowX)) {
           x0 = Math.max(x0, ar.left);
           x1 = Math.min(x1, ar.right);
         }
-        if (as.overflowY !== "visible") {
+        if (clips(as.overflowY)) {
           y0 = Math.max(y0, ar.top);
           y1 = Math.min(y1, ar.bottom);
         }

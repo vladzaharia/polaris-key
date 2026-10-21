@@ -182,7 +182,7 @@ export function HolderLine({
         batch{" "}
         <Link
           to={r.licenseBatch(slug, l.batchId)}
-          className="font-medium text-accent-fg underline-offset-2 hover:underline"
+          className="py-1 font-medium text-accent-fg underline-offset-2 hover:underline"
         >
           {batch?.label ?? "Open batch"}
         </Link>

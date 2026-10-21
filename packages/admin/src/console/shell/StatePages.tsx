@@ -230,7 +230,7 @@ export function UnknownProductPage({
                   {i > 0 ? ", " : null}
                   <Link
                     to={r.overview(p.slug)}
-                    className="font-mono text-accent-fg underline-offset-4 hover:underline"
+                    className="font-mono py-1 text-accent-fg underline-offset-4 hover:underline"
                   >
                     {p.slug}
                   </Link>

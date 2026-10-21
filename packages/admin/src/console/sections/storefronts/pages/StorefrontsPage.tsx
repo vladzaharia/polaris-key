@@ -418,7 +418,7 @@ function AddFlow({
             <p>{ASIDE[current]}</p>
             <a
               href={docsUrl("storefronts")}
-              className="text-accent-fg underline-offset-4 hover:underline"
+              className="py-1 text-accent-fg underline-offset-4 hover:underline"
             >
               Storefronts in the docs
             </a>

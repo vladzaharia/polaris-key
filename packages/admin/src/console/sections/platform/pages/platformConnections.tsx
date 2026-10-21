@@ -316,7 +316,7 @@ export function ConnectionsPage(): React.ReactElement {
                         <p className="mt-2 text-xs">
                           <a
                             href={RUNBOOK}
-                            className="text-accent-fg underline-offset-4 hover:underline"
+                            className="py-1.5 text-accent-fg underline-offset-4 hover:underline"
                           >
                             Set up the login card: the full runbook
                           </a>
@@ -348,7 +348,7 @@ export function ConnectionsPage(): React.ReactElement {
                 <p className="text-xs">
                   <a
                     href="/docs/operate/platform/runbook/set-up-sign-in-email/"
-                    className="text-accent-fg underline-offset-4 hover:underline"
+                    className="py-1 text-accent-fg underline-offset-4 hover:underline"
                   >
                     Set up sign-in email
                   </a>

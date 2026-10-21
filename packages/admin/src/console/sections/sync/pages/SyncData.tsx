@@ -109,7 +109,7 @@ export function SyncDataPage({ slug }: { slug: string }): React.ReactElement {
         primaryAction={
           <Link
             to={r.services(slug)}
-            className="text-accent-fg underline underline-offset-2"
+            className="py-1 text-accent-fg underline underline-offset-2"
           >
             Open Features
           </Link>
@@ -168,7 +168,7 @@ function SyncDataBody({
             sync.{" "}
             <Link
               to={r.catalog(slug)}
-              className="text-accent-fg underline underline-offset-2"
+              className="py-1 text-accent-fg underline underline-offset-2"
             >
               Open the catalog
             </Link>

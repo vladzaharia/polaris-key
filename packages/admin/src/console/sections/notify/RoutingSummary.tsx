@@ -42,7 +42,7 @@ export function RoutingSummary({
       {platform.length > 0 ? (
         <p>
           <a
-            className="font-medium text-accent-fg underline underline-offset-2"
+            className="py-1 font-medium text-accent-fg underline underline-offset-2"
             href={r.platformSettings()}
           >
             Platform ({platformCount}):

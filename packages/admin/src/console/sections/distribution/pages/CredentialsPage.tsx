@@ -493,7 +493,7 @@ export function CredentialsPage({
             one; otherwise the platform's team key, for the one app assigned to
             this product.{" "}
             <a
-              className="text-accent-fg underline underline-offset-4"
+              className="py-1 text-accent-fg underline underline-offset-4"
               href={docsUrl("storeConnections")}
               target="_blank"
               rel="noreferrer"

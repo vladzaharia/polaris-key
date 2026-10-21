@@ -331,7 +331,7 @@ function PolicySection({
         }}
       >
         <a
-          className="text-sm text-accent-fg underline underline-offset-2"
+          className="py-1 text-sm text-accent-fg underline underline-offset-2"
           href={docsUrl("fingerprintRevert")}
           target="_blank"
           rel="noreferrer"

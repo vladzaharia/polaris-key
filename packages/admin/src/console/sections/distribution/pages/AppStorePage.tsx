@@ -565,7 +565,7 @@ function BuildStep({
           >
             <Link
               to={r.release(ctx.slug, ctx.build.releaseId)}
-              className="font-mono text-xs text-accent-fg underline underline-offset-4"
+              className="py-1 font-mono text-xs text-accent-fg underline underline-offset-4"
             >
               {ctx.build.releaseId}
             </Link>
@@ -1825,7 +1825,7 @@ function StoreState({
       <p className="text-sm">
         <Link
           to={r.commerce(slug)}
-          className="text-accent-fg underline underline-offset-4"
+          className="py-1 text-accent-fg underline underline-offset-4"
         >
           App Store products in Commerce
         </Link>

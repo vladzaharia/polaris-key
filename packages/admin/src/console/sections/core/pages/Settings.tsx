@@ -351,7 +351,7 @@ function SettingsBody({
                   Turn on In-app updates in{" "}
                   <Link
                     to={r.services(slug)}
-                    className="text-accent-fg underline-offset-4 hover:underline"
+                    className="py-1 text-accent-fg underline-offset-4 hover:underline"
                   >
                     Services
                   </Link>{" "}
