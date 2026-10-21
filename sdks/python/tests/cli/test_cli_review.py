@@ -283,3 +283,24 @@ def test_the_key_entry_line_fits_with_its_cursor(columns: int) -> None:
     for raw in (KEY, KEY[:20], "pkey_tidewater_"):
         lines = screens.key_entry(k, raw, parse_key(raw, final=False))
         assert all(cell_len(ln.text.rstrip()) <= columns for ln in lines), (columns, raw)
+
+
+def test_the_update_screen_offers_only_the_verbs_the_host_mounted() -> None:
+    # B-112: the fix rows follow the mount, as the gates do.
+    from polaris_key.ui.core.models import UpdateView
+    from polaris_key.ui.terminal import screens
+
+    from .fixtures import _UPDATE, kit
+    from .golden_support import env
+
+    def shown(mounted):
+        k = kit(env("none", "unicode", 80, "dark"))
+        k.mounted = mounted
+        v = UpdateView("UpdatePrompt", "available", **{**_UPDATE, "installable": True})
+        return "\n".join(ln.text for ln in screens.update(k, v, "update"))
+
+    everything = shown(None)
+    assert "tidewater changelog" in everything and "tidewater update apply" in everything
+    partial = shown(("update check", "update apply"))
+    assert "changelog" not in partial and "tidewater update apply" in partial
+    assert "changelog" not in shown(("update check",)) and "update apply" not in shown(("update check",))

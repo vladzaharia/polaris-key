@@ -1844,17 +1844,34 @@ export async function updateCheckFlow(
     ),
     textRow(t("cli.update.have", { version: client.core.version }), ["muted"]),
   ];
-  const updateCommands = (): RailRow[] =>
-    commandRows(ctx, [
-      {
-        label: [{ text: apply, style: ["strong"], keep: true }],
-        value: [{ text: t("cli.update.install"), style: ["muted"] }],
-      },
-      {
-        label: [{ text: cmd(ctx, "changelog"), style: ["strong"], keep: true }],
-        value: [{ text: t("update.whatsNew"), style: ["muted"] }],
-      },
-    ]);
+  // A command the host did not mount is not offered (the gates do the same).
+  const offered = (id: string): boolean =>
+    ctx.mounted === undefined || ctx.mounted.includes(id);
+  const updateCommands = (): RailRow[] => {
+    const entries: Array<{ label: Line; value: Line }> = [
+      ...(offered("update apply")
+        ? [
+            {
+              label: [{ text: apply, style: ["strong"], keep: true }],
+              value: [{ text: t("cli.update.install"), style: ["muted"] }],
+            },
+          ]
+        : []),
+      ...(offered("changelog")
+        ? [
+            {
+              label: [
+                { text: cmd(ctx, "changelog"), style: ["strong"], keep: true },
+              ],
+              value: [{ text: t("update.whatsNew"), style: ["muted"] }],
+            },
+          ]
+        : []),
+    ];
+    return entries.length
+      ? [...gap(ctx), ...commandRows(ctx, entries)]
+      : [];
+  };
   try {
     if (!client.update.decidable) {
       const v = await busy(ctx, t("boot.deciding"), () =>
@@ -1919,7 +1936,6 @@ export async function updateCheckFlow(
             view.version,
             typeof size === "number" ? size : null,
           ),
-          ...gap(ctx),
           ...updateCommands(),
           endRow(),
         );
@@ -1932,7 +1948,6 @@ export async function updateCheckFlow(
             t("update.mandatoryTitle", { product }),
             t("update.mandatoryBody", { product }),
           ),
-          ...gap(ctx),
           ...updateCommands(),
           endRow(),
         );

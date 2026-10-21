@@ -91,6 +91,12 @@ class Kit:
     slug: Optional[str] = None
     #: Every catalog key a render used, in order (the string lint and the fixture contract).
     used: List[str] = field(default_factory=list)
+    #: The verb ids the host mounted (``None``: every verb). A fix for one that is not is left out.
+    mounted: Optional[Tuple[str, ...]] = None
+
+    def offered(self, verb: str) -> bool:
+        """Whether the host mounted ``verb`` (``update apply``, ``changelog``…)."""
+        return self.mounted is None or verb in self.mounted
 
     @classmethod
     def create(

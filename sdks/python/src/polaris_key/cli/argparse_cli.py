@@ -175,7 +175,7 @@ def register_argparse(
                 p.add_argument(flag, action="store_true", help=text)
             else:
                 p.add_argument(flag, type=int if o.kind == "int" else str, default=o.default, help=text)
-        p.set_defaults(func=_verb(binding.factory, verb, theme, shown, binding, plan.actions or None))
+        p.set_defaults(func=_verb(binding.factory, verb, theme, shown, binding, plan.actions or None, plan.ids))
     info = MountInfo(plan=plan, bound=binding.bound, legacy=verbs == "all" and namespace is None, prog=host_prog)
     subparsers._pk_mount = info  # type: ignore[attr-defined]
     if binding.bound:
@@ -281,6 +281,7 @@ def _verb(
     prog: str,
     binding: Optional[mount.Binding] = None,
     actions: Any = None,
+    mounted: Any = None,
 ):
     def run(args: argparse.Namespace) -> int:
         if getattr(args, "json", False):
@@ -300,7 +301,7 @@ def _verb(
         else:
             words = getattr(args, "words", [])
         ns = verbs.namespace(verb, words, values)
-        result = verbs.run(factory, opts, verb, ns, theme=theme, prog=prog, close=binding.close if binding else True, actions=actions)
+        result = verbs.run(factory, opts, verb, ns, theme=theme, prog=prog, close=binding.close if binding else True, actions=actions, mounted=mounted)
         result.emit()
         return result.code
 

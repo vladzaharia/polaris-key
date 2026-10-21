@@ -685,7 +685,7 @@ def update(k: Kit, v: UpdateView, verb: str = "update") -> Lines:
             if v.critical:
                 body += k.body([*k.icon("warn", "warning"), k.t("update.critical")])
             body += _gap(k)
-            body += _fixes(k, [("update apply", "cli.update.install")] if v.installable else [])
+            body += _fixes(k, [("update apply", "cli.update.install")] if v.installable and k.offered("update apply") else [])
         elif v.state in ("store", "platform"):
             body += k.step("active", [k.t("update.title", "strong", product=k.product, version=v.version)])
             if v.critical:
@@ -705,7 +705,7 @@ def update(k: Kit, v: UpdateView, verb: str = "update") -> Lines:
             body += _gap(k)
             if not v.installable:
                 body += _download_rows(k, v)
-            body += _fixes(k, ([("update apply", "cli.update.install")] if v.installable else []) + [("changelog", "update.whatsNew")])
+            body += _fixes(k, [f for f in ([("update apply", "cli.update.install")] if v.installable else []) + [("changelog", "update.whatsNew")] if k.offered(f[0])])
     return _frame(k, verb, body, end, hints)
 
 

@@ -404,6 +404,7 @@ export function registerPolarisCommands(
           ...(options.theme ? { theme: options.theme } : {}),
           ...(options.io ? { io: options.io } : {}),
           ...(options.frame === false ? { frame: false } : {}),
+          mounted: verbs.map(verbId),
           ...(options.presentation
             ? { presentation: options.presentation }
             : {}),

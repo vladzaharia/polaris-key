@@ -112,6 +112,7 @@ class Terminal:
         term_env: Optional[TermEnv] = None,
         use_rich: Optional[bool] = None,
         size: Optional[Callable[[], Tuple[int, int]]] = None,
+        mounted: Optional[Sequence[str]] = None,
     ) -> "Terminal":
         th = theme or Theme()
         te = term_env or detect(
@@ -128,6 +129,7 @@ class Terminal:
         )
         slug = product or (getattr(client, "product", None) if client is not None else None)
         kit = Kit.create(te, theme=th, product=slug, source=presentation_source(client), prog=prog)
+        kit.mounted = tuple(mounted) if mounted is not None else None
         t = cls(kit, Device(te, kit.palette(), stdout=stdout, stdin=stdin, use_rich=use_rich, size=size), verb)
         t.log_env = os.environ if env is None else env
         return t

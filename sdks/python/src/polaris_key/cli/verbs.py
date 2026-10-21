@@ -365,6 +365,7 @@ def run(
     prog: str = "polaris-key",
     close: bool = True,
     actions: Optional[Any] = None,
+    mounted: Optional[Sequence[str]] = None,
 ) -> CommandResult:
     """Build a client, run ``verb`` through the terminal kit with the flags in ``ns``, close the
     client (unless the host keeps it: ``close=False``). ``actions`` is a mount's partial verbs
@@ -391,6 +392,7 @@ def run(
             no_color=bool(ns.get("no_color")),
             ascii=bool(ns.get("ascii")),
             device_code=bool(ns.get("device_code")),
+            mounted=mounted,
         )
         ns = dict(ns)
         ns["_term"] = term

@@ -198,7 +198,7 @@ def _click_verb(
             value = values.pop(verb.arg, None)
             words = (value,) if value else ()
         ns = verbs_mod.namespace(verb, list(words), values)
-        emit(verbs_mod.run(binding.factory, opts, verb, ns, theme=theme, prog=shown, close=binding.close, actions=actions))
+        emit(verbs_mod.run(binding.factory, opts, verb, ns, theme=theme, prog=shown, close=binding.close, actions=actions, mounted=ids or None))
 
     params = []
     if verb.arg:
