@@ -627,16 +627,16 @@ export function PackRecord({
               "no release yet"
             )}
             {" · "}
-            {decl.releaseCount}{" "}
-            {decl.releaseCount === 1 ? "release" : "releases"}
+            {`${decl.releaseCount} ${decl.releaseCount === 1 ? "release" : "releases"}`}
+            {" · "}
+            <Link
+              to={r.compatibility(slug)}
+              className="text-accent-fg underline underline-offset-4"
+            >
+              Open in Compatibility
+            </Link>
           </>
         }
-        secondaryActions={[
-          {
-            label: "Open in Compatibility",
-            onSelect: () => navigate(r.compatibility(slug)),
-          },
-        ]}
         tabs={<PageTabs label="Pack" items={tabs} value={current} />}
         sticky
       />

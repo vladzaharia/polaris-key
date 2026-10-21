@@ -645,3 +645,12 @@ describe("parseGroupMap", () => {
     ]);
   });
 });
+
+describe("App sign-in save summary words", () => {
+  it("B-061: the lost-key switch reads as replacement on/off, never shown/hidden", async () => {
+    const { lostKeyWords } =
+      await import("../src/console/sections/identity/pages/AppSignIn.js");
+    expect(lostKeyWords(true)).toBe("lost-key replacement on");
+    expect(lostKeyWords(false)).toBe("lost-key replacement off");
+  });
+});
