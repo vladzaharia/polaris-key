@@ -4951,6 +4951,16 @@
       "role": "body",
       "note": "Polaris Locker's own browser error wording where no core.codes.* entry fits (P0-36)."
     },
+    "locker.error.loadFailed": {
+      "value": "Couldn't load {name}. Check your connection.",
+      "role": "body",
+      "note": "A page that failed to load (Library, a product): what failed; the Try again button is separate. Arguments: {name} = the page's own name."
+    },
+    "locker.error.loadFailedLibrary": {
+      "value": "Couldn't load your library. Check your connection.",
+      "role": "body",
+      "note": "The Library page failed to load; the Try again button is separate."
+    },
     "locker.library.title": {
       "value": "Library",
       "role": "title",

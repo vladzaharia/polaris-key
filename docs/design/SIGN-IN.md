@@ -622,10 +622,14 @@ One component, three entries.
 - **Entries (on-ramp, Identity-on products):** the key card ("Key works"), h1 "Keep <Product> in an
   account", the segmented meter (used segments in `text-muted`, "This will be entry {n}" in the accent
   foreground; never amber) with "{left} of {limit} key entries left · This will be entry
-  {n}", email with **Create account**, the product's providers, and "Already have an account? Sign
-  in". **Continue without an account** (S-24 D13) appears only when an app sent
-  the person (it returns to the app with the key accepted and the license floating), with "<Product>
-  works the same. Add it to an account any time." under it; the standalone portal has no skip. Under
+  {n}", email with **Create account**, the product's providers, and the quiet **Sign in instead**
+  (`signin.key.signInInstead`). Both lead to the sign-in card with the key carried, so a returning
+  customer never loses it; nothing on this step drops the key. **Continue without an account**
+  (S-24 D13, **Skip for now**, `signin.key.skip`) appears only when an app sent the person (it
+  returns to the app with the key accepted and the license floating), with "<Product> works the
+  same. Add it to an account any time." under it. **Deferred (LK-polish M5):** the floating-key
+  return to an app is not wired in the portal, so the control is not drawn yet; the standalone
+  portal has no skip. Under
   the h1 the body lists the reasons the product has (Cloud Sync only when Cloud Sync is on; getting
   the license back; moving it to a new device yourself; frame 48). At the limit: "No entries left", "Create an account
   to keep <Product>", a neutral callout (DL6) with **Create account** as the primary, no danger colour, no skip, "Sign in to add <Product>", and "<Product> keeps
@@ -723,7 +727,12 @@ origin, else unchanged), so the passport's icon and art load; there is no inline
 ### 3.14 Accessibility and motion (every step, every surface)
 
 - **Focus and announcements.** Each step change moves focus to the new h1, and the card's
-  `aria-live="polite"` region announces it. Errors use `role="alert"`. A refreshed list (seat
+  `aria-live="polite"` region announces it. Errors use `role="alert"`. **Exception, the code
+  step only:** focus moves to the code field (`autocomplete="one-time-code"`), because the next
+  action is typing and the OS one-time-code suggestion shows only for a focused field. The h1
+  still names the step: the live region announces it and the field is described by it
+  (`aria-describedby`). The step marks the field with `data-step-focus`; every other step keeps
+  heading focus. A refreshed list (seat
   taken, device removed) is announced and keeps focus in the list.
 - **Targets** are at least 44 × 44 px (controls are 48–52 px). Logo-only provider buttons carry
   their accessible name and show it as a tooltip on hover and focus.

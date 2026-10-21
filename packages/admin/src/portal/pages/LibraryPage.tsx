@@ -92,7 +92,11 @@ export function LibraryPage({
           <SkeletonTile className="hidden wide:block" />
         </div>
       ) : lib.error ? (
-        <ErrorPanel error={lib.error} onRetry={lib.retry} />
+        <ErrorPanel
+          error={lib.error}
+          onRetry={lib.retry}
+          message={t("locker.error.loadFailedLibrary")}
+        />
       ) : count === 0 ? (
         <LibraryEmpty discoverCount={lib.discoverCount} />
       ) : (

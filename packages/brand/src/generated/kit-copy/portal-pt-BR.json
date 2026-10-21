@@ -186,6 +186,8 @@
   "locker.error.licenseInactive.title": "Sua licença não está ativa",
   "locker.error.licenseInactive.body": "Renove ou reative sua licença e tente o download de novo.",
   "locker.error.signInAgain": "Entre de novo para continuar.",
+  "locker.error.loadFailed": "Não foi possível carregar {name}. Verifique sua conexão.",
+  "locker.error.loadFailedLibrary": "Não foi possível carregar sua biblioteca. Verifique sua conexão.",
   "locker.library.title": "Biblioteca",
   "locker.library.heading": "Sua biblioteca",
   "locker.library.signedInAs": "Conectado como {email}",

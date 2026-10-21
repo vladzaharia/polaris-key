@@ -201,6 +201,8 @@ export type PortalCopyKey =
   | "locker.error.licenseInactive.title"
   | "locker.error.licenseInactive.body"
   | "locker.error.signInAgain"
+  | "locker.error.loadFailed"
+  | "locker.error.loadFailedLibrary"
   | "locker.library.title"
   | "locker.library.heading"
   | "locker.library.signedInAs"

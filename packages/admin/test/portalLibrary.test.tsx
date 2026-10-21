@@ -351,10 +351,18 @@ describe("Library on today's data (PX-02)", () => {
       }),
     );
     renderPortal();
+    // M6: the page keeps its own title; one sentence says what failed; no repeated "Try again".
     expect(
-      await screen.findByRole("heading", { name: "Something went wrong" }),
+      await screen.findByRole("heading", { level: 1, name: "Your library" }),
     ).toBeTruthy();
+    expect(
+      await screen.findByText(
+        "Couldn't load your library. Check your connection.",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText("Something went wrong")).toBeNull();
     expect(screen.queryByText(/Nothing here/)).toBeNull();
+    expect(screen.getAllByText(/try again/i)).toHaveLength(1);
     expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
   });
 

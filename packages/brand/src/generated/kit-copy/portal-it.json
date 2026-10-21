@@ -186,6 +186,8 @@
   "locker.error.licenseInactive.title": "La tua licenza non è attiva",
   "locker.error.licenseInactive.body": "Rinnova o riattiva la licenza, poi riprova il download.",
   "locker.error.signInAgain": "Accedi di nuovo per continuare.",
+  "locker.error.loadFailed": "Impossibile caricare {name}. Controlla la connessione.",
+  "locker.error.loadFailedLibrary": "Impossibile caricare la tua libreria. Controlla la connessione.",
   "locker.library.title": "Libreria",
   "locker.library.heading": "La tua libreria",
   "locker.library.signedInAs": "Accesso come {email}",

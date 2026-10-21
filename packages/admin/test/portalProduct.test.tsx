@@ -1313,6 +1313,26 @@ describe("product page correctness (UX-04)", () => {
     expect(screen.getByRole("heading", { level: 1 })).toBeTruthy();
   });
 
+  it("a failed library read keeps the page title, says what failed, and offers Try again and the way back (LK-polish M6)", async () => {
+    mockFetch(
+      routes({ "/api/library": { status: 500, body: { error: "internal" } } }),
+    );
+    renderPortal();
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "nightfall" }),
+    ).toBeTruthy();
+    expect(
+      screen.getByText("Couldn't load nightfall. Check your connection."),
+    ).toBeTruthy();
+    expect(screen.queryByText("Something went wrong")).toBeNull();
+    expect(screen.getAllByText(/try again/i)).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
+    const back = within(screen.getByRole("alert")).getByRole("link", {
+      name: "Library",
+    });
+    expect(back.getAttribute("href")).toBe("#/");
+  });
+
   it("one OS source: the header's action and Get it name the OS the Worker detected", async () => {
     // The browser says Mac; the Worker (UA-CH) says Windows. Both read the Worker's answer.
     mockFetch(

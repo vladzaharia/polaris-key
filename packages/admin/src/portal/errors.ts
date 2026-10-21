@@ -13,6 +13,8 @@ export interface PortalErrorCopy {
   retry: boolean;
   /** Title and description as one line, for a message with no heading above it. */
   line: string;
+  /** The catalog's catch-all (`core.codes.unknown`): a page may say what failed instead. */
+  generic?: boolean;
   /** The Help page that explains this refusal, when there is one (DOC-06a). */
   help?: string;
 }
@@ -95,7 +97,13 @@ function fromCode(
   const rest = message.startsWith(`${title}. `)
     ? message.slice(title.length + 2)
     : message;
-  return { title, description: rest, retry, line: message };
+  return {
+    title,
+    description: rest,
+    retry,
+    line: message,
+    ...(code === "unknown" ? { generic: true } : {}),
+  };
 }
 
 /**

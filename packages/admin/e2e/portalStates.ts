@@ -1348,7 +1348,16 @@ export const SHIPPED: ShippedState[] = [
     scenario: "three",
     path: "/#/p/nightfall",
     routes: { "/api/library": SERVER_ERROR, "/api/licenses": SERVER_ERROR },
-    ready: (p) => h1(p, "Something went wrong"),
+    // The library read failed, so the name is unknown: the page keeps its slug as the title
+    // (LK-polish M6), says what failed, and offers Try again and the way back.
+    ready: async (p) => {
+      await h1(p, "nightfall");
+      const alert = p.getByRole("alert");
+      await alert
+        .getByText("Couldn't load nightfall. Check your connection.")
+        .waitFor();
+      await alert.getByRole("link", { name: "Library" }).waitFor();
+    },
   },
   // §4.21 Personal token created (PX-11, F-33): Account → Packages, Create personal token, then
   // the shown-once dialog. The sign-in check is covered by portalPackages.e2e.test.ts; here the
@@ -1821,7 +1830,10 @@ export const SHIPPED: ShippedState[] = [
     routes: { "/api/library": SERVER_ERROR, "/api/licenses": SERVER_ERROR },
     ready: async (p) => {
       await h1(p, "Your library");
-      await p.getByRole("alert").getByText("Something went wrong").waitFor();
+      await p
+        .getByRole("alert")
+        .getByText("Couldn't load your library. Check your connection.")
+        .waitFor();
     },
   },
   ...REQUEST_STATES,

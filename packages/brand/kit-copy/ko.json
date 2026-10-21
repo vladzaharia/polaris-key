@@ -993,6 +993,8 @@
     "locker.error.licenseInactive.title": "라이선스가 활성 상태가 아니에요",
     "locker.error.licenseInactive.body": "라이선스를 갱신하거나 다시 활성화한 뒤 다시 다운로드해 보세요.",
     "locker.error.signInAgain": "계속하려면 다시 로그인하세요.",
+    "locker.error.loadFailed": "{name}을(를) 불러오지 못했습니다. 연결을 확인하세요.",
+    "locker.error.loadFailedLibrary": "라이브러리를 불러오지 못했습니다. 연결을 확인하세요.",
     "locker.library.title": "라이브러리",
     "locker.library.heading": "내 라이브러리",
     "locker.library.signedInAs": "{email}(으)로 로그인됨",

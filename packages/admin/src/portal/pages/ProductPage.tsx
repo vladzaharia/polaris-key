@@ -72,12 +72,21 @@ export function ProductPage({
       : lib.isPending
         ? null
         : lib.error
-          ? t("core.fallback.title")
+          ? slug
           : t("locker.notFound.title"),
   );
   if (lib.isPending) return <ProductSkeleton />;
   if (lib.error)
-    return <ErrorPanel error={lib.error} onRetry={lib.retry} asPage />;
+    return (
+      <ErrorPanel
+        error={lib.error}
+        onRetry={lib.retry}
+        asPage
+        page={product?.name ?? slug}
+        message={t("locker.error.loadFailed", { name: product?.name ?? slug })}
+        backToLibrary
+      />
+    );
   if (!product) return <NotFoundProduct email={account.email} />;
   // An open product's entry (PS-04): no licence, so no licence card, devices or package access.
   if (product.kind === "entry")
