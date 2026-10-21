@@ -80,8 +80,9 @@ public data class PolarisCopy(
 
     // ── Activation ───────────────────────────────────────────────────────────────────────────
     val activationTitle: String = "Welcome to %1\$s",
-    val activationSubtitle: String = "Sign in or enter a license key to continue.",
-    val activationSubtitleKeyOnly: String = "Enter a license key to continue.",
+    // Read from the kit-copy catalog (welcome.lede / welcome.ledeKeyOnly) so the kit cannot drift from it.
+    val activationSubtitle: String = KitCopy.bundled.message("welcome.lede", "en") ?: "Sign in or use a license key to continue.",
+    val activationSubtitleKeyOnly: String = KitCopy.bundled.message("welcome.ledeKeyOnly", "en") ?: "Enter a license key to continue.",
     val signIn: String = "Sign in",
     /** No longer shown: the activation screen sets its two paths apart by space (UI-KITS.md §1.5 rule 6). */
     val orDivider: String = "or",
