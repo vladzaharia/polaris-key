@@ -16,7 +16,6 @@ import { hashKey, mintLicenseKey } from "../src/platform/crypto.js";
 import { seal } from "../src/platform/keyvault.js";
 import { parseServices } from "../src/core/services.js";
 import { readIdentityIssuance } from "../src/core/accounts/identityTrust.js";
-import { IDENTITY_COLUMN_ADAPTERS } from "../src/services/identity/settingsColumns.js";
 import { asR2, R2Mock } from "./r2Mock.js";
 import { KvMock, asKv } from "./kvMock.js";
 import { makeRlNamespace } from "./rlMock.js";
@@ -391,25 +390,48 @@ export async function stagePackObjects(
 }
 
 /**
- * I-09: set a product's `identity.keyEntry.claimByKey` (`portal_product_settings.claim_by_key`)
- * through its column adapter, the statements `writeSetting()` runs for a console write, without the
- * claim row and the audit around them.
+ * ST-14: set a product's Polaris Locker switches (`portal.enabled`, `portal.keyReissue`,
+ * `identity.keyEntry.claimByKey`) as the `product_settings` rows `writeSetting()` leaves for a
+ * console write, without the audit around them. A switch left out is untouched.
  */
+export async function setPortalToggles(
+  db: Db,
+  product: string,
+  toggles: {
+    portalEnabled?: boolean;
+    keyReissueEnabled?: boolean;
+    claimByKey?: boolean;
+  },
+  at: number = NOW,
+): Promise<void> {
+  const rows: [string, boolean | undefined][] = [
+    ["portal.enabled", toggles.portalEnabled],
+    ["portal.keyReissue", toggles.keyReissueEnabled],
+    ["identity.keyEntry.claimByKey", toggles.claimByKey],
+  ];
+  for (const [key, value] of rows) {
+    if (value === undefined) continue;
+    await db.run(
+      `INSERT INTO product_settings (product, key, value_json, source, version, updated_at, updated_by)
+       VALUES (?, ?, ?, 'console', 1, ?, 'test')
+       ON CONFLICT(product, key) DO UPDATE SET value_json = excluded.value_json,
+         source = 'console', updated_at = excluded.updated_at`,
+      product,
+      key,
+      JSON.stringify(value),
+      at,
+    );
+  }
+}
+
+/** I-09: set a product's `identity.keyEntry.claimByKey` (a settings row since ST-14). */
 export async function setClaimByKey(
   db: Db,
   product: string,
   on: boolean,
   at: number = NOW,
 ): Promise<void> {
-  const adapter = IDENTITY_COLUMN_ADAPTERS["identity.keyEntry.claimByKey"]!;
-  for (const stmt of adapter.set!({
-    product,
-    at,
-    by: "test",
-    guard: { sql: "1", params: [] },
-    value: on,
-  }))
-    await db.run(stmt.sql, ...stmt.params);
+  await setPortalToggles(db, product, { claimByKey: on }, at);
 }
 
 /**

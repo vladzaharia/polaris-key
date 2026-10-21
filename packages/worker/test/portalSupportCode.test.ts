@@ -20,7 +20,13 @@ import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { handlePortalApi } from "./portalHarness.js";
 import { issuePortalSessionRow } from "./portalSessionRow.js";
-import { makeEnv, NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
+import {
+  makeEnv,
+  NOW,
+  seedLicenseWithKey,
+  seedProduct,
+  setPortalToggles,
+} from "./seed.js";
 import { SPEC, validateAgainst } from "./specSchema.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
@@ -36,7 +42,6 @@ import {
 import {
   addLibraryEntry,
   getOrCreateAccountByEmail,
-  upsertPortalProductSettings,
 } from "../src/services/identity/portal/repo.js";
 import {
   PORTAL_COOKIE,
@@ -414,12 +419,7 @@ describe("the support-code route's gates", () => {
   it("answers one 404 for a product that does not exist, one she holds nothing in and one whose portal is off", async () => {
     const w = await world();
     const before = await subjectRow(w.db, w.ada, "djdl");
-    await upsertPortalProductSettings(
-      w.db,
-      "djdl",
-      { portalEnabled: false },
-      NOW,
-    );
+    await setPortalToggles(w.db, "djdl", { portalEnabled: false }, NOW);
     // `bobonly` exists and Bob holds it; `plain` exists and nobody does; `djdl` is hers, switched
     // off. All of them must look like `nope`.
     const answers = new Set<string>();
@@ -443,12 +443,7 @@ describe("the support-code route's gates", () => {
     expect(await subjectRow(w.db, w.ada, "djdl")).toEqual(before);
     expect(await createdAudits(w.db)).toEqual([]);
     // Switched on again, the same ask answers the same code.
-    await upsertPortalProductSettings(
-      w.db,
-      "djdl",
-      { portalEnabled: true },
-      NOW,
-    );
+    await setPortalToggles(w.db, "djdl", { portalEnabled: true }, NOW);
     expect(await subjectRow(w.db, w.ada, "djdl")).toEqual(before);
     expect(
       await subjectForSupportCode(

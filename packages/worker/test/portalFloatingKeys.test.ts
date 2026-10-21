@@ -21,6 +21,7 @@ import {
   NOW,
   seedLicenseWithKey,
   seedProduct,
+  setPortalToggles,
 } from "./seed.js";
 import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
@@ -34,10 +35,7 @@ import {
   subjectFor,
 } from "../src/core/accounts/accountSubjects.js";
 import { applyStoreGrant } from "../src/services/license/storeGrants.js";
-import {
-  getOrCreateAccountByEmail,
-  upsertPortalProductSettings,
-} from "../src/services/identity/portal/repo.js";
+import { getOrCreateAccountByEmail } from "../src/services/identity/portal/repo.js";
 import {
   PORTAL_COOKIE,
   PORTAL_CSRF_HEADER,
@@ -528,9 +526,9 @@ describe("DELETE /api/licenses/:product/:licenseId: Remove from my library (S-24
     expect(
       (await call(env, db, "DELETE", path, ada, { csrf: false })).status,
     ).toBe(403);
-    await upsertPortalProductSettings(db, SLUG, { portalEnabled: false }, NOW);
+    await setPortalToggles(db, SLUG, { portalEnabled: false }, NOW);
     expect((await call(env, db, "DELETE", path, ada)).status).toBe(404);
-    await upsertPortalProductSettings(db, SLUG, { portalEnabled: true }, NOW);
+    await setPortalToggles(db, SLUG, { portalEnabled: true }, NOW);
     expect(await licenceIds(env, db, ada)).toEqual([licenseId]);
   });
 

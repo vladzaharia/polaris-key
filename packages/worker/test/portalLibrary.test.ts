@@ -16,7 +16,13 @@ import { issuePortalSessionRow } from "./portalSessionRow.js";
 import { describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
-import { makeEnv, NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
+import {
+  makeEnv,
+  NOW,
+  seedLicenseWithKey,
+  seedProduct,
+  setPortalToggles,
+} from "./seed.js";
 import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import { serializeServices, type ServicesMap } from "../src/core/services.js";
@@ -302,14 +308,7 @@ describe("GET /api/library", () => {
       "admin",
       NOW,
     );
-    await db.run(
-      `INSERT INTO portal_product_settings
-         (product, portal_enabled, oidc_enabled, magic_enabled, license_key_claim_enabled,
-          releases_enabled, branding_json, created_at, modified_at)
-       VALUES ('hidden', 0, 1, 1, 1, 1, NULL, ?, ?)`,
-      NOW,
-      NOW,
-    );
+    await setPortalToggles(db, "hidden", { portalEnabled: false });
 
     const body = (await (await api(env, db, "/api/library", s)).json()) as {
       products: Array<Record<string, unknown>>;
@@ -649,14 +648,7 @@ describe("GET /media/<product>/<asset> (the SSRF-safe proxy)", () => {
     await productWithListing(db, "tidewater", { iconUrl: ICON });
     await productWithListing(db, "bare", null);
     await productWithListing(db, "off", { iconUrl: ICON });
-    await db.run(
-      `INSERT INTO portal_product_settings
-         (product, portal_enabled, oidc_enabled, magic_enabled, license_key_claim_enabled,
-          releases_enabled, branding_json, created_at, modified_at)
-       VALUES ('off', 0, 1, 1, 1, 1, NULL, ?, ?)`,
-      NOW,
-      NOW,
-    );
+    await setPortalToggles(db, "off", { portalEnabled: false });
     const up = upstream({});
     for (const path of [
       "/media/tidewater/screenshot",

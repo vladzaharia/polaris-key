@@ -112,6 +112,7 @@ export type ProductPageId =
   | "devices"
   | "users"
   | "presentation"
+  | "portal"
   | "keys"
   | "activity"
   | "settings"
@@ -244,6 +245,7 @@ export const SETTINGS_HUB_PAGES: readonly ProductPageId[] = [
   "settings",
   "services",
   "presentation",
+  "portal",
   "keys",
   "settings-members",
   "settings-all",
@@ -322,6 +324,15 @@ export const SECTIONS: NavSection[] = [
         path: "settings/presentation",
         icon: Image,
         docs: "/docs/operate/console/presentation/",
+        inNav: false,
+      },
+      {
+        // ST-14: the Customer portal area, Polaris Locker's switches and branding.
+        page: "portal",
+        label: "Polaris Locker",
+        path: "settings/portal",
+        icon: Store,
+        docs: "/docs/operate/console/products/",
         inNav: false,
       },
       {

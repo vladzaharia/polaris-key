@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { NOW } from "./seed.js";
+import { NOW, setPortalToggles } from "./seed.js";
 import { Device, seededWorld, type CardWorld } from "./identityCardHarness.js";
 import { SoftAuthenticator, FLAG_UP } from "./softAuthenticator.js";
 import { issuePortalSessionRow } from "./portalSessionRow.js";
@@ -7,7 +7,6 @@ import {
   ACCOUNT_SESSION_COOKIE,
   PASSKEY_FLOW_COOKIE,
 } from "../src/core/accounts/accountCookies.js";
-import { upsertPortalProductSettings } from "../src/services/identity/portal/repo.js";
 import {
   STEP_UP_MAX_AGE_SECONDS,
   unlinkIdentity,
@@ -679,12 +678,7 @@ describe("passkey sign-in on the card", () => {
   it("is off while the portal is off, and accepts only POST", async () => {
     const w = await seededWorld();
     expect((await new Device(w).send("GET", OPTIONS)).status).toBe(405);
-    await upsertPortalProductSettings(
-      w.db,
-      "acme",
-      { portalEnabled: false },
-      NOW,
-    );
+    await setPortalToggles(w.db, "acme", { portalEnabled: false }, NOW);
     const res = await new Device(w).send("POST", OPTIONS, {});
     expect(res.status).toBe(404);
   });

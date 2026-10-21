@@ -34,6 +34,10 @@
  *     switch audit summaries cut off at the same length one key later. 1-6, 8-10 and 11-12 were
  *     re-captured for that alone (checked: with the commerce member removed the entries are
  *     unchanged, except the 9-* summaries' truncation point).
+ *   - ST-14: `identity.keyEntry.claimByKey` became a row-backed setting, applied with the
+ *     `identity:` row settings while Identity is on, so the manifest-row DELETE and the audit
+ *     statement of 1, 3, 4, 5, 6a, 8 and 9 name one more key. Only those statements changed (the
+ *     end states and results are identical: the fixture declares no `claimByKey`).
  *   - 13-link-secret-default (plans/P0-26.md D5, delta 1): link screens the catalog for delivery
  *     issues, as resync and the console do. Captured from the pre-pipeline code (the link
  *     succeeded), then re-captured from the pipeline when the delta landed (the link refuses).

@@ -26,6 +26,7 @@ import {
   approveEdgeMintRecipe,
   seedProductSecret,
   seedTier,
+  setPortalToggles,
 } from "../seed.js";
 import type { Env } from "../../src/platform/env.js";
 import type { Db } from "../../src/db/types.js";
@@ -63,7 +64,6 @@ import {
   listPortalLicenses,
   portalAuthCapabilities,
   syncAccountLicenseLinks,
-  upsertPortalProductSettings,
 } from "../../src/services/identity/portal/repo.js";
 import { pk } from "../../src/platform/kv.js";
 import {
@@ -648,7 +648,7 @@ describe("R5-04 cross-tenant portal capability coupling", () => {
     await seedProduct(db, EVILCO);
 
     // ACME explicitly turns the portal AND magic-link sign-in off.
-    await upsertPortalProductSettings(db, ACME, { portalEnabled: false }, NOW);
+    await setPortalToggles(db, ACME, { portalEnabled: false }, NOW);
     // EVILCO leaves the defaults (everything on).
 
     // I-29: a product's answer is its own row; ACME's opt-out never reaches EVILCO.

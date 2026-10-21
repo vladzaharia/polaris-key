@@ -6,6 +6,7 @@ import {
 import { portalAudit } from "../../../core/accounts/portalAudit.js";
 import { normalizeEmail } from "../../../platform/email.js";
 import { parseJsonColumn } from "../../../platform/json.js";
+import { publicBranding } from "./branding.js";
 import type { Db, DbParam, DbStatement } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
 import type {
@@ -15,6 +16,10 @@ import type {
   ProductRow,
 } from "../../../core/repo.js";
 import { parseServices } from "../../../core/services.js";
+import {
+  portalEnabledSql,
+  readPortalToggles,
+} from "../../../core/portalToggles.js";
 import {
   resolveListing,
   type GroupLabels,
@@ -591,7 +596,7 @@ export async function listPortalLicenses(
   accountId: string,
 ): Promise<PortalLicenseRow[]> {
   return db.all<PortalLicenseRow>(
-    `SELECT l.*, p.name AS product_name, p.branding_json AS product_branding_json
+    `SELECT l.*, p.name AS product_name, (SELECT s.branding_json FROM portal_product_settings s WHERE s.product = l.product) AS product_branding_json
        FROM licenses l
        JOIN products p ON p.slug = l.product
       WHERE l.account_id = ?
@@ -615,10 +620,9 @@ export async function productCountsByEmail(
     `SELECT lower(l.email) AS email, COUNT(DISTINCT l.product) AS n
        FROM licenses l
        JOIN products p ON p.slug = l.product
-       LEFT JOIN portal_product_settings s ON s.product = l.product
       WHERE l.account_id = ? AND l.email IS NOT NULL
         AND COALESCE(p.status, 'active') != 'deleted'
-        AND COALESCE(s.portal_enabled, 1) = 1
+        AND ${portalEnabledSql("l.product")}
       GROUP BY lower(l.email)`,
     accountId,
   );
@@ -632,7 +636,7 @@ export async function getPortalLicense(
   licenseId: string,
 ): Promise<PortalLicenseRow | null> {
   return db.first<PortalLicenseRow>(
-    `SELECT l.*, p.name AS product_name, p.branding_json AS product_branding_json
+    `SELECT l.*, p.name AS product_name, (SELECT s.branding_json FROM portal_product_settings s WHERE s.product = l.product) AS product_branding_json
        FROM licenses l
        JOIN products p ON p.slug = l.product
       WHERE l.account_id = ? AND l.product = ? AND l.id = ?`,
@@ -669,19 +673,27 @@ export async function listVisibleDevices(
   );
 }
 
+/**
+ * A product's portal settings: the listing columns and branding of its `portal_product_settings`
+ * row, with the three switches (`portal_enabled`, `key_reissue_enabled`, `claim_by_key`) read from
+ * their settings rows (ST-14; `core/portalToggles.ts`). The table's own switch columns are no
+ * longer read; ST-25 drops them.
+ */
 export async function getPortalProductSettings(
   db: Db,
   product: string,
 ): Promise<PortalProductSettingsRow> {
-  const row = await db.first<PortalProductSettingsRow>(
-    "SELECT * FROM portal_product_settings WHERE product = ?",
-    product,
-  );
-  return (
-    row ?? {
+  const [row, toggles] = await Promise.all([
+    db.first<PortalProductSettingsRow>(
+      "SELECT * FROM portal_product_settings WHERE product = ?",
+      product,
+    ),
+    readPortalToggles(db, product),
+  ]);
+  return {
+    ...(row ?? {
       product,
       portal_enabled: 1,
-      // Both PX-W5 switches default OFF, exactly as the migration's column defaults do.
       key_reissue_enabled: 0,
       claim_by_key: 0,
       // Discover defaults ON, as the migration's column default does (migrations/0071).
@@ -694,8 +706,11 @@ export async function getPortalProductSettings(
       branding_json: null,
       created_at: 0,
       modified_at: 0,
-    }
-  );
+    }),
+    portal_enabled: toggles.portalEnabled ? 1 : 0,
+    key_reissue_enabled: toggles.keyReissueEnabled ? 1 : 0,
+    claim_by_key: toggles.claimByKey ? 1 : 0,
+  };
 }
 
 export function portalProductSettingsView(
@@ -706,7 +721,7 @@ export function portalProductSettingsView(
     keyReissueEnabled: row.key_reissue_enabled === 1,
     claimByKey: row.claim_by_key === 1,
     ...listingView(row),
-    branding: parseJsonColumn(row.branding_json),
+    branding: publicBranding(row.branding_json),
     modifiedAt: row.modified_at,
   };
 }
@@ -802,19 +817,19 @@ export function listingSettingWrites(
   return out;
 }
 
-/** The non-listing portal switches and branding a console or sign-in-settings patch may set. */
+/**
+ * The portal branding a console or sign-in-settings patch may set. The switches are settings rows
+ * (`portal.enabled`, `portal.keyReissue`, written through `writeSetting()`), not part of a patch.
+ */
 export type PortalSettingsPatch = Partial<{
-  portalEnabled: boolean;
-  keyReissueEnabled: boolean;
   branding: unknown;
 }>;
 
 /**
- * The upsert of a product's portal switches and branding, as one statement (`guard`, when given,
- * is ANDed in so it can ride in a `writeSetting()` batch). The listing columns
- * (`discover_enabled`, `store_*`) and `claim_by_key` (I-09's `identity.keyEntry.claimByKey`) are
- * NOT named here: they are registry settings, written only through `writeSetting()` (ST-04), and a
- * new row takes their column defaults.
+ * The upsert of a product's portal branding, as one statement (`guard`, when given, is ANDed in so
+ * it can ride in a `writeSetting()` batch). The listing columns (`discover_enabled`, `store_*`) are
+ * registry settings, written only through `writeSetting()` (ST-04), and the portal switches and
+ * `claim_by_key` are rows (ST-14): none is named here, and a new row takes the column defaults.
  */
 export function stmtUpsertPortalProductSettings(
   current: PortalProductSettingsRow,
@@ -823,35 +838,22 @@ export function stmtUpsertPortalProductSettings(
   now: number,
   guard: { sql: string; params: DbParam[] } = { sql: "1", params: [] },
 ): DbStatement {
-  const flag = (v: boolean | undefined, was: number) =>
-    v === undefined ? was : v ? 1 : 0;
-  const next = {
-    portal_enabled: flag(patch.portalEnabled, current.portal_enabled),
-    key_reissue_enabled: flag(
-      patch.keyReissueEnabled,
-      current.key_reissue_enabled,
-    ),
-    branding_json:
-      patch.branding === undefined
-        ? current.branding_json
-        : patch.branding == null
-          ? null
-          : JSON.stringify(patch.branding),
-  };
+  const branding_json =
+    patch.branding === undefined
+      ? current.branding_json
+      : patch.branding == null
+        ? null
+        : JSON.stringify(patch.branding);
   return {
     sql: `INSERT INTO portal_product_settings
-       (product, portal_enabled, key_reissue_enabled, branding_json, created_at, modified_at)
-     SELECT ?, ?, ?, ?, ?, ? WHERE (${guard.sql})
+       (product, branding_json, created_at, modified_at)
+     SELECT ?, ?, ?, ? WHERE (${guard.sql})
      ON CONFLICT(product) DO UPDATE SET
-       portal_enabled = excluded.portal_enabled,
-       key_reissue_enabled = excluded.key_reissue_enabled,
        branding_json = excluded.branding_json,
        modified_at = excluded.modified_at`,
     params: [
       product,
-      next.portal_enabled,
-      next.key_reissue_enabled,
-      next.branding_json,
+      branding_json,
       current.created_at || now,
       now,
       ...guard.params,
@@ -918,10 +920,9 @@ export async function portalAuthCapabilities(
     services_json: string | null;
   }>(
     `SELECT
-       COALESCE(s.portal_enabled, 1) AS portal_enabled,
+       CASE WHEN ${portalEnabledSql("p.slug")} THEN 1 ELSE 0 END AS portal_enabled,
        p.services_json AS services_json
        FROM products p
-       LEFT JOIN portal_product_settings s ON s.product = p.slug
       WHERE COALESCE(p.status, 'active') != 'deleted'
         AND (? IS NULL OR p.slug = ?)`,
     product ?? null,
@@ -1122,7 +1123,7 @@ export async function listStorefrontCandidates(
        LEFT JOIN portal_product_settings s ON s.product = p.slug
        LEFT JOIN oidc_config o ON o.product = p.slug
       WHERE COALESCE(p.status, 'active') = 'active'
-        AND COALESCE(s.portal_enabled, 1) = 1
+        AND ${portalEnabledSql("p.slug")}
         AND COALESCE(s.discover_enabled, 1) = 1
         AND COALESCE(s.store_listed, 'auto') <> 'unlisted'
         AND (? IS NULL OR p.slug = ?)

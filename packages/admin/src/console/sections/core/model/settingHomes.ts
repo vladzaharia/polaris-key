@@ -82,6 +82,9 @@ export const SETTING_HOMES: Readonly<Record<string, SettingHome>> = {
   "deltas.lazy.hotDevices": API,
   "deltas.lazy.dailyCap": API,
   "email.dailyCap": API,
+  // ST-14: the Customer portal area (Settings → Polaris Locker).
+  "portal.enabled": at("portal", "Polaris Locker"),
+  "portal.keyReissue": at("portal", "Polaris Locker"),
   "assets.releases.mirror": at("presentation", "Hosting and quotas"),
   "assets.quota.mediaBytes": at("presentation", "Hosting and quotas"),
   "assets.quota.releaseBytes": at("presentation", "Hosting and quotas"),
@@ -174,7 +177,7 @@ export const SETTING_HOMES: Readonly<Record<string, SettingHome>> = {
   // ── Identity ───────────────────────────────────────────────────────────────────────────────
   "identity.keyEntry.limit": manifest("product"),
   // App sign-in, License keys.
-  "identity.keyEntry.claimByKey": at("app-sign-in", "License keys"),
+  "identity.keyEntry.claimByKey": at("portal", "Polaris Locker"),
   "identity.terms": manifest("product"),
   // The paths a web app's sign-in may return to (I-08's `authorize` reads them).
   "identity.redirectPaths": manifest("product"),

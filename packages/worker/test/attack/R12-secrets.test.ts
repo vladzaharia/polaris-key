@@ -26,6 +26,7 @@ import {
   TEST_KID,
   TEST_PEM,
   TEST_PUB,
+  setPortalToggles,
 } from "../seed.js";
 import type { Env } from "../../src/platform/env.js";
 import type { Db } from "../../src/db/types.js";
@@ -73,7 +74,6 @@ import {
   openProductSecret,
   type Product,
 } from "../../src/core/products.js";
-import { upsertPortalProductSettings } from "../../src/services/identity/portal/repo.js";
 import { getLicense } from "../../src/core/licensing/store.js";
 import { upsertProductSecret } from "../../src/core/products/store.js";
 import { upsertDevice } from "../../src/core/devices/store.js";
@@ -1604,7 +1604,7 @@ describe("R12-04 credentials are KV key names, so a KV LIST is a credential dump
       },
     } as never;
     await seedProduct(db, "acme");
-    await upsertPortalProductSettings(db, "acme", { portalEnabled: true }, NOW);
+    await setPortalToggles(db, "acme", { portalEnabled: true }, NOW);
 
     const req = new Request("https://portal.plrs.im/api/magic/start", {
       method: "POST",

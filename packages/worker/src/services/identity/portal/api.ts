@@ -1,3 +1,4 @@
+import { publicBranding } from "./branding.js";
 import {
   activePlatformConnections,
   audienceCovers,
@@ -214,7 +215,7 @@ function licenseBase(row: PortalLicenseRow): Record<string, unknown> {
     id: row.id,
     product: row.product,
     productName: row.product_name,
-    productBranding: parseJsonOr(row.product_branding_json, null),
+    productBranding: publicBranding(row.product_branding_json),
     name: row.name ?? "",
     email: row.email ?? "",
     status: row.status,

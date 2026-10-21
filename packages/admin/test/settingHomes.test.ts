@@ -132,10 +132,18 @@ describe("settings homes", () => {
         section: "Polaris Locker → Listing",
       },
     ],
-    // App sign-in, License keys.
+    // ST-14: Settings → Polaris Locker.
     [
       "identity.keyEntry.claimByKey",
-      { kind: "page", page: "app-sign-in", section: "License keys" },
+      { kind: "page", page: "portal", section: "Polaris Locker" },
+    ],
+    [
+      "portal.enabled",
+      { kind: "page", page: "portal", section: "Polaris Locker" },
+    ],
+    [
+      "portal.keyReissue",
+      { kind: "page", page: "portal", section: "Polaris Locker" },
     ],
     ["identity.keyEntry.limit", { kind: "manifest", file: "product" }],
   ])("%s", (key, home) => {

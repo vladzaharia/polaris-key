@@ -34,6 +34,7 @@ import {
   MANAGE_URL_MAX_LENGTH,
 } from "@polaris-key/protocol/license";
 import type { Db } from "../../db/types.js";
+import { readPortalToggles } from "../portalToggles.js";
 import type { Env } from "../../platform/env.js";
 import { consoleOrigin, customerOrigin } from "../hosts.js";
 import {
@@ -120,17 +121,11 @@ export function portalOriginFor(env: Env, fallback: string): string | null {
 }
 
 /**
- * Is the product's customer portal on? `portal_product_settings.portal_enabled`, defaulting ON
- * when the product has no row (the same default `getPortalProductSettings` applies). Read
- * here, not through Identity's repo, because Core may not import a service. Becomes the S-18
- * `portal.enabled` row through `resolveSetting()` once ST-14 lands.
+ * Is the product's customer portal on? The `portal.enabled` row (ST-14), defaulting ON when the
+ * product has none. Read here, not through Identity's repo, because Core may not import a service.
  */
 export async function portalEnabled(db: Db, product: string): Promise<boolean> {
-  const row = await db.first<{ portal_enabled: number }>(
-    "SELECT portal_enabled FROM portal_product_settings WHERE product = ?",
-    product,
-  );
-  return row ? row.portal_enabled === 1 : true;
+  return (await readPortalToggles(db, product)).portalEnabled;
 }
 
 const encode = (v: string): string => encodeURIComponent(v);

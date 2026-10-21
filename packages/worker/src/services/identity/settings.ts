@@ -13,18 +13,17 @@
  *                                 manifest rule `invalid_identity_key_entry_limit` uses too. Read
  *                                 through ST-04's resolver (`core/licensing/keyEntries.ts` `keyEntryLimit()`)
  *                                 by enforcement and by discovery's `keyEntryLimit`.
- *   identity.keyEntry.claimByKey  `identity.keyEntry.claimByKey`: column-backed on
- *                                 `portal_product_settings.claim_by_key` (`settingsColumns.ts`)
- *                                 until ST-14 folds that table into rows. Off by default; on lets a
+ *   identity.keyEntry.claimByKey  `identity.keyEntry.claimByKey`: a `product_settings` row since
+ *                                 ST-14 (it was `portal_product_settings.claim_by_key`). Off by default; on lets a
  *                                 leaked key claim an email-bound license, so it is
  *                                 security-widening and the console warns while it is on.
  *   identity.terms                `identity.terms` `{version, url?}` (`productTerms.ts`).
  *   identity.redirectPaths        `identity.redirectPaths`: critical; read by I-08's redirect.
  *
  * The row-backed ones (`IDENTITY_ROW_SETTINGS`) are written by the descriptor's
- * `manifestIngestAlways` on every link and resync (`core/rowSettings.ts`, omit-clears); claimByKey's
- * manifest value reaches its column through `manifestClaimByKeyStatements` below, while Identity is
- * on. A console claim is never overwritten. `identity.native` and `identity.requireTerms` are never registered.
+ * `manifestIngestAlways` on every link and resync (`core/rowSettings.ts`, omit-clears); claimByKey
+ * is row-backed too since ST-14 and joins them while Identity is on (`identityManifestIngest`). A
+ * console claim is never overwritten. `identity.native` and `identity.requireTerms` are never registered.
  */
 
 import {
@@ -52,6 +51,11 @@ import {
 } from "../../core/rowSettings.js";
 import { setting } from "../../core/settings/define.js";
 import {
+  CLAIM_BY_KEY_SETTING_KEY,
+  PORTAL_ENABLED_SETTING,
+  PORTAL_KEY_REISSUE_SETTING,
+} from "../../core/portalToggles.js";
+import {
   KEY_ENTRY_LIMIT_DEFAULT,
   KEY_ENTRY_LIMIT_MAX,
   KEY_ENTRY_LIMIT_MIN,
@@ -60,7 +64,6 @@ import type {
   ServiceSettingsSlice,
   SettingDef,
 } from "../../core/settings/types.js";
-import { IDENTITY_COLUMN_ADAPTERS } from "./settingsColumns.js";
 
 const VISIBLE = { service: "identity", offBehaviour: "hide" } as const;
 
@@ -128,12 +131,12 @@ const KEY_ENTRY_LIMIT: SettingDef = setting({
   storage: { kind: "scalar" },
 });
 
-/** The registry key of claimByKey (`settingsColumns.ts` adapts its column). */
-export const CLAIM_BY_KEY_SETTING = "identity.keyEntry.claimByKey";
+/** The registry key of claimByKey. */
+export const CLAIM_BY_KEY_SETTING = CLAIM_BY_KEY_SETTING_KEY;
 
 /**
- * I-09: `identity.keyEntry.claimByKey`. Column-backed until ST-14; the claim rules
- * (`accounts/claim.ts`, the portal's preview) read the column. It applies to every product, Identity
+ * I-09: `identity.keyEntry.claimByKey`. A settings row since ST-14; the claim rules
+ * (`accounts/claim.ts`, the portal's preview) read the row (`core/portalToggles.ts`). It applies to every product, Identity
  * on or off (the platform claim rule), so it stays visible with Identity off.
  */
 const CLAIM_BY_KEY: SettingDef = setting({
@@ -161,12 +164,62 @@ const CLAIM_BY_KEY: SettingDef = setting({
     "services/identity/accounts/claim.ts",
     "services/identity/portal/selfService.ts",
   ],
-  storage: {
-    kind: "column",
-    table: "portal_product_settings",
-    column: "claim_by_key",
-  },
+  storage: { kind: "scalar" },
   since: "I-09",
+});
+
+/**
+ * ST-14: `portal.enabled`, whether Polaris Locker (the customer portal) serves this product at
+ * all. On by default; off hides the product's licenses from every Locker library and answers its
+ * product pages 404. Console-only (no manifest field), so ownership is `operator`. Like
+ * claimByKey it applies with Identity off, so it stays visible there.
+ */
+const PORTAL_ENABLED: SettingDef = setting({
+  key: PORTAL_ENABLED_SETTING,
+  rbacArea: "core",
+  scope: "product",
+  service: "identity",
+  area: "portal",
+  label: "Show in Polaris Locker",
+  description:
+    "Whether Polaris Locker lists this product: its licenses in people's libraries, its page and its downloads. Off hides all of them; licenses, sign-in and activation keep working.",
+  keywords: ["locker", "portal", "library"],
+  docs: "/docs/features/sign-in/",
+  value: { kind: "boolean" },
+  defaultValue: true,
+  merge: "cascade",
+  ownership: "operator",
+  confirm: { on: "L0", off: "L0" },
+  visibleWhen: { service: "identity", offBehaviour: "visible" },
+  readers: ["core/portalToggles.ts", "services/identity/portal/repo.ts"],
+  storage: { kind: "scalar" },
+  since: "ST-14",
+});
+
+/**
+ * ST-14: `portal.keyReissue`, whether a customer may show a lost license key again in Polaris
+ * Locker (PX-W5). Off by default. Console-only.
+ */
+const PORTAL_KEY_REISSUE: SettingDef = setting({
+  key: PORTAL_KEY_REISSUE_SETTING,
+  rbacArea: "core",
+  scope: "product",
+  service: "identity",
+  area: "portal",
+  label: "Show a lost key again",
+  description:
+    "Whether a customer may replace a license's key from Polaris Locker. The old key stops working at once.",
+  keywords: ["reissue", "lost key", "new key", "replace key"],
+  docs: "/docs/features/sign-in/",
+  value: { kind: "boolean" },
+  defaultValue: false,
+  merge: "cascade",
+  ownership: "operator",
+  confirm: { on: "L0", off: "L0" },
+  visibleWhen: { service: "identity", offBehaviour: "visible" },
+  readers: ["services/identity/portal/selfService.ts"],
+  storage: { kind: "scalar" },
+  since: "ST-14",
 });
 
 /** I-09: `identity.terms` `{version, url?}`, the product's terms accepted at sign-in. */
@@ -236,11 +289,12 @@ const REDIRECT_PATHS: SettingDef = setting({
 const BROWSER_SESSION_DAYS = 30;
 
 export const IDENTITY_SETTINGS_SLICE: ServiceSettingsSlice = {
-  namespaces: ["identity"],
-  columns: IDENTITY_COLUMN_ADAPTERS,
+  namespaces: ["identity", "portal"],
   entries: [
     KEY_ENTRY_LIMIT,
     CLAIM_BY_KEY,
+    PORTAL_ENABLED,
+    PORTAL_KEY_REISSUE,
     TERMS,
     REDIRECT_PATHS,
     setting({
@@ -372,66 +426,20 @@ export function identityManifestIngest(
   parsed: ParsedManifest,
   product: string,
   now: number,
+  /**
+   * Identity's toggle. `claimByKey` applies to every product's claim rules, so a block declared
+   * while Identity is off (the validator warns) is not applied until it is on.
+   */
+  identityOn = true,
 ): DbStatement[] {
   return manifestRowSettingStatements(
     product,
-    IDENTITY_ROW_SETTINGS,
+    identityOn
+      ? [...IDENTITY_ROW_SETTINGS, CLAIM_BY_KEY]
+      : IDENTITY_ROW_SETTINGS,
     parsed,
     now,
   );
-}
-
-/**
- * claimByKey's manifest value at link and resync (I-09), for the descriptor's `manifestIngest`
- * (Identity on only: the claim rules read the column for every product, so a block declared while
- * Identity is off, which the validator warns about, changes nothing): when `.pkey/product` declares
- * `identity.keyEntry.claimByKey`, its
- * column takes that value unless the console has claimed the key (the guard is in the
- * statement, so a claim made while the resync ran still wins), with one `setting.resync` audit row
- * when the value changes. An undeclared value leaves the column alone: the console set it before
- * the block existed, and a resync must not quietly change what an existing product does.
- */
-export function manifestClaimByKeyStatements(
-  product: string,
-  parsed: ParsedManifest | unknown,
-  now: number,
-): DbStatement[] {
-  const declared = manifestValueAt(parsed, CLAIM_BY_KEY);
-  if (typeof declared !== "boolean") return [];
-  const value = declared ? 1 : 0;
-  const claimed = `EXISTS (SELECT 1 FROM product_settings
-      WHERE product = ? AND key = ? AND source = 'console'
-        AND (expires_at IS NULL OR expires_at > ?))`;
-  const was = `(SELECT claim_by_key FROM portal_product_settings WHERE product = ?)`;
-  return [
-    auditStatement(
-      {
-        product,
-        at: now,
-        ...actorColumns(SYSTEM_ACTORS.resync),
-        action: "setting.resync",
-        target_kind: "setting",
-        target_id: CLAIM_BY_KEY_SETTING,
-        summary: `${CLAIM_BY_KEY_SETTING} set from the manifest: ${declared}`,
-      },
-      sql(
-        `WHERE NOT ${claimed} AND COALESCE(${was}, 0) <> ?`,
-        product,
-        CLAIM_BY_KEY_SETTING,
-        now,
-        product,
-        value,
-      ),
-    ),
-    {
-      sql: `INSERT INTO portal_product_settings (product, claim_by_key, created_at, modified_at)
-            SELECT ?, ?, ?, ? WHERE NOT ${claimed}
-            ON CONFLICT(product) DO UPDATE SET
-              claim_by_key = excluded.claim_by_key, modified_at = excluded.modified_at
-            WHERE portal_product_settings.claim_by_key <> excluded.claim_by_key`,
-      params: [product, value, now, now, product, CLAIM_BY_KEY_SETTING, now],
-    },
-  ];
 }
 
 /** The product's `identity.oidc.syncTierOnSignIn` in force (until ST-04's resolver). */

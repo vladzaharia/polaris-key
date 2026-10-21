@@ -17,7 +17,13 @@ import { issuePortalSessionRow } from "./portalSessionRow.js";
 import { describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
-import { makeEnv, NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
+import {
+  makeEnv,
+  NOW,
+  seedLicenseWithKey,
+  seedProduct,
+  setPortalToggles,
+} from "./seed.js";
 import type { Env } from "../src/platform/env.js";
 import { serializeServices, type ServicesMap } from "../src/core/services.js";
 import { setServices } from "../src/core/products/store.js";
@@ -114,16 +120,7 @@ async function setPortalSettings(
   slug: string,
   opts: { portal?: number } = {},
 ): Promise<void> {
-  await db.run(
-    `INSERT INTO portal_product_settings
-       (product, portal_enabled, branding_json, created_at, modified_at)
-     VALUES (?, ?, ?, ?, ?)`,
-    slug,
-    opts.portal ?? 1,
-    null,
-    NOW,
-    NOW,
-  );
+  await setPortalToggles(db, slug, { portalEnabled: (opts.portal ?? 1) === 1 });
 }
 
 async function capabilities(
@@ -236,10 +233,7 @@ describe("portal capabilities follow services_json", () => {
 
     // I-29: there is no per-product Downloads switch any more; the portal being off still
     // closes the tab.
-    await db.run(
-      "UPDATE portal_product_settings SET portal_enabled = 0 WHERE product = ?",
-      "djdl",
-    );
+    await setPortalToggles(db, "djdl", { portalEnabled: false });
     expect((await capabilities(env, db, "djdl")).modules.releases).toBe(false);
   });
 

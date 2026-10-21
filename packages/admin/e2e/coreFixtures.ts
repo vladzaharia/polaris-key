@@ -650,6 +650,9 @@ export const CORE_ROUTES: Record<string, unknown> = {
   "/manage/api/products/djdl/identity/portal": {
     settings: {
       portalEnabled: true,
+      keyReissueEnabled: false,
+      claimByKey: false,
+      branding: { developerName: "DJDL Audio", tintColor: "#3a7bd5" },
     },
   },
   "/manage/api/products/djdl/identity/sign-in-settings": {

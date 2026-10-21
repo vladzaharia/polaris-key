@@ -47,7 +47,7 @@ import {
   seedRepositoryVisibility,
 } from "./portalHarness.js";
 import { seedDeliveryAccess } from "./releaseSurface.js";
-import { NOW, seedLicenseWithKey } from "./seed.js";
+import { NOW, seedLicenseWithKey, setPortalToggles } from "./seed.js";
 import {
   BYTES,
   CONSOLE,
@@ -566,19 +566,9 @@ describe("GET /api/products/<p>/downloads", () => {
     expect((await downloads(w, unlinked)).status).toBe(404);
 
     const p = await account(w, { id: "lic_diceroll_2" });
-    await w.db.run(
-      `INSERT INTO portal_product_settings
-         (product, portal_enabled, branding_json, created_at, modified_at)
-       VALUES (?, 0, NULL, ?, ?)`,
-      SLUG,
-      NOW,
-      NOW,
-    );
+    await setPortalToggles(w.db, SLUG, { portalEnabled: false });
     expect((await downloads(w, p)).status).toBe(404);
-    await w.db.run(
-      "UPDATE portal_product_settings SET portal_enabled = 1 WHERE product = ?",
-      SLUG,
-    );
+    await setPortalToggles(w.db, SLUG, { portalEnabled: true });
     expect((await downloads(w, p)).status).toBe(200);
 
     const path = `/api/products/${SLUG}/downloads`;

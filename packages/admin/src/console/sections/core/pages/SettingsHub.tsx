@@ -28,6 +28,7 @@ import { productPage, r } from "../../../routes.js";
 export const SETTINGS_AREAS: { page: ProductPageId; label: string }[] = [
   { page: "services", label: "Features" },
   { page: "presentation", label: "Presentation" },
+  { page: "portal", label: "Polaris Locker" },
   { page: "keys", label: "Keys & secrets" },
   { page: "settings-members", label: "Members" },
 ];

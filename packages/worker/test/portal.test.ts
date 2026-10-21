@@ -10,6 +10,7 @@ import {
   seedLicenseWithKey,
   seedProduct,
   setClaimByKey,
+  setPortalToggles,
 } from "./seed.js";
 import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
@@ -244,21 +245,7 @@ describe("customer portal", () => {
     const env = portalEnv();
     await seedProduct(db, "djdl");
     const { key } = await seedLicenseWithKey(db, "djdl");
-    await db.run(
-      `INSERT INTO portal_product_settings
-         (product, portal_enabled, oidc_enabled, magic_enabled,
-          license_key_claim_enabled, releases_enabled, branding_json, created_at, modified_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      "djdl",
-      0,
-      1,
-      1,
-      1,
-      1,
-      null,
-      NOW,
-      NOW,
-    );
+    await setPortalToggles(db, "djdl", { portalEnabled: false });
     const session = await portalSession(env, db, "someone@example.com");
 
     const caps = await handlePortalApi(
