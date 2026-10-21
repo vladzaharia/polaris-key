@@ -736,7 +736,13 @@ describe("--json on every verb (both adapters)", () => {
       setExitCode: () => undefined,
     });
     await program.parseAsync(["activate", KEY], { from: "user" });
-    expect(err.text()).toContain("saved in your shell history");
+    // B-114: a row under the header, not text above the product chip.
+    const shown = screen.text();
+    expect(shown).toContain("saved in your shell history");
+    expect(shown.indexOf("Tidewater")).toBeLessThan(
+      shown.indexOf("saved in your shell history"),
+    );
+    expect(err.text()).not.toContain("saved in your shell history");
     expect(screen.raw + err.raw).not.toContain(KEY_SECRET);
     await program.parseAsync(["sign-out", "--yes"], { from: "user" });
     // No presentation and no bundle name here: the product is named after its slug.

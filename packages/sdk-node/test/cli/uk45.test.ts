@@ -18,6 +18,7 @@ import {
   PIPED_KEY_WAIT_MS,
   statusFlow,
   updateApplyFlow,
+  updateCheckFlow,
 } from "../../src/cli/flows.js";
 import { createKitContext } from "../../src/cli/context.js";
 import { statusView, tierName } from "@polaris-key/ui-core/terminal";
@@ -405,6 +406,44 @@ describe("every flow ensures discovery before deciding a capability is off", () 
         },
       } as never),
     ).resolves.toBeUndefined();
+  });
+});
+
+describe("update check offers only the commands the host mounted (B-112)", () => {
+  const decision = {
+    action: "binary",
+    method: "full",
+    release: { version: "2.5.0", seq: 7 },
+    build: "b",
+    mandatory: false,
+    critical: false,
+    prestage: [],
+    discardStaged: false,
+  };
+  const check = (mounted?: string[]) =>
+    render({ variant }, async (h) => {
+      if (mounted) h.ctx.mounted = mounted;
+      await updateCheckFlow(
+        h.ctx,
+        stubClient({ update: { decide: async () => ({ decision }) } }),
+      );
+    });
+
+  it("leaves out changelog when the host did not mount it", async () => {
+    const r = await check(["update check", "update apply", "status"]);
+    expect(flat(r.text)).toContain("tidewater update apply");
+    expect(flat(r.text)).not.toContain("changelog");
+  });
+
+  it("offers both when everything is mounted", async () => {
+    const r = await check();
+    expect(flat(r.text)).toContain("tidewater changelog");
+  });
+
+  it("offers neither when neither is mounted, with no blank row left over", async () => {
+    const r = await check(["update check"]);
+    expect(flat(r.text)).not.toContain("update apply");
+    expect(flat(r.text)).not.toContain("changelog");
   });
 });
 

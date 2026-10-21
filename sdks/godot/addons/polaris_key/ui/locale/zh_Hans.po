@@ -3717,6 +3717,21 @@ msgstr "{name} 已设置，但未输出"
 msgid "cli.mint.hidden"
 msgstr "未生成任何内容"
 
+#. Mint and print a token
+#. Terminal: the label of the command row under the mint warning 'Nothing was minted': running it mints a token and prints it.
+msgid "cli.mint.reveal"
+msgstr "生成并打印令牌"
+
+#. The key file is empty
+#. Terminal activate --key-file: the warning title when the file holds no key. The file's path follows under it.
+msgid "cli.keyFile.empty"
+msgstr "密钥文件是空的"
+
+#. The key file can't be read
+#. Terminal activate --key-file: the warning title when the file cannot be read. The file's path follows under it.
+msgid "cli.keyFile.unreadable"
+msgstr "无法读取密钥文件"
+
 #. macOS
 #. Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language.
 msgid "cli.platform.macos"

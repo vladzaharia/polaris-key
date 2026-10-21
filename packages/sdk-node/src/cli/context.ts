@@ -61,6 +61,8 @@ export interface KitContext {
   theme: PolarisKeyTerminalTheme;
   /** The command the user runs (`tidewater`), for "Run tidewater login" lines and help. */
   bin: string;
+  /** The verb ids the mount offers, when the host mounted a subset; undefined means every verb. */
+  mounted?: readonly string[];
   /** The product slug. */
   slug: string;
   stdout: TerminalOutput;
@@ -102,6 +104,8 @@ export interface CreateContextOptions {
   /** The product slug (the name of last resort). */
   slug: string;
   bin?: string;
+  /** The verb ids the mount offers (a subset of the verbs), when known. */
+  mounted?: readonly string[];
   /** The SDK's presentation accessor (HA-13), when it has one. */
   presentation?: PresentationSource | null;
   /** The bundle's identity; default: the entry script's package.json. */
@@ -242,6 +246,7 @@ function buildContext(
     product,
     theme,
     bin: o.bin ?? o.slug,
+    ...(o.mounted ? { mounted: o.mounted } : {}),
     slug: o.slug,
     stdout,
     stderr,

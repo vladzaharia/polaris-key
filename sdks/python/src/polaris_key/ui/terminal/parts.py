@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import re
 import warnings
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, List, Optional, Sequence, Tuple
 
 from ... import qr as _qr
@@ -79,6 +79,21 @@ def role_colors(colors: Any, scheme: str, color: str, native: bool) -> Tuple[Tup
     return tuple(out)
 
 
+def bind_parens(spans: List[Span]) -> List[Span]:
+    """Keep a parenthesis with the unit it wraps: "Mara (" never ends a line, nor ")" starts one
+    (the Node kit's ``bindParens``)."""
+    out = list(spans)
+    for i in range(len(out) - 1):
+        a, b = out[i], out[i + 1]
+        if b.unit and a.text.endswith("("):
+            out[i] = a = replace(a, text=a.text[:-1])
+            out[i + 1] = b = replace(b, text="(" + b.text)
+        if a.unit and b.text.startswith(")"):
+            out[i] = replace(a, text=a.text + ")")
+            out[i + 1] = replace(b, text=b.text[1:])
+    return [s for s in out if s.text != ""]
+
+
 @dataclass
 class Kit:
     env: TermEnv
@@ -91,6 +106,20 @@ class Kit:
     slug: Optional[str] = None
     #: Every catalog key a render used, in order (the string lint and the fixture contract).
     used: List[str] = field(default_factory=list)
+    #: The verb ids the host mounted (``None``: every verb). A fix for one that is not is left out.
+    mounted: Optional[Tuple[str, ...]] = None
+    #: The key came from the command line: its shell-history warning is a row under the header.
+    argv_key: bool = False
+
+    def argv_key_warning(self) -> List[Line]:
+        """The shell-history warning for a key typed after the command (empty otherwise)."""
+        if not self.argv_key:
+            return []
+        return self.step("warn", [self.t("cli.activate.argWarning", command=f"{self.prog} activate")])
+
+    def offered(self, verb: str) -> bool:
+        """Whether the host mounted ``verb`` (``update apply``, ``changelog``…)."""
+        return self.mounted is None or verb in self.mounted
 
     @classmethod
     def create(
@@ -104,7 +133,7 @@ class Kit:
     ) -> "Kit":
         th = theme or Theme()
         ident = resolve_identity(integrator=th.product, source=source, slug=product, accent=th.accent)
-        return cls(env=env, copy=Copy(th.locale, th.copy_overrides), identity=ident, theme=th, prog=prog, slug=product)
+        return cls(env=env, copy=Copy(th.locale, th.copy_overrides, ascii=env.symbols == "ascii"), identity=ident, theme=th, prog=prog, slug=product)
 
     # ── Copy and data spans ───────────────────────────────────────────────────────────────
 

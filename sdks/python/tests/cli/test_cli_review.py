@@ -187,7 +187,16 @@ def _typer_help(columns: int) -> str:
         """Export a mix"""
 
     register_typer(app, client=HOST)
-    r = click.testing.CliRunner().invoke(typer.main.get_command(app), ["--help"], prog_name="tidewater", terminal_width=columns, env={"TERMINAL_WIDTH": str(columns), "COLUMNS": str(columns), "NO_COLOR": "1"})
+    # typer reads TERMINAL_WIDTH once, at import, so the width of the first test would stick for
+    # every later one (B-119): set the module's width for this render.
+    from typer import rich_utils
+
+    old = rich_utils.MAX_WIDTH
+    rich_utils.MAX_WIDTH = columns
+    try:
+        r = click.testing.CliRunner().invoke(typer.main.get_command(app), ["--help"], prog_name="tidewater", terminal_width=columns, env={"COLUMNS": str(columns), "NO_COLOR": "1"})
+    finally:
+        rich_utils.MAX_WIDTH = old
     return r.output
 
 
@@ -204,6 +213,10 @@ def test_the_default_mount_help(framework: str, columns: int) -> None:
     assert "{" not in text
     assert "sign-in" not in text.replace("Sign in", "") and "sign-out" not in text
     check(HELP / f"help-{framework}-{columns}.txt", text)
+    # Nothing is wider than the terminal, and a wide terminal gets a wide render (B-119).
+    if framework == "typer":
+        widest = max(len(ln) for ln in text.splitlines())
+        assert widest <= columns and (columns < 80 or widest > 40)
 
 
 def test_argparse_aliases_still_run() -> None:
@@ -283,3 +296,104 @@ def test_the_key_entry_line_fits_with_its_cursor(columns: int) -> None:
     for raw in (KEY, KEY[:20], "pkey_tidewater_"):
         lines = screens.key_entry(k, raw, parse_key(raw, final=False))
         assert all(cell_len(ln.text.rstrip()) <= columns for ln in lines), (columns, raw)
+
+
+def test_the_update_screen_offers_only_the_verbs_the_host_mounted() -> None:
+    # B-112: the fix rows follow the mount, as the gates do.
+    from polaris_key.ui.core.models import UpdateView
+    from polaris_key.ui.terminal import screens
+
+    from .fixtures import _UPDATE, kit
+    from .golden_support import env
+
+    def shown(mounted):
+        k = kit(env("none", "unicode", 80, "dark"))
+        k.mounted = mounted
+        v = UpdateView("UpdatePrompt", "available", **{**_UPDATE, "installable": True})
+        return "\n".join(ln.text for ln in screens.update(k, v, "update"))
+
+    everything = shown(None)
+    assert "tidewater changelog" in everything and "tidewater update apply" in everything
+    partial = shown(("update check", "update apply"))
+    assert "changelog" not in partial and "tidewater update apply" in partial
+    assert "changelog" not in shown(("update check",)) and "update apply" not in shown(("update check",))
+
+
+def test_a_mistyped_command_names_itself_not_every_choice(capsys: pytest.CaptureFixture[str]) -> None:
+    # B-117: argparse's "(choose from 'activate', 'enroll', ...)" list is gone.
+    from polaris_key.cli.argparse_cli import main
+
+    with pytest.raises(SystemExit) as e:
+        main(["stats"])
+    assert e.value.code == 2
+    err = capsys.readouterr().err
+    assert "'stats' is not a command" in err and "--help" in err and "choose from" not in err
+
+
+def test_the_mint_fix_says_it_mints_and_the_key_file_titles_come_from_the_catalog() -> None:
+    from polaris_key.ui.terminal import flows
+
+    out = flows._hidden(_terminal("mint"), "cli.mint.hidden", "mint ci --reveal", {"recipe": "ci"}, reveal_key="cli.mint.reveal")
+    text = "\n".join(out.text)
+    assert "Nothing was minted" in text and "Mint and print a token" in text and "Print the value" not in text
+    assert "The key file is empty" in "\n".join(flows.key_file_problem(_terminal("activate"), "/tmp/k", True).text)
+    assert "can't be read" in "\n".join(flows.key_file_problem(_terminal("activate"), "/tmp/k", False).text)
+
+
+def test_the_key_on_the_command_line_warns_under_the_header_not_above_it(capsys: pytest.CaptureFixture[str]) -> None:
+    # B-114 (Python): the shell-history warning is a row of the screen, never text above the chip.
+    from polaris_key.cli import verbs
+
+    client = SimpleNamespace(
+        product="tidewater",
+        license=SimpleNamespace(activate_with_key=lambda key: SimpleNamespace(kind="ok")),
+        status=lambda: SimpleNamespace(status="ok"),
+        is_licensed=lambda: True,
+        core=SimpleNamespace(version="1.0.0", channel=None),
+    )
+    ns = verbs.namespace(next(v for v in verbs.VERBS if v.name == "activate"), [KEY], {})
+    ns["_term"] = _terminal("activate")
+    result = verbs.activate(client, ns)
+    assert capsys.readouterr().err == "", "nothing is printed above the screen"
+    text = "\n".join(result.lines)
+    assert "shell history" in text and text.index("shell history") < text.index("License key")
+
+
+def test_ascii_mode_spells_the_catalog_in_ascii() -> None:
+    # B-120: grace lines and hints print "-" and "...", never "·" or "…".
+    from polaris_key.ui.core.copy import Copy
+
+    assert "·" in Copy("en")("devices.meta", platform="macOS", when="today")
+    spelled = Copy("en", ascii=True)("devices.meta", platform="macOS", when="today")
+    assert spelled.isascii() and " - " in spelled
+    from .fixtures import kit
+    from .golden_support import env
+
+    k = kit(env("none", "ascii", 80, "dark"))
+    assert k.copy.ascii and k.s("update.current", version="2.5", size="61 MB").isascii()
+
+
+@pytest.mark.parametrize("columns", [32, 36, 40, 44, 50])
+def test_signed_in_as_never_leaves_a_dangling_bracket(columns: int) -> None:
+    # B-121: "Signed in as {name} ({email})" keeps "(" and ")" with the unit they wrap.
+    from polaris_key.ui.core.models import SignInModel
+    from polaris_key.ui.terminal import screens
+
+    from .fixtures import kit
+    from .golden_support import env
+
+    class Prompt:
+        userCode = "WDJB-MJHT"
+        verificationUri = "https://polaris.locker/device"
+        verificationUriComplete = "https://polaris.locker/device?user_code=WDJB-MJHT"
+        expiresAt = 10**10
+
+    for name, email in (("Mara Fennick", "mara.fennick@tidewater.example"), ("Al", "a@b.example"), ("Mara", "mara@x.io")):
+        m = SignInModel(headless=False)
+        m.prompted(Prompt(), 0)
+        ident = SimpleNamespace(name=name, email=email)
+        view = m.finished(SimpleNamespace(status="ready", identity=ident, message=""))
+        rows = [ln.text.rstrip() for ln in screens.sign_in(kit(env("none", "unicode", columns, "dark")), view, "login", frame=2)]
+        for row in rows:
+            body = row[3:] if len(row) > 3 else row
+            assert not body.startswith(")") and not row.rstrip().endswith("("), (columns, rows)

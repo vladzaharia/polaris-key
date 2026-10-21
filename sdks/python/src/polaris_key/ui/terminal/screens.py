@@ -28,7 +28,7 @@ from ..core.models import (
     UpdateView,
 )
 from . import fmt
-from .parts import STACK_COLUMNS, Kit, _display_url
+from .parts import STACK_COLUMNS, Kit, _display_url, bind_parens
 from .text import DROP, Line, Span, cell_len, wrap
 
 __all__ = [
@@ -250,6 +250,7 @@ def key_entry(
     body: Lines = []
     if reason is not None:
         body += k.body([reason]) + _gap(k)
+    body += k.argv_key_warning()
     body += k.step("active", [k.t("part.keyField.label", "strong"), Span("  "), k.t("activate.lede", "muted")])
     cursor = Span(" ", ("code",), None, "symbol") if k.decor and not busy else Span("")
     if raw:
@@ -280,7 +281,7 @@ def _slug_of(k: Kit) -> Optional[str]:
 def _key_done(k: Kit, key: Optional[str]) -> Lines:
     if not key:
         return []
-    return k.step("done", [k.t("part.keyField.label"), k.sep(), k.key(key)])
+    return k.argv_key_warning() + k.step("done", [k.t("part.keyField.label"), k.sep(), k.key(key)])
 
 
 def activate(k: Kit, v: ActivateView, verb: str = "activate") -> Lines:
@@ -421,7 +422,7 @@ def sign_in(k: Kit, v: SignInView, verb: str = "sign-in", *, frame: int = 0) -> 
             browser = not v.headless and not v.no_browser
             end, hints = _code_hints(k, browser, v.copied), True
     elif v.state == "done":
-        who = k.units("signin.cli.signedIn", "strong", name=v.name, email=v.email) if (v.name and v.email) else [k.t("account.holder", name=v.name or v.email or k.product)]
+        who = bind_parens(k.units("signin.cli.signedIn", "strong", name=v.name, email=v.email)) if (v.name and v.email) else [k.t("account.holder", name=v.name or v.email or k.product)]
         body += k.step("ok", who)
         end = [k.t("signin.cli.closeTab", "muted")] if not v.headless else []
     else:
@@ -685,7 +686,7 @@ def update(k: Kit, v: UpdateView, verb: str = "update") -> Lines:
             if v.critical:
                 body += k.body([*k.icon("warn", "warning"), k.t("update.critical")])
             body += _gap(k)
-            body += _fixes(k, [("update apply", "cli.update.install")] if v.installable else [])
+            body += _fixes(k, [("update apply", "cli.update.install")] if v.installable and k.offered("update apply") else [])
         elif v.state in ("store", "platform"):
             body += k.step("active", [k.t("update.title", "strong", product=k.product, version=v.version)])
             if v.critical:
@@ -705,7 +706,7 @@ def update(k: Kit, v: UpdateView, verb: str = "update") -> Lines:
             body += _gap(k)
             if not v.installable:
                 body += _download_rows(k, v)
-            body += _fixes(k, ([("update apply", "cli.update.install")] if v.installable else []) + [("changelog", "update.whatsNew")])
+            body += _fixes(k, [f for f in ([("update apply", "cli.update.install")] if v.installable else []) + [("changelog", "update.whatsNew")] if k.offered(f[0])])
     return _frame(k, verb, body, end, hints)
 
 

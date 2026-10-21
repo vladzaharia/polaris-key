@@ -45,6 +45,22 @@ def test_try_again_rereads_the_client(kit_app):
         assert gate.view.state == "grace"
         client.st = "ok"
         gate.kit.bridge.invoke("common.reconnect", "retry")
-        assert gate.open
+        assert gate.open and gate.view.state == "licensed"
+    finally:
+        gate.close()
+
+
+def test_grace_lets_the_app_run_and_shows_a_non_modal_banner(kit_app):
+    # B-109: ui-matrix "PolarisKeyGate/grace: the app renders, with Reconnect".
+    from polaris_key.ui.qt import _binding as qt
+
+    client = Client("grace")
+    opened = []
+    gate = run_gate(client, None, on_open=lambda: opened.append(1))
+    try:
+        assert gate.open and opened == [1]
+        assert gate.view.state == "grace"
+        assert gate.kit.view.isVisible()
+        assert gate.kit.view.modality() == qt.QtCore.Qt.WindowModality.NonModal
     finally:
         gate.close()

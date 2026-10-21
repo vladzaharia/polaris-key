@@ -1,52 +1,43 @@
-                                
- Usage: tidewater [OPTIONS]     
- COMMAND                        
-                  [ARGS]...     
-                                
-╭─ Options ────────────────────╮
-│ --instal…          Install   │
-│                    completi… │
-│                    for the   │
-│                    current   │
-│                    shell.    │
-│ --show-c…          Show      │
-│                    completi… │
-│                    for the   │
-│                    current   │
-│                    shell, to │
-│                    copy it   │
-│                    or        │
-│                    customize │
-│                    the       │
-│                    installa… │
-│ --help             Show this │
-│                    message   │
-│                    and exit. │
-╰──────────────────────────────╯
-╭─ Commands ───────────────────╮
-│ export      Export a mix     │
-╰──────────────────────────────╯
-╭─ License ────────────────────╮
-│ activate    Add a license    │
-│             key (prompted,   │
-│             or piped on      │
-│             stdin)           │
-│ deactivate  Stop using your  │
-│             license on this  │
-│             device and free  │
-│             its seat         │
-│ status      Show your        │
-│             license, devices │
-│             and offline time │
-│ login       Sign in with     │
-│             your account in  │
-│             the browser      │
-│ logout      Sign out on this │
-│             device           │
-│ devices     List the devices │
-│             using your       │
-│             license          │
-│ update      Check for a      │
-│             newer version    │
-╰──────────────────────────────╯
+                                        
+ Usage: tidewater [OPTIONS] COMMAND     
+                  [ARGS]...             
+                                        
+╭─ Options ────────────────────────────╮
+│ --install-co…          Install       │
+│                        completion    │
+│                        for the       │
+│                        current       │
+│                        shell.        │
+│ --show-compl…          Show          │
+│                        completion    │
+│                        for the       │
+│                        current       │
+│                        shell, to     │
+│                        copy it or    │
+│                        customize the │
+│                        installation. │
+│ --help                 Show this     │
+│                        message and   │
+│                        exit.         │
+╰──────────────────────────────────────╯
+╭─ Commands ───────────────────────────╮
+│ export      Export a mix             │
+╰──────────────────────────────────────╯
+╭─ License ────────────────────────────╮
+│ activate    Add a license key        │
+│             (prompted, or piped on   │
+│             stdin)                   │
+│ deactivate  Stop using your license  │
+│             on this device and free  │
+│             its seat                 │
+│ status      Show your license,       │
+│             devices and offline time │
+│ login       Sign in with your        │
+│             account in the browser   │
+│ logout      Sign out on this device  │
+│ devices     List the devices using   │
+│             your license             │
+│ update      Check for a newer        │
+│             version                  │
+╰──────────────────────────────────────╯
 

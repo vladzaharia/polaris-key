@@ -1388,6 +1388,12 @@
     <string name="cli_secret_hidden">%1$s 已设置，但未输出</string>
     <!-- Terminal: the mint command without -reveal, as the title of a warning; the command that mints and prints follows as a command row. -->
     <string name="cli_mint_hidden">未生成任何内容</string>
+    <!-- Terminal: the label of the command row under the mint warning 'Nothing was minted': running it mints a token and prints it. -->
+    <string name="cli_mint_reveal">生成并打印令牌</string>
+    <!-- Terminal activate -key-file: the warning title when the file holds no key. The file's path follows under it. -->
+    <string name="cli_keyFile_empty">密钥文件是空的</string>
+    <!-- Terminal activate -key-file: the warning title when the file cannot be read. The file's path follows under it. -->
+    <string name="cli_keyFile_unreadable">无法读取密钥文件</string>
     <!-- Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language. -->
     <string name="cli_platform_macos">macOS</string>
     <!-- Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language. -->

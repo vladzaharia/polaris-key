@@ -2,7 +2,7 @@
 
 Importing this module requires the ``typer`` extra. Like the click adapter, every command is
 built from the one verb table (:mod:`polaris_key.cli.verbs`) and draws through the terminal kit. A consumer mounts the app via
-``app.add_typer(polaris_typer_app(...), name="polaris")``.
+``app.add_typer(polaris_typer_app(...), name="license")``.
 """
 
 from __future__ import annotations
@@ -87,7 +87,7 @@ def register_typer(
             help=mount.verb_help(verb.name, plan.ids, product),
             rich_help_panel=None if namespace else heading,
             hidden=verb.name in mount.ALIASES,
-        )(_typer_verb(binding, verb, _emit, theme, shown, plan.actions or None))
+        )(_typer_verb(binding, verb, _emit, theme, shown, plan.actions or None, plan.ids))
     if binding.bound:
         from .gate import GateTarget, bind_gate
 
@@ -105,7 +105,7 @@ def polaris_typer_app(
 ) -> typer.Typer:
     """Return a ``typer.Typer`` exposing the Polaris Key commands.
 
-    Mount it with ``app.add_typer(polaris_typer_app(...), name="polaris")``.
+    Mount it with ``app.add_typer(polaris_typer_app(...), name="license")``.
     ``client_factory`` (default: build from the parsed options) lets a consumer pin trust
     keys / base URL; ``theme`` restyles the terminal kit and ``prog`` is the command its fix
     lines name (default: the one the person typed). ``name`` is the group it is mounted under
@@ -119,7 +119,7 @@ def polaris_typer_app(
 
 
 def _typer_verb(
-    binding: mount.Binding, verb: "verbs_mod.Verb", emit, theme: Any = None, prog: Optional[str] = None, actions: Any = None  # noqa: ANN001
+    binding: mount.Binding, verb: "verbs_mod.Verb", emit, theme: Any = None, prog: Optional[str] = None, actions: Any = None, mounted: Any = None  # noqa: ANN001
 ):
     """A function whose signature typer reads: the common options, the free words and the
     verb's options, all from the one table."""
@@ -156,7 +156,7 @@ def _typer_verb(
         else:
             words = kw.pop("words", None) or []
         ns = verbs_mod.namespace(verb, words, kw)
-        emit(verbs_mod.run(binding.factory, opts, verb, ns, theme=theme, prog=prog or (ctx.command_path.rsplit(" ", 1)[0] if ctx is not None else mount.program_name()), close=binding.close, actions=actions))
+        emit(verbs_mod.run(binding.factory, opts, verb, ns, theme=theme, prog=prog or (ctx.command_path.rsplit(" ", 1)[0] if ctx is not None else mount.program_name()), close=binding.close, actions=actions, mounted=mounted))
 
     run.__signature__ = inspect.Signature(params)  # type: ignore[attr-defined]
     run.__name__ = verb.name.replace("-", "_")

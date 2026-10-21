@@ -68,6 +68,8 @@ export function lineSink(print: (line: string) => void): TerminalOutput {
 export interface RunKitVerbOptions extends KitAdapterOptions {
   slug: string;
   print?: (line: string) => void;
+  /** The verb ids the mount offers: a screen's fix for a verb that is not mounted is left out. */
+  mounted?: readonly string[];
 }
 
 /**
@@ -136,6 +138,7 @@ export async function runKitVerb(
     io,
     ...(o.theme ? { theme: o.theme } : {}),
     ...(o.frame === false ? { frame: false } : {}),
+    ...(o.mounted ? { mounted: o.mounted } : {}),
     presentation: o.presentation ?? presentationSourceOf(client),
   });
   const verbFlags: VerbFlags = {

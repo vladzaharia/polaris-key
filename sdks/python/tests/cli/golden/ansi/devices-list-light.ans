@@ -42,11 +42,11 @@
 [2m|[0m
 [36m*[0m  [1mYour devices[0m[2m - 3[0m
 [2m|[0m  [2m( )[0m [1mWork laptop[0m
-[2m|[0m    [2mWindows 11 · last seen 41 days ago - dev_9k2[0m
+[2m|[0m    [2mWindows 11 - last seen 41 days ago - dev_9k2[0m
 [2m|[0m  [2m( )[0m [1mMara’s iPad[0m
-[2m|[0m    [2miPadOS 26 · last seen yesterday - dev_4m7[0m
+[2m|[0m    [2miPadOS 26 - last seen yesterday - dev_4m7[0m
 [2m|[0m  [36m(*)[0m [1mMacBook Pro[0m
-[2m|[0m    [2mmacOS 26 · last seen today - dev_1c3 - This computer[0m
+[2m|[0m    [2mmacOS 26 - last seen today - dev_1c3 - This computer[0m
 [2m|[0m
 [2m|[0m  [1mtidewater devices rename <id> <name>[0m   [2mRename[0m
 [2m`[0m  [1mtidewater devices deauthorize <id>[0m     [2mRemove[0m
@@ -94,11 +94,11 @@
 [2m|[0m
 [36m*[0m  [1mYour devices[0m[2m - 3[0m
 [2m|[0m  [2m( )[0m [1mWork laptop[0m
-[2m|[0m    [2mWindows 11 · last seen 41 days ago - dev_9k2[0m
+[2m|[0m    [2mWindows 11 - last seen 41 days ago - dev_9k2[0m
 [2m|[0m  [2m( )[0m [1mMara’s iPad[0m
-[2m|[0m    [2miPadOS 26 · last seen yesterday - dev_4m7[0m
+[2m|[0m    [2miPadOS 26 - last seen yesterday - dev_4m7[0m
 [2m|[0m  [36m(*)[0m [1mMacBook Pro[0m
-[2m|[0m    [2mmacOS 26 · last seen today - dev_1c3 - This computer[0m
+[2m|[0m    [2mmacOS 26 - last seen today - dev_1c3 - This computer[0m
 [2m|[0m
 [2m|[0m  [1mtidewater devices rename <id> <name>[0m   [2mRename[0m
 [2m`[0m  [1mtidewater devices deauthorize <id>[0m     [2mRemove[0m

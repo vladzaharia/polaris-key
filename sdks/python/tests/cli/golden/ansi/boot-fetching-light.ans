@@ -5,7 +5,7 @@
 ── no-color · 80 ──
 ⠹  Downloading content · 38 MB of 91 MB
 ── ascii · 80 ──
-[2m-[0m  Downloading content · 38 MB of 91 MB
+[2m-[0m  Downloading content - 38 MB of 91 MB
 ── truecolor · 60 ──
 [2m⠹[0m  Downloading content · 38 MB of 91 MB
 ── ansi16 · 60 ──
@@ -13,6 +13,6 @@
 ── no-color · 60 ──
 ⠹  Downloading content · 38 MB of 91 MB
 ── ascii · 60 ──
-[2m-[0m  Downloading content · 38 MB of 91 MB
+[2m-[0m  Downloading content - 38 MB of 91 MB
 ── pipe · 80 ──
 Downloading content · 38 MB of 91 MB

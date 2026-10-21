@@ -113,13 +113,17 @@ def activate(client: Any, ns: Dict[str, Any]) -> CommandResult:
     words = list(ns.get("words") or [])
     t = _term(client, ns, "activate")
     key: Optional[str]
+    warned: List[str] = []
     try:
         key = core.resolve_activation_key(
             words[0] if words else None,
             key_file=ns.get("key_file"),
             key_stdin=bool(ns.get("key_stdin")),
             stdin=_NoPrompt(),
+            # The shell-history warning is drawn by the kit, under the header (not above it).
+            warn=warned.append,
         )
+        t.kit.argv_key = bool(warned)
     except ValueError as e:
         if ns.get("key_file"):
             return _done(_flows().key_file_problem(t, str(ns["key_file"]), empty=True), ns)
@@ -365,6 +369,7 @@ def run(
     prog: str = "polaris-key",
     close: bool = True,
     actions: Optional[Any] = None,
+    mounted: Optional[Sequence[str]] = None,
 ) -> CommandResult:
     """Build a client, run ``verb`` through the terminal kit with the flags in ``ns``, close the
     client (unless the host keeps it: ``close=False``). ``actions`` is a mount's partial verbs
@@ -391,6 +396,7 @@ def run(
             no_color=bool(ns.get("no_color")),
             ascii=bool(ns.get("ascii")),
             device_code=bool(ns.get("device_code")),
+            mounted=mounted,
         )
         ns = dict(ns)
         ns["_term"] = term

@@ -1,7 +1,7 @@
 """A product CLI that mounts the Polaris Key verb set next to its own commands.
 
     python mytool.py run            # your command, gated by the license (exit 4 without one)
-    python mytool.py sign-in        # Polaris Key's verbs: sign-in, status, devices, update, ...
+    python mytool.py login          # Polaris Key's verbs: login, status, devices, update, ...
 
 Replace PRODUCT, VERSION and TRUST with your product's values (`pkey sdk --lang python` prints
 them). ``config=`` builds the client for every Polaris Key verb, so none of them takes --product,
@@ -11,7 +11,6 @@ them). ``config=`` builds the client for every Polaris Key verb, so none of them
 from __future__ import annotations
 
 import argparse
-import sys
 from typing import Optional, Sequence
 
 import polaris_key
@@ -31,10 +30,8 @@ CONFIG = {"product_slug": PRODUCT, "trust": TRUST}
 def run(_args: argparse.Namespace) -> int:
     client = polaris_key.create(**CONFIG, version=VERSION)
     try:
-        outcome = client.boot(on_stage=lambda state, _emits: print("·", state.stage, file=sys.stderr))
-        if not outcome.ready:
-            print("Not activated: run `mytool sign-in` or `mytool activate`.", file=sys.stderr)
-            return 2
+        # @require_license has already refused an unlicensed run (exit 4), so the work starts here.
+        client.boot()
         print("Working with", client.config.get_config("run.concurrency", 4), "workers")
         return 0
     finally:

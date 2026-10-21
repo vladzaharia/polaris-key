@@ -112,6 +112,7 @@ class Terminal:
         term_env: Optional[TermEnv] = None,
         use_rich: Optional[bool] = None,
         size: Optional[Callable[[], Tuple[int, int]]] = None,
+        mounted: Optional[Sequence[str]] = None,
     ) -> "Terminal":
         th = theme or Theme()
         te = term_env or detect(
@@ -128,6 +129,7 @@ class Terminal:
         )
         slug = product or (getattr(client, "product", None) if client is not None else None)
         kit = Kit.create(te, theme=th, product=slug, source=presentation_source(client), prog=prog)
+        kit.mounted = tuple(mounted) if mounted is not None else None
         t = cls(kit, Device(te, kit.palette(), stdout=stdout, stdin=stdin, use_rich=use_rich, size=size), verb)
         t.log_env = os.environ if env is None else env
         return t
@@ -627,8 +629,7 @@ def key_file_problem(t: Terminal, path: str, empty: bool) -> Outcome:
     """``activate --key-file`` with a file that is empty or cannot be read: a warning, the path, and
     the command again. Exit 2, ``"error": "usage"``."""
     k = t.kit
-    title = "The key file is empty" if empty else "The key file can't be read"
-    lines = [k.header(t.verb)] + ([k.rail()] if k.decor else []) + k.step("warn", [Span(title, ("strong",), None, "data:diagnostic")])
+    lines = [k.header(t.verb)] + ([k.rail()] if k.decor else []) + k.step("warn", [k.t("cli.keyFile.empty" if empty else "cli.keyFile.unreadable", "strong")])
     lines += k.body([Span(path, ("muted",), None, "data:path")]) + screens._gap(k) + screens._fixes(k, [("activate --key-file <path>", "")]) + k.end()
     return Outcome(EXIT.usage, screens._close(k, lines), {"error": "usage", "file": path})
 
@@ -711,9 +712,9 @@ def _problem(t: Terminal, kind: str, title: Span, message: Optional[Span], code:
     return Outcome(code, screens._close(k, lines), data, stream="stderr")
 
 
-def _hidden(t: Terminal, title_key: str, command: str, data: Dict[str, Any], **args: Any) -> Outcome:
+def _hidden(t: Terminal, title_key: str, command: str, data: Dict[str, Any], reveal_key: str = "cli.option.reveal", **args: Any) -> Outcome:
     k = t.kit
-    return _problem(t, "warn", k.t(title_key, "strong", **args), None, EXIT.usage, data, [(command, "cli.option.reveal")])
+    return _problem(t, "warn", k.t(title_key, "strong", **args), None, EXIT.usage, data, [(command, reveal_key)])
 
 
 def _print_value(t: Terminal, verb: str, arg: str, value: str, data: Dict[str, Any], allow: bool) -> Outcome:
@@ -750,7 +751,7 @@ def mint(client: Any, t: Terminal, words: Sequence[str], *, reveal: bool = False
     recipe = words[0]
     if not reveal and not t.env.json:
         # Minting prints a token and nothing else, so without --reveal it asks the server for none.
-        return _hidden(t, "cli.mint.hidden", f"mint {recipe} --reveal", {"recipe": recipe})
+        return _hidden(t, "cli.mint.hidden", f"mint {recipe} --reveal", {"recipe": recipe}, reveal_key="cli.mint.reveal")
     try:
         tok = client.config.mint_token(recipe)
     except PolarisError as e:

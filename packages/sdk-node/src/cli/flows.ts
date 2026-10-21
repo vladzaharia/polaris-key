@@ -744,11 +744,8 @@ async function obtainKey(
 ): Promise<string | typeof CANCEL | typeof INTERRUPT | null> {
   const t = ctx.copy.t.bind(ctx.copy);
   if (args.key) {
-    // The positional key still works, and says why it should not be used (UI-KITS §0, GA).
-    if (!quiet(ctx))
-      ctx.stderr.write(
-        `${ctx.render([stepRow("warn", [{ text: t("cli.activate.argWarning", { command: cmd(ctx, "activate") }) }])]).join("\n")}\n`,
-      );
+    // The positional key still works; why it should not be used is a row under the header
+    // (activateFlow draws it).
     return args.key.trim();
   }
   if (ctx.keys) {
@@ -863,6 +860,15 @@ export async function activateFlow(
       : []),
   ];
   const lead = () => hist;
+  // The shell-history warning sits under the header, never above the product chip (B-114).
+  if (args.key && !quiet(ctx))
+    hist.push(
+      stepRow("warn", [
+        {
+          text: t("cli.activate.argWarning", { command: cmd(ctx, "activate") }),
+        },
+      ]),
+    );
   const key = await obtainKey(ctx, args, lead);
   if (key === CANCEL)
     return {
@@ -1844,17 +1850,32 @@ export async function updateCheckFlow(
     ),
     textRow(t("cli.update.have", { version: client.core.version }), ["muted"]),
   ];
-  const updateCommands = (): RailRow[] =>
-    commandRows(ctx, [
-      {
-        label: [{ text: apply, style: ["strong"], keep: true }],
-        value: [{ text: t("cli.update.install"), style: ["muted"] }],
-      },
-      {
-        label: [{ text: cmd(ctx, "changelog"), style: ["strong"], keep: true }],
-        value: [{ text: t("update.whatsNew"), style: ["muted"] }],
-      },
-    ]);
+  // A command the host did not mount is not offered (the gates do the same).
+  const offered = (id: string): boolean =>
+    ctx.mounted === undefined || ctx.mounted.includes(id);
+  const updateCommands = (): RailRow[] => {
+    const entries: Array<{ label: Line; value: Line }> = [
+      ...(offered("update apply")
+        ? [
+            {
+              label: [{ text: apply, style: ["strong"], keep: true }],
+              value: [{ text: t("cli.update.install"), style: ["muted"] }],
+            },
+          ]
+        : []),
+      ...(offered("changelog")
+        ? [
+            {
+              label: [
+                { text: cmd(ctx, "changelog"), style: ["strong"], keep: true },
+              ],
+              value: [{ text: t("update.whatsNew"), style: ["muted"] }],
+            },
+          ]
+        : []),
+    ];
+    return entries.length ? [...gap(ctx), ...commandRows(ctx, entries)] : [];
+  };
   try {
     if (!client.update.decidable) {
       const v = await busy(ctx, t("boot.deciding"), () =>
@@ -1919,7 +1940,6 @@ export async function updateCheckFlow(
             view.version,
             typeof size === "number" ? size : null,
           ),
-          ...gap(ctx),
           ...updateCommands(),
           endRow(),
         );
@@ -1932,7 +1952,6 @@ export async function updateCheckFlow(
             t("update.mandatoryTitle", { product }),
             t("update.mandatoryBody", { product }),
           ),
-          ...gap(ctx),
           ...updateCommands(),
           endRow(),
         );
@@ -2213,6 +2232,9 @@ export async function updateApplyFlow(
     };
   }
   // A program that can neither update itself nor hand off to a store has a download to follow.
+  // Exit 1 on purpose (B-113): a platform hand-off (package manager, store) is a supported way to
+  // finish the install, so it exits 0; a build with no driver is an unsupported configuration, and
+  // a script must not read it as done (`unsupported`, with the download link as the way out).
   if (d.action === "binary" && client.update.driver === null) {
     show(ctx, [
       ...header(),
@@ -2914,13 +2936,14 @@ function hiddenRows(
   ctx: KitContext,
   title: string,
   command: string,
+  revealKey: "cli.option.reveal" | "cli.mint.reveal" = "cli.option.reveal",
 ): RailRow[] {
   return [
     stepRow("warn", [{ text: title }]),
     ...commandRows(ctx, [
       {
         label: [{ text: command, style: ["strong"], keep: true }],
-        value: [{ text: ctx.copy.t("cli.option.reveal"), style: ["muted"] }],
+        value: [{ text: ctx.copy.t(revealKey), style: ["muted"] }],
       },
     ]),
     endRow(),
@@ -3000,6 +3023,7 @@ export async function mintFlow(
             ctx,
             ctx.copy.t("cli.mint.hidden"),
             `${ctx.bin} mint ${recipeId} --reveal`,
+            "cli.mint.reveal",
           ),
         )
         .join("\n")}\n`,

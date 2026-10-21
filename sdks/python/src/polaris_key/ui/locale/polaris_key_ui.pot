@@ -3726,6 +3726,21 @@ msgstr ""
 msgid "cli.mint.hidden"
 msgstr ""
 
+#. Mint and print a token
+#. Terminal: the label of the command row under the mint warning 'Nothing was minted': running it mints a token and prints it.
+msgid "cli.mint.reveal"
+msgstr ""
+
+#. The key file is empty
+#. Terminal activate --key-file: the warning title when the file holds no key. The file's path follows under it.
+msgid "cli.keyFile.empty"
+msgstr ""
+
+#. The key file can't be read
+#. Terminal activate --key-file: the warning title when the file cannot be read. The file's path follows under it.
+msgid "cli.keyFile.unreadable"
+msgstr ""
+
 #. macOS
 #. Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language.
 msgid "cli.platform.macos"

@@ -11,11 +11,13 @@ rest of the drop-in flow; until then the host calls its own ``client.license.act
 
 from __future__ import annotations
 
+import math
+import time
 from typing import Any, Callable, Optional, Tuple
 
 from ..core.identity import presentation_source
 from ..core.theme import Theme
-from ..core.ui_gate import gate_view
+from ..core.ui_gate import gate_view, grace_banner_view
 from ..core.ui_contract import context_of
 from ..core.ui_view import View
 from . import _binding as qt
@@ -27,10 +29,16 @@ __all__ = ["GateController", "gate_input", "run_gate"]
 def gate_input(client: Any, *, now: Optional[int] = None) -> dict:
     """Map ``client.status()`` to the ``gate`` ui-matrix input shape."""
     try:
-        status = client.status().status
+        st = client.status()
+        status = st.status
     except Exception:
         return {"stage": {"outcome": "error"}}
-    return {"gate": {"status": status}}
+    gate: dict = {"status": status}
+    until = getattr(st, "graceUntil", None)
+    if status == "grace" and isinstance(until, (int, float)) and not isinstance(until, bool):
+        clock = time.time() if now is None else now
+        gate["graceDaysLeft"] = max(0, math.ceil((until - clock) / 86400))
+    return {"gate": gate}
 
 
 class GateController:
@@ -41,23 +49,36 @@ class GateController:
         self.kit = kit
         self.window = window
         self.on_open = on_open
+        self._modal: Any = kit.view.modality() if hasattr(kit.view, "modality") else None
         self.view: Optional[View] = None
         kit.bridge.invoked.connect(self._invoked)
         self.refresh()
 
     @property
     def open(self) -> bool:
-        """Whether the app may proceed (the gate shows nothing)."""
-        return self.view is not None and self.view.state == "licensed"
+        """Whether the app may proceed: licensed, or in offline grace (a usable status)."""
+        return self.view is not None and self.view.state in ("licensed", "grace")
 
     def refresh(self) -> View:
-        self.view = gate_view(context_of(gate_input(self.client)))
+        ctx = context_of(gate_input(self.client))
+        self.view = gate_view(ctx)
+        if self.view.state == "grace":
+            # The app renders in grace (ui-matrix PolarisKeyGate/grace). The notice is the grace
+            # banner, shown as a non-modal window so it never blocks the app.
+            self.kit.set_view(grace_banner_view(ctx))
+            self.kit.view.setModality(qt.QtCore.Qt.WindowModality.NonModal)
+            self.kit.view.show()
+            if self.on_open:
+                self.on_open()
+            return self.view
         self.kit.set_view(self.view)
         if self.open:
             self.kit.view.hide()
             if self.on_open:
                 self.on_open()
         else:
+            if self._modal is not None:
+                self.kit.view.setModality(self._modal)
             self.kit.view.show()
         return self.view
 

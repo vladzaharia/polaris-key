@@ -25,7 +25,7 @@
 [36m*[0m  [1mLicense key[0m  [2mYou'll find it in your purchase email.[0m
 [2m|[0m  [2mpkey_tidewater_**********[0m[1;7m [0m
 [2m|[0m  [31mx[0m This key is cut short: after pkey_tidewater_ it has 10 of 22 characters.
-[2m`[0m  [1mEnter[0m [2mactivate - [0m[1mEsc[0m [2mcancel[0m
+[2m`[0m  [1mEnter[0m [2mactivate - Esc cancel[0m
 ── truecolor · 60 ──
 [2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · activate[0m
 [2m│[0m
@@ -57,7 +57,7 @@
 [2m|[0m  [2mpkey_tidewater_**********[0m[1;7m [0m
 [2m|[0m  [31mx[0m This key is cut short: after pkey_tidewater_ it has 10
 [2m|[0m  of 22 characters.
-[2m`[0m  [1mEnter[0m [2mactivate - [0m[1mEsc[0m [2mcancel[0m
+[2m`[0m  [1mEnter[0m [2mactivate - Esc cancel[0m
 ── pipe · 80 ──
 Tidewater Studio · activate
 License key  You'll find it in your purchase email.

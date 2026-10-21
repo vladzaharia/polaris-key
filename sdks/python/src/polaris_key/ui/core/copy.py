@@ -198,6 +198,12 @@ def format_message(locale: str, message: str, args: Optional[Mapping[str, Any]] 
     return _render(_parse(message), args or {}, locale, "#")
 
 
+def ascii_symbols(text: str) -> str:
+    """The catalog's typographic symbols in ASCII: "…" as "...", "·" as "-", curly quotes as
+    straight ones (the Node kit's ``asciiSymbols``)."""
+    return text.replace("…", "...").replace("·", "-").replace("‘", "'").replace("’", "'").replace("“", '"').replace("”", '"')
+
+
 class Copy:
     """The kit copy for one locale, with the integrator's overrides and a platform variant.
 
@@ -212,8 +218,11 @@ class Copy:
         *,
         platform: str = "terminal",
         env: Optional[Mapping[str, str]] = None,
+        ascii: bool = False,
     ) -> None:
         self.locale = resolve_locale(locale, env)
+        #: Spell the catalog's typographic symbols in ASCII (the terminal's ASCII mode, B-120).
+        self.ascii = ascii
         self.platform = platform
         self._overrides: Dict[str, Dict[str, str]] = {}
         for k, v in (overrides or {}).items():
@@ -241,4 +250,5 @@ class Copy:
         return KIT_COPY["en"][key]
 
     def __call__(self, key: str, **args: Any) -> str:
-        return format_message(self.locale, self.raw(key), args)
+        out = format_message(self.locale, self.raw(key), args)
+        return ascii_symbols(out) if self.ascii else out

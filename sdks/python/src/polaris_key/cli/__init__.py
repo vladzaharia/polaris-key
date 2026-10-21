@@ -51,6 +51,8 @@ __all__ = [
     "status",
     "main",
     "register_argparse",
+    "register_click",
+    "register_typer",
     "polaris_click_group",
     "polaris_typer_app",
     "require_license",
@@ -68,7 +70,23 @@ def register_argparse(subparsers, client_factory=None, *, theme=None, prog=None,
     return _reg(subparsers, client_factory, theme=theme, prog=prog, **mount)
 
 
-def polaris_click_group(client_factory=None, name: str = "polaris", *, theme=None, prog=None, **mount):
+def register_click(host, client_factory=None, *, theme=None, prog=None, **mount):
+    """Re-export: add the Polaris Key commands to an existing ``click.Group`` (requires the
+    ``click`` extra). ``mount`` as for :func:`register_argparse`."""
+    from .click_cli import register_click as _reg
+
+    return _reg(host, client_factory, theme=theme, prog=prog, **mount)
+
+
+def register_typer(host, client_factory=None, *, theme=None, prog=None, **mount):
+    """Re-export: add the Polaris Key commands to an existing ``typer.Typer`` (requires the
+    ``typer`` extra). ``mount`` as for :func:`register_argparse`."""
+    from .typer_cli import register_typer as _reg
+
+    return _reg(host, client_factory, theme=theme, prog=prog, **mount)
+
+
+def polaris_click_group(client_factory=None, name: str = "license", *, theme=None, prog=None, **mount):
     """Re-export: build a ``click.Group`` (requires the ``click`` extra). ``mount`` as for
     :func:`register_argparse`, except that ``namespace`` is the group's ``name``."""
     from .click_cli import polaris_click_group as _grp

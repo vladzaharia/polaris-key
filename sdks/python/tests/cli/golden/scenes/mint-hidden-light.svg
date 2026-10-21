@@ -13,5 +13,5 @@
 <rect x="20.5" y="81.2" width="1" height="8.4" fill="#24292f"/>
 <rect x="20.5" y="89.1" width="4.7" height="1" fill="#24292f"/>
 <text x="42" y="93.8" textLength="226.8" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">tidewater mint cdn --reveal</text>
-<text x="294" y="93.8" textLength="126" lengthAdjust="spacingAndGlyphs" fill="#24292f">Print the value</text>
+<text x="294" y="93.8" textLength="184.8" lengthAdjust="spacingAndGlyphs" fill="#24292f">Mint and print a token</text>
 </g></svg>
