@@ -349,6 +349,11 @@
       "verdict": "pass",
       "date": "2026-10-21",
       "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/I-41/recheck/ (BUILT review FAIL -> fix round -> re-check FAIL on the check-symbol word regression -> lead fix e3de348b0; security PASS)"
+    },
+    "PX-21": {
+      "verdict": "pass",
+      "date": "2026-10-21",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/PX-21/recheck/ (re-check PASS-WITH-NOTES after one fix round; lead polish 0adaa0a22)"
     }
   }
 }
