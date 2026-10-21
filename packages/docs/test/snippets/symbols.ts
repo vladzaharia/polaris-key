@@ -35,6 +35,14 @@ const NOT_EXPORTS = new Set([
   "TypeError",
   "ValueError",
   "MockTransport",
+  // Not SDK exports: JSON's NaN, a Steam environment variable, a Windows API.
+  "NaN",
+  "SteamAppId",
+  "GetCurrentPackageFamilyName",
+  // Methods on a client the page already holds, and the server package's export.
+  "useDriver",
+  "registerHandler",
+  "createPolarisKey",
 ]);
 
 /** The names a page's prose claims, minus the lines that label them planned. */

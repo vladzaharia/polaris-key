@@ -66,6 +66,8 @@ await client.sync();
 and reports each stage of client-core's stage machine (`BOOT_STAGES`, re-exported):
 
 ```ts
+import { PolarisKeyClient } from "@polaris-key/node";
+
 const client = await PolarisKeyClient.create({
   productSlug: "djdl",
   trust: { pinnedKeys },
@@ -353,10 +355,12 @@ Polaris Locker is on for the product and already validated. It is never an auth 
 and the app offers it behind a user action.
 
 ```ts
-const r = await client.license.activateWithKey(key);
+import { withManageKey, withManageReturn } from "@polaris-key/node";
+
+const r = await client.license.activateWithKey(userEnteredKey);
 if (r.kind === "device-limit" && r.manageUrl) {
   const link = withManageReturn(
-    withManageKey(r.manageUrl, key),
+    withManageKey(r.manageUrl, userEnteredKey),
     "myapp://activated",
   );
   console.log(`Every seat is taken. Free one up at ${link}`);
@@ -474,6 +478,8 @@ feed (`pkey-feed+jws`) and the release record it pins (`pkey-release+jws`), with
 verify, then stage. `check()` and `appcastUrl()` are unchanged beside it.
 
 ```ts
+import { PolarisKeyClient } from "@polaris-key/node";
+
 const client = await PolarisKeyClient.create({
   productSlug: "acme",
   version: "1.4.0",
@@ -576,8 +582,12 @@ directory. **A build without a stamp has no packs** — ship `pkey-content.json`
 path, and name it in the options:
 
 ```ts
+import { join } from "node:path";
+import { PolarisKeyClient } from "@polaris-key/node";
+
 const client = await PolarisKeyClient.create({
-  // …
+  productSlug: "diceroll",
+  trust: { pinnedKeys },
   update: {
     pinnedReleaseKeys: { "diceroll-release-2026": "…" },
     packs: {

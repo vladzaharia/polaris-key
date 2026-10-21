@@ -79,6 +79,17 @@ export const IGNORED: Record<NativeLang, Set<string>> = {
     "GradleBuildScript",
     "ProGuard",
     "JetBrains",
+    // Other vendors' types the README names: Google Play, Play Integrity, Steamworks.
+    "GetAuthTicketForWebApi",
+    "PurchasesUpdatedListener",
+    "InstallException",
+    "StandardIntegrityManager",
+    "StandardIntegrityErrorCode",
+    "FakeAppUpdateManager",
+    // Swift's module, the generated mirror in a reader's project, and a test base class.
+    "PolarisKeyCore",
+    "ProductCatalog",
+    "ConformanceSuite",
   ]),
   gdscript: new Set([
     "PackedStringArray",

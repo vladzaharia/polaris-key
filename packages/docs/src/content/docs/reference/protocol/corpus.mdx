@@ -57,7 +57,7 @@ runners of SDKs predating packs never read, and the content corpus and `plan-mat
 
 ## Fingerprint corpus (`fingerprint.json`): 6 vectors, 4 device-id derivations, component order `machineUuid` → `boardSerial` → `cpuModel` → `primaryMac` → `bootVolumeUuid` → `ramBucket` → `machineModel`
 
-Source-rule sections (WIRE-CONTRACT-V3 §6.1): `windowsCim` 17, `linuxAnchor` 10, `ramBuckets` 13, plus the pinned `windowsCimCommand`.
+Source-rule sections (WIRE-CONTRACT-V4 §6.1): `windowsCim` 17, `linuxAnchor` 10, `ramBuckets` 13, plus the pinned `windowsCimCommand`.
 
 ## Stage matrix (`stage-matrix.json`): 69 rows, 7 guard cases, 6 confirm cases
 
@@ -65,11 +65,11 @@ Client boot behaviour, not a wire-contract section: the boot stage machine of `@
 
 ## Header values (`headers.json`): 35 platform and 31 arch spellings
 
-WIRE-CONTRACT-V3 §5.2: each runtime spelling and its canonical `X-PKey-Platform` or `X-PKey-Arch` value, or none. Every SDK and the Worker run both sections.
+WIRE-CONTRACT-V4 §5.2: each runtime spelling and its canonical `X-PKey-Platform` or `X-PKey-Arch` value, or none. Every SDK and the Worker run both sections.
 
 ## Config resolution (`config-matrix.json`): 24 resolve, 82 environment-value and 8 list cases
 
-WIRE-CONTRACT-V3 §2.2.1: the precedence, the variable name, the strict environment value and the user-visible list. React runs the no-environment answers.
+WIRE-CONTRACT-V4 §2.2.1: the precedence, the variable name, the strict environment value and the user-visible list. React runs the no-environment answers.
 
 ## Update decision (`update-matrix.json`): 25 version, 10 capability and 12 outlet cases, 6 bucket vectors, 65 decision rows
 

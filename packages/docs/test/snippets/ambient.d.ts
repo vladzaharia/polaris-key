@@ -3,13 +3,18 @@
 
 declare const APP_VERSION: string;
 declare const userEnteredKey: string;
+declare const pinnedKeys: Record<string, string>;
+declare const client: import("@polaris-key/node").PolarisKeyClient;
+declare const appResources: string;
+declare const render: (state: unknown) => void;
+declare const showActivation: () => void;
 declare const YourApp: () => import("react").JSX.Element;
 
 /** The slice of Electron the Node SDK's bridge docs use. */
 declare module "electron" {
   export const app: {
     whenReady(): Promise<void>;
-    getPath(name: "userData"): string;
+    getPath(name: "userData" | "downloads"): string;
     getVersion(): string;
     quit(): void;
     on(event: string, listener: (...args: unknown[]) => void): void;
