@@ -122,7 +122,7 @@ describe("License → Settings", () => {
     const c = await card();
     expect(await within(c).findByText("Anchor licence choice")).toBeTruthy();
     expect(within(c).getByText("From manifest")).toBeTruthy();
-    expect(within(c).getAllByText("Code default")).toHaveLength(2);
+    expect(within(c).getAllByText("Default")).toHaveLength(2);
     expect(within(c).getByText("Set in console")).toBeTruthy();
     expect(
       log.calls.some(
@@ -244,7 +244,10 @@ describe("License → Settings", () => {
     const log = boot();
     const c = await card();
     await user.click(
-      await within(c).findByRole("button", { name: "Revert refund grace…" }),
+      await within(c).findByRole("button", { name: /Set in console/ }),
+    );
+    await user.click(
+      await screen.findByRole("button", { name: "Revert refund grace…" }),
     );
     const dialog = await screen.findByRole("alertdialog");
     expect(
@@ -274,6 +277,84 @@ describe("License → Settings", () => {
     const c = await card();
     await within(c).findByText("Anchor licence choice");
     expect(within(c).queryByText("Entitlement holder")).toBeNull();
+  });
+});
+
+describe("License → Settings stabilization (B-029, B-036)", () => {
+  const withArea = (s: ProductSetting): ProductSetting => ({
+    ...s,
+    rbacArea: "license",
+  });
+
+  it("B-029: a member without edit access reads the values as text, with the reason", async () => {
+    bootLicense(HASH, {
+      me: {
+        platformAdmin: false,
+        permissions: {
+          roles: [],
+          platform: { view: [], edit: [] },
+          products: { djdl: { view: ["license", "core"], edit: [] } },
+        },
+      },
+      routes: {
+        [EFFECTIVE]: { settings: [withArea(CLAMP)] },
+      },
+    });
+    const c = await card();
+    await within(c).findByText("Clamp offline grace to expiry");
+    expect(within(c).queryByRole("switch")).toBeNull();
+    expect(within(c).getByText(/Read-only\./)).toBeTruthy();
+  });
+
+  it("B-036: no callout when the section has no rows; the owner badge says Default, not Code default", async () => {
+    boot([]);
+    await screen.findByRole("heading", { level: 1, name: "Settings" });
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("region", { name: "Licensing model" }),
+      ).toBeNull(),
+    );
+    expect(screen.queryByText(/Only clamping offline grace/)).toBeNull();
+    expect(document.body.textContent).not.toContain("Code default");
+  });
+
+  it("B-036: an L0 save offers Undo, and the claim sentence is not repeated on the page or the toast", async () => {
+    const user = userEvent.setup();
+    // Turning the clamp on is L0 (on: L0): start from off.
+    bootLicense(HASH, {
+      routes: {
+        [EFFECTIVE]: {
+          settings: [
+            {
+              ...CLAMP,
+              critical: false,
+              value: false,
+              source: "console",
+              version: 3,
+            },
+          ],
+        },
+        [`PATCH ${API}/settings/licensing.clampGraceToExpiry`]: {
+          ok: true,
+          claimed: false,
+          setting: { ...CLAMP, value: true, source: "console", version: 4 },
+        },
+      },
+    });
+    const c = await card();
+    await user.click(
+      await within(c).findByRole("switch", {
+        name: "Clamp offline grace to expiry",
+      }),
+    );
+    await user.click(await within(c).findByRole("button", { name: "Save" }));
+    expect(
+      await screen.findByText("Clamp offline grace to expiry saved"),
+    ).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Undo" })).toBeTruthy();
+    expect(document.body.textContent).not.toContain(
+      "a change here claims the setting",
+    );
   });
 });
 

@@ -1684,9 +1684,13 @@ export interface ProductSetting {
     offBehaviour: "hide" | "readOnly" | "visible";
   } | null;
   serviceEnabled: boolean;
+  /** The console area a write needs; absent on older responses. */
+  rbacArea?: AreaId;
   value: unknown;
   source: "default" | "manifest" | "console";
   defaultValue: unknown;
+  /** What an unset value follows (the daily mail cap), when the platform supplies one. */
+  inherited?: unknown;
   /** What the last applied manifest declares (Revert's target); absent when it declares nothing. */
   manifestValue?: unknown;
   /** The row version, 0 for none: a write's `expectedVersion`. */

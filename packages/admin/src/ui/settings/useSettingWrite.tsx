@@ -121,6 +121,8 @@ export function useSettingWrite(o: SettingWriteOptions) {
   const [error, setError] = React.useState<{
     title: string;
     description?: string;
+    /** The draft failed the bounds: the message belongs under the input. */
+    field?: boolean;
   } | null>(null);
   const conflictRef = React.useRef(conflict);
   conflictRef.current = conflict;
@@ -180,7 +182,7 @@ export function useSettingWrite(o: SettingWriteOptions) {
     const cur = latest.current;
     const invalid = draftError(cur.spec, value);
     if (invalid) {
-      setError({ title: invalid });
+      setError({ title: invalid, field: true });
       return;
     }
     setError(null);
@@ -275,7 +277,7 @@ export function useSettingWrite(o: SettingWriteOptions) {
         }
         typedConfirmation={
           pending.level === "L3"
-            ? { value: o.settingKey, label: `Type ${o.settingKey} to confirm` }
+            ? { value: o.settingKey, label: "Type to confirm" }
             : undefined
         }
         describeError={describe}

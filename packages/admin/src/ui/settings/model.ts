@@ -149,8 +149,16 @@ export function draftError(spec: SettingSpec, draft: unknown): string | null {
   const min = toField(spec, spec.min);
   const max = toField(spec, spec.max);
   const shown = toField(spec, draft);
-  if (shown < min) return `Use ${formatNumber(min, 4)} or more.`;
-  if (shown > max) return `Use ${formatNumber(max, 4)} or less.`;
+  const unit = fieldUnit(spec);
+  const num = (n: number) => {
+    const word =
+      unit && n === 1 && /^(days|hours|minutes|seconds)$/.test(unit)
+        ? unit.slice(0, -1)
+        : unit;
+    return `${formatNumber(n, 4)}${word ? ` ${word}` : ""}`;
+  };
+  if (shown < min) return `Use ${num(min)} or more.`;
+  if (shown > max) return `Use ${num(max)} or less.`;
   return null;
 }
 

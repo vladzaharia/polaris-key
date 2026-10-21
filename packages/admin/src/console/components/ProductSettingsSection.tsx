@@ -33,6 +33,7 @@ import {
   type ValueLabels,
 } from "../../ui/settings/model.js";
 import { toast } from "../../ui/toast.js";
+import { useWriteGate } from "../access/useCan.js";
 import { useProduct } from "../data/hooks.js";
 import { useSettingTarget } from "../useSettingTarget.js";
 import { mutate } from "../data/mutations.js";
@@ -46,6 +47,12 @@ export interface SettingCopy {
   /** Extra lines for the confirmation when the setting changes to `to`. */
   consequences?: (to: unknown) => string[];
 }
+
+/** Keys that only apply while another key's switch is on: `{ dependent: switchKey }` (B-032). */
+const DEPENDS_ON: Record<string, string> = {
+  "deltas.lazy.hotDevices": "deltas.lazy.enabled",
+  "deltas.lazy.dailyCap": "deltas.lazy.enabled",
+};
 
 const BADGE: Record<ProductSetting["source"], Source> = {
   manifest: "manifest",
@@ -74,6 +81,8 @@ export function ProductSettingsSection({
   copy = {},
   pending = {},
   pendingDescription,
+  lockedBy = {},
+  note,
 }: {
   slug: string;
   area: string;
@@ -87,6 +96,10 @@ export function ProductSettingsSection({
   pending?: Record<string, string>;
   /** Under the "Not in effect yet" subheading. */
   pendingDescription?: React.ReactNode;
+  /** A key that only applies while another key's switch is on: `{ dependent: switchKey }`. */
+  lockedBy?: Record<string, string>;
+  /** Above the rows, shown only when the section has rows. */
+  note?: React.ReactNode;
 }): React.ReactElement | null {
   const q = useQuery({
     queryKey: qk.productSettings(slug, area),
@@ -129,6 +142,7 @@ export function ProductSettingsSection({
         linked={linked}
         copy={copy[s.key]}
         pendingNote={pending[s.key]}
+        waitsFor={waitsFor(s.key, all, { ...DEPENDS_ON, ...lockedBy })}
         onConflict={() => void q.refetch()}
       />
     );
@@ -137,6 +151,7 @@ export function ProductSettingsSection({
     const later = rows.filter((s) => pending[s.key] !== undefined);
     body = (
       <>
+        {note ? <div className="px-5 pt-4">{note}</div> : null}
         {live.map(row)}
         {later.length > 0 ? (
           <div role="group" aria-labelledby={`${id}-pending`}>
@@ -164,12 +179,25 @@ export function ProductSettingsSection({
   );
 }
 
+/** The label of the switch a key waits for, while that switch is off. */
+function waitsFor(
+  key: string,
+  all: readonly ProductSetting[],
+  lockedBy: Record<string, string>,
+): string | undefined {
+  const parent = all.find((p) => p.key === lockedBy[key]);
+  return parent && (parent.value === "off" || parent.value === false)
+    ? parent.label
+    : undefined;
+}
+
 function ProductSettingRow({
   slug,
   setting: s,
   linked,
   copy,
   pendingNote,
+  waitsFor,
   onConflict,
 }: {
   slug: string;
@@ -178,8 +206,31 @@ function ProductSettingRow({
   copy?: SettingCopy;
   /** Set when the setting's behaviour has not shipped: the row is read-only. */
   pendingNote?: string;
+  /** The switch this setting applies with, while that switch is off. */
+  waitsFor?: string;
   onConflict: () => void;
 }): React.ReactElement {
+  // A member without edit on the setting's area reads it; a 403 after typing a reason is too late.
+  const write = useWriteGate(s.rbacArea ?? "settings", slug);
+  const readOnly =
+    s.rbacArea === undefined || write.allowed
+      ? undefined
+      : (write.disabledReason ?? "You can't edit this.");
+  const undo = (written: ProductSetting) => {
+    const restore =
+      s.source === "console"
+        ? mutate("updateProductSetting", slug, s.key, {
+            value: s.value,
+            expectedVersion: written.version,
+          })
+        : mutate("revertProductSetting", slug, s.key, {
+            expectedVersion: written.version,
+          });
+    restore.then(
+      () => toast.success(`${s.label} restored`),
+      (e: unknown) => toast.error(e),
+    );
+  };
   const fmt = (v: unknown) => formatSettingValue(s.spec, v, copy?.values);
   const pendingRow = pendingNote !== undefined;
   const target =
@@ -214,9 +265,13 @@ function ProductSettingRow({
       critical={s.critical}
       commit="explicit"
       display={pendingRow ? "text" : "control"}
+      readOnly={pendingRow ? undefined : readOnly}
+      locked={waitsFor ? `Applies once ${waitsFor} is on.` : undefined}
+      inherited={s.inherited}
       source={
         <SourceBadge
           source={BADGE[s.source]}
+          label={s.source === "default" ? "Default" : undefined}
           path={manifestFile(s.manifestPath)}
         />
       }
@@ -230,13 +285,15 @@ function ProductSettingRow({
           ...(ctx.reason ? { reason: ctx.reason } : {}),
         })
       }
-      onSaved={(res) => {
-        const r = res as { claimed?: boolean };
-        toast.success(`${s.label} saved`, {
-          description: r.claimed
-            ? "Set in the console: resyncs leave it alone until you revert it."
+      onSaved={(res, done) => {
+        // The claim is said once, in the confirmation; a toast repeats nothing.
+        const written = (res as { setting?: ProductSetting }).setting;
+        toast.success(
+          `${s.label} saved`,
+          done.level === "L0" && written
+            ? { action: { label: "Undo", onClick: () => undo(written) } }
             : undefined,
-        });
+        );
       }}
       revertPlan={() =>
         s.source !== "console"
