@@ -179,9 +179,9 @@ export function ApiTokens(): React.ReactElement {
           title="API tokens"
           description={
             <>
-              Scoped, individually revocable credentials for build and CI jobs,
-              such as <code className="font-mono">pkey bundle</code>. A token
-              cannot manage tokens: this page needs your console session.{" "}
+              Revocable credentials for build and CI jobs, such as{" "}
+              <code className="font-mono">pkey bundle</code>. Managing them
+              needs your console session, not a token.{" "}
               <a
                 className="underline underline-offset-2 hover:text-fg-strong"
                 href={docsUrl("mintApiToken")}

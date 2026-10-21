@@ -71,7 +71,7 @@ const TRAILING_SLACK = 48;
  * Masthead and stretch overshoots that belong to a page's own composition, each with the package
  * that fixes it (ST-48 builds the shell; the area packages build their screens on it). The list
  * only shrinks: a full run fails when an entry no longer matches a violation, so delete the entry
- * in the change that fixes the page. A new page never joins it.
+ * in the change that fixes the page. It is empty now (B-235); a new page never joins it.
  */
 const MASTHEAD_DEBT: {
   /** The case name (`djdl:licenses/record/keys`). */
@@ -80,62 +80,7 @@ const MASTHEAD_DEBT: {
   kinds: readonly string[];
   owner: string;
   why: string;
-}[] = [
-  {
-    cases: /^djdl:licenses\/record/,
-    kinds: ["masthead/first-content", "masthead/height"],
-    owner: "LX-30",
-    why: "the holder line, key entries, id, device limit, sign-in and changed-by run to three rows",
-  },
-  {
-    cases: /^djdl:license-batches\/record/,
-    kinds: ["masthead/first-content", "masthead/height"],
-    owner: "LX-30",
-    why: "a notice sits between the masthead and the batch",
-  },
-  {
-    cases: /^(djdl|empty):package-feeds|^global:platform-feeds/,
-    kinds: ["masthead/first-content", "masthead/height"],
-    owner: "F-38",
-    why: "the feed switcher is a second row under the orientation line",
-  },
-  {
-    cases: /^djdl:releases\/record/,
-    kinds: ["masthead/first-content", "masthead/height"],
-    owner: "the release record's package (follow-up of ST-48)",
-    why: "the release's facts run to three rows on a phone and two at the 1024 px rail",
-  },
-  {
-    cases: /^djdl:outlets/,
-    kinds: ["right-align/card-consistency"],
-    owner: "the Distribution keys card's package (follow-up of ST-48)",
-    why: "at the 1024 px rail (never measured before ST-48) the warning row ends 17 px short of its neighbours",
-  },
-  {
-    cases: /^djdl:(outlets|credentials)$/,
-    kinds: ["masthead/height"],
-    owner: "CF1 follow-up (masthead copy and action row)",
-    why: "at 390 px with 200 % text the description wraps to three lines under a two-line title, with the action or meta beneath (outlets 360 px, credentials 448 px, budget 352 px)",
-  },
-  {
-    cases: /^global:api-tokens$/,
-    kinds: ["masthead/height"],
-    owner: "the API tokens page's package (follow-up of ST-48)",
-    why: "the error state's masthead repeats the description on a phone",
-  },
-  {
-    cases: /^long:overview$/,
-    kinds: ["masthead/height"],
-    owner: "the product Overview's package (follow-up of ST-48)",
-    why: "at 360 px a two-line name, a two-line description and the full-width action exceed 176 px",
-  },
-  {
-    cases: /^global:platform-operations$/,
-    kinds: ["equal-height/grown-card"],
-    owner: "ST-51",
-    why: "56 px rows lengthen the Cron jobs stack, and Queues stretches to match it (STRETCH_CELL)",
-  },
-];
+}[] = [];
 const debtMatched = new Set<number>();
 
 /** Splits a page's violations into new ones and those a MASTHEAD_DEBT entry owns. */

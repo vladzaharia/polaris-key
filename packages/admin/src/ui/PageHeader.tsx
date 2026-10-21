@@ -246,7 +246,13 @@ export function PageHeader({
         {hasCluster ? (
           <div
             className={cn(
-              "flex shrink-0 items-center justify-end gap-2 sm:@max-2xl:col-span-2 sm:@max-2xl:justify-self-end",
+              "flex shrink-0 items-center justify-end gap-2",
+              // Below 42 rem the cluster takes its own row under the title. Alone (no primary
+              // action to share the row with) it only does so below 36 rem: a lone action beside
+              // a two-line title costs less height than a row of its own at 200 % browser zoom.
+              primaryAction
+                ? "sm:@max-2xl:col-span-2 sm:@max-2xl:justify-self-end"
+                : "sm:@max-xl:col-span-2 sm:@max-xl:justify-self-end",
               // A short window (200 % zoom on a laptop): the cluster and the primary action share
               // one row under the title instead of taking one each.
               primaryAction &&

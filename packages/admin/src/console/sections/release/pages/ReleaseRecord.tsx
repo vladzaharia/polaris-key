@@ -1089,23 +1089,6 @@ export function ReleaseRecord({
             ) : null}
           </span>
         }
-        description={
-          <>
-            {release.title ? <>“{release.title}” · </> : null}
-            {release.publishedAt ? (
-              <>
-                published{" "}
-                <Timestamp
-                  at={fromSeconds(release.publishedAt)}
-                  format="detail"
-                />
-              </>
-            ) : (
-              "not published"
-            )}
-            {release.seq !== null ? <> · seq {release.seq}</> : null}
-          </>
-        }
         meta={
           <>
             {release.yank ? (
@@ -1113,18 +1096,6 @@ export function ReleaseRecord({
               <span className="text-sm font-medium text-warning">
                 Yanked: {release.yank.reason}
               </span>
-            ) : null}
-            {release.sourceUrl ? (
-              <a
-                href={release.sourceUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 text-sm text-accent-fg underline-offset-4 hover:underline"
-              >
-                GitHub release
-                <ExternalLink aria-hidden className="size-3.5" />
-                <span className="sr-only">(opens a new tab)</span>
-              </a>
             ) : null}
           </>
         }
@@ -1170,6 +1141,33 @@ export function ReleaseRecord({
         tabs={<PageTabs label="Release" items={tabs} value={current} />}
         sticky
       />
+      <p className="text-sm text-fg-muted">
+        {release.title ? <>“{release.title}” · </> : null}
+        {release.publishedAt ? (
+          <>
+            <span className="sr-only">Published </span>
+            <Timestamp at={fromSeconds(release.publishedAt)} />
+          </>
+        ) : (
+          "not published"
+        )}
+        {release.seq !== null ? <> · seq {release.seq}</> : null}
+        {release.sourceUrl ? (
+          <>
+            {" · "}
+            <a
+              href={release.sourceUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-accent-fg underline-offset-4 hover:underline"
+            >
+              GitHub release
+              <ExternalLink aria-hidden className="size-3.5" />
+              <span className="sr-only">(opens a new tab)</span>
+            </a>
+          </>
+        ) : null}
+      </p>
       <div className="pk-vt-tabpanel">
         {current === "status" ? (
           <StatusTab

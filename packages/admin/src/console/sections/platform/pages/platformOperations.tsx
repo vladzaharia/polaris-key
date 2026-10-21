@@ -1181,14 +1181,14 @@ export function Operations(): React.ReactElement {
           </Panel>
         )
       }
-      // The side's panels stack to about the cron card's height; the rest pair up below, so no
-      // card is stretched far past its own content.
+      // The side's panels stack beside the cron card; the rest pair up below.
       side={
         op ? (
-          <>
+          // One block: Queues keeps its own height instead of growing to the cron card's.
+          <div className="space-y-6">
             <HeartbeatsPanel op={op} />
             <QueuesPanel op={op} />
-          </>
+          </div>
         ) : (
           <Panel title="Heartbeats">
             <Skeleton className="h-48" />

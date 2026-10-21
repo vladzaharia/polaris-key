@@ -275,32 +275,9 @@ function LicenseRecordBody({
             {licenseTitle(license)}
           </span>
         }
-        titleAside={<LicenseStatus license={license} />}
-        description={expiry}
-        meta={
-          <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <HolderLine slug={slug} license={license} batch={batch} />
-            {keyEntries ? (
-              <span data-testid="record-key-entries">
-                Key entries {keyEntries.used} of {keyEntries.limit}
-              </span>
-            ) : null}
-            <IdChip value={id} noun="license id" />
-            <span data-testid="record-device-limit">
-              Device limit {seatLimitText(seats)}
-            </span>
-            <span>
-              {SIGN_IN_LABELS[license.identityProvider] ??
-                license.identityProvider}
-            </span>
-            {license.modifiedAt ? (
-              <span>
-                Changed {formatRelative(fromSeconds(license.modifiedAt))}
-                {changedBy ? ` by ${changedBy}` : ""}
-              </span>
-            ) : null}
-          </span>
-        }
+        // The masthead is the holder's name and the actions (LX-30): the status and the facts sit
+        // in the strip under the tabs, so a long holder line never grows the masthead past its
+        // height, at a narrow column or at 200 % text.
         primaryAction={
           !active ? (
             <Button iconStart={<Power />} onClick={() => setDialog("enable")}>
@@ -408,6 +385,33 @@ function LicenseRecordBody({
           />
         }
       />
+
+      <div
+        data-testid="record-facts"
+        className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-fg-muted"
+      >
+        <LicenseStatus license={license} />
+        <HolderLine slug={slug} license={license} batch={batch} />
+        <span>{expiry}</span>
+        <IdChip value={id} noun="license id" />
+        {keyEntries ? (
+          <span data-testid="record-key-entries">
+            Key entries {keyEntries.used} of {keyEntries.limit}
+          </span>
+        ) : null}
+        <span data-testid="record-device-limit">
+          Device limit {seatLimitText(seats)}
+        </span>
+        <span>
+          {SIGN_IN_LABELS[license.identityProvider] ?? license.identityProvider}
+        </span>
+        {license.modifiedAt ? (
+          <span>
+            Changed {formatRelative(fromSeconds(license.modifiedAt))}
+            {changedBy ? ` by ${changedBy}` : ""}
+          </span>
+        ) : null}
+      </div>
 
       {undoable ? (
         <UndoableMoveCallout

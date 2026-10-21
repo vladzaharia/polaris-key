@@ -134,7 +134,7 @@ function PackageFeedsOff({
 
 /**
  * The area's sub-navigation bar: the links between the overview and every feed page (one page
- * per feed), above each page's title. A `nav` of real links with `aria-current`, each with its
+ * per feed), in the tab area under each page's title (F-38). A `nav` of real links with `aria-current`, each with its
  * ecosystem's icon; Overview stands apart behind a separator, the bar sits on a rule, and the
  * current page is marked three ways (accent fill, bold label, an accent bar on the rule), never by
  * colour alone. Owner decision (F-12): a bar of links, not a dropdown in the title.
@@ -338,13 +338,13 @@ export function FeedsOverview({
     : "the registry host";
   const header = (
     <PageHeader
-      eyebrow={<FeedNav scope={scope} current="overview" />}
       title="Package feeds"
       description={
         scope.kind === "platform"
-          ? `The SDKs and tools Polaris Key ships, on ${host}. Policy set here applies to every product's feeds.`
+          ? `Polaris Key's own SDKs and tools, on ${host}. Policy set here covers every product.`
           : `On ${host}.`
       }
+      tabs={<FeedNav scope={scope} current="overview" />}
       refetching={query.isFetching && !query.isPending}
     />
   );

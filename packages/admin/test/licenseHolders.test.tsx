@@ -764,7 +764,9 @@ describe("the batch pages", () => {
     expect(screen.getByText("Keys can't be downloaded again")).toBeTruthy();
     expect(screen.getByRole("meter", { name: "Used" })).toBeTruthy();
     expect(screen.getByText("37")).toBeTruthy();
-    expect(screen.getByText(/by Ada Lovelace/)).toBeTruthy();
+    // The creator is a fact of the keys, not of the masthead's one-line description.
+    expect(screen.getByText("Created by")).toBeTruthy();
+    expect(screen.getByText("Ada Lovelace")).toBeTruthy();
     const results = await axe(document.body);
     expect(results.violations.map((v) => v.id)).toEqual([]);
   });
