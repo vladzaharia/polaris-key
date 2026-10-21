@@ -141,3 +141,19 @@ Reconciled against main in the 2026-10-16 audit. Remaining:
 - ui-qa portal board over e2e/portalStates.ts
 - Owner call: portal browser-error wording vs core.codes.\* catalog text
 - Record pkey-ux-reviewer BUILT pass
+
+## Progress and continuation (2026-10-21)
+
+Done in the close-out:
+
+- One customer date format, "Sep 14, 2026" (`portal/date.ts`: `formatDay`, `formatDayTime`; en-US by default, any catalog locale accepted). Every portal date goes through it; `test/portalDates.test.ts` fails on any other `Intl.DateTimeFormat` or `dateStyle` in `src/portal`. Date assertions updated.
+- New `locker.*` namespace (78 keys, nine locales): Account section labels, Appearance, the delete-account box, Library page, toolbar, empty and list headers, Discover page, and the download refusals Polaris Locker words itself.
+- Portal-only namespaces (`profile`, `yourData`, `license`, `getIt`, `locker`; `PORTAL_NAMESPACES` in `kit-copy.ts`) now generate to `@polaris-key/brand/kit-copy/portal` and to no SDK, terminal or native table, so catalog growth no longer reaches the React gate bundle.
+- Browser errors read `core.codes.*` (network, forbidden, not_found, rate_limited, step_up_required, not_entitled, unknown); only the signed-out and download-refusal wording is the portal's own.
+
+Remaining:
+
+- Hard-coded customer strings still in components: SignInMethods (~95), PackagesCard (~69), ActivateDialog (~48), FreeDevicePage (~38), StorefrontPage (~34), SessionsCard, StepUp, JumpPalette, DiscoverTile, LibraryHero, ProductMenu, QuickAction, and the sentence builders in `model/library.ts`, `model/discover.ts`, `model/methods.ts`, `model/product.ts`, `model/tileFacts.ts`. Move each into `locker.*` (nine locales), then `pnpm gen brand`.
+- ui-qa portal board over `e2e/portalStates.ts`.
+- Re-record portal baselines through heavy.sh (dates and wording changed).
+- Record the pkey-ux-reviewer BUILT pass.
