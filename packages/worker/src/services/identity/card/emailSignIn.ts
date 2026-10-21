@@ -24,8 +24,8 @@
  *
  *   `GET /magic/verify?token=` is a landing page that consumes NOTHING (link prefetchers and
  *   mail scanners cannot burn the link); its button `POST`s the token back. In the browser that
- *   asked, that completes the sign-in. Anywhere else it shows "Confirm sign-in, requested at
- *   <time> from <place>" and, on `POST`, only marks the flow confirmed; the asking browser picks
+ *   asked, that completes the sign-in. Anywhere else it shows "Confirm sign-in" (requested
+ *   <time> from <place>) and, on `POST`, only marks the flow confirmed; the asking browser picks
  *   that up with `POST /api/signin/flow` and signs in there. A link opened on another device
  *   never signs THAT device in (relay phishing yields at most the attacker's own flow, item 14).
  *
@@ -109,7 +109,6 @@ import {
   readJsonObject,
   requestPlace,
   signInAgainAction,
-  utcLabel,
   wrongCodeMessage,
 } from "./http.js";
 import { verifyTurnstile } from "./turnstile.js";
@@ -936,19 +935,43 @@ export async function handleMagicLanding(
       body: `<p>Continue as ${escapeHtml(record.email)}.</p>${form("Sign in")}`,
     });
   }
+  // B-106: a short heading; when and where ride in the first line, as "4 Oct 2026, 14:34 UTC"
+  // (this page has no script, so it cannot show the reader's own time zone).
   const when =
     typeof record.requestedAt === "number"
-      ? utcLabel(record.requestedAt)
+      ? readableUtc(record.requestedAt)
       : "a few minutes ago";
   return cardPage(200, {
     title: "Confirm sign-in",
-    // signin.confirmLink.title
-    heading: `Confirm sign-in, requested at ${when} from ${record.place ?? "an unknown location"}`,
+    heading: "Confirm sign-in",
     body:
+      `<p>Requested ${escapeHtml(when)} from ${escapeHtml(record.place ?? "an unknown location")}.</p>` +
       `<p>Polaris Locker account ${escapeHtml(record.email)}. Confirm only if you started it.</p>` +
       `<p>The device that asked signs in, not this one.</p>` + // signin.confirmLink.note
       form("Confirm"),
   });
+}
+
+const MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
+/** A unix time as "4 Oct 2026, 14:34 UTC". */
+function readableUtc(at: number): string {
+  const d = new Date(at * 1000);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}, ${p(d.getUTCHours())}:${p(d.getUTCMinutes())} UTC`;
 }
 
 /** `POST /magic/verify` (form `token=`): completes here, or confirms the asking browser's flow. */

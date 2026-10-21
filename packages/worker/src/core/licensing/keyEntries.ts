@@ -213,6 +213,10 @@ export async function isEnrolled(
  *
  * A guard on the row AFTER the claim ("the device now holds this seat") cannot tell the second
  * call from the first and would count it twice.
+ *
+ * A device that has already spent an entry on this licence never spends a second one (B-107): one
+ * that left the licence (a deauthorization, or a move to another licence and back) and returns
+ * is the same device, not a new one. The entries count distinct devices per licence.
  */
 export function stmtRecordDeviceKeyEntry(
   product: string,
@@ -228,7 +232,10 @@ export function stmtRecordDeviceKeyEntry(
            WHERE NOT EXISTS (
              SELECT 1 FROM devices
               WHERE product = ? AND device_id = ? AND license_id = ?
-                AND status = 'authorized')`,
+                AND status = 'authorized')
+             AND NOT EXISTS (
+               SELECT 1 FROM license_key_entries
+                WHERE product = ? AND license_id = ? AND device_id = ?)`,
     params: [
       product,
       licenseId,
@@ -239,6 +246,9 @@ export function stmtRecordDeviceKeyEntry(
       product,
       deviceId,
       licenseId,
+      product,
+      licenseId,
+      deviceId,
     ],
   };
 }
