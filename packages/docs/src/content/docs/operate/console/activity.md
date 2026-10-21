@@ -88,7 +88,7 @@ Customer-facing portal events — a magic-link or OIDC sign-in, a license claime
 disconnected from the portal — are audited too, but into a **separate** table (`portal_audit`,
 keyed by the customer's account rather than an admin session) that this tab does not read. The
 one portal-related action that _does_ show up here is `portal.settings.update` — an operator
-changing the module toggles on [Identity](/docs/operate/console/tour/#identity), which is a console
+changing the module toggles on [Sign-in](/docs/operate/console/tour/#sign-in), which is a console
 mutation like any other.
 
 ## Reading the log
