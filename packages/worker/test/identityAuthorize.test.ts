@@ -362,7 +362,9 @@ describe("GET /<p>/identity/authorize (§12.4)", () => {
     expect(page.status).toBe(404);
     expect(page.headers.get("content-type")).toContain("text/html");
     const html = await page.text();
-    expect(html).toContain(escapeHtml(codeCopy("identity_disabled").title));
+    // B-100: it says the app is unknown to sign-in, not that the developer turned sign-in off.
+    expect(html).toContain(escapeHtml(codeCopy("unknown_app").message));
+    expect(html).not.toContain(codeCopy("identity_disabled").message);
     expect(html).not.toContain("nope");
     const json = await route("GET", url);
     expect(json.status).toBe(404);
