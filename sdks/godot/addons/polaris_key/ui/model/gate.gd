@@ -238,11 +238,18 @@ static func status_screen_view(ctx: RefCounted) -> Dictionary:
 	}
 	match status:
 		"revoked":
+			# Sign in first when the build offers it (Welcome's rule), then Use a different key
+			# when key entry is on; a device already signed out is never offered Sign out.
+			var sign_in: bool = View.truthy(ctx.caps.get("signIn")) and ctx.on("identity")
+			var key: bool = View.truthy(ctx.caps.get("keyEntry"))
 			return View.make(ctx, "StatusScreen", {
 				"state": status,
-				"copy": head + ["signin.key.differentKey", "common.signOut"],
+				"copy": head + [
+					"welcome.signIn" if sign_in else null,
+					"signin.key.differentKey" if key else null,
+				],
 				"args": args,
-				"primary": "signin.key.differentKey",
+				"primary": "welcome.signIn" if sign_in else ("signin.key.differentKey" if key else null),
 				"tone": "neutral",
 			})
 		"expired":
