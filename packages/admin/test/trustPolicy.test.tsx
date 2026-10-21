@@ -304,7 +304,14 @@ describe("relaxesTrustPolicy (the console's copy of the Worker's rule)", () => {
     for (const after of relaxing)
       expect(relaxesTrustPolicy(STRICT, after)).toBe(true);
     expect(relaxesTrustPolicy(STRICT, STRICT)).toBe(false);
-    expect(relaxesTrustPolicy(DEFAULT_POLICY, STRICT)).toBe(false);
+    // The first App Attest block opens an attestation path (N1), unless it is the default shape.
+    expect(relaxesTrustPolicy(DEFAULT_POLICY, STRICT)).toBe(true);
+    expect(
+      relaxesTrustPolicy(DEFAULT_POLICY, {
+        ...DEFAULT_POLICY,
+        appAttest: { teamId: null, environment: "production" },
+      }),
+    ).toBe(false);
     expect(
       relaxesTrustPolicy(STRICT, { ...STRICT, commerceClaim: "attested" }),
     ).toBe(false);

@@ -5535,7 +5535,8 @@ sideloaded builds, which cannot attest and stay `basic` by design.
   Worker, not the page, classifies each change (`relaxesTrustPolicy`): a change that only tightens
   is L1; one that relaxes it (an operation drops from `attested`, `enforce` turns off, an App
   Attest or Play Integrity block is removed or pointed at another Team ID or project, production
-  becomes development, testing responses are accepted, or a non-default policy is reset) is L2 and
+  becomes development, testing responses are accepted, a non-default policy is reset, or an App Attest block is first added with a Team ID or
+  development environment, which opens an attestation path) is L2 and
   needs a step-up sign-in from the last five minutes, `expectedVersion`, a reason and the typed key
   `core.trustPolicy`, each refused before anything is written. A stale `expectedVersion` is a 409
   and writes nothing, so two operators cannot overwrite each other unseen. Every write is audited

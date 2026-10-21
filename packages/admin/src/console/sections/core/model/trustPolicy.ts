@@ -65,6 +65,13 @@ export function relaxesTrustPolicy(
     if (!b || b.teamId !== a.teamId) return true;
     if (a.environment === "production" && b.environment !== "production")
       return true;
+  } else if (after.appAttest) {
+    // Adding a block opens an attestation path; only the default shape is not a relaxation.
+    if (
+      after.appAttest.teamId !== null ||
+      after.appAttest.environment !== "production"
+    )
+      return true;
   }
   const p = before.playIntegrity;
   const q = after.playIntegrity;

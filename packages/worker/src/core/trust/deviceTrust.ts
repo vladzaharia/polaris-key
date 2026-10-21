@@ -229,6 +229,11 @@ export function relaxesTrustPolicy(
     if (!b || b.teamId !== a.teamId) return true;
     if (a.environment === "production" && b.environment !== "production")
       return true;
+  } else if (after.appAttest) {
+    // No block means no iOS device can attest; adding one opens an attestation path. Only the
+    // default shape (no Team ID pinned, production) is not a relaxation (ST-12 review N1).
+    const b = after.appAttest;
+    if (b.teamId !== null || b.environment !== "production") return true;
   }
   const p = before.playIntegrity;
   const q = after.playIntegrity;
