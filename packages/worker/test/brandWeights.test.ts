@@ -32,4 +32,26 @@ describe("Worker-rendered CSS weights", () => {
       /forced-colors: active\)\{\[data-brand=locker\] \.button:not\(\.secondary\):not\(\.link\)\{[^}]*background:ButtonFace;color:ButtonText/,
     );
   });
+
+  it("the favicons the pages link carry no internal <style> (WebKit refuses it under the page CSP, B-108)", () => {
+    for (const brand of ["key", "locker"]) {
+      const file = join(
+        __dirname,
+        "..",
+        "..",
+        "brand",
+        "kit",
+        "04-web",
+        brand,
+        "favicon.svg",
+      );
+      let svg: string;
+      try {
+        svg = readFileSync(file, "utf8");
+      } catch {
+        continue; // the Locker favicon is emitted by the generator, not the kit
+      }
+      expect(svg, file).not.toContain("<style");
+    }
+  });
 });
