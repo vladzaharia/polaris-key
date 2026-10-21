@@ -543,7 +543,9 @@ Rules:
    the markup entirely (no space, no hit-testing), never painted transparent; the glyph's geometry
    and clear space are otherwise identical. Favicons, the touch icon and the manifest icons are the
    default logo, so they carry no bit either (the kit's `web/key/` files already have none, and
-   `test/kit-fidelity.test.ts` asserts it).
+   `test/kit-fidelity.test.ts` asserts it). The browser favicon (`favicon.svg`, and `favicon.ico` at 16-256 px)
+   is the favicon cut in Key violet, scaled 0.8, centred on a white rounded tile (16 grid, radius 3.5), as
+   the Locker favicon is on coral; the sized `favicon-NN` files keep the dark tile.
 
 1. **Display cut, ≥ 48 px, only.** The ≥ 48 px rule still governs whether the bit shows at all.
    No bit is ever drawn on the service or favicon cut (they have no bit geometry, and the kit is
@@ -604,14 +606,16 @@ consistent with the ¼-glyph rule for the outward edges).
 
 ### 7.1 Which mark
 
-| Surface                                                                                                                                         | Mark                                                                  | Favicon / PWA identity            |
-| ----------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | --------------------------------- |
-| Admin console, docs site, operator emails (stay Key, LK-00 §15; customer-site words say Locker)                                                 | Pinned K                                                              | `web/key/`                        |
-| Customer portal, licence card, Worker customer pages, customer emails (once the customer host moves, LK-00)                                     | Bookends (Polaris Locker, §15)                                        | `web/locker/`                     |
-| Delivery surfaces: dl.plrs.im (and dl-staging, dl-dev), updater prompts, feed pages, the Distribution and Update console sections' empty states | Star Cut                                                              | `web/update/` (on the bytes host) |
-| Console header (service sections, including Distribution/Update; core pages show no bit)                                                        | Pinned K with the section bit                                         | `web/key/`                        |
-| Service navigation, diagrams, marketing menus                                                                                                   | Service icon in the section accent (`fg`), beside the name (§1.1)     | n/a                               |
-| SDK UI kits (every screen)                                                                                                                      | None: the product's identity ([UI-KITS.md §1.6](UI-KITS.md#16-marks)) | n/a                               |
+| Surface                                                                                                     | Mark                                                                  | Favicon / PWA identity                              |
+| ----------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | --------------------------------------------------- |
+| Admin console, docs site, operator emails (stay Key, LK-00 §15; customer-site words say Locker)             | Pinned K                                                              | `web/key/`                                          |
+| Customer portal, licence card, Worker customer pages, customer emails (once the customer host moves, LK-00) | Bookends (Polaris Locker, §15)                                        | `web/locker/`                                       |
+| Customer download host: dl.plrs.im (and dl-staging, dl-dev), its landing and per-product download pages     | Bookends (Polaris Locker, §15)                                        | `web/locker/` (a `data:` favicon on the bytes host) |
+| Package registry: pkg.plrs.im (and pkg-staging, pkg-dev), developer-facing                                  | Pinned K (compact lockup)                                             | `web/key/` (a `data:` favicon on the registry host) |
+| Updater prompts, feed pages, the Distribution and Update console sections' empty states                     | Star Cut                                                              | `web/update/`                                       |
+| Console header (service sections, including Distribution/Update; core pages show no bit)                    | Pinned K with the section bit                                         | `web/key/`                                          |
+| Service navigation, diagrams, marketing menus                                                               | Service icon in the section accent (`fg`), beside the name (§1.1)     | n/a                                                 |
+| SDK UI kits (every screen)                                                                                  | None: the product's identity ([UI-KITS.md §1.6](UI-KITS.md#16-marks)) | n/a                                                 |
 
 SDK UI kit screens show **no Polaris Key mark**; the Pinned K appears only inside the optional
 Powered-by line or badge, and the Star Cut not at all (UI-KITS.md §1.6, superseding this table's
@@ -759,9 +763,18 @@ plate, never a glow. The console masthead uses the 48 px tile only on feature la
 ## 8. The bytes host, dl.plrs.im
 
 The bytes host (`https://dl.plrs.im`, with `dl-staging` and `dl-dev`) serves release artifacts and
-packs. Its root (`GET /`) answers a static landing page built to this contract
-(`packages/worker/src/core/assets/bytesLanding.ts`). Where the page departs from the contract below is
-recorded under [What the page omits, and why](#what-the-page-omits-and-why).
+packs. Its root (`GET /`) answers a static landing page
+(`packages/worker/src/core/assets/bytesLanding.ts`).
+
+**dl.plrs.im is a customer surface, so it is Polaris Locker** (lead decision, 2026-10-21): the landing
+and the per-product download page both carry the Locker lockup and favicon, the title "Downloads ·
+Polaris Locker", neutral ink, and no console or docs buttons. The landing's one link, "Open Polaris
+Locker", appears only where the deployment has a customer site (`CUSTOMER_ORIGIN`). **pkg.plrs.im is
+developer-facing, so it is Polaris Key** (see [The registry host](#the-registry-host-pkgplrsim)).
+
+The Delivery identity bullets below (Star Cut, "Polaris Key Delivery", the delivery green) are the
+historical contract for the service mark and still describe Delivery's other surfaces (updater prompts,
+feed pages, the console's service sections); they no longer describe either host's landing.
 
 **Identity**
 
@@ -834,18 +847,21 @@ The per-product download page (`dl.plrs.im/<product>`) is customer-facing, so it
   cover band (decorative, never under text) and a 56 px identity row, the h1 at the display step (48/52,
   32/36 under 640 px), then the recommendation and one outlined card per platform.
 
-The bare landings (`/` on the bytes and registry hosts) keep the Delivery contract above.
+The bare landing (`/` on the bytes host) follows the same rule: the Locker lockup at 48 px (§15), the
+Locker favicon and no Delivery service row. The registry host's landing is Polaris Key.
 
 ### The registry host, pkg.plrs.im
 
 The registry host (`https://pkg.plrs.im`, with `pkg-staging` and `pkg-dev`, F-02) serves package
-feeds and is Distribution's, as the bytes host is. Its root answers the same page under the same
-contract and the same omissions (`packages/worker/src/core/registry/registryLanding.ts`): the Polaris Key
-Delivery lockup, the delivery green, the title "Polaris Key Delivery", the console and docs
-links, and the environment named on staging and dev. Only its two sentences differ: "The package
-registry for libraries and tools published through Polaris Key." and a short paragraph saying that
-package managers fetch from here, that the console has each client's setup lines, and that there
-is nothing to browse. It never lists owners, packages or versions.
+feeds to package managers and is **developer-facing: Polaris Key** (lead decision, 2026-10-21). Its
+root answers a static page in the same inert-document shape as the bytes host's
+(`packages/worker/src/core/registry/registryLanding.ts`, its own stylesheet and policy): the compact
+Pinned K lockup at 52 px, the Key favicon on its white tile as a `data:` URI, the title "Package
+registry · Polaris Key", a violet link, "Open the console" and "Read the docs" (the docs are public;
+never say otherwise), and the environment named on staging and dev. Its two sentences: "The package
+registry for libraries and tools." and a short paragraph saying that package managers fetch from
+here, that the console has each client's setup lines, and that there is nothing to browse. It never
+lists owners, packages or versions.
 
 ---
 

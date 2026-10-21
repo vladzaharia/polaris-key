@@ -35,7 +35,10 @@ import {
 } from "../src/core/registry/registryHost.js";
 import { inertDocumentPolicy } from "../src/core/assets/bytesHost.js";
 import { BLOB_CSP } from "../src/core/assets/blobs.js";
-import { LANDING_CSS, landingCsp } from "../src/core/assets/bytesLanding.js";
+import {
+  REGISTRY_LANDING_CSS,
+  registryLandingCsp,
+} from "../src/core/registry/registryLanding.js";
 import { ADMIN_COOKIE } from "../src/core/console/session.js";
 import { PORTAL_COOKIE } from "../src/services/identity/portal/session.js";
 import { serializeWebOrigins } from "../src/core/cors.js";
@@ -538,10 +541,10 @@ describe("registry host: the landing page at /", () => {
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toBe("text/html; charset=utf-8");
     const csp = res.headers.get("content-security-policy")!;
-    expect(csp).toBe(await landingCsp());
+    expect(csp).toBe(await registryLandingCsp());
     expect(inertDocumentPolicy(csp)).toBe(true);
     expect(csp).not.toMatch(/script|connect-src|allow-|'self'|'unsafe/);
-    expect(csp).toContain(`'sha256-${sha256B64(LANDING_CSS)}'`);
+    expect(csp).toContain(`'sha256-${sha256B64(REGISTRY_LANDING_CSS)}'`);
     expectHardened(res, "/", csp);
     expect(res.headers.get("x-frame-options")).toBe("DENY");
     expect(res.headers.get("content-disposition")).toBeNull();
@@ -549,10 +552,14 @@ describe("registry host: the landing page at /", () => {
     expect(html).not.toMatch(
       /<script|\son[a-z]+=|\sstyle=|<form|<iframe|<object|<embed|@import|@font-face|url\(/i,
     );
-    expect(html).toContain('role="img" aria-label="Polaris Locker"');
-    expect(html).toContain("<title>Delivery · Polaris Locker</title>");
-    expect(html).toContain('<div class="svc">');
-    expect(html).not.toContain("Polaris Key");
+    // Developer-facing, so Polaris Key (BRAND §8): the Key lockup and the Key favicon.
+    expect(html).toContain('data-brand="key"');
+    expect(html).toContain('role="img" aria-label="Polaris Key"');
+    expect(html).toContain("<title>Package registry · Polaris Key</title>");
+    expect(html).not.toContain("Polaris Locker");
+    expect(html).not.toContain('<div class="svc">');
+    expect(html).not.toContain("sign-in required");
+    expect(html).toContain("Read the docs</a>");
     expect(html).toContain("The package registry for libraries and tools.");
     expect(html).not.toContain("noindex");
     const urls = [...html.matchAll(/(?:href|src)="([^"]+)"/g)]
@@ -593,7 +600,7 @@ describe("registry host: the landing page at /", () => {
       ).text();
       expect(html, origin).toContain(`<p class="env">${word} environment</p>`);
       expect(html, origin).toContain(
-        `<title>Delivery (${word}) · Polaris Locker</title>`,
+        `<title>Package registry (${word}) · Polaris Key</title>`,
       );
       expect(html, origin).toContain(
         '<meta name="robots" content="noindex, nofollow">',
@@ -983,5 +990,23 @@ describe("console session cookies cannot reach the registry host", () => {
     };
     walk(SRC);
     expect(offenders).toEqual([]);
+  });
+});
+
+describe("registry host: the Key favicon", () => {
+  it("is the kit's favicon cut on the white tile, with fills as attributes", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { keyFaviconSvg } = await import("../src/core/assets/lockerShell.js");
+    const kit = readFileSync(
+      new URL("../../brand/kit/04-web/key/favicon.svg", import.meta.url),
+      "utf8",
+    );
+    const paths = (svg: string) =>
+      [...svg.matchAll(/<path d="([^"]+)"/g)].map((m) => m[1]);
+    const ours = keyFaviconSvg();
+    expect(paths(ours)).toEqual(paths(kit));
+    expect(paths(ours).length).toBe(3);
+    expect(ours).toMatch(/<rect [^>]*fill="#fff"/);
+    expect(ours).not.toMatch(/<style|<script|href=|on[a-z]+=/i);
   });
 });

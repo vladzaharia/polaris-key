@@ -45,23 +45,20 @@
  * brand geometry and inlined as a `data:` URI, so no icon route or icon type is needed.
  */
 
-import { FONT, SERVICE_ACCENTS, THEME_TOKENS } from "@polaris-key/brand";
+import { FONT, THEME_TOKENS } from "@polaris-key/brand";
 import type { Env } from "../../platform/env.js";
-import { bytesHostname, normalizeHostname } from "../hosts.js";
+import { bytesHostname, customerSiteOrigin } from "../hosts.js";
+import { BRAND_LOCKUP_HEIGHT } from "../brandHtml.js";
 import { escapeHtml } from "../../platform/html.js";
 import { sha256Base64 } from "../../platform/hash.js";
 import {
-  LOCKER_SHELL_CSS,
+  LOCKER_LOCKUP_CSS,
   lockerFaviconHref,
   lockerLockup,
-  serviceRow,
 } from "./lockerShell.js";
 
 /** The landing page's Cache-Control: the page changes only with a deploy. */
 export const LANDING_CACHE = "public, max-age=3600";
-
-/** The console origin to link when `CONSOLE_ORIGIN` is unset or unusable: the platform's own. */
-const DEFAULT_CONSOLE_ORIGIN = "https://key.plrs.im";
 
 /** Is `pathname` the landing page's path? Exactly `/`, nothing else. */
 export function isLandingPath(pathname: string): boolean {
@@ -77,11 +74,36 @@ export { lockerFaviconSvg as landingFaviconSvg } from "./lockerShell.js";
 
 // ── Stylesheet ───────────────────────────────────────────────────────────────────────────────
 
+/** The landing pages' shared stylesheet body around a palette and the lockup's inks. */
+export function landingCss(
+  palette: (theme: "dark" | "light") => string,
+  tail: string,
+): string {
+  return [
+    `:root{${palette("dark")}}`,
+    `@media (prefers-color-scheme: light){:root{${palette("light")}}}`,
+    `*{box-sizing:border-box}`,
+    `html{background:var(--page)}`,
+    `body{margin:0;min-height:100vh;min-height:100dvh;display:grid;place-items:center;padding:3rem 1rem;background:var(--page);color:var(--text);font-family:${FONT.sans};font-synthesis:none;font-size:1rem;line-height:1.5;-webkit-text-size-adjust:100%;text-rendering:optimizeLegibility}`,
+    `main{width:100%;max-width:34rem}`,
+    `h1{margin:0;padding:20px 0;line-height:0}`,
+    `h1 svg{display:block;max-width:100%;height:auto}`,
+    `.env{margin:.25rem 0 0;color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
+    `.lede{margin:1.5rem 0 0;color:var(--strong);font-size:1.25rem;line-height:1.75rem;font-weight:700;letter-spacing:-.01em}`,
+    `.about{margin:.75rem 0 0;color:var(--muted)}`,
+    `nav{margin-top:2rem;padding-top:1.5rem;border-top:1px solid var(--rule)}`,
+    `nav ul{display:flex;flex-wrap:wrap;gap:.75rem;margin:0;padding:0;list-style:none}`,
+    `nav a{display:inline-flex;align-items:center;gap:.5rem;min-height:44px;padding:.625rem 1rem;border:1px solid var(--edge);border-radius:.5rem;color:var(--accent);font-weight:700;text-decoration:none}`,
+    `nav a:hover{background:var(--accent-subtle);border-color:var(--accent)}`,
+    `nav a:focus-visible{outline:2px solid var(--focus);outline-offset:2px}`,
+    `@media (prefers-reduced-motion: no-preference){nav a{transition:background-color 120ms ease,border-color 120ms ease}}`,
+    tail,
+  ].join("");
+}
+
 function palette(theme: "dark" | "light"): string {
   const t = THEME_TOKENS[theme];
-  // The delivery green, now Distribution's alone (Update became tangerine on 2026-10-03,
-  // BRAND.md §5); the bytes host serves Distribution's downloads, so the page stays green.
-  const accent = SERVICE_ACCENTS[theme].distribution;
+  // A customer surface (Polaris Locker): neutral ink for the one link, no service accent.
   return [
     `color-scheme:${theme}`,
     `--page:${t.surface.page}`,
@@ -90,8 +112,8 @@ function palette(theme: "dark" | "light"): string {
     `--muted:${t.text.muted}`,
     `--rule:${t.border.subtle}`,
     `--edge:${t.border.strong}`,
-    `--accent:${accent.fg}`,
-    `--accent-subtle:${accent.subtle}`,
+    `--accent:${t.text.strong}`,
+    `--accent-subtle:${t.surface.sunken}`,
     `--focus:${t.text.strong}`,
   ].join(";");
 }
@@ -100,83 +122,35 @@ function palette(theme: "dark" | "light"): string {
  * The page's one stylesheet. Constant per build (no request or deployment input), so its
  * SHA-256 in the policy is constant too.
  */
-export const LANDING_CSS = [
-  `:root{${palette("dark")}}`,
-  `@media (prefers-color-scheme: light){:root{${palette("light")}}}`,
-  `*{box-sizing:border-box}`,
-  `html{background:var(--page)}`,
-  `body{margin:0;min-height:100vh;min-height:100dvh;display:grid;place-items:center;padding:3rem 1rem;background:var(--page);color:var(--text);font-family:${FONT.sans};font-synthesis:none;font-size:1rem;line-height:1.5;-webkit-text-size-adjust:100%;text-rendering:optimizeLegibility}`,
-  `main{width:100%;max-width:34rem}`,
-  `h1{margin:0;padding:20px 0;line-height:0}`,
-  `h1 svg{display:block;max-width:100%;height:auto}`,
-  `.env{margin:.25rem 0 0;color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
-  `.lede{margin:1.5rem 0 0;color:var(--strong);font-size:1.25rem;line-height:1.75rem;font-weight:700;letter-spacing:-.01em}`,
-  `.about{margin:.75rem 0 0;color:var(--muted)}`,
-  `nav{margin-top:2rem;padding-top:1.5rem;border-top:1px solid var(--rule)}`,
-  `nav ul{display:flex;flex-wrap:wrap;gap:.75rem;margin:0;padding:0;list-style:none}`,
-  `nav a{display:inline-flex;align-items:center;gap:.5rem;min-height:44px;padding:.625rem 1rem;border:1px solid var(--edge);border-radius:.5rem;color:var(--accent);font-weight:700;text-decoration:none}`,
-  `nav a:hover{background:var(--accent-subtle);border-color:var(--accent)}`,
-  `nav a:focus-visible{outline:2px solid var(--focus);outline-offset:2px}`,
-  `nav small{color:var(--muted);font-weight:400;font-size:.875rem}`,
-  `@media (prefers-reduced-motion: no-preference){nav a{transition:background-color 120ms ease,border-color 120ms ease}}`,
-  LOCKER_SHELL_CSS,
-].join("");
+export const LANDING_CSS = landingCss(palette, LOCKER_LOCKUP_CSS);
 
-let cspPromise: Promise<string> | null = null;
+const cspByCss = new Map<string, Promise<string>>();
 
-/** The page's Content-Security-Policy: the inert-document policy `bytesHost.ts` checks. */
-export function landingCsp(): Promise<string> {
-  cspPromise ??= (async () => {
-    const styleHash = await sha256Base64(LANDING_CSS);
-    return [
-      "sandbox",
-      "default-src 'none'",
-      `style-src 'sha256-${styleHash}'`,
-      "img-src data:",
-      "frame-ancestors 'none'",
-      "base-uri 'none'",
-      "form-action 'none'",
-    ].join("; ");
-  })();
-  return cspPromise;
+/**
+ * The page's Content-Security-Policy: the inert-document policy `bytesHost.ts` checks, for the
+ * given stylesheet (the registry landing has its own).
+ */
+export function landingCsp(css: string = LANDING_CSS): Promise<string> {
+  let p = cspByCss.get(css);
+  if (!p) {
+    p = (async () => {
+      const styleHash = await sha256Base64(css);
+      return [
+        "sandbox",
+        "default-src 'none'",
+        `style-src 'sha256-${styleHash}'`,
+        "img-src data:",
+        "frame-ancestors 'none'",
+        "base-uri 'none'",
+        "form-action 'none'",
+      ].join("; ");
+    })();
+    cspByCss.set(css, p);
+  }
+  return p;
 }
 
 // ── The document ─────────────────────────────────────────────────────────────────────────────
-
-/** Is the bytes host itself served over plain http (local development)? */
-function bytesHostIsHttp(env: Env): boolean {
-  try {
-    return (
-      typeof env.BLOB_ORIGIN === "string" &&
-      new URL(env.BLOB_ORIGIN).protocol === "http:"
-    );
-  } catch {
-    return false;
-  }
-}
-
-/**
- * The validated console origin to link: `CONSOLE_ORIGIN` when usable, else the platform's.
- * `https:` always; `http:` only when the bytes host is itself `http:` (local development), so a
- * deployed page never links the console over plain http.
- */
-export function landingConsoleOrigin(env: Env): string {
-  const raw = env.CONSOLE_ORIGIN;
-  if (typeof raw === "string" && raw.trim() !== "") {
-    try {
-      const u = new URL(raw);
-      if (
-        (u.protocol === "https:" ||
-          (u.protocol === "http:" && bytesHostIsHttp(env))) &&
-        normalizeHostname(u.hostname) !== bytesHostname(env)
-      )
-        return u.origin;
-    } catch {
-      // fall through to the default
-    }
-  }
-  return DEFAULT_CONSOLE_ORIGIN;
-}
 
 /**
  * The environment a non-production bytes host names, from its first DNS label: `dl-staging…` is
@@ -193,28 +167,27 @@ export function landingEnvironment(env: Env): string | null {
 }
 
 /**
- * The head and heading of a Delivery landing page: title, the Locker lockup, the Star Cut as
- * Delivery's symbol, the favicon. Shared with the registry host's page.
+ * The head and heading of the download host's landing page: the title, the Polaris Locker
+ * lockup and its favicon. A customer surface (BRAND §8), so no service symbol and no accent.
  */
 export function landingShell(environment: string | null): {
   title: string;
   lockups: string;
-  service: string;
   faviconHref: string;
 } {
   return {
-    title: `Delivery${environment ? ` (${environment})` : ""} · Polaris Locker`,
-    lockups: lockerLockup(56, "lockup", true),
-    service: serviceRow(),
+    title: `Downloads${environment ? ` (${environment})` : ""} · Polaris Locker`,
+    lockups: lockerLockup(BRAND_LOCKUP_HEIGHT.locker, "lockup", true),
     faviconHref: lockerFaviconHref(),
   };
 }
 
 /** The landing page's HTML for this deployment. */
 export function renderLandingPage(env: Env): string {
-  const consoleOrigin = landingConsoleOrigin(env);
+  // The one link goes to Polaris Locker, and only when this deployment has a customer site.
+  const lockerOrigin = customerSiteOrigin(env);
   const environment = landingEnvironment(env);
-  const { title, lockups, service, faviconHref } = landingShell(environment);
+  const { title, lockups, faviconHref } = landingShell(environment);
   const description = "The download host for games and apps.";
   return [
     `<!doctype html>`,
@@ -234,18 +207,14 @@ export function renderLandingPage(env: Env): string {
     `<body>`,
     `<main>`,
     `<h1>${lockups}</h1>`,
-    service,
     environment
       ? `<p class="env">${escapeHtml(environment)} environment</p>`
       : "",
     `<p class="lede">${escapeHtml(description)}</p>`,
     `<p class="about">Files here are signed release artifacts and packs, fetched by apps and their updaters. There is nothing to browse.</p>`,
-    `<nav aria-label="Polaris Locker">`,
-    `<ul>`,
-    `<li><a href="${escapeHtml(`${consoleOrigin}/`)}">Open the console</a></li>`,
-    `<li><a href="${escapeHtml(`${consoleOrigin}/docs/`)}">Read the docs <small>(sign-in required)</small></a></li>`,
-    `</ul>`,
-    `</nav>`,
+    lockerOrigin
+      ? `<nav aria-label="Polaris Locker"><ul><li><a href="${escapeHtml(`${lockerOrigin}/`)}">Open Polaris Locker</a></li></ul></nav>`
+      : "",
     `</main>`,
     `</body>`,
     `</html>`,

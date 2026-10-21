@@ -8,10 +8,13 @@
 import { escapeHtml } from "../platform/html.js";
 import { icon, renderAuthCard } from "../core/brandHtml.js";
 
-/** Help and Privacy under the card: pages on the docs host that need no session. */
+/**
+ * Help and Privacy under the card: public Polaris Key pages that need no session. Operators are
+ * not customers, so these never point at customer Help (`/docs/help/`, which lives on Polaris Locker).
+ */
 export const CONSOLE_CARD_LINKS = [
-  { label: "Help", href: "/docs/help/" },
-  { label: "Privacy", href: "/docs/help/your-data/" },
+  { label: "Help", href: "/docs/" },
+  { label: "Privacy", href: "/docs/reference/what-apps-collect/" },
 ] as const;
 
 export type SigninState = "signin" | "signedOut" | "ended" | "stepUp";

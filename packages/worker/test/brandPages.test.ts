@@ -11,6 +11,7 @@ import { loadProduct } from "../src/core/products.js";
 import {
   BRAND_FONT_PATH,
   BRAND_PAGE_CSS,
+  BRAND_PAGE_CSS_CONSOLE,
   BRAND_PAGE_CSS_LOCKER,
   brandPageStyleSource,
   renderBrandPage,
@@ -457,9 +458,9 @@ describe("the console sign-in card (GET /manage/login)", () => {
     expect(html).toContain('<form method="post" action="/manage/login">');
     expect(html).not.toContain('name="go"');
     expect(html).toContain('name="returnTo" value="/manage/#/p/alpha"');
-    // Help and Privacy sit under the card, on the docs host, no session needed.
+    // Help and Privacy sit under the card: public Polaris Key pages, never customer Help (operators are not customers).
     expect(html).toContain(
-      '<nav class="ac-links" aria-label="Help and privacy"><a href="/docs/help/">Help</a><a href="/docs/help/your-data/">Privacy</a></nav>',
+      '<nav class="ac-links" aria-label="Help and privacy"><a href="/docs/">Help</a><a href="/docs/reference/what-apps-collect/">Privacy</a></nav>',
     );
     expect(html).toContain("Next: sign in at id.example");
   });
@@ -682,5 +683,13 @@ describe("the console sign-in error cards", () => {
     const html = await res.text();
     expect(html).toContain("Wait a minute, then try again.");
     expect(html).not.toContain('class="button"');
+  });
+});
+
+describe("the phone header rules are scoped to the Locker card", () => {
+  it("the console card keeps its Key lockup at the brand size (no unscoped 36 px rule)", () => {
+    const css = BRAND_PAGE_CSS_CONSOLE;
+    expect(css).not.toContain(".ac-brand svg{height:36px");
+    expect(BRAND_PAGE_CSS_LOCKER).toContain(".ac-brand svg{height:36px");
   });
 });

@@ -15,7 +15,10 @@ import {
   landingCsp,
   renderLandingPage,
 } from "../src/core/assets/bytesLanding.js";
-import { renderRegistryLandingPage } from "../src/core/registry/registryLanding.js";
+import {
+  registryLandingCsp,
+  renderRegistryLandingPage,
+} from "../src/core/registry/registryLanding.js";
 import { detectPlatform } from "../src/core/platformDetect.js";
 import { pageCsp } from "../src/services/distribution/page/index.js";
 import { renderDownloadPage } from "../src/services/distribution/page/render.js";
@@ -28,40 +31,43 @@ env.CONSOLE_ORIGIN = "https://key.example.test";
 const db = makeTestDb();
 
 describe("the bytes and registry landings", () => {
-  it("are the Locker shell with the Star Cut as the Delivery symbol, under an inert policy", async () => {
-    for (const [res, render] of [
-      [
-        await dispatchBytesHost(
-          new Request("https://dl.example.test/"),
-          env,
-          db,
-          BYTE_ROUTES,
-        ),
-        renderLandingPage(env),
-      ],
-      [
-        await dispatchRegistryHost(
-          new Request("https://pkg.example.test/"),
-          env,
-          db,
-          [],
-        ),
-        renderRegistryLandingPage(env),
-      ],
-    ] as const) {
-      const html = await res.text();
-      expect(html).toBe(render);
-      expect(html).toContain("<title>Delivery · Polaris Locker</title>");
-      expect(html).toContain('data-brand="locker"');
-      expect(html).toContain('aria-label="Polaris Locker"');
-      expect(html).toContain('<div class="svc">');
-      expect(html).toContain('class="sb"'); // the Star Cut, inside
-      expect(html).not.toContain("Polaris Key");
-      expect(html).toContain("data:image/svg+xml,");
-      const csp = res.headers.get("content-security-policy")!;
-      expect(csp).toBe(await landingCsp());
-      expect(inertDocumentPolicy(csp)).toBe(true);
-    }
+  it("the download host is Polaris Locker (a customer surface), under an inert policy", async () => {
+    const res = await dispatchBytesHost(
+      new Request("https://dl.example.test/"),
+      env,
+      db,
+      BYTE_ROUTES,
+    );
+    const html = await res.text();
+    expect(html).toBe(renderLandingPage(env));
+    expect(html).toContain("<title>Downloads · Polaris Locker</title>");
+    expect(html).toContain('data-brand="locker"');
+    expect(html).toContain('aria-label="Polaris Locker"');
+    expect(html).not.toContain('<div class="svc">');
+    expect(html).not.toContain("Polaris Key");
+    expect(html).toContain("data:image/svg+xml,");
+    const csp = res.headers.get("content-security-policy")!;
+    expect(csp).toBe(await landingCsp());
+    expect(inertDocumentPolicy(csp)).toBe(true);
+  });
+
+  it("the package registry is Polaris Key (developer-facing), under an inert policy", async () => {
+    const res = await dispatchRegistryHost(
+      new Request("https://pkg.example.test/"),
+      env,
+      db,
+      [],
+    );
+    const html = await res.text();
+    expect(html).toBe(renderRegistryLandingPage(env));
+    expect(html).toContain("<title>Package registry · Polaris Key</title>");
+    expect(html).toContain('data-brand="key"');
+    expect(html).toContain('aria-label="Polaris Key"');
+    expect(html).not.toContain("Polaris Locker");
+    expect(html).toContain("data:image/svg+xml,");
+    const csp = res.headers.get("content-security-policy")!;
+    expect(csp).toBe(await registryLandingCsp());
+    expect(inertDocumentPolicy(csp)).toBe(true);
   });
 });
 

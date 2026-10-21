@@ -421,8 +421,8 @@ ac19ef6c068e5f6ed152ddede0880fee0e22de8e4f5bb4bcbab148c7dbd09956  04-web/key/fav
 6a46e732745f1b9c2484a7b1a293595f3d8ba91d51220955ad11b82f5272256a  04-web/key/favicon-48.svg
 36de5db3ea3083af85417df420407553da424baed038a6b635014e1d5f5643f9  04-web/key/favicon-64.png
 d733b4a7af1666667aa6dcb03abf45ebc1c227f1ad9e186c3013d0a358407dfd  04-web/key/favicon-64.svg
-4ac3abe1f9d637401da59e390f8f02cc966871df89874a1f2060fedbfa763010  04-web/key/favicon.ico
-455bac68ea5902b47cb20efacd47c08ed78d4d4b6431c188ac3a5f0f1c7f8deb  04-web/key/favicon.svg
+3b01faa51d2f37b8d7abdd5b76ebc7307b9bdf15384e9c0eb25c49bb72771751  04-web/key/favicon.ico
+e352e13784b05e1000d63ac7b4ecffb1c0672da915da1fb9b1e7a3487f703779  04-web/key/favicon.svg
 20d620b51fde96084bcdfe7d2ff10d959d77eca6d1de6e9244677ca3ce3feff4  04-web/key/head-snippet.html
 a1d53fb56ad1d96a8b2ded9e62d913dbfc6a99786004f2e478cd49eae8c649f2  04-web/key/site.webmanifest
 dddc551c36ff0d7720f10118a75734c2c9764d4e67773473421df032818bd071  04-web/update/app-icon-dark-1024.png

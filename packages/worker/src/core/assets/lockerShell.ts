@@ -77,6 +77,28 @@ export function lockerFaviconSvg(): string {
   );
 }
 
+/**
+ * The Polaris Key favicon (the kit's `04-web/key/favicon.svg`): the favicon cut in the Key violet on
+ * the same white rounded tile as the Locker one. For the developer-facing registry landing.
+ */
+export function keyFaviconSvg(): string {
+  const light = markParts({ kind: "key", size: 16, theme: "light" });
+  const ink =
+    light.parts.find((p) => p.role === "body")?.fill ?? "currentColor";
+  const paths = light.parts.map((p) => `<path d="${p.d}"/>`).join("");
+  const c = light.grid / 2;
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 ${light.grid} ${light.grid}">` +
+    `<rect width="${light.grid}" height="${light.grid}" rx="${(light.grid * 3.5) / 16}" fill="#fff"/>` +
+    `<g fill="${ink}" transform="translate(${c} ${c}) scale(0.8) translate(-${c} -${c})">${paths}</g></svg>`
+  );
+}
+
+/** `<link rel="icon">` href for the Key favicon: a `data:` URI, as the Locker one. */
+export function keyFaviconHref(): string {
+  return `data:image/svg+xml,${encodeURIComponent(keyFaviconSvg())}`;
+}
+
 /** `<link rel="icon">` href for the Locker favicon: a `data:` URI, so no icon route is needed. */
 export function lockerFaviconHref(): string {
   return `data:image/svg+xml,${encodeURIComponent(lockerFaviconSvg())}`;
