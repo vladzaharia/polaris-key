@@ -1171,6 +1171,19 @@ export interface PortalEmailSent {
   next?: PortalSsoNext;
 }
 
+/**
+ * `GET /api/signin/flow` (PX-12): this browser's email sign-in flow, read by the sign-in page after
+ * the Worker's expired-link page sent a new code (`/?signin=code`). The address is masked
+ * (`a•••@example.com`): it names the inbox, nothing more. `next` is a routed start that sent nothing.
+ */
+export interface PortalSignInFlow {
+  email: string;
+  expiresIn: number;
+  codeLength: number;
+  resendIn: number;
+  next?: PortalSsoNext;
+}
+
 export class PortalApiError extends Error {
   /** A refusal's numeric extras the card shows (`triesLeft` on a wrong sign-in code). */
   triesLeft?: number;
@@ -1369,6 +1382,18 @@ export const portalApi = {
     const out = await call<PortalEmailSent>("/api/signin/email/resend", {
       method: "POST",
     });
+    signInPending = true;
+    return out;
+  },
+  /**
+   * PX-12: this browser's sign-in flow, for the page the expired-link page's "Send a new code"
+   * form lands on. `signin_expired` (no live flow) is the way back to the email step.
+   */
+  readSignInFlow: async (): Promise<PortalSignInFlow> => {
+    const out = await call<PortalSignInFlow>("/api/signin/flow");
+    const next = readSsoNext(out?.next);
+    if (next) return { ...out, next };
+    if (out && "next" in out) delete out.next;
     signInPending = true;
     return out;
   },
