@@ -313,7 +313,11 @@ export function PageHeader({
         {primaryAction ? (
           <div
             className={cn(
-              "col-span-2 sm:@2xl:col-span-1 sm:@2xl:row-start-1 [&>:not(.sr-only)]:w-full sm:[&>:not(.sr-only)]:w-auto sm:@max-2xl:justify-self-end sm:@max-2xl:short:col-span-1 sm:@max-2xl:short:col-start-2 sm:@max-2xl:short:row-start-2",
+              "col-span-2 sm:@2xl:col-span-1 sm:@2xl:row-start-1 [&>:not(.sr-only)]:w-full sm:[&>:not(.sr-only)]:w-auto sm:@max-2xl:justify-self-end sm:@max-2xl:short:col-span-1 sm:@max-2xl:short:col-start-2",
+              // With a cluster the two share row 2; alone, the action sits beside the title.
+              hasCluster
+                ? "sm:@max-2xl:short:row-start-2"
+                : "sm:@max-2xl:short:row-start-1",
               hasCluster ? "sm:@2xl:col-start-3" : "sm:@2xl:col-start-2",
             )}
           >
