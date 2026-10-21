@@ -125,6 +125,7 @@ export type KitCopyKey =
   | "activate.title"
   | "activate.lede"
   | "activate.submit"
+  | "common.activateLicense"
   | "activate.busy"
   | "offlineActivation.title"
   | "offlineActivation.request"
@@ -1387,6 +1388,7 @@ export const KIT_COPY_VARIANTS: Readonly<
   "welcome.offline": { macos: "Activate Offline" },
   "signInHandoff.newCode": { macos: "Get a New Code" },
   "activate.submit": { macos: "Activate License" },
+  "common.activateLicense": { macos: "Activate a License" },
   "offlineActivation.copyCode": { macos: "Copy Code" },
   "offlineActivation.loadFile": { macos: "Load File…" },
   "offlineActivation.submit": { macos: "Activate from File" },

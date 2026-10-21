@@ -264,8 +264,8 @@
     <string name="signInHandoff_scanTv">Scannen Sie den QR-Code mit Ihrem Telefon oder geben Sie diesen Code unter der Adresse unten ein.</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. Confirmation after Copy link. -->
     <string name="signInHandoff_linkCopied">Link kopiert</string>
-    <!-- SignInHandoff: sign-in continues on another device or in the browser. The hosted page ends with a “Continue to {product}” button. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="signInHandoff_confirm">Wählen Sie auf der Anmeldeseite „Weiter zu %1$s“, um den Vorgang abzuschließen.</string>
+    <!-- SignInHandoff: sign-in continues on another device or in the browser. The hosted approval page ends with a “Sign in on {device}” button, next to Deny; the label stays in English. Arguments: {device} = this device's friendly name. Arguments: 1=device. -->
+    <string name="signInHandoff_confirm">Wählen Sie auf der Anmeldeseite „Sign in on %1$s“, um den Vorgang abzuschließen.</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. Shown for a moment before the product continues. -->
     <string name="signInHandoff_ok">Angemeldet</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. After the code expired or was refused. -->
@@ -278,6 +278,9 @@
     <!-- Activate: license key entry. Submits the key. -->
     <string name="activate_submit">Lizenz aktivieren</string>
     <string name="activate_submit__macos">Lizenz aktivieren</string>
+    <!-- Portal: opens the Activate dialog (account menu, Library key tile, empty Library, Missing a license strip). -->
+    <string name="common_activateLicense">Eine Lizenz aktivieren</string>
+    <string name="common_activateLicense__macos">Eine Lizenz aktivieren</string>
     <!-- Activate: license key entry. -->
     <string name="activate_busy">Wird aktiviert…</string>
     <!-- OfflineActivation: activation by exchanging a request code and a response file. -->

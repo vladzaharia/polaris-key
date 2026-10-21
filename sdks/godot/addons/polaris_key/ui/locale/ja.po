@@ -721,10 +721,10 @@ msgstr "スマートフォンでQRコードを読み取るか、下のアドレ�
 msgid "signInHandoff.linkCopied"
 msgstr "リンクをコピーしました"
 
-#. Choose Continue to {product} on the sign-in page to finish.
-#. SignInHandoff: sign-in continues on another device or in the browser. The hosted page ends with a “Continue to {product}” button. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. Choose Sign in on {device} on the sign-in page to finish.
+#. SignInHandoff: sign-in continues on another device or in the browser. The hosted approval page ends with a “Sign in on {device}” button, next to Deny; the label stays in English. Arguments: {device} = this device's friendly name.
 msgid "signInHandoff.confirm"
-msgstr "完了するには、サインインページで「{product}に進む」を選択してください。"
+msgstr "完了するには、サインインページで「Sign in on {device}」を選択してください。"
 
 #. Signed in
 #. SignInHandoff: sign-in continues on another device or in the browser. Shown for a moment before the product continues.
@@ -759,6 +759,16 @@ msgstr "ライセンスをアクティベート"
 #. macos: Activate License
 msgctxt "macos"
 msgid "activate.submit"
+msgstr "ライセンスをアクティベート"
+
+#. Activate a license
+#. Portal: opens the Activate dialog (account menu, Library key tile, empty Library, Missing a license strip).
+msgid "common.activateLicense"
+msgstr "ライセンスをアクティベート"
+
+#. macos: Activate a License
+msgctxt "macos"
+msgid "common.activateLicense"
 msgstr "ライセンスをアクティベート"
 
 #. Activating…

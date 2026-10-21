@@ -266,8 +266,8 @@
     <string name="signInHandoff_scanTv">Escaneie o QR code com o celular ou digite este código no endereço abaixo.</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. Confirmation after Copy link. -->
     <string name="signInHandoff_linkCopied">Link copiado</string>
-    <!-- SignInHandoff: sign-in continues on another device or in the browser. The hosted page ends with a “Continue to {product}” button. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="signInHandoff_confirm">Escolha Continuar para %1$s na página de acesso para concluir.</string>
+    <!-- SignInHandoff: sign-in continues on another device or in the browser. The hosted approval page ends with a “Sign in on {device}” button, next to Deny; the label stays in English. Arguments: {device} = this device's friendly name. Arguments: 1=device. -->
+    <string name="signInHandoff_confirm">Escolha Sign in on %1$s na página de acesso para concluir.</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. Shown for a moment before the product continues. -->
     <string name="signInHandoff_ok">Você entrou</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. After the code expired or was refused. -->
@@ -280,6 +280,9 @@
     <!-- Activate: license key entry. Submits the key. -->
     <string name="activate_submit">Ativar licença</string>
     <string name="activate_submit__macos">Ativar licença</string>
+    <!-- Portal: opens the Activate dialog (account menu, Library key tile, empty Library, Missing a license strip). -->
+    <string name="common_activateLicense">Ativar uma licença</string>
+    <string name="common_activateLicense__macos">Ativar uma licença</string>
     <!-- Activate: license key entry. -->
     <string name="activate_busy">Ativando…</string>
     <!-- OfflineActivation: activation by exchanging a request code and a response file. -->

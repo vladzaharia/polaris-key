@@ -51,24 +51,20 @@ export function deliverySymbol(size: number, className: string): string {
 }
 
 /**
- * The Locker favicon (the kit's `web/favicon.svg`, adaptive): the micro mark, coral and white by
- * default and the light inks under `prefers-color-scheme: light`. Drawn at 16 px, unscaled.
+ * The Locker favicon (the kit's `web/favicon.svg`; owner, 2026-10-20): the micro mark in the light
+ * coral on a white rounded tile, as the Polaris Key icon reads on a dark tab bar. Fills are
+ * attributes, not a `<style>`, so a strict page CSP can't unstyle it. Drawn at 16 px, unscaled.
  */
 export function lockerFaviconSvg(): string {
-  const dark = markParts({ kind: "locker", size: 16, theme: "dark" });
   const light = markParts({ kind: "locker", size: 16, theme: "light" });
-  const fill = (ps: typeof dark.parts, role: "body" | "star"): string =>
-    ps.find((p) => p.role === role)?.fill ?? "currentColor";
-  const paths = dark.parts
-    .map(
-      (p) =>
-        `<path class="${p.role === "star" ? "star" : "body"}" d="${p.d}"/>`,
-    )
-    .join("");
+  const ink =
+    light.parts.find((p) => p.role === "body")?.fill ?? "currentColor";
+  const paths = light.parts.map((p) => `<path d="${p.d}"/>`).join("");
+  const c = light.grid / 2;
   return (
-    `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 ${dark.grid} ${dark.grid}">` +
-    `<style>.body{fill:${fill(dark.parts, "body")}}.star{fill:${fill(dark.parts, "star")}}@media(prefers-color-scheme:light){.body{fill:${fill(light.parts, "body")}}.star{fill:${fill(light.parts, "star")}}}</style>` +
-    `${paths}</svg>`
+    `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 ${light.grid} ${light.grid}">` +
+    `<rect width="${light.grid}" height="${light.grid}" rx="${(light.grid * 3.5) / 16}" fill="#fff"/>` +
+    `<g fill="${ink}" transform="translate(${c} ${c}) scale(0.8) translate(-${c} -${c})">${paths}</g></svg>`
   );
 }
 

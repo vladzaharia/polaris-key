@@ -154,7 +154,7 @@ func _on_sign_in_finished(result: PKeySignInResult) -> void:
 ```
 
 The flow states are `starting`, `pending`, `confirm`, and `ended`. Pending shows the user code,
-short URI, QR payload, and countdown. Ended maps `ok`, `expired`, `cancelled`, `denied`,
+short URI, QR payload, and countdown. Ended maps `ok`, `expired`, `cancelled`, `denied` (the person pressed Deny),
 `device-mismatch`, `rate-limited`, `service-unavailable`, `timeout`, and other errors to a copy
 key. Use `PolarisKey.identity.current()` after success to restore the signed-in person on a later
 screen; `sign_out()` ends the identity and deactivates its seat.

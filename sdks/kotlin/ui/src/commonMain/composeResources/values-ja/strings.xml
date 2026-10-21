@@ -262,8 +262,8 @@
     <string name="signInHandoff_scanTv">スマートフォンでQRコードを読み取るか、下のアドレスでこのコードを入力してください。</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. Confirmation after Copy link. -->
     <string name="signInHandoff_linkCopied">リンクをコピーしました</string>
-    <!-- SignInHandoff: sign-in continues on another device or in the browser. The hosted page ends with a “Continue to {product}” button. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="signInHandoff_confirm">完了するには、サインインページで「%1$sに進む」を選択してください。</string>
+    <!-- SignInHandoff: sign-in continues on another device or in the browser. The hosted approval page ends with a “Sign in on {device}” button, next to Deny; the label stays in English. Arguments: {device} = this device's friendly name. Arguments: 1=device. -->
+    <string name="signInHandoff_confirm">完了するには、サインインページで「Sign in on %1$s」を選択してください。</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. Shown for a moment before the product continues. -->
     <string name="signInHandoff_ok">サインインしました</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. After the code expired or was refused. -->
@@ -276,6 +276,9 @@
     <!-- Activate: license key entry. Submits the key. -->
     <string name="activate_submit">ライセンスをアクティベート</string>
     <string name="activate_submit__macos">ライセンスをアクティベート</string>
+    <!-- Portal: opens the Activate dialog (account menu, Library key tile, empty Library, Missing a license strip). -->
+    <string name="common_activateLicense">ライセンスをアクティベート</string>
+    <string name="common_activateLicense__macos">ライセンスをアクティベート</string>
     <!-- Activate: license key entry. -->
     <string name="activate_busy">アクティベートしています…</string>
     <!-- OfflineActivation: activation by exchanging a request code and a response file. -->

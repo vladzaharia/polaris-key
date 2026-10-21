@@ -262,8 +262,8 @@
     <string name="signInHandoff_scanTv">휴대전화로 QR 코드를 스캔하거나 아래 주소에서 이 코드를 입력하세요.</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. Confirmation after Copy link. -->
     <string name="signInHandoff_linkCopied">링크 복사됨</string>
-    <!-- SignInHandoff: sign-in continues on another device or in the browser. The hosted page ends with a “Continue to {product}” button. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="signInHandoff_confirm">로그인 페이지에서 “%1$s에서 계속”을 선택해 완료하세요.</string>
+    <!-- SignInHandoff: sign-in continues on another device or in the browser. The hosted approval page ends with a “Sign in on {device}” button, next to Deny; the label stays in English. Arguments: {device} = this device's friendly name. Arguments: 1=device. -->
+    <string name="signInHandoff_confirm">로그인 페이지에서 “Sign in on %1$s”를 선택해 완료하세요.</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. Shown for a moment before the product continues. -->
     <string name="signInHandoff_ok">로그인됨</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. After the code expired or was refused. -->
@@ -276,6 +276,9 @@
     <!-- Activate: license key entry. Submits the key. -->
     <string name="activate_submit">라이선스 활성화</string>
     <string name="activate_submit__macos">라이선스 활성화</string>
+    <!-- Portal: opens the Activate dialog (account menu, Library key tile, empty Library, Missing a license strip). -->
+    <string name="common_activateLicense">라이선스 활성화</string>
+    <string name="common_activateLicense__macos">라이선스 활성화</string>
     <!-- Activate: license key entry. -->
     <string name="activate_busy">활성화하는 중…</string>
     <!-- OfflineActivation: activation by exchanging a request code and a response file. -->

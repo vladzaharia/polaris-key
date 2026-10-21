@@ -71,11 +71,11 @@ for theme,bg in [('dark',DARK),('light',LIGHT),('coral',CORAL)]:
 for theme in ['dark','light']:
  im=Image.open(ROOT/f'icons/png/locker-app-{theme}-256.png');im.save(ROOT/f'icons/platform/locker-{theme}.ico',sizes=[(n,n) for n in [16,24,32,48,64,128,256]],append_images=[Image.open(ROOT/f'icons/png/locker-app-{theme}-{n}.png') for n in [16,24,32,48,64,128]])
 Image.open(ROOT/'icons/png/locker-app-dark-1024.png').save(ROOT/'icons/platform/locker.icns')
-shutil.copy(ROOT/'icons/png/locker-app-dark-180.png',ROOT/'web/apple-touch-icon.png');shutil.copy(ROOT/'icons/platform/locker-dark.ico',ROOT/'web/favicon.ico')
-# Browser favicon uses true micro geometry and theme-aware fills.
-fav=svg('<style>.body{fill:#ff7869}.star{fill:white}@media(prefers-color-scheme:light){.body,.star{fill:#c44438}}</style>'+glyph().replace(f'fill="{CORAL}"','class="body"').replace('fill="#ffffff"','class="star"'))
-# Dedicated micro source rather than automatic shrink of display master.
-fav=svg('<style>.body{fill:#ff7869}.star{fill:white}@media(prefers-color-scheme:light){.body,.star{fill:#c44438}}</style>'+glyph(cut='micro').replace(f'fill="{CORAL}"','class="body"').replace('fill="#ffffff"','class="star"'))
+shutil.copy(ROOT/'icons/png/locker-app-dark-180.png',ROOT/'web/apple-touch-icon.png')
+# web/favicon.ico is the white-tile favicon.svg below rasterized at 16-256 px (owner, 2026-10-20); not the dark app icon.
+# Browser favicon (owner, 2026-10-20): the micro geometry in light coral on a white rounded tile, like the
+# Polaris Key icon on a dark tab bar. Fills are attributes, not a <style>, so a strict page CSP can't unstyle it.
+fav='<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-label="Polaris Locker"><g transform="scale(8)"><rect width="16" height="16" rx="3.5" fill="#fff"/><g fill="#c44438" transform="translate(8 8) scale(0.8) translate(-8 -8)"><path d="M1 6 L4.5 3 H5 V11 H8 V13 H1 Z M9 11 L13 8 H15 V13 H9 Z"/><path d="M9.5 5 L10.3 6.7 L12 7.5 L10.3 8.3 L9.5 10 L8.7 8.3 L7 7.5 L8.7 6.7 Z"/></g></g></svg>'
 save_svg('web/favicon.svg',fav)
 for n in [192,512]:shutil.copy(ROOT/f'icons/png/locker-app-dark-{n}.png',ROOT/f'web/icon-{n}.png')
 mask=svg('<g transform="translate(25.6,25.6) scale(.6)">'+glyph()+'</g>',bg=DARK);save_svg('web/maskable.svg',mask);png(mask,ROOT/'web/maskable-512.png',512)

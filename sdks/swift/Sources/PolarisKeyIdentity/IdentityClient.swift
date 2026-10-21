@@ -127,8 +127,10 @@ public enum SignInPoll: Sendable, Equatable {
     case ready(SignInReady)
     /// The code expired (or the server no longer knows it). Begin again.
     case expired
-    /// The sign-in failed or was refused. Begin again.
-    case error(message: String)
+    /// The sign-in failed or was refused. Begin again. `code` is `ErrorCode.signInDenied` when the
+    /// Worker answered its generic `error` (the provider failed, or the person pressed Deny; the
+    /// server never says which).
+    case error(message: String, code: String? = nil)
 }
 
 /// How `waitForSignIn` ended. Cancellation throws `CancellationError` instead.
@@ -137,7 +139,7 @@ public enum SignInResult: Sendable, Equatable {
     /// Only with `confirmIdentity`: show the identity, then `acceptSignIn` or cancel.
     case confirm(identity: SignInIdentity, attachable: Bool)
     case expired
-    case error(message: String)
+    case error(message: String, code: String? = nil)
 
     public var isReady: Bool {
         if case .ready = self { return true }
@@ -303,6 +305,8 @@ public final class IdentityClient: Sendable {
             try await core.setToken(token, source: .signin)
             await onAcquired?()
             return .ready(SignInReady(identity: body?.identity, attached: body?.attached))
+        case "error":
+            return .error(message: "device sign-in failed.", code: ErrorCode.signInDenied)
         default:
             return .error(message: "device sign-in failed.")
         }
@@ -364,8 +368,8 @@ public final class IdentityClient: Sendable {
                 return .confirm(identity: identity, attachable: attachable)
             case .expired:
                 return .expired
-            case .error(let message):
-                return .error(message: message)
+            case .error(let message, let code):
+                return .error(message: message, code: code)
             }
         }
     }

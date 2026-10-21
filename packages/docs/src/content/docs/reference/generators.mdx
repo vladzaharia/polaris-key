@@ -264,6 +264,17 @@ Docs-site CSP hashes.
 - Reads: `packages/docs/scripts/collect-csp-hashes.mjs`, `packages/docs/src/**`.
 - Writes: `packages/worker/src/docsCsp.generated.ts`.
 
+### docs-tiers
+
+Docs-site per-file tiers.
+
+- Run: named run only.
+- Regenerate: `pnpm gen docs-tiers`.
+- Check: `pnpm gen docs-tiers --check`.
+- Why not default: written by the docs build (packages/docs/scripts/collect-docs-tiers.ts); the Worker suite checks it.
+- Reads: `packages/docs/scripts/collect-docs-tiers.ts`, `packages/docs/src/**`.
+- Writes: `packages/worker/src/docsTiers.generated.ts`.
+
 ### design-mockups
 
 Static design mockups built from their _src directories.

@@ -83,8 +83,10 @@ export type SignInPoll =
   | { status: "confirm"; identity: ShownIdentity; attachable: boolean }
   /** The code expired (or the server no longer knows it). Begin again. */
   | { status: "expired" }
-  /** The sign-in failed or was refused. Begin again. */
-  | { status: "error"; message: string };
+  /** The sign-in failed or was refused. Begin again. `code` is `sign-in-denied` when the Worker
+   *  answered its generic `error` (the provider failed, or the person pressed Deny on the
+   *  approval page; the server never says which). */
+  | { status: "error"; message: string; code?: typeof ErrorCode.signInDenied };
 
 /** The name and verified e-mail of a signed-in identity, as the Worker shows them. */
 export interface ShownIdentity {
@@ -114,7 +116,7 @@ export type SignInResult =
       attached?: "claimed" | "migrated";
     }
   | { status: "expired" }
-  | { status: "error"; message: string };
+  | { status: "error"; message: string; code?: typeof ErrorCode.signInDenied };
 
 export interface WaitForSignInOptions {
   /** Abort to stop polling; `waitForSignIn` then rejects with the signal's reason. */
@@ -426,6 +428,12 @@ export class IdentityClient {
         return { status: "pending" };
       case "timeout":
         return { status: "expired" };
+      case "error":
+        return {
+          status: "error",
+          message: "device sign-in failed.",
+          code: ErrorCode.signInDenied,
+        };
       case "confirm":
         return {
           status: "confirm",

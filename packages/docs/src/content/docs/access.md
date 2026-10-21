@@ -10,6 +10,6 @@ sidebar:
 
 Some pages are for console members and Platform admins. You need to sign in to read them.
 
-- [Sign in](/manage/) to the console.
+- [Sign in](/manage/login) to the console.
 - Using an app? Go to [Help](/docs/help/).
 - Building with Polaris Key? Go to [Start](/docs/start/).

@@ -199,7 +199,7 @@ describe("the signed-in header (PORTAL.md §3.2, §8)", () => {
           expect
             .soft(visible, `header controls at ${width}`)
             .toBe(
-              `Polaris Locker: your library · Library12 · Discover24 to add · Activate license · Account: ${name}`,
+              `Polaris Locker: your library · Library12 · Discover24 to add · Account: ${name}`,
             );
           // From 1180 px the chip shows the full name. It truncates only once the ⌘K field has
           // given way to its 176 px floor, or the chip has reached its 18rem cap.
@@ -237,7 +237,7 @@ describe("the signed-in header (PORTAL.md §3.2, §8)", () => {
     });
   }
 
-  it("gives Activate and the account chip one height: 40 px, 44 on a coarse pointer", async ({
+  it("gives the account chip its height: 40 px, 44 on a coarse pointer", async ({
     expect,
   }) => {
     const o = await portal.open("twelve", "/", {
@@ -246,10 +246,7 @@ describe("the signed-in header (PORTAL.md §3.2, §8)", () => {
     });
     try {
       await h1(o.page, "Your library");
-      const headerControls = [
-        'header button[aria-label="Activate license"]',
-        'header button[aria-label^="Account:"]',
-      ];
+      const headerControls = ['header button[aria-label^="Account:"]'];
       // The header lays out after a viewport change, so a control can be absent or hidden for a
       // moment. Wait for each one to be visible before measuring it, and name the control if it
       // never is; measuring `undefined` threw a TypeError instead.
@@ -281,7 +278,7 @@ describe("the signed-in header (PORTAL.md §3.2, §8)", () => {
       };
       for (const width of [1024, 1440]) {
         await o.page.setViewportSize({ width, height: 900 });
-        expect.soft(await heights(), `at ${width}`).toEqual([40, 40]);
+        expect.soft(await heights(), `at ${width}`).toEqual([40]);
       }
     } finally {
       await o.close();
@@ -403,7 +400,7 @@ describe("the tablet and short-screen rules (PORTAL.md §8)", () => {
     }
   });
 
-  it("the compact grid fills its columns from 17 rem tiles (two on tablets), every action label inside its button", async ({
+  it("the compact grid has three columns on tablets (PX-35), every action label inside its button", async ({
     expect,
   }) => {
     const o = await portal.open("twelve", "/", { width: 761 });
@@ -417,19 +414,7 @@ describe("the tablet and short-screen rules (PORTAL.md §8)", () => {
           "[data-library-grid=compact]",
           "article .mt-auto > :first-child",
         );
-        expect
-          .soft(grid.columns, `columns at ${width}`)
-          .toBe(
-            Math.floor(
-              ((await o.page.evaluate(
-                () =>
-                  document.querySelector("[data-library-grid=compact]")!
-                    .clientWidth,
-              )) +
-                20) /
-                (17 * 16 + 20),
-            ),
-          );
+        expect.soft(grid.columns, `columns at ${width}`).toBe(3);
         for (const [i, it] of grid.items.entries())
           expect
             .soft(it.action?.fits, `tile ${i}'s action at ${width}`)

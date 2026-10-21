@@ -672,7 +672,10 @@ function activateRoutes() {
 
 async function openActivate(): Promise<HTMLElement> {
   await userEvent.click(
-    await screen.findByRole("button", { name: "Activate license" }),
+    await screen.findByRole("button", { name: /^Account:/ }),
+  );
+  await userEvent.click(
+    await screen.findByRole("menuitem", { name: "Activate a license" }),
   );
   return screen.findByRole("dialog", { name: "Activate a license" });
 }

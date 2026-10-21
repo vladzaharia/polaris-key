@@ -538,9 +538,9 @@
       "note": "SignInHandoff: sign-in continues on another device or in the browser. Confirmation after Copy link."
     },
     "signInHandoff.confirm": {
-      "value": "Choose Continue to {product} on the sign-in page to finish.",
+      "value": "Choose Sign in on {device} on the sign-in page to finish.",
       "role": "body",
-      "note": "SignInHandoff: sign-in continues on another device or in the browser. The hosted page ends with a “Continue to {product}” button. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+      "note": "SignInHandoff: sign-in continues on another device or in the browser. The hosted approval page ends with a “Sign in on {device}” button, next to Deny; the label stays in English. Arguments: {device} = this device's friendly name."
     },
     "signInHandoff.ok": {
       "value": "Signed in",
@@ -566,6 +566,11 @@
       "value": "Activate license",
       "role": "button",
       "note": "Activate: license key entry. Submits the key."
+    },
+    "common.activateLicense": {
+      "value": "Activate a license",
+      "role": "button",
+      "note": "Portal: opens the Activate dialog (account menu, Library key tile, empty Library, Missing a license strip)."
     },
     "activate.busy": {
       "value": "Activating…",

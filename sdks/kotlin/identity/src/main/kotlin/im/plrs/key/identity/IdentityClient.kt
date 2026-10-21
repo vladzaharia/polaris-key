@@ -81,15 +81,19 @@ public sealed interface SignInPoll {
     /** The code expired (or the server no longer knows it). Begin again. */
     public data object Expired : SignInPoll
 
-    /** The sign-in failed or was refused. Begin again. */
-    public data class Error(val message: String) : SignInPoll
+    /**
+     * The sign-in failed or was refused. Begin again. [code] is [ErrorCode.signInDenied] when the
+     * Worker answered its generic `error` (the provider failed, or the person pressed Deny; the
+     * server never says which).
+     */
+    public data class Error(val message: String, val code: String? = null) : SignInPoll
 }
 
 /** How [IdentityClient.waitForSignIn] ended. Cancellation throws instead. */
 public sealed interface SignInResult {
     public data object Ready : SignInResult
     public data object Expired : SignInResult
-    public data class Error(val message: String) : SignInResult
+    public data class Error(val message: String, val code: String? = null) : SignInResult
 }
 
 /** Raised after a sign-in mints a credential; the facade syncs. */
@@ -197,6 +201,7 @@ public class IdentityClient(
                 onAcquired?.invoke()
                 SignInPoll.Ready
             }
+            "error" -> SignInPoll.Error("device sign-in failed.", ErrorCode.signInDenied)
             else -> SignInPoll.Error("device sign-in failed.")
         }
     }
@@ -227,7 +232,7 @@ public class IdentityClient(
                 is SignInPoll.SlowDown -> interval = maxOf(interval, result.interval)
                 SignInPoll.Ready -> return SignInResult.Ready
                 SignInPoll.Expired -> return SignInResult.Expired
-                is SignInPoll.Error -> return SignInResult.Error(result.message)
+                is SignInPoll.Error -> return SignInResult.Error(result.message, result.code)
             }
         }
     }

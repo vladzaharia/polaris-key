@@ -591,7 +591,7 @@ func _ready() -> void:
 ```
 
 - **Boot options.** `resolve_on_stop` (above); `confirm_identity` (a sign-in stops at "Is this you?"
-  with the account it found before handing back); `persistent_gate` (a gate stays on the boot's
+  with the account it found before handing back; the license attach it once offered is retired); `persistent_gate` (a gate stays on the boot's
   layer as `PolarisKey.boot_gate`: hidden while the license is usable, covering the game again with
   the boot's screens when it is revoked, expired or signed out). A second `boot()` while one runs
   joins it; after READY it starts a new boot (a sign-out, say) with a fresh gate. A
@@ -752,12 +752,11 @@ await PolarisKey.identity.sign_out()             # cancel, forget, license.deact
   license and config documents arrive at once. Show `PKeySignInResult.identity` afterwards: it
   is how a player notices a stranger confirmed the code and signed the device in to their
   account.
-- **Opt-in license attach.** `begin_sign_in(name, true)` holds the flow at the signed-in identity:
-  `sign_in_confirm({identity, attachable})` fires and polling stops until the game calls
-  `accept_sign_in(attach)` or `cancel()`. With `attachable`, `accept_sign_in(true)` attaches the
-  device's anonymous enrolled license to the account (`attached` is `claimed` or `migrated`).
-  Nothing is minted or merged before the player accepts on the device, and only the device,
-  which holds the device code, can ask.
+- **License attach (retired).** `begin_sign_in(name, true)` still holds the flow at the signed-in
+  identity (`sign_in_confirm({identity, attachable})`), but `attachable` is always false: the device
+  signs in on the identity's own license and nothing is claimed or merged. The person approving
+  presses Sign in or Deny on the Polaris Locker page; Deny ends the sign-in as `denied`
+  (`sign-in-denied`).
 - Device-code sign-in sends no fingerprint, so a `strict` tier refuses it.
 - `PKeyQrRect` renders `verification_uri_complete` at any size: one texel per module, NEAREST
   filtering, a four-module quiet zone, theme colors `dark` / `light` for the type `PKeyQrRect`.

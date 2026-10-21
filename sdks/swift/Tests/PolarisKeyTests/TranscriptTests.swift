@@ -150,7 +150,9 @@ enum SwiftReplay {
             case .ready: out["result"] = .string("ready")
             case .confirm: out["result"] = .string("confirm")
             case .expired: out["result"] = .string("expired")
-            case .error: out["result"] = .string("error")
+            case .error(_, let code):
+                out["result"] = .string("error")
+                if let code { out["code"] = .string(code) }
             }
         case "waitForSignIn":
             guard let prompt = session.prompt else { throw ReplayError("waitForSignIn before beginSignIn") }
@@ -158,7 +160,9 @@ enum SwiftReplay {
             case .ready: out["result"] = .string("ready")
             case .confirm: out["result"] = .string("confirm")
             case .expired: out["result"] = .string("expired")
-            case .error: out["result"] = .string("error")
+            case .error(_, let code):
+                out["result"] = .string("error")
+                if let code { out["code"] = .string(code) }
             }
         case "mintToken":
             do {

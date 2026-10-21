@@ -310,18 +310,22 @@ object KotlinReplay {
                     }
                     SignInPoll.Ready -> out["result"] = JsonPrimitive("ready")
                     SignInPoll.Expired -> out["result"] = JsonPrimitive("expired")
-                    is SignInPoll.Error -> out["result"] = JsonPrimitive("error")
+                    is SignInPoll.Error -> {
+                        out["result"] = JsonPrimitive("error")
+                        poll.code?.let { out["code"] = JsonPrimitive(it) }
+                    }
                 }
             }
             "waitForSignIn" -> {
                 val prompt = session.prompt ?: throw AssertionError("waitForSignIn before beginSignIn")
-                out["result"] = JsonPrimitive(
-                    when (client.identity.waitForSignIn(prompt)) {
-                        SignInResult.Ready -> "ready"
-                        SignInResult.Expired -> "expired"
-                        is SignInResult.Error -> "error"
-                    },
-                )
+                when (val done = client.identity.waitForSignIn(prompt)) {
+                    SignInResult.Ready -> out["result"] = JsonPrimitive("ready")
+                    SignInResult.Expired -> out["result"] = JsonPrimitive("expired")
+                    is SignInResult.Error -> {
+                        out["result"] = JsonPrimitive("error")
+                        done.code?.let { out["code"] = JsonPrimitive(it) }
+                    }
+                }
             }
             "changelog" -> try {
                 out["entries"] = JsonArray(client.release.changelog().map(::entryValue))
@@ -683,7 +687,7 @@ class TranscriptTest : ConformanceSuite() {
         /** Every transcript this SDK's implemented rows make applicable (P6-06, P6-07 and P6-08). */
         val REQUIRED = listOf(
             "discovery-capabilities", "discovery-failure", "sync-etag-304", "sync-errors",
-            "activate-enroll-deactivate", "config-schema-fetch", "devicecode-expired", "devicecode-happy",
+            "activate-enroll-deactivate", "config-schema-fetch", "devicecode-denied", "devicecode-expired", "devicecode-happy",
             "edge-mint", "register-open", "register-reregister-401", "release-changelog",
             "release-changelog-entitled", "telemetry-report",
             // P6-08: the v4 update decision.

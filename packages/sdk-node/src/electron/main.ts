@@ -792,7 +792,9 @@ export function exposePolarisBridge(
           return { kind: "expired" };
         case "error":
           forgetFlow(flowId as string);
-          return { kind: "error", message: r.message };
+          return r.code === ErrorCode.signInDenied
+            ? { kind: "denied" }
+            : { kind: "error", message: r.message };
       }
     },
     submitKey: async (_e, key) => {

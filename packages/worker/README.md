@@ -69,17 +69,18 @@ Run the JavaScript commands under Node 22 (see [`AGENTS.md`](../../AGENTS.md)).
 
 Generator families that read or write files here (a family regenerates with `pnpm gen <family>`, and `pnpm gen --check` is the drift gate):
 
-| Family               | Here it          | Run                                  |
-| -------------------- | ---------------- | ------------------------------------ |
-| `transcripts`        | reads            | `pnpm gen transcripts`               |
-| `constants`          | reads            | `pnpm gen constants`                 |
-| `platform-inventory` | reads and writes | `pnpm gen platform-inventory`        |
-| `storefront-ci`      | reads            | `pnpm gen storefront-ci`             |
-| `settings`           | reads            | `pnpm gen settings`                  |
-| `docs-reference`     | reads            | `pnpm gen docs-reference`            |
-| `readme-work`        | reads and writes | `pnpm gen readme-work`               |
-| `parity`             | reads            | `pnpm gen parity`                    |
-| `docs-csp`           | writes           | `pnpm gen docs-csp` (named run only) |
+| Family               | Here it          | Run                                    |
+| -------------------- | ---------------- | -------------------------------------- |
+| `transcripts`        | reads            | `pnpm gen transcripts`                 |
+| `constants`          | reads            | `pnpm gen constants`                   |
+| `platform-inventory` | reads and writes | `pnpm gen platform-inventory`          |
+| `storefront-ci`      | reads            | `pnpm gen storefront-ci`               |
+| `settings`           | reads            | `pnpm gen settings`                    |
+| `docs-reference`     | reads            | `pnpm gen docs-reference`              |
+| `readme-work`        | reads and writes | `pnpm gen readme-work`                 |
+| `parity`             | reads            | `pnpm gen parity`                      |
+| `docs-csp`           | writes           | `pnpm gen docs-csp` (named run only)   |
+| `docs-tiers`         | writes           | `pnpm gen docs-tiers` (named run only) |
 
 <!-- work-on-it:end -->
 

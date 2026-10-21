@@ -8,9 +8,9 @@ import type { PortalAccount } from "../api.js";
 import { AttentionShelf } from "../components/AttentionShelf.js";
 import { LibraryEmpty } from "../components/LibraryEmpty.js";
 import { LibraryKeyTile } from "../components/LibraryKeyTile.js";
-import { MissingLicense } from "../components/MissingLicense.js";
 import { LibraryHero } from "../components/LibraryHero.js";
 import { LibraryTile } from "../components/LibraryTile.js";
+import { TILE_GRID } from "../components/tileGrid.js";
 import { ErrorPanel } from "../components/States.js";
 import { useLibrary } from "../library.js";
 import {
@@ -64,8 +64,8 @@ export function LibraryPage({
 
   return (
     // A short screen (§8) tightens the gap under the title, so a hero's download is on screen.
-    <section className="pk-vt-scope space-y-8 short:space-y-4">
-      <div className="space-y-2">
+    <section className="pk-vt-scope space-y-6 short:space-y-4">
+      <div className="space-y-1">
         <h1 className="text-page-title-sm font-semibold text-fg-strong desk:text-page-title">
           Your library
         </h1>
@@ -76,14 +76,11 @@ export function LibraryPage({
       {lib.isPending ? (
         // The large-tile grid's columns, so the page holds still when the library loads.
         // A tile is its 16:9 art and about 150 px of text; the key tile is dashed.
-        <div className="grid gap-6 desk:grid-cols-2 wide:grid-cols-3" aria-busy>
+        <div className={TILE_GRID} aria-busy>
           <SkeletonTile />
           <SkeletonTile />
-          <SkeletonTile />
-          <div
-            aria-hidden
-            className="hidden min-h-40 rounded-xl border border-dashed border-border-strong wide:block"
-          />
+          <SkeletonTile className="hidden desk:block" />
+          <SkeletonTile className="hidden wide:block" />
         </div>
       ) : lib.error ? (
         <ErrorPanel error={lib.error} onRetry={lib.retry} />
@@ -101,17 +98,19 @@ export function LibraryPage({
           />
         </>
       )}
-      {/* Static help: every state has it, so the page keeps its end while data loads or fails. */}
-      <MissingLicense />
     </section>
   );
 }
 
-function SkeletonTile(): React.ReactElement {
+function SkeletonTile({
+  className,
+}: {
+  className?: string;
+}): React.ReactElement {
   return (
-    <div aria-hidden className="space-y-3 rounded-xl">
-      <Skeleton className="aspect-video w-full rounded-xl" />
-      <Skeleton className="h-36 w-full rounded-xl" />
+    <div aria-hidden className={cn("space-y-2 rounded-xl", className)}>
+      <Skeleton className="aspect-[2/1] w-full rounded-xl" />
+      <Skeleton className="h-28 w-full rounded-xl" />
     </div>
   );
 }
@@ -167,13 +166,7 @@ function LibraryBody({
         <h2 id="all-h" className="sr-only">
           All products
         </h2>
-        <ul
-          ref={stagger.ref}
-          className={cn(
-            "grid gap-6 desk:grid-cols-2 wide:grid-cols-3",
-            stagger.className,
-          )}
-        >
+        <ul ref={stagger.ref} className={cn(TILE_GRID, stagger.className)}>
           {justAddedFirst(products).map((p) => (
             <li key={p.slug} className="grid">
               <LibraryTile
@@ -317,15 +310,12 @@ function ScaledLibrary({
             }
           />
         ) : (
-          // Compact tiles (§8): three columns on tablets, four from 1180 px. A narrow tile's
-          // download reads "Download" (QuickActionButton's shortLabel).
+          // Compact tiles (§8, PX-35): the shared grid (`tileGrid.ts`). A narrow tile's download
+          // reads "Download" (QuickActionButton's shortLabel).
           <ul
             ref={stagger.ref}
             data-library-grid="compact"
-            className={cn(
-              "grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(min(100%,17rem),1fr))]",
-              stagger.className,
-            )}
+            className={cn(TILE_GRID, stagger.className)}
           >
             {shown.map((p) => (
               <li key={p.slug} className="grid">

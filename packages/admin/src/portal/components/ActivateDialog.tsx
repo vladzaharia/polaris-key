@@ -377,7 +377,7 @@ export function ActivateDialog({
             : `${doneName} is in your library`
           : confirm
             ? `Add ${confirmName} to your library?`
-            : "Activate a license"
+            : t("common.activateLicense")
       }
       description={
         done || confirm

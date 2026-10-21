@@ -29,7 +29,7 @@ Teach the SDKs what I-37 added to the browser half of a device-code sign-in. No 
 
 ## Acceptance criteria
 
-- [ ] The kit copy, goldens and corpus regenerate cleanly (`pnpm gen --check`).
-- [ ] A denied device-code poll ends in `sign-in-denied` in all six SDKs, proven by the `devicecode-denied` transcript.
-- [ ] The attach prose says it is retired on device code.
-- [ ] The green gate passes (`AGENTS.md`), including every gate in the header.
+- [x] The kit copy, goldens and corpus regenerate cleanly (`pnpm gen --check`).
+- [x] A denied device-code poll ends in `sign-in-denied` in all six SDKs, proven by the `devicecode-denied` transcript.
+- [x] The attach prose says it is retired on device code.
+- [x] The green gate passes (`AGENTS.md`), including every gate in the header.

@@ -27,7 +27,7 @@ export function AttentionShelf({
     >
       <h2
         id="attention-h"
-        className="flex items-baseline gap-2 px-4 py-3 text-md font-semibold text-fg-strong"
+        className="flex items-baseline gap-2 px-4 py-2 text-md font-semibold text-fg-strong"
       >
         Needs you
         <span className="text-xs font-normal text-fg-muted">
@@ -38,7 +38,7 @@ export function AttentionShelf({
         {items.map(({ product, text, action, urgent }) => (
           <li
             key={product.slug}
-            className="flex min-w-0 flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:gap-4"
+            className="flex min-w-0 flex-col gap-2 px-4 py-2 sm:flex-row sm:items-center sm:gap-4"
           >
             <div className="flex min-w-0 flex-1 items-center gap-3">
               <ProductIcon

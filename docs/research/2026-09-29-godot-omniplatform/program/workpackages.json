@@ -5169,7 +5169,7 @@
       "optional": false,
       "refs": ["plans/I-37.md §8"],
       "brief": "wp/I-37b-device-code-denied-kits.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "I-38",
@@ -15372,7 +15372,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-03b-public-access.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "DOC-04a",
@@ -17999,7 +17999,7 @@
       "optional": false,
       "refs": ["plans/LK-00.md D7, §2.3"],
       "brief": "wp/LK-09-locker-docs.md",
-      "status": "todo"
+      "status": "in-progress"
     },
     {
       "id": "LK-10",
@@ -18198,6 +18198,24 @@
         "plans/LK-00.md §15–§16"
       ],
       "brief": "wp/MK-L2-locker-portal-mockups.md",
+      "status": "done"
+    },
+    {
+      "id": "PX-35",
+      "title": "Polaris Locker Library shell trim",
+      "phase": "PX",
+      "stage": "Locker UX waves (2026-10-19)",
+      "lane": "portal",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.2, 0.3],
+      "deps": ["PX-34"],
+      "planMode": false,
+      "gates": ["portal-e2e", "ui-snapshots"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["design/PORTAL §3, §4.2", "owner request 2026-10-20"],
+      "brief": "wp/PX-35-library-shell-trim.md",
       "status": "done"
     }
   ]

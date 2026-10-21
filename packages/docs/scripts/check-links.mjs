@@ -77,7 +77,8 @@ const failures = [];
 let checked = 0;
 
 // The tier rule (docs plan §3.1): a page anyone can read links only to pages anyone can read,
-// so a public reader is never sent to a page that answers with a sign-in. The one exception is
+// so a public reader is never sent to a page that answers with a sign-in, and a member page never
+// links to an admin page. The one exception is
 // the landing page's Operate card, labelled "For console members". The rule covers the page's
 // own content (`<main>`): the sidebar lists every door until DOC-02b scopes it to the page's
 // door, and the rule then extends to the chrome. Tiers come from the
@@ -103,6 +104,7 @@ const debt = existsSync(DEBT_FILE)
   ? JSON.parse(readFileSync(DEBT_FILE, "utf8"))
   : {};
 const seenDebt = new Set();
+const RANK = { public: 0, member: 1, admin: 2 };
 const CHROME_EXCEPTION = { page: "/index.html", target: "/docs/operate/" };
 
 for (const file of htmlFiles(dist)) {
@@ -112,10 +114,12 @@ for (const file of htmlFiles(dist)) {
   const pageRoute =
     page === "/index.html" ? "/docs/" : "/docs" + dirname(page) + "/";
   const main = /<main[\s\S]*<\/main>/.exec(html)?.[0] ?? "";
-  if (tierOf(pageRoute) === "public") {
+  const pageTier = tierOf(pageRoute);
+  if (pageTier !== "admin") {
     for (const match of main.matchAll(/href="(\/docs\/[^"#]*)/g)) {
       const path = match[1];
-      if (/\.[a-z0-9]+$/i.test(path) || tierOf(path) === "public") continue;
+      if (/\.[a-z0-9]+$/i.test(path) || RANK[tierOf(path)] <= RANK[pageTier])
+        continue;
       if (page === CHROME_EXCEPTION.page && path === CHROME_EXCEPTION.target)
         continue;
       if (debt[page]?.includes(path)) {
@@ -123,7 +127,7 @@ for (const file of htmlFiles(dist)) {
         continue;
       }
       failures.push(
-        `${page}: public page links to a ${tierOf(path)} page ${path}`,
+        `${page}: ${pageTier} page links to a ${tierOf(path)} page ${path}`,
       );
     }
   }
@@ -170,7 +174,7 @@ if (process.env.WRITE_LINK_TIER_DEBT) {
   // Regeneration helper for a human: records the current violations as debt.
   const next = {};
   for (const f of failures) {
-    const m = /^(\S+): public page links to a \w+ page (\S+)$/.exec(f);
+    const m = /^(\S+): \w+ page links to a \w+ page (\S+)$/.exec(f);
     if (m) (next[m[1]] ??= []).includes(m[2]) || next[m[1]].push(m[2]);
   }
   writeFileSync(DEBT_FILE, JSON.stringify(next, null, 2) + "\n");

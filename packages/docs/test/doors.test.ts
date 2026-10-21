@@ -99,7 +99,8 @@ describe("the sidebar", () => {
         !listed.includes(id) &&
         !deferred.has(id) &&
         id !== "index" &&
-        id !== "access",
+        id !== "access" &&
+        !id.startsWith("access/"),
     );
     expect(
       unlisted,

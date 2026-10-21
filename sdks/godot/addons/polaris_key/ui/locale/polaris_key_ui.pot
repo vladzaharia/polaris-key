@@ -722,8 +722,8 @@ msgstr ""
 msgid "signInHandoff.linkCopied"
 msgstr ""
 
-#. Choose Continue to {product} on the sign-in page to finish.
-#. SignInHandoff: sign-in continues on another device or in the browser. The hosted page ends with a “Continue to {product}” button. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. Choose Sign in on {device} on the sign-in page to finish.
+#. SignInHandoff: sign-in continues on another device or in the browser. The hosted approval page ends with a “Sign in on {device}” button, next to Deny; the label stays in English. Arguments: {device} = this device's friendly name.
 msgid "signInHandoff.confirm"
 msgstr ""
 
@@ -760,6 +760,16 @@ msgstr ""
 #. macos: Activate License
 msgctxt "macos"
 msgid "activate.submit"
+msgstr ""
+
+#. Activate a license
+#. Portal: opens the Activate dialog (account menu, Library key tile, empty Library, Missing a license strip).
+msgid "common.activateLicense"
+msgstr ""
+
+#. macos: Activate a License
+msgctxt "macos"
+msgid "common.activateLicense"
 msgstr ""
 
 #. Activating…
