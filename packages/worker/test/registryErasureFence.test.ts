@@ -240,12 +240,28 @@ describe("a restored erased account's package token", () => {
       const w = await world();
       const ada = await account(w, "ada@example.com");
       const bob = await account(w, "bob@example.com");
-      const over =
-        binding === "license"
-          ? { binding, licenseId: w.licenseId }
-          : { binding };
-      const adaToken = await mintFor(w, ada, over);
-      const bobToken = await mintFor(w, bob, over);
+      // A licence-bound token is good only while its account owns the licence (B-155), so each
+      // account owns its own: the refusal of ada's token is then the ledger's and nothing else's.
+      let adaOver: Partial<MintRegistryTokenInput> = { binding };
+      let bobOver: Partial<MintRegistryTokenInput> = { binding };
+      if (binding === "license") {
+        const bobLicense = (
+          await seedLicenseWithKey(w.db, OWNER, { id: "lic_bob" })
+        ).licenseId;
+        for (const [id, owner] of [
+          [w.licenseId, ada],
+          [bobLicense, bob],
+        ] as const)
+          await w.db.run(
+            "UPDATE licenses SET account_id = ? WHERE id = ?",
+            owner,
+            id,
+          );
+        adaOver = { binding, licenseId: w.licenseId };
+        bobOver = { binding, licenseId: bobLicense };
+      }
+      const adaToken = await mintFor(w, ada, adaOver);
+      const bobToken = await mintFor(w, bob, bobOver);
 
       await eraseAndRestore(w.ctx(), ada);
       // The restore did rewind D1: the account is active and the token is live again.

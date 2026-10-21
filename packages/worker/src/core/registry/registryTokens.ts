@@ -647,7 +647,20 @@ async function resolveRow(
   row: RegistryTokenRow,
   now: number,
   opts: LookupOptions,
-): Promise<ResolvedRegistryToken> {
+): Promise<ResolvedRegistryToken | null> {
+  // A licence-bound token a person minted is good only while that person's account still owns the
+  // licence. Detach, relink and merge revoke or repoint tokens; this asks again at serve time, so
+  // a path that changes the licence's account without going through them cannot leave one live.
+  // Nothing is written for a refusal.
+  let license: LicenseRow | null = null;
+  if (row.binding === "license" && row.license_id !== null) {
+    license = await getLicense(db, row.product, row.license_id);
+    if (
+      row.portal_account_id !== null &&
+      (license === null || license.account_id !== row.portal_account_id)
+    )
+      return null;
+  }
   if (
     row.last_used_at === null ||
     row.last_used_at < now - LAST_USED_GRANULARITY
@@ -663,10 +676,6 @@ async function resolveRow(
     if (opts.waitUntil) opts.waitUntil(write);
     else await write;
   }
-  const license =
-    row.binding === "license" && row.license_id !== null
-      ? await getLicense(db, row.product, row.license_id)
-      : null;
   return {
     kind: row.binding === "license" ? "license" : "owner",
     product: row.product,
@@ -757,10 +766,8 @@ export async function lookupRegistryCredential(
     return { resolved: remember(key, null, nowMs), miss: true };
   // Not known either way: nothing for this request, and nothing remembered for the next.
   if (ledger === "unavailable") return { resolved: null, miss: false };
-  return {
-    resolved: remember(key, await resolveRow(db, row, now, opts), nowMs),
-    miss: false,
-  };
+  const resolved = await resolveRow(db, row, now, opts);
+  return { resolved: remember(key, resolved, nowMs), miss: resolved === null };
 }
 
 /**
