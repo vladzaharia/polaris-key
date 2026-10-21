@@ -13,7 +13,7 @@ import { AuthCard, AuthTitle } from "../../ui/auth/index.js";
 export function ConsoleBrand(): React.ReactElement {
   const { theme } = useTheme();
   return (
-    <span className="inline-flex items-center text-fg-strong">
+    <header className="inline-flex items-center text-fg-strong">
       <PolarisLockup
         kind="key"
         layout="compact"
@@ -28,7 +28,7 @@ export function ConsoleBrand(): React.ReactElement {
         Console
       </span>
       <span className="sr-only">Polaris Key Console</span>
-    </span>
+    </header>
   );
 }
 
@@ -36,16 +36,35 @@ export function ConsoleBrand(): React.ReactElement {
 export function ConsoleOffline({
   onRetry,
 }: {
-  onRetry: () => void;
+  /** Resolves with whether the session still fails to load. */
+  onRetry: () => Promise<{ isError: boolean }>;
 }): React.ReactElement {
+  const [busy, setBusy] = React.useState(false);
+  const [again, setAgain] = React.useState(false);
+  const retry = (): void => {
+    setBusy(true);
+    setAgain(false);
+    void onRetry()
+      .then((r) => setAgain(r.isError))
+      .catch(() => setAgain(true))
+      .finally(() => setBusy(false));
+  };
+  const back = `/manage/${window.location.hash}`;
   return (
-    <AuthCard brand={<ConsoleBrand />} stepKey="offline">
+    // focusKey: the card's h1 takes focus and is announced when the card appears.
+    <AuthCard brand={<ConsoleBrand />} stepKey="offline" focusKey={1}>
       <AuthTitle>Can’t reach Polaris Key</AuthTitle>
+      <p aria-live="polite" className="text-sm text-fg-muted empty:hidden">
+        {again ? "Still can’t reach Polaris Key." : ""}
+      </p>
       <div className="space-y-2">
         <Button
+          variant="neutral"
           size="lg"
+          loading={busy}
+          aria-busy={busy}
           className="h-auto min-h-12 w-full py-2 text-base font-semibold"
-          onClick={onRetry}
+          onClick={retry}
         >
           Try again
         </Button>
@@ -55,7 +74,9 @@ export function ConsoleOffline({
           size="lg"
           className="h-auto min-h-12 w-full py-2 text-base font-semibold"
         >
-          <a href="/manage/login?ended=1">Sign in again</a>
+          <a href={`/manage/login?returnTo=${encodeURIComponent(back)}`}>
+            Sign in again
+          </a>
         </Button>
       </div>
     </AuthCard>

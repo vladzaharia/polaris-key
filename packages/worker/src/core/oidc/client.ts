@@ -296,6 +296,8 @@ export interface DiscoveredIssuer {
   /** RFC 9207: the issuer sends `iss` on every authorization response. */
   issParameterSupported: boolean;
   responseModes: readonly string[];
+  /** `prompt_values_supported`, when the document lists it. */
+  promptValuesSupported?: readonly string[];
   /** The allowlist the document was checked against; later calls use the same one. */
   allowedHosts: readonly string[];
 }
@@ -384,6 +386,9 @@ export async function discover(
     issParameterSupported:
       doc.authorization_response_iss_parameter_supported === true,
     responseModes: stringList(doc.response_modes_supported),
+    ...(Array.isArray(doc.prompt_values_supported)
+      ? { promptValuesSupported: stringList(doc.prompt_values_supported) }
+      : {}),
     allowedHosts: [...rp.allowedHosts],
   };
   discoveryCache.set(key, { value, expires: nowMs + DISCOVERY_TTL_MS });

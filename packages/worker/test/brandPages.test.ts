@@ -238,7 +238,8 @@ describe("every server-rendered page on the console host uses the shell", () => 
     );
     expect(res.status).toBe(400);
     const html = await expectBrandedPage(res, "console");
-    expect(html).toContain("Missing authorization code.");
+    expect(html).toContain("We couldn’t confirm that sign-in");
+    expect(html).not.toContain("authorization code");
     expect(html).not.toContain('class="eyebrow"');
     expect(html).toContain('href="/manage/login"');
   });
@@ -454,13 +455,38 @@ describe("the console sign-in card (GET /manage/login)", () => {
   });
 
   it.each([
-    ["?signedOut=1", "You&#x27;re signed out", "Continue"],
+    ["?signedOut=1", "You’re signed out", "Continue"],
     ["?ended=1", "Your session ended", "Continue"],
-    ["?stepUp=1", "Confirm it&#x27;s you", "Sign in again"],
+    ["?stepUp=1", "Confirm it’s you", "Sign in again"],
   ])("%s", async (query, heading, cta) => {
     const html = await expectBrandedPage(await get(query), "console");
     expect(html).toContain(heading);
     expect(html).toContain(`>${cta}<`);
+  });
+
+  it("the card's form-action names the IdP, so Continue's redirect is allowed", async () => {
+    const res = await get("");
+    const csp = res.headers.get("content-security-policy")!;
+    expect(csp).toContain("form-action 'self' https://id.example");
+  });
+
+  it("a step-up card carries the step-up flag", async () => {
+    const e = env();
+    const res = await handleAdminLogin(
+      new Request(`${ORIGIN}/manage/login?stepUp=1`) as unknown as Request,
+      e,
+    );
+    const html = await res.text();
+    expect(html).toContain('name="stepUp" value="1"');
+  });
+
+  it("the typed address survives an error and back", async () => {
+    const html = await (await get("?login_hint=ada%40x.io")).text();
+    expect(html).toContain('value="ada@x.io"');
+  });
+
+  it("viewing the card is not counted against the sign-in limit", async () => {
+    for (let i = 0; i < 30; i++) expect((await get("")).status).toBe(200);
   });
 
   it("an unconfigured console says so on the card", async () => {
@@ -471,6 +497,41 @@ describe("the console sign-in card (GET /manage/login)", () => {
       makeEnv(new KvMock(), []),
     );
     expect(res.status).toBe(500);
-    expect(await res.text()).toContain("Admin sign-in isn&#x27;t set up");
+    expect(await res.text()).toContain("Admin sign-in isn’t set up");
+  });
+});
+
+describe("the console sign-in error cards", () => {
+  const callback = (q: string, e = makeEnv(new KvMock(), [])) => {
+    e.PLATFORM_OIDC_ISSUER = "https://id.example";
+    e.PLATFORM_OIDC_CLIENT_ID = "polaris-admin";
+    return handleAdminCallback(
+      new Request(`${ORIGIN}/manage/callback${q}`, {
+        headers: { "cf-connecting-ip": "203.0.113.20" },
+      }) as unknown as Request,
+      e,
+      makeTestDb(),
+      1_800_000_000,
+    );
+  };
+
+  it("an unknown or expired flow says it took too long and offers Sign in again", async () => {
+    const res = await callback("?code=c&state=s");
+    expect(res.status).toBe(400);
+    const html = await res.text();
+    expect(html).toContain("This sign-in took too long");
+    expect(html).toContain(">Sign in again<");
+    expect(html).not.toContain("Try again");
+  });
+
+  it("the rate-limit card says when to retry and links nowhere", async () => {
+    const e = makeEnv(new KvMock(), []);
+    let res!: Response;
+    for (let i = 0; i < 25; i++) res = await callback("", e);
+    expect(res.status).toBe(429);
+    expect(res.headers.get("retry-after")).toBe("60");
+    const html = await res.text();
+    expect(html).toContain("Wait a minute, then try again.");
+    expect(html).not.toContain('class="button"');
   });
 });

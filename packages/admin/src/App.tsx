@@ -61,7 +61,7 @@ function Boot(): React.ReactElement {
   const me = useMe();
   if (me.data) return <AppShell me={me.data} />;
   if (me.isError) {
-    return <ConsoleOffline onRetry={() => void me.refetch()} />;
+    return <ConsoleOffline onRetry={() => me.refetch()} />;
   }
   return <BootScreen />;
 }

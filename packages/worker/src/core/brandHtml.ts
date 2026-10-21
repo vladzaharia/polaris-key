@@ -369,7 +369,7 @@ const CONSOLE_PAGE_CSS_TAIL = [
   `.ac-brand>div{display:flex;align-items:center}`,
   `.ac-body input[type=email]{display:block;width:100%;min-height:3rem;padding:0 .75rem;border:1px solid var(--edge);border-radius:.5rem;background:var(--sunken);color:var(--strong);font:inherit}`,
   `.ac-body input[type=email]::placeholder{color:var(--muted);opacity:1}`,
-  `.ac-body .fine{color:var(--muted);font-size:.875rem;line-height:1.25rem;text-align:center;overflow-wrap:anywhere}`,
+  `.ac-body .fine{color:var(--muted);font-size:.875rem;line-height:1.25rem;overflow-wrap:anywhere}`,
   `.ac-brand .ac-surface{margin-left:.75rem;padding-left:.75rem;border-left:1px solid var(--edge);color:var(--muted);font-size:1rem;line-height:1.5rem}`,
   `@media (forced-colors: active){.ac-brand .ac-surface{color:CanvasText;border-color:CanvasText}}`,
 ].join("");

@@ -54,6 +54,7 @@ import {
   STEP_UP_MAX_AGE_SECONDS,
   buildSessionCookie,
   issueSession,
+  sessionFromRequest,
   type SessionIdentity,
 } from "../core/console/session.js";
 
@@ -196,32 +197,78 @@ const clientIdTokenVerifier: IdTokenVerifier = {
 /** A sign-in error page. HTML on the admin origin, so it carries the strict script-free CSP
  *  (R1-09): every message here is a hard-coded literal today, and it is escaped anyway, so this
  *  page can never become a script-execution primitive if that changes. */
-function htmlError(status: number, message: string): Response {
-  // A retry can help with an expired, unverified or rate-limited attempt; it cannot fix a
-  // missing configuration (500) or a missing admin grant (403).
-  const retry = status === 400 || status === 401 || status === 429;
-  const action =
-    status === 403
-      ? { label: "Use another account", href: "/manage/login" }
-      : retry
-        ? { label: "Sign in again", href: "/manage/login" }
-        : status === 502
-          ? { label: "Try again", href: "/manage/login" }
-          : undefined;
-  return new Response(
-    renderConsoleNotice({ heading: message, ...(action ? { action } : {}) }),
-    {
-      status,
-      headers: brandedHtmlSecurityHeaders(
-        new Headers({
-          "content-type": "text/html; charset=utf-8",
-          "cache-control": "no-store",
-        }),
-        { brand: "console" },
-      ),
-    },
-  );
+/** What a retry keeps: where the person was going, a step-up, the address they typed. */
+interface Ctx {
+  returnTo?: string | null;
+  stepUp?: boolean;
+  hint?: string | null;
 }
+
+function ctxOf(url: URL): Ctx {
+  return {
+    returnTo: sanitizeReturnTo(url.searchParams.get("returnTo")),
+    stepUp: url.searchParams.get("stepUp") === "1",
+    hint: loginHint(url.searchParams.get("login_hint")),
+  };
+}
+
+/** `/manage/login` with the context kept; `extra` adds `go=1` (straight to the IdP) and the like. */
+function loginHref(ctx: Ctx, extra: Record<string, string> = {}): string {
+  const q = new URLSearchParams(extra);
+  if (ctx.returnTo) q.set("returnTo", ctx.returnTo);
+  if (ctx.stepUp) q.set("stepUp", "1");
+  if (ctx.hint) q.set("login_hint", ctx.hint);
+  const qs = q.toString();
+  return qs ? `/manage/login?${qs}` : "/manage/login";
+}
+
+/**
+ * A sign-in error page (the card, copy from SIGN-IN.md §3.12-§3.13). HTML on the admin origin, so
+ * it carries the strict script-free CSP (R1-09); every string is a literal here and escaped anyway.
+ */
+function htmlError(
+  status: number,
+  heading: string,
+  opts: {
+    lede?: string;
+    action?: { label: string; href: string };
+    headers?: Record<string, string>;
+  } = {},
+): Response {
+  const { headers: extra, ...page } = opts;
+  return new Response(renderConsoleNotice({ heading, ...page }), {
+    status,
+    headers: brandedHtmlSecurityHeaders(
+      new Headers({
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "no-store",
+        ...(extra ?? {}),
+      }),
+      { brand: "console" },
+    ),
+  });
+}
+
+/** The card's `form-action` must name the IdP: browsers apply it to the redirect Continue follows. */
+function allowFormAction(headers: Headers, origins: readonly string[]): void {
+  const csp = headers.get("content-security-policy");
+  if (csp)
+    headers.set(
+      "content-security-policy",
+      csp.replace(
+        "form-action 'self'",
+        `form-action 'self' ${[...new Set(origins)].join(" ")}`,
+      ),
+    );
+}
+
+const originOf = (u: string): string | null => {
+  try {
+    return new URL(u).origin;
+  } catch {
+    return null;
+  }
+};
 
 /** The configured `CONSOLE_ORIGIN` (https, origin-only) when set, else the request's. */
 function adminOrigin(env: Env, url: URL): string {
@@ -235,29 +282,52 @@ function adminOrigin(env: Env, url: URL): string {
 }
 
 /** The card, served at `GET /manage/login` until Continue (`go=1`) starts the sign-in. */
-function signinCard(url: URL, rp: { issuer: string }): Response {
+async function signinCard(
+  req: Request,
+  env: Env,
+  rp: NonNullable<ReturnType<typeof consoleRelyingParty>>,
+): Promise<Response> {
+  const url = new URL(req.url);
+  const ctx = ctxOf(url);
+  const state = signinState(url);
   let host = rp.issuer;
   try {
     host = new URL(rp.issuer).host;
   } catch {
     // an unparsable issuer is shown as configured
   }
+  // Configuration, never the request: the issuer's origin and the authorization endpoint's.
+  const origins = [originOf(rp.issuer)];
+  try {
+    origins.push(originOf((await discover(rp)).authorizationEndpoint));
+  } catch {
+    // the 502 card shows on Continue
+  }
+  const known =
+    state === "stepUp"
+      ? ((await sessionFromRequest(env, req, Math.floor(Date.now() / 1000)))
+          ?.email ?? null)
+      : null;
+  const headers = brandedHtmlSecurityHeaders(
+    new Headers({
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store",
+    }),
+    { brand: "console" },
+  );
+  allowFormAction(
+    headers,
+    origins.filter((o): o is string => o !== null),
+  );
   return new Response(
     renderConsoleSignin({
-      state: signinState(url),
-      returnTo: sanitizeReturnTo(url.searchParams.get("returnTo")),
+      state,
+      returnTo: ctx.returnTo ?? null,
       issuerHost: host,
+      hint: ctx.hint ?? null,
+      knownEmail: known,
     }),
-    {
-      status: 200,
-      headers: brandedHtmlSecurityHeaders(
-        new Headers({
-          "content-type": "text/html; charset=utf-8",
-          "cache-control": "no-store",
-        }),
-        { brand: "console" },
-      ),
-    },
+    { status: 200, headers },
   );
 }
 
@@ -277,6 +347,15 @@ export async function handleAdminLogin(
   req: Request,
   env: Env,
 ): Promise<Response> {
+  const rp = consoleRelyingParty(env);
+  if (!rp)
+    return htmlError(500, "Admin sign-in isn’t set up", {
+      lede: "Ask whoever deployed Polaris Key to set it up.",
+    });
+  const reqUrl = new URL(req.url);
+  const ctx = ctxOf(reqUrl);
+  // Viewing the card is free; starting a sign-in is what the limit counts.
+  if (reqUrl.searchParams.get("go") !== "1") return signinCard(req, env, rp);
   const ok = await rateLimitOk(
     env,
     "_admin",
@@ -284,19 +363,17 @@ export async function handleAdminLogin(
     Math.floor(Date.now() / 1000),
   );
   if (!ok)
-    return htmlError(
-      429,
-      "Too many sign-in attempts. Please wait and try again.",
-    );
-  const rp = consoleRelyingParty(env);
-  if (!rp) return htmlError(500, "Admin sign-in isn't set up");
-  if (new URL(req.url).searchParams.get("go") !== "1")
-    return signinCard(new URL(req.url), rp);
+    return htmlError(429, "Too many sign-in attempts", {
+      lede: "Wait a minute, then try again.",
+      headers: { "retry-after": "60" },
+    });
   let discovered;
   try {
     discovered = await discover(rp);
   } catch {
-    return htmlError(502, "Can't reach the sign-in provider");
+    return htmlError(502, "Can’t reach the sign-in provider", {
+      action: { label: "Try again", href: loginHref(ctx, { go: "1" }) },
+    });
   }
   const { state, nonce, verifier, challenge } = await newFlowSecrets();
   const url = new URL(req.url);
@@ -330,6 +407,14 @@ export async function handleAdminLogin(
     // when the IdP sends one, so an IdP that ignores these still cannot pass off an old sign-in.
     extra: {
       ...(stepUp ? { prompt: "login", max_age: "0" } : {}),
+      // "Use another account": the IdP's chooser when it has one, else a fresh login.
+      ...(!stepUp && url.searchParams.get("other") === "1"
+        ? {
+            prompt: discovered.promptValuesSupported?.includes("select_account")
+              ? "select_account"
+              : "login",
+          }
+        : {}),
       ...(hint ? { login_hint: hint } : {}),
     },
   });
@@ -367,14 +452,21 @@ export async function handleAdminCallback(
     Math.floor(Date.now() / 1000),
   );
   if (!ok)
-    return htmlError(
-      429,
-      "Too many sign-in attempts. Please wait and try again.",
-    );
+    return htmlError(429, "Too many sign-in attempts", {
+      lede: "Wait a minute, then try again.",
+      headers: { "retry-after": "60" },
+    });
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
-  if (!code || !state) return htmlError(400, "Missing authorization code.");
+  const again = (c: Ctx = {}) => ({
+    label: "Sign in again",
+    href: loginHref(c),
+  });
+  if (!code || !state)
+    return htmlError(400, "We couldn’t confirm that sign-in", {
+      action: again(),
+    });
   // Only the browser that started the flow may finish it, checked
   // before the single-use consume so another browser cannot burn the flow either.
   const flowKey = await adminFlowKey(state, env);
@@ -385,20 +477,28 @@ export async function handleAdminCallback(
   } catch {
     peekedFlow = null;
   }
+  const flowCtx: Ctx = {
+    returnTo: sanitizeReturnTo(peekedFlow?.returnTo ?? null),
+    stepUp: peekedFlow?.stepUp === true,
+  };
+  const tookTooLong = () =>
+    htmlError(400, "This sign-in took too long", {
+      action: again(flowCtx),
+    });
   const binding = readCookie(req.headers.get("cookie"), ADMIN_FLOW_COOKIE);
   if (
     !peekedFlow?.bindingHash ||
     !binding ||
     (await hashKey(binding, env.KEY_HASH_PEPPER)) !== peekedFlow.bindingHash
   )
-    return htmlError(400, "This sign-in link has expired. Try again.");
+    return tookTooLong();
   const raw = await consumeArtefact(env, flowKey);
-  if (!raw) return htmlError(400, "This sign-in link has expired. Try again.");
+  if (!raw) return tookTooLong();
   let flow: FlowRecord;
   try {
     flow = JSON.parse(raw) as FlowRecord;
   } catch {
-    return htmlError(400, "This sign-in link has expired. Try again.");
+    return tookTooLong();
   }
 
   const identity = await verifier.verify({
@@ -413,7 +513,9 @@ export async function handleAdminCallback(
       summary: "Admin sign-in: ID token could not be verified",
       now,
     });
-    return htmlError(401, "Sign-in could not be verified.");
+    return htmlError(401, "We couldn’t confirm that sign-in", {
+      action: again(flowCtx),
+    });
   }
 
   // The sign-in gate is the console's membership check (ST-29): the principal this identity
@@ -434,7 +536,16 @@ export async function handleAdminCallback(
     });
     return htmlError(
       403,
-      "Your account is not an administrator of any product.",
+      identity.email
+        ? `${identity.email} can’t open this console`
+        : "This account can’t open this console",
+      {
+        lede: "Ask a Superadmin to add you.",
+        action: {
+          label: "Use another account",
+          href: loginHref(flowCtx, { go: "1", other: "1" }),
+        },
+      },
     );
   }
 
@@ -446,10 +557,10 @@ export async function handleAdminCallback(
     typeof identity.authTime === "number" &&
     now - identity.authTime > STEP_UP_MAX_AGE_SECONDS
   ) {
-    return htmlError(
-      401,
-      "Your sign-in provider did not ask you to sign in again. Sign out of it, then try again.",
-    );
+    return htmlError(401, "Your provider didn’t ask you to sign in again", {
+      lede: "Sign out of it, then try again.",
+      action: again(flowCtx),
+    });
   }
 
   // Only a step-up flow whose ID token carries `auth_time` records a step-up.

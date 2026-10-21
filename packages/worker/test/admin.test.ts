@@ -105,6 +105,19 @@ describe("admin api", () => {
     const env = adminEnv(new KvMock(), []);
     const res = await dispatch(mkReq("GET", "/api/me"), env, db, "/api/me");
     expect(res.status).toBe(401);
+    // A first visit: no session was presented, so nothing says one ended.
+    expect(res.headers.get("x-pkey-session")).toBeNull();
+  });
+
+  it("marks a 401 for a session cookie that no longer verifies as expired", async () => {
+    const db = makeTestDb();
+    const env = adminEnv(new KvMock(), []);
+    const req = new Request("https://key.plrs.im/manage/api/me", {
+      headers: { cookie: "__Host-pkey_admin=not-a-session" },
+    }) as unknown as Request;
+    const res = await dispatch(req, env, db, "/api/me");
+    expect(res.status).toBe(401);
+    expect(res.headers.get("x-pkey-session")).toBe("expired");
   });
 
   it("returns the signed-in identity at /api/me", async () => {

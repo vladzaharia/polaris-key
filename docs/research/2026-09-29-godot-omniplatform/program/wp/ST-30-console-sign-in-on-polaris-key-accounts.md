@@ -154,3 +154,29 @@ Deferred from the card: the passkey button (I-30 provides the endpoint), the kno
 (needs a last-operator hint), the in-place "session ended" overlay that keeps unsaved edits
 (today a 401 leaves the tab and the card brings the person back to the page), the not-configured
 docs link (the docs tier needs a session), the "Next:" line says the host only (no IdP name).
+
+### Fix round (2026-10-20, after the BUILT UX review)
+
+Fixed: the card's `form-action` names the IdP (issuer and discovered authorization origins) and a
+real-browser e2e (`packages/admin/e2e/consoleSignin.e2e.test.ts`) proves Continue reaches it with no
+CSP violation; "Your session ended" only when the console API's 401 carries `X-PKey-Session:
+expired` (a session cookie was presented and failed), a first visit gets the plain card; error
+actions keep `returnTo`, step-up and the typed address; "Use another account" sends
+`prompt=select_account` (`login` when discovery's `prompt_values_supported` lacks it); callback
+copy rewritten (§3.13 strings, 403 names the account, 429 shows when to retry and has no link); the
+SPA offline card is neutral ink, busy while retrying, focused and announced; step-up shows the
+session's email; the not-configured card says who sets it up; viewing the card no longer counts
+toward the sign-in limit.
+
+### Remaining for slice 2 (ST-30 not finished)
+
+Cookie v2 with account and session ids and the 30-second per-request check; console membership as
+a binding (ST-31); `consoleSubject` and `operatorIssuerAllowed`; ST-28's strong-method rule and the
+email-code-only refusal; the computed root rule; break-glass as an explicit link with its audit row
+and exit facts; the audit actor as the account id with a sub mapping; account merge, deletion and
+disable ending membership; 'My library' and 'Open console' cross-links; the passkey button, the
+known-operator chip and the in-place session-ended overlay; threat-model rows and the security
+review; the docs pages (operate/console/members, reference/roles) and the rule 11 text; deleting
+the 'full platform authority' comment once ST-29's `docs.ts` is on `can()`. Also open: the card's
+form is GET (the typed address shows in the URL; SIGN-IN.md §3.13 wants POST) and the Help,
+Privacy, Terms footer and a larger lockup are not on the console card.

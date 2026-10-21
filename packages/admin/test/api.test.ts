@@ -191,6 +191,23 @@ describe("api — step-up refusals", () => {
     expect(redirect).toHaveBeenCalledTimes(1);
   });
 
+  it("a 401 says the session ended only when the Worker marks an expired session", async () => {
+    const redirect = vi.fn();
+    setLoginRedirectForTests(redirect);
+    stubFetch(() => new Response(null, { status: 401 }));
+    await expect(api.me()).rejects.toMatchObject({ status: 401 });
+    expect(redirect).toHaveBeenLastCalledWith(false);
+    stubFetch(
+      () =>
+        new Response(null, {
+          status: 401,
+          headers: { "X-PKey-Session": "expired" },
+        }),
+    );
+    await expect(api.me()).rejects.toMatchObject({ status: 401 });
+    expect(redirect).toHaveBeenLastCalledWith(true);
+  });
+
   it("an action with its own step-up callout is not redirected", async () => {
     const redirect = vi.fn();
     setStepUpRedirectForTests(redirect);

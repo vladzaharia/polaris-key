@@ -46,6 +46,7 @@ import { loadProductContext, type ProductContext } from "../core/products.js";
 import { rateLimitOk } from "../core/rateLimit.js";
 import { audit } from "../core/audit.js";
 import {
+  ADMIN_COOKIE,
   CSRF_HEADER,
   sessionFromRequest,
   type AdminSession,
@@ -119,6 +120,15 @@ async function callerFor(
  * `sessionFromRequest` to this module. It reads the COOKIE only: an `Authorization` header is the
  * admin API's alone, so a token opens nothing else (the docs gate included).
  */
+/** Set on a 401 when the request carried a console session cookie that no longer verifies. */
+export const SESSION_STATE_HEADER = "X-PKey-Session";
+
+function hasAdminCookie(req: Request): boolean {
+  return (req.headers.get("cookie") ?? "")
+    .split(";")
+    .some((c) => c.trim().startsWith(`${ADMIN_COOKIE}=`));
+}
+
 export async function resolveConsoleCaller(
   env: Env,
   db: Db | null,
@@ -240,7 +250,14 @@ export async function handleAdminApi(
   } else {
     caller = await resolveConsoleCaller(env, db, req, now);
   }
-  if (!caller) return unauthorized();
+  if (!caller) {
+    const res = unauthorized();
+    // A session cookie was presented and no longer holds: the SPA says "Your session ended".
+    // No cookie (a first visit) carries no header, and the SPA shows the plain sign-in card.
+    if (presented === null && hasAdminCookie(req))
+      res.headers.set(SESSION_STATE_HEADER, "expired");
+    return res;
+  }
   const { session, principal } = caller;
 
   // 2. R1-04: a budget keyed by the VERIFIED member, not the IP, so it follows the actor rather

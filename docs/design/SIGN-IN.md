@@ -681,13 +681,13 @@ identifier-first email (a known operator is a chip, "vlad@zaharia.dev · Change"
 fine print "Next: Pocket ID at {issuer host}", then "or" and **Sign in with a passkey**. There is no
 provider row and no license key. PKCE starts only on Continue, and `returnTo` survives.
 
-| State           | Copy                                                                                                                                                         |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Signed out      | h1 "You're signed out", chip, **Continue**. No IdP bounce                                                                                                    |
-| Session ended   | h1 "Your session ended", "Sign in again to carry on. Your unsaved changes stay in this tab.", chip, **Continue**, rendered in place over the page (frame 14) |
-| Not an operator | "{email} isn't in the operators group." with **Use another account**                                                                                         |
-| Offline / 5xx   | "Can't reach Polaris Locker" with **Try again**                                                                                                              |
-| Not configured  | "Admin sign-in isn't set up" with the docs link                                                                                                              |
+| State           | Copy                                                                                                                                                                            |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Signed out      | h1 "You're signed out", chip, **Continue**. No IdP bounce                                                                                                                       |
+| Session ended   | h1 "Your session ended", "Sign in again to carry on." (the unsaved-changes line returns with the in-place card), chip, **Continue**, rendered in place over the page (frame 14) |
+| Not an operator | "{email} isn't in the operators group." with **Use another account**                                                                                                            |
+| Offline / 5xx   | "Can't reach Polaris Key" with **Try again**                                                                                                                                    |
+| Not configured  | "Admin sign-in isn't set up" with the docs link                                                                                                                                 |
 
 ### 3.13 Worker pages
 
@@ -2102,8 +2102,8 @@ the frame strips and the screen recording with
 Code that differs from this document is carried by the work packages in the program's INDEX. These
 differences are present now:
 
-| File                                                                             | Now                                                                           | Change to                                 | Owner       |
-| -------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ----------------------------------------- | ----------- |
-| `worker/src/services/identity/oidc.ts` (the device entry and confirmation pages) | "Authorize <Product>", "Connect a device to <Product>"                        | the card with the app header (§3.13)      | UX-43, I-08 |
-| `worker/src/console/auth.ts`                                                     | "This sign-in link has expired. Try again.", "Sign-in could not be verified." | ConsoleMethodsStep and its states (§3.12) | ST-30       |
-| `admin/src/portal/pages/FreeDevicePage.tsx`                                      | "Free up a device"                                                            | **Free a device** (D-49)                  | UX-04       |
+| File                                                                             | Now                                                                                                                                                       | Change to                            | Owner       |
+| -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ | ----------- |
+| `worker/src/services/identity/oidc.ts` (the device entry and confirmation pages) | "Authorize <Product>", "Connect a device to <Product>"                                                                                                    | the card with the app header (§3.13) | UX-43, I-08 |
+| `worker/src/console/auth.ts`                                                     | (done in ST-30 slice 1: "We couldn’t confirm that sign-in", "This sign-in took too long", "Too many sign-in attempts", "{email} can’t open this console") | the in-place states of §3.12         | ST-30       |
+| `admin/src/portal/pages/FreeDevicePage.tsx`                                      | "Free up a device"                                                                                                                                        | **Free a device** (D-49)             | UX-04       |

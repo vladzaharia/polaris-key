@@ -70,7 +70,7 @@ describe("admin SPA", () => {
     ).toBeTruthy();
     expect(
       screen.getByRole("link", { name: "Sign in again" }).getAttribute("href"),
-    ).toBe("/manage/login?ended=1");
+    ).toMatch(/^\/manage\/login\?returnTo=/);
     fail = false;
     await userEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(
