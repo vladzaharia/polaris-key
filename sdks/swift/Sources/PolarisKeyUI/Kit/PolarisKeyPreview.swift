@@ -76,8 +76,8 @@ public struct PolarisKeyPreview: View {
             StatusScreenView(
                 screen: model.statusScreen,
                 available: [
-                    "signin.key.differentKey", "status.renew", "status.update",
-                    "status.useAnotherLicense", "common.signOut",
+                    "welcome.signIn", "signin.key.differentKey", "status.renew", "status.update",
+                    "status.useAnotherLicense",
                 ],
                 onFix: { _ in }, onTryAgain: {})
         case .graceBanner:

@@ -84,7 +84,7 @@ public struct PolarisKeyGate<Content: View>: View {
                 StatusScreenView(
                     screen: model.statusScreen,
                     available: [
-                        "signin.key.differentKey", "status.useAnotherLicense", "common.signOut",
+                        "welcome.signIn", "signin.key.differentKey", "status.useAnotherLicense",
                     ],
                     onFix: fix, onTryAgain: { Task { await model.refresh() } })
             } else {
@@ -164,8 +164,8 @@ public struct PolarisKeyGate<Content: View>: View {
         switch key {
         case "signin.key.differentKey", "status.useAnotherLicense":
             model.useDifferentKey()
-        case "common.signOut":
-            Task { await model.signOut() }
+        case "welcome.signIn":
+            model.beginSignIn()
         default:
             Task { await model.refresh() }
         }

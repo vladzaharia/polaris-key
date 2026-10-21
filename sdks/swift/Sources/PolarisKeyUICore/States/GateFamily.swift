@@ -185,13 +185,15 @@ extension KitStates {
         }
         switch status {
         case .revoked:
-            return KitScreen(
-                .revoked,
-                [
-                    c.line("core.gate.revoked.title"),
-                    c.line("core.gate.revoked.message", c.productArg),
-                    c.line("signin.key.differentKey"), c.line("common.signOut"),
-                ])
+            // Sign in first when the build offers it (Welcome's rule), then Use a different key
+            // when key entry is on; a device already signed out is never offered Sign out.
+            var lines = [
+                c.line("core.gate.revoked.title"),
+                c.line("core.gate.revoked.message", c.productArg),
+            ]
+            if i.isOn(.identity) && i.capabilities.signIn { lines.append(c.line("welcome.signIn")) }
+            if i.capabilities.keyEntry { lines.append(c.line("signin.key.differentKey")) }
+            return KitScreen(.revoked, lines)
         case .expired:
             return KitScreen(
                 .expired,
