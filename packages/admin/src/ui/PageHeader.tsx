@@ -253,10 +253,10 @@ export function PageHeader({
                 "sm:@max-2xl:short:col-span-1 sm:@max-2xl:short:col-start-1 sm:@max-2xl:short:row-start-2",
               // With an auto-refresh switch the cluster is too wide to share a phone's title row.
               freshness?.auto && "col-span-2 sm:col-span-1",
-              // A header under 24 rem wide (a 320 px phone, or anything at 200 % text/zoom): the
+              // On a phone, a header under 24 rem wide (320 px, or 200 % text): the
               // freshness line and Refresh take their own row instead of squeezing the title
               // against them (B-023).
-              freshness && "@max-sm:col-span-2",
+              freshness && "max-sm:@max-sm:col-span-2",
             )}
           >
             {freshness ? (

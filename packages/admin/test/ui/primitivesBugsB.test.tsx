@@ -92,7 +92,7 @@ describe("B-022 and B-023 the page header's freshness", () => {
     const cluster = screen
       .getByRole("button", { name: "Refresh" })
       .closest("div.justify-end")!;
-    expect(cluster.className).toContain("@max-sm:col-span-2");
+    expect(cluster.className).toContain("max-sm:@max-sm:col-span-2");
   });
 });
 
