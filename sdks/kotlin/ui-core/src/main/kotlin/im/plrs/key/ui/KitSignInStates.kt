@@ -4,6 +4,7 @@
 // never choose a license in the app (D4): they choose on the card.
 package im.plrs.key.ui
 
+import im.plrs.key.core.SIGN_IN_PROVIDER_NAME
 import kotlinx.serialization.json.JsonObject
 
 internal fun signInScreen(inputs: KitInputs): KitScreen {
@@ -94,14 +95,18 @@ internal fun signInScreen(inputs: KitInputs): KitScreen {
 
 private fun signInMethodLines(context: KitContext, keyPath: Boolean): List<CopyLine> {
     val inputs = context.inputs
+    // The generic row opens Polaris Locker's own sign-in; a product that shows a provider's row of
+    // its own says which with the `provider` input (the TS model's DEFAULT_PROVIDER).
+    val provider = CopyArgument.Text(inputs.string("provider") ?: SIGN_IN_PROVIDER_NAME)
     val lines = mutableListOf(
         context.line("signIn.title", context.productArgs),
         context.line("signin.methods.ledeApp", context.productArgs),
         context.line("signin.provider.group"),
-        context.line("signin.provider.continue", mapOf("provider" to CopyArgument.Text(""))),
     )
+    // The first control is the primary: on a desktop that is Continue in browser (DL9).
+    if (inputs.isDesktop) lines += context.line("signin.desktop.continue")
+    lines += context.line("signin.provider.continue", mapOf("provider" to provider))
     if (inputs.isDesktop) {
-        lines += context.line("signin.desktop.continue")
         if (keyPath) lines += context.line("signin.choice.keyInstead")
         lines += context.line("signin.menu.signIn")
     } else {
