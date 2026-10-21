@@ -334,7 +334,7 @@ SITUATIONS: Dict[str, Callable[[Terminal], Any]] = {
     "network": lambda t: flows.devices(SimpleNamespace(product="tidewater", list_devices=_offline), t, ["list"]),
     "key-refused": lambda t: flows.activate(_ActivateClient(ActivationUnauthorized()), t, KEY),
     "device-limit": lambda t: flows.activate(
-        _ActivateClient(ActivationDeviceLimit(limit=3, deviceCount=3, manage_url="https://key.plrs.im/portal/tidewater/devices")), t, KEY
+        _ActivateClient(ActivationDeviceLimit(limit=3, deviceCount=3, manage_url="https://polaris.locker/#/p/tidewater/devices")), t, KEY
     ),
     "secret-hidden": lambda t: flows.secret(SimpleNamespace(config=SimpleNamespace(get_secret=lambda k: "s3cr3t")), t, ["api_key"]),
     "mint-hidden": lambda t: flows.mint(

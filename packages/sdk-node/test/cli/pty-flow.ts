@@ -175,7 +175,7 @@ if (mode === "status") {
           deviceCount: 3,
           manageUrl: long
             ? url.replace("activate/device", "portal/devices")
-            : "https://key.plrs.im/portal/tidewater/devices",
+            : "https://polaris.locker/#/p/tidewater/devices",
         }),
       },
     }),

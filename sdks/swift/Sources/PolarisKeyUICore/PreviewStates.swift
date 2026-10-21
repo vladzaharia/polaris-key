@@ -44,9 +44,10 @@ extension PolarisKeyPreviewState {
     /// Tidewater Studio by Harbor Audio: no accent of its own, so the kit derives teal from its icon.
     public static let tidewater = KitPresentation(
         name: "Tidewater Studio", developerName: "Harbor Audio", icon: true)
-    /// Drift Kart by Lanternworks, with its own accent (a light one: the label flips to ink).
+    /// Drift Kart by Lanternworks, with its own accent (a light one: the label flips to ink). It
+    /// ships no icon art of its own, so the preview draws its monogram, never Tidewater's icon.
     public static let driftKart = KitPresentation(
-        name: "Drift Kart", developerName: "Lanternworks", accent: "#ff6a3d", icon: true)
+        name: "Drift Kart", developerName: "Lanternworks", accent: "#ff6a3d", icon: false)
     public static let iPhone = KitPlatform(os: .ios, formFactor: .iphone)
     public static let iPad = KitPlatform(os: .ios, formFactor: .ipad)
     public static let mac = KitPlatform(os: .macos, formFactor: .mac)

@@ -40,7 +40,7 @@ def _texts(app: PolarisKeyApp) -> str:
 
 def test_the_account_view_and_its_sections() -> None:
     async def run() -> None:
-        app = PolarisKeyApp(_Client(), scheme="dark", data=DATA, manage_url="https://key.plrs.im/portal")
+        app = PolarisKeyApp(_Client(), scheme="dark", data=DATA, manage_url="https://polaris.locker")
         async with app.run_test(size=(80, 24)) as pilot:
             await pilot.pause()
             text = _texts(app)

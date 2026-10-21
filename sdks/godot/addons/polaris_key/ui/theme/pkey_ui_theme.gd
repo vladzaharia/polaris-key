@@ -96,7 +96,7 @@ const STOCK_META := &"pkey_stock"
 const RADIUS_CONTROL := int(PKeyKitTokens.RADIUS_CONTROL)
 const RADIUS_CARD := int(PKeyKitTokens.RADIUS_PANEL)
 const RADIUS_FULL := 999
-## The focus ring (BRAND.md §7.4): 2 px of `focus`, drawn 2 px outside the control.
+## The focus ring (BRAND.md §7.4): 3 px of `focus` (FOCUS_WIDTH), drawn 2 px outside the control (FOCUS_OFFSET).
 const RING_WIDTH := int(PKeyKitTokens.FOCUS_WIDTH)
 const RING_OFFSET := int(PKeyKitTokens.FOCUS_OFFSET)
 ## The neutral error colour on a dark ground (light text): 5.7:1 on black.

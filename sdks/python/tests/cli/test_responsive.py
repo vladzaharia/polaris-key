@@ -306,7 +306,7 @@ def test_login_in_the_browser_keeps_the_fallback_url_and_the_keys_in_view(cols: 
 @pytest.mark.parametrize("cols,rows,values", MATRIX)
 def test_the_device_limit_keeps_the_manage_url_and_the_keys_in_view(cols: int, rows: int, values: str) -> None:
     v = _values(values)
-    manage = v["url"].replace("activate/device", "portal/devices") if values == "long" else "https://key.plrs.im/portal/tidewater/devices"
+    manage = v["url"].replace("activate/device", "portal/devices") if values == "long" else "https://polaris.locker/#/p/tidewater/devices"
     limit = ActivationDeviceLimit(limit=3, deviceCount=3, manage_url=manage)
     term = Term(cols, rows)
     snaps: List[List[str]] = []
@@ -594,7 +594,7 @@ def test_an_end_state_leaves_one_result_block_under_one_header(cols: int, rows: 
 @pytest.mark.parametrize("cols,rows,values", [(40, 12, "long"), (40, 8, "short"), (32, 12, "long")])
 def test_the_device_limit_left_with_esc_keeps_its_header_title_and_closing_row(cols: int, rows: int, values: str) -> None:
     v = _values(values)
-    url = v["url"].replace("activate/device", "portal/devices") if values == "long" else "https://key.plrs.im/portal/tidewater/devices"
+    url = v["url"].replace("activate/device", "portal/devices") if values == "long" else "https://polaris.locker/#/p/tidewater/devices"
     limit = ActivationDeviceLimit(limit=3, deviceCount=3, manage_url=url)
     term = Term(cols, rows)
     t = terminal(term, v, verb="activate", keys=["esc"])
@@ -808,7 +808,7 @@ def test_the_sign_in_code_reads_the_same_in_both_kits() -> None:
 
 def test_the_device_limit_reads_the_same_in_both_kits() -> None:
     v = _values("short")
-    limit = ActivationDeviceLimit(limit=3, deviceCount=3, manage_url="https://key.plrs.im/portal/tidewater/devices")
+    limit = ActivationDeviceLimit(limit=3, deviceCount=3, manage_url="https://polaris.locker/#/p/tidewater/devices")
     term = Term(80, 24)
     snaps: List[List[str]] = []
     t = terminal(term, v, verb="activate", keys=[_snap(term, snaps)])

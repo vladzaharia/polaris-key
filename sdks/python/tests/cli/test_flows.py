@@ -104,12 +104,12 @@ def test_escape_cancels_key_entry() -> None:
 
 
 def test_device_limit_opens_the_browser_then_tries_again() -> None:
-    limit = ActivationDeviceLimit(limit=3, deviceCount=3, manage_url="https://key.plrs.im/portal/tidewater/devices")
+    limit = ActivationDeviceLimit(limit=3, deviceCount=3, manage_url="https://polaris.locker/#/p/tidewater/devices")
     client = _Client([limit, ActivationOk(token="t")])
     opened: list = []
     t = terminal(["enter", "enter"], opened=opened)
     out = flows.activate(client, t, KEY)
-    assert opened == ["https://key.plrs.im/portal/tidewater/devices"]
+    assert opened == ["https://polaris.locker/#/p/tidewater/devices"]
     assert out.code == 0 and client.license.keys == [KEY, KEY]
     screen = t.device.out.getvalue()
     assert "open in browser" in screen and "try again" in screen

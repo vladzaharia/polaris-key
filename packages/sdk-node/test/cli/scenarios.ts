@@ -401,7 +401,7 @@ export const SCENARIOS: Scenario[] = [
       ...COMMON,
       "activate",
       "pkey_tidewater_",
-      "key.plrs.im/portal/tidewater/devices",
+      "polaris.locker/#/p/tidewater/devices",
       "3",
     ],
     run: async (h) => {
@@ -414,7 +414,7 @@ export const SCENARIOS: Scenario[] = [
               code: "device_limit",
               limit: 3,
               deviceCount: 3,
-              manageUrl: "https://key.plrs.im/portal/tidewater/devices",
+              manageUrl: "https://polaris.locker/#/p/tidewater/devices",
             }),
           },
         }),

@@ -79,7 +79,7 @@ t = Terminal(kit, device, {"login": "login", "device-limit": "activate", "activa
 if mode == "login":
     out = flows.sign_in(SimpleNamespace(product="tidewater", identity=Identity(), status=lambda: SimpleNamespace(status="ok")), t)
 elif mode == "device-limit":
-    limit = ActivationDeviceLimit(limit=3, deviceCount=3, manage_url=URL.replace("activate/device", "portal/devices") if long else "https://key.plrs.im/portal/tidewater/devices")
+    limit = ActivationDeviceLimit(limit=3, deviceCount=3, manage_url=URL.replace("activate/device", "portal/devices") if long else "https://polaris.locker/#/p/tidewater/devices")
     out = flows.activate(SimpleNamespace(product="tidewater", license=SimpleNamespace(activate_with_key=lambda key: limit), status=lambda: None), t, "pkey_tidewater_7Q2Mx9cLr4TbV0aZ3WPLDA")
 elif mode == "activate-entry":
     out = flows.activate(SimpleNamespace(product="tidewater", license=SimpleNamespace(activate_with_key=lambda key: None), status=lambda: None), t, None)
