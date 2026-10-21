@@ -50,7 +50,7 @@ container, where there is no OS keyring to use.
 
 pip cannot route one project to one index: install the dependencies from your usual index, then
 the package alone from the feed. Poetry and the rest:
-[Installing the SDKs from the feeds](/docs/build/install-from-feeds/).
+[Installing the SDKs from the feeds](https://key.plrs.im/docs/build/install/).
 
 ```sh
 pip install "cryptography>=41" "httpx>=0.24" "zstandard>=0.22; python_version < '3.14'"
@@ -654,7 +654,7 @@ as usage errors: an unreadable `--key-file` (or no key from any source without a
 unreadable or empty `import-bundle` file.
 
 The kit's page, with the `--json` shapes, the theme and the Textual app:
-[Terminal (Python)](/docs/build/ui/frameworks/terminal-python/). Sample: `examples/ui/terminal-python/`.
+[Terminal (Python)](https://key.plrs.im/docs/build/ui/frameworks/terminal-python/). Sample: `examples/ui/terminal-python/`.
 
 Trust keys are passed as repeatable `--trust kid=rawBase64url` pairs so the CLI stays
 product-agnostic; `--service <slug>` (repeatable) carries the capability expectation.
@@ -984,7 +984,7 @@ bundle order, and the stage matrix: every row and every probe of the boot stage 
 `polaris_key.core.stages` (`initial_boot_state`, `boot_transition`, `boot_guard_action`).
 
 `tests/test_dev_live.py` runs the quickstart against a real `pkey dev` ([Run Polaris Key
-locally](/docs/build/local/)): the generated `polaris_config.py`, first activation, what each of
+locally](https://key.plrs.im/docs/build/local/)): the generated `polaris_config.py`, first activation, what each of
 the seven test keys does, a config change arriving as an event, a device-code sign-in approved on
 the fake identity provider's page, and an update decision before and after a release. It skips
 unless `PKEY_DEV_BASE_URL` is set, so a plain `pytest` needs no server; naming the file on the

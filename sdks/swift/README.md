@@ -66,7 +66,7 @@ let package = Package(
 ```
 
 Signature enforcement and the other clients:
-[Installing the SDKs from the feeds](/docs/build/install-from-feeds/). Working on the SDK itself,
+[Installing the SDKs from the feeds](https://key.plrs.im/docs/build/install/). Working on the SDK itself,
 depend on a checkout instead: `.package(path: "../polaris-key/sdks/swift")`, with
 `package: "PolarisKey"` in each product.
 
@@ -83,7 +83,7 @@ depend on a checkout instead: `.package(path: "../polaris-key/sdks/swift")`, wit
 ### From a bundled plist
 
 `pkey sdk --lang swift --write` writes `PolarisConfig.swift`, the path the
-[quickstart](/docs/build/quickstart/swift/) takes. To configure a build from a file instead, add a
+[quickstart](https://key.plrs.im/docs/build/quickstart/swift/) takes. To configure a build from a file instead, add a
 `PolarisKey.plist` to the app target and start the client in one call. The version is the bundle's
 `CFBundleShortVersionString`. The plist's keys are `product` (or `productSlug`), `baseUrl` (default
 `https://key.plrs.im`), `pinnedKeys` (required, `kid` to base64url key), `pinnedReleaseKeys`,
@@ -459,7 +459,7 @@ scene becomes active, runs every screen the license needs, shows an offline-grac
 content, and for a blocking state offers the actions that can change it. Your own UI shows once the
 license is usable (`ok`, `grace` or `not-applicable`). The kit reads the nine launch locales. The
 screens, `KitGateOptions` and the theme are on the
-[SwiftUI kit](/docs/build/ui/frameworks/swiftui/) page.
+[SwiftUI kit](https://key.plrs.im/docs/build/ui/frameworks/swiftui/) page.
 
 ```swift
 import PolarisKey
@@ -586,7 +586,7 @@ light, system button shapes, and no Polaris Key branding. The product leads ever
 a monogram tile of the product's initial.
 
 **Every screen lays out for the space it gets**, not for a device: the gate's Welcome, the
-device-code sign-in (`PolarisSignIn`) and offline activation are one centred column on a phone in
+device-code sign-in (`PolarisSignIn`) and offline activation are one centered column on a phone in
 portrait and in narrow windows; in landscape and short windows the form, or the code and its
 actions, sit beside the welcome; and on iPad and roomy Mac windows (760 × 520 pt and up) they use
 the split Welcome, the product's identity pane beside the form. When a column is taller than the

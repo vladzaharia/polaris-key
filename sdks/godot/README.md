@@ -23,7 +23,7 @@ Install it from **Polaris Key's Godot feed**, the one place the addon is publish
 with no trailing slash: `https://pkg.plrs.im/godot/polaris-key/asset-library/api` in **Asset
 Library → Available URLs** up to 4.6, or `https://pkg.plrs.im/godot/polaris-key/store/api/v1`
 in `asset_store/available_urls` from 4.7. Then search for "Polaris Key" and install the addon.
-GodotEnv and scripted installs: [Installing the SDKs from the feeds](/docs/build/install-from-feeds/).
+GodotEnv and scripted installs: [Installing the SDKs from the feeds](https://key.plrs.im/docs/build/install/).
 
 The addon is not on the public Godot Asset Store or Asset Library.
 
@@ -71,7 +71,7 @@ The setup dock (right dock) edits `res://polaris_key.tres`, a `PKeyOptions` reso
 6. **Web exports** need the origin that serves the game listed under `web.origins` in the
    product's `.pkey/product` (exact origins, `http://localhost:8060` for local testing), then a
    resync. Without it the browser blocks every call. The dock shows this reminder; the rules are
-   in [Web clients and CORS](/docs/build/web-cors/).
+   in [Web clients and CORS](https://key.plrs.im/docs/build/web-apps/).
 
 Everything else is a `PKeyOptions` property you can set in the inspector or in code: `version`
 (defaults to `application/config/version`, which must be SemVer), `pinned_release_keys` (the CI
@@ -102,7 +102,7 @@ Without the boot scene, the same steps are calls:
 ```gdscript
 PolarisKey.configure(load("res://polaris_key.tres"))  # a PKeyResult; nothing touches the network
 await PolarisKey.start()                              # device id, token, verified cache
-var r := await PolarisKey.sync()                      # trust, then licence and config
+var r := await PolarisKey.sync()                      # trust, then license and config
 if PolarisKey.is_licensed():
 	pass
 ```
@@ -115,7 +115,7 @@ richer result class; nothing throws. The autoload's signals are `state_changed(s
 ## A tour
 
 One `PolarisKey` autoload, one sub-object per service, in the same shape as every other SDK
-(see [SDKs](/docs/build/sdks/)). A sub-object whose service the product does not run answers
+(see [SDKs](https://key.plrs.im/docs/build/sdks/)). A sub-object whose service the product does not run answers
 `service-unavailable` without a request. The SDK's `examples/minimal` folder is the smallest
 whole game (boot, gate, config, settings and a store purchase in one script); its README says how
 to run it.
@@ -126,7 +126,7 @@ to run it.
 var key := ""
 var r := await PolarisKey.license.activate_with_key(key)    # a PKeyActivationResult
 if not r.ok: print(PKeyUiCopy.shared().for_code(r.code)) # words for r.code, never a raw body
-await PolarisKey.license.enroll()                # keyless: the device's free licence
+await PolarisKey.license.enroll()                # keyless: the device's free license
 if PolarisKey.license.is_entitled("soundtrack"): print("soundtrack unlocked")
 PolarisKey.license.get_entitlements()            # {name: value}
 await PolarisKey.license.deactivate()
@@ -175,7 +175,7 @@ reads the catalog's schema for an editor of your own. Precedence, the player's s
 ### Devices
 
 ```gdscript
-var roster := await PolarisKey.devices.list()        # this licence's devices
+var roster := await PolarisKey.devices.list()        # this license's devices
 await PolarisKey.devices.rename("Living-room PC")
 await PolarisKey.devices.register()                  # keyless registration, for a product without License
 ```
@@ -307,7 +307,7 @@ gamepad or a TV remote.
   - _Density._ `options.ui_density` (`spacious`, the default, `comfortable` or `compact`) steps down
     on its own when the screen is short or narrow.
   - _Margins and width._ Content keeps at least `page_margin` (32 px at scale 1) from the screen's
-    edges and is capped in width and centred, so it never hugs an edge or floats adrift on 4K. On
+    edges and is capped in width and centered, so it never hugs an edge or floats adrift on 4K. On
     a phone or tablet the device's safe area (`DisplayServer.get_display_safe_area()`) is kept
     clear too. A QR code is at least 160 physical pixels and at most 42 % of the screen's shorter
     side.
@@ -318,7 +318,7 @@ gamepad or a TV remote.
   - _The user code_ is set in Rubik Bold: the bundled JetBrains Mono draws E, 8 and 0 as boxes in
     Godot 4.7.
   - _Phones._ A dialog over the running game (sign-in, offline activation, settings, the update
-    prompt) sits on an opaque sheet docked to the bottom; a tablet gets a centred column, not the
+    prompt) sits on an opaque sheet docked to the bottom; a tablet gets a centered column, not the
     phone's full-width layout.
   - _Gamepads._ The kit adds the pad's A and B to `ui_accept` and `ui_cancel` when your input map
     has no joypad binding on them (yours are kept), and a dialog over the game takes the focus
@@ -405,7 +405,7 @@ bold_font)` makes the Polaris Key theme with your accent or fonts if you want a 
   (`powered-by-badge-*`, 320 × 104, dark and light; renamed from `powered-by-credit-*`, which were 1920 × 1080 screens) and the Locker micro mark (`locker-micro-*`) for your credits or about screen. The folder is
   never imported (`.gdignore`); copy the file you need into your project. (The kit scenes show
   the attribution only with `ui_powered_by`.) Use the dark file on a dark ground and the light file
-  on a light one; never cropped, never recoloured, and never smaller than the kit minimum
+  on a light one; never cropped, never recolored, and never smaller than the kit minimum
   (`PKeyUiTheme.powered_by_size(wanted)` raises a smaller size to 320 × 104, keeping the
   proportions).
 
@@ -1531,7 +1531,7 @@ r = await android.apk_install(path, sha256, version_code)    # direct: verified,
   (installer not `com.android.vending`), Play Asset Delivery on a direct build and the
   PackageInstaller calls on a play build, `outlet`. A plugin error is `platform-error` with the
   plugin's fields in `detail`; any In-App Updates failure is `detail.error == "unavailable"`.
-- **Flavours.** The preset's `polaris_key/android_flavor` (`play`, `direct` or `none`;
+- **Flavors.** The preset's `polaris_key/android_flavor` (`play`, `direct` or `none`;
   `PKEY_ANDROID_FLAVOR`) picks the AARs; the export plugin
   (`addons/polaris_key/native/android_export_plugin.gd`, rules in `PKeyAndroidExport`) adds Play
   Core for play and, for direct only, `REQUEST_INSTALL_PACKAGES` and

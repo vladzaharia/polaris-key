@@ -105,3 +105,46 @@ describe("published packages", () => {
       });
     });
 });
+
+// The standalone SDKs' READMEs render as reference pages and show on their registries, so they
+// follow the same rule: an absolute docs URL (never root-relative), and it names a current page.
+const sdkReadmes = readdirSync(join(ROOT, "sdks"), { withFileTypes: true })
+  .filter((d) => d.isDirectory())
+  .map((d) => `sdks/${d.name}/README.md`)
+  .filter((file) => existsSync(join(ROOT, file)));
+
+const docsPageExists = (pathname: string): boolean => {
+  const page = pathname.replace(/^\/docs\//, "").replace(/\/$/, "");
+  return ["", "/index"].some((tail) =>
+    [".md", ".mdx"].some((ext) => existsSync(join(DOCS, page + tail + ext))),
+  );
+};
+
+describe("SDK READMEs", () => {
+  it("finds them", () => {
+    expect(sdkReadmes.length).toBeGreaterThanOrEqual(4);
+  });
+
+  for (const file of [...sdkReadmes, "packages/sdk-node/README.md"])
+    describe(file, () => {
+      const lines = readFileSync(join(ROOT, file), "utf8").split("\n");
+
+      it("has no root-relative /docs/ link", () => {
+        const hits = lines
+          .map((text, i) => `${file}:${i + 1}: ${text.trim()}`)
+          .filter((_, i) =>
+            /\]\(\s*\/docs\/|href="\/docs\/|\]:\s*\/docs\//.test(lines[i]!),
+          );
+        expect(hits).toEqual([]);
+      });
+
+      it("links only docs pages that exist at their current path", () => {
+        const missing = lines.flatMap((text, i) =>
+          [...text.matchAll(/\]\(https:\/\/key\.plrs\.im(\/docs\/[^)#\s]*)/g)]
+            .filter((m) => !docsPageExists(m[1]!))
+            .map((m) => `${file}:${i + 1}: ${m[1]}`),
+        );
+        expect(missing).toEqual([]);
+      });
+    });
+});
