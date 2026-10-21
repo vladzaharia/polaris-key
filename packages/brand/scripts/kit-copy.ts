@@ -232,6 +232,8 @@ export const STRING_ARGS = [
   "prefix",
   "last6",
   "s",
+  // The customer portal: a verb phrase that ends a sentence ("Use your passkey to {verb}").
+  "verb",
 ] as const;
 
 /** Integer arguments: the only ones a plural may select on (they may also appear plain). */

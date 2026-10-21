@@ -2,6 +2,7 @@ import * as React from "react";
 import { Checkbox } from "../../../ui/Checkbox.js";
 import { ConfirmDialog } from "../../../ui/ConfirmDialog.js";
 import { toast } from "../../../ui/toast.js";
+import { t } from "../../../lib/copy.js";
 import { PortalApiError } from "../../api.js";
 import {
   YOUR_DATA_COPY,
@@ -126,7 +127,7 @@ export function RemoveProductDataDialog({
     >
       {askFirst ? (
         <StepUpInline
-          verb="remove your data"
+          verb={t("locker.verb.removeData")}
           onConfirmed={() => {
             setAskFirst(false);
             // A refusal shows on the next press of the confirm button.

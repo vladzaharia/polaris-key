@@ -43,7 +43,7 @@ export function SessionsCard(): React.ReactElement | null {
   return (
     <SectionCard
       id="sessions"
-      title="Where you're signed in"
+      title={t("locker.account.sessions")}
       aside={
         listed && !open ? (
           <Button
@@ -55,11 +55,11 @@ export function SessionsCard(): React.ReactElement | null {
             aria-controls="sign-out-everywhere"
             onClick={() => setOpen(true)}
           >
-            Sign out everywhere
+            {t("locker.sessions.signOutAll")}
           </Button>
         ) : null
       }
-      subtitle="Browsers signed in to this account. Devices that use a license are on each product's page."
+      subtitle={t("locker.sessions.subtitle")}
     >
       {sessions.isPending ? (
         <div aria-busy="true" className="space-y-3">
@@ -139,14 +139,16 @@ function SessionRow({
   session: PortalSession;
 }): React.ReactElement {
   const end = useEndSession();
-  const name = session.browser?.trim() || "Unknown browser";
+  const name = session.browser?.trim() || t("locker.sessions.unknownBrowser");
   const phone = /iOS|Android/.test(name);
   const how = sessionMethodText(session.methods);
   const meta = [
     how,
     session.current
-      ? "now"
-      : `last active ${formatRelative(session.lastSeenAt * 1000)}`,
+      ? t("locker.sessions.now")
+      : t("locker.sessions.lastActive", {
+          when: formatRelative(session.lastSeenAt * 1000),
+        }),
   ]
     .filter(Boolean)
     .join(" · ");
@@ -177,11 +179,11 @@ function SessionRow({
             className="ml-auto h-10 font-medium max-sm:h-11"
             loading={end.isPending}
             busyFocusable
-            aria-label={`Sign out ${name}, ${meta}`}
+            aria-label={t("locker.sessions.signOutOne", { name, when: meta })}
             onClick={() =>
               end.mutate(session.id, {
                 onSuccess: () => {
-                  const text = `${name} was signed out`;
+                  const text = t("locker.sessions.signedOutOne", { name });
                   toast.success(text);
                   announce(text);
                   // The row leaves with the refetch: focus goes to the section first.
@@ -236,24 +238,20 @@ function Everywhere({
             tabIndex={-1}
             className="font-medium text-fg-strong outline-none"
           >
-            Sign out everywhere?
+            {t("locker.sessions.askTitle")}
           </h3>
           <ul className="list-disc space-y-1 pl-5 text-sm text-fg">
             <li>
               {others > 0
-                ? `This browser and ${others === 1 ? "1 other" : `${others} others`} sign out of Polaris Locker.`
-                : `This browser signs out of Polaris Locker.`}
+                ? t("locker.sessions.askOthers", { count: others })
+                : t("locker.sessions.askThis")}
             </li>
-            <li>
-              Apps you signed in to with Polaris Locker sign out too. A device
-              that got its license by signing in gives up its seat.
-            </li>
-            <li>Your licenses stay in your library.</li>
+            <li>{t("locker.sessions.askApps")}</li>
+            <li>{t("locker.sessions.askStay")}</li>
           </ul>
           {all.error ? (
             <p role="alert" className="text-sm text-danger">
-              {portalErrorCopy(all.error, { account: true }).title}.{" "}
-              {portalErrorCopy(all.error, { account: true }).description}
+              {portalErrorCopy(all.error).line}
             </p>
           ) : null}
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -276,8 +274,8 @@ function Everywhere({
               onClick={() =>
                 all.mutate(undefined, {
                   onSuccess: () => {
-                    toast.success("You're signed out everywhere", {
-                      description: "Sign in again to carry on.",
+                    toast.success(t("locker.sessions.done"), {
+                      description: t("locker.error.signInAgain"),
                     });
                     window.history.replaceState(null, "", "/#/");
                     signOutQuietly(qc);
@@ -285,7 +283,7 @@ function Everywhere({
                 })
               }
             >
-              Sign out everywhere
+              {t("locker.sessions.signOutAll")}
             </Button>
           </div>
         </div>

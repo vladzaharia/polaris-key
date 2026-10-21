@@ -89,7 +89,7 @@ export function DownloadData({
         <>
           {askFirst ? (
             <StepUpInline
-              verb="download your data"
+              verb={t("locker.verb.downloadData")}
               onConfirmed={() => {
                 setAskFirst(false);
                 start();

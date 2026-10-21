@@ -2,7 +2,7 @@ import * as React from "react";
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { Fingerprint, Mail, ShieldCheck } from "lucide-react";
 import { Button } from "../../../ui/Button.js";
-import { t } from "../../../lib/copy.js";
+import { t, tParts } from "../../../lib/copy.js";
 import { expiredCodeText, wrongCodeText } from "../../copy/codeEntry.js";
 import {
   portalApi,
@@ -198,7 +198,7 @@ export function StepUp({
           setError(null);
         }}
       >
-        Use an email code instead
+        {t("locker.stepUp.emailInstead")}
       </Button>,
     );
   if (way === "email" && passkey)
@@ -213,7 +213,7 @@ export function StepUp({
           setError(null);
         }}
       >
-        Use your passkey instead
+        {t("locker.stepUp.passkeyInstead")}
       </Button>,
     );
   // The email way was refused its security check while a passkey remains the main way: the
@@ -230,7 +230,7 @@ export function StepUp({
         className="flex items-center gap-2 text-sm font-medium text-fg-strong outline-none"
       >
         <ShieldCheck aria-hidden className="size-4 shrink-0" />
-        Confirm it's you first
+        {t("locker.stepUp.title")}
       </p>
       {way === "passkey" ? (
         <Button
@@ -240,10 +240,10 @@ export function StepUp({
           iconStart={<Fingerprint aria-hidden />}
           className={MAIN_BUTTON}
           onClick={() => void withPasskey()}
-          aria-label={`Use your passkey to ${verb}`}
+          aria-label={t("locker.stepUp.passkeyTo", { verb })}
           aria-describedby={error ? errorId : undefined}
         >
-          Use your passkey
+          {t("locker.stepUp.passkey")}
         </Button>
       ) : way === "email" && email && !sent ? (
         <Button
@@ -253,7 +253,7 @@ export function StepUp({
           iconStart={<Mail aria-hidden />}
           className={MAIN_BUTTON}
           onClick={() => void sendCode()}
-          aria-label={`Email a code to ${email}`}
+          aria-label={t("locker.stepUp.emailTo", { email })}
           aria-describedby={error ? errorId : undefined}
         >
           {t("signin.hint.emailCode")}
@@ -268,9 +268,15 @@ export function StepUp({
           }}
         >
           <p role="status" className="text-sm text-fg">
-            We sent a 6-digit code to{" "}
-            <span className="font-medium text-fg-strong">{email}</span>. It
-            works for 10 minutes.
+            {tParts("locker.stepUp.sent", ["email"]).map((part, i) =>
+              typeof part === "string" ? (
+                part
+              ) : (
+                <span key={i} className="font-medium text-fg-strong">
+                  {email}
+                </span>
+              ),
+            )}
           </p>
           <label
             htmlFor={codeId}
@@ -299,9 +305,9 @@ export function StepUp({
               busyFocusable
               disabled={code.length !== CODE_LENGTH}
               className={MAIN_BUTTON}
-              aria-label={`Confirm and ${verb}`}
+              aria-label={t("locker.stepUp.confirmTo", { verb })}
             >
-              Confirm
+              {t("locker.stepUp.confirm")}
             </Button>
             <Button
               variant="link"
@@ -338,22 +344,19 @@ function SignInAgain({
   hrefFor: (p: PortalProvider | "sso") => string;
 }): React.ReactElement {
   if (providers.length === 0 && !sso)
-    return (
-      <p className="text-sm text-fg">
-        Sign out, then sign in again. You can make the change for 5 minutes
-        after.
-      </p>
-    );
+    return <p className="text-sm text-fg">{t("locker.stepUp.signOutFirst")}</p>;
   return (
     <div className="flex flex-wrap gap-2">
       {providers.map((p) => (
         <Button key={p} asChild variant="outline">
-          <a href={hrefFor(p)}>Sign in again with {PROVIDER_NAME[p]}</a>
+          <a href={hrefFor(p)}>
+            {t("locker.stepUp.again", { provider: PROVIDER_NAME[p] })}
+          </a>
         </Button>
       ))}
       {sso ? (
         <Button asChild variant="outline">
-          <a href={hrefFor("sso")}>Sign in again with single sign-on</a>
+          <a href={hrefFor("sso")}>{t("locker.stepUp.againSso")}</a>
         </Button>
       ) : null}
     </div>
@@ -416,15 +419,16 @@ function passkeyErrorText(err: unknown): string {
 
 function sendErrorText(err: unknown): string {
   if (err instanceof PortalApiError) {
-    if (err.code === "turnstile_failed")
-      return "The security check didn't run here. Confirm it's you another way.";
+    if (err.code === "turnstile_failed") return t("locker.stepUp.noCheck");
     if (err.code === "signin_expired") return expiredCodeText();
     if (err.status === 429 && err.retryAfter !== undefined)
-      return `Wait ${Math.max(1, Math.ceil(err.retryAfter))} seconds, then send a new code.`;
+      return t("locker.stepUp.wait", {
+        seconds: Math.max(1, Math.ceil(err.retryAfter)),
+      });
     if (err.status === 429)
       return t("signin.rateLimited", { minutes: "a few" });
     if (err.code === "email_unavailable" || err.code === "auth_method_disabled")
-      return "We can't send email right now. Try again later.";
+      return t("locker.stepUp.noEmail");
   }
   return commonErrorText(err);
 }
@@ -441,12 +445,10 @@ function codeErrorText(err: unknown): string {
 
 function commonErrorText(err: unknown): string {
   if (err instanceof PortalApiError) {
-    if (err.code === "other_account")
-      return `That signed you in to a different Polaris Locker account. Nothing was changed.`;
+    if (err.code === "other_account") return t("locker.stepUp.otherAccount");
     if (err.status === 401 && err.code === "unauthorized")
-      return "That didn't confirm it's you. Try again, or use another way.";
+      return t("locker.stepUp.notYou");
     if (err.status === 429) return t("signin.code.rateLimited");
   }
-  const copy = portalErrorCopy(err, { account: true });
-  return `${copy.title}. ${copy.description}`;
+  return portalErrorCopy(err).line;
 }

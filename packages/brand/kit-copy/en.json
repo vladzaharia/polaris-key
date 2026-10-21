@@ -5140,6 +5140,211 @@
       "value": "Account: {name}",
       "role": "a11y",
       "note": "Account page; moved from the portal's components (P0-36)."
+    },
+    "locker.sessions.subtitle": {
+      "value": "Browsers signed in to this account. Devices that use a license are on each product's page.",
+      "role": "hint",
+      "note": "Account → Where you're signed in (P0-36)."
+    },
+    "locker.sessions.signOutAll": {
+      "value": "Sign out everywhere",
+      "role": "button",
+      "note": "Account → Where you're signed in (P0-36)."
+    },
+    "locker.sessions.unknownBrowser": {
+      "value": "Unknown browser",
+      "role": "label",
+      "note": "Account → Where you're signed in (P0-36)."
+    },
+    "locker.sessions.now": {
+      "value": "now",
+      "role": "label",
+      "note": "Account → Where you're signed in (P0-36)."
+    },
+    "locker.sessions.lastActive": {
+      "value": "last active {when}",
+      "role": "label",
+      "note": "Account → Where you're signed in (P0-36)."
+    },
+    "locker.sessions.signOutOne": {
+      "value": "Sign out {name}, {when}",
+      "role": "a11y",
+      "note": "Account → Where you're signed in (P0-36)."
+    },
+    "locker.sessions.signedOutOne": {
+      "value": "{name} was signed out",
+      "role": "hint",
+      "note": "Account → Where you're signed in (P0-36)."
+    },
+    "locker.sessions.askTitle": {
+      "value": "Sign out everywhere?",
+      "role": "title",
+      "note": "Account → Where you're signed in (P0-36)."
+    },
+    "locker.sessions.askOthers": {
+      "value": "This browser and {count, plural, one {# other} other {# others}} sign out of Polaris Locker.",
+      "role": "body",
+      "note": "Account → Where you're signed in (P0-36)."
+    },
+    "locker.sessions.askThis": {
+      "value": "This browser signs out of Polaris Locker.",
+      "role": "body",
+      "note": "Account → Where you're signed in (P0-36)."
+    },
+    "locker.sessions.askApps": {
+      "value": "Apps you signed in to with Polaris Locker sign out too. A device that got its license by signing in gives up its seat.",
+      "role": "body",
+      "note": "Account → Where you're signed in (P0-36)."
+    },
+    "locker.sessions.askStay": {
+      "value": "Your licenses stay in your library.",
+      "role": "body",
+      "note": "Account → Where you're signed in (P0-36)."
+    },
+    "locker.sessions.done": {
+      "value": "You're signed out everywhere",
+      "role": "hint",
+      "note": "Account → Where you're signed in (P0-36)."
+    },
+    "locker.stepUp.title": {
+      "value": "Confirm it's you first",
+      "role": "label",
+      "note": "Confirming a sensitive change (step-up) (P0-36)."
+    },
+    "locker.stepUp.emailInstead": {
+      "value": "Use an email code instead",
+      "role": "button",
+      "note": "Confirming a sensitive change (step-up) (P0-36)."
+    },
+    "locker.stepUp.passkeyInstead": {
+      "value": "Use your passkey instead",
+      "role": "button",
+      "note": "Confirming a sensitive change (step-up) (P0-36)."
+    },
+    "locker.stepUp.passkey": {
+      "value": "Use your passkey",
+      "role": "button",
+      "note": "Confirming a sensitive change (step-up) (P0-36)."
+    },
+    "locker.stepUp.passkeyTo": {
+      "value": "Use your passkey to {verb}",
+      "role": "a11y",
+      "note": "Confirming a sensitive change (step-up) (P0-36)."
+    },
+    "locker.stepUp.emailTo": {
+      "value": "Email a code to {email}",
+      "role": "a11y",
+      "note": "Confirming a sensitive change (step-up) (P0-36)."
+    },
+    "locker.stepUp.sent": {
+      "value": "We sent a 6-digit code to {email}. It works for 10 minutes.",
+      "role": "body",
+      "note": "Confirming a sensitive change (step-up) (P0-36)."
+    },
+    "locker.stepUp.confirmTo": {
+      "value": "Confirm and {verb}",
+      "role": "a11y",
+      "note": "Confirming a sensitive change (step-up) (P0-36)."
+    },
+    "locker.stepUp.confirm": {
+      "value": "Confirm",
+      "role": "button",
+      "note": "Confirming a sensitive change (step-up) (P0-36)."
+    },
+    "locker.stepUp.signOutFirst": {
+      "value": "Sign out, then sign in again. You can make the change for 5 minutes after.",
+      "role": "body",
+      "note": "Confirming a sensitive change (step-up) (P0-36)."
+    },
+    "locker.stepUp.signOutRetry": {
+      "value": "Sign out, then sign in again. You can try again for 5 minutes after.",
+      "role": "body",
+      "note": "Confirming a sensitive change (step-up) (P0-36)."
+    },
+    "locker.stepUp.again": {
+      "value": "Sign in again with {provider}",
+      "role": "button",
+      "note": "Confirming a sensitive change (step-up) (P0-36)."
+    },
+    "locker.stepUp.againSso": {
+      "value": "Sign in again with single sign-on",
+      "role": "button",
+      "note": "Confirming a sensitive change (step-up) (P0-36)."
+    },
+    "locker.stepUp.noCheck": {
+      "value": "The security check didn't run here. Confirm it's you another way.",
+      "role": "body",
+      "note": "Confirming a sensitive change (step-up) (P0-36)."
+    },
+    "locker.stepUp.wait": {
+      "value": "Wait {seconds, plural, one {# second} other {# seconds}}, then send a new code.",
+      "role": "body",
+      "note": "Confirming a sensitive change (step-up) (P0-36)."
+    },
+    "locker.stepUp.noEmail": {
+      "value": "We can't send email right now. Try again later.",
+      "role": "body",
+      "note": "Confirming a sensitive change (step-up) (P0-36)."
+    },
+    "locker.stepUp.otherAccount": {
+      "value": "That signed you in to a different Polaris Locker account. Nothing was changed.",
+      "role": "body",
+      "note": "Confirming a sensitive change (step-up) (P0-36)."
+    },
+    "locker.stepUp.notYou": {
+      "value": "That didn't confirm it's you. Try again, or use another way.",
+      "role": "body",
+      "note": "Confirming a sensitive change (step-up) (P0-36)."
+    },
+    "locker.verb.downloadData": {
+      "value": "download your data",
+      "role": "hint",
+      "note": "A verb phrase that ends a sentence (\"Use your passkey to ...\"); keep it short (P0-36)."
+    },
+    "locker.verb.removeData": {
+      "value": "remove your data",
+      "role": "hint",
+      "note": "A verb phrase that ends a sentence (\"Use your passkey to ...\"); keep it short (P0-36)."
+    },
+    "locker.verb.createIt": {
+      "value": "create it",
+      "role": "hint",
+      "note": "A verb phrase that ends a sentence (\"Use your passkey to ...\"); keep it short (P0-36)."
+    },
+    "locker.verb.makePrimary": {
+      "value": "make it primary",
+      "role": "hint",
+      "note": "A verb phrase that ends a sentence (\"Use your passkey to ...\"); keep it short (P0-36)."
+    },
+    "locker.verb.rename": {
+      "value": "rename it",
+      "role": "hint",
+      "note": "A verb phrase that ends a sentence (\"Use your passkey to ...\"); keep it short (P0-36)."
+    },
+    "locker.verb.addIt": {
+      "value": "add it",
+      "role": "hint",
+      "note": "A verb phrase that ends a sentence (\"Use your passkey to ...\"); keep it short (P0-36)."
+    },
+    "locker.verb.addPasskey": {
+      "value": "add a passkey",
+      "role": "hint",
+      "note": "A verb phrase that ends a sentence (\"Use your passkey to ...\"); keep it short (P0-36)."
+    },
+    "locker.verb.connect": {
+      "value": "connect {name}",
+      "role": "hint",
+      "note": "A verb phrase that ends a sentence (\"Use your passkey to ...\"); keep it short (P0-36)."
+    },
+    "locker.verb.disconnect": {
+      "value": "disconnect",
+      "role": "hint",
+      "note": "A verb phrase that ends a sentence (\"Use your passkey to ...\"); keep it short (P0-36)."
+    },
+    "locker.verb.remove": {
+      "value": "remove",
+      "role": "hint",
+      "note": "A verb phrase that ends a sentence (\"Use your passkey to ...\"); keep it short (P0-36)."
     }
   }
 }
