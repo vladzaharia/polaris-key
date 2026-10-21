@@ -138,6 +138,8 @@
      below it. */
   --breakpoint-split: 64rem;
   --breakpoint-wide: 73.75rem;
+  /* 1700 px: the Library and Discover grids add a fifth column inside the same 82 rem column (PX-35). */
+  --breakpoint-xxl: 106.25rem;
   /* The type scale's display step (EXPERIENCE.md §3): 40 px, for the portal's Library and
      Product titles only (`PageHeader size="display"`; 30 px, text-3xl, on phones). */
   --text-display: 2.5rem;
@@ -362,6 +364,19 @@
   @media (47.5625rem <= width < 73.75rem) {
     html:has(.pk-portal-shell [data-section-pills="tablet"]) {
       --pk-scroll-top: calc(4rem + 1px + 3.25rem + 1px);
+    }
+  }
+  /* The Library's sticky "Missing a license?" strip (MissingLicense.tsx) publishes its height as
+     --pk-strip-h: a focused control scrolls clear of it (WCAG 2.4.11), above the phone bar below
+     desk. */
+  html:has(.pk-portal-shell [data-missing-strip]) {
+    scroll-padding-bottom: calc(
+      3.25rem + 1px + env(safe-area-inset-bottom) + var(--pk-strip-h, 0px)
+    );
+  }
+  @media (width >= 47.5625rem) {
+    html:has(.pk-portal-shell [data-missing-strip]) {
+      scroll-padding-bottom: var(--pk-strip-h, 0px);
     }
   }
   @media (height <= 32rem) {

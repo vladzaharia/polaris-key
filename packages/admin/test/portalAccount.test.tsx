@@ -198,9 +198,12 @@ describe("Account v1 (PX-07)", () => {
     );
     const items = await screen.findAllByRole("menuitem");
     expect(items.map((i) => i.textContent)).toEqual([
+      "Activate a license",
       "Account",
       "Sign-in methods",
       "Appearance",
+      "Help",
+      "Privacy",
       "Sign out",
     ]);
   });

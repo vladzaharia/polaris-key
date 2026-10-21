@@ -315,11 +315,30 @@ describe("Activate license modal (PX-06)", () => {
     });
   }
 
-  async function openFromHeader(): Promise<HTMLElement> {
+  /** The Library strip's first item (PX-35): the opener that keeps focus where the dialog puts it. */
+  async function openFromStrip(): Promise<HTMLElement> {
     await userEvent.click(
-      await screen.findByRole("button", { name: "Activate license" }),
+      await within(
+        await screen.findByRole("region", { name: "Missing a license?" }),
+      ).findByRole("button", { name: "Activate a license" }),
     );
     return screen.findByRole("dialog", { name: "Activate a license" });
+  }
+
+  async function openFromHeader(): Promise<HTMLElement> {
+    await userEvent.click(
+      await screen.findByRole("button", { name: /^Account:/ }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Activate a license" }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Activate a license",
+    });
+    // The menu finishes closing (and any focus it hands back settles) before the test types.
+    await new Promise((r) => setTimeout(r, 100));
+    await userEvent.click(within(dialog).getByRole("textbox"));
+    return dialog;
   }
 
   it("names the product from the key before any request, then adds it and opens its page", async () => {
@@ -831,12 +850,20 @@ describe("Activate license modal (PX-06)", () => {
     ).toBe(KEY);
   });
 
-  it("opens from the phone bar's Activate pill", async () => {
+  it("has no Activate pill on the phone bar, and opens from the account menu (PX-35)", async () => {
     mockFetch(routes());
     renderPortal();
     const bar = await screen.findByRole("navigation", { name: "Phone" });
+    expect(within(bar).queryByRole("button")).toBeNull();
+    const banner = screen.getByRole("banner");
+    expect(
+      within(banner).queryByRole("button", { name: /Activate/ }),
+    ).toBeNull();
     await userEvent.click(
-      within(bar).getByRole("button", { name: "Activate" }),
+      within(banner).getByRole("button", { name: /^Account:/ }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Activate a license" }),
     );
     expect(
       await screen.findByRole("dialog", { name: "Activate a license" }),
@@ -846,7 +873,7 @@ describe("Activate license modal (PX-06)", () => {
   it("explains a typed cut-short key on Continue and drops the help line (UX-05)", async () => {
     mockFetch(routes());
     renderPortal();
-    const dialog = await openFromHeader();
+    const dialog = await openFromStrip();
     expect(
       within(dialog).getByText("Starts with pkey_. Case-sensitive."),
     ).toBeTruthy();

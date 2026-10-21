@@ -500,6 +500,39 @@ export async function axe(
   );
   // Evaluated over the DevTools protocol, which the page's CSP does not govern.
   if (!loaded) await page.evaluate(AXE_SOURCE);
+  // The Library's "Missing a license?" strip is sticky: at the top of a long page it covers the
+  // bottom of the first screen, and axe's target-size rule reads whatever sits under it as an
+  // obscured or crowded target, though it scrolls away. So the run sees it where it rests, in the
+  // flow after the last row (above the phone bar on a phone), and the page is put back after
+  // (PX-35; `portalLibraryTrim.e2e.test.ts` checks the sticky behaviour itself).
+  // (Set through the CSSOM: the page's CSP refuses a style element.)
+  await page.evaluate(() => {
+    const el = document.querySelector<HTMLElement>(
+      "section[aria-label='Missing a license?']",
+    );
+    if (!el) return;
+    el.style.setProperty("position", "static", "important");
+    if (window.matchMedia("(max-width: 47.5rem)").matches)
+      el.style.setProperty(
+        "margin-bottom",
+        "calc(3.25rem + 1px + env(safe-area-inset-bottom))",
+        "important",
+      );
+  });
+  try {
+    return await runAxe(page, forcedColors);
+  } finally {
+    await page.evaluate(() => {
+      const el = document.querySelector<HTMLElement>(
+        "section[aria-label='Missing a license?']",
+      );
+      el?.style.removeProperty("position");
+      el?.style.removeProperty("margin-bottom");
+    });
+  }
+}
+
+function runAxe(page: Page, forcedColors: boolean): Promise<string[]> {
   return page.evaluate(
     async ({ tags, forcedColors }) => {
       const a = (

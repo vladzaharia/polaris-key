@@ -111,6 +111,7 @@
   "activate.title": "Enter your license key",
   "activate.lede": "You'll find it in your purchase email.",
   "activate.submit": "Activate license",
+  "common.activateLicense": "Activate a license",
   "activate.busy": "Activating…",
   "offlineActivation.title": "Offline activation",
   "offlineActivation.request": "Send this request code to whoever gave you your license.",

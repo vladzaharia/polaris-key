@@ -567,6 +567,11 @@
       "role": "button",
       "note": "Activate: license key entry. Submits the key."
     },
+    "common.activateLicense": {
+      "value": "Activate a license",
+      "role": "button",
+      "note": "Portal: opens the Activate dialog (account menu, Library key tile, empty Library, Missing a license strip)."
+    },
     "activate.busy": {
       "value": "Activating…",
       "role": "label",

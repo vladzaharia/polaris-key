@@ -276,6 +276,9 @@
     <!-- Activate: license key entry. Submits the key. -->
     <string name="activate_submit">激活许可证</string>
     <string name="activate_submit__macos">激活许可证</string>
+    <!-- Portal: opens the Activate dialog (account menu, Library key tile, empty Library, Missing a license strip). -->
+    <string name="common_activateLicense">激活许可证</string>
+    <string name="common_activateLicense__macos">激活许可证</string>
     <!-- Activate: license key entry. -->
     <string name="activate_busy">正在激活…</string>
     <!-- OfflineActivation: activation by exchanging a request code and a response file. -->

@@ -1,30 +1,28 @@
 import * as React from "react";
-import { Compass, KeyRound, Library, TriangleAlert } from "lucide-react";
-import { Button } from "../../ui/Button.js";
+import { Compass, Library, TriangleAlert } from "lucide-react";
 import { TOAST_BOTTOM_INSET_VAR } from "../../ui/toast.js";
 import { cn } from "../../lib/cn.js";
 import type { PortalAccount } from "../api.js";
-import { useActivate } from "../activate.js";
 import { href, type PortalRoute } from "../router.js";
 import { AccountMenu } from "./AccountMenu.js";
 import { Lockup } from "./Lockup.js";
-import { t } from "../../lib/copy.js";
+import { MissingLicense } from "./MissingLicense.js";
 
 /**
  * The signed-in frame (PORTAL.md §3.2, §5.2 `PortalShell`):
  *
  * - **Header** (64 px; 56 on phones): the compact lockup (the link home), the Library nav with
- *   its count, a slot for the ⌘K trigger, the right-aligned **Activate license** action and the
- *   account menu.
+ *   its count, a slot for the ⌘K trigger and the account menu. Activate a license, Help and
+ *   Privacy live in the account menu (PX-35); the Library's key tile and the palette also reach
+ *   Activate.
  * - **Tablet header** (761–1179 px, PORTAL.md §8): the same row, compacted so the account menu
  *   never leaves the screen: the account chip is its avatar, the ⌘K trigger an icon, and below
- *   900 px the lockup drops to its phone size, the gaps to 24 px and the action reads
- *   **Activate** (its accessible name stays "Activate license"). From 1180 px the chip adds the
- *   given name; when the row is tight the ⌘K field gives way first (down to 176 px), and only then
- *   does the name truncate. ⌘K, Activate and the chip share one height: 40 px, 44 on a coarse
- *   pointer.
- * - **Phone bar** (≤ 760 px): Library, the Activate pill in the middle, and Discover.
- * - **Footer**, a skip link, one `banner`, `nav` ("Main"), `main` and `contentinfo`.
+ *   900 px the lockup drops to its phone size and the gaps to 24 px. From 1180 px the chip adds
+ *   the given name; when the row is tight the ⌘K field gives way first (down to 176 px), and only
+ *   then does the name truncate. ⌘K and the chip share one height: 40 px, 44 on a coarse pointer.
+ * - **Phone bar** (≤ 760 px): Library and Discover.
+ * - No footer: a skip link, one `banner`, `nav` ("Main") and `main`. The Library ends in its own
+ *   sticky "Missing a license?" strip (`MissingLicense`).
  *
  * Discover sits in the nav with its count of offers (a small violet count; a dot on the phone
  * bar) once `GET /api/library` carries `discoverCount` (G24, PX-W10) and the Discover page can
@@ -52,7 +50,6 @@ export function PortalShell({
   phoneHeaderExtra?: React.ReactNode;
   children: React.ReactNode;
 }): React.ReactElement {
-  const activate = useActivate();
   // The product pages live inside the Library (§3.2): its tab stays current there.
   const onLibrary = route.kind === "library" || route.kind === "product";
   // A storefront product page (PS-05) lives inside Discover: its tab stays current there.
@@ -118,18 +115,6 @@ export function PortalShell({
             {phoneHeaderExtra ? (
               <div className="shrink-0 desk:hidden">{phoneHeaderExtra}</div>
             ) : null}
-            <Button
-              variant="action"
-              className="hidden h-10 shrink-0 px-3 desk:inline-flex mid:px-4 pointer-coarse:h-11"
-              iconStart={<KeyRound aria-hidden />}
-              aria-label={t("activate.submit")}
-              onClick={() => activate.open()}
-            >
-              <span className="mid:hidden">
-                {t("core.gate.needs-activation.title")}
-              </span>
-              <span className="hidden mid:inline">{t("activate.submit")}</span>
-            </Button>
             <AccountMenu account={account} />
           </div>
         </div>
@@ -163,31 +148,29 @@ export function PortalShell({
         ref={mainRef}
         tabIndex={-1}
         // A short screen (§8) keeps the space above the page's title small.
-        className="mx-auto w-full max-w-[82rem] flex-1 px-4 pb-28 pt-6 outline-none desk:px-8 desk:pb-16 desk:pt-10 short:pt-4"
+        className={cn(
+          "mx-auto w-full max-w-[82rem] flex-1 px-4 pt-5 outline-none desk:px-8 desk:pt-6 short:pt-4",
+          // Room for the phone bar; the Library's sticky strip ends the page, so it adds none.
+          route.kind === "library"
+            ? "pb-[calc(3.25rem+1px+env(safe-area-inset-bottom)+1.5rem)] desk:pb-8"
+            : "pb-[calc(3.25rem+1px+env(safe-area-inset-bottom)+1.5rem)] desk:pb-12",
+        )}
       >
         {children}
       </main>
-      <footer className="border-t border-border pb-24 desk:pb-0">
-        <div className="mx-auto flex w-full max-w-[82rem] flex-wrap items-center justify-between gap-2 px-4 py-6 text-sm text-fg-muted desk:px-8">
-          <span>Polaris Locker</span>
-          <nav aria-label="Help and policies" className="flex gap-4">
-            {FOOT_LINKS.map((l) => (
-              <a
-                key={l.href}
-                href={l.href}
-                className="inline-flex min-h-6 items-center pointer-coarse:min-h-11 underline decoration-[var(--pk-locker-accent)] underline-offset-4 hover:text-fg-strong"
-              >
-                {l.label}
-              </a>
-            ))}
-          </nav>
-        </div>
-      </footer>
+      {/* The Library's sticky footer, static help every state of it has (PX-35). */}
+      {route.kind === "library" ? (
+        <MissingLicense
+          hideActivate={
+            libraryCount !== null && libraryCount >= 2 && libraryCount < 8
+          }
+        />
+      ) : null}
       <nav
         aria-label="Phone"
         className="pk-vt-chrome fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface-page pb-[env(safe-area-inset-bottom)] desk:hidden"
       >
-        <div className="grid h-[3.25rem] grid-cols-3 items-center px-2">
+        <div className="grid h-[3.25rem] grid-cols-2 items-center px-2">
           <a
             href={href.library()}
             aria-current={onLibrary ? "page" : undefined}
@@ -199,16 +182,6 @@ export function PortalShell({
             <Library aria-hidden className="size-5" />
             Library
           </a>
-          <div className="flex justify-center">
-            <button
-              type="button"
-              onClick={() => activate.open()}
-              className="inline-flex h-10 items-center gap-2 rounded-full border border-border-strong bg-surface-raised px-4 text-sm font-medium text-fg-strong"
-            >
-              <KeyRound aria-hidden className="size-4 text-accent-fg" />
-              {t("core.gate.needs-activation.title")}
-            </button>
-          </div>
           {showDiscover ? (
             <a
               href={href.discover()}
@@ -254,9 +227,14 @@ function usePhoneBarToastInset(): void {
       if (barShows.matches)
         root.style.setProperty(
           TOAST_BOTTOM_INSET_VAR,
-          "calc(3.25rem + 1px + env(safe-area-inset-bottom) + 0.75rem)",
+          "calc(3.25rem + 1px + env(safe-area-inset-bottom) + var(--pk-strip-h, 0px) + 0.75rem)",
         );
-      else root.style.removeProperty(TOAST_BOTTOM_INSET_VAR);
+      else
+        // No bar: the Library's sticky strip is all a bottom toast has to clear.
+        root.style.setProperty(
+          TOAST_BOTTOM_INSET_VAR,
+          "calc(var(--pk-strip-h, 0px) + 0.75rem)",
+        );
     };
     apply();
     barShows.addEventListener("change", apply);
@@ -266,12 +244,6 @@ function usePhoneBarToastInset(): void {
     };
   }, []);
 }
-
-/** The footer's links: the public Help door and the page on what the site keeps (no terms page exists yet). */
-const FOOT_LINKS = [
-  { label: "Help", href: "/docs/help/" },
-  { label: "Privacy", href: "/docs/help/your-data/" },
-] as const;
 
 function NavLink({
   href: to,
