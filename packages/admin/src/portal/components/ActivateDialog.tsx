@@ -134,6 +134,8 @@ export function ActivateDialog({
   const [serverVerdict, setServerVerdict] = React.useState<KeyVerdict | null>(
     null,
   );
+  /** A claim that failed on the confirm step for a reason that is not the key's (B-083). */
+  const [addError, setAddError] = React.useState<string | null>(null);
   /** Names the Worker has told us (the preview), by slug: they win over everything else. */
   const [names, setNames] = React.useState<Record<string, string>>({});
   const claim = useClaimKey();
@@ -273,6 +275,7 @@ export function ActivateDialog({
     const before = new Set(
       (licenses.data ?? []).map((l) => `${l.product}:${l.id}`),
     );
+    setAddError(null);
     claim.mutate(key, {
       onSuccess: (res) => {
         const lic = res.license;
@@ -288,6 +291,13 @@ export function ActivateDialog({
       },
       onError: (err) => {
         const verdict = claimError(err, product?.name ?? nameFor(slugToAdd));
+        // A failure that is not the key's (a server error, the network, a rate limit) leaves the
+        // person on the confirm step with the verdict under the key and Add to retry; a refusal
+        // about the key goes back to the field, where its actions are (B-083).
+        if (confirmed && keepsConfirm(verdict.code)) {
+          setAddError(verdict.message);
+          return;
+        }
         goTo({ kind: "enter" }, () => setServerVerdict(verdict));
       },
     });
@@ -395,7 +405,8 @@ export function ActivateDialog({
           preview={confirm.preview}
           licenseKey={key}
           adding={claim.isPending || leaving}
-          onBack={() => goTo({ kind: "enter" })}
+          error={addError}
+          onBack={() => goTo({ kind: "enter" }, () => setAddError(null))}
           onAdd={() => add(confirm.slug, confirm.preview)}
           notes={<DevicesNote count={confirm.preview.devices} step="confirm" />}
         />
@@ -512,10 +523,14 @@ export function ActivateDialog({
                   </p>
                 ) : null
               }
+              // The format help ends once the key is valid ("Key format is valid" says it); a
+              // key from a link keeps its own line (B-087).
               help={
                 prefill
                   ? t("locker.activate.prefillHelp")
-                  : t("signin.key.help")
+                  : check.kind === "valid"
+                    ? null
+                    : t("signin.key.help")
               }
             />
           </DialogBody>
@@ -926,6 +941,7 @@ export function ConfirmStep({
   preview,
   licenseKey,
   adding,
+  error = null,
   onBack,
   onAdd,
   primaryLabel,
@@ -934,6 +950,8 @@ export function ConfirmStep({
   preview: ConfirmPreview;
   licenseKey: string;
   adding: boolean;
+  /** Why the last Add failed, said under the key (a failure that is not the key's). */
+  error?: string | null;
   onBack: () => void;
   onAdd: () => void;
   /** The primary's words; `Add to my library` by default. */
@@ -1043,6 +1061,11 @@ export function ConfirmStep({
           </p>
         ) : null}
         {notes}
+        {error ? (
+          <p role="alert" className="text-sm text-danger">
+            {error}
+          </p>
+        ) : null}
       </DialogBody>
       <DialogFooter>
         <Button
@@ -1106,6 +1129,13 @@ function claimError(err: unknown, name: string): KeyVerdict {
   if (err instanceof PortalApiError) {
     const v = claimVerdict(err, name);
     if (v) return v;
+    // A server error is not the key's fault: its own words, and nothing to retype.
+    if (err.status >= 500)
+      return {
+        code: "failed",
+        tone: "danger",
+        message: t("locker.activate.addFailed"),
+      };
   }
   const copy = portalErrorCopy(err);
   return {
@@ -1113,4 +1143,9 @@ function claimError(err: unknown, name: string): KeyVerdict {
     tone: "danger",
     message: copy.line,
   };
+}
+
+/** The verdicts that say nothing about the key: the confirm step stays, with Add to try again. */
+function keepsConfirm(code: KeyVerdict["code"]): boolean {
+  return code === "failed" || code === "rate_limited";
 }

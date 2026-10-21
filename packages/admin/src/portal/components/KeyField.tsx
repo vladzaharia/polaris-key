@@ -79,7 +79,7 @@ export function KeyField({
   const describedBy = [
     verdict ? errorId : null,
     valid ? okId : null,
-    verdict ? null : helpId,
+    verdict || !help ? null : helpId,
   ]
     .filter(Boolean)
     .join(" ");
@@ -196,14 +196,14 @@ export function KeyField({
             </div>
           ) : null}
         </>
-      ) : (
+      ) : help ? (
         <p id={helpId} className="text-sm text-fg-muted">
           {pasteHint
             ? `${t("locker.key.pasteHint", { detail: mac ? "⌘V" : "Ctrl V" })} `
             : null}
           {help}
         </p>
-      )}
+      ) : null}
     </div>
   );
 }
