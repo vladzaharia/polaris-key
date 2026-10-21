@@ -937,3 +937,29 @@ describe("?setting= deep links", () => {
     });
   }
 });
+
+// ── A dialog's own <form> wraps the body and footer (B-018) ───────────────────────────────────
+
+describe("a dialog whose form wraps its body and footer", () => {
+  it("keeps the footer inside a short window; the body scrolls instead", async () => {
+    const { page } = await open(
+      { name: "dialog:issue-ci-token", hash: "#/p/djdl/settings/keys" },
+      "dark",
+      { width: 1024, height: 360 },
+    );
+    try {
+      await page.getByRole("button", { name: "Issue token…" }).first().click();
+      const dialog = page.getByRole("dialog", { name: "Issue a CI token" });
+      await dialog.waitFor();
+      const box = await dialog.evaluate((el) => {
+        const submit = el.querySelector<HTMLElement>("button[type=submit]")!;
+        const r = submit.getBoundingClientRect();
+        return { bottom: r.bottom, top: r.top, h: innerHeight };
+      });
+      expect(box.top).toBeGreaterThanOrEqual(0);
+      expect(box.bottom).toBeLessThanOrEqual(box.h);
+    } finally {
+      await page.context().close();
+    }
+  });
+});

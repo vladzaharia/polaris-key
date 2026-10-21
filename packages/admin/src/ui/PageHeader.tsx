@@ -253,11 +253,16 @@ export function PageHeader({
                 "sm:@max-2xl:short:col-span-1 sm:@max-2xl:short:col-start-1 sm:@max-2xl:short:row-start-2",
               // With an auto-refresh switch the cluster is too wide to share a phone's title row.
               freshness?.auto && "col-span-2 sm:col-span-1",
+              // On a phone, a header under 24 rem wide (320 px, or 200 % text): the
+              // freshness line and Refresh take their own row instead of squeezing the title
+              // against them (B-023).
+              freshness && "max-sm:@max-sm:col-span-2",
             )}
           >
             {freshness ? (
-              <span className="inline-flex items-center gap-1 text-sm text-fg-muted">
-                <span className="hidden whitespace-nowrap sm:inline">
+              <span className="inline-flex flex-wrap items-center justify-end gap-x-1 text-sm text-fg-muted">
+                {/* Shown on a phone too: the freshness is the page's one trust cue (B-022). */}
+                <span className="whitespace-nowrap">
                   Updated {formatRelative(freshness.updatedAt, freshness.now)}
                 </span>
                 <Button

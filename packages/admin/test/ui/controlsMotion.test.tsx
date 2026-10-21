@@ -67,12 +67,12 @@ describe("Button: press, and a hover that never snaps", () => {
       }
     });
 
-  it("the filled variants lighten their token colour instead of using a filter", () => {
+  it("the filled variants mix their token colour on hover instead of using a filter (B-017: toward the inverted label colour, see buttonHoverContrast)", () => {
     expect(buttonVariants({ variant: "primary" })).toContain(
-      "var(--pk-accent),white_10%",
+      "color-mix(in_oklab,var(--pk-accent),oklch(from_var(--pk-accent-on)",
     );
     expect(buttonVariants({ variant: "danger" })).toContain(
-      "var(--pk-danger),white_10%",
+      "color-mix(in_oklab,var(--pk-danger),oklch(from_var(--pk-danger-on)",
     );
   });
 

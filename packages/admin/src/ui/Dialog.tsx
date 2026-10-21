@@ -461,6 +461,10 @@ export function Dialog({
             "pk-sheet inset-x-0 bottom-0 max-h-[92dvh] w-full rounded-t-xl pb-[env(safe-area-inset-bottom)]",
             // ≥ 640 px: a centred dialog.
             "sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-[calc(100dvh-2rem)] sm:w-[calc(100vw-2rem)] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-lg sm:pb-0",
+            // A `<form>` wrapping the body and footer is a direct child: make it the flex column
+            // the body scrolls in, so the footer is never pushed out of a short viewport (B-018).
+            // `contents` forms already pass their children through.
+            "[&>form:not(.contents)]:flex [&>form:not(.contents)]:min-h-0 [&>form:not(.contents)]:flex-1 [&>form:not(.contents)]:flex-col",
             SIZE[size],
             className,
           )}
@@ -471,7 +475,7 @@ export function Dialog({
           />
           <div
             data-pk-overlay-header=""
-            className="flex shrink-0 items-start gap-4 px-6 pb-2 pt-4 sm:pt-6 console:border-b console:border-border console:bg-(--pk-admin-band-overlay) console:pb-4 console:sm:pt-5"
+            className="relative flex shrink-0 items-start gap-4 px-6 pb-2 pt-4 sm:pt-6 console:border-b console:border-border console:bg-(--pk-admin-band-overlay) console:pb-4 console:sm:pt-5"
           >
             {glyph ? (
               <span aria-hidden data-overlay-glyph="" className="mt-0.5 flex">
@@ -482,7 +486,7 @@ export function Dialog({
               <DialogPrimitive.Title
                 ref={setTitle}
                 tabIndex={-1}
-                className="text-lg font-semibold leading-tight text-fg-strong outline-hidden console:text-xl console:leading-7"
+                className="text-lg font-semibold leading-tight text-fg-strong outline-hidden max-sm:pr-10 console:text-xl console:leading-7"
               >
                 {title}
               </DialogPrimitive.Title>
@@ -499,7 +503,7 @@ export function Dialog({
             {dismissible ? (
               <DialogPrimitive.Close
                 aria-label="Close"
-                className="-mr-2 -mt-1 inline-flex size-8 shrink-0 max-sm:size-11 items-center justify-center rounded-md text-fg-muted hover:bg-hover hover:text-fg-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+                className="-mr-2 -mt-1 inline-flex size-8 shrink-0 max-sm:absolute max-sm:right-1 max-sm:top-0 max-sm:m-0 max-sm:size-11 items-center justify-center rounded-md text-fg-muted hover:bg-hover hover:text-fg-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
               >
                 <X aria-hidden className="size-4" />
               </DialogPrimitive.Close>

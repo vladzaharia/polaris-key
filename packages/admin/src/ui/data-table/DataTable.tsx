@@ -1213,6 +1213,17 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     Object.entries(view.filters).some(
       ([k, v]) => v.length > 0 && !(unloaded?.serverFacets ?? []).includes(k),
     );
+  // What the operator did to the loaded rows, for the banner's wording (B-024): a search
+  // searches, a facet filters, a sort only reorders.
+  const narrowedVerb =
+    view.q.trim() !== ""
+      ? "Searched"
+      : Object.entries(view.filters).some(
+            ([k, v]) =>
+              v.length > 0 && !(unloaded?.serverFacets ?? []).includes(k),
+          )
+        ? "Filtered"
+        : "Sorted";
   // A search or a facet the Worker did not apply: the rows shown are a subset of the loaded ones.
   const filteredLoaded =
     pagination.mode === "cursor" &&
@@ -1420,7 +1431,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
                     type="button"
                     onClick={(e) => onSort(col.id, e.shiftKey)}
                     className={cn(
-                      "inline-flex items-center gap-1 rounded-sm align-middle leading-4 hover:text-fg-strong",
+                      "inline-flex min-h-6 items-center gap-1 rounded-sm align-middle leading-4 hover:text-fg-strong",
                       meta?.numeric && "flex-row-reverse",
                     )}
                   >
@@ -1687,7 +1698,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
                       ? ` of ${formatCount(unloaded.total)}`
                       : ""
                   }`
-                : `Searched the ${formatCount(data.length)} newest${
+                : `${narrowedVerb} the ${formatCount(data.length)} newest${
                     unloaded.total !== undefined
                       ? ` of ${formatCount(unloaded.total)}`
                       : ""

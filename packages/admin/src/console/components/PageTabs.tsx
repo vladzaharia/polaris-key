@@ -183,6 +183,7 @@ export function PageTabs({
         aria-label={label}
         ref={strip.ref as React.RefObject<HTMLElement>}
         onScroll={strip.onScroll}
+        data-strip-overflow={strip.edges ? "" : undefined}
         className={stripClass(strip.edges)}
       >
         <ul className="flex gap-3 sm:gap-6">
@@ -238,6 +239,7 @@ export function PageTabs({
       aria-label={label}
       ref={strip.ref as React.RefObject<HTMLDivElement>}
       onScroll={strip.onScroll}
+      data-strip-overflow={strip.edges ? "" : undefined}
       className={cn(stripClass(strip.edges), "flex gap-3 sm:gap-6")}
     >
       {items.map((t, i) => {

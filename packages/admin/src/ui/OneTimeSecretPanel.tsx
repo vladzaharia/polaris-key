@@ -201,6 +201,7 @@ export function OneTimeSecretPanel({
             <Button
               variant="outline"
               size="sm"
+              className="max-sm:min-h-11"
               iconStart={<Download />}
               onClick={() => {
                 const saved = saveAsFile(
@@ -235,12 +236,18 @@ export function OneTimeSecretPanel({
               <Button
                 size="sm"
                 variant="outline"
+                className="max-sm:min-h-11"
                 autoFocus
                 onClick={onCancelClose}
               >
                 Keep it open
               </Button>
-              <Button size="sm" variant="danger" onClick={onConfirmClose}>
+              <Button
+                size="sm"
+                variant="danger"
+                className="max-sm:min-h-11"
+                onClick={onConfirmClose}
+              >
                 Close without copying
               </Button>
             </div>
