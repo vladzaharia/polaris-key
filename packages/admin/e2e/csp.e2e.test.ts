@@ -700,8 +700,8 @@ describe("overlays under the Worker's CSP", () => {
     await violations(page);
     for (const [hash, title] of [
       ["#/", "Home"],
-      // ST-44: the Products page retired into Home; its address lands there.
-      ["#/products", "Home"],
+      // ST-44 retired the Products page into Home; ST-49 made its old address a "Page moved" page.
+      ["#/products", "Page moved"],
       ["#/products/new?via=manual&step=basics", "New product"],
       ["#/platform", "Settings"],
       ["#/platform/operations", "Operations"],
