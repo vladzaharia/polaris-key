@@ -63,13 +63,17 @@ function getItView(
   // The phone's lead already offers its own stores: "Also yours on" never repeats them.
   const leadIds = new Set(model.here?.stores.map((s) => s.id));
   const stores = model.stores.filter((s) => !leadIds.has(s.id));
+  // A phone hands off to a computer only when a computer could download something.
+  const filesElsewhere = model.groups.some((g) =>
+    g.rows.some((r) => !r.inactive),
+  );
   const render =
     rows.length > 0 ||
     withSources.length > 0 ||
     stores.length > 0 ||
     model.here !== null ||
-    device.phone;
-  return { model, mine, rows, withSources, stores, render };
+    (device.phone && filesElsewhere);
+  return { model, mine, rows, withSources, stores, render, filesElsewhere };
 }
 
 /** Whether the Get it card will be drawn: true while the downloads are still loading. */
@@ -117,11 +121,13 @@ export function GetItPanel({
     );
   const view = getItView(product, device, downloads.data);
   if (!view?.render) return null;
-  const { model, mine, rows, withSources, stores } = view;
+  const { model, mine, rows, withSources, stores, filesElsewhere } = view;
   const { latest, here } = model;
   // The accessible name says which file: its build and its file name.
   const describe = (r: FileRowModel) =>
-    `${r.platform ? `${platformInSentence(r.platform)} ${r.title}` : r.title}, ${r.artifact.name}`;
+    r.platform
+      ? `${platformInSentence(r.platform)} ${r.title}, ${r.artifact.name}`
+      : r.title;
   const desktopFiles = model.groups.some(
     (g) =>
       g.rows.length > 0 &&
@@ -206,7 +212,7 @@ export function GetItPanel({
             <p className="text-sm text-fg-muted">{C["getIt.otherFiles"]}</p>
           ) : null}
         </div>
-      ) : device.phone ? (
+      ) : device.phone && filesElsewhere ? (
         <p className="mb-4 rounded-lg border border-border bg-surface-sunken p-4 text-sm text-fg">
           {openOnComputer(product.name)}
         </p>

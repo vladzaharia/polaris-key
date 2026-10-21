@@ -279,15 +279,10 @@ function LicenseFacts({
           <Fact term={t("license.fact.included")} wide>
             <ul
               aria-label={t("license.fact.included")}
-              className="flex flex-wrap gap-x-2"
+              className="flex flex-wrap gap-x-4 gap-y-0.5"
             >
               {includes.map((e) => (
-                <li
-                  key={e.key}
-                  className="after:ml-2 after:text-fg-muted after:content-['·'] last:after:content-none"
-                >
-                  {e.label}
-                </li>
+                <li key={e.key}>{e.label}</li>
               ))}
             </ul>
           </Fact>

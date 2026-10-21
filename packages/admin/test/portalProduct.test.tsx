@@ -1819,6 +1819,49 @@ describe("the section nav follows the page as it scrolls (owner polish 2026-10-0
     }
   });
 
+  it("an ended license on an iPhone has no Get it either: no hand-off to a computer with nothing on it, and no nav entry", async () => {
+    vi.spyOn(navigator, "userAgent", "get").mockReturnValue(
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15",
+    );
+    const lapsed = license({
+      product: "nightfall",
+      tier: "deluxe",
+      expiresAt: NOW_S - 3 * DAY,
+    });
+    mockFetch(
+      signedIn([lapsed], {
+        "/api/releases": { releases },
+        "/api/products/nightfall/downloads": downloadsView("nightfall", [
+          dlFile({
+            artifactId: "m",
+            platform: "macos",
+            canDownload: false,
+            reason: "license_inactive",
+          }),
+        ]),
+        "/api/licenses/nightfall/lic_nightfall": detail(lapsed, {
+          devices: [],
+        }),
+      }),
+    );
+    renderPortal();
+    const card = await screen.findByRole("region", { name: "License" });
+    await within(card).findByText(/^Ended /);
+    expect(screen.queryByText(/Open this page on your computer/)).toBeNull();
+    expect(screen.queryByRole("region", { name: "Get it" })).toBeNull();
+    for (const nav of ["On this page", "Sections"])
+      expect(
+        within(screen.getByRole("navigation", { name: nav }))
+          .getAllByRole("link")
+          .map((l) => l.textContent),
+      ).not.toContain("Get it");
+    // The License card leads the main column, with What's new, not the rail.
+    const news = screen.getByRole("region", { name: "What's new in 1.4.2" });
+    expect(card.parentElement!.parentElement).toBe(
+      news.parentElement!.parentElement,
+    );
+  });
+
   it("Help closes the main column, so the nav ends with it and Your data on every width", async () => {
     mockFetch(
       routes({

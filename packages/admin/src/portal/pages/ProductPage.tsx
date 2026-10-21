@@ -301,6 +301,22 @@ function ProductBody({
     hrefFor: (s: ProductSection) => href.product(product.slug, s),
   };
   const retry = () => void detail.refetch();
+  // With Get it gone (an ended license, nothing to download) the License card leads the main
+  // column, so Renew is not left in the rail.
+  const licenseCard = (
+    <LicenseCard
+      product={product}
+      detail={devicesDetail}
+      loading={detail.isPending}
+      error={detail.error}
+      onRetry={retry}
+      selectedId={selected.id}
+      onSelect={(id) =>
+        setParams({ license: id === product.best.id ? null : id })
+      }
+      storeOf={storeOf}
+    />
+  );
 
   return (
     // data-first-section: a link to the first section keeps the page at its top, as the deep
@@ -346,6 +362,7 @@ function ProductBody({
           }
         >
           <div className={column}>
+            {!has("get") ? <div className="order-1">{licenseCard}</div> : null}
             {has("get") ? (
               <div className="order-1">
                 <GetItPanel product={product} device={here} />
@@ -383,20 +400,7 @@ function ProductBody({
             </div>
           </div>
           <div className={column}>
-            <div className="order-2">
-              <LicenseCard
-                product={product}
-                detail={devicesDetail}
-                loading={detail.isPending}
-                error={detail.error}
-                onRetry={retry}
-                selectedId={selected.id}
-                onSelect={(id) =>
-                  setParams({ license: id === product.best.id ? null : id })
-                }
-                storeOf={storeOf}
-              />
-            </div>
+            {has("get") ? <div className="order-2">{licenseCard}</div> : null}
             {has("devices") ? (
               <div className="order-3">
                 <DevicesCard
