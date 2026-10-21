@@ -43,7 +43,7 @@ export function LibraryList({
 }): React.ReactElement {
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-surface-raised shadow-elevation-1">
-      <table className="w-full border-collapse text-left">
+      <table className="w-full border-collapse text-left bigtext:max-desk:block">
         <caption className="sr-only">
           {t("locker.library.table.caption")}
         </caption>
@@ -78,7 +78,10 @@ export function LibraryList({
             </th>
           </tr>
         </thead>
-        <tbody ref={bodyRef} className={bodyClassName}>
+        <tbody
+          ref={bodyRef}
+          className={cn(bodyClassName, "bigtext:max-desk:block")}
+        >
           {products.map((p) => (
             <LibraryRow key={p.slug} product={p} action={actionFor(p)} />
           ))}
@@ -100,9 +103,9 @@ function LibraryRow({
   return (
     <tr
       ref={cue.ref}
-      className="relative border-b border-border last:border-0 hover:bg-hover"
+      className="relative border-b border-border last:border-0 hover:bg-hover bigtext:max-desk:block bigtext:max-desk:px-3 bigtext:max-desk:py-3"
     >
-      <td className="w-0 py-3 pl-4 pr-2 desk:pl-5">
+      <td className="w-0 py-3 pl-4 pr-2 desk:pl-5 bigtext:max-desk:block bigtext:max-desk:w-auto bigtext:max-desk:p-0">
         <ProductIcon
           slug={p.slug}
           name={p.name}
@@ -123,7 +126,7 @@ function LibraryRow({
           />
         ) : null}
       </td>
-      <td className="px-2 py-3">
+      <td className="px-2 py-3 bigtext:max-desk:mt-2 bigtext:max-desk:block bigtext:max-desk:p-0">
         <a
           href={href.product(p.slug)}
           dir="auto"
@@ -193,7 +196,7 @@ function LibraryRow({
           className="h-10"
         />
       </td>
-      <td className="w-0 py-3 pr-4 desk:pr-5">
+      <td className="w-0 py-3 pr-4 desk:pr-5 bigtext:max-desk:hidden">
         <ChevronRight aria-hidden className="size-5 text-fg-muted" />
       </td>
     </tr>

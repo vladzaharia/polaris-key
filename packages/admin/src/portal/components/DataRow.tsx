@@ -26,7 +26,7 @@ export function DataRow({
   return (
     <div className="space-y-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-        <div className="flex min-w-0 flex-1 items-start gap-3">
+        <div className="flex min-w-0 flex-1 items-start gap-3 bigtext:max-sm:flex-col">
           <span
             aria-hidden
             className={cn(
@@ -42,7 +42,12 @@ export function DataRow({
           </div>
         </div>
         {children ? (
-          <div className={cn(flush ? "" : "ml-13", "sm:ml-0 sm:shrink-0")}>
+          <div
+            className={cn(
+              flush ? "" : "ml-13",
+              "bigtext:max-sm:ml-0 sm:ml-0 sm:shrink-0",
+            )}
+          >
             {children}
           </div>
         ) : null}

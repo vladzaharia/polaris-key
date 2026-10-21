@@ -112,7 +112,7 @@ export function DownloadData({
       <Button
         ref={button}
         variant="outline"
-        className="w-full max-sm:min-h-11 sm:w-auto"
+        className="h-auto min-h-9 w-full whitespace-normal py-1.5 max-sm:min-h-11 sm:w-auto"
         iconStart={<Download aria-hidden />}
         loading={download.isPending}
         aria-label={label}

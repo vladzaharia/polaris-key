@@ -697,7 +697,10 @@ function Setup({
               typeof part === "string" ? (
                 part
               ) : (
-                <code key={i} className="font-mono text-fg">
+                <code
+                  key={i}
+                  className="font-mono text-fg [overflow-wrap:anywhere]"
+                >
                   {TOKEN_ENV}
                 </code>
               ),
