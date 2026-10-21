@@ -1103,6 +1103,8 @@
     <string name="signin_expired_title">このコードまたはリンクの有効期限が切れています</string>
     <!-- Expired code or link page (SIGN-IN.md §4.12). -->
     <string name="signin_expired_body">コードとリンクは1回限り、10分間有効です。</string>
+    <!-- Expired code or link page (SIGN-IN.md §4.12). Arguments: {email} = an email address, masked by the Worker. The button is signin.code.resend; the way back is signin.code.differentEmail. Arguments: 1=email. -->
+    <string name="signin_expired_sendTo">新しいコードを%1$sに送信します。</string>
     <!-- Expired code or link page (SIGN-IN.md §4.12). -->
     <string name="signin_again">もう一度サインイン</string>
     <string name="signin_again__macos">もう一度サインイン</string>

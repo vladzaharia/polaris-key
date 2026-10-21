@@ -1103,6 +1103,8 @@
     <string name="signin_expired_title">该验证码或链接已过期</string>
     <!-- Expired code or link page (SIGN-IN.md §4.12). -->
     <string name="signin_expired_body">验证码和链接仅可使用一次，10分钟内有效。</string>
+    <!-- Expired code or link page (SIGN-IN.md §4.12). Arguments: {email} = an email address, masked by the Worker. The button is signin.code.resend; the way back is signin.code.differentEmail. Arguments: 1=email. -->
+    <string name="signin_expired_sendTo">新验证码将发送到 %1$s。</string>
     <!-- Expired code or link page (SIGN-IN.md §4.12). -->
     <string name="signin_again">重新登录</string>
     <string name="signin_again__macos">重新登录</string>

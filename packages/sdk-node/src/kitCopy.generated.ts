@@ -581,6 +581,7 @@ export const KIT_COPY: Readonly<
     "signin.console.notConfigured": "Admin sign-in isn't set up",
     "signin.expired.title": "That code or link has expired",
     "signin.expired.body": "Codes and links work once, for 10 minutes.",
+    "signin.expired.sendTo": "A new code goes to {email}.",
     "signin.again": "Sign in again",
     "signin.identityOff.notice":
       "{product} doesn't use Polaris Locker sign-in. Open {product} and enter your license key there.",
@@ -2293,6 +2294,7 @@ export const KIT_COPY: Readonly<
     "signin.expired.title": "Dieser Code oder Link ist abgelaufen",
     "signin.expired.body":
       "Codes und Links sind einmal und 10 Minuten lang gültig.",
+    "signin.expired.sendTo": "Ein neuer Code geht an {email}.",
     "signin.again": "Erneut anmelden",
     "signin.identityOff.notice":
       "{product} verwendet keine Anmeldung über Polaris Locker. Öffnen Sie {product} und geben Sie dort Ihren Lizenzschlüssel ein.",
@@ -4064,6 +4066,7 @@ export const KIT_COPY: Readonly<
     "signin.expired.title": "Ce code ou ce lien a expiré",
     "signin.expired.body":
       "Les codes et les liens ne fonctionnent qu’une fois, pendant 10 minutes.",
+    "signin.expired.sendTo": "Un nouveau code est envoyé à {email}.",
     "signin.again": "Se reconnecter",
     "signin.identityOff.notice":
       "{product} n’utilise pas la connexion Polaris Locker. Ouvrez {product} et saisissez-y votre clé de licence.",
@@ -5789,6 +5792,7 @@ export const KIT_COPY: Readonly<
     "signin.expired.title": "Ese código o enlace venció",
     "signin.expired.body":
       "Los códigos y enlaces funcionan una sola vez, durante 10 minutos.",
+    "signin.expired.sendTo": "Enviaremos un código nuevo a {email}.",
     "signin.again": "Vuelve a iniciar sesión",
     "signin.identityOff.notice":
       "{product} no usa el inicio de sesión de Polaris Locker. Abre {product} y escribe allí tu clave de licencia.",
@@ -7534,6 +7538,7 @@ export const KIT_COPY: Readonly<
       "O acesso de administrador não está configurado",
     "signin.expired.title": "Esse código ou link expirou",
     "signin.expired.body": "Códigos e links funcionam uma vez, por 10 minutos.",
+    "signin.expired.sendTo": "Um novo código será enviado para {email}.",
     "signin.again": "Entre novamente",
     "signin.identityOff.notice":
       "{product} não usa o acesso do Polaris Locker. Abra {product} e digite sua chave de licença nele.",
@@ -9255,6 +9260,7 @@ export const KIT_COPY: Readonly<
     "signin.expired.title": "Il codice o il link è scaduto",
     "signin.expired.body":
       "Codici e link funzionano una sola volta, per 10 minuti.",
+    "signin.expired.sendTo": "Un nuovo codice viene inviato a {email}.",
     "signin.again": "Accedi di nuovo",
     "signin.identityOff.notice":
       "{product} non usa l'accesso Polaris Locker. Apri {product} e inserisci lì la tua chiave di licenza.",
@@ -10990,6 +10996,7 @@ export const KIT_COPY: Readonly<
     "signin.console.notConfigured": "管理者サインインが設定されていません",
     "signin.expired.title": "このコードまたはリンクの有効期限が切れています",
     "signin.expired.body": "コードとリンクは1回限り、10分間有効です。",
+    "signin.expired.sendTo": "新しいコードを{email}に送信します。",
     "signin.again": "もう一度サインイン",
     "signin.identityOff.notice":
       "{product}はPolaris Lockerのサインインを使用しません。{product}を開いて、そこでライセンスキーを入力してください。",
@@ -12720,6 +12727,7 @@ export const KIT_COPY: Readonly<
     "signin.console.notConfigured": "관리자 로그인이 설정되지 않았어요",
     "signin.expired.title": "코드 또는 링크가 만료됐어요",
     "signin.expired.body": "코드와 링크는 10분 동안 한 번만 사용할 수 있어요.",
+    "signin.expired.sendTo": "새 코드를 {email}(으)로 보냅니다.",
     "signin.again": "다시 로그인",
     "signin.identityOff.notice":
       "{product}에서는 Polaris Locker 로그인을 사용하지 않아요. {product}을(를) 열어 라이선스 키를 입력하세요.",
@@ -14354,6 +14362,7 @@ export const KIT_COPY: Readonly<
     "signin.console.notConfigured": "管理员登录尚未设置",
     "signin.expired.title": "该验证码或链接已过期",
     "signin.expired.body": "验证码和链接仅可使用一次，10分钟内有效。",
+    "signin.expired.sendTo": "新验证码将发送到 {email}。",
     "signin.again": "重新登录",
     "signin.identityOff.notice":
       "{product}不使用Polaris Locker登录。请打开{product}并在其中输入你的许可证密钥。",

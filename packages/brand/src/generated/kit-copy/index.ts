@@ -494,6 +494,7 @@ export type KitCopyKey =
   | "signin.console.notConfigured"
   | "signin.expired.title"
   | "signin.expired.body"
+  | "signin.expired.sendTo"
   | "signin.again"
   | "signin.identityOff.notice"
   | "signin.identityOff.lede"

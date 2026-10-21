@@ -6278,6 +6278,17 @@ The login card is the one place a Polaris Key account's credentials are entered
   requested at <time> from <place>" and confirming only lets the asking browser finish: a link
   phished out of a victim signs in the attacker's own flow at most, never the device that opened
   it. A code and the link complete one flow once (atomic consume).
+- **The flow outlives its code (PX-12).** The expired-link page offers **Send a new code** to the
+  masked address, so the flow record and its `__Host-pkey_signin` cookie live one hour (the
+  per-recipient send window) while the code and link keep their ten minutes. Nothing a ten-minute
+  flow refused is allowed now: verify, the poll and the link's confirm check the code's age first
+  (a stale code is `signin_expired`, no attempt counted), and the link record and the code still
+  expire at ten minutes. What lives longer is the sealed address in the flow record and the right
+  to ask this browser's own flow for a new code, under the resend's wait, the per-flow cap of 5 and
+  I-02's limits. `GET /api/signin/flow` and the expired page show the address masked
+  (`a•••@example.com`) and only to the browser holding the cookie; a link opened anywhere else, or
+  one already used (its flow is gone), names no address. The page's form is a `POST` of the resend
+  route; the `Lax` cookie keeps a cross-site form from carrying the flow.
 - **The email gate and the join offer (owner decisions, 2026-10-04).** No account row and no
   session exist until the gate passes; its record is server-held and named by a host-only
   `__Host-pkey_gate` cookie, so another browser cannot drive it. A provider-asserted verified

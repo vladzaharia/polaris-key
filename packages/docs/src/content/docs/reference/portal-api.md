@@ -40,7 +40,7 @@ The session cookie is `__Host-pkey_portal`: `Path=/`, `HttpOnly`, `Secure`, `Sam
 | `POST` `/api/signin/email/start` | Emails a 6-digit code and a magic link, or routes the address to its connection |
 | `POST` `/api/signin/email/verify` | Redeems the code in the browser that asked |
 | `POST` `/api/signin/email/resend` | Sends a new code and link for this browser's flow |
-| `POST` `/api/signin/flow` | The asking browser's poll after the link was confirmed elsewhere |
+| `GET` `POST` `/api/signin/flow` | `POST`: the asking browser's poll after the link was confirmed elsewhere. `GET`: this browser's flow (masked address, `resendIn`), read by the code step the expired-link page's form lands on |
 | `GET` `POST` `/api/signin/confirm-email` | The email gate: confirm an address, profile and terms of a new account |
 | `POST` `/api/signin/confirm-email/verify` | The gate's code, for a typed or unverified address |
 | `POST` `/api/signin/confirm-email/join` | Takes the join offer once both identities are proven |
@@ -53,6 +53,8 @@ The session cookie is `__Host-pkey_portal`: `Path=/`, `HttpOnly`, `Secure`, `Sam
 Email start returns `{ "ok": true, "expiresIn": 600, "codeLength": 6, "resendIn": 60 }`. The answer is the same for a known, unknown, locked-out or suppressed address; only a deploy that can't send mail answers `503 email_unavailable`. A code lives 10 minutes and dies after 5 wrong attempts. Limits per start: 8 a minute and 10 sends an hour per client address, 30 an hour per network, and 5 an hour and 20 a day per recipient.
 
 Resend waits 60 seconds after the last code (`429 rate_limited` with `retryAfter`), and one flow sends at most 5 emails. A browser without a live flow gets `400 signin_expired`.
+
+A flow lives an hour; its code and link live 10 minutes. The Worker's expired-link page uses the difference: its **Send a new code** is a plain form `POST` of the resend route, answered with a `303` to the sign-in page with `signin=code`, which reads `GET /api/signin/flow` and lands on the code step with `returnTo` and the request handle intact. A browser without the flow cookie gets **Sign in again**.
 
 An address whose domain a DNS-verified, active platform connection covers gets `next: { kind: "sso", connection, enforced }` and no email, unless `enforced` is false and the caller asks for `"method": "code"`. An enforced domain refuses codes with `403 auth_method_disabled`.
 

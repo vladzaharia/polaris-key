@@ -487,6 +487,7 @@
     "signin.console.notConfigured": "La connexion administrateur n’est pas configurée",
     "signin.expired.title": "Ce code ou ce lien a expiré",
     "signin.expired.body": "Les codes et les liens ne fonctionnent qu’une fois, pendant 10 minutes.",
+    "signin.expired.sendTo": "Un nouveau code est envoyé à {email}.",
     "signin.again": "Se reconnecter",
     "signin.identityOff.notice": "{product} n’utilise pas la connexion Polaris Locker. Ouvrez {product} et saisissez-y votre clé de licence.",
     "signin.identityOff.lede": "Connectez-vous ici pour voir {product} dans votre bibliothèque.",

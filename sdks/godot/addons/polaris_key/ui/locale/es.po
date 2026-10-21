@@ -3013,6 +3013,11 @@ msgstr "Ese código o enlace venció"
 msgid "signin.expired.body"
 msgstr "Los códigos y enlaces funcionan una sola vez, durante 10 minutos."
 
+#. A new code goes to {email}.
+#. Expired code or link page (SIGN-IN.md §4.12). Arguments: {email} = an email address, masked by the Worker. The button is signin.code.resend; the way back is signin.code.differentEmail.
+msgid "signin.expired.sendTo"
+msgstr "Enviaremos un código nuevo a {email}."
+
 #. Sign in again
 #. Expired code or link page (SIGN-IN.md §4.12).
 msgid "signin.again"

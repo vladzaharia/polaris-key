@@ -129,7 +129,8 @@ const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/api/signin/email/verify", ["post"]],
     // PX-W4: the code step's "Send a new code".
     ["/api/signin/email/resend", ["post"]],
-    ["/api/signin/flow", ["post"]],
+    // PX-12: GET reads the flow (the code step after the expired page's form POST).
+    ["/api/signin/flow", ["get", "post"]],
     ["/api/signin/confirm-email", ["get", "post"]],
     ["/api/signin/confirm-email/verify", ["post"]],
     ["/api/signin/confirm-email/join", ["post"]],
