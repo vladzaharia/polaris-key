@@ -231,7 +231,7 @@ def test_argparse_aliases_still_run() -> None:
 # ── S2–S5: the gate's states ─────────────────────────────────────────────────────────────────
 
 
-def test_a_gate_that_cannot_decide_says_so_and_keeps_the_product() -> None:
+def test_a_gate_that_cannot_decide_says_so_with_a_cross_and_no_fix() -> None:
     class Broken:
         product = "tidewater"
 
@@ -241,7 +241,9 @@ def test_a_gate_that_cannot_decide_says_so_and_keeps_the_product() -> None:
     err = io.StringIO()
     assert gate.run_gate(Broken(), command="export", prog="tidewater", stderr=err, env={"TERM": "xterm"}) == 4
     text = plain(err.getvalue())
-    assert "Couldn't check your license" in text and "Signed out" not in text and "tidewater status" in text
+    # A failed check has no fix row (the cross itself is pinned by the gate rows and the scene): it is not a refusal the person can resolve (DL6).
+    assert "Couldn't check your license" in text and "Signed out" not in text
+    assert "tidewater status" not in text and "tidewater activate" not in text
 
 
 def test_the_inline_flow_says_why_and_esc_draws_the_refusal() -> None:

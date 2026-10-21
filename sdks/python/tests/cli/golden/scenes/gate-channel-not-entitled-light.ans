@@ -1,0 +1,81 @@
+── truecolor · 80 ──
+[33m▲[0m  [1mChannel not included[0m
+[2m│[0m  ]8;;https://polaris.locker/activate?product=tidewater\[4mpolaris.locker/activate?product=tidewater[0m]8;;\
+[2m│[0m
+[2m└[0m  [1mtidewater status[0m   Show your license, devices and offline time
+── ansi16 · 80 ──
+[33m▲[0m  [1mChannel not included[0m
+[2m│[0m  ]8;;https://polaris.locker/activate?product=tidewater\[4mpolaris.locker/activate?product=tidewater[0m]8;;\
+[2m│[0m
+[2m└[0m  [1mtidewater status[0m   Show your license, devices and offline time
+── no-color · 80 ──
+▲  [1mChannel not included[0m
+│  polaris.locker/activate?product=tidewater
+│
+└  [1mtidewater status[0m   Show your license, devices and offline time
+── ascii · 80 ──
+[33m![0m  [1mChannel not included[0m
+[2m|[0m  ]8;;https://polaris.locker/activate?product=tidewater\[4mpolaris.locker/activate?product=tidewater[0m]8;;\
+[2m|[0m
+[2m`[0m  [1mtidewater status[0m   Show your license, devices and offline time
+── truecolor · 60 ──
+[33m▲[0m  [1mChannel not included[0m
+[2m│[0m  ]8;;https://polaris.locker/activate?product=tidewater\[4mpolaris.locker/activate?product=tidewater[0m]8;;\
+[2m│[0m
+[2m│[0m  [1mtidewater status[0m
+[2m└[0m    Show your license, devices and offline time
+── ansi16 · 60 ──
+[33m▲[0m  [1mChannel not included[0m
+[2m│[0m  ]8;;https://polaris.locker/activate?product=tidewater\[4mpolaris.locker/activate?product=tidewater[0m]8;;\
+[2m│[0m
+[2m│[0m  [1mtidewater status[0m
+[2m└[0m    Show your license, devices and offline time
+── no-color · 60 ──
+▲  [1mChannel not included[0m
+│  polaris.locker/activate?product=tidewater
+│
+│  [1mtidewater status[0m
+└    Show your license, devices and offline time
+── ascii · 60 ──
+[33m![0m  [1mChannel not included[0m
+[2m|[0m  ]8;;https://polaris.locker/activate?product=tidewater\[4mpolaris.locker/activate?product=tidewater[0m]8;;\
+[2m|[0m
+[2m|[0m  [1mtidewater status[0m
+[2m`[0m    Show your license, devices and offline time
+── pipe · 80 ──
+Channel not included
+polaris.locker/activate?product=tidewater
+
+tidewater status   Show your license, devices and offline time
+── truecolor · 40 ──
+[33m▲[0m  [1mChannel not included[0m
+[2m│[0m  ]8;;https://polaris.locker/activate?product=tidewater\[4mpolaris.locker/activate[0m]8;;\
+[2m│[0m  ]8;;https://polaris.locker/activate?product=tidewater\[4m?product=tidewater[0m]8;;\
+[2m│[0m
+[2m│[0m  [1mtidewater status[0m
+[2m│[0m    Show your license, devices and
+[2m└[0m    offline time
+── no-color · 40 ──
+▲  [1mChannel not included[0m
+│  polaris.locker/activate
+│  ?product=tidewater
+│
+│  [1mtidewater status[0m
+│    Show your license, devices and
+└    offline time
+── truecolor · 32 ──
+[33m▲[0m  [1mChannel not included[0m
+[2m│[0m  ]8;;https://polaris.locker/activate?product=tidewater\[4mpolaris.locker/activate[0m]8;;\
+[2m│[0m  ]8;;https://polaris.locker/activate?product=tidewater\[4m?product=tidewater[0m]8;;\
+[2m│[0m
+[2m│[0m  [1mtidewater status[0m
+[2m│[0m    Show your license, devices
+[2m└[0m    and offline time
+── no-color · 32 ──
+▲  [1mChannel not included[0m
+│  polaris.locker/activate
+│  ?product=tidewater
+│
+│  [1mtidewater status[0m
+│    Show your license, devices
+└    and offline time

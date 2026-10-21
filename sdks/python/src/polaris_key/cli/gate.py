@@ -22,6 +22,7 @@ from dataclasses import dataclass
 from typing import IO, Any, Callable, Dict, List, Optional, Sequence, Tuple, TypeVar
 
 from ..ui.terminal.exit import EXIT
+from ..ui.terminal.screens import portal_url
 
 __all__ = ["require_license", "require_entitlement", "run_gate", "bind_gate", "GateTarget"]
 
@@ -68,29 +69,44 @@ def bind_gate(target: GateTarget) -> None:
     _latest = target
 
 
-def _refusal(status: str, usable: bool, mounted: Optional[Sequence[str]]) -> Tuple[str, str, str, List[str]]:
-    """``(error, title_key, message_key, fix verbs)`` for a status the command cannot run on."""
+#: Every status the gate decides on; anything else is a check that failed (fail closed).
+_DECIDED = USABLE + INLINE_FLOW + ("version-too-old", "version-too-new", "channel-not-entitled")
+
+
+class Refusal:
+    """What a status the command cannot run on says (the ``gate`` rows of the ``cli`` family):
+    the error, the title's catalog key (its ``{command}`` filled in by the caller), the link that
+    leads the fix rows (``portal``, or ``contact`` where the kit knows no page) and the fix verbs."""
+
+    def __init__(self, error: str, title_key: str, link: Optional[str], fixes: List[str]) -> None:
+        self.error = error
+        self.title_key = title_key
+        self.link = link
+        self.fixes = fixes
+
+
+def _refusal(status: str, usable: bool, mounted: Optional[Sequence[str]], has_page: bool = True) -> Refusal:
+    """The refusal for a status the command cannot run on: the title alone, because the rows that
+    fix it follow. Not-entitled, channel and version-too-new lead with the product page (nothing a
+    command does fixes them); a refusal whose fix verbs the mount does not offer is led by it too,
+    so it never has zero rows."""
     not_entitled = usable or status == "channel-not-entitled"
-    if status == "error":
-        # The check itself failed: say so, never "signed out".
-        return "license_required", "core.codes.sync-failed.title", "core.codes.sync-failed.message", [v for v in ["status"] if mounted is None or v in mounted]
     if usable:
-        title, message = "core.codes.not_entitled.title", "core.codes.not_entitled.message"
+        title = "cli.gate.notIncluded"
+    elif status == "needs-activation":
+        title = "cli.gate.needs"
     else:
-        state = status if status in _KNOWN else "revoked"
-        title, message = f"core.gate.{state}.title", f"core.gate.{state}.message"
-    if not_entitled:
+        title = f"core.gate.{status}.title"
+    if not_entitled or status == "version-too-new":
         verbs = ["status"]
-    elif status.startswith("version-"):
+    elif status == "version-too-old":
         verbs = ["update apply"]
     else:
         verbs = ["activate", "login"]
-    return (
-        "not_entitled" if not_entitled else "license_required",
-        title,
-        message,
-        [v for v in verbs if mounted is None or v in mounted],
-    )
+    fixes = [v for v in verbs if mounted is None or v in mounted]
+    leads = not_entitled or status == "version-too-new"
+    link = ("portal" if has_page else "contact") if leads or not fixes else None
+    return Refusal("not_entitled" if not_entitled else "license_required", title, link, fixes)
 
 
 def _run_gate(
@@ -139,6 +155,8 @@ def _run_gate(
 
     def check() -> Tuple[str, bool, bool]:
         status = str(client.status().status)
+        if status not in _DECIDED:
+            raise ValueError("unknown status " + status)
         usable = status in USABLE
         entitled = entitlement is None or bool(client.license.is_entitled(entitlement))
         return status, usable, entitled
@@ -170,11 +188,24 @@ def _run_gate(
         else:
             status, usable, entitled = check()
             if usable and entitled:
+                # The command's own output follows the flow's closing row: keep air between them.
+                _air(at)
                 return None
         t = make(command)
-    out = refusal_outcome(t, command, status, usable, mounted)
+    out = refusal_outcome(t, command, status, usable, mounted, portal_url(client))
     t.finish(out)
     return flow_exit if flow_exit is not None else EXIT.license_required
+
+
+def _air(t: Any) -> None:
+    """A blank line after a flow's closing row, so the host command's output does not butt against
+    the ``└`` (the Node kit's gate leaves one)."""
+    try:
+        if not t.env.json and t.kit.decor:
+            t.device.out.write("\n")
+            t.device.out.flush()
+    except Exception:
+        pass
 
 
 #: How long a license check runs before the gate says it is checking.
@@ -287,25 +318,51 @@ def _run_refusal(
         if stderr is not None:
             t.err = stderr
     t.verb = command
-    t.finish(refusal_outcome(t, command, "error", False, mounted))
+    t.finish(fail_outcome(t, command))
 
 
-def refusal_outcome(t: Any, command: str, status: str, usable: bool, mounted: Optional[Sequence[str]] = None) -> Any:
-    """The refusal for ``command`` on ``status``, in the Node kit's frame: a triangle with the title,
-    the message, and the commands that fix it, ending on the last of them; no header, no chip. Under
-    ``--json`` the result's fields only. Exit 4."""
+def refusal_outcome(
+    t: Any,
+    command: str,
+    status: str,
+    usable: bool,
+    mounted: Optional[Sequence[str]] = None,
+    portal: Optional[str] = None,
+) -> Any:
+    """The refusal for ``command`` on ``status``, in the Node kit's frame: a triangle with the title
+    alone (the rows that fix it follow), the link that leads them (``portal``, the product page;
+    "Contact {developer}" where there is none) and the commands that fix it, ending on the last of
+    them; no header, no chip. Under ``--json`` the result's fields only. Exit 4."""
     from ..ui.terminal import screens
     from ..ui.terminal.flows import Outcome
 
-    error, title_key, message_key, fixes = _refusal(status, usable, mounted)
+    r = _refusal(status, usable, mounted, portal is not None)
     k = t.kit
     if t.env.json:
-        return Outcome(EXIT.license_required, [], {"error": error})
-    lines = k.step("warn", [k.t(title_key, "strong")]) + k.body([k.t(message_key)])
-    if fixes:
-        lines += screens._gap(k) + screens._fixes(k, [(v, FIX_COPY[v]) for v in fixes], dim=False)
+        return Outcome(EXIT.license_required, [], {"error": r.error})
+    lines = k.step("warn", [k.t(r.title_key, "strong", command=command)])
+    if r.link == "portal" and portal:
+        lines += screens.link_row(k, portal)
+    elif r.link is not None:
+        lines += screens.contact_row(k)
+    if r.fixes:
+        lines += screens._gap(k) + screens._fixes(k, [(v, FIX_COPY[v]) for v in r.fixes], dim=False)
     lines += k.end()
-    return Outcome(EXIT.license_required, screens._close(k, lines), {"error": error}, stream="stderr")
+    return Outcome(EXIT.license_required, screens._close(k, lines), {"error": r.error}, stream="stderr")
+
+
+def fail_outcome(t: Any, command: str) -> Any:
+    """The license could not be checked (it raised, or answered a status this kit does not know): a
+    cross, what happened and no fix row, exit 4. Under ``--json`` the ``license_required`` result."""
+    from ..ui.terminal import screens
+    from ..ui.terminal.flows import Outcome
+
+    k = t.kit
+    if t.env.json:
+        return Outcome(EXIT.license_required, [], {"error": "license_required"})
+    lines = k.step("fail", [k.t("core.codes.sync-failed.title", "strong")]) + k.body([k.t("core.codes.sync-failed.message")])
+    lines += k.end()
+    return Outcome(EXIT.license_required, screens._close(k, lines), {"error": "license_required"}, stream="stderr")
 
 
 def _flags(args: Tuple[Any, ...], kwargs: Dict[str, Any]) -> Dict[str, Any]:

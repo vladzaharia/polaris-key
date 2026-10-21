@@ -1,96 +1,58 @@
 ── truecolor · 80 ──
-[33m▲[0m  [1mCouldn't check your license[0m
+[31m✗[0m  [1mCouldn't check your license[0m
 [2m│[0m  Your license couldn't be checked, so the app can't start. Check your
-[2m│[0m  connection and try again.
-[2m│[0m
-[2m└[0m  [1mtidewater status[0m   Show your license, devices and offline time
+[2m└[0m  connection and try again.
 ── ansi16 · 80 ──
-[33m▲[0m  [1mCouldn't check your license[0m
+[31m✗[0m  [1mCouldn't check your license[0m
 [2m│[0m  Your license couldn't be checked, so the app can't start. Check your
-[2m│[0m  connection and try again.
-[2m│[0m
-[2m└[0m  [1mtidewater status[0m   Show your license, devices and offline time
+[2m└[0m  connection and try again.
 ── no-color · 80 ──
-▲  [1mCouldn't check your license[0m
+✗  [1mCouldn't check your license[0m
 │  Your license couldn't be checked, so the app can't start. Check your
-│  connection and try again.
-│
-└  [1mtidewater status[0m   Show your license, devices and offline time
+└  connection and try again.
 ── ascii · 80 ──
-[33m![0m  [1mCouldn't check your license[0m
+[31mx[0m  [1mCouldn't check your license[0m
 [2m|[0m  Your license couldn't be checked, so the app can't start. Check your
-[2m|[0m  connection and try again.
-[2m|[0m
-[2m`[0m  [1mtidewater status[0m   Show your license, devices and offline time
+[2m`[0m  connection and try again.
 ── truecolor · 60 ──
-[33m▲[0m  [1mCouldn't check your license[0m
+[31m✗[0m  [1mCouldn't check your license[0m
 [2m│[0m  Your license couldn't be checked, so the app can't start.
-[2m│[0m  Check your connection and try again.
-[2m│[0m
-[2m│[0m  [1mtidewater status[0m
-[2m└[0m    Show your license, devices and offline time
+[2m└[0m  Check your connection and try again.
 ── ansi16 · 60 ──
-[33m▲[0m  [1mCouldn't check your license[0m
+[31m✗[0m  [1mCouldn't check your license[0m
 [2m│[0m  Your license couldn't be checked, so the app can't start.
-[2m│[0m  Check your connection and try again.
-[2m│[0m
-[2m│[0m  [1mtidewater status[0m
-[2m└[0m    Show your license, devices and offline time
+[2m└[0m  Check your connection and try again.
 ── no-color · 60 ──
-▲  [1mCouldn't check your license[0m
+✗  [1mCouldn't check your license[0m
 │  Your license couldn't be checked, so the app can't start.
-│  Check your connection and try again.
-│
-│  [1mtidewater status[0m
-└    Show your license, devices and offline time
+└  Check your connection and try again.
 ── ascii · 60 ──
-[33m![0m  [1mCouldn't check your license[0m
+[31mx[0m  [1mCouldn't check your license[0m
 [2m|[0m  Your license couldn't be checked, so the app can't start.
-[2m|[0m  Check your connection and try again.
-[2m|[0m
-[2m|[0m  [1mtidewater status[0m
-[2m`[0m    Show your license, devices and offline time
+[2m`[0m  Check your connection and try again.
 ── pipe · 80 ──
 Couldn't check your license
 Your license couldn't be checked, so the app can't start. Check your connection
 and try again.
-
-tidewater status   Show your license, devices and offline time
 ── truecolor · 40 ──
-[33m▲[0m  [1mCouldn't check your license[0m
+[31m✗[0m  [1mCouldn't check your license[0m
 [2m│[0m  Your license couldn't be checked, so
 [2m│[0m  the app can't start. Check your
-[2m│[0m  connection and try again.
-[2m│[0m
-[2m│[0m  [1mtidewater status[0m
-[2m│[0m    Show your license, devices and
-[2m└[0m    offline time
+[2m└[0m  connection and try again.
 ── no-color · 40 ──
-▲  [1mCouldn't check your license[0m
+✗  [1mCouldn't check your license[0m
 │  Your license couldn't be checked, so
 │  the app can't start. Check your
-│  connection and try again.
-│
-│  [1mtidewater status[0m
-│    Show your license, devices and
-└    offline time
+└  connection and try again.
 ── truecolor · 32 ──
-[33m▲[0m  [1mCouldn't check your license[0m
+[31m✗[0m  [1mCouldn't check your license[0m
 [2m│[0m  Your license couldn't be
 [2m│[0m  checked, so the app can't
 [2m│[0m  start. Check your connection
-[2m│[0m  and try again.
-[2m│[0m
-[2m│[0m  [1mtidewater status[0m
-[2m│[0m    Show your license, devices
-[2m└[0m    and offline time
+[2m└[0m  and try again.
 ── no-color · 32 ──
-▲  [1mCouldn't check your license[0m
+✗  [1mCouldn't check your license[0m
 │  Your license couldn't be
 │  checked, so the app can't
 │  start. Check your connection
-│  and try again.
-│
-│  [1mtidewater status[0m
-│    Show your license, devices
-└    and offline time
+└  and try again.
