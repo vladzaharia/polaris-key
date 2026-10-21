@@ -33,23 +33,19 @@ export function isIssueStatus(status: Status): boolean {
 }
 
 /**
- * A product status (EXPERIENCE §7, §11.3). Issues render as a pill with icon and word; `onArt`
- * sits that pill on a solid plate so it reads over the art. A healthy status ("Active") renders
- * nothing. A neutral fact ("Signed-in app") renders as quiet text, and nothing on art: a plate
- * is for issues only.
+ * A product status (EXPERIENCE §7, §11.3). Issues render as a pill with icon and word, in the body
+ * of a card, never on a customer's art (§7.3). A healthy status ("Active") renders nothing. A
+ * neutral fact ("Signed-in app") renders as quiet text.
  */
 export function ProductStatusPill({
   status,
-  onArt = false,
   className,
 }: {
   status: Status;
-  onArt?: boolean;
   className?: string;
 }): React.ReactElement | null {
   if (status.tone === "success") return null;
   if (!isIssueStatus(status)) {
-    if (onArt) return null;
     return (
       <span className={cn("text-sm text-fg-muted", className)}>
         {status.label}
@@ -65,18 +61,5 @@ export function ProductStatusPill({
       {status.label}
     </StatusPill>
   );
-  if (!onArt) return pill;
-  // On art (issues only; healthy is silence, UX-03): a solid plate the pill sits in, made tall
-  // enough to give the word room (owner, fix/portal-discover-dedupe-icon).
-  return (
-    <span className="inline-flex h-8 items-center rounded-full bg-surface-overlay shadow-elevation-2">
-      <StatusPill
-        tone={status.tone}
-        icon={ICON[status.kind]}
-        className={cn("h-8 px-3.5 font-medium", className)}
-      >
-        {status.label}
-      </StatusPill>
-    </span>
-  );
+  return pill;
 }

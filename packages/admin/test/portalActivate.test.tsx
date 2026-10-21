@@ -145,7 +145,7 @@ describe("key verdicts (UX-05)", () => {
     );
     expect(bare).toEqual({
       code: "license_owned",
-      tone: "danger",
+      tone: "info",
       message:
         "This Mossgarden license is already in another Polaris Locker account. A license never moves by its key.",
     });
@@ -201,6 +201,10 @@ describe("key verdicts (UX-05)", () => {
 
   it("blocks sending the same key again only for refusals", () => {
     expect(blocksResend(claimVerdict({ status: 401 }, "M"))).toBe(true);
+    // A well-formed key refused for this account is info, not a field error, and still blocks.
+    const elsewhere = claimVerdict({ status: 404 }, "M");
+    expect(elsewhere?.tone).toBe("info");
+    expect(blocksResend(elsewhere)).toBe(true);
     expect(blocksResend(claimVerdict({ status: 429 }, "M"))).toBe(false);
     expect(blocksResend({ code: "failed", tone: "danger", message: "x" })).toBe(
       false,

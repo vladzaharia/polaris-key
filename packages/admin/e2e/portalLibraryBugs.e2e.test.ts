@@ -376,58 +376,114 @@ describe.concurrent("the dialog scrim (B-091)", () => {
   }
 });
 
-describe.concurrent("a right-to-left name starts at the icon (B-078)", () => {
-  const name = "لعبة الأحجار الكريمة والمغامرات الكبرى في الصحراء";
-  const base = portalRoutes("three")["/api/library"] as () => {
-    body: { products: Record<string, unknown>[] };
-  };
-  const routes: Record<string, Handler> = {
-    "/api/library": () => {
-      const res = base();
-      return {
-        body: {
-          ...res.body,
-          products: res.body.products.map((p, i) =>
-            i === 0 ? { ...p, name } : p,
-          ),
-        },
-      };
-    },
-  };
-  for (const theme of ["dark"] as Theme[]) {
-    it(`in the Library tile (${theme})`, async ({ expect }) => {
-      const o = await portal.open("three", "/", {
-        theme,
-        width: 1440,
-        height: 900,
-        routes,
+describe.concurrent(
+  "the toolbar on a phone: search, the chips, then one row (LF3)",
+  () => {
+    for (const [width, height] of [
+      [390, 844],
+      [360, 740],
+    ] as const) {
+      it(`sort and the Grid/List toggle share a row at ${width}`, async ({
+        expect,
+      }) => {
+        const o = await portal.open("twelve", "/#/", { width, height });
+        try {
+          await h1(o.page, "Your library");
+          await o.page.locator("[data-library-view-row]").waitFor();
+          const rows = await o.page.evaluate(() => {
+            const box = (e: Element | null): DOMRect =>
+              e!.getBoundingClientRect();
+            const sort = box(document.querySelector("main select"));
+            const toggle = box(document.querySelector("[aria-label=View]"));
+            return {
+              search: box(document.querySelector("[data-library-search]")).top,
+              chips: box(document.querySelector("[aria-label=Filter]")).top,
+              sort,
+              toggle,
+            };
+          });
+          // Search above the chips above one row for sort and the toggle: the two overlap
+          // vertically (one row), and both sit under the chips.
+          expect(rows.search).toBeLessThan(rows.chips);
+          expect(rows.chips).toBeLessThan(
+            Math.min(rows.sort.top, rows.toggle.top),
+          );
+          expect(rows.sort.top).toBeLessThan(rows.toggle.bottom);
+          expect(rows.toggle.top).toBeLessThan(rows.sort.bottom);
+        } finally {
+          await o.close();
+        }
       });
-      try {
-        await h1(o.page, "Your library");
-        await o.page.waitForSelector("article h3");
-        const at = await o.page.evaluate((text) => {
-          const h3 = [...document.querySelectorAll("article h3")].find((h) =>
-            h.textContent?.includes(text.slice(0, 6)),
-          )!;
-          const article = h3.closest("article")!.getBoundingClientRect();
-          const range = document.createRange();
-          range.selectNodeContents(h3);
-          const first = range.getClientRects()[0]!;
-          const box = h3.getBoundingClientRect();
-          return {
-            textLeft: first.left - box.left,
-            textRight: box.right - first.right,
-            icon: article.left,
-          };
-        }, name);
-        // The line begins at the box's left edge (beside the icon), not its right.
-        expect(at.textLeft).toBeLessThan(at.textRight + 1);
-      } finally {
-        await o.close();
-      }
-    });
-  }
-});
+    }
+  },
+);
+
+describe.concurrent(
+  "a right-to-left name stays beside its icon (B-078, LF3)",
+  () => {
+    const name = "لعبة الأحجار الكريمة والمغامرات الكبرى في الصحراء";
+    const base = portalRoutes("three")["/api/library"] as () => {
+      body: { products: Record<string, unknown>[] };
+    };
+    const routes: Record<string, Handler> = {
+      "/api/library": () => {
+        const res = base();
+        return {
+          body: {
+            ...res.body,
+            products: res.body.products.map((p, i) =>
+              i === 0 ? { ...p, name } : p,
+            ),
+          },
+        };
+      },
+    };
+    // The name is `dir="auto"` (it reads in its own script), but its alignment follows the page: left
+    // in an LTR page, so the name starts at the icon's edge whatever its script (LF3). On a phone the
+    // name sits under the icon, where a right-aligned line was the far edge from it.
+    for (const [theme, width, height] of [
+      ["dark", 1440, 900],
+      ["light", 390, 844],
+    ] as [Theme, number, number][]) {
+      it(`in the Library tile (${theme}, ${width})`, async ({ expect }) => {
+        const o = await portal.open("three", "/", {
+          theme,
+          width,
+          height,
+          routes,
+        });
+        try {
+          await h1(o.page, "Your library");
+          await o.page.waitForSelector("article h3");
+          const at = await o.page.evaluate((text) => {
+            const h3 = [...document.querySelectorAll("article h3")].find((h) =>
+              h.textContent?.includes(text.slice(0, 6)),
+            )!;
+            const article = h3.closest("article")!.getBoundingClientRect();
+            const range = document.createRange();
+            range.selectNodeContents(h3);
+            const first = range.getClientRects()[0]!;
+            const box = h3.getBoundingClientRect();
+            return {
+              textLeft: first.left - box.left,
+              textRight: box.right - first.right,
+              icon: article.left,
+              align: getComputedStyle(h3).textAlign,
+              dir: h3.getAttribute("dir"),
+            };
+          }, name);
+          // The line begins at the box's left edge (beside the icon), not its right, and the name
+          // still reads right to left (`dir="auto"`).
+          expect(at.textLeft).toBeLessThan(at.textRight + 1);
+          expect(at.align).toBe("left");
+          expect(at.dir).toBe("auto");
+        } finally {
+          await o.close();
+        }
+      });
+    }
+  },
+);
 
 describe.concurrent("the Library skeleton is a tile's size (B-084)", () => {
   for (const [width, height] of [
@@ -460,13 +516,25 @@ describe.concurrent("the Library skeleton is a tile's size (B-084)", () => {
         );
         release();
         await o.page.waitForSelector("article h3");
-        const tile = await o.page.evaluate(
-          () =>
-            document
-              .querySelector("article")!
-              .closest("li")!
-              .getBoundingClientRect().height,
-        );
+        // A tile with an issue (Expired) carries its status pill in the body, one row the skeleton
+        // cannot know about (LF3: no text over the art), and a grid row is as tall as its tallest
+        // tile. The reference is the first tile's height without that row.
+        const tile = await o.page.evaluate(() => {
+          const li = document.querySelector("article")!.closest("li")!;
+          const top = li.getBoundingClientRect().top;
+          const row = [...document.querySelectorAll("main article")]
+            .map((a) => a.closest("li")!)
+            .filter((l) => Math.abs(l.getBoundingClientRect().top - top) < 2);
+          const extra = Math.max(
+            0,
+            ...row.flatMap((l) =>
+              [...l.querySelectorAll("[data-tone]")].map(
+                (p) => p.parentElement!.getBoundingClientRect().height + 8,
+              ),
+            ),
+          );
+          return li.getBoundingClientRect().height - extra;
+        });
         console.log(`E2 skeleton ${skeleton} tile ${tile} at ${width}`);
         expect(Math.abs(skeleton - tile)).toBeLessThanOrEqual(4);
       } finally {

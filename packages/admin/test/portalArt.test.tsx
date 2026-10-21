@@ -83,8 +83,9 @@ describe("ProductIcon", () => {
 describe("library card", () => {
   const other = license({ product: "ember", productName: "Ember Tactics" });
 
-  it("names the product without the developer byline, and puts an issue on a padded plate", async () => {
-    // Healthy is silence on art (UX-03): only an issue gets the plate (owner's padding).
+  it("names the product without the developer byline, and puts an issue in the body, never on the art", async () => {
+    // Healthy is silence (UX-03); an issue is a pill in the tile's body: no text is drawn over a
+    // customer's art (EXPERIENCE §7.3, LF3).
     const lapsed = license({
       product: "djdl",
       productName: "DJDL",
@@ -101,9 +102,12 @@ describe("library card", () => {
     const card = await screen.findByRole("article", { name: "DJDL" });
     expect(within(card).queryByText("Vlad Zaharia")).toBeNull();
     expect(card.textContent).not.toContain("Vlad Zaharia");
-    const plate = card.querySelector("[data-art] span.absolute > span")!;
-    expect(plate.className).toMatch(/\bh-8\b/);
-    expect(plate.outerHTML).toMatch(/px-3\.5/);
+    expect(
+      within(card.querySelector("[data-art]")!).queryByText("Expired"),
+    ).toBeNull();
+    const pill = within(card).getByText("Expired").closest("[data-tone]")!;
+    expect(card.querySelector("[data-art]")!.contains(pill)).toBe(false);
+    expect(pill.getAttribute("data-tone")).toBe("danger");
     const healthy = await screen.findByRole("article", {
       name: "Ember Tactics",
     });

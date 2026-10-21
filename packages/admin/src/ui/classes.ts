@@ -100,7 +100,10 @@ export const TABLE = {
 /** `CodeBlock`'s frame: the box, the header bar with the file or language label, the code. */
 export const CODE_BLOCK = {
   frame: "overflow-hidden rounded-lg border border-border bg-surface-sunken",
-  header: "flex items-center gap-2 border-b border-border px-3 py-1",
-  title: "min-w-0 flex-1 truncate font-mono text-xs text-fg-muted",
+  // The header wraps: at 320 px with 200 % text the title keeps its words (5 rem at least) and the
+  // Wrap and Copy buttons drop to a second line inside the frame, never cut by it (LF3).
+  header:
+    "flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border px-3 py-1",
+  title: "min-w-[5rem] flex-1 truncate font-mono text-xs text-fg-muted",
   pre: "pk-scroll overflow-x-auto p-3 font-mono text-xs leading-5",
 } as const;

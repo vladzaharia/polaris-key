@@ -456,10 +456,16 @@ export function ActivateDialog({
                       message: verdict.message,
                       actions:
                         verdict.code === "license_owned" ||
+                        verdict.code === "portal_off" ||
                         verdict.code === "email_mismatch" ? (
                           <RefusalActions
                             help={helpForRefusal(verdict.code)}
                             ownedNotice={verdict.code === "license_owned"}
+                            nextStep={
+                              verdict.code === "portal_off"
+                                ? t("locker.key.managedElsewhereNext")
+                                : undefined
+                            }
                             onDifferentKey={() => {
                               setKey("");
                               setTouched(false);
@@ -580,6 +586,7 @@ export function ActivateDialog({
 function RefusalActions({
   help,
   ownedNotice,
+  nextStep,
   onDifferentKey,
   onAddEmail,
 }: {
@@ -587,6 +594,8 @@ function RefusalActions({
   help?: string | undefined;
   /** Signed in on the portal, `license_owned`: say the account may be theirs (SIGN-IN.md D-27). */
   ownedNotice?: boolean;
+  /** `portal_off`: where to go next, since the key can't be added here (LF3). */
+  nextStep?: string | undefined;
   onDifferentKey: () => void;
   onAddEmail?: () => void;
 }): React.ReactElement {
@@ -596,6 +605,9 @@ function RefusalActions({
         <p className="basis-full text-sm text-fg-muted">
           {t("signin.join.ownedNotice")}
         </p>
+      ) : null}
+      {nextStep ? (
+        <p className="basis-full text-sm text-fg-muted">{nextStep}</p>
       ) : null}
       {help ? (
         <div className="basis-full text-left">
