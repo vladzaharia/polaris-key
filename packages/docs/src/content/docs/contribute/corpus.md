@@ -84,7 +84,7 @@ The files, in one directory, so a runner can point at `corpus/v2/` and find ever
 | `cases.json`               | JWS cases, license/config documents, trust manifests, clock-floor sequences, offline bundles, and (wire contract v4) channel feeds and release records. A case whose payload holds a number that cannot be a wire integer lists those pointers in `nonWireIntegers`, beside `expect`.                                                       |
 | `gate-matrix.json`         | The client gate's decision table — every input combination and the state it must produce (`rows`) — and, in `entitlementRows`, what `isEntitled` answers in each license state.                                                                                                                                                             |
 | `fingerprint.json`         | Hardware-fingerprint and device-id derivation vectors, and the §6.1 source rules: `windowsCim` (with `windowsCimCommand`), `linuxAnchor`, `ramBuckets`. Node and Python run all three; Swift runs `ramBuckets`.                                                                                                                             |
-| `stage-matrix.json`        | The boot stage machine (client boot behaviour, outside the wire contract): rows, guard cases and (version 2) boot-confirmation cases.                                                                                                                                                                                                       |
+| `stage-matrix.json`        | The boot stage machine (client boot behavior, outside the wire contract): rows, guard cases and (version 2) boot-confirmation cases.                                                                                                                                                                                                        |
 | `headers.json`             | WIRE-CONTRACT-V4 §5.2: each runtime spelling of a platform or arch and its canonical header value, or none. The rows are the `PLATFORM_SPELLINGS` / `ARCH_SPELLINGS` tables.                                                                                                                                                                |
 | `config-matrix.json`       | WIRE-CONTRACT-V4 §2.2.1: config precedence, the variable name, the strict environment value and the user-visible list, each with a no-environment answer where it differs (`expectNoEnv`).                                                                                                                                                  |
 | `update-matrix.json`       | WIRE-CONTRACT-V4 §11.1: version comparisons, capability narrowing, the decision's outlet, rollout buckets and every update-decision row with its boot value.                                                                                                                                                                                |
@@ -274,7 +274,7 @@ reference implementation written for the test.
 
 ### Runtimes and version floors
 
-One runtime is not proof: decoder behaviour can show only on the lowest supported version. CI therefore runs the corpus on more than one build of each runtime, and
+One runtime is not proof: decoder behavior can show only on the lowest supported version. CI therefore runs the corpus on more than one build of each runtime, and
 every runner prints its runtime and library versions at the top of its log, so a failure is
 attributable to the build that produced it.
 
@@ -391,7 +391,7 @@ Worth stating plainly, so it is not over-trusted:
   signers is not a question the corpus is asked.
 - It pins the **client-side** contract, plus two server functions: the build gate, which the
   Worker replays over `gate-matrix.json`, and the client metadata normaliser, which it runs over
-  `headers.json`. Other server behaviour reaches it only through the artifacts the generator
+  `headers.json`. Other server behavior reaches it only through the artifacts the generator
   mints in the server's shape.
 - It is a set of vectors, not a proof. A rule with no case is a rule the implementations may
   quietly disagree about — which is exactly how the divergence ledger got its first entries.

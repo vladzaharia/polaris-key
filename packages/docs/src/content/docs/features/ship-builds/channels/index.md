@@ -224,17 +224,22 @@ build stamp, then attested and declared signals; `outlet-matrix.json`).
 | `none`      | `unknown`                                                     | show key entry; no store purchase                    |
 
 ```ts title="TypeScript"
-import { effectiveCapabilities } from "@polaris-key/client-core/decide";
+import { effectiveCapabilities } from "@polaris-key/client-core";
+import type { PolarisKeyClient } from "@polaris-key/node";
 
-const outlet = client.update.outlet; // resolved from the build stamp and signals
-const caps = outlet
-  ? effectiveCapabilities(outlet.kind, {
-      platform: "macos",
-      subkind: outlet.subkind,
-    })
-  : null;
-const showKeyEntry =
-  caps === null || (caps.commerce !== "store-iap" && caps.commerce !== "steam");
+export function showKeyEntry(client: PolarisKeyClient): boolean {
+  const outlet = client.update.outlet; // resolved from the build stamp and signals
+  const caps = outlet
+    ? effectiveCapabilities(outlet.kind, {
+        platform: "macos",
+        subkind: outlet.subkind,
+      })
+    : null;
+  return (
+    caps === null ||
+    (caps.commerce !== "store-iap" && caps.commerce !== "steam")
+  );
+}
 ```
 
 Godot exposes the same table as `PKeyDecision.effective_capabilities(kind, {platform = ..., subkind = ...})`,

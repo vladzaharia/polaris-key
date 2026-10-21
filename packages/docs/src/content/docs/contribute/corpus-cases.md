@@ -33,11 +33,11 @@ refuses to run if a retired name is not a carried row or its successor is not em
 `entitlementRows` is a second family in the same file, beside
 `rows`, so `gateMatrixVersion` stays 2 and a runner that iterates `rows` is unaffected. Each row
 is `{name, gate, license, entitlement, expect: {status, isEntitled}}`: the same `gate` and
-`license` inputs as `rows`, plus `entitlement: {key, entry}`, the entry the cached licence
+`license` inputs as `rows`, plus `entitlement: {key, entry}`, the entry the cached license
 document carries at `entitlements[key]` (`null` when it carries none, always `null` without a
 document). `isEntitled` is `isUsable(status) && entry.value === true`, so a revoked, expired or
-unactivated licence entitles nothing even while its cached document still says `true` (S-19
-G11). The documents are today's licence shape (S-19 `legacy` mode). The generator evaluates every
+unactivated license entitles nothing even while its cached document still says `true` (S-19
+G11). The documents are today's license shape (S-19 `legacy` mode). The generator evaluates every
 row through `@polaris-key/client-core`'s `licenseState` and `isUsable` and refuses to write one
 that disagrees.
 
@@ -238,7 +238,7 @@ The signed-in subject, `profile.user` (WIRE-CONTRACT-V4 §2.1, §3.2), appends t
 - `licenseDocCases` gains three accepted cases (25 → 28): `license-profile-user-valid`,
   `license-profile-user-not-object` and `license-profile-user-extra-members`. They prove a
   verifier that predates the member accepts it in every shape.
-- `cases.json` gains `licenseUserCases` (14), its last section. Each case is a licence document
+- `cases.json` gains `licenseUserCases` (14), its last section. Each case is a license document
   that verifies, with the `licenseDocCases` keys and `expect: {accept: true, user}`, where `user`
   is `{subject}` or `null`. A runner verifies the document, then compares `licenseUserOf` on its
   payload with `expect.user`. The generator's reference reader recomputes every row, and the
@@ -268,7 +268,7 @@ serves the recorded responses and asserts each request.
 
 **Recording.** A scenario seeds a product, builds each request exactly as a wire-contract client
 would, sends it through `dispatchWith` (the router with the request clock injected), asserts
-the server's behaviour as an ordinary test, and declares what a replaying SDK is held to. Values
+the server's behavior as an ordinary test, and declares what a replaying SDK is held to. Values
 from the client's own state are recorded as placeholders (`{deviceId}`, `{version}`,
 `{token}`, `{key}`); values the server chose, such as an ETag, are recorded literally. The
 seven `X-PKey-*` headers are asserted by presence only. Recording is deterministic: `Date` is
@@ -309,9 +309,9 @@ action in its replayer:
 
 | Transcript                         | Proves                 | Steps                                                                                                                                                                                                                                                            |
 | ---------------------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `activate-refusals.json`           | `license.refusals`     | `enroll` refused `403 enroll_claimed`, then `403 license_disabled`; `activate` with an expired licence's key (`401 unauthorized` today), on drifted hardware (`409 hardware_mismatch`) and with the client's budget spent (`429 rate_limited`, no `Retry-After`) |
+| `activate-refusals.json`           | `license.refusals`     | `enroll` refused `403 enroll_claimed`, then `403 license_disabled`; `activate` with an expired license's key (`401 unauthorized` today), on drifted hardware (`409 hardware_mismatch`) and with the client's budget spent (`429 rate_limited`, no `Retry-After`) |
 | `boot-cold-register.json`          | `ui.boot`              | One `boot` on a fresh install of an open-registration product: discovery, keyless registration, trust, the config document and the report, ending at the stage machine's `ready` with the gate `not-applicable`                                                  |
-| `release-fetch-gated.json`         | `release.fetch`        | `discover`, then `releaseFetch` under licensed delivery: the whole payload (200), a resumed one with `Range` and `If-Range` (206), and, once the licence is disabled, `401 download_auth_required`                                                               |
+| `release-fetch-gated.json`         | `release.fetch`        | `discover`, then `releaseFetch` under licensed delivery: the whole payload (200), a resumed one with `Range` and `If-Range` (206), and, once the license is disabled, `401 download_auth_required`                                                               |
 | `distribution-download-model.json` | `release.distribution` | `downloadModel`: the public `GET /<p>/distribution/download.json`, its platform groups and the group for `initial.platform`                                                                                                                                      |
 | `telemetry-report-updates.json`    | `telemetry.updates`    | Two `report` calls over a seventeen-event `initial.updateJournal`: sixteen events (the per-report cap), then the last one                                                                                                                                        |
 
@@ -326,5 +326,5 @@ The three new actions are documented in `format.ts`:
 - `downloadModel` is `distribution.downloadModel()`, with `expect.platforms` and `expect.current`.
 
 Two refusals in SDK-PARITY-PASS §3.1 are not recorded, because no route answers them today:
-`license_expired` (activation refuses every unusable licence as `unauthorized`) and
+`license_expired` (activation refuses every unusable license as `unauthorized`) and
 `attestation_required` (activation and enrolment are not trust operations).

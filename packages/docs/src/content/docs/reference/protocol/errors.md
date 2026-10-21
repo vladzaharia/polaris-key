@@ -14,7 +14,7 @@ the response helpers live in `core/` precisely so `services/<slug>/` can import 
 
 Wire contract v4 specifies a **nested** error body. The pre-split worker emitted a **flat** one.
 Both are in the codebase today, and carrying both across the migration is the point: a handler
-that moved without changing its body keeps its behaviour byte-identical, while the surfaces added with the split
+that moved without changing its body keeps its behavior byte-identical, while the surfaces added with the split
 speak the nested shape from their first request.
 
 **Nested (wire v4):**

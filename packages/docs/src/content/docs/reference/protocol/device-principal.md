@@ -39,7 +39,7 @@ keyless (free-tier) enrolment: `/enroll` answers `fingerprint_required`. Give th
 mount the host's `/etc/machine-id` read-only, or create one at first start and keep it in a
 volume. Never bake one into an image (installing `dbus` at build time writes
 `/var/lib/dbus/machine-id`): every container of that image, on every host, would then share it,
-and so share one device id and one free licence.
+and so share one device id and one free license.
 
 Two different acceptance rules apply server-side:
 
@@ -57,7 +57,7 @@ free of separators.
 The registration policy is derived from the enabled service set; it is not stored or declared
 separately:
 
-| Effective policy    | When it applies                        | `POST /<p>/devices/register` behaviour                              |
+| Effective policy    | When it applies                        | `POST /<p>/devices/register` behavior                              |
 | ------------------- | -------------------------------------- | ------------------------------------------------------------------- |
 | `requires-license`  | License is enabled                     | Refuse permanently. Activation and enrollment are the mint paths.   |
 | `requires-identity` | License is off and Identity is enabled | Requires a live product browser session.                            |
@@ -161,7 +161,7 @@ Core's own surfaces and edge-mint take it **conditionally**: the license check a
 only if the product runs the License service. A config-only product's devices could otherwise
 fetch a signed config document but not rename the device that fetched it. The relaxation is
 scoped to the enablement flag, not to the presence of a license row, so a licensed product's
-behaviour is unchanged — an expired, revoked, or missing license is still a 401.
+behavior is unchanged — an expired, revoked, or missing license is still a 401.
 
 `GET /<p>/config/document` is narrower still. On a config-only product the core-only answer is
 enough — that is the wire-level guarantee that Config works without License. On a licensed

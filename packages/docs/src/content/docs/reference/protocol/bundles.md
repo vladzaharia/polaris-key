@@ -52,7 +52,7 @@ misread a bundle.
 | Bound              | Value                                                                                                                                                                                                                                | Profile it is checked on                    | What it means                                  |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------- | ---------------------------------------------- |
 | Inner `expiresAt`  | `issuedAt + DOC_EXPIRY_SECONDS` (1 hour)                                                                                                                                                                                             | **Reload** — not asserted                   | Exactly what the online path mints. Deliberate |
-| Inner `graceUntil` | `issuedAt + graceDays × 86 400`, `graceDays ≤ 365`; no later than the licence's expiry (never earlier than `expiresAt`) while `licensing.clampGraceToExpiry` is on ([§3.6](/docs/reference/protocol/license-document/#the-envelope)) | Enforced by the gate against `effectiveNow` | How long the imported install runs             |
+| Inner `graceUntil` | `issuedAt + graceDays × 86 400`, `graceDays ≤ 365`; no later than the license's expiry (never earlier than `expiresAt`) while `licensing.clampGraceToExpiry` is on ([§3.6](/docs/reference/protocol/license-document/#the-envelope)) | Enforced by the gate against `effectiveNow` | How long the imported install runs             |
 | Bundle `expiresAt` | `issuedAt + BUNDLE_IMPORT_WINDOW_SECONDS` = 2 592 000 s (30 days)                                                                                                                                                                    | **Network** — a stale bundle is refused     | How long this file may sit on a USB stick      |
 
 ### Why the inner documents expire in an hour
@@ -172,7 +172,7 @@ would reach, and the only way to be sure of that is to take the same route.
 ## What a bundle does and does not create
 
 - **`activation: "bundle"`.** The gate reads `activation: "bundle"` only when no token is held,
-  the cached `bundle` re-verifies on the reload profile, and the cached licence document is
+  the cached `bundle` re-verifies on the reload profile, and the cached license document is
   byte-identical to the bundle's own. Nothing unsigned decides it: there is no import marker. If
   the device later activates online, the token path supersedes it with `activation: "token"`.
 - **No token.** A bundle-activated install has no credential and never talks to the server.

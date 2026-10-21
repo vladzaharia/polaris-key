@@ -64,6 +64,22 @@ const OPTIONS: ts.CompilerOptions = {
   typeRoots: [join(DOCS_PKG, "node_modules/@types")],
   esModuleInterop: true,
   resolveJsonModule: true,
+  // The workspace packages a page may import that the docs package does not depend on: the
+  // wire types and the isomorphic core, against their built declarations.
+  paths: {
+    "@polaris-key/client-core": [
+      join(REPO, "packages/client-core/dist/index.d.ts"),
+    ],
+    "@polaris-key/client-core/*": [
+      join(REPO, "packages/client-core/dist/*.d.ts"),
+    ],
+    "@polaris-key/protocol": [
+      join(REPO, "packages/shared-protocol/dist/index.d.ts"),
+    ],
+    "@polaris-key/protocol/*": [
+      join(REPO, "packages/shared-protocol/dist/*.d.ts"),
+    ],
+  },
 };
 
 /** The virtual path of a block: its own module inside the lane's directory. */

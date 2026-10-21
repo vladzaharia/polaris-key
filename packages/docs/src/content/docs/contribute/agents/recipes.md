@@ -98,10 +98,12 @@ Deep page: [The Node SDK](/docs/build/sdks/node/)
 | 5   | Expect fail-closed capabilities | A sub-client whose service is off throws `PolarisError` with `service-unavailable`. With License off, the gate is `not-applicable` and `isLicensed()` is `true`, so a config-only product boots usable               |
 
 ```ts
+import { PolarisKeyClient } from "@polaris-key/node";
+
 const client = await PolarisKeyClient.create({
   productSlug: "djdl",
-  version: appVersion,
-  trust: { pinnedKeys },
+  version: APP_VERSION,
+  trust: { pinnedKeys: { "<kid>": "<base64url Ed25519 public key>" } },
   expectedServices: ["license", "config"],
 });
 await client.discover();
