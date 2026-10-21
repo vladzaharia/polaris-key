@@ -46,7 +46,7 @@ import {
 import { stmtSubjectEvent } from "./events.js";
 import { endLicenseLinks } from "./legacy.js";
 import type { AccountContext } from "./links.js";
-import { getAccountRow } from "./repo.js";
+import { getAccountRow, stmtClearConsoleStrength } from "./repo.js";
 import { stmtDeleteTermsAcceptances } from "./terms.js";
 import { stmtDeleteAccountMerges } from "./mergeUndo.js";
 
@@ -270,6 +270,8 @@ async function beginErasure(
       sql: "DELETE FROM account_sessions WHERE account_id = ?",
       params: [accountId],
     },
+    // ST-30: no link stays console-eligible while the erasure runs (its links go at the commit).
+    stmtClearConsoleStrength(accountId),
     // The account's package-registry tokens stop authenticating now, not at the commit: the
     // lookup never reads the account. Idempotent; the commit batch repeats it.
     stmtRevokeAccountRegistryTokens(accountId, now),
@@ -680,18 +682,27 @@ export async function disableAccount(
   accountId: string,
 ): Promise<{ ok: boolean }> {
   const { db, env, now } = ctx;
-  const changes = await db.runChanges(
-    "UPDATE accounts SET status = 'disabled', modified_at = ? WHERE id = ? AND status = 'active'",
-    now,
-    accountId,
-  );
-  if (changes === 0) return { ok: false };
-  // Mirrored into the pre-I-05 table, so a Worker rollback does not re-enable the account.
-  await db.run(
-    "UPDATE portal_accounts SET status = 'disabled', modified_at = ? WHERE id = ?",
-    now,
-    accountId,
-  );
+  const row = await getAccountRow(db, accountId);
+  if (!row || row.status !== "active") return { ok: false };
+  // ONE batch (atomic in D1): the status flip, the pre-I-05 mirror (so a Worker rollback does not
+  // re-enable the account), and ST-30's link side: the account's sessions end and no link stays
+  // strong or freshly asserted, so re-enabling does not resurrect console access (the person signs
+  // in through the console IdP again). A crash cannot leave strength set on a disabled account.
+  await db.batch([
+    {
+      sql: "UPDATE accounts SET status = 'disabled', modified_at = ? WHERE id = ? AND status = 'active'",
+      params: [now, accountId],
+    },
+    {
+      sql: "UPDATE portal_accounts SET status = 'disabled', modified_at = ? WHERE id = ?",
+      params: [now, accountId],
+    },
+    {
+      sql: "UPDATE account_sessions SET revoked_at = ? WHERE account_id = ? AND revoked_at IS NULL",
+      params: [now, accountId],
+    },
+    stmtClearConsoleStrength(accountId),
+  ]);
   await clearDeviceSubjects(
     db,
     env,

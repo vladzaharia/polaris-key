@@ -54,6 +54,7 @@ import {
 import { resolveConsoleCaller } from "./api.js";
 import {
   consoleSignIn,
+  type ConsoleRefusal,
   type ConsoleSignInResult,
 } from "../services/identity/public.js";
 import {
@@ -541,6 +542,25 @@ async function startSignIn(
   });
 }
 
+/**
+ * The card for a console sign-in `consoleSignIn` refused (ST-30). `method` is the strong-method
+ * rule (ST-28 SM-1): an email code, or a method nobody marked for the console, never opens it.
+ */
+export function consoleRefusalCopy(reason: ConsoleRefusal): {
+  title: string;
+  lede: string;
+} {
+  if (reason === "method")
+    return {
+      title: "That sign-in can’t open this console",
+      lede: "Use your company account or a passkey. An email code can’t.",
+    };
+  return {
+    title: "We couldn’t open your account",
+    lede: "Your Polaris Key account can’t open the console, so ask a Superadmin to look into it.",
+  };
+}
+
 /** GET /manage/callback — verify, gate on an admin group, set the session cookie. */
 export async function handleAdminCallback(
   req: Request,
@@ -695,8 +715,9 @@ export async function handleAdminCallback(
       summary: `Admin sign-in refused: account (${signedIn.reason})`,
       now,
     });
-    return htmlError(403, "We couldn’t open your account", {
-      lede: "Your Polaris Key account can’t open the console, so ask a Superadmin to look into it.",
+    const copy = consoleRefusalCopy(signedIn.reason);
+    return htmlError(403, copy.title, {
+      lede: copy.lede,
       action: {
         label: "Use another account",
         href: loginHref(flowCtx, { go: "1", other: "1" }),

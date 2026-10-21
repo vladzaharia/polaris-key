@@ -71,11 +71,18 @@ export const LIVE_CHECK_SECONDS = 30;
 
 /** The verified, server-trusted session claims. */
 export interface AdminSession {
-  /** OIDC subject — the audit actor is ALWAYS taken from here, never a request field. */
+  /**
+   * The audit actor, ALWAYS taken from here, never a request field. A v2 session: the member id
+   * (`mbr_…`, ST-30 slice 2b); a v1 session: the OIDC subject.
+   */
   sub: string;
   name: string;
   email: string;
   groups: string[];
+  /** v2: the computed root rule for this request; absent on a v1 session (groups only). */
+  root?: boolean;
+  /** v2: the console link's IdP subject (the `sub` above is the member id). */
+  idpSub?: string;
   /** Per-session CSRF token; the SPA must echo it in `X-PKey-CSRF` on writes. */
   csrf: string;
   /** Cookie v2 only: the account and the `account_sessions` row this request resolved through. */
@@ -239,12 +246,16 @@ export interface ConsoleCookieClaims {
 
 /** The account's current console identity, as Identity reads it (`consoleSubject`). */
 export interface ResolvedConsoleSubject {
-  /** The IdP subject of the account's console link: the audit actor, as before. */
+  /** The member id (`mbr_…`, `memberId.ts`): the audit actor, the limiter key, what `/me` shows. */
   sub: string;
+  /** The IdP subject of the console link. Only for ending a v1 cookie's sign-out mark. */
+  idpSub: string;
   name: string;
   email: string;
-  /** The groups the console IdP last asserted for this account. */
+  /** The groups the console IdP last asserted, while that assertion is fresh (empty otherwise). */
   groups: string[];
+  /** The computed root rule (`rootRuleHolds`) for this request. */
+  root: boolean;
 }
 
 /** Resolves a v2 cookie to its live subject, or `null` when it no longer holds. */
@@ -390,6 +401,8 @@ export async function sessionFromRequest(
       name: subject.name || claims.name || subject.email || subject.sub,
       email: subject.email || claims.email,
       groups: subject.groups,
+      root: subject.root,
+      idpSub: subject.idpSub,
       csrf: claims.csrf,
       exp: claims.exp,
       authAt: claims.authAt,

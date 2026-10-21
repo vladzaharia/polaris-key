@@ -61,6 +61,8 @@ export async function handleMe(
   }));
   return adminJson({
     sub: session.sub,
+    // ST-30: the IdP subject older records carry, so the SPA can still say "you" on them.
+    priorSubs: session.idpSub ? [session.idpSub] : [],
     name: session.name,
     email: session.email,
     csrf: session.csrf,

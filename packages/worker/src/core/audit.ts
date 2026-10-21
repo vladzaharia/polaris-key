@@ -436,6 +436,12 @@ export async function prunePlatformAudit(
 export interface AuditFilters {
   action?: string;
   actor?: string;
+  /**
+   * Other `actor_sub` values that name the same person as `actor` (ST-30: the member id and the
+   * IdP subject of one operator; `consoleActorAliases`). Only ever widens `actor` to the same
+   * person's other ids, so a filter still matches one person.
+   */
+  actorAliases?: readonly string[];
   targetKind?: string;
   targetId?: string;
   since?: number;
@@ -458,8 +464,11 @@ function filterWhere(
   if (opts.actor === "system") {
     where.push("(actor_sub IS NULL OR actor_sub = '')");
   } else if (opts.actor) {
-    where.push("(actor_sub = ? OR actor_email = ?)");
-    params.push(opts.actor, opts.actor);
+    const subs = [...new Set([opts.actor, ...(opts.actorAliases ?? [])])];
+    where.push(
+      `(actor_sub IN (${subs.map(() => "?").join(", ")}) OR actor_email = ?)`,
+    );
+    params.push(...subs, opts.actor);
   }
   if (opts.targetKind) {
     where.push("target_kind = ?");

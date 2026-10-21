@@ -14,7 +14,22 @@
  * through an issuer that `operatorIssuerAllowed` admits. The groups come from that link, which the
  * console sign-in rewrote when it last ran, so a session never outlives its 8 h row on stale groups.
  *
- * Not here: bindings (ST-31), `asserted_at`/`strong_at` (ST-28 §2.4-§2.5), break-glass, passkeys.
+ * Slice 2b adds the strong-method rule (ST-28 §2.5) and the computed root rule (§2.4):
+ *
+ *   - SM-1: the console needs a STRONG method. A link is strong when `strong_at` is set; an email
+ *     code, and any method added in the portal, never is (SM-4). `consoleSubject` reads only a
+ *     strong link through an issuer that still qualifies (SM-2), at every check.
+ *   - SM-3(b)/(c): a sign-in through the console IdP marks its link strong when the link was
+ *     created by that sign-in, or when the ID token asserted the platform-admin group (today's
+ *     operators get in at once). A sign-in that is neither, on a link that is not strong, is
+ *     refused ("method") BEFORE anything is written.
+ *   - The root rule is computed from the link on every check (`rootRuleHolds`): strong, the group
+ *     in `groups_json`, `asserted_at` under 8 h old. `asserted_at` moves only with the groups.
+ *   - The audit actor is the member id (`mbr_…`, core/console/memberId.ts), never the account id;
+ *     `consoleActorAliases` maps it to and from the IdP `sub` so old audit rows still read.
+ *
+ * SM-3(a)/(d) (a passkey added or a method confirmed after a console step-up), break-glass and
+ * bindings come with the passkey button, ST-31 and the next slice.
  */
 
 import { ADMIN_SESSION_TTL_SECONDS } from "../../core/console/session.js";
@@ -22,6 +37,8 @@ import type { ResolvedConsoleSubject } from "../../core/console/session.js";
 import { erasureVerdict } from "../../core/accounts/erasureFence.js";
 import { portalAudit } from "../../core/accounts/portalAudit.js";
 import { operatorIssuerAllowed } from "../../core/rbac/operatorIssuer.js";
+import { memberIdFor, isMemberId } from "../../core/console/memberId.js";
+import { rootRuleHolds } from "../../core/rbac/principal.js";
 import type { Db } from "../../db/types.js";
 import { normalizeEmail } from "../../platform/email.js";
 import type { Env } from "../../platform/env.js";
@@ -29,8 +46,10 @@ import { parseJsonStringList } from "../../platform/json.js";
 import { adminOidcConfig } from "../../platform/platformOidc.js";
 import { accountsUsingEmail } from "./accounts/platformMigration.js";
 import {
+  findLink,
   getAccountRow,
   insertLink,
+  markLinkStrong,
   rekeyLegacyAccountLinks,
   resolveAccount,
   type AccountRow,
@@ -75,7 +94,9 @@ export type ConsoleRefusal =
   /** The account is disabled, erased or being erased, or the identity is unusable. */
   | "account"
   /** An account already uses the address and this identity may not join it. */
-  | "join";
+  | "join"
+  /** The sign-in method is not strong (SM-1): an email code or a method nobody marked. */
+  | "method";
 
 /**
  * Sign an operator in through `console-idp`. The caller has already decided the identity may open
@@ -123,6 +144,18 @@ export async function consoleSignIn(
     displayName: identity.displayName ?? null,
   };
 
+  // SM-1, before anything is written: a known link that is not strong signs in only when this very
+  // sign-in marks it (SM-3(c): the ID token asserted the platform-admin group). Otherwise the
+  // method cannot open the console, and `signIn` would only touch it.
+  const known = await findLink(db, {
+    issuerKey,
+    tenantScope: "",
+    subject: identity.sub,
+  });
+  if (known && !known.strong_at && !opts.operator)
+    return { status: "refused", reason: "method" };
+
+  let linkCreated = false;
   let result: SignInResult = await signIn(db, verified, now, { env });
   if (result.status === "join_offer") {
     if (!opts.operator || !verified.email) {
@@ -151,6 +184,7 @@ export async function consoleSignIn(
       },
       now,
     );
+    linkCreated = joined;
     if (joined)
       await portalAudit(db, {
         accountId: target,
@@ -167,7 +201,20 @@ export async function consoleSignIn(
       reason: result.status === "refused" ? "account" : "join",
     };
 
-  await recordLinkGroups(db, result.linkId, identity.groups);
+  linkCreated = linkCreated || result.created;
+  // SM-3(b): a link this sign-in created through the console IdP. SM-3(c): the ID token asserted
+  // the platform-admin group. Either marks it BEFORE the strong check, so today's operators (whose
+  // links predate `strong_at`) get in at once; nothing else marks it.
+  const strong = Boolean(known?.strong_at) || opts.operator || linkCreated;
+  if (!strong) return { status: "refused", reason: "method" };
+  await recordLinkGroups(db, result.linkId, identity.groups, now);
+  if (!known?.strong_at) await markLinkStrong(db, result.linkId, now);
+  // The member id is derived, never trusted from here: it only indexes the audit alias lookup.
+  await db.run(
+    "UPDATE account_links SET member_id = ? WHERE id = ?",
+    await memberIdFor(env, result.account.id),
+    result.linkId,
+  );
   const { sid } = await openAccountSessionRow(
     env,
     db,
@@ -233,29 +280,43 @@ export async function consoleSubject(
   const rp = adminOidcConfig(env);
   if (!rp || !operatorIssuerAllowed(env, rp.issuer)) return null;
   const issuerKey = portalIdentityIssuerKey(rp.issuer);
-  // The link the operator signed in through last (`touchLink` moves `last_used_at`).
+  // SM-1: only a STRONG link through a qualifying issuer opens the console, the one the operator
+  // signed in through last (`touchLink` moves `last_used_at`). An account left with no strong
+  // link (an email code only, a removed method) keeps its membership and loses entry (SM-5).
   const link = await db.first<{
     subject: string;
     display_name: string | null;
     email: string | null;
     groups_json: string | null;
+    strong_at: number | null;
+    asserted_at: number | null;
   }>(
-    `SELECT subject, display_name, email, groups_json FROM account_links
-      WHERE account_id = ? AND issuer_key = ? AND tenant_scope = ''
+    `SELECT subject, display_name, email, groups_json, strong_at, asserted_at FROM account_links
+      WHERE account_id = ? AND issuer_key = ? AND tenant_scope = '' AND strong_at IS NOT NULL
       ORDER BY last_used_at DESC, id LIMIT 1`,
     account.id,
     issuerKey,
   );
   if (!link) return null;
+  const stored = parseJsonStringList(link.groups_json);
+  const root = rootRuleHolds(
+    env,
+    { strongAt: link.strong_at, assertedAt: link.asserted_at, groups: stored },
+    now,
+    ADMIN_SESSION_TTL_SECONDS,
+  );
   return {
-    sub: link.subject,
+    sub: await memberIdFor(env, account.id),
+    idpSub: link.subject,
     name:
       account.display_name ??
       link.display_name ??
       account.primary_email ??
       link.subject,
     email: account.primary_email ?? link.email ?? "",
-    groups: parseJsonStringList(link.groups_json),
+    // Groups are offered only while the IdP's assertion is fresh: a stale one grants nothing.
+    groups: root ? stored : [],
+    root,
   };
 }
 
@@ -282,16 +343,105 @@ export async function accountMayOpenConsole(
   env: Env,
   db: Db,
   accountId: string,
+  now: number,
 ): Promise<boolean> {
-  const group = env.PLATFORM_ADMIN_GROUP;
   const rp = adminOidcConfig(env);
-  if (!group || !rp || !operatorIssuerAllowed(env, rp.issuer)) return false;
-  const row = await db.first<{ groups_json: string | null }>(
-    `SELECT groups_json FROM account_links
-      WHERE account_id = ? AND issuer_key = ? AND tenant_scope = ''
+  if (
+    !env.PLATFORM_ADMIN_GROUP ||
+    !rp ||
+    !operatorIssuerAllowed(env, rp.issuer)
+  )
+    return false;
+  const row = await db.first<{
+    groups_json: string | null;
+    strong_at: number | null;
+    asserted_at: number | null;
+  }>(
+    `SELECT groups_json, strong_at, asserted_at FROM account_links
+      WHERE account_id = ? AND issuer_key = ? AND tenant_scope = '' AND strong_at IS NOT NULL
       ORDER BY last_used_at DESC LIMIT 1`,
     accountId,
     portalIdentityIssuerKey(rp.issuer),
   );
-  return parseJsonStringList(row?.groups_json ?? null).includes(group);
+  if (!row) return false;
+  return rootRuleHolds(
+    env,
+    {
+      strongAt: row.strong_at,
+      assertedAt: row.asserted_at,
+      groups: parseJsonStringList(row.groups_json),
+    },
+    now,
+    ADMIN_SESSION_TTL_SECONDS,
+  );
+}
+
+/**
+ * Every audit `actor_sub` that names the same person as `actor` (ST-30 slice 2b): the member id
+ * (`mbr_…`) and the IdP subject(s) of the console links of the account behind it, so a filter on
+ * either finds both the new rows (member id) and the old ones (IdP sub). The answer always holds
+ * `actor` itself; an actor that matches no console link maps to itself alone. Read-only, bounded
+ * to the console IdP's links.
+ */
+export async function consoleActorAliases(
+  env: Env,
+  db: Db,
+  actor: string,
+): Promise<string[]> {
+  const out = new Set<string>([actor]);
+  const rp = adminOidcConfig(env);
+  if (!rp) return [...out];
+  const issuerKey = portalIdentityIssuerKey(rp.issuer);
+  const subjectsOf = async (accountId: string): Promise<string[]> =>
+    (
+      await db.all<{ subject: string }>(
+        `SELECT subject FROM account_links
+          WHERE account_id = ? AND issuer_key = ? AND tenant_scope = '' LIMIT 20`,
+        accountId,
+        issuerKey,
+      )
+    ).map((r) => r.subject);
+  let accountId: string | null = null;
+  if (isMemberId(actor)) {
+    // One indexed read (idx_account_links_member), then the id is recomputed from the account: a
+    // stale or planted column value (a merge moves links) never maps a person it does not name.
+    const row = await db.first<{ account_id: string }>(
+      "SELECT account_id FROM account_links WHERE member_id = ? LIMIT 1",
+      actor,
+    );
+    if (row && (await memberIdFor(env, row.account_id)) === actor)
+      accountId = row.account_id;
+  } else {
+    const row = await db.first<{ account_id: string }>(
+      `SELECT account_id FROM account_links
+        WHERE issuer_key = ? AND tenant_scope = '' AND subject = ? LIMIT 1`,
+      issuerKey,
+      actor,
+    );
+    accountId = row?.account_id ?? null;
+  }
+  if (!accountId) return [...out];
+  out.add(await memberIdFor(env, accountId));
+  for (const sub of await subjectsOf(accountId)) out.add(sub);
+  return [...out];
+}
+
+/**
+ * The member id of the account behind a console IdP subject, or `null` when no account holds it.
+ * A v1 sign-out uses it to end that operator's v2 sessions too (their mark is under the member id).
+ */
+export async function consoleMemberIdForIdpSub(
+  env: Env,
+  db: Db,
+  sub: string,
+): Promise<string | null> {
+  const rp = adminOidcConfig(env);
+  if (!rp || !sub) return null;
+  const row = await db.first<{ account_id: string }>(
+    `SELECT account_id FROM account_links
+      WHERE issuer_key = ? AND tenant_scope = '' AND subject = ? LIMIT 1`,
+    portalIdentityIssuerKey(rp.issuer),
+    sub,
+  );
+  return row ? memberIdFor(env, row.account_id) : null;
 }

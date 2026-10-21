@@ -6732,7 +6732,7 @@ views), `test/identityBinders.test.ts` (`login_hint`), `test/admin.test.ts` (the
 `packages/admin/e2e/consoleSignin.e2e.test.ts` (Continue reaches the IdP in Chromium under the real
 policy).
 
-### Console cookie v2 and account sessions (ST-30, slice 2a)
+### Console cookie v2, account sessions and the strong-method rule (ST-30, slices 2a and 2b)
 
 **What arrived.** The console cookie carried the IdP's `sub` and `groups` for 8 h and could be
 ended only by a per-operator mark or by rotating the secret. Nothing tied it to a Polaris Key
@@ -6776,14 +6776,11 @@ name, email, csrf, exp, authAt, stepUpAt?}` and no `groups` or `sub`. `aid` and 
   nothing else, in every environment (unlike `issuerHostAllowed`, which is fail-open outside
   prod because it guards a different sink). Both the sign-in and `consoleSubject` ask it, so a
   link through an issuer that stops qualifying stops yielding a subject within 30 s.
-- **Groups are read from the console link**, rewritten at each sign-in (`recordLinkGroups`), not
-  carried in the cookie. A group removed at the IdP therefore ends root at that person's next
-  sign-in attempt that the IdP refuses, but a session already open keeps the groups of the last
-  sign-in that succeeded until its 8 h row ends. This is today's bound (the cookie used to carry
-  them for 8 h). `asserted_at` and `strong_at` (ST-28 §2.4-§2.5) will tighten it; they are not in
-  this slice. The audit actor is still the IdP `sub` (the `mbr_` mapping is a later slice).
-- **The account id stays off console bodies**: `/me` and the activity answer the IdP `sub` as
-  before (`test/consoleSessionV2.test.ts` asserts `/me` omits the account id).
+- **Groups are read from the console link** (`consoleSubject`), rewritten at each sign-in and
+  never carried in the cookie. Slice 2b computes the root rule on top of them (below), so a stale
+  assertion no longer roots anyone.
+- **The account id stays off console bodies**: `/me` answers the member id (below), never the
+  account id (`test/consoleSessionV2.test.ts` asserts `/me` omits it).
 - **"Open console" and "My library"** are pointers. The Locker account menu shows "Open console"
   only when `GET /api/me` answers a `console` address, which it does for an account whose console
   link's last-asserted groups carry the platform-admin group through an allowed issuer; the console
@@ -6803,13 +6800,79 @@ name, email, csrf, exp, authAt, stepUpAt?}` and no `groups` or `sub`. `aid` and 
   A held request also fails, unreplayed, after 10 minutes (`HOLD_LIMIT_MS`). Tests:
   `packages/admin/test/sessionEnded.test.tsx`, and the different-account case in the Chromium e2e.
 
+**Slice 2b: the strong-method rule, the computed root rule and the audit actor.**
+
+- **SM-1, a strong method only** (`consoleSignIn`, `consoleSubject`; migration
+  `0128_console_strong_method.sql` adds `account_links.strong_at` and `asserted_at`, both NULL on
+  existing rows). The console is entered, and every 30 s check passes, only through a link that has
+  `strong_at` set, through an issuer `operatorIssuerAllowed` still admits (SM-2, read at every use,
+  never frozen into `strong_at`). An email code, a method added in the portal and a console-IdP link
+  made by the portal path are never strong (SM-4). A sign-in whose link is known, is not strong and
+  whose ID token does not assert the platform-admin group is refused with reason `method` **before
+  anything is written** (no `signIn`, no touch, no session row); the card reads "That sign-in can't
+  open this console / Use your company account or a passkey. An email code can't." The callback's
+  own gate (a grant) runs first, so this refusal is the second line, and `consoleSubject` is the
+  third: a session whose link loses `strong_at` is refused within 30 s.
+- **SM-3, how a link becomes strong.** Only (b) a link the console-IdP sign-in itself created
+  (a new account, or a join where the IdP vouched for the address and the actor holds the group)
+  and (c) a console-IdP sign-in whose ID token asserts `PLATFORM_ADMIN_GROUP`, marked
+  (`markLinkStrong`, first mark wins) before the strength check so today's operators get in at their
+  next sign-in. SM-3(a) (a passkey enrolled after a console step-up) and (d) ("Use for the
+  console") need the passkey button and are the next slice. No other code sets `strong_at`.
+- **SM-5.** Removing a method needs no strong session; an account left with no strong link keeps
+  its account and loses console entry (`consoleSubject` is null). A method added again later is
+  weak until SM-3 runs.
+- **The root rule is computed from the link at every check** (`rootRuleHolds`,
+  `core/rbac/principal.ts`): strong, the platform-admin group in `groups_json`, and `asserted_at`
+  within `ADMIN_SESSION_TTL_SECONDS` (8 h) of now (an `asserted_at` more than 60 s in the future is
+  not fresh). Any missing value denies. `asserted_at` is written only in the same `UPDATE` as
+  `groups_json` (`recordLinkGroups`, `recordLinkAssertion`), never by a sign-in that does not
+  rewrite them, so it is not `last_used_at` and a path that skips the groups cannot extend a stale
+  group. `consoleSubject` offers the stored groups only while that holds (else `[]` and
+  `root: false`), and a v2 session's principal takes `root` from it; the 8 h bound still applies to
+  a v1 cookie (its own expiry) and to a session kept open after the group was removed at the IdP.
+  The groups gate at the callback still uses the groups the IdP asserted in that request.
+- **The audit actor is the member id.** A v2 session's `sub` is `mbr_` + the first 22 base64url
+  characters of `HMAC-SHA-256(memberKey, accountId)`, where `memberKey =
+HMAC-SHA-256(KEY_HASH_PEPPER, "pkey/console-member-key/v1")` (`core/console/memberId.ts`): the
+  pepper never keys the account id directly. It is the `actor_sub` of every console audit row, the
+  limiter key and what `/me` answers, so the account id appears in none of them. With the pepper
+  unset `memberKey` is `SHA-256(label)` (as every peppered hash falls back); rotating the pepper
+  re-keys every id, the pepper's existing cost. Old rows keep the IdP `sub`, `actor_name` and
+  `actor_email` and are never rewritten. The activity filter `actor=` accepts either id and
+  `consoleActorAliases` expands it to both for the same person with indexed reads:
+  `account_links.member_id` (written at each console sign-in, indexed) gives the account, the id is
+  **recomputed from that account and must equal the filter** (a stale or planted column maps
+  nothing), then the account's console-IdP subjects are read; an unknown value matches only itself.
+  `/me.priorSubs` carries the IdP `sub` so the SPA still says "you" on old records. Sign-out writes
+  the sign-out mark under the member id and the IdP `sub`; a v1 cookie's sign-out resolves the
+  member id from its IdP subject and writes both, so it ends the operator's v2 sessions too.
+- **v1 cookies and API tokens stay groups-only roots.** Until the last v1 cookie expires (at most
+  8 h after the deploy) and for admin API tokens, a session's groups alone root it; the computed
+  rule applies to v2 sessions only.
+- **Merge, disable and delete end console eligibility on the link side.** A merge clears
+  `strong_at` and `asserted_at` on the absorbed account's links in the same batch that moves them
+  (the survivor does not inherit the operator's access; the person signs in through the console IdP
+  once more; a merge undo restores the link but not the mark); the survivor's own links are
+  untouched. Disabling flips the status, mirrors it, revokes the account's sessions and clears its links'
+  strength in ONE batch (re-enabling does not bring a cookie back, and a crash cannot leave
+  strength on a disabled account); starting an erasure clears them too (the commit deletes the links).
+  The 30 s status check already ended the session; this makes the link side agree.
+- **Tests:** `test/consoleStrongMethod.test.ts` (each SM row allowed and refused, nothing written
+  on a refusal, the root rule at each condition and at the 8 h edge, `asserted_at` moving only with
+  the groups, the member id, the actor alias mapping over old and new rows, merge / disable /
+  delete), `test/consoleSessionV2.test.ts`.
+
 **Residual.** The 30 s window is a deliberate cost: a revoked session can serve requests for up to
 30 s in an isolate that cached it as live. The cache is per isolate, so a different isolate asks
-D1 again. The v1 reader exists until its last cookie expires. The stale group bound above and the
-strong-method rule (ST-28 SM-1: an email-code-only session is refused console access) are not in
-this slice; they and membership as bindings follow in the ST-30 and ST-31 slices.
+D1 again. The v1 reader exists until its last cookie expires. A group removed at the IdP still ends root
+only when the assertion ages out (8 h) for a session that is already open, because a refused
+sign-in writes nothing. Not yet built: SM-3(a)/(d) (step-up enrolment), break-glass, the passkey
+button, membership as bindings (ST-31). Residual of the migration: it holds two `ADD COLUMN`
+statements in one file (the lead may split it into `_a`/`_b` per R11-04); a replay fails at the
+first statement and strands nothing.
 
-Tests: `test/consoleSessionV2.test.ts` (sign-in lands on one account, cookie shape, the 30 s
+Slice 2a tests: `test/consoleSessionV2.test.ts` (sign-in lands on one account, cookie shape, the 30 s
 check with a fake clock, disabled / deleted / merged / foreign-row / expired-row refusals, sign-out,
 v1 compatibility, forged and cross-tagged tokens, `consoleSubject`, `operatorIssuerAllowed`'s unset /
 empty / listed / unlisted / http cases, the Locker pointer), `test/adminSessions.test.ts`,

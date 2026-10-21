@@ -220,7 +220,7 @@ export async function getOrCreateAccountByIdentity(
   );
   const account = signedInAccount(result);
   if (result.status === "signed_in")
-    await recordLinkGroups(db, result.linkId, input.groups);
+    await recordLinkGroups(db, result.linkId, input.groups, now);
   return account;
 }
 
@@ -233,10 +233,14 @@ export async function recordLinkGroups(
   db: Db,
   linkId: string,
   groups: readonly string[] | undefined,
+  now: number,
 ): Promise<void> {
+  // `asserted_at` (ST-30, ST-28 §2.4) moves in THIS statement and nowhere else: it is when the IdP
+  // last asserted these groups, so a sign-in that does not rewrite them cannot freshen them.
   await db.run(
-    "UPDATE account_links SET groups_json = ? WHERE id = ?",
+    "UPDATE account_links SET groups_json = ?, asserted_at = ? WHERE id = ?",
     groups ? JSON.stringify(groups) : null,
+    groups ? now : null,
     linkId,
   );
 }
@@ -244,7 +248,7 @@ export async function recordLinkGroups(
 /**
  * What a connection asserted at this sign-in, on the link it signed in through (I-30; plans/I-27.md
  * §2.3 "Links"): the mapped groups and the access-rule claims, replaced together in ONE `UPDATE`.
- * `null` is "not asserted" (fail closed). ST-30's `asserted_at` joins this statement when it lands;
+ * `null` is "not asserted" (fail closed). `asserted_at` (ST-30) is written in this same statement, when anything was asserted;
  * nothing else writes these columns for a connection link.
  */
 export async function recordLinkAssertion(
@@ -254,11 +258,13 @@ export async function recordLinkAssertion(
     groups: readonly string[] | null;
     claims: Readonly<Record<string, string>> | null;
   },
+  now: number,
 ): Promise<void> {
   await db.run(
-    "UPDATE account_links SET groups_json = ?, claims_json = ? WHERE id = ?",
+    "UPDATE account_links SET groups_json = ?, claims_json = ?, asserted_at = ? WHERE id = ?",
     assertion.groups ? JSON.stringify(assertion.groups) : null,
     assertion.claims ? JSON.stringify(assertion.claims) : null,
+    assertion.groups || assertion.claims ? now : null,
     linkId,
   );
 }

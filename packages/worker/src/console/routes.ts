@@ -35,6 +35,7 @@ import type { AdminSession } from "../core/console/session.js";
 import { adminJson, err, notFound } from "../core/console/respond.js";
 import { revokeAdminSessions } from "../core/console/sessionRevocation.js";
 import { endConsoleCookieSession } from "./consoleSession.js";
+import { consoleMemberIdForIdpSub } from "../services/identity/public.js";
 import { buildClearCookie } from "../core/console/session.js";
 import type { Method, RouteDecl } from "./routeMatch.js";
 import { handleMe } from "./handlers/me.js";
@@ -92,6 +93,16 @@ async function logout(c: AdminCtx): Promise<Response> {
   let revoked = true;
   try {
     await revokeAdminSessions(c.env, c.session.sub, c.now);
+    // A v2 session's `sub` is the member id; the operator's v1 cookies (signed before the deploy)
+    // carry the IdP subject, so the mark goes there too.
+    if (c.session.idpSub)
+      await revokeAdminSessions(c.env, c.session.idpSub, c.now);
+    else {
+      // A v1 cookie: its `sub` is the IdP subject. The operator's v2 sessions read the mark under
+      // the member id, so write that one too when the account is known.
+      const member = await consoleMemberIdForIdpSub(c.env, c.db, c.session.sub);
+      if (member) await revokeAdminSessions(c.env, member, c.now);
+    }
     // A v2 session also ends its own row at once (and this isolate forgets it); the mark above
     // ends the operator's other cookies, v1 included.
     await endConsoleCookieSession(c.env, c.db, c.session, c.now);

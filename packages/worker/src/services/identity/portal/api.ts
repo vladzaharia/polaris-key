@@ -805,7 +805,7 @@ async function handleMe(
       deletion: await accountDeletionSchedule(db, session.accountId),
       // ST-30: where the account menu's "Open console" goes, for an operator's account only (else
       // null: no entry). A pointer, not a grant: the console decides on arrival.
-      console: (await accountMayOpenConsole(env, db, session.accountId))
+      console: (await accountMayOpenConsole(env, db, session.accountId, now))
         ? consoleEntry(env, req)
         : null,
     },

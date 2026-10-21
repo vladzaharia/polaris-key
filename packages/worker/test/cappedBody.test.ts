@@ -121,6 +121,7 @@ describe("activity limit is an integer in 1..200", () => {
     for (const q of ["-1", "2.5", "abc", "1e9"]) {
       const res = await handleActivity(
         new Request(`https://x/activity?limit=${q}`),
+        {} as Env,
         db,
         "acme",
       );

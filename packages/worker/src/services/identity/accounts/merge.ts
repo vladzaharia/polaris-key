@@ -51,7 +51,7 @@ import {
   hasUndoableMerge,
   stmtRecordMerge,
 } from "./mergeUndo.js";
-import { getAccountRow } from "./repo.js";
+import { getAccountRow, stmtClearConsoleStrength } from "./repo.js";
 import { stmtsMoveTermsAcceptances } from "./terms.js";
 
 export type MergeResult =
@@ -183,6 +183,11 @@ export async function mergeAccounts(
              WHERE EXISTS (SELECT 1 FROM account_deletions WHERE account_id IN (?, ?))`,
       params: [`${mergeId}:guard`, S, A],
     },
+    // ST-30: a merge ends the absorbed account's console eligibility. Its links move to the
+    // survivor, and a strong console-IdP link must not carry the operator's access with it: the
+    // person signs in through the console IdP once more, which marks the link again (SM-3(c)). The
+    // survivor's own links are untouched. Same batch, so it is all or nothing with the move.
+    stmtClearConsoleStrength(A),
     {
       sql: "UPDATE account_links SET account_id = ? WHERE account_id = ?",
       params: [S, A],
