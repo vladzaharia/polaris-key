@@ -374,7 +374,16 @@
           }
           continue;
         }
-        strings.push({ scope: scopeName, target: describe(el), text });
+        // A screen title: an h1, or an h2 the board classes as a title. A classless h2 is a
+        // settings group label ("Updates", "Managed settings"), which the catalog types as a label.
+        const kind = el.matches("h1, h2[class], [role=heading][aria-level='1']")
+          ? "title"
+          : el.matches(
+                "button, [role=button], .k-btn, .btn, .gb, .tbtn, .tbtn2",
+              )
+            ? "button"
+            : undefined;
+        strings.push({ scope: scopeName, target: describe(el), text, kind });
       }
     }
 
@@ -439,18 +448,43 @@
 
     // Board captions (UK-59): every figure that holds a shot says which tier the frame is, as
     // the caption's last words: "Built today" or "UK-11 target", then at most one parenthetical.
+    // A "Built today" frame is true by construction: it holds an <img> whose src is a committed
+    // render (the React / Swift / Roborazzi baselines, the Node and Python goldens, the Godot and
+    // iPad renders), or, for a terminal frame drawn as text, a data-built-from naming the
+    // committed golden it copies. A hand-drawn frame is "UK-11 target" only.
     const TIER_END = /(Built today|UK-11 target)\.?(\s*\([^]*\))?$/;
+    const BUILT_TODAY = /Built today\.?(\s*\([^]*\))?$/;
+    const RENDER_PATH =
+      /(packages\/sdk-react\/test\/visual\/__screenshots__\/|sdks\/swift\/Tests\/[^/]+\/__Snapshots__\/|sdks\/kotlin\/.+\/snapshots\/|packages\/sdk-node\/test\/cli\/golden\/|sdks\/python\/tests\/cli\/golden\/|shots\/godot-built\/|shots\/ipad-built\/)/;
     for (const fig of document.querySelectorAll("figure")) {
       if (!fig.querySelector("[data-shot]")) continue;
       const cap = fig.querySelector("figcaption");
       const text = cap ? cap.textContent.replace(/\s+/g, " ").trim() : "";
+      const scope = fig.querySelector("[data-shot]").getAttribute("data-shot");
       if (!TIER_END.test(text))
         violations.push({
           rule: "tier-caption",
-          scope: fig.querySelector("[data-shot]").getAttribute("data-shot"),
+          scope,
           target: cap ? describe(cap) : describe(fig),
           detail: `the caption must end "Built today" or "UK-11 target": ${text.slice(0, 80) || "(no caption)"}`,
         });
+      else if (BUILT_TODAY.test(text)) {
+        const shot = fig.querySelector("[data-shot]");
+        const imgs = [...shot.querySelectorAll("img")];
+        const ok =
+          imgs.some((i) => RENDER_PATH.test(i.getAttribute("src") || "")) ||
+          [...shot.querySelectorAll("[data-built-from]")].some((e) =>
+            RENDER_PATH.test(e.getAttribute("data-built-from") || ""),
+          ) ||
+          RENDER_PATH.test(shot.getAttribute("data-built-from") || "");
+        if (!ok)
+          violations.push({
+            rule: "tier-caption",
+            scope,
+            target: describe(shot),
+            detail: `a "Built today" frame must embed a committed render (an <img> from a baseline, golden or render path) or name its golden in data-built-from; a hand-drawn frame is "UK-11 target"`,
+          });
+      }
     }
 
     return { violations, strings };

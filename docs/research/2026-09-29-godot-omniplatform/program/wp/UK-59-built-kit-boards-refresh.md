@@ -187,17 +187,26 @@ line is resolved below, fixed (with its commit) or still a gap (with what remain
 - Godot: sign-in title is "Sign in", the target says "Sign in with a code" (the URL is already polaris.locker/device) (owner: Godot kit).
 - Godot: no activate dialog (the key form sits on the gate) and no 1280 x 800 render in tools/ui_screenshots.gd (owner: Godot kit).
 - Godot: no product icon and name (DL5) on every built frame, the gate included; KF-native changed only a focus-ring comment there, so it stands (owner: Godot kit).
-- Compose: the product header (icon and name) now leads the sign-in form (6e6866800); the other Compose screens (expired, boot, error, device limit) still carry no product header (DL5) (owner: Compose kit).
-- Kotlin: the welcome lede is the catalog's `welcome.lede` (PolarisCopy.kt reads it, 050f40049); no longer a gap.
+- Compose: the product header (icon and name) now leads the sign-in form (6e6866800); the other Compose screens (expired, boot, error, device limit, and, found in the round-2 review, sign-in declined and code expired) still carry no product header (DL5) (owner: Compose kit; fix in flight: KF2).
+- Kotlin: the welcome lede is the catalog's `welcome.lede` in the current snapshots (PolarisCopy.kt reads it, 050f40049), but three committed `gate-activation` PNGs, dated 2026-10-16 (3191ae70f), still read "Sign in or enter a license key to continue.": `landscape-891x411-polaris-light` and `foldable-673x841-polaris-light` (shapes-gate) and `phone-font150-polaris-light` (compose-activate). The board embeds them in place and picks up the re-record with no edit. Still a gap until they are re-recorded by another package; also find out why Roborazzi verify did not fail on them (owner: Compose kit).
 - Kotlin: no Compose snapshots for tablet portrait, nor a product icon on expired (DL3) (owner: Compose kit).
-- Kotlin: the sign-in code view still prints `key.plrs.im/activate` (android-compose-sign-in re-rendered 2026-10-21); it must be `polaris.locker/device`. KF-native (6e6866800) fixed the code view's sentence, header and buttons, not the address, which comes from the verification URI the preview supplies (owner: Compose kit).
 - Kotlin: boot still draws a stock spinner, not the DL7 shimmer (boot-progress snapshot; KF-native did not touch it) (owner: Compose kit).
 - Kotlin: fixed in 6e6866800: the error screen reads the catalog's "Couldn't check your license" copy for `sync-failed`; the raw code appears only for an unknown code.
 - Swift: boot still draws a spinner, not the DL7 shimmer; KF-native did not touch it (owner: SwiftUI kit).
 - Swift on iPad: fixed in 09df6e2d1 (the actions stay with the content); the iPad frames on the boards are re-rendered from it.
 - Swift: no landscape split Welcome render on iPad (the headless simulator cannot rotate), and no ActivityKit surface or StoreKit paywall in the kit (owner: SwiftUI kit).
+- React `AccountAndLicense.signed-in`: unstyled, centred row labels and "Signed in as account"; the web settings frames are the target for it (owner: React kit; fix in flight: KF2).
+- React `UpdatePrompt.downloading`: prints "Downloading ·" with a dangling separator and no figures (owner: React kit; fix in flight: KF2).
+- React `UpdatePrompt.available`: offers Update now and Restart when ready together (owner: React kit; fix in flight: KF2).
+- Device-limit titles disagree across kits: React says "Replace a device" with the count as a subtitle; Swift, Godot and the targets say "Your license is on 3 of 3 devices". The spec should pick one (owner: React kit and UI-KITS; fix in flight: KF2).
+- Compose: sign-in declined and code expired have no product header either (folded into the "no product header" line above; fix in flight: KF2).
+- Swift on iPad: Activate hugs the top of a 13-inch portrait and leaves about 60 % of the screen empty below; DL1 tablet portrait wants a centred column (owner: SwiftUI kit; fix in flight: KF2).
 - Terminals: fixed in a8d1f65ac: the fixture device-management link is `polaris.locker/#/p/tidewater/devices` in both kits and the goldens; the boards print it.
 - Apple and desktop: no built renders of visionOS, tvOS, watchOS or macOS (owner: SwiftUI kit).
+
+Removed: "Kotlin: the sign-in code view still prints `key.plrs.im/activate`". Fixed in KIT-TAIL
+(f23099c9f), and the Compose sign-in matrix baseline draws the code view (KT-code); the Android
+board shows `polaris.locker/device` on the phone and all four shapes.
 
 Removed: "Node and Python word the device-limit sentence differently". They did not: both goldens
 say "Replace a device in your browser, then try again here."; the board frame was the stale part
@@ -223,3 +232,18 @@ docs/design/ui-kits are hand-authored HTML with no `_src`, so they were edited i
 - apple.html: the seven iPad states under shots/ipad-built (14 JPEGs) re-rendered from the current kit on the iPad Pro 13-inch simulator (examples/ui/swiftui run.sh, 960 px JPEGs): the actions sit with the content.
 - Compose frames reference the Roborazzi snapshots in place, so the re-render picks up KF-native's PNGs (sign-in header and buttons, error copy). Web frames already carry polaris.locker/device; the React baselines changed in ways the hand-drawn web frames never showed.
 - strings.debt.json 45 to 39: the six terminal device-limit and narrow entries (old sentence and `key.plrs.im/portal`) are gone; the fixture link went to strings.allow.json.
+
+## Round 2 (2026-10-21, fix/uk59-renders): a "Built today" frame is a committed render
+
+The second MOCKUP review failed the boards again: 25 hand-drawn "Built today" frames showed copy,
+states or layouts that no committed render shows, because the 10-21 kit packages re-recorded the
+baselines after the boards were drawn. Decision (R2-B1): a "Built today" frame embeds the committed
+render in place, as the Android, Godot and iPad boards do; a hand drawing is only ever "UK-11 target".
+
+- web.html embeds the React baselines (`packages/sdk-react/test/visual/__screenshots__`, 390 and 1440, both themes) through `<img data-render="react:State/size">`, resolved by `shared.js`; ios.html embeds the Swift `__Snapshots__` (iPhone 440, `swift:` and `swift-ax3:`); terminal.html embeds the Node golden PNG for the host-command gate refusal (`node:`). The drawings stay beside them, captioned "UK-11 target" with what differs.
+- Frames with no committed render at that size or state (web 844, 640, 1180, 820, 1920 and the 12-device list, the spec sheets, iOS 18, the sheet presentations) are "UK-11 target" and say so.
+- Terminal text frames drawn from a golden carry `data-built-from` naming it (the Node `ansi/` file); the refusal copy is H1a's ("▲ export needs a license", no message line) at 80, 60, 40 and 32 columns.
+- `ui:lint` rule `tier-caption` now fails a "Built today" frame without an `<img>` from a committed render path or a `data-built-from` naming one (packages/ui-qa/src/browser/lint.js; tests in e2e/rules.e2e.test.ts; a unit test checks that every embedded path exists).
+- The string lint matches a heading only against title-role messages and a button only against button-role ones (R2-M2); "Add your license" became "Enter your license key" and "Activate" became "Activate license". The truer lint surfaced 24 new hits on the boards, all fixed; the debt stays at 39.
+- Captions: iPad is 13-inch (1032 × 1376 pt); Android states say "boot (checking for updates)"; the terminal sign-in frame is the headless variant the goldens show; the terminal update frame copies the goldens; the Android sign-in target's passkey icon is the shared SVG (the Material subset has no passkey ligature).
+- The five screen mockups `docs/design/mockups/screens/sdk/sdk.{gnome,macos,qt,visionos,windows}-gate.html` said "Or go to key.plrs.im/activate"; their `_src` now says `polaris.locker/device` and they are regenerated.

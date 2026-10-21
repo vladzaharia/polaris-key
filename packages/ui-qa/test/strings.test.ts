@@ -75,6 +75,76 @@ describe("the string lint's catalog matcher", () => {
     expect(matchString(m, "Steam key", "web")?.key).toBe("store.key");
   });
 
+  // R2-M2: "Add your license" matched account.tier ("{tier} license", a label) with "Add your" as
+  // the tier, so a title no catalog key holds passed the lint.
+  it("matches a title only against title-role messages and a button only against button-role ones", () => {
+    const roles: CatalogMessage[] = [
+      {
+        key: "account.tier",
+        value: "{tier} license",
+        role: "label",
+        variants: {},
+      },
+      {
+        key: "activate.title",
+        value: "Enter your license key",
+        role: "title",
+        variants: {},
+      },
+      {
+        key: "activate.submit",
+        value: "Activate license",
+        role: "button",
+        variants: {},
+      },
+      {
+        key: "account.manage",
+        value: "Manage {tier} license",
+        role: "body",
+        variants: {},
+      },
+    ];
+    const r = compile(roles);
+    // The wildcard still reads a label, and a string of no known kind, as before.
+    expect(matchString(r, "Pro license", "web", undefined)?.key).toBe(
+      "account.tier",
+    );
+    // A heading or a button cannot borrow a label's argument.
+    expect(matchString(r, "Add your license", "web", "title")).toBeNull();
+    expect(matchString(r, "Add your license", "ios", "button")).toBeNull();
+    expect(matchString(r, "Manage Pro license", "web", "title")).toBeNull();
+    // The real titles and buttons still match their own roles.
+    expect(matchString(r, "Enter your license key", "web", "title")?.key).toBe(
+      "activate.title",
+    );
+    expect(matchString(r, "Activate license", "web", "button")?.key).toBe(
+      "activate.submit",
+    );
+    expect(matchString(r, "Activate license", "web", "title")).toBeNull();
+  });
+
+  it("reports the wildcard title through the whole lint", () => {
+    const roles: CatalogMessage[] = [
+      {
+        key: "account.tier",
+        value: "{tier} license",
+        role: "label",
+        variants: {},
+      },
+    ];
+    const strings = (kind?: "title") => [
+      { scope: "activate", target: "h1", text: "Add your license", kind },
+    ];
+    const run = (kind?: "title") =>
+      lintStrings(
+        roles,
+        [],
+        [{ board: "web", platform: "web", strings: strings(kind) }],
+      ).findings;
+    expect(run("title")).toHaveLength(1);
+    expect(run(undefined)).toHaveLength(0);
+  });
+
   it("fails on a seeded copy drift between two boards", () => {
     const { findings } = lintStrings(
       cat,

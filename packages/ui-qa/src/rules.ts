@@ -162,7 +162,7 @@ export const RULES: RuleInfo[] = [
     id: "tier-caption",
     group: "copy",
     spec: "UK-59",
-    says: "Every board frame's caption ends 'Built today' or 'UK-11 target'.",
+    says: "Every board frame's caption ends 'Built today' or 'UK-11 target'; a 'Built today' frame embeds a committed render (or names its golden in data-built-from).",
   },
   {
     id: "section-index",

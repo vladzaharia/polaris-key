@@ -31,6 +31,8 @@ export interface VisibleString {
   scope: string;
   target: string;
   text: string;
+  /** "title" for a heading, "button" for a button; absent when the page does not say. */
+  kind?: "title" | "button";
 }
 
 export interface LintResult {

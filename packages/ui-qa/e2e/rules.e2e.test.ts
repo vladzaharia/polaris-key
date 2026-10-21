@@ -119,6 +119,67 @@ describe("the modernity lint (UI-KITS §7.3)", () => {
     expect(ok.violations.map((v) => v.rule)).not.toContain("accent-as-status");
   });
 
+  // UK-59: a "Built today" frame is a committed render, not a drawing.
+  describe("tier-caption: Built today embeds a committed render", () => {
+    const fig = (caption: string, shot: string) =>
+      `<figure><figcaption>${caption}</figcaption><div data-shot="g">${shot}</div></figure>`;
+    const tier = async (html: string) =>
+      (await lint(html)).violations.filter((v) => v.rule === "tier-caption");
+
+    it("fails a hand-drawn Built today frame", async () => {
+      const v = await tier(fig("web · gate. Built today", "<p>Gate</p>"));
+      expect(v).toHaveLength(1);
+      expect(v[0]!.detail).toContain("committed render");
+    });
+
+    it("fails a Built today frame whose image is not a committed render", async () => {
+      const v = await tier(
+        fig(
+          "web · gate. Built today",
+          `<img src="shots/web-gate-dark.png" width="10" height="10" alt="">`,
+        ),
+      );
+      expect(v).toHaveLength(1);
+    });
+
+    for (const src of [
+      "../../../packages/sdk-react/test/visual/__screenshots__/Activate.parsed/1440-dark.png",
+      "../../../sdks/swift/Tests/PolarisKeyUISnapshotTests/__Snapshots__/activate-parsed-dark.png",
+      "../../../sdks/kotlin/ui/src/test/snapshots/sign-in/foldable-673x841-polaris-light.png",
+      "../../../packages/sdk-node/test/cli/golden/gate-refused-needs-activation-dark.png",
+      "shots/godot-built/gate-dark.png",
+      "shots/ipad-built/Welcome.default-dark.jpg",
+    ]) {
+      it(`passes a Built today frame that embeds ${src.split("/").slice(-2).join("/")}`, async () => {
+        expect(
+          await tier(
+            fig(
+              "x · gate. Built today",
+              `<img src="${src}" width="10" height="10" alt="">`,
+            ),
+          ),
+        ).toEqual([]);
+      });
+    }
+
+    it("passes a text frame that names its committed golden", async () => {
+      expect(
+        await tier(
+          fig(
+            "terminal · refusal. Built today (Node golden)",
+            `<pre data-built-from="packages/sdk-node/test/cli/golden/ansi/gate-refused-needs-activation.ansi">x</pre>`,
+          ),
+        ),
+      ).toEqual([]);
+    });
+
+    it("lets a hand-drawn UK-11 target stand alone", async () => {
+      expect(
+        await tier(fig("web · gate. UK-11 target", "<p>Gate</p>")),
+      ).toEqual([]);
+    });
+  });
+
   it("records a runtime alert() call", async () => {
     const r = await lint(
       `<button class="k-btn" onclick="alert('x')">Go</button>`,
