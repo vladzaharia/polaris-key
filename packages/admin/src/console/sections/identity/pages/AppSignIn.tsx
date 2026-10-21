@@ -57,6 +57,11 @@ const TIER_SYNC_COPY = {
 
 const LIMIT_KEY = "identity.keyEntry.limit";
 
+/** The save summary's words for the lost-key switch (hidden until G7, so tested here). */
+export function lostKeyWords(on: boolean): string {
+  return `lost-key replacement ${on ? "on" : "off"}`;
+}
+
 /** A row of the settings engine in the subtree has an unsaved edit (`data-state="changed"`). */
 function useRowsDirty(ref: React.RefObject<HTMLElement | null>): boolean {
   const [dirty, setDirty] = React.useState(false);
@@ -239,7 +244,7 @@ function PageBody({
       ? `${name} ${draft.portalEnabled ? "shown" : "hidden"} in libraries`
       : null,
     draft.keyReissueEnabled !== saved.keyReissueEnabled
-      ? `lost-key replacement ${draft.keyReissueEnabled ? "on" : "off"}`
+      ? lostKeyWords(draft.keyReissueEnabled)
       : null,
     draft.keyLimit !== saved.keyLimit
       ? `key entries ${

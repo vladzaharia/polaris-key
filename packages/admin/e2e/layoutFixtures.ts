@@ -241,7 +241,7 @@ const ROUTES: Record<string, unknown> = {
       },
       {
         id: "store-accounts",
-        title: "Store accounts connected",
+        title: "Stores connected",
         done: false,
         detail: "Diceroll's Steam uploads need a Steamworks publisher key.",
         action: { label: "Connect Steam", to: "connections", store: "steam" },
