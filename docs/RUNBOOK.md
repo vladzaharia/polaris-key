@@ -66,7 +66,7 @@ existed are still in D1. One that trips the signer is pruned from the config doc
 turns that product's license documents into `500 document_not_representable`, for v3 clients
 too.
 
-**Before the first production deploy of a Worker that contains P3-12** (manual, or the `v*`
+**Before the first production deploy of a Worker that includes the representability check** (manual, or the `v*`
 tag that CI deploys, which does not run the check), and again after any manual D1 edit, run the check against production D1 from `packages/worker` (it needs the
 operator's Cloudflare credentials, as `wrangler d1 migrations apply` does):
 
@@ -131,9 +131,9 @@ ADMIN_OIDC_CLIENT_SECRET
 GITHUB_APP_ID
 GITHUB_APP_PRIVATE_KEY
 GITHUB_WEBHOOK_SECRET
-REGISTRY_TOKEN_KEY           # F-21: the OCI pull-token HMAC key (32 random bytes, base64)
-DOWNLOAD_TICKET_KEY          # PX-W3: the portal's download-ticket HMAC key (32 random bytes, base64)
-SIGNIN_*                     # I-06, optional: the login card's providers ("Login-card providers")
+REGISTRY_TOKEN_KEY           # the OCI pull-token HMAC key (32 random bytes, base64)
+DOWNLOAD_TICKET_KEY          # the portal's download-ticket HMAC key (32 random bytes, base64)
+SIGNIN_*                     # optional: the login card's providers ("Login-card providers")
 ```
 
 Rotate or set a Worker secret:
@@ -218,15 +218,15 @@ export: Pocket ID's users endpoint needs an admin API key, and none is needed fo
 Two deploy-time vars control it. Neither is a console setting, so each step below is a reviewed
 change to `packages/worker/wrangler.toml` (`[env.<env>.vars]`) and a deploy.
 
-| Var                       | Values                                   | Unset means                                   |
-| ------------------------- | ---------------------------------------- | --------------------------------------------- |
-| `PLATFORM_OIDC_MIGRATION` | `off`, `claim`, `operators-only`         | `off`: every sign-in exactly as before I-17   |
-| `PLATFORM_OIDC_SUNSET`    | a UTC day, `YYYY-MM-DD` (from 00:00 UTC) | no sunset: the temporary method keeps working |
+| Var                       | Values                                   | Unset means                                          |
+| ------------------------- | ---------------------------------------- | ---------------------------------------------------- |
+| `PLATFORM_OIDC_MIGRATION` | `off`, `claim`, `operators-only`         | `off`: every sign-in exactly as before the migration |
+| `PLATFORM_OIDC_SUNSET`    | a UTC day, `YYYY-MM-DD` (from 00:00 UTC) | no sunset: the temporary method keeps working        |
 
 - **`claim`.** A subject that already has a method signs in to its account. Otherwise, if no
   account uses the address Pocket ID verified (`email_verified`), a new account gets it as its
   primary email and an email sign-in method. If one account uses it, nothing is written: the
-  portal opens the email step's join offer (I-07's gate), which joins only after the person signs
+  portal opens the email step's join offer (its gate), which joins only after the person signs
   in to that account in the same browser and confirms. An app's sign-in page links to the portal
   for it. If two or more accounts use it, nothing is written or offered. A subject with no
   verified email gets an account whose only method is the temporary one. The licenses its
@@ -235,8 +235,8 @@ change to `packages/worker/wrangler.toml` (`[env.<env>.vars]`) and a deploy.
   (`__Host-pkey_sso`, ten minutes); a `/callback` opened anywhere else is refused with _We couldn't
   confirm that sign-in_, in every mode. Someone who switches browsers mid-sign-in starts again.
 - **`operators-only`.** Only subjects that already moved still sign in through Pocket ID. Anyone
-  else sees _This way of signing in has ended_. Until I-08 moves `provider: platform` apps to the
-  login card, that includes new users of those apps, so turn it on only after I-08 ships, or
+  else sees _This way of signing in has ended_. Until `provider: platform` apps move to the
+  login card, that includes new users of those apps, so turn it on only after they have moved, or
   accept that.
 - **The sunset.** In `claim` or `operators-only`, from 00:00 UTC on that day nobody signs in
   through the platform client: the portal hides **Continue with single sign-on**, `/login`
@@ -262,12 +262,12 @@ change to `packages/worker/wrangler.toml` (`[env.<env>.vars]`) and a deploy.
 
 **Before the owner's go.**
 
-1. Deploy a build with I-17 and both vars unset. Read the count once; it works with the mode off.
+1. Deploy a build that has the migration and both vars unset. Read the count once; it works with the mode off.
 2. In Pocket ID, confirm that users cannot change their own email address, or that a changed
    address is not reported as verified until it is. The move trusts `email_verified`.
-3. Prefer to wait for the email step's UI (PX-21). Until it ships, a person whose address another
+3. Prefer to wait for the email step's UI in the portal. Until it ships, a person whose address another
    account already uses is sent to the sign-in card and signs in to that account as before; the
-   join itself needs PX-21.
+   join itself needs that UI.
 
 **The rollout (owner go/no-go at each step; record it in the table below).**
 
@@ -276,21 +276,19 @@ change to `packages/worker/wrangler.toml` (`[env.<env>.vars]`) and a deploy.
    `mode: "claim"` and one more `linked.subjects`.
 2. **Production, `claim`.** The same change in `[env.prod.vars]`. Read the report weekly:
    `linked` grows as people sign in, `unlinked` shrinks.
-3. **The sunset date.** Set only after the owner has read `emailLess` (S-16 §9 risk 11: the date
-   follows the count). Give the people in `linked.onlyMethod` time to add an email address in the
-   portal (Account → Sign-in methods, PX-W12; a passkey needs a verified email first); announce
+3. **The sunset date.** Set only after the owner has read `emailLess` (the date follows the count). Give the people in `linked.onlyMethod` time to add an email address in the
+   portal (Account → Sign-in methods; a passkey needs a verified email first); announce
    the date. Then set `PLATFORM_OIDC_SUNSET`.
-4. **`operators-only`.** Once new people should no longer arrive through Pocket ID (after I-08).
+4. **`operators-only`.** Once new people should no longer arrive through Pocket ID (after every `provider: platform` app has moved to the login card).
 5. **After the sunset.** In Pocket ID, remove the end-user accounts, keeping the operators in the
-   `admins` group. Once `consoleClientDedicated` is `true` (I-03's console client is set) and I-08
-   has moved every `provider: platform` app to the login card, the platform client can be
+   `admins` group. Once `consoleClientDedicated` is `true` (the console's own client is set) and every `provider: platform` app has moved to the login card, the platform client can be
    deleted in Pocket ID and the `PLATFORM_OIDC_*` secrets removed. Pocket ID is then
    operator-only.
 
 **Rolling back.** Set `PLATFORM_OIDC_MIGRATION = "off"` (or remove it) and deploy: every sign-in
-behaves as before I-17. Accounts and methods the claim made stay; they are ordinary accounts, and
+behaves as before the migration. Accounts and methods the claim made stay; they are ordinary accounts, and
 like every account one with no sign-in and no license for 36 months gets the warning email and is
-then deleted (D23). Removing `PLATFORM_OIDC_SUNSET`, or moving it later, reopens the platform
+then deleted. Removing `PLATFORM_OIDC_SUNSET`, or moving it later, reopens the platform
 client to the people it had ended.
 
 The owner signs off each step; the lead records the date and value here in the change that makes it.
@@ -418,13 +416,13 @@ is still under it, and _Safe to delete PLATFORM_KEK_ once nothing is.
 
 Five classes of value are covered, and all five are counted and swept together:
 
-| `counts` bucket       | Where it lives                                                                                                                                        |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `keys`                | `product_keys.enc_private_json` — per-product signing keys                                                                                            |
-| `secrets`             | `product_secrets.enc_value_json` — per-product secrets                                                                                                |
-| `outletCredentials`   | `outlet_credentials.enc_value_json` — store credentials (App Store Connect, Google Play, Partner Center; P5-01)                                       |
-| `managed`             | catalog-declared managed secrets sealed inside `profiles.payload_json`, `licenses.overrides_json` and `account_overrides.payload_json` (R12-02, U-03) |
-| `platformCredentials` | `platform_credentials.enc_value_json` — team store credentials stored in the console                                                                  |
+| `counts` bucket       | Where it lives                                                                                                                         |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `keys`                | `product_keys.enc_private_json` — per-product signing keys                                                                             |
+| `secrets`             | `product_secrets.enc_value_json` — per-product secrets                                                                                 |
+| `outletCredentials`   | `outlet_credentials.enc_value_json` — store credentials (App Store Connect, Google Play, Partner Center)                               |
+| `managed`             | catalog-declared managed secrets sealed inside `profiles.payload_json`, `licenses.overrides_json` and `account_overrides.payload_json` |
+| `platformCredentials` | `platform_credentials.enc_value_json` — team store credentials stored in the console                                                   |
 
 ### Rotating PLATFORM_KEK
 
@@ -583,7 +581,7 @@ Step 7 is there so you never need one.
 bindings, and secrets are bindings; treat a rollback to a pre-rotation version as restoring the
 secret values that version held. That conclusion follows Cloudflare's version model, so re-apply
 every secret rotated after the target version immediately after any rollback and verify the
-behaviour below. A forward fix (deploying the known-good code as a new version) is safer because
+behavior below. A forward fix (deploying the known-good code as a new version) is safer because
 it retains the current secrets. For this KEK specifically, an old keyring cannot open rows already
 re-sealed under the new kid, so affected product routes return 404. See "Key compromise" below.
 
@@ -1048,7 +1046,7 @@ marked as console rows, so no later resync deletes them. There is no per-value r
 "preserve" option. **To keep a console value, commit it to the product's `.pkey/` before the
 apply**; the dry run lists every value the apply would revert. Kept as they are: a live
 break-glass claim (it ends as any apply ends one: once expired, or when the manifest changes its
-field from the last applied one, ST-20), the existing `*_source` markers (services, the
+field from the last applied one), the existing `*_source` markers (services, the
 compatibility window, the fingerprint and auto-issue policies, access) and the system product's
 name. Manual products have no manifest and are only reported as `unlinked`.
 
@@ -1163,8 +1161,7 @@ re-renders up to 50 packages per run whose stored render stamp differs from D1. 
 lock or lifecycle rule on `registry/`.
 
 Bootstrapping the system product, turning an owner's feeds on, yanks and deprecations, feed
-rebuilds, the Swift signing-certificate rotation and the forward-only migration note follow with
-F-03, F-06 and F-11.
+rebuilds, the Swift signing-certificate rotation and the forward-only migration note follow.
 
 ### Registry tokens
 
@@ -1176,7 +1173,7 @@ portal. Every token expires (at most 365 days). The store is `registry_tokens` (
 client without a token `401` within 30 seconds, so mint the tokens and hand out the authenticated
 setup (the Tokens page's shown-once dialog, or `/docs/build/install-from-feeds/#private-feeds`)
 first. Switching back to `public` reopens the feed within 30 seconds. A rollback to a Worker older
-than F-21 with a non-public feed refuses every read of that feed (it fails closed); switch the
+than the one that added registry tokens, with a non-public feed refuses every read of that feed (it fails closed); switch the
 feed back to `public` to reopen it. The platform's own feeds stay `public`.
 
 **A leaked token.** Revoke it on the Tokens page (or the license's panel); it stops within 30
@@ -1311,12 +1308,12 @@ until upgraded.
 Package feeds serve versions of `kind: package` deliverables (the SDKs among them) on
 `pkg.plrs.im`. The registry host, the ecosystem renderers and the console pages sit on top of it.
 
-- **Bootstrap the system product** after deploying F-03, in each environment (dev, staging,
+- **Bootstrap the system product** after deploying a Worker with package feeds, in each environment (dev, staging,
   production), as a platform admin:
   `POST /manage/api/platform/feeds/bootstrap` (idempotent; audited `feed.bootstrap` in the
   platform trail). It creates `polaris-key`, turns Release, Distribution and its package feeds on
   and seeds one feed per ecosystem with the platform namespaces. Registering the monorepo's
-  trusted publisher for it is F-10's step.
+  trusted publisher for it is a separate step.
 - **Turn a product's feeds on or off:** `PUT /manage/api/products/<slug>/distribution/package-feeds
 {"enabled": true|false, "expectedVersion": <n>}`. Off stops every read for the owner at once.
 - **Yank or deprecate a version:** the release's yank (`…/release/releases/<id>/yank`) is its feed
@@ -1325,7 +1322,7 @@ Package feeds serve versions of `kind: package` deliverables (the SDKs among the
   (a build of main below a stable release; "Feed retention" below), and it leaves a tombstone so
   the version is still never published again.
 - **Publish:** CI runs `pkey release publish --deliverable <package id>`, which always dry-runs
-  first; a Worker older than F-03 is reported as such and nothing is uploaded.
+  first; a Worker without package feeds is reported as such and nothing is uploaded.
 
 ### Releasing the SDKs to the feeds
 
@@ -1418,7 +1415,7 @@ nothing to bump and no per-SDK tag:
 Owner request 2026-10-06. These decisions were made by the lead under delegated owner authority.
 
 - **What is pruned.** When version V of a package is published on `stable`, the package's
-  prereleases on the ephemeral channels (`main`, and the built-in `dev` since F-36) that sort below
+  prereleases on the ephemeral channels (`main`, and the built-in `dev`) that sort below
   V are deleted. That means semver `X-main.N` (on `main`), `X-dev.N` (on `dev`) and PEP 440
   `X.devN` (on either) with X ≤ V (`services/release/packages/prune.ts`). A public registry's copy
   is never reached. Stable and beta versions are never
@@ -1444,7 +1441,7 @@ Owner request 2026-10-06. These decisions were made by the lead under delegated 
 "prunePrereleases": false}` keeps the builds (audited `feed.retention.update`; `true` opts in
   without waiting). `GET` on the same path shows `source` and the `notice`. The system product
   (`polaris-key`) is on by default and locked on: a write is refused. Rolling the CODE back across
-  F-36 leaves cleanup off for a product that never chose (`scripts/rollback/0115_release_package_retention_notices.down.sql`).
+  The change leaves cleanup off for a product that never chose (`scripts/rollback/0115_release_package_retention_notices.down.sql`).
 - **What a prune does.** Versions go in atomic D1 batches of up to 20. For each version, the batch deletes its
   `release_packages`, `release_artifacts`, `release_yanks` and `release_metadata` rows and drops
   its `artifact` blob refs. It writes a tombstone to `release_package_prunes`: ingest refuses to
@@ -1463,8 +1460,8 @@ Owner request 2026-10-06. These decisions were made by the lead under delegated 
   200-version cap or a failed batch cuts short records only what its own deletions freed.
 - **Caches.** Index documents expire from the edge within two minutes (`max-age=60`,
   `stale-while-revalidate=60`). The immutable byte URLs of a pruned version (a tarball, a
-  manifest by digest) can still be answered by a data centre whose Cache API already holds them,
-  until that copy is evicted. The Worker cannot purge other data centres. A zone purge by URL
+  manifest by digest) can still be answered by a data center whose Cache API already holds them,
+  until that copy is evicted. The Worker cannot purge other data centers. A zone purge by URL
   would need a Cloudflare API token, which is a follow-up and not wired.
 - **Backfill (dry run first).** For versions released before this existed, prune each package's
   builds of main below its newest stable release:
@@ -1533,7 +1530,7 @@ compatible or standalone packs under one pack-id scope, inside a window of at mo
 grant is a CI-signed delegation; the Worker never holds either key. See
 `/docs/services/release/packs/` for the full flow.
 
-**Adoption rule.** Delegate only once every live app build you care about embeds a P4-19 SDK.
+**Adoption rule.** Delegate only once every live app build you care about embeds an SDK that supports delegated releases.
 Older builds refuse delegated releases (safely: they keep what they run), so a required pack
 whose only release is delegated stays missing on them.
 
@@ -1593,8 +1590,7 @@ change of the compressed bytes moves the match).
 ## Sign-in email
 
 Every sign-in and account email leaves ONE shared sender, `noreply@auth.plrs.im`, on the
-dedicated auth sending subdomain `auth.plrs.im`, so its reputation is every product's (S-16 §9
-risk 9). Platform mail is sent as `Polaris Key`; mail for sign-in started through a product as
+dedicated auth sending subdomain `auth.plrs.im`, so its reputation is every product's. Platform mail is sent as `Polaris Key`; mail for sign-in started through a product as
 `<App> via Polaris Key`, where `<App>` is the product's display name after the reserved-name
 validator (`src/core/notify/emailSender.ts`; a refused name falls back to the slug). Every send goes
 through `deliverEmail` (`src/core/notify/emailDelivery.ts`): binding, sender, Apple private relay, the
@@ -1646,7 +1642,7 @@ Until the owner steps below are done the Worker keeps sending from `noreply@plrs
    `cf-bounce.auth.plrs.im`), `DKIM: PASS` (domain `auth.plrs.im`), `DMARC: PASS`, `From:
 Polaris Key <noreply@auth.plrs.im>`. Repeat to a Hide-My-Email (`@privaterelay.appleid.com`)
    address of a test Apple account and confirm it arrives. Paste both Authentication-Results
-   headers into the I-18 PR, then deploy prod.
+   headers into the change that sets up sign-in email, then deploy prod.
 7. **Quota.** `GET /accounts/<id>/email/sending/limits` gives the account's daily quota. The
    per-product default cap is 500 a day (`EMAIL_SEND_PRODUCT_DAILY_DEFAULT`); raise or lower it
    for the deployment in Platform → Settings → Daily sign-in mail cap (or `EMAIL_PRODUCT_DAILY_CAP`),
@@ -1656,8 +1652,8 @@ Polaris Key <noreply@auth.plrs.im>`. Repeat to a Hide-My-Email (`@privaterelay.a
 
 - **A product is capped** (its users see "We can't send email right now"): set its own cap in the
   product's Settings → Daily sign-in mail cap (`email.dailyCap`). Reset it to return to the
-  deployment value. The day is a sliding 24 hours. (Before ST-11 this was a row in
-  `email_product_caps`; migration 0124 copied each row once, and ST-25 drops the table.)
+  deployment value. The day is a sliding 24 hours. (It used to be a row in
+  `email_product_caps`; migration 0124 copied each row once, and a later migration drops the table.)
 - **Suppression list** (`email_suppressions`): keyed by the peppered hash of the address, never
   the address. A hard bounce suppresses for 90 days, a complaint, a Cloudflare suppression
   (`E_RECIPIENT_SUPPRESSED`) or an operator entry permanently. A suppressed recipient is answered
@@ -1681,24 +1677,24 @@ works without them: no Turnstile token is asked for, and avatars use the `BLOBS`
    `npx wrangler secret put TURNSTILE_SECRET_KEY --env <env>`. With the secret set, the email start
    refuses a missing or failing token (`403 turnstile_failed`), and an unreachable Cloudflare
    refuses too. The widget itself is rendered by the card's UI, which also needs Cloudflare's
-   challenge origin in the portal's CSP (PX-12).
+   challenge origin in the portal's CSP.
 
    > **Warning: do not set `TURNSTILE_SECRET_KEY` yet.** The secret, not the site key, is what
-   > switches the check on, and the portal does not render the Turnstile widget until PX-12/PX-21
-   > ship it. With the secret set today, the portal sends no token and **every email sign-in fails
+   > switches the check on, and the portal does not render the Turnstile widget until a later
+   > release ships it. With the secret set today, the portal sends no token and **every email sign-in fails
    > with `403 turnstile_failed`**. Set the site key var if you like; put the secret only once the
    > widget is live in the portal.
 
    **Done (2026-10-06, by the lead through the Cloudflare API).** The three widgets exist, named
    `Polaris Key login card (prod|staging|dev)`, mode Managed, one hostname each, and their site keys
    are the `TURNSTILE_SITE_KEY` vars in `wrangler.toml`. No secret is set. To switch the check on
-   once PX-12/PX-21 render the widget, copy each widget's secret straight into the Worker without it
+   once the portal renders the widget, copy each widget's secret straight into the Worker without it
    passing through a terminal or a file: one Cloudflare API call per environment that reads
    `GET /accounts/{account}/challenges/widgets/{sitekey}` and writes the returned `secret` with
    `PUT /accounts/{account}/workers/scripts/{script}/secrets` as `TURNSTILE_SECRET_KEY`
    (`type: secret_text`), returning nothing. Then test email sign-in on staging before prod.
 
-2. **Avatars.** Account pictures (provider copies and uploads, PX-W16) live in the environment's
+2. **Avatars.** Account pictures (provider copies and uploads) live in the environment's
    `BLOBS` bucket under the `avatars/` prefix; no extra bucket is needed. Never add `avatars/` to
    the bucket's lock rules: a deleted account's pictures must go at once. They are re-encoded by
    the `IMAGES` binding that `wrangler.toml` already declares for prod, staging and dev (four
@@ -1722,10 +1718,10 @@ nothing is recorded (`docs/legal/` holds drafts that must not be published). It
 is an owner step, and it waits for four things:
 
 1. the owner's legal review of the terms and the privacy notice, and both published at https URLs;
-2. PX-21's FinishStep in the portal, which renders the terms step (until then the card cannot
+2. the portal's finish step, which renders the terms step (until it does, the card cannot
    show it, and a new email address would stop at a step it cannot draw);
-3. I-30, which sends the platform IdP's `/callback` through the gate;
-4. I-32b, which retires the legacy product callback. Until 3 and 4 ship, those two paths create
+3. the platform IdP's `/callback` going through the gate;
+4. the legacy product callback being retired. Until 3 and 4 are done, those two paths create
    accounts without the step.
 
 Then, per environment (staging first), one row; `version` is a short label such as `2026-10`:
@@ -1861,7 +1857,7 @@ staging or production, and never run `wrangler` against a remote.
 
 **Owner steps (production).**
 
-1. **Deploy.** The `account_overrides` migration ships with the release that carries U-03 and is
+1. **Deploy.** The `account_overrides` migration ships with the release that carries the override migration and is
    applied by the normal deploy. Every license keeps working unchanged.
 2. **Dry run on a production-shaped copy.** Either in the console (Platform → Override migration →
    Dry run), which writes nothing, or offline, with no Worker and no KEK:
@@ -1889,7 +1885,7 @@ staging or production, and never run `wrangler` against a remote.
    `proxy.subscriptionUrl`) keeps that secret on the license until the run; from the run on, its
    only target is the license owner's account overrides. So **OIDC licenses that are not in an
    account** (no `account_id`: the customer never added the license in the portal Library, and
-   LX-26's auto-attach never matched a verified email) **stop receiving provisioned secrets**:
+   the automatic attach never matched a verified email) **stop receiving provisioned secrets**:
    from the run's start, every sign-in (`updateLicenseOnSignIn`, and `activateFromIdentity`'s
    claim and new-license paths in `services/identity/oidc.ts`) removes them from the license
    instead of renewing them, and from the run's completion the license stops delivering any it
@@ -1930,9 +1926,9 @@ staging or production, and never run `wrangler` against a remote.
    secrets columns (entitlements kept). Nothing to do.
 
 **Rolling back.** Before step 5 nothing changed. Between the run and the 90-day mark the licenses
-still hold their old config and secrets, so a Worker built before U-03 would deliver them again
+still hold their old config and secrets, so a Worker built before the override migration would deliver them again
 (the account rows it ignores); a dropped license's values come back that way too. **Do not roll
-back past U-03 once the columns are emptied:** the license values are gone, and only the account
+back past the override migration once the columns are emptied:** the license values are gone, and only the account
 rows (which an older Worker does not read) hold them.
 
 **KEK rotation** covers the account rows: their sealed secrets are counted and re-sealed by the
@@ -1940,7 +1936,7 @@ rows (which an older Worker does not read) hold them.
 
 ## Offline grace clamp
 
-A license's offline grace no longer outlasts the license (S-19 G9, decision 7). While a product's
+A license's offline grace no longer outlasts the license. While a product's
 `licensing.clampGraceToExpiry` is on (the default), every document a license grants (the license
 document, the config document of a device bound to it, an offline bundle's inner documents, the
 browser-session document) has `graceUntil = min(issuedAt + maxOfflineDays × 86 400,
@@ -1949,7 +1945,7 @@ unchanged; a grant's own expiry never shortens the window. The opt-out is per pr
 Settings → **Clamp offline grace to expiry** off (a reason is required), or
 `clampGraceToExpiry: false` under `licensing:` in `.pkey/product`.
 
-**Owner steps (production), before the release that carries LX-07.** The clamp is on for every
+**Owner steps (production), before the release that carries the grace clamp.** The clamp is on for every
 product the moment that release is deployed, so read the affected-license report first. Agents
 never run any of this against staging or production, and never run `wrangler` against a remote.
 
@@ -1970,8 +1966,8 @@ never run any of this against staging or production, and never run `wrangler` ag
    changed anything. Delete `prod.sql` afterwards: it holds customer data.
 
 2. **Opt out where the full window must stay** (a product whose licenses are routinely renewed
-   after they lapse, say). The setting exists since LX-06 and does nothing until this release, so
-   the opt-out can be set before the deploy. If LX-06 ships in the same release, set it right after
+   after they lapse, say). The setting already exists and does nothing until this release, so
+   the opt-out can be set before the deploy. If the setting ships in the same release, set it right after
    the deploy: an online device picks up the clamped window at its next document fetch (within the
    hour), an offline one only when it next reconnects.
 3. **Deploy.** Nothing else to do; there is no migration.
@@ -1989,7 +1985,7 @@ next fetch), or redeploy the previous Worker.
 The licensing model adds **grants**: reasons a holder (a license,
 an account or a store identity) has entitlements. This release is the expand step only (steps
 1–4). Every license and device document stays **byte-identical**, ETag included, and every read
-stays on the old objects until LX-09. Three things change underneath:
+stays on the old objects until a later release. Three things change underneath:
 
 - **Store grants are dual-written.** Every store purchase in `license_store_grants` also has one
   license-held grant, `grt_s_<store>_<purchase key hash>` (`grants`, `grant_entitlements`,
@@ -2000,7 +1996,7 @@ stays on the old objects until LX-09. Three things change underneath:
   `oidc` grant, `grt_oidc_<license id>` (djdl's `polarisVpn`). Each entry's state, value and
   `updatedAt` is copied, and the license document reads the grant where the keys used to sit. A
   sign-in moves its own license. Provisioned **secrets** are not touched: they stay a license
-  override until the U-03 run, and then go to the owner's account overrides (U-03).
+  override until the override migration runs, and then go to the owner's account overrides.
 - **Tiers gain `rank` and `policyOfflineGraceDays`** (default 0 and none). A sign-in whose
   groups map to several tiers picks the highest-ranked one. While every rank is 0 that is still
   the first match, so nothing changes until a rank is set. `oidc.syncTierOnSignIn: upgradeOnly`
@@ -2008,8 +2004,8 @@ stays on the old objects until LX-09. Three things change underneath:
 
 **Owner steps (production).** Agents never run any of this against staging or production.
 
-1. **Deploy.** The release that carries LX-08 applies its migrations through the normal deploy
-   (`wrangler d1 migrations apply`). Each migration file is a bare `ADD COLUMN` (R11-04), an
+1. **Deploy.** The release that carries the licensing model applies its migrations through the normal deploy
+   (`wrangler d1 migrations apply`). Each migration file is a bare `ADD COLUMN`, an
    `IF NOT EXISTS` table, or the backfill (`…_m_licensing_backfill.sql`). The backfill projects
    every existing store grant and mapping. It is an upsert that changes nothing on a replay, so a
    migration run that is interrupted and started again converges. The Worker that is still live
@@ -2034,28 +2030,28 @@ stays on the old objects until LX-09. Three things change underneath:
    left exactly as it is, and its next sign-in moves it, as every sign-in rewrites the document
    anyway.
 
-3. **Nothing else is needed.** There is no switch and no flag. Reads move in LX-09; LX-16 stops the
+3. **Nothing else is needed.** There is no switch and no flag. Reads move in a later release, which then stops the
    dual-write and retires the old objects after a zero-drift report (`storeGrantDrift` in
    `src/core/licensing/grants.ts`).
 
 **Rolling back.** Store grants and mappings never left their old tables, so a Worker built before
-LX-08 keeps serving them. The provisioned keys **did** leave the overrides column. After rolling
+the licensing model keeps serving them. The provisioned keys **did** leave the overrides column. After rolling
 the Worker back, run the down script once to copy them back:
 
 ```sh
-# owner only, after deploying the pre-LX-08 build:
+# owner only, after deploying the build from before the licensing model:
 npx wrangler d1 execute polaris_key_prod --env prod --remote \
   --file packages/worker/scripts/rollback/0105_licensing.down.sql
 ```
 
-It appends each grant's keys after the license's other keys, where LX-02's writer kept them, so
-the old Worker's documents are the LX-08 Worker's byte for byte. It then deletes the copied keys
+It appends each grant's keys after the license's other keys, where the old writer kept them, so
+the old Worker's documents are the new Worker's byte for byte. It then deletes the copied keys
 from the `oidc` grants, and the grants they empty, so the column is their only source again. Without
 that step, a key the old Worker revoked (its claim disappeared at a sign-in) would come back when
-the LX-08 Worker is rolled forward. The script is idempotent: a second run copies and deletes
+the new Worker is rolled forward. The script is idempotent: a second run copies and deletes
 nothing.
 
-It leaves the LX-08 tables, columns and store-grant rows in place. A roll forward starts the move
+It leaves the licensing model's tables, columns and store-grant rows in place. A roll forward starts the move
 over, as the first deploy did: each sign-in and the catch-up move the keys out of the column again,
 and the catch-up re-projects the store grants the old Worker wrote in between.
 
@@ -2081,36 +2077,36 @@ under _Entries_ in the change that closes the row. A row with no entry is open.
 
 ### Expand and contract pairs
 
-| Pair                                 | Owner     | Exit fact                                                                                                                                                   |
-| ------------------------------------ | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| U-03 override migration, U-27, U-27b | The lead  | U-27 deletes the machinery. U-27b drops `override_migration` and `override_migration_report` after the check.                                               |
-| ST-01c settings backfill             | The owner | The backfill ran on `djdl` and `polaris-key` and its report is kept. Then the runner, routes and page are deleted.                                          |
-| I-17 platform-IdP claim              | The owner | The count of end users with no email, read on the sunset date `PLATFORM_OIDC_SUNSET`. Closed by I-32b.                                                      |
-| LX-08 licensing catch-up             | The lead  | LX-11 retires `licensingCatchUp` and the store-grant dual-write once offers are the writer.                                                                 |
-| LX-16, LX-16b                        | The lead  | LX-16b drops the six standalone licensing tables after the check. Columns of `licenses` and `grants` stay.                                                  |
-| I-28, I-28b                          | The lead  | I-28b drops the four `portal_*` tables and their views after the check.                                                                                     |
-| P0-28, P0-28b                        | The lead  | P0-28b drops `product_secrets`, `outlet_credentials` and `platform_credentials` after a check that none was opened.                                         |
-| A-27, A-27b                          | The lead  | A-27b drops `dist_listing` after the check.                                                                                                                 |
-| PS-11 storefront close-out           | The lead  | No code reads `discover_enabled`.                                                                                                                           |
-| ST-25, ST-25b                        | The lead  | ST-25 stopped every read of `products.admin_group` and every `adminGroup` offer has an outcome. ST-25b drops it once the previous deploy is ST-25 or later. |
-| I-05 portal-to-account catch-up      | The lead  | No Worker built before I-05 can still serve. Then `services/identity/accounts/legacy.ts` goes (the `LICENSE_WRITE_SEAMS` row names this ledger).            |
-| LX-41 durations and subscriptions    | The lead  | None. LX-41 has no contract step, and its down script only reports.                                                                                         |
+| Pair                        | Owner     | Exit fact                                                                                                                                                                        |
+| --------------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| License override migration  | The lead  | A later release deletes the machinery. A second drops `override_migration` and `override_migration_report` after the check.                                                      |
+| Settings backfill           | The owner | The backfill ran on `djdl` and `polaris-key` and its report is kept. Then the runner, routes and page are deleted.                                                               |
+| Platform-IdP claim          | The owner | The count of end users with no email, read on the sunset date `PLATFORM_OIDC_SUNSET`. Closed when the legacy callbacks are retired.                                              |
+| Licensing catch-up          | The lead  | A later release retires `licensingCatchUp` and the store-grant dual-write once offers are the writer.                                                                            |
+| Standalone licensing tables | The lead  | A second release drops the six standalone licensing tables after the check. Columns of `licenses` and `grants` stay.                                                             |
+| Portal tables               | The lead  | A second release drops the four `portal_*` tables and their views after the check.                                                                                               |
+| Credential tables           | The lead  | A second release drops `product_secrets`, `outlet_credentials` and `platform_credentials` after a check that none was opened.                                                    |
+| Distribution listing        | The lead  | A second release drops `dist_listing` after the check.                                                                                                                           |
+| Storefront close-out        | The lead  | No code reads `discover_enabled`.                                                                                                                                                |
+| Product admin group         | The lead  | Nothing reads `products.admin_group` and every `adminGroup` offer has an outcome. A second release drops it once the previous deploy is the one that stopped the reads or later. |
+| Portal-to-account catch-up  | The lead  | No Worker built before the account model can still serve. Then `services/identity/accounts/legacy.ts` goes (the `LICENSE_WRITE_SEAMS` row names this ledger).                    |
+| Durations and subscriptions | The lead  | None. It has no contract step, and its down script only reports.                                                                                                                 |
 
 ### Rollback ladder (licensing)
 
-`scripts/rollback/0105_licensing.down.sql` is valid only before LX-35's migration. Each later
-licensing migration ships its own down script. After LX-35 ships, run the newest script that
+`scripts/rollback/0105_licensing.down.sql` is valid only before the licensing-model migration. Each later
+licensing migration ships its own down script. After that migration ships, run the newest script that
 applies, never `0105`.
 
 ### Windows
 
-| Window                                                                            | Owner     | Length                               | Exit fact                                                                                                                                                                              |
-| --------------------------------------------------------------------------------- | --------- | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Break-glass (`/manage/login?breakGlass=1`, ST-30)                                 | The owner | At least 30 days from ST-30's deploy | 14 consecutive days with no `rbac.breakglass` audit row, and two accounts with a Superadmin binding and a strong passkey. Then the branch goes; `ADMIN_OIDC_*` stays as `console-idp`. |
-| Native-binary paths (the permanent aliases and routes DJDL's desktop builds call) | The owner | Until DJDL ships a build on 0.9      | Production request logs show no native client calling the route. SP-40 and I-32b each record this before they remove a route.                                                          |
-| `admin_group` column                                                              | The lead  | 14 days after ST-25's deploy         | See ST-25, ST-25b above.                                                                                                                                                               |
-| `PLATFORM_OIDC_MIGRATION` and `PLATFORM_OIDC_SUNSET`                              | The owner | To the owner-set date `YYYY-MM-DD`   | The seeded platform connection's audience is written once from its last value, recorded here. I-32b then removes both names.                                                           |
-| `licenses.sub`                                                                    | The lead  | To the owner-set date                | The `legacy-sub-sunset` dry run reports the email-less count again. Then I-32b stops every read; the column stays dormant.                                                             |
+| Window                                                                            | Owner     | Length                                         | Exit fact                                                                                                                                                                              |
+| --------------------------------------------------------------------------------- | --------- | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Break-glass (`/manage/login?breakGlass=1`)                                        | The owner | At least 30 days from the deploy that added it | 14 consecutive days with no `rbac.breakglass` audit row, and two accounts with a Superadmin binding and a strong passkey. Then the branch goes; `ADMIN_OIDC_*` stays as `console-idp`. |
+| Native-binary paths (the permanent aliases and routes DJDL's desktop builds call) | The owner | Until DJDL ships a build on 0.9                | Production request logs show no native client calling the route. Each release that removes a route records this first.                                                                 |
+| `admin_group` column                                                              | The lead  | 14 days after the reads stopped                | See Product admin group above.                                                                                                                                                         |
+| `PLATFORM_OIDC_MIGRATION` and `PLATFORM_OIDC_SUNSET`                              | The owner | To the owner-set date `YYYY-MM-DD`             | The seeded platform connection's audience is written once from its last value, recorded here. A later release then removes both names.                                                 |
+| `licenses.sub`                                                                    | The lead  | To the owner-set date                          | The `legacy-sub-sunset` dry run reports the email-less count again. Then a later release stops every read; the column stays dormant.                                                   |
 
 ### Job reports
 
@@ -2125,31 +2121,31 @@ tracks:
 
 | Job                                 | Owner    | Exit fact                                                                                                                                                                       |
 | ----------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `core.licence-override-migration`   | The lead | The dry run reports no licence with an override, then U-27 deletes the machinery. Applied from the console, never the runner.                                                   |
+| `core.licence-override-migration`   | The lead | The dry run reports no license with an override, then a later release deletes the machinery. Applied from the console, never the runner.                                        |
 | `identity.seed-platform-connection` | The lead | An apply report exists. Its seeded audience is recorded here as above.                                                                                                          |
-| P2-12 resolver comparison           | The lead | Zero blocking rows, every expected row acknowledged below by class and count, and no `workflow-channel` row's old answer newer than the latest `materialise-workflow-beta` run. |
-| P2-12b                              | The lead | The dry run after the switch shows zero blocking rows and nothing was rolled back. P2-12b then deletes the old resolver.                                                        |
+| Resolver comparison                 | The lead | Zero blocking rows, every expected row acknowledged below by class and count, and no `workflow-channel` row's old answer newer than the latest `materialise-workflow-beta` run. |
+| Resolver switch                     | The lead | The dry run after the switch shows zero blocking rows and nothing was rolled back. A later release then deletes the old resolver.                                               |
 
-**P2-12 deviation.** The two-release rule says the switch waits for a dry run with no changes. The
+**Resolver deviation.** The two-release rule says the switch waits for a dry run with no changes. The
 resolver comparison accepts six expected classes instead (`beta-includes-stable`,
 `workflow-channel`, `beyond-page-cap`, `duplicate-version`, `descriptor-channel`,
 `descriptor-files`), because they are the deliberate move to one meaning per track and cannot reach
 zero. The lead acknowledges each class and its count here before the switch.
 
-**Owner steps for DJDL** (P2-12). First, change the channel workflow so that beta publishes as a
+**Owner steps for DJDL** (the resolver switch). First, change the channel workflow so that beta publishes as a
 GitHub prerelease or with descriptor `channel: beta`, before the switch deploys. Second, drop
 `channelWorkflow` and `betaBranch` from its `.pkey/` manifest right after the switch deploys, not
 earlier: a resync writes `channel_workflow` as NULL when the field is absent.
 
 ### Entries
 
-| Date       | Row             | Fact                                                                                                                                                           | Recorded by |
-| ---------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| 2026-10-17 | CM-29 pre-check | 0 rows in `dist_connector_settings` (`commerce`), `dist_store_products`, `dist_purchases` and `dist_purchase_bindings`. The old device paths are retired (D2). | The lead    |
+| Date       | Row                | Fact                                                                                                                                                      | Recorded by |
+| ---------- | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| 2026-10-17 | Commerce pre-check | 0 rows in `dist_connector_settings` (`commerce`), `dist_store_products`, `dist_purchases` and `dist_purchase_bindings`. The old device paths are retired. | The lead    |
 
 ### Not yet removed
 
-The ST-01c backfill code (`core/ops/settingsBackfill.ts`, its routes and the console page) stays
+The settings backfill code (`core/ops/settingsBackfill.ts`, its routes and the console page) stays
 until the owner confirms the production run. Its row is above.
 
 ## The blob collector
@@ -2166,7 +2162,7 @@ surface in the cron's aggregate error (`blobRefs:<slug>`, `blobMark`, `blobSweep
   No deploy: every isolate picks it up within 30 seconds, and the nightly tick reads it fresh.
   Nothing is deleted while it is off; turning it back on resumes where it stopped. For a stop no
   console session can undo, set `BLOB_GC_MODE = "off"` under the environment's `[vars]` and
-  deploy: a deploy-time `off` is a hard off (A-13 `ceiling` precedence).
+  deploy: a deploy-time `off` is a hard off (`ceiling` precedence).
 - **Grace period:** Platform → Settings → Blob collector grace period (`BLOB_GC_GRACE_DAYS`;
   default 30, a console value from 1 to 365 days). A console value wins over the `[vars]` value;
   "Revert" (`DELETE …/settings/BLOB_GC_GRACE_DAYS`) returns to it. The lock age, not the grace,
@@ -2326,7 +2322,7 @@ last_error FROM account_erasures WHERE account_id = '<id>'` shows a resumed eras
 - Erasures that finished **before** the ledger shipped are protected only once the mirror has copied
   them (100 per pass). A restore to a point before such an account's tombstone existed, made before
   that copy, brings the account back usable, with nothing to refuse or re-erase it. After the first
-  deploy of I-11, do not restore D1 to a point earlier than the deploy until the `erasureLedger`
+  deploy that has the erasure ledger, do not restore D1 to a point earlier than the deploy until the `erasureLedger`
   count on the connector ticks has stayed at 0 for a day. No recorded signal says the mirror is
   complete, only that a pass did nothing.
 - The ledger is one bucket with no other copy. R2 is outside Time Travel and the repo configures
@@ -2371,7 +2367,7 @@ inside the 15-minute wall clock; a mirror not started is retried a minute later.
   `github:rate-limited`, `no-access` (no installation token), `no-source`, and every ingest reason
   (`sha256-mismatch` for corrupted bytes, `status:<n>`, `timeout`, `network`, `guard:<reason>`).
   A failed file keeps serving from GitHub.
-- **Stop it:** until HA-10 registers `assets.releases.mirror` (per product) and
+- **Stop it:** until the console registers `assets.releases.mirror` (per product) and
   `assets.hosting.enabled` (platform), mirroring is on for every product that runs Release. Copies
   already made stay valid either way: their locations are hash-pinned, and both refs that hold a
   copy (`hosted-asset` for the copy, `release-artifact` for the location) are never dropped by the
@@ -2385,7 +2381,7 @@ CI delta from that base, the consumer Worker `polaris-key-deltas-<env>` encodes 
 `zstd-patch-from` delta in WebAssembly, verifies it, and stores it at
 `deltas/<from>/<to>.zstd-patch-from` (or under `gated/`) with a `ready` row in
 `release_lazy_deltas`. Pairs with a side over 32 MiB are refused as `over-worker-cap` (the
-evidence for a Container tier, P4-17b). Setup is DEPLOYMENT §3 "Lazy deltas".
+evidence for a Container tier). Setup is DEPLOYMENT §3 "Lazy deltas".
 
 - **Turn it on.** In the console, Platform → Settings → Lazy deltas → on
   (`PATCH /manage/api/platform/settings/LAZY_DELTAS` with `{"value":"on","expectedVersion":N}`).
@@ -2394,9 +2390,9 @@ evidence for a Container tier, P4-17b). Setup is DEPLOYMENT §3 "Lazy deltas".
   `LAZY_DELTAS = "runtime"` (the committed value); `"off"` there is a deploy-time hard off. Then
   opt a product in: its Settings → Lazy deltas (`deltas.lazy.enabled`). Devices that make a
   pair hot (`deltas.lazy.hotDevices`, default 25) and deltas built a day (`deltas.lazy.dailyCap`,
-  default 20) are beside it. No SQL: the console writes and audits each change. (Before ST-11 this
-  was a row in `lazy_delta_settings`; migration 0124 copied each row once, and ST-25 drops the
-  table.)
+  default 20) are beside it. No SQL: the console writes and audits each change. (It used to
+  be a row in `lazy_delta_settings`; migration 0124 copied each row once, and a later migration
+  drops the table.)
 
 - **Turn it off.** Lazy deltas off for one product (counting and generation stop at once), or the
   console's Lazy deltas switch for everything (within 30 seconds). For an off no console session
@@ -2416,7 +2412,7 @@ evidence for a Container tier, P4-17b). Setup is DEPLOYMENT §3 "Lazy deltas".
 - **What it did.** `release_lazy_deltas` (`ready`, `refused` with a reason, `cold`), the nightly
   aggregate in `delta_demand`, and the maintenance cron's `lazyDeltas:<slug>` step (failures
   surface in the cron's aggregate error). Refusals worth acting on: `over-worker-cap` (a pack
-  above 32 MiB is hot: the case for P4-17b), `verify` (escalate: the encoder disagreed with
+  above 32 MiB is hot: the case for a Container tier), `verify` (escalate: the encoder disagreed with
   itself).
 - **Cold deltas.** A ready delta no device reported for 30 days is marked `cold` and loses its
   `lazy-delta` ref; the blob collector then reclaims it under its usual grace and lock rules. If
@@ -2429,9 +2425,9 @@ polaris-key-deltas-<env>`).
   the consumer's logs for Error 1102 or "exceeded resource limits"; the consumer's reported CPU
   ms; the R2 event-to-consumer latency; and a re-PUT of the same object producing one delta.
 
-## Device-code approval deploy window (I-37)
+## Device-code approval deploy window
 
-Deploying I-37 adds an approval step to every device-code sign-in. There is no flag, migration or
+The release that added device-code approval adds an approval step to every device-code sign-in. There is no flag, migration or
 backfill, and nothing in flight is grandfathered. A flow that was already past the IdP callback
 holds an identity but no `approvedAt`: its device's poll answers `pending` until the flow expires
 (at most 600 seconds), then `timeout`, and the person gets a new code. A flow that has not reached
@@ -2444,7 +2440,7 @@ next poll. Count approved, denied and expired-unapproved flows from the audit ro
 ## Customer host (Polaris Locker)
 
 The customer site (Polaris Locker) is a second host on this Worker, `CUSTOMER_ORIGIN`; the console
-(`key.plrs.im`) is the backend side. There is no switch (LK-17): the host is on exactly when
+(`key.plrs.im`) is the backend side. There is no switch: the host is on exactly when
 `CUSTOMER_ORIGIN` is a usable origin, so the cutover is the deploy that sets it. The deploy smoke
 check covers it.
 
@@ -2458,17 +2454,17 @@ sign-in after the deploy.
 **Roll back.** Remove `CUSTOMER_ORIGIN` from `[vars]` (and the customer routes) and redeploy. Links
 return to the console origin and the redirects stop. A browser that has seen a `301` keeps it until
 its cache is cleared, so a rolled-back customer page can still land on the customer host: keep the
-host attached (or let it serve) until that has aged out. Rolling the Worker back below LK-03 while
+host attached (or let it serve) until that has aged out. Rolling the Worker back below the release that added the customer host while
 the custom domain is attached leaves the host serving the console's routes.
 
-**Rollback floor.** The floor is the LK-11 release (the first with the routes in `wrangler.toml`).
-Never roll the Worker back below LK-03 while `polaris.locker` is attached (plan §9): the older
+**Rollback floor.** The floor is the first release with the customer routes in `wrangler.toml`.
+Never roll the Worker back below the release that added the customer host while `polaris.locker` is attached: the older
 code does not know the host and would serve it the console and every product route.
 
 **Emergency detach.** After removing `CUSTOMER_ORIGIN`, delete the Worker custom domain `polaris.locker` in
 the dashboard (Worker → Settings → Domains & Routes), or remove the customer
 `[[env.<env>.routes]]` entry and redeploy. The host then stops resolving to the Worker; the API
-host is untouched. Detach before rolling back below LK-03.
+host is untouched. Detach before rolling back below that release.
 
 ## CI gates
 

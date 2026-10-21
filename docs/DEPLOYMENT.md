@@ -108,9 +108,9 @@ These steps are browser/provider tasks. Complete them before deploying.
 1. Confirm the `plrs.im` zone is active in the `Polaris` Cloudflare account.
 2. Confirm `key.plrs.im` is available for a Worker custom domain, and so are the bytes hosts
    (`dl.plrs.im`, `dl-staging.plrs.im`, `dl-dev.plrs.im`), the registry hosts
-   (`pkg.plrs.im`, `pkg-staging.plrs.im`, `pkg-dev.plrs.im`, F-02) and the image hosts
-   (`img.plrs.im`, `img-staging.plrs.im`, `img-dev.plrs.im`, HA-02) and the customer hosts
-   (`polaris.locker`, `staging.polaris.locker`, `dev.polaris.locker`, LK-11). `wrangler deploy` attaches
+   (`pkg.plrs.im`, `pkg-staging.plrs.im`, `pkg-dev.plrs.im`) and the image hosts
+   (`img.plrs.im`, `img-staging.plrs.im`, `img-dev.plrs.im`) and the customer hosts
+   (`polaris.locker`, `staging.polaris.locker`, `dev.polaris.locker`). `wrangler deploy` attaches
    each `custom_domain = true` route in `wrangler.toml` and creates its DNS record and
    certificate; a name that already has a DNS record outside the Worker must be cleared first.
 3. Onboard the auth sending subdomain `auth.plrs.im` on Cloudflare Email Sending, add its
@@ -497,7 +497,7 @@ curl -sI https://dl.plrs.im/ | grep -iE '^(HTTP|content-type|content-security-po
 # and no set-cookie line. Every other path (/favicon.ico included) is still the 404 above.
 ```
 
-Since P2-05 the host serves Release's three byte routes (`/<p>/release/builds/…`,
+The host serves Release's three byte routes (`/<p>/release/builds/…`,
 `/<p>/release/files/…`, `/<p>/release/blobs/sha256/…`), the first real responses on it. After
 the deploy that ships them, check them from outside too (`<slug>` is a product with Release on):
 
@@ -589,7 +589,7 @@ test`, `registry-clients.yml`). It has no routes and must never be deployed.
   Bearer challenge to a request without a pull token (anonymous pull tokens keep public images
   pullable). No feature flag: every feed is `public` until an operator changes its mode. Rotation
   is in the RUNBOOK ("Registry tokens"). Optionally, add a GitHub secret-scanning custom
-  pattern `pkeyr_[A-Za-z0-9_-]{43}` at organisation level.
+  pattern `pkeyr_[A-Za-z0-9_-]{43}` at organization level.
 
 After the next deploy, check the host from outside:
 
@@ -632,8 +632,8 @@ in or out. Declared in `wrangler.toml`, beside `dl…` and `pkg…`:
   without it would hand the whole console to the sibling; `test/imgHost.test.ts` checks every
   committed environment, and an `IMG_ORIGIN` equal to `BLOB_ORIGIN` or `PKG_ORIGIN` is refused
   (the host is then off).
-- An image is served only when the product holds a hosted copy of it (`hosted_assets`, HA-01).
-  Until HA-05 and HA-06 start hosting copies, every image path answers the not-found.
+- An image is served only when the product holds a hosted copy of it (`hosted_assets`).
+  Until a product has hosted copies, every image path answers the not-found.
 - Optional: a WAF rate-limiting rule for the host. The Worker already limits R2 reads on cache
   misses per product and IP (`imgHost`, 600 a minute, fail open).
 
@@ -657,9 +657,9 @@ curl -s -o /dev/null -w '%{http_code}\n' -X POST https://img.plrs.im/<slug>/icon
 The Worker answers a fifth host, `CUSTOMER_ORIGIN` (`https://polaris.locker`; `staging.polaris.locker`
 and `dev.polaris.locker` elsewhere), confined to the customer routes (`src/core/customerHost.ts`).
 The `polaris.locker` zone is active in the same Cloudflare account as the Worker, with no other
-DNS record on those names. Since LK-11 `wrangler.toml` attaches the three custom domains and sets
+DNS record on those names. `wrangler.toml` attaches the three custom domains and sets
 `CUSTOMER_ORIGIN` in each `[vars]`; `wrangler deploy` creates the DNS record and certificate (the
-first certificate can take minutes). There is no switch (LK-17): a usable `CUSTOMER_ORIGIN` is the
+first certificate can take minutes). There is no switch: a usable `CUSTOMER_ORIGIN` is the
 cutover. The deploy that carries it moves every customer link to the customer host, and the old
 customer pages on the API host (`/activate`, `/signin` but for `?request=`, `/device`, `/tv`,
 `/login[/…]`, `/callback`, `/logout`, `/magic/verify`, `/download/<token>`) redirect
@@ -814,7 +814,7 @@ account again after a D1 Time Travel restore, which rewinds the tombstone togeth
   This repo has no maintenance mode or traffic switch for a restore; do not assume one. The
   operator console's Users page, per-user detail and export are not fenced, and a not-erased answer
   is remembered for 30 seconds per isolate (RUNBOOK "Account erasure ledger and D1 restore").
-- **Check after the first deploy that includes I-11.** In D1, `platform_job_runs` rows with
+- **Check after the first deploy that includes the erasure ledger.** In D1, `platform_job_runs` rows with
   `step = 'erasureLedger'` appear on `connectorPoll` ticks, with `rows_affected` above 0 while the
   mirror copies and 0 once it has finished. Only the nightly `maintenance` row can show the step
   as `failed`; a poll tick records a failed replay as `ok` with 0. The query and the restore
@@ -827,7 +827,7 @@ Lazy hot-pair deltas (RUNBOOK "Lazy deltas") need Workers Paid with Queues
 enabled, two queues per environment, a second Worker script and, after its first deploy, two R2
 event-notification rules. The feature ships off: both scripts carry `LAZY_DELTAS = "runtime"`,
 which hands the switch to the console's platform settings store, where it defaults to off.
-None of this changes behaviour until an operator turns it on.
+None of this changes behavior until an operator turns it on.
 
 1. **Queues** (per environment `<env>` = `prod`, `staging`, `dev`):
 
@@ -856,7 +856,7 @@ None of this changes behaviour until an operator turns it on.
 
 3. **The R2 rules**, only after step 2 (a rule needs a queue with a consumer). One rule per final
    payload prefix; they cannot overlap each other or anything else on the bucket (the bucket has
-   no other notification rule, and P4-17's own writes go to `deltas/`, outside both):
+   no other notification rule, and the lazy-delta consumer's own writes go to `deltas/`, outside both):
 
    ```sh
    npx wrangler r2 bucket notification create polaris-key-blobs-<env> \
@@ -959,13 +959,13 @@ and cleared there) or bootstrapped as a Worker secret, which is read only while 
 credential is stored. Every secret is one JSON object of exactly the shape the console accepts;
 the console and API show only its presence and metadata (key id, issuer id, client email, …).
 
-| Worker secret                     | JSON shape                                                                                                          | What it is                                                                                                                                                                                                                                              |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `PLATFORM_ASC_API_KEY`            | `{"keyId":"ABC123DEFG","issuerId":"69a6de7f-…","p8":"-----BEGIN PRIVATE KEY-----\n…\n-----END PRIVATE KEY-----\n"}` | App Store Connect team API key (Users and Access → Integrations → App Store Connect API). Production holds an Admin-role key (owner decision 2026-10-04); the Worker's deny-by-default write gate (`core/asc/writeGate.ts`, A-17a) bounds what it sends |
-| `PLATFORM_APP_STORE_SERVER_KEY`   | `{"keyId":"…","issuerId":"…","p8":"-----BEGIN PRIVATE KEY-----\n…"}`                                                | the team's In-App Purchase key (Users and Access → Integrations → In-App Purchase)                                                                                                                                                                      |
-| `PLATFORM_GOOGLE_SERVICE_ACCOUNT` | the service account's JSON key file as downloaded (`type`, `client_email`, `private_key`, `token_uri`, …)           | a service account invited into Play Console (the narrowest permissions the products need)                                                                                                                                                               |
-| `PLATFORM_MS_PARTNER_CENTER`      | `{"tenantId":"…","clientId":"…","clientSecret":"…","sellerId":"…"}`                                                 | the Entra app associated with the Partner Center account (Manager role)                                                                                                                                                                                 |
-| `PLATFORM_STEAM_PUBLISHER_KEY`    | `{"key":"0123456789ABCDEF0123456789ABCDEF"}`                                                                        | a Steamworks Web API publisher key of the group                                                                                                                                                                                                         |
+| Worker secret                     | JSON shape                                                                                                          | What it is                                                                                                                                                                                                                                       |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `PLATFORM_ASC_API_KEY`            | `{"keyId":"ABC123DEFG","issuerId":"69a6de7f-…","p8":"-----BEGIN PRIVATE KEY-----\n…\n-----END PRIVATE KEY-----\n"}` | App Store Connect team API key (Users and Access → Integrations → App Store Connect API). Production holds an Admin-role key (owner decision 2026-10-04); the Worker's deny-by-default write gate (`core/asc/writeGate.ts`) bounds what it sends |
+| `PLATFORM_APP_STORE_SERVER_KEY`   | `{"keyId":"…","issuerId":"…","p8":"-----BEGIN PRIVATE KEY-----\n…"}`                                                | the team's In-App Purchase key (Users and Access → Integrations → In-App Purchase)                                                                                                                                                               |
+| `PLATFORM_GOOGLE_SERVICE_ACCOUNT` | the service account's JSON key file as downloaded (`type`, `client_email`, `private_key`, `token_uri`, …)           | a service account invited into Play Console (the narrowest permissions the products need)                                                                                                                                                        |
+| `PLATFORM_MS_PARTNER_CENTER`      | `{"tenantId":"…","clientId":"…","clientSecret":"…","sellerId":"…"}`                                                 | the Entra app associated with the Partner Center account (Manager role)                                                                                                                                                                          |
+| `PLATFORM_STEAM_PUBLISHER_KEY`    | `{"key":"0123456789ABCDEF0123456789ABCDEF"}`                                                                        | a Steamworks Web API publisher key of the group                                                                                                                                                                                                  |
 
 `p8` keeps the PEM's line breaks as `\n` inside the JSON string. One non-secret value can also be
 set as a var or a secret:
@@ -1036,7 +1036,7 @@ pnpm test
 pnpm lint
 cd packages/worker
 npx wrangler d1 migrations apply polaris_key_prod --env prod --remote
-npx wrangler deploy -c wrangler.deltas.toml --env prod   # the lazy-delta consumer (P4-17)
+npx wrangler deploy -c wrangler.deltas.toml --env prod   # the lazy-delta consumer
 npx wrangler deploy --env prod
 ```
 
@@ -1069,7 +1069,7 @@ vMAJOR.MINOR.PATCH-prerelease
 ```
 
 The workflow applies D1 migrations, deploys the lazy-delta consumer Worker
-(`wrangler.deltas.toml`, P4-17; its queues must exist, §3 "Lazy deltas"), deploys the
+(`wrangler.deltas.toml`; its queues must exist, §3 "Lazy deltas"), deploys the
 Worker/admin assets, and smoke-checks
 `https://key.plrs.im/djdl/.well-known/jwks.json`, asserting a non-empty key set. That is a
 data-plane endpoint on purpose: `/manage` is a static asset and returns 200 with D1, KV and
@@ -1121,7 +1121,7 @@ live. It is `continue-on-error`: a failure shows a "Deploy not recorded" warning
 never fails a deploy. To backfill a missed row, re-run the job's failed attempt or insert it by
 hand with `wrangler d1 execute <database> --env <env> --remote --command "INSERT INTO platform_deploys ..."`.
 
-After the first deploy that includes A-11, confirm on the Deployment endpoint that
+After the first deploy that includes the migrations check, confirm on the Deployment endpoint that
 `migrations.applied` is a list (not `null`): that proves `d1_migrations` is readable through the
 binding on hosted D1, which the workerd lane shows only for local D1. If it is `null`, the page
 reports migrations as unknown and nothing else is affected.
@@ -1137,7 +1137,7 @@ webhooks in the last day) and `recentErrors`. A section that cannot be read is `
 still answers. It needs nothing new provisioned. The request Worker binds the existing dead-letter queue `pkey-deltas-dlq-<env>` as a
 producer, `DELTA_DLQ`, used only for `metrics()` (the deploy's queues preflight already checks the
 queue exists, and the token's Queues Edit already covers the binding). After the first deploy that
-includes A-14, confirm on the Operations endpoint that `queues.deadLetter.ok` is `true`: that
+includes the dead-letter check, confirm on the Operations endpoint that `queues.deadLetter.ok` is `true`: that
 proves `metrics()` answers on a producer-only binding to a queue with no consumer on hosted
 Queues, which the workerd lane shows only for local queues. If it is `false`, the page shows the
 reason and the dead-letter backlog as unknown, and nothing else is affected. The cron and the
