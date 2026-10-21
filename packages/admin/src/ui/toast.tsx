@@ -37,6 +37,8 @@ export interface ToastOptions {
   action?: { label: string; onClick: () => void };
   /** For `error`: what the request was about. */
   context?: ErrorContext;
+  /** Internal: a "Copy details" button that copies this text and leaves the toast up. */
+  copyDetails?: string;
 }
 
 function show(
@@ -52,6 +54,20 @@ function show(
       ? { label: opts.action.label, onClick: () => opts.action!.onClick() }
       : undefined,
   };
+  if (opts.copyDetails !== undefined) {
+    const text = opts.copyDetails;
+    // The words promise the details ("Copy the details for a support report"), so the toast
+    // carries the button; it keeps the toast up so the error stays readable.
+    const copy = {
+      label: "Copy details",
+      onClick: (event: { preventDefault: () => void }) => {
+        event.preventDefault();
+        void navigator.clipboard?.writeText(text);
+      },
+    };
+    if (data.action) data.cancel = copy;
+    else data.action = copy;
+  }
   return sonner[variant](title, data);
 }
 
@@ -67,6 +83,10 @@ export const toast = {
     return show("error", copy.title, {
       ...opts,
       description: opts?.description ?? copy.description,
+      copyDetails:
+        copy.action === "copy-details"
+          ? JSON.stringify(copy.details ?? {}, null, 2)
+          : undefined,
     });
   },
   dismiss: (id?: string | number) => sonner.dismiss(id),

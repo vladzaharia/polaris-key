@@ -104,7 +104,7 @@ export function OrderedMultiSelect({
             <li
               key={v}
               data-row={v}
-              className="flex items-center gap-2 rounded-md border border-border bg-surface-raised py-1 ps-2 pe-1"
+              className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md border border-border bg-surface-raised py-1 ps-2 pe-1"
             >
               <span
                 aria-hidden
@@ -112,17 +112,17 @@ export function OrderedMultiSelect({
               >
                 {i + 1}
               </span>
-              <span className="min-w-0 flex-1">
+              <span className="min-w-[min(8rem,100%)] flex-1">
                 <span className="sr-only">{`Position ${i + 1}: `}</span>
                 <span
-                  className="block truncate text-sm text-fg"
+                  className="block break-words text-sm text-fg"
                   title={textOf(byValue.get(v)?.label ?? v)}
                 >
                   {byValue.get(v)?.label ?? v}
                 </span>
                 {byValue.get(v)?.secondary ? (
                   <span
-                    className="block truncate text-xs text-fg-muted"
+                    className="block break-words text-xs text-fg-muted"
                     title={textOf(byValue.get(v)?.secondary)}
                   >
                     {byValue.get(v)?.secondary}

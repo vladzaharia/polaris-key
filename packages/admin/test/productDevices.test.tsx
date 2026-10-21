@@ -280,7 +280,7 @@ describe("Core → Devices", () => {
     mount("#/p/djdl/devices/dev_1");
     const dialog = await screen.findByRole("dialog");
     await user.click(
-      await within(dialog).findByRole("button", { name: "Retry" }),
+      await within(dialog).findByRole("button", { name: "Try again" }),
     );
     expect(await within(dialog).findByText("Hardware")).toBeTruthy();
   });
@@ -293,7 +293,9 @@ describe("Core → Devices", () => {
     resetCore();
     productDevices.mockRejectedValue(new ApiError(500));
     mount();
-    expect(await screen.findByRole("button", { name: "Retry" })).toBeTruthy();
+    expect(
+      await screen.findByRole("button", { name: "Try again" }),
+    ).toBeTruthy();
   });
 
   it("passes axe", async () => {

@@ -277,7 +277,9 @@ describe("Releases page (T2, ADMIN.md §6.3.1)", () => {
       .mockRejectedValueOnce(new Error("nope"))
       .mockResolvedValueOnce(STORE);
     mountList();
-    await userEvent.click(await screen.findByRole("button", { name: "Retry" }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Try again" }),
+    );
     expect(await rowOf("0.4.2")).toBeTruthy();
   });
 
@@ -628,7 +630,7 @@ describe("Repo sync drawer (REL-2, REL-8, REL-9)", () => {
       .mockResolvedValueOnce({ health: HEALTH });
     const drawer = await openDrawer();
     await userEvent.click(
-      await within(drawer).findByRole("button", { name: "Retry" }),
+      await within(drawer).findByRole("button", { name: "Try again" }),
     );
     expect(await within(drawer).findByText("GitHub access")).toBeTruthy();
   });

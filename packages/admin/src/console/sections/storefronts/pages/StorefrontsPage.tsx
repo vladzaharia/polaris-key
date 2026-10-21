@@ -192,7 +192,10 @@ function Catalogue({ slug }: { slug: string }): React.ReactElement {
         // A built-in store has no flow (SETUP.md D48): it is always on.
         <AddFlow slug={slug} stores={q.data.stores.filter((s) => !s.builtIn)} />
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div
+          data-top-aligned=""
+          className="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3"
+        >
           {q.data.stores.map((s) => (
             <StoreTile
               key={s.id}

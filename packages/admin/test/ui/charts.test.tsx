@@ -130,7 +130,7 @@ describe("StatTile", () => {
     );
     expect(screen.getByText("Loading A")).toBeTruthy();
     expect(screen.getByText("Couldn't load this figure.")).toBeTruthy();
-    await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(retry).toHaveBeenCalled();
   });
 });

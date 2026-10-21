@@ -453,7 +453,7 @@ describe("Distribution → Matrix", () => {
         fail ? apiError(500, "internal") : MATRIX,
     });
     expect(await screen.findByLabelText("Loading the matrix")).toBeTruthy();
-    const retry = await screen.findByRole("button", { name: "Retry" });
+    const retry = await screen.findByRole("button", { name: "Try again" });
     fail = false;
     await userEvent.click(retry);
     expect(await grid()).toBeTruthy();

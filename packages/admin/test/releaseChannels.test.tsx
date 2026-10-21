@@ -283,7 +283,9 @@ describe("Channels lanes — what each channel serves (CHN-2, CHN-4)", () => {
       .mockRejectedValueOnce(new Error("down"))
       .mockResolvedValueOnce(CHANNELS);
     mountPage();
-    await userEvent.click(await screen.findByRole("button", { name: "Retry" }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Try again" }),
+    );
     expect(await lane("stable")).toBeTruthy();
   });
 

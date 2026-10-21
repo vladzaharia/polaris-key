@@ -860,7 +860,9 @@ describe("Home", () => {
     });
     await home();
     const alert = await within(main()).findByRole("alert");
-    expect(within(alert).getByRole("button", { name: "Retry" })).toBeTruthy();
+    expect(
+      within(alert).getByRole("button", { name: "Try again" }),
+    ).toBeTruthy();
   });
 
   it("New product opens the wizard, with no subtitle repeating the count", async () => {

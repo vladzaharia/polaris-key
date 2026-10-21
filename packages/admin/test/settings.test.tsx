@@ -881,7 +881,7 @@ describe("Core → Settings", () => {
     const user = userEvent.setup();
     fns.product.mockRejectedValueOnce(new ApiError(500));
     mount();
-    await user.click(await screen.findByRole("button", { name: "Retry" }));
+    await user.click(await screen.findByRole("button", { name: "Try again" }));
     expect(await screen.findByLabelText(/Display name/)).toBeTruthy();
   });
 

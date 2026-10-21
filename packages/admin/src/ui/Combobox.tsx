@@ -153,7 +153,7 @@ export function Combobox(props: ComboboxProps): React.ReactElement {
               !props.multiple &&
                 props.clearable &&
                 selected.length > 0 &&
-                "pe-16",
+                "pe-10",
             )}
             {...aria}
             aria-describedby={
@@ -179,7 +179,7 @@ export function Combobox(props: ComboboxProps): React.ReactElement {
             type="button"
             aria-label="Clear selection"
             onClick={() => props.onChange?.(null)}
-            className="absolute end-8 top-1/2 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-sm text-fg-muted hover:text-fg-strong focus-visible:outline-2 focus-visible:outline-focus"
+            className="absolute end-2 top-1/2 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-sm text-fg-muted hover:text-fg-strong focus-visible:outline-2 focus-visible:outline-focus"
           >
             <X aria-hidden className="size-3.5" />
           </button>

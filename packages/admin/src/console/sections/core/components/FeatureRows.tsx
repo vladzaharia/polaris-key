@@ -325,7 +325,7 @@ export function FeatureRowItem({
                 ) : null}
                 <div className="flex flex-wrap items-center gap-2">
                   <Button size="sm" variant="outline" onClick={ctx.onRetry}>
-                    Retry
+                    Try again
                   </Button>
                   <CopyDetails copy={copy!} />
                 </div>

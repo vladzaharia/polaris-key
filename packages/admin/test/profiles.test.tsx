@@ -151,7 +151,7 @@ describe("Profiles page", () => {
           fail ? apiError(500) : { profiles: PROFILES },
       }),
     );
-    const retry = await screen.findByRole("button", { name: "Retry" });
+    const retry = await screen.findByRole("button", { name: "Try again" });
     fail = false;
     await userEvent.click(retry);
     expect(await screen.findByRole("link", { name: "Spare" })).toBeTruthy();

@@ -484,7 +484,9 @@ describe("Distribution → Channel credentials", () => {
       [P("/outlet-credentials")]: () =>
         fail ? apiError(500, "internal") : CREDENTIALS,
     });
-    const retry = (await screen.findAllByRole("button", { name: "Retry" }))[0]!;
+    const retry = (
+      await screen.findAllByRole("button", { name: "Try again" })
+    )[0]!;
     fail = false;
     await userEvent.click(retry);
     expect(await table()).toBeTruthy();

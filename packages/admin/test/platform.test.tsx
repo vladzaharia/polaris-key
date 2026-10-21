@@ -328,7 +328,9 @@ describe("Deployment", () => {
     });
     const failed = await deploymentPage();
     const alert = await within(failed).findByRole("alert");
-    expect(within(alert).getByRole("button", { name: "Retry" })).toBeTruthy();
+    expect(
+      within(alert).getByRole("button", { name: "Try again" }),
+    ).toBeTruthy();
   });
 
   it("lists platform activity, newest first, with who did it", async () => {
@@ -740,7 +742,7 @@ describe("Operations", () => {
     });
     const page = await operationsPage();
     expect(
-      await within(page).findByRole("button", { name: "Retry" }),
+      await within(page).findByRole("button", { name: "Try again" }),
     ).toBeTruthy();
   });
 

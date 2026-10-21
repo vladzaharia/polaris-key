@@ -51,7 +51,7 @@ describe("Enrollment", () => {
     });
     const reg = await section("Registration");
     expect(
-      await within(reg).findByRole("button", { name: /Retry/ }),
+      await within(reg).findByRole("button", { name: /Try again/ }),
     ).toBeTruthy();
   });
 
@@ -216,7 +216,7 @@ describe("Enrollment", () => {
   it("shows the policy load failure with a working retry", async () => {
     const log = bootLicense(HASH, { routes: { [POLICY]: failing(500) } });
     await screen.findByRole("heading", { level: 1, name: "Enrollment" });
-    const retry = await screen.findByRole("button", { name: /Retry/ });
+    const retry = await screen.findByRole("button", { name: /Try again/ });
     const before = log.calls.filter((c) => c.path === POLICY).length;
     await userEvent.click(retry);
     await waitFor(() =>

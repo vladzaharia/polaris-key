@@ -214,7 +214,9 @@ describe("Home table", () => {
     await page();
     const alert = await within(main()).findByRole("alert");
     expect(alert.textContent).not.toMatch(/api 500/);
-    expect(within(alert).getByRole("button", { name: "Retry" })).toBeTruthy();
+    expect(
+      within(alert).getByRole("button", { name: "Try again" }),
+    ).toBeTruthy();
   });
 
   it("New product opens the wizard page", async () => {

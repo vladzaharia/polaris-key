@@ -215,7 +215,9 @@ describe("Tiers", () => {
     bootLicense("#/p/djdl/license/tiers", {
       routes: { [TIERS]: failing(500) },
     });
-    expect(await screen.findByRole("button", { name: /Retry/ })).toBeTruthy();
+    expect(
+      await screen.findByRole("button", { name: /Try again/ }),
+    ).toBeTruthy();
     cleanup();
     resetConsole();
     bootLicense("#/p/djdl/license/tiers?q=zzz");

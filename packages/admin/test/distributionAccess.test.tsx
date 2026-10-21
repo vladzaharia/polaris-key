@@ -170,7 +170,7 @@ describe("Distribution → Access", () => {
       [P("/distribution/access")]: () =>
         fail ? apiError(500, "internal") : ACCESS,
     });
-    const retry = await screen.findByRole("button", { name: "Retry" });
+    const retry = await screen.findByRole("button", { name: "Try again" });
     expect(screen.queryByRole("radio", { name: /Public/ })).toBeNull();
     fail = false;
     await userEvent.click(retry);

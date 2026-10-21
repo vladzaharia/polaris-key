@@ -71,7 +71,7 @@ export function DashboardTemplate({
             // orphan beside empty space; from 1280 px as many equal columns as there are tiles.
             <div
               data-tiles=""
-              className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))] max-xl:[&>:last-child:nth-child(odd)]:col-span-2"
+              className="grid grid-cols-2 gap-3 max-sm:grid-cols-[repeat(auto-fit,minmax(min(9rem,100%),1fr))] sm:gap-4 xl:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))] max-xl:[&>:last-child:nth-child(odd)]:col-span-full"
             >
               {tiles}
             </div>
@@ -354,9 +354,10 @@ export function AttentionList({
         ref={motion.ref}
         className={cn(
           // From a 36rem card the rows share four columns (pill, subject, message, link); the message
-          // stops at 72ch and the link follows it, not the card's far edge, so
+          // stops at 72ch and the link follows it, not the card's far edge (a spare 1fr track keeps the
+          // rows, and so their dividers, the card's full width), so
           // every subject and message starts at one x whatever its pill word.
-          "divide-y divide-border @xl:grid @xl:grid-cols-[max-content_fit-content(11rem)_fit-content(72ch)_max-content]",
+          "divide-y divide-border @xl:grid @xl:grid-cols-[max-content_fit-content(11rem)_fit-content(72ch)_max-content_minmax(0,1fr)]",
           motion.className,
         )}
       >

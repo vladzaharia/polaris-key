@@ -1519,7 +1519,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
                     {/* Term left, value flush right: a card reads like a settings row. */}
                     <dd
                       className={cn(
-                        "flex min-w-0 flex-wrap items-center justify-end gap-x-2 text-end text-fg [&>*]:min-w-0",
+                        "flex min-w-0 flex-wrap items-center justify-end gap-x-2 text-end text-fg [&>*]:min-w-0 [&_.whitespace-nowrap]:whitespace-normal",
                         c.column.columnDef.meta?.mono && "font-mono",
                       )}
                     >

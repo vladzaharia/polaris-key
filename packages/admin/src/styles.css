@@ -550,8 +550,11 @@ html[data-shell="console"] [data-service] {
 html[data-shell="console"] [data-variant="primary"] {
   background-color: var(--pk-action);
   color: var(--pk-action-on);
-  box-shadow: none;
   font-weight: var(--font-weight-medium);
+}
+/* No resting shadow; the focus ring is a box-shadow too, so it must stay untouched. */
+html[data-shell="console"] [data-variant="primary"]:not(:focus-visible) {
+  box-shadow: none;
 }
 html[data-shell="console"]
   [data-variant="primary"]:hover:not(:disabled):not([aria-disabled="true"]) {

@@ -9,7 +9,7 @@ import { CopyButton } from "./CopyButton.js";
 /**
  * A failed load, rendered through `errorCopy` (components.md §5.5): what went wrong in words, and
  * the next step. Never `EmptyState` with a warning icon (UI-14), never "api 422". The retry label
- * is always "Retry". `compact` is one inline line for a table body, a card or a tile (no Copy
+ * is always "Try again". `compact` is one inline line for a table body, a card or a tile (no Copy
  * details there; the full state offers it).
  */
 export interface ErrorStateProps {
@@ -116,7 +116,7 @@ function Actions({
             iconStart={<RotateCw />}
             onClick={onRetry}
           >
-            Retry
+            Try again
           </Button>
         ) : null}
         {copy.action === "reload" ? (
