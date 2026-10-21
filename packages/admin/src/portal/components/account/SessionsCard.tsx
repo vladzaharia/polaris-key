@@ -49,7 +49,7 @@ export function SessionsCard(): React.ReactElement | null {
           <Button
             ref={buttonRef}
             variant="outline"
-            className="max-sm:min-h-11"
+            className="h-auto min-h-9 max-w-full whitespace-normal py-1.5 text-left max-sm:min-h-11 bigtext:[&_svg]:hidden"
             iconStart={<LogOut aria-hidden />}
             aria-expanded={false}
             aria-controls="sign-out-everywhere"
@@ -120,7 +120,7 @@ function SessionList({
       <div className="mt-1">
         <Button
           variant="link"
-          className="h-11 font-medium"
+          className="h-auto min-h-11 whitespace-normal py-1 text-left font-medium"
           iconStart={<ScanLine aria-hidden />}
           onClick={() => {
             window.location.hash = href.account("sessions", { approve: "" });

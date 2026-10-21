@@ -34,12 +34,12 @@ export function AccountCard({
         className,
       )}
     >
-      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-t-xl border-b border-border bg-hover px-4 py-3 desk:px-5">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-t-xl border-b border-border bg-hover px-4 py-3 desk:px-5 bigtext:max-sm:px-2">
         {/* tabIndex -1: a jump from the section nav moves focus here. */}
         <h2
           id={`section-${id}-h`}
           tabIndex={-1}
-          className="min-w-0 max-w-full break-words text-lg font-semibold text-fg-strong outline-none"
+          className="min-w-0 max-w-full break-words text-lg font-semibold text-fg-strong outline-none bigtext:max-sm:text-base"
         >
           {title}
         </h2>
@@ -49,7 +49,7 @@ export function AccountCard({
           </div>
         ) : null}
       </div>
-      <div className="p-4 desk:p-6">
+      <div className="p-4 desk:p-6 bigtext:max-sm:p-2">
         {subtitle ? (
           <p className="mb-4 text-sm text-fg-muted">{subtitle}</p>
         ) : null}

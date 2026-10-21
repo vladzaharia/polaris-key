@@ -81,7 +81,14 @@ export function StatusPill({
       : (state ?? t);
   const popped = useChangedSinceMount(word);
   const text = (
-    <span key={word} className={cn("truncate", popped && "pk-pop-in")}>
+    <span
+      key={word}
+      // Large text (WCAG 1.4.4): a status word is never cut to "E…"; it wraps.
+      className={cn(
+        "truncate bigtext:overflow-visible bigtext:whitespace-normal",
+        popped && "pk-pop-in",
+      )}
+    >
       {label}
     </span>
   );

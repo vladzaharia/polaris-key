@@ -91,7 +91,7 @@ export function LibraryTile({
     !isIssueStatus(product.status) ? null : (
       <ProductStatusPill
         status={product.status}
-        className="h-auto max-w-full whitespace-normal"
+        className="h-auto max-w-full whitespace-normal [&>span]:overflow-visible [&>span]:whitespace-normal"
       />
     );
   // No hosted cover: the stored tint over the same field, the icon large and centred on it.
@@ -143,7 +143,7 @@ export function LibraryTile({
         <div className="flex flex-1 flex-col px-3 pb-3 desk:px-3.5 desk:pb-3.5">
           <div
             className={cn(
-              "flex items-start gap-2.5",
+              "flex items-start gap-2.5 bigtext:flex-col bigtext:gap-1",
               tiny && "flex-col gap-1",
               noArt ? "mt-1" : "-mt-4",
             )}
@@ -181,7 +181,7 @@ export function LibraryTile({
             <div
               className={cn(
                 "flex min-w-0 flex-1 items-start gap-1",
-                !noArt && !tiny && "pt-5",
+                !noArt && !tiny && "pt-5 bigtext:pt-0",
                 tiny && "w-full",
               )}
             >
@@ -189,7 +189,7 @@ export function LibraryTile({
                 id={`tile-${product.slug}`}
                 dir="auto"
                 className={cn(
-                  "min-w-0 flex-1 line-clamp-2 break-words font-semibold leading-snug text-fg-strong",
+                  "min-w-0 flex-1 line-clamp-2 break-words font-semibold bigtext:line-clamp-none leading-snug text-fg-strong",
                   tiny ? "text-sm" : "text-base",
                 )}
               >
@@ -233,7 +233,11 @@ export function LibraryTile({
             </p>
           ) : null}
           {/* A size container on a compact tile: its download shortens under 15rem. */}
-          <div className={cn("relative mt-auto flex gap-2 pt-3 @container")}>
+          <div
+            className={cn(
+              "relative mt-auto flex flex-wrap gap-2 pt-3 @container",
+            )}
+          >
             <QuickActionButton
               product={product}
               action={action}
@@ -241,7 +245,8 @@ export function LibraryTile({
               shortLabel
               size="md"
               className={cn(
-                "h-10 min-w-0 flex-1 pointer-coarse:h-11",
+                // The label wraps rather than clips at large text; the menu keeps its own square.
+                "h-auto min-h-10 min-w-0 flex-1 basis-24 whitespace-normal py-1.5 text-center pointer-coarse:min-h-11",
                 narrow && "[&_svg]:hidden",
               )}
             />

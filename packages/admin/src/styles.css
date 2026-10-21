@@ -68,6 +68,26 @@
  */
 @custom-variant short (@media (max-height: 32rem));
 /*
+ * Large text (WCAG 1.4.4): `useLargeTextFlag` (PortalShell) sets `data-large-text` on the document
+ * when the root font is at least 1.5 times the default. A rem media query answers to the browser's
+ * own text setting but not to a page that sets the root size itself; this follows both.
+ */
+@custom-variant bigtext (&:where([data-large-text] *));
+/*
+ * Tight chrome (M8): too little room for a fixed header, a sticky strip and a fixed bottom bar
+ * (a short window, or large text, which a phone at 200 % text always is). The header and the
+ * strip scroll with the page there; the phone bar stays (and the section pills, under `bigtext`
+ * alone). Use as `tight:max-desk:`.
+ */
+@custom-variant tight {
+  @media (max-height: 32rem) {
+    @slot;
+  }
+  &:where([data-large-text] *) {
+    @slot;
+  }
+}
+/*
  * The focused task frame's two columns (PORTAL.md §4.25, §8): on a short desktop (at least 1024 px
  * wide and at most 900 px tall, a laptop window) and on a phone on its side (at least 800 px wide
  * and at most 512 px tall), the identity sits beside the task, so the task's action is on the
@@ -459,6 +479,14 @@ html[data-shell="console"] [data-pk-backdrop] {
   }
   @media (height <= 32rem) {
     html:has(.pk-portal-shell) {
+      --pk-scroll-top: 0px;
+    }
+  }
+  /* Large text on a phone (the `bigtext` variant): the header and the section pills scroll away,
+     so there is nothing at the top to clear. */
+  @media (width < 47.5625rem) {
+    html[data-large-text]:has(.pk-portal-shell),
+    html[data-large-text]:has(.pk-portal-shell [data-section-pills]) {
       --pk-scroll-top: 0px;
     }
   }

@@ -643,9 +643,11 @@ function MethodGroups({
 
       <p className="flex gap-2 text-sm text-fg-muted">
         <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
-        {notifyTo
-          ? t("locker.methods.footEmailed", { email: notifyTo })
-          : t("locker.methods.foot")}
+        <span className="min-w-0">
+          {notifyTo
+            ? t("locker.methods.footEmailed", { email: notifyTo })
+            : t("locker.methods.foot")}
+        </span>
       </p>
       {linkView.data ? (
         <div className="space-y-3">

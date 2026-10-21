@@ -59,6 +59,7 @@ export function PortalShell({
   const showDiscover = discoverCount !== null;
   const mainRef = React.useRef<HTMLElement>(null);
   usePhoneBarToastInset();
+  useLargeTextFlag();
 
   return (
     // pk-portal-shell: the document's scroll padding clears the sticky header (styles.css).
@@ -76,7 +77,7 @@ export function PortalShell({
         {t("locker.shell.skip")}
       </a>
       {/* pk-vt-chrome: kept above a list transition's moving content (src/motion.css). */}
-      <header className="pk-vt-chrome sticky top-0 z-30 border-b border-border bg-surface-page short:static">
+      <header className="pk-vt-chrome sticky top-0 z-30 border-b border-border bg-surface-page short:static tight:max-desk:static">
         <div className="mx-auto flex h-14 w-full max-w-[82rem] items-center gap-4 px-4 desk:h-16 desk:gap-6 desk:px-8 mid:gap-8">
           <a
             href={href.library()}
@@ -213,6 +214,31 @@ export function PortalShell({
       </nav>
     </div>
   );
+}
+
+/**
+ * Marks the document `data-large-text` while the root font is at least 1.5 times the default
+ * (24 px): the styles' `bigtext` and `tight` variants answer to it. Re-read on resize and when the
+ * root's style changes.
+ */
+function useLargeTextFlag(): void {
+  React.useEffect(() => {
+    const root = document.documentElement;
+    const apply = (): void => {
+      const px = parseFloat(getComputedStyle(root).fontSize);
+      if (px >= 24) root.setAttribute("data-large-text", "");
+      else root.removeAttribute("data-large-text");
+    };
+    apply();
+    window.addEventListener("resize", apply);
+    const mo = new MutationObserver(apply);
+    mo.observe(root, { attributes: true, attributeFilter: ["style", "class"] });
+    return () => {
+      window.removeEventListener("resize", apply);
+      mo.disconnect();
+      root.removeAttribute("data-large-text");
+    };
+  }, []);
 }
 
 /**

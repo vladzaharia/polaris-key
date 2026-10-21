@@ -203,3 +203,204 @@ describe("the product page reflows", () => {
     }
   }
 });
+
+/**
+ * Text that is cut or broken (WCAG 1.4.4), which a page-level scroll check never sees: a box whose
+ * content is wider or taller than it is and that clips it (`overflow` not visible), a box whose
+ * content spills out of it, and an ordinary word broken across lines. Scroll strips that are meant
+ * to scroll (`overflow-x: auto | scroll`) and words over 20 characters (a token) are left out.
+ */
+function clippedText(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const out: string[] = [];
+    const label = (e: Element): string =>
+      `${e.tagName.toLowerCase()} "${(e.textContent ?? "").trim().slice(0, 30)}"`;
+    const hasOwnText = (e: Element): boolean =>
+      [...e.childNodes].some(
+        (n) => n.nodeType === 3 && (n.textContent ?? "").trim() !== "",
+      );
+    for (const e of document.querySelectorAll<HTMLElement>(
+      "main *, header *, nav *",
+    )) {
+      if (!e.checkVisibility() || !hasOwnText(e)) continue;
+      const cs = getComputedStyle(e);
+      if (cs.display === "inline" || e.clientWidth <= 1 || e.clientHeight <= 1)
+        continue;
+      if (cs.overflowX === "auto" || cs.overflowX === "scroll") continue;
+      if (e.scrollWidth > e.clientWidth + 1)
+        out.push(`${label(e)} wide ${e.scrollWidth}>${e.clientWidth}`);
+      if (cs.overflowY !== "visible" && e.scrollHeight > e.clientHeight + 1)
+        out.push(`${label(e)} tall ${e.scrollHeight}>${e.clientHeight}`);
+    }
+    const walker = document.createTreeWalker(
+      document.querySelector("main") ?? document.body,
+      NodeFilter.SHOW_TEXT,
+    );
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      const parent = n.parentElement;
+      if (!parent || !parent.checkVisibility()) continue;
+      if (parent.closest("[dir=rtl], code, pre, [data-section-pills]"))
+        continue;
+      const text = n.textContent ?? "";
+      for (const m of text.matchAll(/[^\s-]+/g)) {
+        // A token (an address, an id) may break anywhere; only ordinary words are held to it.
+        if (m[0].length > 20 || m[0].includes("@")) continue;
+        const r = document.createRange();
+        r.setStart(n, m.index!);
+        r.setEnd(n, m.index! + m[0].length);
+        const tops = new Set(
+          [...r.getClientRects()].map((q) => Math.round(q.top)),
+        );
+        if (tops.size > 1)
+          out.push(`word "${m[0]}" breaks in ${label(parent)}`);
+      }
+    }
+    return out.slice(0, 12);
+  });
+}
+
+/** Fixed and stuck-sticky elements' share of the window's height, at a scroll offset. */
+function chromeShare(page: Page, scrollY: number): Promise<number> {
+  return page.evaluate((y) => {
+    window.scrollTo(0, y);
+    const vh = window.innerHeight;
+    const boxes: [number, number][] = [];
+    for (const e of document.querySelectorAll<HTMLElement>("body *")) {
+      const cs = getComputedStyle(e);
+      if (cs.position !== "fixed" && cs.position !== "sticky") continue;
+      if (!e.checkVisibility()) continue;
+      const r = e.getBoundingClientRect();
+      if (r.height === 0 || r.bottom < 0 || r.top > vh) continue;
+      if (cs.position === "sticky") {
+        const top = parseFloat(cs.top);
+        const bottom = parseFloat(cs.bottom);
+        const stuck =
+          (!Number.isNaN(top) && Math.abs(r.top - top) < 1) ||
+          (!Number.isNaN(bottom) && Math.abs(vh - r.bottom - bottom) < 1);
+        if (!stuck) continue;
+      }
+      boxes.push([Math.max(0, r.top), Math.min(vh, r.bottom)]);
+    }
+    boxes.sort((a, b) => a[0] - b[0]);
+    let total = 0;
+    let end = -1;
+    for (const [a, b] of boxes) {
+      const from = Math.max(a, end);
+      if (b > from) total += b - from;
+      end = Math.max(end, b);
+    }
+    return total / vh;
+  }, scrollY);
+}
+
+async function enlarge(page: Page, pct: number): Promise<void> {
+  // Through the CSSOM: the page's CSP refuses a style element.
+  await page.evaluate((p) => {
+    document.documentElement.style.setProperty(
+      "font-size",
+      `${p}%`,
+      "important",
+    );
+  }, pct);
+  await page.waitForTimeout(400);
+}
+
+const LARGE_ROWS = [
+  { label: "390 + 200 % text", width: 390, height: 844, text: 200 },
+  { label: "320 + 200 % text", width: 320, height: 640, text: 200 },
+  { label: "320", width: 320, height: 640, text: 100 },
+  { label: "390", width: 390, height: 844, text: 100 },
+] as const;
+
+/** The Library, the Account page and its packages at the large-text rows (B2, M7). */
+const LARGE_STATES = [
+  { name: "library grid", scenario: "three", path: "/#/", heading: "Library" },
+  {
+    name: "library list",
+    scenario: "twelve",
+    path: "/#/?view=list",
+    heading: "Library",
+  },
+  {
+    name: "library grid, 12",
+    scenario: "twelve",
+    path: "/#/?view=grid",
+    heading: "Library",
+  },
+  {
+    name: "account",
+    scenario: "three",
+    path: "/#/account",
+    heading: "Account",
+  },
+  {
+    name: "account packages",
+    scenario: "three",
+    path: "/#/account/packages",
+    heading: "Account",
+  },
+] as const;
+
+describe("the Library and Account lose no text", () => {
+  for (const { label, width, height, text } of LARGE_ROWS) {
+    for (const st of LARGE_STATES) {
+      const theme: Theme = width % 2 === 0 ? "dark" : "light";
+      it(`${label}: ${st.name}: no clipped or broken text, no sideways scroll`, async ({
+        expect,
+      }) => {
+        const o = await portal.open(st.scenario, st.path, {
+          width,
+          height,
+          theme,
+        });
+        try {
+          await h1(o.page, st.heading);
+          if (text !== 100) await enlarge(o.page, text);
+          await o.page.waitForTimeout(300);
+          const over = await horizontalOverflow(o.page);
+          expect(over > 0 ? await widest(o.page) : []).toEqual([]);
+          expect(over).toBeLessThanOrEqual(0);
+          expect(await clippedText(o.page)).toEqual([]);
+          expect(await axe(o.page)).toEqual([]);
+        } finally {
+          await o.close();
+        }
+      });
+    }
+  }
+
+  for (const height of [568, 640, 780]) {
+    for (const path of ["/#/", "/#/account"]) {
+      it(`320 x ${height} + 200 % text: ${path}: fixed chrome is a quarter of the window at most`, async ({
+        expect,
+      }) => {
+        const o = await portal.open("three", path, { width: 320, height });
+        try {
+          await h1(o.page, path === "/#/" ? "Library" : "Account");
+          await enlarge(o.page, 200);
+          for (const y of [0, 200, 600])
+            expect(await chromeShare(o.page, y)).toBeLessThanOrEqual(0.25);
+        } finally {
+          await o.close();
+        }
+      });
+    }
+  }
+
+  it("390 x 844 at 100 % text keeps the sticky header and strip", async ({
+    expect,
+  }) => {
+    const o = await portal.open("three", "/#/", { width: 390, height: 844 });
+    try {
+      await h1(o.page, "Library");
+      const pos = await o.page.evaluate(() => ({
+        header: getComputedStyle(document.querySelector("header")!).position,
+        strip: getComputedStyle(document.querySelector("[data-missing-strip]")!)
+          .position,
+      }));
+      expect(pos).toEqual({ header: "sticky", strip: "sticky" });
+    } finally {
+      await o.close();
+    }
+  });
+});

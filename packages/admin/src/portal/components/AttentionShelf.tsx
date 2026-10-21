@@ -41,7 +41,7 @@ export function AttentionShelf({
             key={product.slug}
             className="flex min-w-0 flex-col gap-2 px-4 py-2 sm:flex-row sm:items-center sm:gap-4"
           >
-            <div className="flex min-w-0 flex-1 items-center gap-3">
+            <div className="flex min-w-0 flex-1 items-center gap-3 bigtext:flex-col bigtext:items-start">
               <ProductIcon
                 slug={product.slug}
                 name={product.name}
@@ -65,7 +65,7 @@ export function AttentionShelf({
               asChild
               size="md"
               variant={urgent ? "primary" : "quiet"}
-              className="w-full min-w-0 sm:w-auto sm:max-w-[16rem] sm:shrink-0"
+              className="w-full min-w-0 sm:w-auto sm:max-w-[16rem] sm:shrink-0 bigtext:h-auto bigtext:min-h-10 bigtext:whitespace-normal bigtext:py-1.5"
             >
               {action.external ? (
                 <a
@@ -75,11 +75,15 @@ export function AttentionShelf({
                   title={action.label}
                 >
                   <ExternalLink aria-hidden />
-                  <span className="truncate">{action.label}</span>
+                  <span className="truncate bigtext:overflow-visible bigtext:whitespace-normal">
+                    {action.label}
+                  </span>
                 </a>
               ) : (
                 <a href={action.href} title={action.label}>
-                  <span className="truncate">{action.label}</span>
+                  <span className="truncate bigtext:overflow-visible bigtext:whitespace-normal">
+                    {action.label}
+                  </span>
                 </a>
               )}
             </Button>

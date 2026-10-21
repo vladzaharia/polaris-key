@@ -163,7 +163,7 @@ export function AccountPage({
         // Sticky under the header below desk (at the top on a short screen, where the header
         // scrolls away): the page's scroll padding clears it (styles.css).
         data-section-pills=""
-        className="sticky top-14 z-20 -mx-4 min-w-0 max-w-[100vw] overflow-x-auto border-b border-border bg-surface-page px-4 py-2 short:top-0 desk:hidden"
+        className="sticky top-14 z-20 -mx-4 min-w-0 max-w-[100vw] overflow-x-auto border-b border-border bg-surface-page px-4 py-2 short:top-0 bigtext:max-desk:static desk:hidden"
       >
         <ul className="flex w-max gap-2">
           {sections.map((s) => (
@@ -511,7 +511,7 @@ function YourData({ account }: { account: PortalAccount }): React.ReactElement {
               <Button
                 ref={triggerRef}
                 variant="outline"
-                className="w-full border-danger-border text-danger max-sm:min-h-11 sm:w-auto"
+                className="h-auto min-h-9 w-full whitespace-normal border-danger-border py-1.5 text-danger max-sm:min-h-11 sm:w-auto"
                 aria-label={t("locker.delete.rowTitle")}
                 onClick={() => setOpen(true)}
               >

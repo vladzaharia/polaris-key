@@ -18,7 +18,8 @@ export function keyTileSpan(
 
 /** The grid's columns by breakpoint (`tileGrid.ts`): 2, then 3 (desk), 4 (wide), 5 (xxl). */
 const SPAN = {
-  2: { 1: "col-span-1", 2: "col-span-2" },
+  // `full`, not 2: below `desk` the grid is one column at large text, and a span of 2 would add one.
+  2: { 1: "col-span-1", 2: "col-span-full" },
   3: { 1: "desk:col-span-1", 2: "desk:col-span-2", 3: "desk:col-span-3" },
   4: {
     1: "wide:col-span-1",
