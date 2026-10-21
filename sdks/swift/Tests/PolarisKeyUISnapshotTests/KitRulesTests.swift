@@ -143,10 +143,8 @@ final class KitRulesTests: XCTestCase {
         XCTAssertGreaterThan(moving.shimmerStart(elapsed: p * 0.99), 0.9)
     }
 
-    func testBootSkeletonIsTwoBarsAndAnnouncesLoading() {
+    func testBootSkeletonIsTwoBars() {
         XCTAssertEqual(BootSkeletonModel.bars, [1, 0.7])
-        XCTAssertEqual(BootSkeletonModel.announcement.key, "common.loading")
-        XCTAssertEqual(KitCopy.bundled.message("common.loading", locale: "en")?.hasPrefix("Loading"), true)
     }
 
     // MARK: Baselines

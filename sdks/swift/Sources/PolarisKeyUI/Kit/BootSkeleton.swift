@@ -29,22 +29,18 @@ struct BootSkeletonModel: Equatable {
         let t = elapsed.truncatingRemainder(dividingBy: period) / period
         return -Self.shimmerWidth + t * (1 + Self.shimmerWidth)
     }
-
-    /// What VoiceOver reads for the whole wait.
-    static let announcement = CopyLine("common.loading")
 }
 
-/// The skeleton of the screen to come. Hidden from VoiceOver except for one "Loading" element.
+/// The skeleton of the screen to come. One VoiceOver element: the visible label (the bars are hidden).
 struct BootSkeleton: View {
     let line: CopyLine
     let shown: Bool
-    @Environment(\.polarisKeyStrings) private var strings
-
     var body: some View {
         kitStyle { style in
             VStack(spacing: style.space(.md)) {
                 if shown {
                     KitText(line, .meta, color: .muted, alignment: .center)
+                        .accessibilityAddTraits(.updatesFrequently)
                     VStack(spacing: style.space(.sm)) {
                         ForEach(Array(BootSkeletonModel.bars.enumerated()), id: \.offset) { _, f in
                             Capsule()
@@ -58,8 +54,6 @@ struct BootSkeleton: View {
             }
             .frame(minHeight: 60)
             .frame(maxWidth: .infinity)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(strings.string(BootSkeletonModel.announcement.key))
         }
     }
 }
