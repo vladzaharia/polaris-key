@@ -11,8 +11,9 @@ https://github.com/vladzaharia/polaris-key/tree/main/sdks/godot#readme
 
 ## Install
 
-1. Copy this folder to `res://addons/polaris_key/` (unzip the release zip at the project root),
-   or install it from the Godot Asset Store or Asset Library.
+1. Install it from Polaris Key's Godot feed (`https://pkg.plrs.im/godot/polaris-key/...`; the
+   steps are in `sdks/godot/README.md`, "Install"), or copy this folder to
+   `res://addons/polaris_key/`. The addon is not on the public Godot Asset Store or Asset Library.
 2. **Project → Project Settings → Plugins**: enable **Polaris Key**. That registers the
    `PolarisKey` autoload and adds the **Polaris Key** setup dock.
 3. In the dock, enter your product slug, paste the pinned trust keys that `pkey trust` prints,
