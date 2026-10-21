@@ -136,7 +136,7 @@ export const LOCKER_SHELL_CSS = [
   `:root{${inks("dark")}}`,
   `@media (prefers-color-scheme: light){:root{${inks("light")}}}`,
   `.lb{fill:var(--lb)}.ls{fill:var(--ls)}.lt{fill:var(--lt)}.sb{fill:var(--sb)}.ss{fill:var(--ss)}`,
-  `.svc{display:flex;align-items:center;gap:.5rem;margin:0;color:var(--strong);font-size:1rem;line-height:1.5rem;font-weight:700}`,
+  `.svc{display:flex;align-items:center;gap:.5rem;margin:0;color:var(--strong);font-size:1rem;line-height:1.5rem;font-weight:600}`,
   `.svc svg{display:block;flex:none}`,
 ].join("");
 

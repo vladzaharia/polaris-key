@@ -1,0 +1,35 @@
+// B-099: BRAND.md allows 400/500/600 in UI; 700 belongs to the outlined wordmark only. The
+// Worker-rendered pages and customer emails carry their CSS inline, so a stray 700 (or `bold`)
+// anywhere under src/ is a regression. The wordmark is an SVG path, not a font-weight.
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+
+const SRC = join(__dirname, "..", "src");
+
+function walk(dir: string): string[] {
+  return readdirSync(dir).flatMap((n) => {
+    const p = join(dir, n);
+    return statSync(p).isDirectory() ? walk(p) : /\.tsx?$/.test(n) ? [p] : [];
+  });
+}
+
+describe("Worker-rendered CSS weights", () => {
+  it("never sets font-weight 700 or bold", () => {
+    const hits = walk(SRC).flatMap((f) =>
+      readFileSync(f, "utf8")
+        .split("\n")
+        .map((l, i) => [f, i + 1, l] as const)
+        .filter(([, , l]) => /font-weight\s*:\s*(700|800|900|bold)/i.test(l))
+        .map(([file, n]) => `${file.slice(SRC.length)}:${n}`),
+    );
+    expect(hits).toEqual([]);
+  });
+
+  it("the forced-colours approval button paints ButtonFace on ButtonText (B-098)", () => {
+    const css = readFileSync(join(SRC, "core", "brandHtml.ts"), "utf8");
+    expect(css).toMatch(
+      /forced-colors: active\)\{\[data-brand=locker\] \.button:not\(\.secondary\):not\(\.link\)\{[^}]*background:ButtonFace;color:ButtonText/,
+    );
+  });
+});

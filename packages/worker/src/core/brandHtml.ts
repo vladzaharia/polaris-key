@@ -137,12 +137,12 @@ export const BRAND_PAGE_CSS = [
   `.mb{fill:var(--mb)}.ms{fill:var(--ms)}.mt{fill:var(--mt)}`,
   // The app the page is about (a refusal names it): its icon and name above the card, as the
   // hosted card's header strip does.
-  `.app{display:flex;justify-content:center;align-items:center;gap:.75rem;margin:0 0 1rem;color:var(--strong);font-size:1.125rem;line-height:1.5rem;font-weight:700;overflow-wrap:anywhere}`,
+  `.app{display:flex;justify-content:center;align-items:center;gap:.75rem;margin:0 0 1rem;color:var(--strong);font-size:1.125rem;line-height:1.5rem;font-weight:600;overflow-wrap:anywhere}`,
   `.app img{display:block;flex:none;width:40px;height:40px;border-radius:9px;object-fit:cover}`,
   `.card>:last-child{margin-bottom:0}`,
   `.card{padding:2rem;border:1px solid var(--rule);border-radius:8px;background:var(--raised);box-shadow:0 1px 2px rgb(0 0 0 / .12)}`,
-  `.eyebrow{margin:0 0 .5rem;color:var(--muted);font-size:.75rem;line-height:1rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase}`,
-  `h1{margin:0 0 .5rem;color:var(--strong);font-size:1.25rem;line-height:1.75rem;font-weight:700;letter-spacing:-.01em}`,
+  `.eyebrow{margin:0 0 .5rem;color:var(--muted);font-size:.75rem;line-height:1rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase}`,
+  `h1{margin:0 0 .5rem;color:var(--strong);font-size:1.25rem;line-height:1.75rem;font-weight:600;letter-spacing:-.01em}`,
   `h1+p{color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
   `p{margin:0 0 1rem}`,
   `.muted{color:var(--muted)}`,
@@ -150,9 +150,9 @@ export const BRAND_PAGE_CSS = [
   `dl{display:grid;grid-template-columns:6rem 1fr;gap:.5rem 1rem;margin:1.5rem 0;padding:1rem;border-radius:6px;background:var(--sunken)}`,
   `dt{color:var(--muted)}`,
   `dd{margin:0;color:var(--strong);overflow-wrap:anywhere}`,
-  `.code{font-family:${FONT.mono};font-weight:700;letter-spacing:.08em;white-space:nowrap}`,
+  `.code{font-family:${FONT.mono};font-weight:600;letter-spacing:.08em;white-space:nowrap}`,
   `form{margin:0}`,
-  `label{display:block;margin:1.5rem 0 .5rem;color:var(--strong);font-size:.875rem;line-height:1.25rem;font-weight:700}`,
+  `label{display:block;margin:1.5rem 0 .5rem;color:var(--strong);font-size:.875rem;line-height:1.25rem;font-weight:500}`,
   `input[type=text]{display:block;width:100%;min-height:44px;padding:0 .75rem;margin:0 0 1rem;border:1px solid var(--edge);border-radius:6px;background:var(--sunken);color:var(--strong);font-family:${FONT.mono};font-size:1.25rem;letter-spacing:.08em;text-transform:uppercase}`,
   `input[type=text]::placeholder{color:var(--muted);opacity:1}`,
   // The console's md Button (BootScreen's Retry): 36 px, 14 px regular weight, one accent fill.
@@ -177,7 +177,7 @@ export const BRAND_PAGE_CSS = [
   // §3.14).
   `.choice.compact{padding:.5rem .75rem;margin:.5rem 0 0}`,
   `.choice-body{display:grid;gap:.125rem;min-width:0}`,
-  `.choice-title{display:flex;flex-wrap:wrap;gap:.375rem;align-items:center;color:var(--strong);font-weight:700}`,
+  `.choice-title{display:flex;flex-wrap:wrap;gap:.375rem;align-items:center;color:var(--strong);font-weight:600}`,
   `.choice-meta{color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
   `.choice-seats{min-width:0;color:var(--strong);font-size:.875rem;line-height:1.25rem;font-weight:400}`,
   `.choice-title.tiered{flex-wrap:nowrap;align-items:baseline}`,
@@ -238,7 +238,7 @@ const AUTH_CARD_RULES = [
   `main.ac{display:block;width:100%;max-width:28.5rem;min-width:0;margin:0 auto;overflow:hidden;border:1px solid var(--rule);border-radius:1.375rem;background:var(--raised);box-shadow:0 8px 24px rgb(0 0 0 / .18)}`,
   `.ac-head{display:flex;gap:1rem;align-items:center;min-width:0;padding:1rem 1.75rem;border-bottom:1px solid var(--rule)}`,
   `.ac-head img,.ac-mono{display:block;flex:none;width:48px;height:48px;border-radius:11px;object-fit:cover}`,
-  `.ac-mono{display:grid;place-items:center;background:var(--sunken);border:1px solid var(--rule);color:var(--strong);font-weight:700}`,
+  `.ac-mono{display:grid;place-items:center;background:var(--sunken);border:1px solid var(--rule);color:var(--strong);font-weight:600}`,
   `.ac-head-text{display:grid;min-width:0;overflow-wrap:anywhere}`,
   `.ac-head-text p{margin:0}`,
   `.ac-head-title{color:var(--strong);font-size:1rem;line-height:1.5rem}`,
@@ -286,7 +286,7 @@ const AUTH_CARD_RULES = [
   `.ac-body dt{flex:0 0 6rem}`,
   `.ac-body dd{flex:1 1 calc(100% - 7rem);min-width:min(100%,12rem);overflow-wrap:break-word}`,
   `.ac-body h1:focus{outline:none}`,
-  `@media (forced-colors: active){[data-brand=locker] .button:not(.secondary):not(.link){border:3px solid Highlight}}`,
+  `@media (forced-colors: active){[data-brand=locker] .button:not(.secondary):not(.link){border:3px solid Highlight;background:ButtonFace;color:ButtonText}}`,
   // The licence chooser: the selected row is a neutral 7 % fill with a coral 3 px marker (D9a);
   // a link inside a row is a 44 px target.
   `[data-brand=locker] .choice:has(input:checked){border-color:var(--edge);background:color-mix(in srgb,var(--strong) 7%,var(--sunken));box-shadow:inset 3px 0 0 var(--mb)}`,
