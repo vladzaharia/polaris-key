@@ -29,6 +29,16 @@ export function hasJsonContentType(req: Request): boolean {
   return type === "application/json" || type.endsWith("+json");
 }
 
+/** Whether the body is a urlencoded form: what a browser sends for `<form method="post">`. */
+export function hasFormContentType(req: Request): boolean {
+  return (
+    (req.headers.get("content-type") ?? "")
+      .split(";")[0]!
+      .trim()
+      .toLowerCase() === "application/x-www-form-urlencoded"
+  );
+}
+
 /** A UTF-8 body read under `maxBytes` (counted while reading), or `null` when it is larger.
  *  The shared streamed reader (`core/cappedBody.ts`) does the counting. */
 export async function readTextCapped(

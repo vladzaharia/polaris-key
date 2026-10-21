@@ -280,7 +280,7 @@ async function routeRequest(
     // The gated docs site: session-checked inside the handler (docs.ts), for every path
     // under the prefix — assets and machine-readable artifacts included.
     case "docs":
-      return handleDocs(req, env, now);
+      return handleDocs(req, env, now, db);
     // `/help[/*]` → the public Help; no session, no database.
     case "helpAlias":
       return helpAliasResponse(req, env, url, onCustomerHost);

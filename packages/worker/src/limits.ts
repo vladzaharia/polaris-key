@@ -10,7 +10,10 @@
  * platform handler reads it.
  */
 
-import { ADMIN_SESSION_TTL_SECONDS } from "./core/console/session.js";
+import {
+  ADMIN_SESSION_TTL_SECONDS,
+  LIVE_CHECK_SECONDS,
+} from "./core/console/session.js";
 import { MAX_ADMIN_API_TOKENS, MAX_TOKEN_DAYS } from "./console/apiTokens.js";
 import { MAX_LIVE_PERSONAL_TOKENS } from "./core/accounts/personalTokens.js";
 import {
@@ -106,6 +109,15 @@ export const LIMITS: readonly Limit[] = [
     "A console session ends after this, however active it is.",
     "seconds",
     ADMIN_SESSION_TTL_SECONDS,
+  ),
+  row(
+    "LIVE_CHECK_SECONDS",
+    "core/console/session.ts",
+    "Access",
+    "Console access check",
+    "Signing a session out, disabling its account or deleting it ends console access within this.",
+    "seconds",
+    LIVE_CHECK_SECONDS,
   ),
   row(
     "BREAK_GLASS_MAX_SECONDS",

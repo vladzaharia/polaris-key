@@ -34,6 +34,7 @@
  */
 
 import type { Env } from "./platform/env.js";
+import type { Db } from "./db/types.js";
 import { can, PLATFORM, type AreaId, type Principal } from "./console/authz.js";
 import { resolveConsoleCaller } from "./console/api.js";
 import { isSafeAssetPath } from "./platform/http.js";
@@ -307,6 +308,7 @@ export async function handleDocs(
   req: Request,
   env: Env,
   now: number,
+  db: Db | null = null,
 ): Promise<Response> {
   const url = new URL(req.url);
 
@@ -320,7 +322,7 @@ export async function handleDocs(
   const assetPath = docsAssetPath(url.pathname);
   const tier = docsTierOf(assetPath);
   if (tier !== "public") {
-    const caller = await resolveConsoleCaller(env, null, req, now);
+    const caller = await resolveConsoleCaller(env, db, req, now);
     if (!caller) return accessRedirect(url.pathname);
     // The principal is resolved from the current platform group, not the groups the cookie was
     // minted with.

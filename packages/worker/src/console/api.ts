@@ -69,6 +69,7 @@ import {
   type Scope,
 } from "./authz.js";
 import { findRoute, levelOf } from "./routeMatch.js";
+import { liveSubjectFor } from "./consoleSession.js";
 import {
   ADMIN_ROUTES,
   isProductRoute,
@@ -135,7 +136,14 @@ export async function resolveConsoleCaller(
   req: Request,
   now: number,
 ): Promise<ConsoleCaller | null> {
-  const session = await sessionFromRequest(env, req, now);
+  // A v2 cookie is resolved against its session row (at most every 30 s); with no database to ask
+  // it is refused, never trusted.
+  const session = await sessionFromRequest(
+    env,
+    req,
+    now,
+    db ? liveSubjectFor(env, db, now) : undefined,
+  );
   return session ? callerFor(env, db, session, now) : null;
 }
 

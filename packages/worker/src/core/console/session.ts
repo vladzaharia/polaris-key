@@ -14,9 +14,15 @@
  * only). `SameSite=Strict` is the primary defense; the header is defense-in-depth
  * (double-submit by way of an unreadable secret).
  *
- * Why HMAC and not a KV-backed opaque session: it keeps admin auth stateless (no KV
- * round-trip per request, no session GC) while still being server-verifiable and
- * tamper-proof. Sessions are short-lived, so statelessness costs little.
+ * ST-30 slice 2a: cookie v2 (`pkey.admin.v2|`) carries the account id and a session id instead of
+ * the IdP's `sub` and `groups`. It is only a pointer: every request resolves it, at most every 30
+ * seconds, to a live `account_sessions` row of an active account (`console/consoleSession.ts`, the
+ * `consoleSubject` read in Identity), so a revoked session, a disabled or deleted account ends
+ * access within 30 s instead of at the 8 h expiry. A v1 cookie (the IdP `sub` and `groups`, signed
+ * before this deploy) is still read until it expires and is never minted by the sign-in again.
+ *
+ * Why HMAC for the cookie itself: it is server-verifiable and tamper-proof with no lookup for a
+ * request that carries none; the live check above is the revocable part.
  */
 
 import type { Env } from "../../platform/env.js";
@@ -56,6 +62,13 @@ export const CSRF_HEADER = "X-PKey-CSRF";
 export const ADMIN_SESSION_TTL_SECONDS = 8 * 60 * 60;
 const SESSION_TTL_SECONDS = ADMIN_SESSION_TTL_SECONDS;
 
+/**
+ * How stale a console session check may be (seconds, ST-28 §2.6 "Per request"): a revoked session,
+ * a disabled or deleted account or a sign-out ends access within this, not at the 8 h expiry.
+ * Code, never a runtime setting (a longer window would widen a revoked session's reach).
+ */
+export const LIVE_CHECK_SECONDS = 30;
+
 /** The verified, server-trusted session claims. */
 export interface AdminSession {
   /** OIDC subject — the audit actor is ALWAYS taken from here, never a request field. */
@@ -65,6 +78,9 @@ export interface AdminSession {
   groups: string[];
   /** Per-session CSRF token; the SPA must echo it in `X-PKey-CSRF` on writes. */
   csrf: string;
+  /** Cookie v2 only: the account and the `account_sessions` row this request resolved through. */
+  aid?: string;
+  sid?: string;
   /** Epoch-seconds expiry. */
   exp: number;
   /**
@@ -130,6 +146,8 @@ async function sessionKey(env: Env): Promise<CryptoKey> {
  * `.v1` allows a future rotation of the scheme itself.
  */
 const ADMIN_SESSION_DOMAIN = "pkey.admin.v1|";
+/** The v2 realm tag (ST-28 §2.6): a v1 token's signature is over a different message. */
+const ADMIN_SESSION_DOMAIN_V2 = "pkey.admin.v2|";
 
 // ---------------------------------------------------------------------------
 // Issue / verify
@@ -141,13 +159,20 @@ export interface SessionIdentity {
   name?: string;
   email?: string;
   groups: string[];
+  /** The `email_verified` claim was `true` (the account keeps an unverified address as nothing). */
+  emailVerified?: boolean;
   /** The ID token's `auth_time` (epoch seconds), when the IdP sent one. */
   authTime?: number;
   /** The callback ran a step-up flow and the IdP proved a fresh `auth_time`. */
   stepUp?: boolean;
 }
 
-/** Mint a signed session token for a verified admin identity. */
+/**
+ * Mint a v1 token (IdP `sub` + `groups` in the cookie). The sign-in no longer does: it mints v2
+ * (`issueSessionV2`). This stays so the reader's v1 branch, which honours cookies signed before
+ * the deploy until they expire, has a minter to be tested with. Delete both with the v1 reader
+ * once the last v1 cookie has expired (8 h after the deploy).
+ */
 export async function issueSession(
   env: Env,
   identity: SessionIdentity,
@@ -197,6 +222,109 @@ export async function verifySession(
 }
 
 // ---------------------------------------------------------------------------
+// Cookie v2 (ST-30): account id + session id, resolved on every request
+// ---------------------------------------------------------------------------
+
+/** What a v2 cookie says. Nothing in it is trusted for authority: `aid` and `sid` only point. */
+export interface ConsoleCookieClaims {
+  aid: string;
+  sid: string;
+  name: string;
+  email: string;
+  csrf: string;
+  exp: number;
+  authAt: number;
+  stepUpAt?: number;
+}
+
+/** The account's current console identity, as Identity reads it (`consoleSubject`). */
+export interface ResolvedConsoleSubject {
+  /** The IdP subject of the account's console link: the audit actor, as before. */
+  sub: string;
+  name: string;
+  email: string;
+  /** The groups the console IdP last asserted for this account. */
+  groups: string[];
+}
+
+/** Resolves a v2 cookie to its live subject, or `null` when it no longer holds. */
+export type LiveSubject = (
+  claims: ConsoleCookieClaims,
+) => Promise<ResolvedConsoleSubject | null>;
+
+/** Mint a v2 cookie for a session Identity just opened (`aid` + `sid`). */
+export async function issueSessionV2(
+  env: Env,
+  input: {
+    aid: string;
+    sid: string;
+    name: string;
+    email: string;
+    authTime?: number;
+    stepUp?: boolean;
+  },
+  now: number,
+): Promise<{ token: string; claims: ConsoleCookieClaims }> {
+  const authAt =
+    typeof input.authTime === "number" && input.authTime <= now
+      ? input.authTime
+      : now;
+  const claims: ConsoleCookieClaims = {
+    aid: input.aid,
+    sid: input.sid,
+    name: input.name,
+    email: input.email,
+    csrf: randomToken(16),
+    exp: now + SESSION_TTL_SECONDS,
+    authAt,
+    ...(input.stepUp && typeof input.authTime === "number"
+      ? { stepUpAt: authAt }
+      : {}),
+  };
+  const token = await signHmacToken(
+    await sessionKey(env),
+    ADMIN_SESSION_DOMAIN_V2,
+    claims,
+  );
+  return { token, claims };
+}
+
+/** Verify a v2 token's signature and shape; no lookup. `null` on any tamper or expiry. */
+async function verifyClaimsV2(
+  env: Env,
+  token: string | null,
+  now: number,
+): Promise<ConsoleCookieClaims | null> {
+  const payload = await verifyHmacToken(token, ADMIN_SESSION_DOMAIN_V2, () =>
+    sessionKey(env),
+  );
+  if (payload === undefined || payload === null || typeof payload !== "object")
+    return null;
+  const c = payload as Partial<ConsoleCookieClaims>;
+  if (
+    typeof c.exp !== "number" ||
+    c.exp <= now ||
+    typeof c.aid !== "string" ||
+    !c.aid ||
+    typeof c.sid !== "string" ||
+    !c.sid ||
+    typeof c.csrf !== "string" ||
+    typeof c.authAt !== "number"
+  )
+    return null;
+  return {
+    aid: c.aid,
+    sid: c.sid,
+    name: typeof c.name === "string" ? c.name : "",
+    email: typeof c.email === "string" ? c.email : "",
+    csrf: c.csrf,
+    exp: c.exp,
+    authAt: c.authAt,
+    ...(typeof c.stepUpAt === "number" ? { stepUpAt: c.stepUpAt } : {}),
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Cookie (de)serialization
 // ---------------------------------------------------------------------------
 
@@ -237,17 +365,40 @@ export function buildClearCookie(): string {
   return [`${ADMIN_COOKIE}=`, ...ADMIN_COOKIE_ATTRS, "Max-Age=0"].join("; ");
 }
 
-/** Read the session out of a request's Cookie header + verify it. */
+/**
+ * Read the session out of a request's Cookie header + verify it.
+ *
+ * A v2 cookie is a pointer: `live` (the console layer's cached `consoleSubject` read) says whether
+ * it still holds and who it is today. Without `live` a v2 cookie is refused, so a caller that
+ * cannot ask (no database) fails closed. A v1 cookie is read as before, for the 8 h it can still
+ * live after the deploy, and checked against the sign-out mark.
+ */
 export async function sessionFromRequest(
   env: Env,
   req: Request,
   now: number,
+  live?: LiveSubject,
 ): Promise<AdminSession | null> {
-  const session = await verifySession(
-    env,
-    readSessionCookie(req.headers.get("cookie")),
-    now,
-  );
+  const token = readSessionCookie(req.headers.get("cookie"));
+  const claims = await verifyClaimsV2(env, token, now);
+  if (claims) {
+    if (!live) return null;
+    const subject = await live(claims);
+    if (!subject) return null;
+    return {
+      sub: subject.sub,
+      name: subject.name || claims.name || subject.email || subject.sub,
+      email: subject.email || claims.email,
+      groups: subject.groups,
+      csrf: claims.csrf,
+      exp: claims.exp,
+      authAt: claims.authAt,
+      ...(claims.stepUpAt !== undefined ? { stepUpAt: claims.stepUpAt } : {}),
+      aid: claims.aid,
+      sid: claims.sid,
+    };
+  }
+  const session = await verifySession(env, token, now);
   if (!session) return null;
   // Sign-out is server-side.
   return (await isAdminSessionRevoked(env, session)) ? null : session;

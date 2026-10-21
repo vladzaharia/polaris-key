@@ -96,6 +96,51 @@ export interface StartedSession {
 }
 
 /**
+ * One `account_sessions` row for `accountId` that lives `ttlSeconds`, and the random `sid` that
+ * names it. The portal cookie (`startAccountSession`) and the console cookie (ST-30,
+ * `consoleAccount.ts`) both open their sessions here, so "sign out everywhere" ends both and one
+ * table says what is live. Ended rows of the account are pruned as a new one opens.
+ */
+export async function openAccountSessionRow(
+  env: Env,
+  db: Db,
+  input: {
+    accountId: string;
+    req?: Request;
+    amr: readonly string[];
+    ttlSeconds: number;
+  },
+  now: number,
+): Promise<{ sid: string; idHash: string }> {
+  const sid = randomToken(32);
+  const idHash = await sessionIdHash(env, sid);
+  const label = browserLabel(input.req?.headers.get("user-agent"));
+  await db.run(
+    `INSERT INTO account_sessions
+       (id_hash, account_id, created_at, last_seen_at, expires_at, revoked_at, user_agent, amr_json)
+     VALUES (?, ?, ?, ?, ?, NULL, ?, ?)`,
+    idHash,
+    input.accountId,
+    now,
+    now,
+    now + input.ttlSeconds,
+    label,
+    JSON.stringify(input.amr),
+  );
+  // Ended rows of this account are pruned as new ones open: the table holds live sessions plus a
+  // month of history, never an unbounded log.
+  await db.run(
+    `DELETE FROM account_sessions
+      WHERE account_id = ?
+        AND (expires_at < ? OR (revoked_at IS NOT NULL AND revoked_at < ?))`,
+    input.accountId,
+    now - SESSION_PRUNE_AFTER_SECONDS,
+    now - SESSION_PRUNE_AFTER_SECONDS,
+  );
+  return { sid, idHash };
+}
+
+/**
  * Open an account session after a completed sign-in: one row, one signed cookie naming it.
  * `amr` records how the person signed in (`email`, `google`, `passkey`, …), shown on the sessions
  * list and read by step-up checks. `authenticatedAt` is for a session opened WITHOUT a sign-in of
@@ -117,30 +162,16 @@ export async function startAccountSession(
   },
   now: number,
 ): Promise<StartedSession> {
-  const sid = randomToken(32);
-  const idHash = await sessionIdHash(env, sid);
-  const label = browserLabel(input.req?.headers.get("user-agent"));
-  await db.run(
-    `INSERT INTO account_sessions
-       (id_hash, account_id, created_at, last_seen_at, expires_at, revoked_at, user_agent, amr_json)
-     VALUES (?, ?, ?, ?, ?, NULL, ?, ?)`,
-    idHash,
-    input.account.id,
+  const { sid, idHash } = await openAccountSessionRow(
+    env,
+    db,
+    {
+      accountId: input.account.id,
+      ...(input.req ? { req: input.req } : {}),
+      amr: input.amr,
+      ttlSeconds: SESSION_TTL_SECONDS,
+    },
     now,
-    now,
-    now + SESSION_TTL_SECONDS,
-    label,
-    JSON.stringify(input.amr),
-  );
-  // Ended rows of this account are pruned as new ones open: the table holds live sessions plus a
-  // month of history, never an unbounded log.
-  await db.run(
-    `DELETE FROM account_sessions
-      WHERE account_id = ?
-        AND (expires_at < ? OR (revoked_at IS NOT NULL AND revoked_at < ?))`,
-    input.account.id,
-    now - SESSION_PRUNE_AFTER_SECONDS,
-    now - SESSION_PRUNE_AFTER_SECONDS,
   );
   const { token, session } = await issuePortalSession(
     env,

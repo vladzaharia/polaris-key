@@ -3,10 +3,13 @@
  * activation in `../services/identity/oidc.ts` (which mints license tokens). Here we just prove
  * an operator's identity + groups and drop a signed session cookie.
  *
- * - `GET /manage/login`     -> 302 to the IdP authorize endpoint (PKCE, state in the
- *                             single-use store, `core/singleUse.ts`).
- * - `GET /manage/callback`  -> exchange the code, verify the ID token, gate on a platform
- *                             OR product admin group, set the session cookie, 302 to /manage/.
+ * - `GET /manage/login`     -> the sign-in card (no flow starts); `?go=1` starts one.
+ * - `POST /manage/login`    -> the card's Continue (SIGN-IN.md §3.13): the same flow, answered with
+ *                             a 303 to the IdP authorize endpoint (PKCE, state in the single-use
+ *                             store, `core/singleUse.ts`), so the typed address is never in a URL.
+ * - `GET /manage/callback`  -> exchange the code, verify the ID token, gate on the console
+ *                             principal, land the operator on an account (`consoleSignIn`), set the
+ *                             v2 session cookie (account id + session id), 302 to /manage/.
  *
  * The token-exchange + ID-token verification is delegated to an injectable `IdTokenVerifier`
  * so tests can drive the flow without a live IdP. Production wires the one relying-party client
@@ -46,15 +49,25 @@ import {
   renderConsoleNotice,
   renderConsoleSignin,
   signinState,
+  type NoticeAction,
 } from "./signinPage.js";
+import { resolveConsoleCaller } from "./api.js";
+import {
+  consoleSignIn,
+  type ConsoleSignInResult,
+} from "../services/identity/public.js";
+import {
+  hasFormContentType,
+  isSameOriginRequest,
+  readTextCapped,
+} from "../core/accounts/browserRequestGuard.js";
 import { escapeHtml } from "../platform/html.js";
 import { randomToken } from "../platform/random.js";
 import { can, PLATFORM, resolvePrincipal } from "./authz.js";
 import {
   STEP_UP_MAX_AGE_SECONDS,
   buildSessionCookie,
-  issueSession,
-  sessionFromRequest,
+  issueSessionV2,
   type SessionIdentity,
 } from "../core/console/session.js";
 
@@ -152,6 +165,7 @@ function mapClaims(payload: Record<string, unknown>): SessionIdentity {
   return {
     sub: String(payload.sub ?? ""),
     email: typeof payload.email === "string" ? payload.email : undefined,
+    emailVerified: payload.email_verified === true,
     name: name || undefined,
     groups,
     ...(typeof payload.auth_time === "number" &&
@@ -194,14 +208,13 @@ const clientIdTokenVerifier: IdTokenVerifier = {
 };
 
 // ── handlers ──────────────────────────────────────────────────────────────────
-/** A sign-in error page. HTML on the admin origin, so it carries the strict script-free CSP
- *  (R1-09): every message here is a hard-coded literal today, and it is escaped anyway, so this
- *  page can never become a script-execution primitive if that changes. */
 /** What a retry keeps: where the person was going, a step-up, the address they typed. */
 interface Ctx {
   returnTo?: string | null;
   stepUp?: boolean;
   hint?: string | null;
+  /** "Use another account": the IdP's chooser, or a fresh login. */
+  other?: boolean;
 }
 
 function ctxOf(url: URL): Ctx {
@@ -209,6 +222,17 @@ function ctxOf(url: URL): Ctx {
     returnTo: sanitizeReturnTo(url.searchParams.get("returnTo")),
     stepUp: url.searchParams.get("stepUp") === "1",
     hint: loginHint(url.searchParams.get("login_hint")),
+    other: url.searchParams.get("other") === "1",
+  };
+}
+
+/** The same context from the card's POSTed form: nothing of it was ever in a URL. */
+function ctxOfForm(form: URLSearchParams): Ctx {
+  return {
+    returnTo: sanitizeReturnTo(form.get("returnTo")),
+    stepUp: form.get("stepUp") === "1",
+    hint: loginHint(form.get("login_hint")),
+    other: form.get("other") === "1",
   };
 }
 
@@ -223,29 +247,49 @@ function loginHref(ctx: Ctx, extra: Record<string, string> = {}): string {
 }
 
 /**
+ * A retry that starts the sign-in again. From the card's POST it is a POST too, with the context
+ * as hidden fields, so the typed address does not move into a URL on the way; from a link it is
+ * the `go=1` link it always was.
+ */
+function startAgain(label: string, ctx: Ctx, viaPost: boolean): NoticeAction {
+  if (!viaPost) return { label, href: loginHref(ctx, { go: "1" }) };
+  const fields: Record<string, string> = {};
+  if (ctx.returnTo) fields.returnTo = ctx.returnTo;
+  if (ctx.stepUp) fields.stepUp = "1";
+  if (ctx.hint) fields.login_hint = ctx.hint;
+  if (ctx.other) fields.other = "1";
+  return { label, post: { action: "/manage/login", fields } };
+}
+
+/**
  * A sign-in error page (the card, copy from SIGN-IN.md §3.12-§3.13). HTML on the admin origin, so
  * it carries the strict script-free CSP (R1-09); every string is a literal here and escaped anyway.
+ * `formOrigins` is for a page whose action is a POST that the IdP redirect follows: the browser
+ * applies THIS page's `form-action` to that redirect, so it must name the IdP as the card does.
  */
 function htmlError(
   status: number,
   heading: string,
   opts: {
     lede?: string;
-    action?: { label: string; href: string };
+    action?: NoticeAction;
     headers?: Record<string, string>;
+    formOrigins?: readonly string[];
   } = {},
 ): Response {
-  const { headers: extra, ...page } = opts;
+  const { headers: extra, formOrigins, ...page } = opts;
+  const headers = brandedHtmlSecurityHeaders(
+    new Headers({
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store",
+      ...(extra ?? {}),
+    }),
+    { brand: "console" },
+  );
+  if (formOrigins?.length) allowFormAction(headers, formOrigins);
   return new Response(renderConsoleNotice({ heading, ...page }), {
     status,
-    headers: brandedHtmlSecurityHeaders(
-      new Headers({
-        "content-type": "text/html; charset=utf-8",
-        "cache-control": "no-store",
-        ...(extra ?? {}),
-      }),
-      { brand: "console" },
-    ),
+    headers,
   });
 }
 
@@ -289,22 +333,14 @@ export function resetConsoleDiscoveryFailures(): void {
   discoveryFailedAt.clear();
 }
 
-/** The card, served at `GET /manage/login` until Continue (`go=1`) starts the sign-in. */
-async function signinCard(
-  req: Request,
-  env: Env,
-  rp: NonNullable<ReturnType<typeof consoleRelyingParty>>,
-): Promise<Response> {
-  const url = new URL(req.url);
-  const ctx = ctxOf(url);
-  const state = signinState(url);
-  let host = rp.issuer;
-  try {
-    host = new URL(rp.issuer).host;
-  } catch {
-    // an unparsable issuer is shown as configured
-  }
-  // Configuration, never the request: the issuer's origin and the authorization endpoint's.
+type ConsoleRp = NonNullable<ReturnType<typeof consoleRelyingParty>>;
+
+/**
+ * The origins a form that ends at the IdP may follow: configuration, never the request. The
+ * issuer's origin and the authorization endpoint's (discovery validates it, cached; a failed
+ * discovery is remembered briefly so an outage is not a fetch per view).
+ */
+async function idpFormOrigins(rp: ConsoleRp): Promise<string[]> {
   const origins = [originOf(rp.issuer)];
   const nowMs = Date.now();
   const failedAt = discoveryFailedAt.get(rp.issuer);
@@ -317,10 +353,36 @@ async function signinCard(
       discoveryFailedAt.set(rp.issuer, nowMs);
     }
   }
+  return origins.filter((o): o is string => o !== null);
+}
+
+/** The card, served at `GET /manage/login` until Continue starts the sign-in. */
+async function signinCard(
+  req: Request,
+  env: Env,
+  db: Db | null,
+  rp: ConsoleRp,
+): Promise<Response> {
+  const url = new URL(req.url);
+  const ctx = ctxOf(url);
+  const state = signinState(url);
+  let host = rp.issuer;
+  try {
+    host = new URL(rp.issuer).host;
+  } catch {
+    // an unparsable issuer is shown as configured
+  }
+  const origins = await idpFormOrigins(rp);
   const known =
     state === "stepUp"
-      ? ((await sessionFromRequest(env, req, Math.floor(Date.now() / 1000)))
-          ?.email ?? null)
+      ? ((
+          await resolveConsoleCaller(
+            env,
+            db,
+            req,
+            Math.floor(Date.now() / 1000),
+          )
+        )?.session.email ?? null)
       : null;
   const headers = brandedHtmlSecurityHeaders(
     new Headers({
@@ -329,10 +391,7 @@ async function signinCard(
     }),
     { brand: "console" },
   );
-  allowFormAction(
-    headers,
-    origins.filter((o): o is string => o !== null),
-  );
+  allowFormAction(headers, origins);
   return new Response(
     renderConsoleSignin({
       state,
@@ -353,23 +412,57 @@ function loginHint(raw: string | null): string | null {
     : null;
 }
 
+/** The most bytes the card's form may post: three short fields. */
+const LOGIN_FORM_MAX_BYTES = 4 * 1024;
+
 /**
- * GET /manage/login — the sign-in card; with `go=1` (the Continue button) start PKCE and
- * redirect to the IdP authorize endpoint.
+ * `GET /manage/login` — the sign-in card; with `go=1` (a retry or "Use another account" link)
+ * start PKCE and redirect to the IdP authorize endpoint. `POST /manage/login` is the card's own
+ * Continue (SIGN-IN.md §3.13): the same flow answered with a 303, the fields in the body.
  */
 export async function handleAdminLogin(
   req: Request,
   env: Env,
+  db: Db | null = null,
 ): Promise<Response> {
   const rp = consoleRelyingParty(env);
   if (!rp)
     return htmlError(500, "Admin sign-in isn’t set up", {
       lede: "Ask whoever deployed Polaris Key to set it up.",
     });
+  if (req.method === "POST") {
+    // Only the card's own form. A cross-site page can POST here, but it can only start a sign-in
+    // this browser then has to complete itself; refusing it also keeps the limit ours.
+    if (!isSameOriginRequest(req) || !hasFormContentType(req))
+      return htmlError(403, "We couldn’t start that sign-in", {
+        action: { label: "Back to sign in", href: "/manage/login" },
+      });
+    const raw = await readTextCapped(req, LOGIN_FORM_MAX_BYTES);
+    if (raw === null)
+      return htmlError(413, "We couldn’t start that sign-in", {
+        action: { label: "Back to sign in", href: "/manage/login" },
+      });
+    return startSignIn(req, env, rp, ctxOfForm(new URLSearchParams(raw)), 303);
+  }
   const reqUrl = new URL(req.url);
-  const ctx = ctxOf(reqUrl);
   // Viewing the card is free; starting a sign-in is what the limit counts.
-  if (reqUrl.searchParams.get("go") !== "1") return signinCard(req, env, rp);
+  if (reqUrl.searchParams.get("go") !== "1")
+    return signinCard(req, env, db, rp);
+  return startSignIn(req, env, rp, ctxOf(reqUrl), 302);
+}
+
+/**
+ * Start the PKCE flow and answer with the redirect to the IdP: a 302 for a link (`go=1`), a 303
+ * for the card's POST. Rate-limited (the limit counts starts, not views).
+ */
+async function startSignIn(
+  req: Request,
+  env: Env,
+  rp: ConsoleRp,
+  ctx: Ctx,
+  redirectStatus: 302 | 303,
+): Promise<Response> {
+  const viaPost = redirectStatus === 303;
   const ok = await rateLimitOk(
     env,
     "_admin",
@@ -386,15 +479,16 @@ export async function handleAdminLogin(
     discovered = await discover(rp);
   } catch {
     return htmlError(502, "Can’t reach the sign-in provider", {
-      action: { label: "Try again", href: loginHref(ctx, { go: "1" }) },
+      action: startAgain("Try again", ctx, viaPost),
+      formOrigins: viaPost ? await idpFormOrigins(rp) : [],
     });
   }
   const { state, nonce, verifier, challenge } = await newFlowSecrets();
   const url = new URL(req.url);
   const redirectUri = `${adminOrigin(env, url)}/manage/callback`;
-  const returnTo = sanitizeReturnTo(url.searchParams.get("returnTo"));
-  const stepUp = url.searchParams.get("stepUp") === "1";
-  const hint = loginHint(url.searchParams.get("login_hint"));
+  const returnTo = ctx.returnTo ?? null;
+  const stepUp = ctx.stepUp === true;
+  const hint = ctx.hint ?? null;
   const binding = randomToken(32);
   const flow: FlowRecord = {
     verifier,
@@ -422,7 +516,7 @@ export async function handleAdminLogin(
     extra: {
       ...(stepUp ? { prompt: "login", max_age: "0" } : {}),
       // "Use another account": the IdP's chooser when it has one, else a fresh login.
-      ...(!stepUp && url.searchParams.get("other") === "1"
+      ...(!stepUp && ctx.other
         ? {
             prompt: discovered.promptValuesSupported?.includes("select_account")
               ? "select_account"
@@ -433,7 +527,7 @@ export async function handleAdminLogin(
     },
   });
   return new Response(null, {
-    status: 302,
+    status: redirectStatus,
     headers: {
       location: authorize,
       "set-cookie": accountRealmCookie(
@@ -577,10 +671,51 @@ export async function handleAdminCallback(
     });
   }
 
-  // Only a step-up flow whose ID token carries `auth_time` records a step-up.
-  const { token } = await issueSession(
+  // The operator lands on one Polaris Key account, the one the portal uses, and the sign-in opens
+  // a revocable session row that the cookie names (ST-30). The gate above already decided the
+  // identity may open the console; this only decides which account it is.
+  const signedIn: ConsoleSignInResult = await consoleSignIn(
     env,
-    { ...identity, stepUp: flow.stepUp === true },
+    db,
+    {
+      sub: identity.sub,
+      email: identity.email ?? null,
+      emailVerified: identity.emailVerified === true,
+      displayName: identity.name ?? null,
+      groups: identity.groups,
+    },
+    { operator: true, req },
+    now,
+  );
+  if (signedIn.status !== "ok") {
+    await recordPlatformSecurityEvent(db, {
+      action: "admin.signin.refused",
+      sub: identity.sub,
+      summary: `Admin sign-in refused: account (${signedIn.reason})`,
+      now,
+    });
+    return htmlError(403, "We couldn’t open your account", {
+      lede: "Your Polaris Key account can’t open the console, so ask a Superadmin to look into it.",
+      action: {
+        label: "Use another account",
+        href: loginHref(flowCtx, { go: "1", other: "1" }),
+      },
+    });
+  }
+
+  // Only a step-up flow whose ID token carries `auth_time` records a step-up.
+  const { token } = await issueSessionV2(
+    env,
+    {
+      aid: signedIn.accountId,
+      sid: signedIn.sid,
+      name: signedIn.name,
+      email: signedIn.email || identity.email || "",
+      ...(identity.authTime !== undefined
+        ? { authTime: identity.authTime }
+        : {}),
+      stepUp: flow.stepUp === true,
+    },
     now,
   );
   await recordPlatformSecurityEvent(db, {
