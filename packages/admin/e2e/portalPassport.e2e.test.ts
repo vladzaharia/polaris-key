@@ -308,52 +308,53 @@ describe("what never gets a pane or art", () => {
     [1024, 768, false],
     [2560, 1440, true],
   ] as const) {
-    it(`200 % text at ${width}x${height}: ${wide ? "the pane stays, and the form keeps 28.5 rem" : "the strip stacks, the pane is never wider than the form"}`, async ({
-      expect,
-    }) => {
-      const o = await portal.open(base.scenario, base.path, {
-        theme: "light",
-        width,
-        height,
-        routes: withArt("/media/nightfall/header"),
-      });
-      try {
-        await base.ready(o.page);
-        await o.page.evaluate(() => {
-          document.documentElement.style.fontSize = "200%";
+    for (const theme of ["dark", "light"] as Theme[])
+      it(`200 % text at ${width}x${height}, ${theme}: ${wide ? "the pane stays, and the form keeps 28.5 rem" : "the strip stacks, the pane is never wider than the form"}`, async ({
+        expect,
+      }) => {
+        const o = await portal.open(base.scenario, base.path, {
+          theme,
+          width,
+          height,
+          routes: withArt("/media/nightfall/header"),
         });
-        await settle(o.page);
-        const g = await geometry(o.page);
-        const form = await o.page.evaluate(
-          () =>
-            document
-              .querySelector("[data-step]")!
-              .parentElement!.getBoundingClientRect().width,
-        );
-        if (wide) {
-          expect(g.h1.x).toBeGreaterThanOrEqual(g.pane.x + g.pane.w);
-          expect(form).toBeGreaterThanOrEqual(28.5 * 32 - 2);
-        } else {
-          expect(
-            g.h1.y,
-            "stacked: form below the strip",
-          ).toBeGreaterThanOrEqual(g.pane.y + g.pane.h - 1);
-          expect(g.art?.visible ?? false).toBe(false);
-        }
-        expect(
-          g.pane.w,
-          "pane never wider than the form",
-        ).toBeGreaterThanOrEqual(wide ? 0 : form - 2);
-        expect(await horizontalOverflow(o.page)).toBeLessThanOrEqual(0);
-        if (SHOTS)
-          await o.page.screenshot({
-            path: `${SHOTS}/text200-${width}x${height}.png`,
-            fullPage: true,
+        try {
+          await base.ready(o.page);
+          await o.page.evaluate(() => {
+            document.documentElement.style.fontSize = "200%";
           });
-      } finally {
-        await o.close();
-      }
-    });
+          await settle(o.page);
+          const g = await geometry(o.page);
+          const form = await o.page.evaluate(
+            () =>
+              document
+                .querySelector("[data-step]")!
+                .parentElement!.getBoundingClientRect().width,
+          );
+          if (wide) {
+            expect(g.h1.x).toBeGreaterThanOrEqual(g.pane.x + g.pane.w);
+            expect(form).toBeGreaterThanOrEqual(28.5 * 32 - 2);
+          } else {
+            expect(
+              g.h1.y,
+              "stacked: form below the strip",
+            ).toBeGreaterThanOrEqual(g.pane.y + g.pane.h - 1);
+            expect(g.art?.visible ?? false).toBe(false);
+          }
+          expect(
+            g.pane.w,
+            "pane never wider than the form",
+          ).toBeGreaterThanOrEqual(wide ? 0 : form - 2);
+          expect(await horizontalOverflow(o.page)).toBeLessThanOrEqual(0);
+          if (SHOTS)
+            await o.page.screenshot({
+              path: `${SHOTS}/text200-${width}x${height}-${theme}.png`,
+              fullPage: true,
+            });
+        } finally {
+          await o.close();
+        }
+      });
   }
 
   it("production capabilities (no product): the card is 46 rem from the first paint, and the key on-ramp keeps the pane", async ({
