@@ -8,6 +8,9 @@ Button {
     id: control
     property string role: "secondary"
     property real scale_: 1
+    // DL4: a busy control keeps its label and its focus and adds the indicator.
+    property bool busy: false
+    property bool animate: true
     readonly property bool primary: role === "primary"
     readonly property bool quiet: role === "quiet"
 
@@ -19,18 +22,59 @@ Button {
     Accessible.role: Accessible.Button
     Accessible.name: text
 
-    contentItem: Text {
-        text: control.text
-        font.family: Theme.fontFamily
-        font.pixelSize: Theme.typeButton.size * control.scale_
-        font.weight: Theme.typeButton.weight
-        color: !control.enabled ? Theme.actionDisabledOn
+    contentItem: Item {
+        id: content
+        implicitWidth: row.implicitWidth
+        implicitHeight: row.implicitHeight
+        readonly property color ink: !control.enabled ? Theme.actionDisabledOn
              : control.primary ? Theme.accentOn
              : control.quiet ? (control.hovered ? Theme.textStrong : Theme.textMuted)
              : Theme.textStrong
-        horizontalAlignment: Text.AlignHCenter
-        verticalAlignment: Text.AlignVCenter
-        elide: Text.ElideRight
+        Row {
+            id: row
+            anchors.centerIn: parent
+            spacing: 8
+            Item {
+                id: spinner
+                visible: control.busy
+                width: 14 * control.scale_
+                height: width
+                anchors.verticalCenter: parent.verticalCenter
+                Rectangle {
+                    anchors.fill: parent
+                    radius: width / 2
+                    color: "transparent"
+                    border.width: 2
+                    border.color: Qt.alpha(content.ink, 0.3)
+                }
+                Rectangle {
+                    width: 4 * control.scale_
+                    height: width
+                    radius: width / 2
+                    color: content.ink
+                    x: (spinner.width - width) / 2
+                    y: 0
+                }
+                RotationAnimator on rotation {
+                    running: control.busy && control.animate
+                    from: 0
+                    to: 360
+                    duration: 900
+                    loops: Animation.Infinite
+                }
+            }
+            Text {
+                text: control.text
+                width: Math.min(implicitWidth, content.width - (control.busy ? spinner.width + row.spacing : 0))
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.typeButton.size * control.scale_
+                font.weight: Theme.typeButton.weight
+                color: content.ink
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+                elide: Text.ElideRight
+            }
+        }
     }
 
     background: Rectangle {

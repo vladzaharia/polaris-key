@@ -38,7 +38,10 @@ Rectangle {
 
         Rectangle {
             id: card
-            visible: !spec.hidden
+            objectName: "card"
+            // DL7: a load shows nothing for its first 250 ms (the bridge's clock), then the identity,
+            // a muted label and the 2 px shimmer.
+            visible: !spec.hidden && (!spec.loading || kit.loadingShown)
             width: Math.min(scroller.width - 2 * root.gutter, 480)
             x: (scroller.width - width) / 2
             y: Math.max(root.gutter, (scroller.height - height) / 2)
@@ -55,39 +58,67 @@ Rectangle {
                 width: card.width - 2 * Theme.cardPad
                 spacing: 12
 
+                // The product header (UI-KITS 1.2, DL5): its icon, or a monogram tile of its initial,
+                // at 32 px beside the name; the hero size on Welcome, whose title names the product.
                 RowLayout {
-                    visible: spec.product !== "" || icon.status === Image.Ready
+                    id: identity
+                    visible: spec.product !== ""
+                    readonly property real side: (spec.hero ? 64 : 32) * root.fs
                     spacing: 10
                     Image {
                         id: icon
+                        objectName: "icon"
                         visible: status === Image.Ready
                         source: kit.iconSource
-                        sourceSize.width: 48 * root.fs
-                        sourceSize.height: 48 * root.fs
-                        Layout.preferredWidth: 40 * root.fs
-                        Layout.preferredHeight: 40 * root.fs
+                        sourceSize.width: 2 * identity.side
+                        sourceSize.height: 2 * identity.side
+                        Layout.preferredWidth: identity.side
+                        Layout.preferredHeight: identity.side
                         fillMode: Image.PreserveAspectFit
                         Accessible.role: Accessible.Graphic
                         Accessible.name: kit.iconLabel
                     }
+                    Rectangle {
+                        id: monogram
+                        objectName: "monogram"
+                        visible: icon.status !== Image.Ready && kit.monogram !== ""
+                        Layout.preferredWidth: identity.side
+                        Layout.preferredHeight: identity.side
+                        radius: width * 0.22
+                        color: Theme.surfaceSunken
+                        border.width: 1
+                        border.color: Theme.borderSubtle
+                        Accessible.role: Accessible.Graphic
+                        Accessible.name: kit.iconLabel
+                        Text {
+                            anchors.centerIn: parent
+                            text: kit.monogram
+                            font.family: Theme.fontFamily
+                            font.pixelSize: identity.side * 0.5
+                            font.weight: Theme.weightSemibold
+                            color: Theme.textStrong
+                            Accessible.ignored: true
+                        }
+                    }
                     ColumnLayout {
                         spacing: 0
                         Text {
+                            objectName: "productName"
                             text: spec.product
-                            visible: text !== ""
+                            visible: spec.showName
                             font.family: Theme.fontFamily
                             font.pixelSize: Theme.typeLabel.size * root.fs
-                            font.weight: Theme.typeLabel.weight
+                            font.weight: Theme.weightMedium
                             color: Theme.textStrong
                             elide: Text.ElideRight
                             Layout.fillWidth: true
                         }
                         Text {
-                            text: kit.developerLine
+                            text: spec.developerLine
                             visible: text !== ""
                             font.family: Theme.fontFamily
                             font.pixelSize: Theme.typeMeta.size * root.fs
-                            color: Theme.textMuted
+                            color: Theme.textSubtle
                             elide: Text.ElideRight
                             Layout.fillWidth: true
                         }
@@ -103,7 +134,7 @@ Rectangle {
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.typeTitle.size * root.fs
                     font.weight: Theme.typeTitle.weight
-                    color: spec.tone === "danger" ? Theme.danger : Theme.textStrong
+                    color: spec.titleTone === "danger" ? Theme.danger : Theme.textStrong
                     // The heading takes focus when a state has no field (DL9), so a reader lands on it.
                     focus: spec.focus === "heading"
                     activeFocusOnTab: true
@@ -122,17 +153,104 @@ Rectangle {
                         font.pixelSize: Theme.typeBody.size * root.fs
                         lineHeight: Theme.typeBody.lineHeight * root.fs
                         lineHeightMode: Text.FixedHeight
-                        color: Theme.textDefault
+                        color: spec.loading ? Theme.textMuted : Theme.textDefault
                         Accessible.role: Accessible.StaticText
                         Accessible.name: modelData
                     }
                 }
 
+                // DL7: a text entry, its hint or its error directly under it. Only an input that is
+                // itself wrong takes the danger stroke; the message is read with the field.
+                Repeater {
+                    model: spec.fields
+                    ColumnLayout {
+                        id: fieldBox
+                        required property var modelData
+                        Layout.fillWidth: true
+                        spacing: 6
+                        Text {
+                            text: fieldBox.modelData.label
+                            font.family: Theme.fontFamily
+                            font.pixelSize: Theme.typeLabel.size * root.fs
+                            font.weight: Theme.weightMedium
+                            color: Theme.textStrong
+                        }
+                        TextField {
+                            id: entry
+                            objectName: "entry"
+                            Layout.fillWidth: true
+                            placeholderText: fieldBox.modelData.placeholder
+                            placeholderTextColor: Theme.textSubtle
+                            font.family: Theme.monoFamily
+                            font.pixelSize: Theme.typeBody.size * root.fs
+                            color: Theme.textStrong
+                            focus: spec.focus === fieldBox.modelData.key
+                            activeFocusOnTab: true
+                            selectByMouse: true
+                            implicitHeight: Math.max(Theme.controlHeight * root.fs, 36)
+                            onTextEdited: kit.edit(fieldBox.modelData.key, text)
+                            Accessible.role: Accessible.EditableText
+                            Accessible.name: fieldBox.modelData.label
+                            Accessible.description: fieldBox.modelData.error || fieldBox.modelData.hint
+                            background: Rectangle {
+                                radius: Theme.radiusControl < 0 ? height / 2 : Theme.radiusControl
+                                color: Theme.surfaceSunken
+                                border.width: entry.activeFocus || fieldBox.modelData.error !== "" ? 2 : 1
+                                border.color: fieldBox.modelData.error !== "" ? Theme.danger
+                                            : entry.activeFocus ? Theme.focusRing : Theme.borderSubtle
+                            }
+                        }
+                        Text {
+                            visible: text !== ""
+                            text: fieldBox.modelData.error !== "" ? fieldBox.modelData.error : fieldBox.modelData.hint
+                            Layout.fillWidth: true
+                            wrapMode: Text.WordWrap
+                            font.family: Theme.fontFamily
+                            font.pixelSize: Theme.typeMeta.size * root.fs
+                            color: fieldBox.modelData.error !== "" ? Theme.danger : Theme.textMuted
+                            Accessible.role: Accessible.StaticText
+                            Accessible.name: text
+                        }
+                    }
+                }
+
+                // DL7: the 2 px shimmer for a wait with no count (text-strong at low alpha, never a
+                // part-filled bar); under reduced motion it holds still.
+                Item {
+                    id: shimmer
+                    objectName: "shimmer"
+                    visible: spec.progress > -2 && spec.progress < 0
+                    Layout.fillWidth: true
+                    implicitHeight: 2
+                    clip: true
+                    Accessible.role: Accessible.ProgressBar
+                    Accessible.name: spec.title || spec.product
+                    Rectangle {
+                        anchors.fill: parent
+                        color: Theme.textStrong
+                        opacity: 0.12
+                    }
+                    Rectangle {
+                        id: sweep
+                        width: shimmer.width * 0.3
+                        height: shimmer.height
+                        color: Theme.textStrong
+                        opacity: 0.4
+                        SequentialAnimation on x {
+                            running: kit.animate && shimmer.visible
+                            loops: Animation.Infinite
+                            NumberAnimation { from: 0; to: 0.7 * shimmer.width; duration: 1200; easing.type: Easing.InOutQuad }
+                            NumberAnimation { from: 0.7 * shimmer.width; to: 0; duration: 1200; easing.type: Easing.InOutQuad }
+                        }
+                    }
+                }
+
+                // A determinate bar only for counted bytes (DL7).
                 ProgressBar {
                     id: bar
-                    visible: spec.progress > -2
+                    objectName: "bar"
+                    visible: spec.progress >= 0
                     Layout.fillWidth: true
-                    indeterminate: spec.progress < 0 && spec.progress > -2
                     value: Math.max(0, spec.progress)
                     Accessible.name: spec.title || spec.product
                     background: Rectangle { implicitHeight: 4; radius: 2; color: Theme.surfaceSunken }
@@ -140,17 +258,10 @@ Rectangle {
                         id: track
                         implicitHeight: 4
                         Rectangle {
-                            id: fill
-                            width: track.width * (bar.indeterminate ? 0.35 : bar.visualPosition)
+                            width: track.width * bar.visualPosition
                             height: track.height
                             radius: 2
                             color: Theme.accent
-                            SequentialAnimation on x {
-                                running: kit.animate && bar.indeterminate && bar.visible
-                                loops: Animation.Infinite
-                                NumberAnimation { from: 0; to: 0.65 * track.width; duration: 1200; easing.type: Easing.InOutQuad }
-                                NumberAnimation { from: 0.65 * track.width; to: 0; duration: 1200; easing.type: Easing.InOutQuad }
-                            }
                         }
                     }
                 }
@@ -167,8 +278,10 @@ Rectangle {
                             text: modelData.text
                             role: modelData.role
                             scale_: root.fs
+                            busy: modelData.busy
+                            animate: kit.animate
                             Layout.fillWidth: true
-                            onClicked: kit.invoke(modelData.key, modelData.action)
+                            onClicked: if (!modelData.busy) kit.invoke(modelData.key, modelData.action)
                         }
                     }
                     Flow {

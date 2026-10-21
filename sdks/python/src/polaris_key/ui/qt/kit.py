@@ -12,6 +12,7 @@ from typing import Any, Optional, Tuple
 
 from .. import FONTS_DIR, QT_DIR
 from ..core.theme import Theme
+from ..core.ui_loading import LOADING_DELAY_MS
 from ..core.ui_view import View
 from . import _binding as qt
 from .bridge import KitBridge
@@ -44,10 +45,13 @@ class KitView:
         size: Tuple[int, int] = (520, 640),
         font_scale: float = 1.0,
         system_scheme: str = "dark",
+        loading_delay_ms: int = LOADING_DELAY_MS,
     ) -> None:
         qt.require()
         load_fonts()
-        self.bridge = KitBridge(theme, source=source, font_scale=font_scale, system_scheme=system_scheme)
+        self.bridge = KitBridge(
+            theme, source=source, font_scale=font_scale, system_scheme=system_scheme, loading_delay_ms=loading_delay_ms
+        )
         self.view = qt.QtQuick.QQuickView()
         self.view.setResizeMode(qt.QtQuick.QQuickView.ResizeMode.SizeRootObjectToView)
         self.view.rootContext().setContextProperty("bridge", self.bridge)

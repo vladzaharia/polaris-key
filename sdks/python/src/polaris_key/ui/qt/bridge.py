@@ -15,6 +15,7 @@ from .._tokens import POWERED_BY
 from ..core.copy import Copy
 from ..core.identity import ProductIdentity, ResolvedIdentity, resolve_identity
 from ..core.theme import Theme
+from ..core.ui_loading import LOADING_DELAY_MS
 from ..core.ui_view import View, bidi_isolate
 from . import _binding as qt
 from .layout import ScreenSpec, build_spec
@@ -49,6 +50,8 @@ class KitBridge(_Base):  # type: ignore[misc]
     if qt.BINDING:
         changed = qt.Signal()
         invoked = qt.Signal(str, str)
+        #: A text entry changed: the field's catalog key and its text.
+        edited = qt.Signal(str, str)
 
     def __init__(
         self,
@@ -57,6 +60,7 @@ class KitBridge(_Base):  # type: ignore[misc]
         source: Any = None,
         system_scheme: str = "dark",
         font_scale: float = 1.0,
+        loading_delay_ms: int = LOADING_DELAY_MS,
         parent: Any = None,
     ) -> None:
         qt.require()
@@ -67,6 +71,13 @@ class KitBridge(_Base):  # type: ignore[misc]
         self._font_scale = font_scale
         self._copy = Copy(self._theme.locale, self._theme.copy_overrides, platform="desktop")
         self._view: Optional[View] = None
+        # DL7: a load shows nothing for its first 250 ms, then the identity, a label and the shimmer.
+        self._loading_delay = max(0, int(loading_delay_ms))
+        self._loading_shown = True
+        self._loading_key: Optional[tuple] = None
+        self._loading_timer = qt.QtCore.QTimer(self)
+        self._loading_timer.setSingleShot(True)
+        self._loading_timer.timeout.connect(self._show_loading)
         self._spec = ScreenSpec("", "hidden", "neutral", "")
         self._identity = self._resolve()
         self._unsub: Optional[Callable[[], None]] = None
@@ -103,6 +114,24 @@ class KitBridge(_Base):  # type: ignore[misc]
                 developer=self._identity.developer or "",
                 powered_by=self._powered_by(),
             )
+            self._arm_loading()
+        self.changed.emit()
+
+    def _arm_loading(self) -> None:
+        """Start the DL7 delay when a load begins; a re-render of the same load keeps its clock."""
+        if not self._spec.loading or self._loading_delay == 0:
+            self._loading_timer.stop()
+            self._loading_key = None
+            self._loading_shown = True
+            return
+        key = (self._spec.component, self._spec.state)
+        if key != self._loading_key:
+            self._loading_key = key
+            self._loading_shown = False
+            self._loading_timer.start(self._loading_delay)
+
+    def _show_loading(self) -> None:
+        self._loading_shown = True
         self.changed.emit()
 
     def post(self, fn: Callable[[], None]) -> None:
@@ -116,6 +145,7 @@ class KitBridge(_Base):  # type: ignore[misc]
             fn()
 
     def close(self) -> None:
+        self._loading_timer.stop()
         if self._unsub:
             self._unsub()
             self._unsub = None
@@ -164,9 +194,13 @@ class KitBridge(_Base):  # type: ignore[misc]
     def _get_powered_by_badge(self) -> str:
         return self._svg_uri("badge_svg")
 
-    def _get_developer_line(self) -> str:
-        dev = self._identity.developer
-        return self._copy("common.byDeveloper", developer=bidi_isolate(dev)) if dev else ""
+    def _get_monogram(self) -> str:
+        """The product's initial for the monogram tile (UI-KITS 1.2): no icon never means no mark."""
+        name = self._identity.name.strip()
+        return name[:1].upper() if name else ""
+
+    def _get_loading_shown(self) -> bool:
+        return self._loading_shown
 
     def _get_icon_label(self) -> str:
         return self._copy("a11y.productIcon", product=self._identity.name)
@@ -177,6 +211,10 @@ class KitBridge(_Base):  # type: ignore[misc]
     @qt.Slot(str, str)
     def invoke(self, key: str, action: str) -> None:
         self.invoked.emit(key, action)
+
+    @qt.Slot(str, str)
+    def edit(self, key: str, text: str) -> None:
+        self.edited.emit(key, text)
 
     if qt.BINDING:
         spec = qt.Property("QVariant", _get_spec, notify=changed)
@@ -191,6 +229,7 @@ class KitBridge(_Base):  # type: ignore[misc]
         iconLabel = qt.Property(str, _get_icon_label, notify=changed)
         poweredByMark = qt.Property(str, _get_powered_by_mark, notify=changed)
         poweredByBadge = qt.Property(str, _get_powered_by_badge, notify=changed)
-        developerLine = qt.Property(str, _get_developer_line, notify=changed)
+        monogram = qt.Property(str, _get_monogram, notify=changed)
+        loadingShown = qt.Property(bool, _get_loading_shown, notify=changed)
         fontScale = qt.Property(float, lambda s: s._font_scale, notify=changed)
         animate = qt.Property(bool, _get_animate, notify=changed)
