@@ -2,7 +2,6 @@ import * as React from "react";
 import { Download } from "lucide-react";
 import { Button } from "../../../ui/Button.js";
 import { announce } from "../../../ui/LiveRegion.js";
-import { toast } from "../../../ui/toast.js";
 import type { PortalArtifact, PortalRelease } from "../../api.js";
 import { useStartDownload } from "../../data.js";
 import { portalErrorCopy } from "../../errors.js";
@@ -41,53 +40,70 @@ export function DownloadButton({
   table?: boolean;
 }): React.ReactElement {
   const start = useStartDownload();
+  const alertId = React.useId();
   return (
-    <Button
-      variant={lead ? "primary" : "quiet"}
-      size={lead ? "lg" : "md"}
+    <div
       className={
-        lead
-          ? "h-12 px-6"
-          : table
-            ? "size-11 px-0 sm:h-11 sm:w-auto sm:px-4"
-            : "h-10"
-      }
-      loading={start.isPending}
-      iconStart={<Download aria-hidden />}
-      aria-label={
-        ariaLabel ??
-        t("getIt.downloadAria", {
-          name: label,
-          product: productName,
-          version: release.version,
-          platform: describe,
-        })
-      }
-      onClick={() =>
-        start.mutate(
-          {
-            product,
-            releaseId: release.releaseId,
-            artifactId: artifact.artifactId,
-          },
-          {
-            onSuccess: () =>
-              announce(
-                t("getIt.downloading", {
-                  product: productName,
-                  version: release.version,
-                  platform: describe,
-                }),
-              ),
-            onError: (err) =>
-              toast.error(t("getIt.downloadFailed"), {
-                description: portalErrorCopy(err).description,
-              }),
-          },
-        )
+        table
+          ? "flex min-w-0 flex-col items-end gap-2"
+          : "flex min-w-0 flex-col items-stretch gap-2 sm:items-start"
       }
     >
-      {table ? <span className="sr-only sm:not-sr-only">{label}</span> : label}
-    </Button>
+      <Button
+        variant={lead ? "primary" : "quiet"}
+        size={lead ? "lg" : "md"}
+        className={
+          lead
+            ? "h-auto min-h-12 whitespace-normal px-6"
+            : table
+              ? "size-11 px-0 sm:h-11 sm:w-auto sm:px-4"
+              : "h-auto min-h-10 whitespace-normal"
+        }
+        loading={start.isPending}
+        busyFocusable
+        aria-describedby={start.isError ? alertId : undefined}
+        iconStart={<Download aria-hidden />}
+        aria-label={
+          ariaLabel ??
+          t("getIt.downloadAria", {
+            name: label,
+            product: productName,
+            version: release.version,
+            platform: describe,
+          })
+        }
+        onClick={() =>
+          start.mutate(
+            {
+              product,
+              releaseId: release.releaseId,
+              artifactId: artifact.artifactId,
+            },
+            {
+              onSuccess: () =>
+                announce(
+                  t("getIt.downloading", {
+                    product: productName,
+                    version: release.version,
+                    platform: describe,
+                  }),
+                ),
+            },
+          )
+        }
+      >
+        {table ? (
+          <span className="sr-only sm:not-sr-only">{label}</span>
+        ) : (
+          label
+        )}
+      </Button>
+      {start.isError ? (
+        <p id={alertId} role="alert" className="text-sm text-danger">
+          {t("getIt.downloadFailed")}.{" "}
+          {portalErrorCopy(start.error).description}
+        </p>
+      ) : null}
+    </div>
   );
 }

@@ -23,13 +23,12 @@
  * `maxTouchPoints > 1`. With no detected platform, every platform's primary is offered.
  */
 
-import { FONT, SERVICE_ACCENTS, THEME_TOKENS } from "@polaris-key/brand";
+import { FONT, THEME_TOKENS } from "@polaris-key/brand";
 import { buildLabel, type BuildLabel } from "@polaris-key/manifest";
 import {
-  LOCKER_SHELL_CSS,
+  LOCKER_LOCKUP_CSS,
   lockerFaviconHref,
   lockerLockup,
-  serviceRow,
 } from "../../../core/assets/lockerShell.js";
 import type {
   DetectedPlatform,
@@ -76,11 +75,11 @@ export function safeHref(url: string | null): string | null {
   return null;
 }
 
-/** The page's colours for one theme: the brand theme tokens, Distribution's green as the one
- *  accent (BRAND.md §8: the bytes host is a delivery surface), the Star Cut's inks. */
+/** The page's colours for one theme: the brand theme tokens only. The page is customer-facing,
+ *  so it is Polaris Locker: neutral ink for actions and links, the lockup's coral (`--lb`) only
+ *  as the 2 px link underline (BRAND.md §8, "Customer download page"). */
 function palette(theme: "dark" | "light"): string {
   const t = THEME_TOKENS[theme];
-  const accent = SERVICE_ACCENTS[theme].distribution;
   return [
     `color-scheme:${theme}`,
     `--bg:${t.surface.page}`,
@@ -91,10 +90,6 @@ function palette(theme: "dark" | "light"): string {
     `--muted:${t.text.muted}`,
     `--line:${t.border.subtle}`,
     `--edge:${t.border.strong}`,
-    `--accent:${accent.solid}`,
-    `--accent-link:${accent.fg}`,
-    `--accent-fg:${accent.on}`,
-    `--accent-subtle:${accent.subtle}`,
     `--focus:${t.text.strong}`,
   ].join(";");
 }
@@ -110,44 +105,73 @@ export const PAGE_CSS = [
   `@media (prefers-color-scheme:light){:root{${palette("light")}}}`,
   `*{box-sizing:border-box}`,
   `html{background:var(--bg)}`,
-  `body{margin:0;background:var(--bg);color:var(--fg);font-family:${FONT.sans};font-synthesis:none;font-size:16px;line-height:1.5;-webkit-text-size-adjust:100%}`,
-  `main,header,footer{max-width:56rem;margin:0 auto;padding:0 1rem}`,
-  `header{padding-top:2.5rem}`,
-  `.icon{display:block;width:4rem;height:4rem;margin:0 0 1rem;border-radius:22%;object-fit:contain}`,
-  `h1{margin:0;color:var(--strong);font-size:2rem;line-height:2.5rem;font-weight:700;letter-spacing:-.01em}`,
+  `body{margin:0;background:var(--bg);color:var(--fg);font-family:${FONT.sans};font-synthesis:none;font-size:1rem;line-height:1.5;-webkit-text-size-adjust:100%}`,
+  // The task frame (PORTAL.md §3.3): a top bar with the one lockup, then a centred column that
+  // never pins left: breadcrumb, a 56 px identity row, the action card, the rest.
+  `.top,main,header,footer{max-width:46rem;margin:0 auto;padding-left:1rem;padding-right:1rem}`,
+  `.topbar{border-bottom:1px solid var(--line)}`,
+  `.top{display:flex;align-items:center;min-height:4.5rem;padding-top:.5rem;padding-bottom:.5rem}`,
+  `.cover{display:block;width:100%;height:120px;margin:0 0 1rem;border-radius:10px;object-fit:cover;background:var(--sunken)}`,
+  `.top svg{display:block;max-width:100%;height:auto}`,
+  `header{padding-top:1.5rem}`,
+  `.crumbs{margin:0 0 1rem;color:var(--muted);font-size:.75rem;line-height:1rem}`,
+  `.identity{display:flex;align-items:center;gap:1rem;min-width:0}`,
+  `.identity>div{min-width:0}`,
+  `.icon{display:block;flex:none;width:3.5rem;height:3.5rem;border-radius:22%;object-fit:contain}`,
+  `h1{margin:0;color:var(--strong);font-size:3rem;line-height:3.25rem;font-weight:700;letter-spacing:-.02em;overflow-wrap:anywhere}`,
+  `@media (max-width:640px){h1{font-size:2rem;line-height:2.25rem}}`,
+  `.rec{margin:0 0 .25rem;color:var(--muted);font-size:.875rem}`,
   `h2{margin:2rem 0 .75rem;color:var(--strong);font-size:1.25rem;line-height:1.75rem;font-weight:700}`,
   `h3{margin:1.25rem 0 .5rem;color:var(--strong);font-size:1rem;font-weight:700}`,
   `.sub,.by,.meta,.note,footer{color:var(--muted)}`,
-  `.sub{margin:.25rem 0 0;font-size:1.125rem}`,
-  `.by{margin:.25rem 0 0;font-size:.875rem}`,
-  `.primary{margin:1.5rem 0;padding:1.25rem;border:1px solid var(--line);border-radius:10px;background:var(--card)}`,
+  `.sub{margin:1rem 0 0;font-size:1rem}`,
+  `.by{margin:0;font-size:.875rem}`,
+  `.primary{margin:1.5rem 0;min-width:0;padding:1.25rem;border:1px solid var(--line);border-radius:10px;background:var(--card)}`,
   `.primary h2{margin-top:0}`,
-  `.button{display:inline-flex;align-items:center;min-height:44px;padding:.625rem 1.25rem;border-radius:6px;background:var(--accent);color:var(--accent-fg);font-weight:700;text-decoration:none}`,
+  `.button{display:inline-flex;align-items:center;min-height:44px;padding:.625rem 1.25rem;border-radius:6px;background:var(--strong);color:var(--bg);font-weight:700;text-decoration:none}`,
+  `.button:focus-visible{outline:2px solid var(--focus);outline-offset:3px}`,
+  `@media (max-width:480px){.button{display:flex;justify-content:center;width:100%}}`,
   `.meta{margin:.5rem 0 0;font-size:.875rem}`,
   `.touch-only{display:none}`,
   `@media (hover:none) and (pointer:coarse){.touch-only{display:block}.pointer-only{display:none}}`,
-  `.choose{list-style:none;padding:0;display:grid;gap:.75rem;grid-template-columns:repeat(auto-fill,minmax(15rem,1fr))}`,
-  `.choose li{padding:1rem;border:1px solid var(--line);border-radius:10px;background:var(--card)}`,
-  `.choose .primary{margin:0;padding:0;border:0;background:none}`,
-  `.ways{list-style:none;padding:0;margin:0}`,
-  `.way{padding:.75rem 0;border-top:1px solid var(--line);display:grid;gap:.35rem}`,
-  `.way-head{color:var(--strong);font-weight:700}`,
-  `a{color:var(--accent-link)}`,
+  `a{color:var(--strong);text-decoration:underline;text-decoration-color:var(--lb);text-decoration-thickness:2px;text-underline-offset:.2em}`,
+  `.card{margin:0 0 1rem;border:1px solid var(--line);border-radius:10px;background:var(--card);overflow:hidden}`,
+  `.card>h3{margin:0;padding:.75rem 1rem;border-bottom:1px solid var(--line);font-size:1rem}`,
+  `.rows{list-style:none;margin:0;padding:0}`,
+  `.row{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem 1rem;padding:.75rem 1rem;border-top:1px solid var(--line)}`,
+  `.row:first-child{border-top:0}`,
+  `.row-extra{flex:1 1 100%;min-width:0;display:flex;flex-direction:column;gap:.5rem}`,
+  `.row-lead .row-title{color:var(--muted);font-weight:400;font-size:.875rem}`,
+  `.row-text{flex:1 1 14rem;min-width:0;display:flex;flex-direction:column;gap:.25rem}`,
+  `.row-title{color:var(--strong);font-weight:500}`,
+  `.row-meta{display:flex;flex-wrap:wrap;gap:.25rem .75rem;color:var(--muted);font-size:.875rem}`,
+  `.row-qr{flex:none;width:4rem;height:4rem}`,
+  `.row-qr .qr{display:block;width:4rem;height:4rem;border-radius:4px}`,
+  `.row-act{display:flex;flex-wrap:wrap;gap:.5rem;flex:none}`,
+  `.obtn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:.5rem 1rem;border:1px solid var(--edge);border-radius:6px;color:var(--strong);font-weight:500;text-decoration:none}`,
+  `.obtn:focus-visible{outline:2px solid var(--focus);outline-offset:2px}`,
+  `@media (max-width:480px){.row-act{flex:1 1 100%}.obtn{flex:1 1 auto}.row-qr{display:none}}`,
+  `.choose{list-style:none;padding:0;display:grid;gap:.75rem}`,
+  `.choose .primary{margin:0}`,
+  `details.files{margin:1rem 0}`,
+  `summary{cursor:pointer;min-height:44px;display:flex;align-items:center;color:var(--strong);font-weight:500}`,
+  `summary::before{content:"\\25B8";display:inline-block;width:1.25rem;color:var(--muted)}`,
+  `details[open]>summary::before{content:"\\25BE"}`,
+  `summary:focus-visible{outline:2px solid var(--focus);outline-offset:2px}`,
   `a:focus-visible{outline:2px solid var(--focus);outline-offset:2px}`,
   `code{font:.85rem/1.4 ${FONT.mono};overflow-wrap:anywhere}`,
   `.cmd{display:block;padding:.5rem .75rem;border-radius:6px;background:var(--sunken);border:1px solid var(--line);color:var(--strong)}`,
-  `.qr{width:9rem;height:9rem;border-radius:4px}`,
   `.scroll{overflow-x:auto}`,
-  `table{border-collapse:collapse;width:100%;font-size:.875rem;font-variant-numeric:tabular-nums}`,
+  `.scroll:focus-visible{outline:2px solid var(--focus);outline-offset:2px}`,
+  `table{border-collapse:collapse;width:100%;min-width:44rem;font-size:.875rem;font-variant-numeric:tabular-nums}`,
   `th,td{text-align:left;padding:.5rem .75rem;border-top:1px solid var(--line);vertical-align:top}`,
   `th{color:var(--muted);font-weight:400;font-size:.75rem}`,
   `.sha{word-break:break-all}`,
+  `.mono code{font-size:.8125rem}`,
   `.summary{white-space:pre-line}`,
   `footer{padding:2.5rem 1rem 3rem;font-size:.875rem}`,
   `footer p{margin:0 0 1rem}`,
-  `.delivery{display:block;line-height:0}`,
-  `.delivery svg{display:block;max-width:100%;height:auto}`,
-  LOCKER_SHELL_CSS,
+  LOCKER_LOCKUP_CSS,
 ].join("\n");
 
 const KEY_LABELS: Readonly<Record<string, string>> = {
@@ -173,9 +197,26 @@ export function formatSize(bytes: number | null): string | null {
   return `${v >= 100 ? Math.round(v) : v.toFixed(1)} ${units[i]}`;
 }
 
-function isoDay(seconds: number | null): string | null {
+const MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+] as const;
+
+/** `1791331200` → `Oct 7, 2026` (UTC, so the same bytes render the same everywhere). */
+function humanDay(seconds: number | null): string | null {
   if (seconds === null || !Number.isFinite(seconds)) return null;
-  return new Date(seconds * 1000).toISOString().slice(0, 10);
+  const d = new Date(seconds * 1000);
+  return `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`;
 }
 
 /** The OS a minimum version is a version of, as the page says it. */
@@ -281,55 +322,90 @@ function primaryBlock(
   group: PagePlatformGroup,
   detected: DetectedPlatform,
   cls: string,
+  recommended = false,
 ): string {
   const a = model.actions.find((x) => x.id === group.primary);
   if (!a) return "";
   const body = primaryBody(a, group, detected);
   if (!body) return "";
-  return `<div class="primary${cls ? ` ${cls}` : ""}" data-platform="${esc(group.platform)}" data-action="${esc(a.kind)}"><h2>${esc(group.label)}</h2>${body}</div>`;
+  const rec = recommended
+    ? `<p class="rec">Recommended for your device</p>`
+    : "";
+  const build = a.kind === "download" ? a.build : null;
+  const older =
+    build && model.release && build.version !== model.release.version
+      ? `<p class="meta">Newest build for ${esc(group.label)}. ${esc(model.release.version)} has none yet.</p>`
+      : "";
+  return `<div class="primary${cls ? ` ${cls}` : ""}" data-platform="${esc(group.platform)}" data-action="${esc(a.kind)}">${rec}<h2>${esc(group.label)}</h2>${body}${older}</div>`;
 }
 
-/** One entry of "Other ways to get it". */
+/** One row of a platform's card: what it is, its QR code in a fixed column, outlined actions. */
+function row(
+  kind: string,
+  title: string,
+  meta: string[],
+  extra: string[],
+  qr: string,
+  actions: string[],
+): string {
+  const metaHtml = meta.length
+    ? `<span class="row-meta">${meta.join("")}</span>`
+    : "";
+  const act = actions.filter((x) => x !== "");
+  return `<li class="row" data-action="${esc(kind)}"><div class="row-text"><span class="row-title">${esc(title)}</span>${metaHtml}</div>${
+    qr ? `<div class="row-qr">${qr}</div>` : ""
+  }${act.length ? `<div class="row-act">${act.join("")}</div>` : ""}${
+    extra.length ? `<div class="row-extra">${extra.join("")}</div>` : ""
+  }</li>`;
+}
+
+/** The rows of one platform action: a row per build for a download, else one row. */
 function way(a: PageAction, group: PagePlatformGroup): string {
-  const parts: string[] = [];
-  // The `direct` outlet is presented as Polaris Locker (S-21 §6.8, LK-07); its id stays `direct`.
-  const head =
-    a.kind === "download" && a.build ? `Download from Polaris Locker` : a.label;
-  parts.push(
-    `<span class="way-head">${esc(head)}</span>${
-      a.version ? ` <span class="meta">Version ${esc(a.version)}</span>` : ""
-    }`,
-  );
-  const links: string[] = [];
   if (a.kind === "download") {
-    for (const b of group.builds.filter(
-      (x) => x.releaseId === a.build?.releaseId,
-    ))
-      links.push(
-        link(b.url, b.name, "", labelOf(b).long) +
-          ` <span class="meta">${buildMeta(b)}</span>`,
-      );
-  } else {
-    if (a.deepLink) links.push(link(a.deepLink, "Open in the app"));
-    if (a.url && a.url !== a.deepLink)
-      links.push(
-        link(
-          a.url,
-          a.kind === "altstore" ||
-            a.kind === "sidestore" ||
-            a.kind === "altstore-pal"
-            ? "Source URL"
-            : a.kind === "obtainium"
-              ? "Open via obtainium.imranr.dev"
-              : a.kind === "fdroid"
-                ? "Repository URL"
-                : `Open ${a.label}`,
-        ),
-      );
+    // The `direct` outlet is presented as Polaris Locker (S-21 §6.8, LK-07); its id stays `direct`.
+    const same = group.builds.filter((x) => x.releaseId === a.build?.releaseId);
+    const rows = (same.length ? same : a.build ? [a.build] : []).map((b) =>
+      row(
+        a.kind,
+        labelOf(b).long,
+        [
+          `<span>Version ${esc(b.version)}</span>`,
+          ...(formatSize(b.size)
+            ? [`<span>${esc(formatSize(b.size)!)}</span>`]
+            : []),
+          `<span class="mono"><code>${esc(b.name)}</code></span>`,
+        ],
+        [],
+        "",
+        [link(b.url, "Download", "obtn", `${b.name}, ${labelOf(b).long}`)],
+      ),
+    );
+    // Said once per card, not on every build row.
+    return rows.length
+      ? `<li class="row row-lead" data-action="download"><span class="row-title">Download from Polaris Locker</span></li>${rows.join("")}`
+      : "";
   }
-  const shown = links.filter((l) => l !== "");
-  if (shown.length) parts.push(shown.join(" · "));
-  // The URL to paste by hand into AltStore, SideStore or F-Droid — shown only if it is one the
+  const meta = a.version ? [`<span>Version ${esc(a.version)}</span>`] : [];
+  const actions: string[] = [];
+  if (a.deepLink) actions.push(link(a.deepLink, "Open in the app", "obtn"));
+  if (a.url && a.url !== a.deepLink)
+    actions.push(
+      link(
+        a.url,
+        a.kind === "altstore" ||
+          a.kind === "sidestore" ||
+          a.kind === "altstore-pal"
+          ? "Source URL"
+          : a.kind === "obtainium"
+            ? "Open via obtainium.imranr.dev"
+            : a.kind === "fdroid"
+              ? "Repository URL"
+              : `Open ${a.label}`,
+        "obtn",
+      ),
+    );
+  const extra: string[] = [];
+  // The URL to paste by hand into AltStore, SideStore or F-Droid: shown only if it is one the
   // page would link to.
   if (
     (a.kind === "altstore" ||
@@ -340,26 +416,31 @@ function way(a: PageAction, group: PagePlatformGroup): string {
     a.url.startsWith("https:") &&
     safeHref(a.url)
   )
-    parts.push(`<code class="cmd">${esc(a.url)}</code>`);
-  if (a.command) parts.push(`<code class="cmd">${esc(a.command)}</code>`);
+    extra.push(`<code class="cmd">${esc(a.url)}</code>`);
+  if (a.command) extra.push(`<code class="cmd">${esc(a.command)}</code>`);
   if (a.kind === "fdroid")
-    parts.push(
+    extra.push(
       a.fingerprint
         ? `<span class="note">Repository fingerprint (SHA-256): <code class="sha">${esc(a.fingerprint)}</code></span>`
         : `<span class="note">No repository fingerprint is published: check it with the developer before trusting the repository.</span>`,
     );
-  if (a.qr) {
-    const svg = qrSvg(a.qr, esc(`QR code: ${a.label}`));
-    if (svg) parts.push(svg);
-  }
-  return `<li class="way" data-action="${esc(a.kind)}">${parts.join("")}</li>`;
+  const svg = a.qr ? qrSvg(a.qr, esc(`QR code: ${a.label}`)) : null;
+  return row(a.kind, a.label, meta, extra, svg ?? "", actions);
 }
 
 /** The header's icon: an `https:` URL only (`safeHref`), never a deep link; decorative. */
 function iconTag(url: string | null): string {
   const src = url && url.startsWith("https:") ? safeHref(url) : null;
   return src
-    ? `<img class="icon" src="${src}" alt="" width="64" height="64" decoding="async">`
+    ? `<img class="icon" src="${src}" alt="" width="56" height="56" decoding="async">`
+    : "";
+}
+
+/** The cover band: an `https:` image-host URL only, decorative, never under text. */
+function coverTag(url: string | null): string {
+  const src = url && url.startsWith("https:") ? safeHref(url) : null;
+  return src
+    ? `<img class="cover" src="${src}" alt="" width="736" height="120" decoding="async">`
     : "";
 }
 
@@ -385,6 +466,8 @@ export interface PageExtras {
    * `https:` URL `safeHref` accepts; it is decorative (the name is the heading beside it).
    */
   iconUrl?: string | null;
+  /** The product's cover on the image host, or `null`; drawn as a plain band, same rules. */
+  coverUrl?: string | null;
 }
 
 /** Render the page. */
@@ -403,10 +486,11 @@ export function renderDownloadPage(
   if (mine?.primary) {
     const touch =
       detected.touchAmbiguous && detected.platform === "macos" && ios?.primary
-        ? primaryBlock(model, ios, detected, "touch-only")
+        ? primaryBlock(model, ios, detected, "touch-only", true)
         : "";
     lead =
-      primaryBlock(model, mine, detected, touch ? "pointer-only" : "") + touch;
+      primaryBlock(model, mine, detected, touch ? "pointer-only" : "", true) +
+      touch;
   }
   if (!lead) {
     const items = model.platforms
@@ -422,8 +506,8 @@ export function renderDownloadPage(
     ? `<section aria-labelledby="release-title"><h2 id="release-title">${esc(
         model.release.title ?? `Version ${model.release.version}`,
       )}</h2><p class="meta">Version ${esc(model.release.version)}${
-        isoDay(model.release.publishedAt)
-          ? ` · released ${esc(isoDay(model.release.publishedAt)!)}`
+        humanDay(model.release.publishedAt)
+          ? ` · released ${esc(humanDay(model.release.publishedAt)!)}`
           : ""
       }</p>${
         model.release.summary
@@ -432,14 +516,20 @@ export function renderDownloadPage(
       }</section>`
     : "";
 
-  const ways = model.platforms
+  // The visitor's own platform's card leads.
+  const ordered = [...model.platforms].sort(
+    (x, y) =>
+      Number(y.platform === detected.platform) -
+      Number(x.platform === detected.platform),
+  );
+  const ways = ordered
     .map((g) => {
       const items = g.actions
         .map((id) => model.actions.find((a) => a.id === id))
         .filter((a): a is PageAction => a !== undefined)
         .map((a) => way(a, g));
       return items.length
-        ? `<h3>${esc(g.label)}</h3><ul class="ways">${items.join("")}</ul>`
+        ? `<article class="card" aria-labelledby="p-${esc(g.platform)}"><h3 id="p-${esc(g.platform)}">${esc(g.label)}</h3><ul class="rows">${items.join("")}</ul></article>`
         : "";
     })
     .join("");
@@ -462,22 +552,22 @@ export function renderDownloadPage(
     "Checksums of every file in this release",
   );
   const files = rows.length
-    ? `<section aria-labelledby="files-title"><h2 id="files-title">All downloads</h2><div class="scroll"><table><thead><tr><th>Version</th><th>Platform</th><th>Arch</th><th>File</th><th>Size</th><th>Minimum OS</th><th>SHA-256</th></tr></thead><tbody>${rows.join(
+    ? `<details class="files"><summary>All files and checksums</summary><div class="scroll" role="region" aria-label="All downloads, scrolls sideways" tabindex="0"><table><thead><tr><th>Version</th><th>Platform</th><th>Arch</th><th>File</th><th>Size</th><th>Minimum OS</th><th>SHA-256</th></tr></thead><tbody>${rows.join(
         "",
       )}</tbody></table></div>${
         sums
           ? `<p class="note">Verify with ${sums}: <code>sha256sum --check SHA256SUMS</code></p>`
           : ""
-      }</section>`
+      }</details>`
     : "";
 
   const keys = model.keys.length
-    ? `<section aria-labelledby="keys-title"><h2 id="keys-title">Signing keys</h2><p class="note">Check a download's signature against these fingerprints (for example with AppVerifier on Android).</p><ul class="ways">${model.keys
+    ? `<section aria-labelledby="keys-title"><h2 id="keys-title">Signing keys</h2><p class="note">Check a download's signature against these fingerprints (for example with AppVerifier on Android).</p><ul class="rows card">${model.keys
         .map(
           (k) =>
-            `<li class="way"><span class="way-head">${esc(
+            `<li class="row"><div class="row-text"><span class="row-title">${esc(
               KEY_LABELS[k.purpose] ?? k.purpose,
-            )}</span><code class="sha">${esc(k.sha256)}</code></li>`,
+            )}</span><code class="sha">${esc(k.sha256)}</code></div></li>`,
         )
         .join("")}</ul></section>`
     : "";
@@ -504,21 +594,34 @@ export function renderDownloadPage(
     `<link rel="icon" type="image/svg+xml" href="${lockerFaviconHref()}">`,
     `<style>${PAGE_CSS}</style>`,
     "</head><body>",
-    `<header>${iconTag(extras.iconUrl ?? null)}<h1>${esc(name)}</h1>${
-      model.listing.subtitle
-        ? `<p class="sub">${esc(model.listing.subtitle)}</p>`
-        : ""
-    }${
+    `<div class="topbar"><div class="top">${lockerLockup(40, "lockup")}</div></div>`,
+    `<header><p class="crumbs">${esc(name)} / Download</p>${coverTag(
+      extras.coverUrl ?? null,
+    )}<div class="identity">${iconTag(
+      extras.iconUrl ?? null,
+    )}<div><h1>${esc(name)}</h1>${
       model.listing.developerName
         ? `<p class="by">by ${esc(model.listing.developerName)}</p>`
+        : ""
+    }</div></div>${
+      model.listing.subtitle
+        ? `<p class="sub">${esc(model.listing.subtitle)}</p>`
         : ""
     }</header>`,
     `<main>${lead}${release}${
       ways
-        ? `<section aria-labelledby="ways-title"><h2 id="ways-title">Other ways to get it</h2>${ways}</section>`
+        ? `<section aria-labelledby="ways-title"><h2 id="ways-title">Every way to get ${esc(name)}</h2>${ways}</section>`
         : ""
     }${files}${keys}${about}</main>`,
-    `<footer><p>Verify a download's SHA-256 before you install it.</p><p class="delivery">${lockerLockup(40, "lockup")}</p>${serviceRow()}</footer>`,
+    `<footer><p>Verify a download's SHA-256 before you install it.</p><p>Polaris Locker · Questions about ${esc(name)}?${
+      model.listing.developerName
+        ? ` Contact ${esc(model.listing.developerName)}.`
+        : ""
+    }${
+      link(model.listing.website, "Website")
+        ? ` ${link(model.listing.website, "Website")}`
+        : ""
+    }</p></footer>`,
     "</body></html>",
     "",
   ].join("\n");

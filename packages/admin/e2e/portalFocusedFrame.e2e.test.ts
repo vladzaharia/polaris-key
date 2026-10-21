@@ -235,7 +235,7 @@ describe.concurrent(
             expect.soft(await axe(o.page), "axe, Enter").toEqual([]);
             await dialog.getByRole("button", { name: "Continue" }).click();
             await o.page
-              .getByRole("button", { name: "Add Mossgarden", exact: true })
+              .getByRole("button", { name: "Add to my library", exact: true })
               .click();
             const open = o.page.getByRole("button", {
               name: "Open Mossgarden",

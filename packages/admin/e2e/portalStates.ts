@@ -219,7 +219,7 @@ export async function toConfirm(page: Page): Promise<void> {
     .getByRole("button", { name: "Continue" })
     .click();
   await page
-    .getByRole("dialog", { name: "Add Mossgarden to your account?" })
+    .getByRole("dialog", { name: "Add Mossgarden to your library?" })
     .getByText("Lifetime · up to 5 devices")
     .waitFor();
 }
@@ -976,8 +976,8 @@ export const SHIPPED: ShippedState[] = [
     ready: async (p) => {
       await toConfirm(p);
       await p
-        .getByRole("dialog", { name: "Add Mossgarden to your account?" })
-        .getByRole("button", { name: "Add Mossgarden" })
+        .getByRole("dialog", { name: "Add Mossgarden to your library?" })
+        .getByRole("button", { name: "Add to my library" })
         .click();
       await p
         .getByRole("dialog", { name: "Mossgarden is in your library" })
@@ -1007,8 +1007,8 @@ export const SHIPPED: ShippedState[] = [
     ready: async (p) => {
       await toConfirm(p);
       await p
-        .getByRole("dialog", { name: "Add Mossgarden to your account?" })
-        .getByRole("button", { name: "Add Mossgarden" })
+        .getByRole("dialog", { name: "Add Mossgarden to your library?" })
+        .getByRole("button", { name: "Add to my library" })
         .click();
       await p
         .getByRole("dialog", { name: "Mossgarden is in your library" })
@@ -1148,7 +1148,7 @@ export const SHIPPED: ShippedState[] = [
       await dialog.getByText("Key format is valid").waitFor();
       await dialog.getByRole("button", { name: "Continue" }).click();
       await p
-        .getByRole("dialog", { name: "Add Mossgarden to your account?" })
+        .getByRole("dialog", { name: "Add Mossgarden to your library?" })
         .getByText(/no entries left in Mossgarden/)
         .waitFor();
     },

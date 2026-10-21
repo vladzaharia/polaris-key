@@ -365,14 +365,18 @@ export function ActivateDialog({
   return (
     <Dialog
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={(next) => {
+        // Escape on Done leaves for the product: focus follows to its page heading.
+        if (!next && done) requestHeadingFocus(done.slug);
+        onOpenChange(next);
+      }}
       title={
         done
           ? done.already
             ? `${doneName} is already in your library`
             : `${doneName} is in your library`
           : confirm
-            ? `Add ${confirmName} to your account?`
+            ? `Add ${confirmName} to your library?`
             : "Activate a license"
       }
       description={
@@ -599,11 +603,11 @@ function AccountRow({
 }): React.ReactElement {
   const name = account.name?.trim();
   const named = Boolean(name) && name !== account.email;
-  return (
+  const group = (
     <div
       role="group"
       aria-label="Account the license joins"
-      className="flex items-center gap-3 rounded-xl border border-border bg-surface-sunken px-3 py-2.5"
+      className="flex min-w-0 flex-1 items-center gap-3"
     >
       <Avatar
         name={account.name}
@@ -626,6 +630,19 @@ function AccountRow({
           {account.email}
         </span>
       </div>
+    </div>
+  );
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-border bg-surface-sunken px-3 py-2.5">
+      {group}
+      <form method="post" action="/logout" className="shrink-0">
+        <button
+          type="submit"
+          className="inline-flex min-h-11 items-center rounded-sm text-sm font-medium text-fg-strong underline underline-offset-2"
+        >
+          {t("signin.notYou")}
+        </button>
+      </form>
     </div>
   );
 }
@@ -745,32 +762,30 @@ function DoneStep({
   }, [back]);
   const lede = back
     ? already
-      ? `It was already in your account. Go back to ${name} and sign in.`
+      ? `It was already in your library. Go back to ${name} and sign in.`
       : `Go back to ${name} and sign in. You won't need the key again.`
     : already
-      ? "This key's license was already linked to your account, so nothing changed."
+      ? "This key's license was already in your library, so nothing changed."
       : "Download it, see your license and manage devices on its page. You won't need the key again.";
   return (
     <>
       <DialogBody className="space-y-4">
-        <div className="relative">
-          <ProductArt
-            slug={slug}
-            name={name}
-            tint={null}
-            src={headerUrl}
-            variant="banner"
-            className="h-36 rounded-lg"
-          />
-          <span className="absolute bottom-3 right-3 inline-flex items-center gap-1 rounded-full border border-success-border bg-surface-overlay px-2.5 py-1 text-xs font-medium text-success shadow-elevation-2">
-            {momentKey ? (
-              <Celebration momentKey={momentKey} size={14} />
-            ) : (
-              <Check aria-hidden className="size-3.5" />
-            )}
-            In your library
-          </span>
-        </div>
+        <ProductArt
+          slug={slug}
+          name={name}
+          tint={null}
+          src={headerUrl}
+          variant="banner"
+          className="h-36 rounded-lg"
+        />
+        <span className="inline-flex items-center gap-1 rounded-full border border-success-border bg-surface-overlay px-2.5 py-1 text-xs font-medium text-success">
+          {momentKey ? (
+            <Celebration momentKey={momentKey} size={14} />
+          ) : (
+            <Check aria-hidden className="size-3.5" />
+          )}
+          In your library
+        </span>
         <p className="text-fg">{lede}</p>
         <DevicesNote count={devices} step="done" cloudSync={cloudSync} />
       </DialogBody>
@@ -892,7 +907,7 @@ export function ConfirmStep({
   adding: boolean;
   onBack: () => void;
   onAdd: () => void;
-  /** The primary's words; `Add <product>` by default. */
+  /** The primary's words; `Add to my library` by default. */
   primaryLabel?: string;
   /** More lines about what adding does, under the key. */
   notes?: React.ReactNode;
@@ -968,7 +983,7 @@ export function ConfirmStep({
             <span className="font-medium text-accent-fg">{p.slug}</span>
             <span className="text-fg-subtle">_</span>
             <span className="text-fg-strong">
-              {licenseKey.slice(`pkey_${p.slug}_`.length)}
+              {middleTruncate(licenseKey.slice(`pkey_${p.slug}_`.length))}
             </span>
           </code>
           <button
@@ -1007,13 +1022,20 @@ export function ConfirmStep({
           className="min-w-0 font-medium"
           loading={adding}
           onClick={onAdd}
-          aria-label={primaryLabel ?? `Add ${p.name}`}
+          aria-label={primaryLabel ?? "Add to my library"}
         >
-          <span className="truncate">{primaryLabel ?? `Add ${p.name}`}</span>
+          <span className="truncate">
+            {primaryLabel ?? "Add to my library"}
+          </span>
         </Button>
       </DialogFooter>
     </>
   );
+}
+
+/** A key's secret part with its middle cut out, so the row stays one line. */
+function middleTruncate(rest: string): string {
+  return rest.length > 8 ? `${rest.slice(0, 3)}…${rest.slice(-3)}` : rest;
 }
 
 /**

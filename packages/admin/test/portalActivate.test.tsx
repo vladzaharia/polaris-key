@@ -440,17 +440,17 @@ describe("Activate license modal (PX-06)", () => {
     renderPortal();
     await pasteAndContinue(await openFromHeader());
     const confirm = await screen.findByRole("dialog", {
-      name: "Add Mossgarden to your account?",
+      name: "Add Mossgarden to your library?",
     });
     expect(confirm.textContent).toContain("Key recognized");
     expect(confirm.textContent).toContain("Little Fern");
     expect(confirm.textContent).toContain("Lifetime · up to 5 devices");
-    expect(confirm.textContent).toContain(KEY);
+    expect(confirm.textContent).toContain("pkey_mossgarden_Q7x…Y4w");
     // Nothing is added until the person says so.
     expect(fetchedRequests()).not.toContain("POST /api/claim/license-key");
     expect(await axeViolations()).toEqual([]);
     await userEvent.click(
-      within(confirm).getByRole("button", { name: "Add Mossgarden" }),
+      within(confirm).getByRole("button", { name: "Add to my library" }),
     );
     await screen.findByRole("dialog", {
       name: "Mossgarden is in your library",
@@ -486,7 +486,7 @@ describe("Activate license modal (PX-06)", () => {
     renderPortal();
     await pasteAndContinue(await openFromHeader());
     const confirm = await screen.findByRole("dialog", {
-      name: "Add Mossgarden to your account?",
+      name: "Add Mossgarden to your library?",
     });
     expect(confirm.textContent).toContain(
       "It's on 2 devices already. They keep working and come with it.",
@@ -495,7 +495,7 @@ describe("Activate license modal (PX-06)", () => {
     expect(confirm.textContent).not.toContain("Cloud Sync");
     expect(await axeViolations()).toEqual([]);
     await userEvent.click(
-      within(confirm).getByRole("button", { name: "Add Mossgarden" }),
+      within(confirm).getByRole("button", { name: "Add to my library" }),
     );
     const done = await screen.findByRole("dialog", {
       name: "Mossgarden is in your library",
@@ -514,13 +514,13 @@ describe("Activate license modal (PX-06)", () => {
     renderPortal();
     await pasteAndContinue(await openFromHeader());
     const confirm = await screen.findByRole("dialog", {
-      name: "Add Mossgarden to your account?",
+      name: "Add Mossgarden to your library?",
     });
     expect(confirm.textContent).toContain(
       "It's on 1 device already. It keeps working and comes with it.",
     );
     await userEvent.click(
-      within(confirm).getByRole("button", { name: "Add Mossgarden" }),
+      within(confirm).getByRole("button", { name: "Add to my library" }),
     );
     const done = await screen.findByRole("dialog", {
       name: "Mossgarden is in your library",
@@ -537,11 +537,11 @@ describe("Activate license modal (PX-06)", () => {
     renderPortal();
     await pasteAndContinue(await openFromHeader());
     const confirm = await screen.findByRole("dialog", {
-      name: "Add Mossgarden to your account?",
+      name: "Add Mossgarden to your library?",
     });
     expect(confirm.textContent).not.toMatch(/devices? already/);
     await userEvent.click(
-      within(confirm).getByRole("button", { name: "Add Mossgarden" }),
+      within(confirm).getByRole("button", { name: "Add to my library" }),
     );
     const done = await screen.findByRole("dialog", {
       name: "Mossgarden is in your library",
@@ -561,7 +561,7 @@ describe("Activate license modal (PX-06)", () => {
     renderPortal();
     await pasteAndContinue(await openFromHeader());
     const confirm = await screen.findByRole("dialog", {
-      name: "Add Mossgarden to your account?",
+      name: "Add Mossgarden to your library?",
     });
     await userEvent.click(
       within(confirm).getByRole("button", { name: "Change key" }),
@@ -667,10 +667,10 @@ describe("Activate license modal (PX-06)", () => {
     renderPortal();
     await pasteAndContinue(await openFromHeader());
     const confirm = await screen.findByRole("dialog", {
-      name: "Add Mossgarden to your account?",
+      name: "Add Mossgarden to your library?",
     });
     const confirmHeading = within(confirm).getByRole("heading", {
-      name: "Add Mossgarden to your account?",
+      name: "Add Mossgarden to your library?",
     });
     await waitFor(() => expect(document.activeElement).toBe(confirmHeading));
     await userEvent.click(
@@ -680,10 +680,10 @@ describe("Activate license modal (PX-06)", () => {
     await waitFor(() => expect(document.activeElement).toBe(field));
     await userEvent.click(screen.getByRole("button", { name: "Continue" }));
     const again = await screen.findByRole("dialog", {
-      name: "Add Mossgarden to your account?",
+      name: "Add Mossgarden to your library?",
     });
     await userEvent.click(
-      within(again).getByRole("button", { name: "Add Mossgarden" }),
+      within(again).getByRole("button", { name: "Add to my library" }),
     );
     const done = await screen.findByRole("dialog", {
       name: "Mossgarden is in your library",
@@ -962,13 +962,13 @@ describe("Activate license modal (PX-06)", () => {
     renderPortal();
     await pasteAndContinue(await openFromHeader());
     const confirm = await screen.findByRole("dialog", {
-      name: "Add Mossgarden to your account?",
+      name: "Add Mossgarden to your library?",
     });
     expect(within(confirm).getByRole("status").textContent).toBe(
       "This key has no entries left in Mossgarden. Add it to your account and Mossgarden signs you in instead.",
     );
     const add = within(confirm).getByRole("button", {
-      name: "Add Mossgarden",
+      name: "Add to my library",
     }) as HTMLButtonElement;
     expect(add.disabled).toBe(false);
     expect(await axeViolations()).toEqual([]);
@@ -1045,7 +1045,7 @@ describe("Activate license modal (PX-06)", () => {
       renderPortal();
       await pasteAndContinue(await openFromHeader());
       const confirm = await screen.findByRole("dialog", {
-        name: "Add Mossgarden to your account?",
+        name: "Add Mossgarden to your library?",
       });
       expect(
         within(confirm).queryByRole("group", {
@@ -1053,7 +1053,7 @@ describe("Activate license modal (PX-06)", () => {
         }),
       ).toBeNull();
       await userEvent.click(
-        within(confirm).getByRole("button", { name: "Add Mossgarden" }),
+        within(confirm).getByRole("button", { name: "Add to my library" }),
       );
       const done = await screen.findByRole("dialog", {
         name: "Mossgarden is in your library",

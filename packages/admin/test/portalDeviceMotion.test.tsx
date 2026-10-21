@@ -597,7 +597,9 @@ describe("SeatMeter", () => {
     // Filling to the limit pulses the two new seats; every used segment turns red.
     rerender(<SeatMeter inUse={3} limit={3} />);
     expect(changed()).toEqual([1, 2]);
-    expect(segs().every((s) => s.className.includes("bg-danger"))).toBe(true);
+    expect(segs().every((s) => s.className.includes("bg-fg-strong"))).toBe(
+      true,
+    );
   });
 
   it("leaves no data-changed behind when nothing animates (reduced motion, jsdom)", () => {
@@ -622,7 +624,7 @@ describe("SeatMeter", () => {
     expect(fill.style.getPropertyValue("--pk-meter")).toBe("0.5");
     rerender(<SeatMeter inUse={30} limit={20} />);
     expect(fill.style.getPropertyValue("--pk-meter")).toBe("1");
-    expect(fill.className).toMatch(/\bbg-danger\b/);
+    expect(fill.className).toMatch(/\bbg-fg-strong\b/);
   });
 });
 
@@ -700,17 +702,17 @@ describe("the Activate dialog: steps morph, the first add celebrates once", () =
     expect(dialog.className).toMatch(/\bpk-vt-dialog\b/);
     await continueWith(dialog, KEY);
     const confirm = await screen.findByRole("dialog", {
-      name: "Add Mossgarden to your account?",
+      name: "Add Mossgarden to your library?",
     });
     await waitFor(() =>
       expect(document.activeElement).toBe(
         within(confirm).getByRole("heading", {
-          name: "Add Mossgarden to your account?",
+          name: "Add Mossgarden to your library?",
         }),
       ),
     );
     await userEvent.click(
-      within(confirm).getByRole("button", { name: "Add Mossgarden" }),
+      within(confirm).getByRole("button", { name: "Add to my library" }),
     );
     const done = await screen.findByRole("dialog", {
       name: "Mossgarden is in your library",
@@ -726,10 +728,10 @@ describe("the Activate dialog: steps morph, the first add celebrates once", () =
     const field = await screen.findByRole("textbox", { name: "License key" });
     await waitFor(() => expect(document.activeElement).toBe(field));
     expect(fake.starts.map((s) => [s.vt, s.title, s.titleAfter])).toEqual([
-      ["dialog", "Activate a license", "Add Mossgarden to your account?"],
+      ["dialog", "Activate a license", "Add Mossgarden to your library?"],
       [
         "dialog",
-        "Add Mossgarden to your account?",
+        "Add Mossgarden to your library?",
         "Mossgarden is in your library",
       ],
       ["dialog", "Mossgarden is in your library", "Activate a license"],
@@ -743,7 +745,7 @@ describe("the Activate dialog: steps morph, the first add celebrates once", () =
     let dialog = await openActivate();
     await continueWith(dialog, KEY);
     await userEvent.click(
-      await screen.findByRole("button", { name: "Add Mossgarden" }),
+      await screen.findByRole("button", { name: "Add to my library" }),
     );
     await screen.findByRole("dialog", {
       name: "Mossgarden is in your library",
@@ -757,7 +759,7 @@ describe("the Activate dialog: steps morph, the first add celebrates once", () =
     dialog = await screen.findByRole("dialog", { name: "Activate a license" });
     await continueWith(dialog, KEY2);
     await userEvent.click(
-      await screen.findByRole("button", { name: "Add Quill" }),
+      await screen.findByRole("button", { name: "Add to my library" }),
     );
     await screen.findByRole("dialog", { name: "Quill is in your library" });
     expect(plateMark()?.hasAttribute("data-celebrate")).toBe(false);
@@ -773,7 +775,7 @@ describe("the Activate dialog: steps morph, the first add celebrates once", () =
     const dialog = await openActivate();
     await continueWith(dialog, KEY);
     await userEvent.click(
-      await screen.findByRole("button", { name: "Add Mossgarden" }),
+      await screen.findByRole("button", { name: "Add to my library" }),
     );
     const done = await screen.findByRole("dialog", {
       name: "Mossgarden is in your library",
@@ -796,7 +798,7 @@ describe("the Activate dialog: steps morph, the first add celebrates once", () =
     let dialog = await openActivate();
     await continueWith(dialog, KEY);
     await userEvent.click(
-      await screen.findByRole("button", { name: "Add Mossgarden" }),
+      await screen.findByRole("button", { name: "Add to my library" }),
     );
     await screen.findByRole("dialog", {
       name: "Mossgarden is in your library",
@@ -826,7 +828,7 @@ describe("the Activate dialog: steps morph, the first add celebrates once", () =
       (r) => r === "GET /api/licenses",
     ).length;
     await userEvent.click(
-      await screen.findByRole("button", { name: "Add Mossgarden" }),
+      await screen.findByRole("button", { name: "Add to my library" }),
     );
     await screen.findByRole("dialog", {
       name: "Mossgarden is in your library",
@@ -856,14 +858,14 @@ describe("the Activate dialog: steps morph, the first add celebrates once", () =
     await waitFor(() => expect(fake.starts).toHaveLength(1));
     await fake.release();
     const confirm = await screen.findByRole("dialog", {
-      name: "Add Mossgarden to your account?",
+      name: "Add Mossgarden to your library?",
     });
     await userEvent.click(
-      within(confirm).getByRole("button", { name: "Add Mossgarden" }),
+      within(confirm).getByRole("button", { name: "Add to my library" }),
     );
     await waitFor(() => expect(fake.starts).toHaveLength(2));
     // The confirm step is still on screen (held for the capture): Back acts on it.
-    expect(dialogTitle()).toBe("Add Mossgarden to your account?");
+    expect(dialogTitle()).toBe("Add Mossgarden to your library?");
     await userEvent.click(
       within(confirm).getByRole("button", { name: "Back" }),
     );
