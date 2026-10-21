@@ -381,6 +381,10 @@ export function StoreRolloutControls({
   );
 }
 
+const INERT_REASON: Record<string, string> = {
+  no_outlet: "no channel declared",
+};
+
 const CREDENTIAL_SOURCE: Record<string, string> = {
   own: "This product's own key",
   product: "This product's own key",
@@ -458,7 +462,7 @@ export function ConnectorCard({
   const has = (c: string) => connector.controls.includes(c);
   const tone = blocked ? (connector.inert ? "warning" : "neutral") : "success";
   const state = connector.inert
-    ? `Not running: ${humanize(connector.inert.reason).toLowerCase()}`
+    ? `Not running: ${INERT_REASON[connector.inert.reason] ?? humanize(connector.inert.reason).toLowerCase()}`
     : connector.configured
       ? "Connected"
       : "Not configured";

@@ -335,7 +335,7 @@ async function provisionSetup(
     refusal: refuse(
       404,
       "not_configured",
-      "App Store Connect is not configured for this product: assign its app in Platform → Store connections, or declare an app-store or testflight outlet with an appleId and store an asc-api-key credential pinned to that app",
+      "App Store Connect is not configured for this product: assign its app in Platform → Store connections, or declare an app-store or testflight channel with an appleId and store an asc-api-key credential pinned to that app",
     ),
   };
 }
@@ -381,7 +381,7 @@ async function withSetupRun(
         ? refuse(
             409,
             "server_key_unusable",
-            "the In-App Purchase key for this app could not be used: check it in Distribution → Outlet credentials or Platform → Store connections",
+            "the In-App Purchase key for this app could not be used: check it in Distribution → Channel credentials or Platform → Store connections",
           )
         : refuse(502, "store_unavailable", e.message);
     throw e;
