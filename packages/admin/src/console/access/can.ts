@@ -17,27 +17,14 @@ import {
   type ProductPageId,
   type ServiceState,
 } from "../nav.js";
+import { AREA_NAMES as NAMES } from "../../lib/areaNames.js";
 import { parseLocation } from "../routes.js";
 
 export type { AreaId };
 export type Level = "view" | "edit";
 
-/** The names the console shows (worker `AREAS`). */
-export const AREA_NAMES: Record<AreaId, string> = {
-  console: "Console",
-  platform: "Platform",
-  members: "Members",
-  docs: "Docs",
-  core: "Core",
-  license: "Licensing",
-  config: "Managed config",
-  ship: "Ship builds",
-  signin: "Sign-in",
-  sync: "Cloud Sync",
-  commerce: "Commerce",
-  keys: "Keys & secrets",
-  settings: "Settings",
-};
+/** The names the console shows (worker `AREAS`); the table lives in `lib/` so `errorCopy` can use it. */
+export const AREA_NAMES: Record<AreaId, string> = NAMES;
 
 /** The `data-service` accent of an area's pages (B17), for the icon and the destination buttons. */
 export const AREA_ACCENTS: Partial<Record<AreaId, string>> = {

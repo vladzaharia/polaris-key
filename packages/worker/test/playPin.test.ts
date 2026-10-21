@@ -271,7 +271,7 @@ describe("the pin decides whether the Play connector runs", () => {
     expect(pins).toHaveLength(1);
     expect(pins[0]).toMatchObject({ actor_sub: "u1", target_id: "play" });
     expect(pins[0]!.summary).toBe(
-      `Pinned outlet credential play (google-service-account) to packageName ${OTHER_PACKAGE} (was ${PLAY_PACKAGE})`,
+      `Pinned channel credential play (google-service-account) to packageName ${OTHER_PACKAGE} (was ${PLAY_PACKAGE})`,
     );
 
     const view = await connectorView(w);

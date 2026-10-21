@@ -6,7 +6,14 @@
  */
 
 import { ApiError, SERVICE_ERROR_MESSAGES } from "../api.js";
+import { AREA_NAMES } from "./areaNames.js";
 import { RELEASE_POLICY_ERROR_MESSAGES } from "./releasePolicyMessages.js";
+
+/** "You need Settings edit access to do this.", in the console's own area names. */
+function needsEdit(area?: string): string {
+  const name = area ? (AREA_NAMES as Record<string, string>)[area] : undefined;
+  return `You need ${name ? `${name} edit` : "edit"} access to do this.`;
+}
 
 /** What the operator can do next. The renderer turns it into a button or a link. */
 export type ErrorAction =
@@ -445,15 +452,14 @@ export function errorCopy(
     if (reason === "no_access")
       return {
         title: "You don't have access to this",
-        description:
-          "Your role doesn't include this area. An admin of it can give you access.",
+        description: needsEdit(error.area),
         action: "none",
         details,
       };
     return {
       title: "You can't do that",
       // The server's words stay in `details`: a 403 message is a policy line, not copy.
-      description: "Your session isn't allowed to make this change.",
+      description: needsEdit(),
       action: "none",
       details,
     };

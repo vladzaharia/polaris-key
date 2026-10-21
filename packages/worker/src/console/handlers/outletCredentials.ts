@@ -105,7 +105,7 @@ export async function handleOutletCredentials(
       now,
       "outlet_credential.delete",
       { kind: "outlet_credential", id },
-      `Deleted outlet credential ${id}`,
+      `Deleted channel credential ${id}`,
     );
     return adminJson({ ok: true, id });
   }
@@ -170,7 +170,7 @@ export async function handleOutletCredentials(
           now,
           "outlet_credential.pin",
           { kind: "outlet_credential", id },
-          `Pinned outlet credential ${id} (${body.kind}) to ${change.field} ${change.after} (was ${change.before ?? "unpinned"})`,
+          `Pinned channel credential ${id} (${body.kind}) to ${change.field} ${change.after} (was ${change.before ?? "unpinned"})`,
         )
       : Promise.resolve();
 
@@ -259,7 +259,7 @@ export async function handleOutletCredentials(
     now,
     "outlet_credential.set",
     { kind: "outlet_credential", id },
-    `${result.created ? "Set" : "Rotated"} outlet credential ${id} (${body.kind}${body.generate === true ? ", generated" : ""})`,
+    `${result.created ? "Set" : "Rotated"} channel credential ${id} (${body.kind}${body.generate === true ? ", generated" : ""})`,
   );
   await auditPin(result.pinChange);
   // NEVER echo the value, its metadata or anything derived from it — the id only.
@@ -302,7 +302,7 @@ export async function planOwnRepins(
         target_kind: "outlet_credential",
         target_id: c.id,
         parent_id: null,
-        summary: `Pinned outlet credential ${c.id} (${kind}) to ${c.field} ${pin} (was ${c.before ?? "unpinned"}) by a platform store-connection assignment`,
+        summary: `Pinned channel credential ${c.id} (${kind}) to ${c.field} ${pin} (was ${c.before ?? "unpinned"}) by a platform store-connection assignment`,
       }),
     );
   return {

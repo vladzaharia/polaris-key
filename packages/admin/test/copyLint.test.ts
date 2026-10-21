@@ -547,9 +547,26 @@ const CONNECTORS = join(
   "connectors",
 );
 
+/**
+ * The Worker files that word the audit summaries the Activity page shows ("Pinned channel
+ * credential …"), read through the same filter and rule.
+ */
+const AUDIT_SUMMARY_SOURCES = [
+  ["console", "handlers", "outletCredentials.ts"],
+  ["services", "distribution", "admin.ts"],
+].map((parts) => join(here, "..", "..", "worker", "src", ...parts));
+
 function connectorMessages(): string[] {
   const rule = COPY_RULES.find((r) => r.id === "outlet")!;
   const out: string[] = [];
+  for (const p of AUDIT_SUMMARY_SOURCES) {
+    const rel = relative(join(here, "..", "..", "worker", "src"), p)
+      .split(sep)
+      .join("/");
+    for (const s of copyStrings(readFileSync(p, "utf8"), p))
+      if (rule.pattern.test(proseOf(s.text)))
+        out.push(`${rel}:${s.line} "${s.text}"`);
+  }
   for (const p of consoleFiles(CONNECTORS)) {
     const rel = relative(CONNECTORS, p).split(sep).join("/");
     for (const s of copyStrings(readFileSync(p, "utf8"), p))
