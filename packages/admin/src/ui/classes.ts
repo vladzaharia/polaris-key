@@ -23,7 +23,7 @@ export const BUTTON_BASE = [
 /** Button variants by name. */
 export const BUTTON_VARIANTS = {
   primary:
-    "bg-accent text-accent-on shadow-elevation-1 hover:not-disabled:not-aria-disabled:bg-[color-mix(in_oklab,var(--pk-accent),white_10%)] disabled:bg-action-disabled disabled:text-action-disabled-on disabled:opacity-100 disabled:shadow-none aria-disabled:not-aria-busy:bg-action-disabled aria-disabled:not-aria-busy:text-action-disabled-on aria-disabled:not-aria-busy:opacity-100 aria-disabled:not-aria-busy:shadow-none",
+    "bg-accent text-accent-on shadow-elevation-1 hover:not-disabled:not-aria-disabled:bg-[color-mix(in_oklab,var(--pk-accent),oklch(from_var(--pk-accent-on)_calc(1_-_l)_0_0)_10%)] disabled:bg-action-disabled disabled:text-action-disabled-on disabled:opacity-100 disabled:shadow-none aria-disabled:not-aria-busy:bg-action-disabled aria-disabled:not-aria-busy:text-action-disabled-on aria-disabled:not-aria-busy:opacity-100 aria-disabled:not-aria-busy:shadow-none",
   /**
    * The action-neutral primary (BRAND.md B2, SIGN-IN.md §3.1): near-white ink on dark,
    * near-black on light, the label in the page colour. The sign-in card's one filled
@@ -38,11 +38,12 @@ export const BUTTON_VARIANTS = {
   ghost:
     "bg-transparent text-fg hover:not-disabled:not-aria-disabled:bg-hover hover:not-disabled:not-aria-disabled:text-fg-strong",
   danger:
-    "bg-danger text-danger-on shadow-elevation-1 hover:not-disabled:not-aria-disabled:bg-[color-mix(in_oklab,var(--pk-danger),white_10%)] disabled:bg-action-disabled disabled:text-action-disabled-on disabled:opacity-100 disabled:shadow-none aria-disabled:not-aria-busy:bg-action-disabled aria-disabled:not-aria-busy:text-action-disabled-on aria-disabled:not-aria-busy:opacity-100 aria-disabled:not-aria-busy:shadow-none",
+    "bg-danger text-danger-on shadow-elevation-1 hover:not-disabled:not-aria-disabled:bg-[color-mix(in_oklab,var(--pk-danger),oklch(from_var(--pk-danger-on)_calc(1_-_l)_0_0)_10%)] disabled:bg-action-disabled disabled:text-action-disabled-on disabled:opacity-100 disabled:shadow-none aria-disabled:not-aria-busy:bg-action-disabled aria-disabled:not-aria-busy:text-action-disabled-on aria-disabled:not-aria-busy:opacity-100 aria-disabled:not-aria-busy:shadow-none",
   /** Deprecated alias of `danger`, kept for the legacy views until chunk 11. */
   destructive:
-    "bg-danger text-danger-on shadow-elevation-1 hover:not-disabled:not-aria-disabled:bg-[color-mix(in_oklab,var(--pk-danger),white_10%)] disabled:bg-action-disabled disabled:text-action-disabled-on disabled:opacity-100 disabled:shadow-none aria-disabled:not-aria-busy:bg-action-disabled aria-disabled:not-aria-busy:text-action-disabled-on aria-disabled:not-aria-busy:opacity-100 aria-disabled:not-aria-busy:shadow-none",
-  link: "h-auto px-0 text-accent-fg underline-offset-4 hover:underline",
+    "bg-danger text-danger-on shadow-elevation-1 hover:not-disabled:not-aria-disabled:bg-[color-mix(in_oklab,var(--pk-danger),oklch(from_var(--pk-danger-on)_calc(1_-_l)_0_0)_10%)] disabled:bg-action-disabled disabled:text-action-disabled-on disabled:opacity-100 disabled:shadow-none aria-disabled:not-aria-busy:bg-action-disabled aria-disabled:not-aria-busy:text-action-disabled-on aria-disabled:not-aria-busy:opacity-100 aria-disabled:not-aria-busy:shadow-none",
+  /** Underlined at rest, so it reads as a link beside the portal's other underlined links (B-020). */
+  link: "h-auto px-0 text-accent-fg underline underline-offset-4 hover:text-fg-strong",
   /**
    * The customer portal's outlined quick action (PORTAL.md §5.2): transparent, a
    * `border-border-strong` outline, a `text-fg-strong` label, the icon in `text-accent-fg`.
