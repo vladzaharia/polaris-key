@@ -34,7 +34,7 @@ import {
   useSignInLicenses,
   useSignInRequest,
 } from "../../requestData.js";
-import { Lockup } from "../Lockup.js";
+import { AuthLockup } from "../Lockup.js";
 import { ConsentStep } from "./ConsentStep.js";
 import { LicenseChoiceStep } from "./LicenseChoiceStep.js";
 import { ReplaceDeviceStep } from "./ReplaceDeviceStep.js";
@@ -226,7 +226,7 @@ export function RequestFlow({
   const footer = view ? <RequestFooter view={view} /> : undefined;
   const brand = (
     <span className="text-fg-muted opacity-80">
-      <Lockup height={48} />
+      <AuthLockup />
     </span>
   );
 

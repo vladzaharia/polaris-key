@@ -286,7 +286,7 @@ function PaneArt({ src }: { src?: string | null }): React.ReactElement | null {
       src={src}
       alt=""
       loading="lazy"
-      className="hidden aspect-[16/10] w-full object-cover passport:block passport:max-h-[40%] passport:shrink-0"
+      className="hidden aspect-[16/10] w-full object-cover passport:block passport:max-h-[min(40%,10rem)] passport:shrink-0"
     />
   );
 }
@@ -294,7 +294,8 @@ function PaneArt({ src }: { src?: string | null }): React.ReactElement | null {
 /**
  * The strip's rows become the pane's column (`passport:contents`): art edge to edge, the icon
  * overlapping the art's lower edge (or at the top with no art), name and developer, then the
- * receipt's where-line at the foot, above the footer's safety line. The pane never ends in a void.
+ * where-line right under the developer (B-070: it used to sink to the foot, under a void), the
+ * art capped at 10 rem so the pane's text starts high.
  */
 function Icon({
   children,
@@ -318,7 +319,7 @@ function Icon({
 }
 
 const WHERE =
-  "flex items-start gap-1.5 text-sm text-fg-muted passport:order-last passport:mt-auto passport:px-6 passport:pb-4 passport:pt-4";
+  "flex items-start gap-1.5 text-sm text-fg-muted passport:px-6 passport:pt-1";
 const PANE_TEXT = "passport:px-6";
 
 function Where({

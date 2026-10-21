@@ -42,7 +42,8 @@ import { CODE_LENGTH, CodeCells } from "../../../ui/auth/CodeCells.js";
  *
  * A sign-in opens a new session for this browser (with a new CSRF token, which the page reads
  * at once); the one it replaced is ended, so Where you're signed in lists this browser once. A
- * provider sign-in leaves the page, so it cannot end the old one: that row stays until it expires.
+ * provider sign-in leaves the page, so this code cannot end the old one: the Worker does, when the
+ * provider's callback opens the new session for the same account (B-074, `card/finish.ts`).
  */
 export interface StepUpProps {
   /** The verb the confirmation unlocks, in the passkey button: "Use your passkey to {verb}". */
@@ -55,6 +56,11 @@ export interface StepUpProps {
   tone?: "danger" | "primary";
   /** Focus the prompt as it appears: it replaced the control the person pressed. */
   autoFocus?: boolean;
+  /**
+   * A button that belongs beside the main action (Keep, Cancel), so the prompt is one action row
+   * rather than the button on one line and its Cancel stranded on the next (B-068, B-073).
+   */
+  trailing?: React.ReactNode;
   onConfirmed: () => void;
 }
 
@@ -64,6 +70,10 @@ type Way = "passkey" | "email";
 const MAIN_BUTTON =
   "h-auto min-h-11 w-full whitespace-normal py-2 text-center sm:w-auto";
 
+/** One row for the main action and its sibling (Keep, Cancel); stacked on a phone. */
+const ACTION_ROW =
+  "flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3";
+
 export function StepUp({
   verb,
   view,
@@ -71,6 +81,7 @@ export function StepUp({
   returnTo,
   tone = "primary",
   autoFocus = false,
+  trailing,
   onConfirmed,
 }: StepUpProps): React.ReactElement {
   const qc = useQueryClient();
@@ -233,29 +244,35 @@ export function StepUp({
         {t("locker.stepUp.title")}
       </p>
       {way === "passkey" ? (
-        <Button
-          variant={tone}
-          loading={busy}
-          iconStart={<Fingerprint aria-hidden />}
-          className={MAIN_BUTTON}
-          onClick={() => void withPasskey()}
-          aria-label={t("locker.stepUp.passkeyTo", { verb })}
-          aria-describedby={error ? errorId : undefined}
-        >
-          {t("locker.stepUp.passkey")}
-        </Button>
+        <div className={ACTION_ROW}>
+          {/* The visible label is the accessible name: it says what the passkey will do (B-064,
+              B-068; WCAG 2.5.3). */}
+          <Button
+            variant={tone}
+            loading={busy}
+            iconStart={<Fingerprint aria-hidden />}
+            className={MAIN_BUTTON}
+            onClick={() => void withPasskey()}
+            aria-describedby={error ? errorId : undefined}
+          >
+            {t("locker.stepUp.passkeyTo", { verb })}
+          </Button>
+          {trailing}
+        </div>
       ) : way === "email" && email && !sent ? (
-        <Button
-          variant={tone}
-          loading={busy}
-          iconStart={<Mail aria-hidden />}
-          className={MAIN_BUTTON}
-          onClick={() => void sendCode()}
-          aria-label={t("locker.stepUp.emailTo", { email })}
-          aria-describedby={error ? errorId : undefined}
-        >
-          {t("signin.hint.emailCode")}
-        </Button>
+        <div className={ACTION_ROW}>
+          <Button
+            variant={tone}
+            loading={busy}
+            iconStart={<Mail aria-hidden />}
+            className={MAIN_BUTTON}
+            onClick={() => void sendCode()}
+            aria-describedby={error ? errorId : undefined}
+          >
+            {t("locker.stepUp.emailTo", { email })}
+          </Button>
+          {trailing}
+        </div>
       ) : way === "email" && email ? (
         <form
           noValidate
@@ -295,7 +312,7 @@ export function StepUp({
               }}
             />
           </div>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <div className={ACTION_ROW}>
             <Button
               type="submit"
               variant={tone}
@@ -306,6 +323,7 @@ export function StepUp({
             >
               {t("locker.stepUp.confirm")}
             </Button>
+            {trailing}
             <Button
               variant="link"
               className="text-sm font-medium max-sm:min-h-11"
@@ -316,7 +334,11 @@ export function StepUp({
           </div>
         </form>
       ) : (
-        providerWays
+        <>
+          {providerWays}
+          {/* No main action here: the sibling (Keep, Cancel) still has to be reachable. */}
+          {trailing ? <div className={ACTION_ROW}>{trailing}</div> : null}
+        </>
       )}
       {error ? (
         <p id={errorId} role="alert" className="text-sm text-danger">

@@ -195,7 +195,7 @@ export function MethodRow({
       </div>
       {open ? null : extra}
       {notice ? (
-        <p className="mt-2 text-sm text-warning sm:pl-13">{notice}</p>
+        <p className="mt-2 text-sm text-warning sm:ml-13">{notice}</p>
       ) : null}
       {guarded ? (
         <p
@@ -219,7 +219,7 @@ export function MethodRow({
           })
         }
       >
-        <div className="pt-3">
+        <div className="pt-3 sm:ml-13">
           <div className="space-y-3 rounded-lg border border-danger-border bg-danger-subtle p-4">
             <h4
               ref={headingRef}
@@ -249,6 +249,15 @@ export function MethodRow({
                   accountId={accountId}
                   returnTo={returnTo}
                   autoFocus={needsStepUp}
+                  trailing={
+                    <Button
+                      variant="outline"
+                      className="max-sm:min-h-11"
+                      onClick={close}
+                    >
+                      {keepLabel}
+                    </Button>
+                  }
                   onConfirmed={() => {
                     // The prompt is about to give way to the confirm: focus waits on the panel's
                     // heading while the removal runs, never on `body`.
@@ -257,15 +266,6 @@ export function MethodRow({
                     doRemove();
                   }}
                 />
-                <div className="flex">
-                  <Button
-                    variant="outline"
-                    className="max-sm:min-h-11"
-                    onClick={close}
-                  >
-                    {keepLabel}
-                  </Button>
-                </div>
               </>
             ) : (
               <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">

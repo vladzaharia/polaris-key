@@ -438,7 +438,7 @@ async function confirmItsYou(scope: HTMLElement): Promise<void> {
   });
   await userEvent.click(
     within(prompt).getByRole("button", {
-      name: `Email a code to ${ACCOUNT.email}`,
+      name: `Email me a code at ${ACCOUNT.email}`,
     }),
   );
   await userEvent.type(

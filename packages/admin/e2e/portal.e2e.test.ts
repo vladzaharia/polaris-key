@@ -756,7 +756,7 @@ describe("Account → Sign-in methods (PX-13, §4.26)", () => {
       });
       if (await useEmail.isVisible()) await useEmail.click();
       await prompt
-        .getByRole("button", { name: "Email a code to mara@fennick.studio" })
+        .getByRole("button", { name: "Email me a code at mara@fennick.studio" })
         .click();
       await prompt
         .getByRole("textbox", { name: "6-digit code" })

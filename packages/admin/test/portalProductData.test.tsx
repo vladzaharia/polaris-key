@@ -911,7 +911,7 @@ describe("A stale sign-in and the support code (I-11)", () => {
     expect(within(dialog).queryByRole("alert")).toBeNull();
     await userEvent.click(
       within(prompt).getByRole("button", {
-        name: `Email a code to ${ACCOUNT.email}`,
+        name: `Email me a code at ${ACCOUNT.email}`,
       }),
     );
     await userEvent.type(
@@ -951,7 +951,7 @@ describe("A stale sign-in and the support code (I-11)", () => {
     expect(within(card).queryByRole("alert")).toBeNull();
     await userEvent.click(
       within(prompt).getByRole("button", {
-        name: `Email a code to ${ACCOUNT.email}`,
+        name: `Email me a code at ${ACCOUNT.email}`,
       }),
     );
     await userEvent.type(

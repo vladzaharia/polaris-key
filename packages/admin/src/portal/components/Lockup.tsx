@@ -51,3 +51,17 @@ export function HeaderBrand(): React.ReactElement {
     </>
   );
 }
+
+/**
+ * The sign-in card's brand row (SIGN-IN.md §3.1): 36 px on a phone, where a 48 px lockup sat 4 px
+ * from the card's top edge (B-066; BRAND.md sets 36), 48 px from `sm`. The size never changes
+ * between steps.
+ */
+export function AuthLockup(): React.ReactElement {
+  return (
+    <>
+      <Lockup height={36} className="sm:hidden" />
+      <Lockup height={48} className="hidden sm:block" />
+    </>
+  );
+}

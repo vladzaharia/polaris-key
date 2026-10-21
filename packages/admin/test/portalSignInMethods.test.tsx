@@ -392,11 +392,19 @@ describe("Sign-in methods (PX-13)", () => {
     ).toBeNull();
     expect(fetchedRequests()).not.toContain("DELETE /api/me/methods/lnk_steam");
     expect(await axeViolations()).toEqual([]);
-    await userEvent.click(
-      within(prompt).getByRole("button", {
-        name: `Email a code to ${ACCOUNT.email}`,
+    const send = within(prompt).getByRole("button", {
+      name: `Email me a code at ${ACCOUNT.email}`,
+    });
+    // B-064 (WCAG 2.5.3): the accessible name is the visible text, address included.
+    expect(send.textContent).toBe(`Email me a code at ${ACCOUNT.email}`);
+    expect(send.hasAttribute("aria-label")).toBe(false);
+    // B-068, B-073: Keep sits in the same action row, not stranded on its own line.
+    expect(
+      within(send.parentElement as HTMLElement).getByRole("button", {
+        name: "Keep Steam",
       }),
-    );
+    ).toBeTruthy();
+    await userEvent.click(send);
     const code = await within(prompt).findByRole("textbox", {
       name: "6-digit code",
     });
@@ -508,11 +516,13 @@ describe("Sign-in methods (PX-13)", () => {
     await userEvent.click(
       within(region).getByRole("button", { name: "Disconnect Google" }),
     );
-    await userEvent.click(
-      await within(region).findByRole("button", {
-        name: "Use your passkey to disconnect",
-      }),
-    );
+    const passkeyButton = await within(region).findByRole("button", {
+      name: "Use your passkey to disconnect",
+    });
+    // B-068: the visible label says what the passkey will do (it is the accessible name).
+    expect(passkeyButton.textContent).toBe("Use your passkey to disconnect");
+    expect(passkeyButton.hasAttribute("aria-label")).toBe(false);
+    await userEvent.click(passkeyButton);
     await waitFor(() =>
       expect(fetchedRequests()).toContain("DELETE /api/me/methods/lnk_google"),
     );
@@ -561,7 +571,7 @@ describe("Sign-in methods (PX-13)", () => {
     });
     await userEvent.click(
       within(prompt).getByRole("button", {
-        name: `Email a code to ${ACCOUNT.email}`,
+        name: `Email me a code at ${ACCOUNT.email}`,
       }),
     );
     await userEvent.type(
@@ -636,7 +646,7 @@ describe("Sign-in methods (PX-13)", () => {
     });
     await userEvent.click(
       within(prompt).getByRole("button", {
-        name: `Email a code to ${ACCOUNT.email}`,
+        name: `Email me a code at ${ACCOUNT.email}`,
       }),
     );
     await userEvent.type(
@@ -837,7 +847,7 @@ describe("step-up ways and returns (PX-13 review)", () => {
     });
     await userEvent.click(
       within(prompt).getByRole("button", {
-        name: `Email a code to ${ACCOUNT.email}`,
+        name: `Email me a code at ${ACCOUNT.email}`,
       }),
     );
     expect(
@@ -870,7 +880,7 @@ describe("step-up ways and returns (PX-13 review)", () => {
     });
     await userEvent.click(
       within(prompt).getByRole("button", {
-        name: `Email a code to ${ACCOUNT.email}`,
+        name: `Email me a code at ${ACCOUNT.email}`,
       }),
     );
     await userEvent.click(
