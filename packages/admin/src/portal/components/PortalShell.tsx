@@ -159,7 +159,13 @@ export function PortalShell({
         {children}
       </main>
       {/* The Library's sticky footer, static help every state of it has (PX-35). */}
-      {route.kind === "library" ? <MissingLicense /> : null}
+      {route.kind === "library" ? (
+        <MissingLicense
+          hideActivate={
+            libraryCount !== null && libraryCount >= 2 && libraryCount < 8
+          }
+        />
+      ) : null}
       <nav
         aria-label="Phone"
         className="pk-vt-chrome fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface-page pb-[env(safe-area-inset-bottom)] desk:hidden"
@@ -223,7 +229,12 @@ function usePhoneBarToastInset(): void {
           TOAST_BOTTOM_INSET_VAR,
           "calc(3.25rem + 1px + env(safe-area-inset-bottom) + var(--pk-strip-h, 0px) + 0.75rem)",
         );
-      else root.style.removeProperty(TOAST_BOTTOM_INSET_VAR);
+      else
+        // No bar: the Library's sticky strip is all a bottom toast has to clear.
+        root.style.setProperty(
+          TOAST_BOTTOM_INSET_VAR,
+          "calc(var(--pk-strip-h, 0px) + 0.75rem)",
+        );
     };
     apply();
     barShows.addEventListener("change", apply);

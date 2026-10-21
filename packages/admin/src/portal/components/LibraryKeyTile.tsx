@@ -81,7 +81,7 @@ export function LibraryKeyTile({
           iconStart={<KeyRound aria-hidden />}
           onClick={() => activate.open()}
         >
-          Activate a license
+          {t("common.activateLicense")}
         </Button>
       </div>
     </li>

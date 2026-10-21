@@ -136,7 +136,7 @@ export function AccountMenu({
             }}
           >
             <KeyRound aria-hidden />
-            Activate a license
+            {t("common.activateLicense")}
           </DropdownMenuItem>
           <DropdownMenuItem asChild className="pointer-coarse:min-h-11">
             <a href={href.account()}>

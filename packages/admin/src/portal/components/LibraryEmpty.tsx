@@ -1,4 +1,5 @@
 import * as React from "react";
+import { t } from "../../lib/copy.js";
 import { PolarisMark } from "@polaris-key/brand/react";
 import { KeyRound, Sparkles } from "lucide-react";
 import { Button } from "../../ui/Button.js";
@@ -36,14 +37,19 @@ export function LibraryEmpty({
       <div className="flex flex-wrap justify-center gap-3">
         <Button
           size="lg"
-          className="h-12 font-medium"
+          className="h-auto min-h-12 whitespace-normal font-medium"
           iconStart={<KeyRound aria-hidden />}
           onClick={() => activate.open()}
         >
-          Activate a license
+          {t("common.activateLicense")}
         </Button>
         {discoverCount ? (
-          <Button asChild size="lg" variant="outline" className="h-12">
+          <Button
+            asChild
+            size="lg"
+            variant="outline"
+            className="h-auto min-h-12 whitespace-normal"
+          >
             <a href={href.discover()}>
               <Sparkles aria-hidden />
               See {discoverCount} in Discover

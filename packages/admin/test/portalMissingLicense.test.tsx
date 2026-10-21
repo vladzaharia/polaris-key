@@ -40,4 +40,21 @@ describe("MissingLicense", () => {
     expect(toggle.getAttribute("aria-expanded")).toBe("true");
     expect(list.className).not.toMatch(/(^| )hidden( |$)/);
   });
+
+  it("hides Activate a license when the key tile is on screen", () => {
+    render(<MissingLicense hideActivate />);
+    expect(
+      screen.queryByRole("button", { name: "Activate a license" }),
+    ).toBeNull();
+  });
+
+  it("closes the disclosure on Escape, with focus back on the toggle", async () => {
+    render(<MissingLicense />);
+    const toggle = screen.getByRole("button", { name: "Missing a license?" });
+    await userEvent.click(toggle);
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    await userEvent.keyboard("{Escape}");
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(document.activeElement).toBe(toggle);
+  });
 });

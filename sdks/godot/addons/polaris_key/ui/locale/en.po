@@ -763,6 +763,16 @@ msgctxt "macos"
 msgid "activate.submit"
 msgstr "Activate License"
 
+#. Activate a license
+#. Portal: opens the Activate dialog (account menu, Library key tile, empty Library, Missing a license strip).
+msgid "common.activateLicense"
+msgstr "Activate a license"
+
+#. macos: Activate a License
+msgctxt "macos"
+msgid "common.activateLicense"
+msgstr "Activate a License"
+
 #. Activating…
 #. Activate: license key entry.
 msgid "activate.busy"

@@ -236,6 +236,83 @@ describe("the Library shell trim", () => {
     }
   });
 
+  for (const width of [320, 360, 390, 412]) {
+    it(`the twelve-product grid at ${width} px: every name shows, nothing spills out of a tile`, async ({
+      expect,
+    }) => {
+      const o = await portal.open("twelve", "/", { width, height: 844 });
+      try {
+        await h1(o.page, "Your library");
+        // Phones default to the list at 8+: ask for the grid.
+        await o.page.getByRole("radio", { name: "Grid" }).click();
+        await o.page.locator("[data-library-grid=compact]").waitFor();
+        await o.page.waitForTimeout(400);
+        const r = await o.page.evaluate(() => {
+          const names = [...document.querySelectorAll("main article h3")].map(
+            (h) => ({
+              name: h.textContent,
+              w: h.getBoundingClientRect().width,
+            }),
+          );
+          const spills = [...document.querySelectorAll("main article")].flatMap(
+            (card) => {
+              const c = card.getBoundingClientRect();
+              return [
+                ...card.querySelectorAll(
+                  "button, a, h3, p, li, span.rounded-full, svg[role=img]",
+                ),
+              ]
+                .filter((e) => !e.closest("[data-art]"))
+                .map((e) => ({ e, r: e.getBoundingClientRect() }))
+                .filter(
+                  ({ r }) =>
+                    r.width > 0 &&
+                    (r.right > c.right + 0.5 || r.left < c.left - 0.5),
+                )
+                .map(
+                  ({ e }) =>
+                    `${e.tagName} "${(e.textContent ?? "").trim().slice(0, 24)}"`,
+                );
+            },
+          );
+          return { names, spills };
+        });
+        expect(r.names.length).toBe(12);
+        expect(r.names.filter((n) => n.w <= 40)).toEqual([]);
+        expect(r.spills).toEqual([]);
+        expect(await horizontalOverflow(o.page)).toBeLessThanOrEqual(0);
+      } finally {
+        await o.close();
+      }
+    });
+  }
+
+  it("the desktop strip is one line from 1180 px, and its disclosure closes on Escape and outside press", async ({
+    expect,
+  }) => {
+    const o = await portal.open("twelve", "/", { width: 1180, height: 900 });
+    try {
+      await h1(o.page, "Your library");
+      const strip = o.page.getByRole("region", { name: "Missing a license?" });
+      await strip.waitFor();
+      expect((await strip.boundingBox())!.height).toBeLessThanOrEqual(66);
+      await o.page.setViewportSize({ width: 390, height: 844 });
+      const toggle = strip.getByRole("button", { name: "Missing a license?" });
+      await toggle.click();
+      expect(await toggle.getAttribute("aria-expanded")).toBe("true");
+      await o.page.keyboard.press("Escape");
+      expect(await toggle.getAttribute("aria-expanded")).toBe("false");
+      expect(await toggle.evaluate((el) => el === document.activeElement)).toBe(
+        true,
+      );
+      await toggle.click();
+      await o.page.mouse.click(200, 120);
+      expect(await toggle.getAttribute("aria-expanded")).toBe("false");
+    } finally {
+      await o.close();
+    }
+  });
+
   /** A library of `count` products (copies under new slugs). */
   const libraryOf = (count: number): Record<string, Handler> => {
     const base = portalRoutes("three")["/api/library"] as () => {

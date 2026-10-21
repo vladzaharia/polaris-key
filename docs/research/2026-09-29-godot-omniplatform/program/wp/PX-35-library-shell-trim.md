@@ -88,3 +88,10 @@ apply says why in one line. One home: EXPERIENCE.md ยง7.3; kits also follow DL1โ
 - M1: Activate a license is the strip's first item. M3: one line from `wide`, the disclosure below. M4: the button is first in the DOM (`flex-col-reverse`), the open panel is raised with a header. M5: menu rows `pointer-coarse:min-h-11`. M6: Discover is one column under 400 px, and one or two offers get a centred, wider layout.
 - M2: a tile under 13 rem moves More into the name row and drops the action's icon; under 11 rem the icon (with More) stacks above the name and the status pill moves into the meta row; glyphs get their own row. Measured by `useElementWidth`. `portalLibraryTrim` asserts nothing spills out of a tile.
 - m1: "Activate a license" and "Sign in from the app" everywhere. The account menu no longer hands focus back to its trigger when Activate opens the dialog.
+
+## Lead fix list (2026-10-21)
+
+- Tiles under 13 rem use one stacked band (`tiny`); no-art tiles keep their name (More joins the name row, no empty spacer); the status pill in the meta row is the plain, wrapping pill and only for issue statuses.
+- LibraryEmpty buttons wrap (`h-auto min-h-12 whitespace-normal`).
+- Strip: shortened to fit one line from 1180 px ("Another email? Add it in Sign-in methods", "Bought on Steam? Connect Steam", "Bought in a store? Sign in from the app"), no "Have a key?" lead-in, hidden Activate item when the key tile shows (2-7 products), Escape and outside press close the disclosure, panel capped at `max-w-md`.
+- Desktop toasts clear the strip. "Activate a license" is the catalog key `common.activateLicense` in nine locales (`pnpm gen brand`).

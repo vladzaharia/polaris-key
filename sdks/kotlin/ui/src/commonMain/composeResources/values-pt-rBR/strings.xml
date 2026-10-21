@@ -280,6 +280,9 @@
     <!-- Activate: license key entry. Submits the key. -->
     <string name="activate_submit">Ativar licença</string>
     <string name="activate_submit__macos">Ativar licença</string>
+    <!-- Portal: opens the Activate dialog (account menu, Library key tile, empty Library, Missing a license strip). -->
+    <string name="common_activateLicense">Ativar uma licença</string>
+    <string name="common_activateLicense__macos">Ativar uma licença</string>
     <!-- Activate: license key entry. -->
     <string name="activate_busy">Ativando…</string>
     <!-- OfflineActivation: activation by exchanging a request code and a response file. -->

@@ -302,10 +302,10 @@ describe("Library on today's data (PX-02)", () => {
       expect(a.getAttribute("href")).toMatch(/methods/);
       expect(a.className).toContain("underline");
     }
-    expect(within(strip).getByText(/Sent to another email\?/)).toBeTruthy();
+    expect(within(strip).getByText(/Another email\?/)).toBeTruthy();
     expect(within(strip).getByText(/Bought on Steam\?/)).toBeTruthy();
     expect(
-      within(strip).getByText("App Store or Google Play? Sign in from the app"),
+      within(strip).getByText("Bought in a store? Sign in from the app"),
     ).toBeTruthy();
     await userEvent.click(
       within(tile).getByRole("button", { name: "Activate a license" }),

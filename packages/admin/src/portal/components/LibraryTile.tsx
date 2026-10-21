@@ -14,7 +14,7 @@ import { TileFacts } from "./TileFacts.js";
 import { ProductArt } from "./ProductArt.js";
 import { ProductIcon } from "./ProductIcon.js";
 import { ProductMenu } from "./ProductMenu.js";
-import { ProductStatusPill } from "./ProductStatus.js";
+import { isIssueStatus, ProductStatusPill } from "./ProductStatus.js";
 import { QuickActionButton } from "./QuickAction.js";
 import { RemoveEntryConfirm } from "./RemoveEntryConfirm.js";
 
@@ -64,8 +64,9 @@ export function LibraryTile({
   // status pill moves from the art into the meta row. 0 (unmeasured, jsdom) is a wide tile.
   const articleRef = React.useRef<HTMLElement>(null);
   const width = useElementWidth(articleRef);
-  const narrow = width > 0 && width < 208;
-  const tiny = width > 0 && width < 176;
+  // One band: the stacked layout holds up to 13 rem (names never break mid-word at 412 px).
+  const tiny = width > 0 && width < 208;
+  const narrow = tiny;
   const menu = (
     <ProductMenu
       slug={product.slug}
@@ -82,6 +83,15 @@ export function LibraryTile({
   const pill =
     product.status.kind === "deviceLimit" ? null : (
       <ProductStatusPill status={product.status} onArt />
+    );
+  // In the meta row it is the plain pill, free to wrap (no plate, no clipping at 320).
+  const metaPill =
+    product.status.kind === "deviceLimit" ||
+    !isIssueStatus(product.status) ? null : (
+      <ProductStatusPill
+        status={product.status}
+        className="h-auto max-w-full whitespace-normal"
+      />
     );
   // No hosted cover: the stored tint over the same field, the icon large and centred on it.
   const noArt = !pres.headerUrl;
@@ -133,28 +143,24 @@ export function LibraryTile({
           <div
             className={cn(
               "flex items-start gap-2.5",
-              tiny && !noArt && "flex-col gap-1",
+              tiny && "flex-col gap-1",
               noArt ? "mt-1" : "-mt-4",
             )}
           >
-            {tiny ? (
+            {tiny && !noArt ? (
               // The icon above the name, the More menu level with it: the name gets the whole
               // width.
               <div className="flex w-full items-start justify-between">
-                {noArt ? (
-                  <span />
-                ) : (
-                  <ProductIcon
-                    slug={product.slug}
-                    name={product.name}
-                    tint={pres.tint}
-                    src={pres.iconUrl}
-                    size={40}
-                    lift
-                    className="relative"
-                    tileClassName="border-[3px] border-surface-raised"
-                  />
-                )}
+                <ProductIcon
+                  slug={product.slug}
+                  name={product.name}
+                  tint={pres.tint}
+                  src={pres.iconUrl}
+                  size={40}
+                  lift
+                  className="relative"
+                  tileClassName="border-[3px] border-surface-raised"
+                />
                 {menu}
               </div>
             ) : noArt ? null : (
@@ -196,10 +202,10 @@ export function LibraryTile({
                   {product.name}
                 </a>
               </h3>
-              {narrow && !tiny ? menu : null}
+              {tiny && noArt ? menu : null}
             </div>
           </div>
-          {tiny && pill ? <div className="mt-2">{pill}</div> : null}
+          {tiny && metaPill ? <div className="mt-2">{metaPill}</div> : null}
           {product.justAdded ? (
             <p className="mt-2 text-sm text-fg-muted">
               <span

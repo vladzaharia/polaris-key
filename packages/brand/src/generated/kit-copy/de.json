@@ -111,6 +111,7 @@
   "activate.title": "Lizenzschlüssel eingeben",
   "activate.lede": "Sie finden ihn in Ihrer Kauf-E-Mail.",
   "activate.submit": "Lizenz aktivieren",
+  "common.activateLicense": "Eine Lizenz aktivieren",
   "activate.busy": "Wird aktiviert…",
   "offlineActivation.title": "Offline-Aktivierung",
   "offlineActivation.request": "Senden Sie diesen Anforderungscode an die Stelle, von der Sie Ihre Lizenz erhalten haben.",

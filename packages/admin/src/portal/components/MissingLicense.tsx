@@ -1,4 +1,5 @@
 import * as React from "react";
+import { t } from "../../lib/copy.js";
 import { ChevronUp } from "lucide-react";
 import { cn } from "../../lib/cn.js";
 import { useActivate } from "../activate.js";
@@ -24,10 +25,35 @@ import { href } from "../router.js";
 const LINK =
   "inline-flex min-h-11 items-center font-medium text-fg-strong underline decoration-[var(--pk-locker-accent)] decoration-2 underline-offset-4 hover:text-fg-strong";
 
-export function MissingLicense(): React.ReactElement {
+export function MissingLicense({
+  hideActivate = false,
+}: {
+  /** The Library's key tile is on screen (2-7 products): it is the way to Activate there. */
+  hideActivate?: boolean;
+}): React.ReactElement {
   const [open, setOpen] = React.useState(false);
   const activate = useActivate();
   const ref = React.useRef<HTMLElement>(null);
+  const toggleRef = React.useRef<HTMLButtonElement>(null);
+  // The open disclosure closes on Escape (focus back on the toggle) and on a press outside it.
+  React.useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key !== "Escape") return;
+      setOpen(false);
+      toggleRef.current?.focus();
+    };
+    const onDown = (e: PointerEvent): void => {
+      if (ref.current && !ref.current.contains(e.target as Node))
+        setOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onDown);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onDown);
+    };
+  }, [open]);
   React.useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -61,6 +87,7 @@ export function MissingLicense(): React.ReactElement {
           Missing a license?
         </p>
         <button
+          ref={toggleRef}
           type="button"
           aria-expanded={open}
           aria-controls="missing-ways"
@@ -76,26 +103,27 @@ export function MissingLicense(): React.ReactElement {
         <div
           id="missing-ways"
           className={cn(
-            "mb-1 rounded-lg border border-border bg-surface-overlay p-3 shadow-elevation-2 wide:contents",
+            "mb-1 w-full max-w-md rounded-lg border border-border bg-surface-overlay p-3 shadow-elevation-2 wide:contents",
             open ? "block" : "hidden wide:contents",
           )}
         >
           <p className="mb-1 text-sm font-semibold text-fg-strong wide:hidden">
             Other ways in
           </p>
-          <ul className="flex flex-col gap-x-8 text-sm text-fg-muted wide:flex-row wide:flex-wrap wide:items-center">
+          <ul className="flex flex-col gap-x-6 text-sm text-fg-muted wide:flex-row wide:flex-wrap wide:items-center wide:py-1">
+            {hideActivate ? null : (
+              <li>
+                <button
+                  type="button"
+                  onClick={() => activate.open()}
+                  className={LINK}
+                >
+                  {t("common.activateLicense")}
+                </button>
+              </li>
+            )}
             <li>
-              Have a key?{" "}
-              <button
-                type="button"
-                onClick={() => activate.open()}
-                className={LINK}
-              >
-                Activate a license
-              </button>
-            </li>
-            <li>
-              Sent to another email?{" "}
+              Another email?{" "}
               <a href={href.account("methods")} className={LINK}>
                 Add it in Sign-in methods
               </a>
@@ -107,7 +135,7 @@ export function MissingLicense(): React.ReactElement {
               </a>
             </li>
             <li className="py-2 wide:py-0">
-              App Store or Google Play? Sign in from the app
+              Bought in a store? Sign in from the app
             </li>
           </ul>
         </div>

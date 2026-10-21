@@ -155,6 +155,7 @@ export const KIT_COPY: Readonly<
     "activate.title": "Enter your license key",
     "activate.lede": "You'll find it in your purchase email.",
     "activate.submit": "Activate license",
+    "common.activateLicense": "Activate a license",
     "activate.busy": "Activating…",
     "offlineActivation.title": "Offline activation",
     "offlineActivation.request":
@@ -1534,6 +1535,7 @@ export const KIT_COPY: Readonly<
     "activate.title": "Lizenzschlüssel eingeben",
     "activate.lede": "Sie finden ihn in Ihrer Kauf-E-Mail.",
     "activate.submit": "Lizenz aktivieren",
+    "common.activateLicense": "Eine Lizenz aktivieren",
     "activate.busy": "Wird aktiviert…",
     "offlineActivation.title": "Offline-Aktivierung",
     "offlineActivation.request":
@@ -3003,6 +3005,7 @@ export const KIT_COPY: Readonly<
     "activate.lede":
       "Vous la trouverez dans l’e-mail de confirmation de votre achat.",
     "activate.submit": "Activer la licence",
+    "common.activateLicense": "Activer une licence",
     "activate.busy": "Activation…",
     "offlineActivation.title": "Activation hors ligne",
     "offlineActivation.request":
@@ -4429,6 +4432,7 @@ export const KIT_COPY: Readonly<
     "activate.title": "Escribe tu clave de licencia",
     "activate.lede": "La encontrarás en el correo de tu compra.",
     "activate.submit": "Activar licencia",
+    "common.activateLicense": "Activar una licencia",
     "activate.busy": "Activando…",
     "offlineActivation.title": "Activación sin conexión",
     "offlineActivation.request":
@@ -5879,6 +5883,7 @@ export const KIT_COPY: Readonly<
     "activate.title": "Digite sua chave de licença",
     "activate.lede": "Ela está no e-mail da sua compra.",
     "activate.submit": "Ativar licença",
+    "common.activateLicense": "Ativar uma licença",
     "activate.busy": "Ativando…",
     "offlineActivation.title": "Ativação offline",
     "offlineActivation.request":
@@ -7304,6 +7309,7 @@ export const KIT_COPY: Readonly<
     "activate.title": "Inserisci la tua chiave di licenza",
     "activate.lede": "La trovi nell'email di acquisto.",
     "activate.submit": "Attiva licenza",
+    "common.activateLicense": "Attiva una licenza",
     "activate.busy": "Attivazione…",
     "offlineActivation.title": "Attivazione offline",
     "offlineActivation.request":
@@ -8738,6 +8744,7 @@ export const KIT_COPY: Readonly<
     "activate.title": "ライセンスキーを入力",
     "activate.lede": "購入時のメールに記載されています。",
     "activate.submit": "ライセンスをアクティベート",
+    "common.activateLicense": "ライセンスをアクティベート",
     "activate.busy": "アクティベートしています…",
     "offlineActivation.title": "オフラインアクティベーション",
     "offlineActivation.request":
@@ -10188,6 +10195,7 @@ export const KIT_COPY: Readonly<
     "activate.title": "라이선스 키를 입력하세요",
     "activate.lede": "구매 확인 이메일에서 찾을 수 있어요.",
     "activate.submit": "라이선스 활성화",
+    "common.activateLicense": "라이선스 활성화",
     "activate.busy": "활성화하는 중…",
     "offlineActivation.title": "오프라인 활성화",
     "offlineActivation.request":
@@ -11568,6 +11576,7 @@ export const KIT_COPY: Readonly<
     "activate.title": "输入你的许可证密钥",
     "activate.lede": "你可以在购买确认邮件中找到它。",
     "activate.submit": "激活许可证",
+    "common.activateLicense": "激活许可证",
     "activate.busy": "正在激活…",
     "offlineActivation.title": "离线激活",
     "offlineActivation.request": "将此请求代码发送给向你提供许可证的人。",
@@ -12742,6 +12751,7 @@ export const KIT_COPY_VARIANTS: Readonly<
   "welcome.offline": { macos: "Activate Offline" },
   "signInHandoff.newCode": { macos: "Get a New Code" },
   "activate.submit": { macos: "Activate License" },
+  "common.activateLicense": { macos: "Activate a License" },
   "offlineActivation.copyCode": { macos: "Copy Code" },
   "offlineActivation.loadFile": { macos: "Load File…" },
   "offlineActivation.submit": { macos: "Activate from File" },

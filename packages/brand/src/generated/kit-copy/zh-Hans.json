@@ -111,6 +111,7 @@
   "activate.title": "输入你的许可证密钥",
   "activate.lede": "你可以在购买确认邮件中找到它。",
   "activate.submit": "激活许可证",
+  "common.activateLicense": "激活许可证",
   "activate.busy": "正在激活…",
   "offlineActivation.title": "离线激活",
   "offlineActivation.request": "将此请求代码发送给向你提供许可证的人。",
