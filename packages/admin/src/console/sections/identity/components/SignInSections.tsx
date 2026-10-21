@@ -440,7 +440,7 @@ export function PresentationSection({
               style={{ background: accent }}
             />
             Accent
-            <span className="font-mono text-xs uppercase">{accent}</span>
+            <span className="font-mono text-xs">{accent}</span>
           </span>
         ) : null}
       </SettingsRow>

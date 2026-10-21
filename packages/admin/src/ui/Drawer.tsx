@@ -122,7 +122,8 @@ export function Drawer({
           // The panel slides in from its edge and back out (src/motion.css `.pk-drawer`; S-23 §6.1).
           data-drawer-side={side}
           className={cn(
-            "pk-drawer fixed inset-0 z-50 flex flex-col bg-surface-overlay text-fg outline-hidden",
+            // The 3 px rule in the origin's accent (B4, B17) along the panel's top edge.
+            "pk-drawer fixed inset-0 z-50 flex flex-col border-t-[3px] border-t-accent bg-surface-overlay text-fg outline-hidden",
             "pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]",
             "lg:inset-y-0 lg:w-full lg:shadow-elevation-3",
             side === "end"
@@ -134,7 +135,7 @@ export function Drawer({
         >
           <div
             data-pk-overlay-header=""
-            className="flex shrink-0 items-start gap-3 border-b border-border px-4 py-3 lg:px-6 lg:py-4"
+            className="flex shrink-0 items-start gap-3 border-b border-border bg-(--pk-admin-band-overlay) px-4 py-3 lg:px-6 lg:py-4"
           >
             {closeStyle === "back" ? (
               <button
@@ -154,7 +155,7 @@ export function Drawer({
               <DialogPrimitive.Title
                 ref={titleRef}
                 tabIndex={-1}
-                className="text-lg font-semibold leading-tight text-fg-strong outline-hidden"
+                className="text-xl font-semibold leading-7 text-fg-strong outline-hidden"
               >
                 {title}
               </DialogPrimitive.Title>

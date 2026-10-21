@@ -489,6 +489,8 @@ export function SidebarItem({
       aria-current={active ? "page" : undefined}
       aria-label={rail ? railLabel : undefined}
       data-page={page.page}
+      // A mixed list (B5, B17): Storefronts in Ship builds' group is Distribution green.
+      data-service={page.accent}
       onClick={() => onNavigate?.()}
       onMouseEnter={onPrefetch}
       onFocus={onPrefetch}

@@ -14,17 +14,51 @@ export interface PageTab {
   dirty?: boolean;
 }
 
+// B4: an underline tablist with a 3 px indicator in the service's accent (B17), never a segmented
+// control or a boxed tray. The hover tint and the ring take the same accent.
 const tabClass = (active: boolean) =>
   cn(
-    "relative inline-flex h-10 items-center gap-1.5 whitespace-nowrap border-b-2 px-1 text-sm",
+    "relative inline-flex h-10 items-center gap-1.5 whitespace-nowrap rounded-t-md border-b-[3px] px-1.5 text-sm",
     "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus",
     active
       ? "border-transparent font-medium text-fg-strong"
-      : "border-transparent text-fg-muted hover:border-border-strong hover:text-fg-strong",
+      : "border-transparent text-fg-muted hover:border-border-strong hover:bg-state-hover-tint hover:text-fg-strong",
   );
 
 /**
- * The active tab's underline (S-23 §6.1 morph). It lies exactly over the tab's own 2 px bottom
+ * The tablist fades at the edge it scrolls past, and only while it overflows (B4): the fade is a
+ * `data-fade` attribute the stylesheet draws, so a list that fits has no mask at all.
+ */
+function useOverflowFade<T extends HTMLElement>(): React.RefObject<T | null> {
+  const ref = React.useRef<T>(null);
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = (): void => {
+      const max = el.scrollWidth - el.clientWidth;
+      const start = el.scrollLeft > 1;
+      const end = max - el.scrollLeft > 1;
+      const fade = start && end ? "both" : start ? "start" : end ? "end" : null;
+      if (fade) el.setAttribute("data-fade", fade);
+      else el.removeAttribute("data-fade");
+    };
+    measure();
+    el.addEventListener("scroll", measure, { passive: true });
+    const ro =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(measure);
+    ro?.observe(el);
+    return () => {
+      el.removeEventListener("scroll", measure);
+      ro?.disconnect();
+    };
+  }, []);
+  return ref;
+}
+
+/**
+ * The active tab's underline (S-23 §6.1 morph). It lies exactly over the tab's own 3 px bottom
  * border, so the tab looks as it always has; being its own element, it is named `pk-indicator`
  * during a `tab` (or `route`) View Transition and slides to the next tab. A border, not a fill, so
  * forced-colors mode keeps it.
@@ -34,7 +68,7 @@ function Indicator(): React.ReactElement {
     <span
       aria-hidden
       data-tab-indicator=""
-      className="pk-vt-indicator pointer-events-none absolute inset-x-0 -bottom-[2px] border-b-2 border-accent"
+      className="pk-vt-indicator pointer-events-none absolute inset-x-0 -bottom-[3px] border-b-[3px] border-accent"
     />
   );
 }
@@ -92,13 +126,19 @@ export function PageTabs({
   idPrefix?: string;
 }): React.ReactElement {
   const routed = items.every((t) => t.to !== undefined);
+  const fadeRef = useOverflowFade<HTMLDivElement>();
+  const navFadeRef = useOverflowFade<HTMLElement>();
   const refs = React.useRef<(HTMLButtonElement | null)[]>([]);
   /** The tab a running transition is about to select: `value` until its update lands. */
   const pending = React.useRef<string | null>(null);
 
   if (routed) {
     return (
-      <nav aria-label={label} className="pk-scroll -mb-px overflow-x-auto">
+      <nav
+        ref={navFadeRef}
+        aria-label={label}
+        className="pk-scroll -mb-px overflow-x-auto"
+      >
         <ul className="flex gap-6">
           {items.map((t) => (
             <li key={t.value}>
@@ -148,6 +188,7 @@ export function PageTabs({
 
   return (
     <div
+      ref={fadeRef}
       role="tablist"
       aria-label={label}
       className="pk-scroll -mb-px flex gap-6 overflow-x-auto"

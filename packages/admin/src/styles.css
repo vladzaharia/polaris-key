@@ -117,6 +117,62 @@
   --pk-admin-fill: var(--pk-surface-sunken);
 }
 
+/*
+ * The head band (B4): the one raised step a section's head, a workbench toolbar and a dialog or
+ * drawer head sit on. On dark, the overlay step; on light, a step toward sunken from raised (raised
+ * and overlay are both white there).
+ */
+:root,
+[data-theme="dark"] {
+  --pk-admin-band: var(--pk-surface-overlay);
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --pk-admin-band: color-mix(
+      in oklab,
+      var(--pk-surface-sunken) 55%,
+      var(--pk-surface-raised)
+    );
+  }
+}
+[data-theme="light"] {
+  --pk-admin-band: color-mix(
+    in oklab,
+    var(--pk-surface-sunken) 55%,
+    var(--pk-surface-raised)
+  );
+}
+
+/* A dialog or drawer is the overlay surface, so its head band steps up from it (B4). */
+:root,
+[data-theme="dark"] {
+  --pk-admin-band-overlay: color-mix(
+    in oklab,
+    var(--pk-surface-overlay),
+    var(--pk-text-strong) 6%
+  );
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --pk-admin-band-overlay: var(--pk-admin-band);
+  }
+}
+[data-theme="light"] {
+  --pk-admin-band-overlay: var(--pk-admin-band);
+}
+
+/* The dialog and drawer backdrop is blurred (B4); with reduced transparency it is a flat, darker
+   ground with no filter. */
+[data-pk-backdrop] {
+  backdrop-filter: blur(6px);
+}
+@media (prefers-reduced-transparency: reduce) {
+  [data-pk-backdrop] {
+    backdrop-filter: none;
+    background-color: rgb(0 0 0 / 0.8);
+  }
+}
+
 /* The admin's one colour token of its own: the neutral fill above (hover rows, the sidebar's
    active row, secondary fills). The brand's `accent` is the section colour, so this is `hover`. */
 @theme inline {
@@ -553,10 +609,31 @@ html[data-shell="console"]
   [data-variant="primary"]:active:not(:disabled):not([aria-disabled="true"]) {
   background-color: var(--pk-action-pressed);
 }
-html[data-shell="console"] [data-variant="primary"]:is(:disabled, [aria-disabled="true"]) {
+html[data-shell="console"]
+  [data-variant="primary"]:is(:disabled, [aria-disabled="true"]) {
   background-color: var(--pk-action-disabled);
   color: var(--pk-action-disabled-on);
   opacity: 1;
+}
+
+/*
+ * A tablist that overflows fades at the edge it scrolls past (B4); one that fits has no mask.
+ * `data-fade` is set by `useOverflowFade` (console/components/PageTabs.tsx).
+ */
+[data-fade="end"] {
+  mask-image: linear-gradient(to right, #000 calc(100% - 2rem), transparent);
+}
+[data-fade="start"] {
+  mask-image: linear-gradient(to left, #000 calc(100% - 2rem), transparent);
+}
+[data-fade="both"] {
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 2rem,
+    #000 calc(100% - 2rem),
+    transparent
+  );
 }
 
 /*

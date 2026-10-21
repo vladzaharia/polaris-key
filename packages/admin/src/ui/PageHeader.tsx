@@ -321,7 +321,8 @@ export function PageHeader({
       {sticky && condensed && primaryAction ? (
         <div
           data-condensed-header=""
-          className="fixed inset-x-0 top-16 z-30 flex h-12 items-center justify-between gap-3 border-b border-border bg-surface-raised px-6 lg:left-(--sidebar-w)"
+          // Inside the canvas (B4): under the top bar and its 3 px rule, not over the page frame.
+          className="fixed inset-x-0 top-[67px] z-30 flex h-12 items-center justify-between gap-3 border-b border-border bg-surface-raised px-6 lg:left-(--sidebar-w) lg:right-4 lg:rounded-t-[15px]"
         >
           <span aria-hidden className="truncate font-medium text-fg-strong">
             {title}

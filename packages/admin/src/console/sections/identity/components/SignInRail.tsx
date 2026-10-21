@@ -71,7 +71,7 @@ export function SignInRail({
         aria-label="On this page"
         className={cn("hidden xl:block", className)}
       >
-        <p className="mb-2 text-xs font-medium uppercase tracking-wider text-fg-muted">
+        <p className="mb-2 text-xs font-medium text-fg-muted">
           On this page
         </p>
         <ul className="space-y-1 border-l border-border">
