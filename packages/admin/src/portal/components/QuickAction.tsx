@@ -132,11 +132,11 @@ export function QuickActionButton({
       >
         {twoLine ? (
           <>
-            <span className="flex items-center gap-2 text-base font-semibold">
+            <span className="flex items-center justify-center gap-2 text-base font-semibold">
               <Download aria-hidden className="size-5" />
               {action.label}
             </span>
-            <span className="text-xs font-normal opacity-90">
+            <span className="text-xs font-normal opacity-90 [overflow-wrap:anywhere]">
               {action.detail}
             </span>
           </>
