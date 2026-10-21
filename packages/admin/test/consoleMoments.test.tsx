@@ -348,7 +348,7 @@ describe("moments show once per product (EXPERIENCE §0.7)", () => {
       floors: [],
     });
     overview();
-    await screen.findByRole("heading", { level: 2, name: "Releases" });
+    await screen.findByRole("heading", { level: 2, name: "Ship builds" });
     await waitFor(() => expect(seen("first-release:djdl")).toBe(true));
     expect(banner("first-release:djdl")).toBeNull();
     // Later releases never bring it back.
@@ -431,7 +431,7 @@ describe("moments show once per product (EXPERIENCE §0.7)", () => {
       floors: [],
     });
     overview();
-    await screen.findByRole("heading", { level: 2, name: "Releases" });
+    await screen.findByRole("heading", { level: 2, name: "Ship builds" });
     await act(async () => undefined);
     expect(banner("first-release:djdl")).toBeNull();
     expect(seen("first-release:djdl")).toBe(false);

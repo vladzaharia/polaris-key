@@ -205,12 +205,12 @@ function CheckRow({
       ) : null}
       {isFloorCheck(check.id) ? (
         <p className="text-xs text-fg">
-          Lower or clear the floor from the channel's menu on{" "}
+          Lower or clear the floor from the track's menu on{" "}
           <Link
             to={r.channels(slug)}
             className="text-accent-fg underline-offset-4 hover:underline"
           >
-            Channels
+            Release tracks
           </Link>
           .
         </p>

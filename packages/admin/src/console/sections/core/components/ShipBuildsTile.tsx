@@ -5,6 +5,7 @@ import { formatCount } from "../../../../lib/format.js";
 import { ACCESS_LABELS } from "../../../../lib/labels.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
 import { qk } from "../../../data/queries.js";
+import { useReleaseHealth } from "../../release/data.js";
 import { r } from "../../../routes.js";
 import { Big, Line, TileFrame } from "./TileFrame.js";
 
@@ -39,10 +40,7 @@ export function ShipBuildsTile({
     queryKey: qk.releases(slug),
     queryFn: () => api.releases(slug),
   });
-  const health = useQuery({
-    queryKey: qk.releaseHealth(slug),
-    queryFn: () => api.releaseHealth(slug).then((x) => x.health),
-  });
+  const health = useReleaseHealth(slug);
   const rollouts = useQuery({
     queryKey: qk.rollouts(slug),
     queryFn: () => api.rollouts(slug),
