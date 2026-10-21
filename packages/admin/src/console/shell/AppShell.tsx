@@ -282,6 +282,8 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
   }, [openPalette]);
   const [sheetOpen, setSheetOpen] = React.useState(false);
   const [switcherOpen, setSwitcherOpen] = React.useState(false);
+  // The drawer's own switcher, for `g p` below the desktop breakpoint.
+  const [drawerSwitcherOpen, setDrawerSwitcherOpen] = React.useState(false);
   // A refused or unknown page holds no section: open every group the member can use if there are
   // three or fewer, else the first, so the way out is in view.
   const openable =
@@ -300,6 +302,14 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
   const version = usePlatformVersion(canIn(me, "platform"));
 
   const key = viewKey(route);
+  const keyRef = React.useRef(key);
+  keyRef.current = key;
+  // The route the drawer opened on: a different one at close means the page heading has focus.
+  const openedAt = React.useRef(key);
+  React.useEffect(() => {
+    if (navOpen) openedAt.current = keyRef.current;
+    else setDrawerSwitcherOpen(false);
+  }, [navOpen]);
   React.useEffect(() => {
     setNavOpen(false);
   }, [key]);
@@ -331,7 +341,15 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
     go: (k) => {
       if (k === "h") return navigate(r.home());
       if (k === "p") {
-        setSwitcherOpen(true);
+        const desktop =
+          typeof window.matchMedia !== "function" ||
+          window.matchMedia(DESKTOP_QUERY).matches;
+        if (desktop) setSwitcherOpen(true);
+        else {
+          // The desktop sidebar is hidden here: open the drawer with its switcher.
+          setNavOpen(true);
+          setDrawerSwitcherOpen(true);
+        }
         return true;
       }
       if (!slug) return false;
@@ -472,8 +490,10 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
                   )?.focus();
                 }}
                 onCloseAutoFocus={(e) => {
-                  // The drawer is opened from the top bar, not a Radix trigger: hand focus back.
+                  // The drawer is opened from the top bar, not a Radix trigger: hand focus back,
+                  // unless the route changed: then the page heading has focus.
                   e.preventDefault();
+                  if (openedAt.current !== keyRef.current) return;
                   document.getElementById(NAV_BUTTON_ID)?.focus();
                 }}
                 className="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col border-r border-border bg-surface-page pt-[env(safe-area-inset-top,0px)] shadow-elevation-3 animate-pk-in pk-nav-drawer lg:hidden"
@@ -491,7 +511,12 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
                 </div>
                 <Sidebar
                   {...sidebarProps}
-                  switcher={switcherContext}
+                  switcher={{
+                    ...switcherContext,
+                    open: drawerSwitcherOpen,
+                    onOpenChange: setDrawerSwitcherOpen,
+                    onNavigate: () => setNavOpen(false),
+                  }}
                   idPrefix="drawer"
                   onNavigate={() => setNavOpen(false)}
                 />

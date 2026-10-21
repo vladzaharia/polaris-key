@@ -42,6 +42,8 @@ export interface SwitcherContext {
   onOpenChange?: (open: boolean) => void;
   /** ST-29: the member holds the Platform area (its pages and New product). Default: yes. */
   platform?: boolean;
+  /** Called after the switcher navigates (the phone drawer closes, so the page can take focus). */
+  onNavigate?: () => void;
 }
 
 /** The product's identity tile: its logo, or the Polaris mark for Platform. */
@@ -59,14 +61,14 @@ function ContextTile({
         (current as { presentation?: ProductPresentation }).presentation
       }
       size={size}
-      className="shrink-0"
+      className={cn("shrink-0", size === 40 ? "size-[40px]!" : "size-[32px]!")}
     />
   ) : (
     <span
       aria-hidden
       className={cn(
         "inline-flex shrink-0 items-center justify-center rounded-lg border border-border bg-surface-sunken",
-        size === 40 ? "size-10" : "size-8",
+        size === 40 ? "size-[40px]" : "size-[32px]",
       )}
     >
       <PolarisMark kind="key" size={size === 40 ? 24 : 20} theme="mono" />
@@ -89,8 +91,17 @@ export function ProductSwitcher({
   open: openProp,
   onOpenChange: onOpenChangeProp,
   platform = true,
+  onNavigate,
   rail = false,
 }: SwitcherContext & { rail?: boolean }): React.ReactElement {
+  // Navigating from the menu: the route's heading takes focus, not the card Radix would restore.
+  const navigated = React.useRef(false);
+  const go = (to: string): void => {
+    navigated.current = true;
+    onOpenChange(false);
+    navigate(to);
+    onNavigate?.();
+  };
   const [own, setOwn] = React.useState(false);
   const open = openProp ?? own;
   const onOpenChange = onOpenChangeProp ?? setOwn;
@@ -109,8 +120,7 @@ export function ProductSwitcher({
 
   const select = (p: ProductLike): void => {
     pushRecent(p.slug);
-    onOpenChange(false);
-    navigate(
+    go(
       productPage(p.slug, page ? sameViewIn(page, servicesOf(p)) : "overview"),
     );
   };
@@ -149,11 +159,11 @@ export function ProductSwitcher({
         </span>
         <ServiceDots product={p} className="shrink-0" />
         {attention > 0 ? (
-          <span
-            className="rounded-full bg-warning-subtle px-1.5 text-xs font-medium text-warning"
-            aria-label={`${attention} need attention`}
-          >
+          <span className="rounded-full bg-warning-subtle px-1.5 text-xs font-medium text-warning">
             {attention}
+            <span className="sr-only">
+              {attention === 1 ? " needs attention" : " need attention"}
+            </span>
           </span>
         ) : null}
         {p.slug === current?.slug ? (
@@ -166,12 +176,16 @@ export function ProductSwitcher({
     );
   };
 
-  const filtered = products.filter(matches);
+  // Recent products lead the menu; Products lists the rest.
+  const recentSlugs = new Set(q === "" ? recent.map((p) => p.slug) : []);
+  const filtered = products.filter(
+    (p) => matches(p) && !recentSlugs.has(p.slug),
+  );
   const groupHeading =
     "[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:text-fg-muted";
   const link =
     "flex min-h-10 items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent-fg";
-  const name = current ? current.name : "Platform";
+  const name = current ? current.name : platform ? "Platform" : "All products";
   return (
     <Popover.Root open={open} onOpenChange={onOpenChange}>
       <Popover.Trigger asChild>
@@ -183,23 +197,23 @@ export function ProductSwitcher({
               ? `Product: ${current.name} (${current.slug}). Change product`
               : "Platform. Change product"
           }
-          title={rail ? name : undefined}
+          title={name}
           className={cn(
             "flex w-full min-w-0 items-center overflow-hidden rounded-lg border border-border text-left text-sm",
             "hover:bg-hover focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus",
-            rail ? "h-12 justify-center" : "h-[72px] gap-3 px-3",
+            rail ? "min-h-12 justify-center" : "min-h-[72px] gap-3 px-3 py-3",
           )}
         >
           <ContextTile current={current} size={rail ? 32 : 40} />
           {rail ? null : (
             <>
               <span className="flex min-w-0 flex-1 flex-col">
-                <span className="truncate font-medium text-fg-strong">
+                <span className="break-words font-medium text-fg-strong">
                   {name}
                 </span>
                 <span
                   className={cn(
-                    "truncate text-xs text-fg-muted",
+                    "break-all text-xs text-fg-muted",
                     current && "font-mono",
                   )}
                 >
@@ -220,6 +234,13 @@ export function ProductSwitcher({
         <Popover.Content
           align="start"
           sideOffset={6}
+          aria-label="Switch product"
+          onCloseAutoFocus={(e) => {
+            if (navigated.current) {
+              navigated.current = false;
+              e.preventDefault();
+            }
+          }}
           className="z-50 w-80 max-w-[calc(100vw-1rem)] rounded-lg border border-border bg-surface-overlay p-1 text-fg shadow-elevation-2 animate-pk-in"
         >
           <Command label="Find a product" shouldFilter={false} loop>
@@ -234,14 +255,11 @@ export function ProductSwitcher({
               <Command.Empty className="px-2 py-3 text-sm text-fg-muted">
                 No product matches “{query}”.
               </Command.Empty>
-              {platform && q === "" ? (
+              {platform && (q === "" || "platform".includes(q)) ? (
                 <Command.Group>
                   <Command.Item
                     value="platform"
-                    onSelect={() => {
-                      onOpenChange(false);
-                      navigate(r.home());
-                    }}
+                    onSelect={() => go(r.home())}
                     className="flex min-h-10 cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm data-[selected=true]:bg-accent-subtle data-[selected=true]:text-fg-strong"
                   >
                     <PolarisMark kind="key" size={16} theme="mono" />
@@ -281,7 +299,11 @@ export function ProductSwitcher({
             <div className="mt-1 flex flex-col gap-0.5 border-t border-border pt-1">
               <a
                 href={r.productNew()}
-                onClick={() => onOpenChange(false)}
+                onClick={() => {
+                  navigated.current = true;
+                  onOpenChange(false);
+                  onNavigate?.();
+                }}
                 className={link}
               >
                 <Plus aria-hidden className="size-4 shrink-0" />

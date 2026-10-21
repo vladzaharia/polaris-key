@@ -370,7 +370,7 @@ export const SECTIONS: NavSection[] = [
   },
   {
     key: "license",
-    label: "License",
+    label: "Licensing",
     service: "license",
     accent: "license",
     glyph: KeyRound,
@@ -432,7 +432,7 @@ export const SECTIONS: NavSection[] = [
   },
   {
     key: "config",
-    label: "Config",
+    label: "Managed config",
     service: "config",
     accent: "config",
     glyph: SlidersHorizontal,
@@ -675,7 +675,7 @@ export const SECTIONS: NavSection[] = [
   },
   {
     key: "identity",
-    label: "Identity",
+    label: "Sign-in",
     service: "identity",
     accent: "identity",
     glyph: UserRound,

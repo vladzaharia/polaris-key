@@ -90,12 +90,12 @@ describe("sections by enablement (D-15)", () => {
     await ready();
     await waitFor(() =>
       expect(sectionHeaders()).toEqual([
-        "License",
-        "Config",
+        "Licensing",
+        "Managed config",
         "Release",
         "Distribution",
         "Update",
-        "Identity",
+        "Sign-in",
         "Cloud Sync",
         "Commerce",
       ]),
@@ -113,10 +113,10 @@ describe("sections by enablement (D-15)", () => {
     await ready();
     await waitFor(() =>
       expect(sectionHeaders()).toEqual([
-        "License",
-        "Config",
+        "Licensing",
+        "Managed config",
         "Distribution",
-        "Identity",
+        "Sign-in",
         "Cloud Sync",
         "Commerce",
       ]),
@@ -262,7 +262,7 @@ describe("items and headers (owner, 2026-10-03)", () => {
   it("items are real links (middle-click and open in a new tab work, SH-5)", async () => {
     boot("#/p/djdl", { services: ALL_ON });
     await ready();
-    await expand("License");
+    await expand("Licensing");
     expect(
       within(nav())
         .getByRole("link", { name: "Licenses" })
@@ -313,12 +313,12 @@ describe("collapsible section headers (owner, 2026-10-03)", () => {
   it("each header is a disclosure button with aria-expanded and aria-controls", async () => {
     boot("#/p/djdl", { services: ALL_ON });
     await ready();
-    const license = header("License");
+    const license = header("Licensing");
     expect(license.tagName).toBe("BUTTON");
     expect(license.getAttribute("aria-expanded")).toBe("false");
     const controls = license.getAttribute("aria-controls")!;
     expect(controls).toBeTruthy();
-    await expand("License");
+    await expand("Licensing");
     const region = document.getElementById(controls)!;
     expect(within(region).getByRole("link", { name: "Licenses" })).toBeTruthy();
   });
@@ -326,7 +326,7 @@ describe("collapsible section headers (owner, 2026-10-03)", () => {
   it("a collapsed header expands as a peek on click, and with Enter and Space", async () => {
     boot("#/p/djdl", { services: ALL_ON });
     await ready();
-    const license = header("License");
+    const license = header("Licensing");
     expect(within(nav()).queryByRole("link", { name: "Licenses" })).toBeNull();
 
     await userEvent.click(license);
@@ -345,17 +345,19 @@ describe("collapsible section headers (owner, 2026-10-03)", () => {
     expect(license.getAttribute("aria-expanded")).toBe("true");
 
     // A peek touches only its own section.
-    expect(expanded("Config")).toBe("false");
+    expect(expanded("Managed config")).toBe("false");
   });
 
   it("a collapsed section keeps its header and its accent cue", async () => {
     boot("#/p/djdl", { services: ALL_ON });
     await ready();
-    expect(expanded("Config")).toBe("false");
+    expect(expanded("Managed config")).toBe("false");
     const group = nav().querySelector('[data-section="config"]')!;
     expect(group.getAttribute("data-service")).toBe("config");
     expect(
-      within(group as HTMLElement).getByRole("button", { name: "Config" }),
+      within(group as HTMLElement).getByRole("button", {
+        name: "Managed config",
+      }),
     ).toBeTruthy();
     expect(
       group.querySelector("[data-section-header] .bg-accent"),
@@ -365,7 +367,7 @@ describe("collapsible section headers (owner, 2026-10-03)", () => {
   it("entering another section opens it and collapses the previous one and every peek", async () => {
     boot("#/p/djdl/license/tiers", { services: ALL_ON });
     await ready();
-    await expand("Config");
+    await expand("Managed config");
     await expand("Release");
 
     // Follow a link inside a peeked section.
@@ -379,8 +381,8 @@ describe("collapsible section headers (owner, 2026-10-03)", () => {
           .getAttribute("aria-current"),
       ).toBe("page"),
     );
-    expect(expanded("Config")).toBe("true");
-    expect(expanded("License")).toBe("false");
+    expect(expanded("Managed config")).toBe("true");
+    expect(expanded("Licensing")).toBe("false");
     expect(expanded("Release")).toBe("false");
     expect(within(nav()).queryByRole("link", { name: "Tiers" })).toBeNull();
     expect(within(nav()).queryByRole("link", { name: "Releases" })).toBeNull();
@@ -396,7 +398,7 @@ describe("collapsible section headers (owner, 2026-10-03)", () => {
           .getAttribute("aria-current"),
       ).toBe("page"),
     );
-    expect(expanded("Config")).toBe("false");
+    expect(expanded("Managed config")).toBe("false");
     for (const section of FOLDING) {
       expect(expanded(section.label), section.label).toBe("false");
     }
@@ -405,7 +407,7 @@ describe("collapsible section headers (owner, 2026-10-03)", () => {
   it("a peek stays open while you move between pages of the active section", async () => {
     boot("#/p/djdl/license/tiers", { services: ALL_ON });
     await ready();
-    await expand("Config");
+    await expand("Managed config");
     await userEvent.click(
       within(nav()).getByRole("link", { name: "Licenses" }),
     );
@@ -416,13 +418,13 @@ describe("collapsible section headers (owner, 2026-10-03)", () => {
           .getAttribute("aria-current"),
       ).toBe("page"),
     );
-    expect(expanded("Config")).toBe("true");
+    expect(expanded("Managed config")).toBe("true");
   });
 
   it("the section holding the current page cannot be collapsed", async () => {
     boot("#/p/djdl/license/tiers", { services: ALL_ON });
     await ready();
-    const license = header("License");
+    const license = header("Licensing");
     expect(license.getAttribute("aria-disabled")).toBe("true");
     await userEvent.click(license);
     expect(license.getAttribute("aria-expanded")).toBe("true");
@@ -444,13 +446,13 @@ describe("collapsible section headers (owner, 2026-10-03)", () => {
     await screen.findByText(/of 1 feature Verified/);
     const before = { ...window.localStorage };
     const setItem = vi.spyOn(Storage.prototype, "setItem");
-    await expand("Config");
+    await expand("Managed config");
     await expand("Release");
     await userEvent.click(header("Release"));
     act(() => {
       window.location.hash = "#/p/djdl/license/tiers";
     });
-    await waitFor(() => expect(expanded("License")).toBe("true"));
+    await waitFor(() => expect(expanded("Licensing")).toBe("true"));
     await expand("Distribution");
     expect(setItem).not.toHaveBeenCalled();
     expect({ ...window.localStorage }).toEqual(before);
@@ -617,6 +619,28 @@ describe("the product switcher keeps the page (SH-11)", () => {
   });
 });
 
+describe("context card and selected rows (ST-45 fix round)", () => {
+  it("names the switcher dialog and wraps the card name instead of truncating", async () => {
+    boot("#/p/djdl", { services: ALL_ON });
+    await ready();
+    const card = within(nav()).getByRole("button", { name: /^Product: DJDL/ });
+    expect(card.className).toContain("min-h-[72px]");
+    expect(card.className).not.toMatch(/(^| )h-\[72px\]/);
+    await userEvent.click(card);
+    expect(
+      await screen.findByRole("dialog", { name: "Switch product" }),
+    ).toBeTruthy();
+  });
+
+  it("a selected one-row feature carries the 3 px marker, not the fill alone", async () => {
+    boot("#/p/djdl/sync/data", { services: ALL_ON });
+    await ready();
+    const row = nav().querySelector("[data-section-header=sync]")!;
+    expect(row.getAttribute("aria-current")).toBe("page");
+    expect(row.className).toContain("before:w-[3px]");
+  });
+});
+
 describe("the mobile drawer (SH-2)", () => {
   it("is closed until opened, is a modal, and Escape closes it", async () => {
     boot("#/p/djdl", { services: ALL_ON });
@@ -725,7 +749,7 @@ describe("state pages (T8)", () => {
       services: { ...ALL_ON, license: { enabled: false } },
     });
     expect(
-      await screen.findByText("The License service isn’t enabled for DJDL."),
+      await screen.findByText("The Licensing service isn’t enabled for DJDL."),
     ).toBeTruthy();
   });
 
@@ -789,7 +813,7 @@ describe("state pages (T8)", () => {
     boot("#/p/djdl/nonsense", { services: ALL_ON });
     await screen.findByRole("heading", { name: "Page not found" });
     await ready();
-    expect(sectionHeaders()).toContain("License");
+    expect(sectionHeaders()).toContain("Licensing");
     await userEvent.click(
       screen.getByRole("button", {
         name: "Product: DJDL (djdl). Change product",
@@ -808,7 +832,7 @@ describe("state pages (T8)", () => {
     expect(
       screen.getByRole("heading", {
         level: 2,
-        name: "This page moved to License\u00a0→\u00a0Licenses",
+        name: "This page moved to Licensing\u00a0→\u00a0Licenses",
       }),
     ).toBeTruthy();
     // Not a redirect: the old address stays until the operator follows the link.
@@ -842,7 +866,7 @@ describe("state pages (T8)", () => {
     for (const [old, title, link, href] of [
       [
         "#/p/djdl/licenses/lic_1",
-        "This page moved to License\u00a0→\u00a0Licenses",
+        "This page moved to Licensing\u00a0→\u00a0Licenses",
         "Open license lic_1",
         "#/p/djdl/license/licenses/lic_1",
       ],
@@ -956,7 +980,7 @@ describe("page heading, title and focus", () => {
   it("moves focus to the new page's h1 and announces it", async () => {
     boot("#/p/djdl", { services: ALL_ON });
     await ready();
-    await expand("License");
+    await expand("Licensing");
     await userEvent.click(within(nav()).getByRole("link", { name: "Tiers" }));
     const h1 = await screen.findByRole("heading", { level: 1, name: "Tiers" });
     await waitFor(() => expect(document.activeElement).toBe(h1));
@@ -1148,7 +1172,7 @@ describe("keyboard shortcuts (ADMIN.md §5.5)", () => {
     );
     // Only the active section lists its pages; another section is one icon named for it.
     expect(within(nav()).queryByRole("link", { name: "Licenses" })).toBeNull();
-    expect(within(nav()).getByRole("link", { name: "License" })).toBeTruthy();
+    expect(within(nav()).getByRole("link", { name: "Licensing" })).toBeTruthy();
     expect(window.localStorage.getItem(PREF_KEYS.sidebarRail)).toBe("true");
   });
 });
@@ -1158,6 +1182,6 @@ describe("enablement edits refresh the nav", () => {
     const enablement: Enablement = { ...ALL_ON, identity: { enabled: false } };
     boot("#/p/djdl", { services: enablement });
     await ready();
-    await waitFor(() => expect(sectionHeaders()).not.toContain("Identity"));
+    await waitFor(() => expect(sectionHeaders()).not.toContain("Sign-in"));
   });
 });
