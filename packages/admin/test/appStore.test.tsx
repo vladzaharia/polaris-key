@@ -366,7 +366,7 @@ describe("Distribution → App Store: the Distribute flow", () => {
     ).toBeTruthy();
     expect(screen.queryByRole("radiogroup", { name: "Builds" })).toBeNull();
     expect(
-      screen.getByRole("link", { name: "Open Outlet credentials" }),
+      screen.getByRole("link", { name: "Open Channel credentials" }),
     ).toBeTruthy();
   });
 

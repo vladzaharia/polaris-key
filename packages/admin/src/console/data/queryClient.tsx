@@ -10,14 +10,20 @@
  */
 
 import * as React from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { bindWriteInvalidation } from "./mutations.js";
+import {
+  QueryCache,
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query";
+import { bindWriteInvalidation, refreshMeOnNoAccess } from "./mutations.js";
 
 /** How long a successful read is fresh: no refetch on remount inside this window. */
 export const STALE_TIME_MS = 30_000;
 
 export function createQueryClient(): QueryClient {
   return new QueryClient({
+    // A read refused with `no_access` re-reads `me`, so the shell shows the NoAccess state (B-212).
+    queryCache: new QueryCache({ onError: refreshMeOnNoAccess }),
     defaultOptions: {
       queries: {
         staleTime: STALE_TIME_MS,

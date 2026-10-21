@@ -226,10 +226,10 @@ export function IntegrationPage({
         <EmptyState
           kind="first-run"
           title="No feature is turned on"
-          description="Turn on a service to see what your app needs for it."
+          description="Turn on a feature to see what your app needs for it."
           primaryAction={
             <Button asChild>
-              <Link to={r.services(slug)}>Enable services</Link>
+              <Link to={r.services(slug)}>Enable features</Link>
             </Button>
           }
         />

@@ -42,11 +42,11 @@ The connector runs for a product when all of these hold:
        bundleId: gg.acme.dice
    ```
 
-2. An **`asc-api-key` channel credential** is stored under Distribution, on **Outlet credentials**: a **team** API key with
+2. An **`asc-api-key` channel credential** is stored under Distribution, on **Channel credentials**: a **team** API key with
    the **App Manager** role (not Admin), as key id, issuer id and the `.p8` file, **pinned** to
    this product's app — its App Store Connect app id, the same digits as the `appleId` above (see
    [Pinning the app](#pinning-the-app)). See
-   [Channel credentials](/docs/operate/console/keys-and-secrets/#outlet-credentials). A credential bound to
+   [Channel credentials](/docs/operate/console/keys-and-secrets/#channel-credentials). A credential bound to
    one of the Apple channels (`outletId`) is preferred over an unbound one.
 
 3. For webhooks, an **`asc-webhook-secret` channel credential**. Let the Worker generate it — it is
@@ -83,7 +83,7 @@ another app the key can see.
 So the key carries a **pin** that only a platform admin sets: the app id it may be used for in
 this product. The connector runs only while the manifest's `appleId` equals the pin.
 
-- **Set it with the key.** **Outlet credentials** under Distribution asks for the app id with the key. Over the API, send it
+- **Set it with the key.** **Channel credentials** under Distribution asks for the app id with the key. Over the API, send it
   as `pin`:
 
   ```http title="Request"

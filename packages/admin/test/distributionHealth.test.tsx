@@ -215,7 +215,7 @@ describe("Distribution → Health", () => {
     expect(await screen.findByText(/“Error rate”/)).toBeTruthy();
   });
 
-  it("links the unconfigured Sentry state to Outlet credentials (UHL-7)", async () => {
+  it("links the unconfigured Sentry state to Channel credentials (UHL-7)", async () => {
     bootWith(HASH, {
       [P("/distribution/update-health")]: {
         ...HEALTH,

@@ -592,7 +592,7 @@ export function SimulatorPage({ slug }: { slug: string }): React.ReactElement {
           {distributionOn ? (
             <FormField
               name="sim-outlet"
-              label="Outlet"
+              label="Channel"
               help="Where the device installed the app from; none means the device does not say."
               value={draft.outlet || null}
               onChange={(v: string | null) => set("outlet", v ?? "")}
@@ -613,7 +613,7 @@ export function SimulatorPage({ slug }: { slug: string }): React.ReactElement {
           ) : null}
           <FormField
             name="sim-channel"
-            label="Channel"
+            label="Release track"
             value={draft.channel || null}
             onChange={(v: string | null) => set("channel", v ?? "")}
           >

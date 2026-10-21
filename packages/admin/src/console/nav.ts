@@ -611,7 +611,9 @@ export const SECTIONS: NavSection[] = [
       },
       {
         page: "outlets",
-        label: "Outlets & feeds",
+        label: "Channel setup",
+        // The page's earlier name still finds it.
+        keywords: "install sources feeds",
         path: "distribution/outlets",
         icon: Store,
         docs: "/docs/features/ship-builds/channels/feeds/",
@@ -623,6 +625,8 @@ export const SECTIONS: NavSection[] = [
         page: "storefronts",
         accent: "distribution",
         label: "Storefronts",
+        // The first-party store is the Polaris Locker page here (B-215).
+        keywords: "polaris locker listing badges discover",
         path: "distribution/storefronts",
         icon: Globe,
         docs: "/docs/features/ship-builds/channels/storefronts/",
@@ -692,7 +696,8 @@ export const SECTIONS: NavSection[] = [
       {
         page: "credentials",
         accent: "distribution",
-        label: "Outlet credentials",
+        label: "Channel credentials",
+        keywords: "store keys connectors",
         path: "distribution/credentials",
         icon: Plug,
         docs: "/docs/features/ship-builds/channels/",

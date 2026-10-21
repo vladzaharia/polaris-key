@@ -273,7 +273,7 @@ function TokensTable({
             title="No registry tokens"
             description={
               licenseId
-                ? "Tokens bound to this licence appear here, whether an operator or the licensee minted them."
+                ? "Tokens bound to this license appear here, whether an operator or the licensee minted them."
                 : "A client of a feed that is not public presents one. Public feeds need none."
             }
           />
@@ -336,7 +336,7 @@ function TokensTable({
         intent={intentOf("registryToken.revokeAll")}
         title={
           licenseId
-            ? "Revoke every token of this licence?"
+            ? "Revoke every token of this license?"
             : "Revoke every registry token?"
         }
         consequences={[
@@ -432,7 +432,7 @@ function LicensePicker({
   return (
     <FormField
       name="licenseId"
-      label="Licence"
+      label="License"
       required
       value={value}
       onChange={(v: string | null) => onChange(v)}
@@ -446,10 +446,10 @@ function LicensePicker({
             secondary: l.id,
           }))}
           placeholder={
-            licenses.isPending ? "Loading licences…" : "Choose a licence"
+            licenses.isPending ? "Loading licenses…" : "Choose a license"
           }
-          searchPlaceholder="Search licences"
-          emptyText="No licence matches."
+          searchPlaceholder="Search licenses"
+          emptyText="No license matches."
         />
       )}
     </FormField>
@@ -556,7 +556,7 @@ function MintDialog({
         : "Choose at least one feed."
       : undefined;
   const licenseError =
-    binding === "license" && !license ? "Choose a licence." : undefined;
+    binding === "license" && !license ? "Choose a license." : undefined;
   const invalid = !!(daysError || labelError || feedsError || licenseError);
 
   const submit = async (e: React.FormEvent): Promise<void> => {
@@ -658,9 +658,9 @@ function MintDialog({
                     },
                     {
                       value: "license",
-                      label: "One licence",
+                      label: "One license",
                       description:
-                        "Works while the licence is active; entitled needs its flag.",
+                        "Works while the license is active; entitled needs its flag.",
                       icon: <BadgeCheck aria-hidden className="size-4" />,
                     },
                   ]}
@@ -849,7 +849,7 @@ export function LicenseRegistryTokens({
     <SettingsSection id="license-registry-tokens" title="Registry tokens">
       <SettingsRow
         label="Package feeds"
-        help="Tokens bound to this licence work while it is active."
+        help="Tokens bound to this license work while it is active."
         footer={
           <div className="mt-4">
             <TokensTable

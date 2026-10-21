@@ -80,7 +80,7 @@ function PublicFix({
     <>
       {data.registration === "open" ? (
         <Link to={r.services(slug)} className={link}>
-          Change in Services
+          Change in Features
         </Link>
       ) : null}
       {manifest ? (

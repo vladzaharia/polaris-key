@@ -74,7 +74,7 @@ This is the canonical glossary. The console, Polaris Locker and the docs use one
 
 ### Console copy rules
 
-Six words leave every console string, because the UI names each of those things with another word:
+These words leave every console string, because the UI names each of those things with another word:
 
 | Leaves the UI               | The UI says                                                                                          |
 | --------------------------- | ---------------------------------------------------------------------------------------------------- |
@@ -83,6 +83,7 @@ Six words leave every console string, because the UI names each of those things 
 | "grant"                     | **Add-on**, or a plain verb (give, add). Locker's **Automatic grant** is the one kept use            |
 | "capability"                | The feature, the switch, or what the channel allows                                                  |
 | "portal", "customer portal" | **Polaris Locker**, then **Locker**. The console and docs say "Polaris Locker" for the customer site |
+| "licence"                   | **License**: US spelling, noun and verb. Identifiers and file names keep their spelling              |
 
 The identifiers keep them (`outlet`, `dist_outlets`, `grants`, `outletCapabilities`, `portal*`). A code span in copy is an identifier, not a word.
 

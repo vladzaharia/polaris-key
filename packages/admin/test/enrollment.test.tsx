@@ -39,7 +39,7 @@ describe("Enrollment", () => {
     expect(await within(reg).findByText("License required")).toBeTruthy();
     expect(
       within(reg)
-        .getByRole("link", { name: "Change in Services" })
+        .getByRole("link", { name: "Change in Features" })
         .getAttribute("href"),
     ).toBe("#/p/djdl/settings/features");
     expect(within(reg).queryByRole("radio")).toBeNull();

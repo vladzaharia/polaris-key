@@ -120,10 +120,10 @@ function PackageFeedsOff({
         kind="first-run"
         service="distribution"
         title="Package feeds are off for this product"
-        description="Turn them on in Services, under Distribution. Each feed then gets its own settings here."
+        description="Turn them on in Features, under Rollouts. Each feed then gets its own settings here."
         primaryAction={
           <Button asChild>
-            <Link to={r.services(slug)}>Open Services</Link>
+            <Link to={r.services(slug)}>Open Features</Link>
           </Button>
         }
         docs={docsUrl("packageFeeds")}

@@ -57,12 +57,12 @@
       "page": "signing-in",
       "entry": "disabled",
       "why": "The app's developer hasn't set up sign-in for this app.",
-      "fix": "Use another way to start, such as a license key, if the app offers one. Otherwise ask the app's developer."
+      "fix": "Use a license key if the app offers one, or ask the app's developer."
     },
     "unavailable": {
       "page": "signing-in",
       "entry": "disabled",
-      "why": "The sign-in service couldn't start a sign-in right now.",
+      "why": "Sign-in couldn't start right now.",
       "fix": "Wait a few minutes, then try again."
     },
     "sign-in-unavailable": {
@@ -72,8 +72,8 @@
     "identity_disabled": {
       "page": "signing-in",
       "entry": "disabled",
-      "why": "The app's developer turned off sign-in through this app. Installs and licenses that are already set up keep working; only signing in stops.",
-      "fix": "Keep using the app. If you need to sign in, ask the app's developer."
+      "why": "The app's developer turned off sign-in for this app. Anything already set up keeps working.",
+      "fix": "Keep using the app. To sign in, ask the app's developer."
     },
     "auth_method_disabled": {
       "page": "signing-in",
@@ -153,6 +153,12 @@
     "invalid_client": {
       "page": "signing-in",
       "why": "The app isn't set up to sign people in through Polaris Locker, so we couldn't continue.",
+      "fix": "Ask the app's developer."
+    },
+    "unknown_app": {
+      "page": "signing-in",
+      "entry": "disabled",
+      "why": "This app isn't set up for sign-in through Polaris Locker.",
       "fix": "Ask the app's developer."
     },
     "redirect_uri_mismatch": {

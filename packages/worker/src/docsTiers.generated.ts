@@ -260,6 +260,7 @@ export const DOCS_REDIRECT_TIERS: Readonly<
   "/docs/help/code/unauthorized/index.html": "public",
   "/docs/help/code/unavailable/index.html": "public",
   "/docs/help/code/unknown/index.html": "public",
+  "/docs/help/code/unknown_app/index.html": "public",
   "/docs/help/code/unsupported/index.html": "public",
   "/docs/help/code/unsupported_grant_type/index.html": "public",
   "/docs/help/code/upstream_rate_limited/index.html": "public",

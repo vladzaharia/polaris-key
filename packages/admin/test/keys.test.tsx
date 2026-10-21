@@ -633,7 +633,7 @@ describe("Keys & secrets → the page", () => {
       "CI publishing",
     ]);
     expect(screen.queryByText("Edge-mint recipes")).toBeNull();
-    expect(screen.queryByText("Outlet credentials")).toBeNull();
+    expect(screen.queryByText("Channel credentials")).toBeNull();
   });
 
   it("shows an error state when the product cannot load", async () => {

@@ -388,8 +388,8 @@ function DistributionTab({
     return (
       <EmptyState
         kind="first-run"
-        title="No outlets declared"
-        description="Outlets come from the distribution manifest; declare one to see where this release is available."
+        title="No channels declared"
+        description="Channels come from the distribution manifest; declare one to see where this release is available."
       />
     );
   if (!matrix.releases.some((x) => x.releaseId === release.releaseId))
@@ -748,7 +748,7 @@ function StatusTab({
           <p className="px-5 py-3.5 text-sm text-fg-muted">
             {release.yank
               ? `${release.version} is yanked: only a pin serves it.`
-              : `No channel or outlet offers ${release.version}.`}
+              : `No release track or channel offers ${release.version}.`}
           </p>
         )}
       </section>

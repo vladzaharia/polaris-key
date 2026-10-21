@@ -75,7 +75,7 @@ mappings (`409`, `commerce_requires_license`).
 Everything is operator-owned: no `.pkey/` manifest field reaches it, so a repo push cannot decide
 what a payment unlocks or whose purchases are believed. As a platform admin:
 
-1. **Store the store's credential** on **Outlet credentials** ([Channel credentials](/docs/operate/console/keys-and-secrets/#outlet-credentials)),
+1. **Store the store's credential** on **Channel credentials** ([Channel credentials](/docs/operate/console/keys-and-secrets/#channel-credentials)),
    pinned to the app: an `app-store-server-key` pinned to the bundle id, a
    `google-service-account` pinned to the package name (the Google Play connector's), a
    `steam-publisher-key` pinned to the game's app id.

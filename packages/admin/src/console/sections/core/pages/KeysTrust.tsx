@@ -467,7 +467,7 @@ function PolicyDrawer({
                   </FormField>
                   <Switch
                     label="Accept testing responses"
-                    description="For internal testing only: a licence tester's configured response passes."
+                    description="For internal testing only: a license tester's configured response passes."
                     checked={draft.playIntegrity.allowTestingResponses === true}
                     onCheckedChange={(c) => {
                       const { allowTestingResponses: _drop, ...rest } =

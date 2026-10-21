@@ -1,7 +1,7 @@
 /**
  * License → Enrollment (ADMIN.md §6.5.3, T4). Three sections:
  *
- * 1. **Registration**: the enforced policy, read-only, with **Change in Services** (FPP-2). It is
+ * 1. **Registration**: the enforced policy, read-only, with **Change in Features** (FPP-2). It is
  *    a Core policy derived from the service set and never declared; a second control here would
  *    split one value.
  * 2. **Fingerprint policy**: one mode choice (Off, Lenient, Normal, Strict) replaces the switch
@@ -217,7 +217,7 @@ function RegistrationSection({ slug }: { slug: string }): React.ReactElement {
       title="Registration"
       actions={
         <Button variant="outline" size="sm" asChild>
-          <Link to={r.services(slug)}>Change in Services</Link>
+          <Link to={r.services(slug)}>Change in Features</Link>
         </Button>
       }
     >

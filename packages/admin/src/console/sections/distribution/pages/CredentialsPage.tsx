@@ -250,7 +250,7 @@ function describe(e: unknown): { title: string; description?: string } {
           ? e.message
           : "It is assigned to another product through the platform's store connection. Unassign it there first.",
     };
-  return errorCopy(e, { area: "distribution", thing: "Outlet credential" });
+  return errorCopy(e, { area: "distribution", thing: "Channel credential" });
 }
 
 const CREDENTIAL = codecs.string("");
@@ -362,7 +362,7 @@ export function CredentialsPage({
     },
     {
       id: "outlet",
-      header: "Outlet",
+      header: "Channel",
       accessorFn: (c) => c.outletId ?? "",
       meta: { priority: 2 },
       cell: ({ row }) =>
@@ -417,7 +417,7 @@ export function CredentialsPage({
     <CollectionTemplate
       header={
         <PageHeader
-          title="Outlet credentials"
+          title="Channel credentials"
           titleAside={
             creds.data ? (
               <span className="text-sm tabular-nums text-fg-muted">
@@ -440,7 +440,7 @@ export function CredentialsPage({
     >
       <DataTable<OutletCredentialInfo>
         id="credentials"
-        caption="Outlet credentials"
+        caption="Channel credentials"
         data={list}
         columns={columns}
         getRowId={(c) => c.id}
@@ -468,7 +468,7 @@ export function CredentialsPage({
         empty={
           <EmptyState
             kind="first-run"
-            title="No outlet credentials yet"
+            title="No channel credentials yet"
             description="A store connector needs its store's key to read review and release state and to drive staged rollouts; Sentry needs its integration secret to send alerts."
             primaryAction={
               <Button onClick={() => setDrawer({ mode: "create" })}>
@@ -553,7 +553,7 @@ export function CredentialsPage({
         open={deleting !== null}
         onOpenChange={(o) => !o && setDeleting(null)}
         intent="danger"
-        title={deleting ? `Delete the outlet credential “${deleting.id}”?` : ""}
+        title={`Delete the channel credential “${deleting?.id ?? ""}”?`}
         consequences={[
           "Connectors using it stop working until another is set.",
           "The value cannot be recovered.",
@@ -563,7 +563,7 @@ export function CredentialsPage({
         onConfirm={async () => {
           if (!deleting) return;
           await mutate("deleteOutletCredential", slug, deleting.id);
-          toast.success(`Deleted the outlet credential “${deleting.id}”`);
+          toast.success(`Deleted the channel credential “${deleting.id}”`);
           if (openId === deleting.id) patchQuery({ credential: null });
         }}
       />
@@ -639,8 +639,8 @@ function CredentialDetail({
                     detail: <span className="font-mono text-xs">{v}</span>,
                   })),
                 {
-                  term: "Outlet",
-                  detail: cred.outletId ?? "Any of the product's outlets",
+                  term: "Channel",
+                  detail: cred.outletId ?? "Any of the product's channels",
                 },
                 {
                   term: "Created",
@@ -809,7 +809,7 @@ function SetCredentialDrawer({
   };
 
   const copy = failure ? describe(failure) : null;
-  const title = rotate ? `Rotate “${rotate.id}”` : "Set an outlet credential";
+  const title = rotate ? `Rotate “${rotate.id}”` : "Set a channel credential";
 
   return (
     <Drawer
@@ -889,8 +889,8 @@ function SetCredentialDrawer({
               ) : null}
               <FormField<string | null>
                 name="outlet"
-                label="Outlet"
-                help="Bind it to one outlet, or leave Any to let the connector choose."
+                label="Channel"
+                help="Bind it to one channel, or leave Any to let the connector choose."
                 value={outletId}
                 onChange={setOutletId}
               >

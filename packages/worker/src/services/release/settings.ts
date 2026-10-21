@@ -24,7 +24,7 @@ export const RELEASE_SETTINGS_SLICE: ServiceSettingsSlice = {
       area: "release.compatibility",
       label: "Compatibility window",
       description:
-        "The oldest and newest app versions a licence document admits. Builds outside it are refused at activation and refresh.",
+        "The oldest and newest app versions a license document admits. Builds outside it are refused at activation and refresh.",
       keywords: ["compatMin", "compatMax", "version window"],
       docs: "/docs/features/ship-builds/releases/compatibility/",
       value: { kind: "json", schema: "{ min, max } semver bounds" },

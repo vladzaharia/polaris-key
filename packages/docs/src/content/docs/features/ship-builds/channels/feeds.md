@@ -20,7 +20,7 @@ what Distribution tracks, so a product publishes a release once and every storef
 | Scoop manifest              | `scoop/<channel>.json`                 | `direct`       | Scoop                                    |
 | Flathub checker JSON        | `flathub/<channel>.json`               | `flathub`      | Flathub's External Data Checker          |
 
-In the console, **Outlets & feeds** under Distribution lists the channels `.pkey/distribution` declares, what each one permits, and the feed of each install source.
+In the console, **Channel setup** under Distribution lists the channels `.pkey/distribution` declares, what each one permits, and the feed of each install source.
 
 A feed exists only when the product declares a live channel of its kind in `.pkey/distribution`.
 With several channels of one kind (`altstore` and `altstore-beta`, say), add `?outlet=<id>`; by

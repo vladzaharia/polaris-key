@@ -510,14 +510,14 @@ export function CatalogEntryForm({
       {entry.kind === "flag" ? (
         <div className="grid gap-4 sm:grid-cols-2">
           <Checkbox
-            label="Grant to the user"
+            label="Give to the user"
             checked={entry.userGrant === true}
             onCheckedChange={(on) => set("userGrant", on ? true : undefined)}
           />
           {entry.userGrant ? (
             <FormField
               name="grantLabel"
-              label="Grant label"
+              label="Add-on label"
               value={entry.grantLabel}
             >
               {(f) => (

@@ -117,6 +117,16 @@ describe("the sources", () => {
     expect(filterItems(items, "acme").map((i) => i.label)).toEqual(["Acme"]);
     expect(filterItems(items, "zzz")).toEqual([]);
   });
+
+  it("finds the Storefronts page, which holds the Polaris Locker listing, by 'Locker' (B-215)", () => {
+    const items = navigationSource("djdl", "DJDL", ALL_ON);
+    expect(filterItems(items, "locker").map((i) => i.label)).toContain(
+      "Storefronts",
+    );
+    expect(filterItems(items, "badges").map((i) => i.label)).toContain(
+      "Storefronts",
+    );
+  });
 });
 
 describe("the palette in the console", () => {

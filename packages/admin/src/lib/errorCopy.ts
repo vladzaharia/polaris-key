@@ -131,11 +131,11 @@ export const DISTRIBUTION_ERROR_MESSAGES: Record<string, string> = {
   no_override: "There is no readiness override to clear.",
   candidate_closed: "This candidate has already been decided.",
   credential_pin_missing:
-    "The App Store Connect credential has no pin. Set the pin in Outlet credentials.",
+    "The App Store Connect credential has no pin. Set the pin in Channel credentials.",
   credential_pin_mismatch:
-    "The App Store Connect credential's pin doesn't match. Check it in Outlet credentials.",
+    "The App Store Connect credential's pin doesn't match. Check it in Channel credentials.",
   not_configured:
-    "This store connector isn't configured. Set it up in Outlet credentials.",
+    "This store connector isn't configured. Set it up in Channel credentials.",
   store_refused:
     "The store refused the request. Its message is in the details.",
   unknown_version: "The store doesn't know this version yet.",
@@ -192,7 +192,7 @@ export const DISTRIBUTION_ERROR_MESSAGES: Record<string, string> = {
     "Polaris Key doesn't send this kind of change to App Store Connect.",
   // A-9: the 404s keep their reason.
   unknown_outlet:
-    "That outlet isn't declared any more. The page has been refreshed.",
+    "That channel isn't declared any more. The page has been refreshed.",
   unknown_channel: "That channel doesn't exist for this product.",
   unknown_release:
     "That release doesn't exist any more. The page has been refreshed.",
@@ -452,7 +452,8 @@ export function errorCopy(
       };
     return {
       title: "You can't do that",
-      description: message ?? "Your session isn't allowed to make this change.",
+      // The server's words stay in `details`: a 403 message is a policy line, not copy.
+      description: "Your session isn't allowed to make this change.",
       action: "none",
       details,
     };
@@ -572,7 +573,11 @@ export function errorCopy(
       status >= 500
         ? "Something went wrong on the server"
         : "The server refused this",
-    description: message ?? "Copy the details for a support report.",
+    // A 5xx message is the server's own text, never copy (B-212); `details` carries it.
+    description:
+      status >= 500
+        ? "Copy the details for a support report."
+        : (message ?? "Copy the details for a support report."),
     action: "copy-details",
     details,
   };
@@ -720,7 +725,7 @@ function setupCopy(
   // Service coherence: codes that name a relationship, not a field (services, 422 `errors[]`).
   if (error.errors?.length && (area === "services" || error.status === 422)) {
     return {
-      title: "These services depend on each other",
+      title: "These features depend on each other",
       description: "Change the settings below so they fit together.",
       action: "fields",
       lines: error.errors.map((c) => SERVICE_ERROR_MESSAGES[c] ?? c),

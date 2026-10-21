@@ -11,8 +11,8 @@ const VERBS: Record<string, string> = {
     "had a repository link refused while applying (put back to manual)",
   "product.update": "updated product settings",
   "product.delete": "deleted the product",
-  "product.services.update": "changed enabled services",
-  "product.services.revert": "returned services to the manifest",
+  "product.services.update": "changed enabled features",
+  "product.services.revert": "returned features to the manifest",
   "product.policy.update": "changed the fingerprint policy",
   "product.fingerprint.revert":
     "returned the fingerprint policy to the manifest",
@@ -87,10 +87,10 @@ const VERBS: Record<string, string> = {
   "ci.publisher.claim": "claimed the trusted publisher",
   "ci.token.issue": "issued CI token",
   "ci.token.revoke": "revoked CI token",
-  "outlet_credential.set": "set outlet credential",
-  "outlet_credential.pin": "re-pinned outlet credential",
-  "outlet_credential.delete": "deleted outlet credential",
-  "outlet_credential.use": "used outlet credential",
+  "outlet_credential.set": "set channel credential",
+  "outlet_credential.pin": "re-pinned channel credential",
+  "outlet_credential.delete": "deleted channel credential",
+  "outlet_credential.use": "used channel credential",
   "config.mint.approve": "approved edge-mint recipe",
   "config.mint.revoke": "revoked the approval of edge-mint recipe",
   "config.mint.invalidate": "invalidated the approval of edge-mint recipe",
@@ -124,9 +124,29 @@ const VERBS: Record<string, string> = {
   "assets.variants": "built image sizes for",
 };
 
+/**
+ * The Polaris Locker listing's writes are store writes (`distribution.polaris-key.<op>`, the op
+ * being a storefront operation), so their codes are many; each reads as a phrase (B-214).
+ */
+const LOCKER_LISTING_VERBS: Record<string, string> = {
+  writeListingText: "changed the Polaris Locker listing text of",
+  writeListingAssets: "changed the Polaris Locker listing images of",
+  category: "changed the Polaris Locker category of",
+  pricing: "changed the Polaris Locker price of",
+  submit: "submitted for the Polaris Locker listing",
+  release: "released on the Polaris Locker listing",
+  rollout: "changed the Polaris Locker rollout of",
+};
+const LOCKER_LISTING_PREFIX = "distribution.polaris-key.";
+
 export function verbFor(action: string): string {
   const known = VERBS[action];
   if (known) return known;
+  if (action.startsWith(LOCKER_LISTING_PREFIX))
+    return (
+      LOCKER_LISTING_VERBS[action.slice(LOCKER_LISTING_PREFIX.length)] ??
+      "changed the Polaris Locker listing of"
+    );
   return action.replace(/[._]+/g, " ").trim();
 }
 
@@ -144,11 +164,14 @@ export const ACTION_GROUPS: { value: string; label: string }[] = [
   { value: "release.", label: "Release" },
   { value: "update.", label: "Update" },
   { value: "commerce.", label: "Commerce" },
+  // Before the Commerce rename these were written under Distribution (B-214).
+  { value: "distribution.commerce.", label: "Commerce (earlier entries)" },
   { value: "portal.", label: "Locker settings" },
   { value: "storefront.", label: "Polaris Locker listing" },
-  { value: "outlet_credential.", label: "Outlet credentials" },
+  { value: "distribution.polaris-key.", label: "Polaris Locker listing edits" },
+  { value: "outlet_credential.", label: "Channel credentials" },
   { value: "ci.", label: "CI publishing" },
-  { value: "product.", label: "Product and services" },
+  { value: "product.", label: "Product and features" },
   { value: "bundle.", label: "Offline bundles" },
   { value: "access.", label: "Access" },
   { value: "feed.", label: "Package feeds" },

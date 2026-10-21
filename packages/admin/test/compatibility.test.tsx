@@ -673,11 +673,11 @@ describe("Compatibility matrix (T5, CMP-1 to CMP-7, CMP-11)", () => {
     mountMatrix();
     const row15 = await row("1.5.0");
     expect(
-      await within(row15).findByText(/Outlets: direct, play/),
+      await within(row15).findByText(/Channels: direct, play/),
     ).toBeTruthy();
     expect(within(row15).getByText(/held on web/)).toBeTruthy();
     const row14 = await row("1.4.0");
-    expect(within(row14).getByText("Outlets: app-store")).toBeTruthy();
+    expect(within(row14).getByText("Channels: app-store")).toBeTruthy();
     expect(distributionMatrix).toHaveBeenCalledWith(SLUG, {
       deliverable: "app",
       limit: 50,
@@ -690,7 +690,9 @@ describe("Compatibility matrix (T5, CMP-1 to CMP-7, CMP-11)", () => {
       .mockRejectedValue(new ApiError(404, undefined, "not_found"));
     mountMatrix();
     await row("1.5.0");
-    expect(await screen.findByText("Outlet liveness unavailable")).toBeTruthy();
+    expect(
+      await screen.findByText("Channel liveness unavailable"),
+    ).toBeTruthy();
   });
 
   it("shows a skeleton, then the error with Retry (CMP-3), and first-run states", async () => {
@@ -732,9 +734,11 @@ describe("Update simulator (T6, CMP-8 to CMP-10)", () => {
       "iOS / iPadOS",
     ]);
     await userEvent.click(screen.getByRole("option", { name: "Android" }));
-    await userEvent.click(screen.getByRole("combobox", { name: /Outlet/ }));
+    await userEvent.click(screen.getByRole("combobox", { name: /^Channel/ }));
     await userEvent.click(await screen.findByRole("option", { name: /^play/ }));
-    await userEvent.click(screen.getByRole("combobox", { name: /Channel/ }));
+    await userEvent.click(
+      screen.getByRole("combobox", { name: /^Release track/ }),
+    );
     await userEvent.click(await screen.findByRole("option", { name: "beta" }));
     // Variant per axis, from the packs' declarations.
     await userEvent.click(screen.getByRole("combobox", { name: "Texture" }));

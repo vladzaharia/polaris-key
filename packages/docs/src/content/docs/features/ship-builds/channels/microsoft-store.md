@@ -49,10 +49,10 @@ The connector runs for a product when all of these hold:
    recorded once in the activity log (`distribution.connector.flight_unmapped`), and otherwise
    ignored: the connector does not read its submissions.
 
-2. An **`ms-partner-center` channel credential** is stored under Distribution, on **Outlet credentials** — the Entra ID app's
+2. An **`ms-partner-center` channel credential** is stored under Distribution, on **Channel credentials** — the Entra ID app's
    tenant id, client id, client secret and seller id — **pinned** to this product's app: the same
    Store ID as the `productId` above (see [Pinning the app](#pinning-the-app)). See
-   [Channel credentials](/docs/operate/console/keys-and-secrets/#outlet-credentials). A credential bound to
+   [Channel credentials](/docs/operate/console/keys-and-secrets/#channel-credentials). A credential bound to
    the `ms-store` channel (`outletId`) is preferred over an unbound one.
 
 3. **The first submission is made by hand** in Partner Center, including the age-ratings
@@ -96,7 +96,7 @@ credential at another app of the account and copy its submissions into this prod
 So the credential carries a **pin** that only a platform admin sets: the Store ID it may be used
 for in this product. The connector runs only while the manifest's `productId` equals the pin.
 
-- **Set it with the credential.** **Outlet credentials** under Distribution asks for the Store ID with the other fields.
+- **Set it with the credential.** **Channel credentials** under Distribution asks for the Store ID with the other fields.
   Over the API, send it as `pin`:
 
   ```http title="Request"

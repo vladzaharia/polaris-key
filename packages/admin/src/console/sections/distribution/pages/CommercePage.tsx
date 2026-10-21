@@ -159,7 +159,7 @@ export function CommercePage({ slug }: { slug: string }): React.ReactElement {
           description={blocked ?? "The connector names no app."}
           primaryAction={
             <Button variant="outline" asChild>
-              <Link to={r.credentials(slug)}>Open Outlet credentials</Link>
+              <Link to={r.credentials(slug)}>Open Channel credentials</Link>
             </Button>
           }
           docs="/docs/features/commerce/"
@@ -208,7 +208,7 @@ function AppStoreProducts({
     },
     {
       id: "flag",
-      header: "Grants flag",
+      header: "Unlocks flag",
       accessorKey: "flag",
       meta: { priority: 2, mono: true },
     },
@@ -309,7 +309,7 @@ function AppStoreProducts({
           <EmptyState
             kind="first-run"
             title="No App Store products are mapped"
-            description="Commerce maps an App Store product id to the licence flag a purchase unlocks. Once one is mapped, its In-App Purchase can be created here."
+            description="Commerce maps an App Store product id to the license flag a purchase unlocks. Once one is mapped, its In-App Purchase can be created here."
             docs="/docs/features/commerce/"
           />
         }

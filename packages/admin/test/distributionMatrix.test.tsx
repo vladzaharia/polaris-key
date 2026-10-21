@@ -363,7 +363,7 @@ describe("Distribution → Matrix", () => {
       screen.getByRole("button", { name: "Refresh readiness" }),
     );
     expect(
-      await screen.findByText(/3 release × outlet pairs were recomputed/),
+      await screen.findByText(/3 release × channel pairs were recomputed/),
     ).toBeTruthy();
   });
 
@@ -379,7 +379,7 @@ describe("Distribution → Matrix", () => {
       name: "Start a rollout",
     });
     await userEvent.click(
-      within(dialog).getByRole("combobox", { name: /Outlet/ }),
+      within(dialog).getByRole("combobox", { name: /^Channel/ }),
     );
     await userEvent.click(
       await screen.findByRole("option", { name: /altstore/ }),
@@ -442,7 +442,7 @@ describe("Distribution → Matrix", () => {
       [P("/distribution/matrix")]: { ...MATRIX, outlets: [], cells: [] },
     });
     expect(
-      await screen.findByRole("heading", { name: "No outlets declared" }),
+      await screen.findByRole("heading", { name: "No channels declared" }),
     ).toBeTruthy();
   });
 

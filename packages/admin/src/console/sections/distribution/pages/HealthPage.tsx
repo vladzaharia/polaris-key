@@ -105,7 +105,7 @@ export function HealthPage({ slug }: { slug: string }): React.ReactElement {
           kind="rollout"
           release={c.releaseId ?? ""}
           outlet={c.outletId ?? ""}
-          label={`${v(c.releaseId)} on ${c.outletId ?? "an outlet"}`}
+          label={`${v(c.releaseId)} on ${c.outletId ?? "a channel"}`}
         />
       ),
       reason: `Sentry alert${c.detail.rule ? ` “${String(c.detail.rule)}”` : ""} opened a halt candidate.`,
@@ -247,7 +247,7 @@ export function HealthPage({ slug }: { slug: string }): React.ReactElement {
               ))}
               {data.unknown.length ? (
                 <p className="text-xs text-fg-muted">
-                  Also reported from outlets this product doesn't declare
+                  Also reported from channels this product doesn't declare
                   (counted, never judged):{" "}
                   {data.unknown
                     .map(
@@ -582,7 +582,7 @@ function SentryPanel({
   const open = data.sentry.candidates.filter((c) => c.state === "open");
   const decided = data.sentry.candidates.filter((c) => c.state !== "open");
   const where = (c: UpdateHealthObject) =>
-    `${c.releaseId ? version(c.releaseId) : "the release"} on ${c.outletId ?? "the outlet"}${c.ref.channel ? ` / ${String(c.ref.channel)}` : ""}`;
+    `${c.releaseId ? version(c.releaseId) : "the release"} on ${c.outletId ?? "the channel"}${c.ref.channel ? ` / ${String(c.ref.channel)}` : ""}`;
 
   const row = (c: UpdateHealthObject, actions: boolean) => (
     <li
@@ -657,7 +657,7 @@ function SentryPanel({
               </Button>
             }
           >
-            Store a Sentry internal integration's client secret as an outlet
+            Store a Sentry internal integration's client secret as a channel
             credential to receive alerts here.
           </Callout>
         ) : (
@@ -709,7 +709,7 @@ function SentryPanel({
         consequences={
           pending?.decision === "confirm"
             ? [
-                "The rollout is halted as you: the feeds stop offering the release on this outlet.",
+                "The rollout is halted as you: the feeds stop offering the release on this channel.",
                 "Only an explicit resume lifts it.",
               ]
             : [

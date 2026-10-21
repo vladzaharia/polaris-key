@@ -29,7 +29,7 @@ export const ACCESS_DESCRIPTIONS: Record<string, string> = {
   public: "Anyone can download, with no device token.",
   authenticated: "Any registered device with a valid token.",
   licensed: "Devices with an active license.",
-  entitled: "Devices whose license grants a specific entitlement flag.",
+  entitled: "Devices whose license includes a specific entitlement flag.",
 };
 
 /** License and portal sign-in methods. */

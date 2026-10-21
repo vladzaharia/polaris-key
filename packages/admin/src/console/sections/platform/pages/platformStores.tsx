@@ -1524,7 +1524,7 @@ export function describeAssignError(
     if (e.code === "own_credential_other_account")
       return {
         title: "The product's own key belongs to another account",
-        description: `This product holds a ${storeLabel} key of its own from a different ${storeLabel} account than the team credential. Assigning would point the two keys at different accounts, so nothing was changed. Re-pin or delete that key under the product's outlet credentials, then assign again.`,
+        description: `This product holds a ${storeLabel} key of its own from a different ${storeLabel} account than the team credential. Assigning would point the two keys at different accounts, so nothing was changed. Re-pin or delete that key under the product's channel credentials, then assign again.`,
       };
     if (e.code === "app_not_found")
       return {

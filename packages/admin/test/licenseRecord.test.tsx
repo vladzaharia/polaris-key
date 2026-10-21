@@ -671,7 +671,7 @@ describe("license record: Config overrides", () => {
       services: { ...NONE, license: { enabled: true } },
     });
     expect(
-      await screen.findByText("Config is off for this product"),
+      await screen.findByText("Managed config is off for this product"),
     ).toBeTruthy();
   });
 

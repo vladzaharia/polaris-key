@@ -172,7 +172,7 @@ describe("Cloud Sync → Data", () => {
     renderPage();
     expect(await screen.findByText("Only signed-in people sync")).toBeTruthy();
     expect(
-      screen.getByText(/activated with a licence key keep their settings/),
+      screen.getByText(/activated with a license key keep their settings/),
     ).toBeTruthy();
   });
 
@@ -182,7 +182,7 @@ describe("Cloud Sync → Data", () => {
     expect(screen.getByText("Default quota")).toBeTruthy();
     expect(screen.getByText("256 MiB")).toBeTruthy();
     expect(
-      screen.getByText("Without a licence: 1 MiB, no files."),
+      screen.getByText("Without a license: 1 MiB, no files."),
     ).toBeTruthy();
     // The saves collection's row and the platform limit both read the one constant.
     expect(screen.getAllByText("Up to 16 per player")).toHaveLength(2);
@@ -212,7 +212,7 @@ describe("Cloud Sync → Data", () => {
     expect(
       await screen.findByText("Cloud Sync is off for this product"),
     ).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Open Services" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Open Features" })).toBeTruthy();
   });
 });
 

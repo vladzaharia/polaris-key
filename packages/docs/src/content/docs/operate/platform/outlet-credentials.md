@@ -1,5 +1,5 @@
 ---
-title: "Outlet credentials"
+title: "Channel credentials"
 description: "A product's own store keys and the Sentry integration secret: the kinds, how they are sealed, pinned and audited."
 type: "reference"
 lastReviewed: "2026-10-16"
@@ -9,12 +9,12 @@ sidebar:
 
 **Role required:** Platform admin.
 
-**Distribution → Outlet credentials** holds the keys the Distribution service uses to reach a store
+**Distribution → Channel credentials** holds the keys the Distribution service uses to reach a store
 on the product's behalf, and the Sentry integration secret. They are **not** product
 secrets, and the difference is the point. Edge-mint can sign with any product secret an operator
 marks _edge-mint_, for any device of the product — and under open registration anyone can be a
 device — so a store key stored as a product secret would be one approval away from a public
-token mint for your App Store Connect account. Outlet credentials live in their own table under
+token mint for your App Store Connect account. Channel credentials live in their own table under
 their own encryption binding: a value copied into the product-secret table does not even decrypt
 there, and no edge-mint recipe can name one.
 

@@ -4,7 +4,7 @@
  *
  * License owns two namespaces: `license.*` and `licensing.*` (S-19 §7.13's per-product licensing
  * model settings). The `licensing.*` entries live in their own module, `licensingSettings.ts`,
- * because S-19 is still under review: every assumption about licence ↔ entitlement cardinality
+ * because S-19 is still under review: every assumption about license ↔ entitlement cardinality
  * stays in that one file.
  */
 
@@ -31,7 +31,7 @@ const LICENSE_SETTINGS: readonly SettingDef[] = [
     area: "license.policy",
     label: "Default device limit",
     description:
-      "How many devices a licence may activate when neither its tier nor the licence sets a limit.",
+      "How many devices a license may activate when neither its tier nor the license sets a limit.",
     keywords: ["seats", "devices", "activations"],
     docs: "/docs/features/licensing/access/",
     value: { kind: "integer", unit: "count", min: 1, max: MAX_DEVICE_LIMIT },
@@ -56,7 +56,7 @@ const LICENSE_SETTINGS: readonly SettingDef[] = [
     area: "license.policy",
     label: "Default offline window",
     description:
-      "How many days a device may run without reaching the server when neither its tier nor the licence sets a window.",
+      "How many days a device may run without reaching the server when neither its tier nor the license sets a window.",
     keywords: ["grace", "offline", "graceUntil"],
     docs: "/docs/features/licensing/access/",
     value: { kind: "integer", unit: "days", min: 0, max: OFFLINE_DAYS_MAX },
@@ -107,7 +107,7 @@ const LICENSE_SETTINGS: readonly SettingDef[] = [
     area: "license.autoIssue",
     label: "Auto-issue",
     description:
-      "Mints a licence on first activation (anonymously, on sign-in, or both) instead of requiring a key. Turning it on gives the product away at the chosen tier.",
+      "Mints a license on first activation (anonymously, on sign-in, or both) instead of requiring a key. Turning it on gives the product away at the chosen tier.",
     keywords: ["free", "trial", "anonymous", "discover"],
     docs: "/docs/features/licensing/access/",
     value: { kind: "json", schema: "autoIssue (product.schema.json)" },

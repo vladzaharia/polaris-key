@@ -280,11 +280,11 @@ export function LicenseConfig({
       <EmptyState
         kind="service-off"
         service="config"
-        title="Config is off for this product"
-        description="Turn on Config to give this license its own configuration values."
+        title="Managed config is off for this product"
+        description="Turn on Managed config to give this license its own configuration values."
         primaryAction={
           <Button variant="outline" asChild>
-            <Link to={r.services(slug)}>Open Services</Link>
+            <Link to={r.services(slug)}>Open Features</Link>
           </Button>
         }
       />
