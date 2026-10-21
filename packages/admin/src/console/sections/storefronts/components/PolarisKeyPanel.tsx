@@ -519,7 +519,7 @@ function GroupLabels({
                   {row.mapped
                     ? value.trim()
                       ? `Discover shows “Included with ${value.trim()}”.`
-                      : `Discover shows “For members of ${row.group}”.`
+                      : `Discover shows “For ${row.group}”.`
                     : "This group is no longer mapped. Clear the label to remove it."}
                 </span>
               }

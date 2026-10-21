@@ -127,7 +127,7 @@ export function reasonLine(path: PolarisKeyTilePath): string {
     case "group":
       return path.label
         ? `Included with ${path.label}`
-        : `For members of ${path.detail ?? "a group"}`;
+        : `For ${path.detail ?? "a group"}`;
     case "product_idp":
       return `Included with your ${path.detail ?? "product"} account`;
     case "email_domain":

@@ -158,7 +158,7 @@ describe("the sidebar", () => {
     );
     expect(headers.length).toBeGreaterThan(0);
     for (const h of headers) {
-      expect(h.className).toContain("forced-colors:border-0");
+      expect(h.hasAttribute("data-forced-flat")).toBe(true);
       expect(h.id).not.toBe("");
       // A collapsed group renders no list; an open one's list is named by its header.
       const list = document

@@ -12,6 +12,7 @@
  * - The record is a page (`users/:subject[/:tab]`, `UserRecord`).
  */
 
+import { docsUrl } from "../../../../lib/docsLinks.js";
 import * as React from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import {
@@ -278,7 +279,7 @@ function UsersCollection({ slug }: { slug: string }): React.ReactElement {
                   ? "A user appears here once they hold a license of this product or sign in to it."
                   : "A user appears here once a license of this product is in their Polaris Locker account."
               }
-              docs="/docs/admin/users/"
+              docs={docsUrl("usersPage")}
             />
           )
         }

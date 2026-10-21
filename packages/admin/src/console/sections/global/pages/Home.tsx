@@ -1,4 +1,5 @@
 import * as React from "react";
+import { docsUrl } from "../../../../lib/docsLinks.js";
 import { Eye, Plus } from "lucide-react";
 import type { AttentionItemDto } from "../../../../api.js";
 import { releaseSourceOf } from "../../../../lib/products.js";
@@ -313,7 +314,7 @@ export function Home(): React.ReactElement {
               <Link to={r.productNew({ via: "manual" })}>Start manually</Link>
             </Button>
           }
-          docs="/docs/admin/products/"
+          docs={docsUrl("productsPage")}
         />
         <div data-home-grid="" className="grid grid-cols-1 gap-6">
           {readySlot}

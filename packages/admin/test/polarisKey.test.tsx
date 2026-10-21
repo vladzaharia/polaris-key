@@ -712,9 +712,7 @@ describe("the panel's words (notes/S-21 §6.5)", () => {
     expect(
       reasonLine(path("group", { detail: "crew", label: "Aperture Seven" })),
     ).toBe("Included with Aperture Seven");
-    expect(reasonLine(path("group", { detail: "crew" }))).toBe(
-      "For members of crew",
-    );
+    expect(reasonLine(path("group", { detail: "crew" }))).toBe("For crew");
     expect(reasonLine(path("product_idp", { detail: "Acme" }))).toBe(
       "Included with your Acme account",
     );

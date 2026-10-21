@@ -107,7 +107,7 @@ export function forcedColourBreaches(page: Page): Promise<string[]> {
         cs.outlineStyle === "none" ? 0 : parseFloat(cs.outlineWidth),
       );
     const controls =
-      "button:not([data-variant=ghost]):not([role=tab]), input:not([type=hidden]):not([type=checkbox]):not([type=radio]), select, textarea, [role=radio], [role=tab]";
+      "button:not([data-variant=ghost]):not([role=tab]):not([data-forced-flat]), input:not([type=hidden]):not([type=checkbox]):not([type=radio]), select, textarea, [role=radio], [role=tab]";
     for (const el of document.querySelectorAll(controls)) {
       if (!visible(el)) continue;
       if (el.matches(".sr-only, .pk-sr-only") || el.closest(".sr-only"))

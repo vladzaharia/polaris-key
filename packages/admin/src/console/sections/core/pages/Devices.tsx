@@ -12,6 +12,7 @@
  * - Search is a prefix on the device id or label, as the server matches (DEV-6).
  */
 
+import { docsUrl } from "../../../../lib/docsLinks.js";
 import * as React from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Download, MonitorSmartphone } from "lucide-react";
@@ -274,7 +275,7 @@ export function DevicesPage({
               kind="first-run"
               title="No devices yet"
               description="A device appears here the first time it registers or activates a license. Point an SDK at this product to see one."
-              docs="/docs/admin/licenses-and-devices/"
+              docs={docsUrl("devicesPage")}
               primaryAction={
                 <Button asChild>
                   <Link to={r.integration(slug)}>Open Integration</Link>

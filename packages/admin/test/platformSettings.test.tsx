@@ -1273,7 +1273,7 @@ describe("Keyring", () => {
       within(keyring)
         .getByRole("link", { name: /Keyring runbook/ })
         .getAttribute("href"),
-    ).toBe("/docs/admin/kek/");
+    ).toBe("/docs/operate/platform/runbook/");
     // Read-only: nothing to press but the link.
     expect(within(keyring).queryAllByRole("button")).toEqual([]);
   });

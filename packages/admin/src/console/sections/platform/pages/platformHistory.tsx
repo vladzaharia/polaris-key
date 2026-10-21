@@ -2,6 +2,7 @@
  * Platform → Settings → Recently changed: the settings writes of the platform trail (split by ST-09).
  */
 
+import { docsUrl } from "../../../../lib/docsLinks.js";
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -106,7 +107,7 @@ export function HistorySection({
             kind="first-run"
             title="No setting changes yet"
             description="Each change made here is recorded with who made it and the value before and after."
-            docs="/docs/admin/activity/"
+            docs={docsUrl("activityPage")}
           />
         ) : (
           <>

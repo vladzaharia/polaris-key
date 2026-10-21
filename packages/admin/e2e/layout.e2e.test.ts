@@ -757,6 +757,33 @@ for (const vp of VIEWPORTS) {
                 await forcedColourBreaches(page),
                 "forced-colour boundaries",
               ).toEqual([]);
+            if (vp.forcedColors) {
+              // B-009: a sidebar group header is a row, not a control box. It and the single-page
+              // link opt out with data-forced-flat, so neither is drawn with a 1 px border.
+              const boxed = await page.evaluate(() =>
+                [
+                  ...document.querySelectorAll<HTMLElement>(
+                    "[data-section-header]",
+                  ),
+                ]
+                  // The current page's row keeps its 2 px selected border (the non-colour cue).
+                  .filter(
+                    (el) =>
+                      el.checkVisibility() && !el.hasAttribute("aria-current"),
+                  )
+                  .map((el) => ({
+                    flat: el.hasAttribute("data-forced-flat"),
+                    border: getComputedStyle(el).borderTopWidth,
+                    label: (el.textContent ?? "").trim().slice(0, 30),
+                  }))
+                  .filter((h) => !h.flat || h.border !== "0px")
+                  .map((h) => `${h.label}: flat=${h.flat} border=${h.border}`),
+              );
+              expect(
+                boxed,
+                "sidebar group headers are flat in forced colours",
+              ).toEqual([]);
+            }
             if (vp.forcedColors && c.name === "djdl:services") {
               // State never rests on colour alone: in forced colours an on switch must draw
               // differently from an off one (track fill and knob). The fixture has every

@@ -475,7 +475,7 @@ export function CredentialsPage({
                 Set credential…
               </Button>
             }
-            docs="/docs/admin/secrets-and-keys/"
+            docs={docsUrl("credentialsPage")}
           />
         }
       />

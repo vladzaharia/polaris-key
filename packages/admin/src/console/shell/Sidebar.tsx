@@ -525,11 +525,12 @@ function SidebarGroup({
           aria-controls={contentId}
           aria-disabled={active || undefined}
           data-section-header={groupKey}
+          data-forced-flat=""
           title={active ? "Contains the current page" : undefined}
           className={cn(
             "group flex min-h-10 w-full items-center gap-2 rounded-md py-1 ps-2 pe-2 text-start text-sm font-medium",
-            // Forced colours draw a button as a bordered box; the header is a row, not a control box.
-            "forced-colors:border-0",
+            // Forced colours draw a button as a bordered box; the header is a row, not a control box
+            // (data-forced-flat opts it out of the unlayered border rule in styles.css).
             "text-fg-strong hover:bg-accent-subtle focus-visible:outline-2 focus-visible:outline-accent-fg",
             active && "cursor-default hover:bg-transparent",
           )}
