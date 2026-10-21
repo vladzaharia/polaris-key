@@ -10,5 +10,5 @@ export const CONTROL_INPUT = [
   "disabled:cursor-not-allowed disabled:opacity-50",
   "read-only:bg-surface-page read-only:text-fg-muted",
   "aria-[invalid=true]:border-danger",
-  "pointer-coarse:h-10",
+  "pointer-coarse:h-11",
 ].join(" ");

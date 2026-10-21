@@ -40,7 +40,11 @@ export function IconButton({
       aria-label={label}
       data-icon=""
       disabledReason={disabledReason}
-      className={cn(sizeClass, "min-w-0 px-0 pointer-coarse:size-9", className)}
+      className={cn(
+        sizeClass,
+        "min-w-0 px-0 pointer-coarse:size-11",
+        className,
+      )}
       {...props}
     >
       <span aria-hidden className="contents">

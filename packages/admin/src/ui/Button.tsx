@@ -28,11 +28,21 @@ import { useWriteLock } from "./WriteLock.js";
  *   not with a `brightness` filter (filters are not transitioned and never animate per frame,
  *   S-23 §6.2), so the hover eases with the other colours; `pk-pressable` gives the press.
  */
-export const buttonVariants = cva(BUTTON_BASE, {
-  variants: { variant: BUTTON_VARIANTS, size: BUTTON_SIZES },
-  compoundVariants: [{ variant: "link", class: "h-auto min-w-0 px-0" }],
-  defaultVariants: { variant: "primary", size: "md" },
-});
+export const buttonVariants = cva(
+  // A touch screen's target is 44 px tall (EXPERIENCE §7.3); a link-style button sits in a line of
+  // text, which the target-size exception covers, so it keeps its own height.
+  cn(BUTTON_BASE, "pointer-coarse:min-h-11"),
+  {
+    variants: { variant: BUTTON_VARIANTS, size: BUTTON_SIZES },
+    compoundVariants: [
+      {
+        variant: "link",
+        class: "h-auto min-w-0 px-0 pointer-coarse:min-h-0",
+      },
+    ],
+    defaultVariants: { variant: "primary", size: "md" },
+  },
+);
 
 export type ButtonVariant = NonNullable<
   VariantProps<typeof buttonVariants>["variant"]

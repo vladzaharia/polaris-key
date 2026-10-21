@@ -223,7 +223,7 @@ export function ConfirmDialog({
                   }
                 }}
                 className={cn(
-                  "h-9 w-full rounded-md border border-border-strong bg-surface-sunken px-3 font-mono text-sm text-fg",
+                  "h-9 pointer-coarse:h-11 w-full rounded-md border border-border-strong bg-surface-sunken px-3 font-mono text-sm text-fg",
                   "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus",
                 )}
               />

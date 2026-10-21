@@ -1348,13 +1348,13 @@ export const SHIPPED: ShippedState[] = [
     scenario: "three",
     path: "/#/p/nightfall",
     routes: { "/api/library": SERVER_ERROR, "/api/licenses": SERVER_ERROR },
-    // The library read failed, so the name is unknown: the page keeps its slug as the title
-    // (LK-polish M6), says what failed, and offers Try again and the way back.
+    // The library read failed, so the name is unknown: the page titles itself "Product", never the
+    // raw slug (LK-polish M6, LF1), says what failed, and offers Try again and the way back.
     ready: async (p) => {
-      await h1(p, "nightfall");
+      await h1(p, "Product");
       const alert = p.getByRole("alert");
       await alert
-        .getByText("Couldn't load nightfall. Check your connection.")
+        .getByText("Couldn't load this product. Check your connection.")
         .waitFor();
       await alert.getByRole("link", { name: "Library" }).waitFor();
     },

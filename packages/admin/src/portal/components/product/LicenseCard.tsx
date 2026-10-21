@@ -273,7 +273,7 @@ function LicenseFacts({
             <div className="flex flex-wrap items-center gap-x-3">
               <KeyMask slug={product.slug} last4={key.last4} />
               <details className="text-xs text-fg-muted open:basis-full">
-                <summary className="inline-flex min-h-6 cursor-pointer items-center rounded-sm underline [text-decoration-style:dotted] underline-offset-2 hover:text-fg-strong">
+                <summary className="inline-flex min-h-6 pointer-coarse:min-h-11 cursor-pointer items-center rounded-sm underline [text-decoration-style:dotted] underline-offset-2 hover:text-fg-strong">
                   {t("license.key.why")}
                 </summary>
                 <p className="mt-1">
