@@ -37,6 +37,8 @@ import { signIn } from "../../../src/services/identity/accounts/signIn.js";
 import { attachLicenseAccount } from "../../../src/core/accounts/accountSubjects.js";
 import type { ServicesMap } from "../../../src/core/services.js";
 import { seedTier } from "../../seed.js";
+import { loadProduct } from "../../../src/core/products.js";
+import { activateFromIdentity } from "../../../src/services/identity/productOidc/activate.js";
 import {
   answerTokenExchange,
   IDP_CLIENT_ID,
@@ -360,7 +362,7 @@ export const devicecodeDenied: Scenario = {
       const r = new TranscriptRecorder({
         id: "devicecode-denied",
         description:
-          "A device-code flow the person refuses (I-37). beginSignIn() posts the device id alone; one poll is pending. The player confirms the code, signs in at the (mocked) IdP and presses Deny on the approval page, server-side and unrecorded. The next poll answers the generic error (the same shape as a provider failure, so the poller learns nothing about the cause), which the client reports as an error with the sign-in-denied code, holding no token. The flow stays denied on the next poll.",
+          "A device-code flow the person refuses (I-37). beginSignIn() posts the device id alone; one poll is pending. The player confirms the code, signs in at the (mocked) IdP and presses Deny on the approval page, server-side and unrecorded. The next poll answers error with reason access_denied (DENY-01, WIRE-CONTRACT-V4 12.10), which the client reports as an error with the sign-in-denied code, holding no token. The flow stays denied on the next poll.",
         features: ["identity.devicecode"],
         requires: ["core.store"],
         product: PRODUCT,
@@ -412,12 +414,15 @@ export const devicecodeDenied: Scenario = {
         {
           action: "pollSignIn",
           now: T0 + 5,
-          note: "The person pressed Deny: the generic error, no token.",
+          note: "The person pressed Deny: error with reason access_denied, no token.",
         },
         async (s) => {
           const res = await s.send(pollSpec(started.deviceCode));
           expect(res.status).toBe(200);
-          expect(await res.json()).toEqual({ status: "error" });
+          expect(await res.json()).toEqual({
+            status: "error",
+            reason: "access_denied",
+          });
         },
         { result: "error", code: "sign-in-denied", tokenHeld: false },
       );
@@ -429,9 +434,112 @@ export const devicecodeDenied: Scenario = {
         },
         async (s) => {
           const res = await s.send(pollSpec(started.deviceCode));
-          expect(await res.json()).toEqual({ status: "error" });
+          expect(await res.json()).toEqual({
+            status: "error",
+            reason: "access_denied",
+          });
         },
         { result: "error", code: "sign-in-denied", tokenHeld: false },
+      );
+      return r.transcript();
+    }),
+};
+
+/** DENY-01: a sign-in that fails after the person approved it answers the bare `error`, which an
+ *  SDK reports as `sign-in-failed`, never `sign-in-denied`. The identity's own licence is
+ *  disabled before the poll that would activate it, so the activation is refused. */
+export const devicecodeFailed: Scenario = {
+  id: "devicecode-failed",
+  record: () =>
+    pinned("devicecode-failed", async (pin) => {
+      const world = await identityWorld();
+      const r = new TranscriptRecorder({
+        id: "devicecode-failed",
+        description:
+          "A device-code flow that fails after the person approved it (DENY-01). beginSignIn() posts the device id alone; one poll is pending. The player confirms the code, signs in at the (mocked) IdP and presses Sign in on the approval page, server-side and unrecorded; the identity's own licence is disabled meanwhile. The next poll answers the bare error, with no reason (WIRE-CONTRACT-V4 12.10), which the client reports as an error with the sign-in-failed code, not sign-in-denied, holding no token. The flow is dropped, so the poll after it answers timeout, which the client reports as expired.",
+        features: ["identity.devicecode"],
+        requires: ["core.store"],
+        product: PRODUCT,
+        now: T0,
+        world,
+        pinned: pin,
+        initial: {
+          deviceId: DEVICE,
+          version: VERSION,
+          services: ["license", "config", "identity"],
+        },
+      });
+
+      let started!: Started;
+      const begun: Record<string, JsonValue> = {};
+      await r.step(
+        { action: "beginSignIn" },
+        async (s) => {
+          const res = await s.send({
+            method: "POST",
+            path: START,
+            body: { deviceId: DEVICE },
+            expectBody: { json: { deviceId: DEVICE }, match: "exact" },
+          });
+          expect(res.status).toBe(200);
+          started = (await res.json()) as Started;
+          Object.assign(begun, { prompt: promptOf(started), tokenHeld: false });
+        },
+        begun,
+      );
+
+      await r.step(
+        { action: "pollSignIn", now: T0 + 2, note: "Pending." },
+        async (s) => {
+          const res = await s.send(pollSpec(started.deviceCode));
+          expect(await res.json()).toEqual({ status: "pending" });
+        },
+        { result: "pending", tokenHeld: false },
+      );
+
+      await playerSignsIn(world, T0 + 3, started.verificationUriComplete);
+
+      // The identity's licence is disabled after the callback checked it and before the poll that
+      // activates it: the activation is refused.
+      const product = (await loadProduct(world.env, world.db, PRODUCT))!;
+      const made = await activateFromIdentity(
+        world.db,
+        product,
+        { ...PLAYER, claims: { sub: PLAYER.sub } },
+        T0,
+        { env: world.env },
+      );
+      expect("licenseId" in made).toBe(true);
+      await world.db.run(
+        "UPDATE licenses SET status = ? WHERE product = ?",
+        "disabled",
+        PRODUCT,
+      );
+
+      await r.step(
+        {
+          action: "pollSignIn",
+          now: T0 + 5,
+          note: "Approved, then refused: the bare error, no reason, no token.",
+        },
+        async (s) => {
+          const res = await s.send(pollSpec(started.deviceCode));
+          expect(res.status).toBe(200);
+          expect(await res.json()).toEqual({ status: "error" });
+        },
+        { result: "error", code: "sign-in-failed", tokenHeld: false },
+      );
+      await r.step(
+        {
+          action: "pollSignIn",
+          now: T0 + 8,
+          note: "The failed flow was dropped: timeout.",
+        },
+        async (s) => {
+          const res = await s.send(pollSpec(started.deviceCode));
+          expect(await res.json()).toEqual({ status: "timeout" });
+        },
+        { result: "expired", tokenHeld: false },
       );
       return r.transcript();
     }),

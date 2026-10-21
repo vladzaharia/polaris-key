@@ -265,6 +265,13 @@
             "signInHandoff.newCode"
           ]
         },
+        "failed": {
+          "copy": [
+            "core.codes.sign-in-failed.title",
+            "core.codes.sign-in-failed.message",
+            "signInHandoff.newCode"
+          ]
+        },
         "expired": {
           "copy": [
             "core.codes.sign-in-expired.title",

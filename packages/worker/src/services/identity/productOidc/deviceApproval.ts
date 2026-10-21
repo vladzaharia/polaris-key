@@ -58,9 +58,10 @@ export function deviceLabelOf(flow: FlowRecord): string {
   return normalizeDeviceLabel(flow.deviceName) ?? "Unnamed device";
 }
 
-/** The flow record's `error` value a denial leaves. The poll never echoes it (it answers the
- *  generic `error`), so it is a record marker, not a wire error code. */
-const DENIED = "denied";
+/** The flow record's `error` value a denial leaves. The poll never echoes it: a refusal answers
+ *  `error` + `reason: "access_denied"` (WIRE-CONTRACT-V4 §12.10), so it is a record marker, not a
+ *  wire error code. */
+export const FLOW_DENIED = "denied";
 
 /** The fields a decision removes from the flow: the identity and everything account-bound. */
 const DENY_UNSET = [
@@ -92,7 +93,7 @@ export async function decideDeviceFlow(
     expect: { approveToken: tokenHash, approvedAt: null, error: null },
     ...(decision === "approve"
       ? { set: { approvedAt: now }, unset: ["approveToken"] }
-      : { set: { error: DENIED }, unset: DENY_UNSET }),
+      : { set: { error: FLOW_DENIED }, unset: DENY_UNSET }),
   });
   if (!done.ok) return false;
   await auditDecision(db, product, flow, decision, now);
@@ -110,7 +111,7 @@ export async function denyChosenDeviceFlow(
 ): Promise<boolean> {
   const done = await updateArtefact(env, stateKey, {
     expect: { approvedAt: null, error: null },
-    set: { error: DENIED },
+    set: { error: FLOW_DENIED },
     unset: DENY_UNSET,
   });
   if (!done.ok) return false;
@@ -474,7 +475,7 @@ export async function lostDenyPage(
   const now = raw ? parseFlowRecord<FlowRecord>(raw) : null;
   if (now && now.approvedAt !== undefined)
     return deviceDonePage(deviceLabelOf(now), view, cookies);
-  if (now && now.error === DENIED) return deniedPage(flow, view, cookies);
+  if (now && now.error === FLOW_DENIED) return deniedPage(flow, view, cookies);
   return startAgainPage();
 }
 

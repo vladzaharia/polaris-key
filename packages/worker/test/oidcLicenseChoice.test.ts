@@ -891,8 +891,12 @@ describe("I-26 browser binder", () => {
       action: "cancel",
     });
     expect(await res.text()).toContain("Sign-in denied");
-    // Cancel is Deny for a device-code flow (I-37): the device's poll ends in the generic error.
-    expect((await devicePoll(flow, NOW + 10)).status).toBe("error");
+    // Cancel is Deny for a device-code flow (I-37): the device's poll ends in
+    // `error` with the `access_denied` reason (DENY-01).
+    expect(await devicePoll(flow, NOW + 10)).toEqual({
+      status: "error",
+      reason: "access_denied",
+    });
   });
 });
 

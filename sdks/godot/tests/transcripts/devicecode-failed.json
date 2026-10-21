@@ -1,0 +1,227 @@
+{
+  "transcriptVersion": 1,
+  "id": "devicecode-failed",
+  "description": "A device-code flow that fails after the person approved it (DENY-01). beginSignIn() posts the device id alone; one poll is pending. The player confirms the code, signs in at the (mocked) IdP and presses Sign in on the approval page, server-side and unrecorded; the identity's own licence is disabled meanwhile. The next poll answers the bare error, with no reason (WIRE-CONTRACT-V4 12.10), which the client reports as an error with the sign-in-failed code, not sign-in-denied, holding no token. The flow is dropped, so the poll after it answers timeout, which the client reports as expired.",
+  "features": ["identity.devicecode"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "version": "1.0.0",
+    "services": ["license", "config", "identity"]
+  },
+  "steps": [
+    {
+      "action": "beginSignIn",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/auth/device/start",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": { "deviceId": "TRANSCRIPTDEVICE0000000000000001" },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "status": "pending",
+                "deviceCode": "ivaSWdlsZXSe6hulDAR_Lw",
+                "userCode": "TLCD-VRMN",
+                "verificationUri": "https://key.plrs.im/djdl/identity/auth/device",
+                "verificationUriComplete": "https://key.plrs.im/djdl/identity/auth/device?user_code=TLCD-VRMN",
+                "expiresIn": 600,
+                "interval": 2,
+                "pollUrl": "https://key.plrs.im/djdl/identity/auth/device/poll",
+                "deviceName": null
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "prompt": {
+          "userCode": "TLCD-VRMN",
+          "verificationUri": "https://key.plrs.im/djdl/identity/auth/device",
+          "verificationUriComplete": "https://key.plrs.im/djdl/identity/auth/device?user_code=TLCD-VRMN",
+          "expiresIn": 600,
+          "interval": 2,
+          "deviceName": null
+        },
+        "tokenHeld": false
+      }
+    },
+    {
+      "action": "pollSignIn",
+      "note": "Pending.",
+      "args": {},
+      "now": 1700000002,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/auth/device/poll",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "deviceCode": "ivaSWdlsZXSe6hulDAR_Lw",
+                  "deviceId": "TRANSCRIPTDEVICE0000000000000001"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "status": "pending" }
+            }
+          }
+        ]
+      },
+      "expect": { "result": "pending", "tokenHeld": false }
+    },
+    {
+      "action": "pollSignIn",
+      "note": "Approved, then refused: the bare error, no reason, no token.",
+      "args": {},
+      "now": 1700000005,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/auth/device/poll",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "deviceCode": "ivaSWdlsZXSe6hulDAR_Lw",
+                  "deviceId": "TRANSCRIPTDEVICE0000000000000001"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "status": "error" }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "error",
+        "code": "sign-in-failed",
+        "tokenHeld": false
+      }
+    },
+    {
+      "action": "pollSignIn",
+      "note": "The failed flow was dropped: timeout.",
+      "args": {},
+      "now": 1700000008,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/auth/device/poll",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "deviceCode": "ivaSWdlsZXSe6hulDAR_Lw",
+                  "deviceId": "TRANSCRIPTDEVICE0000000000000001"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "status": "timeout" }
+            }
+          }
+        ]
+      },
+      "expect": { "result": "expired", "tokenHeld": false }
+    }
+  ]
+}
