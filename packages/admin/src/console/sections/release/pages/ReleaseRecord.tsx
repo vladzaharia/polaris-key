@@ -1089,8 +1089,6 @@ export function ReleaseRecord({
             ) : null}
           </span>
         }
-        // One line at the 1024 px rail (the masthead's budget): the date (the exact instant in its
-        // tooltip) instead of "published", the instant and its age, then the GitHub release.
         description={
           <>
             {release.title ? <>“{release.title}” · </> : null}

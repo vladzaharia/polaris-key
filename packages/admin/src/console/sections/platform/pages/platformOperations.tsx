@@ -1183,8 +1183,7 @@ export function Operations(): React.ReactElement {
       // The side's panels stack beside the cron card; the rest pair up below.
       side={
         op ? (
-          // One block, so the last panel keeps its own height instead of growing to the cron
-          // card's (a 127 px hollow inside Queues); the column simply ends where its content does.
+          // One block: Queues keeps its own height instead of growing to the cron card's.
           <div className="space-y-6">
             <HeartbeatsPanel op={op} />
             <QueuesPanel op={op} />

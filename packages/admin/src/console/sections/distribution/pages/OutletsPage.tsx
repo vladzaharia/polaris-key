@@ -799,9 +799,7 @@ function KeysSection({
       registered: false,
       existing: false,
     });
-  // The one add action lives in the table's toolbar (the head band's end would be a second row
-  // ending at another x, 17 px past the toolbar's); the empty state offers it where the toolbar
-  // is not drawn.
+  // In the table's toolbar (not the head band's end); the empty state offers it too.
   const addButton = (
     <Button size="sm" iconStart={<Plus aria-hidden />} onClick={addKey}>
       Add key…
