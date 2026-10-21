@@ -369,6 +369,76 @@
       "verdict": "pass",
       "date": "2026-10-21",
       "evidence": "UX review then one lead fix list; lead verified the built Library at desktop and phone (portal linux baselines library-12-*), e2e portalLibraryTrim 18/18, storefront 30/30"
+    },
+    "ST-08n": {
+      "verdict": "pass",
+      "date": "2026-10-21",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/stabilization/console-final/ux-review.md §Work packages this review covers (BUILT, integ/next-stage 0e5fb9d9c, PASS-WITH-FIXES; settings hub pass/good); earlier fix round lead-verified with ST-10 (_mockups/review/ST-08n/ux-review.md, _lead/lead-followups.md l.118)"
+    },
+    "ST-10": {
+      "verdict": "pass",
+      "date": "2026-10-21",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/stabilization/console-final/ux-review.md §Work packages this review covers (BUILT, integ/next-stage 0e5fb9d9c, PASS-WITH-FIXES; command palette pass/good, composite M7 fixed); fix round lead-verified with ST-08n (_mockups/review/ST-10/ux-review.md)"
+    },
+    "ST-12": {
+      "verdict": "pass",
+      "date": "2026-10-21",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/stabilization/console-final/ux-review.md §Work packages this review covers, notes on depth: ST-12 (BUILT, integ/next-stage 0e5fb9d9c; st12/trust-editor-1440-dark.png); security PASS (_mockups/review/ST-12/security-review.md)"
+    },
+    "ST-14": {
+      "verdict": "pass",
+      "date": "2026-10-21",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/stabilization/console-final/ux-review.md §Work packages this review covers (BUILT, integ/next-stage 0e5fb9d9c, PASS-WITH-FIXES)"
+    },
+    "ST-17": {
+      "verdict": "pass",
+      "date": "2026-10-21",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/stabilization/console-final/ux-review.md §Work packages this review covers, notes on depth: ST-17 (BUILT, integ/next-stage 0e5fb9d9c; resync dialog error state; the fixture carried no dry-run plan)"
+    },
+    "ST-45": {
+      "verdict": "pass",
+      "date": "2026-10-21",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/stabilization/console-final/ux-review.md §Work packages this review covers (BUILT, integ/next-stage 0e5fb9d9c, PASS-WITH-FIXES; shell, rail, switcher; platform Members/Status/Activity unbuilt, owned by ST-31/ST-51)"
+    },
+    "ST-47": {
+      "verdict": "pass",
+      "date": "2026-10-21",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/stabilization/console-final/ux-review.md §Work packages this review covers, notes on depth: ST-47 (BUILT, integ/next-stage 0e5fb9d9c; st47/*.png: retired setup routes answer Page not found)"
+    },
+    "ST-49": {
+      "verdict": "pass",
+      "date": "2026-10-21",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/stabilization/console-final/ux-review.md §Work packages this review covers (BUILT, integ/next-stage 0e5fb9d9c, PASS-WITH-FIXES; Page moved signpost, deep links)"
+    },
+    "P0-36": {
+      "verdict": "pass",
+      "date": "2026-10-21",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/stabilization/console-final/ux-review.md §Work packages this review covers (console half) + /Users/vlad/Repos/pk-wt/_mockups/review/stabilization/locker-final/ux-review.md §Work packages (portal half: no forbidden word in 474 renders, refusal and error copy match the catalog); both BUILT on integ/next-stage 0e5fb9d9c"
+    },
+    "DOC-02a": {
+      "verdict": "pass",
+      "date": "2026-10-21",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/stabilization/console-final/ux-review.md §Work packages this review covers (console components, BUILT, integ/next-stage 0e5fb9d9c); docs-page review _mockups/review/DOC-02a/ux-review.md FIX -> one combined fix round, lead-verified (_lead/lead-followups.md l.183, l.219)"
+    },
+    "PX-12": {
+      "verdict": "pass",
+      "date": "2026-10-21",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/stabilization/locker-final/ux-review.md §Work packages (BUILT, integ/next-stage 0e5fb9d9c: pass, composite M5 key upgrade fixed); security PASS (_mockups/review/PX-12/security-review.md)"
+    },
+    "PX-33": {
+      "verdict": "pass",
+      "date": "2026-10-21",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/stabilization/locker-final/ux-review.md §Work packages (BUILT, integ/next-stage 0e5fb9d9c: pass; major 2 request-card footer and minor 14 are fix-forward)"
+    },
+    "LK-09": {
+      "verdict": "pass",
+      "date": "2026-10-21",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/stabilization/locker-final/ux-review.md §Work packages (BUILT, integ/next-stage 0e5fb9d9c: pass; Help search CSP blocking 2 owned with FP-help, fixed by LF2); LK-09r security PASS (_mockups/review/LK-09r/security-review.md)"
+    },
+    "DOC-06a": {
+      "verdict": "pass",
+      "date": "2026-10-21",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/stabilization/locker-final/ux-review.md §Work packages (BUILT, integ/next-stage 0e5fb9d9c: pass; Help links resolve on the customer host)"
     }
   }
 }

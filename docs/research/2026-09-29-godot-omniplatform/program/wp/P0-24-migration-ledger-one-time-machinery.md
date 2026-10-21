@@ -100,3 +100,10 @@ What downstream work packages rely on from this one is named in their briefs (th
   (`core/ops/settingsBackfill.ts`, its routes and console page; owner step), U-03's override
   migration (U-27 owns it) and the I-05 catch-up in `services/identity/accounts/legacy.ts` (the
   `LICENSE_WRITE_SEAMS` row names P0-24; it needs the fact that no pre-I-05 Worker serves).
+
+## Status (2026-10-21)
+
+`blocked` on the owner step: the ST-01c settings backfill has never run in production
+(`settings_backfill_reports` had 0 rows on 2026-10-17). The owner runs it per product (dry run,
+report, apply) with an explicit go; then the runner, its routes and console page are deleted and
+the ledger row closes. The ledger itself is merged (`e306ea5c8`).
