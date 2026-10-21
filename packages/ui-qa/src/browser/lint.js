@@ -159,7 +159,12 @@
           const size = parseFloat(cs.fontSize);
           if (size < o.minFont)
             report("text-size-floor", el, `font-size ${size}px (min 12px)`);
-          if (SEPARATORS.has(ownText(el).trim()) && el !== scope) {
+          // A lone dash standing in for "no value" separates nothing: it needs a neighbour.
+          if (
+            SEPARATORS.has(ownText(el).trim()) &&
+            el !== scope &&
+            el.parentElement.childNodes.length > 1
+          ) {
             const pd = getComputedStyle(el.parentElement).display;
             if (/flex|grid/.test(pd))
               report(
@@ -247,7 +252,7 @@
           el.matches(INTERACTIVE) &&
           !inlineLink(el, cs) &&
           !tabStopOnly(el) &&
-          !visuallyHidden(cs)
+          !visuallyHidden(el, cs)
         ) {
           const r = touchRect(el);
           if (r.width < o.minTouch - 0.5 || r.height < o.minTouch - 0.5)
@@ -909,37 +914,53 @@
   }
   // Clipped to nothing until focused (a skip link, a visually hidden native input behind a
   // styled control): there is nothing to hit.
-  function visuallyHidden(cs) {
+  function visuallyHidden(el, cs) {
     return (
       /^rect\(0(px)?,? ?0(px)?,? ?0(px)?,? ?0(px)?\)$/.test(cs.clip) ||
+      // Hidden from assistive tech too: a form shim behind a styled control (Radix's checkbox).
+      el.closest('[aria-hidden="true"]') !== null ||
       /^inset\(50%\)$/.test(cs.clipPath)
     );
   }
-  // The area a press lands on. A stretched link (its ::after covers the positioned card around
-  // it) is the whole card; a control with a <label> (wrapping it, or `for` it) is the label.
+  // The area a press lands on: the element, or its label for a checkbox, radio or switch (a text
+  // field is its own box), united with any absolutely positioned ::before / ::after it carries (a
+  // stretched link's cover over its card, a switch's enlarged hit area).
   function touchRect(el) {
-    const after = getComputedStyle(el, "::after");
-    if (
-      after.content !== "none" &&
-      after.position === "absolute" &&
-      [after.top, after.right, after.bottom, after.left].every(
-        (v) => parseFloat(v) === 0,
-      )
-    ) {
-      let box = el.parentElement;
-      while (box && getComputedStyle(box).position === "static")
-        box = box.parentElement;
-      if (box) return box.getBoundingClientRect();
+    const label = el.matches(
+      'input[type="checkbox"], input[type="radio"], [role="checkbox"], [role="radio"], [role="switch"]',
+    )
+      ? (el.labels && el.labels[0]) || el.closest("label")
+      : null;
+    const base = (label || el).getBoundingClientRect();
+    let left = base.left;
+    let top = base.top;
+    let right = base.right;
+    let bottom = base.bottom;
+    for (const pseudo of ["::before", "::after"]) {
+      const ps = getComputedStyle(el, pseudo);
+      if (ps.content === "none" || ps.position !== "absolute") continue;
+      let cb = el;
+      while (cb && getComputedStyle(cb).position === "static")
+        cb = cb.parentElement;
+      if (!cb) continue;
+      const cr = cb.getBoundingClientRect();
+      const cc = getComputedStyle(cb);
+      const x = cr.left + parseFloat(cc.borderLeftWidth) + parseFloat(ps.left);
+      const y = cr.top + parseFloat(cc.borderTopWidth) + parseFloat(ps.top);
+      const w = parseFloat(ps.width);
+      const h = parseFloat(ps.height);
+      if ([x, y, w, h].some(Number.isNaN)) continue;
+      left = Math.min(left, x);
+      top = Math.min(top, y);
+      right = Math.max(right, x + w);
+      bottom = Math.max(bottom, y + h);
     }
-    const label = (el.labels && el.labels[0]) || el.closest("label");
-    return (label || el).getBoundingClientRect();
+    return { width: right - left, height: bottom - top };
   }
   function inlineLink(el, cs) {
-    return (
-      el.tagName === "A" &&
-      cs.display === "inline" &&
-      ownText(el.parentElement).trim().length > 0
-    );
+    // An inline link is as tall as its line (WCAG 2.5.8's inline exception), alone in its
+    // paragraph or not.
+    return el.tagName === "A" && cs.display === "inline";
   }
   // The service accents as the page computes them, normalised to rgb(): one probe per token.
   function serviceAccents() {

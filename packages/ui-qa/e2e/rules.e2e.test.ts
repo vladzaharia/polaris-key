@@ -133,6 +133,7 @@ describe("the modernity lint (UI-KITS §7.3)", () => {
       </style>
       <p class="tab">Tab</p><p class="rail">Rail</p><p class="dim">Dim</p><p class="glass">Glass</p>
       <p class="clear">Clear</p><p class="rel">Relative</p>
+      <div style="display: flex"><span>—</span></div>
       <div data-art="fallback" style="inline-size: 40px; block-size: 40px; background-color: var(--c)"></div>`,
     );
     expect(ok.violations).toEqual([]);
@@ -170,10 +171,14 @@ describe("the modernity lint (UI-KITS §7.3)", () => {
         <label style="display: flex; align-items: center; block-size: 48px; min-inline-size: 120px"><input type="checkbox" style="inline-size: 16px; block-size: 16px"> Remember</label>
         <div tabindex="0" style="block-size: 16px; overflow: auto">Scroll region</div>
         <a href="#y" style="position: absolute; clip: rect(0, 0, 0, 0); inline-size: 1px; block-size: 1px; overflow: hidden">Skip</a>
+        <span aria-hidden="true"><input type="checkbox" tabindex="-1" style="inline-size: 16px; block-size: 16px"></span>
+        <p style="font-size: 14px"><a href="#w">Alone in its paragraph</a></p>
+        <button role="switch" aria-checked="false" class="sw" style="position: relative; inline-size: 36px; block-size: 20px; padding: 0; border: 0"></button>
+        <style>.sw::after { content: ""; position: absolute; inset: -12px -4px; }</style>
         <style>.stretch::after { content: ""; position: absolute; inset: 0; }</style>
       </div>`,
     );
-    expect(r.violations.map((v) => v.rule)).not.toContain("touch-target");
+    expect(r.violations.filter((v) => v.rule === "touch-target")).toEqual([]);
     const small = await lint(
       `<div data-ui-touch><a href="#z" style="display: block; block-size: 20px; inline-size: 80px">Small</a></div>`,
     );
