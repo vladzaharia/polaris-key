@@ -360,7 +360,7 @@ export function ProfileEditor({
                             if (error?.field === "name") setError(null);
                           }}
                           className={cn(
-                            "pk-pressable inline-flex h-9 max-w-full items-center gap-1.5 rounded-full border px-3 text-sm max-sm:h-11 pointer-coarse:h-11",
+                            "pk-pressable inline-flex min-h-9 max-w-full items-center gap-1.5 rounded-full border px-3 py-1 text-left text-sm max-sm:min-h-11 pointer-coarse:min-h-11",
                             "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page",
                             on
                               ? "border-accent bg-accent-subtle font-medium text-fg-strong"
@@ -371,7 +371,9 @@ export function ProfileEditor({
                             provider={o.provider}
                             className="size-4 shrink-0"
                           />
-                          <span className="truncate">{o.name}</span>
+                          <span className="min-w-0 break-words [overflow-wrap:anywhere]">
+                            {o.name}
+                          </span>
                         </button>
                       </li>
                     );

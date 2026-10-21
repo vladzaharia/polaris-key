@@ -203,3 +203,81 @@ describe("the product page reflows", () => {
     }
   }
 });
+
+/** A 60-character display name with spaces, and an unbroken 40-character address. */
+const LONG_PERSON =
+  "Maximilian Alexander Fennick-Vandersteen the Third of Harbor";
+const LONG_EMAIL = `${"a".repeat(30)}@example.org`;
+
+function longPerson(): Record<string, Handler> {
+  const base = portalRoutes("three")["/api/me"] as (req: Request) => Reply;
+  return {
+    "/api/me": (req) => {
+      const r = base(req);
+      const body = r.body as { account: Record<string, unknown> };
+      return {
+        ...r,
+        body: {
+          ...body,
+          account: { ...body.account, name: LONG_PERSON, email: LONG_EMAIL },
+        },
+      };
+    },
+  };
+}
+
+const IDENTITY_ROWS = [
+  { label: "320", width: 320, height: 640, text: 100 },
+  { label: "1280 + 200 % text", width: 1280, height: 800, text: 200 },
+  { label: "1440", width: 1440, height: 900, text: 100 },
+] as const;
+
+describe("identity rows wrap instead of cutting the name", () => {
+  // The Account page still scrolls sideways at 320 px with 200 % text outside the identity rows
+  // (provider rows, the Changing-a-method note, Download my data): a follow-up, not this check.
+  for (const { label, width, height, text } of IDENTITY_ROWS) {
+    for (const path of ["/#/account", "/#/account/methods"]) {
+      const theme: Theme = width % 2 === 0 ? "dark" : "light";
+      it(`${label}: ${path}, long name and address, no sideways scroll`, async ({
+        expect,
+      }) => {
+        const o = await portal.open("three", path, {
+          width,
+          height,
+          theme,
+          routes: longPerson(),
+        });
+        try {
+          await h1(o.page, "Account");
+          if (text !== 100)
+            await o.page.evaluate((pct) => {
+              document.documentElement.style.setProperty(
+                "font-size",
+                `${pct}%`,
+                "important",
+              );
+            }, text);
+          await o.page.waitForTimeout(400);
+          const over = await horizontalOverflow(o.page);
+          expect(over > 0 ? await widest(o.page) : []).toEqual([]);
+          expect(over).toBeLessThanOrEqual(0);
+          // No text in main is clipped by an ellipsis in a row with the long values.
+          const clipped = await o.page.evaluate(() =>
+            [...document.querySelectorAll("main *")]
+              .filter(
+                (e) =>
+                  e.children.length === 0 &&
+                  getComputedStyle(e).textOverflow === "ellipsis" &&
+                  e.scrollWidth > e.clientWidth + 1 &&
+                  /Maximilian|aaaaaaaa/.test(e.textContent ?? ""),
+              )
+              .map((e) => (e.textContent ?? "").slice(0, 30)),
+          );
+          expect(clipped).toEqual([]);
+        } finally {
+          await o.close();
+        }
+      });
+    }
+  }
+});

@@ -181,7 +181,7 @@ export function OutletsPage({ slug }: { slug: string }): React.ReactElement {
       accessorKey: "outletId",
       meta: { priority: 1, primary: true },
       cell: ({ getValue }) => (
-        <span className="whitespace-nowrap">{getValue() as string}</span>
+        <span className="[overflow-wrap:anywhere]">{getValue() as string}</span>
       ),
     },
     {
