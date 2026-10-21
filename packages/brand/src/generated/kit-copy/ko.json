@@ -872,6 +872,8 @@
   "core.codes.erasure_ledger_unavailable.message": "지금은 계정 상태를 확인할 수 없어요. 몇 분 후에 다시 시도하세요.",
   "core.codes.identity_disabled.title": "로그인 사용 불가",
   "core.codes.identity_disabled.message": "이 앱을 통한 로그인이 꺼져 있어요. 설치와 라이선스는 계속 작동해요.",
+  "core.codes.unknown_app.title": "로그인 사용 불가",
+  "core.codes.unknown_app.message": "이 앱에서는 로그인을 사용할 수 없어요.",
   "core.codes.invalid_request.title": "로그인 요청이 올바르지 않습니다",
   "core.codes.invalid_request.message": "앱이 읽을 수 없는 요청을 보냈습니다. 다시 시도하세요.",
   "core.codes.invalid_client.title": "앱을 인식할 수 없습니다",

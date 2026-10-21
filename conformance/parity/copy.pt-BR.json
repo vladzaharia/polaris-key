@@ -149,6 +149,10 @@
       "title": "Acesso indisponível",
       "message": "O acesso por este app está desativado. Suas instalações e licenças continuam funcionando."
     },
+    "unknown_app": {
+      "title": "Acesso indisponível",
+      "message": "O acesso não está disponível para este app."
+    },
     "invalid_request": {
       "title": "Solicitação de login inválida",
       "message": "O app enviou uma solicitação que não conseguimos ler. Tente de novo."

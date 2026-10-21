@@ -48,6 +48,7 @@ public object ErrorCode {
     public const val unavailable: String = "unavailable"
     public const val erasureLedgerUnavailable: String = "erasure_ledger_unavailable"
     public const val identityDisabled: String = "identity_disabled"
+    public const val unknownApp: String = "unknown_app"
     public const val invalidRequest: String = "invalid_request"
     public const val invalidClient: String = "invalid_client"
     public const val invalidGrant: String = "invalid_grant"
@@ -223,6 +224,7 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "unavailable",
     "erasure_ledger_unavailable",
     "identity_disabled",
+    "unknown_app",
     "invalid_request",
     "invalid_client",
     "invalid_grant",
@@ -398,6 +400,7 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "unavailable" to "wire",
     "erasure_ledger_unavailable" to "wire",
     "identity_disabled" to "wire",
+    "unknown_app" to "wire",
     "invalid_request" to "wire",
     "invalid_client" to "wire",
     "invalid_grant" to "wire",

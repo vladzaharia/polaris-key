@@ -149,6 +149,10 @@
       "title": "Accesso non disponibile",
       "message": "L'accesso tramite questa app è disattivato. Le tue installazioni e licenze continuano a funzionare."
     },
+    "unknown_app": {
+      "title": "Accesso non disponibile",
+      "message": "L'accesso non è disponibile per questa app."
+    },
     "invalid_request": {
       "title": "Richiesta di accesso non valida",
       "message": "L'app ha inviato una richiesta che non riusciamo a leggere. Riprova."

@@ -309,7 +309,7 @@ export async function handleAuthDevicePoll(
   }
   deviceFlow.lastPollAt = now;
   if (!deviceFlow.confirmedAt) {
-    // B-096: Deny before sign-in marks the flow `error: "denied"`, not this record. The generic
+    // B-096: Deny before sign-in marks the flow record with an error, not this one. The generic
     // `error` is all the poll ever says; anything else stays pending until the code expires.
     const raw = await getArtefact(
       env,

@@ -5124,6 +5124,16 @@ msgstr "Inicio de sesión no disponible"
 msgid "core.codes.identity_disabled.message"
 msgstr "El inicio de sesión desde esta app está desactivado. Tus instalaciones y licencias siguen funcionando."
 
+#. Sign-in unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.unknown_app.title"
+msgstr "Inicio de sesión no disponible"
+
+#. Sign-in isn't available for this app.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.unknown_app.message"
+msgstr "El inicio de sesión no está disponible para esta app."
+
 #. Sign-in request invalid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_request.title"

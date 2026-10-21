@@ -46,6 +46,7 @@ public enum ErrorCode {
     public static let unavailable = "unavailable"
     public static let erasureLedgerUnavailable = "erasure_ledger_unavailable"
     public static let identityDisabled = "identity_disabled"
+    public static let unknownApp = "unknown_app"
     public static let invalidRequest = "invalid_request"
     public static let invalidClient = "invalid_client"
     public static let invalidGrant = "invalid_grant"
@@ -221,6 +222,7 @@ public let ERROR_CODE_VALUES: [String] = [
     "unavailable",
     "erasure_ledger_unavailable",
     "identity_disabled",
+    "unknown_app",
     "invalid_request",
     "invalid_client",
     "invalid_grant",
@@ -396,6 +398,7 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "unavailable": "wire",
     "erasure_ledger_unavailable": "wire",
     "identity_disabled": "wire",
+    "unknown_app": "wire",
     "invalid_request": "wire",
     "invalid_client": "wire",
     "invalid_grant": "wire",

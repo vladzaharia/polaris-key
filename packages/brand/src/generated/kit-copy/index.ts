@@ -886,6 +886,8 @@ export type KitCopyKey =
   | "core.codes.erasure_ledger_unavailable.message"
   | "core.codes.identity_disabled.title"
   | "core.codes.identity_disabled.message"
+  | "core.codes.unknown_app.title"
+  | "core.codes.unknown_app.message"
   | "core.codes.invalid_request.title"
   | "core.codes.invalid_request.message"
   | "core.codes.invalid_client.title"

@@ -5098,6 +5098,16 @@ msgstr "サインインを利用できません"
 msgid "core.codes.identity_disabled.message"
 msgstr "このアプリからのサインインは無効になっています。インストールとライセンスは引き続き使用できます。"
 
+#. Sign-in unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.unknown_app.title"
+msgstr "サインインを利用できません"
+
+#. Sign-in isn't available for this app.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.unknown_app.message"
+msgstr "このアプリではサインインを利用できません。"
+
 #. Sign-in request invalid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_request.title"

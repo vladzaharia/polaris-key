@@ -872,6 +872,8 @@
   "core.codes.erasure_ledger_unavailable.message": "暂时无法确认你的账户状态。请几分钟后重试。",
   "core.codes.identity_disabled.title": "登录不可用",
   "core.codes.identity_disabled.message": "已关闭通过此应用登录。你的安装和许可证仍可正常使用。",
+  "core.codes.unknown_app.title": "登录不可用",
+  "core.codes.unknown_app.message": "此应用无法登录。",
   "core.codes.invalid_request.title": "登录请求无效",
   "core.codes.invalid_request.message": "应用发送了我们无法读取的请求。请重试。",
   "core.codes.invalid_client.title": "无法识别该应用",

@@ -327,8 +327,8 @@ export async function handleAuthChoose(
       200,
       {
         ...(flow.tv ? { variant: "tv" as const } : {}),
-        title: "Sign-in cancelled",
-        heading: "Sign-in cancelled",
+        title: "Sign-in canceled",
+        heading: "Sign-in canceled",
         body: `<p class="muted">Nothing was changed. You can close this tab.</p>`,
       },
       [binderClearCookie()],

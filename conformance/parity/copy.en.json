@@ -148,6 +148,10 @@
       "title": "Sign-in unavailable",
       "message": "Sign-in through this app is turned off. Your installs and licenses keep working."
     },
+    "unknown_app": {
+      "title": "Sign-in unavailable",
+      "message": "Sign-in isn't available for this app."
+    },
     "invalid_request": {
       "title": "Sign-in request invalid",
       "message": "The app sent a sign-in request we can't read. Try again."

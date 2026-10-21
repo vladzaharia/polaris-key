@@ -75,6 +75,7 @@ COPY_CODES: Mapping[str, CopyEntry] = MappingProxyType(
         "unavailable": CopyEntry("Sign-in unavailable", "Sign-in isn't available right now. Try again in a few minutes."),
         "erasure_ledger_unavailable": CopyEntry("Account check unavailable", "We couldn't confirm your account's status right now. Try again in a few minutes."),
         "identity_disabled": CopyEntry("Sign-in unavailable", "Sign-in through this app is turned off. Your installs and licenses keep working."),
+        "unknown_app": CopyEntry("Sign-in unavailable", "Sign-in isn't available for this app."),
         "invalid_request": CopyEntry("Sign-in request invalid", "The app sent a sign-in request we can't read. Try again."),
         "invalid_client": CopyEntry("Sign-in can't finish", "This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know."),
         "invalid_grant": CopyEntry("Sign-in no longer valid", "That sign-in has expired or was already used. Sign in again."),

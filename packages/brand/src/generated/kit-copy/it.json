@@ -872,6 +872,8 @@
   "core.codes.erasure_ledger_unavailable.message": "Non è stato possibile confermare lo stato del tuo account al momento. Riprova tra qualche minuto.",
   "core.codes.identity_disabled.title": "Accesso non disponibile",
   "core.codes.identity_disabled.message": "L'accesso tramite questa app è disattivato. Le tue installazioni e licenze continuano a funzionare.",
+  "core.codes.unknown_app.title": "Accesso non disponibile",
+  "core.codes.unknown_app.message": "L'accesso non è disponibile per questa app.",
   "core.codes.invalid_request.title": "Richiesta di accesso non valida",
   "core.codes.invalid_request.message": "L'app ha inviato una richiesta che non riusciamo a leggere. Riprova.",
   "core.codes.invalid_client.title": "App non riconosciuta",

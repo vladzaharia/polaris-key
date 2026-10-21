@@ -38,6 +38,9 @@ import { parseServices, type ServicesMap } from "../services.js";
  *  `IDENTITY_DISABLED_ERROR_PARAM` in `@polaris-key/protocol/identity`. */
 export const IDENTITY_DISABLED = ErrorCode.IdentityDisabled;
 
+/** An app's sign-in link for a product that does not exist (B-100). */
+const UNKNOWN_APP = ErrorCode.UnknownApp;
+
 /**
  * The app-sign-in entries a person can navigate to, as paths under `/<p>/identity/`. `authorize`
  * is I-08's route: with Identity off a browser navigation to it lands on the friendly card, and a
@@ -148,7 +151,7 @@ export function unknownProductNavigationPage(
   rest: readonly string[],
 ): Response | null {
   if (rest.join("/") !== "authorize" || !isNavigation(req)) return null;
-  return codeRefusalPage(404, IDENTITY_DISABLED);
+  return codeRefusalPage(404, UNKNOWN_APP);
 }
 
 /**
