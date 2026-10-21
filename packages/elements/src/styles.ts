@@ -199,20 +199,42 @@ const KIT_CSS = String.raw`
   align-content: center;
   padding-block: var(--pk-space-8) clamp(var(--pk-space-8), 18dvh, 14rem);
 }
+/* DL1: the two-pane row is the surface itself (capped near 1040, a 48 gutter), not a card. */
 .pk-root[data-shape="landscape"] .stage[data-split] .card {
-  inline-size: min(55rem, 100%);
-  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-  column-gap: var(--pk-space-10);
+  inline-size: min(65rem, 100%);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  column-gap: var(--pk-space-12);
+  row-gap: 0;
   align-items: start;
   text-align: start;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+/* The end pane's rows are spaced by margin, so the panel can span them all without the
+   empty rows' gaps stretching it past the content. */
+.pk-root[data-shape="landscape"] .stage[data-split] .card > :not(.passport) {
+  grid-column: 2;
+}
+.pk-root[data-shape="landscape"] .stage[data-split] .card > :not(.passport):not(.shimmer) ~ :not(.passport):not(.shimmer) {
+  margin-block-start: var(--pk-space-6);
+}
+.pk-root[data-shape="landscape"] .stage[data-split] .card > .actions {
+  position: static;
+  padding-block: 0;
+  margin-block-end: 0;
+  background: none;
 }
 .pk-root[data-shape="landscape"] .stage[data-split] .passport {
-  grid-row: 1 / span 6;
+  grid-column: 1;
+  grid-row: 1 / span 20;
   align-self: stretch;
   display: grid;
   place-items: center;
   min-block-size: 18rem;
-  border-radius: var(--pk-kit-radius-group);
+  border-radius: var(--pk-kit-radius-card);
+  box-shadow: inset 0 0 0 1px var(--pk-border-subtle);
   background: linear-gradient(
     155deg,
     var(--pk-accent-subtle, var(--pk-surface-sunken)),
@@ -257,14 +279,23 @@ const KIT_CSS = String.raw`
 .pk-root[data-shape="landscape"] .stage[data-split] .passport .icon {
   --pk-icon-size: 7.5rem;
 }
-.pk-root[data-shape="landscape"] .stage[data-split] .passport .identity {
-  display: grid;
+/* DL1, DL5: the identity panel holds art or the icon and nothing else; the product header
+   (icon, name, tier) heads the end pane. The hero's icon is the panel's, so the header keeps
+   only what the title does not say. */
+.panel-icon {
+  display: none;
 }
-/* The name and the developer sit under the icon in the identity panel (the title names the
-   product once, so a header that is drawn at all is not a repeat). */
-.pk-root[data-shape="landscape"] .stage[data-split] .passport .identity {
-  justify-items: center;
-  text-align: center;
+.pk-root[data-shape="landscape"] .stage[data-split] .panel-icon,
+.pk-root[data-shape="short"] .stage[data-split] .panel-icon {
+  display: contents;
+}
+.pk-root[data-shape="landscape"] .stage[data-split] .identity[data-size="hero"] .icon,
+.pk-root[data-shape="short"] .stage[data-split] .identity[data-size="hero"] .icon {
+  display: none;
+}
+.pk-root[data-shape="landscape"] .stage[data-split] .identity[data-size="hero"]:not(:has(.name)):not(:has(.by)),
+.pk-root[data-shape="short"] .stage[data-split] .identity[data-size="hero"]:not(:has(.name)):not(:has(.by)) {
+  display: none;
 }
 .pk-root[data-shape="landscape"] .stage[data-split] .actions,
 .pk-root[data-shape="landscape"] .stage[data-split] .links {
@@ -286,28 +317,29 @@ const KIT_CSS = String.raw`
   inline-size: min(65rem, 100%);
   grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
   column-gap: var(--pk-space-6);
+  row-gap: 0;
   align-items: start;
   text-align: start;
 }
+.pk-root[data-shape="short"] .stage[data-split] .card > :not(.passport) {
+  grid-column: 2;
+}
+.pk-root[data-shape="short"] .stage[data-split] .card > :not(.passport):not(.shimmer) ~ :not(.passport):not(.shimmer) {
+  margin-block-start: var(--pk-space-3);
+}
 .pk-root[data-shape="short"] .stage[data-split] .passport {
-  grid-row: 1 / span 6;
+  grid-column: 1;
+  grid-row: 1 / span 20;
   align-self: stretch;
   display: grid;
   place-items: center;
   border-radius: var(--pk-kit-radius-group);
   background: var(--pk-accent-subtle, var(--pk-surface-sunken));
 }
-.pk-root[data-shape="short"] .stage[data-split] .passport .identity {
-  display: grid;
-  position: sticky;
-  inset-block-start: var(--pk-space-4);
-}
 .pk-root[data-shape="short"] .stage[data-split] .passport .icon {
   --pk-icon-size: 4rem;
-}
-.pk-root[data-shape="short"] .stage[data-split] .passport .name,
-.pk-root[data-shape="short"] .stage[data-split] .passport .by {
-  display: none;
+  position: sticky;
+  inset-block-start: var(--pk-space-4);
 }
 .pk-root[data-shape="short"] .stage[data-split] .actions {
   justify-content: start;
@@ -594,6 +626,19 @@ bdi {
 .pane .links:has(> :nth-child(3)) {
   align-items: start;
 }
+/* §4.3 Welcome: the extras are one quiet row of links where the end pane is wide enough
+   (the capped two-pane row), and stack whole where it is not (DL4). */
+@container pk (min-width: 70rem) {
+  .pk-root[data-shape="landscape"] .stage[data-split] .links:has(> :nth-child(3)):not(:has(> :nth-child(5))) {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--pk-space-2) var(--pk-space-4);
+    margin-inline-start: 0;
+  }
+  .pk-root[data-shape="landscape"] .stage[data-split] .links:has(> :nth-child(3)):not(:has(> :nth-child(5))) .btn {
+    padding-inline: 0;
+  }
+}
 .btn {
   appearance: none;
   display: inline-flex;
@@ -745,6 +790,25 @@ bdi {
   flex: 1 1 10rem;
   min-inline-size: min(10rem, 100%);
 }
+/* §4.3 Activate: the paste control sits inside the key field, at its inline end. */
+.field-paste {
+  position: relative;
+  display: block;
+}
+.field-paste input {
+  padding-inline-end: var(--pk-kit-control-height);
+}
+.field-paste .paste {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0;
+  min-inline-size: var(--pk-kit-control-height);
+  padding-inline: 0;
+  color: var(--pk-text-muted);
+}
+.field-paste .paste:hover {
+  color: var(--pk-text-strong);
+}
 
 /* ── User code (§2.1 Code) ───────────────────────────────────────────────────────────────── */
 .code {
@@ -822,6 +886,22 @@ bdi {
 }
 .row + .row {
   border-block-start: 1px solid var(--pk-border-subtle);
+}
+/* §4.3 DeviceLimit: 64 px rows, hairlines inset past the glyph. */
+.row[data-part="device-row"] {
+  position: relative;
+  min-block-size: 4rem;
+}
+.row[data-part="device-row"] + .row[data-part="device-row"] {
+  border-block-start: 0;
+}
+.row[data-part="device-row"] + .row[data-part="device-row"]::before {
+  content: "";
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: calc(var(--pk-space-4) + 1.25rem + var(--pk-space-3)) 0;
+  block-size: 1px;
+  background: var(--pk-border-subtle);
 }
 .row[aria-checked="true"],
 .row[data-selected] {
@@ -919,8 +999,8 @@ bdi {
   color: var(--pk-accent-fg, var(--pk-text-strong));
 }
 .row-glyph {
-  inline-size: 1.5rem;
-  block-size: 1.5rem;
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
   color: var(--pk-text-muted);
 }
 .pill {
@@ -935,6 +1015,12 @@ bdi {
   line-height: var(--pk-kit-type-meta-line-height);
   font-weight: 500;
   inline-size: fit-content;
+}
+/* §4.3 DeviceLimit k-tag: quiet and neutral, text-strong at 9 %. */
+.row[data-part="device-row"] .pill:not([data-status]) {
+  background: color-mix(in srgb, var(--pk-text-strong) 9%, transparent);
+  color: var(--pk-text-strong);
+  margin-inline-start: var(--pk-space-1);
 }
 .pill[data-status="warning"] {
   background: var(--pk-warning-subtle);
@@ -953,6 +1039,11 @@ bdi {
 .seats {
   display: grid;
   gap: var(--pk-space-1_5);
+}
+/* §4.1 LicenseChoice: the seat meter under a license row's count is a short bar. */
+.row .seats {
+  max-inline-size: 8rem;
+  margin-block: var(--pk-space-1);
 }
 .seat-bar {
   display: flex;
@@ -1111,15 +1202,21 @@ bdi {
 .toast .texts {
   flex: 1;
 }
-/* The toast an existing license leaves in the page when its sheet closes: low and centred, over
-   the app, for a few seconds. */
+/* The toast an existing license leaves in the page when its sheet closes: low, over the app,
+   for a few seconds. */
 .toast.pk-flash {
   position: fixed;
   inset-block-end: max(var(--pk-space-6), env(safe-area-inset-bottom));
-  inset-inline: 0;
-  margin-inline: auto;
+  /* §4.1 Toast: bottom right, and the full width of a phone along the bottom. */
+  inset-inline: auto var(--pk-space-6);
   z-index: 5;
   animation: pk-rise var(--pk-duration-slow) var(--pk-ease-enter) both;
+}
+@media (max-width: 35rem) {
+  .toast.pk-flash {
+    inset-inline: var(--pk-space-3);
+    inline-size: auto;
+  }
 }
 .toast .timer {
   position: absolute;
@@ -1203,6 +1300,7 @@ dialog.sheet .passport-ambient {
 }
 dialog.sheet .card,
 .pk-root[data-shape] dialog.sheet .stage[data-split] .card {
+  background: var(--pk-surface-raised);
   inline-size: 100%;
   min-block-size: 0;
   /* One column that may shrink: at large text a long word wraps, the card never outgrows the sheet. */
@@ -1215,6 +1313,12 @@ dialog.sheet .card,
 }
 .pk-root[data-shape] dialog.sheet .stage[data-split] .passport {
   display: contents;
+}
+.pk-root[data-shape] dialog.sheet .stage[data-split] .passport .panel-icon {
+  display: none;
+}
+.pk-root[data-shape] dialog.sheet .stage[data-split] .identity[data-size="hero"] .icon {
+  display: revert;
 }
 /* In the sheet the identity is the compact header over the title, never the wide panel. */
 .pk-root[data-shape] dialog.sheet .stage[data-split] .passport .identity {

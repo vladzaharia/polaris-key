@@ -34,6 +34,7 @@ import {
   placeKeys,
   plain,
   productHeader,
+  productIcon,
   progressBar,
   seatMeter,
   shimmer,
@@ -290,14 +291,19 @@ function screen(c: RenderCtx, layout: Layout): TemplateResult {
               <img src=${c.resolved.iconUrl} alt="" />
             </div>`
           : nothing}
-        ${showIdentity
-          ? productHeader(c, layout.header, {
-              name: !titleNames,
-              // The hero reads icon, title, then "by Developer" (below the title).
-              developer: !heroTitle && view.copy.includes("common.byDeveloper"),
-            })
+        ${split && showIdentity
+          ? html`<div class="panel-icon" aria-hidden="true">
+              ${productIcon(c)}
+            </div>`
           : nothing}
       </div>
+      ${showIdentity
+        ? productHeader(c, layout.header, {
+            name: !titleNames,
+            // The hero reads icon, title, then "by Developer" (below the title).
+            developer: !heroTitle && view.copy.includes("common.byDeveloper"),
+          })
+        : nothing}
       ${view.component === "SignIn" && view.state === "done"
         ? successMark()
         : nothing}
@@ -1204,7 +1210,7 @@ function licenseRows(c: RenderCtx): TemplateResult | typeof nothing {
                   used: r.seats.used,
                   limit: r.seats.limit,
                 })}</span
-              ><br />`
+              ><br />${seatMeter(c, r.seats.used, r.seats.limit, false)}`
           : nothing}
         <span class="meta-line"
           ><span class="meta">${meta}</span> ${full

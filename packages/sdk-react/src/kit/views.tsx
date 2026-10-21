@@ -21,6 +21,7 @@ import {
   paragraphs,
   plain,
   productHeader,
+  productIcon,
   progressBar,
   qrCode,
   radioKeys,
@@ -290,15 +291,19 @@ function screen(c: KitCtx, layout: Layout): ReactNode {
               <img src={c.resolved.iconUrl} alt="" />
             </div>
           ) : null}
-          {showIdentity
-            ? productHeader(c, layout.header, {
-                name: !titleNames,
-                // The hero reads icon, title, then "by Developer" (below the title).
-                developer:
-                  !heroTitle && view.copy.includes("common.byDeveloper"),
-              })
-            : null}
+          {layout.split && showIdentity ? (
+            <div className="panel-icon" aria-hidden="true">
+              {productIcon(c)}
+            </div>
+          ) : null}
         </div>
+        {showIdentity
+          ? productHeader(c, layout.header, {
+              name: !titleNames,
+              // The hero reads icon, title, then "by Developer" (below the title).
+              developer: !heroTitle && view.copy.includes("common.byDeveloper"),
+            })
+          : null}
         {view.component === "SignIn" && view.state === "done"
           ? successMark()
           : null}
@@ -586,16 +591,23 @@ function deviceLimitContent(c: KitCtx): ReactNode {
                 <span className="row-title">
                   <bdi>{d.name ?? ""}</bdi>
                 </span>
+                {i === leastRecent && keys.has("signin.replace.leastRecent") ? (
+                  <>
+                    {" "}
+                    <span
+                      className="pill"
+                      data-key="signin.replace.leastRecent"
+                    >
+                      {text(c, "signin.replace.leastRecent")}
+                    </span>
+                  </>
+                ) : null}
                 <br />
                 <span className="meta">
                   {text(c, "signin.replace.meta", {
                     platform: platformLabel(d.platform),
                     when: days(d.lastSeenDays),
                   })}
-                  {i === leastRecent &&
-                  keys.has("signin.replace.leastRecent") ? (
-                    <> · {text(c, "signin.replace.leastRecent")}</>
-                  ) : null}
                 </span>
               </span>
               {i === selected ? GLYPHS.check() : <span />}

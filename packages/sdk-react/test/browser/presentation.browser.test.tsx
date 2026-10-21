@@ -173,9 +173,10 @@ async function build(): Promise<Scene[]> {
       presentation: source(DRIFT, driftIcon),
       check(kit, scheme) {
         expect(kit.textContent).toContain("Drift Kart");
-        const icon = kit.querySelector<HTMLImageElement>(
-          'img[data-part="icon"]',
-        );
+        // The identity panel's copy of the icon is drawn only in a two-pane layout.
+        const icon = [
+          ...kit.querySelectorAll<HTMLImageElement>('img[data-part="icon"]'),
+        ].find((i) => i.getBoundingClientRect().width > 0);
         expect(icon?.src).toMatch(/^blob:/);
         expect(Math.round(icon!.getBoundingClientRect().width)).toBe(
           // UI-KITS §1.2: the hero icon is 120 on the web at the desktop width, 96 below it.

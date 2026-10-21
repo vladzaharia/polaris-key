@@ -7,7 +7,14 @@ import type { KeyboardEvent, ReactNode } from "react";
 import type { LicenseChoiceRow } from "@polaris-key/ui-core";
 
 import { adaptChoice, adaptSignIn, ORIGIN_KEY } from "./adapt.js";
-import { button, GLYPHS, plain, text, type KitCtx } from "./parts.js";
+import {
+  button,
+  GLYPHS,
+  plain,
+  seatMeter,
+  text,
+  type KitCtx,
+} from "./parts.js";
 
 type Entry =
   | { kind: "license"; id: string; row: LicenseChoiceRow }
@@ -140,6 +147,7 @@ export function licenseRows(c: KitCtx): ReactNode {
                 })}
               </span>
               <br />
+              {seatMeter(c, r.seats.used, r.seats.limit, false)}
             </>
           ) : null}
           <span className="meta">

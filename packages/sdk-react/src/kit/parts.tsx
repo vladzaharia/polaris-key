@@ -231,6 +231,17 @@ export const GLYPHS = {
       }
     />
   ),
+  paste: () => (
+    <Glyph
+      cls="glyph"
+      d={
+        <>
+          <rect width="8" height="4" x="8" y="2" rx="1" ry="1" />
+          <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+        </>
+      }
+    />
+  ),
   offline: (cls = "status-glyph") => (
     <Glyph
       cls={cls}
@@ -382,6 +393,9 @@ export function productHeader(
   if (size === "none") return null;
   const name = c.resolved.identity.name || c.resolved.theme.name;
   const showName = (options.name ?? true) && name !== "";
+  // §1.2: once a key parses, the tier follows the name, and only on the server's answer.
+  const tier =
+    c.input.activation?.result === "ok" ? c.input.activation.tier : undefined;
   const icon = productIcon(c);
   if (icon === null && !showName && !options.developer) return null;
   return (
@@ -390,6 +404,11 @@ export function productHeader(
       {showName ? (
         <span className="name" data-part="name">
           <bdi>{name}</bdi>
+        </span>
+      ) : null}
+      {showName && size !== "hero" && tier ? (
+        <span className="tier" data-part="tier">
+          · <bdi>{tier}</bdi>
         </span>
       ) : null}
       {options.developer ? (
@@ -611,7 +630,7 @@ export function keyField(
       <label className="label" htmlFor="pk-key">
         {text(c, "part.keyField.label")}
       </label>
-      <div className="field-row">
+      <div className="field-row field-paste">
         <input
           id="pk-key"
           data-key="part.keyField.label"
@@ -636,9 +655,20 @@ export function keyField(
             if (e.key === "Enter") c.act("activate.submit");
           }}
         />
-        {keys.has("common.paste")
-          ? button(c, "common.paste", "secondary")
-          : null}
+        {keys.has("common.paste") ? (
+          <button
+            type="button"
+            className="btn paste"
+            data-part="link"
+            data-variant="link"
+            data-key="common.paste"
+            aria-label={plain(c, "common.paste")}
+            title={plain(c, "common.paste")}
+            onClick={() => c.act("common.paste")}
+          >
+            {GLYPHS.paste()}
+          </button>
+        ) : null}
       </div>
     </div>
   );
