@@ -456,7 +456,7 @@ screen:
   - the sign-in footnote "Polaris Key signs you in for <App>. <Developer> never sees your codes or
     passkeys." (`signin.footer`, SIGN-IN.md D-15);
   - the device-code URL. The product's `deviceCodeUrl` (for example `driftkart.gg/tv`) is used when
-    set, otherwise `key.plrs.im/tv` on TV and console and `key.plrs.im/device` in desktop and
+    set, otherwise `polaris.locker/tv` on TV and console and `polaris.locker/device` in desktop and
     phone hand-offs (SIGN-IN.md D-16; `/activate` is only the license-key route).
 - **Service cues are off on product screens.** Users neither know nor care that License is
   chartreuse. In product-facing kit screens the six service accents do not appear at all. They
@@ -1227,7 +1227,7 @@ Mockups: [web](ui-kits/shots/web-sign-in-light.png), [iOS](ui-kits/shots/ios-sig
     everywhere:** two groups of four joined by a hyphen, `WDJB-MJHT`, exactly as the activate page
     asks for it. TV and handheld sizes only get larger type and tracking; the terminal shows the
     same string in reverse video. No spaced-out letters, no space in place of the hyphen;
-  - "Or go to key.plrs.im/device", with copy;
+  - "Or go to polaris.locker/device", with copy;
   - "Check the code there matches this one";
   - the determinate countdown ring with "code expires in 4:12";
   - **Open browser again** (primary) and **Cancel** (secondary).
@@ -1240,7 +1240,7 @@ Mockups: [web](ui-kits/shots/web-sign-in-light.png), [iOS](ui-kits/shots/ios-sig
 
 - **TV and consoles** (tvOS, Android TV, Godot on console or Steam Deck in game mode) open on the
   device-code path:
-  - the product's `deviceCodeUrl`, or `key.plrs.im/tv`;
+  - the product's `deviceCodeUrl`, or `polaris.locker/tv`;
   - the code as two groups of four joined by a hyphen, as everywhere (SIGN-IN.md D-17);
   - a QR tile in 92 % white with an 8 px quiet zone;
   - focusable **Use a license key instead** and **Cancel**, so the screen is never a dead end

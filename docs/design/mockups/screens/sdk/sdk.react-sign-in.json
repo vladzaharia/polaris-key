@@ -48,7 +48,7 @@
       {
         "severity": "major",
         "issue": "Failure states the flow implies are never drawn: no license on this account, sign-in cancelled or expired, offline, and the body of 'Use a code instead'.",
-        "resolution": "Added four frames, worded from SIGN-IN.md and the kit catalog. 1b Offline: 'Can't reach Polaris Key' with Try again. 2b Sign-in didn't finish: drawn as 'This sign-in took too long' with Sign in again, and the caption gives the cancelled and browser-didn't-open wordings. 2c Use a code instead: 'Sign in with a code', key.plrs.im/device, WDJB-MJHT with Copy, the countdown, Open browser, Cancel and Use browser sign-in, with no QR on desktop. 3b 'No DJDL license in this account': 'Bought it with another email?', the key field with 'Add and use on this device', Use another account, Get DJDL ↗ and Cancel."
+        "resolution": "Added four frames, worded from SIGN-IN.md and the kit catalog. 1b Offline: 'Can't reach Polaris Key' with Try again. 2b Sign-in didn't finish: drawn as 'This sign-in took too long' with Sign in again, and the caption gives the cancelled and browser-didn't-open wordings. 2c Use a code instead: 'Sign in with a code', polaris.locker/device, WDJB-MJHT with Copy, the countdown, Open browser, Cancel and Use browser sign-in, with no QR on desktop. 3b 'No DJDL license in this account': 'Bought it with another email?', the key field with 'Add and use on this device', Use another account, Get DJDL ↗ and Cancel."
       },
       {
         "severity": "minor",

@@ -77,10 +77,10 @@ describe("DL14: links fail closed", () => {
   });
 
   it("opens a valid link only where the device browses, and hides an invalid one entirely", () => {
-    expect(linkVerdict("https://key.plrs.im/tv", TV, "sign-in")).toEqual({
+    expect(linkVerdict("https://polaris.locker/tv", TV, "sign-in")).toEqual({
       purpose: "sign-in",
-      url: "https://key.plrs.im/tv",
-      display: "key.plrs.im/tv",
+      url: "https://polaris.locker/tv",
+      display: "polaris.locker/tv",
       open: false,
       qr: true,
     });
