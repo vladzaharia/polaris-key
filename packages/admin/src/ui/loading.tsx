@@ -61,7 +61,7 @@ export function RefetchBar({
       )}
     >
       {shown ? (
-        <div className="absolute inset-y-0 left-0 w-1/3 animate-pk-refetch rounded-full bg-fg-subtle motion-reduce:animate-none motion-reduce:w-full motion-reduce:opacity-50" />
+        <div className="absolute inset-y-0 start-0 w-1/3 animate-pk-refetch rounded-full bg-fg-subtle motion-reduce:animate-none motion-reduce:w-full motion-reduce:opacity-50" />
       ) : null}
     </div>
   );

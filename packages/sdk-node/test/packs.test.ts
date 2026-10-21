@@ -81,6 +81,8 @@ class FakeServer {
   feedChannel = "stable";
   /** B-150: answer every record fetch with this status instead of the record. */
   recordStatus: number | null = null;
+  /** B-150: answer every object or range fetch with this status instead of the bytes (0 drops). */
+  blobStatus: number | null = null;
 
   async start(): Promise<void> {
     this.server = createServer((req, res) => void this.handle(req, res));
@@ -109,6 +111,8 @@ class FakeServer {
     }
     const rec = /^\/djdl\/release\/records\/([0-9a-f]{64})$/.exec(url.pathname);
     if (rec) {
+      // 0: drop the connection, a transport failure with no response.
+      if (this.recordStatus === 0) return void req.socket.destroy();
       if (this.recordStatus !== null)
         return void res.writeHead(this.recordStatus).end();
       const p = this.packs.find((x) => x.recordSha256 === rec[1]);
@@ -130,6 +134,9 @@ class FakeServer {
       url.pathname,
     );
     if (blob) {
+      if (this.blobStatus === 0) return void req.socket.destroy();
+      if (this.blobStatus !== null)
+        return void res.writeHead(this.blobStatus).end();
       const h = blob[1]!;
       const bytes = this.packs
         .map((p) => p.objects.get(h))
@@ -250,6 +257,7 @@ afterEach(async () => {
   srv.reports = [];
   srv.ignoreRange = false;
   srv.recordStatus = null;
+  srv.blobStatus = null;
   srv.cutRange = 0;
   if (work) await rm(work, { recursive: true, force: true });
 });
@@ -632,7 +640,7 @@ describe("DirPackStorage", () => {
 });
 
 describe("a failed record fetch keeps its class (B-150)", () => {
-  it("reports a 5xx as server-error and any other refusal as network-error", async () => {
+  it("maps 401 unauthorized, 403 forbidden, 5xx server-error, the rest network-error", async () => {
     work = await mkdtemp(join(tmpdir(), "pkey-packs-"));
     const v1 = await treePack({
       packId: "djdl.l10n",
@@ -644,8 +652,10 @@ describe("a failed record fetch keeps its class (B-150)", () => {
     for (const [status, code] of [
       [503, "server-error"],
       [500, "server-error"],
+      [401, "unauthorized"],
+      [403, "forbidden"],
       [404, "network-error"],
-      [403, "network-error"],
+      [0, "network-error"], // a dropped connection: no response
     ] as const) {
       srv.recordStatus = status;
       const c = await client({ stamp: [v1] });
@@ -655,6 +665,36 @@ describe("a failed record fetch keeps its class (B-150)", () => {
       c.close();
     }
     srv.recordStatus = null;
+  });
+});
+
+describe("a failed object or range fetch keeps its class (B-150 follow-through)", () => {
+  const cases = [
+    [401, "pack-not-entitled"],
+    [403, "pack-not-entitled"],
+    [500, "server-error"],
+    [503, "server-error"],
+    [404, "network-error"],
+    [0, "network-error"], // a dropped connection: no response
+  ] as const;
+
+  it("maps an object fetch: 401/403 pack-not-entitled, 5xx server-error, the rest network-error", async () => {
+    work = await mkdtemp(join(tmpdir(), "pkey-packs-"));
+    const v1 = await treePack({
+      packId: "djdl.l10n",
+      version: "1.0.0",
+      seq: 1,
+      files: v1Files,
+    });
+    srv.packs = [v1];
+    for (const [status, code] of cases) {
+      srv.blobStatus = status;
+      const c = await client({ stamp: [v1] });
+      await expect(c.update.packs.ensure(["djdl.l10n"])).rejects.toMatchObject({
+        code,
+      });
+      c.close();
+    }
   });
 });
 
@@ -1059,6 +1099,31 @@ describe("client.update.packs and chunk sync (P4-11)", () => {
       srv.blobRequests().some((s) => s.path.endsWith(sha(v2.payload))),
     ).toBe(false);
     again.close();
+  });
+
+  it("maps a range fetch the same way (B-150 follow-through: the full-payload fallback then fails alike)", async () => {
+    work = await mkdtemp(join(tmpdir(), "pkey-packs-"));
+    const { v1, v2 } = await chain();
+    const c = await client({
+      stamp: [],
+      stampDoc: chunkStamp(v1),
+      handlers: [BLOB],
+    });
+    await c.update.packs.ensure([v1.packId]);
+    for (const [status, code] of [
+      [401, "pack-not-entitled"],
+      [403, "pack-not-entitled"],
+      [500, "server-error"],
+      [503, "server-error"],
+      [404, "network-error"],
+      [0, "network-error"],
+    ] as const) {
+      srv.blobStatus = status;
+      await expect(
+        c.update.packs.ensureReleases([target(v2)]),
+      ).rejects.toMatchObject({ code });
+    }
+    c.close();
   });
 
   it("falls back to the full payload when the server ignores Range", async () => {

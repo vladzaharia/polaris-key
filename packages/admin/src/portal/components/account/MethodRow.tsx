@@ -172,7 +172,7 @@ export function MethodRow({
           {meta ? <p className="text-sm text-fg-muted">{meta}</p> : null}
         </div>
         {open ? null : (
-          <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+          <div className="flex flex-wrap items-center gap-2 sm:ms-auto">
             {actions}
             <Button
               ref={buttonRef}
@@ -195,12 +195,12 @@ export function MethodRow({
       </div>
       {open ? null : extra}
       {notice ? (
-        <p className="mt-2 text-sm text-warning sm:ml-13">{notice}</p>
+        <p className="mt-2 text-sm text-warning sm:ms-13">{notice}</p>
       ) : null}
       {guarded ? (
         <p
           id={reasonId}
-          className="mt-2 flex items-start gap-2 rounded-md border border-warning-border bg-warning-subtle px-3 py-2 text-sm text-fg sm:ml-13"
+          className="mt-2 flex items-start gap-2 rounded-md border border-warning-border bg-warning-subtle px-3 py-2 text-sm text-fg sm:ms-13"
         >
           <Lock aria-hidden className="mt-0.5 size-4 shrink-0 text-warning" />
           {reason === "last_link"
@@ -219,7 +219,7 @@ export function MethodRow({
           })
         }
       >
-        <div className="pt-3 sm:ml-13">
+        <div className="pt-3 sm:ms-13">
           <div className="space-y-3 rounded-lg border border-danger-border bg-danger-subtle p-4">
             <h4
               ref={headingRef}
@@ -230,7 +230,7 @@ export function MethodRow({
                 ? t("locker.methods.disconnectAsk", { name })
                 : t("locker.methods.removeAsk", { name })}
             </h4>
-            <ul className="list-disc space-y-1 pl-5 text-sm text-fg">
+            <ul className="list-disc space-y-1 ps-5 text-sm text-fg">
               {consequences.map((c, i) => (
                 <li key={i}>{c}</li>
               ))}

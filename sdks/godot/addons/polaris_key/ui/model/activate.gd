@@ -23,12 +23,16 @@ static func welcome_view(ctx: RefCounted) -> Dictionary:
 		return View.hidden(ctx, "Welcome")
 	var id := View.identity_text(ctx)
 	var args := {"product": id["name"], "developer": id["developer"]}
+	# No name anywhere: a neutral "Welcome", never "Welcome to" with nothing after it.
+	var nameless: bool = String(id["name"]) == ""
+	var title := "common.welcomeNoProductTitle" if nameless else "welcome.title"
+	var sign_in_only_lede := "common.signInToContinue" if nameless else "welcome.ledeSignInOnly"
 	# The one primary follows the state: Sign in on an empty Welcome (DL4).
 	var primary = "welcome.signIn" if sign_in else "welcome.useKey" if key else null
 	if View.truthy(ctx.input.get("pending")):
 		return View.make(ctx, "Welcome", {
 			"state": "busy",
-			"copy": ["welcome.title", "common.working", "a11y.busy"],
+			"copy": [title, "common.working", "a11y.busy"],
 			"args": args,
 			# A busy control keeps its label and its focus (DL4, DL9).
 			"primary": primary,
@@ -37,8 +41,8 @@ static func welcome_view(ctx: RefCounted) -> Dictionary:
 		return View.make(ctx, "Welcome", {
 			"state": "capability-limited",
 			"copy": [
-				"welcome.title",
-				"welcome.ledeSignInOnly" if sign_in else "welcome.ledeKeyOnly",
+				title,
+				sign_in_only_lede if sign_in else "welcome.ledeKeyOnly",
 			],
 			"args": args,
 			"primary": primary,
@@ -47,7 +51,7 @@ static func welcome_view(ctx: RefCounted) -> Dictionary:
 		"state": "default",
 		"copy": [
 			"a11y.productIcon",
-			"welcome.title",
+			title,
 			"common.byDeveloper" if id["developer"] != null else null,
 			"welcome.lede",
 			"welcome.signIn",

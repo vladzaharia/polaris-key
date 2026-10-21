@@ -9,7 +9,7 @@ import { HelpLink } from "../HelpLink.js";
 
 /** A long developer name or address wraps inside the button, never past the window (WCAG 1.4.10). */
 const WRAPS =
-  "h-auto min-h-9 max-w-full whitespace-normal py-1.5 text-left [overflow-wrap:anywhere]";
+  "h-auto min-h-9 max-w-full whitespace-normal py-1.5 text-start [overflow-wrap:anywhere]";
 
 /** Help (§4.20): who handles licenses and downloads, and how to reach them (G16). */
 export function HelpCard({
@@ -54,7 +54,7 @@ export function HelpCard({
               href={website}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex max-w-full items-center gap-2 text-sm text-fg-strong [overflow-wrap:anywhere] hover:underline"
+              className="inline-flex min-h-6 max-w-full items-center gap-2 text-sm text-fg-strong [overflow-wrap:anywhere] hover:underline"
             >
               <ExternalLink aria-hidden className="size-4" />
               {new URL(website).host}

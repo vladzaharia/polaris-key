@@ -81,7 +81,11 @@ class MatrixSnapshotTest(private val dark: Boolean) {
         val variant = snapshotVariants.first { it.branding == PolarisBranding.PolarisKey && it.dark == dark && it.widthDp == 411 }
         for (case in cases) {
             rule.capture("matrix/${case.id}/phone-polaris-${if (dark) "dark" else "light"}", variant) {
-                PolarisKitScreen(case.screen)
+                // SignIn/code carries no copy in the matrix (the user code, the address and the countdown
+                // are runtime values, not catalogue lines), so PolarisKitScreen would draw nothing: the
+                // picture is the code view the stateful form draws for a prompt.
+                if (case.id == "signIn-code") PolarisSignInScreen(PolarisSignInUi.Showing(samplePrompt, NOW), showQr = false)
+                else PolarisKitScreen(case.screen)
             }
         }
     }

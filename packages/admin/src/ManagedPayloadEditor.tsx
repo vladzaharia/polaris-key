@@ -686,7 +686,7 @@ export function ManagedPayloadEditor({
                         [group.category]: !prev[group.category],
                       }))
                     }
-                    className="flex w-full flex-wrap items-center gap-2 rounded-md px-1 py-1 text-left text-sm font-medium text-fg-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+                    className="flex w-full flex-wrap items-center gap-2 rounded-md px-1 py-1 text-start text-sm font-medium text-fg-strong focus-visible:outline-2 focus-visible:outline-focus"
                   >
                     <ChevronDown
                       aria-hidden
@@ -768,7 +768,7 @@ export function ManagedPayloadEditor({
 
       {server.rest.length > 0 ? (
         <Callout tone="danger" live title="The server rejected this batch">
-          <ul className="list-disc pl-5">
+          <ul className="list-disc ps-5">
             {server.rest.map((message) => (
               <li key={message}>{message}</li>
             ))}

@@ -341,7 +341,7 @@ export function DialogOverlay({
     <DialogPrimitive.Overlay
       ref={ref}
       className={cn(
-        "fixed inset-0 z-50 bg-black/60 animate-pk-overlay-in",
+        "fixed inset-0 z-50 bg-(--polaris-key-page-dark)/60 animate-pk-overlay-in",
         className,
       )}
       // Blurred (B4); a flat dark ground under reduced transparency (styles.css).
@@ -469,6 +469,8 @@ export function Dialog({
             if (!dismissible) e.preventDefault();
           }}
           data-tone={tone}
+          // The console dialog's 3 px top rule in the opener's accent is the spec'd one (B4, B17).
+          data-edge="canvas"
           className={cn(
             "fixed z-50 flex flex-col overflow-hidden border border-border bg-surface-overlay text-fg shadow-elevation-3 outline-hidden animate-pk-in",
             // The 3 px rule in the accent of where the dialog was opened from (B4, B17); a
@@ -479,7 +481,7 @@ export function Dialog({
             // (pk-sheet, src/motion.css; S-23 §4.2). At ≥ 640 px it rises like any dialog.
             "pk-sheet inset-x-0 bottom-0 max-h-[92dvh] w-full rounded-t-xl pb-[env(safe-area-inset-bottom)]",
             // ≥ 640 px: a centred dialog.
-            "sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-[calc(100dvh-2rem)] sm:w-[calc(100vw-2rem)] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-lg sm:pb-0",
+            "sm:inset-x-auto sm:bottom-auto sm:start-1/2 sm:top-1/2 sm:max-h-[calc(100dvh-2rem)] sm:w-[calc(100%-2rem)] sm:-translate-x-1/2 sm:rtl:translate-x-1/2 sm:-translate-y-1/2 sm:rounded-lg sm:pb-0",
             // A `<form>` wrapping the body and footer is a direct child: make it the flex column
             // the body scrolls in, so the footer is never pushed out of a short viewport (B-018).
             // `contents` forms already pass their children through.
@@ -514,7 +516,7 @@ export function Dialog({
                 <DialogPrimitive.Title
                   ref={setTitle}
                   tabIndex={-1}
-                  className="text-lg font-semibold leading-tight text-fg-strong outline-hidden forced-colors:outline-none max-sm:pr-10 @max-[18rem]:pr-[52px] @max-[18rem]:text-base console:text-xl console:leading-7"
+                  className="text-lg font-semibold leading-tight text-fg-strong outline-hidden forced-colors:outline-none max-sm:pe-10 @max-[18rem]:pe-[52px] @max-[18rem]:text-base console:text-xl console:leading-7"
                 >
                   {title}
                 </DialogPrimitive.Title>
@@ -531,7 +533,7 @@ export function Dialog({
               {dismissible && closeButton ? (
                 <DialogPrimitive.Close
                   aria-label="Close"
-                  className="-mr-2 -mt-1 inline-flex size-8 shrink-0 max-sm:absolute max-sm:right-1 max-sm:top-0 max-sm:m-0 max-sm:size-11 @max-[18rem]:size-[44px] items-center justify-center rounded-md text-fg-muted hover:bg-hover hover:text-fg-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+                  className="-me-2 -mt-1 inline-flex size-8 shrink-0 max-sm:absolute max-sm:end-1 max-sm:top-0 max-sm:m-0 max-sm:size-11 @max-[18rem]:size-[44px] items-center justify-center rounded-md text-fg-muted hover:bg-hover hover:text-fg-strong focus-visible:outline-2 focus-visible:outline-focus"
                 >
                   <X aria-hidden className="size-4" />
                 </DialogPrimitive.Close>
@@ -594,7 +596,7 @@ export function DialogBody({
         "pk-scroll min-h-0 flex-1 overflow-y-auto rounded-md px-6 @max-[18rem]:px-4 py-2 text-base console:py-4",
         // outline-solid: the base `:focus-visible` rule's outline-hidden leaves the outline style
         // at none, which outline-2 alone would keep.
-        "focus-visible:outline-2 focus-visible:outline-solid focus-visible:-outline-offset-4 focus-visible:outline-focus focus-visible:ring-0 focus-visible:ring-offset-0",
+        "focus-visible:outline-2 focus-visible:outline-solid focus-visible:-outline-offset-4 focus-visible:outline-focus",
         className,
       )}
       {...props}

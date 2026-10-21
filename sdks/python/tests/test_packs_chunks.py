@@ -196,6 +196,28 @@ def test_a_200_to_a_range_request_falls_back_and_installs() -> None:
     assert e.state().inflight == {}
 
 
+@pytest.mark.parametrize(
+    "status, code",
+    [
+        (401, "pack-not-entitled"),
+        (403, "pack-not-entitled"),
+        (500, "server-error"),
+        (503, "server-error"),
+        (404, "network-error"),
+        (0, "network-error"),
+    ],
+)
+def test_a_refused_range_keeps_its_class_when_the_fallback_fails_alike(status: int, code: str) -> None:
+    """B-150 follow-through: a range (then the full-payload fallback) answered with ``status``."""
+    server = ChunkServer()
+    e = installed_v1(server)
+    v2 = v1_v2()["v2"]
+    server.blob_status = status
+    with pytest.raises(PackError) as ex:
+        e.ensure_releases([target(v2)])
+    assert ex.value.code == code
+
+
 def test_a_206_carrying_another_etag_falls_back_the_same_way() -> None:
     server = ChunkServer()
     e = installed_v1(server)

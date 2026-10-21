@@ -923,7 +923,7 @@
                 >
               </div>
               <div style="display: grid; gap: 8px">
-                <h1 class="headline">Add your license</h1>
+                <h1 class="headline">Enter your license key</h1>
                 <p class="body" style="font-size: 15px; line-height: 22px">
                   You’ll find it in your purchase email.
                 </p>
@@ -975,7 +975,7 @@
                 bottom: 316px;
               "
             >
-              <div class="btn filled">Activate</div>
+              <div class="btn filled">Activate license</div>
             </div>
             <div class="ime" id="ime"></div>
           </div>
@@ -1016,9 +1016,11 @@
                       mara@fennick.studio · passkey
                     </div>
                   </div>
-                  <span class="ms" style="color: var(--pk-text-muted)"
-                    >passkey</span
-                  >
+                  <span
+                    data-icon="passkey"
+                    data-size="24"
+                    style="color: var(--pk-text-muted)"
+                  ></span>
                 </div>
                 <div class="acct">
                   <span class="avatar" style="background: #fff"
@@ -1040,8 +1042,10 @@
                   margin-top: 16px;
                 "
               >
-                <span class="btn text accent">Use email</span
-                ><span class="btn text accent">Use another device</span>
+                <span class="btn text accent">Continue with email</span
+                ><span class="btn text accent"
+                  >Sign in with another device</span
+                >
               </div>
               <p
                 style="
@@ -1468,7 +1472,7 @@
               </div>
             </div>
             <div class="pane-detail">
-              <h2 class="headline">Devices</h2>
+              <h2 class="headline">Your devices</h2>
               <p class="body" style="margin: 8px 0 20px; font-size: 16px">
                 Devices using this license.
               </p>
@@ -1569,7 +1573,7 @@
                   <span class="picon" data-art="tidewater" data-size="32"></span
                   ><span>Tidewater Studio <small>· Pro</small></span>
                 </div>
-                <h1 class="headline">Add your license</h1>
+                <h1 class="headline">Enter your license key</h1>
                 <p class="body" style="font-size: 16px; margin-top: -8px">
                   You’ll find it in your purchase email.
                 </p>
@@ -1590,7 +1594,7 @@
                   bottom: 40px;
                 "
               >
-                <div class="btn filled">Activate</div>
+                <div class="btn filled">Activate license</div>
               </div>
             </div>
             <div class="pb-arrow"><span class="ms">arrow_back</span></div>
@@ -2000,8 +2004,8 @@
       </figure>
       <figure>
         <figcaption>
-          android · boot and blocked states from the Compose kit: pack progress,
-          offline, update required and error, phone. Built today
+          android · boot and blocked states from the Compose kit: boot (checking
+          for updates), offline, update required and error, phone. Built today
         </figcaption>
         <div class="row-shot" data-shot="states-built">
           <div>

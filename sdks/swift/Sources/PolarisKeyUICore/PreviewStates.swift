@@ -44,16 +44,17 @@ extension PolarisKeyPreviewState {
     /// Tidewater Studio by Harbor Audio: no accent of its own, so the kit derives teal from its icon.
     public static let tidewater = KitPresentation(
         name: "Tidewater Studio", developerName: "Harbor Audio", icon: true)
-    /// Drift Kart by Lanternworks, with its own accent (a light one: the label flips to ink).
+    /// Drift Kart by Lanternworks, with its own accent (a light one: the label flips to ink). It
+    /// ships no icon art of its own, so the preview draws its monogram, never Tidewater's icon.
     public static let driftKart = KitPresentation(
-        name: "Drift Kart", developerName: "Lanternworks", accent: "#ff6a3d", icon: true)
+        name: "Drift Kart", developerName: "Lanternworks", accent: "#ff6a3d", icon: false)
     public static let iPhone = KitPlatform(os: .ios, formFactor: .iphone)
     public static let iPad = KitPlatform(os: .ios, formFactor: .ipad)
     public static let mac = KitPlatform(os: .macos, formFactor: .mac)
     /// A synthetic key with a 22-character secret.
     public static let key = "pkey_tidewater_Q2xvdWRzT3ZlclRoZUhpQQ"
     public static let manageURL =
-        "https://key.plrs.im/#/p/tidewater/free-device?license=lic_pro&for=iPhone"
+        "https://polaris.locker/#/p/tidewater/devices"
 
     public static let devices: [KitDevice] = [
         KitDevice(
@@ -78,7 +79,7 @@ extension PolarisKeyPreviewState {
         KitLicenseChoice(
             id: "lic_pro", tierName: "Pro", origin: "purchase", seats: KitSeats(used: 3, limit: 3),
             state: "full", replace: KitReplaceAllowance(allowed: true),
-            freeDeviceUrl: "https://key.plrs.im/#/p/tidewater/free-device?license=lic_pro"),
+            freeDeviceUrl: "https://polaris.locker/#/p/tidewater/free-device?license=lic_pro"),
         KitLicenseChoice(
             id: "lic_edu", tierName: "Edu", name: "Fennick Studio Edu", origin: "developer",
             seats: KitSeats(used: 3, limit: 3), expiresAt: 1_798_761_600, state: "full",

@@ -94,10 +94,10 @@ what changed: `license`, `config`, `updateAvailable`, `packs` and `store`.
 | Updater feeds          | `update.feedUrl("appcast" \| "winsparkle" \| "velopack" \| "appInstaller" \| "zsync")` from discovery (typed `Unsupported` when unpublished); `client.distribution.downloadModel()`.                                                                                                                                                            |
 | Install an update      | `update.install(decision)` through a driver (below), answering `restartRequired`, `handedOff`, `storeOpened` or `unsupported{reason}`.                                                                                                                                                                                                          |
 | Boot guard             | `update.markBootAttempt()` at start-up, `update.confirmBoot()` once healthy; after `MAX_FAILED_BOOTS` the driver's rollback runs, else `boot_rolled_back` is reported and the version is skipped.                                                                                                                                               |
-| Update health          | decide, packs, downloads, drivers and the guard journal P6-03 events in the state directory; each device report carries at most 16 and marks them sent.                                                                                                                                                                                         |
+| Update health          | decide, packs, downloads, drivers and the guard journal update-health events in the state directory; each device report carries at most 16 and marks them sent.                                                                                                                                                                                 |
 | Server-side check      | Moved to `@polaris-key/server` in 0.9 (no alias): `createPolarisKey()` and the Express, Hono and Next.js drop-ins, and `verifyLicenseDocument` there.                                                                                                                                                                                           |
 | Crash reporting        | `client.crashTags()` → `{ release, environment, "pkey.outlet" }` for a Sentry init (`release`, `environment`, and a tag).                                                                                                                                                                                                                       |
-| Build stamp and outlet | `.polaris_key/build.json` (P1-11) is autoloaded; `readWindowsSignatureKind()` feeds the attested Windows signal.                                                                                                                                                                                                                                |
+| Build stamp and outlet | `.polaris_key/build.json` is autoloaded; `readWindowsSignatureKind()` feeds the attested Windows signal.                                                                                                                                                                                                                                        |
 
 Products whose device-trust policy requires platform attestation refuse a Node client
 (`attestation-required`): Node has no attestation service (`devices.attest` is a declared N/A).
@@ -455,7 +455,7 @@ An override env var is `${envPrefix}${key.replaceAll(".", "__")}` (dots → doub
 
 The value is the parsed JSON value when the raw string is one strict JSON text (`4` → number,
 `true` → boolean, `[…]`/`{…}` → array/object, `"…"` → string), and otherwise the raw string,
-unchanged (WIRE-CONTRACT-V3 §2.2.1 rule 2, pinned by `conformance/corpus/v2/config-matrix.json`).
+unchanged (the wire contract, v4; pinned by `conformance/corpus/v2/config-matrix.json`).
 Strict means: no trailing comma, `NaN`, `Infinity`, leading zero or byte order mark; no duplicate
 member names and no member name holding U+0000; no lone surrogate; every number zero or of
 magnitude 10^−307 up to below 10^308; and at most 64 levels of nesting. Reading a variable never
@@ -464,7 +464,7 @@ throws. A set but empty variable counts (its value is `""`).
 ### What the SDK sends
 
 Every product-scoped request carries the `X-PKey-*` metadata headers. `X-PKey-Platform` and
-`X-PKey-Arch` are the canonical values of WIRE-CONTRACT-V3 §5.2 (`macos`, `windows`, `linux`, …;
+`X-PKey-Arch` are the canonical values of the wire contract (v4) (`macos`, `windows`, `linux`, …;
 `arm64`, `x86_64`, …), mapped from `os.platform()` and `os.arch()`; a spelling with no value
 (`freebsd`, `ia32`) omits its header. `X-PKey-SDK` is `node` (`SdkId.node`); `SDK_NAME` stays the
 npm package name and is not sent.
@@ -522,7 +522,7 @@ as `staged.channel` when you stage), `decision`, `feed` (`network` or `committed
 | `engine`            | `godot-<major>.<minor>` for a host that runs Godot code packs; `null` otherwise.                                                                                                              |
 | `platform`, `arch`  | Default to `os.platform()` / `os.arch()`'s canonical values; set them on an OS with none.                                                                                                     |
 
-- **Outlet detection** (plans/P3-01.md §2.9). When the host names no `outlet`, the client detects
+- **Outlet detection**. When the host names no `outlet`, the client detects
   one at construction: `readOutletSignals()` reads the environment (Steam's `SteamAppId`, snap,
   AppImage, `ITCHIO_APP`), the executable and script path conventions (a Homebrew `Cellar`
   realpath, WinGet, Scoop and Chocolatey folders, `_npx` and pnpm-store paths), `node:sea`'s
@@ -538,7 +538,7 @@ as `staged.channel` when you stage), `decision`, `feed` (`network` or `committed
 - **Refusals.** A bad option, or a release key whose bytes are also a trust pin, throws
   `invalid-options` from the constructor; an empty `pinnedReleaseKeys` makes `decide()` throw
   `not-configured`. A product that runs no Update service is refused before dialling
-  (`service-unavailable`, D-21), and so is a Worker whose discovery document has no
+  (`service-unavailable`), and so is a Worker whose discovery document has no
   `update.endpoints.feed` or `release.endpoints.record` — fall back to `check()`.
 - **Discovery.** `decide()` loads discovery when this session has not. The feed is
   `GET …/update/{channel}/feed.jws?platform=…` with the channel as requested (`latest` is fine:
@@ -575,7 +575,7 @@ as `staged.channel` when you stage), `decision`, `feed` (`network` or `committed
 
 ## Packs (`client.update.packs`)
 
-Downloadable content (plans/P4-01.md §2.6–§2.9): the running build's **content stamp** pins one
+Downloadable content: the running build's **content stamp** pins one
 pack release per pack, and `client.update.packs` installs those releases into the platform data
 directory. **A build without a stamp has no packs** — ship `pkey-content.json` (written by
 `pkey release content-stamp`) among the app's own read-only resources, never a user-writable
@@ -613,7 +613,7 @@ const dir = await client.update.packs.path("diceroll.l10n"); // the running tree
 - **Strategies.** The planner picks `delta` (a whole-payload or per-file `zstd --patch-from`
   set), `file` (only the files whose hash is not installed) or `full`; a refused strategy falls
   back to the next, `full` last.
-- **Feed-offered deltas** (P4-29). The committed channel feed can list lazy deltas (`deltas`, the
+- **Feed-offered deltas**. The committed channel feed can list lazy deltas (`deltas`, the
   Worker's delta menu). The client keeps the menu of the last feed `update.decide()` or
   `update.feed()` used, fresh or stale, and reads the committed feed from the cache when the
   pack engine starts, so an offline launch still has it. The engine (`feedDeltas`) adds the
@@ -622,7 +622,7 @@ const dir = await client.update.packs.path("diceroll.l10n"); // the running tree
   feed-offered delta is tried per install. Nothing to configure.
 - **Progress events.** `on(listener)` receives `{packId, phase, done, total}` with `phase`
   `download`, `apply`, `done`, `state-issue` (once at load, see State below) or `fallback`
-  (P4-18): a strategy failed (`strategy`, and the verdict code in `error`) and the next candidate
+  : a strategy failed (`strategy`, and the verdict code in `error`) and the next candidate
   runs, when there is one. A plan that later succeeds still reports the failure it recovered
   from; one with nothing left raises the first failure. (`via: "native"` appears only on the web,
   where the browser's own transport is tried first.)
@@ -662,7 +662,7 @@ const dir = await client.update.packs.path("diceroll.l10n"); // the running tree
   `plan-*` and applier codes, `network-error`. `PackError` is exported from `@polaris-key/node`
   and `@polaris-key/node/packs`. Unlike the rest of the SDK (see [Errors](#errors)), a record or
   object fetch the server refuses, a 5xx included, is `network-error`, not `server-error`.
-- **Delegated content** (P4-19). A compatible or standalone pack release signed by a delegated
+- **Delegated content**. A compatible or standalone pack release signed by a delegated
   content key installs through the same engine: the delegation its `pkd1-` kid names is fetched
   from the record route (at most 16 per check, cached per process), verified against
   `pinnedReleaseKeys` only, and kept with the install for the reload. Every file must pass the
@@ -721,7 +721,7 @@ theming, localization, the `--json` contract and the fallbacks (`NO_COLOR`, `TER
 `kit: false` keeps the plain output, and each verb is also a plain function (`status(client)`,
 `devicesList(client)`, …) returning `{ ok, message, data }`.
 
-**Changed in the terminal kit (UK-14).** The adapters' human output is new: the rail, catalog
+**Changed in the terminal kit.** The adapters' human output is new: the rail, catalog
 copy in the active locale (nine languages), color on a terminal, and new verb names `login` and
 `logout` (`sign-in` and `sign-out` still work). Human output is for people and may change between
 releases; a script reads `--json`, whose envelope is versioned (`"v": 1`). The exit codes a script
@@ -730,7 +730,7 @@ A key given as an argument to `activate` still works and now warns that it lands
 history; the prompt or a pipe is the way to pass it. A host that relied on the old plain messages
 passes `kit: false`.
 
-**Changed in 0.8.x (UK-45).** **Breaking:** `secret` and `mint` print their value only with
+**Changed in 0.8.x.** **Breaking:** `secret` and `mint` print their value only with
 `--reveal`; without it they print nothing, say so on stderr and exit 2 (`mint` mints nothing too),
 so a script that captured the value adds the flag (`$(tidewater secret api.key --reveal)`). `login` on a device that
 holds a key license asks before adding it to the account, and keeps it unless the answer is yes.
@@ -738,7 +738,7 @@ holds a key license asks before adding it to the account, and keeps it unless th
 own verification in epoch milliseconds. `client.update.packageName` returns the `update.packageName`
 the upgrade command is built from.
 
-**Changed in 0.8.x (UK-51).** A refusal the person can resolve (`status` on a revoked, expired or
+**Changed in 0.8.x.** A refusal the person can resolve (`status` on a revoked, expired or
 out-of-range license, a refused key, the device limit) is drawn as ▲ with its fix, and a failure,
 a network one included, as ✗. The exit codes are the `cli` family's table in `ui-matrix.json`:
 `EXIT.licenseRequired` (4) is new, for a gate in a host CLI that refuses the host's command

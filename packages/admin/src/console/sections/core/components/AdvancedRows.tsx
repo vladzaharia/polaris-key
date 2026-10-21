@@ -62,7 +62,7 @@ function FoldedRow({
           </Button>
         </div>
         {open && children ? (
-          <div id={controls} className="mt-3 pl-12">
+          <div id={controls} className="mt-3 ps-12">
             {children}
           </div>
         ) : null}

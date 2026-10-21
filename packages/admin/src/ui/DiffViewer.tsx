@@ -123,7 +123,7 @@ function StructuredView<T extends object>({
       <p className="text-sm font-medium text-fg-strong">
         {diffSummary(model, noun)}
         {breaking.length ? (
-          <span className="ml-2 inline-flex items-center gap-1 font-normal text-danger">
+          <span className="ms-2 inline-flex items-center gap-1 font-normal text-danger">
             <TriangleAlert aria-hidden className="size-4" />
             {breaking.length} breaking
           </span>

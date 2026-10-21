@@ -6,7 +6,13 @@ Python's ports:
              ``distribution.endpoints.blobs`` (``{sha256}``) with ``Range``/``If-Range`` over
              httpx streaming, the device bearer sent only to the control plane's own origin; any
              answer but 200/206 (a 403 ``delivery_gate_missing`` or ``not_entitled`` included) is
-             a failed fetch;
+             a failed fetch. A refused record fetch keeps its class (B-150, one mapping in every
+             packs client): 401 ``unauthorized``, 403 ``forbidden``, 5xx ``server-error``, a
+             transport failure (no response) and any other status, 404 included,
+             ``network-error``;
+             an object or range fetch maps the same way with one change: 401 or 403 is
+             ``pack-not-entitled`` (the content route is entitlement-gated), 5xx
+             ``server-error``, no response and any other status ``network-error``;
   storage    :class:`DirPackStorage` under the platform data directory (P1b-09), excluded from
              backups: a versioned directory per tree payload and an atomic pointer swap in
              ``state.json``;
@@ -131,6 +137,17 @@ class _Body:
 
     def close(self) -> None:
         self._res.close()
+
+
+def _record_refusal(status: int) -> str:
+    """The error code for a record fetch the registry answered with a non-ok ``status``."""
+    if status == 401:
+        return ErrorCode.UNAUTHORIZED
+    if status == 403:
+        return ErrorCode.FORBIDDEN
+    if status >= 500:
+        return ErrorCode.SERVER_ERROR
+    return ErrorCode.NETWORK_ERROR
 
 
 class PacksClient:
@@ -565,12 +582,7 @@ class PacksClient:
                 "GET", url, headers=self._ctx.headers(headers), timeout=self._ctx.timeout
             ) as res:
                 if not res.is_success:
-                    return {
-                        "ok": False,
-                        "code": ErrorCode.SERVER_ERROR
-                        if res.status_code >= 500
-                        else ErrorCode.NETWORK_ERROR,
-                    }
+                    return {"ok": False, "code": _record_refusal(res.status_code)}
                 # A record over the bound is refused at step `hash` without hashing; never
                 # buffer more than one byte past it.
                 limit = MAX_RECORD_JWS_BYTES + 1

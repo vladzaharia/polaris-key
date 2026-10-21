@@ -226,6 +226,10 @@
     <string name="boot_error_body">%1$s未能完成启动（%2$s）。</string>
     <!-- Welcome screen, the gate's first screen. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="welcome_title">欢迎使用%1$s</string>
+    <!-- Welcome screen title when no product name is known anywhere (no integrator name, presentation or bundle). Replaces welcome.title, which needs {product}. -->
+    <string name="common_welcomeNoProductTitle">欢迎</string>
+    <!-- Welcome screen lede for a sign-in-only product when no product name is known anywhere. Replaces welcome.ledeSignInOnly, which needs {product}. -->
+    <string name="common_signInToContinue">登录以继续。</string>
     <!-- Welcome screen, the gate's first screen. -->
     <string name="welcome_lede">登录或使用许可证密钥以继续。</string>
     <!-- Welcome screen, the gate's first screen. Shown when the product only takes license keys. -->

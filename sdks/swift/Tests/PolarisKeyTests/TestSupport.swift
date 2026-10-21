@@ -162,6 +162,12 @@ actor StubServer {
 
     private var routes: [String: @Sendable (PolarisRequest) -> Reply] = [:]
     private var log: [PolarisRequest] = []
+    private var dropped: Set<String> = []
+
+    /// Requests to `path` fail the way a dropped connection does: no response at all.
+    func drop(_ path: String) { dropped.insert(path) }
+
+    func isDropped(_ path: String) -> Bool { dropped.contains(path) }
 
     func route(_ path: String, _ handler: @escaping @Sendable (PolarisRequest) -> Reply) {
         routes[path] = handler
@@ -174,6 +180,7 @@ actor StubServer {
     func reset() {
         routes = [:]
         log = []
+        dropped = []
     }
 
     func handle(_ request: PolarisRequest) -> Reply {
@@ -196,6 +203,9 @@ struct StubTransport: PolarisTransport {
 
     func send(_ request: PolarisRequest) async throws -> PolarisResponse {
         let reply = await server.handle(request)
+        if await server.isDropped(request.url.path) {
+            throw PolarisError(code: "transport", message: "connection dropped")
+        }
         return PolarisResponse(
             status: reply.status, body: reply.body, headers: reply.headers)
     }

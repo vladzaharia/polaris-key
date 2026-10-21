@@ -185,7 +185,7 @@ export function PageHeader({
         className={cn(
           // Three columns when the header itself has the room (a width in rem, so it follows the
           // text size). With less (a phone, or 200 % text) the cluster and the primary action
-          // take their own right-aligned rows under the title instead of squeezing it.
+          // take their own end-aligned rows under the title instead of squeezing it.
           "grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2",
           hasCluster &&
             primaryAction &&
@@ -278,8 +278,8 @@ export function PageHeader({
                     refreshTrailsPhone || refreshTrailsWide ? "" : undefined
                   }
                   className={cn(
-                    refreshTrailsPhone && "-mr-3",
-                    refreshTrailsWide ? "sm:-mr-3" : "sm:mr-0",
+                    refreshTrailsPhone && "-me-3",
+                    refreshTrailsWide ? "sm:-me-3" : "sm:me-0",
                   )}
                   loading={freshness.refreshing}
                   iconStart={<RefreshCw aria-hidden />}
@@ -289,7 +289,7 @@ export function PageHeader({
                 </Button>
                 {freshness.auto ? (
                   <Switch
-                    className="ml-2"
+                    className="ms-2"
                     checked={freshness.auto.checked}
                     onCheckedChange={freshness.auto.onCheckedChange}
                     label={freshness.auto.label}
@@ -352,7 +352,7 @@ export function PageHeader({
         <div
           data-condensed-header=""
           // Inside the canvas (B4): under the top bar and its 3 px rule, not over the page frame.
-          className="fixed inset-x-0 top-[67px] z-30 flex h-12 items-center justify-between gap-3 border-b border-border bg-surface-raised px-6 lg:left-(--sidebar-w) lg:right-4 lg:rounded-t-[15px]"
+          className="fixed inset-x-0 top-[67px] z-30 flex h-12 items-center justify-between gap-3 border-b border-border bg-surface-raised px-6 lg:start-(--sidebar-w) lg:end-4 lg:rounded-t-[15px]"
         >
           <span aria-hidden className="truncate font-medium text-fg-strong">
             {title}

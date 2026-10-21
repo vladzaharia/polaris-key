@@ -89,7 +89,7 @@ function useChannels(slug: string): string[] {
 const FEED_RULES = (
   <div className="max-w-sm space-y-2 text-sm">
     <p className="font-medium text-fg-strong">Which releases a feed lists</p>
-    <ol className="list-decimal space-y-1 pl-5 text-fg-muted">
+    <ol className="list-decimal space-y-1 ps-5 text-fg-muted">
       <li>
         The channel serves them (beta includes stable; yanked ones drop out).
       </li>

@@ -114,13 +114,17 @@ def welcome_view(ctx: Context) -> View:
         return hidden_view(ctx, "Welcome")
     identity = identity_text(ctx)
     args = {"product": identity.name, "developer": identity.developer}
+    # No name anywhere: a neutral "Welcome", never "Welcome to" with nothing after it.
+    nameless = identity.name == ""
+    title = "common.welcomeNoProductTitle" if nameless else "welcome.title"
+    sign_in_only_lede = "common.signInToContinue" if nameless else "welcome.ledeSignInOnly"
     primary = "welcome.signIn" if sign_in else "welcome.useKey" if key else None
     if ctx.input.get("pending") is not None:
         return make_view(
             ctx,
             "Welcome",
             "busy",
-            ("welcome.title", "common.working", "a11y.busy"),
+            (title, "common.working", "a11y.busy"),
             args=args,
             primary=primary,
         )
@@ -130,8 +134,8 @@ def welcome_view(ctx: Context) -> View:
             "Welcome",
             "capability-limited",
             (
-                "welcome.title",
-                "welcome.ledeSignInOnly" if sign_in else "welcome.ledeKeyOnly",
+                title,
+                sign_in_only_lede if sign_in else "welcome.ledeKeyOnly",
             ),
             args=args,
             primary=primary,
@@ -142,7 +146,7 @@ def welcome_view(ctx: Context) -> View:
         "default",
         (
             "a11y.productIcon",
-            "welcome.title",
+            title,
             "common.byDeveloper" if identity.developer is not None else None,
             "welcome.lede",
             "welcome.signIn",

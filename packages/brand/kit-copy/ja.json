@@ -97,6 +97,8 @@
     "boot.consent.download": "ダウンロード",
     "boot.error.body": "{product}の起動を完了できませんでした（{code}）。",
     "welcome.title": "{product}へようこそ",
+    "common.welcomeNoProductTitle": "ようこそ",
+    "common.signInToContinue": "続けるにはサインインしてください。",
     "welcome.lede": "続けるには、サインインするかライセンスキーを使用してください。",
     "welcome.ledeKeyOnly": "続けるには、ライセンスキーを入力してください。",
     "welcome.ledeSignInOnly": "{product}を使うにはサインインしてください。",

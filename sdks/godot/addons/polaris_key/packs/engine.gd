@@ -180,8 +180,8 @@ var _rev_verified := {}
 var _rev_jws := {}
 ## Whether `revocations.json` exists (it is never created empty).
 var _rev_file := false
-## The last object fetch was refused with 403 (P4-05: `delivery_gate_missing`, `not_entitled`).
-var _denied := false
+## The class of the last refused object or range fetch (`object_refusal`), else `network-error`.
+var _fetch_code_value := String(PKeyErrors.NETWORK)
 ## P4-11: the chunk indexes the post-install backfill already tried in this process (by sha256).
 var _backfill_tried := {}
 ## plans/P4-19.md §2.3: delegation records fetched in this process, by hash (each bound to its
@@ -1589,7 +1589,9 @@ func _ensure_one_inner(pack_id: String, target: Variant) -> Dictionary:
 			return c
 		var f: Dictionary = result["verdict"]
 		if first_failure == null:
-			first_failure = _err(f["error"], "Installing %s by %s failed: %s." % [pack_id, cand["strategy"], f["error"]], pack_id, {"path": f.get("path", ""), "step": cand["strategy"]})
+			# A refused range falls back; if every candidate fails, its class is the refusal's.
+			var failed_code: String = _fetch_code() if (String(f["error"]) == String(PKeyErrors.NETWORK) and String(f.get("detail", "")) == PKeyPackChunks.RANGE_REFUSED) else String(f["error"])
+			first_failure = _err(failed_code, "Installing %s by %s failed: %s." % [pack_id, cand["strategy"], failed_code], pack_id, {"path": f.get("path", ""), "step": cand["strategy"]})
 		_emit_fallback(pack_id, total, cand["strategy"], String(f["error"]))
 		storage.remove_staging(plan_id)
 	doc = PKeyPackState.abandon_install(doc, pack_id)
@@ -1942,7 +1944,7 @@ func _apply_chunk(plan_id: String, pack_id: String, variant: Dictionary, chunk: 
 		_emit({"packId": pack_id, "phase": "download", "done": mini(index_bytes + fetched, total), "total": total})
 	var ports := {
 		"objects": _staged_objects(plan_id), "zstd": zstd, "output": sink,
-		"fetch_range": PKeyPackChunks.chunk_range_fetch(transport.open_range),
+		"fetch_range": PKeyPackChunks.chunk_range_fetch(_noting_open_range),
 	}
 	var plain: Array = []
 	for sd in seeds:
@@ -2117,13 +2119,23 @@ func _collect() -> void:
 	_collect_seed_indexes()
 
 
+## `transport.open_range`, remembering the class of a refused range (`object_refusal`). A coroutine.
+func _noting_open_range(req: Dictionary) -> Dictionary:
+	_fetch_code_value = String(PKeyErrors.NETWORK)
+	var res: Dictionary = await transport.open_range(req)
+	var status := int(res.get("status", 0))
+	if status != 206:
+		_fetch_code_value = object_refusal(status)
+	return res
+
+
 ## Stage one object: resume from what is staged (its bytes re-hashed, never trusted), fetch the
 ## rest with Range and If-Range, checkpoint the journal. True when the staged object then has the
 ## ref's length and SHA-256; a mismatch resets it and refetches once from the start. A coroutine.
 func _download(plan_id: String, pack_id: String, ref: Dictionary, prog: Variant) -> bool:
 	var sha: String = ref["sha256"]
 	var bytes := int(ref["bytes"])
-	_denied = false
+	_fetch_code_value = String(PKeyErrors.NETWORK)
 	for attempt in 2:
 		var have := storage.staged_size(plan_id, sha)
 		if have < 0:
@@ -2168,8 +2180,7 @@ func _download(plan_id: String, pack_id: String, ref: Dictionary, prog: Variant)
 					return true
 				if status == 200:
 					return true
-				if status == 403:
-					_denied = true
+				_fetch_code_value = object_refusal(status)
 				ctx["refused"] = true
 				return false
 			var on_chunk := func(chunk: PackedByteArray) -> bool:
@@ -2214,10 +2225,23 @@ func _download(plan_id: String, pack_id: String, ref: Dictionary, prog: Variant)
 	return false
 
 
-## A failed object fetch's code: `pack-not-entitled` when the blob route refused with 403 (the
-## delivery gate or the entitlement, P4-05), else `network-error` (the next ensure resumes).
+## The error code for an object or range fetch the content route answered with `status` (B-150
+## follow-through, one mapping in every packs client): 401 or 403 `pack-not-entitled` (content
+## URLs are entitlement-gated: the delivery gate, P4-05, or the entitlement), 5xx `server-error`,
+## anything else (404 included) `network-error`. A transport failure has no status (0) and is
+## `network-error`.
+static func object_refusal(status: int) -> String:
+	if status == 401 or status == 403:
+		return String(PKeyConstants.ErrorCode.PACK_NOT_ENTITLED)
+	if status >= 500:
+		return String(PKeyErrors.SERVER_ERROR)
+	return String(PKeyErrors.NETWORK)
+
+
+## A failed object fetch's code: the class of the last refusal (`object_refusal`), else
+## `network-error` (the next ensure resumes).
 func _fetch_code() -> String:
-	return PKeyConstants.ErrorCode.PACK_NOT_ENTITLED if _denied else String(PKeyErrors.NETWORK)
+	return _fetch_code_value
 
 
 func _save_checkpoint(pack_id: String, plan_id: String, sha: String, have: int) -> void:

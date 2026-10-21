@@ -1,6 +1,12 @@
 class_name PKeyPackCdnTransport
 extends PKeyPackTransport
 ## `pkey-cdn` (and `web`, which shares it until a Cache Storage shell lands: S-05 §4.3).
+##
+## A refused record fetch keeps its class (B-150, one mapping in every packs client): 401
+## `unauthorized`, 403 `forbidden`, 5xx `server-error`, a transport failure (no response) and
+## any other status, 404 included, `network-error`. An object or range fetch maps the same way
+## with one change: 401 or 403 is `pack-not-entitled` (the content route is entitlement-gated;
+## PKeyPackEngine.object_refusal), 5xx `server-error`.
 
 var core: PKeyCore
 ## One wall-clock deadline per object request (every hop and the whole body), seconds.
@@ -28,8 +34,21 @@ func fetch_record(sha256: String) -> Dictionary:
 		return {"ok": false, "code": String(PKeyErrors.SERVICE_UNAVAILABLE)}
 	var r: Dictionary = await PKeyUpdate._get_jose(core, PKeyUpdate._expand(core, t, "sha256", sha256), record_limit)
 	if not r["ok"]:
-		return {"ok": false, "code": String(PKeyErrors.NETWORK) if r["code"] != String(PKeyErrors.SERVICE_UNAVAILABLE) else r["code"]}
+		if r["code"] == String(PKeyErrors.SERVICE_UNAVAILABLE):
+			return {"ok": false, "code": r["code"]}
+		return {"ok": false, "code": record_refusal(int(r.get("status", 0)))}
 	return {"ok": true, "body": r["body"]}
+
+
+## The error code for a failed record fetch: `status` is the registry's answer, 0 when there was none.
+static func record_refusal(status: int) -> String:
+	if status == 401:
+		return String(PKeyErrors.UNAUTHORIZED)
+	if status == 403:
+		return String(PKeyErrors.FORBIDDEN)
+	if status >= 500:
+		return String(PKeyErrors.SERVER_ERROR)
+	return String(PKeyErrors.NETWORK)
 
 
 ## The blob URL for `sha256` and its headers: {url, headers}, or {} when discovery has no blob

@@ -17,7 +17,7 @@ import { QuickActionButton } from "../QuickAction.js";
  * edge, like an app store's product header; without a cover the icon stands alone beside the
  * name, and without an icon its letter tile stands in. The name as the page's `h1` (focus lands
  * here after adding a product), "by <developer> · <tier>" as text, the status only as a
- * right-aligned issue pill (healthy is silence), and the one lead action with the overflow menu.
+ * end-aligned issue pill (healthy is silence), and the one lead action with the overflow menu.
  *
  * On a short screen (§8: at most 512 px tall) the art steps aside for the task: no banner, and the
  * no-cover arrangement (the icon beside the name), so the lead action is on the first screen.
@@ -46,7 +46,7 @@ export function ProductHeader({
     product.status.tone !== "success" &&
     Boolean(pres.developer || tier);
   const dot = (
-    <span aria-hidden className="ml-2">
+    <span aria-hidden className="ms-2">
       ·
     </span>
   );
@@ -58,7 +58,7 @@ export function ProductHeader({
     <div className="space-y-0">
       <a
         href={href.library()}
-        className="mb-4 inline-flex items-center gap-2 rounded-sm text-sm text-fg-muted hover:text-fg-strong pointer-coarse:min-h-11"
+        className="mb-3 inline-flex min-h-6 items-center gap-2 rounded-sm text-sm text-fg-muted hover:text-fg-strong pointer-coarse:min-h-11"
       >
         <ArrowLeft aria-hidden className="size-4" />
         {t("locker.library.title")}
@@ -96,7 +96,7 @@ export function ProductHeader({
           src={pres.iconUrl}
           size={112}
           lift={hasCover}
-          tileClassName="border-4 border-surface-page max-desk:text-3xl"
+          tileClassName="outline-4 -outline-offset-4 outline-surface-page max-desk:text-3xl"
           className={cn(
             // In front of the cover: the banner is positioned, so the icon needs its own
             // stacking position to paint over the banner's lower edge (§4.20). pk-vt-hero-icon:
@@ -118,6 +118,8 @@ export function ProductHeader({
           >
             {product.name}
           </h1>
+          {/* A quiet non-issue status ("From signing in") reads as text after a dot, like the
+              tier; the dot ends the text run before it, never its own flex item. */}
           <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-fg-muted">
             {pres.developer ? (
               <span className="min-w-0 max-w-full [overflow-wrap:anywhere]">
@@ -131,7 +133,7 @@ export function ProductHeader({
             {tier ? (
               <span>
                 {pres.developer ? (
-                  <span aria-hidden className="mr-2">
+                  <span aria-hidden className="me-2">
                     ·
                   </span>
                 ) : null}
@@ -141,7 +143,7 @@ export function ProductHeader({
             ) : null}
             <ProductStatusPill
               status={product.status}
-              className={isIssueStatus(product.status) ? "ml-auto" : undefined}
+              className={isIssueStatus(product.status) ? "ms-auto" : undefined}
             />
           </div>
         </div>

@@ -208,7 +208,7 @@ function CheckRow({
           Lower or clear the floor from the track's menu on{" "}
           <Link
             to={r.channels(slug)}
-            className="text-accent-fg underline-offset-4 hover:underline"
+            className="py-1 text-accent-fg underline-offset-4 hover:underline"
           >
             Release tracks
           </Link>

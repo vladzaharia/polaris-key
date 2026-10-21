@@ -84,7 +84,7 @@ const hostile = stubClient({
       deviceCode: "dc_secret",
       userCode: `WDJB${EVIL}-MJHT`,
       verificationUri: `https://polaris.locker/device${EVIL}`,
-      verificationUriComplete: `https://polaris.locker/device?code=X${EVIL}`,
+      verificationUriComplete: `https://polaris.locker/device?user_code=X${EVIL}`,
       expiresIn: 600,
       interval: 5,
       expiresAt: NOW / 1000 + 300,
@@ -421,7 +421,7 @@ describe("opening the browser", () => {
         unref: () => undefined,
       };
     };
-    const url = "https://polaris.locker/device?code=WDJB-MJHT&next=a|b^c";
+    const url = "https://polaris.locker/device?user_code=WDJB-MJHT&next=a|b^c";
     expect(await openInBrowser(url, "win32", fake)).toBe(true);
     expect(calls).toEqual([
       { cmd: "rundll32", args: ["url.dll,FileProtocolHandler", url] },
@@ -455,12 +455,12 @@ describe("opening the browser", () => {
       },
       bundle: {},
     });
-    expect(await ctx.openUrl("https://polaris.locker/device?code=X")).toBe(
+    expect(await ctx.openUrl("https://polaris.locker/device?user_code=X")).toBe(
       true,
     );
     expect(await ctx.openUrl("http://evil.example/")).toBe(false);
     expect(await ctx.openUrl("https://key.plrs.im/\x07")).toBe(false);
-    expect(opened).toEqual(["https://polaris.locker/device?code=X"]);
+    expect(opened).toEqual(["https://polaris.locker/device?user_code=X"]);
   });
 });
 

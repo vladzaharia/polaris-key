@@ -90,6 +90,8 @@
   "boot.consent.download": "Descargar",
   "boot.error.body": "{product} no pudo terminar de iniciarse ({code}).",
   "welcome.title": "Te damos la bienvenida a {product}",
+  "common.welcomeNoProductTitle": "Te damos la bienvenida",
+  "common.signInToContinue": "Inicia sesión para continuar.",
   "welcome.lede": "Inicia sesión o usa una clave de licencia para continuar.",
   "welcome.ledeKeyOnly": "Escribe una clave de licencia para continuar.",
   "welcome.ledeSignInOnly": "Inicia sesión para usar {product}.",

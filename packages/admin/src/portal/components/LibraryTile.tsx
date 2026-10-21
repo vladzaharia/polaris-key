@@ -130,7 +130,7 @@ export function LibraryTile({
               src={pres.iconUrl}
               size={48}
               lift
-              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+              className="absolute start-1/2 top-1/2 -translate-x-1/2 rtl:translate-x-1/2 -translate-y-1/2"
             />
           ) : null}
         </ProductArt>
@@ -154,7 +154,7 @@ export function LibraryTile({
                   size={40}
                   lift
                   className="relative"
-                  tileClassName="border-[3px] border-surface-raised"
+                  tileClassName="outline-3 -outline-offset-3 outline-surface-raised"
                 />
                 {menu}
               </div>
@@ -167,7 +167,7 @@ export function LibraryTile({
                 size={40}
                 lift
                 className="relative"
-                tileClassName="border-[3px] border-surface-raised"
+                tileClassName="outline-3 -outline-offset-3 outline-surface-raised"
               />
             )}
             {/* Below the art, never over it: the icon overlaps the art by 1.75 rem. The
@@ -183,7 +183,7 @@ export function LibraryTile({
                 id={`tile-${product.slug}`}
                 dir="auto"
                 className={cn(
-                  "min-w-0 flex-1 line-clamp-2 break-words font-semibold bigtext:line-clamp-none leading-snug text-fg-strong text-left [:root[dir=rtl]_&]:text-right",
+                  "min-w-0 flex-1 line-clamp-2 break-words font-semibold bigtext:line-clamp-none leading-snug text-fg-strong [text-align:match-parent]",
                   tiny ? "text-sm" : "text-base",
                 )}
               >

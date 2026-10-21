@@ -26,7 +26,7 @@ export interface CheckboxProps extends Omit<
 
 export const CHECK_BOX_CLASS = [
   "peer inline-flex size-4 shrink-0 items-center justify-center rounded-sm border border-border-strong bg-surface-sunken",
-  "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page",
+  "focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2",
   "disabled:cursor-not-allowed disabled:opacity-50 aria-[invalid=true]:border-danger",
   "data-[state=checked]:border-accent data-[state=checked]:bg-accent data-[state=checked]:text-accent-on",
   "data-[state=indeterminate]:border-accent data-[state=indeterminate]:bg-accent data-[state=indeterminate]:text-accent-on",
@@ -84,9 +84,12 @@ export function Checkbox({
   if (!label) return box;
   return (
     <div className={cn("flex items-start gap-2.5", className)}>
-      <span className="mt-0.5 flex">{box}</span>
+      <span className="mt-1 flex">{box}</span>
       <div className="min-w-0">
-        <label htmlFor={boxId} className="text-sm text-fg">
+        <label
+          htmlFor={boxId}
+          className="inline-flex min-h-6 min-w-6 items-center text-sm text-fg"
+        >
           {label}
         </label>
         {description ? (

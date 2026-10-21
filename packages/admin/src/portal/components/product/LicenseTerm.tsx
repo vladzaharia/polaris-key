@@ -85,10 +85,14 @@ function Timeline({
     Math.min(1, Math.max(0, (at - start) / (axisEnd - start))) * 100;
   const today = share(now);
   const endAt = share(end);
-  const slide = (p: number): React.CSSProperties => ({
-    left: `${p}%`,
-    transform: `translateX(-${p}%)`,
-  });
+  // Logical: the track runs from the inline start, so a end-to-left page mirrors it. The slide
+  // is `--pk-slide` (a share of the label's own width), negated again in end-to-left.
+  const slide = (p: number): React.CSSProperties =>
+    ({
+      insetInlineStart: `${p}%`,
+      "--pk-slide": `-${p}%`,
+    }) as React.CSSProperties;
+  const SLIDE = "translate-x-(--pk-slide) rtl:-translate-x-(--pk-slide)";
   return (
     <div
       role="img"
@@ -103,7 +107,7 @@ function Timeline({
           never leave the box at either end. */}
       <div aria-hidden className="relative h-4">
         <span
-          className="absolute whitespace-nowrap font-medium text-fg-strong"
+          className={`absolute whitespace-nowrap font-medium text-fg-strong ${SLIDE}`}
           style={slide(today)}
         >
           {t("license.timeline.today", { date: formatDay(now, false) })}
@@ -114,27 +118,30 @@ function Timeline({
         className="relative h-2 rounded-full bg-border-strong forced-color-adjust-none forced-colors:bg-[GrayText]"
       >
         <span
-          className="absolute inset-y-0 left-0 rounded-full bg-fg-strong forced-colors:bg-[CanvasText]"
+          className="absolute inset-y-0 start-0 rounded-full bg-fg-strong forced-colors:bg-[CanvasText]"
           style={{ width: `${endAt}%` }}
         />
         {endAt < 100 ? (
           <span
-            className="absolute inset-y-0 rounded-r-full text-fg-strong [background:repeating-linear-gradient(90deg,currentColor_0_4px,transparent_4px_8px)] forced-colors:text-[CanvasText]"
-            style={{ left: `${endAt}%`, right: 0 }}
+            className="absolute inset-y-0 end-0 rounded-e-full text-fg-strong [background:repeating-linear-gradient(90deg,currentColor_0_4px,transparent_4px_8px)] forced-colors:text-[CanvasText]"
+            style={{ insetInlineStart: `${endAt}%` }}
           />
         ) : null}
         <span
-          className="absolute top-1/2 size-3.5 -translate-y-1/2 rounded-full border-2 border-surface-sunken bg-fg-strong forced-colors:bg-[CanvasText]"
+          className="absolute top-1/2 size-3.5 -translate-y-1/2 rounded-full outline-2 -outline-offset-2 outline-surface-sunken bg-fg-strong forced-colors:bg-[CanvasText]"
           style={{
             // The marker slides by its own width as today moves along, so it stays on the track.
-            left: `calc(${today}% - ${(today / 100) * 0.875}rem)`,
+            insetInlineStart: `calc(${today}% - ${(today / 100) * 0.875}rem)`,
           }}
         />
       </div>
       <div aria-hidden className="relative flex h-4 justify-between">
         <span>{formatDay(start)}</span>
         {endAt < 100 ? (
-          <span className="absolute whitespace-nowrap" style={slide(endAt)}>
+          <span
+            className={`absolute whitespace-nowrap ${SLIDE}`}
+            style={slide(endAt)}
+          >
             {formatDay(end)}
           </span>
         ) : (

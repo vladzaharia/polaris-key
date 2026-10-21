@@ -299,7 +299,7 @@ function FreeDevice({
         // The success check draws once (S-23 §6.4): no sparks, freeing a device is not a
         // first-time moment. It sits in a ring the size of the glyph it leads.
         icon: (
-          <span className="inline-flex size-6 items-center justify-center rounded-full border-2 border-current text-success">
+          <span className="inline-flex size-6 items-center justify-center rounded-full outline-2 -outline-offset-2 outline-current text-success">
             <SuccessCheck size={14} />
           </span>
         ),

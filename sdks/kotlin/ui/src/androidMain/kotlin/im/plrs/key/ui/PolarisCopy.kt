@@ -117,7 +117,7 @@ public data class PolarisCopy(
     val signInTitle: String = "Sign in with a code",
     val signInStarting: String = "Getting a sign-in code…",
     /** On Android TV, beside the QR code; the address follows on its own line. */
-    val signInInstructions: String = "Scan the QR code with your phone, or enter this code at the address below.",
+    val signInInstructions: String = "Scan the QR code with your phone, or go to this address and enter the code below.",
     /** Everywhere else; %1$s is the address, set inline. */
     val signInCodeBody: String = "On any phone or computer, go to %1\$s and enter this code.",
     val signInCopyLink: String = "Copy link",

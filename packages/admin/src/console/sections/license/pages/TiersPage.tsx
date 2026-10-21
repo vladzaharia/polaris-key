@@ -191,7 +191,7 @@ export function TiersPage({ slug }: { slug: string }): React.ReactElement {
           ) : (
             <Link
               to={r.licenses(slug, { tier: row.original.id })}
-              className="text-accent-fg underline-offset-4 hover:underline"
+              className="inline-block min-w-6 py-1 text-end text-accent-fg underline-offset-4 hover:underline"
             >
               {n}
             </Link>

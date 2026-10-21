@@ -199,7 +199,7 @@ export function Stepper({
             </span>
           );
           const text = (
-            <span className="flex min-w-0 flex-col text-left">
+            <span className="flex min-w-0 flex-col text-start">
               <span title={step.label} className="whitespace-nowrap">
                 {step.label}
               </span>
@@ -309,7 +309,7 @@ export function Stepper({
                 <button
                   type="button"
                   onClick={() => onUndoSkip(step.id)}
-                  className="rounded-md text-xs text-accent-fg underline-offset-4 hover:underline"
+                  className="rounded-md text-xs py-1 text-accent-fg underline-offset-4 hover:underline"
                 >
                   Undo
                   <span className="sr-only">{` skipping ${step.label}`}</span>

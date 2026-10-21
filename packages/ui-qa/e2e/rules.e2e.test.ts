@@ -119,6 +119,203 @@ describe("the modernity lint (UI-KITS §7.3)", () => {
     expect(ok.violations.map((v) => v.rule)).not.toContain("accent-as-status");
   });
 
+  // UK-59: a "Built today" frame is a committed render, not a drawing.
+  describe("tier-caption: Built today embeds a committed render", () => {
+    const fig = (caption: string, shot: string) =>
+      `<figure><figcaption>${caption}</figcaption><div data-shot="g">${shot}</div></figure>`;
+    const tier = async (html: string) =>
+      (await lint(html)).violations.filter((v) => v.rule === "tier-caption");
+
+    it("fails a hand-drawn Built today frame", async () => {
+      const v = await tier(fig("web · gate. Built today", "<p>Gate</p>"));
+      expect(v).toHaveLength(1);
+      expect(v[0]!.detail).toContain("committed render");
+    });
+
+    it("fails a Built today frame whose image is not a committed render", async () => {
+      const v = await tier(
+        fig(
+          "web · gate. Built today",
+          `<img src="shots/web-gate-dark.png" width="10" height="10" alt="">`,
+        ),
+      );
+      expect(v).toHaveLength(1);
+    });
+
+    for (const src of [
+      "../../../packages/sdk-react/test/visual/__screenshots__/Activate.parsed/1440-dark.png",
+      "../../../sdks/swift/Tests/PolarisKeyUISnapshotTests/__Snapshots__/activate-parsed-dark.png",
+      "../../../sdks/kotlin/ui/src/test/snapshots/sign-in/foldable-673x841-polaris-light.png",
+      "../../../packages/sdk-node/test/cli/golden/gate-refused-needs-activation-dark.png",
+      "shots/godot-built/gate-dark.png",
+      "shots/ipad-built/Welcome.default-dark.jpg",
+    ]) {
+      it(`passes a Built today frame that embeds ${src.split("/").slice(-2).join("/")}`, async () => {
+        expect(
+          await tier(
+            fig(
+              "x · gate. Built today",
+              `<img src="${src}" width="10" height="10" alt="">`,
+            ),
+          ),
+        ).toEqual([]);
+      });
+    }
+
+    it("passes a text frame that names its committed golden", async () => {
+      expect(
+        await tier(
+          fig(
+            "terminal · refusal. Built today (Node golden)",
+            `<pre data-built-from="packages/sdk-node/test/cli/golden/ansi/gate-refused-needs-activation.ansi">x</pre>`,
+          ),
+        ),
+      ).toEqual([]);
+    });
+
+    it("lets a hand-drawn UK-11 target stand alone", async () => {
+      expect(
+        await tier(fig("web · gate. UK-11 target", "<p>Gate</p>")),
+      ).toEqual([]);
+    });
+  });
+
+  // The patterns the built console and portal rely on, narrowed from false positives (B-233).
+  it("spares a transparent colour, a relative colour, an image in flight, tinted art and a lone dash", async () => {
+    const ok = await lint(
+      `<style>
+        .clear { background-color: transparent; color: currentColor; }
+        .rel { background-color: color-mix(in oklab, var(--c), oklch(from var(--c) l c h / 0.5)); }
+      </style>
+      <p class="clear">Clear</p><p class="rel">Relative</p>
+      <div style="display: flex"><span>—</span></div>
+      <div data-art="fallback" style="inline-size: 40px; block-size: 40px; background-color: var(--c)"></div>`,
+    );
+    expect(ok.violations).toEqual([]);
+  });
+
+  it("fails a heavy edge, a black or white alpha colour and a cursor-only state", async () => {
+    const r = await lint(
+      `<style>
+        .tab { border-bottom: 2px solid var(--c); }
+        .rail { border-inline-start: 3px solid var(--c); }
+        .dim { background-color: rgba(0, 0, 0, 0.6); }
+        .ink { color: rgba(255, 255, 255, 0.7); }
+        .c:hover:not(:disabled), .c:active:not(:disabled) { cursor: pointer; }
+        .c:disabled { cursor: not-allowed; }
+        .c:focus-visible { outline: 2px solid var(--c); }
+      </style>
+      <p class="tab">Tab</p><p class="rail">Rail</p><p class="dim">Dim</p><p class="ink">Ink</p>
+      <button class="c">Cursor only</button>`,
+    );
+    const rules = r.violations.map((v) => v.rule);
+    expect(
+      rules.filter((x) => x === "border-width").length,
+    ).toBeGreaterThanOrEqual(2);
+    expect(
+      rules.filter((x) => x === "colour-literal").length,
+    ).toBeGreaterThanOrEqual(2);
+    expect(rules).toContain("interactive-states");
+  });
+
+  it("lets a named allowance through for a spec'd heavy edge", async () => {
+    const r = await lint(
+      `<style>.tab { border-bottom: 2px solid var(--c); }</style><p class="tab" data-ui-allow="border-width">Tab (the selected tab's underline)</p>`,
+    );
+    expect(r.violations.map((v) => v.rule)).not.toContain("border-width");
+  });
+
+  it("reads a state rule written with :not() guards (Tailwind's hover:not-disabled)", async () => {
+    const r = await lint(
+      `<style>
+        .t:hover:not(:disabled):not([aria-disabled="true"]) { background: var(--bg); }
+        .t:active:not(:disabled, [aria-disabled="true"]) { transform: scale(0.98); }
+        .t:disabled, .t[aria-disabled="true"] { opacity: 0.4; }
+        .t:focus-visible { outline: 2px solid var(--c); }
+      </style><button class="t">Go</button>`,
+    );
+    expect(r.violations.map((v) => v.rule)).not.toContain("interactive-states");
+  });
+
+  it("reads a state rule written with :is(:hover, :active) and :where()", async () => {
+    const r = await lint(
+      `<style>
+        :where(.u):is(:hover, :active):not(:disabled, [aria-disabled="true"]) { opacity: 0.9; }
+        :where(.u):is(:disabled, [aria-disabled="true"]) { opacity: 0.42; }
+        .u:focus-visible { outline: 2px solid var(--c); }
+      </style><a class="u" href="#x">Go</a>`,
+    );
+    expect(r.violations.map((v) => v.rule)).not.toContain("interactive-states");
+  });
+
+  it("measures a touch target as the press lands: a stretched link, a label, not a scroll region or a clipped control", async () => {
+    const r = await lint(
+      `<div data-ui-touch>
+        <article style="position: relative; inline-size: 300px; block-size: 120px">
+          <a href="#x" class="stretch" style="display: block; block-size: 20px">Open</a>
+        </article>
+        <label style="display: flex; align-items: center; block-size: 48px; min-inline-size: 120px"><input type="checkbox" style="inline-size: 16px; block-size: 16px"> Remember</label>
+        <div role="region" aria-label="Scroll" tabindex="0" style="block-size: 16px; overflow: auto">Scroll region</div>
+        <a href="#y" style="position: absolute; clip: rect(0, 0, 0, 0); inline-size: 1px; block-size: 1px; overflow: hidden">Skip</a>
+        <span aria-hidden="true"><input type="checkbox" tabindex="-1" style="inline-size: 16px; block-size: 16px"></span>
+        <p style="font-size: 14px">Read the <a href="#w">terms</a> first.</p>
+        <button role="switch" aria-checked="false" class="sw" style="position: relative; inline-size: 36px; block-size: 20px; padding: 0; border: 0"></button>
+        <style>.sw::after { content: ""; position: absolute; inset: -12px -4px; }</style>
+        <style>.stretch::after { content: ""; position: absolute; inset: 0; }</style>
+      </div>`,
+    );
+    expect(r.violations.filter((v) => v.rule === "touch-target")).toEqual([]);
+    for (const bad of [
+      `<a href="#z" style="display: block; block-size: 20px; inline-size: 80px">Small</a>`,
+      // a lone link is a target, not a word in a sentence
+      `<ul><li><a href="#out">Sign out</a></li></ul>`,
+      // a decorative overlay that takes no press does not enlarge the target
+      `<button class="d" style="position: relative; block-size: 20px; inline-size: 60px">Go</button><style>.d::after { content: ""; position: absolute; inset: -20px; pointer-events: none; }</style>`,
+      // an overlay its own clipping box cuts away does not either
+      `<button class="e" style="position: relative; overflow: hidden; block-size: 20px; inline-size: 60px">Go</button><style>.e::after { content: ""; position: absolute; inset: -20px; }</style>`,
+      // a role=link tab stop and a clickable div are targets
+      `<span role="link" tabindex="0" style="display: inline-block; block-size: 16px">Open</span>`,
+      `<div role="option" tabindex="0" style="block-size: 16px">Pick</div>`,
+    ]) {
+      const small = await lint(`<div data-ui-touch>${bad}</div>`);
+      expect(small.violations.map((v) => v.rule)).toContain("touch-target");
+    }
+  });
+
+  it("spares an image still loading but not a broken one", async () => {
+    const p = await browser.newPage({ viewport: { width: 1200, height: 900 } });
+    await prepare(p);
+    await p.route("https://img.test/slow.png", () => undefined); // never answers
+    await p.route("https://img.test/gone.png", (r) => r.abort());
+    await p.goto(
+      page(
+        `<img alt="slow" src="https://img.test/slow.png" width="40" height="40"><img alt="gone" src="https://img.test/gone.png" width="40" height="40">`,
+      ),
+      { waitUntil: "commit" },
+    );
+    await p.waitForTimeout(300);
+    const r = await lintPage(p, { fonts: ["Rubik"] });
+    await p.close();
+    const empties = r.violations.filter((v) => v.rule === "empty-placeholder");
+    expect(empties.length).toBe(1);
+  });
+
+  it("still fails a heavy box, an opaque literal and a coloured alpha", async () => {
+    const r = await lint(
+      `<style>.a { border: 2px solid var(--c); } .b { color: #000; } .c { background-color: rgba(255, 0, 0, 0.5); } .d { border-top: 2px solid var(--c); border-bottom: 2px solid var(--c); }</style>
+      <p class="a">A</p><p class="b">B</p><p class="c">C</p><p class="d">D</p>
+      <img alt="" width="40" height="40"><div data-art="fallback" style="inline-size: 40px; block-size: 40px"></div>`,
+    );
+    const rules = r.violations.map((v) => v.rule);
+    expect(
+      rules.filter((x) => x === "border-width").length,
+    ).toBeGreaterThanOrEqual(2);
+    expect(
+      rules.filter((x) => x === "colour-literal").length,
+    ).toBeGreaterThanOrEqual(2);
+    expect(rules.filter((x) => x === "empty-placeholder").length).toBe(2);
+  });
+
   it("records a runtime alert() call", async () => {
     const r = await lint(
       `<button class="k-btn" onclick="alert('x')">Go</button>`,

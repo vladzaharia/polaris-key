@@ -31,7 +31,7 @@ function Choice<T extends string>({
       aria-label={label}
       className="flex flex-wrap items-center gap-1"
     >
-      <span className="mr-1 text-xs text-fg-muted">{label}</span>
+      <span className="me-1 text-xs text-fg-muted">{label}</span>
       {options.map((o) => (
         <button
           key={o}
@@ -87,7 +87,7 @@ export default function Kit(): React.ReactElement {
             options={ACCENTS}
             onChange={setAccent}
           />
-          <label className="ml-auto flex items-center gap-2 text-xs text-fg-muted">
+          <label className="ms-auto flex items-center gap-2 text-xs text-fg-muted">
             Filter
             <input
               value={filter}
@@ -155,7 +155,7 @@ export default function Kit(): React.ReactElement {
                           className="text-sm font-semibold text-fg-strong"
                         >
                           {s.title}{" "}
-                          <code className="ml-2 font-mono text-xs font-normal text-fg-subtle">
+                          <code className="ms-2 font-mono text-xs font-normal text-fg-subtle">
                             {s.id}
                           </code>
                         </h3>

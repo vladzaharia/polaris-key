@@ -148,6 +148,26 @@
     document.querySelectorAll("[data-icon]").forEach((el) => {
       el.innerHTML = icon(el.dataset.icon, +(el.dataset.size || 20));
     });
+    // A "Built today" frame embeds the committed render of the build, in place (UK-59): the
+    // path follows the next re-record with no board edit. data-render is "<kit>:<name>":
+    //   react:State/390      the React kit's visual baseline
+    //   swift:name           the SwiftUI kit's iPhone 440 snapshot
+    //   swift-ax3:name       the same state at AX3 (committed in dark only)
+    //   node:name            the Node terminal golden PNG
+    const ROOT = "../../../";
+    const RENDERS = {
+      react: (n) =>
+        `${ROOT}packages/sdk-react/test/visual/__screenshots__/${n}-${theme}.png`,
+      swift: (n) =>
+        `${ROOT}sdks/swift/Tests/PolarisKeyUISnapshotTests/__Snapshots__/${n}-${theme}.png`,
+      "swift-ax3": (n) =>
+        `${ROOT}sdks/swift/Tests/PolarisKeyUISnapshotTests/__Snapshots__/${n}/iphone-440x956-portrait-AX3-polaris-key-dark.png`,
+      node: (n) => `${ROOT}packages/sdk-node/test/cli/golden/${n}-${theme}.png`,
+    };
+    document.querySelectorAll("img[data-render]").forEach((el) => {
+      const [kit, name] = el.dataset.render.split(/:(.*)/s);
+      el.src = RENDERS[kit](name);
+    });
     document.querySelectorAll("[data-art]").forEach((el) => {
       el.innerHTML = art(el.dataset.art, +(el.dataset.size || 64));
     });

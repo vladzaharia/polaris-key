@@ -291,7 +291,7 @@ export function DevicesPage({
           only.
           <button
             type="button"
-            className="text-accent-fg underline-offset-4 hover:underline"
+            className="py-1 text-accent-fg underline-offset-4 hover:underline"
             onClick={() => setLicense(null)}
           >
             Show all
@@ -349,8 +349,8 @@ function FacetTile({
       aria-pressed={pressed}
       onClick={() => onToggle(!pressed)}
       className={cn(
-        "flex flex-col items-start gap-1 rounded-lg border bg-surface-raised px-4 py-3 text-left",
-        "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus",
+        "flex flex-col items-start gap-1 rounded-lg border bg-surface-raised px-4 py-3 text-start",
+        "focus-visible:outline-2 focus-visible:outline-focus",
         pressed
           ? "border-accent bg-accent-subtle"
           : "border-border hover:border-border-strong",

@@ -114,7 +114,8 @@
         const textual = hasOwnText(el) && !iconFont(cs);
         const native = !!el.closest('[data-ui-preset="native"]');
 
-        // Borders: hairlines only.
+        // Borders: hairlines only. A spec'd heavy edge (the canvas rule, a tab underline) is
+        // allowed by name where it is drawn (`data-ui-allow="border-width"` with its reason).
         for (const side of ["top", "right", "bottom", "left"]) {
           const w = parseFloat(cs[`border-${side}-width`]);
           if (cs[`border-${side}-style`] !== "none" && w > 1) {
@@ -153,7 +154,12 @@
           const size = parseFloat(cs.fontSize);
           if (size < o.minFont)
             report("text-size-floor", el, `font-size ${size}px (min 12px)`);
-          if (SEPARATORS.has(ownText(el).trim()) && el !== scope) {
+          // A lone dash standing in for "no value" separates nothing: it needs a neighbour.
+          if (
+            SEPARATORS.has(ownText(el).trim()) &&
+            el !== scope &&
+            el.parentElement.childNodes.length > 1
+          ) {
             const pd = getComputedStyle(el.parentElement).display;
             if (/flex|grid/.test(pd))
               report(
@@ -239,9 +245,11 @@
         if (
           el.closest("[data-ui-touch]") &&
           el.matches(INTERACTIVE) &&
-          !inlineLink(el, cs)
+          !inlineLink(el, cs) &&
+          !tabStopOnly(el) &&
+          !visuallyHidden(el, cs)
         ) {
-          const r = el.getBoundingClientRect();
+          const r = touchRect(el);
           if (r.width < o.minTouch - 0.5 || r.height < o.minTouch - 0.5)
             report(
               "touch-target",
@@ -334,7 +342,11 @@
 
       // Interactive states, from the authored CSS.
       for (const el of els) {
-        if (!el.matches(INTERACTIVE) || el.matches("[data-ui-static]"))
+        if (
+          !el.matches(INTERACTIVE) ||
+          el.matches("[data-ui-static]") ||
+          tabStopOnly(el)
+        )
           continue;
         const missing = ["hover", "active", "disabled", "focus-visible"].filter(
           (st) => !hasStateRule(el, st),
@@ -374,7 +386,16 @@
           }
           continue;
         }
-        strings.push({ scope: scopeName, target: describe(el), text });
+        // A screen title: an h1, or an h2 the board classes as a title. A classless h2 is a
+        // settings group label ("Updates", "Managed settings"), which the catalog types as a label.
+        const kind = el.matches("h1, h2[class], [role=heading][aria-level='1']")
+          ? "title"
+          : el.matches(
+                "button, [role=button], .k-btn, .btn, .gb, .tbtn, .tbtn2",
+              )
+            ? "button"
+            : undefined;
+        strings.push({ scope: scopeName, target: describe(el), text, kind });
       }
     }
 
@@ -439,18 +460,43 @@
 
     // Board captions (UK-59): every figure that holds a shot says which tier the frame is, as
     // the caption's last words: "Built today" or "UK-11 target", then at most one parenthetical.
+    // A "Built today" frame is true by construction: it holds an <img> whose src is a committed
+    // render (the React / Swift / Roborazzi baselines, the Node and Python goldens, the Godot and
+    // iPad renders), or, for a terminal frame drawn as text, a data-built-from naming the
+    // committed golden it copies. A hand-drawn frame is "UK-11 target" only.
     const TIER_END = /(Built today|UK-11 target)\.?(\s*\([^]*\))?$/;
+    const BUILT_TODAY = /Built today\.?(\s*\([^]*\))?$/;
+    const RENDER_PATH =
+      /(packages\/sdk-react\/test\/visual\/__screenshots__\/|sdks\/swift\/Tests\/[^/]+\/__Snapshots__\/|sdks\/kotlin\/.+\/snapshots\/|packages\/sdk-node\/test\/cli\/golden\/|sdks\/python\/tests\/cli\/golden\/|shots\/godot-built\/|shots\/ipad-built\/)/;
     for (const fig of document.querySelectorAll("figure")) {
       if (!fig.querySelector("[data-shot]")) continue;
       const cap = fig.querySelector("figcaption");
       const text = cap ? cap.textContent.replace(/\s+/g, " ").trim() : "";
+      const scope = fig.querySelector("[data-shot]").getAttribute("data-shot");
       if (!TIER_END.test(text))
         violations.push({
           rule: "tier-caption",
-          scope: fig.querySelector("[data-shot]").getAttribute("data-shot"),
+          scope,
           target: cap ? describe(cap) : describe(fig),
           detail: `the caption must end "Built today" or "UK-11 target": ${text.slice(0, 80) || "(no caption)"}`,
         });
+      else if (BUILT_TODAY.test(text)) {
+        const shot = fig.querySelector("[data-shot]");
+        const imgs = [...shot.querySelectorAll("img")];
+        const ok =
+          imgs.some((i) => RENDER_PATH.test(i.getAttribute("src") || "")) ||
+          [...shot.querySelectorAll("[data-built-from]")].some((e) =>
+            RENDER_PATH.test(e.getAttribute("data-built-from") || ""),
+          ) ||
+          RENDER_PATH.test(shot.getAttribute("data-built-from") || "");
+        if (!ok)
+          violations.push({
+            rule: "tier-caption",
+            scope,
+            target: describe(shot),
+            detail: `a "Built today" frame must embed a committed render (an <img> from a baseline, golden or render path) or name its golden in data-built-from; a hand-drawn frame is "UK-11 target"`,
+          });
+      }
     }
 
     return { violations, strings };
@@ -570,10 +616,17 @@
     for (const { rule } of styleRules()) {
       const sel = rule.selectorText;
       if (!pats[state].test(sel)) continue;
+      // A cursor is not a visible state (UI-KITS §1.5 rule 7: hover, pressed 0.98, disabled 42 %):
+      // a rule that sets only `cursor` does not count.
+      if (!rule.style || [...rule.style].every((p) => p === "cursor")) continue;
       for (const part of splitSelector(sel)) {
         if (!pats[state].test(part)) continue;
         const base = stripPseudo(part)
           .replace(/\[aria-disabled[^\]]*\]|\[disabled\]/g, "")
+          // What the strips leave of `:not(:disabled)`, `:not([aria-disabled])` and
+          // `:is(:hover, :active)`: an empty `:not()` or `:is()` is an invalid selector or one that
+          // matches nothing, which would hide the whole state rule.
+          .replace(/:(?:not|is)\([\s,]*\)/g, "")
           .trim();
         try {
           if (!base || base === "*" || el.matches(base)) return true;
@@ -757,7 +810,12 @@
     return Math.max(r, g, b) - Math.min(r, g, b) > 40;
   }
   function colourLiteral(v) {
-    const s = v.replace(/var\([^)]*\)/g, "");
+    const s = v
+      .replace(/var\([^)]*\)/g, "")
+      // A relative colour taken from a token (`oklch(from var(--x) l c h)`) is not a literal.
+      .replace(/\b(rgba?|hsla?|hwb|lab|lch|oklab|oklch)\(\s*from\b/gi, "(")
+      // `transparent` serialises as rgba(0, 0, 0, 0): no colour at all.
+      .replace(/\brgba?\(\s*0[\s,]+0[\s,]+0\s*[,/]\s*0\s*\)/gi, "");
     if (/#[0-9a-f]{3,8}\b/i.test(s)) return true;
     if (/\b(rgba?|hsla?|hwb|lab|lch|oklab|oklch)\(/i.test(s)) return true;
     return /(^|[\s,(])(white|black|red|blue|green|gray|grey|orange|purple|yellow|pink)(?=$|[\s,)])/i.test(
@@ -858,18 +916,126 @@
     }
   }
   function emptyBox(el, cs) {
-    if (el.tagName === "IMG") return !el.complete || el.naturalWidth === 0;
+    // An image still in flight (a lazy one below the fold) is not an empty placeholder; a broken
+    // one, or an <img> with no source, is.
+    if (el.tagName === "IMG") return el.complete && el.naturalWidth === 0;
     if (el.children.length) return false;
+    // A product's art with no image yet is its tint (data-art="fallback"): a filled block.
+    if (
+      el.matches('[data-art="fallback"]') &&
+      !/^rgba\(0, 0, 0, 0\)$|^transparent$/.test(cs.backgroundColor)
+    )
+      return false;
     if (el.textContent.trim()) return false;
     if (cs.backgroundImage && cs.backgroundImage !== "none") return false;
     if (cs.maskImage && cs.maskImage !== "none") return false;
     return true;
   }
-  function inlineLink(el, cs) {
+  // A scroll region or a landmark that takes a tab stop for the keyboard (WCAG 2.1.1) is not a
+  // pointer target: only the controls inside it are. A link, option or clickable div is.
+  function tabStopOnly(el) {
+    if (
+      !el.matches('[tabindex]:not([tabindex="-1"])') ||
+      el.matches(
+        INTERACTIVE.replace(/, \[tabindex\]:not\(\[tabindex="-1"\]\)/, ""),
+      )
+    )
+      return false;
+    const role = el.getAttribute("role");
+    // Landmarks, the container of a composite widget (a radio group, a tab list) and a grid's cell
+    // (the roving tab stop) hold the focus; the controls inside are the targets.
+    if (
+      /^(region|group|tabpanel|radiogroup|tablist|toolbar|gridcell)$/.test(
+        role || "",
+      )
+    )
+      return true;
+    const cs = getComputedStyle(el);
     return (
-      el.tagName === "A" &&
-      cs.display === "inline" &&
-      ownText(el.parentElement).trim().length > 0
+      (/auto|scroll/.test(cs.overflowY) && el.scrollHeight > el.clientHeight) ||
+      (/auto|scroll/.test(cs.overflowX) && el.scrollWidth > el.clientWidth)
+    );
+  }
+  // Clipped to nothing until focused (a skip link, a visually hidden native input behind a
+  // styled control): there is nothing to hit.
+  function visuallyHidden(el, cs) {
+    return (
+      /^rect\(0(px)?,? ?0(px)?,? ?0(px)?,? ?0(px)?\)$/.test(cs.clip) ||
+      // Hidden from assistive tech too: a form shim behind a styled control (Radix's checkbox).
+      el.closest('[aria-hidden="true"]') !== null ||
+      /^inset\(50%\)$/.test(cs.clipPath)
+    );
+  }
+  // The area a press lands on: the element, or its label for a checkbox, radio or switch (a text
+  // field is its own box), united with any absolutely positioned ::before / ::after it carries (a
+  // stretched link's cover over its card, a switch's enlarged hit area).
+  function touchRect(el) {
+    const label = el.matches(
+      'input[type="checkbox"], input[type="radio"], [role="checkbox"], [role="radio"], [role="switch"]',
+    )
+      ? (el.labels && el.labels[0]) || el.closest("label")
+      : null;
+    const base = (label || el).getBoundingClientRect();
+    let left = base.left;
+    let top = base.top;
+    let right = base.right;
+    let bottom = base.bottom;
+    for (const pseudo of ["::before", "::after"]) {
+      const ps = getComputedStyle(el, pseudo);
+      if (
+        ps.content === "none" ||
+        ps.position !== "absolute" ||
+        ps.pointerEvents === "none"
+      )
+        continue;
+      let cb = el;
+      while (cb && getComputedStyle(cb).position === "static")
+        cb = cb.parentElement;
+      if (!cb) continue;
+      const cr = cb.getBoundingClientRect();
+      const cc = getComputedStyle(cb);
+      const x = cr.left + parseFloat(cc.borderLeftWidth) + parseFloat(ps.left);
+      const y = cr.top + parseFloat(cc.borderTopWidth) + parseFloat(ps.top);
+      const w = parseFloat(ps.width);
+      const h = parseFloat(ps.height);
+      if ([x, y, w, h].some(Number.isNaN)) continue;
+      // What an ancestor clips away cannot be pressed: cut the area to the hidden or clipped
+      // boxes up to the nearest scroll container (which only moves it into view).
+      let x0 = x;
+      let y0 = y;
+      let x1 = x + w;
+      let y1 = y + h;
+      const clips = (v) => v === "hidden" || v === "clip";
+      for (let a = cb; a && a !== document.body; a = a.parentElement) {
+        const as = getComputedStyle(a);
+        // Past a scroll container the boxes are in scrolled coordinates: stop.
+        if (/auto|scroll/.test(as.overflowX + as.overflowY)) break;
+        const ar = a.getBoundingClientRect();
+        if (clips(as.overflowX)) {
+          x0 = Math.max(x0, ar.left);
+          x1 = Math.min(x1, ar.right);
+        }
+        if (clips(as.overflowY)) {
+          y0 = Math.max(y0, ar.top);
+          y1 = Math.min(y1, ar.bottom);
+        }
+      }
+      if (x1 <= x0 || y1 <= y0) continue;
+      left = Math.min(left, x0);
+      top = Math.min(top, y0);
+      right = Math.max(right, x1);
+      bottom = Math.max(bottom, y1);
+    }
+    return { width: right - left, height: bottom - top };
+  }
+  function inlineLink(el, cs) {
+    // WCAG 2.5.8's inline exception: the link sits in a sentence, with text around it that is not
+    // itself a target. A lone nav link is a target.
+    if (el.tagName !== "A" || cs.display !== "inline") return false;
+    const p = el.parentElement;
+    return (
+      !!p &&
+      (p.textContent || "").replace(el.textContent || "", "").trim().length > 0
     );
   }
   // The service accents as the page computes them, normalised to rgb(): one probe per token.

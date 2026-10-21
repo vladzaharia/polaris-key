@@ -152,7 +152,7 @@ function useVerifier(
 }
 
 /** A step's action names what it sends, so it wraps in a narrow column instead of running off it (B-217). */
-const WRAPS = "h-auto min-h-8 max-w-full whitespace-normal py-1 text-left";
+const WRAPS = "h-auto min-h-8 max-w-full whitespace-normal py-1 text-start";
 
 export function StepCard({
   slug,
@@ -318,7 +318,7 @@ export function StepCard({
             </p>
           ) : null}
         </div>
-        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+        <div className="ms-auto flex flex-wrap items-center justify-end gap-2">
           <StepState step={step} />
           {actions}
         </div>

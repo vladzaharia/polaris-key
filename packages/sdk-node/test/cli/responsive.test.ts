@@ -464,7 +464,7 @@ describe("the resolution matrix (40/60/80/120 × 12/24, long values)", () => {
           const manageUrl =
             values === LONG
               ? LONG.url.replace("activate/device", "portal/devices")
-              : "https://key.plrs.im/portal/tidewater/devices";
+              : "https://polaris.locker/#/p/tidewater/devices";
           const { screen, snaps } = await run(
             { columns, rows, values, interactive: true },
             async (h) => {
@@ -1039,7 +1039,7 @@ describe("a flow's end states leave one result block under one header", () => {
       const manageUrl =
         values === LONG
           ? LONG.url.replace("activate/device", "portal/devices")
-          : "https://key.plrs.im/portal/tidewater/devices";
+          : "https://polaris.locker/#/p/tidewater/devices";
       const { screen } = await run(
         { columns, rows, values, interactive: true },
         async (h) => {
@@ -1307,7 +1307,7 @@ const parityScreens: Record<
             code: "device_limit",
             limit: 3,
             deviceCount: 3,
-            manageUrl: "https://key.plrs.im/portal/tidewater/devices",
+            manageUrl: "https://polaris.locker/#/p/tidewater/devices",
           }),
         },
       }),

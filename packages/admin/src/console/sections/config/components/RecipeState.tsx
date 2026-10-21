@@ -60,7 +60,7 @@ export function ReviewRecipeLink({
   return (
     <Link
       to={reviewHref(slug, pending)}
-      className="text-sm text-accent-fg underline underline-offset-2"
+      className="py-1 text-sm text-accent-fg underline underline-offset-2"
     >
       Review recipe
     </Link>

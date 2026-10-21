@@ -79,7 +79,7 @@ export function ErrorPanel({
       {backToLibrary ? (
         <a
           href={href.library()}
-          className="inline-flex items-center gap-2 rounded-sm text-sm text-fg-muted hover:text-fg-strong pointer-coarse:min-h-11"
+          className="inline-flex min-h-6 items-center gap-2 rounded-sm text-sm text-fg-muted hover:text-fg-strong pointer-coarse:min-h-11"
         >
           <ArrowLeft aria-hidden className="size-4" />
           {t("locker.library.title")}

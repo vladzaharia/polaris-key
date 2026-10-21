@@ -232,7 +232,7 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
           const seats = seatLimitOf(l, tiers, product?.defaultDeviceLimit);
           const limit = seats.limit;
           return (
-            <div className="ml-auto w-28" title={seatLimitText(seats)}>
+            <div className="ms-auto w-28" title={seatLimitText(seats)}>
               {limit === null ? (
                 <span className="tabular-nums">{l.deviceCount}/—</span>
               ) : (
@@ -467,7 +467,7 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
           Showing the licenses of batch{" "}
           <Link
             to={r.licenseBatch(slug, oneBatch)}
-            className="font-medium text-accent-fg underline-offset-2 hover:underline"
+            className="py-1 font-medium text-accent-fg underline-offset-2 hover:underline"
           >
             {batchLabel(oneBatch)}
           </Link>
@@ -581,9 +581,9 @@ function FacetTile({
       aria-pressed={pressed}
       onClick={onClick}
       className={cn(
-        "flex flex-col items-start gap-1 rounded-lg border bg-surface-raised px-4 py-3 text-left",
+        "flex flex-col items-start gap-1 rounded-lg border bg-surface-raised px-4 py-3 text-start",
         "transition-colors hover:border-border-strong",
-        "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus",
+        "focus-visible:outline-2 focus-visible:outline-focus",
         pressed ? "border-accent ring-1 ring-accent" : "border-border",
       )}
     >

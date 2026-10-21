@@ -89,7 +89,7 @@ export function LicenseBatchesPage({
         accessorKey: "used",
         meta: { priority: 1, numeric: true },
         cell: ({ row }) => (
-          <div className="ml-auto w-28">
+          <div className="ms-auto w-28">
             <Meter
               label="Used"
               hideLabel

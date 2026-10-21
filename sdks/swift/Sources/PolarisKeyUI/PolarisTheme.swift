@@ -106,8 +106,11 @@ public struct PolarisCopy: Sendable {
     /// copy still holds the generic "this app".
     func welcomeTitle(naming name: String) -> String {
         let generic = "Welcome to \(PolarisCopy().productName)"
-        return welcomeTitle == generic && productName == PolarisCopy().productName
-            ? "Welcome to \(name)" : welcomeTitle
+        guard welcomeTitle == generic && productName == PolarisCopy().productName else {
+            return welcomeTitle
+        }
+        // No name anywhere: "Welcome", never "Welcome to" and nothing after it.
+        return name.isEmpty ? "Welcome" : "Welcome to \(name)"
     }
 
     /// Every button and link label on the gate, for the title-case parity test.

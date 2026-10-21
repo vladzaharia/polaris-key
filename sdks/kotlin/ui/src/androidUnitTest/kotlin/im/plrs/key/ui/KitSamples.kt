@@ -55,8 +55,8 @@ internal fun gateUi(status: LicenseStatus, range: AllowedRange? = null, graceUnt
 internal val samplePrompt = SignInPrompt(
     deviceCode = "dc_sample",
     userCode = "WDJB-MJHT",
-    verificationUri = "https://key.plrs.im/activate",
-    verificationUriComplete = "https://key.plrs.im/activate?user_code=WDJB-MJHT",
+    verificationUri = "https://polaris.locker/device",
+    verificationUriComplete = "https://polaris.locker/device?user_code=WDJB-MJHT",
     expiresIn = 600,
     interval = 5,
     expiresAt = NOW + 461,
@@ -91,7 +91,7 @@ internal val samplePacks = PolarisPackProgressUi(
 internal fun bootUi(stage: BootStage, outcome: BootOutcome = BootOutcome.running, canPlayOffline: Boolean = false) =
     PolarisBootUi(state = initialBootState().copy(stage = stage, outcome = outcome, canPlayOffline = canPlayOffline))
 
-internal const val SAMPLE_MANAGE_URL = "https://key.plrs.im/activate?product=djdl&next=free-device&for=Android%20arm64"
+internal const val SAMPLE_MANAGE_URL = "https://polaris.locker/activate?product=djdl&next=free-device&for=Android%20arm64"
 
 /** PX-W8 on Android TV: a device-limit refusal whose portal link shows as a QR code (TV only). */
 internal val deviceLimitTv: @Composable () -> Unit = {

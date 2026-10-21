@@ -67,6 +67,7 @@ final class FakeBlobs: PackObjectTransport, @unchecked Sendable {
             }
             return (_objects[sha], cut, _status)
         }
+        if refusal == 0 { throw URLError(.notConnectedToInternet) }  // no response at all
         if let refusal {
             return ObjectResponse(
                 status: refusal, contentRange: nil,
@@ -389,6 +390,23 @@ final class PacksFacetTests: XCTestCase {
         await c.close()
     }
 
+    func testAFailedRecordFetchKeepsItsClass() async throws {
+        let v1 = treePack(packId: "djdl.l10n", version: "1.0.0", seq: 1, files: v1Files)
+        let path = "/djdl/release/records/\(v1.recordSha256)"
+        let cases: [(Int, String)] = [
+            (401, ErrorCode.unauthorized), (403, ErrorCode.forbidden), (500, ErrorCode.serverError),
+            (503, ErrorCode.serverError), (404, ErrorCode.networkError), (0, ErrorCode.networkError),
+        ]
+        for (status, want) in cases {
+            await serve([v1])
+            if status == 0 { await server.drop(path) } else { await server.reply(path, status: status) }
+            let (c, update) = try await client(stamp: try stampFile(v1))
+            let (got, _) = await code { _ = try await update.packs.ensure(["djdl.l10n"]) }
+            XCTAssertEqual(got, want, "status \(status)")
+            await c.close()
+        }
+    }
+
     func testUpdatesByTheFileStrategyAfterARelaunchAndResumesADroppedDownload() async throws {
         let v1 = treePack(packId: "djdl.l10n", version: "1.0.0", seq: 1, files: v1Files)
         var f2 = v1Files
@@ -551,16 +569,24 @@ final class PacksFacetTests: XCTestCase {
         await c.close()
     }
 
-    /// P4-05: a 403 `delivery_gate_missing` / `not_entitled` from the blob route is a failed fetch.
-    func testABlobRouteRefusalIsAFailedFetch() async throws {
+    /// P4-05 and B-150 follow-through: an object fetch keeps its class. A 401 or 403 (the delivery
+    /// gate, `not_entitled`) is `pack-not-entitled`, a 5xx `server-error`, a 404 or no response
+    /// `network-error`.
+    func testAFailedObjectFetchKeepsItsClass() async throws {
         let v1 = treePack(packId: "djdl.l10n", version: "1.0.0", seq: 1, files: v1Files)
-        await serve([v1])
-        blobs.status = 403
-        let (c, update) = try await client(stamp: try stampFile(v1))
-        let (failure, _) = await code { _ = try await update.packs.ensure(["djdl.l10n"]) }
-        XCTAssertEqual(failure, ErrorCode.networkError)
-        blobs.status = nil
-        await c.close()
+        let cases: [(Int, String)] = [
+            (401, ErrorCode.packNotEntitled), (403, ErrorCode.packNotEntitled), (500, ErrorCode.serverError),
+            (503, ErrorCode.serverError), (404, ErrorCode.networkError), (0, ErrorCode.networkError),
+        ]
+        for (status, want) in cases {
+            await serve([v1])
+            blobs.status = status
+            let (c, update) = try await client(stamp: try stampFile(v1))
+            let (failure, _) = await code { _ = try await update.packs.ensure(["djdl.l10n"]) }
+            XCTAssertEqual(failure, want, "status \(status)")
+            blobs.status = nil
+            await c.close()
+        }
     }
 
     func testEmbeddedSingleFileBaselineIsReadFromTheFileItself() throws {

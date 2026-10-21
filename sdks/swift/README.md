@@ -26,7 +26,7 @@ a product with no license service does not carry the gate.
 | `PolarisKeyPacks`    | packs: the planner, appliers, install state and pipeline, the `PacksClient` facet and its vendored zstd 1.5.7 (macOS **and** iOS); optional          | Core, Platform, Update, vendored libzstd     |
 | `PolarisKeyUpdate`   | wire v4's `UpdateClient` decision and the Sparkle wiring (**macOS only**); no packs and no zstd                                                      | Core, Platform, Sparkle ≥ 2.9.6 (macOS only) |
 | `PolarisKeyUI`       | the brandable SwiftUI gate, sign-in and offline activation over the `@Observable` `PolarisKeyModel`                                                  | Core, License, Config                        |
-| `PolarisKeyPlatform` | the Apple platform edges behind a C surface: AppDistributor, AppTransaction, StoreKit 2, Keychain, Background Assets (P5-05), App Attest (P6-02)     | — (standalone)                               |
+| `PolarisKeyPlatform` | the Apple platform edges behind a C surface: AppDistributor, AppTransaction, StoreKit 2, Keychain, Background Assets, App Attest                     | — (standalone)                               |
 
 Platforms: macOS 15+, iOS 18+ (iPadOS and Mac Catalyst take the iOS paths and are built in CI); tvOS 18 and visionOS 2 are declared.
 tvOS, visionOS and watchOS derive the device id from `identifierForVendor`; their platform header
@@ -42,8 +42,7 @@ Register the scope once (add `--global` for every project on the machine):
 swift package-registry set --scope polaris-key https://pkg.plrs.im/swift/polaris-key
 ```
 
-```text
-// Package.swift
+```swift title="Package.swift"
 // swift-tools-version: 6.0
 import PackageDescription
 
@@ -113,7 +112,7 @@ Everything below hangs off one `PolarisKeyClient`. Names match the other SDKs up
 | `events`                                                                   | One `AsyncStream<PolarisKeyEvent>` per subscriber, one event per difference: `license(status:previous:)`, `entitlement(name:value:previous:)`, `config(key:value:previous:source:)`, `updateAvailable(version:action:mandatory:channel:)`, `packs(pack:phase:done:total:)`, `store(reason:detail:)`, the same kinds and fields as every SDK. `changes` is the deprecated earlier name. `syncOnForeground()` syncs when the app becomes active; SwiftUI gets it from `.polarisKeyGate` and `.polarisKey`. |
 | `devices.attest()`                                                         | App Attest on iOS: challenge, `attestKey` over SHA-256 of the request hash, POST, key id in the Keychain, a fresh key when the old one is invalid. A 403 `attestation_required` from edge-mint or a commerce claim attests once and retries once. macOS answers the typed `runtime` N/A.                                                                                                                                                                                                                 |
 | `commerce.purchase(productID:)`, `restore()`, `startTransactionUpdates()`  | StoreKit 2 with `appAccountToken` set to the server binding, then claim, then `finish()` only after the claim, then sync.                                                                                                                                                                                                                                                                                                                                                                                |
-| `identity.signInWithBrowser()`, `identity.signOut()`, `identity.current()` | Device-code sign-in shown in `ASWebAuthenticationSession` (the interim until native OIDC, I-15); sign-out is `deactivate()` plus the `license` event; `current()` is the signed profile (an empty field reads nil), or nil when no license or an anonymous profile names no one. `SignInPoll.ready` carries `identity` and `attached`. The client-level `signInWithBrowser()` and `signOut()` forward to these.                                                                                          |
+| `identity.signInWithBrowser()`, `identity.signOut()`, `identity.current()` | Device-code sign-in shown in `ASWebAuthenticationSession` (the interim until native OIDC); sign-out is `deactivate()` plus the `license` event; `current()` is the signed profile (an empty field reads nil), or nil when no license or an anonymous profile names no one. `SignInPoll.ready` carries `identity` and `attached`. The client-level `signInWithBrowser()` and `signOut()` forward to these.                                                                                                |
 | `report(extras:)`                                                          | The device report carries the gate, the outlet and up to 16 queued update-health events (`update_offered`, `update_downloaded`, `update_applied`, `update_confirmed`, `pack_failed`, `boot_rolled_back`), dropped only once a report is accepted.                                                                                                                                                                                                                                                        |
 | `boot()`                                                                   | Drives the boot stages (discover, guard, sync, gate, decide, fetch, mount) and confirms the launch after `BOOT_OK_SECONDS`. The boot guard counts unconfirmed launches; an Apple app has no previous build, so it journals `boot_rolled_back` once instead.                                                                                                                                                                                                                                              |
 | `update.install(_:)`, `update.feedUrl(_:)`, `update.fetch(...)`            | Opens the App Store, TestFlight or marketplace listing on iOS and hands off to Sparkle on macOS. `PolarisSparkle.start(client:)` follows license and channel changes.                                                                                                                                                                                                                                                                                                                                    |
@@ -137,7 +136,7 @@ let client = try await PolarisKeyClient.create(options: .init(
     // kid -> raw Ed25519 public key (base64url). PLACEHOLDERS — substitute YOUR product's real
     // values; see "Where the trust set comes from" below.
     pinnedKeys: ["<your-signing-key-id>": "<your-product-signing-key-b64url>"],
-    // What this build expects the product to run, for the offline capability fallback (D-21).
+    // What this build expects the product to run, for the offline capability fallback.
     expectedServices: [.license, .config]
 ))
 
@@ -193,11 +192,11 @@ device cannot re-register (that needs a browser session) and lands on the hard 4
 
 `client.capabilities()` reports which services the product runs. Resolution is: a discovery
 document loaded this session (`await client.discover()`) > `expectedServices` > the suite
-default (license + config; release/distribution/update/identity off). It is **fail-closed** (D-21): a
+default (license + config; release/distribution/update/identity off). It is **fail-closed**: a
 service the discovery document omits reads as disabled, never as "unknown, assume on".
 
 A product with the license service disabled gates `not-applicable` — `isLicensed()` is `true`
-and the gate renders your UI. That is the point of D-08: a config-only product boots usable
+and the gate renders your UI. That is the point: a config-only product boots usable
 rather than sitting on `needs-activation` forever.
 
 ### Product presentation
@@ -243,11 +242,11 @@ still applied by `config(_:default:)`).
 The env var for a key is `envPrefix + key` with dots replaced by `__` (default prefix
 `PKEY_CONFIG_`): `run.concurrency` → `PKEY_CONFIG_run__concurrency`. The value is the decoded
 JSON value when the raw string is one strict JSON text (`4` → int, `true` → bool, `[1,2]` →
-array), and otherwise the plain string, unchanged (WIRE-CONTRACT-V3 §2.2.1 rule 2, pinned by
+array), and otherwise the plain string, unchanged (the wire contract, v4; pinned by
 `conformance/corpus/v2/config-matrix.json`). Strict means: no trailing comma, leading byte order
 mark, duplicate member names (compared by scalar value) or member name holding U+0000; every
 number zero or of magnitude 10^−307 up to below 10^308; and at most 64 levels of nesting.
-Reading a variable never throws. One declared limit (WIRE-CONTRACT-V3 §10): Swift's
+Reading a variable never throws. One declared limit: Swift's
 `[String: JSONValue]` keeps only the first of two canonically equivalent member names, though
 the verdict is the same as everywhere else. Supply `localOverrides` / `envPrefix` / an injected
 `environment` via `ConfigClientOptions`; the rules themselves are the public, pure
@@ -274,7 +273,7 @@ func signInOnTV(_ client: PolarisKeyClient) async throws {
     let prompt = try await client.identity.beginSignIn(deviceName: "Living-room Apple TV")
     // Show prompt.userCode and prompt.verificationUri (the short URL); "Open browser" opens
     // prompt.verificationUriComplete (the page with the code filled in). On a TV, also render that
-    // URL as a QR code; never on a phone, tablet or Mac (SIGN-IN.md D-67).
+    // URL as a QR code; never on a phone, tablet or Mac.
     let signIn = Task { try await client.identity.waitForSignIn(prompt) }
     // …cancel `signIn` if the player backs out: polling stops and it throws CancellationError.
     if case .ready(let ready) = try await signIn.value {
@@ -624,7 +623,7 @@ register. The product stays the hero there too: no Polaris Key mark on the gate 
 
 **The product's presentation** (discovery `core.presentation`: name, developer, accent and the
 verified icon) reaches the kit through `.polarisKeyPresentation(_:)`, the seam the SDK's
-accessor fills once HA-13 lands. Under `.polarisKey` branding its accent (`accentDark` in the dark
+accessor fills once the product's presentation arrives. Under `.polarisKey` branding its accent (`accentDark` in the dark
 scheme) colors the kit through the contrast resolver (`PolarisAccent`); natively your app's tint
 still leads. Your theme wins over the presentation field by field.
 
@@ -647,7 +646,7 @@ L and AX3, native and branded, and assert the code and the primary action are on
 scrolling (run it on an iOS simulator for the phone and tablet type sizes; `PKEY_KIT_SNAPSHOTS=<dir>`
 writes the renders).
 
-## Updates (macOS, D-24)
+## Updates (macOS)
 
 `PolarisKeyUpdate` wires **Sparkle ≥ 2.9.6** to the product's own feed. That is the security floor:
 2.9.5 and 2.9.6 fixed a symlink attack in delta patching and a root privilege escalation, on top of
@@ -688,7 +687,7 @@ func makeUpdater(_ client: PolarisKeyClient) async throws
 
 - **feed URL** from the discovery document (`?arch=` applied), never string-built — §R1 moved
   these paths and left aliases behind.
-- **`httpHeaders`** so an `entitled` product's feed (D-13) is reachable at all; Sparkle makes its
+- **`httpHeaders`** so an `entitled` product's feed is reachable at all; Sparkle makes its
   own HTTP requests, and without this they are anonymous and answer 401.
 - **`allowedChannels`** from the license's `channels` entitlement, so a stable-only customer is
   not offered a beta the server will then refuse. A UX narrowing, not an enforcement point. A
@@ -724,7 +723,7 @@ macOS** alike: an iOS app (App Store, TestFlight, a marketplace) is a "decide on
 macOS direct build hands a `binary` answer to Sparkle or its own installer. Nothing it needs
 imports Sparkle: the verifiers and the decision are pure functions in `PolarisKeyCore`
 (`verifyFeed`, `verifyReleaseRecord`, `decideUpdate`, `rolloutBucket`, `effectiveCapabilities`,
-`resolveUpdateOutlet`, `bootDecision`, `runUpdateCheck`, and P4-13's `feedContent`, `holdsOf`,
+`resolveUpdateOutlet`, `bootDecision`, `runUpdateCheck`, and the content-aware `feedContent`, `holdsOf`,
 `revocationOf`, `verifyRevocation`, `newerRevocation` and `selectPackRows`), held to every
 `feedCases`, `feedContentCases`, `releaseRecordCases`, `revocationCases` and `update-matrix.json`
 row (`rows` and `contentRows`). `check(channel:)` and the Sparkle helpers
@@ -778,7 +777,7 @@ The answer is an `UpdateCheck`: `channel` (the canonical channel — record it a
 | `engine`              | `godot-<major>.<minor>` for a host that runs Godot code packs; nil otherwise.                                                                                                              |
 | `platform`, `arch`    | Default to this binary's (`macos`/`ios`, `arm64`/`x86_64`).                                                                                                                                |
 
-**Outlet detection** (plans/P3-01.md §2.9). With no `outlet`, the update client detects one at its
+**Outlet detection**. With no `outlet`, the update client detects one at its
 first decision. `readOutletSignals()` reads, on iOS, MarketplaceKit's `AppDistributor.current`
 behind `#available(iOS 17.4, *)` (its `web` case from iOS 17.5) raced against a 2-second deadline
 (it can hang: a timeout records `timeout`, which is no evidence), AltStore's
@@ -792,7 +791,7 @@ Store or TestFlight install is detected without any stamp; nothing is persisted.
 - **Refusals.** A bad option, or a release key whose bytes are also a trust pin, makes the
   initializer throw `invalid-options`; an empty `pinnedReleaseKeys` (or `UpdateClient(core:)`)
   makes `decide()` throw `not-configured`. A product that runs no Update service is refused
-  before dialling (`service-unavailable`, D-21), and so is a Worker whose discovery document has
+  before dialling (`service-unavailable`), and so is a Worker whose discovery document has
   no `update.endpoints.feed` or `release.endpoints.record` — fall back to `check()`.
 - **Discovery.** `decide()` loads discovery when this session has not. The feed is
   `GET …/update/{channel}/feed.jws?platform=…` with the channel as requested (`latest` is fine:
@@ -811,8 +810,7 @@ Store or TestFlight install is detected without any stamp; nothing is persisted.
   survives a restart and cannot be edited on disk. A deactivation or a bundle import keeps them.
 - **The clock** is the effective clock, `max(system clock, highWaterMark)`: winding the system
   clock back cannot revive an expired feed.
-- **Floors never stop the app; revoked required content does** (plans/P4-13.md §2.6, decision
-  4). `binary`, `store` and `platform` with `mandatory: true`, and every `blocked` answer, are
+- **Floors never stop the app; revoked required content does** (a CI-signed revocation of a required pack). `binary`, `store` and `platform` with `mandatory: true`, and every `blocked` answer, are
   prompts the user cannot dismiss (`isUndismissable`): show them as a persistent notice with no
   dismiss control over an app that keeps running, never as a sheet that covers it. The one
   exception is a CI-signed revocation of a **required** pack with no usable fix:
@@ -823,7 +821,7 @@ Store or TestFlight install is detected without any stamp; nothing is persisted.
   playing." (with the offer's button when the answer is an offer). `blocked {content-floor}` and
   `contentBlock: content-floor` stay `.optional`; a revoked optional pack is unmounted and play
   continues (`packs {revoke}`).
-- **Content** (plans/P4-13.md §2.5, §2.6). With `UpdateClientOptions.packs.contentStamp` set,
+- **Content**. With `UpdateClientOptions.packs.contentStamp` set,
   `decide()` also runs the content decision: it reads the feed's `packSets`, `packFloors` and
   `revocations` beside the claims (a malformed member is ignored, never a refusal), fetches each
   relevant revocation by hash (at most 64 per check), verifies it against `pinnedReleaseKeys`
@@ -832,7 +830,7 @@ Store or TestFlight install is detected without any stamp; nothing is persisted.
   `update.packs.ensureReleases(install)`, or `bootFetch(…, install:)` at boot; boot value
   `.none`), a `binary` offer with `prestage` (the new content level's required and essential
   packs), an offer made mandatory by `contentBlock`, or `blocked {content-floor | revoked-content}`.
-  Without a stamp every answer is exactly P3-01's.
+  Without a stamp every answer is the plain update decision.
 - `channelFeed(channel:)` returns the verified feed `decide()` would use, without the record and
   without release keys (it is named apart from `feed(channel:)`, the Sparkle helper);
   `releaseRecord(hash:)` verifies one record by hash (cross-checked and cached when a committed
@@ -841,7 +839,7 @@ Store or TestFlight install is detected without any stamp; nothing is persisted.
 
 ## Packs (`update.packs`)
 
-Content packs (plans/P4-01.md; CONTENT §10) install through `PolarisKeyPacks.PacksClient`, handed
+Content packs install through `PolarisKeyPacks.PacksClient`, handed
 to `UpdateClient` as `UpdateClientOptions.content`; `update.packs` returns that client. Pack
 records verify against `pinnedReleaseKeys` only. The running build's pins come from its **content
 stamp** (`pkey-content.json`, written by `pkey release content-stamp` before the build and shipped
@@ -897,7 +895,7 @@ func installPacks(_ client: PolarisKeyClient) async throws {
   tighter memory limits than a foreground app, so pass a lower budget there, for example
   `PacksOptions(memBudget: 32 * 1024 * 1024)`. A delta over the budget is never chosen: the
   planner falls back to the `file` or `full` strategy, which costs more bytes but less memory.
-- **Feed-offered deltas** (P4-29). The committed channel feed can list lazy deltas (`deltas`, the
+- **Feed-offered deltas**. The committed channel feed can list lazy deltas (`deltas`, the
   Worker's delta menu). The client keeps the menu of the last feed `decide()` or `channelFeed()`
   used, fresh or stale, and reads the committed feed from the cache when the pack engine starts,
   so an offline launch still has it. The engine (`feedDeltas`) adds the entries for a container's
@@ -909,7 +907,7 @@ func installPacks(_ client: PolarisKeyClient) async throws {
   (`fetch.consent`, `fetch.progress`, `fetch.done`). Given a `packs` answer's `install`, it
   installs the required and essential entries at exactly their release before mount and returns
   the rest in `background` for `ensureReleases` after the boot.
-- **Revocations** (plans/P4-13.md §2.5). A release that a verified revocation names is never
+- **Revocations**. A release that a verified revocation names is never
   installed, activated or mounted: `ensure`/`ensureReleases` throw `PackError` `pack-revoked`, a
   running `hot` install is deactivated when the revocation is learned, and an embedded baseline
   is refused. Revocations persist in a sibling `revocations.json` beside `state.json`, created
@@ -924,7 +922,7 @@ func installPacks(_ client: PolarisKeyClient) async throws {
   `recoverState()` clears it. At most 256 targets are kept, the oldest dropped first.
   `revocations()` reports them. **A product that has never had a revocation has no
   `revocations.json`, no flag and no `relearn`, and behaves exactly as before.**
-- **Delegated content** (P4-19, P4-25). A compatible or standalone pack release signed by a
+- **Delegated content**. A compatible or standalone pack release signed by a
   delegated content key installs through the same engine when it arrives as a feed target
   (`ensureReleases`): the delegation its `pkd1-` kid names is fetched from the record route (at
   most 16 per call, kept for the process), verified against `pinnedReleaseKeys` only, and stored
@@ -943,7 +941,7 @@ func installPacks(_ client: PolarisKeyClient) async throws {
   is configured.
 - **Handlers.** `registerHandler(_:)` adds a type (`layout` `tree` or `container`, `activation`
   `hot` or `restart`, `supports(formatVersion)`, optional `activate`/`deactivate`).
-- **Apple-hosted Background Assets** (`packs.transport.apple`, P5-08). Pass
+- **Apple-hosted Background Assets** (`packs.transport.apple`). Pass
   `PacksOptions(platformTransport: AppleAssetPackTransport(packs: ["diceroll.foes"]))`. A carried
   pack is installed only through Background Assets: the asset pack `<pack>-c<contentApi>` (dots to
   hyphens, as `pkey transport apple-ba package` uploads it), its files under `pkey/<asset pack>/`
@@ -954,7 +952,7 @@ func installPacks(_ client: PolarisKeyClient) async throws {
   answers `outlet`. Either way the pack is refused with `plan-transport-unsupported`, never
   fetched from the CDN instead.
 
-### Source changes (P4-23)
+### Source changes
 
 The content decision changes some public Swift signatures. Callers that switch exhaustively or
 destructure positionally need updating:
@@ -966,7 +964,7 @@ destructure positionally need updating:
 - `RESERVED_RECORD_KINDS` is removed (`revocation` is now a real record kind).
 - `runBootFetch` and `PacksClient.bootFetch` return a 3-tuple that adds `background`.
 
-### Source changes (P4-25)
+### Source changes
 
 - `VerifyReleaseRecordResult` gains `.delegated(ReleaseRecordDoc, RecordDelegation)`, returned
   only when `VerifyReleaseRecordOptions.delegation` is passed; `record` covers both success cases
@@ -977,7 +975,7 @@ destructure positionally need updating:
 
 ## Channels
 
-The channel names are WIRE-CONTRACT-V3 §5.1's: `stable`, `beta`, `pr`/`pr-<n>`, `dev` and a
+The channel names are the wire contract's: `stable`, `beta`, `pr`/`pr-<n>`, `dev` and a
 product's manual channels. `Semver.channelForVersion` derives the default `X-PKey-Channel` from
 the build version: `0.0.0-beta*` and the legacy `0.0.0-staging*` builds are now `.beta`.
 
@@ -987,12 +985,12 @@ That is the Worker's own answer and every other SDK's; Sparkle's `allowedChannel
 treated an empty grant as stable only, so the updater's behavior does not change. The list is
 the raw grants: `staging` is not rewritten to `beta`.
 
-**Source note (P0-04):** `enum Channel` gained `case beta`, and `case staging` is deprecated
+**Source note:** `enum Channel` gained `case beta`, and `case staging` is deprecated
 (`staging` is the legacy spelling of `beta`; `channelForVersion` no longer returns it). An
 exhaustive `switch` over `Channel` in your code needs a `.beta` case. Pass
 `CoreOptions.channel: "staging"` only as a stopgap against a Worker older than this change.
 
-## Apple platform edges (`PolarisKeyPlatform`, P5-05)
+## Apple platform edges (`PolarisKeyPlatform`)
 
 A standalone target (it depends on no other target). A native host binds it through three C
 functions in the separate `PolarisKeyPlatformC` target, which only native hosts link, so a Swift
@@ -1020,13 +1018,13 @@ API this OS or build lacks is `{"ok":false,"unsupported":true,"reason":…,"deta
 | `listen`                                                                                                                       | async | starts the `Transaction.updates` listener; each new transaction state is emitted once as `transaction_updated`                                                                                                                                                                                          |
 | `kc_get` / `kc_set` / `kc_delete {product, account, value?}`                                                                   | sync  | service `pkey:<product>`, data-protection keychain, `AfterFirstUnlockThisDeviceOnly`, no access group                                                                                                                                                                                                   |
 | `packs_status`, `packs_ensure {packs:[{id,path}], latest?}`, `packs_check_updates`, `packs_remove`, `packs_url`, `packs_watch` | async | `AssetPackManager`, iOS / macOS 26.4 (`version` below), and only where the `BA*` Info.plist keys exist (`outlet` otherwise); events `pack_progress`, `pack_ready`, `pack_failed`                                                                                                                        |
-| `app_attest_supported`                                                                                                         | sync  | `{supported}`: `DCAppAttestService.isSupported`; unsupported `runtime` on macOS, the simulator and app extensions (P6-02)                                                                                                                                                                               |
+| `app_attest_supported`                                                                                                         | sync  | `{supported}`: `DCAppAttestService.isSupported`; unsupported `runtime` on macOS, the simulator and app extensions                                                                                                                                                                                       |
 | `app_attest_attest {requestHash, keyId?}`                                                                                      | async | `{keyId, attestation, generated, ms}`: generates a key when none is given, then `attestKey` with `clientDataHash = SHA-256(UTF-8(requestHash))`; errors `invalid_key` (regenerate: keys die on reinstall), `server_unavailable` (retry with the same key), `invalid_input`, `system_failure`, `timeout` |
 | `app_attest_assert {keyId, clientData}`                                                                                        | async | `{keyId, assertion}`: `generateAssertion` over `SHA-256(clientData)`, for later per-request assertions                                                                                                                                                                                                  |
 
 Transaction ids are strings, and every transaction carries its signed JWS. Under StoreKit Testing
 the JWS is signed by a per-session self-signed certificate (`kid Apple_Xcode_Key`), fit for
-testing P6-01's parsing, not its chain validation.
+testing the parsing, not its chain validation.
 
 **Xcode 16.4.** The macos-15 job compiles this target with Xcode 16.4 (Swift 6.1). Code that
 needs the Xcode 26 SDK (`AssetPackManager` and its 26.4 methods) is behind `#if compiler(>=6.3)`,
@@ -1103,7 +1101,7 @@ The corpus and the transcripts are **generated**: run `pnpm gen corpus` (or `pnp
 from the repo root after any wire change, and `pnpm gen corpus --check` (and
 `pnpm gen transcripts --check`) is the CI drift gate.
 
-**Against a live `pkey dev` (SP-41).** The PkeyDevLiveTests suite runs the quickstart against a real local
+**Against a live `pkey dev`.** The PkeyDevLiveTests suite runs the quickstart against a real local
 Polaris Key over the SDK's own `URLSessionTransport`: no replayed traffic. It covers first
 activation (`ok`, `floating`), each refusal the other five seeded keys reach (`unauthorized`,
 `device_limit`, `key_entry_limit`), a `config` change event after `pkey dev config`, device-code

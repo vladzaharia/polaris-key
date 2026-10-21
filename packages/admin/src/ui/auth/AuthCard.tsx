@@ -151,7 +151,7 @@ export function AuthCard({
           {header ? (
             <div
               data-pane="passport"
-              className="border-b border-border passport:col-start-1 passport:row-start-1 passport:border-b-0 passport:border-r passport:bg-surface-sunken"
+              className="border-b border-border passport:col-start-1 passport:row-start-1 passport:border-b-0 passport:border-e passport:bg-surface-sunken"
             >
               {header}
             </div>
@@ -188,7 +188,7 @@ export function AuthCard({
                 // The trust receipt anchors at the pane's foot (the pane never ends in a void).
                 header &&
                   (receipt
-                    ? "passport:col-start-1 passport:row-start-2 passport:border-r passport:border-t-0 passport:bg-surface-sunken passport:px-6"
+                    ? "passport:col-start-1 passport:row-start-2 passport:border-e passport:border-t-0 passport:bg-surface-sunken passport:px-6"
                     : "passport:col-start-2 passport:row-start-2"),
               )}
             >
@@ -326,7 +326,7 @@ function Icon({
   return (
     <div
       className={cn(
-        "shrink-0 passport:ml-6 passport:w-fit passport:rounded-[14px]",
+        "shrink-0 passport:ms-6 passport:w-fit passport:rounded-[14px]",
         art
           ? "passport:-mt-7 passport:ring-4 passport:ring-surface-sunken"
           : "passport:mt-8",

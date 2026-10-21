@@ -22,12 +22,15 @@ export function welcomeView(ctx: Context): View<"Welcome", WelcomeState> {
     return hiddenView(ctx, "Welcome");
   const id = identityText(ctx);
   const args = { product: id.name, developer: id.developer ?? undefined };
+  // No name anywhere: a neutral "Welcome", never "Welcome to" with nothing after it.
+  const title =
+    id.name === "" ? "common.welcomeNoProductTitle" : "welcome.title";
   // The one primary follows the state: Sign in on an empty Welcome (DL4).
   const primary = signIn ? "welcome.signIn" : key ? "welcome.useKey" : null;
   if (ctx.input.pending)
     return makeView(ctx, "Welcome", {
       state: "busy",
-      copy: ["welcome.title", "common.working", "a11y.busy"],
+      copy: [title, "common.working", "a11y.busy"],
       args,
       // A busy control keeps its label and its focus (DL4, DL9).
       primary,
@@ -36,8 +39,12 @@ export function welcomeView(ctx: Context): View<"Welcome", WelcomeState> {
     return makeView(ctx, "Welcome", {
       state: "capability-limited",
       copy: [
-        "welcome.title",
-        signIn ? "welcome.ledeSignInOnly" : "welcome.ledeKeyOnly",
+        title,
+        signIn
+          ? id.name === ""
+            ? "common.signInToContinue"
+            : "welcome.ledeSignInOnly"
+          : "welcome.ledeKeyOnly",
       ],
       args,
       primary,
@@ -46,7 +53,7 @@ export function welcomeView(ctx: Context): View<"Welcome", WelcomeState> {
     state: "default",
     copy: [
       "a11y.productIcon",
-      "welcome.title",
+      title,
       id.developer !== null && "common.byDeveloper",
       "welcome.lede",
       "welcome.signIn",

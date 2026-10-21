@@ -95,7 +95,7 @@ export function PresentationPage({
                   Uploads and replacements are off until space is freed. See{" "}
                   <a
                     href="#presentation-hosting"
-                    className="text-accent-fg underline underline-offset-2"
+                    className="py-1 text-accent-fg underline underline-offset-2"
                     onClick={(e) => {
                       e.preventDefault();
                       const to = document.getElementById(

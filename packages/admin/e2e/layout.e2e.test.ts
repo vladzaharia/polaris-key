@@ -669,7 +669,11 @@ for (const vp of VIEWPORTS) {
             ).toEqual([]);
             if (vp.label === "wide" || vp.label.startsWith("zoom")) {
               // ui:lint over the built page (`pnpm ui:lint --html`; pageChecks.ts).
-              expect(await lintFindings(page), "ui:lint findings").toEqual([]);
+              // Every rule, with 24 px touch targets (WCAG 2.5.8) at every size.
+              expect(
+                await lintFindings(page, { minTouch: 24 }),
+                "ui:lint findings",
+              ).toEqual([]);
             }
             if (
               ["desktop", "phone", "rail"].includes(vp.label) &&

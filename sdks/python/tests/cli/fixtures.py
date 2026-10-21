@@ -117,7 +117,7 @@ _ROWS = (
 )
 _NOTES = ("Stem export in one click, with loudness matching", "Track freeze now works with every plug-in")
 _UPDATE = dict(version="2.5", current="2.4.1", size="61 MB", notes=_NOTES, notes_url="https://tidewater.app/releases/2.5")
-_LIMIT = ActivateView("DeviceLimit", "browser-mode", "device-limit", "device_limit", KEY, 3, 3, "https://key.plrs.im/portal/tidewater/devices")
+_LIMIT = ActivateView("DeviceLimit", "browser-mode", "device-limit", "device_limit", KEY, 3, 3, "https://polaris.locker/#/p/tidewater/devices")
 
 
 FIXTURES: Tuple[Fixture, ...] = (

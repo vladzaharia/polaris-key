@@ -631,7 +631,7 @@ export function PackRecord({
             {" · "}
             <Link
               to={r.compatibility(slug)}
-              className="text-accent-fg underline underline-offset-4"
+              className="py-1 text-accent-fg underline underline-offset-4"
             >
               Open in Compatibility
             </Link>

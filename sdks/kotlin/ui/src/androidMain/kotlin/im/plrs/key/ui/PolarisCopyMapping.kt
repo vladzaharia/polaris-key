@@ -159,9 +159,13 @@ public fun PolarisCopy.blockedMessage(reason: BootEmit.BlockedReason): PolarisMe
 public fun PolarisCopy.offlineMessage(canPlayOffline: Boolean): PolarisMessageCopy =
     PolarisMessageCopy(bootOfflineTitle, if (canPlayOffline) bootOfflinePlayableBody else bootOfflineBody, PolarisMessageKind.Offline)
 
-/** The message an error stop shows, naming the SDK error code. */
+/**
+ * The message an error stop shows. A code the core catalog has copy for (`sync-failed`) reads that
+ * copy; only an unknown code falls back to the generic message naming it.
+ */
 public fun PolarisCopy.errorMessage(code: String): PolarisMessageCopy =
-    PolarisMessageCopy(bootErrorTitle, format(bootErrorBody, code), PolarisMessageKind.Danger)
+    if (Copy.hasCopy(code, coreLocale())) coreMessage(code, PolarisMessageKind.Danger)
+    else PolarisMessageCopy(bootErrorTitle, format(bootErrorBody, code), PolarisMessageKind.Danger)
 
 /** The consent card's body for a fetch of [bytes]. */
 public fun PolarisCopy.consentMessage(bytes: Long, metered: Boolean): String =

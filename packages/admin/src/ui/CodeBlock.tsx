@@ -77,7 +77,7 @@ export function CodeBlock({
               {lineNumbers ? (
                 <span
                   aria-hidden
-                  className="mr-4 inline-block w-6 select-none text-right text-fg-subtle"
+                  className="me-4 inline-block w-6 select-none text-end text-fg-subtle"
                 >
                   {i + 1}
                 </span>

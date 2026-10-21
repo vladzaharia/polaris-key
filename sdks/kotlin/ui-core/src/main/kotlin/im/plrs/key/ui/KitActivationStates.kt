@@ -10,14 +10,18 @@ import kotlinx.serialization.json.JsonObject
  */
 internal fun welcomeScreen(inputs: KitInputs): KitScreen {
     val context = KitContext(inputs)
-    val title = context.line("welcome.title", context.productArgs)
+    // No name anywhere: the neutral "Welcome", never "Welcome to" and nothing after it.
+    val nameless = context.identity.name.isEmpty()
+    val title = if (nameless) context.line("common.welcomeNoProductTitle") else context.line("welcome.title", context.productArgs)
+    val signInOnlyLede =
+        if (nameless) context.line("common.signInToContinue") else context.line("welcome.ledeSignInOnly", context.productArgs)
     if (!inputs.isOn("license")) {
         // No license, so no key path: sign-in registers, or an open product has no gate.
         if (inputs.string("registration") != "requires-identity") return hidden(KitComponent.welcome)
         return screen(
             KitComponent.welcome,
             "capability-limited",
-            listOf(title, context.line("welcome.ledeSignInOnly", context.productArgs)),
+            listOf(title, signInOnlyLede),
         )
     }
     if (inputs.string("pending") != null) {
@@ -32,7 +36,7 @@ internal fun welcomeScreen(inputs: KitInputs): KitScreen {
         return screen(
             KitComponent.welcome,
             "capability-limited",
-            listOf(title, context.line("welcome.ledeSignInOnly", context.productArgs)),
+            listOf(title, signInOnlyLede),
         )
     }
     val lines = mutableListOf(context.line("a11y.productIcon", context.productArgs), title)

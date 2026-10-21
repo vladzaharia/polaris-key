@@ -90,6 +90,8 @@
   "boot.consent.download": "Baixar",
   "boot.error.body": "Não foi possível concluir a inicialização de {product} ({code}).",
   "welcome.title": "Boas-vindas ao {product}",
+  "common.welcomeNoProductTitle": "Boas-vindas",
+  "common.signInToContinue": "Entre para continuar.",
   "welcome.lede": "Entre ou use uma chave de licença para continuar.",
   "welcome.ledeKeyOnly": "Digite uma chave de licença para continuar.",
   "welcome.ledeSignInOnly": "Entre para usar {product}.",

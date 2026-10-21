@@ -90,6 +90,8 @@
   "boot.consent.download": "下载",
   "boot.error.body": "{product}未能完成启动（{code}）。",
   "welcome.title": "欢迎使用{product}",
+  "common.welcomeNoProductTitle": "欢迎",
+  "common.signInToContinue": "登录以继续。",
   "welcome.lede": "登录或使用许可证密钥以继续。",
   "welcome.ledeKeyOnly": "输入许可证密钥以继续。",
   "welcome.ledeSignInOnly": "登录以使用{product}。",

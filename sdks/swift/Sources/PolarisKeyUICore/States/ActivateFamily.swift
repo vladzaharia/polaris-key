@@ -114,12 +114,18 @@ extension KitStates {
     /// the product supports.
     public static func welcome(_ i: KitInputs) -> KitScreen<WelcomeState> {
         let c = Ctx(i)
-        let title = c.line("welcome.title", c.productArg)
+        // No name anywhere: the neutral "Welcome", never "Welcome to" and nothing after it.
+        let nameless = c.identity.name.isEmpty
+        let title =
+            nameless ? c.line("common.welcomeNoProductTitle") : c.line("welcome.title", c.productArg)
+        let signInOnlyLede =
+            nameless
+            ? c.line("common.signInToContinue") : c.line("welcome.ledeSignInOnly", c.productArg)
         if !i.isOn(.license) {
             // No license, so no key path: sign-in registers, or an open product has no gate.
             guard i.registration == .requiresIdentity else { return .hidden }
             return KitScreen(
-                .capabilityLimited, [title, c.line("welcome.ledeSignInOnly", c.productArg)])
+                .capabilityLimited, [title, signInOnlyLede])
         }
         if i.pending != nil {
             return KitScreen(.busy, [title, c.line("common.working"), c.line("a11y.busy")])
@@ -131,7 +137,7 @@ extension KitStates {
         }
         if signIn && !key {
             return KitScreen(
-                .capabilityLimited, [title, c.line("welcome.ledeSignInOnly", c.productArg)])
+                .capabilityLimited, [title, signInOnlyLede])
         }
         var lines = [c.line("a11y.productIcon", c.productArg), title]
         if let developer = c.identity.developer {

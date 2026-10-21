@@ -56,7 +56,7 @@ export function PrereqList({
               <p className="text-sm text-fg-muted">{p.detail}</p>
             ) : null}
           </div>
-          <div className="ml-auto flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2">
+          <div className="ms-auto flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2">
             <span
               className={cn(
                 "inline-flex items-center gap-1 text-sm",

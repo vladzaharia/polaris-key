@@ -6,7 +6,13 @@
 //              `distribution.endpoints.blobs` (`{sha256}`) with `Range`/`If-Range`, streamed by
 //              `URLSession` (or an injected `PackObjectTransport`); the device bearer is sent
 //              only to the control plane's own origin. Any answer but 200 or 206 — a 404, or
-//              P4-05's 403 `delivery_gate_missing` / `not_entitled` — is a failed fetch;
+//              P4-05's 403 `delivery_gate_missing` / `not_entitled` — is a failed fetch.
+//              A refused record fetch keeps its class (B-150, one mapping in every packs
+//              client): 401 `unauthorized`, 403 `forbidden`, 5xx `server-error`, a transport
+//              failure (no response) and any other status, 404 included, `network-error`;
+//              an object or range fetch maps the same way with one change: 401 or 403 is
+//              `pack-not-entitled` (the content route is entitlement-gated), 5xx `server-error`,
+//              no response and any other status `network-error` (`objectRefusal`);
 //   storage    `DirPackStorage` under the platform data directory (P1b-09), excluded from
 //              backups: a versioned directory per tree payload and an atomic pointer swap in
 //              `state.json`;
@@ -583,6 +589,16 @@ public actor PacksClient {
             && url.host?.lowercased() == base.host?.lowercased() && url.port == base.port
     }
 
+    /// The error code for a record fetch the registry answered with a non-ok `status`.
+    private static func recordRefusal(_ status: Int) -> String {
+        switch status {
+        case 401: return ErrorCode.unauthorized
+        case 403: return ErrorCode.forbidden
+        case 500...: return ErrorCode.serverError
+        default: return ErrorCode.networkError
+        }
+    }
+
     private static func fetchRecord(_ core: CoreContext, _ sha256: String) async -> RecordFetchResult {
         if core.localOnly { return .failed(PolarisError.localOnly) }
         guard let t = await template(core, .release, "record") else {
@@ -593,7 +609,7 @@ public actor PacksClient {
         if let token = await core.token, sameOrigin(url, core) { headers["authorization"] = "Bearer \(token)" }
         do {
             let res = try await core.request(url, headers: headers, maxBodyBytes: MAX_RECORD_JWS_BYTES + 1)
-            guard res.isOK else { return .failed(ErrorCode.networkError) }
+            guard res.isOK else { return .failed(recordRefusal(res.status)) }
             // A record over the bound is refused at step `hash` from this prefix, never hashed.
             return .ok(String(decoding: res.body.prefix(MAX_RECORD_JWS_BYTES + 1), as: UTF8.self))
         } catch {

@@ -90,6 +90,8 @@
   "boot.consent.download": "Download",
   "boot.error.body": "{product} couldn't finish starting ({code}).",
   "welcome.title": "Welcome to {product}",
+  "common.welcomeNoProductTitle": "Welcome",
+  "common.signInToContinue": "Sign in to continue.",
   "welcome.lede": "Sign in or use a license key to continue.",
   "welcome.ledeKeyOnly": "Enter a license key to continue.",
   "welcome.ledeSignInOnly": "Sign in to use {product}.",

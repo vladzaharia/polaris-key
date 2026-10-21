@@ -401,7 +401,7 @@ export const SCENARIOS: Scenario[] = [
       ...COMMON,
       "activate",
       "pkey_tidewater_",
-      "key.plrs.im/portal/tidewater/devices",
+      "polaris.locker/#/p/tidewater/devices",
       "3",
     ],
     run: async (h) => {
@@ -414,7 +414,7 @@ export const SCENARIOS: Scenario[] = [
               code: "device_limit",
               limit: 3,
               deviceCount: 3,
-              manageUrl: "https://key.plrs.im/portal/tidewater/devices",
+              manageUrl: "https://polaris.locker/#/p/tidewater/devices",
             }),
           },
         }),
@@ -468,7 +468,7 @@ export const SCENARIOS: Scenario[] = [
   {
     name: "sign-in-handoff-waiting",
     opts: { interactive: true },
-    data: [...COMMON, "login", "polaris.locker/device?code=WDJB-MJHT"],
+    data: [...COMMON, "login", "polaris.locker/device?user_code=WDJB-MJHT"],
     run: async (h) => {
       const gate = deferred<unknown>();
       const done = loginFlow(
@@ -617,7 +617,7 @@ export const SCENARIOS: Scenario[] = [
     data: [
       ...COMMON,
       "login",
-      "polaris.locker/device?code=WDJB-MJHT",
+      "polaris.locker/device?user_code=WDJB-MJHT",
       "tidewater login",
     ],
     run: async (h) => {
@@ -644,7 +644,7 @@ export const SCENARIOS: Scenario[] = [
     data: [
       ...COMMON,
       "login",
-      "polaris.locker/device?code=WDJB-MJHT",
+      "polaris.locker/device?user_code=WDJB-MJHT",
       "Mara Fennick",
       "mara@fennick.studio",
     ],

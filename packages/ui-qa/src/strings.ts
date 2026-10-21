@@ -26,6 +26,8 @@ export interface CatalogMessage {
 export interface Matcher {
   key: string;
   platform: string | null;
+  /** The catalog role (title, button, label, body, ...); core copy has none. */
+  role?: string;
   source: string;
   patterns: Pattern[];
   /** How specific the message is: literal characters, so "Sign in" beats "{product}". */
@@ -230,11 +232,13 @@ export function globMatch(text: string, p: Pattern): boolean {
 
 export function compile(catalog: CatalogMessage[]): Matcher[] {
   const out: Matcher[] = [];
+  let role: string | undefined;
   const add = (key: string, platform: string | null, value: string) => {
     const { patterns, weight } = icuToPatterns(normalise(value));
-    out.push({ key, platform, source: value, patterns, weight });
+    out.push({ key, platform, role, source: value, patterns, weight });
   };
   for (const m of catalog) {
+    role = m.role;
     add(m.key, null, m.value);
     for (const [p, v] of Object.entries(m.variants)) add(m.key, p, v);
     // §1.5 rule 11: macOS buttons, menu items and window titles are title case. That casing is
@@ -279,6 +283,18 @@ export function titleCase(value: string): string {
   });
 }
 
+/**
+ * What a visible string is on the page, when the page says so: a screen title (h1, h2) or a
+ * button. A title matches only title-role messages and a button only button-role ones, so an
+ * argument wildcard cannot lend a heading the catalog's "{tier} license" label (R2-M2). A
+ * message with no role (core copy) matches any kind; a string of no known kind matches any role.
+ */
+export type StringKind = "title" | "button";
+const KIND_ROLES: Record<StringKind, string[]> = {
+  title: ["title", "windowTitle"],
+  button: ["button", "menu"],
+};
+
 export interface Match {
   key: string;
   /** The value the board showed differs from the base value only by a documented variant. */
@@ -293,6 +309,7 @@ export function matchString(
   matchers: Matcher[],
   text: string,
   platform: string,
+  kind?: StringKind,
 ): Match | null {
   const t = normalise(text);
   const letters = (t.match(/\p{L}/gu) ?? []).length;
@@ -301,6 +318,7 @@ export function matchString(
     // copy: it matches only when its own words are at least a quarter of the string's letters.
     if (m.weight < 2 || m.weight < letters * 0.25) continue;
     if (m.platform && m.platform !== platform) continue;
+    if (kind && m.role && !KIND_ROLES[kind].includes(m.role)) continue;
     if (m.patterns.some((p) => globMatch(t, p)))
       return { key: m.key, variant: m.platform };
   }
@@ -371,7 +389,12 @@ export function nearest(
 export interface BoardStrings {
   board: string;
   platform: string;
-  strings: Array<{ scope: string; target: string; text: string }>;
+  strings: Array<{
+    scope: string;
+    target: string;
+    text: string;
+    kind?: StringKind;
+  }>;
 }
 
 /** The state a shot shows: its name without the size or variant suffix ("sign-in-390" → "sign-in"). */
@@ -407,7 +430,7 @@ export function lintStrings(
           ? s.text.replace(STATUS_MARK, "").replace(QR_BLOCKS, "")
           : s.text;
       if (!text.trim()) continue;
-      const m = matchString(matchers, text, b.platform);
+      const m = matchString(matchers, text, b.platform, s.kind);
       if (m) {
         const k = keysByState.get(state) ?? new Map<string, Set<string>>();
         keysByState.set(state, k);

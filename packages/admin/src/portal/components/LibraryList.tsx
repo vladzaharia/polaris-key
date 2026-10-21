@@ -43,13 +43,13 @@ export function LibraryList({
 }): React.ReactElement {
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-surface-raised shadow-elevation-1">
-      <table className="w-full border-collapse text-left bigtext:max-desk:block">
+      <table className="w-full border-collapse text-start bigtext:max-desk:block">
         <caption className="sr-only">
           {t("locker.library.table.caption")}
         </caption>
         <thead className="hidden text-xs text-fg-muted desk:table-header-group">
           <tr className="border-b border-border">
-            <th scope="col" className="py-3 pl-5 pr-2 font-normal">
+            <th scope="col" className="py-3 ps-5 pe-2 font-normal">
               <span className="sr-only">{t("locker.library.table.icon")}</span>
             </th>
             <th scope="col" className="px-2 py-3 font-normal">
@@ -70,10 +70,10 @@ export function LibraryList({
             >
               {t("account.devices")}
             </th>
-            <th scope="col" className="px-2 py-3 text-right font-normal">
+            <th scope="col" className="px-2 py-3 text-end font-normal">
               {actionHeader}
             </th>
-            <th scope="col" className="py-3 pr-5 font-normal">
+            <th scope="col" className="py-3 pe-5 font-normal">
               <span className="sr-only">{t("locker.library.table.open")}</span>
             </th>
           </tr>
@@ -103,9 +103,10 @@ function LibraryRow({
   return (
     <tr
       ref={cue.ref}
-      className="relative border-b border-border last:border-0 hover:bg-hover bigtext:max-desk:block bigtext:max-desk:px-3 bigtext:max-desk:py-3"
+      // The name link stretches over the row; its focus ring is the row's, drawn inside the frame.
+      className="relative border-b border-border last:border-0 hover:bg-hover has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-solid has-[a:focus-visible]:-outline-offset-2 has-[a:focus-visible]:outline-focus bigtext:max-desk:block bigtext:max-desk:px-3 bigtext:max-desk:py-3"
     >
-      <td className="w-0 py-3 pl-4 pr-2 desk:pl-5 bigtext:max-desk:block bigtext:max-desk:w-auto bigtext:max-desk:p-0">
+      <td className="w-0 py-3 ps-4 pe-2 desk:ps-5 bigtext:max-desk:block bigtext:max-desk:w-auto bigtext:max-desk:p-0">
         <ProductIcon
           slug={p.slug}
           name={p.name}
@@ -187,7 +188,7 @@ function LibraryRow({
               })
             : p.deviceCount}
       </td>
-      <td className="relative hidden px-2 py-3 text-right desk:table-cell">
+      <td className="relative hidden px-2 py-3 text-end desk:table-cell">
         <QuickActionButton
           product={p}
           action={action}
@@ -196,7 +197,7 @@ function LibraryRow({
           className="h-10"
         />
       </td>
-      <td className="w-0 py-3 pr-4 desk:pr-5 bigtext:max-desk:hidden">
+      <td className="w-0 py-3 pe-4 desk:pe-5 bigtext:max-desk:hidden">
         <ChevronRight aria-hidden className="size-5 text-fg-muted" />
       </td>
     </tr>

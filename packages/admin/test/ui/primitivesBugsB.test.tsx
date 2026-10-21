@@ -49,7 +49,7 @@ describe("B-019 the close button does not take a column from the description", (
     const close = screen.getByRole("button", { name: "Close" });
     expect(close.className).toContain("max-sm:absolute");
     expect(screen.getByRole("heading", { name: "Issue" }).className).toContain(
-      "max-sm:pr-10",
+      "max-sm:pe-10",
     );
     expect(screen.getByText("A long description").className).not.toContain(
       "pr-",

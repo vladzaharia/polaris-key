@@ -79,7 +79,7 @@ export function PlatformReady({
             aria-expanded={showDone}
             aria-controls={listId}
             onClick={() => setShowDone((v) => !v)}
-            className="inline-flex min-h-6 items-center gap-1 rounded-sm text-sm text-fg-muted hover:text-fg-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+            className="inline-flex min-h-6 items-center gap-1 rounded-sm text-sm text-fg-muted hover:text-fg-strong focus-visible:outline-2 focus-visible:outline-focus"
           >
             <ChevronRight
               aria-hidden
@@ -91,7 +91,7 @@ export function PlatformReady({
             {showDone ? "Hide steps" : "Show steps"}
           </button>
           {onDismiss ? (
-            <span className="ml-2">
+            <span className="ms-2">
               <Dismiss onDismiss={onDismiss} />
             </span>
           ) : null}
@@ -136,7 +136,7 @@ export function PlatformReady({
           Platform ready
         </h2>
         {onDismiss ? (
-          <span className="order-2 ml-auto @[36rem]:order-3">
+          <span className="order-2 ms-auto @[36rem]:order-3">
             <Dismiss onDismiss={onDismiss} />
           </span>
         ) : null}
@@ -165,7 +165,7 @@ export function PlatformReady({
             aria-expanded={showDone}
             aria-controls={listId}
             onClick={() => setShowDone((v) => !v)}
-            className="grid min-h-6 w-full grid-cols-[1.75rem_minmax(0,1fr)] items-center gap-x-3 rounded-sm text-left text-sm text-fg-muted hover:text-fg-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+            className="grid min-h-6 w-full grid-cols-[1.75rem_minmax(0,1fr)] items-center gap-x-3 rounded-sm text-start text-sm text-fg-muted hover:text-fg-strong focus-visible:outline-2 focus-visible:outline-focus"
           >
             <ChevronRight
               aria-hidden
@@ -207,7 +207,7 @@ function Task({ row }: { row: PlatformReadyRow }): React.ReactElement {
   return (
     <li className="grid grid-cols-[1.75rem_minmax(0,1fr)] items-center gap-x-3 gap-y-2 px-5 py-3 @[36rem]:grid-cols-[1.75rem_minmax(0,1fr)_auto]">
       <span aria-hidden className="grid size-7 place-items-center self-start">
-        <span className="size-5 rounded-full border-2 border-border-strong" />
+        <span className="size-5 rounded-full outline-2 -outline-offset-2 outline-border-strong" />
       </span>
       <div className="min-w-0 space-y-1">
         <p className="text-sm font-medium text-fg-strong">
@@ -223,7 +223,7 @@ function Task({ row }: { row: PlatformReadyRow }): React.ReactElement {
           variant="outline"
           size="sm"
           asChild
-          className="col-start-2 h-auto min-h-8 max-w-full justify-self-start whitespace-normal text-left @[36rem]:col-start-3 @[36rem]:row-start-1 @[36rem]:justify-self-end"
+          className="col-start-2 h-auto min-h-8 max-w-full justify-self-start whitespace-normal text-start @[36rem]:col-start-3 @[36rem]:row-start-1 @[36rem]:justify-self-end"
         >
           <Link to={to}>{row.action.label}</Link>
         </Button>

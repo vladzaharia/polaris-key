@@ -77,7 +77,7 @@
             window.rootViewController = UIHostingController(
                 rootView: Harness(
                     key: Self.key, error: limit,
-                    manage: "https://key.plrs.im/portal/tidewater/devices", preset: preset,
+                    manage: "https://polaris.locker/#/p/tidewater/devices", preset: preset,
                     dts: dts))
             window.makeKeyAndVisible()
             wait(1.2)
@@ -160,7 +160,7 @@
             window.rootViewController = UIHostingController(
                 rootView: Harness(
                     key: key, error: refused ? limit : nil,
-                    manage: refused ? "https://key.plrs.im/portal/tidewater/devices" : nil,
+                    manage: refused ? "https://polaris.locker/#/p/tidewater/devices" : nil,
                     preset: preset))
             window.makeKeyAndVisible()
             wait(1.0)

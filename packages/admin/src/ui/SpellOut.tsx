@@ -33,7 +33,7 @@ export function SpellOut({
       <Button
         variant="ghost"
         size={touch ? "md" : "xs"}
-        className={cn(!inline && "-ml-2", touch && "min-h-11")}
+        className={cn(!inline && "-ms-2", touch && "min-h-11")}
         aria-expanded={open}
         aria-controls={panelId}
         iconEnd={

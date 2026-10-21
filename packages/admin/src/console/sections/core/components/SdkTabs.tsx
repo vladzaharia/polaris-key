@@ -114,7 +114,7 @@ export function SdkTabs({
                 tabIndex={selected ? 0 : -1}
                 onClick={() => pick(sdk)}
                 className={cn(
-                  "min-h-8 rounded-md border px-2.5 text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus",
+                  "min-h-8 rounded-md border px-2.5 text-sm focus-visible:outline-2 focus-visible:outline-focus",
                   selected
                     ? "border-border-strong bg-surface-raised font-medium text-fg-strong"
                     : "border-transparent text-fg-muted hover:text-fg-strong",
@@ -131,7 +131,7 @@ export function SdkTabs({
             aria-label={more ? "Fewer SDKs" : "More SDKs"}
             aria-expanded={more}
             onClick={() => setMore((m) => !m)}
-            className="min-h-8 rounded-md px-2 text-sm text-fg-muted hover:text-fg-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+            className="min-h-8 rounded-md px-2 text-sm text-fg-muted hover:text-fg-strong focus-visible:outline-2 focus-visible:outline-focus"
           >
             {more ? "Fewer" : "More"}
           </button>

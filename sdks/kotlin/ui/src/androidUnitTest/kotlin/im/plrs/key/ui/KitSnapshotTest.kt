@@ -103,6 +103,8 @@ internal fun ComposeTestRule.capture(
     host: ColorScheme? = null,
     /** Let the screen settle on a running clock after the fades (focus requests land); no infinite animations. */
     settle: Boolean = false,
+    /** Real milliseconds to wait for work off the compose clock (an icon decoding) before the capture. */
+    waitMs: Long = 0,
     content: @Composable () -> Unit,
 ) {
     RuntimeEnvironment.setQualifiers(variant.qualifiers)
@@ -127,6 +129,11 @@ internal fun ComposeTestRule.capture(
         // indicator at a frame where its arc is long enough to read).
         mainClock.advanceTimeBy(2_600)
         if (settle) {
+            mainClock.autoAdvance = true
+            waitForIdle()
+        }
+        if (waitMs > 0) {
+            Thread.sleep(waitMs)
             mainClock.autoAdvance = true
             waitForIdle()
         }

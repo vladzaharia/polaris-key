@@ -34,7 +34,7 @@ export function ChartTable({
                 scope="col"
                 className={cn(
                   "px-2 py-1 text-xs font-medium text-fg-muted",
-                  i === 0 ? "text-left" : "text-right",
+                  i === 0 ? "text-start" : "text-end",
                 )}
               >
                 {c}
@@ -50,14 +50,14 @@ export function ChartTable({
                   <th
                     key={i}
                     scope="row"
-                    className="px-2 py-1 text-left font-normal text-fg"
+                    className="px-2 py-1 text-start font-normal text-fg"
                   >
                     {cell}
                   </th>
                 ) : (
                   <td
                     key={i}
-                    className="px-2 py-1 text-right tabular-nums text-fg"
+                    className="px-2 py-1 text-end tabular-nums text-fg"
                   >
                     {cell}
                   </td>

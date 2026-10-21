@@ -257,7 +257,7 @@ export function PresentationSlotRow({
         <p
           id={errorId}
           role="alert"
-          className="mt-2 pl-16 text-sm text-danger max-sm:pl-0"
+          className="mt-2 ps-16 text-sm text-danger max-sm:ps-0"
         >
           {failure}
         </p>

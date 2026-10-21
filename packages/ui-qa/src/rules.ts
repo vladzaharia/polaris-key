@@ -12,7 +12,7 @@ export const RULES: RuleInfo[] = [
     id: "border-width",
     group: "borders",
     spec: "§1.5 rule 2",
-    says: "No border wider than 1 px; depth comes from surface steps and elevation.",
+    says: "No box border wider than 1 px (two or more heavy sides); one heavy edge is an indicator. Depth comes from surface steps and elevation.",
   },
   {
     id: "focus-visible-only",
@@ -162,7 +162,7 @@ export const RULES: RuleInfo[] = [
     id: "tier-caption",
     group: "copy",
     spec: "UK-59",
-    says: "Every board frame's caption ends 'Built today' or 'UK-11 target'.",
+    says: "Every board frame's caption ends 'Built today' or 'UK-11 target'; a 'Built today' frame embeds a committed render (or names its golden in data-built-from).",
   },
   {
     id: "section-index",

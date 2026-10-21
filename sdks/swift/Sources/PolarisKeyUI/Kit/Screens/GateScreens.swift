@@ -70,7 +70,8 @@ public struct WelcomeView<Inline: View, InlineActions: View>: View {
         KitScreenScaffold(hero: true, header: false) {
             VStack(spacing: 6) {
                 KitText(
-                    screen.lineOrKey("welcome.title"), .display, color: .strong, alignment: .center
+                    screen.line("common.welcomeNoProductTitle") ?? screen.lineOrKey("welcome.title"),
+                    .display, color: .strong, alignment: .center
                 )
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityFocused($titleFocused)
@@ -81,7 +82,7 @@ public struct WelcomeView<Inline: View, InlineActions: View>: View {
         } content: {
             Group {
                 if let lede = screen.line("welcome.lede") ?? screen.line("welcome.ledeKeyOnly")
-                    ?? screen.line("welcome.ledeSignInOnly")
+                    ?? screen.line("welcome.ledeSignInOnly") ?? screen.line("common.signInToContinue")
                 {
                     KitText(lede, .body, color: .default, alignment: .center)
                 }
@@ -102,7 +103,9 @@ public struct WelcomeView<Inline: View, InlineActions: View>: View {
                         line: screen.lineOrKey("welcome.useKey"), kind: .secondary, action: onUseKey
                     )
                 }
-            } else if screen.state == .capabilityLimited, screen.shows("welcome.ledeSignInOnly") {
+            } else if screen.state == .capabilityLimited,
+                screen.shows("welcome.ledeSignInOnly") || screen.shows("common.signInToContinue")
+            {
                 KitButton(line: CopyLine("welcome.signIn"), kind: .primary, action: onSignIn)
                     .keyboardShortcut(.defaultAction)
             } else if screen.state == .capabilityLimited {

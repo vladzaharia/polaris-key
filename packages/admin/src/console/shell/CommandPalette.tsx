@@ -232,7 +232,7 @@ export function CommandPalette({
     <>
       <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
         <DialogPrimitive.Portal>
-          <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs animate-pk-overlay-in" />
+          <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-(--polaris-key-page-dark)/60 backdrop-blur-xs animate-pk-overlay-in" />
           <DialogPrimitive.Content
             aria-describedby={undefined}
             onCloseAutoFocus={(e) => {
@@ -248,7 +248,7 @@ export function CommandPalette({
             className={cn(
               // A phone gets the whole screen (EXPERIENCE.md §3); wider screens a centred panel.
               "fixed inset-0 z-50 flex flex-col overflow-hidden bg-surface-overlay pt-[env(safe-area-inset-top,0px)] text-fg animate-pk-in",
-              "sm:inset-auto sm:left-1/2 sm:top-[12vh] sm:w-[calc(100vw-1rem)] sm:max-w-xl sm:-translate-x-1/2 sm:rounded-lg sm:border sm:border-border sm:pt-0 sm:shadow-elevation-3",
+              "sm:inset-auto sm:start-1/2 sm:top-[12vh] sm:w-[calc(100%-1rem)] sm:max-w-xl sm:-translate-x-1/2 sm:rtl:translate-x-1/2 sm:rounded-lg sm:border sm:border-border sm:pt-0 sm:shadow-elevation-3",
             )}
           >
             <DialogPrimitive.Title className="sr-only">
@@ -281,9 +281,9 @@ export function CommandPalette({
                   onValueChange={setQuery}
                   aria-label="Search or jump to"
                   placeholder="Search or jump to…"
-                  className="h-12 w-full bg-transparent text-sm outline-hidden focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-fg-subtle"
+                  className="h-12 w-full bg-transparent text-sm outline-hidden placeholder:text-fg-subtle"
                 />
-                <DialogPrimitive.Close className="shrink-0 rounded-sm px-1 py-1 text-sm text-fg-muted hover:text-fg-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus sm:hidden">
+                <DialogPrimitive.Close className="shrink-0 rounded-sm px-1 py-1 text-sm text-fg-muted hover:text-fg-strong focus-visible:outline-2 focus-visible:outline-focus sm:hidden">
                   Cancel
                 </DialogPrimitive.Close>
               </div>
@@ -336,7 +336,7 @@ export function CommandPalette({
                           <StatusPill
                             tone={item.issue.tone}
                             size="sm"
-                            className="ml-auto shrink-0"
+                            className="ms-auto shrink-0"
                           >
                             {item.issue.label}
                           </StatusPill>
@@ -364,15 +364,15 @@ export function CommandPalette({
               className="hidden items-center justify-end gap-4 border-t border-border px-3 py-2 text-xs text-fg-muted sm:flex"
             >
               <span className="flex items-center gap-1.5">
-                <Kbd keys="↵" className="ml-0" />
+                <Kbd keys="↵" className="ms-0" />
                 open
               </span>
               <span className="flex items-center gap-1.5">
-                <Kbd keys="⌘↵" className="ml-0" />
+                <Kbd keys="⌘↵" className="ms-0" />
                 new tab
               </span>
               <span className="flex items-center gap-1.5">
-                <Kbd keys="esc" className="ml-0" />
+                <Kbd keys="esc" className="ms-0" />
                 close
               </span>
             </div>

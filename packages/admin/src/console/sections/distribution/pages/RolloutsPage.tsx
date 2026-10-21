@@ -219,7 +219,7 @@ export function RolloutsPage({ slug }: { slug: string }): React.ReactElement {
       ),
     },
     {
-      // Pills mean attention (EXPERIENCE.md §11): halted and paused are pills, right-aligned in
+      // Pills mean attention (EXPERIENCE.md §11): halted and paused are pills, end-aligned in
       // the last column; a healthy rollout's state is plain text the phone card leaves out.
       id: "state",
       header: "State",

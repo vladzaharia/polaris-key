@@ -61,7 +61,7 @@ export function CheckRow({
         </p>
         <p className="text-xs text-fg-muted">{detail}</p>
       </div>
-      {action ? <div className="ml-auto shrink-0">{action}</div> : null}
+      {action ? <div className="ms-auto shrink-0">{action}</div> : null}
     </li>
   );
 }

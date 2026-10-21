@@ -109,12 +109,26 @@ describe("rules", () => {
     expect(lintOperatorFile("docs/RUNBOOK.md", "Plain facts.\n")).toEqual([]);
   });
 
-  it("checks spelling alone when programme ids are off (PRIVACY.md)", () => {
+  it("catches P6 ids and stale wire-contract file names, and skips spelling for READMEs", () => {
     expect(
-      lintOperatorFile("docs/PRIVACY.md", "See LX-08 and the licence.\n", {
-        programmeIds: false,
-      }).map((h) => h.rule),
-    ).toEqual(["uk-spelling"]);
+      lintOperatorFile(
+        "sdks/x/README.md",
+        "Journal P6-03 events (WIRE-CONTRACT-V3 §2) and the licence.\n",
+        { spelling: false },
+      ).map((h) => [h.rule, h.text]),
+    ).toEqual([
+      ["programme-id", "P6-03"],
+      ["programme-id", "WIRE-CONTRACT-V3"],
+    ]);
+  });
+
+  it("holds every README the site renders, and PRIVACY.md, free of programme ids", () => {
+    const ids = lintSite().filter(
+      (h) =>
+        h.rule === "programme-id" &&
+        (h.id.endsWith("README.md") || h.id === "docs/PRIVACY.md"),
+    );
+    expect(ids).toEqual([]);
   });
 
   it("flags counts of the whole set", () => {

@@ -167,7 +167,7 @@ function PlanList({
       >
         {title}
       </h3>
-      <ul className="list-disc space-y-1 pl-5 text-sm text-fg">
+      <ul className="list-disc space-y-1 ps-5 text-sm text-fg">
         {items.map((i) => (
           <li key={`${i.area}:${i.id ?? ""}:${i.summary}`}>{i.summary}</li>
         ))}
@@ -346,7 +346,7 @@ export function LinkRepositoryDrawer({
             <Callout tone="danger" title={refusal.title} live>
               <p>{refusal.description}</p>
               {refusal.problems.length ? (
-                <ul className="mt-2 list-disc space-y-0.5 pl-5">
+                <ul className="mt-2 list-disc space-y-0.5 ps-5">
                   {refusal.problems.map((p) => (
                     <li key={p} className="font-mono text-xs">
                       {p}

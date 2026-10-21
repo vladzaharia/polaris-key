@@ -258,7 +258,7 @@ export function ActivityPage({ slug }: { slug: string }): React.ReactElement {
             }}
           />
         </FilterField>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ms-auto flex items-center gap-2">
           {filtered ? (
             <Button
               variant="ghost"
@@ -434,7 +434,7 @@ export function ActivityTarget({
       return (
         <Link
           to={r.licenseBatch(slug, t.id)}
-          className="font-mono text-xs text-accent-fg underline-offset-4 hover:underline"
+          className="font-mono text-xs py-1 text-accent-fg underline-offset-4 hover:underline"
         >
           {t.id}
         </Link>
@@ -449,7 +449,7 @@ export function ActivityTarget({
       return (
         <Link
           to={r.keys(slug)}
-          className="font-mono text-xs text-accent-fg underline-offset-4 hover:underline"
+          className="font-mono text-xs py-1 text-accent-fg underline-offset-4 hover:underline"
         >
           {t.id}
         </Link>
@@ -459,7 +459,7 @@ export function ActivityTarget({
       return t.id.startsWith(`${slug}-`) ? (
         <Link
           to={r.keys(slug)}
-          className="font-mono text-xs text-accent-fg underline-offset-4 hover:underline"
+          className="font-mono text-xs py-1 text-accent-fg underline-offset-4 hover:underline"
         >
           {t.id}
         </Link>

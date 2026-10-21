@@ -96,7 +96,7 @@ export function Funnel({
           {steps.map((s, i) => (
             <li key={s.label}>
               {conv[i] !== null ? (
-                <p className="py-0.5 pl-2 text-xs text-fg-subtle">
+                <p className="py-0.5 ps-2 text-xs text-fg-subtle">
                   <span aria-hidden>↓ </span>
                   {formatPercent(conv[i]!, 1)} of the previous step
                 </p>

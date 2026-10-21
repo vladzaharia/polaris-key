@@ -5,7 +5,12 @@
 //              transport, the body capped at `MAX_RECORD_JWS_BYTES + 1`), objects from
 //              `distribution.endpoints.blobs` (`{sha256}`) with `Range`/`If-Range`, streamed by OkHttp
 //              (or an injected [PackObjectTransport]: Play Asset Delivery is P6-12's); the device bearer
-//              goes only to the control plane's own origin. Any answer but 200 or 206 is a failed fetch;
+//              goes only to the control plane's own origin. Any answer but 200 or 206 is a failed fetch.
+//              A refused record fetch keeps its class (B-150, one mapping in every packs client):
+//              401 `unauthorized`, 403 `forbidden`, 5xx `server-error`, a transport failure (no
+//              response) and any other status, 404 included, `network-error`; an object or range
+//              fetch maps the same way with one change: 401 or 403 is `pack-not-entitled` (the
+//              content route is entitlement-gated), 5xx `server-error` ([objectRefusal]);
 //   storage    [DirPackStorage] under the data directory (never a cache directory): a versioned
 //              directory per tree payload and an atomic pointer swap in `state.json`;
 //   zstd       libzstd through zstd-jni, after a start-up probe ([selectZstd]);
@@ -540,6 +545,14 @@ public class PacksClient(
         return doc?.services?.get(service)?.endpoints?.get(name)
     }
 
+    /** The error code for a record fetch the registry answered with a non-ok [status]. */
+    private fun recordRefusal(status: Int): String = when {
+        status == 401 -> ErrorCode.unauthorized
+        status == 403 -> ErrorCode.forbidden
+        status >= 500 -> ErrorCode.serverError
+        else -> ErrorCode.networkError
+    }
+
     private suspend fun fetchRecord(sha256: String): RecordFetchResult {
         if (core.localOnly) return RecordFetchResult.Failed(ErrorCode.localOnly)
         val t = template(ServiceSlug.release, "record") ?: return RecordFetchResult.Failed(ErrorCode.serviceUnavailable)
@@ -548,7 +561,7 @@ public class PacksClient(
         core.token()?.let { if (sameOrigin(url, core.endpoints.baseUrl)) headers["authorization"] = "Bearer $it" }
         return try {
             val res = core.request(url, headers = headers, maxBodyBytes = MAX_RECORD_JWS_BYTES + 1)
-            if (!res.isOk) return RecordFetchResult.Failed(ErrorCode.networkError)
+            if (!res.isOk) return RecordFetchResult.Failed(recordRefusal(res.status))
             val body = res.body
             // A record over the bound is refused at step `hash` from this prefix, never hashed.
             RecordFetchResult.Ok(body.copyOf(minOf(body.size, MAX_RECORD_JWS_BYTES + 1)).toString(Charsets.UTF_8))

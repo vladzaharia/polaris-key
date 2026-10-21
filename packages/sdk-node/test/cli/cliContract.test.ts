@@ -396,7 +396,7 @@ const SITUATIONS: Record<string, () => Setup> = {
       code: "device_limit",
       limit: 3,
       deviceCount: 3,
-      manageUrl: "https://key.plrs.im/portal/tidewater/devices",
+      manageUrl: "https://polaris.locker/#/p/tidewater/devices",
     }),
   }),
   "secret-hidden": () => ({

@@ -1,7 +1,7 @@
 {
   "$comment": "Baseline states a kit records that name no row of packages/brand/kit-copy/components.json, so no other kit can show a counterpart. Each is genuinely the kit's own; test/report.test.ts fails on any other unmatched state and on an entry that no longer matches.",
   "compose": {
-    "reason": "Compose's own fixtures: PolarisGateScreen steps, the component gallery (accent, focus, powered-by) and the bare screens' captures. The registry's states are in compose/matrix.",
+    "reason": "Compose's own fixtures: PolarisGateScreen steps, the component gallery (accent, focus, powered-by) and the bare screens' captures. The registry's states are in compose/matrix; presentation is the public KitSignIn with a product presentation (HA-13), which no registry row names.",
     "states": [
       "accent",
       "devices",
@@ -23,6 +23,7 @@
       "gate-version-too-old",
       "pack-progress",
       "powered-by",
+      "presentation",
       "settings",
       "sign-in",
       "sign-in-denied",

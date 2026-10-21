@@ -109,7 +109,7 @@ export function SyncDataPage({ slug }: { slug: string }): React.ReactElement {
         primaryAction={
           <Link
             to={r.services(slug)}
-            className="text-accent-fg underline underline-offset-2"
+            className="py-1 text-accent-fg underline underline-offset-2"
           >
             Open Features
           </Link>
@@ -168,7 +168,7 @@ function SyncDataBody({
             sync.{" "}
             <Link
               to={r.catalog(slug)}
-              className="text-accent-fg underline underline-offset-2"
+              className="py-1 text-accent-fg underline underline-offset-2"
             >
               Open the catalog
             </Link>
@@ -201,17 +201,17 @@ function SyncDataBody({
             <ScrollTable
               label="Synced settings table"
               caption="Synced settings"
-              className="w-full text-left text-sm"
+              className="w-full text-start text-sm"
             >
               <thead className="text-xs text-fg-muted">
                 <tr className="border-b border-border">
-                  <th scope="col" className="py-2 pr-4 font-medium">
+                  <th scope="col" className="py-2 pe-4 font-medium">
                     Key
                   </th>
-                  <th scope="col" className="py-2 pr-4 font-medium">
+                  <th scope="col" className="py-2 pe-4 font-medium">
                     Syncs
                   </th>
-                  <th scope="col" className="py-2 pr-4 font-medium">
+                  <th scope="col" className="py-2 pe-4 font-medium">
                     When devices disagree
                   </th>
                   <th scope="col" className="py-2 font-medium">
@@ -222,9 +222,9 @@ function SyncDataBody({
               <tbody className="divide-y divide-border">
                 {settings.map((e) => (
                   <tr key={e.key}>
-                    <td className="py-2 pr-4">{mono(e.key)}</td>
-                    <td className="py-2 pr-4">{SYNC_LABEL[e.scope]}</td>
-                    <td className="py-2 pr-4">{CONFLICT_LABEL[e.policy]}</td>
+                    <td className="py-2 pe-4">{mono(e.key)}</td>
+                    <td className="py-2 pe-4">{SYNC_LABEL[e.scope]}</td>
+                    <td className="py-2 pe-4">{CONFLICT_LABEL[e.policy]}</td>
                     <td className="py-2">{e.listed ? "Shown" : "Hidden"}</td>
                   </tr>
                 ))}
@@ -248,20 +248,20 @@ function SyncDataBody({
             <ScrollTable
               label="Collections table"
               caption="Collections"
-              className="w-full text-left text-sm"
+              className="w-full text-start text-sm"
             >
               <thead className="text-xs text-fg-muted">
                 <tr className="border-b border-border">
-                  <th scope="col" className="py-2 pr-4 font-medium">
+                  <th scope="col" className="py-2 pe-4 font-medium">
                     Name
                   </th>
-                  <th scope="col" className="py-2 pr-4 font-medium">
+                  <th scope="col" className="py-2 pe-4 font-medium">
                     Records
                   </th>
-                  <th scope="col" className="py-2 pr-4 font-medium">
+                  <th scope="col" className="py-2 pe-4 font-medium">
                     Conflicts
                   </th>
-                  <th scope="col" className="py-2 pr-4 font-medium">
+                  <th scope="col" className="py-2 pe-4 font-medium">
                     Files
                   </th>
                   <th scope="col" className="py-2 font-medium">
@@ -272,22 +272,22 @@ function SyncDataBody({
               <tbody className="divide-y divide-border">
                 {collections.map((c) => (
                   <tr key={c.name}>
-                    <td className="py-2 pr-4">
+                    <td className="py-2 pe-4">
                       {mono(c.name)}
                       {c.label !== c.name ? (
-                        <span className="ml-2 text-fg-muted">{c.label}</span>
+                        <span className="ms-2 text-fg-muted">{c.label}</span>
                       ) : null}
                     </td>
-                    <td className="py-2 pr-4">
+                    <td className="py-2 pe-4">
                       Up to {formatCount(c.maxRecords)} per player
                     </td>
-                    <td className="py-2 pr-4">
+                    <td className="py-2 pe-4">
                       {CONFLICT_LABEL[c.conflict]}
                       {c.conflictField ? (
                         <> on {mono(c.conflictField)}</>
                       ) : null}
                     </td>
-                    <td className="py-2 pr-4">
+                    <td className="py-2 pe-4">
                       {formatBinaryBytes(c.files.maxBytes)}, last{" "}
                       {formatCount(c.files.keepRevisions)}{" "}
                       {c.files.keepRevisions === 1 ? "version" : "versions"}

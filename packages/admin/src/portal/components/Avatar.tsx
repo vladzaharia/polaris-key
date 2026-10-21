@@ -115,7 +115,7 @@ export function Avatar({
       {badge ? (
         <span
           className={cn(
-            "absolute -bottom-0.5 -right-0.5 inline-flex items-center justify-center rounded-full bg-surface-raised text-fg-strong ring-2 ring-surface-raised",
+            "absolute -bottom-0.5 -end-0.5 inline-flex items-center justify-center rounded-full bg-surface-raised text-fg-strong ring-2 ring-surface-raised",
             s.badge,
           )}
         >

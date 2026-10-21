@@ -293,6 +293,8 @@
  * sonner's own `prefers-reduced-motion` rule (!important) still applies; html[data-motion] zeroes
  * the tokens. */
 [data-sonner-toaster] {
+  /* The brand face, not sonner's system stack (the lint's `font-family`). */
+  font-family: var(--pk-font-sans);
   transition: transform var(--pk-duration-slow) var(--pk-ease-standard);
 }
 [data-sonner-toast] {

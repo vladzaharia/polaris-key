@@ -120,6 +120,8 @@ public class PackEngine(private val opts: PackEngineOptions) {
     private var delegationBudget = MAX_DELEGATIONS_PER_CHECK
     @Volatile private var delegatedKnown: Map<String, DelegatedRelease> = emptyMap()
     private val seedIndexTried = HashSet<String>()
+    /** The class of the last refused object or range fetch ([objectRefusal]), else `network-error`. */
+    @Volatile private var fetchCode: String = ErrorCode.networkError
     private val providesMemo = ProvidesMemo()
 
     init {
@@ -801,7 +803,7 @@ public class PackEngine(private val opts: PackEngineOptions) {
                         if (variant.files.layout == "tree") throw PackException(r.error, "$packId's files index was refused.", path = r.path, packId = packId)
                 }
             } else if (variant.files.layout == "tree") {
-                throw PackException(ErrorCode.networkError, "Fetching $packId's files index failed.", packId = packId)
+                throw PackException(fetchCode, "Fetching $packId's files index failed.", packId = packId)
             }
         }
         // plans/P4-19.md §2.5: a delegated release's extension rule over the files index, before any payload.
@@ -978,7 +980,12 @@ public class PackEngine(private val opts: PackEngineOptions) {
                     if (o.size() > 0) o.source() else null
                 },
                 zstd = opts.zstd,
-                fetchRange = chunkRangeFetch(opts.fetchObject),
+                fetchRange = chunkRangeFetch { req ->
+                    fetchCode = ErrorCode.networkError
+                    val res = opts.fetchObject(req)
+                    if (res.status != 206) fetchCode = objectRefusal(res.status)
+                    res
+                },
                 output = object : ChunkOutput {
                     override fun write(offset: Long, bytes: ByteArray) = sink.write(offset, bytes)
                     override fun read(offset: Long, length: Int): ByteArray = read(offset, length)
@@ -1123,7 +1130,7 @@ public class PackEngine(private val opts: PackEngineOptions) {
                         fetched = false
                         break
                     }
-                    throw PackException(ErrorCode.networkError, "Fetching $packId's objects failed; the next ensure resumes.", packId = packId)
+                    throw PackException(fetchCode, "Fetching $packId's objects failed; the next ensure resumes.", packId = packId)
                 }
             }
             val result: ApplyResult
@@ -1143,7 +1150,8 @@ public class PackEngine(private val opts: PackEngineOptions) {
                         if (v.error == ErrorCode.networkError && v.detail == "interrupted") {
                             throw PackException(ErrorCode.networkError, "Fetching $packId's chunks failed; the next ensure resumes.", "chunk", packId = packId)
                         }
-                        ApplyResult(ApplyVerdict.Failed(v.error))
+                        // A refused range falls back; if every candidate fails, its class is the refusal's.
+                        ApplyResult(ApplyVerdict.Failed(if (v.error == ErrorCode.networkError && v.detail == "range-refused") fetchCode else v.error))
                     }
                 }
             } else {
@@ -1409,6 +1417,7 @@ public class PackEngine(private val opts: PackEngineOptions) {
         } catch (e: Exception) {
             return false
         }
+        fetchCode = ErrorCode.networkError
         repeat(2) {
             try {
                 var have = staged.size()
@@ -1451,6 +1460,7 @@ public class PackEngine(private val opts: PackEngineOptions) {
                     } else if (res.status == 200) {
                         fetchInto(staged, res, sha256, bytes, hasher, 0, planId, packId, progress)
                     } else {
+                        fetchCode = objectRefusal(res.status)
                         res.body.close()
                         return false
                     }
