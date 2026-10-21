@@ -66,7 +66,7 @@ export function SetupTabs({
     >
       <Tabs.List
         aria-label="Package manager"
-        className="flex gap-1 overflow-x-auto border-b border-border"
+        className="relative flex gap-1 overflow-x-auto border-b border-border"
       >
         {tabs.map((t) => (
           <Tabs.Trigger

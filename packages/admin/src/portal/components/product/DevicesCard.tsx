@@ -378,7 +378,9 @@ export function DeviceRow({
             ref={removeRef}
             variant="quiet"
             size="md"
-            className="col-start-2 h-10 justify-self-start @[24rem]:col-start-3 @[24rem]:row-start-1"
+            // In a very narrow card (320 px, or text at 200 %), under the icon and name too, so the
+            // button has the row's whole width (WCAG 1.4.10). In px: a rem query scales with the text.
+            className="col-start-2 h-10 justify-self-start @max-[280px]:col-span-2 @max-[280px]:col-start-1 @[24rem]:col-start-3 @[24rem]:row-start-1"
             aria-label={`Remove ${name}`}
             aria-expanded={false}
             aria-controls={panelId}
