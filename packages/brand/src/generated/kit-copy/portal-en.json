@@ -188,6 +188,8 @@
   "locker.error.licenseInactive.body": "Renew or reactivate your license, then try the download again.",
   "locker.error.signInAgain": "Sign in again to carry on.",
   "locker.error.loadFailed": "Couldn't load {name}. Check your connection.",
+  "locker.error.thisProduct": "this product",
+  "locker.error.productFallback": "Product",
   "locker.error.loadFailedLibrary": "Couldn't load your library. Check your connection.",
   "locker.library.title": "Library",
   "locker.library.heading": "Your library",

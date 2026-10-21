@@ -82,7 +82,7 @@ export function PortalShell({
           <a
             href={href.library()}
             aria-label={t("locker.shell.home")}
-            className="flex shrink-0 items-center rounded-md"
+            className="flex shrink-0 items-center rounded-md pointer-coarse:min-h-11"
           >
             <HeaderBrand />
           </a>

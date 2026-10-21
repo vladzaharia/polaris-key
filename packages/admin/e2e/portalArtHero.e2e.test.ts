@@ -127,3 +127,39 @@ describe.concurrent("library hero art", () => {
     });
   }
 });
+
+describe("the product page's cover band on a phone or small tablet", () => {
+  // E2 capped the height of a 16:9 box and so shrank its width (313 x 176 at every width).
+  for (const width of [360, 390, 600, 700, 760]) {
+    it(`${width}: the band spans the window, at a sane height`, async ({
+      expect,
+    }) => {
+      const o = await portal.open("three", "/#/p/nightfall", {
+        width,
+        height: 900,
+      });
+      try {
+        await h1(o.page, "Nightfall");
+        const band = await o.page.evaluate(() => {
+          const el = document.querySelector<HTMLElement>("main .pk-vt-hero");
+          const r = el?.getBoundingClientRect();
+          return r
+            ? {
+                left: r.left,
+                width: r.width,
+                height: r.height,
+                win: innerWidth,
+              }
+            : null;
+        });
+        expect(band, "the cover band renders").not.toBeNull();
+        expect(Math.round(band!.left)).toBe(0);
+        expect(Math.round(band!.width)).toBe(band!.win);
+        expect(band!.height).toBeGreaterThanOrEqual(96);
+        expect(band!.height).toBeLessThanOrEqual(200);
+      } finally {
+        await o.close();
+      }
+    });
+  }
+});

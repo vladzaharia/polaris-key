@@ -45,7 +45,7 @@ export function LibraryHero({
   return (
     <article
       aria-labelledby="hero-name"
-      className="grid grid-cols-[minmax(0,1fr)] overflow-hidden rounded-xl border border-border bg-surface-raised shadow-elevation-1 split:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)] short:min-[35rem]:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]"
+      className="@container grid grid-cols-[minmax(0,1fr)] overflow-hidden rounded-xl border border-border bg-surface-raised shadow-elevation-1 split:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)] short:min-[35rem]:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]"
     >
       <ProductArt
         slug={product.slug}
@@ -60,8 +60,8 @@ export function LibraryHero({
         fit="contain"
         className="aspect-video w-full max-h-[min(40svh,28rem)] split:aspect-auto split:max-h-none split:self-stretch short:min-[35rem]:aspect-auto short:min-[35rem]:max-h-none short:min-[35rem]:self-stretch"
       />
-      <div className="flex min-w-0 flex-col gap-5 p-6 wide:p-9 short:gap-3 short:p-5">
-        <div className="flex items-center gap-4">
+      <div className="flex min-w-0 flex-col gap-5 p-6 wide:p-9 short:gap-3 short:p-5 @max-[17rem]:p-4">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <ProductIcon
             slug={product.slug}
             name={product.name}
@@ -69,11 +69,11 @@ export function LibraryHero({
             src={pres.iconUrl}
             size={64}
           />
-          <div className="min-w-0">
+          <div className="min-w-0 max-w-full flex-1 basis-32">
             <h2
               id="hero-name"
               dir="auto"
-              className="truncate text-2xl font-semibold text-fg-strong desk:text-3xl"
+              className="truncate text-2xl font-semibold text-fg-strong desk:text-3xl @max-[17rem]:overflow-visible @max-[17rem]:whitespace-normal @max-[17rem]:text-xl @max-[17rem]:[overflow-wrap:anywhere]"
             >
               {product.name}
             </h2>
@@ -92,15 +92,17 @@ export function LibraryHero({
           action={action}
           lead
           twoLine
-          className="w-full"
+          className="w-full whitespace-normal px-6 text-center @max-[17rem]:px-2"
         />
         <StorePills stores={product.stores} />
-        <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-3 border-t border-border pt-5 text-sm">
+        <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-6 gap-y-3 border-t border-border pt-5 text-sm @max-[17rem]:grid-cols-[minmax(0,1fr)] @max-[17rem]:gap-y-0.5 @max-[17rem]:[&>dd]:mb-3">
           {product.kind === "entry" ? (
             // An open product (PS-04): nothing to licence, so no licence or seat facts.
             <>
               <dt className="text-fg-muted">{t("license.title")}</dt>
-              <dd className="text-fg-strong">{t("locker.hero.none")}</dd>
+              <dd className="min-w-0 text-fg-strong [overflow-wrap:anywhere]">
+                {t("locker.hero.none")}
+              </dd>
             </>
           ) : (
             <>
@@ -109,11 +111,13 @@ export function LibraryHero({
               {term ? (
                 <>
                   <dt className="text-fg-muted">{t("license.title")}</dt>
-                  <dd className="text-fg-strong">{term}</dd>
+                  <dd className="min-w-0 text-fg-strong [overflow-wrap:anywhere]">
+                    {term}
+                  </dd>
                 </>
               ) : null}
               <dt className="text-fg-muted">{t("account.devices")}</dt>
-              <dd className="space-y-2 text-fg-strong">
+              <dd className="min-w-0 space-y-2 text-fg-strong [overflow-wrap:anywhere]">
                 <span className="block">
                   {t("locker.devices.inUse", {
                     detail: devicesText(
@@ -135,13 +139,15 @@ export function LibraryHero({
           {includes.length ? (
             <>
               <dt className="text-fg-muted">{t("locker.hero.includes")}</dt>
-              <dd className="text-fg-strong">{includes.join(", ")}</dd>
+              <dd className="min-w-0 text-fg-strong [overflow-wrap:anywhere]">
+                {includes.join(", ")}
+              </dd>
             </>
           ) : null}
           {product.platforms.length ? (
             <>
               <dt className="text-fg-muted">{t("locker.storefront.runsOn")}</dt>
-              <dd>
+              <dd className="min-w-0">
                 <PlatformGlyphs platforms={product.platforms} />
               </dd>
             </>
@@ -149,7 +155,7 @@ export function LibraryHero({
         </dl>
         <a
           href={href.product(product.slug)}
-          className="mt-auto inline-flex items-center gap-2 self-start font-medium text-accent-fg hover:underline"
+          className="mt-auto inline-flex items-center gap-2 self-start font-medium text-accent-fg hover:underline pointer-coarse:min-h-11"
         >
           {product.kind === "entry"
             ? t("locker.menu.details")

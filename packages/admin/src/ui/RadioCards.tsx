@@ -52,7 +52,7 @@ export function RadioCards<V extends string = string>({
 }: RadioCardsProps<V>): React.ReactElement {
   const frozen = readOnly || useWriteLock().locked;
   const cols = {
-    1: "",
+    1: "grid-cols-[minmax(0,1fr)]",
     2: "sm:grid-cols-2",
     3: "sm:grid-cols-3",
     4: "sm:grid-cols-4",
@@ -82,7 +82,7 @@ export function RadioCards<V extends string = string>({
             disabled={o.disabled}
             aria-describedby={o.description ? `${itemId}-desc` : undefined}
             className={cn(
-              "group flex items-start gap-3 rounded-lg border border-border bg-surface-raised p-3 text-left",
+              "group flex items-start gap-3 rounded-lg border border-border bg-surface-raised p-3 text-left @max-[18rem]:gap-2 @max-[18rem]:p-2",
               // Pressable (src/motion.css): the card presses; its border and fill ease at `micro`.
               "pk-pressable hover:border-border-strong",
               "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page",

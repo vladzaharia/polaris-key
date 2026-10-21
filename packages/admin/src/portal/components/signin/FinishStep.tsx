@@ -680,7 +680,10 @@ function FinishForm({
             <Button
               variant="ghost"
               size="lg"
-              className={primaryClass}
+              className={cn(
+                primaryClass,
+                "underline decoration-2 underline-offset-4",
+              )}
               disabled={busy}
               onClick={onCancel}
             >

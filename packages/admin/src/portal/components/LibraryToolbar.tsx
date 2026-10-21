@@ -87,7 +87,7 @@ export function LibraryToolbar({
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <label className="relative flex h-11 min-w-0 basis-full items-center rounded-md border border-border-strong bg-surface-page wide:w-80 wide:flex-none wide:basis-auto">
+      <label className="relative flex h-11 pointer-coarse:h-[46px] min-w-0 basis-full items-center rounded-md border border-border-strong bg-surface-page wide:w-80 wide:flex-none wide:basis-auto">
         <Search
           aria-hidden
           className="pointer-events-none absolute left-3 size-4 text-fg-muted"
@@ -129,7 +129,7 @@ export function LibraryToolbar({
                   aria-pressed={on}
                   onClick={() => onChange({ filter: c.id })}
                   className={cn(
-                    "inline-flex h-10 shrink-0 items-center gap-2 rounded-full border px-4 text-md",
+                    "inline-flex h-10 pointer-coarse:h-11 shrink-0 items-center gap-2 rounded-full border px-4 text-md",
                     on
                       ? "border-fg-strong bg-fg-strong font-medium text-surface-page"
                       : "border-border-strong text-fg-strong hover:bg-hover",
@@ -154,7 +154,7 @@ export function LibraryToolbar({
           <select
             value={sort}
             onChange={(e) => onChange({ sort: e.target.value as LibrarySort })}
-            className="h-10 rounded-md border border-border-strong bg-surface-page px-3 text-md text-fg-strong"
+            className="h-10 pointer-coarse:h-11 rounded-md border border-border-strong bg-surface-page px-3 text-md text-fg-strong"
           >
             <option value="recent">{t("locker.library.sortRecent")}</option>
             <option value="name">{t("locker.library.sortName")}</option>
@@ -163,7 +163,7 @@ export function LibraryToolbar({
       </div>
       <SegmentedControl
         aria-label={t("locker.library.view")}
-        className="h-11 shrink-0 pointer-coarse:h-[3.125rem] pointer-coarse:[&>[role=radio]]:h-11"
+        className="h-11 shrink-0 pointer-coarse:h-[3.125rem] pointer-coarse:[&>[role=radio]]:h-11 pointer-coarse:[&>[role=radio]]:min-w-11"
         value={mode}
         onChange={onMode}
         options={[

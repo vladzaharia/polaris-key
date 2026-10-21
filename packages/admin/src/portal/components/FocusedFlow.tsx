@@ -52,14 +52,14 @@ export function FocusedFlow({
       >
         {t("locker.shell.skip")}
       </a>
-      <header className="border-b border-border bg-surface-page">
+      <header className="@container border-b border-border bg-surface-page">
         <div className="mx-auto flex min-h-14 w-full max-w-[82rem] items-center justify-between gap-4 px-4 desk:min-h-16 desk:px-8">
           <a
             href={href.library()}
             aria-label={t("locker.shell.home")}
-            className="flex shrink-0 items-center rounded-md"
+            className="flex shrink-0 items-center rounded-md pointer-coarse:min-h-11"
           >
-            <HeaderBrand />
+            <HeaderBrand container />
           </a>
           <a
             href={back.href}
@@ -67,13 +67,13 @@ export function FocusedFlow({
             className="inline-flex min-h-11 min-w-0 items-center gap-2 rounded-md px-2 text-sm text-fg hover:text-fg-strong"
           >
             <ArrowLeft aria-hidden className="size-4 shrink-0" />
-            <span className="min-w-0 break-words max-[23.99rem]:hidden">
+            <span className="min-w-0 break-words @max-[23.99rem]:hidden">
               {back.label}
               {back.tail ? (
                 <span className="hidden sm:inline"> {back.tail}</span>
               ) : null}
             </span>
-            <span aria-hidden className="min-[24rem]:hidden">
+            <span aria-hidden className="@min-[24rem]:hidden">
               {t("common.back")}
             </span>
           </a>
@@ -148,7 +148,7 @@ export function TaskFrame({
   return (
     <div
       className={cn(
-        "mx-auto w-full max-w-[40rem] twocol:max-w-[65rem]",
+        "@container mx-auto w-full max-w-[40rem] twocol:max-w-[65rem]",
         className,
       )}
     >
@@ -158,7 +158,7 @@ export function TaskFrame({
       <h1
         ref={titleRef}
         tabIndex={-1}
-        className="flex items-start gap-3 text-page-title-sm font-semibold tracking-[-0.02em] text-fg-strong outline-none desk:text-page-title short:text-page-title-sm"
+        className="flex items-start gap-3 text-page-title-sm @max-[18rem]:text-xl font-semibold tracking-[-0.02em] text-fg-strong outline-none desk:text-page-title short:text-page-title-sm"
       >
         {titleIcon ? (
           <span
@@ -174,7 +174,7 @@ export function TaskFrame({
         <div className="space-y-3">
           <div
             data-identity=""
-            className="flex min-w-0 items-center gap-3 rounded-xl border border-border bg-surface-raised px-4 py-3 flex-wrap [&>:last-child]:min-w-[10rem] [&>:last-child]:flex-1"
+            className="flex min-w-0 items-center gap-3 rounded-xl border border-border bg-surface-raised px-4 py-3 flex-wrap [&>:last-child]:min-w-[min(10rem,100%)] [&>:last-child]:flex-1"
           >
             <ProductIcon
               slug={slug}

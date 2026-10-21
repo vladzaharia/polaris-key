@@ -108,9 +108,12 @@ describe("product header: the icon in front of the cover (§4.20)", () => {
               "0px",
               "0px",
             ]);
-          // 16:9 on phones; a 3:1 band, at most 416 px tall, on desktop.
-          if (width === 390) expect(art.ratio).toBeCloseTo(16 / 9, 1);
-          else {
+          // A full-width band, 11 rem tall, on phones (LF1: not a 16:9 box whose height cap shrank
+          // its width); a 3:1 band, at most 416 px tall, on desktop.
+          if (width === 390) {
+            expect(art.height).toBeLessThanOrEqual(200);
+            expect(art.ratio).toBeGreaterThanOrEqual(1.7);
+          } else {
             expect(art.height).toBeLessThanOrEqual(416.5);
             expect(art.ratio).toBeGreaterThanOrEqual(2.9);
           }

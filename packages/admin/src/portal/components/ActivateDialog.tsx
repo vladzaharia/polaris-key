@@ -605,7 +605,7 @@ function RefusalActions({
       <Button
         variant="ghost"
         size="sm"
-        className="font-medium max-sm:min-h-11 max-sm:w-full"
+        className="font-medium underline decoration-2 underline-offset-4 max-sm:min-h-11 max-sm:w-full"
         onClick={onDifferentKey}
       >
         {t("signin.key.differentKey")}
@@ -644,13 +644,14 @@ function AccountRow({
     <div
       role="group"
       aria-label={t("locker.activate.account")}
-      className="flex min-w-0 flex-1 items-center gap-3"
+      className="flex min-w-0 flex-1 basis-40 items-center gap-3"
     >
       <Avatar
         name={account.name}
         email={account.email}
         picture={account.avatarUrl}
         size={40}
+        className="@max-[18rem]:hidden"
       />
       <div className="flex min-w-0 flex-col gap-0.5 text-sm [overflow-wrap:anywhere]">
         {named ? (
@@ -670,7 +671,7 @@ function AccountRow({
     </div>
   );
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-border bg-surface-sunken px-3 py-2.5">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-border bg-surface-sunken px-3 py-2.5">
       {group}
       <form method="post" action="/logout" className="shrink-0">
         <button
@@ -1052,7 +1053,7 @@ export function ConfirmStep({
           <button
             type="button"
             onClick={onBack}
-            className="shrink-0 rounded-sm text-sm font-medium text-accent-fg hover:underline"
+            className="shrink-0 rounded-sm text-sm font-medium text-accent-fg underline decoration-2 underline-offset-4 pointer-coarse:min-h-11 hover:text-fg-strong"
           >
             {t("locker.activate.changeKey")}
           </button>
@@ -1087,12 +1088,12 @@ export function ConfirmStep({
         {/* A long product name is cut short with an ellipsis rather than spilling out of the
             button (PS-05 review M5); the name is read in full (the label, the heading above). */}
         <Button
-          className="min-w-0 font-medium"
+          className="h-auto min-h-9 min-w-0 py-1.5 font-medium"
           loading={adding}
           onClick={onAdd}
           aria-label={primaryLabel ?? t("locker.activate.addToLibrary")}
         >
-          <span className="truncate">
+          <span className="truncate max-[24rem]:overflow-visible max-[24rem]:whitespace-normal max-[24rem]:text-center">
             {primaryLabel ?? t("locker.activate.addToLibrary")}
           </span>
         </Button>

@@ -1336,10 +1336,12 @@ describe("product page correctness (UX-04)", () => {
     );
     renderPortal();
     expect(
-      await screen.findByRole("heading", { level: 1, name: "nightfall" }),
+      await screen.findByRole("heading", { level: 1, name: "Product" }),
     ).toBeTruthy();
+    // Never the raw slug (LF1): a name that did not load reads "Product" / "this product".
+    expect(screen.queryByText(/nightfall/)).toBeNull();
     expect(
-      screen.getByText("Couldn't load nightfall. Check your connection."),
+      screen.getByText("Couldn't load this product. Check your connection."),
     ).toBeTruthy();
     expect(screen.queryByText("Something went wrong")).toBeNull();
     expect(screen.getAllByText(/try again/i)).toHaveLength(1);

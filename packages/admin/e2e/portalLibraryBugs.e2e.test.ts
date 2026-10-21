@@ -7,6 +7,7 @@ import {
   type Theme,
 } from "./portalHarness.js";
 import { portalRoutes, type Handler } from "./portalFixtures.js";
+import { SHIPPED } from "./portalStates.js";
 
 /**
  * Stabilization package E2 (B-075 to B-091): what only a browser can show about the Library,
@@ -212,6 +213,129 @@ describe.concurrent("touch targets (B-081, B-082)", () => {
       await o.close();
     }
   });
+});
+
+/**
+ * Stabilization LF1 (EXPERIENCE §7.3): on a touch screen every customer control is 44 px tall (a
+ * text link inside a sentence is excused), on the screens people use most. `smallTargets` only
+ * flags crowded targets under 24 px, so this measures the height itself.
+ */
+const TOUCH_STATES = [
+  "library-1",
+  "library-12",
+  "library-error",
+  "boot-error",
+  "activate-enter",
+  "activate-confirm",
+  "product",
+  "product-load-error",
+  "product-remove-device",
+  "product-remove-license",
+  "product-install-sources",
+  "account",
+  "account-delete",
+  "account-link-both",
+  "device-limit",
+  "download-flow",
+  "library-entry-remove",
+];
+
+describe("every customer control is 44 px tall on a touch screen", () => {
+  for (const id of TOUCH_STATES) {
+    it(`${id} at 390`, async ({ expect }) => {
+      const st = SHIPPED.find((x) => x.id === id);
+      expect(st, `state ${id}`).toBeDefined();
+      const o = await portal.open(st!.scenario, st!.path, {
+        width: 390,
+        height: 844,
+        theme: "light",
+        hasTouch: true,
+        routes: st!.routes,
+      });
+      try {
+        await st!.ready(o.page);
+        await o.page.waitForTimeout(300);
+        const under = await o.page.evaluate(() => {
+          const SEL =
+            "a[href], button, input:not([type=hidden]):not([type=checkbox]):not([type=radio]), select, textarea, summary, [role=radio], [role=tab], [role=menuitem]";
+          const out: string[] = [];
+          for (const el of document.querySelectorAll<HTMLElement>(SEL)) {
+            if (el.closest("[inert], [aria-hidden=true]")) continue;
+            if ((el as HTMLButtonElement).disabled) continue;
+            if (!el.checkVisibility({ visibilityProperty: true })) continue;
+            const cs = getComputedStyle(el);
+            const r = el.getBoundingClientRect();
+            if (r.width <= 1 || r.height <= 1) continue;
+            // Skip-link and other visually hidden controls.
+            if (cs.clipPath === "inset(50%)") continue;
+            // A name link stretched over its whole card or row (`after:absolute after:inset-0`):
+            // the card is the target.
+            if (getComputedStyle(el, "::after").position === "absolute")
+              continue;
+            // A link inside a sentence is excused (WCAG 2.5.8 inline exception).
+            if (cs.display === "inline") {
+              const own = (el.textContent ?? "").trim();
+              const line = (el.parentElement?.textContent ?? "").trim();
+              if (line.length > own.length) continue;
+            }
+            const label = (
+              el.getAttribute("aria-label") ??
+              el.textContent ??
+              ""
+            )
+              .trim()
+              .replace(/\s+/g, " ")
+              .slice(0, 40);
+            if (r.height < 43.5)
+              out.push(
+                `${el.tagName.toLowerCase()} "${label}" ${Math.round(r.width)}x${Math.round(r.height)}`,
+              );
+          }
+          return out;
+        });
+        expect(under).toEqual([]);
+      } finally {
+        await o.close();
+      }
+    });
+  }
+});
+
+describe("Discover: a failed Add leaves the row where it is (B-080)", () => {
+  for (const width of [1440, 390]) {
+    it(`no tile changes height at ${width}`, async ({ expect }) => {
+      const o = await portal.open("three", "/#/discover", {
+        width,
+        height: 900,
+        routes: {
+          "POST /api/discover/mossgarden/claim": () => ({
+            status: 500,
+            body: { error: "internal" },
+          }),
+        },
+      });
+      try {
+        await h1(o.page, "Discover");
+        const button = o.page.getByRole("button", {
+          name: "Add to library: Mossgarden",
+        });
+        await button.waitFor();
+        const heights = () =>
+          o.page.evaluate(() =>
+            [...document.querySelectorAll("main article")].map((a) =>
+              Math.round(a.getBoundingClientRect().height),
+            ),
+          );
+        const before = await heights();
+        await button.click();
+        await o.page.getByRole("alert").filter({ hasText: "Couldn" }).waitFor();
+        await o.page.waitForTimeout(300);
+        expect(await heights()).toEqual(before);
+      } finally {
+        await o.close();
+      }
+    });
+  }
 });
 
 describe.concurrent("the dialog scrim (B-091)", () => {

@@ -75,7 +75,7 @@ describe("brand blocks never set the name in live text", () => {
 
   it("the focused-flow header draws the same lockup as the Library header (one shared size)", () => {
     const flow = src("src/portal/components/FocusedFlow.tsx");
-    expect(flow).toContain("<HeaderBrand />");
+    expect(flow).toMatch(/<HeaderBrand\b/);
     expect(flow).not.toMatch(/<Lockup\b/);
     expect(src("src/portal/components/PortalShell.tsx")).toContain(
       "<HeaderBrand />",

@@ -419,7 +419,12 @@ function FreeDevice({
       ) : null}
       <StickyActions>
         <div className="flex flex-col gap-3 sm:flex-row">
-          <Button asChild size="lg" variant="outline" className="h-12">
+          <Button
+            asChild
+            size="lg"
+            variant="outline"
+            className="h-auto min-h-12 whitespace-normal py-2"
+          >
             <a href={returnUrl ?? href.product(product.product)}>
               {t("signin.cancel")}
             </a>
@@ -427,7 +432,7 @@ function FreeDevice({
           <Button
             ref={removeRef}
             size="lg"
-            className="h-12 font-medium sm:flex-none"
+            className="h-auto min-h-12 whitespace-normal py-2 font-medium sm:flex-none"
             loading={remove.isPending}
             disabledReason={
               pickedDevice ? undefined : t("locker.freeDevice.choose")
@@ -452,7 +457,7 @@ function FreeDevice({
             href={support}
             target="_blank"
             rel="noreferrer"
-            className="font-medium text-accent-fg hover:underline"
+            className="font-medium text-accent-fg underline decoration-2 underline-offset-4 hover:text-fg-strong"
           >
             {t("locker.freeDevice.ask", {
               developer: pres.developer ?? t("license.developerFallback"),

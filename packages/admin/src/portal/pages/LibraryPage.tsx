@@ -155,7 +155,7 @@ function LibraryBody({
         <LibraryHero product={p} action={action(p)} />
         <p className="flex items-center gap-2 text-fg-muted">
           <Compass aria-hidden className="size-4 shrink-0" />
-          <span>
+          <span className="min-w-0 [overflow-wrap:anywhere]">
             {t("locker.library.everything", { email })}
             {discoverCount ? (
               <>
