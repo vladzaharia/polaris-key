@@ -115,6 +115,7 @@ public final class PolarisSignInModel {
             phase = .confirm(prompt, identity: identity, attachable: attachable)
         case .expired: phase = .expired
         case .error:
+            // Deny and a provider failure are one answer; the kit says "declined" for both.
             phase = .failed(
                 code: ErrorCode.signInDenied, message: ErrorCopy.message(ErrorCode.signInDenied))
         }

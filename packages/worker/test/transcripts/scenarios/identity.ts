@@ -112,6 +112,7 @@ async function playerSignsIn(
   w: World,
   now: number,
   verificationUriComplete: string,
+  decision: "approve" | "deny" = "approve",
 ): Promise<void> {
   const complete = new URL(verificationUriComplete);
   const userCode = complete.searchParams.get("user_code")!;
@@ -149,7 +150,7 @@ async function playerSignsIn(
     ),
   );
   // I-37: the callback stops at the approval page; the browser that signed in presses
-  // "Sign in on {device}". The device's own conversation (pending ... ready) is unchanged.
+  // "Sign in on {device}" (or Deny). The device's own conversation (pending ... ready) is unchanged.
   expect(callback.status).toBe(303);
   const approvePath = `/${PRODUCT}/identity/auth/device/approve`;
   expect(new URL(callback.headers.get("location")!).pathname).toBe(approvePath);
@@ -171,7 +172,7 @@ async function playerSignsIn(
     now,
     "POST",
     approvePath,
-    { token: token!, decision: "approve" },
+    { token: token!, decision },
     binder,
   );
   expect(approved.status).toBe(200);
@@ -347,6 +348,91 @@ export const devicecodeHappy: Scenario = {
         PRODUCT,
       );
       expect(licence?.sub).toBe(PLAYER.sub);
+      return r.transcript();
+    }),
+};
+
+export const devicecodeDenied: Scenario = {
+  id: "devicecode-denied",
+  record: () =>
+    pinned("devicecode-denied", async (pin) => {
+      const world = await identityWorld();
+      const r = new TranscriptRecorder({
+        id: "devicecode-denied",
+        description:
+          "A device-code flow the person refuses (I-37). beginSignIn() posts the device id alone; one poll is pending. The player confirms the code, signs in at the (mocked) IdP and presses Deny on the approval page, server-side and unrecorded. The next poll answers the generic error (the same shape as a provider failure, so the poller learns nothing about the cause), which the client reports as an error with the sign-in-denied code, holding no token. The flow stays denied on the next poll.",
+        features: ["identity.devicecode"],
+        requires: ["core.store"],
+        product: PRODUCT,
+        now: T0,
+        world,
+        pinned: pin,
+        initial: {
+          deviceId: DEVICE,
+          version: VERSION,
+          services: ["license", "config", "identity"],
+        },
+      });
+
+      let started!: Started;
+      const begun: Record<string, JsonValue> = {};
+      await r.step(
+        { action: "beginSignIn" },
+        async (s) => {
+          const res = await s.send({
+            method: "POST",
+            path: START,
+            body: { deviceId: DEVICE },
+            expectBody: { json: { deviceId: DEVICE }, match: "exact" },
+          });
+          expect(res.status).toBe(200);
+          started = (await res.json()) as Started;
+          Object.assign(begun, { prompt: promptOf(started), tokenHeld: false });
+        },
+        begun,
+      );
+
+      await r.step(
+        { action: "pollSignIn", now: T0 + 2, note: "Pending." },
+        async (s) => {
+          const res = await s.send(pollSpec(started.deviceCode));
+          expect(await res.json()).toEqual({ status: "pending" });
+        },
+        { result: "pending", tokenHeld: false },
+      );
+
+      await playerSignsIn(
+        world,
+        T0 + 3,
+        started.verificationUriComplete,
+        "deny",
+      );
+
+      await r.step(
+        {
+          action: "pollSignIn",
+          now: T0 + 5,
+          note: "The person pressed Deny: the generic error, no token.",
+        },
+        async (s) => {
+          const res = await s.send(pollSpec(started.deviceCode));
+          expect(res.status).toBe(200);
+          expect(await res.json()).toEqual({ status: "error" });
+        },
+        { result: "error", code: "sign-in-denied", tokenHeld: false },
+      );
+      await r.step(
+        {
+          action: "pollSignIn",
+          now: T0 + 8,
+          note: "Denied stays denied until the flow lapses.",
+        },
+        async (s) => {
+          const res = await s.send(pollSpec(started.deviceCode));
+          expect(await res.json()).toEqual({ status: "error" });
+        },
+        { result: "error", code: "sign-in-denied", tokenHeld: false },
+      );
       return r.transcript();
     }),
 };

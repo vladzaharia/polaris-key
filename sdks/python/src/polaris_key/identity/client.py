@@ -30,7 +30,7 @@ from typing import Any, Callable, Dict, Optional
 
 import httpx
 
-from ..constants_generated import Feature
+from ..constants_generated import ErrorCode, Feature
 from ..core.context import CoreContext, server_message_of
 from ..core.errors import PolarisError
 from ..core.token import TokenManager
@@ -96,7 +96,8 @@ class SignInPoll:
     for the player's acceptance, with ``identity`` and ``attachable``), ``"ready"`` (the token is
     stored and the post-acquisition sync has run; ``identity`` and ``attached`` —
     ``"claimed"`` / ``"migrated"`` / ``None`` — when the Worker sent them), ``"expired"`` or
-    ``"error"`` (with ``message``)."""
+    ``"error"`` (with ``message``, and ``code`` ``"sign-in-denied"`` when the Worker answered its
+    generic ``error``: the provider failed, or the person pressed Deny; it never says which)."""
 
     status: str
     interval: Optional[int] = None
@@ -104,17 +105,19 @@ class SignInPoll:
     identity: Optional[SignedInIdentity] = None
     attachable: Optional[bool] = None
     attached: Optional[str] = None
+    code: Optional[str] = None
 
 
 @dataclass(frozen=True)
 class SignInResult:
     """How :meth:`IdentityClient.wait_for_sign_in` ended: ``"ready"`` (with ``identity`` and
-    ``attached``), ``"expired"`` or ``"error"`` (with ``message``)."""
+    ``attached``), ``"expired"`` or ``"error"`` (with ``message`` and, for a denied sign-in, ``code``)."""
 
     status: str
     message: Optional[str] = None
     identity: Optional[SignedInIdentity] = None
     attached: Optional[str] = None
+    code: Optional[str] = None
 
 
 def _is_str(v: Any) -> bool:
@@ -276,6 +279,12 @@ class IdentityClient:
             return SignInPoll(status="pending")
         if status == "timeout":
             return SignInPoll(status="expired")
+        if status == "error":
+            return SignInPoll(
+                status="error",
+                message="device sign-in failed.",
+                code=ErrorCode.SIGN_IN_DENIED,
+            )
         if status == "confirm":
             return SignInPoll(
                 status="confirm",
@@ -363,6 +372,7 @@ class IdentityClient:
                 message=poll.message,
                 identity=poll.identity,
                 attached=poll.attached,
+                code=poll.code,
             )
 
     # ── Conveniences (SDK parity pass §3.12) ────────────────────────────────────────

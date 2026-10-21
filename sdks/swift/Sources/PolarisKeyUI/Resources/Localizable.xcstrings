@@ -54266,61 +54266,61 @@
       }
     },
     "signInHandoff.confirm": {
-      "comment": "SignInHandoff: sign-in continues on another device or in the browser. The hosted page ends with a “Continue to {product}” button. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product.",
+      "comment": "SignInHandoff: sign-in continues on another device or in the browser. The hosted approval page ends with a “Sign in on {device}” button, next to Deny; the label stays in English. Arguments: {device} = this device's friendly name. Arguments: 1=device.",
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Choose Continue to %1$@ on the sign-in page to finish."
+            "value": "Choose Sign in on %1$@ on the sign-in page to finish."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wählen Sie auf der Anmeldeseite „Weiter zu %1$@“, um den Vorgang abzuschließen."
+            "value": "Wählen Sie auf der Anmeldeseite „Sign in on %1$@“, um den Vorgang abzuschließen."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Choisissez Continuer vers %1$@ sur la page de connexion pour terminer."
+            "value": "Choisissez Sign in on %1$@ sur la page de connexion pour terminer."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Elige Continuar a %1$@ en la página de inicio de sesión para terminar."
+            "value": "Elige Sign in on %1$@ en la página de inicio de sesión para terminar."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Escolha Continuar para %1$@ na página de acesso para concluir."
+            "value": "Escolha Sign in on %1$@ na página de acesso para concluir."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Per finire, scegli Continua su %1$@ nella pagina di accesso."
+            "value": "Per finire, scegli Sign in on %1$@ nella pagina di accesso."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "完了するには、サインインページで「%1$@に進む」を選択してください。"
+            "value": "完了するには、サインインページで「Sign in on %1$@」を選択してください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "로그인 페이지에서 “%1$@에서 계속”을 선택해 완료하세요."
+            "value": "로그인 페이지에서 “Sign in on %1$@”를 선택해 완료하세요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "在登录页面上选择“继续使用%1$@”以完成登录。"
+            "value": "在登录页面上选择“Sign in on %1$@”以完成登录。"
           }
         }
       }

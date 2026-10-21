@@ -127,7 +127,7 @@ func signIn(_ client: PolarisKeyClient) async -> String {
             return "Continue as \(identity.name ?? identity.email ?? "this account")?"
         case .expired:
             return "The code expired. Start again."
-        case .error(let message):
+        case .error(let message, _):
             return message
         }
     } catch {
@@ -138,7 +138,9 @@ func signIn(_ client: PolarisKeyClient) async -> String {
 
 `signInWithBrowser()` never returns `.confirm`: that case comes only from
 `waitForSignIn(_:confirmIdentity:)` on `client.identity` with `confirmIdentity: true`, which holds at
-the signed-in identity until the person accepts. Sign-in needs the Identity service; with it off,
+the signed-in identity until the person accepts; the license attach it once offered is retired
+(`attachable` is always false). A Deny on the Polaris Locker approval page ends as `.error` with
+`code == ErrorCode.signInDenied`. Sign-in needs the Identity service; with it off,
 the call throws `service-unavailable` before any request. `try await client.signOut()` ends the
 session.
 

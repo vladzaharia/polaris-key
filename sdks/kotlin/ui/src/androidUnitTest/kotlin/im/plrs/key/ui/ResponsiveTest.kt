@@ -123,7 +123,7 @@ internal val responsiveScreens: List<String> = listOf(
 internal val messageScreens: List<String> = listOf(
     "boot-consent", "boot-offline", "boot-blocked", "boot-error",
     "gate-expired", "gate-version-too-old", "gate-version-too-new", "gate-channel-not-entitled",
-    "sign-in-starting", "sign-in-expired", "sign-in-failed",
+    "sign-in-starting", "sign-in-expired", "sign-in-failed", "sign-in-denied",
 )
 
 /** Where the layout test checks controls: the control groups and every message screen. */

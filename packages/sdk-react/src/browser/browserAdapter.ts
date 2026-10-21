@@ -2444,6 +2444,7 @@ function signInResult(r: SignInResult): DeviceSignInResult {
       ? { status: "ready", identity: r.identity }
       : { status: "ready" };
   if (r.status === "expired") return { status: "expired" };
+  if (r.code === ErrorCode.signInDenied) return { status: "denied" };
   return { status: "error", message: r.message };
 }
 

@@ -105,7 +105,7 @@
   "signInHandoff.scan": "スマートフォンでコードをスキャンするか、{url}にアクセスしてこのコードを入力してください。",
   "signInHandoff.scanTv": "スマートフォンでQRコードを読み取るか、下のアドレスでこのコードを入力してください。",
   "signInHandoff.linkCopied": "リンクをコピーしました",
-  "signInHandoff.confirm": "完了するには、サインインページで「{product}に進む」を選択してください。",
+  "signInHandoff.confirm": "完了するには、サインインページで「Sign in on {device}」を選択してください。",
   "signInHandoff.ok": "サインインしました",
   "signInHandoff.newCode": "新しいコードを取得",
   "activate.title": "ライセンスキーを入力",

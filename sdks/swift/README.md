@@ -291,7 +291,9 @@ poll that fails on the network or with a 5xx is retried at the same interval, ne
 returns `.expired` once `prompt.expiresAt` has passed without asking the server again.
 `pollSignIn(_:)` makes exactly one poll (`.pending`, `.slowDown(interval:)`, `.ready`, `.expired`
 or `.error`). `prompt.deviceCode` is the poll credential: never show it. A sign-in yields the
-signed-in identity's **own** license; it does not attach a license this device already held.
+signed-in identity's **own** license; it does not attach a license this device already held (the
+attach opt-in is retired). A Deny on the approval page ends as `.error(message:code:)` with
+`code == ErrorCode.signInDenied`.
 
 **After `.ready`, show on the device which account signed in.** Anyone holding the user code can
 complete the sign-in on the verification page, so the player must be able to see a mis-binding.

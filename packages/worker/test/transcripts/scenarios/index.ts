@@ -17,6 +17,7 @@ import {
 import { distributionDownloadModel } from "./distribution.js";
 import {
   devicecodeDefault,
+  devicecodeDenied,
   devicecodeExpired,
   devicecodeHappy,
   devicecodeLabel,
@@ -80,6 +81,7 @@ export const SCENARIOS: Scenario[] = [
   releaseChangelog,
   releaseChangelogEntitled,
   devicecodeHappy,
+  devicecodeDenied,
   devicecodeExpired,
   identityDisabled,
   devicecodeLabel,

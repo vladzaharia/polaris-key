@@ -105,7 +105,7 @@
   "signInHandoff.scan": "Scan the code with your phone, or go to {url} and enter this code.",
   "signInHandoff.scanTv": "Scan the QR code with your phone, or enter this code at the address below.",
   "signInHandoff.linkCopied": "Link copied",
-  "signInHandoff.confirm": "Choose Continue to {product} on the sign-in page to finish.",
+  "signInHandoff.confirm": "Choose Sign in on {device} on the sign-in page to finish.",
   "signInHandoff.ok": "Signed in",
   "signInHandoff.newCode": "Get a new code",
   "activate.title": "Enter your license key",
