@@ -249,7 +249,7 @@ describe("Core pages under the Worker's CSP", () => {
   // ST-08: the old pages are removals, not aliases. The old URL stays and says where it went.
   it("old Services, Presentation and Keys URLs open Page moved, with no redirect", async () => {
     for (const [old, home] of [
-      ["#/p/djdl/services", "Features"],
+      ["#/p/djdl/services", "Features & general"],
       ["#/p/djdl/presentation", "Presentation"],
       ["#/p/djdl/keys", "Keys & secrets"],
     ] as const) {

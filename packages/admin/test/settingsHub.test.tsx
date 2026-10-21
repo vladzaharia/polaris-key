@@ -31,7 +31,7 @@ describe("Settings hub", () => {
     const nav = screen.getByRole("navigation", { name: "Settings" });
     const links = within(nav).getAllByRole("link");
     expect(links.map((l) => l.textContent)).toEqual([
-      "Features",
+      "Features & general",
       "Presentation",
       "Polaris Locker",
       "Keys & secrets",
@@ -59,7 +59,7 @@ describe("Settings hub", () => {
     const nav = screen.getByRole("navigation", { name: "Settings" });
     expect(
       within(nav)
-        .getByRole("link", { name: "Features" })
+        .getByRole("link", { name: "Features & general" })
         .getAttribute("aria-current"),
     ).toBe("page");
   });

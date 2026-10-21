@@ -1429,6 +1429,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
                 {canSort ? (
                   <button
                     type="button"
+                    data-forced-flat=""
                     onClick={(e) => onSort(col.id, e.shiftKey)}
                     className={cn(
                       "inline-flex min-h-6 items-center gap-1 rounded-sm align-middle leading-4 hover:text-fg-strong",

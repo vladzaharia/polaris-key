@@ -213,7 +213,7 @@ export function PageHeader({
                   tabIndex={-1}
                   data-page-title=""
                   className={cn(
-                    "min-w-0 font-medium tracking-tight text-fg-strong outline-hidden",
+                    "min-w-0 font-medium tracking-tight text-fg-strong outline-hidden forced-colors:outline-none",
                     size === "display"
                       ? "text-3xl lg:text-display"
                       : // 24/32 on a phone, 36/44 on a collection, 32/40 on a record (B4, B6:

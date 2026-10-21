@@ -97,7 +97,7 @@ describe("All settings → Edit in", () => {
     // [key, where it reads, its section, where the link goes]
     [
       "license.defaults.deviceLimit",
-      "Settings → Features",
+      "Settings → Features & general",
       "License defaults",
       "#/p/djdl/settings",
     ],
@@ -115,7 +115,7 @@ describe("All settings → Edit in", () => {
     ],
     [
       "release.github",
-      "Settings → Features",
+      "Settings → Features & general",
       "Repository",
       "#/p/djdl/settings",
     ],

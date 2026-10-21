@@ -70,7 +70,7 @@ export function PlatformReady({
           <h2
             id={titleId}
             tabIndex={-1}
-            className="text-sm font-medium text-fg-strong outline-hidden"
+            className="text-sm font-medium text-fg-strong outline-hidden forced-colors:outline-none"
           >
             Platform ready
           </h2>
@@ -131,7 +131,7 @@ export function PlatformReady({
         <h2
           id={titleId}
           tabIndex={-1}
-          className="order-1 text-lg font-semibold leading-6 text-fg-strong outline-hidden"
+          className="order-1 text-lg font-semibold leading-6 text-fg-strong outline-hidden forced-colors:outline-none"
         >
           Platform ready
         </h2>

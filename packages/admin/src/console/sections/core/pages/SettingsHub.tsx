@@ -34,7 +34,7 @@ import { productPage, r } from "../../../routes.js";
  * (the product's own settings) lives on the Features tab, so it has no tab of its own.
  */
 export const SETTINGS_AREAS: { page: ProductPageId; label: string }[] = [
-  { page: "services", label: "Features" },
+  { page: "services", label: "Features & general" },
   { page: "presentation", label: "Presentation" },
   { page: "portal", label: "Polaris Locker" },
   { page: "keys", label: "Keys & secrets" },
@@ -110,7 +110,7 @@ export function SettingsHub({
           <h1
             tabIndex={-1}
             data-page-title=""
-            className="text-2xl font-medium tracking-tight text-fg-strong outline-hidden sm:text-4xl"
+            className="text-2xl font-medium tracking-tight text-fg-strong outline-hidden forced-colors:outline-none sm:text-4xl"
           >
             Settings
           </h1>

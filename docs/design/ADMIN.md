@@ -21,8 +21,9 @@ relevant graph id where that distinction matters.
 
 UI terminology follows [UI words and the identifiers they keep](../../packages/docs/src/content/docs/start/concepts.md#ui-words-and-the-identifiers-they-keep).
 Identifiers, route segments, API fields, manifests, and some current labels retain their established
-names. In particular, the current route registry still calls the Distribution page **Outlets &
-feeds**; that is a current label, not a statement that the glossary migration is complete.
+names. The console words follow the glossary: **Channel setup** and **Channel credentials** for
+distribution channels, **Release tracks** for a release's lanes. Route segments and API fields
+(`distribution/outlets`, `release/channels`, `outletId`) keep their older names.
 
 ## 2. Application shell and session
 
@@ -93,7 +94,7 @@ the table.
 | ----------------------------- | -------------------------------------------- | -------------------------------------------------------------------------- | -------------- |
 | `overview`                    | `#/p/<slug>`                                 | Core → Overview (`#/p/<slug>`)                                             | live           |
 | `integration`                 | `#/p/<slug>/integration`                     | Core → Integration (`#/p/<slug>/integration`)                              | live           |
-| `services`                    | `#/p/<slug>/settings/features`               | Core → Features (`#/p/<slug>/settings/features`)                           | live           |
+| `services`                    | `#/p/<slug>/settings/features`               | Core → Features & general (`#/p/<slug>/settings/features`)                 | live           |
 | `devices`                     | `#/p/<slug>/devices`                         | Core → Devices (`#/p/<slug>/devices`)                                      | live           |
 | `users`                       | `#/p/<slug>/users`                           | Core → Users (`#/p/<slug>/users`)                                          | live           |
 | `presentation`                | `#/p/<slug>/settings/presentation`           | Core → Presentation (`#/p/<slug>/settings/presentation`)                   | live           |
@@ -111,7 +112,7 @@ the table.
 | `catalog-edit`                | `#/p/<slug>/config/catalog/edit`             | Managed config → Edit catalog (`#/p/<slug>/config/catalog/edit`)           | live           |
 | `profiles`                    | `#/p/<slug>/config/profiles`                 | Managed config → Profiles (`#/p/<slug>/config/profiles`)                   | live           |
 | `releases`                    | `#/p/<slug>/release/releases`                | Release → Releases (`#/p/<slug>/release/releases`)                         | live           |
-| `channels`                    | `#/p/<slug>/release/channels`                | Release → Channels (`#/p/<slug>/release/channels`)                         | live           |
+| `channels`                    | `#/p/<slug>/release/channels`                | Release → Release tracks (`#/p/<slug>/release/channels`)                   | live           |
 | `deliverables`                | `#/p/<slug>/release/deliverables`            | Release → Deliverables (`#/p/<slug>/release/deliverables`)                 | live           |
 | `compatibility`               | `#/p/<slug>/release/compatibility`           | Release → Compatibility (`#/p/<slug>/release/compatibility`)               | live           |
 | `simulator`                   | `#/p/<slug>/release/compatibility/simulator` | Release → Update simulator (`#/p/<slug>/release/compatibility/simulator`)  | live           |
@@ -144,7 +145,7 @@ the table.
 | `api-tokens`                  | `#/tokens`                                   | API tokens (`#/tokens`)                                                    | live           |
 | `personal-tokens`             | `#/personal-tokens`                          | Personal tokens (`#/personal-tokens`)                                      | live           |
 | `tab:overview`                | `#/p/<slug>/overview`                        | Core → Overview (`#/p/<slug>`)                                             | moved (P0-31)  |
-| `tab:services`                | `#/p/<slug>/services`                        | Core → Features (`#/p/<slug>/settings/features`)                           | moved (P0-31)  |
+| `tab:services`                | `#/p/<slug>/services`                        | Core → Features & general (`#/p/<slug>/settings/features`)                 | moved (P0-31)  |
 | `tab:presentation`            | `#/p/<slug>/presentation`                    | Core → Presentation (`#/p/<slug>/settings/presentation`)                   | moved (P0-31)  |
 | `tab:keys`                    | `#/p/<slug>/keys`                            | Core → Keys & secrets (`#/p/<slug>/settings/keys`)                         | moved (P0-31)  |
 | `tab:secrets`                 | `#/p/<slug>/secrets`                         | Core → Keys & secrets (`#/p/<slug>/settings/keys`)                         | moved (P0-31)  |
@@ -196,28 +197,40 @@ navigation or the palette.
 
 Every product has **Core**, drawn as a flat list (no group header; Settings sits at the foot):
 
-| Page           | Path and route detail                                                                |
-| -------------- | ------------------------------------------------------------------------------------ |
-| Overview       | `#/p/<slug>`                                                                         |
-| Services       | `#/p/<slug>/services`                                                                |
-| Devices        | `#/p/<slug>/devices`, with a routed device record                                    |
-| Users          | `#/p/<slug>/users`, with overview, licenses, devices, activity, and data record tabs |
-| Presentation   | `#/p/<slug>/presentation`                                                            |
-| Keys & secrets | `#/p/<slug>/keys`                                                                    |
-| Activity       | `#/p/<slug>/activity`                                                                |
-| Settings       | `#/p/<slug>/settings`                                                                |
+| Page        | Path and route detail                                                                 |
+| ----------- | ------------------------------------------------------------------------------------- |
+| Overview    | `#/p/<slug>`: attention, the Integration card, one tile per enabled feature, activity |
+| Integration | `#/p/<slug>/integration`                                                              |
+| Devices     | `#/p/<slug>/devices`, with a routed device record                                     |
+| Users       | `#/p/<slug>/users`, with overview, licenses, devices, activity, and data record tabs  |
+| Activity    | `#/p/<slug>/activity`                                                                 |
+| Settings    | `#/p/<slug>/settings`, the hub below                                                  |
 
-Enabled services add their sections:
+**Settings** is a hub with five tabs, none of them a sidebar item: **Features & general**
+(`settings/features`: the feature switches, then the product's name, origins, repository, storage,
+alerts and the danger zone), **Presentation** (`settings/presentation`), **Polaris Locker**
+(`settings/portal`), **Keys & secrets** (`settings/keys`) and **Members** (`settings/members`).
+**All settings** (`settings/all`) lists every setting with its value where the registry has one, its
+source and the page that edits it.
 
-| Section      | Shipped pages                                                                                                                                                                     |
-| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| License      | Licenses (record tabs: overview, keys, devices, config), Tiers (overview and used-by), Enrollment, Licensing settings, and non-sidebar Batches                                    |
-| Config       | Catalog, its non-sidebar editor (the minted-token approve drawer opens there), and Profiles                                                                                       |
-| Release      | Releases (builds, packs, channels, distribution), Channels, Deliverables (releases, channels, delivery, files), Compatibility, its non-sidebar Update simulator, and Content keys |
-| Distribution | non-sidebar Matrix, Rollouts, Outlets & feeds, Storefronts (including a record route), Listing, App Store, Commerce, Access, Package feeds, Health, and Outlet credentials        |
-| Update       | Feed                                                                                                                                                                              |
-| Identity     | Portal and Sign-in                                                                                                                                                                |
-| Cloud Sync   | Data                                                                                                                                                                              |
+Overview draws one tile per feature the product runs, in the feature's accent with no accent top
+rule. **Ship builds** is one tile for Release, Distribution and Update (the version on stable, the
+rollouts live, the updater's state), as it is one group in the sidebar. The page's one filled
+primary is the first Needs attention action; with none, the Integration card's next step.
+
+Enabled services add their sections. Release, Distribution and Update share one sidebar group,
+**Ship builds**; the rows below keep them apart because routes, docs and the feature switches do.
+
+| Section      | Shipped pages                                                                                                                                                                                       |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| License      | Licenses (record tabs: overview, keys, devices, config), Tiers (overview and used-by), Enrollment, Licensing settings, and non-sidebar Batches                                                      |
+| Config       | Catalog, its non-sidebar editor (the minted-token approve drawer opens there), and Profiles                                                                                                         |
+| Release      | Releases (builds, packs, release tracks, distribution), Release tracks, Deliverables (releases, release tracks, delivery, files), Compatibility, its non-sidebar Update simulator, and Content keys |
+| Distribution | non-sidebar Matrix, Rollouts, Channel setup, Storefronts (including a record route), Listing, App Store, Access, Package feeds, Health, and Channel credentials                                     |
+| Update       | Feed                                                                                                                                                                                                |
+| Identity     | App sign-in (the Polaris Locker settings are a Settings tab)                                                                                                                                        |
+| Cloud Sync   | Data                                                                                                                                                                                                |
+| Commerce     | Overview and In-app purchases                                                                                                                                                                       |
 
 Package feeds is shown only when the product reports that capability. The **Matrix** path remains
 addressable and the `g m` shortcut resolves to it, but the sidebar and palette expose **Rollouts**
