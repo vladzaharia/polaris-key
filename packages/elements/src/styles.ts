@@ -385,6 +385,13 @@ const KIT_CSS = String.raw`
 .card[data-align="start"] .identity[data-size="medium"] {
   justify-items: start;
 }
+/* A pane starts at the host's start edge (DL2): its identity header too, over a start-aligned title. */
+.pane .identity[data-size="compact"] {
+  justify-content: start;
+}
+.pane .identity[data-size="medium"] {
+  justify-items: start;
+}
 .icon {
   inline-size: var(--pk-icon-size, 6rem);
   block-size: var(--pk-icon-size, 6rem);
@@ -1355,9 +1362,6 @@ dialog.sheet .card,
 }
 .row-value .field input[type="text"] {
   inline-size: 12rem;
-}
-.btn[data-key="common.signOut"] {
-  color: var(--pk-danger);
 }
 .sheet-close {
   position: absolute;

@@ -153,3 +153,21 @@ describe("the link control's colour", () => {
     expect(block).not.toContain("--pk-text-muted");
   });
 });
+
+describe("the pane's identity header", () => {
+  it("starts at the pane's start edge, over its start-aligned title", () => {
+    const css = stylesCss();
+    const block = /\.pane \.identity\[data-size="medium"\] \{([^}]*)\}/.exec(
+      css,
+    );
+    expect(block?.[1]).toContain("justify-items: start");
+    expect(css).toMatch(
+      /\.pane \.identity\[data-size="compact"\] \{[^}]*justify-content: start/,
+    );
+  });
+  it("leaves the Sign out link in the default text colour, never danger", () => {
+    expect(stylesCss()).not.toMatch(
+      /data-key="common\.signOut"\] \{[^}]*--pk-danger/,
+    );
+  });
+});
