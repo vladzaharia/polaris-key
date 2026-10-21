@@ -505,6 +505,16 @@ export async function axe(
   );
   // Evaluated over the DevTools protocol, which the page's CSP does not govern.
   if (!loaded) await page.evaluate(AXE_SOURCE);
+  // A scrolling dialog body joins the tab order once its overflow has held for two frames
+  // (Dialog.tsx, useOverflowsY): let that happen before the run reads it.
+  await page.evaluate(
+    () =>
+      new Promise((r) =>
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => requestAnimationFrame(r)),
+        ),
+      ),
+  );
   // The Library's "Missing a license?" strip is sticky: at the top of a long page it covers the
   // bottom of the first screen, and axe's target-size rule reads whatever sits under it as an
   // obscured or crowded target, though it scrolls away. So the run sees it where it rests, in the
