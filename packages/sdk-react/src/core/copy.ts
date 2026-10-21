@@ -184,6 +184,7 @@ const FR: CopyBundle = {
       "Nous ne pouvons pas vérifier l'état de votre compte pour le moment. Réessayez dans quelques minutes.",
     identity_disabled:
       "La connexion via cette application est désactivée. Vos installations et licences continuent de fonctionner.",
+    unknown_app: "La connexion n'est pas disponible pour cette application.",
     // I-08 (WIRE-CONTRACT-V4 §12.4, §12.5): the OAuth-shaped passthrough.
     invalid_request:
       "L'application a envoyé une demande de connexion illisible. Réessayez.",
