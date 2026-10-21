@@ -297,6 +297,73 @@ describe("types", () => {
   }, 120_000);
 });
 
+describe("a gate that cannot decide fails closed (B-125)", () => {
+  const run = async (client: PolarisKeyClient) => {
+    const t = terminal();
+    let code = 0;
+    let ran = 0;
+    await requireLicense(() => void (ran += 1), {
+      client,
+      io: t.io,
+      slug: "tidewater",
+      bin: "mytool",
+      setExitCode: (c) => (code = c),
+    })();
+    return { code, ran, err: plain(t.stderr.raw), out: t.stdout.raw };
+  };
+
+  it("a check that throws is a cross and exit 4, never a crash", async () => {
+    const r = await run(
+      stubClient({
+        status: () => {
+          throw new Error("boom");
+        },
+      }) as PolarisKeyClient,
+    );
+    expect([r.ran, r.code]).toEqual([0, EXIT.licenseRequired]);
+    expect(r.err).toContain("✗");
+    expect(r.err).toContain("Couldn't check your license");
+    expect(r.err).not.toContain("mytool");
+    expect(r.out).toBe("");
+  });
+
+  it("a status this kit does not know is never read as signed out", async () => {
+    const r = await run(
+      stubClient({
+        status: () => ({ status: "from-the-future" }),
+      }) as PolarisKeyClient,
+    );
+    expect([r.ran, r.code]).toEqual([0, EXIT.licenseRequired]);
+    expect(r.err).toContain("Couldn't check your license");
+    expect(r.err).not.toContain("Signed out");
+  });
+
+  it("a client that cannot be built refuses the command too", async () => {
+    const t = terminal();
+    const program = new Command("mytool");
+    program.exitOverride();
+    let code = 0;
+    registerPolarisCommands(
+      program,
+      async () => {
+        throw new Error("no config");
+      },
+      {
+        pinnedKeys: {},
+        productSlug: "tidewater",
+        version: "1.0.0",
+        io: t.io,
+        setExitCode: (c) => (code = c),
+      },
+    );
+    let ran = 0;
+    program.command("export").action(requireLicense(() => void (ran += 1)));
+    await program.parseAsync(["export"], { from: "user" });
+    expect([ran, code]).toEqual([0, EXIT.licenseRequired]);
+    expect(plain(t.stderr.raw)).toContain("Couldn't check your license");
+  });
+});
+
 describe("update apply's hand-off exit", () => {
   const release = { version: "2.5.0", seq: 7 };
   const exitFor = async (decision: unknown, driver?: null) => {

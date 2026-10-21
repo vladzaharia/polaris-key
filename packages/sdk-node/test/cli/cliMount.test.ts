@@ -46,12 +46,13 @@ interface MountExpect {
   hidden: string[];
 }
 interface GateExpect {
-  outcome: "run" | "flow" | "refuse";
+  outcome: "run" | "flow" | "refuse" | "fail";
   mark?: string;
   exit?: number;
   error?: string;
   copy?: string[];
   fix?: string[];
+  link?: "portal" | "contact";
   stream?: "stderr" | "stdout";
   result?: Record<string, unknown>;
 }
@@ -85,6 +86,9 @@ const MATRIX = JSON.parse(
         json: boolean;
         entitled: boolean;
         command: string;
+        mounted?: string[];
+        portal?: false;
+        check?: "throws" | "unknown-status";
       };
       expect: GateExpect;
     }[];
@@ -273,8 +277,11 @@ async function runGate(
   const stdin = new FakeStdin(input.tty);
   if (!input.tty) stdin.end();
   let current = input.status;
-  const client = stubClient({
-    status: () => ({ status: current }),
+  const stub = stubClient({
+    status: () => {
+      if (input.check === "throws") throw new Error("the check failed");
+      return { status: current };
+    },
     license: {
       isEntitled: () => input.entitled && USABLE.includes(current),
       // A key activates the license: the next status is ok.
@@ -284,12 +291,14 @@ async function runGate(
       },
     },
   });
+  // No product page: the client names no product, so the kit has nothing to link to.
+  const client = input.portal === false ? { ...stub, product: "" } : stub;
   const program = new Command("tidewater");
   program.exitOverride();
   let ran = 0;
   let exit: number | null = null;
   registerPolarisCommands(program, async () => client as PolarisKeyClient, {
-    ...mountOptions({}),
+    ...mountOptions(input.mounted ? { verbs: input.mounted } : {}),
     io: {
       stdout,
       stderr,
@@ -364,15 +373,38 @@ describe("ui-matrix.json cli: gate", () => {
         expect(r.stderr.raw).toBe("");
         return;
       }
-      // Text: once, on stderr, a triangle and never a cross; stdout stays empty.
+      // Text: once, on stderr; a triangle for a refusal and a cross for a check that failed;
+      // stdout stays empty.
       expect(r.stdout.raw).toBe("");
       const text = plain(r.stderr.raw);
-      expect(text).toContain(glyph.warn);
-      expect(text).not.toContain(glyph.fail);
-      for (const k of e.copy!)
-        expect(text).toContain(EN[k]!.split("\n")[0]!.slice(0, 20));
-      for (const v of e.fix!) expect(text).toContain(`tidewater ${v}`);
-      expect(text.split(EN[e.copy![1]!]!).length - 1).toBe(1);
+      const flat = text.replace(/[│└]/g, " ").replace(/\s+/g, " ");
+      const mark = e.outcome === "fail" ? glyph.fail : glyph.warn;
+      const other = e.outcome === "fail" ? glyph.warn : glyph.fail;
+      expect(text).toContain(mark);
+      expect(text).not.toContain(other);
+      const shown = e.copy!.map((k) =>
+        EN[k]!.replace("{command}", row.input.command),
+      );
+      for (const line of shown) expect(flat).toContain(line);
+      expect(flat.split(shown.at(-1)!).length - 1).toBe(1);
+      // A refusal is its title: the rows that fix it follow, so no message line.
+      if (e.outcome === "refuse") {
+        expect(e.copy).toHaveLength(1);
+        const status = e.copy![0]!.match(/^core\.gate\.(.+)\.title$/)?.[1];
+        if (status)
+          expect(flat).not.toContain(EN[`core.gate.${status}.message`]!);
+      }
+      // The link leads the fix rows: the product page, or the developer's name.
+      if (e.link === "portal")
+        expect(text).toContain("polaris.locker/activate?product=tidewater");
+      else if (e.link === "contact") expect(text).toContain("Contact ");
+      else {
+        expect(text).not.toContain("polaris.locker/activate");
+        expect(text).not.toContain("Contact ");
+      }
+      for (const v of ["activate", "login", "update apply", "status"])
+        if (e.fix!.includes(v)) expect(text).toContain(`tidewater ${v}`);
+        else expect(text).not.toContain(`tidewater ${v}`);
       // No escape off a terminal.
       if (!row.input.tty) expect(r.stderr.raw).not.toMatch(/\x1b/);
     });

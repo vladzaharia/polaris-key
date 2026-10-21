@@ -10,6 +10,7 @@ import {
   keyVerdict,
   KEY_SECRET_LENGTH,
   statusExit,
+  statusView,
 } from "../src/terminal.js";
 
 const KEY = "pkey_tidewater_Q2xvdWRzT3ZlclRoZUhpbG";
@@ -48,5 +49,19 @@ describe("the terminal's views", () => {
     expect(statusExit("ok")).toBe(0);
     expect(statusExit("grace")).toBe(0);
     expect(statusExit("revoked")).toBe(1);
+  });
+
+  it("send a version above the range and a missing channel to the product page, never back to status", () => {
+    for (const status of ["version-too-new", "channel-not-entitled"]) {
+      const v = statusView({ status, info: null, now: 0 });
+      expect(v).toMatchObject({
+        component: "StatusScreen",
+        fixes: [],
+        link: "portal",
+      });
+    }
+    const old = statusView({ status: "version-too-old", info: null, now: 0 });
+    expect(old).toMatchObject({ fixes: [{ verb: "update apply" }] });
+    expect(old).not.toHaveProperty("link");
   });
 });

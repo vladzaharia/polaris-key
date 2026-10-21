@@ -1,0 +1,75 @@
+#### truecolor-80-dark
+[31m✗[39m  [1mCouldn't check your license[22m
+[2m│[22m  Your license couldn't be checked, so the app can't start. Check your
+[2m└[22m  connection and try again.
+
+#### truecolor-80-light
+[31m✗[39m  [1mCouldn't check your license[22m
+[2m│[22m  Your license couldn't be checked, so the app can't start. Check your
+[2m└[22m  connection and try again.
+
+#### ansi16-80
+[31m✗[39m  [1mCouldn't check your license[22m
+[2m│[22m  Your license couldn't be checked, so the app can't start. Check your
+[2m└[22m  connection and try again.
+
+#### no-color-80
+✗  [1mCouldn't check your license[22m
+│  Your license couldn't be checked, so the app can't start. Check your
+└  connection and try again.
+
+#### ascii-80
+[31mx[39m  [1mCouldn't check your license[22m
+[2m|[22m  Your license couldn't be checked, so the app can't start. Check your
+[2m`[22m  connection and try again.
+
+#### truecolor-60-dark
+[31m✗[39m  [1mCouldn't check your license[22m
+[2m│[22m  Your license couldn't be checked, so the app can't start.
+[2m└[22m  Check your connection and try again.
+
+#### truecolor-60-light
+[31m✗[39m  [1mCouldn't check your license[22m
+[2m│[22m  Your license couldn't be checked, so the app can't start.
+[2m└[22m  Check your connection and try again.
+
+#### ansi16-60
+[31m✗[39m  [1mCouldn't check your license[22m
+[2m│[22m  Your license couldn't be checked, so the app can't start.
+[2m└[22m  Check your connection and try again.
+
+#### no-color-60
+✗  [1mCouldn't check your license[22m
+│  Your license couldn't be checked, so the app can't start.
+└  Check your connection and try again.
+
+#### ascii-60
+[31mx[39m  [1mCouldn't check your license[22m
+[2m|[22m  Your license couldn't be checked, so the app can't start.
+[2m`[22m  Check your connection and try again.
+
+#### truecolor-40-dark
+[31m✗[39m  [1mCouldn't check your license[22m
+[2m│[22m  Your license couldn't be checked, so
+[2m│[22m  the app can't start. Check your
+[2m└[22m  connection and try again.
+
+#### no-color-40
+✗  [1mCouldn't check your license[22m
+│  Your license couldn't be checked, so
+│  the app can't start. Check your
+└  connection and try again.
+
+#### truecolor-32-dark
+[31m✗[39m  [1mCouldn't check your license[22m
+[2m│[22m  Your license couldn't be
+[2m│[22m  checked, so the app can't
+[2m│[22m  start. Check your connection
+[2m└[22m  and try again.
+
+#### no-color-32
+✗  [1mCouldn't check your license[22m
+│  Your license couldn't be
+│  checked, so the app can't
+│  start. Check your connection
+└  and try again.
