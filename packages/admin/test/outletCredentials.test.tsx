@@ -65,7 +65,14 @@ describe("Distribution → Channel credentials", () => {
   it("says Sentry is one of the kinds (OUT-7)", async () => {
     bootWith(HASH);
     await table();
-    expect(screen.getByText(/the Sentry secret/)).toBeTruthy();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Set credential…" }),
+    );
+    const drawer = await screen.findByRole("dialog", {
+      name: "Set a channel credential",
+    });
+    await pick(drawer, /Kind/, /Sentry internal integration/);
+    expect(within(drawer).getByLabelText(/Client secret/i)).toBeTruthy();
   });
 
   it("re-pins a credential without its value (P5-02f)", async () => {
