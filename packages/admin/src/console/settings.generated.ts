@@ -933,7 +933,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "license",
     label: "Default device limit",
     description:
-      "How many devices a licence may activate when neither its tier nor the licence sets a limit.",
+      "How many devices a license may activate when neither its tier nor the license sets a limit.",
     keywords: ["seats", "devices", "activations"],
     docs: "/docs/features/licensing/access/",
     ownership: "claimable",
@@ -952,7 +952,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "license",
     label: "Default offline window",
     description:
-      "How many days a device may run without reaching the server when neither its tier nor the licence sets a window.",
+      "How many days a device may run without reaching the server when neither its tier nor the license sets a window.",
     keywords: ["grace", "offline", "graceUntil"],
     docs: "/docs/features/licensing/access/",
     ownership: "claimable",
@@ -990,7 +990,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "license",
     label: "Auto-issue",
     description:
-      "Mints a licence on first activation (anonymously, on sign-in, or both) instead of requiring a key. Turning it on gives the product away at the chosen tier.",
+      "Mints a license on first activation (anonymously, on sign-in, or both) instead of requiring a key. Turning it on gives the product away at the chosen tier.",
     keywords: ["free", "trial", "anonymous", "discover"],
     docs: "/docs/features/licensing/access/",
     ownership: "claimable",
@@ -1218,7 +1218,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "ship",
     label: "Compatibility window",
     description:
-      "The oldest and newest app versions a licence document admits. Builds outside it are refused at activation and refresh.",
+      "The oldest and newest app versions a license document admits. Builds outside it are refused at activation and refresh.",
     keywords: ["compatMin", "compatMax", "version window"],
     docs: "/docs/features/ship-builds/releases/compatibility/",
     ownership: "claimable",
@@ -1332,7 +1332,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "ship",
     label: "Manual channels",
     description:
-      "Named channels beyond stable and beta, each matching release tags by an anchored regular expression (a nightly or canary line). Licences grant them and SDKs request them like any other channel.",
+      "Named channels beyond stable and beta, each matching release tags by an anchored regular expression (a nightly or canary line). Licenses can include them and SDKs request them like any other channel.",
     keywords: ["nightly", "canary", "channels", "regex"],
     docs: "/docs/features/ship-builds/releases/github-sync/",
     ownership: "manifest",
@@ -1605,7 +1605,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "ship",
     label: "Transports",
     description:
-      "Which transport carries each deliverable on each outlet: a deliverable's own entry, else the packs entry for a pack, else the default (pkey-cdn when unset).",
+      "Which transport carries each deliverable on each channel: a deliverable's own entry, else the packs entry for a pack, else the default (pkey-cdn when unset).",
     keywords: ["pkey-cdn", "embedded", "play-pad", "apple-ba", "steam-depot"],
     docs: "/docs/features/ship-builds/channels/delivery/",
     ownership: "manifest",
@@ -1924,7 +1924,7 @@ export const NOT_A_SETTING_INDEX: readonly NotASettingEntry[] = [
   {
     thing: "Refund, void and chargeback handling",
     reason:
-      "Always revokes that one grant (S-19 decision 5). licensing.refundGraceHours can only delay the revocation, by at most 168 hours, never prevent it; a keep-access-after-refund switch would override a store's revocation.",
+      "Always revokes that one purchase (S-19 decision 5). licensing.refundGraceHours can only delay the revocation, by at most 168 hours, never prevent it; a keep-access-after-refund switch would override a store's revocation.",
     shows: "Distribution → Commerce",
   },
   {
@@ -1957,7 +1957,7 @@ export const NOT_A_SETTING_INDEX: readonly NotASettingEntry[] = [
     shows: "Docs",
   },
   {
-    thing: "Grants, entitlements, catalog flags and account overrides",
+    thing: "Add-ons, entitlements, catalog flags and account overrides",
     reason: "Customer data and customer configuration, not Polaris behaviour.",
     shows: "License → Licenses; Config → Catalog",
   },
@@ -2046,7 +2046,7 @@ export const NOT_A_SETTING_INDEX: readonly NotASettingEntry[] = [
     shows: "Platform → Connections",
   },
   {
-    thing: "Customer licence links",
+    thing: "Customer license links",
     reason:
       "Customer data: how a Polaris Locker account came to hold a license, not Polaris behaviour.",
     shows: "License → Licenses",
@@ -2058,21 +2058,21 @@ export const NOT_A_SETTING_INDEX: readonly NotASettingEntry[] = [
     shows: "Polaris Locker's Account → Profile, to that person only",
   },
   {
-    thing: "Grant and licence provenance (LX-08)",
+    thing: "Add-on and license provenance (LX-08)",
     reason:
-      "Records of where a grant or a sale-minted licence came from (a store purchase, a Polaris Key sale, an OIDC sign-in, an operator's comp): facts about a sale, not Polaris behaviour.",
+      "Records of where an add-on or a sale-minted license came from (a store purchase, a Polaris Key sale, an OIDC sign-in, an operator's comp): facts about a sale, not Polaris behaviour.",
     shows: "License → Licenses",
   },
   {
-    thing: "Outlet signing-key fingerprints",
+    thing: "Channel signing-key fingerprints",
     reason:
-      "Key-material records, registered by an operator or observed at an outlet; they describe keys, not behaviour.",
-    shows: "Distribution → Outlets & feeds",
+      "Key-material records, registered by an operator or observed at a channel; they describe keys, not behaviour.",
+    shows: "Distribution → Channel setup",
   },
   {
     thing: "The Cloud Sync data shape (.pkey/schema's cloudSync block)",
     reason:
-      "Catalog content, not behaviour: the collections (saves among them) and migrations a client needs are published with the catalog (S-18 Q5). A person's quota is the pkey.cloudSync.bytes entitlement, set on tiers, licences and add-ons; the operator's controls are the cloudSync.* settings.",
+      "Catalog content, not behaviour: the collections (saves among them) and migrations a client needs are published with the catalog (S-18 Q5). A person's quota is the pkey.cloudSync.bytes entitlement, set on tiers, licenses and add-ons; the operator's controls are the cloudSync.* settings.",
     shows: "Config → Catalog; pkey validate",
   },
   {

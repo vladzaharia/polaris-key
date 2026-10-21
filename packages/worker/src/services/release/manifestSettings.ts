@@ -189,7 +189,7 @@ export const RELEASE_MANIFEST_SETTINGS: readonly SettingDef[] = [
     area: "release.channels",
     label: "Manual channels",
     description:
-      "Named channels beyond stable and beta, each matching release tags by an anchored regular expression (a nightly or canary line). Licences grant them and SDKs request them like any other channel.",
+      "Named channels beyond stable and beta, each matching release tags by an anchored regular expression (a nightly or canary line). Licenses can include them and SDKs request them like any other channel.",
     keywords: ["nightly", "canary", "channels", "regex"],
     docs: BLOCK_DOCS,
     value: { kind: "json", schema: "manualChannels (release.schema.json)" },

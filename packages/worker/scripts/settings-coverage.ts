@@ -207,7 +207,7 @@ export const NOT_A_SETTING: readonly NotASetting[] = [
   {
     thing: "Refund, void and chargeback handling",
     reason:
-      "Always revokes that one grant (S-19 decision 5). licensing.refundGraceHours can only delay the revocation, by at most 168 hours, never prevent it; a keep-access-after-refund switch would override a store's revocation.",
+      "Always revokes that one purchase (S-19 decision 5). licensing.refundGraceHours can only delay the revocation, by at most 168 hours, never prevent it; a keep-access-after-refund switch would override a store's revocation.",
     shows: "Distribution → Commerce",
   },
   {
@@ -240,7 +240,7 @@ export const NOT_A_SETTING: readonly NotASetting[] = [
     shows: "Docs",
   },
   {
-    thing: "Grants, entitlements, catalog flags and account overrides",
+    thing: "Add-ons, entitlements, catalog flags and account overrides",
     reason: "Customer data and customer configuration, not Polaris behaviour.",
     shows: "License → Licenses; Config → Catalog",
   },
@@ -394,7 +394,7 @@ export const NOT_A_SETTING: readonly NotASetting[] = [
     covers: { ids: ["column:identity_connections.source"] },
   },
   {
-    thing: "Customer licence links",
+    thing: "Customer license links",
     reason:
       "Customer data: how a Polaris Locker account came to hold a license, not Polaris behaviour.",
     shows: "License → Licenses",
@@ -408,23 +408,23 @@ export const NOT_A_SETTING: readonly NotASetting[] = [
     covers: { ids: ["column:accounts.birthdate_source"] },
   },
   {
-    thing: "Grant and licence provenance (LX-08)",
+    thing: "Add-on and license provenance (LX-08)",
     reason:
-      "Records of where a grant or a sale-minted licence came from (a store purchase, a Polaris Key sale, an OIDC sign-in, an operator's comp): facts about a sale, not Polaris behaviour.",
+      "Records of where an add-on or a sale-minted license came from (a store purchase, a Polaris Key sale, an OIDC sign-in, an operator's comp): facts about a sale, not Polaris behaviour.",
     shows: "License → Licenses",
     covers: { ids: ["column:grants.source", "column:licenses.source"] },
   },
   {
-    thing: "Outlet signing-key fingerprints",
+    thing: "Channel signing-key fingerprints",
     reason:
-      "Key-material records, registered by an operator or observed at an outlet; they describe keys, not behaviour.",
-    shows: "Distribution → Outlets & feeds",
+      "Key-material records, registered by an operator or observed at a channel; they describe keys, not behaviour.",
+    shows: "Distribution → Channel setup",
     covers: { ids: ["column:dist_keys.source"] },
   },
   {
     thing: "The Cloud Sync data shape (.pkey/schema's cloudSync block)",
     reason:
-      "Catalog content, not behaviour: the collections (saves among them) and migrations a client needs are published with the catalog (S-18 Q5). A person's quota is the pkey.cloudSync.bytes entitlement, set on tiers, licences and add-ons; the operator's controls are the cloudSync.* settings.",
+      "Catalog content, not behaviour: the collections (saves among them) and migrations a client needs are published with the catalog (S-18 Q5). A person's quota is the pkey.cloudSync.bytes entitlement, set on tiers, licenses and add-ons; the operator's controls are the cloudSync.* settings.",
     shows: "Config → Catalog; pkey validate",
     covers: { ids: ["manifest:schema:cloudSync"] },
   },
