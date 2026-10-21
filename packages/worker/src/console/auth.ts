@@ -281,6 +281,14 @@ function adminOrigin(env: Env, url: URL): string {
   return url.origin;
 }
 
+/** When discovery last failed for an issuer, so card views pause outbound fetches. */
+const discoveryFailedAt = new Map<string, number>();
+const DISCOVERY_RETRY_MS = 45_000;
+/** Test hook: forget remembered discovery failures. */
+export function resetConsoleDiscoveryFailures(): void {
+  discoveryFailedAt.clear();
+}
+
 /** The card, served at `GET /manage/login` until Continue (`go=1`) starts the sign-in. */
 async function signinCard(
   req: Request,
@@ -298,10 +306,16 @@ async function signinCard(
   }
   // Configuration, never the request: the issuer's origin and the authorization endpoint's.
   const origins = [originOf(rp.issuer)];
-  try {
-    origins.push(originOf((await discover(rp)).authorizationEndpoint));
-  } catch {
-    // the 502 card shows on Continue
+  const nowMs = Date.now();
+  const failedAt = discoveryFailedAt.get(rp.issuer);
+  if (failedAt === undefined || nowMs - failedAt > DISCOVERY_RETRY_MS) {
+    try {
+      origins.push(originOf((await discover(rp)).authorizationEndpoint));
+      discoveryFailedAt.delete(rp.issuer);
+    } catch {
+      // the 502 card shows on Continue; do not dial again for every card view meanwhile
+      discoveryFailedAt.set(rp.issuer, nowMs);
+    }
   }
   const known =
     state === "stepUp"

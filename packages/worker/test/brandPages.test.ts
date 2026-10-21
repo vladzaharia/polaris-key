@@ -19,7 +19,11 @@ import {
   brandedHtmlSecurityHeaders,
   secureResponse,
 } from "../src/core/securityHeaders.js";
-import { handleAdminCallback, handleAdminLogin } from "../src/console/auth.js";
+import {
+  handleAdminCallback,
+  handleAdminLogin,
+  resetConsoleDiscoveryFailures,
+} from "../src/console/auth.js";
 import {
   handleMagicVerify,
   signInRefusal,
@@ -483,6 +487,31 @@ describe("the console sign-in card (GET /manage/login)", () => {
   it("the typed address survives an error and back", async () => {
     const html = await (await get("?login_hint=ada%40x.io")).text();
     expect(html).toContain('value="ada@x.io"');
+  });
+
+  it("a failed discovery is not dialled again for every card view", async () => {
+    resetConsoleDiscoveryFailures();
+    const real = globalThis.fetch;
+    let dials = 0;
+    globalThis.fetch = (async () => {
+      dials++;
+      throw new TypeError("fetch failed");
+    }) as typeof fetch;
+    try {
+      const e = env();
+      e.PLATFORM_OIDC_ISSUER = "https://down.example";
+      for (let i = 0; i < 5; i++) {
+        const res = await handleAdminLogin(
+          new Request(`${ORIGIN}/manage/login`) as unknown as Request,
+          e,
+        );
+        expect(res.status).toBe(200);
+      }
+      expect(dials).toBeLessThanOrEqual(1);
+    } finally {
+      globalThis.fetch = real;
+      resetConsoleDiscoveryFailures();
+    }
   });
 
   it("viewing the card is not counted against the sign-in limit", async () => {

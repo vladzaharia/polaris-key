@@ -6618,8 +6618,9 @@ and 12 (cross-tenant correlation) are the deltas.
 - **Relink (item 9).** The target is named only by a subject of THIS product (`target_not_found`
   otherwise; never an email, never another product's subject). The operator needs an interactive
   sign-in no older than 5 minutes (`session.stepUpAt`, set only by a `stepUp=1` flow whose ID token
-  carries `auth_time`, which an ordinary sign-in never sets; `isSteppedUp`); `/manage/login?stepUp=1` sends
-  `prompt=login` and `max_age=0`, and the callback refuses a step-up whose `auth_time` is already
+  carries `auth_time`, which an ordinary sign-in never sets; `isSteppedUp`); `/manage/login?stepUp=1` shows the
+  card first, and only its Continue (`go=1`) starts the flow, which sends `prompt=login` and `max_age=0`;
+  the callback refuses a step-up whose `auth_time` is already
   stale. A reason (1 to 500 characters) is mandatory. Both accounts are emailed at their verified
   addresses BEFORE the owner pointer moves; the move is a conditional reassign (a concurrent change
   answers `conflict` and nothing is recorded), it is audited with before and after, and the
@@ -6638,6 +6639,59 @@ and 12 (cross-tenant correlation) are the deltas.
   developer who already holds a buyer email can still find that buyer's row by it: the email is
   the developer's own record. The step-up window is enforced server-side; the console's own check
   only decides whether to offer the form or "Sign in again".
+
+### The console sign-in card (ST-30, slice 1)
+
+**Threat.** `GET /manage/login` used to redirect straight to the IdP. It now serves a card, so the
+page, its policy and the redirect it leads to are new surface: a sign-in that starts without a
+click, a card policy that lets a form post anywhere, a 401 that tells an unauthenticated caller
+about sessions, and an address typed into a URL.
+
+**Controls and rows.**
+
+- **The card starts no flow.** `GET /manage/login` answers 200 with a script-free page and sets no
+  cookie and writes no flow record. Only `go=1` (the Continue button) starts PKCE, sets the
+  binding cookie and counts against the `adminLogin` limit (20 a minute per network); viewing the
+  card is not counted, so a refresh cannot lock anyone out. `returnTo` is re-checked by
+  `sanitizeReturnTo` before it is written into the page or the flow.
+- **`form-action` names the IdP.** Browsers apply `form-action` to every redirect a submission
+  follows, so the card's policy is `form-action 'self'` plus the configured issuer's origin and the
+  authorization-endpoint origin from discovery, never an origin from the request. `discover()`
+  validates the endpoint before it is used: https only, no port, no credentials, no reserved or
+  private address, and a host on the issuer's allowlist. A failed discovery adds nothing; the
+  card then shows and Continue answers the 502 card. The origin set is cached with discovery and a
+  failed discovery is remembered briefly (45 s) for card views, so an IdP outage does not turn every
+  view into an outbound fetch.
+- **The expired-session marker.** The console API's 401 carries `X-PKey-Session: expired` only when
+  the request presented a console session cookie (and no bearer token) that does not resolve. A
+  forged, expired and revoked cookie look the same, a request with no cookie gets no header, and
+  the answer reveals nothing a caller without a cookie could not already see (it names no account
+  and no reason). Same-origin only: the API sends no CORS headers, so a page on another origin
+  cannot read it.
+- **`login_hint`.** The typed address is passed to the IdP as `login_hint` only when it is a single
+  plausible address of at most 254 characters; anything else is dropped. It is a hint: the IdP
+  decides who signs in and the callback decides who may use the console, so a wrong or hostile
+  hint changes nothing about access. It is not stored.
+- **Use another account.** The 403 card's action goes straight to the IdP with
+  `prompt=select_account`, or `prompt=login` when discovery does not list `select_account`. A
+  step-up keeps `prompt=login` and `max_age=0` and ignores this parameter.
+- **The 403 card names the account.** "{email} can't open this console" shows the address the IdP
+  just verified for this browser, to that browser only, on a `no-store` page with
+  `referrer-policy: no-referrer`; it adds nothing a person who just typed it does not know. The
+  email is HTML-escaped.
+- **The step-up email comes from the verified session.** The card shows and forwards an address
+  only from `sessionFromRequest` (signature, expiry and revocation checked), never from the query.
+  Without a valid session the step-up card shows the ordinary field.
+- **Residual: the address is in the GET URL.** The Continue form is a GET, so the typed address
+  appears in `/manage/login?go=1&login_hint=...` in the browser's history and in access logs on
+  the way. `referrer-policy: no-referrer` stops it leaving in a Referer header, and the 302 to the
+  IdP carries it as the IdP's own `login_hint`. SIGN-IN.md §3.13 prefers a POST with a 303; that is
+  slice 2.
+
+Tests: `test/brandPages.test.ts` (the card, its `form-action`, the error cards, no limit on
+views), `test/identityBinders.test.ts` (`login_hint`), `test/admin.test.ts` (the 401 marker),
+`packages/admin/e2e/consoleSignin.e2e.test.ts` (Continue reaches the IdP in Chromium under the real
+policy).
 
 ### Identity as a per-product service (PX-W17)
 
