@@ -2237,6 +2237,18 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_options_message">O licenciamento do app não está configurado corretamente. Contate o desenvolvedor.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_argument_title">Solicitação não aceita</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_argument_message">O app enviou uma solicitação que a ponte de licenciamento não conseguiu ler. Contate o desenvolvedor.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invoke_not_allowed_title">Solicitação não permitida</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invoke_not_allowed_message">O app pediu algo que sua ponte de licenciamento não oferece. Contate o desenvolvedor.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sender_refused_title">Janela não permitida</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sender_refused_message">Esta janela não pode usar o licenciamento do app. Contate o desenvolvedor.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_not_configured_title">App não configurado</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_not_configured_message">O licenciamento do app ainda não está configurado. Contate o desenvolvedor.</string>

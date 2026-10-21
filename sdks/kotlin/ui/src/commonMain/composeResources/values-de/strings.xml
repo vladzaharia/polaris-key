@@ -2224,6 +2224,18 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_options_message">Die Lizenzierung der App ist nicht korrekt eingerichtet. Wenden Sie sich an den Entwickler.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_argument_title">Anfrage nicht akzeptiert</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_argument_message">Die App hat eine Anfrage gesendet, die die Lizenz-Schnittstelle nicht lesen konnte. Wenden Sie sich an den Entwickler.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invoke_not_allowed_title">Anfrage nicht erlaubt</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invoke_not_allowed_message">Die App hat etwas angefordert, das ihre Lizenz-Schnittstelle nicht anbietet. Wenden Sie sich an den Entwickler.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sender_refused_title">Fenster nicht erlaubt</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sender_refused_message">Dieses Fenster darf die Lizenzierung der App nicht verwenden. Wenden Sie sich an den Entwickler.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_not_configured_title">App nicht eingerichtet</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_not_configured_message">Die Lizenzierung der App ist noch nicht eingerichtet. Wenden Sie sich an den Entwickler.</string>

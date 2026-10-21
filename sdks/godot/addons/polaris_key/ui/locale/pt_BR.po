@@ -5844,6 +5844,36 @@ msgstr "App não configurado"
 msgid "core.codes.invalid-options.message"
 msgstr "O licenciamento do app não está configurado corretamente. Contate o desenvolvedor."
 
+#. Request not accepted
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid-argument.title"
+msgstr "Solicitação não aceita"
+
+#. The app sent a request the licensing bridge could not read. Contact the developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid-argument.message"
+msgstr "O app enviou uma solicitação que a ponte de licenciamento não conseguiu ler. Contate o desenvolvedor."
+
+#. Request not allowed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invoke-not-allowed.title"
+msgstr "Solicitação não permitida"
+
+#. The app asked for something its licensing bridge does not offer. Contact the developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invoke-not-allowed.message"
+msgstr "O app pediu algo que sua ponte de licenciamento não oferece. Contate o desenvolvedor."
+
+#. Window not allowed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sender-refused.title"
+msgstr "Janela não permitida"
+
+#. This window may not use the app's licensing. Contact the developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sender-refused.message"
+msgstr "Esta janela não pode usar o licenciamento do app. Contate o desenvolvedor."
+
 #. App not set up
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.not-configured.title"
