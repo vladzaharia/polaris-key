@@ -1,3 +1,4 @@
+import { ROUTE_LEDGER } from "../src/console/routeLedger.js";
 import { describe, expect, it } from "vitest";
 import {
   ALL_PAGES,
@@ -24,7 +25,6 @@ import {
   type ServiceState,
 } from "../src/console/nav.js";
 import {
-  MOVED_TABS,
   codecs,
   hrefFor,
   movedHref,
@@ -253,14 +253,14 @@ describe("section roots redirect to the section's first page", () => {
       const route = parsed.route;
       if (route.kind !== "not-found") throw new Error(`${old}: ${route.kind}`);
       expect(route.moved, old).toBeDefined();
-      expect(movedHref(route.slug!, route.moved!, route.query), old).toBe(now);
+      expect(movedHref(route.slug, route.moved!, route.query), old).toBe(now);
       // The new address is a page, not another not-found.
       expect(parseLocation(now).route.kind, now).toBe("product");
     }
-    // Every old tab in the map is a page that exists, and it is not a path a page owns today.
-    for (const [tab, page] of MOVED_TABS) {
-      expect(pageOf(page).page).toBe(page);
-      expect(parseLocation(`#/p/djdl/${tab}`).route.kind, tab).toBe(
+    // Every old tab in the ledger is a page that exists, and it is not a path a page owns today.
+    for (const row of ROUTE_LEDGER.filter((r) => r.id.startsWith("tab:"))) {
+      expect(pageOf(row.to!).page).toBe(row.to);
+      expect(parseLocation(`#/p/djdl/${row.from}`).route.kind, row.id).toBe(
         "not-found",
       );
     }
@@ -274,7 +274,7 @@ describe("section roots redirect to the section's first page", () => {
       const { route } = parseLocation(old);
       expect(route.kind, old).toBe("not-found");
       if (route.kind !== "not-found") continue;
-      expect(movedHref(route.slug!, route.moved!, route.query), old).toBe(
+      expect(movedHref(route.slug, route.moved!, route.query), old).toBe(
         "#/p/djdl/identity/app-sign-in",
       );
     }

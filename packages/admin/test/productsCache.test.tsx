@@ -120,7 +120,7 @@ describe("qk.products() holds one shape for the Products page and the switcher",
     // The page that filled the cache still reads it.
     expect(within(standalone.container).getByText("djdl")).toBeTruthy();
 
-    await go("#/products");
+    await go("#/");
     await expectProductsPageRow();
     expectNoReactError();
   });
@@ -132,7 +132,7 @@ describe("qk.products() holds one shape for the Products page and the switcher",
       true,
     );
 
-    await go("#/products");
+    await go("#/");
     await expectProductsPageRow();
 
     // And back on a product page the switcher still lists it from the shared entry. Wait for the

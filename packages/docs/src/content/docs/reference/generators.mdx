@@ -218,6 +218,17 @@ Omniplatform program INDEX.md from workpackages.json.
 - Reads: `docs/research/2026-09-29-godot-omniplatform/program/workpackages.json`, `docs/research/2026-09-29-godot-omniplatform/program/check.mjs`, `docs/research/2026-09-29-godot-omniplatform/program/wp/*.md`.
 - Writes: `docs/research/2026-09-29-godot-omniplatform/program/INDEX.md`.
 
+### route-ledger
+
+Console route ledger table in docs/design/ADMIN.md §2.8.
+
+- Run: default.
+- Regenerate: `pnpm gen route-ledger`.
+- Check: `pnpm gen route-ledger --check`.
+- Underlying: `pnpm exec tsx tools/gen-route-ledger.ts`.
+- Reads: `tools/gen-route-ledger.ts`, `packages/admin/src/console/routeLedger.ts`, `packages/admin/src/console/nav.ts`.
+- Writes: `docs/design/ADMIN.md`.
+
 ### integration
 
 Integration content goldens: every renderUsage block, per SDK, lane and feature.

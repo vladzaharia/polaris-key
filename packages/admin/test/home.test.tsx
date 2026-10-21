@@ -19,7 +19,7 @@ import {
   productRow,
   resetConsole,
 } from "./consoleHarness.js";
-import { parseLocation } from "../src/console/routes.js";
+import { movedHref, parseLocation } from "../src/console/routes.js";
 
 /**
  * Home (ADMIN.md §6.1, ST-44): Needs attention from one server read, Platform ready for a
@@ -726,14 +726,18 @@ describe("Home", () => {
     expect(within(table).getByText("Acme")).toBeTruthy();
   });
 
-  it("the Products address lands on Home, filters kept; the retired Setup facet is Attention", () => {
-    expect(parseLocation("#/products?q=dj").redirect).toBe("#/?q=dj");
-    expect(parseLocation("#/products?setup=attention").redirect).toBe(
-      "#/?attention=yes",
-    );
-    expect(parseLocation("#/products?setup=complete").redirect).toBe(
-      "#/?attention=no",
-    );
+  it("the Products address is a removed page: Page moved names Home and carries the filters; the retired Setup facet is Attention", () => {
+    for (const [old, now] of [
+      ["#/products?q=dj", "#/?q=dj"],
+      ["#/products?setup=attention", "#/?attention=yes"],
+      ["#/products?setup=complete", "#/?attention=no"],
+    ] as const) {
+      const parsed = parseLocation(old);
+      expect(parsed.redirect, old).toBeUndefined();
+      const route = parsed.route;
+      if (route.kind !== "not-found" || !route.moved) throw new Error(old);
+      expect(movedHref(undefined, route.moved, route.query), old).toBe(now);
+    }
   });
 
   it("first run: opens the wizard with the source chosen (DSH-6)", async () => {

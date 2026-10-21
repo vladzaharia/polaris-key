@@ -67,6 +67,7 @@ Generator families that read or write files here (a family regenerates with `pnp
 | `readme-work`    | writes           | `pnpm gen readme-work`                     |
 | `ux-rows`        | reads            | `pnpm gen ux-rows`                         |
 | `graph-index`    | reads and writes | `pnpm gen graph-index`                     |
+| `route-ledger`   | writes           | `pnpm gen route-ledger`                    |
 | `design-mockups` | reads and writes | `pnpm gen design-mockups` (named run only) |
 | `ux-coverage`    | reads and writes | `pnpm gen ux-coverage` (named run only)    |
 

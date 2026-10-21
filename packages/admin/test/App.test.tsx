@@ -85,15 +85,21 @@ describe("admin SPA", () => {
     ).toBeTruthy();
   });
 
-  it("opens Home, with the products on it, from the retired Products address", async () => {
+  it("the retired Products address opens Page moved, naming Home, with no redirect", async () => {
     boot("#/products");
     expect(
-      await screen.findByRole("heading", { level: 1, name: "Home" }),
+      await screen.findByRole("heading", { level: 1, name: "Page moved" }),
     ).toBeTruthy();
     expect(
-      await screen.findByRole("heading", { level: 2, name: "Products" }),
+      screen.getByRole("heading", {
+        level: 2,
+        name: "This page moved to Home",
+      }),
     ).toBeTruthy();
-    await waitFor(() => expect(window.location.hash).toBe("#/"));
+    expect(window.location.hash).toBe("#/products");
+    expect(
+      screen.getByRole("link", { name: "Go to Home" }).getAttribute("href"),
+    ).toBe("#/");
   });
 
   it("refreshes the session after a product is created, so the switcher sees it (SH-1, CC-1)", async () => {

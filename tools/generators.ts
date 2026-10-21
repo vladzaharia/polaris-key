@@ -375,6 +375,18 @@ export const GENERATORS: Generator[] = [
     write: [tsx("tools/ux-rows-check.ts")],
   },
   {
+    id: "route-ledger",
+    title: "Console route ledger table in docs/design/ADMIN.md §2.8",
+    order: 135,
+    inputs: [
+      "tools/gen-route-ledger.ts",
+      "packages/admin/src/console/routeLedger.ts",
+      "packages/admin/src/console/nav.ts",
+    ],
+    outputs: ["docs/design/ADMIN.md"],
+    write: [tsx("tools/gen-route-ledger.ts")],
+  },
+  {
     id: "graph-index",
     title: "Omniplatform program INDEX.md from workpackages.json",
     order: 130,

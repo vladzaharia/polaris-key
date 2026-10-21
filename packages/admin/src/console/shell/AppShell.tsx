@@ -643,7 +643,7 @@ function PageContent({
     if (route.slug && !me.products.some((p) => p.slug === route.slug)) {
       return <UnknownProductPage slug={route.slug} products={me.products} />;
     }
-    if (route.slug && route.moved) {
+    if (route.moved) {
       return (
         <MovedPage
           path={route.path}

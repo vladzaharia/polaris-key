@@ -78,10 +78,18 @@ apply says why in one line. One home: EXPERIENCE.md ยง7.3; kits also follow DL1โ
       D-pad focus, TV and title-safe insets, terminal keys with NO_COLOR, ascii and --json paths.
 - [ ] pkey-ux-reviewer passes the built screens (BUILT mode).
 
+## Correction (code is the fact)
+
+- The '47-row inventory' is not in the repo. The ledger inventory is the 52 page ids of `nav.ts` at
+  v0.9.9 plus 15 pre-0.9 product tabs (`tab:*`), tested in `test/routeLedger.test.ts`.
+- `platform-override-migration` is still in `nav.ts` (U-27 is todo): its row is `deleted (U-27)` and stays
+  live until U-27 removes the page, then its address reads 'deleted'.
+- ST-44's `#/products` redirect and P0-31's `MOVED_TABS` are folded into the ledger; no 0.9 address redirects.
+
 ## Acceptance criteria
 
-- [ ] Every 0.9 URL in the 47-row inventory resolves to live content or a Page moved page.
-- [ ] The drift check is part of the green gate.
+- [x] Every 0.9 URL in the ledger inventory resolves to live content or a Page moved page.
+- [x] The drift check is part of the green gate (`pnpm gen route-ledger`, registry entry).
 - [ ] The lead may fold this package into ST-45.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
