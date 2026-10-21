@@ -60,7 +60,7 @@ export function renderConsoleSignin(opts: {
   const c = COPY[opts.state];
   const body = [
     c.lede ? `<p>${escapeHtml(c.lede)}</p>` : "",
-    `<form method="post" action="/manage/login">`,
+    `<form method="post" action="/manage/login" novalidate>`,
     hidden("returnTo", opts.returnTo),
     opts.state === "stepUp" ? hidden("stepUp", "1") : "",
     opts.knownEmail
