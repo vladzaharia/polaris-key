@@ -1,6 +1,6 @@
 # @polaris-key/worker
 
-The one Cloudflare Worker behind `key.plrs.im`: the licensing, config, release, distribution, update and identity APIs, the operator console API, and the host for the admin SPA and the gated docs site.
+The one Cloudflare Worker behind `key.plrs.im`: the licensing, config, release, distribution, update, identity, sync and commerce APIs, the operator console API, and the host for the admin SPA and the gated docs site.
 
 ## Where it sits
 
@@ -24,7 +24,7 @@ src/
                       assets/ registry/ ops/ settings/ rbac/ console/, hooks.ts for service reads
     adminCsp.ts       hashes of the admin SPA's inline scripts (hand-maintained)
   services/<slug>/    one opt-in service each: license config release distribution update
-                      identity sync; public.ts is what the console may import
+                      identity sync commerce; public.ts is what the console may import
   console/            operator console API under /manage/api
   docs.ts             tier gate and serving for /docs
   docsCsp.generated.ts  docs-site CSP hashes (written by the docs build)

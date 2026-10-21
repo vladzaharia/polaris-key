@@ -52,4 +52,4 @@ Generator families that read or write files here (a family regenerates with `pnp
 
 - [Registering a product](../packages/docs/src/content/docs/build/manifest/register.md): the `.pkey/` shape and how a product reaches the registry (absorbed the former `products/README.md`)
 - [Product manifest](../packages/docs/src/content/docs/build/manifest/product.md)
-- [Catalog entries](../packages/docs/src/content/docs/build/manifest/product.md#the-catalog-configentry)
+- [Catalog entries](../packages/docs/src/content/docs/build/manifest/catalog.md#entries)

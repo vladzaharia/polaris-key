@@ -707,7 +707,7 @@ jobs:
   # only until it holds: measured 2026-10-11 with Xcode 27, removing packs, zstd and the static
   # Rubik still leaves this tree 13% LARGER (3.47 MB vs 3.07 MB .ipa), because the UK-07 kit
   # (PolarisKeyUI + PolarisKeyUICore, +2.1 MB of code and resources) outweighs the 1.4 MB
-  # removed. Drop `continue-on-error` when the kit's own footprint package lands. It is its own job
+  # removed. Drop `continue-on-error` when SP-52's size target is met. It is its own job
   # because it takes 9 minutes of Release builds and gates nothing.
   apple-footprint:
     name: iOS app footprint (macos-26, report only)
