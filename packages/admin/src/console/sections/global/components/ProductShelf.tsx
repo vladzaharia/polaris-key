@@ -98,7 +98,7 @@ function FilterChip({
       onClick={onToggle}
       className={cn(
         "inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-sm text-fg-strong pointer-coarse:min-h-11",
-        "hover:bg-hover focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page",
+        "hover:bg-hover focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2",
         on
           ? "border-fg-strong bg-hover font-medium"
           : "border-border-strong bg-transparent",
@@ -136,7 +136,7 @@ function SearchField({
       <span className="sr-only">Filter products</span>
       <Search
         aria-hidden
-        className="pointer-events-none absolute left-2.5 size-4 text-fg-subtle"
+        className="pointer-events-none absolute start-2.5 size-4 text-fg-subtle"
       />
       <input
         type="search"
@@ -151,7 +151,7 @@ function SearchField({
             latest.current(v);
           }, SEARCH_DEBOUNCE_MS);
         }}
-        className="h-8 w-full rounded-md border border-border-strong bg-surface-sunken pl-8 pr-2 text-sm text-fg pointer-coarse:h-11"
+        className="h-8 w-full rounded-md border border-border-strong bg-surface-sunken ps-8 pe-2 text-sm text-fg pointer-coarse:h-11"
       />
     </label>
   );

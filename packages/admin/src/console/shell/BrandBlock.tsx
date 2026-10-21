@@ -33,7 +33,7 @@ export function BrandBlock({
       data-service={section}
       className={cn(
         "flex shrink-0 items-center rounded-md text-fg-strong",
-        "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-raised",
+        "focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2",
         className,
       )}
     >

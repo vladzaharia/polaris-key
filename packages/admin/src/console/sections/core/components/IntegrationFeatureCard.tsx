@@ -82,7 +82,7 @@ export function VerifiedOn({
           </span>
           {row.seen[0]?.lastOkAt ? (
             <Timestamp
-              className="ml-auto text-fg-muted"
+              className="ms-auto text-fg-muted"
               at={fromSeconds(row.seen[0].lastOkAt)}
               format="relative"
               now={fromSeconds(now)}
@@ -149,7 +149,7 @@ export function FeatureCard({
         <h2
           id={headingId}
           tabIndex={-1}
-          className="text-base font-semibold text-fg-strong focus-visible:outline-hidden"
+          className="text-base font-semibold text-fg-strong"
         >
           {label}
         </h2>

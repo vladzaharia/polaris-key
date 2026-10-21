@@ -591,7 +591,7 @@ function BuildFacts({ build }: { build: AscBuildDto }): React.ReactElement {
           icon={build.processingState === "PROCESSING" ? false : undefined}
         >
           {build.processingState === "PROCESSING" ? (
-            <Spinner className="mr-1 size-3" label="Processing" />
+            <Spinner className="me-1 size-3" label="Processing" />
           ) : null}
           {appleWords(build.processingState)}
         </StatusPill>

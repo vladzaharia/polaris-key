@@ -371,7 +371,7 @@ export function ProductNew(): React.ReactElement {
   const name = draft.name.trim();
   // A long name wraps inside the button; it never pushes the button off a narrow screen.
   const wrap =
-    "h-auto min-h-9 max-w-full whitespace-normal break-words py-2 text-left";
+    "h-auto min-h-9 max-w-full whitespace-normal break-words py-2 text-start";
   const open = (slugToOpen: string) => (
     <Button asChild className={wrap}>
       <Link to={r.overview(slugToOpen)} onClick={leave}>

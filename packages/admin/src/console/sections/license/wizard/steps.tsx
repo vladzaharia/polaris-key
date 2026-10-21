@@ -420,7 +420,7 @@ export function LimitsStep({
           aria-expanded={moreOpen || moreErrors}
           aria-controls="new-license-more"
           onClick={() => onMoreOpen(!moreOpen)}
-          className="inline-flex min-h-8 items-center gap-1 rounded-md text-sm font-medium text-fg-strong hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+          className="inline-flex min-h-8 items-center gap-1 rounded-md text-sm font-medium text-fg-strong hover:underline focus-visible:outline-2 focus-visible:outline-focus"
         >
           <ChevronRight
             aria-hidden

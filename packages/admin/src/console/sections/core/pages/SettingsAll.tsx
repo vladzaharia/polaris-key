@@ -259,7 +259,7 @@ export function SettingsAllPage({
           <ScrollTable
             label="All settings"
             caption="Every setting of this product"
-            className="w-full min-w-[40rem] text-left text-sm"
+            className="w-full min-w-[40rem] text-start text-sm"
           >
             <thead className="text-xs text-fg-muted">
               <tr>
@@ -286,7 +286,7 @@ export function SettingsAllPage({
                     key={e.key}
                     id={`all-setting-${e.key}`}
                     tabIndex={-1}
-                    className="scroll-mt-24 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
+                    className="scroll-mt-24 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
                   >
                     <th scope="row" className="px-5 py-3 font-normal">
                       <span className="block font-medium text-fg-strong">

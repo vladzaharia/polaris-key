@@ -399,7 +399,7 @@ function CellDrawer({
                 <h3 className="text-sm font-semibold text-fg-strong">
                   Unsatisfied requirements
                 </h3>
-                <ul className="list-disc space-y-1 pl-5 text-sm">
+                <ul className="list-disc space-y-1 ps-5 text-sm">
                   {unsatisfied.map((u, i) => (
                     <li key={i}>
                       {platformLabel(u.platform)}
@@ -715,7 +715,7 @@ export function CompatibilityPage({
             aria-label="Compatibility pages"
             className="flex flex-wrap items-center justify-end gap-2 text-sm text-fg-muted"
           >
-            <span aria-live="polite" className="mr-auto">
+            <span aria-live="polite" className="me-auto">
               Live app releases, then {data.offset + 1}–
               {data.offset + data.limit} of each channel ({appTotal} in all)
             </span>

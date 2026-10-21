@@ -438,8 +438,8 @@ function Editor({
                                 setSelectedKey(entry.key);
                               }}
                               className={cn(
-                                "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left font-mono text-xs",
-                                "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus",
+                                "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-start font-mono text-xs",
+                                "focus-visible:outline-2 focus-visible:outline-focus",
                                 current
                                   ? "bg-accent-subtle text-fg-strong"
                                   : "text-fg hover:bg-hover",
@@ -839,7 +839,7 @@ function ReviewDrawer({
                   <p className="font-semibold text-danger">{copy.title}</p>
                   <p className="text-fg">{copy.description}</p>
                   {copy.fieldErrors?.length ? (
-                    <ul className="mt-1 list-disc pl-5 font-mono text-xs">
+                    <ul className="mt-1 list-disc ps-5 font-mono text-xs">
                       {copy.fieldErrors.map((f) => (
                         <li key={f}>{f}</li>
                       ))}

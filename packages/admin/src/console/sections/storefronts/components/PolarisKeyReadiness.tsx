@@ -71,7 +71,7 @@ export function ReadinessList({
               <p className="text-sm text-fg-muted">{c.reason}</p>
             </div>
           </div>
-          <div className="ml-auto shrink-0">{fix(c)}</div>
+          <div className="ms-auto shrink-0">{fix(c)}</div>
         </li>
       ))}
     </ul>

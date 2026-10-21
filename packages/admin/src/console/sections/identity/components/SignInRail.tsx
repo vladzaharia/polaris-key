@@ -40,7 +40,7 @@ export function SignInRail({
         "inline-flex items-center gap-1.5 text-sm hover:text-fg-strong",
         pill
           ? "shrink-0 rounded-full border border-border px-3 py-1"
-          : "-ml-px border-l-2 py-0.5 pl-3",
+          : "-ms-px border-s-2 py-0.5 ps-3",
         s.id === active
           ? "border-border-strong font-medium text-fg-strong"
           : "border-transparent text-fg-muted",
@@ -72,7 +72,7 @@ export function SignInRail({
         className={cn("hidden xl:block", className)}
       >
         <p className="mb-2 text-xs font-medium text-fg-muted">On this page</p>
-        <ul className="space-y-1 border-l border-border">
+        <ul className="space-y-1 border-s border-border">
           {sections.map((s) => (
             <li key={s.id}>{link(s, false)}</li>
           ))}

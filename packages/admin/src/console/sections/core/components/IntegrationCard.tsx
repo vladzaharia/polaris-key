@@ -75,7 +75,7 @@ export function IntegrationCard({
           id="overview-integration"
           ref={heading}
           tabIndex={-1}
-          className="text-base font-semibold text-fg-strong focus-visible:outline-hidden"
+          className="text-base font-semibold text-fg-strong"
         >
           Integration
         </h2>
@@ -110,7 +110,7 @@ function Body({
             <p className="text-base text-fg-strong">{next.reason}</p>
             <Button
               asChild
-              className="h-auto min-h-9 max-w-full whitespace-normal py-1.5 text-left"
+              className="h-auto min-h-9 max-w-full whitespace-normal py-1.5 text-start"
             >
               <Link to={next.to}>
                 {next.text}
@@ -136,7 +136,7 @@ function Body({
           ))}
         </ul>
       </div>
-      <div className="space-y-4 border-t border-border p-4 sm:p-5 lg:border-l lg:border-t-0">
+      <div className="space-y-4 border-t border-border p-4 sm:p-5 lg:border-s lg:border-t-0">
         <p className="text-sm text-fg">
           <span className="text-2xl font-semibold text-fg-strong">
             {verified}

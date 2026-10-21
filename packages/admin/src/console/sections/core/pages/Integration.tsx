@@ -364,7 +364,7 @@ export function IntegrationPage({
                   <h2
                     id="integration-server"
                     tabIndex={-1}
-                    className="text-base font-semibold text-fg-strong focus-visible:outline-hidden"
+                    className="text-base font-semibold text-fg-strong"
                   >
                     Your server
                   </h2>

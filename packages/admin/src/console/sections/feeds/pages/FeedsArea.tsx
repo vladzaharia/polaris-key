@@ -163,7 +163,7 @@ export function FeedNav({
           className={cn(
             "relative inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-t-md px-2.5 text-sm",
             "after:absolute after:inset-x-1.5 after:bottom-0 after:h-0.5 after:rounded-full",
-            "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus",
+            "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus",
             active
               ? "bg-accent-subtle font-medium text-fg-strong after:bg-accent"
               : "text-fg-muted after:bg-transparent hover:bg-hover hover:text-fg-strong",

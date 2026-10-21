@@ -22,7 +22,7 @@ export function UserIds({
           <span
             role="group"
             aria-label="Support code"
-            className="inline-flex max-w-full items-center gap-1 rounded-sm bg-surface-sunken pl-1.5 font-mono text-xs text-fg"
+            className="inline-flex max-w-full items-center gap-1 rounded-sm bg-surface-sunken ps-1.5 font-mono text-xs text-fg"
           >
             <span>{user.supportCode}</span>
             <CopyButton

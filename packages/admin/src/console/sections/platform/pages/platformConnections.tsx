@@ -182,7 +182,7 @@ export function ConnectionsPage(): React.ReactElement {
                   <span>Connection</span>
                   <span>Domains</span>
                   <span>Routing</span>
-                  <span className="text-right">Status</span>
+                  <span className="text-end">Status</span>
                 </li>
                 {d.connections.map((c) => {
                   const s = connectionStatus(c);
@@ -288,7 +288,7 @@ export function ConnectionsPage(): React.ReactElement {
                         <summary className="inline-flex min-h-6 cursor-pointer items-center text-accent-fg">
                           Set up {b.label}
                         </summary>
-                        <ol className="mt-2 list-decimal space-y-1 pl-5">
+                        <ol className="mt-2 list-decimal space-y-1 ps-5">
                           {SETUP[b.kind].steps.map((s) => (
                             <li key={s} className="break-words">
                               {s}

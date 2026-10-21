@@ -794,7 +794,7 @@ function HaltEverywhereConfirm({
                     </span>
                   </span>
                 </span>
-                <span className="shrink-0 text-right tabular-nums">
+                <span className="shrink-0 text-end tabular-nums">
                   {rowShare(r)}
                 </span>
               </li>
@@ -815,7 +815,7 @@ function HaltEverywhereConfirm({
                   )}
                   <span className="min-w-0 break-words">{where(row)}</span>
                 </span>
-                <span className="max-w-[50%] text-right">{blocker}</span>
+                <span className="max-w-[50%] text-end">{blocker}</span>
               </li>
             );
           return (
@@ -835,7 +835,7 @@ function HaltEverywhereConfirm({
                 }
                 label={where(row)}
               />
-              <span className="shrink-0 text-right tabular-nums text-fg-muted">
+              <span className="shrink-0 text-end tabular-nums text-fg-muted">
                 {rowShare(r)}
               </span>
             </li>

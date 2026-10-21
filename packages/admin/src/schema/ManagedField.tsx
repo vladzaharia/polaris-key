@@ -212,7 +212,7 @@ export function ManagedField({
         )}
         <div className="flex flex-col items-end gap-0.5 text-xs text-fg-muted">
           {inherited && overrideIgnored ? (
-            <span className="text-right font-medium text-warning">
+            <span className="text-end font-medium text-warning">
               {capitalize(inherited.source)} enforces{" "}
               {formatValue(inherited.value)}; this value is ignored. Choose
               Read-only to override it.

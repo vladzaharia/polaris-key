@@ -130,12 +130,12 @@ export function ImportPanel({ slug }: { slug: string }): React.ReactElement {
             <div className="overflow-x-auto rounded-md border border-border">
               <table className="w-full text-sm">
                 <caption className="sr-only">Import changes</caption>
-                <thead className="bg-surface-sunken text-left text-xs text-fg-muted">
+                <thead className="bg-surface-sunken text-start text-xs text-fg-muted">
                   <tr>
                     <th className="px-3 py-2 font-medium">Field</th>
                     <th className="px-3 py-2 font-medium">Now</th>
                     <th className="px-3 py-2 font-medium">Imported</th>
-                    <th className="px-3 py-2 text-right font-medium">From</th>
+                    <th className="px-3 py-2 text-end font-medium">From</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -156,7 +156,7 @@ export function ImportPanel({ slug }: { slug: string }): React.ReactElement {
                       <td className="max-w-xs whitespace-pre-wrap break-words px-3 py-2 text-fg">
                         {show(c.proposed)}
                       </td>
-                      <td className="px-3 py-2 text-right text-xs text-fg-muted">
+                      <td className="px-3 py-2 text-end text-xs text-fg-muted">
                         {c.proposedSource}
                       </td>
                     </tr>

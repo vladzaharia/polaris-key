@@ -183,8 +183,8 @@ function PersonRow({
       </span>
       {/* On a phone the address goes on its own line under the name, so the name never wraps
           around it; from 640 px it ends the row. */}
-      <span className="flex min-w-0 max-w-full basis-full pl-12 sm:basis-auto sm:pl-0">
-        <span className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-sm bg-surface-sunken pl-2 font-mono text-xs text-fg">
+      <span className="flex min-w-0 max-w-full basis-full ps-12 sm:basis-auto sm:ps-0">
+        <span className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-sm bg-surface-sunken ps-2 font-mono text-xs text-fg">
           <span className="min-w-0 break-all">{person.email}</span>
           <CopyButton
             value={person.email}
@@ -279,7 +279,7 @@ function YouCanOpen({
             asChild
             variant={i === 0 ? "primary" : "outline"}
             className={cn(
-              "h-auto w-full justify-start whitespace-normal py-2 text-left",
+              "h-auto w-full justify-start whitespace-normal py-2 text-start",
               i === 0 && INK,
             )}
             data-service={AREA_ACCENTS[d.area]}
@@ -289,7 +289,7 @@ function YouCanOpen({
         ))}
         <a
           href="/"
-          className="inline-flex min-h-6 items-center gap-1 self-start rounded-xs text-sm text-accent-fg underline-offset-4 hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+          className="inline-flex min-h-6 items-center gap-1 self-start rounded-xs text-sm text-accent-fg underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-focus"
         >
           Open your library
           <ArrowRight aria-hidden className="size-4" />
@@ -304,7 +304,7 @@ function LibraryTile(): React.ReactElement {
   return (
     <a
       href="/"
-      className="group flex flex-col gap-3 rounded-lg border border-border bg-surface-raised p-5 shadow-elevation-1 transition-colors hover:border-border-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+      className="group flex flex-col gap-3 rounded-lg border border-border bg-surface-raised p-5 shadow-elevation-1 transition-colors hover:border-border-strong focus-visible:outline-2 focus-visible:outline-focus"
     >
       <span className="flex size-9 items-center justify-center rounded-md bg-surface-sunken">
         <LayoutGrid aria-hidden className="size-4" />

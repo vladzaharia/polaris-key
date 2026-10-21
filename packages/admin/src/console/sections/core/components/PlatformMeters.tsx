@@ -23,7 +23,7 @@ export function PlatformMeters({
         <li key={p.platform} className="space-y-1">
           <p className="flex flex-wrap items-baseline justify-between gap-x-2 text-sm">
             <span className="font-medium text-fg-strong">{p.label}</span>
-            <span className="ml-auto whitespace-nowrap text-right text-fg-muted">
+            <span className="ms-auto whitespace-nowrap text-end text-fg-muted">
               {p.verified} of {p.total} verified
             </span>
           </p>

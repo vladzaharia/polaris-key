@@ -97,7 +97,7 @@ const stripClass = (edges: string) =>
 const tabClass = (active: boolean) =>
   cn(
     "relative inline-flex h-10 items-center gap-1.5 whitespace-nowrap rounded-t-md border-b-[3px] px-1.5 text-sm",
-    "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus",
+    "focus-visible:outline-2 focus-visible:outline-focus",
     active
       ? "border-transparent font-medium text-fg-strong"
       : "border-transparent text-fg-muted hover:border-border-strong hover:bg-state-hover-tint hover:text-fg-strong",
@@ -304,10 +304,7 @@ export function TabPanel({
       aria-labelledby={`${idPrefix}-${value}`}
       hidden={!active}
       tabIndex={0}
-      className={cn(
-        "pk-vt-tabpanel pt-4 focus-visible:outline-hidden",
-        className,
-      )}
+      className={cn("pk-vt-tabpanel pt-4", className)}
     >
       {children}
     </div>

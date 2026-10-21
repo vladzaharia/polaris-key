@@ -462,7 +462,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
                   e.preventDefault();
                   document.getElementById("content")?.focus();
                 }}
-                className="sr-only z-50 rounded-md bg-surface-overlay px-3 py-2 text-sm font-medium focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:ring-2 focus:ring-focus"
+                className="sr-only z-50 rounded-md bg-surface-overlay px-3 py-2 text-sm font-medium focus:not-sr-only focus:fixed focus:start-3 focus:top-3 focus-visible:outline-2 focus-visible:outline-focus"
               >
                 Skip to content
               </a>
@@ -501,7 +501,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
                 // The canvas (B4): raised, with a 3 px rule in the page's accent along its top edge.
                 // From 1024 px it is inset 16 px from the window's end and bottom and rounded 18 px;
                 // below that it runs edge to edge. Flat: no glow, wash or gradient.
-                className="relative min-h-0 overflow-y-auto border-t-[3px] border-accent bg-surface-raised outline-hidden pk-scroll lg:mb-4 lg:mr-4 lg:rounded-[18px] lg:border lg:border-t-[3px] lg:border-border lg:border-t-accent"
+                className="relative min-h-0 overflow-y-auto border-t-[3px] border-accent bg-surface-raised outline-hidden pk-scroll lg:mb-4 lg:me-4 lg:rounded-[18px] lg:border lg:border-t-[3px] lg:border-border lg:border-t-accent"
               >
                 <div
                   data-service={accent}
@@ -566,7 +566,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
                     }
                     button.focus();
                   }}
-                  className="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col border-r border-border bg-surface-page pt-[env(safe-area-inset-top,0px)] shadow-elevation-3 animate-pk-in pk-nav-drawer lg:hidden"
+                  className="fixed inset-y-0 start-0 z-50 flex w-72 max-w-[85%] flex-col border-e border-border bg-surface-page pt-[env(safe-area-inset-top,0px)] shadow-elevation-3 animate-pk-in pk-nav-drawer lg:hidden"
                 >
                   <div className="flex h-14 shrink-0 items-center justify-between border-b border-border px-4">
                     <DialogPrimitive.Title className="text-sm font-semibold text-fg-strong">
@@ -574,7 +574,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
                     </DialogPrimitive.Title>
                     <DialogPrimitive.Close
                       aria-label="Close navigation"
-                      className="rounded-md p-1.5 text-fg-muted hover:bg-hover hover:text-fg-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+                      className="rounded-md p-1.5 text-fg-muted hover:bg-hover hover:text-fg-strong focus-visible:outline-2 focus-visible:outline-focus"
                     >
                       <X aria-hidden className="size-4" />
                     </DialogPrimitive.Close>

@@ -431,7 +431,7 @@ export function NewLicenseWizard({
         <div className="contents sm:flex sm:flex-wrap sm:items-center sm:gap-2">
           <Button
             variant="outline"
-            className="max-sm:order-2 max-sm:ml-auto"
+            className="max-sm:order-2 max-sm:ms-auto"
             disabledReason={gate}
             onClick={() => {
               finished();

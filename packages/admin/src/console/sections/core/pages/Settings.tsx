@@ -291,7 +291,7 @@ function SettingsBody({
               help={`${linked ? "Set by adminGroup in .pkey/product. " : ""}Not enforced: console access is platform-wide.`}
             >
               {/* A long group (an LDAP DN) wraps under the label on a phone: read it from the left. */}
-              <span className="min-w-0 font-mono text-sm [overflow-wrap:anywhere] max-sm:text-left">
+              <span className="min-w-0 font-mono text-sm [overflow-wrap:anywhere] max-sm:text-start">
                 {product.adminGroup}
               </span>
             </SettingsRow>

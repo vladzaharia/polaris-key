@@ -244,7 +244,7 @@ function PolicyRow({
             </>
           ) : null}
         </div>
-        <span className="order-1 ml-auto inline-flex items-center gap-2 sm:order-none">
+        <span className="order-1 ms-auto inline-flex items-center gap-2 sm:order-none">
           {readOnly ? (
             <span
               className="inline-flex items-center gap-1.5 text-sm font-medium text-fg-strong"
