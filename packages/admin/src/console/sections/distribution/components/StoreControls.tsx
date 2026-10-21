@@ -23,7 +23,7 @@ import type {
 } from "../../../../api.js";
 import { confirmFor, type ActionId } from "../../../../lib/actions.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
-import { humanize } from "../../../../lib/status.js";
+import { humanize, inertWords } from "../../../../lib/status.js";
 import { Button } from "../../../../ui/Button.js";
 import { Checkbox } from "../../../../ui/Checkbox.js";
 import { Combobox } from "../../../../ui/Combobox.js";
@@ -458,7 +458,7 @@ export function ConnectorCard({
   const has = (c: string) => connector.controls.includes(c);
   const tone = blocked ? (connector.inert ? "warning" : "neutral") : "success";
   const state = connector.inert
-    ? `Not running: ${humanize(connector.inert.reason).toLowerCase()}`
+    ? `Not running: ${inertWords(connector.inert.reason)}`
     : connector.configured
       ? "Connected"
       : "Not configured";
@@ -597,7 +597,7 @@ export function ConnectorCard({
   return (
     <section
       aria-labelledby={`connector-${connector.kind}`}
-      className="flex flex-col gap-3 rounded-lg border border-border bg-surface-raised p-4"
+      className="flex min-w-0 flex-col gap-3 rounded-lg border border-border bg-surface-raised p-4"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3
@@ -609,7 +609,7 @@ export function ConnectorCard({
         <StatusPill tone={tone}>{state}</StatusPill>
       </div>
       {connector.inert ? (
-        <p className="text-sm text-fg-muted">
+        <p className="break-words text-sm text-fg-muted">
           {/* The server's next-action sentence, sentence-cased for display. */}
           {connector.inert.message.replace(/^\w/, (c) => c.toUpperCase())}
         </p>
@@ -618,7 +618,7 @@ export function ConnectorCard({
         <DescriptionList columns={2} items={setupFacts(connector)} />
       ) : null}
       {connector.notes?.length ? (
-        <ul className="list-disc space-y-1 pl-5 text-xs text-fg-muted">
+        <ul className="list-disc space-y-1 break-words pl-5 text-xs text-fg-muted">
           {connector.notes.map((n) => (
             <li key={n}>{n}</li>
           ))}

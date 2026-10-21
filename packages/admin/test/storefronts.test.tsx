@@ -848,6 +848,14 @@ describe("Storefronts: bug package W", () => {
     expect(writes(calls)).toEqual([]);
   });
 
+  it("M8: a viewer's Add to storefronts is disabled up front, with who to ask", async () => {
+    bootWith(PAGE, routes({ "/manage/api/me": VIEWER }));
+    const add = await screen.findByRole("link", { name: /Add to storefronts/ });
+    expect(add.getAttribute("aria-disabled")).toBe("true");
+    await userEvent.click(add);
+    expect(window.location.hash).toBe(PAGE);
+  });
+
   it("B-224: while a step's own actions are open, Continue is outline, not a second primary", async () => {
     bootWith(`${PAGE}?flow=add&step=run&stores=google-play`, routes());
     const cont = await screen.findByRole("button", { name: /^Continue/ });

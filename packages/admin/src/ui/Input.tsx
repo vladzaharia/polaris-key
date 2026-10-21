@@ -73,7 +73,7 @@ export function Input({
       className={cn(
         "flex h-9 w-full items-center gap-2 rounded-md border border-border-strong bg-surface-sunken px-3",
         "focus-within:ring-2 focus-within:ring-focus focus-within:ring-offset-2 focus-within:ring-offset-surface-page",
-        "has-[[aria-invalid=true]]:border-danger has-[:disabled]:opacity-50 pointer-coarse:h-10",
+        "has-[[aria-invalid=true]]:border-danger has-[:disabled]:opacity-50 pointer-coarse:h-11",
         className,
       )}
     >

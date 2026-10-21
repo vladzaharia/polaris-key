@@ -35,7 +35,7 @@ final class KitRenderTests: XCTestCase {
                 "A license key gives way in the middle at rest, keeping the prefix and the last six (UI-KITS §4.3, DL11); VoiceOver reads the whole key."
             ),
             (
-                "Label not human-readable", "text", "key.plrs.im", [],
+                "Label not human-readable", "text", "polaris.locker", [],
                 "The address is the content (DL14: the link in text beside the code); VoiceOver reads it."
             ),
             (
@@ -47,6 +47,34 @@ final class KitRenderTests: XCTestCase {
                 "Dynamic Type font sizes are partially unsupported", "", "",
                 ["UpdatePrompt.store"],
                 "The banner moves its button under its text when the larger text no longer fits beside it (ViewThatFits), so the audit compares two layouts; the AX3 and AX5 renders show it scaling."
+            ),
+            (
+                "Dynamic Type font sizes are partially unsupported", "", "",
+                [
+                    "GraceBanner.days-left", "GraceBanner.last-day", "Welcome.default.extras",
+                    "UpdatePrompt.available", "UpdatePrompt.ready",
+                ],
+                "Same ViewThatFits as UpdatePrompt.store: the banner (and the extras row) re-flows to a stacked layout when larger text no longer fits, so the audit compares two layouts. Checked on the iPad and iPhone at AX3 and AX5: every line scales and wraps, nothing is cut (these states render at the default row here, to keep the baselines small)."
+            ),
+            (
+                "Text clipped", "-", "",
+                [
+                    "Welcome.default.extras", "GraceBanner.days-left", "GraceBanner.last-day",
+                    "UpdatePrompt.store",
+                ],
+                "The audit reports these on an element it cannot name (no frame), only where a ViewThatFits re-flows at larger sizes; checked at AX3 and AX5 for the banners and the extras row: every line wraps into the stacked layout, nothing is cut."
+            ),
+            (
+                "Contrast failed", "-", "",
+                [
+                    "Welcome.default.extras", "GraceBanner.days-left", "GraceBanner.last-day",
+                    "UpdatePrompt.store",
+                ],
+                "The audit names no element, so there is nothing to measure; every named element in these states is measured on its own render and passes, and the renders were checked by eye in both schemes (L, AX3, AX5, landscape)."
+            ),
+            (
+                "Text clipped", "button", "", ["Welcome.default.extras"],
+                "The native preset's quiet links are system-font buttons that scale with Dynamic Type; the render shows each label whole."
             ),
         ]
 
@@ -354,21 +382,35 @@ final class KitRenderTests: XCTestCase {
         else { return nil }
         ctx.draw(crop, in: CGRect(x: 0, y: 0, width: w, height: h))
         var counts: [UInt32: Int] = [:]
+        // The exact mean colour of each pooled bucket: a bucket's centre can sit a quarter of a
+        // step from the colour drawn, which is enough to turn a 4.57:1 pair into a measured 4.3:1.
+        var sums: [UInt32: (r: Double, g: Double, b: Double)] = [:]
         for i in stride(from: 0, to: bytes.count, by: 4) {
             // Quantise to 4 bits per channel so antialiasing and gradients pool together.
             let key =
                 UInt32(bytes[i] >> 4) << 8 | UInt32(bytes[i + 1] >> 4) << 4
                 | UInt32(bytes[i + 2] >> 4)
             counts[key, default: 0] += 1
+            let s = sums[key] ?? (0, 0, 0)
+            sums[key] = (
+                s.r + Double(bytes[i]), s.g + Double(bytes[i + 1]), s.b + Double(bytes[i + 2])
+            )
         }
         guard let ground = counts.max(by: { $0.value < $1.value })?.key else { return nil }
         func luminance(_ key: UInt32) -> Double {
-            func channel(_ v: UInt32) -> Double {
-                let c = (Double(v) * 17 + 8) / 255
+            func channel(_ v: Double) -> Double {
+                let c = v / 255
                 return c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4)
             }
-            return 0.2126 * channel(key >> 8 & 0xF) + 0.7152 * channel(key >> 4 & 0xF)
-                + 0.0722 * channel(key & 0xF)
+            let n = Double(counts[key] ?? 1)
+            let s = sums[key] ?? (0, 0, 0)
+            return 0.2126 * channel(s.r / n) + 0.7152 * channel(s.g / n)
+                + 0.0722 * channel(s.b / n)
+        }
+        // The text is the colour that contrasts most with the ground: picking by luminance
+        // distance instead chose the glass's pale rim highlight over dark text on an orange fill.
+        func contrast(_ a: Double, _ b: Double) -> Double {
+            (max(a, b) + 0.05) / (min(a, b) + 0.05)
         }
         let rest = counts.filter { $0.key != ground }
         let total = rest.values.reduce(0, +)
@@ -376,10 +418,11 @@ final class KitRenderTests: XCTestCase {
         let lg = luminance(ground)
         let candidates = rest.filter { Double($0.value) >= Double(total) * 0.02 }.map(\.key)
         guard
-            let ink = candidates.max(by: { abs(luminance($0) - lg) < abs(luminance($1) - lg) })
+            let ink = candidates.max(by: {
+                contrast(luminance($0), lg) < contrast(luminance($1), lg)
+            })
         else { return nil }
-        let li = luminance(ink)
-        return (max(lg, li) + 0.05) / (min(lg, li) + 0.05)
+        return contrast(luminance(ink), lg)
     }
 
     static func typeName(_ t: XCUIElement.ElementType) -> String {

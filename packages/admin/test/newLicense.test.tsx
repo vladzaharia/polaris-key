@@ -549,9 +549,9 @@ describe("license channel picker in the wizard (P0-04, WIRE-CONTRACT-V3 §5.1)",
     await userEvent.click(
       within(dialog).getByRole("button", { name: /More options/ }),
     );
-    await within(dialog).findAllByRole("group", { name: "Release channels" });
+    await within(dialog).findAllByRole("group", { name: "Release tracks" });
     return within(dialog)
-      .getAllByRole("group", { name: "Release channels" })
+      .getAllByRole("group", { name: "Release tracks" })
       .at(-1)!;
   }
 

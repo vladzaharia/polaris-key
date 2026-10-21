@@ -25,7 +25,10 @@ describe("B-018 a dialog's own form fills the dialog's column", () => {
         </form>
       </Dialog>,
     );
-    const cls = screen.getByRole("dialog").className;
+    // The column sits in one inner wrapper (LF1: it scrolls as a whole at large text on a phone).
+    const cls = screen
+      .getByRole("dialog")
+      .querySelector("[data-pk-dialog-inner]")!.className;
     for (const u of ["flex", "min-h-0", "flex-1", "flex-col"])
       expect(cls).toContain(`[&>form:not(.contents)]:${u}`);
   });

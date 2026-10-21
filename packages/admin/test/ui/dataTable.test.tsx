@@ -299,7 +299,7 @@ describe("DataTable", () => {
     const { unmount } = render(
       <Harness error={new TypeError("Failed to fetch")} onRetry={retry} />,
     );
-    await user.click(screen.getByRole("button", { name: /Retry/ }));
+    await user.click(screen.getByRole("button", { name: /Try again/ }));
     expect(retry).toHaveBeenCalled();
     unmount();
     render(<Harness data={[]} empty={<p>Create your first license</p>} />);

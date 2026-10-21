@@ -116,7 +116,7 @@ struct KitButtonSkin: ViewModifier {
                     .buttonStyle(.glassProminent)
                     .buttonBorderShape(.capsule)
                     .controlSize(compact ? .regular : .large)
-                    .tint(fill)
+                    .tint(kind == .destructive ? fill : p.primaryGlassFill)
                     .foregroundStyle(label)
                 #endif
             } else {

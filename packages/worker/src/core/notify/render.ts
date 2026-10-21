@@ -172,7 +172,7 @@ export function renderEmail(c: EmailContent): string {
     : "";
   const secure = c.secure
     ? calloutBox(
-        `<span class="pk-text"><strong>Wasn&#x27;t you?</strong> <a class="pk-link" href="${escapeHtml(c.secure.url)}" style="color:${linkFg};text-decoration:underline">${escapeHtml(c.secure.label)}</a></span>`,
+        `<span class="pk-text"><strong style="font-weight:600">Wasn&#x27;t you?</strong> <a class="pk-link" href="${escapeHtml(c.secure.url)}" style="color:${linkFg};text-decoration:underline">${escapeHtml(c.secure.label)}</a></span>`,
         24,
       )
     : "";

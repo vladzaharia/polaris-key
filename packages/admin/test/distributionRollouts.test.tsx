@@ -217,7 +217,7 @@ describe("Distribution → Rollouts", () => {
       [P("/distribution/rollouts")]: () =>
         fail ? apiError(500, "internal") : ROLLOUTS,
     });
-    const retry = await screen.findByRole("button", { name: "Retry" });
+    const retry = await screen.findByRole("button", { name: "Try again" });
     fail = false;
     await userEvent.click(retry);
     expect(await table()).toBeTruthy();

@@ -1348,13 +1348,13 @@ export const SHIPPED: ShippedState[] = [
     scenario: "three",
     path: "/#/p/nightfall",
     routes: { "/api/library": SERVER_ERROR, "/api/licenses": SERVER_ERROR },
-    // The library read failed, so the name is unknown: the page keeps its slug as the title
-    // (LK-polish M6), says what failed, and offers Try again and the way back.
+    // The library read failed, so the name is unknown: the page titles itself "Product", never the
+    // raw slug (LK-polish M6, LF1), says what failed, and offers Try again and the way back.
     ready: async (p) => {
-      await h1(p, "nightfall");
+      await h1(p, "Product");
       const alert = p.getByRole("alert");
       await alert
-        .getByText("Couldn't load nightfall. Check your connection.")
+        .getByText("Couldn't load this product. Try again in a moment.")
         .waitFor();
       await alert.getByRole("link", { name: "Library" }).waitFor();
     },
@@ -1815,11 +1815,11 @@ export const SHIPPED: ShippedState[] = [
   {
     section: "4.28",
     id: "boot-error",
-    title: "Something went wrong",
+    title: "Couldn't open Polaris Locker",
     scenario: "three",
     path: "/",
     routes: { "/api/me": SERVER_ERROR },
-    ready: (p) => h1(p, "Something went wrong"),
+    ready: (p) => h1(p, "Couldn't open Polaris Locker"),
   },
   {
     section: "4.28",
@@ -1832,7 +1832,7 @@ export const SHIPPED: ShippedState[] = [
       await h1(p, "Your library");
       await p
         .getByRole("alert")
-        .getByText("Couldn't load your library. Check your connection.")
+        .getByText("Couldn't load your library. Try again in a moment.")
         .waitFor();
     },
   },

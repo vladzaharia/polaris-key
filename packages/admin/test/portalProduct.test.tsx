@@ -591,7 +591,14 @@ describe("product page on today's data (PX-04)", () => {
     await page();
     const devices = screen.getByRole("region", { name: "Devices" });
     expect(
-      within(devices).getByText(/1 more device signed in, not using a seat/),
+      // The phrases are nowrap spans (LF3), so the text is read from the paragraph.
+      within(devices).getByText(
+        (_, el) =>
+          el?.tagName === "P" &&
+          /1 more device signed in, not using a seat/.test(
+            el.textContent ?? "",
+          ),
+      ),
     ).toBeTruthy();
     await userEvent.click(
       within(devices).getByRole("button", { name: "Remove Studio PC" }),
@@ -1336,13 +1343,15 @@ describe("product page correctness (UX-04)", () => {
     );
     renderPortal();
     expect(
-      await screen.findByRole("heading", { level: 1, name: "nightfall" }),
+      await screen.findByRole("heading", { level: 1, name: "Product" }),
     ).toBeTruthy();
+    // Never the raw slug (LF1): a name that did not load reads "Product" / "this product".
+    expect(screen.queryByText(/nightfall/)).toBeNull();
     expect(
-      screen.getByText("Couldn't load nightfall. Check your connection."),
+      screen.getByText("Couldn't load this product. Try again in a moment."),
     ).toBeTruthy();
     expect(screen.queryByText("Something went wrong")).toBeNull();
-    expect(screen.getAllByText(/try again/i)).toHaveLength(1);
+    expect(screen.getAllByText(/^try again$/i)).toHaveLength(1);
     expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
     const back = within(screen.getByRole("alert")).getByRole("link", {
       name: "Library",

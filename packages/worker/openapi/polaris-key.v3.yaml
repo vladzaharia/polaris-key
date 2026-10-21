@@ -111,7 +111,10 @@ tags:
       The customer host, `polaris.locker` (LK-03; the `CUSTOMER_ORIGIN` host). Same Worker, fifth
       custom domain. It serves only the customer routes (the portal, `/signin`, `/device`, `/tv`)
       and the paths here, which carry a `servers` override; everything else is the plain
-      not-found (`core/customerHost.ts`).
+      not-found (`core/customerHost.ts`). The one exception is the public storefront feeds
+      (`/{product}/distribution/{altstore,altstore-pal,obtainium,scoop,flathub,fdroid}/…`, GET
+      and HEAD): they answer on this host too, with the same bodies and headers, so the download
+      page can print `polaris.locker` sources; the console host keeps answering them.
   - name: img
     description: >
       The image host, `img.plrs.im` (HA-02): a product's public hosted images, content-addressed
@@ -7729,7 +7732,7 @@ paths:
         every license is account-bound (owner decision 2026-10-05). Only a store's name is
         shown, never an order id or purchase key. The first free row in
         rank-first order (no expiry, then the latest expiry, then the oldest) is preselected.
-        A full row is disabled ("No free devices") and offers **Replace a device** (its
+        A full row is disabled ("All devices in use") and offers **Replace a device** (its
         seat-holding devices, the least recent preselected, when the account owns it and the
         portal is on) and a **Free a device** link to the portal's focused flow. **Create a new
         free license** appears only when the product's policy would auto-issue to this person,
@@ -7752,7 +7755,7 @@ paths:
                     <form method="post" action="https://key.plrs.im/djdl/identity/auth/choose">
                       <input type="hidden" name="choice" value="Qm9sZC1jaG9pY2UtdG9rZW4">
                       <label class="choice"><input type="radio" name="license" value="lic_std" checked> <span class="tag">Standard</span> 1 of 3 devices · From the developer · Lifetime</label>
-                      <label class="choice is-disabled"><input type="radio" name="license" value="lic_old" disabled> <span class="tag">Starter</span> 1 of 1 device · From signing in · Lifetime · No free devices</label>
+                      <label class="choice is-disabled"><input type="radio" name="license" value="lic_old" disabled> <span class="tag">Starter</span> 1 of 1 device · From signing in · Lifetime · All devices in use</label>
                       <button class="button" type="submit" name="action" value="use">Use this license</button>
                       <button class="button secondary" type="submit" name="action" value="cancel">Cancel</button>
                     </form>

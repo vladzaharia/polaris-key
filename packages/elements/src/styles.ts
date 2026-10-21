@@ -360,10 +360,10 @@ const KIT_CSS = String.raw`
 .pk-root[data-component="UpdatePrompt"] .card .actions[data-layout="row"] {
   justify-content: stretch;
 }
-.pk-root[data-component="UpdatePrompt"] .card .actions .btn {
+.pk-root[data-component="UpdatePrompt"] .card .actions[data-layout="row"] .btn {
   flex: 1 1 8rem;
 }
-.pk-root[data-component="UpdatePrompt"] .card .actions .btn[data-variant="primary"] {
+.pk-root[data-component="UpdatePrompt"] .card .actions[data-layout="row"] .btn[data-variant="primary"] {
   flex-basis: 100%;
 }
 

@@ -456,10 +456,16 @@ export function ActivateDialog({
                       message: verdict.message,
                       actions:
                         verdict.code === "license_owned" ||
+                        verdict.code === "portal_off" ||
                         verdict.code === "email_mismatch" ? (
                           <RefusalActions
                             help={helpForRefusal(verdict.code)}
                             ownedNotice={verdict.code === "license_owned"}
+                            nextStep={
+                              verdict.code === "portal_off"
+                                ? t("locker.key.managedElsewhereNext")
+                                : undefined
+                            }
                             onDifferentKey={() => {
                               setKey("");
                               setTouched(false);
@@ -580,6 +586,7 @@ export function ActivateDialog({
 function RefusalActions({
   help,
   ownedNotice,
+  nextStep,
   onDifferentKey,
   onAddEmail,
 }: {
@@ -587,6 +594,8 @@ function RefusalActions({
   help?: string | undefined;
   /** Signed in on the portal, `license_owned`: say the account may be theirs (SIGN-IN.md D-27). */
   ownedNotice?: boolean;
+  /** `portal_off`: where to go next, since the key can't be added here (LF3). */
+  nextStep?: string | undefined;
   onDifferentKey: () => void;
   onAddEmail?: () => void;
 }): React.ReactElement {
@@ -597,6 +606,9 @@ function RefusalActions({
           {t("signin.join.ownedNotice")}
         </p>
       ) : null}
+      {nextStep ? (
+        <p className="basis-full text-sm text-fg-muted">{nextStep}</p>
+      ) : null}
       {help ? (
         <div className="basis-full text-left">
           <HelpLink href={help}>{t("locker.help.whatToDo")}</HelpLink>
@@ -605,7 +617,7 @@ function RefusalActions({
       <Button
         variant="ghost"
         size="sm"
-        className="font-medium max-sm:min-h-11 max-sm:w-full"
+        className="font-medium underline decoration-2 underline-offset-4 max-sm:min-h-11 max-sm:w-full"
         onClick={onDifferentKey}
       >
         {t("signin.key.differentKey")}
@@ -644,13 +656,14 @@ function AccountRow({
     <div
       role="group"
       aria-label={t("locker.activate.account")}
-      className="flex min-w-0 flex-1 items-center gap-3"
+      className="flex min-w-0 flex-1 basis-40 items-center gap-3"
     >
       <Avatar
         name={account.name}
         email={account.email}
         picture={account.avatarUrl}
         size={40}
+        className="@max-[18rem]:hidden"
       />
       <div className="flex min-w-0 flex-col gap-0.5 text-sm [overflow-wrap:anywhere]">
         {named ? (
@@ -670,7 +683,7 @@ function AccountRow({
     </div>
   );
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-border bg-surface-sunken px-3 py-2.5">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-border bg-surface-sunken px-3 py-2.5">
       {group}
       <form method="post" action="/logout" className="shrink-0">
         <button
@@ -960,6 +973,9 @@ export function ConfirmStep({
   notes?: React.ReactNode;
 }): React.ReactElement {
   const p = preview.product;
+  // A cover that is missing or fails to load leaves no empty tint box: the icon stands alone.
+  const [coverFailed, setCoverFailed] = React.useState(false);
+  const hasCover = Boolean(p.headerUrl) && !coverFailed;
   const lic = preview.license;
   const tier = lic ? (lic.tierLabel ?? tierLabel(lic.tier)) : null;
   const terms = lic
@@ -982,18 +998,20 @@ export function ConfirmStep({
     <>
       <DialogBody className="space-y-4">
         <div>
-          <ProductArt
-            slug={p.slug}
-            name={p.name}
-            tint={null}
-            src={p.headerUrl}
-            variant="banner"
-            // No cover: a bare tint field; the icon overlapping the art already shows the letter.
-            letter={false}
-            // A short screen (§8) drops the art, so the facts and the key start on the first
-            // screen; the icon, in a row of its own, carries the product's identity.
-            className="h-36 rounded-lg short:hidden"
-          />
+          {hasCover ? (
+            <ProductArt
+              slug={p.slug}
+              name={p.name}
+              tint={null}
+              src={p.headerUrl}
+              variant="banner"
+              letter={false}
+              onError={() => setCoverFailed(true)}
+              // A short screen (§8) drops the art, so the facts and the key start on the first
+              // screen; the icon, in a row of its own, carries the product's identity.
+              className="h-36 rounded-lg short:hidden"
+            />
+          ) : null}
           <ProductIcon
             slug={p.slug}
             name={p.name}
@@ -1001,7 +1019,11 @@ export function ConfirmStep({
             src={p.iconUrl}
             size={64}
             lift
-            className="relative -mt-8 ml-4 short:mt-0 short:ml-0"
+            className={
+              hasCover
+                ? "relative -mt-8 ml-4 short:mt-0 short:ml-0"
+                : "relative"
+            }
             tileClassName="border-[3px] border-surface-overlay"
           />
         </div>
@@ -1043,7 +1065,7 @@ export function ConfirmStep({
           <button
             type="button"
             onClick={onBack}
-            className="shrink-0 rounded-sm text-sm font-medium text-accent-fg hover:underline"
+            className="shrink-0 rounded-sm text-sm font-medium text-accent-fg underline decoration-2 underline-offset-4 pointer-coarse:min-h-11 hover:text-fg-strong"
           >
             {t("locker.activate.changeKey")}
           </button>
@@ -1078,12 +1100,12 @@ export function ConfirmStep({
         {/* A long product name is cut short with an ellipsis rather than spilling out of the
             button (PS-05 review M5); the name is read in full (the label, the heading above). */}
         <Button
-          className="min-w-0 font-medium"
+          className="h-auto min-h-9 min-w-0 py-1.5 font-medium"
           loading={adding}
           onClick={onAdd}
           aria-label={primaryLabel ?? t("locker.activate.addToLibrary")}
         >
-          <span className="truncate">
+          <span className="truncate max-[24rem]:overflow-visible max-[24rem]:whitespace-normal max-[24rem]:text-center">
             {primaryLabel ?? t("locker.activate.addToLibrary")}
           </span>
         </Button>

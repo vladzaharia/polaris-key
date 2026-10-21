@@ -29,35 +29,35 @@ import { actorName, APP, platformName } from "./shared.js";
  * resolution, rendered as is (the console never recomputes it).
  */
 
-/** "How channels resolve": the pointer / serves / newest model in words (CHN-4). */
+/** "How release tracks resolve": the pointer / serves / newest model in words (CHN-4). */
 export function HowChannelsResolve(): React.ReactElement {
   return (
     <Popover
-      label="How channels resolve"
+      label="How release tracks resolve"
       trigger={
         <button
           type="button"
           className="inline-flex items-center gap-1 text-sm text-accent-fg underline-offset-4 hover:underline"
         >
           <Info aria-hidden className="size-3.5" />
-          How channels resolve
+          How release tracks resolve
         </button>
       }
     >
       <div className="max-w-80 space-y-2 text-sm text-fg">
         <p>
-          A channel serves its <strong>newest eligible release</strong> on each
-          platform. Promoting a release moves the channel's pointer; newer
+          A release track serves its <strong>newest eligible release</strong> on
+          each platform. Promoting a release moves the track's pointer; newer
           releases still flow while it is unpinned.
         </p>
         <p>
-          A <strong>pinned</strong> channel serves exactly its pointer, on every
+          A <strong>pinned</strong> track serves exactly its pointer, on every
           platform that has a build of it. A platform without one gets the
           newest older release that has one.
         </p>
         <p>
-          A channel that <strong>includes</strong> another (beta includes
-          stable) also serves that channel's releases when they are newer.
+          A track that <strong>includes</strong> another (beta includes stable)
+          also serves that track's releases when they are newer.
         </p>
         <a
           href={docsUrl("releaseChannels")}
@@ -65,7 +65,7 @@ export function HowChannelsResolve(): React.ReactElement {
           rel="noreferrer"
           className="text-accent-fg underline-offset-4 hover:underline"
         >
-          Channels in the docs
+          Release tracks in the docs
         </a>
       </div>
     </Popover>
@@ -132,7 +132,7 @@ function servesLine(
   if (id === null) {
     return {
       text: `${platformName(platform)}: nothing`,
-      why: `no ${platformName(platform)} build in any release ${c.channel} may serve`,
+      why: `no ${platformName(platform)} build in any release on ${c.channel} may serve`,
     };
   }
   const text = `${platformName(platform)} ${versionIn(releases, id)}`;
@@ -306,10 +306,10 @@ export function ChannelLane({
           {c.includes === null
             ? c.channel === "beta"
               ? "stable (the default)"
-              : "No other channel (the default)"
+              : "No other track (the default)"
             : c.includes.length
               ? c.includes.join(", ")
-              : "No other channel"}
+              : "No other track"}
         </Row>
         <Row term="Serves">
           {platforms.length === 0 ? (
@@ -485,10 +485,10 @@ export function StrandedFloors({
   return (
     <Callout
       tone="warning"
-      title="Floors on channels this product no longer serves"
+      title="Floors on tracks this product no longer serves"
     >
       <p className="mb-2">
-        Inert today; they apply again if the channel comes back. They can be
+        Inert today; they apply again if the track comes back. They can be
         cleared, never lowered.
       </p>
       <ul className="flex flex-col gap-2">

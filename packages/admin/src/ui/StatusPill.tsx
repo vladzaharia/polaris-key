@@ -85,7 +85,8 @@ export function StatusPill({
       key={word}
       // Large text (WCAG 1.4.4): a status word is never cut to "E…"; it wraps.
       className={cn(
-        "truncate bigtext:overflow-visible bigtext:whitespace-normal",
+        // On a phone a status word wraps inside its pill (200 % text) instead of ending in "…".
+        "truncate bigtext:overflow-visible bigtext:whitespace-normal max-sm:overflow-visible max-sm:whitespace-normal max-sm:[overflow-wrap:anywhere]",
         popped && "pk-pop-in",
       )}
     >

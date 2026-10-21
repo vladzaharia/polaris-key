@@ -60,7 +60,7 @@ export function Section({
       className={cn(
         "flex flex-col rounded-xl border bg-surface-raised light:shadow-elevation-1",
         danger ? "border-danger-border" : "border-border",
-        settings && "scroll-mt-20 outline-hidden",
+        settings && "scroll-mt-20 outline-hidden forced-colors:outline-none",
         className,
       )}
     >
@@ -98,7 +98,7 @@ export function Section({
           data-card-header=""
           className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3.5 console:min-h-14 console:rounded-t-[inherit] console:bg-(--pk-admin-band)"
         >
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-[1_1_8rem]">
             <div className="flex flex-wrap items-center gap-2">
               <Heading
                 id={headingId}

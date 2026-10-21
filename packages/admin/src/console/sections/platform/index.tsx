@@ -468,7 +468,7 @@ export function Deployment(): React.ReactElement {
               {bindings.map(([name, ok]) => (
                 <li
                   key={name}
-                  className="flex items-center justify-between gap-2 text-sm"
+                  className="flex items-center justify-between gap-2 text-sm [&>span:first-child]:min-w-0 [&>span:first-child]:break-all"
                 >
                   <span className="font-mono text-xs text-fg">{name}</span>
                   <StatusPill tone={ok ? "success" : "warning"} size="sm">

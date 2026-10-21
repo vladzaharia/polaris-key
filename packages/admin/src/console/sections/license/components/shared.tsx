@@ -424,13 +424,13 @@ export function effectivePolicy(
   lines.push(
     ch.source === "none"
       ? {
-          label: "Channels",
+          label: "Release tracks",
           value: "stable",
           source: "default",
           from: "default",
         }
       : {
-          label: "Channels",
+          label: "Release tracks",
           value: ch.value.join(", "),
           source: ch.source === "tier" ? "tier" : "license",
           from:

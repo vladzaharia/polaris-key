@@ -37,7 +37,7 @@ export interface HeaderModel {
   product: string;
   where:
     | { glyph: "globe"; text: string }
-    | { glyph: "device" | "tv"; text: string }
+    | { glyph: "device" | "phone" | "tv"; text: string }
     | null;
   /** The device-code panel's code. */
   code: string | null;
@@ -62,7 +62,12 @@ export function headerModel(view: SignInRequestView): HeaderModel {
         : null
       : label
         ? {
-            glyph: client.kind === "device" ? "tv" : "device",
+            glyph:
+              client.kind === "device"
+                ? "tv"
+                : deviceKind(label) === "phone"
+                  ? "phone"
+                  : "device",
             text: t("signin.header.onDevice", { device: label }),
           }
         : null;
@@ -210,7 +215,8 @@ export interface DeviceRowModel {
 /** The glyph class of a device, from its `deviceType`. */
 export function deviceKind(deviceType: string | null): DeviceRowModel["kind"] {
   const v = (deviceType ?? "").toLowerCase();
-  if (/phone|tablet|mobile|handheld/.test(v)) return "phone";
+  if (/phone|pixel|galaxy|android|ipad|tablet|mobile|handheld/.test(v))
+    return "phone";
   if (/tv|console|television/.test(v)) return "tv";
   return "computer";
 }

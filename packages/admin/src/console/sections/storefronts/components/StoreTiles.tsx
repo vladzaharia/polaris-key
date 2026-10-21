@@ -5,6 +5,7 @@ import {
   CapabilityStrip,
   capabilitySummary,
 } from "../../../../ui/CapabilityBadge.js";
+import { useWriteGate } from "../../../access/useCan.js";
 import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { ConnectionIssue, progress } from "./FlowPanels.js";
@@ -21,6 +22,7 @@ export function StoreTile({
   /** The store has a page of its own (`STORE_PANELS`). */
   hasPanel: boolean;
 }): React.ReactElement {
+  const gate = useWriteGate("ship", slug);
   if (store.builtIn)
     return <BuiltInTile slug={slug} store={store} hasPanel={hasPanel} />;
   const p = progress(store);
@@ -28,14 +30,14 @@ export function StoreTile({
     <section
       aria-label={store.label}
       data-store={store.id}
-      className="flex h-full flex-col rounded-lg border border-border bg-surface-raised"
+      className="flex min-w-0 flex-col rounded-lg border border-border bg-surface-raised"
     >
       <div className="flex min-h-14 items-start justify-between gap-3 border-b border-border px-4 py-3">
         <div className="min-w-0">
           <h2 className="text-base font-semibold text-fg-strong">
             {store.label}
           </h2>
-          <p className="truncate text-sm text-fg-muted">
+          <p className="break-words text-sm text-fg-muted">
             {store.app
               ? (store.app.name ?? store.app.id)
               : store.connection.state === "keyless"
@@ -54,13 +56,18 @@ export function StoreTile({
           )}
         />
       </div>
-      <div className="flex min-h-14 items-center justify-between gap-3 border-t border-border px-4 py-2">
+      <div className="flex min-h-14 flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t border-border px-4 py-2">
         <span className="text-sm text-fg-muted">
           {p.total
             ? `${p.done} of ${p.total} steps done`
             : capabilitySummary(store.capabilities)}
         </span>
-        <Button size="sm" variant="outline" asChild>
+        <Button
+          size="sm"
+          variant="outline"
+          asChild
+          disabledReason={gate.disabledReason}
+        >
           <Link
             to={r.storefronts(slug, {
               flow: "add",
@@ -94,14 +101,14 @@ function BuiltInTile({
       aria-label={store.label}
       data-store={store.id}
       data-built-in=""
-      className="flex h-full flex-col rounded-lg border border-border bg-surface-raised"
+      className="flex min-w-0 flex-col rounded-lg border border-border bg-surface-raised"
     >
       <div className="flex min-h-14 items-start justify-between gap-3 border-b border-border px-4 py-3">
         <div className="min-w-0">
           <h2 className="text-base font-semibold text-fg-strong">
             {store.label}
           </h2>
-          <p className="truncate text-sm text-fg-muted">
+          <p className="break-words text-sm text-fg-muted">
             Built in: always connected
           </p>
         </div>
@@ -115,7 +122,7 @@ function BuiltInTile({
           )}
         />
       </div>
-      <div className="flex min-h-14 items-center justify-between gap-3 border-t border-border px-4 py-2">
+      <div className="flex min-h-14 flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t border-border px-4 py-2">
         <span className="text-sm text-fg-muted">
           {capabilitySummary(store.capabilities)}
         </span>

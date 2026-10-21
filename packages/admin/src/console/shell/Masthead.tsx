@@ -156,9 +156,10 @@ export function baseCrumbs(
     const name = product?.name ?? slug;
     const section = sectionOf(page)!;
     if (section.key === "core") {
-      // Overview is the product itself: its parent is Home.
+      // Overview is the product itself: its parent is Home, so the chip is Home's, not the
+      // product's logo (on a phone that read as "DJDL's logo, Home").
       return page === "overview"
-        ? { crumbs: [{ label: "Home", to: r.home() }], chip: "product" }
+        ? { crumbs: [{ label: "Home", to: r.home() }], chip: "platform" }
         : {
             crumbs: [{ label: name, to: r.overview(slug) }],
             chip: "product",

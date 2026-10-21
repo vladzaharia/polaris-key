@@ -277,8 +277,15 @@ export function useKit(
         .icon(96, typeof devicePixelRatio === "number" ? devicePixelRatio : 2)
         .then((bytes) => {
           if (!bytes || !live) return;
-          url = URL.createObjectURL(new Blob([bytes as BlobPart]));
-          setIconUrl(url);
+          const made = URL.createObjectURL(new Blob([bytes as BlobPart]));
+          url = made;
+          // Bytes that do not decode as an image leave the monogram, not a broken picture.
+          const probe = new Image();
+          probe.src = made;
+          const shown = () => live && setIconUrl(made);
+          if (typeof probe.decode === "function")
+            probe.decode().then(shown, () => undefined);
+          else shown();
         })
         .catch(() => {
           // A failed icon leaves the monogram: never an error state.

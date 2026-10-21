@@ -58,7 +58,7 @@ function SlotRow({
   };
   return (
     <li
-      className="flex min-h-20 items-center gap-3 py-2"
+      className="flex min-h-20 flex-wrap items-center gap-x-3 gap-y-2 py-2"
       data-slot={slot.slot}
       data-state={slot.state}
     >
@@ -72,8 +72,8 @@ function SlotRow({
           />
         ) : null}
       </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-mono text-xs text-fg-strong">
+      <div className="min-w-[min(12rem,100%)] flex-1">
+        <p className="break-all font-mono text-xs text-fg-strong">
           {slot.slot}
           {slot.locale ? ` · ${slot.locale}` : ""}
         </p>
@@ -86,7 +86,7 @@ function SlotRow({
           <p className="text-xs text-fg">{slot.spec}</p>
         ) : null}
       </div>
-      <div className="ml-auto flex shrink-0 items-center justify-end gap-2">
+      <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
         {slot.state === "missing" && slot.kind === "human" ? (
           <StatusPill tone="danger" size="sm">
             Needed
@@ -145,31 +145,51 @@ export function SlotBoard({
   const byGroup = [...new Set(shown.map((s) => s.group))].sort(
     (a, b) => order.indexOf(a) - order.indexOf(b),
   );
+  const missingHuman = shown.some(
+    (s) => s.state === "missing" && s.kind === "human",
+  );
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      {byGroup.map((g) => {
-        const rows = shown.filter((s) => s.group === g);
-        return (
-          <section
-            key={g}
-            aria-label={LISTING_GROUP_LABELS[g] ?? g}
-            className="rounded-lg border border-border bg-surface-raised px-4 py-2"
+    <div className="@container space-y-3">
+      {missingHuman ? (
+        <p className="text-sm text-fg-muted">
+          A needed image is made by a person: put the master in the product's{" "}
+          <code className="font-mono text-xs">.pkey/</code> assets and run{" "}
+          <code className="font-mono text-xs">pkey listing assets</code> in CI.{" "}
+          <a
+            className="text-accent-fg underline underline-offset-4"
+            href={docsUrl("storefrontListing")}
+            target="_blank"
+            rel="noreferrer"
           >
-            <h3 className="py-2 text-sm font-semibold text-fg-strong">
-              {LISTING_GROUP_LABELS[g] ?? g}
-            </h3>
-            <ul className="divide-y divide-border">
-              {rows.map((s) => (
-                <SlotRow
-                  key={`${s.slot}@${s.locale ?? ""}`}
-                  slug={slug}
-                  slot={s}
-                />
-              ))}
-            </ul>
-          </section>
-        );
-      })}
+            Listing images
+          </a>
+        </p>
+      ) : null}
+      <div className="grid gap-4 @3xl:grid-cols-2">
+        {byGroup.map((g) => {
+          const rows = shown.filter((s) => s.group === g);
+          return (
+            <section
+              key={g}
+              aria-label={LISTING_GROUP_LABELS[g] ?? g}
+              className="rounded-lg border border-border bg-surface-raised px-4 py-2"
+            >
+              <h3 className="py-2 text-sm font-semibold text-fg-strong">
+                {LISTING_GROUP_LABELS[g] ?? g}
+              </h3>
+              <ul className="divide-y divide-border">
+                {rows.map((s) => (
+                  <SlotRow
+                    key={`${s.slot}@${s.locale ?? ""}`}
+                    slug={slug}
+                    slot={s}
+                  />
+                ))}
+              </ul>
+            </section>
+          );
+        })}
+      </div>
     </div>
   );
 }

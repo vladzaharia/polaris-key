@@ -14,7 +14,7 @@
     "url": "git+https://github.com/vladzaharia/polaris-key.git",
     "directory": "packages/shared-catalog"
   },
-  "homepage": "https://key.plrs.im/docs/build/manifest/product/#the-catalog-configentry",
+  "homepage": "https://key.plrs.im/docs/build/manifest/catalog/#entries",
   "bugs": {
     "url": "https://github.com/vladzaharia/polaris-key/issues"
   },

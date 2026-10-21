@@ -119,7 +119,7 @@ export function EmptyState({
             {...focusable}
             className={cn(
               "text-sm font-semibold text-fg-strong",
-              headingRef && "outline-hidden",
+              headingRef && "outline-hidden forced-colors:outline-none",
             )}
           >
             {title}
@@ -198,7 +198,7 @@ export function EmptyState({
           {...focusable}
           className={cn(
             "text-base font-semibold text-fg-strong",
-            headingRef && "outline-hidden",
+            headingRef && "outline-hidden forced-colors:outline-none",
           )}
         >
           {title}

@@ -136,7 +136,7 @@ export function StatTile({
           </p>
           {onRetry ? (
             <Button size="xs" variant="outline" onClick={onRetry}>
-              Retry
+              Try again
             </Button>
           ) : null}
         </div>

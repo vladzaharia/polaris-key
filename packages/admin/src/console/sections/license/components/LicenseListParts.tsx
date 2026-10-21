@@ -12,6 +12,7 @@ import { EmptyState } from "../../../../ui/EmptyState.js";
 import { toast } from "../../../../ui/toast.js";
 import { useMe, useProduct } from "../../../data/hooks.js";
 import { NoAccessPage } from "../../../access/NoAccessPage.js";
+import { useWriteGate } from "../../../access/useCan.js";
 import { HOLDER_STATES, type HolderState } from "./holders.js";
 
 /** The facet value for "no tier" and "not in a batch": only the client can filter on them. */
@@ -132,6 +133,26 @@ export function BulkEnableDialog({
   );
 }
 
+/** New license: off up front, with who to ask, for a member who cannot edit Licensing. */
+export function NewLicenseButton({
+  slug,
+  onClick,
+}: {
+  slug: string;
+  onClick: () => void;
+}): React.ReactElement {
+  const gate = useWriteGate("license", slug);
+  return (
+    <Button
+      iconStart={<Plus />}
+      disabledReason={gate.disabledReason}
+      onClick={onClick}
+    >
+      New license
+    </Button>
+  );
+}
+
 /** Nothing yet: one primary, and the way to the rules that create licenses without a person. */
 export function LicensesFirstRun({
   slug,
@@ -146,11 +167,7 @@ export function LicensesFirstRun({
       headingLevel={2}
       title="No licenses yet"
       description="Licenses appear when someone signs in under your Access rules, or when you create one."
-      primaryAction={
-        <Button iconStart={<Plus />} onClick={onCreate}>
-          New license
-        </Button>
-      }
+      primaryAction={<NewLicenseButton slug={slug} onClick={onCreate} />}
       secondaryAction={
         <Button variant="outline" onClick={() => navigate(r.access(slug))}>
           Open Access

@@ -68,8 +68,7 @@ Every artifact is published to Polaris Key's Maven feed by `.github/workflows/pu
 (everything `publishAllPublicationsToLocalRepository` writes), at the server's version: each `v*`
 tag publishes exactly that version, each push to `main` a `<next>-main.<N>` pre-release. Send the `im.plrs.key` group to the feed alone, so it is never looked up anywhere else:
 
-```kotlin
-// settings.gradle.kts
+```kts title="settings.gradle.kts"
 dependencyResolutionManagement {
     repositories {
         exclusiveContent {
@@ -84,8 +83,7 @@ dependencyResolutionManagement {
 }
 ```
 
-```kotlin
-// build.gradle.kts
+```kts title="build.gradle.kts"
 dependencies {
     implementation("im.plrs.key:polaris-key-sdk:0.1.0")
     // Android: one platform flavor per build
@@ -145,17 +143,25 @@ sub-client per service, and every public call is `suspend` (license changes stre
 service the product does not run throws `service-unavailable` before any request (D-21).
 
 ```kotlin
-val client = PolarisKeyClient.create(
-    PolarisKeyClientOptions(
-        core = CoreOptions(productSlug = "djdl", version = BuildConfig.VERSION_NAME, pinnedKeys = PINNED),
-    ),
-)
-client.activate(key)                       // license: stores the token, then syncs (forced)
-if (!isUsable(client.status())) showGate()
-val theme = client.config("ui.theme", JsonPrimitive("dark"))
-val notes = client.release.changelog()
-val prompt = client.identity.beginSignIn("Living room TV")  // RFC 8628; show prompt.userCode
-client.identity.waitForSignIn(prompt)
+import im.plrs.key.core.CoreOptions
+import im.plrs.key.license.isUsable
+import im.plrs.key.sdk.PolarisKeyClient
+import im.plrs.key.sdk.PolarisKeyClientOptions
+import kotlinx.serialization.json.JsonPrimitive
+
+suspend fun start(key: String) {
+    val client = PolarisKeyClient.create(
+        PolarisKeyClientOptions(
+            core = CoreOptions(productSlug = "djdl", version = BuildConfig.VERSION_NAME, pinnedKeys = PINNED),
+        ),
+    )
+    client.activate(key)                       // license: stores the token, then syncs (forced)
+    if (!isUsable(client.status())) showGate()
+    val theme = client.config("ui.theme", JsonPrimitive("dark"))
+    val notes = client.release.changelog()
+    val prompt = client.identity.beginSignIn("Living room TV")  // RFC 8628; show prompt.userCode
+    client.identity.waitForSignIn(prompt)
+}
 ```
 
 - **`:license`**: `LicenseClient.status()` (the §5 gate over the verified cache and the clock
@@ -261,10 +267,15 @@ the product's portal is on and already validated by `ManageLink.read`. It defaul
 class stays source-compatible. It is never an auth failure.
 
 ```kotlin
-val r = client.activate(key)
-if (r is ActivationResult.DeviceLimit && r.manageUrl != null) {
-    val link = ManageLink.withReturn(ManageLink.withKey(r.manageUrl!!, key), "myapp://activated")
-    // offer "Replace a device", opening `link`
+import im.plrs.key.core.ManageLink
+import im.plrs.key.license.ActivationResult
+
+suspend fun replaceDevice(key: String) {
+    val r = client.activate(key)
+    if (r is ActivationResult.DeviceLimit && r.manageUrl != null) {
+        val link = ManageLink.withReturn(ManageLink.withKey(r.manageUrl!!, key), "myapp://activated")
+        // offer "Replace a device", opening `link`
+    }
 }
 ```
 
@@ -281,20 +292,31 @@ and the engine sees each committed feed's delta menu; `:update` and `:packs` nev
 other.
 
 ```kotlin
-val client = PolarisKeyClient.create(
-    PolarisKeyClientOptions(
-        core = CoreOptions(productSlug = "djdl", version = BuildConfig.VERSION_NAME, pinnedKeys = PINNED),
-        update = UpdateClientOptions(pinnedReleaseKeys = RELEASE_KEYS, outlet = HostOutlet.Kind("play")),
-        packs = PacksOptions(contentStamp = PackStampSource.FromFile(stampFile), axes = mapOf("locale" to listOf("fr", "en"))),
-    ),
-)
-val check = client.update.decide()           // the signed feed, the record by hash, the decision
-when (val d = check.decision) {
-    is UpdateDecision.Packs -> client.packs.ensureReleases(d.install)
-    is UpdateDecision.Store -> openListing(d.listingUrl)
-    else -> {}
+import im.plrs.key.core.CoreOptions
+import im.plrs.key.core.HostOutlet
+import im.plrs.key.core.UpdateDecision
+import im.plrs.key.packs.PackStampSource
+import im.plrs.key.packs.PacksOptions
+import im.plrs.key.sdk.PolarisKeyClient
+import im.plrs.key.sdk.PolarisKeyClientOptions
+import im.plrs.key.update.UpdateClientOptions
+
+suspend fun checkForUpdate() {
+    val client = PolarisKeyClient.create(
+        PolarisKeyClientOptions(
+            core = CoreOptions(productSlug = "djdl", version = BuildConfig.VERSION_NAME, pinnedKeys = PINNED),
+            update = UpdateClientOptions(pinnedReleaseKeys = RELEASE_KEYS, outlet = HostOutlet.Kind("play")),
+            packs = PacksOptions(contentStamp = PackStampSource.FromFile(stampFile), axes = mapOf("locale" to listOf("fr", "en"))),
+        ),
+    )
+    val check = client.update.decide()           // the signed feed, the record by hash, the decision
+    when (val d = check.decision) {
+        is UpdateDecision.Packs -> client.packs.ensureReleases(d.install)
+        is UpdateDecision.Store -> openListing(d.listingUrl)
+        else -> {}
+    }
+    client.packs.ensure(listOf("djdl.levels"))   // the stamp's pinned release, by the cheapest strategy
 }
-client.packs.ensure(listOf("djdl.levels"))   // the stamp's pinned release, by the cheapest strategy
 ```
 
 - **`:update`**: `check()` (`update/version`), `channelFeed()`, `decide(channel, staged,
@@ -356,10 +378,15 @@ Android's. It fills in the keyring store, the desktop install driver and the def
 ```kotlin
 // build.gradle.kts: implementation("im.plrs.key:polaris-key-sdk:…")
 //                   runtimeOnly("com.github.javakeyring:java-keyring:1.0.4")   // the OS keyring
-val client = PolarisKeyDesktop.create(options)            // KeyringStore, DesktopInstallDriver
-val guard = PolarisKeyDesktop.bootGuard("djdl", "1.4.0", baseUrl = options.core.baseUrl) // the GUARD stage over DirUpdateSlots
-val check = client.update.decide()
-client.update.install(check)                              // download, verify, open the installer
+import im.plrs.key.desktop.PolarisKeyDesktop
+import im.plrs.key.sdk.PolarisKeyClientOptions
+
+suspend fun desktop(options: PolarisKeyClientOptions) {
+    val client = PolarisKeyDesktop.create(options)            // KeyringStore, DesktopInstallDriver
+    val guard = PolarisKeyDesktop.bootGuard("djdl", "1.4.0", baseUrl = options.core.baseUrl) // the GUARD stage over DirUpdateSlots
+    val check = client.update.decide()
+    client.update.install(check)                              // download, verify, open the installer
+}
 ```
 
 Everything lives under `FileStore.defaultDirectory(product)` unless `DesktopOptions.dataDirectory`
@@ -476,18 +503,31 @@ permissions into play builds (notes/S-10 §2).
 standalone for the Godot binding. Flavors match the platform's (`play`, `direct`), and the flavor
 boundary covers it (`tools/check_flavours.sh` reads the `:boundary` APKs, which now carry it).
 
-```kotlin
-val client = PolarisKeyAndroid.client(
-    context,
-    PolarisKeyClientOptions(
-        core = CoreOptions(productSlug = "diceroll", version = BuildConfig.VERSION_NAME, pinnedKeys = trust),
-        update = UpdateClientOptions(pinnedReleaseKeys = releaseKeys, stamp = stamp),
-        packs = PacksOptions(contentStamp = PackStampSource.FromBytes(assets.open("pkey-content.json").readBytes())),
-    ),
-    AndroidOptions(activity = { currentActivity }, playPacks = listOf("diceroll.foes")),
-)
-val check = client.update.decide()
-client.update.install(check)   // In-App Updates (play) or the verified PackageInstaller session (direct)
+```kotlin android
+import android.app.Activity
+import android.content.Context
+import im.plrs.key.android.AndroidOptions
+import im.plrs.key.android.PolarisKeyAndroid
+import im.plrs.key.core.CoreOptions
+import im.plrs.key.core.HostOutlet
+import im.plrs.key.packs.PackStampSource
+import im.plrs.key.packs.PacksOptions
+import im.plrs.key.sdk.PolarisKeyClientOptions
+import im.plrs.key.update.UpdateClientOptions
+
+suspend fun androidUpdate(context: Context, currentActivity: () -> Activity?) {
+    val client = PolarisKeyAndroid.client(
+        context,
+        PolarisKeyClientOptions(
+            core = CoreOptions(productSlug = "diceroll", version = BuildConfig.VERSION_NAME, pinnedKeys = PINNED),
+            update = UpdateClientOptions(pinnedReleaseKeys = RELEASE_KEYS, outlet = HostOutlet.Kind("play")),
+            packs = PacksOptions(contentStamp = PackStampSource.FromBytes(context.assets.open("pkey-content.json").readBytes())),
+        ),
+        AndroidOptions(activity = currentActivity, playPacks = listOf("diceroll.foes")),
+    )
+    val check = client.update.decide()
+    client.update.install(check)   // In-App Updates (play) or the verified PackageInstaller session (direct)
+}
 ```
 
 - **`AndroidKeystoreStore`** (`core.store`): the token and the device id wrapped by `SecureStore`

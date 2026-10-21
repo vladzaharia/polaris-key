@@ -28,7 +28,7 @@ import {
 } from "../components/shared.js";
 
 /**
- * The lanes of one deliverable, with their dialog: the Channels page and a pack record's Channels
+ * The lanes of one deliverable, with their dialog: the Release tracks page and a pack record's Release tracks
  * tab both render this (ADMIN.md §6.3.3, §6.3.4).
  */
 export function DeliverableLanes({
@@ -76,11 +76,11 @@ export function DeliverableLanes({
       {channels.length === 0 ? (
         <EmptyState
           kind="first-run"
-          title="No channels yet"
+          title="No release tracks yet"
           description={
             isApp
-              ? "Channels appear once the product has a release configuration and a release in the store."
-              : `Channels appear once ${deliverable} has a release on one.`
+              ? "Release tracks appear once the product has a release configuration and a release in the store."
+              : `Release tracks appear once ${deliverable} has a release on one.`
           }
         />
       ) : (
@@ -100,7 +100,7 @@ export function DeliverableLanes({
   );
 }
 
-/** Release → Channels (T5 lanes; ADMIN.md §6.3.3). `?deliverable=` picks app or a pack. */
+/** Release → Release tracks (T5 lanes; ADMIN.md §6.3.3). `?deliverable=` picks app or a pack. */
 export function ChannelsPage({ slug }: { slug: string }): React.ReactElement {
   const query = useReleaseChannels(slug);
   const [deliverable, setDeliverable] = useSearchParam(
@@ -120,7 +120,7 @@ export function ChannelsPage({ slug }: { slug: string }): React.ReactElement {
 
   const header = (
     <PageHeader
-      title="Channels"
+      title="Release tracks"
       description="Changes made here survive a resync until you revert them."
       meta={<HowChannelsResolve />}
       refetching={query.isFetching && !query.isPending}
@@ -131,7 +131,7 @@ export function ChannelsPage({ slug }: { slug: string }): React.ReactElement {
     return (
       <div className="space-y-6">
         {header}
-        <PageSkeleton template="record" label="channels" />
+        <PageSkeleton template="record" label="release tracks" />
       </div>
     );
   if (query.error && !query.data)
@@ -177,8 +177,8 @@ export function ChannelsPage({ slug }: { slug: string }): React.ReactElement {
       ) : (
         <EmptyState
           kind="first-run"
-          title="No channels yet"
-          description="Channels appear once the product has a release configuration and a release in the store."
+          title="No release tracks yet"
+          description="Release tracks appear once the product has a release configuration and a release in the store."
         />
       )}
     </div>

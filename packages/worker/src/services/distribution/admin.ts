@@ -273,7 +273,7 @@ export async function handleDistributionAdmin(
       now,
       "distribution.outlet.capabilities.revert",
       { kind: "outlet", id: outletId },
-      `Reverted the ${outletId} outlet's capabilities to the ${row.kind} default`,
+      `Reverted the ${outletId} channel's capabilities to the ${row.kind} default`,
     );
   } else {
     if (req.method !== "PUT")
@@ -298,7 +298,7 @@ export async function handleDistributionAdmin(
       now,
       "distribution.outlet.capabilities",
       { kind: "outlet", id: outletId },
-      `Narrowed the ${outletId} outlet's capabilities: ${Object.entries(
+      `Narrowed the ${outletId} channel's capabilities: ${Object.entries(
         narrowed,
       )
         .map(([k, v]) => `${k}=${String(v)}`)

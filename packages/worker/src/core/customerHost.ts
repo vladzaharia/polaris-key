@@ -11,7 +11,7 @@
  * session), `/signin`, `/device`, `/tv`, `/login[/…]`, `/callback`, `/logout`, `/magic/verify`,
  * `/api/*`, `/media/*`, `/download/<token>`, plus two answers of the host's own:
  * `/.well-known/polaris-host.json` (the health check the console's switch reads) and
- * `/robots.txt`. They are the router's own kinds (`CUSTOMER_ROUTE_KINDS`), so the portal's
+ * `/robots.txt`, and the public storefront feeds (`isCustomerFeedRoute`). They are the router's own kinds (`CUSTOMER_ROUTE_KINDS`), so the portal's
  * handlers serve them unchanged; this module only decides what the host may reach.
  *
  * Unset `CUSTOMER_ORIGIN` ⇒ `isCustomerHost` is always false and nothing here runs.
@@ -38,6 +38,38 @@ export const CUSTOMER_ROUTE_KINDS: ReadonlySet<string> = new Set([
   "docs",
   "helpAlias",
 ]);
+
+/**
+ * The public storefront feeds (Scoop, AltStore, SideStore, AltStore PAL, Obtainium, Flathub,
+ * F-Droid): `GET|HEAD /<product>/distribution/<area>/…`, the documents a customer pastes into
+ * another app, so the download page names them on this host. They are `service` routes of
+ * Distribution, so they are admitted by path SHAPE here (never the whole service): every other
+ * Distribution route (the CI plane, hooks, rollouts, the bytes) stays the not-found. They are
+ * public, read-only and sessionless; the account cookies are already stripped before a product
+ * route runs (`withoutAccountCookies`), and the feed handler sets cookies never. The key host
+ * keeps answering the same URLs for existing subscribers.
+ */
+export function isCustomerFeedRoute(
+  route: { kind: string; slug?: string; rest?: readonly string[] },
+  method: string,
+): boolean {
+  if (method !== "GET" && method !== "HEAD") return false;
+  if (route.kind !== "service" || route.slug !== "distribution") return false;
+  const rest = route.rest ?? [];
+  switch (rest[0]) {
+    case "altstore":
+    case "altstore-pal":
+      return rest.length === 3 && rest[2] === "source.json";
+    case "obtainium":
+    case "scoop":
+    case "flathub":
+      return rest.length === 2;
+    case "fdroid":
+      return rest.length >= 4 && rest[2] === "repo";
+    default:
+      return false;
+  }
+}
 
 /**
  * What of `/docs` the customer host serves: Help and the files a Help page loads (the shared

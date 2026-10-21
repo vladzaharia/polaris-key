@@ -270,6 +270,40 @@ jobs:
           include-hidden-files: true
           if-no-files-found: ignore
 
+  # Help search under the Worker's real docs CSP (the docs script-src needs 'wasm-unsafe-eval' for
+  # Pagefind; without it search spun forever). The test serves the built docs through the Worker
+  # router in Chromium (packages/worker/test/docsSearchBrowser.test.ts). It fails, not skips, when
+  # PKEY_DOCS_BROWSER=1 and the docs dist is missing, and the step checks the report for skips.
+  help-search:
+    name: Help search (Chromium, the Worker's docs CSP)
+    needs: changes
+    if: needs.changes.outputs.docs == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-js
+        with:
+          install: "false"
+      - run: >-
+          pnpm install --frozen-lockfile --filter=@polaris-key/docs...
+          --filter=@polaris-key/worker...
+      - run: >-
+          pnpm exec turbo run build --filter=@polaris-key/docs...
+          --filter=@polaris-key/worker^...
+      - name: Search returns results under the docs CSP
+        env:
+          PKEY_DOCS_BROWSER: "1"
+        run: >-
+          pnpm --filter @polaris-key/worker exec vitest run test/docsSearchBrowser.test.ts
+          --reporter=json --outputFile="$RUNNER_TEMP/help-search.json"
+      - name: The search tests ran (not skipped)
+        run: >-
+          node -e "const r=require(process.env.RUNNER_TEMP+'/help-search.json');
+          if(r.numPassedTests<4||r.numPendingTests>0){console.error('help search tests skipped or missing',r.numPassedTests,r.numPendingTests);process.exit(1)}"
+
   # UK-15: the UI-kit visual QA lane (UI-KITS.md §7). The modernity lint over the mockup boards
   # (both themes) and any kit stylesheets, the string lint against the copy catalogs, the per-kit
   # source lints, the side-by-side report and the lint's own browser suites (a seeded violation
@@ -673,7 +707,7 @@ jobs:
   # only until it holds: measured 2026-10-11 with Xcode 27, removing packs, zstd and the static
   # Rubik still leaves this tree 13% LARGER (3.47 MB vs 3.07 MB .ipa), because the UK-07 kit
   # (PolarisKeyUI + PolarisKeyUICore, +2.1 MB of code and resources) outweighs the 1.4 MB
-  # removed. Drop `continue-on-error` when the kit's own footprint package lands. It is its own job
+  # removed. Drop `continue-on-error` when SP-52's size target is met. It is its own job
   # because it takes 9 minutes of Release builds and gates nothing.
   apple-footprint:
     name: iOS app footprint (macos-26, report only)
@@ -1312,6 +1346,7 @@ jobs:
         node-floor,
         browser,
         console,
+        help-search,
         ui-kits,
         react-kit,
         browser-firefox,

@@ -165,7 +165,7 @@ export async function resolveAscSetup(
   if (!app)
     return inert(
       "no_outlet",
-      "declare an app-store or testflight outlet with an appleId in .pkey/distribution",
+      "declare an app-store or testflight channel with an appleId in .pkey/distribution",
     );
   // One app per product connector: a `testflight` outlet naming another app is not this one's.
   const testflight =
@@ -205,7 +205,7 @@ export async function resolveAscSetup(
     // terms — never a fall-through to the team key.
     return inert(
       "no_api_key",
-      "the product's asc-api-key credentials are bound to other outlets: a platform admin must store an asc-api-key credential for this app's outlets (or unbound) pinned to this app",
+      "the product's asc-api-key credentials are bound to other channels: a platform admin must store an asc-api-key credential for this app's channels (or unbound) pinned to this app",
       { manifestAppleId: appleId, credentialSource: "product" },
     );
   if (!apiKey) {
@@ -218,7 +218,7 @@ export async function resolveAscSetup(
     if (!platform)
       return inert(
         "no_api_key",
-        "a platform admin must store an asc-api-key outlet credential pinned to this app, or configure the platform App Store Connect connection and assign this app to the product",
+        "a platform admin must store an asc-api-key channel credential pinned to this app, or configure the platform App Store Connect connection and assign this app to the product",
         { manifestAppleId: appleId },
       );
     const pinned = await platformPin(db, ASC_PLATFORM_CREDENTIAL, product);

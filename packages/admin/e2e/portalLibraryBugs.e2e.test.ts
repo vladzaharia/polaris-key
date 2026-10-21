@@ -7,6 +7,7 @@ import {
   type Theme,
 } from "./portalHarness.js";
 import { portalRoutes, type Handler } from "./portalFixtures.js";
+import { SHIPPED } from "./portalStates.js";
 
 /**
  * Stabilization package E2 (B-075 to B-091): what only a browser can show about the Library,
@@ -214,6 +215,129 @@ describe.concurrent("touch targets (B-081, B-082)", () => {
   });
 });
 
+/**
+ * Stabilization LF1 (EXPERIENCE §7.3): on a touch screen every customer control is 44 px tall (a
+ * text link inside a sentence is excused), on the screens people use most. `smallTargets` only
+ * flags crowded targets under 24 px, so this measures the height itself.
+ */
+const TOUCH_STATES = [
+  "library-1",
+  "library-12",
+  "library-error",
+  "boot-error",
+  "activate-enter",
+  "activate-confirm",
+  "product",
+  "product-load-error",
+  "product-remove-device",
+  "product-remove-license",
+  "product-install-sources",
+  "account",
+  "account-delete",
+  "account-link-both",
+  "device-limit",
+  "download-flow",
+  "library-entry-remove",
+];
+
+describe("every customer control is 44 px tall on a touch screen", () => {
+  for (const id of TOUCH_STATES) {
+    it(`${id} at 390`, async ({ expect }) => {
+      const st = SHIPPED.find((x) => x.id === id);
+      expect(st, `state ${id}`).toBeDefined();
+      const o = await portal.open(st!.scenario, st!.path, {
+        width: 390,
+        height: 844,
+        theme: "light",
+        hasTouch: true,
+        routes: st!.routes,
+      });
+      try {
+        await st!.ready(o.page);
+        await o.page.waitForTimeout(300);
+        const under = await o.page.evaluate(() => {
+          const SEL =
+            "a[href], button, input:not([type=hidden]):not([type=checkbox]):not([type=radio]), select, textarea, summary, [role=radio], [role=tab], [role=menuitem]";
+          const out: string[] = [];
+          for (const el of document.querySelectorAll<HTMLElement>(SEL)) {
+            if (el.closest("[inert], [aria-hidden=true]")) continue;
+            if ((el as HTMLButtonElement).disabled) continue;
+            if (!el.checkVisibility({ visibilityProperty: true })) continue;
+            const cs = getComputedStyle(el);
+            const r = el.getBoundingClientRect();
+            if (r.width <= 1 || r.height <= 1) continue;
+            // Skip-link and other visually hidden controls.
+            if (cs.clipPath === "inset(50%)") continue;
+            // A name link stretched over its whole card or row (`after:absolute after:inset-0`):
+            // the card is the target.
+            if (getComputedStyle(el, "::after").position === "absolute")
+              continue;
+            // A link inside a sentence is excused (WCAG 2.5.8 inline exception).
+            if (cs.display === "inline") {
+              const own = (el.textContent ?? "").trim();
+              const line = (el.parentElement?.textContent ?? "").trim();
+              if (line.length > own.length) continue;
+            }
+            const label = (
+              el.getAttribute("aria-label") ??
+              el.textContent ??
+              ""
+            )
+              .trim()
+              .replace(/\s+/g, " ")
+              .slice(0, 40);
+            if (r.height < 43.5)
+              out.push(
+                `${el.tagName.toLowerCase()} "${label}" ${Math.round(r.width)}x${Math.round(r.height)}`,
+              );
+          }
+          return out;
+        });
+        expect(under).toEqual([]);
+      } finally {
+        await o.close();
+      }
+    });
+  }
+});
+
+describe("Discover: a failed Add leaves the row where it is (B-080)", () => {
+  for (const width of [1440, 390]) {
+    it(`no tile changes height at ${width}`, async ({ expect }) => {
+      const o = await portal.open("three", "/#/discover", {
+        width,
+        height: 900,
+        routes: {
+          "POST /api/discover/mossgarden/claim": () => ({
+            status: 500,
+            body: { error: "internal" },
+          }),
+        },
+      });
+      try {
+        await h1(o.page, "Discover");
+        const button = o.page.getByRole("button", {
+          name: "Add to library: Mossgarden",
+        });
+        await button.waitFor();
+        const heights = () =>
+          o.page.evaluate(() =>
+            [...document.querySelectorAll("main article")].map((a) =>
+              Math.round(a.getBoundingClientRect().height),
+            ),
+          );
+        const before = await heights();
+        await button.click();
+        await o.page.getByRole("alert").filter({ hasText: "Couldn" }).waitFor();
+        await o.page.waitForTimeout(300);
+        expect(await heights()).toEqual(before);
+      } finally {
+        await o.close();
+      }
+    });
+  }
+});
+
 describe.concurrent("the dialog scrim (B-091)", () => {
   for (const [width, height] of [
     [1280, 800],
@@ -252,58 +376,114 @@ describe.concurrent("the dialog scrim (B-091)", () => {
   }
 });
 
-describe.concurrent("a right-to-left name starts at the icon (B-078)", () => {
-  const name = "لعبة الأحجار الكريمة والمغامرات الكبرى في الصحراء";
-  const base = portalRoutes("three")["/api/library"] as () => {
-    body: { products: Record<string, unknown>[] };
-  };
-  const routes: Record<string, Handler> = {
-    "/api/library": () => {
-      const res = base();
-      return {
-        body: {
-          ...res.body,
-          products: res.body.products.map((p, i) =>
-            i === 0 ? { ...p, name } : p,
-          ),
-        },
-      };
-    },
-  };
-  for (const theme of ["dark"] as Theme[]) {
-    it(`in the Library tile (${theme})`, async ({ expect }) => {
-      const o = await portal.open("three", "/", {
-        theme,
-        width: 1440,
-        height: 900,
-        routes,
+describe.concurrent(
+  "the toolbar on a phone: search, the chips, then one row (LF3)",
+  () => {
+    for (const [width, height] of [
+      [390, 844],
+      [360, 740],
+    ] as const) {
+      it(`sort and the Grid/List toggle share a row at ${width}`, async ({
+        expect,
+      }) => {
+        const o = await portal.open("twelve", "/#/", { width, height });
+        try {
+          await h1(o.page, "Your library");
+          await o.page.locator("[data-library-view-row]").waitFor();
+          const rows = await o.page.evaluate(() => {
+            const box = (e: Element | null): DOMRect =>
+              e!.getBoundingClientRect();
+            const sort = box(document.querySelector("main select"));
+            const toggle = box(document.querySelector("[aria-label=View]"));
+            return {
+              search: box(document.querySelector("[data-library-search]")).top,
+              chips: box(document.querySelector("[aria-label=Filter]")).top,
+              sort,
+              toggle,
+            };
+          });
+          // Search above the chips above one row for sort and the toggle: the two overlap
+          // vertically (one row), and both sit under the chips.
+          expect(rows.search).toBeLessThan(rows.chips);
+          expect(rows.chips).toBeLessThan(
+            Math.min(rows.sort.top, rows.toggle.top),
+          );
+          expect(rows.sort.top).toBeLessThan(rows.toggle.bottom);
+          expect(rows.toggle.top).toBeLessThan(rows.sort.bottom);
+        } finally {
+          await o.close();
+        }
       });
-      try {
-        await h1(o.page, "Your library");
-        await o.page.waitForSelector("article h3");
-        const at = await o.page.evaluate((text) => {
-          const h3 = [...document.querySelectorAll("article h3")].find((h) =>
-            h.textContent?.includes(text.slice(0, 6)),
-          )!;
-          const article = h3.closest("article")!.getBoundingClientRect();
-          const range = document.createRange();
-          range.selectNodeContents(h3);
-          const first = range.getClientRects()[0]!;
-          const box = h3.getBoundingClientRect();
-          return {
-            textLeft: first.left - box.left,
-            textRight: box.right - first.right,
-            icon: article.left,
-          };
-        }, name);
-        // The line begins at the box's left edge (beside the icon), not its right.
-        expect(at.textLeft).toBeLessThan(at.textRight + 1);
-      } finally {
-        await o.close();
-      }
-    });
-  }
-});
+    }
+  },
+);
+
+describe.concurrent(
+  "a right-to-left name stays beside its icon (B-078, LF3)",
+  () => {
+    const name = "لعبة الأحجار الكريمة والمغامرات الكبرى في الصحراء";
+    const base = portalRoutes("three")["/api/library"] as () => {
+      body: { products: Record<string, unknown>[] };
+    };
+    const routes: Record<string, Handler> = {
+      "/api/library": () => {
+        const res = base();
+        return {
+          body: {
+            ...res.body,
+            products: res.body.products.map((p, i) =>
+              i === 0 ? { ...p, name } : p,
+            ),
+          },
+        };
+      },
+    };
+    // The name is `dir="auto"` (it reads in its own script), but its alignment follows the page: left
+    // in an LTR page, so the name starts at the icon's edge whatever its script (LF3). On a phone the
+    // name sits under the icon, where a right-aligned line was the far edge from it.
+    for (const [theme, width, height] of [
+      ["dark", 1440, 900],
+      ["light", 390, 844],
+    ] as [Theme, number, number][]) {
+      it(`in the Library tile (${theme}, ${width})`, async ({ expect }) => {
+        const o = await portal.open("three", "/", {
+          theme,
+          width,
+          height,
+          routes,
+        });
+        try {
+          await h1(o.page, "Your library");
+          await o.page.waitForSelector("article h3");
+          const at = await o.page.evaluate((text) => {
+            const h3 = [...document.querySelectorAll("article h3")].find((h) =>
+              h.textContent?.includes(text.slice(0, 6)),
+            )!;
+            const article = h3.closest("article")!.getBoundingClientRect();
+            const range = document.createRange();
+            range.selectNodeContents(h3);
+            const first = range.getClientRects()[0]!;
+            const box = h3.getBoundingClientRect();
+            return {
+              textLeft: first.left - box.left,
+              textRight: box.right - first.right,
+              icon: article.left,
+              align: getComputedStyle(h3).textAlign,
+              dir: h3.getAttribute("dir"),
+            };
+          }, name);
+          // The line begins at the box's left edge (beside the icon), not its right, and the name
+          // still reads right to left (`dir="auto"`).
+          expect(at.textLeft).toBeLessThan(at.textRight + 1);
+          expect(at.align).toBe("left");
+          expect(at.dir).toBe("auto");
+        } finally {
+          await o.close();
+        }
+      });
+    }
+  },
+);
 
 describe.concurrent("the Library skeleton is a tile's size (B-084)", () => {
   for (const [width, height] of [
@@ -336,13 +516,25 @@ describe.concurrent("the Library skeleton is a tile's size (B-084)", () => {
         );
         release();
         await o.page.waitForSelector("article h3");
-        const tile = await o.page.evaluate(
-          () =>
-            document
-              .querySelector("article")!
-              .closest("li")!
-              .getBoundingClientRect().height,
-        );
+        // A tile with an issue (Expired) carries its status pill in the body, one row the skeleton
+        // cannot know about (LF3: no text over the art), and a grid row is as tall as its tallest
+        // tile. The reference is the first tile's height without that row.
+        const tile = await o.page.evaluate(() => {
+          const li = document.querySelector("article")!.closest("li")!;
+          const top = li.getBoundingClientRect().top;
+          const row = [...document.querySelectorAll("main article")]
+            .map((a) => a.closest("li")!)
+            .filter((l) => Math.abs(l.getBoundingClientRect().top - top) < 2);
+          const extra = Math.max(
+            0,
+            ...row.flatMap((l) =>
+              [...l.querySelectorAll("[data-tone]")].map(
+                (p) => p.parentElement!.getBoundingClientRect().height + 8,
+              ),
+            ),
+          );
+          return li.getBoundingClientRect().height - extra;
+        });
         console.log(`E2 skeleton ${skeleton} tile ${tile} at ${width}`);
         expect(Math.abs(skeleton - tile)).toBeLessThanOrEqual(4);
       } finally {

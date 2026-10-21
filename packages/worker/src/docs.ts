@@ -57,7 +57,11 @@ import {
  * either hashed by the build pipeline or blocked.
  */
 function docsCsp(): string {
-  const script = ["'self'", ...DOCS_SCRIPT_HASHES].join(" ");
+  // 'wasm-unsafe-eval' lets Pagefind compile its WebAssembly search engine. It allows WebAssembly
+  // compilation only, never string-to-code `eval` (that is 'unsafe-eval', which stays absent).
+  const script = ["'self'", "'wasm-unsafe-eval'", ...DOCS_SCRIPT_HASHES].join(
+    " ",
+  );
   const style = ["'self'", ...DOCS_STYLE_HASHES].join(" ");
   // Inline `style="…"` attributes (Expressive Code's token colours) are admitted by hash only.
   const styleAttr = ["'unsafe-hashes'", ...DOCS_STYLE_ATTR_HASHES].join(" ");

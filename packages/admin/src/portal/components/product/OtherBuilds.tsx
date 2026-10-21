@@ -126,7 +126,7 @@ export function OtherBuilds({
         aria-expanded={open}
         aria-controls={region}
         onClick={() => setOpen((v) => !v)}
-        className="flex min-h-14 w-full items-center gap-3 rounded-xl border border-dashed border-border-strong px-4 py-2 text-left hover:bg-hover"
+        className="flex min-h-14 w-full items-center gap-3 rounded-xl border border-dashed border-border-strong px-4 @max-[18rem]:px-2 py-2 text-left hover:bg-hover"
       >
         <ChevronRight
           aria-hidden
@@ -136,7 +136,7 @@ export function OtherBuilds({
           )}
         />
         <span className="min-w-0 flex-1">
-          <span className="block font-semibold text-fg-strong">
+          <span className="block font-semibold text-fg-strong @max-[18rem]:text-xs">
             {C["getIt.flow.otherBuilds"]}
           </span>{" "}
           <span className="block text-sm text-fg-muted [overflow-wrap:anywhere]">

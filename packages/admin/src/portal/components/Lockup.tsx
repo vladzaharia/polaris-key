@@ -35,18 +35,29 @@ export function Lockup({
  * "for crowded navigation use the mark alone with an accessible label"), the mark alone. The
  * enclosing link names it.
  */
-export function HeaderBrand(): React.ReactElement {
+export function HeaderBrand({
+  container = false,
+}: {
+  /**
+   * Switch on the enclosing container's width (`@container`) rather than the window's: a header
+   * that sets its own container follows the root font size, so large text gives the mark first.
+   */
+  container?: boolean;
+} = {}): React.ReactElement {
   const { theme } = useTheme();
+  const wide = container
+    ? "hidden @min-[24rem]:block"
+    : "hidden min-[24rem]:block";
   return (
     <>
-      <Lockup height={36} className="hidden min-[24rem]:block desk:hidden" />
+      <Lockup height={36} className={`${wide} desk:hidden`} />
       <Lockup height={40} className="hidden desk:block" />
       <PolarisMark
         kind="locker"
         size={32}
         theme={theme}
         title=""
-        className="min-[24rem]:hidden"
+        className={container ? "@min-[24rem]:hidden" : "min-[24rem]:hidden"}
       />
     </>
   );

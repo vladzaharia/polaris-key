@@ -259,6 +259,12 @@ export function LinkAccountsDialog({
     }
   };
 
+  // Every state with its own Cancel (the step-up, the join and undo confirmations) drops the
+  // corner X: one way out of a surface, not two. Loading, failed and done keep it.
+  const hasCancel =
+    action.kind === "stepup" ||
+    !(done || view.isPending || (view.error && !expired));
+
   return (
     <Dialog
       open
@@ -268,6 +274,7 @@ export function LinkAccountsDialog({
       size="md"
       title={t("signin.join.title")}
       dismissible={!busy}
+      closeButton={!hasCancel}
       onEscapeKeyDown={stepUpEscape}
       onCloseAutoFocus={(e) => {
         e.preventDefault();

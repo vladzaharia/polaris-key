@@ -351,7 +351,7 @@ export function planControl(input: ControlPlanInput): ControlPlan {
           return refusePlan(
             409,
             "confirmation_required",
-            "halting a completed release rolls the track back to the previously completed release; send confirmRollback: true to do it",
+            "halting a completed release rolls the track back to the previously completed release; confirm it in the halt dialog",
           );
         rollback = true;
       } else if (status !== "inProgress")

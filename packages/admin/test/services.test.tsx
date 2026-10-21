@@ -321,7 +321,7 @@ describe("Services feature groups", () => {
         },
       }),
     );
-    await user.click(screen.getByRole("button", { name: "Retry" }));
+    await user.click(screen.getByRole("button", { name: "Try again" }));
     await waitFor(() => expect(updateServices).toHaveBeenCalledTimes(2));
     expect(updateServices).toHaveBeenLastCalledWith("djdl", {
       services: { sync: { enabled: true } },
@@ -395,7 +395,7 @@ describe("Services feature groups", () => {
       cascaded: ["update"],
       signedInDevicesToClear: 0,
     });
-    await user.click(screen.getByRole("button", { name: "Retry" }));
+    await user.click(screen.getByRole("button", { name: "Try again" }));
     const dialog = await screen.findByRole("alertdialog");
     expect(
       within(dialog).getByText(
@@ -467,7 +467,7 @@ describe("Services feature groups", () => {
       portalEnabled: true,
     });
 
-    await user.click(screen.getByRole("button", { name: "Retry" }));
+    await user.click(screen.getByRole("button", { name: "Try again" }));
     await waitFor(() =>
       expect(updatePortalSettings).toHaveBeenLastCalledWith("djdl", {
         portalEnabled: true,

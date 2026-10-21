@@ -229,7 +229,9 @@ describe("license record: header and tabs", () => {
 
   it("shows a load failure with a retry", async () => {
     bootLicense(REC, { routes: { [LIC]: failing(500) } });
-    expect(await screen.findByRole("button", { name: /Retry/ })).toBeTruthy();
+    expect(
+      await screen.findByRole("button", { name: /Try again/ }),
+    ).toBeTruthy();
   });
 
   it("edits the holder in its own dialog", async () => {
@@ -413,7 +415,7 @@ describe("license record: Terms", () => {
     });
     const form = await terms();
     const group = within(form)
-      .getAllByRole("group", { name: "Release channels" })
+      .getAllByRole("group", { name: "Release tracks" })
       .at(-1)!;
     expect(within(group).getByText("Not offered")).toBeTruthy();
     await userEvent.click(within(group).getByLabelText("dev"));
@@ -679,7 +681,9 @@ describe("license record: Config overrides", () => {
     bootLicense(`${REC}/config`, {
       routes: { [`${API}/config/catalog`]: failing(500) },
     });
-    expect(await screen.findByRole("button", { name: /Retry/ })).toBeTruthy();
+    expect(
+      await screen.findByRole("button", { name: /Try again/ }),
+    ).toBeTruthy();
   });
 
   it("warns that inherited values may be incomplete when a profile fails (LDT-6)", async () => {

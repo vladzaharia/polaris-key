@@ -40,7 +40,7 @@ export function CodeBlock({
   const lines = React.useMemo(() => tokenize(code, language), [code, language]);
   const name = filename ?? `${LANGUAGE_LABEL[language]} snippet`;
   return (
-    <div className={cn(CODE_BLOCK.frame, className)}>
+    <div data-code-frame="" className={cn(CODE_BLOCK.frame, className)}>
       <div className={CODE_BLOCK.header}>
         <span
           className={CODE_BLOCK.title}

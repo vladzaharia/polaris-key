@@ -271,6 +271,8 @@ Everything below hangs off one `PolarisKeyClient`; the same surface is on `Async
 ### One-call boot
 
 ```python
+import polaris_key
+
 client = polaris_key.create(product_slug="djdl", version="1.0.0", trust=TRUST)
 outcome = client.boot(on_stage=lambda state, emits: print(state.stage))
 if outcome.needs_activation:
@@ -316,7 +318,7 @@ can show which license was revoked.
 
 ```python
 unsubscribe = client.subscribe(lambda e: print(e.kind, e.data), kinds=["license", "config"])
-client.on_config_change("ui.theme", lambda e: apply_theme(e.get("value")))
+client.on_config_change("ui.theme", lambda e: apply_theme(e.get("value")))  # your own function
 client.config.set("ui.theme", "dark")    # a persisted local override (config.local)
 client.config.clear("ui.theme")
 ```
@@ -375,11 +377,15 @@ the server-supplied `manageUrl` on a `device_limit` refusal (`manage_url`, PX-W8
 ### `asyncio`
 
 ```python
-client = await polaris_key.AsyncClient.create(product_slug="djdl", version="1.0.0", trust=TRUST)
-outcome = await client.boot()
-result = await client.identity.wait_for_sign_in(prompt)        # cancels at once
-async for progress in client.update.packs.progress(until_done=True):
-    ...
+import polaris_key
+
+
+async def main(prompt: polaris_key.SignInPrompt) -> None:
+    client = await polaris_key.AsyncClient.create(product_slug="djdl", version="1.0.0", trust=TRUST)
+    outcome = await client.boot()
+    result = await client.identity.wait_for_sign_in(prompt)        # cancels at once
+    async for progress in client.update.packs.progress(until_done=True):
+        ...
 ```
 
 `AsyncClient` shares the sync client's core, cache and gate: each sub-client method is a
@@ -435,11 +441,11 @@ A refused activation or enrolment returns `ActivationDeviceLimit(limit, deviceCo
 the product's portal is on and already validated. It is never an auth failure.
 
 ```python
-from polaris_key import with_manage_key, with_manage_return
+from polaris_key import ActivationDeviceLimit, with_manage_key, with_manage_return
 
-r = client.license.activate_with_key(key)
-if r.kind == "device-limit" and r.manage_url:
-    link = with_manage_return(with_manage_key(r.manage_url, key), "myapp://activated")
+r = client.license.activate_with_key(user_entered_key)
+if isinstance(r, ActivationDeviceLimit) and r.manage_url:
+    link = with_manage_return(with_manage_key(r.manage_url, user_entered_key), "myapp://activated")
     print(f"Every seat is taken. Free one up at {link}")
 ```
 
@@ -513,15 +519,21 @@ in `X-PKey-License`; the backend verifies it offline against the pinned keys and
 manifest. The core needs only `cryptography` and `httpx`; each adapter imports its framework when
 you import it. Extras: `starlette`, `fastapi`, `flask`, `django`, `drf`.
 
-```python no-compile
-from polaris_key.server.fastapi import PolarisKey
+```python
+from typing import Annotated
 
-polaris = PolarisKey(config=polaris_config)  # the module `pkey sdk` writes
+from fastapi import Depends, FastAPI
+
+import polaris_config  # the module `pkey sdk` writes
+from polaris_key.server.fastapi import PolarisAuth, PolarisKey
+
+app = FastAPI()
+polaris = PolarisKey(config=polaris_config)
 polaris.install(app)
 
 @app.get("/api/export")
 def export(auth: Annotated[PolarisAuth, Depends(polaris.require_entitlement("export.pdf"))]):
-    return {"tier": auth.license.tier}
+    return {"tier": auth.license.tier if auth.license else None}
 ```
 
 | Framework | Module                         | Gate                                                                                                 |
@@ -553,6 +565,8 @@ vars are ignored for those keys; `hidden` keys are additionally withheld from
 through local → env → remote value → your `fallback`.
 
 ```python
+from polaris_key import PolarisKeyClient
+
 client = PolarisKeyClient.create(
     product_slug="djdl", version="1.0.0", trust=TRUST,
     local_overrides={"run.concurrency": 6},  # beats a `default`, never an `enforced`/`hidden`
@@ -642,6 +656,8 @@ kit writes the same output itself. `NO_COLOR`, pipes and `TERM=dumb` print plain
 verbs under your own command so the kit names it:
 
 ```python
+from polaris_key.cli import register_argparse
+
 register_argparse(parser.add_subparsers(dest="command", required=True), client_factory, prog="tidewater")
 ```
 
@@ -736,8 +752,9 @@ check.decision.action     # none | code-ready | binary | store | platform | bloc
 check.decision.to_dict()  # exactly the members that action carries
 check.feed, check.record  # "network" | "committed";  "network" | "cache" | "none"
 check.errors              # (UpdateCheckError(code, detail), ...): what was refused on the way
-if check.decision.action == "binary":
-    url = client.update.build_url(check.decision.release.version, check.decision.build)
+release = check.decision.release
+if check.decision.action == "binary" and release and check.decision.build:
+    url = client.update.build_url(release.version, check.decision.build)
     # download, then check the payload's size and sha256 against the record before staging
 ```
 
@@ -864,14 +881,16 @@ With a content stamp, `client.update.decide()` also reads the feed's content mem
 refines the app answer (plans/P4-13.md §2.5, §2.6):
 
 ```python
+import polaris_key
+
 check = client.update.decide()
 d = check.decision
-if d.action == "packs":                          # install the named releases, unmount revoked ones
+if d.action == "packs" and d.install:            # install the named releases, unmount revoked ones
     client.update.packs.ensure_releases(d.install)   # exact releases, not the stamp's pins
     # d.revoke: optional packs revoked without a fix (already unmounted); d.set: the effective set
 elif d.action == "blocked" and d.reason == "revoked-content":
     ...  # a REQUIRED pack was revoked by its developer and has no usable replacement
-boot = boot_decision(d)                          # "required" only for revoked required content
+boot = polaris_key.boot_decision(d)              # "required" only for revoked required content
 ```
 
 - **Floors never stop play.** A pack below its floor gives `blocked {content-floor}`, or an offer
@@ -958,9 +977,11 @@ The SDK follows wire contract v3 (`docs/security/WIRE-CONTRACT-V3.md`):
 ```python
 from polaris_key import verify_jws, verify_license_doc, verify_config_doc, TYP_LICENSE
 
-v = verify_jws(jws, {"kid": "rawBase64urlPubKey"}, require_typ=True)
-v = verify_jws(jws, trust, typ=TYP_LICENSE, require_typ=True)  # assert the document type
-doc = verify_license_doc(jws, trust, expected_aud="djdl", device_id=device_id)
+v = verify_jws(jws, {"kid": "rawBase64urlPubKey"}, typ=TYP_LICENSE)  # typ is required: the document type
+doc = verify_license_doc(
+    jws, TRUST, expected_aud="djdl", device_id=device_id,
+    last_accepted_issued_at=None,  # or the newest issuedAt this device accepted
+)
 ```
 
 `verify_jws` never raises and never parses an unverified payload: the encoded segments are

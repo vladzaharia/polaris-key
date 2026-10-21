@@ -4870,6 +4870,8 @@ export class ApiError extends Error {
   }
   /** Seconds until a 429 clears, when the route says (`retryAfter`). */
   retryAfter?: number;
+  /** The area a `no_access` 403 names (worker `forbiddenArea`): `settings`, `license`, … */
+  area?: string;
 }
 
 async function call<T>(
@@ -4937,6 +4939,7 @@ async function send(
     let message: string | undefined;
     let reason: string | undefined;
     let retryAfter: number | undefined;
+    let area: string | undefined;
     try {
       const body = (await res.json()) as {
         error?:
@@ -4947,12 +4950,14 @@ async function send(
               fields?: string[];
               errors?: string[];
               reason?: string;
+              area?: string;
             };
         message?: string;
         fields?: string[];
         errors?: string[];
         code?: string;
         reason?: string;
+        area?: string;
         retryAfter?: number;
       };
       if (typeof body.retryAfter === "number") retryAfter = body.retryAfter;
@@ -4962,6 +4967,7 @@ async function send(
         code = body.error.code ?? body.code;
         message = body.error.message ?? body.message;
         reason = body.error.reason ?? body.reason;
+        if (typeof body.error.area === "string") area = body.error.area;
       } else {
         fields = body.fields;
         errors = body.errors;
@@ -4975,6 +4981,7 @@ async function send(
     const error = new ApiError(res.status, fields, code, errors, reason);
     if (message) error.message = message;
     if (retryAfter !== undefined) error.retryAfter = retryAfter;
+    if (area) error.area = area;
     if (
       res.status === 403 &&
       code === "step_up_required" &&

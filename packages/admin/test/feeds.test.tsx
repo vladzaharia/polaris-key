@@ -623,7 +623,9 @@ describe("the Feeds overview", () => {
     });
     await heading("Package feeds");
     expect(
-      await within(await mainReady()).findByRole("button", { name: /retry/i }),
+      await within(await mainReady()).findByRole("button", {
+        name: /try again/i,
+      }),
     ).toBeTruthy();
   });
 

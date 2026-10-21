@@ -1,6 +1,7 @@
 import type { Page } from "playwright";
 import { afterAll, beforeAll, describe, it } from "vitest";
 import { type Handler, type Reply, portalRoutes } from "./portalFixtures.js";
+import { SHIPPED } from "./portalStates.js";
 import {
   axe,
   h1,
@@ -298,7 +299,7 @@ function clippedText(page: Page): Promise<string[]> {
         (n) => n.nodeType === 3 && (n.textContent ?? "").trim() !== "",
       );
     for (const e of document.querySelectorAll<HTMLElement>(
-      "main *, header *, nav *",
+      "main *, header *, nav *, [role=dialog] *",
     )) {
       if (!e.checkVisibility() || !hasOwnText(e)) continue;
       const cs = getComputedStyle(e);
@@ -312,11 +313,16 @@ function clippedText(page: Page): Promise<string[]> {
     }
     // A text box whose right edge is past what its clipping or scrolling ancestor shows: the
     // reader would have to scroll inside a region to read it, or never could.
-    const tw = document.createTreeWalker(
+    const roots = [
       document.querySelector("main") ?? document.body,
-      NodeFilter.SHOW_TEXT,
-    );
-    for (let n = tw.nextNode(); n; n = tw.nextNode()) {
+      ...document.querySelectorAll("[role=dialog]"),
+    ];
+    const texts: Text[] = [];
+    for (const root of roots) {
+      const tw = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      for (let n = tw.nextNode(); n; n = tw.nextNode()) texts.push(n as Text);
+    }
+    for (const n of texts) {
       const el = n.parentElement;
       if (!el || !el.checkVisibility() || !(n.textContent ?? "").trim())
         continue;
@@ -329,6 +335,13 @@ function clippedText(page: Page): Promise<string[]> {
         if (a === document.documentElement) break;
         const cs = getComputedStyle(a);
         if (cs.overflowX === "visible") continue;
+        // A scroll region a keyboard reaches (a code frame with `tabindex`, a tab strip of
+        // buttons that scroll into view on focus) is meant to scroll (LF3): its text is not cut.
+        if (
+          (cs.overflowX === "auto" || cs.overflowX === "scroll") &&
+          el.closest("button, a[href], [tabindex]")
+        )
+          break;
         if (box.right > a.getBoundingClientRect().right + 1) {
           out.push(
             `${label(el)} past ${a.tagName.toLowerCase()} edge ${Math.round(box.right)}>${Math.round(a.getBoundingClientRect().right)}`,
@@ -337,14 +350,14 @@ function clippedText(page: Page): Promise<string[]> {
         }
       }
     }
-    const walker = document.createTreeWalker(
-      document.querySelector("main") ?? document.body,
-      NodeFilter.SHOW_TEXT,
-    );
-    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+    for (const n of texts) {
       const parent = n.parentElement;
       if (!parent || !parent.checkVisibility()) continue;
-      if (parent.closest("[dir=rtl], code, pre, [data-section-pills]"))
+      if (
+        parent.closest(
+          "[dir=rtl], code, pre, [data-section-pills], [data-token]",
+        )
+      )
         continue;
       const text = n.textContent ?? "";
       for (const m of text.matchAll(/[^\s-]+/g)) {
@@ -508,4 +521,89 @@ describe("the Library and Account lose no text", () => {
       await o.close();
     }
   });
+});
+
+/**
+ * The one-product hero, the Activate sheet and the focused flows at large text on a phone
+ * (LF1: B2 remainder, M4). A dialog's body must not shrink to a sliver: its content is reachable
+ * without scrolling a 32 px slot.
+ */
+const FLOW_STATES = [
+  { id: "library-1", scenario: "one", path: "/#/", heading: /library/i },
+  ...[
+    "activate-enter",
+    "activate-confirm",
+    "device-limit",
+    "download-flow",
+    "product-token",
+  ].map((id) => ({ id })),
+] as const;
+
+describe("the one-product Library and the flows lose no text at large text", () => {
+  for (const { label, width, height, text } of LARGE_ROWS.filter(
+    (r) => r.text === 200,
+  )) {
+    for (const st of FLOW_STATES) {
+      const theme: Theme = width % 2 === 0 ? "dark" : "light";
+      it(`${label}: ${st.id}: no clipped or broken text, no sideways scroll`, async ({
+        expect,
+      }) => {
+        const shipped =
+          "scenario" in st ? null : SHIPPED.find((s) => s.id === st.id)!;
+        const o = await portal.open(
+          shipped ? shipped.scenario : st.scenario,
+          shipped ? shipped.path : st.path,
+          {
+            width,
+            height,
+            theme,
+            routes: shipped?.routes,
+          },
+        );
+        try {
+          if (shipped) await shipped.ready(o.page);
+          else await h1(o.page, st.heading);
+          await enlarge(o.page, text);
+          await o.page.waitForTimeout(300);
+          const over = await horizontalOverflow(o.page);
+          expect(over > 0 ? await widest(o.page) : []).toEqual([]);
+          expect(over).toBeLessThanOrEqual(0);
+          expect(await clippedText(o.page)).toEqual([]);
+          // A dialog's body is never a sliver to scroll in: the sheet scrolls as a whole.
+          const slot = await o.page.evaluate(() => {
+            const b = document.querySelector<HTMLElement>(
+              "[data-pk-dialog-body]",
+            );
+            return b
+              ? { scroll: b.scrollHeight, client: b.clientHeight }
+              : null;
+          });
+          if (slot) expect(slot.scroll).toBeLessThanOrEqual(slot.client + 1);
+          // A code frame clips what leaves it (LF3, M7): each of its buttons (Wrap, Copy) sits
+          // wholly inside the frame, and so does every Copy button beside a shown-once value.
+          const cut = await o.page.evaluate(() =>
+            [...document.querySelectorAll<HTMLElement>("[role=dialog] button")]
+              .filter((b) => b.checkVisibility())
+              .flatMap((b) => {
+                const frame = b.closest<HTMLElement>(
+                  "[data-code-frame], [data-secret-box]",
+                );
+                if (!frame) return [];
+                const r = b.getBoundingClientRect();
+                const f = frame.getBoundingClientRect();
+                return r.right > f.right + 0.5 || r.left < f.left - 0.5
+                  ? [
+                      `${b.getAttribute("aria-label") ?? b.textContent} ${Math.round(r.left)}-${Math.round(r.right)} in ${Math.round(f.left)}-${Math.round(f.right)}`,
+                    ]
+                  : [];
+              }),
+          );
+          expect(cut).toEqual([]);
+          expect(await axe(o.page)).toEqual([]);
+        } finally {
+          await o.close();
+        }
+      });
+    }
+  }
 });

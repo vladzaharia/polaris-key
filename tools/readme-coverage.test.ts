@@ -205,6 +205,36 @@ describe("internal READMEs", () => {
     });
 });
 
+describe("conformance runners", () => {
+  // Private workspace packages whose README points at conformance/README.md.
+  for (const name of ["node", "browser"])
+    it(`conformance/runners/${name} has a README that points at conformance/README.md`, () => {
+      const dir = `conformance/runners/${name}`;
+      const text = readFileSync(join(ROOT, dir, "README.md"), "utf8");
+      const pkg: Manifest = JSON.parse(
+        readFileSync(join(ROOT, dir, "package.json"), "utf8"),
+      );
+      expect(text.split("\n")[0]).toBe(`# ${pkg.name}`);
+      expect(text).toContain("](../../README.md)");
+    });
+});
+
+describe("packages/client-core/README.md", () => {
+  it("lists every package.json subpath export in its table", () => {
+    const pkg = JSON.parse(
+      readFileSync(join(ROOT, "packages/client-core/package.json"), "utf8"),
+    ) as { name: string; exports: Record<string, unknown> };
+    const text = readFileSync(
+      join(ROOT, "packages/client-core/README.md"),
+      "utf8",
+    );
+    for (const key of Object.keys(pkg.exports)) {
+      const specifier = key === "." ? pkg.name : `${pkg.name}/${key.slice(2)}`;
+      expect(text, specifier).toContain(`| \`${specifier}\``);
+    }
+  });
+});
+
 describe("actions/publish/README.md", () => {
   const text = readFileSync(
     join(ROOT, "actions", "publish", "README.md"),

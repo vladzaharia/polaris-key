@@ -578,7 +578,7 @@ export function PackRecord({
     },
     {
       value: "channels",
-      label: "Channels",
+      label: "Release tracks",
       to: r.deliverable(slug, id, "channels"),
     },
     {

@@ -191,6 +191,10 @@ describe("the app card, signed out (SIGN-IN.md §3.1)", () => {
     ).toBeTruthy();
     expect(document.body.textContent).not.toMatch(/Evil|Mallory/);
     expect(document.body.textContent).not.toMatch(/Polaris Key/);
+    // Help and Privacy stay under the card in an app's context too (SIGN-IN §3.1).
+    const nav = screen.getByRole("navigation", { name: "Help and policies" });
+    expect(within(nav).getByRole("link", { name: "Help" })).toBeTruthy();
+    expect(within(nav).getByRole("link", { name: "Privacy" })).toBeTruthy();
   });
 
   it("an unverified name draws the neutral frame, not a developer", async () => {
@@ -277,7 +281,12 @@ describe("LicenseChoiceStep (§3.6)", () => {
       }),
     ).toBeTruthy();
     expect(
-      screen.getByText("Lifetime · Mara's Pixel 8 becomes device 2 of 3"),
+      // The seat position is a nowrap span (LF3), so the text is read from the paragraph.
+      screen.getByText(
+        (_, el) =>
+          el?.tagName === "P" &&
+          el.textContent === "Lifetime · Mara's Pixel 8 becomes device 2 of 3",
+      ),
     ).toBeTruthy();
     await userEvent.click(
       screen.getByRole("button", { name: "Continue to Diceroll" }),

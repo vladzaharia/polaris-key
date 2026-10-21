@@ -14,11 +14,22 @@ your `MaterialTheme`, dynamic color included. Only warning and success, which Ma
 role for, are the brand's fixed amber and green. No Polaris Key color, font, mark or badge
 appears.
 
-```kotlin
-MyAppTheme {                       // your MaterialTheme
-    PolarisTheme {                 // neutral: the kit looks like your app
-        PolarisBoot(boot, gate = gate, onSignIn = { showSignIn = true }) {
-            MyApp()
+```kotlin android
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import im.plrs.key.ui.PolarisBoot
+import im.plrs.key.ui.PolarisBootState
+import im.plrs.key.ui.PolarisGateState
+import im.plrs.key.ui.PolarisTheme
+
+@Composable
+fun Root(boot: PolarisBootState, gate: PolarisGateState, showSignIn: () -> Unit) {
+    MaterialTheme {                    // your MaterialTheme
+        PolarisTheme {                 // neutral: the kit looks like your app
+            PolarisBoot(boot, gate = gate, onSignIn = showSignIn) {
+                Text("Licensed")       // your app
+            }
         }
     }
 }
@@ -28,8 +39,16 @@ One parameter switches to the Polaris Key design system. You get the generated b
 first, light supported), the core violet as primary, the service accents on the small section
 indicators, Rubik at 400, 500 and 600, full-round buttons and radius-16 fields:
 
-```kotlin
-PolarisTheme(branding = PolarisBranding.PolarisKey) { ... }
+```kotlin android
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import im.plrs.key.ui.PolarisBranding
+import im.plrs.key.ui.PolarisTheme
+
+@Composable
+fun Branded() {
+    PolarisTheme(branding = PolarisBranding.PolarisKey) { Text("Licensed") }
+}
 ```
 
 "Powered by Polaris Locker" is a separate switch. It is off by default and does not depend on
@@ -37,9 +56,17 @@ branding. The default draws the 320 x 104 badge where 320 dp are free and the li
 mark at 16 dp and the phrase) where they are not; `poweredByStyle = PolarisPoweredByStyle.Line`
 always draws the line:
 
-```kotlin
-PolarisTheme(showPoweredBy = true) { ... }                                        // neutral + attribution (settings, account pane)
-PolarisTheme(branding = PolarisBranding.PolarisKey, showPoweredBy = true) { ... } // branded + attribution
+```kotlin android
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import im.plrs.key.ui.PolarisBranding
+import im.plrs.key.ui.PolarisTheme
+
+@Composable
+fun PoweredBy() {
+    PolarisTheme(showPoweredBy = true) { Text("Settings") }                                        // neutral + attribution (settings, account pane)
+    PolarisTheme(branding = PolarisBranding.PolarisKey, showPoweredBy = true) { Text("Account") }  // branded + attribution
+}
 ```
 
 Your product is the hero, in either mode. `logo = { Image(...) }` is your product's icon: at hero
@@ -93,8 +120,18 @@ the content stamp when packs are configured, with the metered-download consent.
 
 ### One call: `PolarisKeyApp`
 
-```kotlin
-setContent { MyAppTheme { PolarisTheme { PolarisKeyApp(client) { App() } } } }
+```kotlin android
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import im.plrs.key.sdk.PolarisKeyClient
+import im.plrs.key.ui.PolarisKeyApp
+import im.plrs.key.ui.PolarisTheme
+
+fun ComponentActivity.show(client: PolarisKeyClient) {
+    setContent { MaterialTheme { PolarisTheme { PolarisKeyApp(client) { Text("Licensed") } } } }
+}
 ```
 
 `PolarisKeyApp` composes the pieces above, unchanged: the boot shell over `client.bootHost()`, the

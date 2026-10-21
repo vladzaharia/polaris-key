@@ -172,3 +172,9 @@ Still to build:
 B1: a private Godot feed gets a licence-bound, Godot-only URL token (30 days) minted from Account → Packages through the per-licence route (`pkeyr_`, never a `pkeyp_` in a URL); the Worker refuses any other ecosystem on that route. B2: `GET /api/me/tokens` returns `legacy` (the account's licence-bound tokens), shown as "Per-app tokens" with Revoke. M1-M7, C1-C6 and the minors are in `PackagesCard.tsx`, `SetupTabs.tsx`, `PersonalTokens.tsx`, `help/packages.md` ("personal token" is the noun; the help lint allows exactly that phrase, style guide §5.2).
 
 Named follow-ups (mockup drift, not built in this round): the grouped "every package you can install" list on Account → Packages, and the token table with Last used / Expires / created columns (the list is rows today). Both need a package-listing read for a person (the serve-time filtering work above). `pkey feeds setup --write` and the npx line belong to F-37. Mockups to adopt: the inline revoke confirm, the expiry choice (30, 90, 180, 365; 90 default), "Erased" in the console roster.
+
+## Status (2026-10-21)
+
+Slices 1 and 2 are merged (`2db897218`, `9e2ae1609`); slice 2's UX re-review passed with fixes
+(`_mockups/review/F-33/ux-review-2.md`). Back to `in-progress` for slice 3, the "Still to build"
+list above; record the UX pass when the package is done.

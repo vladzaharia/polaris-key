@@ -659,6 +659,14 @@
       </svg>
     </template>
     <main class="board">
+      <header class="board-head">
+        <h1>Godot board: built kit beside the target</h1>
+        <p>
+          Each built render sits beside the UK-11 target. Each frame ends with
+          its tier.
+        </p>
+      </header>
+      <h2 class="board-sec">Gate and settings</h2>
       <figure>
         <figcaption>
           godot · gate · real render of the Godot kit at 1280 × 720 (tests/ui
@@ -728,7 +736,7 @@
               ></span>
               <span class="wm-slot"></span>
             </div>
-            <p class="gs">Sign in or add your license to play.</p>
+            <p class="gs">Sign in or use a license key to continue.</p>
             <div style="display: grid; gap: 16px">
               <div class="gb primary focus">Sign in</div>
               <div class="gb">Use a license key</div>
@@ -819,6 +827,7 @@
         </div>
       </figure>
 
+      <h2 class="board-sec">Sign in and device limit</h2>
       <figure>
         <figcaption>
           godot · sign-in · real render of the Godot kit at 1280 × 720 (scenario
@@ -874,14 +883,14 @@
                 >Drift Kart
               </div>
               <h1 class="gt" style="font-size: 34px; line-height: 42px">
-                Sign in on your phone
+                Sign in with a code
               </h1>
               <p class="gs">
-                Scan the code, or go to
+                Scan the code with your phone, or go to
                 <b style="font-weight: 500; color: var(--pk-text-strong)"
-                  >driftkart.gg/tv</b
+                  >polaris.locker/device</b
                 >
-                and enter
+                and enter this code.
               </p>
               <div
                 class="mono"
@@ -905,8 +914,11 @@
                 "
                 class="tnum"
               >
-                <span data-countdown="0.84" data-size="20"></span>Waiting for
-                you · code expires in 4:12
+                <span data-countdown="0.84" data-size="20"></span
+                ><span>Waiting for you to sign in…</span>
+                <span style="color: var(--pk-text-muted)"
+                  >Code expires in 4:12</span
+                >
               </div>
               <div
                 style="
@@ -968,7 +980,7 @@
                 Your license is on 2 of 2 devices
               </h1>
               <p class="gs" style="font-size: 18px">
-                To play on this Steam Deck, remove one. You can add it back
+                To use it on this device, replace one. You can add it back
                 later.
               </p>
               <div class="seats" role="img" aria-label="2 of 2 devices in use">
@@ -993,12 +1005,15 @@
               </div>
             </div>
             <span style="font-size: 16px; color: var(--pk-text-muted)"
-              >Drift Kart signs out on Living room PC.</span
+              ><b style="font-weight: 500; color: var(--pk-text-strong)"
+                >Replace Living room PC?</b
+              ><br />Living room PC signs out of Drift Kart and this device
+              takes its seat. We’ll email you about it.</span
             >
             <div
               style="display: grid; grid-template-columns: 1.6fr 1fr; gap: 16px"
             >
-              <div class="gb primary">Remove Living room PC</div>
+              <div class="gb primary">Replace and continue</div>
               <div class="gb">Cancel</div>
             </div>
           </div>
@@ -1009,6 +1024,7 @@
         </div>
       </figure>
 
+      <h2 class="board-sec">Updates</h2>
       <figure>
         <figcaption>
           godot · update toast · real render of the Godot kit at 1280 × 720
@@ -1055,16 +1071,16 @@
                 "
               >
                 <b style="font-weight: 500; color: var(--pk-text-strong)"
-                  >Drift Kart 1.8 is downloading</b
+                  >Drift Kart 1.8</b
                 ><span style="color: var(--pk-text-muted)"
-                  >After this race</span
+                  >About 1 min left</span
                 >
               </div>
               <div class="bar"><i style="width: 42%"></i></div>
               <span
                 class="tnum"
                 style="font-size: 16px; color: var(--pk-text-muted)"
-                >38 of 91 MB · 1 min left</span
+                >Downloading · 38 MB of 91 MB</span
               >
             </div>
           </div>
@@ -1127,7 +1143,7 @@
               <span>Night Circuit: four new tracks after dark</span>
               <span>Split-screen for up to four players</span>
               <span style="color: var(--kit-accent-fg); font-weight: 500"
-                >Release notes</span
+                >All changes in 1.8</span
               >
             </div>
             <div
@@ -1226,6 +1242,7 @@
       </figure>
 
       <!-- 8. Steam Deck 1280 × 800 -->
+      <h2 class="board-sec">Steam Deck, boot, status and error</h2>
       <figure>
         <figcaption>
           godot · gate at 1280 × 800 (Steam Deck, 16:10). UK-11 target (no built
@@ -1261,7 +1278,7 @@
               ></span>
               <span class="wm-slot"></span>
             </div>
-            <p class="gs">Sign in or add your license to play.</p>
+            <p class="gs">Sign in or use a license key to continue.</p>
             <div style="display: grid; gap: 16px">
               <div class="gb primary focus">Sign in</div>
               <div class="gb">Use a license key</div>
@@ -1369,16 +1386,15 @@
             ></span>
             <div style="display: grid; gap: 10px">
               <h1 class="gt" style="font-size: 32px; line-height: 40px">
-                Your license has ended
+                License expired
               </h1>
               <p class="gs">
-                Drift Kart ended on 30 September. Renew to keep racing online
-                and in career.
+                Connect to the internet or renew your license to continue.
               </p>
             </div>
             <div style="display: grid; gap: 16px">
               <div class="gb primary focus">Renew</div>
-              <div class="gb">Use a different key</div>
+              <div class="gb">Use another license</div>
             </div>
           </div>
           <div class="hints">
@@ -1432,16 +1448,15 @@
             ></div>
             <div style="display: grid; gap: 10px">
               <h1 class="gt" style="font-size: 32px; line-height: 40px">
-                Can’t reach Lanternworks
+                Can’t connect
               </h1>
               <p class="gs">
-                Check your connection. You can keep playing offline for 3 more
-                days.
+                Can’t reach Polaris Locker. Check your connection and try again.
               </p>
             </div>
             <div style="display: grid; gap: 16px">
               <div class="gb primary focus">Try again</div>
-              <div class="gb">Play offline</div>
+              <div class="gb">Continue offline</div>
             </div>
           </div>
           <div class="hints">

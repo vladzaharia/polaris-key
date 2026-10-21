@@ -1059,7 +1059,7 @@ function whoLine(ctx: KitContext, who: ShownIdentity): Line {
   );
   const unit = (text: string): Span => ({
     text,
-    style: ["strong"],
+    style: ["muted"],
     unit: true,
   });
   return parts.flatMap((p, i) =>

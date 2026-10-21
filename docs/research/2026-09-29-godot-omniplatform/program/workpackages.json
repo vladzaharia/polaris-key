@@ -651,7 +651,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-worker-services.md"
       ],
       "brief": "wp/P0-24-migration-ledger-one-time-machinery.md",
-      "status": "in-review"
+      "status": "blocked"
     },
     {
       "id": "P0-25",
@@ -988,7 +988,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-frontend.md"
       ],
       "brief": "wp/P0-36-portal-on-copy-catalog.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "P0-37",
@@ -7034,7 +7034,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/identity.md"
       ],
       "brief": "wp/F-33-personal-tokens-pkeyp-packages-read.md",
-      "status": "in-review"
+      "status": "in-progress"
     },
     {
       "id": "F-34",
@@ -8704,7 +8704,7 @@
         "DX consolidation 2026-10-07: edit (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/PX-12-login-card-v2.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "PX-13",
@@ -9249,7 +9249,7 @@
       "optional": false,
       "refs": ["ST-08 re-check evidence: _mockups/review/ST-08/rebuild/"],
       "brief": "wp/ST-08n-settings-hub-followups.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "ST-09",
@@ -9293,7 +9293,7 @@
         "DX consolidation 2026-10-07: edit (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/ST-10-settings-search.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "ST-11",
@@ -9340,7 +9340,7 @@
         "DX consolidation 2026-10-07: edit (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/ST-12-api-only-settings.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "ST-13",
@@ -9387,7 +9387,7 @@
         "DX consolidation 2026-10-07: edit (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/ST-14-portal-settings.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "ST-15",
@@ -9478,7 +9478,7 @@
         "DX consolidation 2026-10-07: edit (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/ST-17-resync-dry-run.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "ST-18",
@@ -10172,7 +10172,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/rbac-admin.md"
       ],
       "brief": "wp/ST-45-platform-product-sidebar-contexts.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "ST-46",
@@ -10220,7 +10220,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/products-onboarding.md"
       ],
       "brief": "wp/ST-47-legacy-setup-retirement.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "ST-48",
@@ -10262,7 +10262,7 @@
         "section change admin-4-17"
       ],
       "brief": "wp/ST-49-console-route-ledger.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "ST-50",
@@ -11619,7 +11619,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/products-onboarding.md"
       ],
       "brief": "wp/SP-33a-one-integration-content-generator-on.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "SP-33b",
@@ -12120,7 +12120,7 @@
         "docs/research/2026-10-08-sdk-usability/findings.json"
       ],
       "brief": "wp/SP-52-swift-package-footprint.md",
-      "status": "in-review"
+      "status": "in-progress"
     },
     {
       "id": "SP-53",
@@ -12775,7 +12775,7 @@
         "plans/HA-13.md (approved 2026-10-09)"
       ],
       "brief": "wp/HA-13-sdks-presentation.md",
-      "status": "in-review",
+      "status": "done",
       "planRef": "HA-11"
     },
     {
@@ -15298,7 +15298,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-02a-shared-components.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "DOC-02b",
@@ -15523,7 +15523,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-06a-portal-entry-points.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "DOC-06b",
@@ -17289,7 +17289,7 @@
         "section change portal-22"
       ],
       "brief": "wp/PX-33-signin-product-cover.md",
-      "status": "in-review",
+      "status": "done",
       "deferred": "parked 2026-10-09: only if the owner asks for the app-context cover beside the sign-in card (B12)."
     },
     {
@@ -17332,7 +17332,7 @@
         "docs/research/2026-10-08-llm-audit/README.md §3.1, §3.2, §8.3 (AX-01)"
       ],
       "brief": "wp/AX-01-readme-truth-pass-and-package-metadata.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "AX-02",
@@ -17352,7 +17352,7 @@
         "docs/research/2026-10-08-llm-audit/README.md §3.1, §3.2, §8.3 (AX-02)"
       ],
       "brief": "wp/AX-02-readmes-for-every-directory-without-one.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "AX-03a",
@@ -17372,7 +17372,7 @@
         "docs/research/2026-10-08-llm-audit/README.md §4.4, §8.3 (AX-03a)"
       ],
       "brief": "wp/AX-03a-claude-md-split-move-table-role-agents.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "AX-03b",
@@ -18017,7 +18017,7 @@
       "optional": false,
       "refs": ["plans/LK-00.md D7, §2.3"],
       "brief": "wp/LK-09-locker-docs.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "LK-10",

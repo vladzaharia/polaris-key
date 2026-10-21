@@ -186,11 +186,11 @@ export function ReleasesPage({ slug }: { slug: string }): React.ReactElement {
     },
     {
       id: "channel",
-      header: "Channels",
+      header: "Release tracks",
       enableSorting: false,
       meta: {
         priority: 1,
-        label: "Channels",
+        label: "Release tracks",
         csv: (x) => servingChannels(x.releaseId, appChannels).join(" "),
       },
       cell: ({ row }) => {
@@ -324,7 +324,7 @@ export function ReleasesPage({ slug }: { slug: string }): React.ReactElement {
               <button
                 type="button"
                 onClick={() => setPanel("sync")}
-                className="inline-flex items-center gap-1 text-sm text-accent-fg underline-offset-4 hover:underline"
+                className="inline-flex min-h-6 items-center gap-1 text-sm text-accent-fg underline-offset-4 hover:underline"
               >
                 <GitBranch aria-hidden className="size-3.5" />
                 Repo sync

@@ -161,6 +161,13 @@ export function humanize(raw: string): string {
   return s ? s[0]!.toUpperCase() + s.slice(1) : "Unknown";
 }
 
+/** Why a connector is not running (`no_outlet` → "no channel declared"), in console words. */
+export function inertWords(reason: string): string {
+  return reason === "no_outlet"
+    ? "no channel declared"
+    : humanize(reason).toLowerCase();
+}
+
 /**
  * A license's display state (LIC-1): computed client-side from `status` + `expiresAt`. Expiring
  * within 14 days is a warning with the day count; past `expiresAt` is Expired.

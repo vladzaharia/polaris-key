@@ -179,7 +179,7 @@ export function DiscoverTile({
                 <h3
                   id={id}
                   dir="auto"
-                  className="line-clamp-2 min-w-0 max-w-full break-words text-base font-semibold leading-snug text-fg-strong"
+                  className="line-clamp-2 min-w-0 max-w-full break-words text-left text-base font-semibold leading-snug text-fg-strong [:root[dir=rtl]_&]:text-right"
                 >
                   <a
                     href={page}
@@ -214,11 +214,11 @@ export function DiscoverTile({
               id={errorId}
               role="alert"
               tabIndex={-1}
-              className="mt-2 flex gap-2.5 rounded-md bg-danger-subtle px-2.5 py-1.5 text-sm text-fg outline-none"
+              className="mt-2 flex min-h-8 items-center gap-2 rounded-md bg-danger-subtle px-2 py-1.5 text-xs leading-4 text-fg outline-none"
             >
               <AlertCircle
                 aria-hidden
-                className="mt-0.5 size-4 shrink-0 self-start text-danger"
+                className="size-4 shrink-0 text-danger"
               />
               <span>{error}</span>
             </p>

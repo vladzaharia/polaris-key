@@ -240,7 +240,7 @@ describe("Distribution → Health", () => {
       [P("/distribution/update-health")]: () =>
         fail ? apiError(500, "internal") : HEALTH,
     });
-    const retry = await screen.findByRole("button", { name: "Retry" });
+    const retry = await screen.findByRole("button", { name: "Try again" });
     fail = false;
     await userEvent.click(retry);
     await loaded();

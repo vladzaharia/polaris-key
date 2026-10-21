@@ -4,6 +4,7 @@ import type { AppConsentView } from "@polaris-key/protocol/identity";
 import { Button } from "../../../ui/Button.js";
 import { AuthNotice, AuthTitle } from "../../../ui/auth/index.js";
 import { t } from "../../../lib/copy.js";
+import { Keep } from "../Keep.js";
 import {
   consentLines,
   firstName,
@@ -72,7 +73,9 @@ export function ConsentStep({
             <div className="min-w-[12ch] flex-[1_1_12ch] [overflow-wrap:anywhere]">
               <p className="font-semibold text-fg-strong">{line.title}</p>
               {line.meta ? (
-                <p className="text-sm text-fg-muted">{line.meta}</p>
+                <p className="text-sm text-fg-muted">
+                  <Keep>{line.meta}</Keep>
+                </p>
               ) : null}
             </div>
             {onChange ? (

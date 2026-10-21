@@ -3,6 +3,7 @@ import {
   AlertCircle,
   AlertTriangle,
   Check,
+  Info,
   ClipboardPaste,
 } from "lucide-react";
 import { cn } from "../../lib/cn.js";
@@ -23,8 +24,11 @@ import { t } from "../../lib/copy.js";
  * no verdict (§6: help hidden while an error shows).
  */
 export interface KeyFieldVerdict {
-  /** `danger` marks the field invalid; `warning` (the entries notice) never does. */
-  tone: "danger" | "warning";
+  /**
+   * `danger` marks the field invalid. `info` (a well-formed key the account can't use here) and
+   * `warning` (the entries notice) never do: no danger border, no red icon (LF3).
+   */
+  tone: "danger" | "info" | "warning";
   message: React.ReactNode;
   /** The verdict's own way forward ("Sign in to that account", "Use a different key"). */
   actions?: React.ReactNode;
@@ -94,15 +98,19 @@ export function KeyField({
           "relative rounded-md border bg-surface-sunken focus-within:ring-2 focus-within:ring-focus focus-within:ring-offset-2 focus-within:ring-offset-surface-overlay",
           danger
             ? "border-danger"
-            : verdict
-              ? "border-warning"
-              : valid
-                ? "border-success"
-                : "border-border-strong",
+            : verdict?.tone === "info"
+              ? "border-border-strong"
+              : verdict
+                ? "border-warning"
+                : valid
+                  ? "border-success"
+                  : "border-border-strong",
         )}
       >
         <div
           aria-hidden
+          // A key is a token: it may break anywhere (the reflow checks leave tokens alone).
+          data-token=""
           className="min-h-[3.25rem] whitespace-pre-wrap py-3.5 pl-4 pr-24 font-mono text-md leading-6 [overflow-wrap:anywhere] [word-break:break-all]"
         >
           {value ? (
@@ -174,13 +182,18 @@ export function KeyField({
         <>
           <p
             id={errorId}
-            role={danger ? "alert" : "status"}
+            role={verdict.tone === "warning" ? "status" : "alert"}
             className="flex gap-2 text-sm text-fg"
           >
             {danger ? (
               <AlertCircle
                 aria-hidden
                 className="mt-0.5 size-4 shrink-0 text-danger"
+              />
+            ) : verdict.tone === "info" ? (
+              <Info
+                aria-hidden
+                className="mt-0.5 size-4 shrink-0 text-fg-muted"
               />
             ) : (
               <AlertTriangle

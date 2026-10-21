@@ -163,7 +163,9 @@ describe("Distribution → Channel setup", () => {
       [P("/distribution/outlets")]: () =>
         fail ? apiError(500, "internal") : OUTLETS,
     });
-    const retry = (await screen.findAllByRole("button", { name: "Retry" }))[0]!;
+    const retry = (
+      await screen.findAllByRole("button", { name: "Try again" })
+    )[0]!;
     fail = false;
     await userEvent.click(retry);
     expect(await outlets()).toBeTruthy();

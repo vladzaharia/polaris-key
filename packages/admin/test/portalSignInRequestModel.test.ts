@@ -182,9 +182,13 @@ describe("header", () => {
       variant: "app",
       name: "Diceroll",
       developer: "Example Games",
-      where: { glyph: "device", text: "on Mara's Pixel 8" },
+      // A phone's label gets the phone glyph, not a monitor (LF1).
+      where: { glyph: "phone", text: "on Mara's Pixel 8" },
       code: null,
     });
+    expect(
+      headerModel({ ...VIEW, deviceLabel: "Studio PC" }).where,
+    ).toMatchObject({ glyph: "device" });
     expect(
       headerModel({
         ...VIEW,

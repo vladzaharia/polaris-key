@@ -308,8 +308,8 @@ export function LicenseTerms({
 
           <FormField
             name="channels"
-            label="Release channels"
-            help="Added to the tier's channels."
+            label="Release tracks"
+            help="Added to the tier's release tracks."
             group
           >
             {(f) => (

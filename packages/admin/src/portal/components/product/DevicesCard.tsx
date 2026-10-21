@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Button } from "../../../ui/Button.js";
 import { Skeleton } from "../../../ui/Skeleton.js";
+import { Keep } from "../Keep.js";
 import { announce } from "../../../ui/LiveRegion.js";
 import { toast } from "../../../ui/toast.js";
 import {
@@ -110,9 +111,12 @@ export function DevicesCard({
               {seatLimit
                 ? t("locker.devices.tailOf", { limit: seatLimit })
                 : t("locker.devices.tail", { count: active.length })}
-              {idle > 0
-                ? ` · ${t("locker.devices.idle", { count: idle })}`
-                : ""}
+              {idle > 0 ? (
+                <>
+                  {" · "}
+                  <Keep>{t("locker.devices.idle", { count: idle })}</Keep>
+                </>
+              ) : null}
             </p>
           ) : null}
           {seatLimit && showCount ? (

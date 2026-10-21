@@ -369,7 +369,7 @@ async function withRun(
     return refuse(
       404,
       "not_configured",
-      "Google Play is not configured: declare a play or play-testing outlet with a packageName and tracks, and store a google-service-account credential pinned to that package",
+      "Google Play is not configured: declare a play or play-testing channel with a packageName and tracks, and store a google-service-account credential pinned to that package",
     );
   }
   // The edit lease (A-18e), before any token: a control's edit would invalidate a held one.

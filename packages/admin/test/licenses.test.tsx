@@ -41,6 +41,26 @@ const rowNames = (t: HTMLElement) =>
 const row = (t: HTMLElement, name: string) =>
   within(t).getByText(name).closest("tr")!;
 
+describe("Licenses list: a view-only member", () => {
+  it("M8: New license and Clean up duplicates are off up front, not refused at Create", async () => {
+    bootLicense("#/p/djdl/license/licenses", {
+      me: {
+        platformAdmin: false,
+        permissions: {
+          roles: [],
+          platform: { view: ["console"], edit: [] },
+          products: { djdl: { view: ["core", "license"], edit: [] } },
+        },
+      },
+    });
+    await table();
+    const add = screen.getByRole("button", { name: "New license" });
+    expect(add.getAttribute("aria-disabled")).toBe("true");
+    await userEvent.click(add);
+    expect(window.location.hash).toBe("#/p/djdl/license/licenses");
+  });
+});
+
 describe("Licenses list", () => {
   it("shows every license with its computed state, tier, expiry and seats", async () => {
     bootLicense("#/p/djdl/license/licenses");
@@ -183,7 +203,7 @@ describe("Licenses list", () => {
     });
     await screen.findByText("Who can give you access");
     expect(screen.queryByRole("button", { name: /New license/ })).toBeNull();
-    expect(screen.queryByRole("button", { name: /Retry/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Try again/ })).toBeNull();
   });
 
   it("counts each state on a facet tile, and a tile filters the table through the URL", async () => {
@@ -251,7 +271,7 @@ describe("Licenses list", () => {
     const log = bootLicense("#/p/djdl/license/licenses", {
       routes: { [`${API}/license/licenses`]: failing(500) },
     });
-    const retry = await screen.findByRole("button", { name: /Retry/ });
+    const retry = await screen.findByRole("button", { name: /Try again/ });
     const reads = () =>
       log.calls.filter((c) => c.path === `${API}/license/licenses`).length;
     const before = reads();

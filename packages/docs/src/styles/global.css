@@ -135,6 +135,23 @@
   text-decoration-thickness: 2px;
 }
 
+/* The Help home's topic cards are .not-content, which the rule above skips; without this they
+   fall back to the browser's own link colours. Neutral ink with the same coral underline. */
+[data-brand="locker"] .pk-help-home__topics a {
+  color: var(--pk-text-strong);
+  text-decoration-line: underline;
+  text-decoration-color: var(--pk-locker-accent);
+  text-decoration-thickness: 2px;
+}
+
+/* Shown when the search engine cannot start (astro.config.mjs, pk-help-search-bundle). */
+.pk-search-failed {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  color: var(--sl-color-text);
+  font-size: var(--sl-text-sm);
+}
+
 .pk-section {
   display: contents;
 }
@@ -224,8 +241,8 @@ h6,
 }
 
 /* The brand is an outlined lockup (SiteTitle.astro), never live text: a 4 rem header carries the
-   Key lockup's 48 px glyph with 8 px of clear space. Under 26 rem there is no room for a 180 px
-   lockup, so the mark stands alone (Locker guide p.7). */
+   Key lockup's 48 px glyph with 8 px of clear space. Under 26 rem there is no room for the Key
+   lockup's 180 px, so the mark stands alone (Locker guide p.7). */
 :root {
   --sl-nav-height: 4rem;
 }
@@ -247,10 +264,20 @@ h6,
 }
 
 @media (max-width: 26rem) {
-  .pk-site-title .pk-lockup {
+  .pk-site-title:not([data-kind="locker"]) .pk-lockup {
     display: none;
   }
-  .pk-site-title .pk-lockup-mark {
+  .pk-site-title:not([data-kind="locker"]) .pk-lockup-mark {
+    display: block;
+  }
+}
+
+/* Help (the Locker lockup) keeps its words on a phone: only a window under 20 rem takes the mark. */
+@media (max-width: 20rem) {
+  .pk-site-title[data-kind="locker"] .pk-lockup {
+    display: none;
+  }
+  .pk-site-title[data-kind="locker"] .pk-lockup-mark {
     display: block;
   }
 }

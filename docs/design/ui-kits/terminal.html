@@ -190,13 +190,23 @@
       }
       .strip {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(6, 1fr);
         gap: 0;
+      }
+      .strip > div {
+        grid-column: span 2;
+      }
+      /* Two rows, 3 + 2: the second row sits centred, so no cell is left empty. */
+      .strip > div:nth-child(4) {
+        grid-column: 2 / 4;
+      }
+      .strip > div:nth-child(5) {
+        grid-column: 4 / 6;
       }
       .strip > div {
         border-top: 1px solid var(--t-frame);
       }
-      .strip > div:not(:nth-child(3n)):not(:last-child) {
+      .strip > div:not(:nth-child(3)):not(:last-child) {
         border-inline-end: 1px solid var(--t-frame);
       }
       .strip > div:last-child {
@@ -267,6 +277,14 @@
   </head>
   <body>
     <main class="board">
+      <header class="board-head">
+        <h1>Terminal board: Node and Python kits</h1>
+        <p>
+          The terminal kit as the goldens print it. Each frame ends with its
+          tier.
+        </p>
+      </header>
+      <h2 class="board-sec">Sign-in, activation and device limit</h2>
       <figure>
         <figcaption>
           terminal · sign-in with --device-code (no QR, 80 × 24). Built today
@@ -290,13 +308,15 @@
       <figure>
         <figcaption>
           terminal · device limit on the key path (replace a device in the
-          browser). Built today (Node and Python goldens)
+          browser). Built today (Python golden; Node words the hand-off
+          differently)
         </figcaption>
         <div class="shot cols80" data-shot="device-limit">
           <div class="tbar"><i></i><i></i><i></i>tidewater — 80 × 24</div>
           <pre id="dl"></pre>
         </div>
       </figure>
+      <h2 class="board-sec">Update, status and states</h2>
       <figure>
         <figcaption>
           terminal · status, update progress and the finished block. Built today
@@ -327,6 +347,7 @@
           <pre id="states"></pre>
         </div>
       </figure>
+      <h2 class="board-sec">Help and color fallbacks</h2>
       <figure>
         <figcaption>
           terminal · grouped help (cut to 24 rows: Devices, Settings, Updates,
@@ -376,10 +397,11 @@
           </div>
         </div>
       </figure>
+      <h2 class="board-sec">Narrow and short windows</h2>
       <figure>
         <figcaption>
           terminal · 60 columns (the device limit's browser hand-off; the text
-          wraps at the column). Built today (Node and Python goldens)
+          wraps at the column). Built today (Python golden)
         </figcaption>
         <div class="shot cols60" data-shot="narrow">
           <div class="tbar"><i></i><i></i><i></i>tidewater — 60 × 24</div>
@@ -407,6 +429,7 @@
           <pre id="narrow32"></pre>
         </div>
       </figure>
+      <h2 class="board-sec">Refusals at 40 and 32 columns</h2>
       <figure>
         <figcaption>
           terminal · the gate refusal on stderr at 40 columns, exit 4: the
@@ -457,6 +480,7 @@
           <pre id="ended"></pre>
         </div>
       </figure>
+      <h2 class="board-sec">Offline, host help, pipes and JSON</h2>
       <figure>
         <figcaption>
           terminal · offline request (80 × 24): the QR under the code, the one
@@ -512,6 +536,7 @@
           <pre id="gateinline"></pre>
         </div>
       </figure>
+      <h2 class="board-sec">Interactive view</h2>
       <figure>
         <figcaption>
           terminal · Textual app (optional, Python). Built today (drawn from the

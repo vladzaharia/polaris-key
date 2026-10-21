@@ -39,6 +39,17 @@ export function ProductHeader({
 }): React.ReactElement {
   const pres = product.presentation;
   const tier = product.best ? tierLabel(product.best.tier) : null;
+  // A quiet non-issue status ("From signing in") reads as text after a dot, like the tier. The dot
+  // ends the run before it (never its own flex item), so it cannot wrap away from its neighbour.
+  const trailingDot =
+    !isIssueStatus(product.status) &&
+    product.status.tone !== "success" &&
+    Boolean(pres.developer || tier);
+  const dot = (
+    <span aria-hidden className="ml-2">
+      ·
+    </span>
+  );
   // No cover (or one the proxy failed to serve): the icon stands alone beside the name, rather
   // than a letter banner with the same letter tile on top of it.
   const [coverFailed, setCoverFailed] = React.useState(false);
@@ -47,7 +58,7 @@ export function ProductHeader({
     <div className="space-y-0">
       <a
         href={href.library()}
-        className="mb-4 inline-flex items-center gap-2 rounded-sm text-sm text-fg-muted hover:text-fg-strong"
+        className="mb-4 inline-flex items-center gap-2 rounded-sm text-sm text-fg-muted hover:text-fg-strong pointer-coarse:min-h-11"
       >
         <ArrowLeft aria-hidden className="size-4" />
         {t("locker.library.title")}
@@ -65,7 +76,7 @@ export function ProductHeader({
           // viewport (LK-polish M3); phones cap at 11 rem. pk-vt-hero:
           // the Library tile's art flies into it and back (motion.css; named only during a
           // forward or back transition, MO-05).
-          className="pk-vt-hero -mx-4 aspect-video desk:mx-0 max-desk:max-h-44 desk:w-full desk:aspect-[5/1] desk:max-h-[min(13.75rem,26vh)] desk:rounded-xl short:hidden"
+          className="pk-vt-hero -mx-4 max-desk:h-44 desk:mx-0 desk:w-full desk:aspect-[5/1] desk:max-h-[min(13.75rem,26vh)] desk:rounded-xl short:hidden"
         />
       ) : null}
       <div
@@ -114,6 +125,7 @@ export function ProductHeader({
                 <span dir="auto" className="font-medium text-accent-fg">
                   {pres.developer}
                 </span>
+                {trailingDot && !tier ? dot : null}
               </span>
             ) : null}
             {tier ? (
@@ -124,13 +136,8 @@ export function ProductHeader({
                   </span>
                 ) : null}
                 {tier}
+                {trailingDot ? dot : null}
               </span>
-            ) : null}
-            {/* A quiet non-issue status ("From signing in") reads as text after a dot, like the tier. */}
-            {!isIssueStatus(product.status) &&
-            product.status.tone !== "success" &&
-            (pres.developer || tier) ? (
-              <span aria-hidden>·</span>
             ) : null}
             <ProductStatusPill
               status={product.status}

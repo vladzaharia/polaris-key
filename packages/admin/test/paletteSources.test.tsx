@@ -252,7 +252,7 @@ describe("ranking", () => {
       "Settings",
       "All settings",
       "Licensing",
-      "Features",
+      "Features & general",
       "Presentation",
       "Polaris Locker",
       "Keys & secrets",

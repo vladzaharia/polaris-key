@@ -272,6 +272,20 @@ const TEXT200_CASES = [
   "djdl:services",
   "djdl:portal",
   "djdl:licenses/record/overview",
+  // CF1 / M1: the pages that scrolled sideways at 390 px with 200 % text.
+  "djdl:catalog-edit",
+  "djdl:catalog-editor?entry",
+  "djdl:integration",
+  "djdl:releases/record/builds",
+  "djdl:outlets",
+  "djdl:credentials",
+  "djdl:storefronts",
+  "djdl:storefronts?flow=prerequisites",
+  "djdl:storefronts?flow=assets",
+  "djdl:storefronts?flow=run",
+  "djdl:activity",
+  "global:platform-deployment",
+  "djdl:settings-members",
 ];
 /** The console's content column at its widest (BRAND.md §7.6). */
 const CONSOLE_COLUMN_MAX = 1760;
@@ -931,4 +945,64 @@ describe("a dialog whose form wraps its body and footer", () => {
       await page.context().close();
     }
   });
+});
+
+// ── A keyboard-focused primary or danger button shows a ring (CF1 / B1) ──────────────────────
+// ST-48's unlayered `box-shadow: none` on the primary variant once removed the ring from every
+// main action. A focus ring is an outline or a box-shadow; "none" for both fails WCAG 2.4.7.
+
+describe("focus ring on primary and danger buttons", () => {
+  const targets = [
+    {
+      hash: "#/p/djdl/license/licenses",
+      name: "New license",
+      variant: "primary",
+    },
+    {
+      hash: "#/p/djdl/distribution/rollouts",
+      name: "Start rollout…",
+      variant: "primary",
+    },
+    {
+      hash: "#/p/djdl/settings",
+      name: "Delete product…",
+      variant: "danger",
+    },
+  ] as const;
+  for (const theme of THEMES) {
+    for (const t of targets) {
+      it(`${t.name} · ${theme}`, async () => {
+        const { page } = await open(
+          { name: `focus:${t.name}`, hash: t.hash },
+          theme,
+          { width: 1440, height: 900 },
+        );
+        try {
+          const button = page.getByRole("button", { name: t.name }).first();
+          await button.waitFor();
+          // A key press first, so the next focus() is a keyboard focus (`:focus-visible`).
+          await page.keyboard.press("Shift");
+          await button.focus();
+          const ring = await button.evaluate((el) => {
+            const cs = getComputedStyle(el);
+            return {
+              visible: el.matches(":focus-visible"),
+              variant: el.getAttribute("data-variant"),
+              shadow: cs.boxShadow,
+              outline:
+                cs.outlineStyle !== "none" && parseFloat(cs.outlineWidth) > 0,
+            };
+          });
+          expect(ring.visible, "keyboard focus").toBe(true);
+          expect(ring.variant).toBe(t.variant);
+          expect(
+            ring.shadow !== "none" || ring.outline,
+            `ring: ${JSON.stringify(ring)}`,
+          ).toBe(true);
+        } finally {
+          await page.context().close();
+        }
+      });
+    }
+  }
 });

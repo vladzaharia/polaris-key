@@ -1,6 +1,6 @@
 /**
- * Overview's Integration card (ST-41; products.overview): the next step with its reason, the one
- * primary action of the page, beside the gauge, which counts the features an SDK has been seen
+ * Overview's Integration card (ST-41; products.overview): the next step with its reason, the page's
+ * primary action unless Needs attention holds it, beside the gauge, which counts the features an SDK has been seen
  * using and shows each platform's own meter. Replaces the setup checklist, Trust & SDK and the
  * welcome. Hiding it is the operator's choice (`core.setup`, from Integration's foot); while hidden
  * the card is gone and the header's menu offers "Show Integration".
@@ -39,12 +39,15 @@ export function IntegrationCard({
   query,
   next,
   focusHeading = false,
+  demoted = false,
 }: {
   slug: string;
   query: UseQueryResult<IntegrationView>;
   next: NextStep | null;
   /** Take focus on mount (the card was just shown again). */
   focusHeading?: boolean;
+  /** Needs attention holds the page's one primary: this step is an outline button. */
+  demoted?: boolean;
 }): React.ReactElement {
   const heading = React.useRef<HTMLHeadingElement>(null);
   React.useEffect(() => {
@@ -62,7 +65,7 @@ export function IntegrationCard({
   ) : view.features.length === 0 ? (
     <p className="text-sm text-fg-muted">No feature is turned on.</p>
   ) : (
-    <Body slug={slug} view={view} next={next} />
+    <Body slug={slug} view={view} next={next} demoted={demoted} />
   );
   return (
     <section
@@ -96,10 +99,12 @@ function Body({
   slug,
   view,
   next,
+  demoted,
 }: {
   slug: string;
   view: IntegrationView;
   next: NextStep | null;
+  demoted: boolean;
 }): React.ReactElement {
   const { verified, total } = progress(view);
   return (
@@ -110,6 +115,7 @@ function Body({
             <p className="text-base text-fg-strong">{next.reason}</p>
             <Button
               asChild
+              variant={demoted ? "outline" : "primary"}
               className="h-auto min-h-9 max-w-full whitespace-normal py-1.5 text-left"
             >
               <Link to={next.to}>

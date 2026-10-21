@@ -71,7 +71,7 @@ export function DashboardTemplate({
             // orphan beside empty space; from 1280 px as many equal columns as there are tiles.
             <div
               data-tiles=""
-              className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))] max-xl:[&>:last-child:nth-child(odd)]:col-span-2"
+              className="grid grid-cols-2 gap-3 max-sm:grid-cols-[repeat(auto-fit,minmax(min(9rem,100%),1fr))] sm:gap-4 xl:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))] max-xl:[&>:last-child:nth-child(odd)]:col-span-full"
             >
               {tiles}
             </div>
@@ -299,10 +299,13 @@ export function AttentionList({
   max = 5,
   title = "Needs attention",
   stagger,
+  primaryFirst = false,
 }: {
   items: AttentionItem[];
   max?: number;
   title?: string;
+  /** The first row's action is the page's one filled primary (Overview). */
+  primaryFirst?: boolean;
   /** The page's first-load key (`useFirstLoad`): the items stagger in on that load only. */
   stagger?: string;
 }): React.ReactElement | null {
@@ -333,7 +336,7 @@ export function AttentionList({
           <h2
             id={id}
             tabIndex={-1}
-            className="text-lg font-semibold leading-6 text-fg-strong outline-hidden"
+            className="text-lg font-semibold leading-6 text-fg-strong outline-hidden forced-colors:outline-none"
           >
             {title}
           </h2>
@@ -351,13 +354,14 @@ export function AttentionList({
         ref={motion.ref}
         className={cn(
           // From a 36rem card the rows share four columns (pill, subject, message, link); the message
-          // stops at 72ch and the link follows it, not the card's far edge, so
+          // stops at 72ch and the link follows it, not the card's far edge (a spare 1fr track keeps the
+          // rows, and so their dividers, the card's full width), so
           // every subject and message starts at one x whatever its pill word.
-          "divide-y divide-border @xl:grid @xl:grid-cols-[max-content_fit-content(11rem)_fit-content(72ch)_max-content]",
+          "divide-y divide-border @xl:grid @xl:grid-cols-[max-content_fit-content(11rem)_fit-content(72ch)_max-content_minmax(0,1fr)]",
           motion.className,
         )}
       >
-        {shown.map((item) => (
+        {shown.map((item, row) => (
           <li
             key={item.id}
             data-service={item.service}
@@ -387,7 +391,14 @@ export function AttentionList({
               ))}
             </span>
             {item.action ? (
-              item.action.href ? (
+              item.action.href && primaryFirst && row === 0 ? (
+                <Button asChild size="sm" className="@xl:justify-self-start">
+                  <Link to={item.action.href}>
+                    {item.action.label}
+                    <ArrowRight aria-hidden className="size-3.5" />
+                  </Link>
+                </Button>
+              ) : item.action.href ? (
                 <Link
                   to={item.action.href}
                   className="flex min-h-6 min-w-0 max-w-full items-center gap-1 text-sm leading-6 text-fg-strong underline-offset-4 hover:underline @xl:justify-self-start"
@@ -397,7 +408,7 @@ export function AttentionList({
                 </Link>
               ) : (
                 <Button
-                  variant="outline"
+                  variant={primaryFirst && row === 0 ? "primary" : "outline"}
                   size="sm"
                   className="shrink-0 @xl:justify-self-start"
                   onClick={item.action.onSelect}

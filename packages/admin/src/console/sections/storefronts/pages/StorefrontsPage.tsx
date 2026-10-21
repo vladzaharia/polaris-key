@@ -58,7 +58,7 @@ import { Panel } from "../../../templates/Dashboard.js";
 import { useSlots, useStorefronts } from "../data.js";
 import { StoreTile } from "../components/StoreTiles.js";
 import { FlowSkeleton } from "../components/FlowSkeleton.js";
-import { useCan } from "../../../access/useCan.js";
+import { useCan, useWriteGate } from "../../../access/useCan.js";
 import { FitReport } from "../components/FitReport.js";
 import { ImportPanel } from "../components/ImportPanel.js";
 import { SlotBoard } from "../components/SlotBoard.js";
@@ -134,6 +134,7 @@ function StorePage({
 
 function Catalogue({ slug }: { slug: string }): React.ReactElement {
   const q = useStorefronts(slug);
+  const gate = useWriteGate("ship", slug);
   const [flow] = useSearchParam("flow", flowCodec);
   const root = React.useRef<HTMLDivElement>(null);
   const hadFlow = React.useRef(Boolean(flow));
@@ -158,7 +159,7 @@ function Catalogue({ slug }: { slug: string }): React.ReactElement {
         title={flow ? "Add to storefronts" : "Storefronts"}
         primaryAction={
           flow ? undefined : (
-            <Button asChild>
+            <Button asChild disabledReason={gate.disabledReason}>
               <Link to={r.storefronts(slug, { flow: "add" })}>
                 <Plus aria-hidden />
                 Add to storefronts
@@ -191,7 +192,10 @@ function Catalogue({ slug }: { slug: string }): React.ReactElement {
         // A built-in store has no flow (SETUP.md D48): it is always on.
         <AddFlow slug={slug} stores={q.data.stores.filter((s) => !s.builtIn)} />
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div
+          data-top-aligned=""
+          className="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3"
+        >
           {q.data.stores.map((s) => (
             <StoreTile
               key={s.id}
