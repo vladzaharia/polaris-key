@@ -278,8 +278,6 @@ async function mount(
     ...withDefaults(fixture.input, matrix.vocabulary.defaults),
     ...extras(fixture.input),
   };
-  if (scene.id === "SignIn.code") console.log("DBG", JSON.stringify(input));
-  if (scene.id === "SignIn.code") console.log("DBG", JSON.stringify(input));
   root = createRoot(host);
   root.render(
     <Component
@@ -472,6 +470,13 @@ async function check(
     ).toBeNull();
   }
   expect(smallTargets().join("\n")).toBe("");
+  // A control with no name is a line whose fact was missing: never an empty button.
+  expect(
+    [...kit!.querySelectorAll("button")]
+      .filter((b) => !(b.textContent ?? "").trim() && !b.ariaLabel)
+      .map(describeEl)
+      .join("\n"),
+  ).toBe("");
   expect((await contrast()).join("\n")).toBe("");
   expect(offFont(preset).join("\n")).toBe("");
   expect(document.documentElement.getAttribute("style") ?? "").not.toMatch(

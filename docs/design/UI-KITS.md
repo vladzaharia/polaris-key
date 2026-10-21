@@ -413,7 +413,7 @@ screen:
 
 - **`ProductIdentity`** (`name`, `icon`, `developer`, optional `shortName`, `accent`, `art`,
   `wordmark` and `deviceCodeUrl`) heads every full screen, sheet and card. The icon appears at hero
-  size on Welcome (96 web, 120 iOS and Android, 64 macOS, 72 Godot beside the game's wordmark), at
+  size on Welcome (120 on iOS, Android and the web at desktop width, where the web is 96 below it; 64 macOS, 72 Godot beside the game's wordmark), at
   32 px beside the product name on every focused step, and at 56 px in update prompts and settings.
   Titles name the product in full ("Welcome to Tidewater Studio", "Tidewater Studio 2.5"). Inline
   sentences may use `shortName` only when the integrator sets it. Device names keep the user's

@@ -1,0 +1,49 @@
+{
+  "$comment": "Baseline states a kit records that name no row of packages/brand/kit-copy/components.json, so no other kit can show a counterpart. Each is genuinely the kit's own; test/report.test.ts fails on any other unmatched state and on an entry that no longer matches.",
+  "compose": {
+    "reason": "Compose's own fixtures: PolarisGateScreen steps, the component gallery (accent, focus, powered-by) and the bare screens' captures. The registry's states are in compose/matrix.",
+    "states": [
+      "accent",
+      "devices",
+      "focus",
+      "gate-activation",
+      "gate-activation-error",
+      "gate-blocked",
+      "gate-booting",
+      "gate-channel-not-entitled",
+      "gate-device-limit-manage",
+      "gate-device-limit-manage-tv",
+      "gate-error",
+      "gate-expired",
+      "gate-grace",
+      "gate-licensed",
+      "gate-needs-activation",
+      "gate-revoked",
+      "gate-version-too-new",
+      "gate-version-too-old",
+      "pack-progress",
+      "powered-by",
+      "settings",
+      "sign-in",
+      "sign-in-denied",
+      "sign-in-failed",
+      "sign-in-starting",
+      "update-banner",
+      "update-prompt"
+    ]
+  },
+  "terminal-node": {
+    "reason": "The terminal's own output: exit-code refusals of a gated command and the --help screens, which have no window.",
+    "states": [
+      "gate-refused-cannot-check",
+      "gate-refused-needs-activation",
+      "gate-refused-not-entitled",
+      "gate-refused-version-too-new",
+      "gate-refused-version-too-old",
+      "help",
+      "help-activate",
+      "help-host",
+      "help-host-namespace"
+    ]
+  }
+}

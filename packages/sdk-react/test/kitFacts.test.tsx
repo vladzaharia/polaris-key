@@ -126,7 +126,34 @@ describe("the models' arguments in the kit", () => {
         }}
       />,
     );
-    expect(text(container)).toContain("You have {version} · 52 MB download");
+    // The line that names the installed version is left out; a brace is never drawn.
+    expect(text(container)).not.toContain("You have");
+    expect(text(container)).not.toMatch(/[{}]/);
+  });
+
+  it("drops the figures it lacks from the update prompt and never draws a brace", () => {
+    // No installed version and no size: the "You have" line goes whole.
+    const none = render(
+      <UpdatePrompt
+        input={{ presentation, update: { action: "binary", version: "2.5.0" } }}
+      />,
+    );
+    expect(text(none.container)).not.toContain("You have");
+    expect(text(none.container)).not.toMatch(/[{}]/);
+    none.unmount();
+    // A version but no size: just "You have 2.4.1".
+    const some = render(
+      <UpdatePrompt
+        input={{
+          presentation,
+          bundle: { slug: "tidewater", version: "2.4.1" },
+          update: { action: "binary", version: "2.5.0" },
+        }}
+      />,
+    );
+    expect(text(some.container)).toContain("You have 2.4.1");
+    expect(text(some.container)).not.toContain("download");
+    expect(text(some.container)).not.toMatch(/[{}]/);
   });
 
   it("leaves out the origin of a license row that names no store", () => {

@@ -72,6 +72,15 @@ export const DIRECT_COMPONENT_STATE_FIXTURES: readonly ComponentStateFixture[] =
   ];
 
 /**
+ * The row that represents a state when its first row is a transient moment. SignIn "code"'s first
+ * row is "Use a code instead", pending: the screen says "Getting a sign-in code…". The loaded
+ * state, the code and its countdown, is the device-code row.
+ */
+const REPRESENTATIVE_ROW: Readonly<Record<string, string>> = {
+  "SignIn.code": "SignIn/code: a device-code sign-in",
+};
+
+/**
  * One representative non-hidden input per component state carried by ui-matrix.json. A repeated
  * row for the same state is a behavior case, not another visual baseline.
  */
@@ -83,9 +92,33 @@ export function matrixComponentStateFixtures(
   for (const row of rows) {
     const { component, state } = row.expect;
     const id = componentStateId(component, state);
-    if (state === "hidden" || seen.has(id)) continue;
+    if (state === "hidden") continue;
+    const chosen = REPRESENTATIVE_ROW[id];
+    if (seen.has(id)) {
+      // The named representative replaces the first row's fixture.
+      if (chosen === row.name)
+        fixtures[fixtures.findIndex((f) => f.id === id)] = {
+          id,
+          component,
+          state,
+          input: row.input,
+          row: row.name,
+        };
+      continue;
+    }
     seen.add(id);
-    fixtures.push({ id, component, state, input: row.input, row: row.name });
+    // The corpus paywall rows name the entitlement but not the tier that unlocks it; a render
+    // that says "Upgrade to {tier}" needs one, or the line is rightly left out.
+    const input =
+      component === "Paywall" &&
+      row.input.entitlement !== undefined &&
+      row.input.entitlement.tier === undefined
+        ? {
+            ...row.input,
+            entitlement: { ...row.input.entitlement!, tier: "Pro" },
+          }
+        : row.input;
+    fixtures.push({ id, component, state, input, row: row.name });
   }
   return fixtures;
 }

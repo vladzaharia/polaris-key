@@ -96,7 +96,26 @@ function argsOf(
     args.device = c.copy.format("part.thisDevice", { formFactor });
   const developer = c.resolved.identity.developer;
   if (args.developer === undefined && developer) args.developer = developer;
+  // The tier a paywall or a lock names, from the SDK result (as the elements read it).
+  const tier = c.input.account?.tier ?? c.input.entitlement?.tier;
+  if (args.tier === undefined && tier) args.tier = tier;
   return args;
+}
+
+/** An argument nothing filled, left as `{name}` by the formatter. */
+const UNFILLED = /\{[A-Za-z]\w*\}/;
+
+/** Never a brace on screen: a part of a line (the catalog joins parts with " · ") whose argument
+ *  is missing is dropped, and a line left with nothing is empty. */
+function withoutBraces(s: string, key: string): string {
+  // The screen-reader labels (a11y.*) stay as the corpus lists them: they carry no visible text.
+  if (key.startsWith("a11y.") || !UNFILLED.test(s)) return s;
+  return s
+    .split(" · ")
+    .filter((part) => !UNFILLED.test(part))
+    .join(" · ")
+    .replace(UNFILLED, "")
+    .trim();
 }
 
 /** One string. The installed version's line says the size of a download only when it knows one
@@ -107,11 +126,14 @@ function formatKey(
   args: Record<string, string | number>,
 ): string {
   if (key !== "update.current" || args.size !== undefined)
-    return c.copy.format(key, args);
-  return c.copy
-    .format(key, { ...args, size: "" })
-    .split("·")[0]!
-    .trim();
+    return withoutBraces(c.copy.format(key, args), key);
+  return withoutBraces(
+    c.copy
+      .format(key, { ...args, size: "" })
+      .split("·")[0]!
+      .trim(),
+    key,
+  );
 }
 
 export function text(
@@ -150,7 +172,15 @@ export function plain(
 
 /** True when the string still holds a `{name}` argument nothing filled. */
 export function unfilled(c: KitCtx, key: string): boolean {
-  return /\{[A-Za-z]\w*\}/.test(plain(c, key));
+  const args = argsOf(c, key, {});
+  const raw =
+    key === "update.current" && args.size === undefined
+      ? c.copy
+          .format(key, { ...args, size: "" })
+          .split("·")[0]!
+          .trim()
+      : c.copy.format(key, args);
+  return UNFILLED.test(raw);
 }
 
 // ── Glyphs (decorative, aria-hidden) ─────────────────────────────────────────────────────────
@@ -311,7 +341,11 @@ export const GLYPHS = {
 
 /** MonogramIcon / the product icon (DL5): the icon, else the initial on `surface-sunken`. */
 export function productIcon(c: KitCtx): ReactNode {
-  const name = c.resolved.identity.name || c.resolved.theme.name;
+  // The name the title uses is the last resort ("Welcome to Tidewater Studio" from the bundle).
+  const name =
+    c.resolved.identity.name ||
+    c.resolved.theme.name ||
+    String(c.view.args?.product ?? "");
   const label = c.copy.has("a11y.productIcon")
     ? plain(c, "a11y.productIcon", { product: name })
     : "";
@@ -325,6 +359,8 @@ export function productIcon(c: KitCtx): ReactNode {
       />
     );
   const initial = monogramOf(name);
+  // No icon and no name to take an initial from: no tile (UI-KITS §1.2 never draws an empty one).
+  if (initial === "") return null;
   return (
     <span
       className="icon monogram"
@@ -345,10 +381,12 @@ export function productHeader(
 ): ReactNode {
   if (size === "none") return null;
   const name = c.resolved.identity.name || c.resolved.theme.name;
-  const showName = options.name ?? true;
+  const showName = (options.name ?? true) && name !== "";
+  const icon = productIcon(c);
+  if (icon === null && !showName && !options.developer) return null;
   return (
     <div className="identity" data-part="header" data-size={size}>
-      {productIcon(c)}
+      {icon}
       {showName ? (
         <span className="name" data-part="name">
           <bdi>{name}</bdi>
