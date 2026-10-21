@@ -87,7 +87,7 @@ COPY_CODES: Mapping[str, CopyEntry] = MappingProxyType(
         "turnstile_failed": CopyEntry("Check didn't pass", "The security check didn't pass. Reload the page and try again."),
         "signin_expired": CopyEntry("Sign-in expired", "This sign-in has expired. Start again."),
         "invalid_code": CopyEntry("Wrong code", "That code isn't right. Check the email and try again."),
-        "code_expired": CopyEntry("Code expired", "That code is no longer valid. Ask for a new one."),
+        "code_expired": CopyEntry("Email code expired", "That code is no longer valid. Ask for a new one."),
         "email_in_use": CopyEntry("Email already in use", "Another Polaris Locker account already uses this email. Join this sign-in to that account, or use a different email."),
         "terms_required": CopyEntry("Terms not accepted", "Agree to the terms to continue."),
         "license_owned": CopyEntry("License in another account", "This {product} license is already in another Polaris Locker account. A license never moves by its key."),

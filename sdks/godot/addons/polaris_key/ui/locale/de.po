@@ -5995,7 +5995,7 @@ msgstr "Falscher Code"
 msgid "core.codes.invalid_code.message"
 msgstr "Dieser Code hat nicht funktioniert. Prüfen Sie die E-Mail und geben Sie ihn erneut ein."
 
-#. Code expired
+#. Email code expired
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.code_expired.title"
 msgstr "Code abgelaufen"

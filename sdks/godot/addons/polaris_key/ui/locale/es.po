@@ -6011,7 +6011,7 @@ msgstr "Código incorrecto"
 msgid "core.codes.invalid_code.message"
 msgstr "Ese código no funcionó. Revisa el correo y vuelve a escribirlo."
 
-#. Code expired
+#. Email code expired
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.code_expired.title"
 msgstr "Código caducado"

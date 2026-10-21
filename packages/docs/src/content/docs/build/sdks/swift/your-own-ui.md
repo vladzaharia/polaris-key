@@ -127,7 +127,7 @@ func signIn(_ client: PolarisKeyClient) async -> String {
             return "Continue as \(identity.name ?? identity.email ?? "this account")?"
         case .expired:
             return "The code expired. Start again."
-        case .error(let message):
+        case .error(let message, _):
             return message
         }
     } catch {

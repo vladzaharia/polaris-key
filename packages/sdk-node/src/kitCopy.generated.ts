@@ -1268,7 +1268,7 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid_code.title": "Wrong code",
     "core.codes.invalid_code.message":
       "That code isn't right. Check the email and try again.",
-    "core.codes.code_expired.title": "Code expired",
+    "core.codes.code_expired.title": "Email code expired",
     "core.codes.code_expired.message":
       "That code is no longer valid. Ask for a new one.",
     "core.codes.email_in_use.title": "Email already in use",
@@ -4790,7 +4790,7 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid_code.title": "Wrong code",
     "core.codes.invalid_code.message":
       "That code isn't right. Check the email and try again.",
-    "core.codes.code_expired.title": "Code expired",
+    "core.codes.code_expired.title": "Email code expired",
     "core.codes.code_expired.message":
       "That code is no longer valid. Ask for a new one.",
     "core.codes.email_in_use.title": "Email already in use",

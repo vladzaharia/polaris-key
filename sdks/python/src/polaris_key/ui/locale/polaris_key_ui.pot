@@ -5994,7 +5994,7 @@ msgstr ""
 msgid "core.codes.invalid_code.message"
 msgstr ""
 
-#. Code expired
+#. Email code expired
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.code_expired.title"
 msgstr ""

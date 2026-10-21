@@ -5979,7 +5979,7 @@ msgstr "验证码错误"
 msgid "core.codes.invalid_code.message"
 msgstr "该验证码无效。请检查电子邮件后重新输入。"
 
-#. Code expired
+#. Email code expired
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.code_expired.title"
 msgstr "验证码已过期"

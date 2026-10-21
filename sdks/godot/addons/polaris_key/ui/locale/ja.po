@@ -5979,7 +5979,7 @@ msgstr "コードが正しくありません"
 msgid "core.codes.invalid_code.message"
 msgstr "そのコードは使用できませんでした。メールを確認して、もう一度入力してください。"
 
-#. Code expired
+#. Email code expired
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.code_expired.title"
 msgstr "コードの有効期限が切れています"

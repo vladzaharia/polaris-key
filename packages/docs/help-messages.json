@@ -125,6 +125,11 @@
       "why": "The code you entered isn't the one we emailed. Each code allows 5 tries, then stops working.",
       "fix": "Check the email and enter the code again. If the tries run out, select **Send a new code**."
     },
+    "code_expired": {
+      "page": "signing-in",
+      "why": "The emailed code ran out of time or was already used.",
+      "fix": "Select **Send a new code** and enter the new one."
+    },
     "rate_limited": {
       "page": "signing-in",
       "entry": "rate_limited",

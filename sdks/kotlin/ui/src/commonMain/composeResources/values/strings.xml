@@ -2289,7 +2289,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_code_message">That code isn't right. Check the email and try again.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_code_expired_title">Code expired</string>
+    <string name="core_codes_code_expired_title">Email code expired</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_code_expired_message">That code is no longer valid. Ask for a new one.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

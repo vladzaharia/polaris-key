@@ -19238,7 +19238,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Code expired"
+            "value": "Email code expired"
           }
         },
         "de": {
@@ -19250,7 +19250,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Code expired"
+            "value": "Email code expired"
           }
         },
         "es": {

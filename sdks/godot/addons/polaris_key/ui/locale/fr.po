@@ -6011,10 +6011,10 @@ msgstr "Wrong code"
 msgid "core.codes.invalid_code.message"
 msgstr "That code isn't right. Check the email and try again."
 
-#. Code expired
+#. Email code expired
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.code_expired.title"
-msgstr "Code expired"
+msgstr "Email code expired"
 
 #. That code is no longer valid. Ask for a new one.
 #. Core copy (conformance/parity/copy.en.json, codes).
