@@ -152,7 +152,7 @@ export function Sidebar({
     listRef.current
       ?.querySelector<HTMLElement>("[aria-current=page]")
       ?.scrollIntoView?.({ block: "nearest" });
-  }, [activePage, slug]);
+  }, [activePage, slug, rail]);
   const all = sections
     .map((section) => ({
       section,
@@ -209,7 +209,7 @@ export function Sidebar({
           ref={listRef}
           data-nav-list=""
           className={cn(
-            "flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto pk-scroll",
+            "flex min-h-0 flex-1 scroll-py-6 flex-col gap-1 overflow-y-auto pk-scroll",
             rail ? "px-2 py-3" : "p-3",
           )}
         >

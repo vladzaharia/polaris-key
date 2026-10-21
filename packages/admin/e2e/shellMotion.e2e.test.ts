@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { chromium, type Browser, type Page } from "playwright";
 import { preview, type PreviewServer } from "vite";
 import { appSecurityHeaders } from "../../worker/src/core/securityHeaders.js";
-import { resolve } from "./layoutFixtures.js";
+import { fixtureImage, IMG_ORIGIN, resolve } from "./layoutFixtures.js";
 
 /**
  * The console shell's motion at phone width (notes/S-23 §4.2, §6.1, §6.6; MO-10), in the BUILT
@@ -21,7 +21,9 @@ import { resolve } from "./layoutFixtures.js";
  */
 
 const here = fileURLToPath(new URL("..", import.meta.url));
-const CSP = appSecurityHeaders().get("content-security-policy")!;
+const CSP = appSecurityHeaders(new Headers(), {
+  imgOrigin: IMG_ORIGIN,
+}).get("content-security-policy")!;
 const SHOTS = process.env.PK_SHOTS_DIR;
 const PHONE = { width: 390, height: 844 };
 
@@ -82,6 +84,15 @@ async function open(o: OpenOptions = {}): Promise<Page> {
   }, o.dataMotion ?? false);
   await ctx.route("**/*", async (route) => {
     const url = new URL(route.request().url());
+    const image = fixtureImage(url);
+    if (image)
+      return route.fulfill({
+        body: image,
+        headers: {
+          "content-type": "image/png",
+          "access-control-allow-origin": "*",
+        },
+      });
     if (url.pathname.startsWith("/manage/api/")) {
       if (route.request().method() !== "GET")
         return route.fulfill({ json: { ok: true } });

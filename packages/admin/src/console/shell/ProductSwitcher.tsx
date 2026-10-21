@@ -207,13 +207,13 @@ export function ProductSwitcher({
           <ContextTile current={current} size={rail ? 32 : 40} />
           {rail ? null : (
             <>
-              <span className="flex min-w-0 flex-1 flex-col">
+              <span className="flex min-w-[5ch] flex-1 flex-col">
                 <span className="break-words font-medium text-fg-strong">
                   {name}
                 </span>
                 <span
                   className={cn(
-                    "break-all text-xs text-fg-muted",
+                    "break-words text-xs text-fg-muted",
                     current && "font-mono",
                   )}
                 >

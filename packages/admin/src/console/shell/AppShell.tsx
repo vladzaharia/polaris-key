@@ -266,6 +266,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
   }, []);
   const [navOpen, setNavOpen] = React.useState(false);
   const drawerRef = React.useRef<HTMLDivElement>(null);
+  const drawerSwitcherRef = React.useRef(false);
   const [paletteOpen, setPaletteOpen] = React.useState(false);
   // What the palette opens already searching for: a not-found page's dead segment, else nothing.
   const [paletteQuery, setPaletteQuery] = React.useState("");
@@ -284,6 +285,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
   const [switcherOpen, setSwitcherOpen] = React.useState(false);
   // The drawer's own switcher, for `g p` below the desktop breakpoint.
   const [drawerSwitcherOpen, setDrawerSwitcherOpen] = React.useState(false);
+  drawerSwitcherRef.current = drawerSwitcherOpen;
   // A refused or unknown page holds no section: open every group the member can use if there are
   // three or fewer, else the first, so the way out is in view.
   const openable =
@@ -482,12 +484,19 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
                 onOpenAutoFocus={(e) => {
                   // Opening moves focus to the first item, not the close button.
                   e.preventDefault();
+                  // Opened for `g p`: the switcher's popover takes focus, not the list.
+                  if (drawerSwitcherRef.current) return;
                   const content = drawerRef.current;
                   if (!content) return;
+                  // The current row when there is one (the list is already scrolled to it),
+                  // else the first; never scrolled away from it.
                   (
+                    content.querySelector<HTMLElement>(
+                      "[data-nav-list] [aria-current=page]",
+                    ) ??
                     content.querySelector<HTMLElement>("[data-nav-list] a") ??
                     content.querySelector<HTMLElement>("button")
-                  )?.focus();
+                  )?.focus({ preventScroll: true });
                 }}
                 onCloseAutoFocus={(e) => {
                   // The drawer is opened from the top bar, not a Radix trigger: hand focus back,

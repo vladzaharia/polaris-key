@@ -6,6 +6,7 @@ import * as React from "react";
 import type { ProductDetail, ProductRef } from "../../api.js";
 import { SERVICE_TABLE } from "../../services.generated.js";
 import { cn } from "../../lib/cn.js";
+import { SECTIONS } from "../nav.js";
 
 /** A product as the switcher and palette see it: the registry row when loaded, else the session's. */
 export type ProductLike = ProductRef | ProductDetail;
@@ -32,8 +33,9 @@ export function ServiceDots({
 }): React.ReactElement | null {
   const slugs = enabledServices(product);
   if (!slugs) return null;
+  // The console's own names (nav.ts), not the service table's: "Licensing", "Sign-in".
   const labels = SERVICE_TABLE.filter((row) => slugs.includes(row.slug)).map(
-    (row) => row.label,
+    (row) => SECTIONS.find((s) => s.service === row.slug)?.label ?? row.label,
   );
   return (
     <span className={cn("inline-flex items-center gap-1", className)}>
