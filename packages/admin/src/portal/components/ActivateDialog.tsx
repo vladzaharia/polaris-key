@@ -960,6 +960,9 @@ export function ConfirmStep({
   notes?: React.ReactNode;
 }): React.ReactElement {
   const p = preview.product;
+  // A cover that is missing or fails to load leaves no empty tint box: the icon stands alone.
+  const [coverFailed, setCoverFailed] = React.useState(false);
+  const hasCover = Boolean(p.headerUrl) && !coverFailed;
   const lic = preview.license;
   const tier = lic ? (lic.tierLabel ?? tierLabel(lic.tier)) : null;
   const terms = lic
@@ -982,18 +985,20 @@ export function ConfirmStep({
     <>
       <DialogBody className="space-y-4">
         <div>
-          <ProductArt
-            slug={p.slug}
-            name={p.name}
-            tint={null}
-            src={p.headerUrl}
-            variant="banner"
-            // No cover: a bare tint field; the icon overlapping the art already shows the letter.
-            letter={false}
-            // A short screen (§8) drops the art, so the facts and the key start on the first
-            // screen; the icon, in a row of its own, carries the product's identity.
-            className="h-36 rounded-lg short:hidden"
-          />
+          {hasCover ? (
+            <ProductArt
+              slug={p.slug}
+              name={p.name}
+              tint={null}
+              src={p.headerUrl}
+              variant="banner"
+              letter={false}
+              onError={() => setCoverFailed(true)}
+              // A short screen (§8) drops the art, so the facts and the key start on the first
+              // screen; the icon, in a row of its own, carries the product's identity.
+              className="h-36 rounded-lg short:hidden"
+            />
+          ) : null}
           <ProductIcon
             slug={p.slug}
             name={p.name}
@@ -1001,7 +1006,11 @@ export function ConfirmStep({
             src={p.iconUrl}
             size={64}
             lift
-            className="relative -mt-8 ml-4 short:mt-0 short:ml-0"
+            className={
+              hasCover
+                ? "relative -mt-8 ml-4 short:mt-0 short:ml-0"
+                : "relative"
+            }
             tileClassName="border-[3px] border-surface-overlay"
           />
         </div>

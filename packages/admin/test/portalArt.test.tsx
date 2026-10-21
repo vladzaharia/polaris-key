@@ -169,6 +169,7 @@ describe("an art-less cover never repeats the icon's letter", () => {
         onAdd={() => {}}
       />,
     );
-    expect(fallbacks(document)).toEqual(["", "M"]);
+    // No empty tint banner (the portal board's empty-placeholder rule): the icon stands alone.
+    expect(fallbacks(document)).toEqual(["M"]);
   });
 });

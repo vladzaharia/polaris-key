@@ -252,7 +252,7 @@ function FreeDevice({
           typeof part === "string" ? (
             part
           ) : (
-            <strong key={i} className="text-fg-strong">
+            <strong key={i} className="font-semibold text-fg-strong">
               {t("signin.retry")}
             </strong>
           ),
@@ -353,7 +353,7 @@ function FreeDevice({
                 typeof part === "string" ? (
                   part
                 ) : (
-                  <strong key={i} className="text-fg-strong">
+                  <strong key={i} className="font-semibold text-fg-strong">
                     {forDevice}
                   </strong>
                 ),

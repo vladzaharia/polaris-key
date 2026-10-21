@@ -39,6 +39,17 @@ export function ProductHeader({
 }): React.ReactElement {
   const pres = product.presentation;
   const tier = product.best ? tierLabel(product.best.tier) : null;
+  // A quiet non-issue status ("From signing in") reads as text after a dot, like the tier. The dot
+  // ends the run before it (never its own flex item), so it cannot wrap away from its neighbour.
+  const trailingDot =
+    !isIssueStatus(product.status) &&
+    product.status.tone !== "success" &&
+    Boolean(pres.developer || tier);
+  const dot = (
+    <span aria-hidden className="ml-2">
+      ·
+    </span>
+  );
   // No cover (or one the proxy failed to serve): the icon stands alone beside the name, rather
   // than a letter banner with the same letter tile on top of it.
   const [coverFailed, setCoverFailed] = React.useState(false);
@@ -114,6 +125,7 @@ export function ProductHeader({
                 <span dir="auto" className="font-medium text-accent-fg">
                   {pres.developer}
                 </span>
+                {trailingDot && !tier ? dot : null}
               </span>
             ) : null}
             {tier ? (
@@ -124,13 +136,8 @@ export function ProductHeader({
                   </span>
                 ) : null}
                 {tier}
+                {trailingDot ? dot : null}
               </span>
-            ) : null}
-            {/* A quiet non-issue status ("From signing in") reads as text after a dot, like the tier. */}
-            {!isIssueStatus(product.status) &&
-            product.status.tone !== "success" &&
-            (pres.developer || tier) ? (
-              <span aria-hidden>·</span>
             ) : null}
             <ProductStatusPill
               status={product.status}
