@@ -23,6 +23,7 @@ import {
   LIVE_CHECK_SECONDS,
 } from "../src/core/console/session.js";
 import { revokeAdminSessions } from "../src/core/console/sessionRevocation.js";
+import { memberIdFor } from "../src/core/console/memberId.js";
 import { operatorIssuerAllowed } from "../src/core/rbac/operatorIssuer.js";
 import {
   accountMayOpenConsole,
@@ -141,8 +142,9 @@ describe("the console sign-in lands on an account and mints a v2 cookie", () => 
       email: string;
       platformAdmin: boolean;
     };
-    // The audit actor is still the IdP subject; the account id never reaches a console body.
-    expect(body.sub).toBe("op-1");
+    // The audit actor is the member id (ST-30 slice 2b), never the IdP subject or the account id.
+    expect(body.sub).toMatch(/^mbr_[A-Za-z0-9_-]{22}$/);
+    expect(body.sub).not.toContain(rows[0]!.account_id);
     expect(body.email).toBe("ada@example.com");
     expect(body.platformAdmin).toBe(true);
     expect(JSON.stringify(body)).not.toContain(rows[0]!.account_id);
@@ -516,13 +518,15 @@ describe("consoleSubject", () => {
     return { env, db, claims };
   }
 
-  it("answers the IdP subject, the address and the groups of the last sign-in", async () => {
+  it("answers the member id, the IdP subject, the address and the fresh groups", async () => {
     const { env, db, claims } = await opened();
     expect(await consoleSubject(env, db, claims, NOW + 1)).toEqual({
-      sub: "op-1",
+      sub: await memberIdFor(env, claims.aid),
+      idpSub: "op-1",
       name: "Ada",
       email: "ada@example.com",
       groups: [GROUP],
+      root: true,
     });
   });
 
@@ -623,9 +627,9 @@ describe('the Locker account menu\'s "Open console" pointer', () => {
     const operator = await db.first<{ account_id: string }>(
       "SELECT account_id FROM account_sessions",
     );
-    expect(await accountMayOpenConsole(env, db, operator!.account_id)).toBe(
-      true,
-    );
+    expect(
+      await accountMayOpenConsole(env, db, operator!.account_id, NOW),
+    ).toBe(true);
     const ada = await portalMe(env, db, "ada@example.com");
     expect(ada.accountId).toBe(operator!.account_id);
     expect(ada.body.account.console).toBe("https://key.plrs.im/manage/");
@@ -645,7 +649,7 @@ describe('the Locker account menu\'s "Open console" pointer', () => {
       "UPDATE account_links SET groups_json = ?",
       JSON.stringify(["x"]),
     );
-    expect(await accountMayOpenConsole(env, db, operator.account_id)).toBe(
+    expect(await accountMayOpenConsole(env, db, operator.account_id, NOW)).toBe(
       false,
     );
     await db.run(
@@ -653,7 +657,7 @@ describe('the Locker account menu\'s "Open console" pointer', () => {
       JSON.stringify([GROUP]),
     );
     delete env.PLATFORM_ADMIN_GROUP;
-    expect(await accountMayOpenConsole(env, db, operator.account_id)).toBe(
+    expect(await accountMayOpenConsole(env, db, operator.account_id, NOW)).toBe(
       false,
     );
   });

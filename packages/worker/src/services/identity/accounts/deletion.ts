@@ -46,7 +46,7 @@ import {
 import { stmtSubjectEvent } from "./events.js";
 import { endLicenseLinks } from "./legacy.js";
 import type { AccountContext } from "./links.js";
-import { getAccountRow } from "./repo.js";
+import { getAccountRow, stmtClearConsoleStrength } from "./repo.js";
 import { stmtDeleteTermsAcceptances } from "./terms.js";
 import { stmtDeleteAccountMerges } from "./mergeUndo.js";
 
@@ -270,6 +270,8 @@ async function beginErasure(
       sql: "DELETE FROM account_sessions WHERE account_id = ?",
       params: [accountId],
     },
+    // ST-30: no link stays console-eligible while the erasure runs (its links go at the commit).
+    stmtClearConsoleStrength(accountId),
     // The account's package-registry tokens stop authenticating now, not at the commit: the
     // lookup never reads the account. Idempotent; the commit batch repeats it.
     stmtRevokeAccountRegistryTokens(accountId, now),
@@ -692,6 +694,17 @@ export async function disableAccount(
     now,
     accountId,
   );
+  // ST-30: a disabled account holds no console access that could come back with it. Its sessions
+  // end (the console cookie names one) and no link stays strong or freshly asserted, so re-enabling
+  // the account does not resurrect console access: the person signs in through the console IdP
+  // again. (The console's 30 s check refuses a disabled account on its own; this is the link side.)
+  await db.batch([
+    {
+      sql: "UPDATE account_sessions SET revoked_at = ? WHERE account_id = ? AND revoked_at IS NULL",
+      params: [now, accountId],
+    },
+    stmtClearConsoleStrength(accountId),
+  ]);
   await clearDeviceSubjects(
     db,
     env,

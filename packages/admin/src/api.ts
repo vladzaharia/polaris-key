@@ -82,6 +82,11 @@ export interface Me {
    * console hands an old portal hash to it. `null`/absent otherwise.
    */
   customerOrigin?: string | null;
+  /**
+   * ST-30: the identity-provider subject this member's older records carry (before the console
+   * named actors by member id), so "you" still reads on them. Empty on a v1 session.
+   */
+  priorSubs?: string[];
   /** When the operator last signed in interactively (I-12 step-up); `null` on an older session. */
   authAt?: number | null;
   /** How recent that sign-in must be for a step-up action (the relink tool). */

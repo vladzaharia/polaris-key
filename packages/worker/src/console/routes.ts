@@ -92,6 +92,10 @@ async function logout(c: AdminCtx): Promise<Response> {
   let revoked = true;
   try {
     await revokeAdminSessions(c.env, c.session.sub, c.now);
+    // A v2 session's `sub` is the member id; the operator's v1 cookies (signed before the deploy)
+    // carry the IdP subject, so the mark goes there too.
+    if (c.session.idpSub)
+      await revokeAdminSessions(c.env, c.session.idpSub, c.now);
     // A v2 session also ends its own row at once (and this isolate forgets it); the mark above
     // ends the operator's other cookies, v1 included.
     await endConsoleCookieSession(c.env, c.db, c.session, c.now);

@@ -211,14 +211,33 @@ ambiguous-address and portal-tagged-token cases. Lead rulings: operator join by 
 accepted (needs the platform-admin group; allowlisted IdPs cannot reach it); the cache's
 clear-at-500 accepted; groups stale up to 8 h accepted as documented.
 
-### Remaining after slice 2a (ST-30 not finished)
+### Slice 2b (2026-10-21, wp/ST-30-slice2b; local, security-relevant)
 
-Console membership as a binding (ST-31); the strong-method rule and the email-code-only refusal
-(`strong_at`, `asserted_at`, SM-1 to SM-5 with a migration); the computed root rule on
-`asserted_at`; break-glass as an explicit link with its audit row and exit facts; the audit actor as
-the account id (`mbr_`) with a sub mapping; account merge, deletion and disable ending membership
-as bindings (the 30 s check already ends a session on them); the passkey button, the known-operator
+Built: the strong-method rule, the computed root rule, the audit actor as the member id, and the
+lifecycle exits. THREAT-MODEL has the rows (console section, "slice 2b").
+
+- **Migration** `0128_console_strong_method.sql` (the lead numbers it at merge): `account_links.
+strong_at` and `asserted_at`, both NULL on existing rows (nothing is strong until a console
+  sign-in marks it); rollback in `scripts/rollback/`. No new table, so no `TABLE_OWNERS` row.
+- **SM-1/SM-3(b)(c)/SM-4/SM-5** (`services/identity/consoleAccount.ts`): `consoleSubject` reads only
+  a strong link; a known, non-strong link without the group asserted is refused (`method`) before
+  anything is written; the card is `consoleRefusalCopy`. SM-3(a) and (d) (step-up enrolment, "Use
+  for the console") need the passkey button and stay for the next slice.
+- **Root rule** (`rootRuleHolds`, `core/rbac/principal.ts`): strong + group + `asserted_at` under
+  8 h; `asserted_at` is written only with `groups_json`. A v2 session's principal takes `root` from
+  it. The 8 h bound stays documented for sessions held open after a group is removed.
+- **Audit actor** = `mbr_` member id (`core/console/memberId.ts`); `consoleActorAliases` maps it
+  and the IdP `sub` both ways for the activity filter; `/me.priorSubs` keeps "you" on old records.
+- **Merge / disable / delete**: the absorbed account's links lose `strong_at`/`asserted_at` in the
+  merge batch; disable revokes sessions and clears strength; erasure start clears it.
+
+Corrections to the brief: the v1 "full authority" comment and `docs.ts` are untouched.
+
+### Remaining after slice 2b (ST-30 not finished)
+
+Console membership as a binding (ST-31); SM-3(a)/(d) with the passkey button and the console
+step-up; break-glass as an explicit link with its audit row and exit facts; the known-operator
 chip; the security review; the docs pages (operate/console/members, reference/roles), the RUNBOOK
 lockout recovery and the rule 11 text; deleting the 'full platform authority' comment once ST-29's
-`docs.ts` is on `can()`; removing the v1 cookie reader after the deploy. A larger lockup on the
-console card is not done.
+docs.ts is on can(); removing the v1 cookie reader after the deploy. A larger lockup on the console
+card is not done.

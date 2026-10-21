@@ -7,7 +7,7 @@
  * page happened to load:
  *
  *   action      a prefix: `license.` matches every license action
- *   actor       a subject or an email, exactly; `system` for rows the runtime wrote
+ *   actor       a subject (the member id or the IdP subject of the same person) or an email, exactly; `system` for rows the runtime wrote
  *   targetKind  exact (`license`, `profile`, `key`…)
  *   targetId    exact
  *   since       epoch seconds, inclusive
@@ -20,6 +20,8 @@
  */
 
 import type { Db } from "../../db/types.js";
+import type { Env } from "../../platform/env.js";
+import { consoleActorAliases } from "../../services/identity/public.js";
 import { ErrorCode } from "../../core/errors.js";
 import {
   exportAuditNdjson,
@@ -33,6 +35,7 @@ const MAX_FILTER = 200;
 
 export async function handleActivity(
   req: Request,
+  env: Env,
   db: Db,
   slug: string,
 ): Promise<Response> {
@@ -63,6 +66,11 @@ export async function handleActivity(
       fields: bad,
     });
   }
+
+  // ST-30: the actor filter finds a person under both ids: the member id (new rows) and the IdP
+  // subject (rows written before the console named actors by member id).
+  if (filters.actor && filters.actor !== "system")
+    filters.actorAliases = await consoleActorAliases(env, db, filters.actor);
 
   // ST-24: `?format=ndjson` downloads the history under the same filters, newest first.
   if (url.searchParams.get("format") === "ndjson") {

@@ -549,9 +549,11 @@ export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 /** Who made a change, in words: the signed-in operator by name, an email as is, else the id. */
 export function actorName(
   actor: string | undefined,
-  me: { sub: string; name: string } | undefined,
+  me: { sub: string; name: string; priorSubs?: string[] } | undefined,
 ): string | null {
   if (!actor) return null;
-  if (me && actor === me.sub) return me.name || "you";
+  // ST-30: records written before the console named actors by member id carry the IdP subject.
+  if (me && (actor === me.sub || me.priorSubs?.includes(actor)))
+    return me.name || "you";
   return actor;
 }

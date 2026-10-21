@@ -341,7 +341,7 @@ export async function claimPlatformSubject(
   });
   switch (result.status) {
     case "signed_in":
-      await recordLinkGroups(db, result.linkId, input.groups);
+      await recordLinkGroups(db, result.linkId, input.groups, now);
       return { status: "signed_in", result };
     case "join_offer":
       return { status: "join_offer", email: result.email, identity };

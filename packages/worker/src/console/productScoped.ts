@@ -216,7 +216,7 @@ export async function handleProductScoped(c: AdminCtx): Promise<Response> {
   }
 
   if (resource === "activity") {
-    return handleActivity(req, db, slug);
+    return handleActivity(req, env, db, slug);
   }
 
   // UX-15: the refusal log (`core/licensing/refusals.ts`). CORE, like `activity`: the refusal site is

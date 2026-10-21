@@ -108,7 +108,13 @@ async function callerFor(
   const principal = await resolvePrincipal(
     env,
     db,
-    { sub: session.sub, groups: session.groups },
+    {
+      sub: session.sub,
+      groups: session.groups,
+      // A v2 session's root is the computed rule (strong link, fresh assertion); a v1 session has
+      // none and falls back to its groups.
+      ...(session.root !== undefined ? { root: session.root } : {}),
+    },
     now,
   );
   return { session: { ...session, principal }, principal };

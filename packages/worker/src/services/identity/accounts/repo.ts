@@ -8,7 +8,7 @@
 
 import { normalizeEmail } from "../../../platform/email.js";
 import { randomId } from "../../../platform/crypto.js";
-import type { Db } from "../../../db/types.js";
+import type { Db, DbStatement } from "../../../db/types.js";
 import { verifiedAccountEmails } from "../../../core/accounts/verifiedEmails.js";
 import { MERGE_REDIRECT_SECONDS } from "../../../core/accounts/accountSubjects.js";
 
@@ -52,6 +52,10 @@ export interface AccountLinkRow {
   /** I-06: what the provider reported since linking (`consent_revoked`, `account_deleted`,
    *  `email_disabled`), or NULL. Absent on rows read before migration 0081 applies. */
   provider_flag?: string | null;
+  /** ST-30: when the method became eligible for the console (SM-3), or NULL. Absent before 0128. */
+  strong_at?: number | null;
+  /** ST-30: when the IdP last asserted `groups_json` (same UPDATE as it), or NULL. Absent before 0128. */
+  asserted_at?: number | null;
 }
 
 /** The issuer key of an email sign-in method (its subject is the normalised address). */
@@ -298,6 +302,36 @@ export async function touchLink(
     now,
     linkId,
   );
+}
+
+/**
+ * Mark a link strong for the console (ST-28 SM-3). Idempotent: the first mark's time stays. Callers
+ * are the console sign-in through the console IdP (SM-3(b), (c)); nothing else sets `strong_at`
+ * until the step-up paths (SM-3(a), (d)) land.
+ */
+export async function markLinkStrong(
+  db: Db,
+  linkId: string,
+  now: number,
+): Promise<void> {
+  await db.run(
+    "UPDATE account_links SET strong_at = COALESCE(strong_at, ?) WHERE id = ?",
+    now,
+    linkId,
+  );
+}
+
+/**
+ * End an account's console eligibility on its links (ST-30 slice 2b): no link is strong and no
+ * assertion is fresh until the next sign-in through the console IdP marks them again. A merge
+ * clears the absorbed account's links (they move to the survivor), a disable clears the account's.
+ * Statement form, so the caller can put it in the batch that changes the account.
+ */
+export function stmtClearConsoleStrength(accountId: string): DbStatement {
+  return {
+    sql: "UPDATE account_links SET strong_at = NULL, asserted_at = NULL WHERE account_id = ?",
+    params: [accountId],
+  };
 }
 
 export async function touchAccountSignIn(
