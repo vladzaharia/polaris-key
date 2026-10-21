@@ -34,9 +34,9 @@ describe("bridge refusal codes", () => {
     await expect(
       bridge.invoke!("devices", "deauthorize", {}),
     ).rejects.toMatchObject({ code: ErrorCode.invalidArgument });
-    await expect(
-      bridge.invoke!("nope", "nothing", {}),
-    ).rejects.toMatchObject({ code: ErrorCode.invokeNotAllowed });
+    await expect(bridge.invoke!("nope", "nothing", {})).rejects.toMatchObject({
+      code: ErrorCode.invokeNotAllowed,
+    });
     expect(ErrorCode.senderRefused).toBe("sender-refused");
   });
 

@@ -71,18 +71,22 @@ describe("renderSdkSetup", () => {
     expect(server.start.lane).toBe("server");
     expect(server.start.code).toContain("verifyLicenseDocument");
     // B-049: the install line names the package the start block imports.
-    const installs = (x: typeof server) => x.install.map((i) => i.code).join("\n");
+    const installs = (x: typeof server) =>
+      x.install.map((i) => i.code).join("\n");
     expect(server.start.code).toContain('"@polaris-key/server"');
     expect(installs(server)).toContain("@polaris-key/server");
     expect(installs(server)).not.toContain("@polaris-key/node");
-    expect(installs(renderSdkSetup("node", base))).toContain("@polaris-key/node");
+    expect(installs(renderSdkSetup("node", base))).toContain(
+      "@polaris-key/node",
+    );
     // B-050: US spelling in titles, file names and comments.
     for (const sdk of ["node", "react", "python", "swift", "kotlin"] as const)
       for (const b of [
         renderSdkSetup(sdk, base).start,
         renderSdkSetup(sdk, base).headless,
       ])
-        if (b) expect(`${b.title} ${b.filename} ${b.code}`).not.toMatch(/licence/i);
+        if (b)
+          expect(`${b.title} ${b.filename} ${b.code}`).not.toMatch(/licence/i);
     expect(server.start.code).not.toMatch(/licence/i);
     // The drop-in is the start; the library block sits beside it.
     expect(renderSdkSetup("react", base).headless?.lane).toBe("library");
