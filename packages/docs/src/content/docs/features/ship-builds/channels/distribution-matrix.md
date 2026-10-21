@@ -1,6 +1,6 @@
 ---
 title: "The distribution matrix"
-description: "The console view of every release on every channel: the matrix, its toolbar and the cell drawer."
+description: "The console view of every release on every channel: the Matrix and Readiness views, the toolbar and the cell drawer."
 type: "reference"
 lastReviewed: "2026-10-16"
 sidebar:
@@ -9,28 +9,26 @@ sidebar:
 
 ## The matrix
 
-**Distribution → Rollouts**, in its **Matrix** view, shows a deliverable's most recent releases
-(twenty by default, fifty at most) against every channel the product declares in
-`.pkey/distribution`. The matrix is not a sidebar item of its own: its old address and the `g m`
-shortcut open that view. Each cell answers one
-question about one release on one channel, and opens a drawer with everything else.
+**Distribution → Rollouts** has three views, as tabs: **List** (every rollout), **Matrix** and
+**Readiness**. The last two show a deliverable's most recent releases (twenty by default, fifty at
+most) against every channel the product declares in `.pkey/distribution`. They differ only in what
+each cell summarizes. The matrix is not a sidebar item of its own: its old address and the `g m`
+shortcut open the Matrix view. Each cell answers one question about one release on one channel, and
+opens a drawer with everything else.
+
+| View      | The cell shows                                                    |
+| --------- | ----------------------------------------------------------------- |
+| Matrix    | the availability, plus the rollout percentage or a readiness hold |
+| Readiness | Ready, Held with the number of blockers, Not ready or Pending     |
 
 ## The toolbar
 
 - **Deliverable**: the app, or any pack. A pack's matrix has no readiness.
-- **Release track**: every release track, or one.
-- **View** changes only what each cell summarizes:
-
-  | View         | The cell shows                                                    |
-  | ------------ | ----------------------------------------------------------------- |
-  | Availability | the availability, plus the rollout percentage or a readiness hold |
-  | Rollouts     | the rollout state and percentage, or nothing                      |
-  | Readiness    | Ready, Held with the number of blockers, Not ready or Pending     |
-
+- **Channel**: every channel, or one.
 - **Rows**: 20 or 50. When the matrix is full, a note says it shows the newest releases only.
 
-All of these, and the open cell, are in the page's URL
-(`#/p/<slug>/distribution/matrix?deliverable=textures&view=readiness&cell=<release>:<outlet>`),
+The view, the toolbar choices and the open cell are in the page's URL
+(`#/p/<slug>/distribution/rollouts?view=readiness&deliverable=textures&cell=<release>:<channel>`),
 so a link reopens exactly what you were looking at. The grid is one tab stop: arrow keys move
 between cells and Enter opens one. Below 768 px wide each release is a card listing its channels;
 **View as grid** brings the grid back.

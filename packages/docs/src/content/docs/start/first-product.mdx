@@ -93,7 +93,6 @@ The file lands in the current directory. For Swift, run the command in your targ
 You should see the file written and each pin's key id and SHA-256 fingerprint:
 
 ```text title="Output"
-warning: discovery lists one signing key; stage a second key before you ship, so this one can be revoked.
 Product tidewater at https://key.plrs.im
 Services: license, config
 Trust pins (compare each fingerprint with the console before you ship):
@@ -102,7 +101,7 @@ Release keys: none
 Wrote /path/to/polaris.config.ts
 ```
 
-The pins are the product's public signing keys. Compare each key in the file with **Public key** under **Core → Keys & secrets**. The warning appears because a new product has one signing key: stage a second before you ship, so the first can be revoked.
+The pins are the product's public signing keys. Compare each key in the file with **Public key** under **Core → Keys & secrets**. A new product has one signing key, so the command also warns on stderr to stage a second before you ship.
 
 ## 5. Gate the app
 

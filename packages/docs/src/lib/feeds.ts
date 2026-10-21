@@ -4,8 +4,8 @@
  */
 import { type SdkId } from "./docs";
 
-/** An SDK, or "cli" for the `pkey` command-line tool (npm feed). */
-export type InstallTarget = SdkId | "cli";
+/** An SDK, "cli" for the `pkey` command-line tool, or "server" for the Node backend drop-ins (both npm feed). */
+export type InstallTarget = SdkId | "cli" | "server";
 
 export interface FeedTarget {
   /** The feed's ecosystem, as `pkey feeds setup --ecosystem` takes it. */
@@ -53,6 +53,11 @@ export const FEEDS: Readonly<Record<InstallTarget, FeedTarget>> = {
     namespace: ["scope=@polaris-key"],
     package: "@polaris-key/cli",
   },
+  server: {
+    ecosystem: "npm",
+    namespace: ["scope=@polaris-key"],
+    package: "@polaris-key/server",
+  },
 };
 
 export const INSTALL_LABELS: Readonly<Record<InstallTarget, string>> = {
@@ -63,4 +68,5 @@ export const INSTALL_LABELS: Readonly<Record<InstallTarget, string>> = {
   kotlin: "the Kotlin SDK",
   godot: "the Godot add-on",
   cli: "the pkey CLI",
+  server: "the server package",
 };

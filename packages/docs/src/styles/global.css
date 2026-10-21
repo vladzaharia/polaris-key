@@ -537,3 +537,14 @@ starlight-tabs [role="tab"] {
     --sl-content-margin-inline: auto;
   }
 }
+
+/* <PortalShot> holds a dark and a light screenshot; the page shows the one for its theme (B-169). */
+.pk-portal-shot__light {
+  display: none;
+}
+:root[data-theme="light"] .pk-portal-shot__dark {
+  display: none;
+}
+:root[data-theme="light"] .pk-portal-shot__light {
+  display: block;
+}

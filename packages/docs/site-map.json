@@ -230,20 +230,6 @@
       "package": "DOC-08b"
     },
     {
-      "from": "build/ui/components/channel-picker",
-      "action": "delete",
-      "to": ["build/ui/components/index"],
-      "pri": "P1",
-      "package": "DOC-08b"
-    },
-    {
-      "from": "build/ui/components/cloud-sync-status",
-      "action": "delete",
-      "to": ["build/ui/components/index"],
-      "pri": "P1",
-      "package": "DOC-08b"
-    },
-    {
       "from": "build/wire/index",
       "action": "move",
       "to": ["reference/protocol/index"],
@@ -1234,7 +1220,7 @@
     {
       "path": "help/code-didnt-arrive",
       "type": "help",
-      "title": "Your sign-in code didn't arrive",
+      "title": "Your sign-in code didn’t arrive",
       "description": "What to check when the email with your sign-in code is missing.",
       "nearest": "/docs/help/sign-in/",
       "package": "DOC-04b",
@@ -1627,6 +1613,15 @@
       "description": "Find where an app's packages are set up, and what to do when a development build is gone.",
       "nearest": "/docs/help/download/",
       "package": "F-36",
+      "pri": "P2"
+    },
+    {
+      "path": "help/sync",
+      "type": "help",
+      "title": "Cloud Sync",
+      "description": "How your settings and saves follow you between devices, what its status messages mean, and what happens when your storage is full.",
+      "nearest": "/docs/help/",
+      "package": "U-05",
       "pri": "P2"
     }
   ],

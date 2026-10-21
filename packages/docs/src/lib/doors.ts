@@ -89,13 +89,13 @@ const sdkPages = (sdk: string, label: string, ownUi = false): SidebarGroup => ({
   collapsed: true,
   items: ownUi
     ? [
-        leaf(`build/quickstart/${sdk}`, "Quickstart"),
-        leaf(`build/sdks/${sdk}/index`, "Reference"),
-        leaf(`build/sdks/${sdk}/your-own-ui`, "Your own UI"),
+        leaf(`build/quickstart/${sdk}`, `${label} quickstart`),
+        leaf(`build/sdks/${sdk}/index`, `${label} reference`),
+        leaf(`build/sdks/${sdk}/your-own-ui`, `${label}: your own UI`),
       ]
     : [
-        leaf(`build/quickstart/${sdk}`, "Quickstart"),
-        leaf(`build/sdks/${sdk}`, "Reference"),
+        leaf(`build/quickstart/${sdk}`, `${label} quickstart`),
+        leaf(`build/sdks/${sdk}`, `${label} reference`),
       ],
 });
 
@@ -171,7 +171,6 @@ export const DOOR_TREES: readonly DoorTree[] = [
         label: "Purchases",
         items: leaves("help/restore-purchase", "help/refunds"),
       },
-      { label: "Cloud Sync", items: leaves("help/sync") },
       {
         label: "Account and privacy",
         items: leaves(
@@ -241,6 +240,8 @@ export const DOOR_TREES: readonly DoorTree[] = [
               "build/ui/components/account-and-license",
               "build/ui/components/activate",
               "build/ui/components/boot",
+              "build/ui/components/channel-picker",
+              "build/ui/components/cloud-sync-status",
               "build/ui/components/device-limit",
               "build/ui/components/devices",
               "build/ui/components/entitlement-gate",

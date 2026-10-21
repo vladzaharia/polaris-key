@@ -29,9 +29,17 @@ A terminal is a window where you type commands. It usually opens in your home fo
 
 Type `cd Downloads` and press Enter to go there (macOS, Linux and PowerShell). If you saved the file somewhere else, use that folder instead.
 
-- **macOS:** `shasum -a 256 <file>` in Terminal
-- **Linux:** `sha256sum <file>` in a terminal
-- **Windows:** `Get-FileHash <file>` in PowerShell
+```sh title="macOS: Terminal"
+shasum -a 256 <file>
+```
+
+```sh title="Linux: a terminal"
+sha256sum <file>
+```
+
+```powershell title="Windows: PowerShell"
+Get-FileHash <file>
+```
 
 Replace `<file>` with the file's name, in quotes if it has spaces.
 
@@ -39,7 +47,13 @@ The two values must match exactly. Capital and small letters count as the same.
 
 ## Check several files at once
 
-The download page links **SHA256SUMS**, a list of the SHA-256 for every file of that version, for all systems. Put your downloads and **SHA256SUMS** in one folder. If your system has `sha256sum`, run `sha256sum --check SHA256SUMS` there. It prints `OK` for each file that matches. A listed file you didn't download can't be checked, which isn't a mismatch.
+The download page links **SHA256SUMS**, a list of the SHA-256 for every file of that version, for all systems. Put your downloads and **SHA256SUMS** in one folder. If your system has `sha256sum`, run this there. It prints `OK` for each file that matches.
+
+```sh title="Check all files"
+sha256sum --check SHA256SUMS
+```
+
+A listed file you didn't download can't be checked, which isn't a mismatch.
 
 ## Check an Android app's signing key
 

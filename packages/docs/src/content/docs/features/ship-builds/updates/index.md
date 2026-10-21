@@ -23,7 +23,7 @@ alone — indexed artifacts, a changelog, a curl-pipe installer — for a CLI to
 never auto-updates, and it means the feed-rendering half can be reasoned about, tested, and
 changed without touching the GitHub-sync machinery underneath it. Sparkle is one
 consumer of that split, not the reason for it: any auto-update mechanism could sit where
-Update sits today.
+Update sits.
 
 ## The one sanctioned exception
 
@@ -63,7 +63,7 @@ separately keeps working unchanged. See
 [Release](/docs/features/ship-builds/releases/#off-by-default-and-config-only-until-linked) for the
 `enabled`/`configured` distinction discovery reports for each service independently.
 
-What Distribution knows — transports, availability, and later per-outlet rollouts — reaches
+What Distribution knows — transports, availability and [rollouts](/docs/features/ship-builds/channels/rollouts/) per channel — reaches
 Update through Core's descriptor hooks, never by import, and only while Distribution is on.
 
 ## The pages

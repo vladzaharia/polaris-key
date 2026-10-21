@@ -1,12 +1,5 @@
 {
   "$comment": "Today's hits of scripts/lint-docs.ts, by page and rule. It only shrinks: a new hit fails the lint, and so does an entry nothing hits any more. A package that writes a page clears the page's entries in the same change; `tsx scripts/lint-docs.ts --update` rewrites the file.",
   "version": 1,
-  "debt": {
-    "help/sync": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "help-word": 6,
-      "time-word": 1
-    }
-  }
+  "debt": {}
 }

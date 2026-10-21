@@ -56,8 +56,6 @@ export const DOCS_REDIRECT_TIERS: Readonly<
   "/docs/build/recipes/store-outlets/index.html": "public",
   "/docs/build/registering/index.html": "public",
   "/docs/build/sdks/kotlin-ui/index.html": "public",
-  "/docs/build/ui/components/channel-picker/index.html": "public",
-  "/docs/build/ui/components/cloud-sync-status/index.html": "public",
   "/docs/build/ui/localisation/index.html": "public",
   "/docs/build/ui/recipes/index.html": "public",
   "/docs/build/web-cors/index.html": "public",

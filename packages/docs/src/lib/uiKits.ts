@@ -232,7 +232,4 @@ export function frameworkHref(kit: UiKit): string {
  * `build/ui/components/`; one in this list is a "Not built yet" row of the components index and
  * has no page. A component leaves this list in the change that ships it.
  */
-export const COMPONENTS_NOT_BUILT: readonly string[] = [
-  "ChannelPicker",
-  "CloudSyncStatus",
-];
+export const COMPONENTS_NOT_BUILT: readonly string[] = [];

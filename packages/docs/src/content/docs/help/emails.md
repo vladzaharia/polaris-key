@@ -14,9 +14,11 @@ None asks for your full license key.
 If you did not ask for an email, leave it unused. A sign-in code that does not arrive: see [Your
 sign-in code didn't arrive](/docs/help/code-didnt-arrive/).
 
-In an unexpected security notice, select **Secure your account** to open your sign-in methods.
-
 ## Your library
+
+### <a id="license-key"></a>Your <var>App</var> license
+
+Enter the key in the app. Keep it private.
 
 ### <a id="license-added"></a><var>App</var> is in your library
 
@@ -62,7 +64,7 @@ Another verified email is now the primary. Security notices go there. Choose **S
 
 The email gives the erase date. Choose **Review account settings** to cancel before then. See [Delete your account](/docs/help/delete-account/).
 
-### <a id="account-deletion-cancelled"></a>Your Polaris Locker account deletion was cancelled
+### <a id="account-deletion-cancelled"></a>Your Polaris Locker account deletion was canceled
 
 Nothing is erased.
 

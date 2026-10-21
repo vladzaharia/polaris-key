@@ -7,6 +7,8 @@ sidebar:
   order: 12
 ---
 
+import InstallSteps from "../../../../components/docs/InstallSteps.astro";
+
 A backend that grants something to a device, such as a cloud save, a multiplayer seat or a download, shouldn't trust a "licensed" flag the client sends. It verifies the device's signed license document, a `pkey-license+jws`, as the SDKs do.
 
 Requires the License feature, your product's trust pins and a backend on Node, Python or Kotlin.
@@ -25,7 +27,9 @@ Requires the License feature, your product's trust pins and a backend on Node, P
 | Python web        | `polaris_key.server`                               | `PolarisKey(config=...)`, then `require_entitlement(name)`                                            |
 | Kotlin web (Ktor) | `polaris-key-server-ktor`                          | `polarisKey { products = ... }`, then `requireEntitlement(name)`                                      |
 
-`@polaris-key/server` ships with the next release. Until it is on npm, a Node backend can't install it.
+Install `@polaris-key/server` for a Node backend:
+
+<InstallSteps sdk="server" />
 
 ```ts title="Node: server.ts" no-compile
 import { verifyLicenseDocument } from "@polaris-key/server";

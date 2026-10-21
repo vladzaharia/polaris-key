@@ -138,6 +138,8 @@ Each service issues its own signed document, and a client derives the license st
 - **signing key**: a per-product Ed25519 key. Its private half is sealed at rest and never leaves the Worker. Its public half is served at `/<product>/.well-known/jwks.json` and pinned by SDKs.
 - **release key**: an Ed25519 key held by the product's CI that signs release records. The Worker never holds one, so it can't ship bytes no release key signed.
 - **minter**: a recipe that mints a short-lived third-party token. The UI word is **Minted token**.
+- **trust level**: how far a device has proved it is a genuine install of the app. Every device is `basic`; one that passes App Attest or Play Integrity is `attested`. It lives on the device record, never in a signed document.
+- **trust policy**: a product's rule for which operations need an `attested` device, such as minted tokens or gated delivery. Without `enforce` it only reports what it would refuse.
 
 ## Cloud Sync data
 
