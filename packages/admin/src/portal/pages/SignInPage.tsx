@@ -516,12 +516,14 @@ export function SignInPage({
       ) : step.kind === "upgrade" ? (
         <AccountUpgrade
           preview={step.preview}
-          canSkip={handle !== null}
           onCreate={() => {
             setParams({ activate: step.key });
             go({ kind: "methods" });
           }}
-          onSkip={() => go({ kind: "methods" })}
+          onSignIn={() => {
+            setParams({ activate: step.key });
+            go({ kind: "methods" });
+          }}
         />
       ) : step.kind === "key" ? (
         <KeyStep

@@ -606,7 +606,7 @@ describe("AccountUpgrade on the key step (§3.9)", () => {
     await userEvent.click(screen.getByRole("button", { name: "Continue" }));
   }
 
-  it("skippable while entries remain: the meter is neutral, never amber, and Skip is there for an app", async () => {
+  it("skippable while entries remain: the meter is neutral, never amber, and Sign in instead sits beside Create account", async () => {
     await enter(true, preview());
     expect(
       await screen.findByRole("heading", {
@@ -621,24 +621,32 @@ describe("AccountUpgrade on the key step (§3.9)", () => {
       screen.getByRole("img", { name: "3 of 5 key entries used" }).innerHTML,
     ).not.toMatch(/warning|amber|danger/);
     expect(
-      screen.getByRole("button", { name: "Sign in without the key" }),
+      screen.getByRole("button", { name: "Sign in instead" }),
     ).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: "Sign in without the key" }),
+    ).toBeNull();
     expect(screen.getByRole("button", { name: "Create account" })).toBeTruthy();
     expect(await axeViolations()).toEqual([]);
   });
 
-  it("the standalone portal has no skip", async () => {
+  it("Sign in instead keeps the key: the sign-in card says it is carried", async () => {
     await enter(false, preview());
-    await screen.findByRole("heading", {
-      level: 1,
-      name: "Keep Diceroll in an account",
-    });
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Sign in instead" }),
+    );
     expect(
-      screen.queryByRole("button", { name: "Sign in without the key" }),
-    ).toBeNull();
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Sign in to add Diceroll",
+      }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Sign in without the key" }),
+    ).toBeTruthy();
   });
 
-  it("forced at zero entries: a neutral callout, Create account, no skip", async () => {
+  it("forced at zero entries: a neutral callout, Create account, Sign in instead", async () => {
     await enter(
       true,
       preview({ keyEntries: { used: 5, limit: 5 }, upgrade: "forced" }),
@@ -656,6 +664,9 @@ describe("AccountUpgrade on the key step (§3.9)", () => {
       screen.queryByRole("button", { name: "Sign in without the key" }),
     ).toBeNull();
     expect(screen.getByRole("button", { name: "Create account" })).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Sign in instead" }),
+    ).toBeTruthy();
   });
 
   it("a key in another account is refused under the field", async () => {

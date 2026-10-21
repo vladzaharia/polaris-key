@@ -16,20 +16,20 @@ import {
  * AccountUpgrade (SIGN-IN.md §3.9, PX-12; WIRE-CONTRACT-V4 §12.2 rule 8): what a key leads to,
  * from `POST /api/key/preview`, before anyone signs in. The key card ("Key works"), then "Keep
  * <Product> in an account" with the entries meter in ink (never amber: auth-10) and **Create
- * account**. Skippable while entries remain, and only where an app sent the person; forced when
- * a new device would be refused `key_entry_limit`: then a neutral callout and no skip.
+ * account** and the quiet **Sign in instead**; both carry the key to the sign-in card. Forced
+ * when a new device would be refused `key_entry_limit`: then a neutral callout. **Skip for now**
+ * (S-24 D13) waits for the floating-key return to an app (SIGN-IN.md §3.9).
  */
 export function AccountUpgrade({
   preview,
-  canSkip,
   onCreate,
-  onSkip,
+  onSignIn,
 }: {
   preview: KeyPreview;
-  /** An app sent the person: the key is accepted and the licence floats (S-24 D13). */
-  canSkip: boolean;
+  /** Create account: on to the sign-in card with the key carried. */
   onCreate: () => void;
-  onSkip: () => void;
+  /** Sign in instead: the same card, the key carried too (LK-polish M5). */
+  onSignIn: () => void;
 }): React.ReactElement {
   const name = preview.product.name;
   const forced = preview.upgrade === "forced";
@@ -116,11 +116,11 @@ export function AccountUpgrade({
           {t("signin.key.noEntriesKeeps", { product: name })}
         </p>
       ) : null}
-      {!forced && canSkip ? (
-        <QuietLinks>
-          <QuietLink onClick={onSkip}>{t("signin.key.withoutKey")}</QuietLink>
-        </QuietLinks>
-      ) : null}
+      <QuietLinks>
+        <QuietLink onClick={onSignIn}>
+          {t("signin.key.signInInstead")}
+        </QuietLink>
+      </QuietLinks>
     </>
   );
 }
