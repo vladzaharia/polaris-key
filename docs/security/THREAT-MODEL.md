@@ -7505,7 +7505,12 @@ the same Worker on a fifth custom domain (plans/LK-00.md §7). `core/customerHos
 to the customer routes: the root portal (`/`, `/activate`, `/assets/*`, `/login[/…]`, `/callback`,
 `/logout`, `/magic/verify`, `/api/*`, `/media/*`, `/download/<token>`), `/signin`, `/device`, `/tv`,
 and two answers of its own, `/.well-known/polaris-host.json` and `/robots.txt`. `/manage`, `/docs`,
-every product route and every webhook are the plain not-found there. Unset, not a bare
+every product route and every webhook are the plain not-found there, with one exception: the public
+storefront feeds (`GET|HEAD /<product>/distribution/{altstore,altstore-pal,obtainium,scoop,flathub,fdroid}/…`,
+admitted by path shape in `isCustomerFeedRoute`) are served too, so the download page can print
+`polaris.locker` sources. They are public, read-only and sessionless (the account cookies are stripped
+before any product route runs); the CI plane (`feeds/fdroid`), hooks, rollouts, reports and bytes stay the
+not-found there. The console host keeps answering the same URLs for existing subscribers. Unset, not a bare
 `https:` origin (no userinfo, path, query or fragment), set while `CONSOLE_ORIGIN` is unset or
 unusable, equal to the console host or equal to an earlier auxiliary host, the origin names no host and routing is what
 it was. It is deploy-time only (`DENIED_PLATFORM_NAMES`).
@@ -9894,6 +9899,13 @@ the bundle directories to the build's. The docs `check:links` adds the tier rule
 content links only to public pages (existing exceptions are held in `link-tier-debt.json`, which
 only shrinks).
 
+
+**Docs CSP and WebAssembly.** The docs `script-src` is `'self'`, `'wasm-unsafe-eval'` and the build's
+hashes. Pagefind compiles a WebAssembly module, and without the keyword Chromium refuses, so Help and
+developer search never returned a result. `'wasm-unsafe-eval'` allows WebAssembly compilation only: it does
+not allow `eval`, `new Function` or string timers (that is `'unsafe-eval'`, which never appears), and the
+module is a same-origin file the build produced. It is on the docs pages' policy alone, not the admin's.
+`test/docsSearchBrowser.test.ts` drives search in Chromium under the Worker's real headers.
 **Per-file tiers.** A file under `/docs/_astro/` is public unless the build finds that only gated
 pages load it: `collect-docs-tiers.ts` writes those into `docsTiers.generated.ts`
 (`DOCS_ASSET_TIERS`, the lowest tier among the pages and files that name it), and `docsTierOf`
