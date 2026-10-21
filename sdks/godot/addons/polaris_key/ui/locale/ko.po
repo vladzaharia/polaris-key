@@ -616,6 +616,16 @@ msgstr "{product} 시작을 완료하지 못했어요({code})."
 msgid "welcome.title"
 msgstr "{product}에 오신 것을 환영해요"
 
+#. Welcome
+#. Welcome screen title when no product name is known anywhere (no integrator name, presentation or bundle). Replaces welcome.title, which needs {product}.
+msgid "common.welcomeNoProductTitle"
+msgstr "환영해요"
+
+#. Sign in to continue.
+#. Welcome screen lede for a sign-in-only product when no product name is known anywhere. Replaces welcome.ledeSignInOnly, which needs {product}.
+msgid "common.signInToContinue"
+msgstr "계속하려면 로그인하세요."
+
 #. Sign in or use a license key to continue.
 #. Welcome screen, the gate's first screen.
 msgid "welcome.lede"

@@ -47,6 +47,8 @@ func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
 	for family in FAMILIES:
 		if only == "" or only == family:
 			_components(t, family, m[family], defaults)
+	if only == "" or only == "activate":
+		_nameless_welcome(t, defaults)
 	if only == "" or only == "theme":
 		_theme(t, m["theme"], defaults)
 	if only == "" or only == "i18n":
@@ -82,6 +84,26 @@ static func view_for(row: Dictionary, defaults: Dictionary) -> Dictionary:
 		var session = session_script.restore(input)
 		return session.view(component)
 	return Models.view_of(component, input)
+
+
+## A Welcome with no product name anywhere is titled "Welcome", never "Welcome to" and nothing
+## (the catalog's common.welcomeNoProductTitle; the sign-in-only lede is common.signInToContinue).
+func _nameless_welcome(t: PKeyTestContext, defaults: Dictionary) -> void:
+	var base := {"presentation": null, "bundle": null, "integrator": null}
+	var cases := {
+		"default": base,
+		"busy": {"presentation": null, "bundle": null, "integrator": null, "pending": "sign-in"},
+		"key only": {"presentation": null, "bundle": null, "integrator": null, "capabilities": {"signIn": false}},
+	}
+	for label in cases:
+		var view := view_for({"input": cases[label], "expect": {"component": "Welcome"}}, defaults)
+		var copy: Array = view.get("copy", [])
+		t.check("nameless Welcome (%s): the neutral title" % label, copy.has("common.welcomeNoProductTitle") and not copy.has("welcome.title"), str(copy))
+	var sign_in_only := view_for({"input": {"presentation": null, "bundle": null, "integrator": null, "capabilities": {"keyEntry": false}}, "expect": {"component": "Welcome"}}, defaults)
+	var lede: Array = sign_in_only.get("copy", [])
+	t.check("nameless Welcome (sign-in only): a lede with no product", lede.has("common.signInToContinue") and not lede.has("welcome.ledeSignInOnly"), str(lede))
+	var named := view_for({"input": {}, "expect": {"component": "Welcome"}}, defaults)
+	t.check("a named Welcome keeps welcome.title", (named.get("copy", []) as Array).has("welcome.title"))
 
 
 func _components(t: PKeyTestContext, family: String, rows: Array, defaults: Dictionary) -> void:
