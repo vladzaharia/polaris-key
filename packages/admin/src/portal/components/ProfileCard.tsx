@@ -74,7 +74,7 @@ export function ProfileCard({
         <div className="space-y-3 @container">
           {/* Narrow: the actions stack under the text; wide: they sit in the right column. */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-            <div className="flex min-w-0 flex-1 items-center gap-3">
+            <div className="flex min-w-0 flex-1 flex-col items-start gap-3 min-[360px]:flex-row min-[360px]:items-center">
               <Avatar
                 name={name}
                 email={account.email}

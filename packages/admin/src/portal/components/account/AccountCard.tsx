@@ -30,11 +30,11 @@ export function AccountCard({
       data-section={id}
       className={cn(
         // Same landing offsets as SectionCard (the shell's scroll padding plus this margin).
-        "scroll-mt-[calc(9rem_-_var(--pk-scroll-top,0px))] overflow-hidden rounded-xl border border-border bg-surface-raised shadow-elevation-1 desk:scroll-mt-[max(2rem,calc(6rem_-_var(--pk-scroll-top,0px)))] short:scroll-mt-3",
+        "scroll-mt-[calc(9rem_-_var(--pk-scroll-top,0px))] rounded-xl border border-border bg-surface-raised shadow-elevation-1 desk:scroll-mt-[max(2rem,calc(6rem_-_var(--pk-scroll-top,0px)))] short:scroll-mt-3",
         className,
       )}
     >
-      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-border bg-surface-sunken px-4 py-3 desk:px-5">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-t-xl border-b border-border bg-hover px-4 py-3 desk:px-5">
         {/* tabIndex -1: a jump from the section nav moves focus here. */}
         <h2
           id={`section-${id}-h`}
@@ -43,7 +43,11 @@ export function AccountCard({
         >
           {title}
         </h2>
-        {aside ? <div className="max-w-full shrink-0">{aside}</div> : null}
+        {aside ? (
+          <div className="max-w-full shrink-0 [&_button]:h-auto [&_button]:min-h-9 [&_button]:whitespace-normal">
+            {aside}
+          </div>
+        ) : null}
       </div>
       <div className="p-4 desk:p-6">
         {subtitle ? (

@@ -257,7 +257,9 @@ describe("Download my data from a product (I-11)", () => {
       name: "Download my data from Mossgarden",
     }) as HTMLButtonElement;
     await userEvent.dblClick(button);
-    await waitFor(() => expect(button.disabled).toBe(true));
+    await waitFor(() =>
+      expect(button.getAttribute("aria-disabled")).toBe("true"),
+    );
     answer.resolve(fileOf("mossgarden"));
     await waitFor(() => expect(files.saved).toHaveLength(1));
     await settle();
@@ -283,7 +285,7 @@ describe("Download my data from a product (I-11)", () => {
       "Too many tries. Wait a minute, then try again.",
     );
     expect(files.saved).toHaveLength(0);
-    expect(button.disabled).toBe(false);
+    expect(button.getAttribute("aria-disabled")).not.toBe("true");
     await userEvent.click(button);
     await waitFor(() => expect(files.saved).toHaveLength(1));
     expect(within(card).queryByRole("alert")).toBeNull();

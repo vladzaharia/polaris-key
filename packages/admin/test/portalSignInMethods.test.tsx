@@ -221,6 +221,11 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+async function addVia(region: HTMLElement, name: string): Promise<void> {
+  await userEvent.click(within(region).getByRole("button", { name: "Add" }));
+  await userEvent.click(await screen.findByRole("menuitem", { name }));
+}
+
 describe("Sign-in methods (PX-13)", () => {
   it("lists accounts, addresses and passkeys, each with when it was used", async () => {
     mockFetch(routes(maraMethods()));
@@ -240,9 +245,11 @@ describe("Sign-in methods (PX-13)", () => {
     // The passkey is named by its provider (AAGUID), with where it came from.
     expect(within(region).getByText("iCloud Keychain")).toBeTruthy();
     expect(within(region).getByText(/added on Safari on macOS/)).toBeTruthy();
+    // Add lives in the card's header menu; the inline rows only prompt an empty group.
+    expect(within(region).getByRole("button", { name: "Add" })).toBeTruthy();
     expect(
-      within(region).getByRole("button", { name: "Add an email" }),
-    ).toBeTruthy();
+      within(region).queryByRole("button", { name: "Add an email" }),
+    ).toBeNull();
     expect(
       within(region).getByText(
         `Changing a method asks you to confirm it's you. Every change is recorded and emailed to ${ACCOUNT.email}.`,
@@ -615,9 +622,7 @@ describe("Sign-in methods (PX-13)", () => {
     );
     renderPortal();
     const region = await methodsRegion();
-    await userEvent.click(
-      within(region).getByRole("button", { name: "Add an email" }),
-    );
+    await addVia(region, "Add an email");
     const field = await within(region).findByRole("textbox", {
       name: "Email address",
     });
@@ -709,9 +714,7 @@ describe("Sign-in methods (PX-13)", () => {
     );
     renderPortal();
     const region = await methodsRegion();
-    await userEvent.click(
-      within(region).getByRole("button", { name: "Add a passkey" }),
-    );
+    await addVia(region, "Add a passkey");
     expect(await screen.findByText("Passkey added")).toBeTruthy();
     const asked = (
       create.mock.calls[0] as unknown as [CredentialCreationOptions]
@@ -962,9 +965,7 @@ describe("step-up ways and returns (PX-13 review)", () => {
     await userEvent.click(
       within(region).getByRole("button", { name: "Cancel" }),
     );
-    await userEvent.click(
-      within(region).getByRole("button", { name: "Add an email" }),
-    );
+    await addVia(region, "Add an email");
     await userEvent.type(
       await within(region).findByRole("textbox", { name: "Email address" }),
       "mara@studio.example",

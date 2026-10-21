@@ -161,12 +161,12 @@ export function MethodRow({
           {meta ? <p className="text-sm text-fg-muted">{meta}</p> : null}
         </div>
         {open ? null : (
-          <div className="ml-13 flex flex-wrap items-center gap-2 sm:ml-auto">
+          <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
             {actions}
             <Button
               ref={buttonRef}
               variant="outline"
-              className="h-11 font-medium"
+              className="h-auto min-h-11 whitespace-normal font-medium"
               aria-disabled={guarded || undefined}
               aria-describedby={guarded ? reasonId : undefined}
               aria-expanded={guarded ? undefined : false}
@@ -245,18 +245,27 @@ export function MethodRow({
                   }}
                 />
                 <div className="flex">
-                  <Button variant="outline" onClick={close}>
+                  <Button
+                    variant="outline"
+                    className="max-sm:min-h-11"
+                    onClick={close}
+                  >
                     {keepLabel}
                   </Button>
                 </div>
               </>
             ) : (
               <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                <Button variant="outline" onClick={close}>
+                <Button
+                  variant="outline"
+                  className="max-sm:min-h-11"
+                  onClick={close}
+                >
                   {keepLabel}
                 </Button>
                 <Button
                   variant="danger"
+                  className="max-sm:min-h-11"
                   loading={remove.isPending}
                   busyFocusable
                   onClick={doRemove}

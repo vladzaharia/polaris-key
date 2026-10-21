@@ -310,6 +310,7 @@ export function ProfileEditor({
               id={`${id}-name`}
               value={name}
               maxLength={64}
+              className="max-sm:min-h-11"
               autoComplete="nickname"
               spellCheck={false}
               aria-invalid={error?.field === "name" ? true : undefined}
@@ -359,7 +360,7 @@ export function ProfileEditor({
                             if (error?.field === "name") setError(null);
                           }}
                           className={cn(
-                            "pk-pressable inline-flex h-9 max-w-full items-center gap-1.5 rounded-full border px-3 text-sm pointer-coarse:h-11",
+                            "pk-pressable inline-flex h-9 max-w-full items-center gap-1.5 rounded-full border px-3 text-sm max-sm:h-11 pointer-coarse:h-11",
                             "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page",
                             on
                               ? "border-accent bg-accent-subtle font-medium text-fg-strong"
@@ -507,11 +508,12 @@ export function ProfileEditor({
                 onValueChange={typeBirthdate}
                 // The native calendar button inside takes focus without the input being
                 // :focus-visible, so the ring follows plain :focus here.
-                className="min-w-36 max-w-56 flex-1 focus:ring-2 focus:ring-focus focus:ring-offset-2 focus:ring-offset-surface-page"
+                className="min-w-36 max-w-56 flex-1 max-sm:min-h-11 focus:ring-2 focus:ring-focus focus:ring-offset-2 focus:ring-offset-surface-page"
               />
               {birthdate ? (
                 <Button
                   variant="ghost"
+                  className="max-sm:min-h-11"
                   aria-label={C["profile.birthdate.remove"]}
                   onClick={removeBirthdate}
                 >
@@ -535,10 +537,19 @@ export function ProfileEditor({
             </p>
           ) : null}
           <div className="flex flex-wrap gap-2">
-            <Button type="submit" loading={save.isPending} busyFocusable>
+            <Button
+              type="submit"
+              className="max-sm:min-h-11"
+              loading={save.isPending}
+              busyFocusable
+            >
               {C["profile.save"]}
             </Button>
-            <Button variant="outline" onClick={() => onDone(false)}>
+            <Button
+              variant="outline"
+              className="max-sm:min-h-11"
+              onClick={() => onDone(false)}
+            >
               {C["profile.cancel"]}
             </Button>
           </div>

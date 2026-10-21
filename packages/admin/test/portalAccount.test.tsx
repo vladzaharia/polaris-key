@@ -74,7 +74,7 @@ describe("Account v1 (PX-07)", () => {
     expect(document.documentElement.getAttribute("data-theme")).toBe("light");
     expect(window.localStorage.getItem("pk-admin-theme")).toBe("light");
     await userEvent.click(
-      within(theme).getByRole("radio", { name: /Match my device/ }),
+      within(theme).getByRole("radio", { name: /Match device/ }),
     );
     expect(document.documentElement.hasAttribute("data-theme")).toBe(false);
   });
@@ -89,7 +89,7 @@ describe("Account v1 (PX-07)", () => {
       name: "Motion",
     });
     const system = within(motion).getByRole("radio", {
-      name: /Match my device/,
+      name: /Match device/,
     });
     expect(system.getAttribute("aria-checked")).toBe("true");
     await userEvent.click(
@@ -275,14 +275,16 @@ describe("Your data: Download my data (I-11)", () => {
       screen.getByText("It holds personal details, so keep it private."),
     ).toBeTruthy();
     expect(within(data).queryByRole("alert")).toBeNull();
-    expect(button.disabled).toBe(false);
+    expect(button.getAttribute("aria-disabled")).not.toBe("true");
   });
 
   it("starts one request at a time: a second press while it runs does nothing", async () => {
     const answer = deferred<unknown>();
     const { button } = await open(() => answer.promise);
     await userEvent.dblClick(button);
-    await waitFor(() => expect(button.disabled).toBe(true));
+    await waitFor(() =>
+      expect(button.getAttribute("aria-disabled")).toBe("true"),
+    );
     expect(button.getAttribute("aria-busy")).toBe("true");
     answer.resolve(ACCOUNT_FILE);
     await waitFor(() => expect(files.saved).toHaveLength(1));
@@ -298,14 +300,18 @@ describe("Your data: Download my data (I-11)", () => {
     const { button } = await open(() => answer.promise);
     const focus = vi.spyOn(button, "focus");
     await userEvent.click(button);
-    await waitFor(() => expect(button.disabled).toBe(true));
+    await waitFor(() =>
+      expect(button.getAttribute("aria-disabled")).toBe("true"),
+    );
     // The click itself focused it. A browser drops focus from a button that becomes disabled
     // (jsdom keeps it there): the page body holds it now.
     focus.mockClear();
     vi.spyOn(document, "activeElement", "get").mockReturnValue(document.body);
     answer.resolve(ACCOUNT_FILE);
     await waitFor(() => expect(focus).toHaveBeenCalled());
-    await waitFor(() => expect(button.disabled).toBe(false));
+    await waitFor(() =>
+      expect(button.getAttribute("aria-disabled")).not.toBe("true"),
+    );
   });
 
   it("keeps a refusal beside the button in plain words, and pressing again tries again", async () => {
@@ -321,7 +327,7 @@ describe("Your data: Download my data (I-11)", () => {
     );
     expect(files.saved).toHaveLength(0);
     expect(screen.queryByText("Your download has started")).toBeNull();
-    expect(button.disabled).toBe(false);
+    expect(button.getAttribute("aria-disabled")).not.toBe("true");
 
     await userEvent.click(button);
     await waitFor(() => expect(files.saved).toHaveLength(1));
@@ -350,7 +356,7 @@ describe("Your data: Download my data (I-11)", () => {
     expect((await within(data).findByRole("alert")).textContent).toBe(words);
     expect(files.saved).toHaveLength(0);
     expect(screen.queryByText("Your download has started")).toBeNull();
-    expect(button.disabled).toBe(false);
+    expect(button.getAttribute("aria-disabled")).not.toBe("true");
   });
 
   it("is still offered while a deletion is scheduled, and leaves that flow alone", async () => {

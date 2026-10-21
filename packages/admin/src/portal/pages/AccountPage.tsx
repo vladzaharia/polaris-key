@@ -249,7 +249,7 @@ function SectionLink({
 }
 
 const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
-  { value: "system", label: "Match my device" },
+  { value: "system", label: "Match device" },
   { value: "dark", label: "Dark" },
   { value: "light", label: "Light" },
 ];
@@ -261,7 +261,7 @@ const MOTION_OPTIONS: {
 }[] = [
   {
     value: "system",
-    label: "Match my device",
+    label: "Match device",
     description: "Animates unless your device asks for reduced motion.",
   },
   {
