@@ -224,7 +224,9 @@ describe("SEC-WEB-1: gated docs are unreachable without a session", () => {
         NOW,
       );
       expect(res.status, p).toBe(302);
-      expect(res.headers.get("location")).toBe("/docs/access/");
+      expect(res.headers.get("location")).toMatch(
+        /^\/docs\/access\/(\?returnTo=[A-Za-z0-9%._~-]+)?$/,
+      );
     }
   }, 120_000);
 

@@ -19905,8 +19905,10 @@ paths:
       tags: [portal]
       summary: Help (alias)
       description: >
-        DOC-03b. A short link to the public Help site: `302` to `/docs/help/`. No session. `/help/`
-        answers the same. `GET` and `HEAD` only.
+        DOC-03b. A short link to the public Help site: `302` to `/docs/help/`. No session. `/help/` and
+        `/help/<path>` redirect to `/docs/help/<path>` (path and query kept). With a usable customer
+        host (LK-09), the console host redirects to Help on that host, and the customer host answers
+        the same path on itself. `GET` and `HEAD` only.
       responses:
         "302": { description: Redirect to /docs/help/. }
     head:

@@ -34,7 +34,76 @@ export const CUSTOMER_ROUTE_KINDS: ReadonlySet<string> = new Set([
   "portalMedia",
   "signInEntry",
   "deviceEntry",
+  // Help (LK-09, D7): `docs` is confined to `customerDocsPath` below, not served whole.
+  "docs",
+  "helpAlias",
 ]);
+
+/**
+ * What of `/docs` the customer host serves: Help and the files a Help page loads (the shared
+ * styles and scripts, the public search bundle, the site's own 404, the branding). Every other
+ * `/docs` path redirects to the console host (`docsElsewhere`). All of them are public tier, so
+ * no session is read here.
+ */
+const CUSTOMER_DOCS_PREFIXES: readonly string[] = [
+  "/docs/help/",
+  "/docs/_astro/",
+  "/docs/pagefind/",
+  "/docs/branding/",
+];
+const CUSTOMER_DOCS_FILES: ReadonlySet<string> = new Set([
+  "/docs/help",
+  "/docs/404.html",
+]);
+
+/** True when the customer host serves this `/docs` path itself. */
+export function customerDocsPath(pathname: string): boolean {
+  return (
+    CUSTOMER_DOCS_FILES.has(pathname) ||
+    CUSTOMER_DOCS_PREFIXES.some((p) => pathname.startsWith(p))
+  );
+}
+
+/** A `/docs` path the customer host does not serve: a redirect to the same path on the console host. */
+export function docsElsewhere(req: Request, env: Env, url: URL): Response {
+  if (req.method !== "GET" && req.method !== "HEAD") return notFound();
+  const origin = apiOrigin(env);
+  if (origin === null) return notFound();
+  return new Response(null, {
+    status: 302,
+    headers: {
+      location: `${origin}${url.pathname}${url.search}`,
+      "cache-control": "no-store",
+      "x-content-type-options": "nosniff",
+    },
+  });
+}
+
+/**
+ * `/help[/*]`: the short link to Help. On the customer host it stays on the host; on the console
+ * host it goes straight to the customer host once that is usable (no double hop), else to the
+ * console host's own Help.
+ */
+export function helpAliasResponse(
+  req: Request,
+  env: Env,
+  url: URL,
+  onCustomerHost: boolean,
+): Response {
+  if (req.method !== "GET" && req.method !== "HEAD")
+    return new Response(null, {
+      status: 405,
+      headers: { allow: "GET, HEAD", "cache-control": "no-store" },
+    });
+  const origin = onCustomerHost ? "" : (hostOrigin("customer", env) ?? "");
+  return new Response(null, {
+    status: 302,
+    headers: {
+      location: `${origin}/docs/help/${url.pathname.slice("/help/".length)}${url.search}`,
+      "cache-control": "no-store",
+    },
+  });
+}
 
 export const HOST_DOCUMENT_PATH = "/.well-known/polaris-host.json";
 export const ROBOTS_PATH = "/robots.txt";
@@ -114,6 +183,11 @@ export function oldCustomerUrlRedirect(
       permanent = true;
       break;
     case "portalLogin":
+      permanent = true;
+      break;
+    // Help moved to the customer host (LK-09, D7): `/docs/help/*` and the pages it loads.
+    case "docs":
+      if (path !== "/docs/help" && !path.startsWith("/docs/help/")) return null;
       permanent = true;
       break;
     case "portalProviderSignIn":

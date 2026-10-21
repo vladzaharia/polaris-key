@@ -91,6 +91,8 @@ apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1�
 - [ ] The common definition of done in the docs plan §6.3 holds.
 - [ ] Keyboard-only test.
 - [ ] A gated bundle is never fetched without a session.
+- [ ] The bundles are nested (public in member in admin): load exactly one bundle per tier, the highest the reader can fetch, and never `mergeIndex` them (a merge returns each public page twice). The "Help only" default is a filter on that bundle (the public bundle also holds the developer door). Carried from the DOC-03b review.
+- [ ] The plan's per-door bundles (`pagefind/help`, `pagefind/developers`) are built, or the plan is amended to one public bundle with a door filter.
 - [ ] `pkey-ux-reviewer` passes the rendered pages in built mode, both themes and phone (§6.3).
 - [ ] `pkey-wp-reviewer` passes the package.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
