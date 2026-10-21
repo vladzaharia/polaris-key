@@ -748,6 +748,13 @@
     "signin.join.again": "{email}에 다시 로그인",
     "signin.join.startAgain": "다시 시작",
     "signin.join.noUndo": "이 합치기는 더 이상 되돌릴 수 없습니다.",
-    "signin.join.methodsLink": "로그인 방법"
+    "signin.join.methodsLink": "로그인 방법",
+    "signin.join.undoFailed": "합치기를 되돌리지 못했습니다. 다시 시도하세요.",
+    "signin.join.reasonStaleOne": "{email}에 다시 로그인한 뒤 합치세요.",
+    "signin.join.staleMark": "5분 넘게 전에 로그인함",
+    "signin.join.stillSignedIn": "계속 {email}(으)로 로그인되어 있습니다.",
+    "signin.join.undoConfirm": "{email}과(와)의 합치기를 되돌릴까요? {date}까지 가능합니다.",
+    "signin.approve.tooMany": "시도가 너무 많습니다. 1분 기다린 뒤 다시 시도하세요.",
+    "signin.key.enterKey": "라이선스 키를 입력하세요."
   }
 }

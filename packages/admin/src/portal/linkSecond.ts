@@ -9,10 +9,14 @@
  * dialog (the flow itself lives on the server).
  */
 const KEY = "pk-link-second";
+const EMAIL = "pk-link-second-email";
 
-export function beginSecondSignIn(sessionToken: string): void {
+/** `email`: the account to sign in to again (a stale proof), prefilled on the card. */
+export function beginSecondSignIn(sessionToken: string, email?: string): void {
   try {
     window.sessionStorage.setItem(KEY, sessionToken);
+    if (email) window.sessionStorage.setItem(EMAIL, email);
+    else window.sessionStorage.removeItem(EMAIL);
   } catch {
     // Storage off: the card does not show; the dialog's button stays the way back in.
   }
@@ -26,9 +30,18 @@ export function secondSignInFrom(): string | null {
   }
 }
 
+export function secondSignInEmail(): string | null {
+  try {
+    return window.sessionStorage.getItem(EMAIL);
+  } catch {
+    return null;
+  }
+}
+
 export function endSecondSignIn(): void {
   try {
     window.sessionStorage.removeItem(KEY);
+    window.sessionStorage.removeItem(EMAIL);
   } catch {
     // Nothing to clear.
   }

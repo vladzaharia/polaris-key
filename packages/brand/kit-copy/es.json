@@ -748,6 +748,13 @@
     "signin.join.again": "Iniciar sesión en {email} de nuevo",
     "signin.join.startAgain": "Empezar de nuevo",
     "signin.join.noUndo": "Esta unión ya no se puede deshacer.",
-    "signin.join.methodsLink": "Métodos de inicio de sesión"
+    "signin.join.methodsLink": "Métodos de inicio de sesión",
+    "signin.join.undoFailed": "No se pudo deshacer la unión. Inténtalo de nuevo.",
+    "signin.join.reasonStaleOne": "Inicia sesión de nuevo en {email} y luego une.",
+    "signin.join.staleMark": "Sesión iniciada hace más de 5 minutos",
+    "signin.join.stillSignedIn": "Sigues con la sesión de {email}.",
+    "signin.join.undoConfirm": "¿Deshacer la unión con {email}? Puedes hasta el {date}.",
+    "signin.approve.tooMany": "Demasiados intentos. Espera un minuto e inténtalo de nuevo.",
+    "signin.key.enterKey": "Introduce tu clave de licencia."
   }
 }

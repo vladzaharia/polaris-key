@@ -294,6 +294,13 @@ export function ActivateDialog({
     e.preventDefault();
     if (check.kind !== "valid") {
       setTouched(true);
+      // An empty field is answered at the field, in words.
+      if (check.kind === "empty")
+        setServerVerdict({
+          code: "failed",
+          tone: "danger",
+          message: t("signin.key.enterKey"),
+        });
       focusField();
       return;
     }
@@ -407,7 +414,11 @@ export function ActivateDialog({
           onOpen={() => openProduct(done.slug)}
         />
       ) : (
-        <form onSubmit={submit} noValidate>
+        <form
+          onSubmit={submit}
+          noValidate
+          className="flex min-h-0 flex-1 flex-col"
+        >
           <DialogBody className="space-y-4">
             {fromProduct && linkContext ? (
               <LinkNotice

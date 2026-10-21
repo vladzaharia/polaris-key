@@ -22,7 +22,6 @@ import {
 import { isStepUpRequired, portalErrorCopy } from "../errors.js";
 import { beginSecondSignIn } from "../linkSecond.js";
 import { focusPageHeading, href, navigate } from "../router.js";
-import { ErrorPanel } from "./States.js";
 import { StepUpInline } from "./account/StepUpInline.js";
 
 /**
@@ -63,14 +62,22 @@ const methodName = (kind: string): string => METHOD_NAME[kind] ?? kind;
 type Action =
   | { kind: "idle"; error?: string; withMethods?: boolean; stale?: string[] }
   | { kind: "busy" }
-  | { kind: "stepup"; then: "start" | "undo"; merge?: string }
-  | { kind: "joined"; undoUntil: number | null; merge: string | null }
+  | { kind: "stepup"; then: "start" | "undo" | "verify"; merge?: string }
+  | {
+      kind: "joined";
+      undoUntil: number | null;
+      merge: string | null;
+      error?: string;
+    }
   | { kind: "undone" };
 
 export function LinkAccountsDialog({
   onClose,
+  undoId,
 }: {
   onClose: () => void;
+  /** Opened from the 72-hour row: confirm undoing this join, nothing else. */
+  undoId?: string;
 }): React.ReactElement {
   const qc = useQueryClient();
   const session = useSession();
@@ -95,9 +102,9 @@ export function LinkAccountsDialog({
   };
 
   /** The login card, in "other account" mode (App.tsx), for whichever proof is wanted. */
-  const signInOther = (): void => {
+  const signInOther = (email?: string): void => {
     const token = session.data?.csrf;
-    if (token) beginSecondSignIn(token);
+    if (token) beginSecondSignIn(token, email);
     window.location.assign(SIGN_IN_OTHER);
   };
 
@@ -117,15 +124,17 @@ export function LinkAccountsDialog({
       return setAction({ kind: "idle", error: REASON_COPY.merge_pending() });
     if (err instanceof PortalApiError && err.reason === "unavailable")
       return setAction({ kind: "idle", error: REASON_COPY.unavailable() });
-    if (isStepUpRequired(err))
+    if (isStepUpRequired(err)) {
+      const roles =
+        err instanceof PortalApiError && err.stale?.length
+          ? err.stale
+          : ["started", "other"];
       return setAction({
         kind: "idle",
-        error: REASON_COPY.step_up_required(),
-        stale:
-          err instanceof PortalApiError && err.stale?.length
-            ? err.stale
-            : ["started", "other"],
+        error: staleMessage(roles, flow),
+        stale: roles,
       });
+    }
     if (err instanceof PortalApiError && err.status === 409)
       // `last_link`: the Worker's own sentence, and where to add a way.
       return setAction({
@@ -160,15 +169,16 @@ export function LinkAccountsDialog({
   const join = async (): Promise<void> => {
     // The button always answers: a join the Worker would refuse says why, here.
     if (flow && !flow.canJoin && flow.reason) {
+      const roles =
+        flow.reason === "step_up_required"
+          ? [flow.started, flow.other]
+              .filter((a): a is PortalLinkAccount => !!a && !a.proven.fresh)
+              .map((a) => a.role)
+          : undefined;
       return setAction({
         kind: "idle",
-        error: REASON_COPY[flow.reason](),
-        stale:
-          flow.reason === "step_up_required"
-            ? [flow.started, flow.other]
-                .filter((a): a is PortalLinkAccount => !!a && !a.proven.fresh)
-                .map((a) => a.role)
-            : undefined,
+        error: roles ? staleMessage(roles, flow) : REASON_COPY[flow.reason](),
+        stale: roles,
       });
     }
     setAction({ kind: "busy" });
@@ -187,6 +197,7 @@ export function LinkAccountsDialog({
   };
 
   const undo = async (merge: string): Promise<void> => {
+    const before = action;
     setAction({ kind: "busy" });
     try {
       await portalApi.linkUndo(merge);
@@ -196,24 +207,43 @@ export function LinkAccountsDialog({
     } catch (err) {
       if (isStepUpRequired(err))
         return setAction({ kind: "stepup", then: "undo", merge });
-      if (err instanceof PortalApiError && err.status === 404) {
+      const msg =
+        err instanceof PortalApiError && err.status === 404
+          ? t("signin.join.noUndo")
+          : err instanceof PortalApiError && err.status === 0
+            ? portalErrorCopy(err).title
+            : t("signin.join.undoFailed");
+      if (err instanceof PortalApiError && err.status === 404)
         void qc.invalidateQueries({ queryKey: portalKeys.link });
-        return setAction({ kind: "idle", error: t("signin.join.noUndo") });
-      }
-      fail(err);
+      // Back where the person was, with the reason: the Undo they pressed stays in reach.
+      if (before.kind === "joined") setAction({ ...before, error: msg });
+      else setAction({ kind: "idle", error: msg });
     }
   };
 
+  const confirmUndo = !flow ? undoable.find((u) => u.id === undoId) : undefined;
   const busy = action.kind === "busy";
   const done = action.kind === "joined" || action.kind === "undone";
-  const error = action.kind === "idle" ? action.error : undefined;
+  const error =
+    action.kind === "idle" || action.kind === "joined"
+      ? action.error
+      : undefined;
   const stale = action.kind === "idle" ? (action.stale ?? []) : [];
+  const alertRef = React.useRef<HTMLDivElement>(null);
+  const statusRef = React.useRef<HTMLParagraphElement>(null);
+  // After an outcome, focus goes to what answers it: the status, or the reason.
+  React.useEffect(() => {
+    if (action.kind === "joined" && !action.error) statusRef.current?.focus();
+    else if (action.kind === "undone") statusRef.current?.focus();
+    else if (error) alertRef.current?.focus();
+  }, [action.kind, error]);
 
   const problem = (
     <Problem
       id="pk-join-err"
       text={error}
       methods={action.kind === "idle" && action.withMethods}
+      alertRef={alertRef}
       onMethods={() => {
         onClose();
         navigate(href.account("methods"));
@@ -250,7 +280,11 @@ export function LinkAccountsDialog({
             onConfirmed={() => {
               if (action.then === "undo" && action.merge)
                 void undo(action.merge);
-              else void start();
+              else if (action.then === "verify") {
+                // This account is fresh now: read the join screen again.
+                void view.refetch();
+                setAction({ kind: "idle" });
+              } else void start();
             }}
             onCancel={() => setAction({ kind: "idle" })}
           />
@@ -258,7 +292,12 @@ export function LinkAccountsDialog({
       ) : done ? (
         <>
           <DialogBody className="space-y-3">
-            <p role="status" className="flex items-start gap-2 text-fg">
+            <p
+              ref={statusRef}
+              tabIndex={-1}
+              role="status"
+              className="flex items-start gap-2 text-fg outline-none"
+            >
               <Check
                 aria-hidden
                 className="mt-0.5 size-4 shrink-0 text-success"
@@ -275,6 +314,7 @@ export function LinkAccountsDialog({
               <Button
                 variant="outline"
                 size="sm"
+                busyFocusable
                 className="max-sm:min-h-11"
                 onClick={() => void undo(action.merge!)}
               >
@@ -295,23 +335,31 @@ export function LinkAccountsDialog({
         </DialogBody>
       ) : view.error && !expired ? (
         <DialogBody>
-          <ErrorPanel
-            error={view.error}
-            onRetry={() => void view.refetch()}
-            className="border-0 p-0 shadow-none"
-          />
+          <p role="alert" className="text-fg">
+            {t("signin.join.failed")}
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-3 max-sm:min-h-11"
+            onClick={() => void view.refetch()}
+          >
+            {t("signin.retry")}
+          </Button>
         </DialogBody>
       ) : flow && flow.other ? (
         <>
           <DialogBody className="space-y-4">
             <ul className="space-y-2">
-              {[flow.started, flow.other].map((a) =>
-                a ? (
-                  <li key={a.role}>
-                    <AccountCard account={a} />
-                  </li>
-                ) : null,
-              )}
+              {[flow.started, flow.other]
+                .sort((a, b) => Number(!!b?.current) - Number(!!a?.current))
+                .map((a) =>
+                  a ? (
+                    <li key={a.role}>
+                      <AccountCard account={a} />
+                    </li>
+                  ) : null,
+                )}
             </ul>
             {flow.result ? (
               <div className="space-y-1">
@@ -332,6 +380,7 @@ export function LinkAccountsDialog({
               roles={stale}
               busy={busy}
               onSignIn={signInOther}
+              onConfirm={() => setAction({ kind: "stepup", then: "verify" })}
               onStartAgain={() => void startAgain()}
             />
           </DialogBody>
@@ -347,6 +396,32 @@ export function LinkAccountsDialog({
               onClick={() => void join()}
             >
               {t("signin.gate.join")}
+            </Button>
+          </DialogFooter>
+        </>
+      ) : confirmUndo ? (
+        <>
+          <DialogBody className="space-y-4">
+            <p className="text-fg">
+              {t("signin.join.undoConfirm", {
+                email:
+                  confirmUndo.joined?.email ?? confirmUndo.joined?.name ?? "",
+                date: formatDate(confirmUndo.undoUntil * 1000),
+              })}
+            </p>
+            {problem}
+          </DialogBody>
+          <DialogFooter className={SHORT_FOOTER}>
+            <Button variant="outline" disabled={busy} onClick={close}>
+              {t("common.cancel")}
+            </Button>
+            <Button
+              variant="neutral"
+              loading={busy}
+              busyFocusable
+              onClick={() => void undo(confirmUndo.id)}
+            >
+              {t("signin.join.undo")}
             </Button>
           </DialogFooter>
         </>
@@ -373,6 +448,7 @@ export function LinkAccountsDialog({
                       variant="outline"
                       size="sm"
                       className="max-sm:min-h-11"
+                      busyFocusable
                       disabled={busy}
                       onClick={() => void undo(u.id)}
                     >
@@ -407,7 +483,7 @@ export function LinkAccountsDialog({
  * so on a short window the footer goes back to one compact row and the body keeps the room.
  */
 const SHORT_FOOTER =
-  "[@media(max-height:520px)]:flex-row [@media(max-height:520px)]:py-2 [@media(max-height:520px)]:mt-0";
+  "[@media(max-height:520px)]:flex-row [@media(max-height:520px)]:py-2 [@media(max-height:520px)]:mt-0 [@media(max-height:520px)]:[&_button]:h-auto [@media(max-height:520px)]:[&_button]:whitespace-normal";
 
 /** A proof older than 5 minutes: sign in to that account again, or start over. Never a dead end. */
 function StaleActions({
@@ -415,12 +491,14 @@ function StaleActions({
   roles,
   busy,
   onSignIn,
+  onConfirm,
   onStartAgain,
 }: {
   accounts: (PortalLinkAccount | null)[];
   roles: string[];
   busy: boolean;
-  onSignIn: () => void;
+  onSignIn: (email?: string) => void;
+  onConfirm: () => void;
   onStartAgain: () => void;
 }): React.ReactElement | null {
   if (roles.length === 0) return null;
@@ -435,9 +513,13 @@ function StaleActions({
             size="sm"
             className="max-sm:min-h-11"
             disabled={busy}
-            onClick={onSignIn}
+            onClick={() =>
+              a.current ? onConfirm() : onSignIn(a.email ?? undefined)
+            }
           >
-            {t("signin.join.again", { email: a.email ?? "" })}
+            {a.current
+              ? t("core.codes.step_up_required.title")
+              : t("signin.join.again", { email: a.email ?? "" })}
           </Button>
         ))}
       <Button
@@ -458,14 +540,22 @@ function Problem({
   text,
   methods,
   onMethods,
+  alertRef,
 }: {
+  alertRef?: React.Ref<HTMLDivElement>;
   id: string;
   text?: string;
   methods?: boolean;
   onMethods: () => void;
 }): React.ReactElement | null {
   return text ? (
-    <div id={id} role="alert" className="space-y-1 text-sm">
+    <div
+      id={id}
+      ref={alertRef}
+      tabIndex={-1}
+      role="alert"
+      className="space-y-1 text-sm outline-none"
+    >
       <p className="text-danger">{text}</p>
       {methods ? (
         <Button
@@ -486,6 +576,7 @@ function AccountCard({
 }: {
   account: PortalLinkAccount;
 }): React.ReactElement {
+  const stale = !account.proven.fresh;
   const named = account.name && account.name !== account.email;
   const methods = account.methods.map(methodName).join(", ");
   const by = account.proven.by ? methodName(account.proven.by) : null;
@@ -525,7 +616,11 @@ function AccountCard({
             ? ` · ${t("signin.join.methodsLine", { method: methods })}`
             : ""}
         </span>
-        {by ? (
+        {stale ? (
+          <span className="font-medium text-fg-strong">
+            {t("signin.join.staleMark")}
+          </span>
+        ) : by ? (
           <span className="text-fg-muted">
             {t("signin.join.provenBy", {
               method: by,
@@ -536,4 +631,14 @@ function AccountCard({
       </div>
     </div>
   );
+}
+
+/** The alert for a stale proof names only the account that is stale. */
+function staleMessage(roles: string[], flow: PortalLinkView["flow"]): string {
+  const accounts = [flow?.started, flow?.other].filter(
+    (a): a is PortalLinkAccount => !!a && roles.includes(a.role),
+  );
+  return accounts.length === 1 && accounts[0]!.email
+    ? t("signin.join.reasonStaleOne", { email: accounts[0]!.email })
+    : t("signin.join.reasonStepUp");
 }

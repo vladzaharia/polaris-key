@@ -748,6 +748,13 @@
     "signin.join.again": "{email} に再度サインイン",
     "signin.join.startAgain": "最初からやり直す",
     "signin.join.noUndo": "このまとめはもう元に戻せません。",
-    "signin.join.methodsLink": "サインイン方法"
+    "signin.join.methodsLink": "サインイン方法",
+    "signin.join.undoFailed": "元に戻せませんでした。もう一度お試しください。",
+    "signin.join.reasonStaleOne": "{email} に再度サインインしてから、まとめてください。",
+    "signin.join.staleMark": "5分以上前にサインイン",
+    "signin.join.stillSignedIn": "引き続き {email} でサインインしています。",
+    "signin.join.undoConfirm": "{email} とのまとめを元に戻しますか？{date}まで可能です。",
+    "signin.approve.tooMany": "試行が多すぎます。1分待ってからもう一度お試しください。",
+    "signin.key.enterKey": "ライセンスキーを入力してください。"
   }
 }

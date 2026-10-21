@@ -160,7 +160,7 @@ export function SignInPage({
   other,
 }: {
   /** The join's second proof (linkSecond.ts): signed in already, signing in to the other account. */
-  other?: { onCancel: () => void };
+  other?: { onCancel: () => void; email?: string };
 } = {}): React.ReactElement {
   const [product] = React.useState(productFromUrl);
   const caps = useCapabilities(product);
@@ -169,7 +169,7 @@ export function SignInPage({
     new URLSearchParams(window.location.search).get("signin") ===
     "confirm-email"
       ? { kind: "finish" }
-      : { kind: "methods" },
+      : { kind: "methods", email: other?.email },
   );
   const [direction, setDirection] = React.useState<"forward" | "back">(
     "forward",
@@ -224,14 +224,7 @@ export function SignInPage({
       : null;
 
   const ctx = caps.data?.product;
-  const header = other ? (
-    <div className="space-y-1 px-6 py-3 text-center">
-      <p className="font-semibold text-fg-strong">
-        {t("signin.join.otherTitle")}
-      </p>
-      <p className="text-sm text-fg-muted">{t("signin.join.otherLede")}</p>
-    </div>
-  ) : ctx ? (
+  const header = ctx ? (
     <CardHeader
       variant="context"
       icon={
@@ -392,6 +385,7 @@ export function SignInPage({
           onKey={() => go({ kind: "key" })}
           onDevice={() => go({ kind: "device" })}
           onHint={(email, last) => go({ kind: "hint", email, last })}
+          other={other ? { email: other.email } : undefined}
         />
       )}
     </AuthCard>
@@ -464,7 +458,10 @@ function MethodsStep({
   onKey,
   onDevice,
   onHint,
+  other,
 }: {
+  /** The join's second sign-in: its own title, and no way out to a key or a device. */
+  other?: { email?: string };
   caps: PortalCapabilities;
   context: { slug: string; name: string; developerName?: string | null } | null;
   /** The address to start from: kept when an expired sign-in comes back here. */
@@ -571,16 +568,22 @@ function MethodsStep({
   const carriedCheck = carried ? checkKey(carried) : null;
   const carriedName =
     carriedCheck?.kind === "valid" ? productLabel(carriedCheck.slug) : null;
-  const title = carriedName
-    ? t("signin.key.carriedTitle", { product: carriedName })
-    : context
-      ? t("signin.methods.titleApp")
-      : t("signin.methods.title");
-  const lede = carriedName
-    ? t("signin.key.carriedLede", { product: carriedName })
-    : context
-      ? t("signin.methods.ledeApp", { product: context.name })
-      : null;
+  const title = other
+    ? other.email
+      ? t("signin.join.again", { email: other.email })
+      : t("signin.join.otherTitle")
+    : carriedName
+      ? t("signin.key.carriedTitle", { product: carriedName })
+      : context
+        ? t("signin.methods.titleApp")
+        : t("signin.methods.title");
+  const lede = other
+    ? t("signin.join.otherLede")
+    : carriedName
+      ? t("signin.key.carriedLede", { product: carriedName })
+      : context
+        ? t("signin.methods.ledeApp", { product: context.name })
+        : null;
 
   return (
     <>
@@ -697,7 +700,7 @@ function MethodsStep({
           ) : null}
         </div>
       ) : null}
-      {carried || caps.modules.claim || magic ? (
+      {!other && (carried || caps.modules.claim || magic) ? (
         <QuietLinks>
           {carried ? (
             <QuietLink

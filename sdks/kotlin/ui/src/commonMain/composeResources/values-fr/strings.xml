@@ -1678,6 +1678,20 @@
     <!-- Link dialog: a link to Account → Sign-in methods. -->
     <string name="signin_join_methodsLink">Méthodes de connexion</string>
     <string name="signin_join_methodsLink__macos">Méthodes de connexion</string>
+    <!-- Link dialog: an undo failed. -->
+    <string name="signin_join_undoFailed">Impossible d'annuler la réunion. Réessayez.</string>
+    <!-- Link dialog: one account's proof is older than 5 minutes. {email}. Arguments: 1=email. -->
+    <string name="signin_join_reasonStaleOne">Reconnectez-vous à %1$s, puis réunissez.</string>
+    <!-- Link dialog: marks an account whose sign-in is older than 5 minutes. -->
+    <string name="signin_join_staleMark">Connecté il y a plus de 5 minutes</string>
+    <!-- After cancelling the other-account sign-in: which account this browser is signed in to. Arguments: 1=email. -->
+    <string name="signin_join_stillSignedIn">Toujours connecté en tant que %1$s.</string>
+    <!-- Link dialog opened from the 72-hour row: confirm the undo. {email}, {date}. Arguments: 1=email, 2=date. -->
+    <string name="signin_join_undoConfirm">Annuler la réunion avec %1$s ? Possible jusqu'au %2$s.</string>
+    <!-- Approve dialog: too many tries (429). -->
+    <string name="signin_approve_tooMany">Trop d'essais. Attendez une minute, puis réessayez.</string>
+    <!-- Activate dialog: Continue pressed with an empty field. -->
+    <string name="signin_key_enterKey">Saisissez votre clé de licence.</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">Something went wrong</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

@@ -12,7 +12,11 @@ import { useLibrary } from "./library.js";
 import { SCALE_THRESHOLD } from "./model/libraryView.js";
 import { StarScreen } from "./components/States.js";
 import { announceSignedIn } from "./session.js";
-import { endSecondSignIn, secondSignInFrom } from "./linkSecond.js";
+import {
+  endSecondSignIn,
+  secondSignInEmail,
+  secondSignInFrom,
+} from "./linkSecond.js";
 import {
   consumeQuietSignOut,
   createPortalQueryClient,
@@ -35,6 +39,7 @@ import { restoreCarriedKey } from "./carriedKey.js";
 import {
   activateContext,
   rewriteActivatePath,
+  focusPageHeading,
   navigate,
   setParams,
   type ActivateContext,
@@ -132,10 +137,18 @@ function Boot(): React.ReactElement {
     return (
       <SignInPage
         other={{
+          email: secondSignInEmail() ?? undefined,
           onCancel: () => {
             endSecondSignIn();
             void portalApi.linkCancel().catch(() => undefined);
             navigate("#/account");
+            // Say which account this browser is still signed in to, once; focus goes to the page.
+            toast.info(
+              t("signin.join.stillSignedIn", {
+                email: session.data?.account.email ?? "",
+              }),
+            );
+            focusPageHeading();
           },
         }}
       />
@@ -257,7 +270,10 @@ function SignedInShell({
       <AddMethodNudge route={route} accountId={account.id} />
       <Page route={route} account={account} />
       {route.kind === "account" && link !== null ? (
-        <LinkAccountsDialog onClose={() => setParams({ link: null })} />
+        <LinkAccountsDialog
+          undoId={route.params.get("undo") ?? undefined}
+          onClose={() => setParams({ link: null, undo: null })}
+        />
       ) : null}
       {route.kind === "account" && approve !== null ? (
         <ApproveDeviceDialog

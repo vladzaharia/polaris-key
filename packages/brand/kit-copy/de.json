@@ -748,6 +748,13 @@
     "signin.join.again": "Erneut bei {email} anmelden",
     "signin.join.startAgain": "Neu beginnen",
     "signin.join.noUndo": "Diese Zusammenführung kann nicht mehr rückgängig gemacht werden.",
-    "signin.join.methodsLink": "Anmeldemethoden"
+    "signin.join.methodsLink": "Anmeldemethoden",
+    "signin.join.undoFailed": "Die Zusammenführung konnte nicht rückgängig gemacht werden. Versuchen Sie es erneut.",
+    "signin.join.reasonStaleOne": "Melden Sie sich erneut bei {email} an und führen Sie dann zusammen.",
+    "signin.join.staleMark": "Vor mehr als 5 Minuten angemeldet",
+    "signin.join.stillSignedIn": "Weiterhin angemeldet als {email}.",
+    "signin.join.undoConfirm": "Zusammenführung mit {email} rückgängig machen? Möglich bis {date}.",
+    "signin.approve.tooMany": "Zu viele Versuche. Warten Sie eine Minute und versuchen Sie es erneut.",
+    "signin.key.enterKey": "Geben Sie Ihren Lizenzschlüssel ein."
   }
 }

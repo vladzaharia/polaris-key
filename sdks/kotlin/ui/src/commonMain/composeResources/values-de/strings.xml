@@ -1666,6 +1666,20 @@
     <!-- Link dialog: a link to Account → Sign-in methods. -->
     <string name="signin_join_methodsLink">Anmeldemethoden</string>
     <string name="signin_join_methodsLink__macos">Anmeldemethoden</string>
+    <!-- Link dialog: an undo failed. -->
+    <string name="signin_join_undoFailed">Die Zusammenführung konnte nicht rückgängig gemacht werden. Versuchen Sie es erneut.</string>
+    <!-- Link dialog: one account's proof is older than 5 minutes. {email}. Arguments: 1=email. -->
+    <string name="signin_join_reasonStaleOne">Melden Sie sich erneut bei %1$s an und führen Sie dann zusammen.</string>
+    <!-- Link dialog: marks an account whose sign-in is older than 5 minutes. -->
+    <string name="signin_join_staleMark">Vor mehr als 5 Minuten angemeldet</string>
+    <!-- After cancelling the other-account sign-in: which account this browser is signed in to. Arguments: 1=email. -->
+    <string name="signin_join_stillSignedIn">Weiterhin angemeldet als %1$s.</string>
+    <!-- Link dialog opened from the 72-hour row: confirm the undo. {email}, {date}. Arguments: 1=email, 2=date. -->
+    <string name="signin_join_undoConfirm">Zusammenführung mit %1$s rückgängig machen? Möglich bis %2$s.</string>
+    <!-- Approve dialog: too many tries (429). -->
+    <string name="signin_approve_tooMany">Zu viele Versuche. Warten Sie eine Minute und versuchen Sie es erneut.</string>
+    <!-- Activate dialog: Continue pressed with an empty field. -->
+    <string name="signin_key_enterKey">Geben Sie Ihren Lizenzschlüssel ein.</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">Ein Fehler ist aufgetreten</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

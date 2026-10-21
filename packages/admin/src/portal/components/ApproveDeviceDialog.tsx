@@ -89,9 +89,11 @@ export function ApproveDeviceDialog({
             : err instanceof PortalApiError &&
                 (err.status === 404 || err.status === 422)
               ? t("signin.approve.notFound")
-              : err instanceof PortalApiError && err.status === 0
-                ? portalErrorCopy(err).title
-                : t("signin.approve.failed"),
+              : err instanceof PortalApiError && err.status === 429
+                ? t("signin.approve.tooMany")
+                : err instanceof PortalApiError && err.status === 0
+                  ? portalErrorCopy(err).title
+                  : t("signin.approve.failed"),
       });
     }
   }, []);
@@ -157,6 +159,7 @@ export function ApproveDeviceDialog({
       {phase.kind === "enter" || phase.kind === "looking" ? (
         <form
           noValidate
+          className="flex min-h-0 flex-1 flex-col"
           onSubmit={(e) => {
             e.preventDefault();
             // Always pressable: a short code is answered at the field, not by a dead button.

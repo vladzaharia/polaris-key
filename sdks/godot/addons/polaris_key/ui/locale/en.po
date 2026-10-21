@@ -4428,6 +4428,41 @@ msgctxt "macos"
 msgid "signin.join.methodsLink"
 msgstr "Sign-In Methods"
 
+#. Couldn't undo the join. Try again.
+#. Link dialog: an undo failed.
+msgid "signin.join.undoFailed"
+msgstr "Couldn't undo the join. Try again."
+
+#. Sign in to {email} again, then join.
+#. Link dialog: one account's proof is older than 5 minutes. {email}.
+msgid "signin.join.reasonStaleOne"
+msgstr "Sign in to {email} again, then join."
+
+#. Signed in more than 5 minutes ago
+#. Link dialog: marks an account whose sign-in is older than 5 minutes.
+msgid "signin.join.staleMark"
+msgstr "Signed in more than 5 minutes ago"
+
+#. Still signed in as {email}.
+#. After cancelling the other-account sign-in: which account this browser is signed in to.
+msgid "signin.join.stillSignedIn"
+msgstr "Still signed in as {email}."
+
+#. Undo the join with {email}? You can until {date}.
+#. Link dialog opened from the 72-hour row: confirm the undo. {email}, {date}.
+msgid "signin.join.undoConfirm"
+msgstr "Undo the join with {email}? You can until {date}."
+
+#. Too many tries. Wait a minute, then try again.
+#. Approve dialog: too many tries (429).
+msgid "signin.approve.tooMany"
+msgstr "Too many tries. Wait a minute, then try again."
+
+#. Enter your license key.
+#. Activate dialog: Continue pressed with an empty field.
+msgid "signin.key.enterKey"
+msgstr "Enter your license key."
+
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).
 msgid "core.fallback.title"

@@ -692,6 +692,19 @@ describe("Activate license modal (PX-06)", () => {
     await waitFor(() => expect(document.activeElement).toBe(open));
   });
 
+  it("answers an empty Continue at the field, in words", async () => {
+    mockFetch(routes());
+    renderPortal();
+    const dialog = await openFromHeader();
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Continue" }),
+    );
+    expect((await within(dialog).findByRole("alert")).textContent).toBe(
+      "Enter your license key.",
+    );
+    expect(fetchedRequests().some((r) => r.includes("preview"))).toBe(false);
+  });
+
   it("a refused Continue puts focus on the field, never on body (UX-79)", async () => {
     mockFetch({
       ...routes(),

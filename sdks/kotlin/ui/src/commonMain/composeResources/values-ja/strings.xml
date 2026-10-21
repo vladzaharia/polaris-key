@@ -1654,6 +1654,20 @@
     <!-- Link dialog: a link to Account → Sign-in methods. -->
     <string name="signin_join_methodsLink">サインイン方法</string>
     <string name="signin_join_methodsLink__macos">サインイン方法</string>
+    <!-- Link dialog: an undo failed. -->
+    <string name="signin_join_undoFailed">元に戻せませんでした。もう一度お試しください。</string>
+    <!-- Link dialog: one account's proof is older than 5 minutes. {email}. Arguments: 1=email. -->
+    <string name="signin_join_reasonStaleOne">%1$s に再度サインインしてから、まとめてください。</string>
+    <!-- Link dialog: marks an account whose sign-in is older than 5 minutes. -->
+    <string name="signin_join_staleMark">5分以上前にサインイン</string>
+    <!-- After cancelling the other-account sign-in: which account this browser is signed in to. Arguments: 1=email. -->
+    <string name="signin_join_stillSignedIn">引き続き %1$s でサインインしています。</string>
+    <!-- Link dialog opened from the 72-hour row: confirm the undo. {email}, {date}. Arguments: 1=email, 2=date. -->
+    <string name="signin_join_undoConfirm">%1$s とのまとめを元に戻しますか？%2$sまで可能です。</string>
+    <!-- Approve dialog: too many tries (429). -->
+    <string name="signin_approve_tooMany">試行が多すぎます。1分待ってからもう一度お試しください。</string>
+    <!-- Activate dialog: Continue pressed with an empty field. -->
+    <string name="signin_key_enterKey">ライセンスキーを入力してください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">問題が発生しました</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

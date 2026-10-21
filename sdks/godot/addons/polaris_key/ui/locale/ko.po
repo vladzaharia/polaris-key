@@ -4416,6 +4416,41 @@ msgctxt "macos"
 msgid "signin.join.methodsLink"
 msgstr "로그인 방법"
 
+#. Couldn't undo the join. Try again.
+#. Link dialog: an undo failed.
+msgid "signin.join.undoFailed"
+msgstr "합치기를 되돌리지 못했습니다. 다시 시도하세요."
+
+#. Sign in to {email} again, then join.
+#. Link dialog: one account's proof is older than 5 minutes. {email}.
+msgid "signin.join.reasonStaleOne"
+msgstr "{email}에 다시 로그인한 뒤 합치세요."
+
+#. Signed in more than 5 minutes ago
+#. Link dialog: marks an account whose sign-in is older than 5 minutes.
+msgid "signin.join.staleMark"
+msgstr "5분 넘게 전에 로그인함"
+
+#. Still signed in as {email}.
+#. After cancelling the other-account sign-in: which account this browser is signed in to.
+msgid "signin.join.stillSignedIn"
+msgstr "계속 {email}(으)로 로그인되어 있습니다."
+
+#. Undo the join with {email}? You can until {date}.
+#. Link dialog opened from the 72-hour row: confirm the undo. {email}, {date}.
+msgid "signin.join.undoConfirm"
+msgstr "{email}과(와)의 합치기를 되돌릴까요? {date}까지 가능합니다."
+
+#. Too many tries. Wait a minute, then try again.
+#. Approve dialog: too many tries (429).
+msgid "signin.approve.tooMany"
+msgstr "시도가 너무 많습니다. 1분 기다린 뒤 다시 시도하세요."
+
+#. Enter your license key.
+#. Activate dialog: Continue pressed with an empty field.
+msgid "signin.key.enterKey"
+msgstr "라이선스 키를 입력하세요."
+
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).
 msgid "core.fallback.title"

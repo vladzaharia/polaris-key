@@ -1654,6 +1654,20 @@
     <!-- Link dialog: a link to Account → Sign-in methods. -->
     <string name="signin_join_methodsLink">로그인 방법</string>
     <string name="signin_join_methodsLink__macos">로그인 방법</string>
+    <!-- Link dialog: an undo failed. -->
+    <string name="signin_join_undoFailed">합치기를 되돌리지 못했습니다. 다시 시도하세요.</string>
+    <!-- Link dialog: one account's proof is older than 5 minutes. {email}. Arguments: 1=email. -->
+    <string name="signin_join_reasonStaleOne">%1$s에 다시 로그인한 뒤 합치세요.</string>
+    <!-- Link dialog: marks an account whose sign-in is older than 5 minutes. -->
+    <string name="signin_join_staleMark">5분 넘게 전에 로그인함</string>
+    <!-- After cancelling the other-account sign-in: which account this browser is signed in to. Arguments: 1=email. -->
+    <string name="signin_join_stillSignedIn">계속 %1$s(으)로 로그인되어 있습니다.</string>
+    <!-- Link dialog opened from the 72-hour row: confirm the undo. {email}, {date}. Arguments: 1=email, 2=date. -->
+    <string name="signin_join_undoConfirm">%1$s과(와)의 합치기를 되돌릴까요? %2$s까지 가능합니다.</string>
+    <!-- Approve dialog: too many tries (429). -->
+    <string name="signin_approve_tooMany">시도가 너무 많습니다. 1분 기다린 뒤 다시 시도하세요.</string>
+    <!-- Activate dialog: Continue pressed with an empty field. -->
+    <string name="signin_key_enterKey">라이선스 키를 입력하세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">문제가 발생했어요</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

@@ -748,6 +748,13 @@
     "signin.join.again": "重新登录 {email}",
     "signin.join.startAgain": "重新开始",
     "signin.join.noUndo": "此次合并已无法撤销。",
-    "signin.join.methodsLink": "登录方式"
+    "signin.join.methodsLink": "登录方式",
+    "signin.join.undoFailed": "无法撤销合并，请重试。",
+    "signin.join.reasonStaleOne": "请重新登录 {email}，然后合并。",
+    "signin.join.staleMark": "登录已超过 5 分钟",
+    "signin.join.stillSignedIn": "仍以 {email} 登录。",
+    "signin.join.undoConfirm": "撤销与 {email} 的合并？{date} 前均可撤销。",
+    "signin.approve.tooMany": "尝试次数过多，请等一分钟后再试。",
+    "signin.key.enterKey": "请输入你的许可证密钥。"
   }
 }

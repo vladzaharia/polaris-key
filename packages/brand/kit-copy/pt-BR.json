@@ -748,6 +748,13 @@
     "signin.join.again": "Entrar de novo em {email}",
     "signin.join.startAgain": "Começar de novo",
     "signin.join.noUndo": "Esta união não pode mais ser desfeita.",
-    "signin.join.methodsLink": "Métodos de entrada"
+    "signin.join.methodsLink": "Métodos de entrada",
+    "signin.join.undoFailed": "Não foi possível desfazer a união. Tente de novo.",
+    "signin.join.reasonStaleOne": "Entre de novo em {email} e depois una.",
+    "signin.join.staleMark": "Entrou há mais de 5 minutos",
+    "signin.join.stillSignedIn": "Continua conectado como {email}.",
+    "signin.join.undoConfirm": "Desfazer a união com {email}? Você pode até {date}.",
+    "signin.approve.tooMany": "Muitas tentativas. Aguarde um minuto e tente de novo.",
+    "signin.key.enterKey": "Digite sua chave de licença."
   }
 }

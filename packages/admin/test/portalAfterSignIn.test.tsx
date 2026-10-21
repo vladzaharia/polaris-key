@@ -324,7 +324,7 @@ describe("Link an existing account", () => {
 });
 
 describe("Link an existing account: refusals and the way back in", () => {
-  it("offers a sign-in again for each stale proof, and Start again", async () => {
+  it("offers Confirm it's you for a stale current account, a sign-in again for the other, and Start again", async () => {
     window.history.replaceState(null, "", "/#/account?link=1");
     mockFetch(
       signedIn([], {
@@ -332,6 +332,9 @@ describe("Link an existing account: refusals and the way back in", () => {
           flow: flow({
             canJoin: false,
             reason: "step_up_required",
+            started: account("started", {
+              proven: { by: "email", at: NOW_S - 900, fresh: false },
+            }),
             other: account("other", {
               proven: { by: "email", at: NOW_S - 900, fresh: false },
             }),
@@ -347,19 +350,27 @@ describe("Link an existing account: refusals and the way back in", () => {
         name: "Join into one account",
       }),
     );
+    // The signed-in account re-proves in place; the other goes to the card with its address.
     expect(
-      await within(dialog).findByRole("button", {
-        name: "Sign in to mara@old.example again",
-      }),
+      await within(dialog).findByRole("button", { name: "Confirm it's you" }),
     ).toBeTruthy();
     expect(
-      within(dialog).queryByRole("button", {
+      within(dialog).getByRole("button", {
         name: `Sign in to ${ACCOUNT.email} again`,
       }),
-    ).toBeNull();
+    ).toBeTruthy();
     expect(
       within(dialog).getByRole("button", { name: "Start again" }),
     ).toBeTruthy();
+    // The signed-in account's card comes first, and a stale one is marked.
+    const cards = within(dialog).getAllByText(
+      /Signed in more than 5 minutes ago/,
+    );
+    expect(cards.length).toBe(2);
+    expect(
+      within(dialog).getAllByText(/Signed in now|Your other account/)[0]!
+        .textContent,
+    ).toBe("Signed in now");
   });
 
   it("goes back to the start view when the flow expired under the join", async () => {
@@ -443,6 +454,58 @@ describe("Link an existing account: refusals and the way back in", () => {
     expect(window.sessionStorage.getItem("pk-link-second")).toBeNull();
   });
 
+  it("the other-account card has its own h1, the address filled in, and no way out to a key", async () => {
+    window.history.replaceState(null, "", "/#/account/link");
+    window.sessionStorage.setItem("pk-link-second", "csrf-token");
+    window.sessionStorage.setItem("pk-link-second-email", "mara@old.example");
+    mockFetch(signedIn());
+    renderPortal();
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Sign in to mara@old.example again",
+      }),
+    ).toBeTruthy();
+    expect((screen.getByRole("textbox") as HTMLInputElement).value).toBe(
+      "mara@old.example",
+    );
+    expect(screen.queryByText("Have a license key?")).toBeNull();
+  });
+
+  it("opens an undo-focused confirmation from the 72-hour row", async () => {
+    window.history.replaceState(null, "", "/#/account?link=1&undo=m1");
+    mockFetch(
+      signedIn([], {
+        "/api/me/link": {
+          flow: null,
+          undoable: [
+            {
+              id: "m1",
+              mergedAt: NOW_S,
+              undoUntil: NOW_S + 3600,
+              joined: { email: "mara@old.example", name: null },
+            },
+          ],
+        },
+        "POST /api/me/link/undo": { status: 500, body: { error: "oops" } },
+      }),
+    );
+    renderPortal();
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      await within(dialog).findByText(/Undo the join with mara@old\.example\?/),
+    ).toBeTruthy();
+    expect(
+      within(dialog).queryByText(/Sign in to the other account/),
+    ).toBeNull();
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Undo join" }),
+    );
+    expect((await within(dialog).findByRole("alert")).textContent).toBe(
+      "Couldn't undo the join. Try again.",
+    );
+  });
+
   it("hides the entry when the Worker has no link route, and shows the 72 hours otherwise", async () => {
     window.history.replaceState(null, "", "/#/account/methods");
     mockFetch(signedIn([], { "/api/me/methods": methodsFixture() }));
@@ -520,6 +583,28 @@ describe("Approve a new device", () => {
     );
     await waitFor(() =>
       expect(fetchedRequests()).toContain("POST /api/device-login/approve"),
+    );
+  });
+
+  it("says too many tries on a 429, not the generic line", async () => {
+    window.history.replaceState(null, "", "/#/account/approve?code=ABCD-EFGH");
+    mockFetch(
+      signedIn([], {
+        "POST /api/device-login/lookup": {
+          status: 429,
+          body: { error: "rate_limited" },
+        },
+      }),
+    );
+    renderPortal();
+    const dialog = await screen.findByRole("dialog");
+    expect((await within(dialog).findByRole("alert")).textContent).toBe(
+      "Too many tries. Wait a minute, then try again.",
+    );
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(dialog).getByLabelText("Code"),
+      ),
     );
   });
 

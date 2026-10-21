@@ -594,7 +594,7 @@ function MethodGroups({
                 variant="link"
                 size="sm"
                 className="max-sm:min-h-11"
-                onClick={() => navigate("#/account/link")}
+                onClick={() => navigate(`#/account?link=1&undo=${u.id}`)}
               >
                 {t("signin.join.undo")}
               </Button>

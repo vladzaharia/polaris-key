@@ -3730,6 +3730,41 @@
       "value": "Sign-in methods",
       "role": "button",
       "note": "Link dialog: a link to Account → Sign-in methods."
+    },
+    "signin.join.undoFailed": {
+      "value": "Couldn't undo the join. Try again.",
+      "role": "body",
+      "note": "Link dialog: an undo failed."
+    },
+    "signin.join.reasonStaleOne": {
+      "value": "Sign in to {email} again, then join.",
+      "role": "body",
+      "note": "Link dialog: one account's proof is older than 5 minutes. {email}."
+    },
+    "signin.join.staleMark": {
+      "value": "Signed in more than 5 minutes ago",
+      "role": "a11y",
+      "note": "Link dialog: marks an account whose sign-in is older than 5 minutes."
+    },
+    "signin.join.stillSignedIn": {
+      "value": "Still signed in as {email}.",
+      "role": "body",
+      "note": "After cancelling the other-account sign-in: which account this browser is signed in to."
+    },
+    "signin.join.undoConfirm": {
+      "value": "Undo the join with {email}? You can until {date}.",
+      "role": "body",
+      "note": "Link dialog opened from the 72-hour row: confirm the undo. {email}, {date}."
+    },
+    "signin.approve.tooMany": {
+      "value": "Too many tries. Wait a minute, then try again.",
+      "role": "body",
+      "note": "Approve dialog: too many tries (429)."
+    },
+    "signin.key.enterKey": {
+      "value": "Enter your license key.",
+      "role": "body",
+      "note": "Activate dialog: Continue pressed with an empty field."
     }
   }
 }
