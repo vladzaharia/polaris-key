@@ -135,13 +135,17 @@ export function DownloadFlowPage({
   const p = product.data;
   useDocumentTitle(
     p
-      ? `Download ${p.name}`
+      ? t("locker.download.title", { product: p.name })
       : product.isPending
         ? null
         : t("boot.consent.download"),
   );
   const returnUrl = p ? allowedReturn(params.get("return"), p.returnTo) : null;
-  const back = flowBack(slug, p?.name ?? "the product", returnUrl);
+  const back = flowBack(
+    slug,
+    p?.name ?? t("locker.freeDevice.theProduct"),
+    returnUrl,
+  );
   const pending =
     product.isPending || (product.isSuccess && downloads.isPending);
   const error = product.error ?? downloads.error;
@@ -264,8 +268,11 @@ function DownloadBody({
       task={t("boot.consent.download")}
       title={
         chosen
-          ? `Download ${product.name} ${chosen.release.version}`
-          : `Download ${product.name}`
+          ? t("locker.download.titleVersion", {
+              product: product.name,
+              version: chosen.release.version,
+            })
+          : t("locker.download.title", { product: product.name })
       }
     >
       <div className="space-y-5">
@@ -330,10 +337,13 @@ function DownloadBody({
               {notCovered[0]?.notIncluded
                 ? `${notCovered[0].notIncluded}.`
                 : where
-                  ? `${product.name} has no download for ${where} here.`
-                  : `${product.name} has no download here.`}
+                  ? t("locker.download.noneFor", {
+                      product: product.name,
+                      detail: where,
+                    })
+                  : t("locker.download.none", { product: product.name })}
               {stores.length
-                ? " It's available in a store below."
+                ? ` ${t("locker.download.inStore")}`
                 : sources.length
                   ? ` ${C["getIt.flow.sourcesBelow"]}`
                   : ""}
@@ -359,7 +369,7 @@ function DownloadBody({
             switching.current = true;
           }}
         />
-        <StorePills stores={stores} label="Also on" />
+        <StorePills stores={stores} label={t("locker.offer.alsoOn")} />
         <InstallSourceList
           sources={sources}
           platform={platform}

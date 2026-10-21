@@ -106,12 +106,11 @@ export function DevicesCard({
                 className="text-xl font-semibold text-fg-strong"
               />{" "}
               {seatLimit
-                ? `of ${seatLimit} ${seatLimit === 1 ? "device" : "devices"}`
-                : active.length === 1
-                  ? "device"
-                  : "devices"}{" "}
-              in use
-              {idle > 0 ? ` · +${idle} not using a seat` : ""}
+                ? t("locker.devices.tailOf", { limit: seatLimit })
+                : t("locker.devices.tail", { count: active.length })}
+              {idle > 0
+                ? ` · ${t("locker.devices.idle", { count: idle })}`
+                : ""}
             </p>
           ) : null}
           {seatLimit && showCount ? (
@@ -124,8 +123,8 @@ export function DevicesCard({
           {active.length === 0 ? (
             <p className="py-3 text-sm text-fg-muted">
               {signIn
-                ? `No device is signed in with this license. Sign in to ${productName} on a device to use it.`
-                : `No device is using this license. Open ${productName} on a device to activate it.`}
+                ? t("locker.devices.noneSignIn", { product: productName })
+                : t("locker.devices.noneActivate", { product: productName })}
             </p>
           ) : (
             // pk-vt-table: rows entering in a list transition wait for the others to close up
@@ -153,8 +152,8 @@ export function DevicesCard({
           <p className="mt-3 flex gap-2 text-sm text-fg-muted">
             <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
             {signIn
-              ? "Removing a device signs it out of this license at once."
-              : "Removing a device frees its seat at once."}
+              ? t("locker.devices.removeNoteSignIn")
+              : t("locker.devices.removeNote")}
           </p>
         </>
       )}
@@ -343,7 +342,9 @@ export function DeviceRow({
   const meta = [
     deviceOsName(device.platform),
     device.appVersion,
-    `last seen ${formatRelative(device.lastSeen * 1000)}`,
+    t("locker.freeDevice.lastSeen", {
+      when: formatRelative(device.lastSeen * 1000),
+    }),
   ]
     .filter(Boolean)
     .join(" · ");
@@ -379,7 +380,7 @@ export function DeviceRow({
             variant="quiet"
             size="md"
             className="col-start-2 h-10 justify-self-start @[24rem]:col-start-3 @[24rem]:row-start-1"
-            aria-label={`Remove ${name}`}
+            aria-label={t("locker.freeDevice.removeName", { device: name })}
             aria-expanded={false}
             aria-controls={panelId}
             onClick={() => {
@@ -419,20 +420,24 @@ export function DeviceRow({
               tabIndex={-1}
               className="font-medium text-fg-strong outline-none"
             >
-              Remove {name}?
+              {t("locker.devices.removeAsk", { name })}
             </h3>
             <ul className="list-disc space-y-1 pl-5 text-sm text-fg">
               <li>
                 {showCount
-                  ? `Its seat is free straight away: ${devicesText(inUse - 1, seatLimit)} in use.`
-                  : "Its seat is free straight away."}
+                  ? t("locker.devices.seatFreeCount", {
+                      detail: devicesText(inUse - 1, seatLimit),
+                    })
+                  : t("locker.devices.seatFree")}
               </li>
               <li>
                 {isSignInLicense(detail)
-                  ? `${productName} on that device asks you to sign in again the next time it starts.`
-                  : `${productName} on that device asks to be activated the next time it starts.`}
+                  ? t("locker.devices.nextSignIn", { product: productName })
+                  : t("locker.devices.nextActivate", { product: productName })}
               </li>
-              {emailConfigured ? <li>We'll email you to confirm.</li> : null}
+              {emailConfigured ? (
+                <li>{t("locker.devices.emailConfirm")}</li>
+              ) : null}
             </ul>
             {remove.error ? (
               <p role="alert" className="text-sm text-danger">
@@ -441,13 +446,13 @@ export function DeviceRow({
             ) : null}
             <div className="flex flex-col gap-2 @[22rem]:flex-row @[22rem]:justify-end">
               <Button variant="outline" onClick={keep}>
-                Keep it
+                {t("locker.methods.keepIt")}
               </Button>
               {/* "Remove": the heading above already names the device; the name stays in the
                   accessible name. */}
               <Button
                 variant="danger"
-                aria-label={`Remove ${name}`}
+                aria-label={t("locker.freeDevice.removeName", { device: name })}
                 loading={remove.isPending}
                 onClick={() => {
                   if (gone) return;
@@ -458,13 +463,18 @@ export function DeviceRow({
                       // Said once, with the count as it is when the removal lands (S-23 §6.5: a
                       // freed seat is counted in text), never as it was at the click.
                       const left = seatsLeftAfter(device.deviceId);
-                      toast.success(`${name} was removed`, {
-                        description: `${productName} has a free seat now.`,
+                      toast.success(t("locker.methods.removed", { name }), {
+                        description: t("locker.devices.removedFree", {
+                          product: productName,
+                        }),
                       });
                       announce(
                         showCount
-                          ? `${name} was removed. ${devicesText(left, seatLimit)} in use.`
-                          : `${name} was removed.`,
+                          ? t("locker.devices.removedCount", {
+                              name,
+                              detail: devicesText(left, seatLimit),
+                            })
+                          : t("locker.devices.removedPlain", { name }),
                       );
                       // Focus never falls to `body` (FLOWS.md P-7): it goes to the product's
                       // `h1` (MO-05's page focus), without scrolling away from the list, which

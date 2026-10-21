@@ -135,7 +135,10 @@ function EntryGetIt({
   const { developer, website } = product.presentation;
   if (downloads.isPending)
     return (
-      <SectionCard id="get" title={`Get ${product.name}`}>
+      <SectionCard
+        id="get"
+        title={t("locker.storefront.get", { product: product.name })}
+      >
         <Skeleton className="h-24 w-full" aria-busy />
       </SectionCard>
     );
@@ -146,13 +149,18 @@ function EntryGetIt({
   if (!website) return null;
   const who = developer ?? t("license.developerFallback");
   return (
-    <SectionCard id="get" title={`Get ${product.name}`}>
+    <SectionCard
+      id="get"
+      title={t("locker.storefront.get", { product: product.name })}
+    >
       <div className="space-y-4">
         <p className="flex gap-2 text-fg">
           <Info aria-hidden className="mt-1 size-4 shrink-0 text-fg-muted" />
           <span>
-            {product.name} is free to use, with no license.{" "}
-            {developer ?? "Its developer"} hands it out on their website.
+            {t("locker.entry.free", {
+              product: product.name,
+              developer: developer ?? t("locker.storefront.itsDeveloper"),
+            })}
           </span>
         </p>
         <Button asChild variant="quiet" size="lg" className="h-11">
@@ -160,10 +168,13 @@ function EntryGetIt({
             href={website}
             target="_blank"
             rel="noreferrer"
-            aria-label={`Get it from ${who}: ${product.name} (opens in a new tab)`}
+            aria-label={t("locker.offer.newTabAria", {
+              store: t("locker.offer.getFrom", { developer: who }),
+              product: product.name,
+            })}
           >
             <ExternalLink aria-hidden />
-            Get it from {who}
+            {t("locker.offer.getFrom", { developer: who })}
           </a>
         </Button>
       </div>

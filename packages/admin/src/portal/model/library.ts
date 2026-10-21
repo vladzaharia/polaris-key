@@ -142,9 +142,9 @@ export type LibraryProduct = LicensedProduct | EntryProduct;
 /** The status an entry always has (PS-04): healthy, quiet, never an issue. */
 export const FREE_TO_USE: ProductStatus = {
   kind: "freeToUse",
-  label: "Free to use",
+  label: t("locker.offer.reasonOpen"),
   tone: "neutral",
-  note: "Free to use",
+  note: t("locker.offer.reasonOpen"),
   attention: false,
 };
 
@@ -364,7 +364,10 @@ export function licenseOrigin(
     case "store":
       // "From the App Store", "From Steam", "From Google Play".
       return t("signin.choice.origin.store", {
-        store: store === "app-store" ? "the App Store" : storeName(store ?? ""),
+        store:
+          store === "app-store"
+            ? t("locker.status.theAppStore")
+            : storeName(store ?? ""),
       });
     case "key":
       return last
@@ -373,7 +376,9 @@ export function licenseOrigin(
     case "signin":
       return AUTOMATIC_GRANT;
     case "developer":
-      return `From ${facts.developer?.trim() || t("license.developerFallback")}`;
+      return t("locker.origin.from", {
+        developer: facts.developer?.trim() || t("license.developerFallback"),
+      });
   }
 }
 
@@ -390,17 +395,23 @@ export function shortOrigin(
   const last = (facts.keys ?? []).find((k) => k.last4)?.last4;
   switch (kind) {
     case "store-key": {
-      const word = `${storeName(store ?? "")} key`;
-      return last ? `${word} …${last}` : word;
+      const name = storeName(store ?? "");
+      return last
+        ? t("locker.origin.storeKeyEnding", { store: name, last6: last })
+        : t("locker.origin.storeKey", { store: name });
     }
     case "store":
       return storeName(store ?? "");
     case "key":
-      return last ? `Key …${last}` : "Key";
+      return last
+        ? t("locker.origin.keyEnding", { last6: last })
+        : t("locker.origin.key");
     case "signin":
-      return "Sign-in";
+      return t("locker.origin.signIn");
     case "developer":
-      return facts.developer?.trim() ? `From ${facts.developer.trim()}` : null;
+      return facts.developer?.trim()
+        ? t("locker.origin.from", { developer: facts.developer.trim() })
+        : null;
   }
 }
 
@@ -415,9 +426,9 @@ export function licenseStatus(
   if (l.status !== "active") {
     return {
       kind: "suspended",
-      label: "Suspended",
+      label: t("locker.status.suspended"),
       tone: "danger",
-      note: "Suspended by the developer.",
+      note: t("locker.status.suspendedNote"),
       attention: true,
     };
   }
@@ -426,7 +437,7 @@ export function licenseStatus(
       kind: "expired",
       label: t("part.status.expired"),
       tone: "danger",
-      note: `Ended ${formatDay(l.expiresAt)}`,
+      note: t("locker.status.ended", { date: formatDay(l.expiresAt) }),
       attention: true,
     };
   }
@@ -435,7 +446,12 @@ export function licenseStatus(
       kind: "deviceLimit",
       label: t("core.codes.device_limit.title"),
       tone: "danger",
-      note: [tier, `${devicesText(seats.inUse, seats.limit)} in use`]
+      note: [
+        tier,
+        t("locker.devices.inUse", {
+          detail: devicesText(seats.inUse, seats.limit),
+        }),
+      ]
         .filter(Boolean)
         .join(" · "),
       attention: true,
@@ -447,7 +463,10 @@ export function licenseStatus(
       kind: "expiresSoon",
       label: expiresInText(days, { tomorrow: true }),
       tone: "warning",
-      note: [tier, `ends ${formatDay(l.expiresAt, false)}`]
+      note: [
+        tier,
+        t("locker.status.endsLower", { date: formatDay(l.expiresAt, false) }),
+      ]
         .filter(Boolean)
         .join(" · "),
       attention: true,
@@ -459,14 +478,17 @@ export function licenseStatus(
       label: AUTOMATIC_GRANT,
       tone: "neutral",
       note: [
-        tier ?? "Standard",
+        tier ?? t("locker.tier.standard"),
         AUTOMATIC_GRANT,
         devicesText(seats ? seats.inUse : l.deviceCount, seats?.limit),
       ].join(" · "),
       attention: false,
     };
   }
-  const until = l.expiresAt !== null ? `until ${formatDay(l.expiresAt)}` : null;
+  const until =
+    l.expiresAt !== null
+      ? t("locker.status.untilLower", { date: formatDay(l.expiresAt) })
+      : null;
   return {
     kind: "active",
     label: t("part.status.ok"),
@@ -570,9 +592,11 @@ export function statusFromServer(
     case "suspended":
       return {
         kind: "suspended",
-        label: "Suspended",
+        label: t("locker.status.suspended"),
         tone: "danger",
-        note: `Suspended by ${developer ?? t("license.developerFallback")}.`,
+        note: t("locker.status.suspendedBy", {
+          developer: developer ?? t("license.developerFallback"),
+        }),
         attention: true,
       };
     case "expired":
@@ -581,10 +605,10 @@ export function statusFromServer(
         label: t("part.status.expired"),
         tone: "danger",
         note: lastCovered
-          ? `Updates ended at ${lastCovered}`
+          ? t("locker.status.updatesEnded", { version: lastCovered })
           : best.expiresAt
-            ? `Ended ${formatDay(best.expiresAt)}`
-            : "Ended",
+            ? t("locker.status.ended", { date: formatDay(best.expiresAt) })
+            : t("locker.status.endedPlain"),
         attention: true,
       };
     case "device_limit":
@@ -594,7 +618,7 @@ export function statusFromServer(
         tone: "danger",
         note: seats
           ? devicesText(seats.inUse, seats.limit)
-          : "Every device is in use",
+          : t("locker.status.everyDevice"),
         attention: true,
       };
     case "expires_soon": {
@@ -604,7 +628,10 @@ export function statusFromServer(
         kind: "expiresSoon",
         label: expiresInText(days, { tomorrow: true }),
         tone: "warning",
-        note: [tier, `ends ${formatDay(at, false)}`]
+        note: [
+          tier,
+          t("locker.status.endsLower", { date: formatDay(at, false) }),
+        ]
           .filter(Boolean)
           .join(" · "),
         attention: true,
@@ -790,10 +817,11 @@ export function formatSize(bytes: number | null): string | null {
 
 function archName(a: PortalArtifact): string | null {
   const arch = (a.arch ?? "").toLowerCase();
-  if (!arch || arch === "any" || arch === "universal") return "Universal";
+  if (!arch || arch === "any" || arch === "universal")
+    return t("locker.arch.universal");
   if (a.platform === "macos")
     return arch === "arm64"
-      ? "Apple silicon"
+      ? t("locker.arch.appleSilicon")
       : arch === "x86_64"
         ? "Intel"
         : arch;
@@ -813,7 +841,9 @@ function buildsFor(r: PortalRelease, os: PlatformKey): PortalArtifact[] {
 /** The one artifact the quick action may start, or null when the choice is the person's. */
 function pickBuild(builds: PortalArtifact[]): PortalArtifact | null {
   if (builds.length === 1) return builds[0]!;
-  const universal = builds.find((a) => archName(a) === "Universal");
+  const universal = builds.find(
+    (a) => archName(a) === t("locker.arch.universal"),
+  );
   // Two Mac builds and no Universal one: both are shown on the page, Apple silicon first; the
   // site never guesses the CPU.
   return universal ?? null;
@@ -827,9 +857,9 @@ const PHONE_STORE: Partial<Record<PlatformKey, readonly string[]>> = {
 
 /** "Get it on the App Store" / "Get it on Google Play" / "Get it on Steam". */
 export function storeActionLabel(s: PortalStoreLink): string {
-  if (s.kind === "app-store") return "Get it on the App Store";
-  if (s.kind === "play") return "Get it on Google Play";
-  return `Get it on ${s.label}`;
+  if (s.kind === "app-store") return t("locker.offer.storeAppStore");
+  if (s.kind === "play") return t("locker.offer.storePlay");
+  return t("locker.offer.storeOther", { store: s.label });
 }
 
 /** A live store with a page for the device in hand; on a phone, only that phone's own store. */
@@ -894,7 +924,7 @@ function actionFromDownloads(
 ): QuickAction | null {
   const seeDownloads: QuickAction = {
     kind: "link",
-    label: "See downloads",
+    label: t("locker.action.seeDownloads"),
     href: productHref("get"),
     icon: "downloads",
   };
@@ -938,7 +968,7 @@ function actionFromDownloads(
   if (os && files.length > 0) {
     const label = rec!.latest
       ? t("getIt.downloadFor", { platform: osName(os) })
-      : `Download ${rec!.version}`;
+      : t("locker.action.download", { version: rec!.version });
     if (files.length > 1)
       // Two Mac builds and no Universal one: both are on the page, Apple silicon first.
       return { ...seeDownloads, label };
@@ -948,8 +978,8 @@ function actionFromDownloads(
       kind: "download",
       label,
       detail: [
-        `Version ${rec!.version}`,
-        rec!.universal ? "Universal" : archName(artifact),
+        t("getIt.version", { version: rec!.version }),
+        rec!.universal ? t("locker.arch.universal") : archName(artifact),
         formatSize(f.sizeBytes),
       ]
         .filter(Boolean)
@@ -988,14 +1018,14 @@ export function quickAction(
     return p.presentation.website
       ? {
           kind: "link",
-          label: `Open ${p.name}`,
+          label: t("locker.activate.open", { product: p.name }),
           href: p.presentation.website,
           icon: "open",
           external: true,
         }
       : {
           kind: "link",
-          label: "View details",
+          label: t("locker.action.viewDetails"),
           href: productHref(),
           icon: "details",
         };
@@ -1005,7 +1035,7 @@ export function quickAction(
     if (fromView) return fromView;
     return {
       kind: "link",
-      label: "View details",
+      label: t("locker.action.viewDetails"),
       href: productHref("license"),
       icon: "details",
     };
@@ -1016,14 +1046,14 @@ export function quickAction(
   if (covered.length === 0) {
     return {
       kind: "link",
-      label: "View details",
+      label: t("locker.action.viewDetails"),
       href: productHref("license"),
       icon: "details",
     };
   }
   const seeDownloads: QuickAction = {
     kind: "link",
-    label: "See downloads",
+    label: t("locker.action.seeDownloads"),
     href: productHref("get"),
     icon: "downloads",
   };
@@ -1046,9 +1076,9 @@ export function quickAction(
       kind: "download",
       label: isLatest
         ? t("getIt.downloadFor", { platform: osName(os) })
-        : `Download ${r.version}`,
+        : t("locker.action.download", { version: r.version }),
       detail: [
-        `Version ${r.version}`,
+        t("getIt.version", { version: r.version }),
         archName(pick),
         formatSize(pick.sizeBytes),
       ]
@@ -1097,7 +1127,8 @@ export function coverageNote(p: LibraryProduct): string | null {
   const d = p.downloads;
   if (!d?.recommended || d.recommended.latest || !d.latest) return null;
   const who = p.presentation.developer;
-  return `Version ${d.latest.version} isn't covered.${who ? ` Renew with ${who} to get it.` : ""}`;
+  const note = t("locker.cover.note", { version: d.latest.version });
+  return who ? `${note} ${t("locker.cover.renew", { developer: who })}` : note;
 }
 
 /** "Windows and Linux only" when nothing is built for the device in hand. */
@@ -1110,9 +1141,12 @@ export function platformsOnlyNote(
   const names = p.platforms.map((x) => platformInSentence(x));
   const list =
     names.length === 1
-      ? names[0]
-      : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
-  return `${list} only`;
+      ? names[0]!
+      : t("locker.list.and", {
+          first: names.slice(0, -1).join(", "),
+          rest: names[names.length - 1]!,
+        });
+  return t("locker.cover.only", { rest: list });
 }
 
 // ── Needs attention (§4.15) ───────────────────────────────────────────────────────────────────
@@ -1139,9 +1173,9 @@ const URGENCY: Partial<Record<StatusKind, number>> = {
  * "Both devices are in use." The card's action ("Free a device") says what to do, once.
  */
 function devicesInUse(limit: number): string {
-  if (limit === 1) return "Its one device is in use.";
-  const all = limit === 2 ? "Both devices" : `All ${limit} devices`;
-  return `${all} are in use.`;
+  if (limit === 1) return t("locker.attention.one");
+  if (limit === 2) return t("locker.attention.both");
+  return t("locker.attention.all", { count: limit });
 }
 
 /** A date that never breaks across lines ("Sep 11, 2026"): its spaces are non-breaking. */
@@ -1183,19 +1217,38 @@ export function attentionItems(
     if (p.status.kind === "expiresSoon" && p.best.expiresAt) {
       out.push({
         product: p,
-        text: `Your ${tier ? `${tier} ` : ""}license ends on ${unbroken(formatDay(p.best.expiresAt, false))}.`,
-        action: { label: `Renew with ${who}`, href: link, external: true },
+        text: tier
+          ? t("locker.attention.endsTier", {
+              tier,
+              date: unbroken(formatDay(p.best.expiresAt, false)),
+            })
+          : t("locker.attention.ends", {
+              date: unbroken(formatDay(p.best.expiresAt, false)),
+            }),
+        action: {
+          label: t("license.renew", { developer: who }),
+          href: link,
+          external: true,
+        },
       });
     } else if (p.status.kind === "expired") {
       out.push({
         product: p,
-        text: `Your license ended on ${unbroken(formatDay(p.best.expiresAt ?? 0))}.`,
-        action: { label: `Renew with ${who}`, href: link, external: true },
+        text: t("locker.attention.ended", {
+          date: unbroken(formatDay(p.best.expiresAt ?? 0)),
+        }),
+        action: {
+          label: t("license.renew", { developer: who }),
+          href: link,
+          external: true,
+        },
       });
     } else if (p.status.kind === "suspended") {
       out.push({
         product: p,
-        text: `${who[0]!.toUpperCase()}${who.slice(1)} suspended this license.`,
+        text: t("locker.attention.suspended", {
+          developer: `${who[0]!.toUpperCase()}${who.slice(1)}`,
+        }),
         action: {
           label: t("status.contact", { developer: who }),
           href: link,
