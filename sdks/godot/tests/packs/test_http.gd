@@ -134,6 +134,20 @@ func run(t: PKeyTestContext) -> void:
 	r = await packs.ensure(["djdl.gated"])
 	t.check("http: a 403 delivery_gate_missing from the blob route is pack-not-entitled, not a network error", not r.ok and String(r.code) == "pack-not-entitled", str(r))
 
+	# A refused object fetch keeps its class (B-150 follow-through): 401/403 pack-not-entitled, 5xx
+	# server-error; a dropped connection and any other status (404) stay network-error.
+	var object_refusals := [[401, "pack-not-entitled"], [403, "pack-not-entitled"], [500, "server-error"], [503, "server-error"], [404, "network-error"], [0, "network-error"]]
+	for pair in object_refusals:
+		var ostatus: int = pair[0]
+		plan["/djdl/distribution/blobs/"] = func(_req: Dictionary) -> Dictionary:
+			if ostatus == 0:
+				# Advertise more than is sent: the connection ends mid-body, no usable response.
+				return {"status": 200, "headers": {"Content-Type": "application/octet-stream", "Content-Length": "5000"}, "body": "x".to_utf8_buffer(), "truncate": true}
+			return {"status": ostatus, "headers": {"Content-Type": "application/json"}, "body": "{\"error\":{\"code\":\"internal_error\"}}"}
+		r = await packs.ensure(["djdl.gated"])
+		t.check("http: an object fetch answered %d is %s" % [ostatus, pair[1]], not r.ok and String(r.code) == pair[1], str(r))
+	t.check("http: object_refusal is the one mapping", PKeyPackEngine.object_refusal(401) == "pack-not-entitled" and PKeyPackEngine.object_refusal(599) == "server-error" and PKeyPackEngine.object_refusal(404) == "network-error" and PKeyPackEngine.object_refusal(0) == "network-error")
+
 	# A refused record fetch keeps its class (B-150): 401 unauthorized, 403 forbidden, 5xx
 	# server-error; a dropped connection and any other status (404) stay network-error.
 	var refusals := [[401, "unauthorized"], [403, "forbidden"], [500, "server-error"], [503, "server-error"], [404, "network-error"], [0, "network-error"]]
