@@ -437,6 +437,22 @@
         });
     }
 
+    // Board captions (UK-59): every figure that holds a shot says which tier the frame is, as
+    // the caption's last words: "Built today" or "UK-11 target", then at most one parenthetical.
+    const TIER_END = /(Built today|UK-11 target)\.?(\s*\([^]*\))?$/;
+    for (const fig of document.querySelectorAll("figure")) {
+      if (!fig.querySelector("[data-shot]")) continue;
+      const cap = fig.querySelector("figcaption");
+      const text = cap ? cap.textContent.replace(/\s+/g, " ").trim() : "";
+      if (!TIER_END.test(text))
+        violations.push({
+          rule: "tier-caption",
+          scope: fig.querySelector("[data-shot]").getAttribute("data-shot"),
+          target: cap ? describe(cap) : describe(fig),
+          detail: `the caption must end "Built today" or "UK-11 target": ${text.slice(0, 80) || "(no caption)"}`,
+        });
+    }
+
     return { violations, strings };
   };
 

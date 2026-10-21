@@ -159,6 +159,12 @@ export const RULES: RuleInfo[] = [
     says: "A selected, current or checked element paints only the accent of its nearest data-service.",
   },
   {
+    id: "tier-caption",
+    group: "copy",
+    spec: "UK-59",
+    says: "Every board frame's caption ends 'Built today' or 'UK-11 target'.",
+  },
+  {
     id: "section-index",
     group: "behaviour",
     spec: "§7.3, B4",

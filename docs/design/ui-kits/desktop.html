@@ -853,7 +853,7 @@
         `<div class="win cq ${cls}">${lights("abs")}<div class="wel"><div class="row">${start(nat)}${end}</div></div></div>`;
 
       const fig = (shot, caption, html, nat, cls = "") =>
-        `<figure><figcaption>${caption}</figcaption><div class="shot ${nat ? "nat" : ""} ${cls}" data-shot="${shot}" ${nat ? 'data-ui-preset="native"' : ""}>${html}</div></figure>`;
+        `<figure><figcaption>${caption.replace(/\.?$/, ". UK-11 target")}</figcaption><div class="shot ${nat ? "nat" : ""} ${cls}" data-shot="${shot}" ${nat ? 'data-ui-preset="native"' : ""}>${html}</div></figure>`;
 
       // A Welcome window behind a sheet.
       const sheetOver = (cls, bodyHtml, w = 440, nat = false) =>

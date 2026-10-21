@@ -1008,7 +1008,7 @@
       document.getElementById("board").innerHTML = shots
         .map(
           (s) =>
-            `<figure><figcaption>windows · ${s.cap}</figcaption><div class="shot" data-shot="${s.name}">${s.wins.join("")}</div></figure>`,
+            `<figure><figcaption>windows · ${s.cap.replace(/\.?$/, ". UK-11 target")}</figcaption><div class="shot" data-shot="${s.name}">${s.wins.join("")}</div></figure>`,
         )
         .join("");
     </script>
