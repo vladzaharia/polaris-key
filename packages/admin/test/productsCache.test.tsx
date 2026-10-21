@@ -93,6 +93,7 @@ describe("qk.products() holds one shape for the Products page and the switcher",
     // on the same client, as every page does under the console's one provider.
     const queryClient = createQueryClient();
     mockFetch({
+      "/manage/api/me": { ...ME, products: ONE },
       "/manage/api/products": {
         products: ONE.map((p) => productRow(p.slug, p.name, ALL_ON)),
       },
