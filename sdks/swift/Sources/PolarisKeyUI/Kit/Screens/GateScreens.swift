@@ -9,7 +9,8 @@ import SwiftUI
 // MARK: - Boot
 
 /// First paint while the license check or the boot stages run: the product's icon and, after the
-/// 250 ms grace, a muted label with the platform's indicator. Never a part-filled bar for a stage.
+/// 250 ms grace, a muted label over a skeleton of the screen to come with the 2 px shimmer (DL7;
+/// static under Reduce Motion). Never a part-filled bar for a stage.
 public struct BootView: View {
     let line: CopyLine
     public init(screen: KitScreen<GateState>) {
@@ -20,13 +21,28 @@ public struct BootView: View {
         line = boot.copy.first ?? CopyLine("boot.starting")
     }
 
+    @State private var shown = false
+
     public var body: some View {
-        KitScreenScaffold(hero: true, header: false) {
-            EmptyView()
-        } content: {
-            LoadingIndicator(line)
-        } actions: {
-            EmptyView()
+        kitStyle { style in
+            KitScreenScaffold(hero: true, header: false) {
+                EmptyView()
+            } content: {
+                BootSkeleton(line: line, shown: shown)
+            } actions: {
+                EmptyView()
+            }
+            .overlay(alignment: .top) {
+                if shown {
+                    BootShimmer(
+                        model: BootSkeletonModel(reduceMotion: style.reduceMotion),
+                        color: style.palette.textStrong)
+                }
+            }
+            .task {
+                try? await Task.sleep(nanoseconds: BootSkeletonModel.grace)
+                shown = true
+            }
         }
     }
 }
