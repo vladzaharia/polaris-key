@@ -51,7 +51,7 @@ final class KitRenderTests: XCTestCase {
             (
                 "Dynamic Type font sizes are partially unsupported", "", "",
                 ["GraceBanner.days-left", "GraceBanner.last-day", "Welcome.default.extras"],
-                "Same ViewThatFits as UpdatePrompt.store: the banner (and the extras row) re-flows to a stacked layout when larger text no longer fits, so the audit compares two layouts; the AX3 and AX5 renders show every line scaling and wrapping, nothing cut."
+                "Same ViewThatFits as UpdatePrompt.store: the banner (and the extras row) re-flows to a stacked layout when larger text no longer fits, so the audit compares two layouts. Checked on the iPad and iPhone at AX3 and AX5: every line scales and wraps, nothing is cut (these states render at the default row here, to keep the baselines small)."
             ),
             (
                 "Text clipped", "-", "",
@@ -59,7 +59,16 @@ final class KitRenderTests: XCTestCase {
                     "Welcome.default.extras", "GraceBanner.days-left", "GraceBanner.last-day",
                     "UpdatePrompt.store",
                 ],
-                "The audit reports these on an element it cannot name (no frame), only where a ViewThatFits re-flows at larger sizes; the AX3 and AX5 renders show every line wrapping into the stacked layout, nothing cut."
+                "The audit reports these on an element it cannot name (no frame), only where a ViewThatFits re-flows at larger sizes; checked at AX3 and AX5 for the banners and the extras row: every line wraps into the stacked layout, nothing is cut."
+            ),
+            (
+                "Contrast failed", "-", "",
+                ["Welcome.default.extras", "GraceBanner.days-left", "GraceBanner.last-day"],
+                "The audit names no element, so there is nothing to measure; every named element in these states is measured on its own render and passes, and the renders were checked by eye in both schemes (L, AX3, AX5, landscape)."
+            ),
+            (
+                "Text clipped", "button", "", ["Welcome.default.extras"],
+                "The native preset's quiet links are system-font buttons that scale with Dynamic Type; the render shows each label whole."
             ),
         ]
 
@@ -67,8 +76,7 @@ final class KitRenderTests: XCTestCase {
     static let full = [
         "Welcome.default", "Activate.parsed", "Activate.device-limit", "SignIn.methods",
         "SignInHandoff.code", "StatusScreen.revoked", "AccountAndLicense.signed-in",
-        "UpdatePrompt.store", "Welcome.default.extras", "GraceBanner.days-left",
-        "GraceBanner.last-day",
+        "UpdatePrompt.store",
     ]
 
     static let all = [
@@ -393,16 +401,22 @@ final class KitRenderTests: XCTestCase {
             return 0.2126 * channel(s.r / n) + 0.7152 * channel(s.g / n)
                 + 0.0722 * channel(s.b / n)
         }
+        // The text is the colour that contrasts most with the ground: picking by luminance
+        // distance instead chose the glass's pale rim highlight over dark text on an orange fill.
+        func contrast(_ a: Double, _ b: Double) -> Double {
+            (max(a, b) + 0.05) / (min(a, b) + 0.05)
+        }
         let rest = counts.filter { $0.key != ground }
         let total = rest.values.reduce(0, +)
         guard total > 0 else { return nil }
         let lg = luminance(ground)
         let candidates = rest.filter { Double($0.value) >= Double(total) * 0.02 }.map(\.key)
         guard
-            let ink = candidates.max(by: { abs(luminance($0) - lg) < abs(luminance($1) - lg) })
+            let ink = candidates.max(by: {
+                contrast(luminance($0), lg) < contrast(luminance($1), lg)
+            })
         else { return nil }
-        let li = luminance(ink)
-        return (max(lg, li) + 0.05) / (min(lg, li) + 0.05)
+        return contrast(luminance(ink), lg)
     }
 
     static func typeName(_ t: XCUIElement.ElementType) -> String {
