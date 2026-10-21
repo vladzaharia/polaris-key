@@ -968,7 +968,7 @@ describe("portal account deletion scheduling (DELETE /api/me)", () => {
     expect(await me.json()).toMatchObject({ account: { deletion: null } });
     expect(sent.map((message) => message.subject)).toEqual([
       "Your Polaris Locker account is scheduled for deletion",
-      "Your Polaris Locker account deletion was cancelled",
+      "Your Polaris Locker account deletion was canceled",
     ]);
     const audits = await db.all<{ action: string }>(
       `SELECT action FROM portal_audit

@@ -41,6 +41,7 @@ const FILES: Record<string, string> = {
   "/docs/pagefind/pagefind.js": "export{}",
   "/docs/pagefind/index/en_a.pf_index": "shard",
   "/docs/pagefind-member/index/en_m1.pf_index": "shard",
+  "/docs/pagefind-help/index/en_h.pf_index": "shard",
   "/docs/pagefind-admin/pagefind.js": "export{}",
   "/docs/sitemap-help.xml": "<urlset/>",
   "/docs/404.html": "<html>404</html>",
@@ -147,7 +148,12 @@ describe("docs cache headers through the Worker, on both hosts", () => {
       expect(css.headers.get("cache-control"), host).toBe(
         "public, max-age=31536000, immutable",
       );
-      const shard = await get(`${host}/docs/pagefind/index/en_a.pf_index`);
+      // polaris.locker serves only Help's own search bundle (FP-help); /docs/pagefind/ 302s there.
+      const shard = await get(
+        host === API
+          ? `${host}/docs/pagefind/index/en_a.pf_index`
+          : `${host}/docs/pagefind-help/index/en_h.pf_index`,
+      );
       expect(shard.headers.get("cache-control"), host).toBe(
         "public, max-age=31536000, immutable",
       );

@@ -125,7 +125,7 @@ export const keyentryLimit: Scenario = {
       const r = new TranscriptRecorder({
         id: "keyentry-limit",
         description:
-          "Key-entry counting on a product with Identity on (PX-W9, WIRE-CONTRACT-V4 §12.2), with a limit of 2 and refusals on. Every successful activation carries keyEntries {used, limit}: the first entry counts, and the same device entering the key again does not. Another device then enters the key and this device deactivates, so the next activation is a new device at the limit: it is refused with key_entry_limit, carrying keyEntries and manageUrl (the portal's activate page, where the key can join an account). The refusal is not an auth failure: the client keeps its state. Once the limit is raised to 3 the key activates again, and that entry is the third.",
+          "Key-entry counting on a product with Identity on (PX-W9, WIRE-CONTRACT-V4 §12.2), with a limit of 2 and refusals on. Every successful activation carries keyEntries {used, limit}: the first entry counts, and the same device entering the key again does not. Another device then enters the key and this device deactivates, so the next activation is a new device at the limit: it is refused with key_entry_limit, carrying keyEntries and manageUrl (the portal's activate page, where the key can join an account). The refusal is not an auth failure: the client keeps its state. Once the limit is raised to 3 the key activates again, and the count stays 2: this device already spent an entry on the key (B-107), so a return is not a new one.",
         features: FEATURES,
         requires: ["core.store", "license.deactivate"],
         product: PRODUCT,
@@ -220,12 +220,12 @@ export const keyentryLimit: Scenario = {
           action: "activate",
           args: { key },
           now: T0 + 240,
-          note: "The limit is raised to 3: the key activates, and that entry is the third.",
+          note: "The limit is raised to 3: the key activates, and the count stays 2 (this device spent its entry earlier).",
         },
-        (s) => activateAndSync(s, { used: 3, limit: 3 }),
+        (s) => activateAndSync(s, { used: 2, limit: 3 }),
         {
           result: "ok",
-          keyEntries: { used: 3, limit: 3 },
+          keyEntries: { used: 2, limit: 3 },
           licenseStatus: "ok",
           tokenHeld: true,
         },
@@ -246,7 +246,7 @@ export const keyentryRefusalsOff: Scenario = {
       const r = new TranscriptRecorder({
         id: "keyentry-refusals-off",
         description:
-          "Key-entry counting with refusals off (PX-W9, WIRE-CONTRACT-V4 §12.2), the rollout default. The limit is 1 and another device has already entered the key, yet a new device activates: the entry is counted past the limit (keyEntries used 2 of 1, so a client shows none left) and never refused. The device then deactivates and the licence joins an account: its next entry is a new device's and, with refusals off, step 3 (license_owned, I-09) does not apply either, so it is counted (3 of 1) and admitted.",
+          "Key-entry counting with refusals off (PX-W9, WIRE-CONTRACT-V4 §12.2), the rollout default. The limit is 1 and another device has already entered the key, yet a new device activates: the entry is counted past the limit (keyEntries used 2 of 1, so a client shows none left) and never refused. The device then deactivates and the licence joins an account: its next entry is a new device's and, with refusals off, step 3 (license_owned, I-09) does not apply either, so it is admitted. Its earlier entry stands (B-107), so the count stays 2 of 1.",
         features: FEATURES,
         requires: ["core.store", "license.deactivate"],
         product: PRODUCT,
@@ -297,10 +297,10 @@ export const keyentryRefusalsOff: Scenario = {
           now: T0 + 120,
           note: "The licence is now in an account: with refusals off it is still counted and admitted (I-09).",
         },
-        (s) => activateAndSync(s, { used: 3, limit: 1 }),
+        (s) => activateAndSync(s, { used: 2, limit: 1 }),
         {
           result: "ok",
-          keyEntries: { used: 3, limit: 1 },
+          keyEntries: { used: 2, limit: 1 },
           licenseStatus: "ok",
           tokenHeld: true,
         },

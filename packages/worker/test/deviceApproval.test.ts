@@ -947,6 +947,8 @@ describe("the endings are pages", () => {
     const done = await postApprove(c.cookie, { token, decision: "approve" });
     const html = await done.text();
     expect(html).toContain("is signed in on");
+    // B-105: the heading names the app; there is no header above it saying it again.
+    expect(html).not.toContain('<div class="app">');
     expect(html).toContain("it continues by itself.");
     expect(html).toContain("You can close this page.");
     expect(html).not.toContain("<title>Sign in on");

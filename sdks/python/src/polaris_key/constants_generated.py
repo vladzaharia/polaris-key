@@ -191,6 +191,7 @@ class ErrorCode:
     UNAVAILABLE: Final = "unavailable"
     ERASURE_LEDGER_UNAVAILABLE: Final = "erasure_ledger_unavailable"
     IDENTITY_DISABLED: Final = "identity_disabled"
+    UNKNOWN_APP: Final = "unknown_app"
     INVALID_REQUEST: Final = "invalid_request"
     INVALID_CLIENT: Final = "invalid_client"
     INVALID_GRANT: Final = "invalid_grant"
@@ -366,6 +367,7 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "unavailable",
     "erasure_ledger_unavailable",
     "identity_disabled",
+    "unknown_app",
     "invalid_request",
     "invalid_client",
     "invalid_grant",
@@ -543,6 +545,7 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "unavailable": "wire",
         "erasure_ledger_unavailable": "wire",
         "identity_disabled": "wire",
+        "unknown_app": "wire",
         "invalid_request": "wire",
         "invalid_client": "wire",
         "invalid_grant": "wire",

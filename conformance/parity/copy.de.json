@@ -149,6 +149,10 @@
       "title": "Anmeldung nicht verfügbar",
       "message": "Die Anmeldung über diese App ist deaktiviert. Ihre Installationen und Lizenzen funktionieren weiterhin."
     },
+    "unknown_app": {
+      "title": "Anmeldung nicht verfügbar",
+      "message": "Die Anmeldung ist für diese App nicht verfügbar."
+    },
     "invalid_request": {
       "title": "Anmeldeanfrage ungültig",
       "message": "Die App hat eine Anmeldeanfrage gesendet, die wir nicht lesen können. Versuche es erneut."

@@ -331,9 +331,12 @@ describe("magic link", () => {
     );
     const html = await page.text();
     expect(html).toContain("Confirm sign-in");
+    // B-106: a short heading, and the time in words in the first line (no ISO timestamp).
+    expect(html).toMatch(/<h1[^>]*>Confirm sign-in<\/h1>/);
     expect(html).toMatch(
-      /Confirm sign-in, requested at \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC from an unknown location/,
+      /Requested \d{1,2} [A-Z][a-z]{2} \d{4}, \d{2}:\d{2} UTC from an unknown location\./,
     );
+    expect(html).not.toMatch(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}/);
     expect(html).toContain("The device that asked signs in, not this one.");
 
     // Before confirmation, the asker's poll is pending.

@@ -53,6 +53,7 @@ const COPY_CODES := {
 	"unavailable": {"title": "Sign-in unavailable", "message": "Sign-in isn't available right now. Try again in a few minutes."},
 	"erasure_ledger_unavailable": {"title": "Account check unavailable", "message": "We couldn't confirm your account's status right now. Try again in a few minutes."},
 	"identity_disabled": {"title": "Sign-in unavailable", "message": "Sign-in through this app is turned off. Your installs and licenses keep working."},
+	"unknown_app": {"title": "Sign-in unavailable", "message": "Sign-in isn't available for this app."},
 	"invalid_request": {"title": "Sign-in request invalid", "message": "The app sent a sign-in request we can't read. Try again."},
 	"invalid_client": {"title": "Sign-in can't finish", "message": "This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know."},
 	"invalid_grant": {"title": "Sign-in no longer valid", "message": "That sign-in has expired or was already used. Sign in again."},

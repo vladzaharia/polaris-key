@@ -201,6 +201,8 @@
   "core.codes.erasure_ledger_unavailable.message": "We couldn't confirm your account's status right now. Try again in a few minutes.",
   "core.codes.identity_disabled.title": "Sign-in unavailable",
   "core.codes.identity_disabled.message": "Sign-in through this app is turned off. Your installs and licenses keep working.",
+  "core.codes.unknown_app.title": "Sign-in unavailable",
+  "core.codes.unknown_app.message": "Sign-in isn't available for this app.",
   "core.codes.invalid_request.title": "Sign-in request invalid",
   "core.codes.invalid_request.message": "The app sent a sign-in request we can't read. Try again.",
   "core.codes.invalid_client.title": "Sign-in can't finish",

@@ -138,9 +138,9 @@ export function renderEmail(c: EmailContent): string {
     ? lockup("light", `display:block;margin:0 auto;${imgStyle}`) +
       // Hidden unless the dark palette applies (`mso-hide` for Outlook on Windows).
       `<!--[if !mso]><!-->${lockup("dark", `display:none;margin:0 auto;max-height:0;overflow:hidden;mso-hide:all;${imgStyle}`)}<!--<![endif]-->`
-    : `<p class="pk-strong" style="margin:0;font-family:${font};font-size:20px;line-height:28px;font-weight:700;letter-spacing:-0.01em;color:${BRAND.text.light}">${brandName}</p>`;
+    : `<p class="pk-strong" style="margin:0;font-family:${font};font-size:20px;line-height:28px;font-weight:600;letter-spacing:-0.01em;color:${BRAND.text.light}">${brandName}</p>`;
   const action = c.action
-    ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 24px"><tr><td class="pk-btn" bgcolor="${btnFill}" style="border-radius:6px;background-color:${btnFill}"><a class="pk-btn-a" href="${escapeHtml(c.action.url)}" style="display:inline-block;padding:12px 24px;font-family:${font};font-size:16px;line-height:20px;font-weight:700;color:${btnOn};text-decoration:none;border-radius:6px">${escapeHtml(c.action.label)}</a></td></tr></table>` +
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 24px"><tr><td class="pk-btn" bgcolor="${btnFill}" style="border-radius:6px;background-color:${btnFill}"><a class="pk-btn-a" href="${escapeHtml(c.action.url)}" style="display:inline-block;padding:12px 24px;font-family:${font};font-size:16px;line-height:20px;font-weight:500;color:${btnOn};text-decoration:none;border-radius:6px">${escapeHtml(c.action.label)}</a></td></tr></table>` +
       para(
         "If the button does not work, paste this link into your browser:",
         "pk-muted",
@@ -149,7 +149,7 @@ export function renderEmail(c: EmailContent): string {
       `<p style="margin:0;font-family:${mono};font-size:13px;line-height:20px;word-break:break-all"><a class="pk-link" href="${escapeHtml(c.action.url)}" style="color:${linkFg};text-decoration:underline">${escapeHtml(c.action.url)}</a></p>`
     : "";
   const secret = c.secret
-    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px"><tr><td class="pk-key" bgcolor="${LIGHT.surface.page}" style="padding:14px 16px;background-color:${LIGHT.surface.page};border:1px solid ${LIGHT.border.subtle};border-radius:6px;font-family:${mono};font-size:16px;line-height:24px;font-weight:700;overflow-wrap:anywhere;color:${LIGHT.text.strong}"><span class="pk-strong">${escapeHtml(c.secret).replace(/_/g, "_<wbr>")}</span></td></tr></table>`
+    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px"><tr><td class="pk-key" bgcolor="${LIGHT.surface.page}" style="padding:14px 16px;background-color:${LIGHT.surface.page};border:1px solid ${LIGHT.border.subtle};border-radius:6px;font-family:${mono};font-size:16px;line-height:24px;font-weight:600;overflow-wrap:anywhere;color:${LIGHT.text.strong}"><span class="pk-strong">${escapeHtml(c.secret).replace(/_/g, "_<wbr>")}</span></td></tr></table>`
     : "";
   const secondary = c.secondary
     ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 0"><tr>` +
@@ -160,7 +160,7 @@ export function renderEmail(c: EmailContent): string {
       (c.hero.iconUrl
         ? `<td style="padding:0 14px 0 0"><img src="${escapeHtml(c.hero.iconUrl)}" width="56" height="56" alt="" style="display:block;border:0;border-radius:12px;width:56px;height:56px"></td>`
         : "") +
-      `<td><h1 class="pk-strong" style="margin:0;font-family:${font};font-size:24px;line-height:32px;font-weight:700;letter-spacing:-0.01em;color:${LIGHT.text.strong}">${escapeHtml(c.hero.name)}</h1></td></tr></table>`
+      `<td><h1 class="pk-strong" style="margin:0;font-family:${font};font-size:24px;line-height:32px;font-weight:600;letter-spacing:-0.01em;color:${LIGHT.text.strong}">${escapeHtml(c.hero.name)}</h1></td></tr></table>`
     : "";
   const calloutBox = (inner: string, top: number) =>
     `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:${top}px 0 16px"><tr><td class="pk-callout" bgcolor="${LIGHT.surface.page}" style="padding:12px 16px;background-color:${LIGHT.surface.page};border:1px solid ${LIGHT.border.subtle};border-radius:6px;font-family:${font};font-size:15px;line-height:22px;color:${LIGHT.text.default}">${inner}</td></tr></table>`;
@@ -199,9 +199,9 @@ export function renderEmail(c: EmailContent): string {
     `<tr><td class="pk-card" bgcolor="${LIGHT.surface.raised}" style="padding:32px;background-color:${LIGHT.surface.raised};border:1px solid ${LIGHT.border.subtle};border-radius:10px">`,
     c.hero
       ? hero
-      : `<h1 class="pk-strong" style="margin:0 0 16px;font-family:${font};font-size:24px;line-height:32px;font-weight:700;letter-spacing:-0.01em;color:${LIGHT.text.strong}">${escapeHtml(c.heading)}</h1>`,
+      : `<h1 class="pk-strong" style="margin:0 0 16px;font-family:${font};font-size:24px;line-height:32px;font-weight:600;letter-spacing:-0.01em;color:${LIGHT.text.strong}">${escapeHtml(c.heading)}</h1>`,
     c.code
-      ? `<p class="pk-strong" style="margin:0 0 24px;font-family:${mono};font-size:36px;line-height:44px;font-weight:700;letter-spacing:0.12em;color:${LIGHT.text.strong}">${escapeHtml(c.code)}</p>`
+      ? `<p class="pk-strong" style="margin:0 0 24px;font-family:${mono};font-size:36px;line-height:44px;font-weight:600;letter-spacing:0.12em;color:${LIGHT.text.strong}">${escapeHtml(c.code)}</p>`
       : "",
     ...c.paragraphs.map((t) => para(t)),
     secret,

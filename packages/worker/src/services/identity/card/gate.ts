@@ -1379,6 +1379,15 @@ async function gateJoin(
     const live = session
       ? await checkAccountSession(env, db, session, now)
       : null;
+    // B-101: a ledger that cannot be read is not "sign in again". Nothing was consumed.
+    if (live?.status === "unavailable")
+      return cardJson(
+        {
+          error: "erasure_ledger_unavailable",
+          message: "Sign-in is unavailable right now. Try again in a moment.",
+        },
+        503,
+      );
     if (session && live?.status === "live" && live.accountId === other) {
       const at = portalSessionAuthenticatedAt(session);
       if (isFresh({ accountId: other, authenticatedAt: at }, now)) otherAt = at;

@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { NOW } from "./seed.js";
+import { asR2 } from "./r2Mock.js";
+import { LedgerBucket } from "./eraseRestore.js";
 import {
   Device,
   lastCode,
@@ -337,6 +339,33 @@ describe("the join offer (owner, 2026-10-04)", () => {
       expect.objectContaining({ status: "signed_in", joined: true }),
     );
     expect(await count(w, "accounts")).toBe(1);
+    expect(await linksOf(w, ada)).toEqual([
+      "email:ada@example.com",
+      "google:g-1",
+    ]);
+  });
+
+  it("B-101: an unreadable erasure ledger at the join step answers 503 unavailable, not 'sign in again', and consumes nothing", async () => {
+    const w = await seededWorld();
+    const ada = await emailAccount(w, "ada@example.com");
+    const d = new Device(w);
+    await arrive(w, d, workspace("g-1", "ada@example.com"));
+    await d.send("POST", GATE, { choice: "provider" });
+    expect((await d.signInWithCode("ada@example.com")).status).toBe(200);
+    const bucket = new LedgerBucket();
+    bucket.down = true;
+    w.env.BLOBS = asR2(bucket);
+    const join = await d.send("POST", `${GATE}/join`);
+    expect(join.status).toBe(503);
+    expect(await join.json()).toEqual({
+      error: "erasure_ledger_unavailable",
+      message: expect.any(String),
+    });
+    expect(await linksOf(w, ada)).toEqual(["email:ada@example.com"]);
+    // Nothing was consumed: once the ledger reads, the same join completes.
+    bucket.down = false;
+    const done = await d.send("POST", `${GATE}/join`);
+    expect(done.status).toBe(200);
     expect(await linksOf(w, ada)).toEqual([
       "email:ada@example.com",
       "google:g-1",

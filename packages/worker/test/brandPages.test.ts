@@ -455,7 +455,10 @@ describe("the console sign-in card (GET /manage/login)", () => {
     expect(html).toContain("<h1");
     expect(html).toContain("Sign in to the console");
     // SIGN-IN.md §3.13: Continue POSTs, so the address is never in a URL.
-    expect(html).toContain('<form method="post" action="/manage/login">');
+    // B-104: the server drops a bad hint, so the browser's own validation bubble stays off.
+    expect(html).toContain(
+      '<form method="post" action="/manage/login" novalidate>',
+    );
     expect(html).not.toContain('name="go"');
     expect(html).toContain('name="returnTo" value="/manage/#/p/alpha"');
     // Help and Privacy sit under the card: public Polaris Key pages, never customer Help (operators are not customers).

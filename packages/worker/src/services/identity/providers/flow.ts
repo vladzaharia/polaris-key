@@ -484,7 +484,7 @@ export async function handleProviderCallback(
   if (!(await consumeArtefact(env, flowKey))) return signInPage.tookTooLong();
   if (params.get("error") || params.get("openid.mode") === "cancel") {
     // The h1 without its full stop, then Sign in again (htmlError's default on a 400).
-    return htmlError(400, `Sign in with ${label} was cancelled`);
+    return htmlError(400, `Sign in with ${label} was canceled`);
   }
 
   let result: ProviderSignInResult;

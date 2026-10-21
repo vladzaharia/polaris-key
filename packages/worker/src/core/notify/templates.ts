@@ -456,7 +456,7 @@ export function accountDeletionCancelledNotice(input: {
   origin: string;
 }): NoticeMessage {
   return buildNotice({
-    subject: "Your Polaris Locker account deletion was cancelled",
+    subject: "Your Polaris Locker account deletion was canceled",
     paragraphs: [
       "Your Polaris Locker account will stay active. No account data will be erased.",
     ],

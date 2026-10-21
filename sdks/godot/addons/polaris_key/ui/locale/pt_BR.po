@@ -5144,6 +5144,16 @@ msgstr "Acesso indisponível"
 msgid "core.codes.identity_disabled.message"
 msgstr "O acesso por este app está desativado. Suas instalações e licenças continuam funcionando."
 
+#. Sign-in unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.unknown_app.title"
+msgstr "Acesso indisponível"
+
+#. Sign-in isn't available for this app.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.unknown_app.message"
+msgstr "O acesso não está disponível para este app."
+
 #. Sign-in request invalid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_request.title"

@@ -149,6 +149,10 @@
       "title": "Inicio de sesión no disponible",
       "message": "El inicio de sesión desde esta app está desactivado. Tus instalaciones y licencias siguen funcionando."
     },
+    "unknown_app": {
+      "title": "Inicio de sesión no disponible",
+      "message": "El inicio de sesión no está disponible para esta app."
+    },
     "invalid_request": {
       "title": "Solicitud de inicio de sesión no válida",
       "message": "La app envió una solicitud que no podemos leer. Inténtalo de nuevo."

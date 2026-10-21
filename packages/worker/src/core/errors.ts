@@ -44,6 +44,9 @@ export const ErrorCode = {
    *  facing only (the `303` to the card's `?error=` and the portal passthrough context's `403`);
    *  device and JSON routes keep answering `not_found` (plans/PX-W17.md §2). */
   IdentityDisabled: "identity_disabled",
+  /** B-100: a browser followed an app's sign-in link for a product that does not exist. Human-
+   *  facing only (the 404 card); JSON callers keep `not_found`. */
+  UnknownApp: "unknown_app",
   /** PX-W9 (WIRE-CONTRACT-V4 §12.2): a licence in no account has used every key entry on an
    *  Identity product while `identity.keyEntryRefusals` is on. The flat 403 carries `keyEntries`
    *  and, while the portal is on, `manageUrl`. Never sent to an enrolled device. */

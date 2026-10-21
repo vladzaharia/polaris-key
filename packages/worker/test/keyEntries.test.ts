@@ -360,7 +360,7 @@ describe("app entries (POST /<p>/license/activate)", () => {
     expect(await countKeyEntries(db, SLUG, licenseId)).toBe(1);
   });
 
-  it("re-enrolling after a deauthorization counts again (a new enrolment)", async () => {
+  it("a device that returns to a licence it held spends no second entry (B-107), another device still does", async () => {
     const product = await setIdentity(true);
     const { key, licenseId } = await seedLicenseWithKey(db, SLUG, SEATS(5));
     expect((await activate(product, key, "dev-1")).status).toBe(200);
@@ -370,6 +370,9 @@ describe("app entries (POST /<p>/license/activate)", () => {
       "dev-1",
     );
     expect((await activate(product, key, "dev-1", NOW + 60)).status).toBe(200);
+    expect(await countKeyEntries(db, SLUG, licenseId)).toBe(1);
+    // A different device is still a new entry.
+    expect((await activate(product, key, "dev-2", NOW + 120)).status).toBe(200);
     expect(await countKeyEntries(db, SLUG, licenseId)).toBe(2);
   });
 });

@@ -3,6 +3,7 @@
 // step offers Sign in and Deny through one decision; and a device link or form that has gone stale
 // ends on a Locker page, never bare JSON (a JSON client still gets JSON).
 import { beforeEach, describe, expect, it } from "vitest";
+import { KIT_COPY_EN } from "@polaris-key/brand/kit-copy";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
@@ -119,7 +120,8 @@ describe("the code entry", () => {
     }
     expect(res!.status).toBe(429);
     const html = await res!.text();
-    expect(html).toContain("Too many codes tried");
+    // The catalog's line, not a Worker-only one (B-103).
+    expect(html).toContain(KIT_COPY_EN["signin.rateLimitedFew"]);
     expect(html).toContain(
       "The code on your device still works until it expires.",
     );
@@ -203,6 +205,43 @@ describe("the confirm step", () => {
     expect(again.status).toBe(403);
     expect(again.headers.get("content-type")).toContain("text/html");
     expect(again.headers.get("location")).toBeNull();
+  });
+});
+
+describe("Deny before sign-in (B-096)", () => {
+  it("ends the device's poll with `error` and writes one audit row", async () => {
+    const { userCode, deviceCode } = await start();
+    const { csrf } = await confirmPage(userCode);
+    const poll = async () =>
+      (await (
+        await send(`${API}/djdl/identity/auth/device/poll`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ deviceCode, deviceId: "tv-1" }),
+        })
+      ).json()) as { status: string };
+    const res = await send(`${API}/djdl/identity/auth/device`, {
+      method: "POST",
+      headers: FORM,
+      body: `user_code=${userCode}&csrf=${csrf}&decision=deny`,
+    });
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain("Sign-in denied");
+    expect((await poll()).status).toBe("error");
+    const rows = await db.all<{ action: string }>(
+      "SELECT action FROM audit WHERE action = 'identity.signin.device_denied'",
+    );
+    expect(rows).toHaveLength(1);
+    // A replayed Deny (spent token) writes nothing more.
+    await send(`${API}/djdl/identity/auth/device`, {
+      method: "POST",
+      headers: FORM,
+      body: `user_code=${userCode}&csrf=${csrf}&decision=deny`,
+    });
+    const again = await db.all<{ action: string }>(
+      "SELECT action FROM audit WHERE action = 'identity.signin.device_denied'",
+    );
+    expect(again).toHaveLength(1);
   });
 });
 

@@ -5118,6 +5118,16 @@ msgstr "登录不可用"
 msgid "core.codes.identity_disabled.message"
 msgstr "已关闭通过此应用登录。你的安装和许可证仍可正常使用。"
 
+#. Sign-in unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.unknown_app.title"
+msgstr "登录不可用"
+
+#. Sign-in isn't available for this app.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.unknown_app.message"
+msgstr "此应用无法登录。"
+
 #. Sign-in request invalid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_request.title"

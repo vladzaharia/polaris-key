@@ -1062,6 +1062,8 @@ export const KIT_COPY: Readonly<
     "core.codes.identity_disabled.title": "Sign-in unavailable",
     "core.codes.identity_disabled.message":
       "Sign-in through this app is turned off. Your installs and licenses keep working.",
+    "core.codes.unknown_app.title": "Sign-in unavailable",
+    "core.codes.unknown_app.message": "Sign-in isn't available for this app.",
     "core.codes.invalid_request.title": "Sign-in request invalid",
     "core.codes.invalid_request.message":
       "The app sent a sign-in request we can't read. Try again.",
@@ -2648,6 +2650,9 @@ export const KIT_COPY: Readonly<
     "core.codes.identity_disabled.title": "Anmeldung nicht verfügbar",
     "core.codes.identity_disabled.message":
       "Die Anmeldung über diese App ist deaktiviert. Ihre Installationen und Lizenzen funktionieren weiterhin.",
+    "core.codes.unknown_app.title": "Anmeldung nicht verfügbar",
+    "core.codes.unknown_app.message":
+      "Die Anmeldung ist für diese App nicht verfügbar.",
     "core.codes.invalid_request.title": "Anmeldeanfrage ungültig",
     "core.codes.invalid_request.message":
       "Die App hat eine Anmeldeanfrage gesendet, die wir nicht lesen können. Versuche es erneut.",
@@ -4221,6 +4226,8 @@ export const KIT_COPY: Readonly<
     "core.codes.identity_disabled.title": "Sign-in unavailable",
     "core.codes.identity_disabled.message":
       "Sign-in through this app is turned off. Your installs and licenses keep working.",
+    "core.codes.unknown_app.title": "Sign-in unavailable",
+    "core.codes.unknown_app.message": "Sign-in isn't available for this app.",
     "core.codes.invalid_request.title": "Sign-in request invalid",
     "core.codes.invalid_request.message":
       "The app sent a sign-in request we can't read. Try again.",
@@ -5778,6 +5785,9 @@ export const KIT_COPY: Readonly<
     "core.codes.identity_disabled.title": "Inicio de sesión no disponible",
     "core.codes.identity_disabled.message":
       "El inicio de sesión desde esta app está desactivado. Tus instalaciones y licencias siguen funcionando.",
+    "core.codes.unknown_app.title": "Inicio de sesión no disponible",
+    "core.codes.unknown_app.message":
+      "El inicio de sesión no está disponible para esta app.",
     "core.codes.invalid_request.title":
       "Solicitud de inicio de sesión no válida",
     "core.codes.invalid_request.message":
@@ -7340,6 +7350,9 @@ export const KIT_COPY: Readonly<
     "core.codes.identity_disabled.title": "Acesso indisponível",
     "core.codes.identity_disabled.message":
       "O acesso por este app está desativado. Suas instalações e licenças continuam funcionando.",
+    "core.codes.unknown_app.title": "Acesso indisponível",
+    "core.codes.unknown_app.message":
+      "O acesso não está disponível para este app.",
     "core.codes.invalid_request.title": "Solicitação de login inválida",
     "core.codes.invalid_request.message":
       "O app enviou uma solicitação que não conseguimos ler. Tente de novo.",
@@ -8891,6 +8904,9 @@ export const KIT_COPY: Readonly<
     "core.codes.identity_disabled.title": "Accesso non disponibile",
     "core.codes.identity_disabled.message":
       "L'accesso tramite questa app è disattivato. Le tue installazioni e licenze continuano a funzionare.",
+    "core.codes.unknown_app.title": "Accesso non disponibile",
+    "core.codes.unknown_app.message":
+      "L'accesso non è disponibile per questa app.",
     "core.codes.invalid_request.title": "Richiesta di accesso non valida",
     "core.codes.invalid_request.message":
       "L'app ha inviato una richiesta che non riusciamo a leggere. Riprova.",
@@ -10463,6 +10479,9 @@ export const KIT_COPY: Readonly<
     "core.codes.identity_disabled.title": "サインインを利用できません",
     "core.codes.identity_disabled.message":
       "このアプリからのサインインは無効になっています。インストールとライセンスは引き続き使用できます。",
+    "core.codes.unknown_app.title": "サインインを利用できません",
+    "core.codes.unknown_app.message":
+      "このアプリではサインインを利用できません。",
     "core.codes.invalid_request.title": "サインインリクエストが無効です",
     "core.codes.invalid_request.message":
       "アプリから読み取れないリクエストが届きました。もう一度お試しください。",
@@ -11988,6 +12007,8 @@ export const KIT_COPY: Readonly<
     "core.codes.identity_disabled.title": "로그인 사용 불가",
     "core.codes.identity_disabled.message":
       "이 앱을 통한 로그인이 꺼져 있어요. 설치와 라이선스는 계속 작동해요.",
+    "core.codes.unknown_app.title": "로그인 사용 불가",
+    "core.codes.unknown_app.message": "이 앱에서는 로그인을 사용할 수 없어요.",
     "core.codes.invalid_request.title": "로그인 요청이 올바르지 않습니다",
     "core.codes.invalid_request.message":
       "앱이 읽을 수 없는 요청을 보냈습니다. 다시 시도하세요.",
@@ -13421,6 +13442,8 @@ export const KIT_COPY: Readonly<
     "core.codes.identity_disabled.title": "登录不可用",
     "core.codes.identity_disabled.message":
       "已关闭通过此应用登录。你的安装和许可证仍可正常使用。",
+    "core.codes.unknown_app.title": "登录不可用",
+    "core.codes.unknown_app.message": "此应用无法登录。",
     "core.codes.invalid_request.title": "登录请求无效",
     "core.codes.invalid_request.message":
       "应用发送了我们无法读取的请求。请重试。",

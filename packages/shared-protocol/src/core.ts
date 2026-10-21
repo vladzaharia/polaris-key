@@ -309,6 +309,8 @@ export type PolarisErrorCode =
   | "registration_closed"
   /** Human-facing only (PX-W17): a sign-in through a product whose Identity service is off. */
   | "identity_disabled"
+  /** Human-facing only: an app's sign-in link for a product that does not exist (B-100). */
+  | "unknown_app"
   /** PX-W9 (WIRE-CONTRACT-V4 §12.2): the licence has no key entries left on an Identity product.
    *  The flat 403 carries `keyEntries` and, while the portal is on, `manageUrl`. */
   | "key_entry_limit"

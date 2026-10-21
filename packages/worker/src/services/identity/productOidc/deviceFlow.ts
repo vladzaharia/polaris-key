@@ -25,6 +25,7 @@ import {
 import { readBodyText } from "../../../core/cappedBody.js";
 import { beginAuthFlow } from "./browserFlow.js";
 import { startAgainPage } from "./chooser.js";
+import { denyChosenDeviceFlow, deniedPage } from "./deviceApproval.js";
 import {
   DEVICE_POLL_INTERVAL_SECONDS,
   type DeviceFlowRecord,
@@ -242,6 +243,7 @@ export async function confirmDeviceFlow(
   now: number,
   decision: DeviceDecision = "approve",
   view: PageView = {},
+  db?: Db,
 ): Promise<Response> {
   if (!sameOriginPost(req))
     return errorResponse(403, "forbidden", "confirmation failed");
@@ -260,7 +262,24 @@ export async function confirmDeviceFlow(
     );
     if (!spentDeny.ok) return gone(req, product, 403, "stale", refused, view);
     await deleteUserCodeIndex(env, product.slug, record.userCode);
-    return deviceDeniedPage(product, view);
+    // B-096: the device is polling the flow, not the device record. Mark the flow denied (the
+    // one writer, with its audit row) so the poll answers `error` now and not `pending` until
+    // the code expires. A flow already gone has nothing to mark.
+    const denyRaw = await getArtefact(
+      env,
+      await flowKey(env, product.slug, record.state),
+    );
+    const denyFlow = denyRaw ? parseFlowRecord<FlowRecord>(denyRaw) : null;
+    if (!denyFlow) return deviceDeniedPage(product, view);
+    await denyChosenDeviceFlow(
+      env,
+      db,
+      product,
+      await flowKey(env, product.slug, record.state),
+      denyFlow,
+      now,
+    );
+    return deniedPage(denyFlow, view, []);
   }
 
   // The confirmation is an authorization input for the poll, so it is recorded on
@@ -481,6 +500,7 @@ export async function handleAuthDeviceEntry(
       now,
       decision,
       view,
+      ctx?.db,
     );
   return renderDeviceConfirmation(
     req,

@@ -5131,6 +5131,16 @@ msgstr "Sign-in unavailable"
 msgid "core.codes.identity_disabled.message"
 msgstr "Sign-in through this app is turned off. Your installs and licenses keep working."
 
+#. Sign-in unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.unknown_app.title"
+msgstr "Sign-in unavailable"
+
+#. Sign-in isn't available for this app.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.unknown_app.message"
+msgstr "Sign-in isn't available for this app."
+
 #. Sign-in request invalid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_request.title"

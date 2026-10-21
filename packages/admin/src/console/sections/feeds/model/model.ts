@@ -133,7 +133,7 @@ export const YANK_EFFECTS: Record<FeedEcosystem, string> = {
   swift:
     "A yanked version leaves the release list and stays fetchable for existing Package.resolved pins.",
   maven:
-    "Maven has no yank. The console marks the version yanked; with Hide yanked versions on, it also leaves maven-metadata.xml.",
+    "Maven has no yank. The console marks the version yanked; Hide yanked versions is on by default: the version leaves maven-metadata.xml.",
   godot: "A yanked version leaves the asset listings.",
   cargo:
     "A yanked version stays in the index marked yanked: an existing Cargo.lock still builds, and new resolutions skip it.",

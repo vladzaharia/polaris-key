@@ -102,7 +102,7 @@ export async function decideDeviceFlow(
 /** Deny a device-code flow from the licence chooser's **Cancel** (its own token is spent). */
 export async function denyChosenDeviceFlow(
   env: Env,
-  db: Db,
+  db: Db | undefined,
   product: Product,
   stateKey: ArtefactRef,
   flow: FlowRecord,
@@ -114,7 +114,7 @@ export async function denyChosenDeviceFlow(
     unset: DENY_UNSET,
   });
   if (!done.ok) return false;
-  await auditDecision(db, product, flow, "deny", now);
+  if (db) await auditDecision(db, product, flow, "deny", now);
   return true;
 }
 
@@ -302,14 +302,8 @@ export function deviceDonePage(
     ...(view.tv ? { variant: "tv" as const } : {}),
     title: view.app?.name ? `${view.app.name} is signed in` : "Signed in",
     heading,
-    ...(view.app?.name
-      ? {
-          header: appHeader({
-            name: view.app.name,
-            iconUrl: shown.app.iconUrl,
-          }),
-        }
-      : {}),
+    // No app header here (B-105): the heading already names the app, so a header above it said it
+    // twice.
     body:
       callout(
         "check-circle",

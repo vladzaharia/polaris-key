@@ -14,6 +14,7 @@
 // client network. The code rides in the query string, so the page is never cached and never sent
 // onward as a Referer, and no code is logged here.
 
+import { KIT_COPY_EN } from "@polaris-key/brand/kit-copy";
 import type { Env } from "../platform/env.js";
 import { escapeHtml } from "../platform/html.js";
 import {
@@ -28,9 +29,9 @@ import { brandedHtmlSecurityHeaders } from "./securityHeaders.js";
 
 const MISS =
   "No device is waiting for that code. Check your device's screen: codes last 10 minutes.";
-const LIMITED_TITLE = "Too many codes tried";
-const LIMITED =
-  "Wait a minute, then try again. The code on your device still works until it expires.";
+/** The catalog's line (`signin.rateLimitedFew`), so the Worker's card and the kits say the same (B-103). */
+const LIMITED_TITLE = KIT_COPY_EN["signin.rateLimitedFew"];
+const LIMITED = "The code on your device still works until it expires.";
 
 /** Read for malformed input, so it costs the same store read as a real lookup. */
 const DUMMY_CODE = "BBBBBBBB";

@@ -876,6 +876,8 @@
   "core.codes.erasure_ledger_unavailable.message": "Der Status Ihres Kontos konnte gerade nicht geprüft werden. Versuchen Sie es in einigen Minuten erneut.",
   "core.codes.identity_disabled.title": "Anmeldung nicht verfügbar",
   "core.codes.identity_disabled.message": "Die Anmeldung über diese App ist deaktiviert. Ihre Installationen und Lizenzen funktionieren weiterhin.",
+  "core.codes.unknown_app.title": "Anmeldung nicht verfügbar",
+  "core.codes.unknown_app.message": "Die Anmeldung ist für diese App nicht verfügbar.",
   "core.codes.invalid_request.title": "Anmeldeanfrage ungültig",
   "core.codes.invalid_request.message": "Die App hat eine Anmeldeanfrage gesendet, die wir nicht lesen können. Versuche es erneut.",
   "core.codes.invalid_client.title": "App nicht erkannt",

@@ -355,8 +355,16 @@ const SAMPLES: Record<string, RegistryPackage> = {
 const FEED_A: RenderFeed = { namespace: { publisher: "acme" }, ext: {} };
 const FEED_B: RenderFeed = {
   namespace: { publisher: "acme" },
-  ext: { supportLevel: "testing", license: "MIT" },
+  ext: {
+    supportLevel: "testing",
+    license: "MIT",
+    yankHidesFromIndex: false,
+  },
 };
+
+// B-097: Maven's metadata shows a yank only when the feed's switch is explicitly false (absent
+// and true hide it), so its sample has one: FEED_A (absent) hides it, FEED_B (false) lists it.
+Object.assign(SAMPLES.maven!.versions[1]!, { state: "yanked" });
 
 /** Sample values for the OpenAPI path parameters, per ecosystem where one differs. */
 const COMMON_PARAMS: Record<string, string> = {
@@ -875,5 +883,20 @@ describe("feed adapters: the harness", () => {
       if (HOST_CLIENTS.includes(name)) continue;
       expect(owned.has(name), `clients/${f} belongs to no adapter`).toBe(true);
     }
+  });
+});
+
+describe("maven yank policy default (B-097)", () => {
+  it("hides a yanked version when the key is absent or true, lists it only for false", async () => {
+    const a = FEED_ADAPTERS.find((x) => x.ecosystem === "maven")!;
+    const sample = SAMPLES.maven!;
+    const text = async (ext: Record<string, unknown>) =>
+      asText(await render(a, sample, { namespace: {}, ext }));
+    const absent = await text({});
+    expect(absent).not.toContain("<version>1.1.0</version>");
+    expect(await text({ yankHidesFromIndex: true })).toBe(absent);
+    expect(await text({ yankHidesFromIndex: false })).toContain(
+      "<version>1.1.0</version>",
+    );
   });
 });

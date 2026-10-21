@@ -1957,6 +1957,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_identity_disabled_message">L'accesso tramite questa app è disattivato. Le tue installazioni e licenze continuano a funzionare.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unknown_app_title">Accesso non disponibile</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unknown_app_message">L'accesso non è disponibile per questa app.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_request_title">Richiesta di accesso non valida</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_request_message">L'app ha inviato una richiesta che non riusciamo a leggere. Riprova.</string>

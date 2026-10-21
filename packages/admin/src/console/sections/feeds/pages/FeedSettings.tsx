@@ -676,7 +676,7 @@ function YankSection({
   detail: FeedDetailDto;
   save: Save;
 }): React.ReactElement {
-  const hides = detail.settings.ext.yankHidesFromIndex === true;
+  const hides = detail.settings.ext.yankHidesFromIndex !== false;
   const form = useAdminForm<{ hide: boolean }>({
     values: { hide: hides },
     resetOn: [detail.settings.version],
@@ -718,7 +718,7 @@ function YankSection({
         {caps.yankPolicy ? (
           <SettingsRow
             label="Hide yanked versions"
-            help="Leave a yanked version out of maven-metadata.xml, so version ranges stop resolving to it. Exact coordinates still download."
+            help="Leave a yanked version out of maven-metadata.xml, so version ranges stop resolving to it. Exact coordinates still download. On by default."
           >
             <FormField<boolean> name="hide" label="Hide" hideLabel>
               {(field) => (

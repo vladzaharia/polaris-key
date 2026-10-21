@@ -457,7 +457,7 @@ describe("Sign in with Google", () => {
         { cookie },
       );
       expect(res.status).toBe(400);
-      expect(await res.text()).toContain("cancelled");
+      expect(await res.text()).toContain("canceled");
     });
 
     it("returns to a same-origin return_to and refuses a foreign one", async () => {

@@ -1,7 +1,7 @@
 {
   "transcriptVersion": 1,
   "id": "keyentry-refusals-off",
-  "description": "Key-entry counting with refusals off (PX-W9, WIRE-CONTRACT-V4 §12.2), the rollout default. The limit is 1 and another device has already entered the key, yet a new device activates: the entry is counted past the limit (keyEntries used 2 of 1, so a client shows none left) and never refused. The device then deactivates and the licence joins an account: its next entry is a new device's and, with refusals off, step 3 (license_owned, I-09) does not apply either, so it is counted (3 of 1) and admitted.",
+  "description": "Key-entry counting with refusals off (PX-W9, WIRE-CONTRACT-V4 §12.2), the rollout default. The limit is 1 and another device has already entered the key, yet a new device activates: the entry is counted past the limit (keyEntries used 2 of 1, so a client shows none left) and never refused. The device then deactivates and the licence joins an account: its next entry is a new device's and, with refusals off, step 3 (license_owned, I-09) does not apply either, so it is admitted. Its earlier entry stands (B-107), so the count stays 2 of 1.",
   "features": ["license.activate", "identity.keyentry"],
   "requires": ["core.store", "license.deactivate"],
   "product": "djdl",
@@ -342,7 +342,7 @@
                   "minVersion": null,
                   "maxVersion": null
                 },
-                "keyEntries": { "used": 3, "limit": 1 }
+                "keyEntries": { "used": 2, "limit": 1 }
               }
             },
             "capture": { "token": "$.token" }
@@ -484,7 +484,7 @@
       },
       "expect": {
         "result": "ok",
-        "keyEntries": { "used": 3, "limit": 1 },
+        "keyEntries": { "used": 2, "limit": 1 },
         "licenseStatus": "ok",
         "tokenHeld": true
       }

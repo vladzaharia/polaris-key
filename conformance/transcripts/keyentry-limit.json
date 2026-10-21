@@ -1,7 +1,7 @@
 {
   "transcriptVersion": 1,
   "id": "keyentry-limit",
-  "description": "Key-entry counting on a product with Identity on (PX-W9, WIRE-CONTRACT-V4 §12.2), with a limit of 2 and refusals on. Every successful activation carries keyEntries {used, limit}: the first entry counts, and the same device entering the key again does not. Another device then enters the key and this device deactivates, so the next activation is a new device at the limit: it is refused with key_entry_limit, carrying keyEntries and manageUrl (the portal's activate page, where the key can join an account). The refusal is not an auth failure: the client keeps its state. Once the limit is raised to 3 the key activates again, and that entry is the third.",
+  "description": "Key-entry counting on a product with Identity on (PX-W9, WIRE-CONTRACT-V4 §12.2), with a limit of 2 and refusals on. Every successful activation carries keyEntries {used, limit}: the first entry counts, and the same device entering the key again does not. Another device then enters the key and this device deactivates, so the next activation is a new device at the limit: it is refused with key_entry_limit, carrying keyEntries and manageUrl (the portal's activate page, where the key can join an account). The refusal is not an auth failure: the client keeps its state. Once the limit is raised to 3 the key activates again, and the count stays 2: this device already spent an entry on the key (B-107), so a return is not a new one.",
   "features": ["license.activate", "identity.keyentry"],
   "requires": ["core.store", "license.deactivate"],
   "product": "djdl",
@@ -548,7 +548,7 @@
     },
     {
       "action": "activate",
-      "note": "The limit is raised to 3: the key activates, and that entry is the third.",
+      "note": "The limit is raised to 3: the key activates, and the count stays 2 (this device spent its entry earlier).",
       "args": { "key": "pkey_djdl_GZD0xxxKKlZrwbQKnyoq5A" },
       "now": 1700000240,
       "exchanges": {
@@ -616,7 +616,7 @@
                   "minVersion": null,
                   "maxVersion": null
                 },
-                "keyEntries": { "used": 3, "limit": 3 }
+                "keyEntries": { "used": 2, "limit": 3 }
               }
             },
             "capture": { "token": "$.token" }
@@ -758,7 +758,7 @@
       },
       "expect": {
         "result": "ok",
-        "keyEntries": { "used": 3, "limit": 3 },
+        "keyEntries": { "used": 2, "limit": 3 },
         "licenseStatus": "ok",
         "tokenHeld": true
       }

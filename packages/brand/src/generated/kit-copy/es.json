@@ -876,6 +876,8 @@
   "core.codes.erasure_ledger_unavailable.message": "No pudimos confirmar el estado de tu cuenta en este momento. Vuelve a intentarlo en unos minutos.",
   "core.codes.identity_disabled.title": "Inicio de sesión no disponible",
   "core.codes.identity_disabled.message": "El inicio de sesión desde esta app está desactivado. Tus instalaciones y licencias siguen funcionando.",
+  "core.codes.unknown_app.title": "Inicio de sesión no disponible",
+  "core.codes.unknown_app.message": "El inicio de sesión no está disponible para esta app.",
   "core.codes.invalid_request.title": "Solicitud de inicio de sesión no válida",
   "core.codes.invalid_request.message": "La app envió una solicitud que no podemos leer. Inténtalo de nuevo.",
   "core.codes.invalid_client.title": "App no reconocida",
