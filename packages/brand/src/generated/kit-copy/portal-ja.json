@@ -690,5 +690,9 @@
   "locker.jump.actions": "操作",
   "locker.jump.devices": "{product}のデバイスを管理",
   "locker.jump.recent": "最近",
-  "locker.jump.count": "{count, plural, other {#件の製品}}"
+  "locker.jump.count": "{count, plural, other {#件の製品}}",
+  "locker.library.justAdded": "たった今追加",
+  "locker.library.seatsOf": "{limit}中{used}",
+  "locker.files.showFull": "{label} {detail}、完全な値を表示",
+  "locker.methods.sso": "シングルサインオン"
 }

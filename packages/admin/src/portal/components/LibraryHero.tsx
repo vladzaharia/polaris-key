@@ -115,7 +115,12 @@ export function LibraryHero({
               <dt className="text-fg-muted">{t("account.devices")}</dt>
               <dd className="space-y-2 text-fg-strong">
                 <span className="block">
-                  {`${devicesText(product.deviceCount, product.seats?.limit)} in use`}
+                  {t("locker.devices.inUse", {
+                    detail: devicesText(
+                      product.deviceCount,
+                      product.seats?.limit,
+                    ),
+                  })}
                 </span>
                 {product.seats ? (
                   <SeatMeter

@@ -690,5 +690,9 @@
   "locker.jump.actions": "Actions",
   "locker.jump.devices": "Gérer les appareils de {product}",
   "locker.jump.recent": "Récents",
-  "locker.jump.count": "{count, plural, one {# produit} many {# produits} other {# produits}}"
+  "locker.jump.count": "{count, plural, one {# produit} many {# produits} other {# produits}}",
+  "locker.library.justAdded": "Ajouté à l'instant",
+  "locker.library.seatsOf": "{used} sur {limit}",
+  "locker.files.showFull": "{label} {detail}, afficher la valeur complète",
+  "locker.methods.sso": "Authentification unique"
 }

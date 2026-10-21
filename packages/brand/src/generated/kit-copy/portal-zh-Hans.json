@@ -690,5 +690,9 @@
   "locker.jump.actions": "操作",
   "locker.jump.devices": "管理 {product} 的设备",
   "locker.jump.recent": "最近",
-  "locker.jump.count": "{count, plural, other {# 个产品}}"
+  "locker.jump.count": "{count, plural, other {# 个产品}}",
+  "locker.library.justAdded": "刚刚添加",
+  "locker.library.seatsOf": "{limit} 中的 {used}",
+  "locker.files.showFull": "{label} {detail}，显示完整值",
+  "locker.methods.sso": "单点登录"
 }

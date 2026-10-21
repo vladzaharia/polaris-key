@@ -1,3 +1,4 @@
+import { t } from "../../lib/copy.js";
 import * as React from "react";
 import { Info } from "lucide-react";
 import { cn } from "../../lib/cn.js";
@@ -175,7 +176,7 @@ export function LibraryTile({
                   cue.animate && "pk-pop-in",
                 )}
               >
-                Added just now
+                {t("locker.library.justAdded")}
               </span>
             </p>
           ) : null}

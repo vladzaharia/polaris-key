@@ -1,3 +1,4 @@
+import { t } from "../../../lib/copy.js";
 import * as React from "react";
 import { ArrowLeft } from "lucide-react";
 import type { LibraryProduct, QuickAction } from "../../model/library.js";
@@ -49,7 +50,7 @@ export function ProductHeader({
         className="mb-4 inline-flex items-center gap-2 rounded-sm text-sm text-fg-muted hover:text-fg-strong"
       >
         <ArrowLeft aria-hidden className="size-4" />
-        Library
+        {t("locker.library.title")}
       </a>
       {hasCover ? (
         <ProductArt

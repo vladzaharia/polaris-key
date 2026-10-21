@@ -705,7 +705,11 @@ export type PortalCopyKey =
   | "locker.jump.actions"
   | "locker.jump.devices"
   | "locker.jump.recent"
-  | "locker.jump.count";
+  | "locker.jump.count"
+  | "locker.library.justAdded"
+  | "locker.library.seatsOf"
+  | "locker.files.showFull"
+  | "locker.methods.sso";
 
 /** One locale's table. */
 export type PortalCopyTable = Readonly<Record<PortalCopyKey, string>>;

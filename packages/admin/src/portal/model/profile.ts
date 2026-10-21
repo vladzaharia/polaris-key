@@ -1,3 +1,4 @@
+import { t } from "../../lib/copy.js";
 import { formatDay } from "../date.js";
 import {
   PortalApiError,
@@ -35,7 +36,7 @@ export function providerName(kind: string | null | undefined): string | null {
     case "eos":
       return "Epic Online Services";
     case "oidc":
-      return "Single sign-on";
+      return t("locker.methods.sso");
     default:
       return null;
   }

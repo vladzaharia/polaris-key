@@ -142,7 +142,7 @@ function LibraryRow({
                     cue.animate && "pk-pop-in",
                   )}
                 >
-                  Added just now
+                  {t("locker.library.justAdded")}
                 </span>
                 {developer ? " · " : null}
               </>
@@ -178,7 +178,10 @@ function LibraryRow({
         {p.kind === "entry"
           ? "–"
           : p.seats
-            ? `${p.seats.inUse} of ${p.seats.limit}`
+            ? t("locker.library.seatsOf", {
+                used: p.seats.inUse,
+                limit: p.seats.limit,
+              })
             : p.deviceCount}
       </td>
       <td className="relative hidden px-2 py-3 text-right desk:table-cell">

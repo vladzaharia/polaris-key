@@ -690,5 +690,9 @@
   "locker.jump.actions": "작업",
   "locker.jump.devices": "{product} 기기 관리",
   "locker.jump.recent": "최근",
-  "locker.jump.count": "{count, plural, other {제품 #개}}"
+  "locker.jump.count": "{count, plural, other {제품 #개}}",
+  "locker.library.justAdded": "방금 추가됨",
+  "locker.library.seatsOf": "{limit} 중 {used}",
+  "locker.files.showFull": "{label} {detail}, 전체 값 보기",
+  "locker.methods.sso": "SSO"
 }

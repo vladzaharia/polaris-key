@@ -1,3 +1,4 @@
+import { t } from "../../lib/copy.js";
 import * as React from "react";
 import { cn } from "../../lib/cn.js";
 import { setMeter } from "../../ui/motion/index.js";
@@ -38,7 +39,7 @@ export function SeatMeter({
 
   if (!(limit > 0)) return null;
   const full = inUse >= limit;
-  const label = `${Math.min(inUse, limit)} of ${limit} ${limit === 1 ? "device" : "devices"} in use`;
+  const label = t("a11y.seatMeter", { used: Math.min(inUse, limit), limit });
   const color = full ? "bg-fg-strong" : "bg-accent";
   if (segmented) {
     return (

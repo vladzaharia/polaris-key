@@ -690,5 +690,9 @@
   "locker.jump.actions": "Actions",
   "locker.jump.devices": "Manage devices for {product}",
   "locker.jump.recent": "Recent",
-  "locker.jump.count": "{count, plural, one {# product} other {# products}}"
+  "locker.jump.count": "{count, plural, one {# product} other {# products}}",
+  "locker.library.justAdded": "Added just now",
+  "locker.library.seatsOf": "{used} of {limit}",
+  "locker.files.showFull": "{label} {detail}, show full value",
+  "locker.methods.sso": "Single sign-on"
 }

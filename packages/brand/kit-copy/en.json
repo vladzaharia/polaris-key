@@ -7465,6 +7465,26 @@
       "value": "{count, plural, one {# product} other {# products}}",
       "role": "a11y",
       "note": "Jump palette (P0-36)."
+    },
+    "locker.library.justAdded": {
+      "value": "Added just now",
+      "role": "label",
+      "note": "Library list, tiles and file details (P0-36)."
+    },
+    "locker.library.seatsOf": {
+      "value": "{used} of {limit}",
+      "role": "label",
+      "note": "Library list, tiles and file details (P0-36)."
+    },
+    "locker.files.showFull": {
+      "value": "{label} {detail}, show full value",
+      "role": "a11y",
+      "note": "Library list, tiles and file details (P0-36)."
+    },
+    "locker.methods.sso": {
+      "value": "Single sign-on",
+      "role": "label",
+      "note": "Library list, tiles and file details (P0-36)."
     }
   }
 }
