@@ -312,9 +312,12 @@ const LOCKER_PAGE_CSS_TAIL = [
   `[data-brand=locker] ul.choices a{display:inline-flex;align-items:center;min-height:2.75rem}`,
   `[data-brand=locker] details.replace summary{display:flex;align-items:center;min-height:2.75rem}`,
   `@media (max-width: 30rem){[data-brand=locker] body{padding:0 0 2rem}.ac-brand{height:3.5rem;align-items:center;margin:0;border-bottom:1px solid var(--rule)}main.ac{max-width:none;border-width:0 0 1px;border-radius:0;box-shadow:none;background:var(--page)}.ac-head,.ac-body,.ac-foot{padding-left:1.25rem;padding-right:1.25rem}.ac-body{padding-top:1.5rem;padding-bottom:1.5rem}}`,
-  // The hosted passport: at 960 px and wider in landscape the app sits beside the step, with art,
-  // its icon, developer and device each on their own line; narrower, the header strip is shown.
-  `@media (min-width: 60rem) and (orientation: landscape){main.ac-wide{max-width:46rem;display:grid;grid-template-columns:minmax(0,17.5rem) minmax(0,1fr)}main.ac-wide .ac-head{display:none}main.ac-wide .ac-passport{display:block;grid-column:1;grid-row:1;border-right:1px solid var(--rule);background:var(--sunken)}main.ac-wide .ac-body{grid-column:2;grid-row:1;align-content:start}main.ac-wide .ac-foot{grid-column:1 / -1;grid-row:2}.ac-art{height:8rem;background:linear-gradient(160deg,color-mix(in srgb,var(--mb) 45%,var(--raised)),var(--sunken))}.ac-pass-body{display:grid;gap:.75rem;padding:0 1.5rem 1.5rem}.ac-pass-body img,.ac-pass-body .ac-mono{width:72px;height:72px;margin-top:-2.25rem;border:3px solid var(--sunken);border-radius:16px;background:var(--raised)}.ac-pass-text{display:grid;gap:.25rem;overflow-wrap:anywhere}.ac-pass-text p{margin:0}.ac-pass-text .ac-head-title{font-size:1.25rem;line-height:1.75rem}}`,
+  // The hosted passport (SIGN-IN.md "the product passport"): at 960 px and wider with a width to
+  // height ratio of at least 1.2, the app sits in a neutral start pane beside the step: optional
+  // art (16:10, at most 40 % of the pane), its 56 px icon, name, developer and device, each on
+  // its own line. The trust receipt spans the form pane only. Narrower or taller: the strip.
+  `@media (min-width: 60rem) and (min-aspect-ratio: 6/5){main.ac-wide{max-width:46rem;display:grid;grid-template-columns:minmax(0,17.5rem) minmax(0,1fr);grid-template-rows:1fr auto}main.ac-wide .ac-head{display:none}main.ac-wide .ac-passport{display:flex;flex-direction:column;gap:1rem;grid-column:1;grid-row:1 / 3;min-width:0;padding:2rem 1.5rem;border-right:1px solid var(--rule);background:var(--sunken);color:var(--muted)}main.ac-wide .ac-body{grid-column:2;grid-row:1;align-content:start}main.ac-wide .ac-foot{grid-column:2;grid-row:2}.ac-art{display:block;width:100%;aspect-ratio:16/10;max-height:40%;object-fit:cover;border-radius:.5rem;background:var(--raised)}.ac-pass-text{display:grid;gap:.25rem;overflow-wrap:anywhere}.ac-pass-text p{margin:0}.ac-pass-text .ac-head-title{font-size:1.125rem;line-height:1.5rem;text-wrap:balance}main.ac-wide .ac-passport>img:not(.ac-art),main.ac-wide .ac-passport>.ac-mono{width:56px;height:56px;border-radius:14px}}`,
+  `@media (forced-colors: active){main.ac-wide .ac-passport{border-right-color:CanvasText;background:Canvas;color:CanvasText}}`,
   // The TV variant (`/tv`): read from a sofa, typed with a remote. Large type and targets, the
   // same card.
   `.tv main.ac{max-width:46rem}`,
@@ -404,6 +407,8 @@ export interface AppFacts {
   device?: string | null;
   /** What follows the name ("wants you to sign in"). */
   action?: string;
+  /** The product's art (Core Presentation header), an image-host URL; none: icon and text only. */
+  artUrl?: string | null;
 }
 
 export type AuthCardOptions = Omit<
@@ -494,7 +499,10 @@ function appLines(opts: {
 
 /** The passport pane: art, the app's icon, developer and device, each on its own line. */
 function passportPane(f: AppFacts): string {
-  return `<aside class="ac-passport"><div class="ac-art" aria-hidden="true"></div><div class="ac-pass-body">${appArt(f.name, f.iconUrl)}<div class="ac-pass-text">${appLines({ name: f.name, ...(f.action ? { action: f.action } : {}), ...(f.developer ? { sub: f.developer } : {}), device: f.device ?? null })}</div></div></aside>`;
+  const art = f.artUrl
+    ? `<img class="ac-art" src="${escapeHtml(f.artUrl)}" alt="">`
+    : "";
+  return `<aside class="ac-passport">${art}${appArt(f.name, f.iconUrl)}<div class="ac-pass-text">${appLines({ name: f.name, ...(f.action ? { action: f.action } : {}), ...(f.developer ? { sub: f.developer } : {}), device: f.device ?? null })}</div></aside>`;
 }
 
 let mark: string | null = null;

@@ -43,6 +43,7 @@ export function RequestHeader({
           </span>
         )
       }
+      art={m.verified ? (view.client.artUrl ?? null) : null}
       name={m.name}
       developer={m.developer}
       where={m.where}

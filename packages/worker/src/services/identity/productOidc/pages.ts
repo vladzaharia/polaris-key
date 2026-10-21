@@ -178,6 +178,7 @@ export async function renderDeviceConfirmation(
     passport: {
       name: product.name,
       iconUrl: shown.app.iconUrl,
+      artUrl: shown.app.artUrl ?? null,
       developer: app?.developer ?? null,
       device: deviceLabel,
       action: "wants you to sign in",

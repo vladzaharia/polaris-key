@@ -61,6 +61,7 @@ export async function clientRecordFor(
         ? developer
         : null,
     iconUrl: presentation.iconUrl,
+    ...(presentation.headerUrl ? { artUrl: presentation.headerUrl } : {}),
     origins: [...product.webOrigins],
     services: {
       license: product.services.license.enabled,

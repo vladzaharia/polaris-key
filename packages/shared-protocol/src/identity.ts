@@ -78,6 +78,11 @@ export interface ClientRecord {
   developerName: string | null;
   /** Same-origin `/media/<product>/icon`, or null. */
   iconUrl: string | null;
+  /**
+   * The product's art for the landscape passport (PX-33): same-origin `/media/<product>/header?v=…`.
+   * Absent when the product has none; never personalised, display data only.
+   */
+  artUrl?: string;
   /** The product's registered `web.origins`. */
   origins: string[];
   /** The services the person's sign-in reaches. */

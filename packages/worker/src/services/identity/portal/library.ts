@@ -185,10 +185,7 @@ async function presentationArt(
   if ((await hostedImageOrigin(env, db)) === null)
     return {
       iconUrl: await mediaUrlFor(product.slug, "icon", listing),
-      headerUrl:
-        surface === "client"
-          ? null
-          : await mediaUrlFor(product.slug, "header", listing),
+      headerUrl: await mediaUrlFor(product.slug, "header", listing),
     };
   const images = await hostedImages(env, db, product.slug, [
     ...PRESENTATION_ICON_SLOTS,
@@ -205,7 +202,10 @@ async function presentationArt(
       iconUrl: icon
         ? `/media/${encodeURIComponent(product.slug)}/icon?v=${icon.sha256.slice(0, 16)}`
         : await proxied("icon"),
-      headerUrl: null,
+      // The passport's art (PX-33), the same way: the header slot's same-origin media path.
+      headerUrl: header
+        ? `/media/${encodeURIComponent(product.slug)}/header?v=${header.sha256.slice(0, 16)}`
+        : await proxied("header"),
     };
   const widths = PRESENTATION_WIDTHS[surface];
   return {

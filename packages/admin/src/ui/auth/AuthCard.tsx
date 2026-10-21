@@ -113,11 +113,30 @@ export function AuthCard({
         {brand}
       </div>
       <main className="relative z-10 flex flex-1 flex-col items-center sm:px-4">
-        <div className="w-full overflow-hidden bg-surface-raised max-sm:flex-1 sm:mb-6 sm:max-w-[28.5rem] sm:rounded-[1.375rem] sm:border sm:border-border sm:shadow-elevation-3">
+        <div
+          data-passport={header ? "" : undefined}
+          className={cn(
+            "w-full overflow-hidden bg-surface-raised max-sm:flex-1 sm:mb-6 sm:max-w-[28.5rem] sm:rounded-[1.375rem] sm:border sm:border-border sm:shadow-elevation-3",
+            // The passport: the header becomes a 17.5 rem start pane beside the form pane.
+            header &&
+              "passport:grid passport:max-w-[46rem] passport:grid-cols-[17.5rem_minmax(0,1fr)] passport:grid-rows-[1fr_auto]",
+          )}
+        >
           {header ? (
-            <div className="border-b border-border">{header}</div>
+            <div
+              data-pane="passport"
+              className="border-b border-border passport:row-span-2 passport:border-b-0 passport:border-r passport:bg-surface-sunken"
+            >
+              {header}
+            </div>
           ) : null}
-          <div ref={bodyRef} className="overflow-hidden">
+          <div
+            ref={bodyRef}
+            className={cn(
+              "overflow-hidden",
+              header && "passport:col-start-2 passport:row-start-1",
+            )}
+          >
             <div
               key={stepKey}
               data-step={stepKey}
@@ -134,7 +153,12 @@ export function AuthCard({
             </div>
           </div>
           {footer ? (
-            <div className="border-t border-border px-5 py-4 text-sm text-fg-muted sm:px-7">
+            <div
+              className={cn(
+                "border-t border-border px-5 py-4 text-sm text-fg-muted sm:px-7",
+                header && "passport:col-start-2 passport:row-start-2",
+              )}
+            >
               {footer}
             </div>
           ) : null}
@@ -145,6 +169,27 @@ export function AuthCard({
       </main>
     </div>
   );
+}
+
+/** `@custom-variant passport` in styles.css, for the art the layout would otherwise hide. */
+export const PASSPORT_QUERY = "(min-width: 60rem) and (min-aspect-ratio: 6/5)";
+
+/** Whether the window is landscape enough for the passport (reactive; false without matchMedia). */
+export function usePassport(): boolean {
+  const [on, setOn] = React.useState(
+    () =>
+      typeof window !== "undefined" &&
+      window.matchMedia?.(PASSPORT_QUERY).matches === true,
+  );
+  React.useEffect(() => {
+    const mq = window.matchMedia?.(PASSPORT_QUERY);
+    if (!mq) return;
+    const sync = () => setOn(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+  return on;
 }
 
 function cssVar(name: string): string {
@@ -174,8 +219,10 @@ function motionMs(name: string): number {
 export type CardHeaderProps =
   | {
       variant: "context";
-      /** The product's icon, drawn by the host (48 px). */
+      /** The product's icon, drawn by the host (48 px in the strip, 56 px in the pane). */
       icon: React.ReactNode;
+      /** The product's art for the landscape pane (PX-33); drawn only there. */
+      art?: string | null;
       name: string;
       developer: string | null;
       /** The key on-ramp of an app's request keeps the device line (§3.1). */
@@ -185,6 +232,8 @@ export type CardHeaderProps =
       variant: "app" | "device";
       /** The app's icon (56 px), or null for the neutral frame. */
       icon: React.ReactNode;
+      /** The product's art for the landscape pane (PX-33); drawn only there. */
+      art?: string | null;
       name: string;
       developer: string | null;
       where: { glyph: "globe" | "device" | "tv"; text: string } | null;
@@ -194,15 +243,41 @@ export type CardHeaderProps =
 
 const WHERE_GLYPH = { globe: Globe, device: Monitor, tv: Tv } as const;
 
+/**
+ * The pane's art (SIGN-IN.md "the product passport"): a decorative 16:10 `<img>`, cover-fit, at
+ * most 40 % of the pane. Mounted only in the landscape layout, so a stacked card never fetches
+ * it. No art: nothing, and never a generated fill.
+ */
+function PaneArt({ src }: { src?: string | null }): React.ReactElement | null {
+  const on = usePassport();
+  if (!src || !on) return null;
+  return (
+    <img
+      data-pane-art
+      src={src}
+      alt=""
+      className="aspect-[16/10] max-h-[40%] w-full rounded-lg object-cover"
+    />
+  );
+}
+
+/** The header's shared pane layout: the strip's row becomes a column top-aligned with the h1. */
+const PANE = "passport:flex passport:flex-col passport:gap-4 passport:p-6";
+
 export function CardHeader(props: CardHeaderProps): React.ReactElement {
   if (props.variant === "context") {
-    const { variant, icon, name, developer, where } = props;
+    const { variant, icon, name, developer, where, art } = props;
     const WhereGlyph = where ? WHERE_GLYPH[where.glyph] : null;
     return (
       <div
-        data-variant={variant}
-        className="flex items-center gap-4 px-5 py-4 sm:px-7"
+        data-header={variant}
+        className={cn(
+          "flex items-center gap-4 px-5 py-4 sm:px-7",
+          PANE,
+          "passport:items-start passport:px-6 passport:py-8",
+        )}
       >
+        <PaneArt src={art} />
         {icon}
         <div className="min-w-0">
           <p className="text-fg-strong">
@@ -224,14 +299,18 @@ export function CardHeader(props: CardHeaderProps): React.ReactElement {
       </div>
     );
   }
-  const { variant, icon, name, developer, where, code } = props;
+  const { variant, icon, name, developer, where, code, art } = props;
   const Glyph = where ? WHERE_GLYPH[where.glyph] : null;
   return (
-    <div data-variant={variant} className="space-y-3 px-5 py-4 sm:px-7">
-      <div className="flex items-center gap-4">
+    <div
+      data-header={variant}
+      className="space-y-3 px-5 py-4 sm:px-7 passport:space-y-4 passport:px-6 passport:py-8"
+    >
+      <PaneArt src={art} />
+      <div className="flex items-center gap-4 passport:flex-col passport:items-start">
         {icon}
         <div className="min-w-0">
-          <p className="text-lg/6 text-fg-strong [overflow-wrap:anywhere]">
+          <p className="text-lg/6 text-fg-strong [overflow-wrap:anywhere] passport:text-balance">
             {tParts("signin.header.app", ["app"], {}).map((part, i) =>
               typeof part === "string" ? (
                 part
@@ -260,7 +339,7 @@ export function CardHeader(props: CardHeaderProps): React.ReactElement {
       {code ? (
         <p
           data-code-panel
-          className="rounded-md bg-surface-sunken px-4 py-3 text-sm text-fg-muted"
+          className="rounded-md bg-surface-sunken px-4 py-3 text-sm text-fg-muted passport:border passport:border-border passport:bg-surface-raised"
         >
           {tParts("signin.header.codePanel", ["code"], {}).map((part, i) =>
             typeof part === "string" ? (

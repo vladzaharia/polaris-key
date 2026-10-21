@@ -9,7 +9,11 @@ import { randomToken } from "../../../platform/random.js";
 import { parseFlowRecord } from "../../../platform/json.js";
 import type { Db } from "../../../db/types.js";
 import { type Product } from "../../../core/products.js";
-import { appHeader, note, renderBrandPage } from "../../../core/brandHtml.js";
+import {
+  note,
+  renderBrandPage,
+  type AppFacts,
+} from "../../../core/brandHtml.js";
 import { errorResponse, methodNotAllowed } from "../../../core/errors.js";
 import { clientNetwork } from "../../../core/rateLimit.js";
 import { appendAudit } from "../../../core/audit.js";
@@ -80,7 +84,7 @@ export function choicePage(
     title: string;
     heading: string;
     body: string;
-    header?: string;
+    passport?: AppFacts;
     variant?: "tv";
   },
   cookies: string[] = [],
@@ -445,13 +449,14 @@ export async function renderChooser(
       name: product.name,
     })),
   );
-  const header = appHeader({
+  const passport = {
     name: product.name,
     iconUrl: shown.app.iconUrl,
+    artUrl: shown.app.artUrl ?? null,
     action: "wants you to sign in",
-    ...(developer ? { sub: developer } : {}),
+    developer: developer ?? null,
     device: isDeviceCodeFlow(c.flow) ? c.deviceLabel : "this browser",
-  });
+  };
   const tvOpt = c.flow.tv ? { variant: "tv" as const } : {};
   const pending = c.flow.choiceReplace;
   if (pending) {
@@ -461,7 +466,7 @@ export async function renderChooser(
       return choicePage(
         200,
         {
-          header,
+          passport,
           title: `Replace ${device.label}?`,
           heading: `Replace ${device.label}?`, // signin.replace.title
           body: replaceConfirmBody({
@@ -489,7 +494,7 @@ export async function renderChooser(
   return choicePage(
     200,
     {
-      header,
+      passport,
       ...tvOpt,
       title: isReplaceGroup(view)
         ? "Replace a device"

@@ -26,6 +26,7 @@ import {
   AuthCard,
   AuthTitle as Title,
   CardHeader,
+  usePassport,
   CodeEntry,
   type CodeResendOutcome,
   type CodeVerifyOutcome,
@@ -268,6 +269,7 @@ export function SignInPage({
       : null;
 
   const ctx = caps.data?.product;
+  const passport = usePassport();
   // The key on-ramp works without an account: it keeps the product header, not "wants you to sign
   // in" (§3.1). Every other step of an app's request keeps the request's header and footer.
   const onRamp = step.kind === "key" || step.kind === "upgrade";
@@ -282,10 +284,11 @@ export function SignInPage({
           slug={ctx.slug}
           name={ctx.name}
           tint={null}
-          size={48}
+          size={passport ? 56 : 48}
           neutral
         />
       }
+      art={ctx.artUrl ?? null}
       name={ctx.name}
       developer={ctx.developerName ?? null}
       where={

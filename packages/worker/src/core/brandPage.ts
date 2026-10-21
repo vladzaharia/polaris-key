@@ -14,6 +14,12 @@ import {
   cspImageOrigin,
   brandedHtmlSecurityHeaders,
 } from "./securityHeaders.js";
+import {
+  PRESENTATION_HEADER_SLOTS,
+  firstHostedImage,
+  hostedImageUrl,
+  hostedImages,
+} from "./assets/hostedImages.js";
 import { resolvePresentation } from "./presentation.js";
 import type { ProductPublic } from "./products.js";
 import type { ServiceHooks } from "./hooks.js";
@@ -22,19 +28,36 @@ import type { ServiceHooks } from "./hooks.js";
  * An app's icon as a page may draw it: the icon's origin when the policy can allow it
  * (`cspImageOrigin`), else the app without its icon. Whatever the policy would block is not drawn.
  */
-export function pageApp(app: { name: string; iconUrl?: string | null }): {
-  app: { name: string; iconUrl?: string | null };
+export function pageApp(app: {
+  name: string;
+  iconUrl?: string | null;
+  artUrl?: string | null;
+}): {
+  app: { name: string; iconUrl?: string | null; artUrl?: string | null };
   imgOrigin: string | null;
 } {
-  if (app.iconUrl) {
+  // One image origin per page (SIGN-IN.md §3.13): the icon's, else the art's; the other is
+  // dropped when it is somewhere the policy does not allow.
+  const originOf = (url: string | null | undefined): string | null => {
+    if (!url) return null;
     try {
-      const imgOrigin = cspImageOrigin(new URL(app.iconUrl).origin);
-      if (imgOrigin !== null) return { app, imgOrigin };
+      return cspImageOrigin(new URL(url).origin);
     } catch {
-      /* fall through */
+      return null;
     }
-  }
-  return { app: { name: app.name }, imgOrigin: null };
+  };
+  const iconOrigin = originOf(app.iconUrl);
+  const artOrigin = originOf(app.artUrl);
+  const imgOrigin = iconOrigin ?? artOrigin;
+  if (imgOrigin === null) return { app: { name: app.name }, imgOrigin: null };
+  return {
+    app: {
+      name: app.name,
+      ...(iconOrigin === imgOrigin ? { iconUrl: app.iconUrl } : {}),
+      ...(artOrigin === imgOrigin ? { artUrl: app.artUrl } : {}),
+    },
+    imgOrigin,
+  };
 }
 
 /** A branded page. `body` is TRUSTED markup: every value in it already escaped. */
@@ -98,7 +121,7 @@ export async function appForPage(ctx: {
   env: Env;
   db: Db;
   hooks?: Pick<ServiceHooks, "delivery">;
-}): Promise<{ name: string; iconUrl: string | null }> {
+}): Promise<{ name: string; iconUrl: string | null; artUrl: string | null }> {
   const p = await resolvePresentation({
     product: ctx.product,
     env: ctx.env,
@@ -115,5 +138,18 @@ export async function appForPage(ctx: {
         ? icon.url.replace("{w}", String(pick.w))
         : icon.original;
   }
-  return { name: p?.name ?? ctx.product.name, iconUrl };
+  // The passport's art: the product's hosted header (16:10 at 280 px, drawn at 2x), if any.
+  const header = firstHostedImage(
+    await hostedImages(
+      ctx.env,
+      ctx.db,
+      ctx.product.slug,
+      PRESENTATION_HEADER_SLOTS,
+    ).catch(() => new Map()),
+    PRESENTATION_HEADER_SLOTS,
+  );
+  const artUrl = header
+    ? hostedImageUrl(ctx.env, ctx.product.slug, header, 640)
+    : null;
+  return { name: p?.name ?? ctx.product.name, iconUrl, artUrl };
 }

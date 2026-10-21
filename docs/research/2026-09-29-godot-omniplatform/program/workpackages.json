@@ -17271,7 +17271,7 @@
         "section change portal-22"
       ],
       "brief": "wp/PX-33-signin-product-cover.md",
-      "status": "todo",
+      "status": "in-review",
       "deferred": "parked 2026-10-09: only if the owner asks for the app-context cover beside the sign-in card (B12)."
     },
     {
