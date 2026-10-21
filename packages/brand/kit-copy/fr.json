@@ -97,6 +97,8 @@
     "boot.consent.download": "Télécharger",
     "boot.error.body": "{product} n’a pas pu terminer son démarrage ({code}).",
     "welcome.title": "Bienvenue dans {product}",
+    "common.welcomeNoProductTitle": "Bienvenue",
+    "common.signInToContinue": "Connectez-vous pour continuer.",
     "welcome.lede": "Connectez-vous ou utilisez une clé de licence pour continuer.",
     "welcome.ledeKeyOnly": "Saisissez une clé de licence pour continuer.",
     "welcome.ledeSignInOnly": "Connectez-vous pour utiliser {product}.",

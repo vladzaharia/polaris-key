@@ -23,8 +23,9 @@ import {
   viewOf,
   ViewModel,
   type Platform,
+  type UiInput,
 } from "../src/index.js";
-import { readMatrix } from "./matrix.js";
+import { readMatrix, withDefaults } from "./matrix.js";
 
 const MAC: Platform = { os: "macos", formFactor: "mac" };
 const PHONE: Platform = { os: "ios", formFactor: "iphone" };
@@ -438,5 +439,36 @@ describe("ViewModel: a component's view as a live value", () => {
     });
     expect(v.isolate).toEqual(["developer", "product"]);
     expect(v.args.product).toBe("‮Tidewater");
+  });
+
+  it("titles a Welcome with no product name 'Welcome', never 'Welcome to' and nothing", () => {
+    const defaults = readMatrix().vocabulary.defaults;
+    const nameless = {
+      ...withDefaults({}, defaults),
+      presentation: undefined,
+      bundle: undefined,
+      integrator: undefined,
+    } as UiInput;
+    for (const input of [
+      nameless,
+      { ...nameless, pending: "sign-in" } as UiInput,
+      {
+        ...nameless,
+        capabilities: { ...nameless.capabilities, signIn: false },
+      },
+    ]) {
+      const v = viewOf("Welcome", input);
+      expect(v.copy).toContain("common.welcomeNoProductTitle");
+      expect(v.copy).not.toContain("welcome.title");
+    }
+    const signInOnly = viewOf("Welcome", {
+      ...nameless,
+      capabilities: { ...nameless.capabilities, keyEntry: false },
+    });
+    expect(signInOnly.copy).toContain("common.signInToContinue");
+    expect(signInOnly.copy).not.toContain("welcome.ledeSignInOnly");
+    // A named product keeps the usual title.
+    const named = viewOf("Welcome", withDefaults({}, defaults));
+    expect(named.copy).toContain("welcome.title");
   });
 });

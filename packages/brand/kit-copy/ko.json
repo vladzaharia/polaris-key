@@ -97,6 +97,8 @@
     "boot.consent.download": "다운로드",
     "boot.error.body": "{product} 시작을 완료하지 못했어요({code}).",
     "welcome.title": "{product}에 오신 것을 환영해요",
+    "common.welcomeNoProductTitle": "환영해요",
+    "common.signInToContinue": "계속하려면 로그인하세요.",
     "welcome.lede": "계속하려면 로그인하거나 라이선스 키를 사용하세요.",
     "welcome.ledeKeyOnly": "계속하려면 라이선스 키를 입력하세요.",
     "welcome.ledeSignInOnly": "{product}을(를) 사용하려면 로그인하세요.",
