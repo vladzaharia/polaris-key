@@ -169,6 +169,13 @@ async function brandMarks() {
   return {
     keyDark: plain(m.markSvg({ size: 28, theme: "dark" })),
     keyLight: plain(m.markSvg({ size: 28, theme: "light" })),
+    // The trimmed horizontal Key lockup, 48 px tall (BRAND.md §1.4): the kit's .brand block draws it.
+    lockupDark: plain(
+      m.lockupSvg({ layout: "horizontal", theme: "dark", trim: true, height: 48, title: "" }),
+    ).replace(/ width="[\d.]+" height="[\d.]+"/, ""),
+    lockupLight: plain(
+      m.lockupSvg({ layout: "horizontal", theme: "light", trim: true, height: 48, title: "" }),
+    ).replace(/ width="[\d.]+" height="[\d.]+"/, ""),
     keyMono: plain(m.markSvg({ size: 28, theme: "mono" })).replaceAll("currentColor", "black"),
     starCut: plain(m.markSvg({ kind: "update", size: 16, theme: "mono" })).replaceAll(
       "currentColor",
@@ -201,6 +208,17 @@ async function iconsBlock() {
     `/* ${LUCIDE_ICONS.length} lucide icons, ${Object.keys(FILLED).length} platform and store marks, the Star Cut and the Pinned K. */`,
   );
   return lines.join("\n");
+}
+
+/** The trimmed Key lockup per theme, for the kit's .brand block (its own block: no icon set needed). */
+async function lockupsBlock() {
+  const marks = await brandMarks();
+  return [
+    ":root {",
+    `  --pk-lockup-dark: url("${dataUri(marks.lockupDark)}");`,
+    `  --pk-lockup-light: url("${dataUri(marks.lockupLight)}");`,
+    "}",
+  ].join("\n");
 }
 
 // ── Tokens ────────────────────────────────────────────────────────────────────────────────
@@ -252,9 +270,15 @@ function splice(css, name, body) {
 }
 
 const before = readFileSync(KIT, "utf8");
-let after = splice(before, "tokens", tokensBlock());
-after = splice(after, "fonts", fontsBlock());
-after = splice(after, "icons", await iconsBlock());
+// `--only <block>` rewrites one block (the icon set needs the lucide-react the generator was
+// written for, 0.x; `--only lockups` runs without it).
+const only = process.argv.includes("--only") ? process.argv[process.argv.indexOf("--only") + 1] : null;
+const want = (name) => only === null || only === name;
+let after = before;
+if (want("tokens")) after = splice(after, "tokens", tokensBlock());
+if (want("fonts")) after = splice(after, "fonts", fontsBlock());
+if (want("icons")) after = splice(after, "icons", await iconsBlock());
+if (want("lockups")) after = splice(after, "lockups", await lockupsBlock());
 if (check) {
   if (after !== before) {
     console.error("mockup.css is stale: run node tools/mockups/build-kit.mjs");

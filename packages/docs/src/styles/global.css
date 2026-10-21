@@ -202,26 +202,36 @@ h6,
   border-bottom-color: var(--pk-border-subtle);
 }
 
-/* The default SiteTitle's own (scoped) rules do not reach this override, so they are restated. */
+/* The brand is an outlined lockup (SiteTitle.astro), never live text: a 4 rem header carries the
+   Key lockup's 48 px glyph with 8 px of clear space. Under 26 rem there is no room for a 180 px
+   lockup, so the mark stands alone (Locker guide p.7). */
+:root {
+  --sl-nav-height: 4rem;
+}
+
 .pk-site-title {
   align-items: center;
   min-width: 0;
-  white-space: nowrap;
-  text-decoration: none;
-  gap: var(--pk-space-3);
   color: var(--pk-text-strong);
-  font-size: var(--pk-font-size-xl);
-  letter-spacing: var(--pk-tracking-tight);
+  text-decoration: none;
 }
 
-.pk-site-title span {
-  overflow: hidden;
+.pk-site-title svg {
+  display: block;
+  max-width: 100%;
 }
 
-.pk-site-title img.pk-site-mark {
-  width: 32px;
-  height: 32px;
-  flex: none;
+.pk-site-title .pk-lockup-mark {
+  display: none;
+}
+
+@media (max-width: 26rem) {
+  .pk-site-title .pk-lockup {
+    display: none;
+  }
+  .pk-site-title .pk-lockup-mark {
+    display: block;
+  }
 }
 
 /* ---- Sidebar --------------------------------------------------------------------------------- */

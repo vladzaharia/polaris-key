@@ -9,7 +9,7 @@ import { r } from "../routes.js";
 
 /**
  * The top bar's brand block (ADMIN.md §2.2, components.md §1.2): the trimmed horizontal Polaris Key
- * lockup (BRAND.md §1.4, UK-57) from 640 px up, carrying the section bit on its mark, and the Pinned
+ * lockup (BRAND.md §1.4, UK-57) from 832 px up, carrying the section bit on its mark, and the Pinned
  * K alone below that, so the product switcher keeps its room on tablets and phones (Key guide p.2:
  * the mark stays at 48 px; the bar never shrinks it to fit a wordmark). The name is drawn by the
  * lockup, never set as live text (BRAND.md Don'ts), and the link names it. It is the link to Home.
@@ -49,9 +49,14 @@ export function BrandBlock({
         trim
         bit={sectionBitFor(section)}
         title=""
-        className="hidden sm:block"
+        className="hidden min-[52rem]:block"
       />
-      <LogoMark size={48} section={section} title="" className="sm:hidden" />
+      <LogoMark
+        size={48}
+        section={section}
+        title=""
+        className="min-[52rem]:hidden"
+      />
     </Link>
   );
 }

@@ -98,15 +98,14 @@ describe("docs theme", () => {
 describe("docs marks", () => {
   const brandKit = join(repoRoot, "packages", "brand", "kit");
 
-  it("the header mark is the kit's bit-less service cut, one file per ground", () => {
+  it("the header brand is the trimmed outlined lockup from the brand package, one per ground, never live text", () => {
     const title = read(docsRoot, "src", "components", "SiteTitle.astro");
-    expect(title).toContain(
-      "@polaris-key/brand/marks/key/svg/key-service-dark.svg?url",
-    );
-    expect(title).toContain(
-      "@polaris-key/brand/marks/key/svg/key-service-light.svg?url",
-    );
-    expect(title).not.toMatch(/-signed-/);
+    expect(title).toContain('from "@polaris-key/brand/svg"');
+    expect(title).toContain("lockupSvg(");
+    expect(title).toContain("trim: true");
+    // No terminal bit on the default Key lockup (BRAND.md §6), and the name is not text.
+    expect(title).not.toMatch(/signed|bit:/);
+    expect(title).not.toMatch(/>\s*\{?\s*siteTitle/);
   });
 
   it("the favicons and hero marks copied into public/ carry no terminal bit", () => {
