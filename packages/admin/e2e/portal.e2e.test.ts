@@ -1270,7 +1270,7 @@ describe("main flows", () => {
 
   it("signs in with an email code: the six-cell code step", async () => {
     const o = await open("signedOut", "/", { width: 390, height: 844 });
-    await h1(o.page, "Sign in to Polaris Key");
+    await h1(o.page, "Sign in to Polaris Locker");
     await o.page
       .getByRole("textbox", { name: "Email" })
       .fill("mara@fennick.studio");
