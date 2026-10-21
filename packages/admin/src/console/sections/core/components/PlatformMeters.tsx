@@ -24,7 +24,7 @@ export function PlatformMeters({
           <p className="flex flex-wrap items-baseline justify-between gap-x-2 text-sm">
             <span className="font-medium text-fg-strong">{p.label}</span>
             <span className="ml-auto whitespace-nowrap text-right text-fg-muted">
-              {p.verified} of {p.total} Verified
+              {p.verified} of {p.total} verified
             </span>
           </p>
           <div aria-hidden className="flex gap-0.5">

@@ -170,6 +170,13 @@ describe("Keys & secrets → Secrets", () => {
     expect(screen.getByText("Configured")).toBeTruthy();
     expect(screen.getByText("Missing")).toBeTruthy();
     expect(screen.getByText("OIDC sign-in")).toBeTruthy();
+    // B-060: one plain sentence, configured or not.
+    const needed = screen.getAllByText(/^Needed by/).map((e) => e.textContent);
+    expect(needed).toEqual([
+      "Needed by Edge mint studio.",
+      "Needed by OIDC sign-in.",
+    ]);
+    expect(screen.queryByText(/Without it|won’t work|Required by/)).toBeNull();
   });
 
   it("a required row's Set… preselects its name (SEC-4)", async () => {

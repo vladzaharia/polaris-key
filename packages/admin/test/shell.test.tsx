@@ -474,7 +474,7 @@ describe("collapsible section headers (owner, 2026-10-03)", () => {
     // moments (MO-11). The sidebar is what this test watches.
     await screen.findByText("0 keys");
     await screen.findByText("No releases");
-    await screen.findByText(/of 1 feature Verified/);
+    await screen.findByText(/of 1 feature verified/);
     const before = { ...window.localStorage };
     const setItem = vi.spyOn(Storage.prototype, "setItem");
     await expand("Managed config");
