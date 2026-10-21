@@ -118,6 +118,23 @@
   --sl-color-bg-accent: var(--pk-accent);
 }
 
+/* Help (polaris.locker): the brand's Locker scope (tokens.css, [data-brand="locker"]) sets the
+   --pk-* tokens; Starlight's accent variables are declared again here, where they resolve against
+   them. The selected nav fill, the active "On this page" link, links, the search focus ring and
+   the selection are neutral ink; the 3 px marker and the link underline stay coral. */
+[data-brand="locker"] {
+  --sl-color-accent-low: var(--pk-accent-subtle);
+  --sl-color-accent: var(--pk-text-strong);
+  --sl-color-accent-high: var(--pk-accent-fg);
+  --sl-color-text-accent: var(--pk-accent-fg);
+  --sl-color-bg-accent: var(--pk-text-strong);
+}
+
+[data-brand="locker"] .sl-markdown-content a:not(.not-content, .not-content *) {
+  text-decoration-color: var(--pk-locker-accent);
+  text-decoration-thickness: 2px;
+}
+
 .pk-section {
   display: contents;
 }

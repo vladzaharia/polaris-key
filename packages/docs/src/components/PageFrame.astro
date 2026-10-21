@@ -13,7 +13,14 @@ const section = sectionFor(Astro.locals.starlightRoute.id);
 const kind = Astro.locals.starlightRoute.id.split("/")[0];
 ---
 
-<div class="pk-section" data-service={section.slug} data-kind={kind}>
+<!-- Help is Polaris Locker's: the brand's Locker scope makes selection, links and focus neutral ink
+     and keeps coral for identity (BRAND.md §15, D9a). Developer pages keep the Key's. -->
+<div
+  class="pk-section"
+  data-service={section.slug}
+  data-kind={kind}
+  data-brand={kind === "help" ? "locker" : undefined}
+>
   <Default>
     <slot name="header" slot="header" />
     <slot name="sidebar" slot="sidebar" />
