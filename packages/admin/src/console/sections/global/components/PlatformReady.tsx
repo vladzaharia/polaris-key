@@ -24,7 +24,7 @@ const TARGETS: Record<string, (store?: string) => string> = {
 function Dismiss({ onDismiss }: { onDismiss: () => void }): React.ReactElement {
   return (
     <IconButton
-      label="Hide setup guide"
+      label="Hide Platform ready"
       icon={<X />}
       size="xs"
       data-dismiss-guide=""
@@ -118,34 +118,36 @@ export function PlatformReady({
       aria-labelledby={titleId}
       data-platform-ready=""
       className={cn(
-        "rounded-xl border border-border bg-surface-raised light:shadow-elevation-1",
+        "@container rounded-xl border border-border bg-surface-raised light:shadow-elevation-1",
         className,
       )}
     >
       <div
         data-card-header=""
-        className="space-y-2 border-b border-border px-5 py-3"
+        className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border px-5 py-3"
       >
-        <div className="flex items-start justify-between gap-2">
-          <h2
-            id={titleId}
-            tabIndex={-1}
-            className="text-lg font-semibold leading-6 text-fg-strong outline-hidden"
-          >
-            Platform ready
-          </h2>
-          {onDismiss ? <Dismiss onDismiss={onDismiss} /> : null}
-        </div>
-        {/* The meter runs the card's full width under the title. */}
-        <div className="space-y-1">
-          <span className="block text-sm tabular-nums text-fg-muted">
+        <h2
+          id={titleId}
+          tabIndex={-1}
+          className="order-1 text-lg font-semibold leading-6 text-fg-strong outline-hidden"
+        >
+          Platform ready
+        </h2>
+        {onDismiss ? (
+          <span className="order-2 ml-auto @[36rem]:order-3">
+            <Dismiss onDismiss={onDismiss} />
+          </span>
+        ) : null}
+        {/* The meter sits on the head line once the card is wide; narrow, it runs under the title. */}
+        <div className="order-3 flex min-w-0 basis-full flex-wrap items-center gap-x-3 gap-y-1 @[36rem]:order-2 @[36rem]:basis-0 @[36rem]:flex-1 @[36rem]:flex-nowrap">
+          <span className="shrink-0 text-sm tabular-nums text-fg-muted">
             {ready.done} of {ready.total} done
           </span>
           <progress
             value={ready.done}
             max={ready.total}
             aria-label="Platform ready progress"
-            className="block h-1.5 w-full appearance-none overflow-hidden rounded-full [&::-moz-progress-bar]:bg-success [&::-webkit-progress-bar]:bg-surface-sunken [&::-webkit-progress-value]:bg-success"
+            className="block h-1.5 min-w-[min(8rem,100%)] flex-1 appearance-none overflow-hidden rounded-full [&::-moz-progress-bar]:bg-success [&::-webkit-progress-bar]:bg-surface-sunken [&::-webkit-progress-value]:bg-success"
           />
         </div>
       </div>
@@ -201,8 +203,8 @@ function Task({ row }: { row: PlatformReadyRow }): React.ReactElement {
     ? TARGETS[row.action.to]?.(row.action.store)
     : undefined;
   return (
-    <li className="grid grid-cols-[1.75rem_minmax(0,1fr)] gap-x-3 px-5 py-3">
-      <span aria-hidden className="mt-0.5 grid size-7 place-items-center">
+    <li className="grid grid-cols-[1.75rem_minmax(0,1fr)] items-center gap-x-3 gap-y-2 px-5 py-3 @[36rem]:grid-cols-[1.75rem_minmax(0,1fr)_auto]">
+      <span aria-hidden className="grid size-7 place-items-center self-start">
         <span className="size-5 rounded-full border-2 border-border-strong" />
       </span>
       <div className="min-w-0 space-y-1">
@@ -213,17 +215,17 @@ function Task({ row }: { row: PlatformReadyRow }): React.ReactElement {
         {row.detail ? (
           <p className="text-sm text-fg-muted">{row.detail}</p>
         ) : null}
-        {row.action && to ? (
-          <Button
-            variant="outline"
-            size="sm"
-            asChild
-            className="mt-1 h-auto min-h-8 max-w-full whitespace-normal text-left"
-          >
-            <Link to={to}>{row.action.label}</Link>
-          </Button>
-        ) : null}
       </div>
+      {row.action && to ? (
+        <Button
+          variant="outline"
+          size="sm"
+          asChild
+          className="col-start-2 h-auto min-h-8 max-w-full justify-self-start whitespace-normal text-left @[36rem]:col-start-3 @[36rem]:row-start-1 @[36rem]:justify-self-end"
+        >
+          <Link to={to}>{row.action.label}</Link>
+        </Button>
+      ) : null}
     </li>
   );
 }

@@ -41,7 +41,7 @@ import {
   worstTone,
   type HomeRow,
 } from "../model/home.js";
-import { ProductCard } from "./ProductCard.js";
+import { ProductCard, WRAPPING_PILL } from "./ProductCard.js";
 
 type View = "cards" | "table";
 
@@ -261,7 +261,11 @@ const COLUMNS: DataColumn<HomeRow>[] = [
     },
     cell: ({ row }) =>
       row.original.attention.length > 0 ? (
-        <StatusPill tone={worstTone(row.original.attention)} size="sm">
+        <StatusPill
+          tone={worstTone(row.original.attention)}
+          size="sm"
+          className={WRAPPING_PILL}
+        >
           {pillLabel(row.original.attention)}
         </StatusPill>
       ) : (
@@ -336,6 +340,46 @@ export function ProductShelf({
     },
   ];
 
+  const filters = many ? (
+    <div
+      role="search"
+      aria-label="Product filters"
+      className="flex min-w-0 flex-1 flex-wrap items-center gap-2"
+    >
+      <SearchField
+        value={state.q}
+        onChange={(q) => setState({ ...state, q, offset: 0 })}
+      />
+      {CHIPS.filter((c) => c.id !== "attention" || attentionKnown).map((c) => {
+        const on = (state.filters[c.id] ?? []).includes("yes");
+        return (
+          <FilterChip
+            key={c.id}
+            label={c.label}
+            on={on}
+            onToggle={() =>
+              setState({
+                ...state,
+                offset: 0,
+                filters: { ...state.filters, [c.id]: on ? [] : ["yes"] },
+              })
+            }
+          />
+        );
+      })}
+      {filtering && filtered.length > 0 ? (
+        <Button
+          variant="link"
+          size="sm"
+          className="min-h-6"
+          onClick={() => setState({ ...state, q: "", filters: {}, offset: 0 })}
+        >
+          Clear filters
+        </Button>
+      ) : null}
+    </div>
+  ) : null;
+
   return (
     <section ref={sectionRef} aria-labelledby={headingId} className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
@@ -358,7 +402,7 @@ export function ProductShelf({
           ) : null}
         </div>
         {many ? (
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2">
             <SegmentedControl
               size="sm"
               aria-label="View"
@@ -387,49 +431,7 @@ export function ProductShelf({
           </div>
         ) : null}
       </div>
-      {many ? (
-        <div
-          role="search"
-          aria-label="Product filters"
-          className="flex flex-wrap items-center gap-2"
-        >
-          <SearchField
-            value={state.q}
-            onChange={(q) => setState({ ...state, q, offset: 0 })}
-          />
-          {CHIPS.filter((c) => c.id !== "attention" || attentionKnown).map(
-            (c) => {
-              const on = (state.filters[c.id] ?? []).includes("yes");
-              return (
-                <FilterChip
-                  key={c.id}
-                  label={c.label}
-                  on={on}
-                  onToggle={() =>
-                    setState({
-                      ...state,
-                      offset: 0,
-                      filters: { ...state.filters, [c.id]: on ? [] : ["yes"] },
-                    })
-                  }
-                />
-              );
-            },
-          )}
-          {filtering && filtered.length > 0 ? (
-            <Button
-              variant="link"
-              size="sm"
-              className="min-h-6"
-              onClick={() =>
-                setState({ ...state, q: "", filters: {}, offset: 0 })
-              }
-            >
-              Clear filters
-            </Button>
-          ) : null}
-        </div>
-      ) : null}
+      {many && view === "cards" ? filters : null}
       {loading ? (
         <ul
           aria-label="Products"
@@ -481,6 +483,7 @@ export function ProductShelf({
           onStateChange={setState}
           loading={false}
           exportCsv={false}
+          toolbarLead={filters}
           mobile="cards"
         />
       )}

@@ -40,6 +40,11 @@ export interface FilterBarProps {
   className?: string;
   /** Below `sm` the search field takes a row of its own, full width (Home). */
   stackSearch?: boolean;
+  /**
+   * The page's own filters, drawn first on the bar's row, so a page that filters above its table
+   * keeps one band (Home's Table view) instead of stacking a second toolbar.
+   */
+  lead?: React.ReactNode;
 }
 
 /** A debounced text value that follows outside changes (Back restoring `?q=`). */
@@ -218,6 +223,7 @@ export function FilterBar({
   actions,
   className,
   stackSearch,
+  lead,
 }: FilterBarProps): React.ReactElement {
   const [q, setQ] = useDebouncedField(
     search?.value ?? "",
@@ -237,6 +243,7 @@ export function FilterBar({
   return (
     <div className={cn("space-y-2", className)}>
       <div className="flex flex-wrap items-center gap-2">
+        {lead}
         {search ? (
           <label
             className={cn(

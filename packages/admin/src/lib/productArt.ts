@@ -32,3 +32,43 @@ export function iconShape(img: HTMLImageElement): IconShape {
     return "shaped";
   }
 }
+
+/**
+ * The band behind a console product card that has no header art and no accent of its own: one of
+ * eight muted tints, picked from the slug so a product keeps its colour everywhere and a row of
+ * cards is never grey. Dark tints carry white text at 4.5:1 or better, light tints carry near-black
+ * text the same way (`productArt.test.ts` holds both).
+ */
+export const FALLBACK_TINTS = {
+  dark: [
+    "#4a4486",
+    "#2f5d8a",
+    "#1f6b6b",
+    "#3f6b3f",
+    "#80602a",
+    "#8a4a4a",
+    "#7a3f6e",
+    "#4e5a6e",
+  ],
+  light: [
+    "#dcd8f5",
+    "#d3e4f5",
+    "#cfeaea",
+    "#d9ecd2",
+    "#f1e4c4",
+    "#f3d6d6",
+    "#efd5e8",
+    "#dde2ea",
+  ],
+} as const;
+
+/** The same slug always lands on the same tint (FNV-1a over its code units). */
+export function fallbackTint(slug: string, theme: "dark" | "light"): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < slug.length; i++) {
+    h ^= slug.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  const list = FALLBACK_TINTS[theme];
+  return list[h % list.length]!;
+}

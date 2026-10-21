@@ -395,6 +395,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     noResults: noResultsOverride,
     mobile = "scroll",
     toolbarActions,
+    toolbarLead,
     chrome = "auto",
     className,
   } = props;
@@ -1073,6 +1074,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
       </Presence>
     ) : (
       <FilterBar
+        lead={toolbarLead}
         search={
           search
             ? {
@@ -1651,6 +1653,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     Boolean(search) ||
     facets.length > 0 ||
     Boolean(toolbarActions) ||
+    Boolean(toolbarLead) ||
     csvEnabled ||
     showViewControls;
 
