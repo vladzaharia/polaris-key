@@ -69,6 +69,15 @@ Motion can follow the operating system or use an explicit **Reduced** preference
 sets `data-motion="reduce"` and collapses the brand and console motion durations to instant swaps.
 The preference is shared with the customer portal on the same origin.
 
+### 2.4 The shell canvas
+
+From 1024 px the main region is a `surface-raised` canvas (radius `xl`, `border-subtle`, inset
+`space-4` from the top bar and window edge) carrying a 3 px section rule on its top edge; below
+1024 px it is edge to edge with no radius. The page background is `surface-page`, content is at
+most 1760 px wide (centred; the canvas itself fills the window), page gutters are `space-6`, card
+radius `lg` and control radius `md`. No gradient, glow or wash on the canvas. BRAND §7.6 holds the
+density and table rules.
+
 ### 2.8 Route ledger
 
 `packages/admin/src/console/routeLedger.ts` (`ROUTE_LEDGER`) is the one map from every 0.9 page
