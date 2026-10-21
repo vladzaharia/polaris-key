@@ -83,10 +83,34 @@ final class RedirectEndToEndTests: XCTestCase {
     final class Redirecting: URLProtocol, @unchecked Sendable {
         nonisolated(unsafe) static var seen: [URLRequest] = []
         nonisolated(unsafe) static var location: (URL) -> URL? = { _ in nil }
+        /// How many loads have started. The session follows a redirect by starting a load for the
+        /// new request, so a count that grew past this load's own means the redirect was taken.
+        private static let counter = NSLock()
+        private nonisolated(unsafe) static var starts = 0
+        private static func started() -> Int {
+            counter.lock()
+            defer { counter.unlock() }
+            starts += 1
+            return starts
+        }
+        private static var startedSoFar: Int {
+            counter.lock()
+            defer { counter.unlock() }
+            return starts
+        }
+        /// Set by `stopLoading`: a delegate that fails the task stops the protocol.
+        private let stopped = NSLock()
+        private nonisolated(unsafe) var didStop = false
+        private var isStopped: Bool {
+            stopped.lock()
+            defer { stopped.unlock() }
+            return didStop
+        }
         override class func canInit(with request: URLRequest) -> Bool { true }
         override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
         override func startLoading() {
             Self.seen.append(request)
+            let mine = Self.started()
             let url = request.url!
             if let to = Self.location(url) {
                 let response = HTTPURLResponse(
@@ -95,10 +119,23 @@ final class RedirectEndToEndTests: XCTestCase {
                 next.httpMethod = request.httpMethod
                 next.allHTTPHeaderFields = request.allHTTPHeaderFields
                 client?.urlProtocol(self, wasRedirectedTo: next, redirectResponse: response)
-                // Like the HTTP protocol: when the delegate declines the redirect, the 3xx
-                // response itself is what the task completes with.
-                client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-                client?.urlProtocolDidFinishLoading(self)
+                // Like the HTTP protocol: the 3xx response is delivered only when the delegate
+                // declined the redirect. The verdict arrives on the session's own queue, so a
+                // protocol that answered at once raced it and sometimes completed with the 302.
+                // A taken redirect starts a load for the new request; a failed task stops this
+                // one. Poll for either from this thread's run loop (blocking the thread would
+                // hold back the very callback being waited for), then deliver.
+                let deadline = Date().addingTimeInterval(1)
+                let timer = Timer(timeInterval: 0.005, repeats: true) { [weak self] timer in
+                    guard let self else { return timer.invalidate() }
+                    let taken = self.isStopped || Self.startedSoFar != mine
+                    guard taken || Date() >= deadline else { return }
+                    timer.invalidate()
+                    if taken { return }
+                    self.client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+                    self.client?.urlProtocolDidFinishLoading(self)
+                }
+                RunLoop.current.add(timer, forMode: .default)
             } else {
                 let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: [:])!
                 client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
@@ -106,7 +143,11 @@ final class RedirectEndToEndTests: XCTestCase {
                 client?.urlProtocolDidFinishLoading(self)
             }
         }
-        override func stopLoading() {}
+        override func stopLoading() {
+            stopped.lock()
+            didStop = true
+            stopped.unlock()
+        }
     }
 
     private func transport() -> URLSessionTransport {
