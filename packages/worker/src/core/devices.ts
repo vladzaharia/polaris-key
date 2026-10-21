@@ -431,7 +431,10 @@ export async function reconcileDeviceHardware(
   const isNewAuthorization =
     !existing ||
     existing.status !== "authorized" ||
-    existing.license_id !== license.id;
+    existing.license_id !== license.id ||
+    // A seat reclaimed for dormancy leaves the row authorized with no ordinal and no token: the
+    // device coming back claims a seat like a new one, and meets `device_limit` when it is full.
+    (existing.seat_no ?? null) === null;
 
   // `X-PKey-Device` is a client-chosen string with no uniqueness requirement, so before this
   // the cheapest way to hold N seats was to activate N times with N device ids from ONE
