@@ -375,11 +375,6 @@ describe("app entries (POST /<p>/license/activate)", () => {
     expect((await activate(product, key, "dev-2", NOW + 120)).status).toBe(200);
     expect(await countKeyEntries(db, SLUG, licenseId)).toBe(2);
   });
-    expect(
-      (await activate(product, other.key, "dev-1", NOW + 180)).status,
-    ).toBe(200);
-    expect(await countKeyEntries(db, SLUG, other.licenseId)).toBe(1);
-  });
 });
 
 describe("the refusal (§12.2 step 4)", () => {
