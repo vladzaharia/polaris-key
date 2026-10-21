@@ -14,6 +14,7 @@ const fns = vi.hoisted(() => ({
   retireProductKey: vi.fn(),
   revokeProductKey: vi.fn(),
   ciPublisher: vi.fn(),
+  trustPolicy: vi.fn(),
   putCiPublisher: vi.fn(),
   ciTokens: vi.fn(),
   issueCiToken: vi.fn(),
@@ -145,6 +146,19 @@ beforeEach(() => {
         requiredBy: ["OIDC sign-in"],
       },
     ],
+  });
+  fns.trustPolicy.mockResolvedValue({
+    ok: true,
+    policy: {
+      mint: "basic",
+      gatedDelivery: "basic",
+      commerceClaim: "basic",
+      enforce: false,
+      appAttest: null,
+      playIntegrity: null,
+    },
+    source: "default",
+    version: 0,
   });
   fns.ciPublisher.mockResolvedValue({ ok: true, policy: null });
   fns.ciTokens.mockResolvedValue({ ok: true, tokens: [] });
@@ -599,7 +613,7 @@ describe("Keys & secrets → CI publishing", () => {
 });
 
 describe("Keys & secrets → the page", () => {
-  it("holds signing keys, secrets and CI only: edge mint and store credentials have their own pages (SEC-1)", async () => {
+  it("holds signing keys, secrets, device trust and CI only: edge mint and store credentials have their own pages (SEC-1)", async () => {
     fns.product.mockResolvedValue({
       product: product({
         services: {
@@ -613,7 +627,13 @@ describe("Keys & secrets → the page", () => {
     await screen.findAllByText("djdl-a");
     expect(
       screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent),
-    ).toEqual(["Verification", "Signing keys", "Secrets", "CI publishing"]);
+    ).toEqual([
+      "Verification",
+      "Signing keys",
+      "Secrets",
+      "Device trust",
+      "CI publishing",
+    ]);
     expect(screen.queryByText("Edge-mint recipes")).toBeNull();
     expect(screen.queryByText("Outlet credentials")).toBeNull();
   });

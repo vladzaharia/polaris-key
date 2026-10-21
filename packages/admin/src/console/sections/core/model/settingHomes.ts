@@ -52,6 +52,7 @@ const ANCHORS: Readonly<Record<string, string>> = {
   "keys|Signing keys": "keys-signing",
   "keys|Secrets": "keys-secrets",
   "keys|CI publishing": "keys-ci",
+  "keys|Device trust": "keys-trust",
   "presentation|Hosting and quotas": "presentation-hosting",
 };
 
@@ -100,8 +101,8 @@ export const SETTING_HOMES: Readonly<Record<string, SettingHome>> = {
   // The icon and accents are declared in `.pkey/product`; Presentation uploads hosted files
   // (other keys), and nothing in the console reads the accents.
   "core.presentation": manifest("product"),
-  // `PUT …/trust-policy` exists in the Worker; no console page calls it.
-  "core.trustPolicy": API,
+  // ST-12: Keys & secrets → Device trust (view-only members see it locked).
+  "core.trustPolicy": at("keys", "Device trust"),
   // The wizards' saved choices (ST-39): written by their own steps, never a settings control.
   "core.setup": API,
   "core.services": at("services", "Enabled services"),

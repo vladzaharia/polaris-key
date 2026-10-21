@@ -176,7 +176,7 @@ describe("All settings → Edit in", () => {
 
   it("names the admin API for a key only the API writes", async () => {
     mount();
-    const row = await rowOf("core.trustPolicy");
+    const row = await rowOf("release.packages.prunePrereleases");
     expect(within(row).queryByRole("link")).toBeNull();
     expect(within(row).getByText("Admin API only")).toBeTruthy();
   });

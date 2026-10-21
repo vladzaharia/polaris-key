@@ -2271,6 +2271,44 @@ export interface ProductSecretDto {
   requiredBy: string[];
 }
 
+/** ST-12: one operation's required trust level. */
+export type TrustLevelDto = "basic" | "attested";
+
+/** The product's device trust policy (`core.trustPolicy`). */
+export interface TrustPolicyDto {
+  mint: TrustLevelDto;
+  gatedDelivery: TrustLevelDto;
+  commerceClaim: TrustLevelDto;
+  enforce: boolean;
+  appAttest: {
+    teamId: string | null;
+    environment: "production" | "development";
+  } | null;
+  playIntegrity: {
+    cloudProjectNumber: string | null;
+    allowTestingResponses?: true;
+  } | null;
+}
+
+export interface TrustPolicyResponse {
+  ok: true;
+  policy: TrustPolicyDto;
+  source: "default" | "admin";
+  /** The `expectedVersion` the next write carries (GET only). */
+  version?: number;
+}
+
+/** What a relaxing change adds (`reason`, and the setting's key typed as `confirm`). */
+export interface TrustPolicyGuard {
+  expectedVersion: number;
+  reason?: string;
+  confirm?: string;
+}
+
+export interface TrustPolicyWrite extends TrustPolicyGuard {
+  policy: TrustPolicyDto;
+}
+
 export interface PublisherPolicyDto {
   product: string;
   provider: "github";
@@ -4787,6 +4825,11 @@ export function setStepUpRedirectForTests(fn?: () => void): void {
     });
 }
 
+/** Send the operator to the step-up sign-in, back to this page (a write that needs a fresh one). */
+export function startStepUp(): void {
+  redirectToStepUp();
+}
+
 /**
  * The 401 sign-in. The Worker marks a session that existed and no longer holds
  * (`X-PKey-Session: expired`); the card then says "Your session ended". Without a session (a first
@@ -5531,6 +5574,20 @@ const rawApi = {
   /** A-5: secret names, usage and what requires each. Never a value. */
   productSecrets: (slug: string) =>
     call<{ secrets: ProductSecretDto[] }>(`${p(slug)}/secrets`),
+  /** ST-12: the device trust policy, its source and the version a write must carry. */
+  trustPolicy: (slug: string) =>
+    call<TrustPolicyResponse>(`${p(slug)}/trust-policy`),
+  /** A relaxing change also carries `reason` and `confirm` and needs a fresh step-up. */
+  putTrustPolicy: (slug: string, body: TrustPolicyWrite) =>
+    call<TrustPolicyResponse>(`${p(slug)}/trust-policy`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+  resetTrustPolicy: (slug: string, body: TrustPolicyGuard) =>
+    call<TrustPolicyResponse>(`${p(slug)}/trust-policy`, {
+      method: "DELETE",
+      body: JSON.stringify(body),
+    }),
   ciPublisher: (slug: string) =>
     call<{ ok: true; policy: PublisherPolicyDto | null }>(
       `${p(slug)}/ci-publisher`,
