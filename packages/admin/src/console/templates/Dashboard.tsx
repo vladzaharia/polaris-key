@@ -71,7 +71,7 @@ export function DashboardTemplate({
             // orphan beside empty space; from 1280 px as many equal columns as there are tiles.
             <div
               data-tiles=""
-              className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))] max-xl:[&>:last-child:nth-child(odd)]:col-span-2"
+              className="grid grid-cols-2 gap-3 max-sm:grid-cols-[repeat(auto-fit,minmax(min(9rem,100%),1fr))] sm:gap-4 xl:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))] max-xl:[&>:last-child:nth-child(odd)]:col-span-full"
             >
               {tiles}
             </div>

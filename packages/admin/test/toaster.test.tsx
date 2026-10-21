@@ -82,6 +82,32 @@ describe("toaster durations", () => {
     expect(screen.queryByText(/api 429/)).toBeNull();
   });
 
+  it("gives a server-error toast the Copy details button its words promise (CF1 / M5)", () => {
+    vi.useFakeTimers();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+    render(<AppToaster />);
+    act(() => void toast.error(new ApiError(500, undefined, "boom")));
+    act(() => vi.advanceTimersByTime(1));
+    expect(screen.getByText(/Copy the details/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Copy details" }));
+    expect(writeText).toHaveBeenCalledTimes(1);
+    // The toast stays up after the copy.
+    act(() => vi.advanceTimersByTime(EXIT + 10));
+    expect(screen.queryByText(/Copy the details/)).not.toBeNull();
+  });
+
+  it("a toast that does not promise details has no Copy details button", () => {
+    vi.useFakeTimers();
+    render(<AppToaster />);
+    act(() => void toast.error(new ApiError(429, undefined, "rate_limited")));
+    act(() => vi.advanceTimersByTime(1));
+    expect(screen.queryByRole("button", { name: "Copy details" })).toBeNull();
+  });
+
   it("pauses while the tab is hidden and resumes with the time that was left", () => {
     vi.useFakeTimers();
     renderToast(1_000);

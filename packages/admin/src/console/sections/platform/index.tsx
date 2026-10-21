@@ -470,7 +470,9 @@ export function Deployment(): React.ReactElement {
                   key={name}
                   className="flex items-center justify-between gap-2 text-sm"
                 >
-                  <span className="font-mono text-xs text-fg">{name}</span>
+                  <span className="min-w-0 break-all font-mono text-xs text-fg">
+                    {name}
+                  </span>
                   <StatusPill tone={ok ? "success" : "warning"} size="sm">
                     {ok ? "Bound" : "Not bound"}
                   </StatusPill>

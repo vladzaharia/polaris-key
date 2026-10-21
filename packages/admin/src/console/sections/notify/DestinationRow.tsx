@@ -263,7 +263,11 @@ export function DestinationRow({
         ) : null}
       </div>
       {canEdit ? (
-        <div className="flex shrink-0 items-center gap-2">
+        <div
+          // The switch sits beside the actions menu, so it is not the row's last control.
+          data-align="with-menu"
+          className="flex shrink-0 items-center gap-2"
+        >
           <Switch
             aria-label={`Send alerts to ${name}`}
             checked={d.enabled}

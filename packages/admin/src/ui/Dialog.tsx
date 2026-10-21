@@ -162,7 +162,14 @@ export function useOverlayFocus(
     onCloseAutoFocus: (e) => {
       const target = returnTarget(opener.current);
       opener.current = null;
-      if (!target) return;
+      if (!target) {
+        // Opened from a URL (no opener): focus goes to the page heading, not <body> (EXPERIENCE §7.1).
+        const h1 = document.querySelector<HTMLElement>("h1[data-page-title]");
+        if (!h1) return;
+        e.preventDefault();
+        h1.focus({ preventScroll: true });
+        return;
+      }
       e.preventDefault();
       // The opener may still be disabled for a frame (a switch while its confirm was pending).
       let tries = 0;

@@ -42,7 +42,7 @@ function Person({
         {initials(admin.name)}
       </span>
       <div className="min-w-0">
-        <p className="flex items-center gap-2 text-sm font-medium text-fg-strong">
+        <p className="flex flex-wrap items-center gap-x-2 text-sm font-medium text-fg-strong">
           {admin.name}
           {you ? (
             <span className="text-xs font-normal text-fg-muted">You</span>

@@ -112,6 +112,12 @@ const MASTHEAD_DEBT: {
     why: "at the 1024 px rail (never measured before ST-48) the warning row ends 17 px short of its neighbours",
   },
   {
+    cases: /^djdl:(outlets|credentials)$/,
+    kinds: ["masthead/height"],
+    owner: "CF1 follow-up (masthead copy and action row)",
+    why: "at 390 px with 200 % text the description wraps to three lines under a two-line title, with the action or meta beneath (outlets 360 px, credentials 448 px, budget 352 px)",
+  },
+  {
     cases: /^global:api-tokens$/,
     kinds: ["masthead/height"],
     owner: "the API tokens page's package (follow-up of ST-48)",
@@ -325,7 +331,7 @@ const TEXT200_CASES = [
   "djdl:catalog-edit",
   "djdl:catalog-editor?entry",
   "djdl:integration",
-  "djdl:releases/record",
+  "djdl:releases/record/builds",
   "djdl:outlets",
   "djdl:credentials",
   "djdl:storefronts",
@@ -334,7 +340,6 @@ const TEXT200_CASES = [
   "djdl:storefronts?flow=run",
   "djdl:activity",
   "global:platform-deployment",
-  "global:platform-settings",
   "djdl:settings-members",
 ];
 /** The console's content column at its widest (BRAND.md §7.6). */

@@ -190,7 +190,7 @@ export function OutletsPage({ slug }: { slug: string }): React.ReactElement {
       accessorKey: "kind",
       meta: { priority: 1, csv: (o) => outletKindLabel(o.kind) },
       cell: ({ row }) => (
-        <span className="whitespace-nowrap">
+        <span className="sm:whitespace-nowrap">
           {outletKindLabel(row.original.kind)}
         </span>
       ),
@@ -276,7 +276,7 @@ export function OutletsPage({ slug }: { slug: string }): React.ReactElement {
           <Popover
             label="Feed listing rules"
             trigger={
-              <Button variant="link" size="sm">
+              <Button variant="link" size="sm" className="min-h-6">
                 Which releases a feed lists
               </Button>
             }
@@ -829,10 +829,11 @@ function KeysSection({
                       first seen <Timestamp at={fromSeconds(o.firstSeenAt)} />
                     </span>
                   </span>
-                  <span className="flex gap-2">
+                  <span className="flex flex-wrap gap-2">
                     <Button
                       size="xs"
                       variant="outline"
+                      className="h-auto min-h-6 max-w-full whitespace-normal py-1"
                       onClick={() =>
                         setDraft({
                           purpose: o.purpose,
