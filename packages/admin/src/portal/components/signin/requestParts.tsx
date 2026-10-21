@@ -30,10 +30,10 @@ export function PersonRow({
   return (
     <div
       data-person-row
-      className="flex items-center gap-3 rounded-md border border-border bg-surface-sunken px-3 py-2"
+      className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-border bg-surface-sunken px-3 py-2"
     >
       <Avatar name={name} email={email} picture={picture} size={40} />
-      <div className="min-w-0 flex-1">
+      <div className="min-w-[12ch] flex-[1_1_12ch]">
         <p className="font-medium text-fg-strong [overflow-wrap:anywhere]">
           {name ?? email}
         </p>
@@ -129,7 +129,7 @@ export const ChoiceGroup = React.forwardRef<
                 "before:absolute before:inset-y-0 before:left-0 before:w-[3px]",
                 "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page",
                 checked
-                  ? "border-border-strong bg-surface-sunken before:bg-accent forced-colors:border-[Highlight] forced-colors:outline forced-colors:outline-2 forced-colors:outline-[Highlight] forced-colors:before:bg-[Highlight]"
+                  ? "border-border-strong bg-hover before:bg-[var(--pk-locker-accent)] forced-colors:border-[Highlight] forced-colors:outline forced-colors:outline-2 forced-colors:outline-[Highlight] forced-colors:before:bg-[Highlight]"
                   : "border-border-strong bg-surface-raised hover:bg-hover",
               )}
             >

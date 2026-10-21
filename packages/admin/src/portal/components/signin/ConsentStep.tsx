@@ -68,8 +68,8 @@ export function ConsentStep({
           >
             {t("signin.consent.license")}
           </h2>
-          <div className="flex items-start justify-between gap-3 rounded-md border border-border-strong px-3 py-3">
-            <div className="min-w-0 [overflow-wrap:anywhere]">
+          <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1 rounded-md border border-border-strong px-3 py-3">
+            <div className="min-w-[12ch] flex-[1_1_12ch] [overflow-wrap:anywhere]">
               <p className="font-semibold text-fg-strong">{line.title}</p>
               {line.meta ? (
                 <p className="text-sm text-fg-muted">{line.meta}</p>
@@ -122,6 +122,7 @@ export function ConsentStep({
           className={PRIMARY_CLASS}
           loading={busy === "continue"}
           busyFocusable
+          aria-disabled={busy === "deny" || undefined}
           onClick={onContinue}
         >
           {t("signin.consent.continue", { app })}
@@ -132,6 +133,7 @@ export function ConsentStep({
           className={PRIMARY_CLASS}
           loading={busy === "deny"}
           busyFocusable
+          aria-disabled={busy === "continue" || undefined}
           onClick={onDeny}
         >
           {t("signin.consent.deny")}

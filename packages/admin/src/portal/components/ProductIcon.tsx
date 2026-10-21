@@ -57,6 +57,7 @@ export function ProductIcon({
   size,
   src,
   lift = false,
+  neutral = false,
   className,
   tileClassName,
 }: {
@@ -68,6 +69,8 @@ export function ProductIcon({
   size: 20 | 24 | 40 | 48 | 56 | 64 | 112;
   /** Over art: a drop shadow on the image, elevation on the tile. */
   lift?: boolean;
+  /** The letter tile in neutral ink (the sign-in card), not the product tint. */
+  neutral?: boolean;
   /** Layout (position, margins, size overrides): both the image and the tile. */
   className?: string;
   /** Chrome for the letter tile only (a ring in the surface colour). */
@@ -103,9 +106,12 @@ export function ProductIcon({
     <span
       aria-hidden
       data-art="fallback"
-      style={{ backgroundColor: tintFor(slug, tint) }}
+      style={neutral ? undefined : { backgroundColor: tintFor(slug, tint) }}
       className={cn(
-        "inline-flex shrink-0 items-center justify-center font-medium text-[#f4f1ff]",
+        "inline-flex shrink-0 items-center justify-center font-medium",
+        neutral
+          ? "border border-border bg-surface-sunken text-fg-strong"
+          : "text-[#f4f1ff]",
         SIZE[size],
         TILE[size],
         RADIUS[size],

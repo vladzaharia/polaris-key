@@ -509,6 +509,51 @@ describe("fix round", () => {
     ).toBeNull();
   });
 
+  it("with Replace rate-limited and Create offered, Create is chosen and the primary does not say Replace", async () => {
+    const limited = { ...FULL, replace: { allowed: false, retryAfter: 600 } };
+    flow(
+      choices({
+        choices: [limited],
+        preselected: null,
+        create: { tierName: "Free", access: "account" },
+      }),
+    );
+    renderPortal();
+    expect(
+      (
+        await screen.findByRole("radio", { name: /Create a new free license/ })
+      ).getAttribute("aria-checked"),
+    ).toBe("true");
+    expect(
+      screen.queryByRole("button", { name: "Replace a device" }),
+    ).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Use this license and continue" }),
+    ).toBeTruthy();
+  });
+
+  it("Back from Replace a device keeps the row", async () => {
+    flow(
+      choices({
+        choices: [FULL, { ...FULL, id: "lic_full2", name: "Other" }],
+        preselected: null,
+      }),
+    );
+    renderPortal();
+    await userEvent.click(
+      await screen.findByRole("radio", { name: /Diceroll Family/ }),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Replace a device" }),
+    );
+    await userEvent.click(await screen.findByRole("button", { name: "Back" }));
+    expect(
+      (
+        await screen.findByRole("radio", { name: /Diceroll Family/ })
+      ).getAttribute("aria-checked"),
+    ).toBe("true");
+  });
+
   it("an unverified name's footer names the app, not an empty band", async () => {
     mockFetch({
       "/api/me": { status: 401 },

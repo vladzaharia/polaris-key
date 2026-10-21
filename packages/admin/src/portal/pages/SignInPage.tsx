@@ -245,9 +245,12 @@ export function SignInPage(): React.ReactElement {
                 : step.kind === "key"
                   ? t("signin.link.key")
                   : step.kind === "upgrade"
-                    ? t("signin.key.upgradeTitle", {
-                        product: step.preview.product.name,
-                      })
+                    ? t(
+                        step.preview.upgrade === "forced"
+                          ? "signin.key.noEntriesTitle"
+                          : "signin.key.upgradeTitle",
+                        { product: step.preview.product.name },
+                      )
                     : step.kind === "sso"
                       ? step.next.connection.label
                       : t("signin.methods.titleApp"),
@@ -269,7 +272,13 @@ export function SignInPage(): React.ReactElement {
     <CardHeader
       variant="context"
       icon={
-        <ProductIcon slug={ctx.slug} name={ctx.name} tint={null} size={48} />
+        <ProductIcon
+          slug={ctx.slug}
+          name={ctx.name}
+          tint={null}
+          size={48}
+          neutral
+        />
       }
       name={ctx.name}
       developer={ctx.developerName ?? null}
@@ -281,6 +290,8 @@ export function SignInPage(): React.ReactElement {
     />
   ) : undefined;
 
+  const requestFailed =
+    handle !== null && request.error !== null && !requestGone;
   const stepKey =
     handle !== null && request.isPending
       ? "loading"
@@ -288,7 +299,7 @@ export function SignInPage(): React.ReactElement {
         ? "gone"
         : caps.isPending
           ? "loading"
-          : caps.error
+          : caps.error || requestFailed
             ? "unreachable"
             : (ssoKey ?? step.kind);
 
@@ -322,12 +333,13 @@ export function SignInPage(): React.ReactElement {
             <a href="/">{t("signin.return.library")}</a>
           </Button>
         </>
-      ) : caps.error ? (
+      ) : caps.error || requestFailed ? (
         <Unreachable
-          error={caps.error}
+          error={caps.error ?? request.error}
           onRetry={() => {
             setFocusTick((n) => n + 1);
             void caps.refetch();
+            void request.refetch();
           }}
         />
       ) : step.kind === "code" ? (

@@ -82,6 +82,9 @@ export function LicenseChoiceStep({
         : view.choices.some((c) => c.id === initialId))
     )
       return initialId;
+    // Create is the only row that can act: choose it.
+    if (view.create && rows.every((r) => !r.selectable && !r.canReplace))
+      return "create";
     if (view.preselected && view.preselected !== "keep")
       return view.preselected;
     // Every row full and one row: nothing else to pick, so nothing to leave unchosen.
@@ -163,7 +166,7 @@ export function LicenseChoiceStep({
   const noAction = allFull && !replaceable && !view.create;
 
   const primary =
-    (allFull || chosenFull) && value !== "create"
+    ((allFull && replaceable) || chosenFull) && value !== "create"
       ? t("signin.replace.open")
       : t("signin.choice.continue");
   return (

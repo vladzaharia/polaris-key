@@ -20,6 +20,7 @@ import { portalErrorCopy } from "../../errors.js";
 import { portalKeys } from "../../data.js";
 import { useDocumentTitle } from "../../router.js";
 import {
+  firstName,
   navigation,
   safeRedirect,
   waitText,
@@ -205,13 +206,22 @@ export function RequestFlow({
         : current?.kind === "consent"
           ? t("signin.consent.title", {
               app: view?.client.appName ?? "",
-              name: consent.data?.person.displayName?.split(/\s+/)[0] ?? "",
+              name: consent.data
+                ? firstName(
+                    consent.data.person.displayName,
+                    consent.data.person.email,
+                  )
+                : "",
             })
           : lic?.state === "none"
             ? t("signin.none.title", { product: view?.client.appName ?? "" })
             : req.error
-              ? t("signin.request.goneTitle")
-              : t("signin.choice.title");
+              ? req.error instanceof PortalApiError && req.error.status === 404
+                ? t("signin.request.goneTitle")
+                : portalErrorCopy(req.error, { account: true }).title
+              : licenses.error
+                ? portalErrorCopy(licenses.error, { account: true }).title
+                : t("signin.choice.title");
   useDocumentTitle(titleText);
   const footer = view ? <RequestFooter view={view} /> : undefined;
   const brand = (
@@ -291,7 +301,7 @@ export function RequestFlow({
         rows={lic.choices}
         app={view.client.appName}
         product={view.client.appName}
-        developer={view.client.developerName ?? t("signin.off.developer")}
+        developer={view.client.developerName ?? view.client.appName}
         thisDevice={thisDeviceName(view)}
         onBack={() => go({ kind: "choice" }, "back")}
         onConfirm={(device: DeviceRowModel) => {
@@ -340,7 +350,7 @@ export function RequestFlow({
       <LicenseChoiceStep
         view={lic}
         product={view.client.appName}
-        developer={view.client.developerName ?? t("signin.off.developer")}
+        developer={view.client.developerName ?? view.client.appName}
         deviceName={thisDeviceName(view)}
         browser={view.deviceLabel === null}
         person={{
@@ -369,6 +379,7 @@ export function RequestFlow({
         }}
         onReplace={(row) => {
           setNotice(null);
+          setChosen({ kind: "license", row, replace: null });
           go({ kind: "replace", row });
         }}
         onCancel={() => void deny()}
