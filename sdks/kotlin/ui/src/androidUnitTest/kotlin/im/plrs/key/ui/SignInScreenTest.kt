@@ -12,7 +12,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -73,6 +75,18 @@ class SignInScreenTest {
         rule.mainClock.advanceTimeBy(2_500)
         rule.waitForIdle()
         rule.onNodeWithContentDescription(sampleCopy.signInCopyLink).assertExists()
+    }
+
+    @Test
+    fun theCodeViewShowsTheCodeAndTheAddress() {
+        show { PolarisSignInScreen(PolarisSignInUi.Showing(samplePrompt, NOW), showQr = false) }
+        rule.onNode(hasText(samplePrompt.userCode), useUnmergedTree = true).assertExists()
+        // The address is set with word joiners between its characters (it may only break after a slash).
+        val shown = rule.onAllNodes(SemanticsMatcher("has text") { it.config.contains(SemanticsProperties.Text) }, useUnmergedTree = true)
+            .fetchSemanticsNodes()
+            .flatMap { it.config.getOrNull(SemanticsProperties.Text).orEmpty() }
+            .joinToString(" ") { it.text.replace("\u2060", "") }
+        assertTrue("the address (polaris.locker/device) is on screen: $shown", "polaris.locker/device" in shown)
     }
 
     @Test
