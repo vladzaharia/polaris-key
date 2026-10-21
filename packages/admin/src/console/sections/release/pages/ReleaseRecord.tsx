@@ -1089,21 +1089,35 @@ export function ReleaseRecord({
             ) : null}
           </span>
         }
+        // One line at the 1024 px rail (the masthead's budget): the date (the exact instant in its
+        // tooltip) instead of "published", the instant and its age, then the GitHub release.
         description={
           <>
             {release.title ? <>“{release.title}” · </> : null}
             {release.publishedAt ? (
               <>
-                published{" "}
-                <Timestamp
-                  at={fromSeconds(release.publishedAt)}
-                  format="detail"
-                />
+                <span className="sr-only">Published </span>
+                <Timestamp at={fromSeconds(release.publishedAt)} />
               </>
             ) : (
               "not published"
             )}
             {release.seq !== null ? <> · seq {release.seq}</> : null}
+            {release.sourceUrl ? (
+              <>
+                {" · "}
+                <a
+                  href={release.sourceUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-accent-fg underline-offset-4 hover:underline"
+                >
+                  GitHub release
+                  <ExternalLink aria-hidden className="size-3.5" />
+                  <span className="sr-only">(opens a new tab)</span>
+                </a>
+              </>
+            ) : null}
           </>
         }
         meta={
@@ -1113,18 +1127,6 @@ export function ReleaseRecord({
               <span className="text-sm font-medium text-warning">
                 Yanked: {release.yank.reason}
               </span>
-            ) : null}
-            {release.sourceUrl ? (
-              <a
-                href={release.sourceUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 text-sm text-accent-fg underline-offset-4 hover:underline"
-              >
-                GitHub release
-                <ExternalLink aria-hidden className="size-3.5" />
-                <span className="sr-only">(opens a new tab)</span>
-              </a>
             ) : null}
           </>
         }
