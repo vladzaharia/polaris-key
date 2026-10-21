@@ -12,7 +12,7 @@ Some apps publish packages for people whose license includes them: a library, a 
 
 ## Find the setup
 
-Open **Account → Packages** at key.plrs.im. It shows the setup for each app whose license includes private packages.
+Open **Account → Packages** at polaris.locker. It shows the setup for each app whose license includes private packages.
 
 ## Create a personal token
 

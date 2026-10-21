@@ -11,7 +11,7 @@ sidebar:
 Compare your file's SHA-256 with the value listed for it. A SHA-256 is a code worked out from a file's contents, so a changed or damaged file gets a different one. Do this before you install the file.
 
 :::caution[Important]
-A matching value can't show that the page itself is genuine. Take the value from the app's own download page, or from your library at [key.plrs.im](https://key.plrs.im). To check the page's address, see [Use the public download page](/docs/help/download/#use-the-public-download-page).
+A matching value can't show that the page itself is genuine. Take the value from the app's own download page, or from your library at [polaris.locker](https://polaris.locker). To check the page's address, see [Use the public download page](/docs/help/download/#use-the-public-download-page).
 :::
 
 ## Before you start

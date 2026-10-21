@@ -8,7 +8,7 @@ sidebar:
   order: 6
 ---
 
-Download an app from your library at [key.plrs.im](https://key.plrs.im), which lists your apps, or from its public download page.
+Download an app from your library at [polaris.locker](https://polaris.locker), which lists your apps, or from its public download page.
 
 ## Before you start
 
@@ -16,7 +16,7 @@ Sign in to your library with the email that has the license.
 
 ## Download from your library
 
-1. Sign in at [key.plrs.im](https://key.plrs.im) and find the app.
+1. Sign in at [polaris.locker](https://polaris.locker) and find the app.
 2. Select **Download for macOS**, **Download for Windows** or **Download for Linux**. If your license covers only an older version, the button names it, such as **Download 2.4.1**.
 3. With one file, the download starts. With more, the button opens the app's page with a list: choose a file and select **Download**.
 

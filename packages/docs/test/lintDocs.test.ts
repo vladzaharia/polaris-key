@@ -98,6 +98,20 @@ describe("rules", () => {
     expect(lint("Your product and tier.\n")).toEqual([]);
   });
 
+  it("keeps the console host and Polaris Key out of Help", () => {
+    const text =
+      "Sign in at [key.plrs.im](https://key.plrs.im). Polaris Key.\n";
+    expect(rules(lint(text, { type: "help" }, "help/x"))).toEqual([
+      "help-host",
+      "help-host",
+      "help-host",
+    ]);
+    expect(
+      lint("Sign in at polaris.locker.\n", { type: "help" }, "help/x"),
+    ).toEqual([]);
+    expect(lint(text)).toEqual([]);
+  });
+
   it("checks pkey commands and flags against the CLI's help", () => {
     const body = (cmd: string): string => `\`\`\`sh\n${cmd}\n\`\`\`\n`;
     expect(lint(body("pkey validate --json"))).toEqual([]);
@@ -152,7 +166,7 @@ describe("rules", () => {
   });
 
   it("every rule is exercised", () => {
-    expect(RULES).toHaveLength(11);
+    expect(RULES).toHaveLength(12);
   });
 });
 
