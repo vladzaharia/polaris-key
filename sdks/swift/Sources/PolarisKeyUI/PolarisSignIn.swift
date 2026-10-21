@@ -108,16 +108,16 @@ public final class PolarisSignInModel {
         }
     }
 
-    private func settle(_ result: SignInResult, prompt: SignInPrompt) {
+    func settle(_ result: SignInResult, prompt: SignInPrompt) {
         switch result {
         case .ready(let ready): phase = .ready(ready)
         case .confirm(let identity, let attachable):
             phase = .confirm(prompt, identity: identity, attachable: attachable)
         case .expired: phase = .expired
-        case .error:
-            // Deny and a provider failure are one answer; the kit says "declined" for both.
-            phase = .failed(
-                code: ErrorCode.signInDenied, message: ErrorCopy.message(ErrorCode.signInDenied))
+        case .error(_, let code):
+            // "Declined" only for the Worker's deny answer; any other code is a failure.
+            let shown = code == ErrorCode.signInDenied ? ErrorCode.signInDenied : ErrorCode.signInFailed
+            phase = .failed(code: shown, message: ErrorCopy.message(shown))
         }
     }
 

@@ -123,7 +123,8 @@ public object PolarisKeyAndroid {
             engine = p.engine,
             memBudget = p.memBudget,
             // Null: `<store directory>/packs`, i.e. `noBackupFilesDir/pkey/<product>/packs`, resolved
-            // when the facet starts. The pack store needs java.nio.file, which arrives on API 26.
+            // when the facet starts. The pack store needs java.nio.file, which arrives on API 26; below that the
+            // facet answers UnsupportedException(runtime) (PacksClient.start), never a crash.
             dir = p.dir,
             handlers = p.handlers,
             objectTransport = p.objectTransport,

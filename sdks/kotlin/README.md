@@ -54,7 +54,7 @@ per JVM module, e.g. `:sdk:publishSdkPublicationToLocalRepository`,
 `./gradlew :godot:publishAllPublicationsToLocalRepository`).
 
 Versions follow Godot 4.7.2's Android build template (AGP 8.6.1, Gradle 8.11.1, Kotlin 2.1.21,
-compile and target SDK 36, min SDK 24, Java 17 bytecode), so the AARs drop into a Godot Gradle
+compile and target SDK 36, min SDK 24, Java 17 bytecode; the packs facet needs `java.nio.file` and so Android API 26: on API 24-25 it answers `UnsupportedException` with reason `runtime`), so the AARs drop into a Godot Gradle
 export unchanged. The SDK-wide values live in `gradle/libs.versions.toml` (`androidCompileSdk`,
 `androidTargetSdk`, `androidMinSdk`, `jvmTarget`), never in a module's build file. Play Core:
 `app-update` 2.1.0, `asset-delivery` 2.3.0, `integrity` 1.6.0. The JVM modules use kotlinx-coroutines 1.10.2 (`suspend` calls, `Flow` streams),

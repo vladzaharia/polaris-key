@@ -320,20 +320,9 @@ extension PolarisCopy {
             }
             return PolarisMessageCopy(
                 title: title,
-                subtitle: PolarisCopy.versionBlockSubtitle(
-                    base: versionBlockSubtitle, allowedRange: allowedRange),
+                subtitle: versionBlockSubtitle,
                 symbol: "exclamationmark.triangle.fill")
         }
-    }
-
-    /// Append a human "(allowed: min …, max …)" suffix to the version-block body when the server
-    /// told us the permitted window. Shared by the view and tests.
-    public static func versionBlockSubtitle(base: String, allowedRange: AllowedRange?) -> String {
-        guard let range = allowedRange else { return base }
-        let parts = [range.min.map { "min \($0)" }, range.max.map { "max \($0)" }]
-            .compactMap { $0 }
-        guard !parts.isEmpty else { return base }
-        return base + " (allowed: \(parts.joined(separator: ", ")))"
     }
 }
 

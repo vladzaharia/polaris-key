@@ -76,9 +76,16 @@ extension PolarisKeyClient {
         let update = self.update
         var hooks = bootHooks
         if !pinnedReleaseKeys.isEmpty {
+            let refusal = hooks.decideRefusal
             hooks.decide = {
-                guard let check = try? await update.decide() else { return BootEvent.Decision.none }
-                return bootDecision(check.decision)
+                do {
+                    return bootDecision(try await update.decide().decision)
+                } catch {
+                    // The decision stays `none`, but the boot says why (`BootRun.decideRefusal`).
+                    let code = (error as? PolarisError)?.code ?? ErrorCode.unknown
+                    refusal.with { $0 = code }
+                    return BootEvent.Decision.none
+                }
             }
         }
         if let content = update.content, content.configured {

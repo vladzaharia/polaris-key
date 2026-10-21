@@ -28,7 +28,7 @@ public struct PolarisKeyPreview: View {
         }
         let request = KitSignInRequest(
             userCode: "WDJB-MJHT", verificationUri: DEVICE_CODE_PAGE,
-            verificationUriComplete: DEVICE_CODE_PAGE + "?code=WDJB-MJHT",
+            verificationUriComplete: DEVICE_CODE_PAGE + "?user_code=WDJB-MJHT",
             expiresAt: Int(now.timeIntervalSince1970) + 252)
         _model = State(
             initialValue: PolarisKeyGateModel(

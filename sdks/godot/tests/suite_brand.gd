@@ -131,6 +131,23 @@ func _kit(t: PKeyTestContext) -> void:
 		for licence in licences:
 			t.check("kit: %s ships beside %s" % [licence.get_file(), path.get_file()], PKeyUiTheme.is_font_licence(licence) and FileAccess.file_exists(licence))
 	_kit_matches_generator(t)
+	_docs_describe_the_shipped_kit(t)
+
+
+## The class reference (Godot's built-in help reads the `##` comments) and the addon's text files
+## describe the shipped look and channel, not the retired ones (B-146, B-147). Skipped where the
+## sources or the repository are not on disk (an exported pack, a standalone copy).
+func _docs_describe_the_shipped_kit(t: PKeyTestContext) -> void:
+	var theme_src := FileAccess.get_file_as_string("res://addons/polaris_key/ui/theme/pkey_ui_theme.gd")
+	if not theme_src.is_empty():
+		t.check("docs: PKeyUiTheme does not call the Polaris look opt-in", not theme_src.contains("Polaris Key (opt-in)"))
+		t.check("docs: PKeyUiTheme does not describe a violet 2 px ring or the Pinned K above the gate", not theme_src.contains("2 px violet focus ring") and not theme_src.contains("Pinned K above"))
+		t.check("docs: build() says alpha 0 is ink", theme_src.contains("alpha 0: ink") and not theme_src.contains("alpha 0: the platform"))
+	for rel in ["res://addons/polaris_key/README.md", "res://CHANGELOG.md"]:
+		var text := FileAccess.get_file_as_string(rel)
+		if text.is_empty():
+			continue
+		t.check("docs: %s names no release zip or Asset Library channel to install from" % rel.get_file(), not text.contains("unzip the release zip") and not text.contains("release-godot.yml") and not text.contains("install it from the Godot Asset Store"))
 
 
 ## The committed kit tokens are the generator's: they agree with packages/brand/tokens.json when

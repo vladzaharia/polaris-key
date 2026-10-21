@@ -117,6 +117,16 @@ class BrandRulesTest {
     )
 
     @Test
+    fun polarisDarkTonalSurfacesStandOffThePage() {
+        val s = polarisBrandColorScheme(dark = true)
+        val token = contrast(PolarisBrandTokens.Dark.surfaceOverlay, s.background)
+        for ((name, tonal) in listOf("secondaryContainer" to s.secondaryContainer, "surfaceContainerHigh" to s.surfaceContainerHigh)) {
+            assertTrue("$name is no lighter than the overlay token ($token:1)", contrast(tonal, s.background) > token + 0.1)
+            assertTrue("$name vs page ${contrast(tonal, s.background)}", contrast(tonal, s.background) >= 1.15)
+        }
+    }
+
+    @Test
     fun theBrandedPaletteMeetsContrast() {
         val failures = mutableListOf<String>()
         for (dark in listOf(true, false)) {

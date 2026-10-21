@@ -242,6 +242,7 @@ struct PolarisPageActions: View {
     let layout: PolarisKitLayout
     let style: PolarisKitStyle
     var primaryDisabled = false
+    var leadingDisabled = false
     /// Whether the secondary dismisses (Escape triggers it); false for a second way forward.
     var secondaryCancels = true
     /// A busy label shown in place of the primary's title while it works.
@@ -304,6 +305,7 @@ struct PolarisPageActions: View {
             .polarisSecondaryButton()
             .modifier(KitTint(color: style.textTint))
             .modifier(PolarisButtonSkin(style: style, prominent: false))
+            .disabled(leadingDisabled)
             .polarisLayoutProbe(.leadingAction)
         }
     }

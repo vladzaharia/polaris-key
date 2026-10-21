@@ -60,7 +60,7 @@ public struct PolarisOfflineActivation: View {
         .fileImporter(
             isPresented: $picking, allowedContentTypes: [.data, .plainText, .text]
         ) { result in
-            guard case .success(let url) = result else { return }
+            guard case .success(let url) = result, !importing else { return }
             importing = true
             let scoped = url.startAccessingSecurityScopedResource()
             defer { if scoped { url.stopAccessingSecurityScopedResource() } }
@@ -69,18 +69,25 @@ public struct PolarisOfflineActivation: View {
                 message = ErrorCopy.message(ErrorCode.bundle)
                 return
             }
-            importBundle(String(decoding: data, as: UTF8.self))
+            runImport(String(decoding: data, as: UTF8.self))
         }
         .task { deviceId = await model.client.core.deviceId }
     }
 
+    /// Paste and drop enter here; a second one while an import runs is ignored, so one bundle
+    /// never imports twice.
     private func importBundle(_ text: String) {
+        guard !importing else { return }
         importing = true
+        runImport(text)
+    }
+
+    private func runImport(_ text: String) {
         // A dropped file arrives as its URL string on some platforms.
         if let url = URL(string: text.trimmingCharacters(in: .whitespacesAndNewlines)),
             url.isFileURL, let data = try? Data(contentsOf: url)
         {
-            return importBundle(String(decoding: data, as: UTF8.self))
+            return runImport(String(decoding: data, as: UTF8.self))
         }
         let jws = text.trimmingCharacters(in: .whitespacesAndNewlines)
         Task {
@@ -204,7 +211,7 @@ struct PolarisOfflineSurface: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .modifier(OfflineDropTarget(
-                enabled: offersDrop, targeted: $targeted, caption: copy.dropHint, style: style,
+                enabled: offersDrop, disabled: importing, targeted: $targeted, caption: copy.dropHint, style: style,
                 onDrop: onDropText))
 
             if let message {
@@ -215,7 +222,7 @@ struct PolarisOfflineSurface: View {
                 primaryTitle: copy.importFileButton, primary: onImportFile,
                 secondaryTitle: copy.cancelButton, secondary: onDone,
                 leadingTitle: copy.pasteButton, leading: onPaste, layout: layout, style: style,
-                primaryDisabled: importing)
+                primaryDisabled: importing, leadingDisabled: importing)
             if importing { ProgressView().controlSize(.small) }
         }
     }
@@ -275,6 +282,8 @@ struct PolarisOfflineSurface: View {
 /// with the drop hint as its caption. A no-op where drops are not offered (iPhone).
 private struct OfflineDropTarget: ViewModifier {
     let enabled: Bool
+    /// An import is running: a drop is refused.
+    var disabled = false
     @Binding var targeted: Bool
     let caption: String
     let style: PolarisKitStyle
@@ -293,7 +302,7 @@ private struct OfflineDropTarget: ViewModifier {
                         targeted ? AnyShapeStyle(style.textTintStyle) : AnyShapeStyle(style.palette.borderSubtle),
                         style: StrokeStyle(lineWidth: 1.5, dash: [6, 4])))
             .dropDestination(for: String.self) { items, _ in
-                guard let text = items.first else { return false }
+                guard !disabled, let text = items.first else { return false }
                 onDrop(text)
                 return true
             } isTargeted: { targeted = $0 }

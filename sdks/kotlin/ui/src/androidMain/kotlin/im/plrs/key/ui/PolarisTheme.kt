@@ -47,6 +47,7 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
@@ -441,6 +442,14 @@ private fun neutralFallback(): PolarisUiConfig {
     )
 }
 
+/**
+ * Polaris dark's tonal step for secondary buttons and cards: the overlay token moved a few percent
+ * toward the default text colour. The overlay token alone sits at about 1.05:1 on the page, so "Try
+ * again" and "Activate" read as bare text; this is about 1.2:1 and keeps the label far above 4.5:1.
+ * Derived from the tokens, never a literal.
+ */
+private fun darkTonalStep(): Color = lerp(PolarisBrandTokens.Dark.surfaceOverlay, PolarisBrandTokens.Dark.textDefault, 0.06f)
+
 /** The Material 3 colour scheme of the Polaris Key brand, from the generated tokens. */
 public fun polarisBrandColorScheme(dark: Boolean): ColorScheme {
     val core = PolarisBrandTokens.accent("core", dark)
@@ -450,7 +459,7 @@ public fun polarisBrandColorScheme(dark: Boolean): ColorScheme {
         darkColorScheme(
             primary = core.solid, onPrimary = core.on, primaryContainer = core.subtle, onPrimaryContainer = t.textStrong,
             inversePrimary = PolarisBrandTokens.Light.focus,
-            secondary = t.textMuted, onSecondary = t.surfacePage, secondaryContainer = t.surfaceOverlay, onSecondaryContainer = t.textStrong,
+            secondary = t.textMuted, onSecondary = t.surfacePage, secondaryContainer = darkTonalStep(), onSecondaryContainer = t.textStrong,
             tertiary = identity.solid, onTertiary = identity.on, tertiaryContainer = identity.subtle, onTertiaryContainer = t.textStrong,
             background = t.surfacePage, onBackground = t.textDefault,
             surface = t.surfacePage, onSurface = t.textStrong, surfaceVariant = t.surfaceOverlay, onSurfaceVariant = t.textMuted,
@@ -460,7 +469,7 @@ public fun polarisBrandColorScheme(dark: Boolean): ColorScheme {
             outline = t.borderStrong, outlineVariant = t.borderSubtle, scrim = t.surfaceSunken,
             surfaceBright = t.surfaceOverlay, surfaceDim = t.surfaceSunken,
             surfaceContainerLowest = t.surfaceSunken, surfaceContainerLow = t.surfaceRaised, surfaceContainer = t.surfaceRaised,
-            surfaceContainerHigh = t.surfaceOverlay, surfaceContainerHighest = t.surfaceOverlay,
+            surfaceContainerHigh = darkTonalStep(), surfaceContainerHighest = darkTonalStep(),
         )
     } else {
         val t = PolarisBrandTokens.Light

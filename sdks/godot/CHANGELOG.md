@@ -1,11 +1,11 @@
 # Changelog
 
-All notable changes to the Polaris Key Godot addon (`addons/polaris_key`). Versions follow
-[SemVer](https://semver.org/); before 1.0 a minor version may change the API. One version is one
-value in four places: `plugin.cfg`'s `version`, `PolarisKey.SDK_VERSION` (also sent as
-`X-PKey-SDK-Version`), the release tag `godot-vX.Y.Z` and the zip's name. The release workflow
-(`.github/workflows/release-godot.yml`) uses the section below whose heading is the tag's version
-as the GitHub Release notes, and the same text is the Asset Store version's changelog.
+All notable changes to the Polaris Key Godot addon (`addons/polaris_key`). Before 1.0 a minor
+version may change the API. The addon is published only to Polaris Key's Godot feed (`pkg.plrs.im`),
+never the public Asset Library or Asset Store, at the server's version, in lockstep with every other
+SDK: `.github/workflows/publish-sdks.yml` stamps `plugin.cfg`'s `version` and `PolarisKey.SDK_VERSION`
+(also sent as `X-PKey-SDK-Version`) from git. The committed values are placeholders. See
+`CONTRIBUTING.md`, "Releasing".
 
 ## Unreleased
 

@@ -53,26 +53,13 @@ final class LoginCopyTests: XCTestCase {
             copy.message(for: .versionTooOld)?.symbol, "exclamationmark.triangle.fill")
     }
 
-    func testVersionBlockSubtitleAppendsAllowedRange() {
+    /// B-143: the body is the catalog copy alone; no raw English "(allowed: ...)" suffix.
+    func testVersionBlockSubtitleIsTheCatalogCopyWhateverTheRange() {
         let copy = PolarisCopy()
-        let m = copy.message(
+        let ranged = copy.message(
             for: .versionTooOld, allowedRange: AllowedRange(min: "1.2.0", max: "3.0.0"))
-        XCTAssertEqual(
-            m?.subtitle, copy.versionBlockSubtitle + " (allowed: min 1.2.0, max 3.0.0)")
-    }
-
-    func testVersionBlockSubtitleWithOnlyMin() {
-        let copy = PolarisCopy()
-        let m = copy.message(for: .versionTooNew, allowedRange: AllowedRange(min: "2.0.0"))
-        XCTAssertEqual(m?.subtitle, copy.versionBlockSubtitle + " (allowed: min 2.0.0)")
-    }
-
-    func testVersionBlockSubtitleUnchangedWhenRangeEmpty() {
-        let copy = PolarisCopy()
-        // Nil range, and a present-but-empty range, both leave the base copy untouched.
+        XCTAssertEqual(ranged?.subtitle, copy.versionBlockSubtitle)
         XCTAssertEqual(copy.message(for: .versionTooOld)?.subtitle, copy.versionBlockSubtitle)
-        let empty = copy.message(for: .versionTooOld, allowedRange: AllowedRange())
-        XCTAssertEqual(empty?.subtitle, copy.versionBlockSubtitle)
     }
 
     /// §3.1/§3.2: the gate renders an activation outcome from the shared copy by code, a product
