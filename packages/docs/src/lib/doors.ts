@@ -37,7 +37,13 @@ export const SEARCH_BUNDLES: ReadonlyArray<readonly [dir: string, tier: Tier]> =
     ["pagefind", "public"],
     ["pagefind-member", "member"],
     ["pagefind-admin", "admin"],
+    // Help's own search (polaris.locker): the Help pages only, so a customer's results are all
+    // pages the customer host serves. Help's pages load this one (see HELP_SEARCH_BUNDLE).
+    ["pagefind-help", "public"],
   ];
+
+/** The bundle that holds only the Help pages; Help's search loads it (astro.config.mjs). */
+export const HELP_SEARCH_BUNDLE = "pagefind-help";
 
 /** The door and tier of a content id such as `help/activate`. Null for a path no door owns. */
 export function doorOf(

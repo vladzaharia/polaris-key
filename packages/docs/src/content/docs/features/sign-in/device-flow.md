@@ -20,8 +20,8 @@ Four routes under `/<product>/identity/auth/device` share the browser flow's PKC
   "status": "pending",
   "deviceCode": "<secret>",
   "userCode": "WDJB-MJHT",
-  "verificationUri": "https://key.plrs.im/tidewater/identity/auth/device",
-  "verificationUriComplete": "https://key.plrs.im/tidewater/identity/auth/device?user_code=WDJB-MJHT",
+  "verificationUri": "https://polaris.locker/device",
+  "verificationUriComplete": "https://polaris.locker/device?user_code=WDJB-MJHT",
   "expiresIn": 600,
   "interval": 2,
   "pollUrl": "https://key.plrs.im/tidewater/identity/auth/device/poll",
@@ -57,7 +57,7 @@ Until the person approves, the poll answers `pending`: no identity is disclosed,
 
 ### The platform page
 
-`GET https://polaris.locker/device` (and `/tv`, the same page with larger type for a TV browser) is the address a customer is told to visit, and the UI kits' fallback link for an app that can't build its product's URL. The console host answers both paths too, but customers are never sent there. The person types the code, and the Worker looks it up across all products and answers `302` to `/<product>/identity/auth/device?user_code=` on the same host. That page owns every later state, so a product with Identity off or a disabled product still redirects.
+`GET https://polaris.locker/device` (and `/tv`, the same page with larger type for a TV browser) is the address a customer is told to visit, and the UI kits' fallback link for an app that can't build its product's URL. The console host answers both paths too, but customers are never sent there. The person types the code, and the Worker looks it up across all products and answers `302` to `/<product>/identity/auth/device?user_code=` on the API host (`key.plrs.im`): the customer host redirects to the product's own device page, so the confirm step, the identity-provider leg and the callback are served there, not on `polaris.locker`. That page owns every later state, so a product with Identity off or a disabled product still redirects.
 
 Codes are unique among live flows: if a drawn code is already held, the Worker draws another. An unknown, expired or malformed code re-renders the form with "That code didn't match or has expired. Check it and try again." and names no product. Lookups are limited to 30 a minute per network. The pages are `no-store` and send no referrer.
 

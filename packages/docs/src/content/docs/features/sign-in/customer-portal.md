@@ -17,7 +17,7 @@ The Identity flag doesn't gate Locker. A product with Identity off has no `/iden
 
 ## Signing in
 
-The login card on `key.plrs.im` is the only place a Locker account's credentials are entered, for Locker and, through the passthrough, for every app. It is identifier-first: the email, then the methods.
+The login card on `polaris.locker` is the only place a Locker account's credentials are entered, for Locker and, through the passthrough, for every app. It is identifier-first: the email, then the methods.
 
 - **Connections.** Upstream OpenID Connect providers. `/login` starts the seeded platform connection, and `/login/sso/<id>` starts any other active platform connection whose audience covers customers. A flow is single-use and bound to the browser that started it. The redirect URI is `<origin>/callback` for every connection. Operators sign in to the console through a separate client.
 - **Email code and magic link.** One email carries a 6-digit code and a link. The link's landing page consumes nothing, so a mail scanner can't burn it, and its button posts the token back. A link opened on another device only confirms the asking browser's flow; it never signs the other device in. The answer is identical whether or not the address is known.
@@ -41,10 +41,10 @@ A device that isn't signed in shows a code and a QR code. A signed-in device app
 
 ## The activate link
 
-`https://key.plrs.im/activate` opens the library with the **Activate license** dialog. A key in the link goes in the fragment, which a browser never sends:
+`https://polaris.locker/activate` opens the library with the **Activate license** dialog. A key in the link goes in the fragment, which a browser never sends:
 
 ```text title="Activate link"
-https://key.plrs.im/activate?product=<slug>#key=<license key>
+https://polaris.locker/activate?product=<slug>#key=<license key>
 ```
 
 The page reads the key, then removes the fragment from the address bar and history before doing anything else. Never put a key in a query parameter: every request log records the query. The Worker never builds a link with a key in it, so `manageUrl` on a refusal carries none.

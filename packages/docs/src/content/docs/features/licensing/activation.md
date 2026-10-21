@@ -52,7 +52,7 @@ After the key checks, Core runs one shared decision. Sign-in activation runs the
   "message": "device limit reached",
   "limit": 5,
   "deviceCount": 5,
-  "manageUrl": "https://key.plrs.im/activate?product=tidewater&next=free-device"
+  "manageUrl": "https://polaris.locker/activate?product=tidewater&next=free-device"
 }
 ```
 

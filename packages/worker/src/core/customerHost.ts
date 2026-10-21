@@ -41,14 +41,14 @@ export const CUSTOMER_ROUTE_KINDS: ReadonlySet<string> = new Set([
 
 /**
  * What of `/docs` the customer host serves: Help and the files a Help page loads (the shared
- * styles and scripts, the public search bundle, the site's own 404, the branding). Every other
+ * styles and scripts, Help's own search bundle (Help pages only), the site's own 404, the branding). Every other
  * `/docs` path redirects to the console host (`docsElsewhere`). All of them are public tier, so
  * no session is read here.
  */
 const CUSTOMER_DOCS_PREFIXES: readonly string[] = [
   "/docs/help/",
   "/docs/_astro/",
-  "/docs/pagefind/",
+  "/docs/pagefind-help/",
   "/docs/branding/",
 ];
 const CUSTOMER_DOCS_FILES: ReadonlySet<string> = new Set([

@@ -45,3 +45,16 @@ export function scopeSidebar<T extends SidebarEntry>(
   }
   return out;
 }
+
+/**
+ * The Locker icon for a Key icon href (`/docs/branding/key/favicon.svg`): same file name, except
+ * the touch icon, which the Locker kit calls `apple-touch-icon.png`.
+ */
+export function lockerIcon(href: string): string {
+  return href
+    .replace(
+      "/branding/key/app-icon-dark-180.png",
+      "/branding/locker/apple-touch-icon.png",
+    )
+    .replace("/branding/key/", "/branding/locker/");
+}

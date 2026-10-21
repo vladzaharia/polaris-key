@@ -1,6 +1,6 @@
 // The tier pass over the built site (DOC-03b), run last by `pnpm build`:
 //   - dist/docs-access.json: the path prefixes and their tiers, from src/lib/doors.ts;
-//   - one Pagefind bundle per tier, so a search never returns text its reader may not open:
+//   - one Pagefind bundle per tier plus a Help-only one (dist/pagefind-help, polaris.locker), so a search never returns text its reader may not open:
 //     dist/pagefind (public), dist/pagefind-member (public + member), dist/pagefind-admin (all);
 //   - the sitemap keeps public pages only; Help moves to dist/sitemap-help.xml (polaris.locker).
 // The worker serves each bundle at its own tier (SEARCH_BUNDLES in packages/worker/src/docs.ts);
@@ -19,6 +19,7 @@ import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as pagefind from "pagefind";
 import {
+  HELP_SEARCH_BUNDLE,
   SEARCH_BUNDLES as BUNDLES,
   TIER_PREFIXES,
   doorOf,
@@ -81,6 +82,8 @@ for (const [dir, tier] of BUNDLES) {
   let n = 0;
   for (const file of pages) {
     if (RANK[tierOfPage(file)] > RANK[tier]) continue;
+    // Help's own bundle holds Help and nothing else.
+    if (dir === HELP_SEARCH_BUNDLE && !/^help(\/|$)/.test(idOf(file))) continue;
     const res = await index.addHTMLFile({
       // Starlight's own index keys a page by its path without the /docs base.
       url: "/" + relative(dist, dirname(file)).split(sep).join("/") + "/",

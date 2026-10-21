@@ -45,15 +45,29 @@ const BRAND_FILES = [
   "@polaris-key/brand/marks/key/svg/key-display-light.svg",
 ];
 
-rmSync(BRAND_DIR, { recursive: true, force: true });
-mkdirSync(BRAND_DIR, { recursive: true });
-for (const spec of BRAND_FILES) {
-  const from = brandFile(spec);
-  copyFileSync(from, join(BRAND_DIR, from.slice(from.lastIndexOf("/") + 1)));
+// Help is Polaris Locker's (polaris.locker, /docs/branding/ is a customer-host prefix): its pages
+// point at the Locker kit's web identity (src/routeData.ts rewrites the heads).
+const LOCKER_DIR = join(docsRoot, "public", "branding", "locker");
+const LOCKER_FILES = [
+  "@polaris-key/brand/web/locker/favicon.svg",
+  "@polaris-key/brand/web/locker/favicon.ico",
+  "@polaris-key/brand/web/locker/apple-touch-icon.png",
+];
+
+for (const [dir, files] of [
+  [BRAND_DIR, BRAND_FILES],
+  [LOCKER_DIR, LOCKER_FILES],
+]) {
+  rmSync(dir, { recursive: true, force: true });
+  mkdirSync(dir, { recursive: true });
+  for (const spec of files) {
+    const from = brandFile(spec);
+    copyFileSync(from, join(dir, from.slice(from.lastIndexOf("/") + 1)));
+  }
+  console.log(
+    `copy-artifacts: @polaris-key/brand (${files.length} files) -> ${dir}`,
+  );
 }
-console.log(
-  `copy-artifacts: @polaris-key/brand (${BRAND_FILES.length} files) -> ${BRAND_DIR}`,
-);
 
 for (const copy of COPIES) {
   rmSync(copy.to, { recursive: true, force: true });

@@ -263,7 +263,7 @@ func test_expired_screen() -> void:
 
 func test_device_limit_link() -> void:
 	var result := PKeyActivationResult.of(PKeyActivationResult.KIND_DEVICE_LIMIT, &"device_limit", "", 403)
-	result.manage_url = "https://key.plrs.im/activate?product=acme"
+	result.manage_url = "https://polaris.locker/activate?product=acme"
 	assert(PKeyActivationController.manage_link(result, "", "mygame://done") != "")
 ```
 

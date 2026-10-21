@@ -43,6 +43,29 @@ export default defineConfig({
       importedMarkdown(),
       tailwindcss(),
       {
+        // Starlight's search always loads <base>/pagefind/, the bundle of every public page. Help is
+        // the customer's site (polaris.locker), where a developer result would be a dead end, so on
+        // a Help page the search loads the Help-only bundle (scripts/build-search-bundles.ts).
+        // Starlight has no option for the path, so the one line is rewritten here; a Starlight
+        // upgrade that moves it fails the build rather than silently searching everything.
+        name: "pk-help-search-bundle",
+        enforce: "pre",
+        transform(code, id) {
+          if (!/starlight\/(dist\/)?components\/Search\.astro\?/.test(id))
+            return null;
+          if (!code.includes("new PagefindUI(")) return null;
+          const from = `bundlePath: import.meta.env.BASE_URL.replace(/\\/$/, "") + "/pagefind/",`;
+          if (!code.includes(from))
+            throw new Error(
+              "pk-help-search-bundle: Starlight's Search.astro bundlePath line moved",
+            );
+          return code.replace(
+            from,
+            `bundlePath: import.meta.env.BASE_URL.replace(/\\/$/, "") + (location.pathname.startsWith(import.meta.env.BASE_URL.replace(/\\/$/, "") + "/help") ? "/pagefind-help/" : "/pagefind/"),`,
+          );
+        },
+      },
+      {
         // Expressive Code's `<Code>` component resolves ec.config.mjs relative to a virtual
         // module, finds nothing, and renders with the defaults, so a block from `<Code>`
         // (Snippet, InstallSteps) would not match one from Markdown. Point it at the file.

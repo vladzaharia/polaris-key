@@ -1,6 +1,7 @@
 // A customer is sent to polaris.locker/device or polaris.locker/tv, never to the console host's
-// copy of the same page. Scans kit source and the kit copy catalogue; the Worker, developer docs
-// and tests are exempt.
+// copy of the same page. Scans kit source, the kit copy catalogue and every docs page (a page that
+// shows a customer URL is a promise about it); the Worker and tests are exempt. A docs lint rule
+// would not do: this test already owns the pattern and the repo root.
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -54,6 +55,23 @@ describe("customer-facing device URL", () => {
       hits,
       "use polaris.locker/device, /tv or /activate (DEVICE_CODE_PAGE, CUSTOMER_ORIGIN_DEFAULT)",
     ).toEqual([]);
+  });
+  it("never names key.plrs.im/device, /tv or /activate in the docs pages", () => {
+    const docs = join(REPO_ROOT, "packages/docs/src/content/docs");
+    const hits: string[] = [];
+    for (const f of files(docs)) {
+      if (!/\.(md|mdx)$/.test(f)) continue;
+      readFileSync(f, "utf8")
+        .split("\n")
+        .forEach((line, i) => {
+          if (BAD.test(line)) hits.push(`${relative(REPO_ROOT, f)}:${i + 1}`);
+        });
+    }
+    expect(
+      hits,
+      "customers are sent to polaris.locker/device, /tv or /activate; key.plrs.im/<slug>/identity/auth/device is the API host's",
+    ).toEqual([]);
+    expect(files(docs).length).toBeGreaterThan(50);
   });
   it("scans something", () => {
     expect(
