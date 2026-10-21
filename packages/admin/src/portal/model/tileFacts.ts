@@ -26,9 +26,9 @@ export interface TileFacts {
 
 /** "3/4 devices", "2 devices", "1 device". */
 export function deviceCount(n: number, limit?: number | null): string {
-  const word =
-    (limit != null && limit > 0 ? limit : n) === 1 ? "device" : "devices";
-  return limit != null && limit > 0 ? `${n}/${limit} ${word}` : `${n} ${word}`;
+  return limit != null && limit > 0
+    ? t("locker.devices.ratio", { used: n, limit })
+    : t("devices.count", { count: n });
 }
 
 export function libraryTileFacts(p: LibraryProduct): TileFacts {
@@ -36,11 +36,11 @@ export function libraryTileFacts(p: LibraryProduct): TileFacts {
     return {
       tier: null,
       devices: null,
-      lines: [{ kind: "free", text: "Free to use" }],
+      lines: [{ kind: "free", text: t("locker.offer.reasonOpen") }],
     };
   const l = p.best;
   // A license with no tier is "Standard", as on the product page (model/product.ts).
-  const tier = tierLabel(l.tier) ?? "Standard";
+  const tier = tierLabel(l.tier) ?? t("locker.tier.standard");
   const seats = p.seats;
   const count = seats ? seats.inUse : p.deviceCount;
   const devices =
@@ -55,31 +55,32 @@ export function libraryTileFacts(p: LibraryProduct): TileFacts {
   const lines: TileFact[] = [];
   const kind = p.status.kind;
   if (kind === "suspended")
-    lines.push({ kind: "note", text: "Suspended by the developer" });
+    lines.push({ kind: "note", text: t("locker.status.suspendedTile") });
   else if (l.expiresAt !== null) {
     const day = formatDay(l.expiresAt, kind !== "expiresSoon");
     lines.push({
       kind: "term",
       text:
         kind === "expired"
-          ? `Ended ${day}`
+          ? t("locker.status.ended", { date: day })
           : kind === "expiresSoon"
-            ? `Ends ${day}`
-            : `Until ${day}`,
+            ? t("locker.status.ends", { date: day })
+            : t("locker.status.until", { date: day }),
     });
   }
   if ((l.origin === "store" || l.origin === "store-key") && l.originStore)
     lines.push({
       kind: "store",
-      text: `Bought on ${storeLabel(l.originStore)}`,
+      text: boughtOn(l.originStore),
     });
   return { tier, devices, lines };
 }
 
-/** "the App Store", "Steam": a store as a sentence names it. */
-function storeLabel(store: string): string {
-  const name = storeName(store);
-  return store === "app-store" ? `the ${name}` : name;
+/** "Bought on the App Store", "Bought on Steam". */
+function boughtOn(store: string): string {
+  return store === "app-store"
+    ? t("locker.status.boughtOnAppStore")
+    : t("locker.status.boughtOn", { store: storeName(store) });
 }
 
 /**
@@ -96,15 +97,19 @@ export function discoverTileFacts(o: PortalDiscoverOffer): TileFacts {
         ? [{ kind: "about", text: o.shortDescription }]
         : [],
     };
-  const tier = terms.tierLabel ?? tierLabel(terms.tier) ?? "Standard";
+  const tier =
+    terms.tierLabel ?? tierLabel(terms.tier) ?? t("locker.tier.standard");
   const lines: TileFact[] = [];
   if (terms.expiryDays !== null)
     lines.push({
       kind: "term",
-      text: `${terms.expiryDays} ${terms.expiryDays === 1 ? "day" : "days"}`,
+      text: t("locker.packages.days", { count: terms.expiryDays }),
     });
   else if (terms.expiresAt !== null)
-    lines.push({ kind: "term", text: `Until ${formatDay(terms.expiresAt)}` });
+    lines.push({
+      kind: "term",
+      text: t("locker.status.until", { date: formatDay(terms.expiresAt) }),
+    });
   else if (!tier || tier.toLowerCase() !== "lifetime")
     lines.push({ kind: "term", text: t("signin.term.lifetime") });
   return {

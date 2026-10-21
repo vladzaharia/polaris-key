@@ -151,7 +151,7 @@ export function DiscoverTile({
               )}
             >
               <Check aria-hidden className="size-4" />
-              In your library
+              {t("locker.activate.inLibrary")}
             </span>
           ) : null}
         </ProductArt>
@@ -210,7 +210,7 @@ export function DiscoverTile({
                   className="mt-0.5 size-4 shrink-0 self-start text-accent-fg"
                 />
                 <span>
-                  <span className="sr-only">Why you can add it: </span>
+                  <span className="sr-only">{t("locker.offer.why")} </span>
                   {reason.text}
                 </span>
               </span>
@@ -221,7 +221,10 @@ export function DiscoverTile({
                   className="relative text-sm font-medium text-accent-fg hover:underline"
                 >
                   {more}
-                  <span className="sr-only"> to add {offer.name}</span>
+                  <span className="sr-only">
+                    {" "}
+                    {t("locker.offer.moreAria", { product: offer.name })}
+                  </span>
                 </a>
               ) : null}
             </p>
@@ -251,7 +254,9 @@ export function DiscoverTile({
                 >
                   <a id={`${id}-open`} href={href.product(offer.product)}>
                     <ArrowRight aria-hidden />
-                    <span className="truncate">Open {offer.name}</span>
+                    <span className="truncate">
+                      {t("locker.activate.open", { product: offer.name })}
+                    </span>
                   </a>
                 </Button>
               ) : (
@@ -263,10 +268,14 @@ export function DiscoverTile({
                   iconStart={<Plus aria-hidden />}
                   loading={state === "adding"}
                   aria-describedby={error ? errorId : undefined}
-                  aria-label={`Add to library: ${offer.name}`}
+                  aria-label={t("locker.offer.addAria", {
+                    product: offer.name,
+                  })}
                   onClick={onAdd}
                 >
-                  {state === "adding" ? "Adding…" : "Add to library"}
+                  {state === "adding"
+                    ? t("locker.offer.adding")
+                    : t("locker.offer.add")}
                 </Button>
               )}
             </div>
@@ -332,7 +341,9 @@ function LinkActions({
         <li>
           <ExternalButton
             href={site}
-            label={`Get it from ${offer.developerName ?? t("license.developerFallback")}`}
+            label={t("locker.offer.getFrom", {
+              developer: offer.developerName ?? t("license.developerFallback"),
+            })}
             name={offer.name}
           />
         </li>
@@ -344,9 +355,14 @@ function LinkActions({
             size="md"
             className="h-10 w-full pointer-coarse:h-11"
           >
-            <a href={page} aria-label={`See details: ${offer.name}`}>
+            <a
+              href={page}
+              aria-label={t("locker.offer.seeDetailsAria", {
+                product: offer.name,
+              })}
+            >
               <ArrowRight aria-hidden />
-              See details
+              {t("locker.offer.seeDetails")}
             </a>
           </Button>
         </li>
@@ -375,7 +391,10 @@ function ExternalButton({
         href={to}
         target="_blank"
         rel="noreferrer"
-        aria-label={`${label}: ${name} (opens in a new tab)`}
+        aria-label={t("locker.offer.newTabAria", {
+          store: label,
+          product: name,
+        })}
       >
         <ExternalLink aria-hidden />
         <span className="truncate">{label}</span>
@@ -394,14 +413,17 @@ function StoreLinks({
 }): React.ReactElement {
   return (
     <p className="relative flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-fg-muted">
-      <span>Also on</span>
+      <span>{t("locker.offer.alsoOn")}</span>
       {stores.map((st) => (
         <a
           key={st.id}
           href={st.url}
           target="_blank"
           rel="noreferrer"
-          aria-label={`${st.label}: ${offer.name} (opens in a new tab)`}
+          aria-label={t("locker.offer.newTabAria", {
+            store: st.label,
+            product: offer.name,
+          })}
           className="inline-flex items-center gap-1.5 font-medium text-accent-fg underline decoration-accent-fg/35 underline-offset-[3px]"
         >
           {st.kind === "steam" ? (

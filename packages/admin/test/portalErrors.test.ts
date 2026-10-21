@@ -11,7 +11,7 @@ describe("portalErrorCopy: the download mint's reasons", () => {
       portalErrorCopy(new PortalApiError(403, "license_inactive")).title,
     ).toBe("Your license isn't active");
     expect(portalErrorCopy(new PortalApiError(403, "not_entitled")).title).toBe(
-      "Your license doesn't include this version",
+      "Not included",
     );
     expect(
       portalErrorCopy(new PortalApiError(404, "file_not_found")).title,
@@ -20,14 +20,14 @@ describe("portalErrorCopy: the download mint's reasons", () => {
 
   it("keeps the status copy for every other answer, including a stranger's plain 404", () => {
     expect(portalErrorCopy(new PortalApiError(404, "not_found")).title).toBe(
-      "That isn't here",
+      "Not found",
     );
     expect(portalErrorCopy(new PortalApiError(403, "forbidden")).title).toBe(
-      "That didn't go through",
+      "Not allowed",
     );
     // An inherited property name is not a reason.
     expect(portalErrorCopy(new PortalApiError(404, "toString")).title).toBe(
-      "That isn't here",
+      "Not found",
     );
   });
 });

@@ -1,5 +1,5 @@
 import type { PlatformKey } from "../components/Glyphs.js";
-import { t, type KitCopyKey } from "../../lib/copy.js";
+import { t, type PortalKey } from "../../lib/copy.js";
 
 /**
  * Get it's copy for stores and install sources (PORTAL.md §4.20; P0-48), on the product page and
@@ -31,7 +31,7 @@ const FIXED = [
   "getIt.flow.hint.package",
   "getIt.flow.hint.apk",
   "getIt.flow.hint.flatpak",
-] as const satisfies readonly KitCopyKey[];
+] as const satisfies readonly PortalKey[];
 
 /** The fixed strings, read through the catalog on each use. */
 export const GET_IT_COPY = Object.defineProperties(

@@ -7,6 +7,8 @@ import { href, type PortalRoute } from "../router.js";
 import { AccountMenu } from "./AccountMenu.js";
 import { HeaderBrand } from "./Lockup.js";
 import { MissingLicense } from "./MissingLicense.js";
+import { t } from "../../lib/copy.js";
+import { formatDay } from "../date.js";
 
 /**
  * The signed-in frame (PORTAL.md §3.2, §5.2 `PortalShell`):
@@ -71,33 +73,33 @@ export function PortalShell({
         }}
         className="sr-only z-50 rounded-md bg-surface-overlay px-3 py-2 text-fg-strong focus:not-sr-only focus:fixed focus:left-4 focus:top-3"
       >
-        Skip to content
+        {t("locker.shell.skip")}
       </a>
       {/* pk-vt-chrome: kept above a list transition's moving content (src/motion.css). */}
       <header className="pk-vt-chrome sticky top-0 z-30 border-b border-border bg-surface-page short:static">
         <div className="mx-auto flex h-14 w-full max-w-[82rem] items-center gap-4 px-4 desk:h-16 desk:gap-6 desk:px-8 mid:gap-8">
           <a
             href={href.library()}
-            aria-label="Polaris Locker: your library"
+            aria-label={t("locker.shell.home")}
             className="flex shrink-0 items-center rounded-md"
           >
             <HeaderBrand />
           </a>
           <nav
-            aria-label="Main"
+            aria-label={t("locker.shell.main")}
             className="hidden h-full shrink-0 items-stretch gap-6 desk:flex mid:gap-8"
           >
             <NavLink
               href={href.library()}
               active={onLibrary}
-              label="Library"
+              label={t("locker.library.title")}
               count={libraryCount}
             />
             {showDiscover ? (
               <NavLink
                 href={href.discover()}
                 active={onDiscover}
-                label="Discover"
+                label={t("locker.discover.title")}
                 count={discoverCount}
                 accentCount
               />
@@ -127,17 +129,15 @@ export function PortalShell({
           <p className="mx-auto flex w-full max-w-[82rem] flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 text-sm text-fg desk:px-8">
             <TriangleAlert aria-hidden className="size-4 shrink-0" />
             <span>
-              Your account will be erased on{" "}
-              {new Intl.DateTimeFormat(undefined, {
-                dateStyle: "medium",
-              }).format(new Date(account.deletion.dueAt * 1000))}
-              .
+              {t("locker.delete.banner", {
+                date: formatDay(account.deletion.dueAt),
+              })}
             </span>
             <a
               href={href.account("data")}
               className="inline-flex min-h-6 items-center font-medium text-fg-strong underline underline-offset-2"
             >
-              Cancel deletion
+              {t("locker.delete.cancel")}
             </a>
           </p>
         </div>
@@ -166,7 +166,7 @@ export function PortalShell({
         />
       ) : null}
       <nav
-        aria-label="Phone"
+        aria-label={t("locker.shell.phone")}
         className="pk-vt-chrome fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface-page pb-[env(safe-area-inset-bottom)] desk:hidden"
       >
         <div className="grid h-[3.25rem] grid-cols-2 items-center px-2">
@@ -179,7 +179,7 @@ export function PortalShell({
             )}
           >
             <Library aria-hidden className="size-5" />
-            Library
+            {t("locker.library.title")}
           </a>
           {showDiscover ? (
             <a
@@ -199,9 +199,11 @@ export function PortalShell({
                   />
                 ) : null}
               </span>
-              Discover
+              {t("locker.discover.title")}
               {discoverCount ? (
-                <span className="sr-only">, {discoverCount} to add</span>
+                <span className="sr-only">
+                  {t("locker.shell.toAdd", { count: discoverCount })}
+                </span>
               ) : null}
             </a>
           ) : (

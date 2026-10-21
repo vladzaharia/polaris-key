@@ -1,3 +1,4 @@
+import { t } from "../../../lib/copy.js";
 import * as React from "react";
 import { cn } from "../../../lib/cn.js";
 import { truncateMiddle } from "../../../lib/format.js";
@@ -18,7 +19,7 @@ export function BuildDetails({
   sha256,
   hint,
 }: {
-  /** "Stable · 22 Sep 2026" (the day only for the channel's newest release). */
+  /** "Stable · Sep 22, 2026" (the day only for the channel's newest release). */
   channel: string | null;
   sha256: string | null;
   /** What opens the file, from its format (`installHint`). */
@@ -81,7 +82,10 @@ function Sha256({ value }: { value: string }): React.ReactElement {
         trigger={
           <button
             type="button"
-            aria-label={`${C["getIt.flow.sha256"]} ${short}, show full value`}
+            aria-label={t("locker.files.showFull", {
+              label: C["getIt.flow.sha256"],
+              detail: short,
+            })}
             className="-ml-2 inline-flex h-9 items-center rounded-md px-2 font-mono text-code text-fg hover:text-fg-strong"
           >
             <span aria-hidden>{short}</span>

@@ -1,5 +1,6 @@
 import * as React from "react";
 import { Lock } from "lucide-react";
+import { t } from "../../../lib/copy.js";
 import { Button } from "../../../ui/Button.js";
 import { Expand } from "../../../ui/motion/index.js";
 import { announce } from "../../../ui/LiveRegion.js";
@@ -116,7 +117,17 @@ export function MethodRow({
   const guarded = !canRemove && reason !== null;
   const fresh = stepUpFresh(view.stepUp, Math.floor(Date.now() / 1000));
   const askFirst = needsStepUp || !fresh;
-  const lowerVerb = verb.toLowerCase();
+  const disconnect = verb === "Disconnect";
+  const verbLabel = disconnect
+    ? t("locker.methods.disconnect")
+    : t("locker.methods.remove");
+  const lowerVerb = disconnect
+    ? t("locker.verb.disconnect")
+    : t("locker.verb.remove");
+  const verbName = (n: string): string =>
+    disconnect
+      ? t("locker.methods.disconnectName", { name: n })
+      : t("locker.methods.removeName", { name: n });
 
   const close = (): void => {
     setOpen(false);
@@ -171,13 +182,13 @@ export function MethodRow({
               aria-describedby={guarded ? reasonId : undefined}
               aria-expanded={guarded ? undefined : false}
               aria-controls={guarded ? undefined : panelId}
-              aria-label={`${verb} ${name}`}
+              aria-label={verbName(name)}
               onClick={() => {
                 if (guarded) return;
                 setOpen(true);
               }}
             >
-              {verb}
+              {verbLabel}
             </Button>
           </div>
         )}
@@ -193,8 +204,8 @@ export function MethodRow({
         >
           <Lock aria-hidden className="mt-0.5 size-4 shrink-0 text-warning" />
           {reason === "last_link"
-            ? `This is your only way to sign in. Connect another one first, then you can remove ${guardName}.`
-            : "This is your account's only email address. Add another one first, then you can remove it."}
+            ? t("locker.methods.lastLink", { name: guardName })
+            : t("locker.methods.onlyEmail")}
         </p>
       ) : null}
       <Expand
@@ -215,7 +226,9 @@ export function MethodRow({
               tabIndex={-1}
               className="font-medium text-fg-strong outline-none"
             >
-              {verb} {name}?
+              {disconnect
+                ? t("locker.methods.disconnectAsk", { name })
+                : t("locker.methods.removeAsk", { name })}
             </h4>
             <ul className="list-disc space-y-1 pl-5 text-sm text-fg">
               {consequences.map((c, i) => (
@@ -270,7 +283,7 @@ export function MethodRow({
                   busyFocusable
                   onClick={doRemove}
                 >
-                  {verb} {name}
+                  {verbName(name)}
                 </Button>
               </div>
             )}
@@ -289,9 +302,7 @@ function removeErrorText(err: unknown): string {
       err.message
     )
       return err.message;
-    if (err.status === 404)
-      return "It's already gone. The list is up to date now.";
+    if (err.status === 404) return t("locker.methods.alreadyGone");
   }
-  const copy = portalErrorCopy(err, { account: true });
-  return `${copy.title}. ${copy.description}`;
+  return portalErrorCopy(err).line;
 }

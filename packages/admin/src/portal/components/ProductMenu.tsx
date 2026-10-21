@@ -51,7 +51,7 @@ export function ProductMenu({
     const url = `${window.location.origin}/${href.product(slug)}`;
     void navigator.clipboard?.writeText(url).then(
       () => toast.success(t("signInHandoff.linkCopied")),
-      () => toast.error("Couldn't copy the link"),
+      () => toast.error(t("locker.menu.copyFailed")),
     );
   };
   return (
@@ -60,7 +60,7 @@ export function ProductMenu({
         <button
           ref={triggerRef}
           type="button"
-          aria-label={`More for ${name}`}
+          aria-label={t("locker.menu.more", { product: name })}
           className={
             className ??
             "inline-flex size-11 shrink-0 items-center justify-center rounded-md border border-border-strong text-fg-strong hover:bg-hover"
@@ -83,8 +83,8 @@ export function ProductMenu({
             <a href={href.product(slug)}>
               <FileText aria-hidden />
               {entry
-                ? "Details and downloads"
-                : "License, devices and versions"}
+                ? t("locker.menu.details")
+                : t("locker.menu.licenseDetails")}
             </a>
           </DropdownMenuItem>
         )}
@@ -113,7 +113,9 @@ export function ProductMenu({
               }}
             >
               <CircleMinus aria-hidden />
-              {entry ? "Remove from library" : "Remove from my library"}
+              {entry
+                ? t("locker.menu.removeEntry")
+                : t("locker.menu.removeLicense")}
             </DropdownMenuItem>
           </>
         ) : null}

@@ -1,3 +1,5 @@
+import { t } from "../../lib/copy.js";
+import { formatDay } from "../date.js";
 import {
   PortalApiError,
   type PortalAvatar,
@@ -34,7 +36,7 @@ export function providerName(kind: string | null | undefined): string | null {
     case "eos":
       return "Epic Online Services";
     case "oidc":
-      return "Single sign-on";
+      return t("locker.methods.sso");
     default:
       return null;
   }
@@ -96,16 +98,13 @@ function birthdateChange(
 }
 
 /**
- * A birth date as the reader's locale writes it ("February 28, 1987"), read as a calendar day
- * (UTC), so no time zone moves it a day.
+ * A birth date in the one date format ("Feb 28, 1987"), read as a calendar day (UTC), so no time
+ * zone moves it a day.
  */
 export function formatBirthdate(value: string, locale?: string): string {
   const at = new Date(`${value}T00:00:00Z`);
   if (Number.isNaN(at.getTime())) return value;
-  return new Intl.DateTimeFormat(locale, {
-    dateStyle: "long",
-    timeZone: "UTC",
-  }).format(at);
+  return formatDay(at.getTime() / 1000, true, { locale, utc: true });
 }
 
 /** Today in the reader's own calendar, `YYYY-MM-DD`: the field's latest date. */
@@ -450,6 +449,5 @@ export function profileErrorCopy(err: unknown, op: "save" | "upload"): string {
     if (op === "upload" && err.status === 503)
       return PROFILE_COPY["profile.error.uploadUnavailable"];
   }
-  const copy = portalErrorCopy(err, { account: true });
-  return `${copy.title}. ${copy.description}`;
+  return portalErrorCopy(err).line;
 }

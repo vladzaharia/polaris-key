@@ -76,7 +76,7 @@ export function MissingLicense({
     <section
       ref={ref}
       data-missing-strip
-      aria-label="Missing a license?"
+      aria-label={t("locker.missing.title")}
       className="sticky bottom-[calc(3.25rem+1px+env(safe-area-inset-bottom))] z-20 border-t border-border bg-surface-raised desk:bottom-0 short:static short:max-desk:mb-[calc(3.25rem+1px+env(safe-area-inset-bottom))]"
     >
       <div className="mx-auto flex w-full max-w-[82rem] flex-col-reverse px-4 desk:px-8 wide:flex-row wide:flex-wrap wide:items-center wide:gap-x-6">
@@ -84,7 +84,7 @@ export function MissingLicense({
           aria-hidden
           className="hidden shrink-0 text-sm font-medium text-fg-strong wide:block"
         >
-          Missing a license?
+          {t("locker.missing.title")}
         </p>
         <button
           ref={toggleRef}
@@ -94,7 +94,7 @@ export function MissingLicense({
           onClick={() => setOpen((v) => !v)}
           className="flex min-h-11 w-full items-center justify-between gap-2 text-sm font-medium text-fg-strong wide:hidden"
         >
-          Missing a license?
+          {t("locker.missing.title")}
           <ChevronUp
             aria-hidden
             className={cn("size-4 transition-transform", open && "rotate-180")}
@@ -108,7 +108,7 @@ export function MissingLicense({
           )}
         >
           <p className="mb-1 text-sm font-semibold text-fg-strong wide:hidden">
-            Other ways in
+            {t("locker.missing.otherWays")}
           </p>
           <ul className="flex flex-col gap-x-6 text-sm text-fg-muted wide:flex-row wide:flex-wrap wide:items-center wide:py-1">
             {hideActivate ? null : (
@@ -123,20 +123,18 @@ export function MissingLicense({
               </li>
             )}
             <li>
-              Another email?{" "}
+              {t("locker.missing.anotherEmail")}{" "}
               <a href={href.account("methods")} className={LINK}>
-                Add it in Sign-in methods
+                {t("locker.missing.addInMethods")}
               </a>
             </li>
             <li>
-              Bought on Steam?{" "}
+              {t("locker.missing.steamTitle")}{" "}
               <a href={href.account("methods")} className={LINK}>
-                Connect Steam
+                {t("locker.missing.connectSteam")}
               </a>
             </li>
-            <li className="py-2 wide:py-0">
-              Bought in a store? Sign in from the app
-            </li>
+            <li className="py-2 wide:py-0">{t("locker.missing.inStore")}</li>
           </ul>
         </div>
       </div>

@@ -326,7 +326,7 @@ describe("Your data: Download my data (I-11)", () => {
     );
     await userEvent.click(button);
     expect((await within(data).findByRole("alert")).textContent).toBe(
-      "Too many tries. Wait a minute, then try again.",
+      "Too many attempts. Wait a moment and try again.",
     );
     expect(files.saved).toHaveLength(0);
     expect(screen.queryByText("Your download has started")).toBeNull();
@@ -341,17 +341,17 @@ describe("Your data: Download my data (I-11)", () => {
     [
       "too many tries",
       { status: 429, body: { error: "rate_limited" } },
-      "Too many tries. Wait a minute, then try again.",
+      "Too many attempts. Wait a moment and try again.",
     ],
     [
       "a dropped connection",
       "network",
-      "Can't reach Polaris Locker. Check your connection, then try again.",
+      "Can't reach Polaris Locker. Check your connection and try again.",
     ],
     [
       "an error from the Worker",
       { status: 500, body: { error: "internal" } },
-      "Something went wrong. Try again in a few minutes.",
+      "Something went wrong. Try again.",
     ],
   ])("says so and saves nothing: %s", async (_case, answer, words) => {
     const { data, button } = await open(answer);

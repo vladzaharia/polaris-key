@@ -61,9 +61,9 @@ export const SECTION_LABEL: Record<ProductSection, string> = {
   new: t("update.whatsNew"),
   license: t("license.title"),
   devices: t("account.devices"),
-  package: "Packages",
-  help: "Help",
-  data: "Your data",
+  package: t("locker.account.packages"),
+  help: t("locker.shell.helpLink"),
+  data: t("locker.account.yourData"),
 };
 
 /**
@@ -148,10 +148,14 @@ export function elsewhereFor(
         ? s.platforms.some((p) => normalisePlatform(p) === platform)
         : true,
     ) ?? null;
-  if (store) return { label: `Get it from ${store.label}`, href: store.url };
+  if (store)
+    return {
+      label: t("locker.offer.getFromStore", { store: store.label }),
+      href: store.url,
+    };
   const who = ctx.developer ?? t("license.developerFallback");
   return {
-    label: `Get it from ${who}`,
+    label: t("locker.offer.getFrom", { developer: who }),
     href: httpsOrNull(ctx.website),
   };
 }
@@ -188,10 +192,11 @@ export function fileSource(
 function archTitle(a: PortalArtifact, platform: PlatformKey | null): string {
   const arch = (a.arch ?? "").toLowerCase();
   if (!platform) return a.name;
-  if (!arch || arch === "any" || arch === "universal") return "Universal";
+  if (!arch || arch === "any" || arch === "universal")
+    return t("locker.arch.universal");
   if (platform === "macos")
     return arch === "arm64"
-      ? "Apple silicon"
+      ? t("locker.arch.appleSilicon")
       : arch === "x86_64"
         ? "Intel"
         : arch;
@@ -214,15 +219,15 @@ export function notIncludedReason(
   if (a.canDownload) return null;
   switch (a.reason) {
     case "license_inactive":
-      return "Needs an active license";
+      return t("locker.reason.inactive");
     case "not_entitled":
-      return "Your license doesn't include this version";
+      return t("locker.reason.notEntitled");
     case "not_hosted":
-      return "Not available here yet";
+      return t("locker.error.notHosted.title");
   }
   if (a.access === "licensed" && !licenseUsable)
-    return "Needs an active license";
-  return "Not available here yet";
+    return t("locker.reason.inactive");
+  return t("locker.error.notHosted.title");
 }
 
 export function fileRow(
@@ -306,7 +311,12 @@ function groupRows(rows: FileRowModel[]): PlatformGroup[] {
   }
   const extras = rows.filter((x) => x.platform === null);
   if (extras.length)
-    groups.push({ platform: null, label: "Extras", rows: extras, sources: [] });
+    groups.push({
+      platform: null,
+      label: t("locker.get.extras"),
+      rows: extras,
+      sources: [],
+    });
   return groups;
 }
 
@@ -606,7 +616,7 @@ export function deviceNoun(os: PlatformKey): string {
 
 /** "Recommended for your Mac": the label names the same OS the build is for. */
 export function recommendedLabel(os: PlatformKey): string {
-  return `Recommended for your ${DEVICE_NOUN[os]()}`;
+  return t("locker.get.recommended", { detail: DEVICE_NOUN[os]() });
 }
 
 // ── the one next action, never pointing at the page you are on (§0.6 P3) ──────────────────────
@@ -627,7 +637,9 @@ export function settleAction(
   if (site)
     return {
       kind: "link",
-      label: `Get it from ${p.presentation.developer ?? t("license.developerFallback")}`,
+      label: t("locker.offer.getFrom", {
+        developer: p.presentation.developer ?? t("license.developerFallback"),
+      }),
       href: site,
       icon: "open",
       external: true,
@@ -711,7 +723,7 @@ export function withSeats(
 
 /** The tier as the License card's pill names it: a licence with no tier is "Standard". */
 export function tierName(l: Pick<PortalLicenseSummary, "tier">): string {
-  return tierLabel(l.tier) ?? "Standard";
+  return tierLabel(l.tier) ?? t("locker.tier.standard");
 }
 
 /** The licence picker's option: tier first, then its short origin ("Pro · Key …3WPLDA",
@@ -775,8 +787,8 @@ export function coversVersions(
     | { minVersion: string | null; maxVersion: string | null },
 ): string {
   const { minVersion: min, maxVersion: max } = l;
-  if (min && max) return `${min} to ${max}`;
-  if (max) return `Up to ${max}`;
-  if (min) return `${min} and later`;
-  return "All versions";
+  if (min && max) return t("locker.get.coverRange", { min, max });
+  if (max) return t("locker.get.coverUpTo", { max });
+  if (min) return t("locker.get.coverFrom", { min });
+  return t("locker.get.coverAll");
 }

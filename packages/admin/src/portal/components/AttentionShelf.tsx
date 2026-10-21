@@ -1,3 +1,4 @@
+import { t } from "../../lib/copy.js";
 import * as React from "react";
 import { ExternalLink } from "lucide-react";
 import { Button } from "../../ui/Button.js";
@@ -29,7 +30,7 @@ export function AttentionShelf({
         id="attention-h"
         className="flex items-baseline gap-2 px-4 py-2 text-md font-semibold text-fg-strong"
       >
-        Needs you
+        {t("locker.library.needsYou")}
         <span className="text-xs font-normal text-fg-muted">
           {items.length}
         </span>

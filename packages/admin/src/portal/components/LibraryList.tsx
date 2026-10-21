@@ -44,23 +44,25 @@ export function LibraryList({
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-surface-raised shadow-elevation-1">
       <table className="w-full border-collapse text-left">
-        <caption className="sr-only">Your products</caption>
+        <caption className="sr-only">
+          {t("locker.library.table.caption")}
+        </caption>
         <thead className="hidden text-xs text-fg-muted desk:table-header-group">
           <tr className="border-b border-border">
             <th scope="col" className="py-3 pl-5 pr-2 font-normal">
-              <span className="sr-only">Icon</span>
+              <span className="sr-only">{t("locker.library.table.icon")}</span>
             </th>
             <th scope="col" className="px-2 py-3 font-normal">
-              Product
+              {t("locker.library.table.product")}
             </th>
             <th scope="col" className="px-2 py-3 font-normal">
-              Status
+              {t("locker.library.table.status")}
             </th>
             <th
               scope="col"
               className="hidden px-2 py-3 font-normal wide:table-cell"
             >
-              Latest
+              {t("locker.library.table.latest")}
             </th>
             <th
               scope="col"
@@ -72,7 +74,7 @@ export function LibraryList({
               {actionHeader}
             </th>
             <th scope="col" className="py-3 pr-5 font-normal">
-              <span className="sr-only">Open</span>
+              <span className="sr-only">{t("locker.library.table.open")}</span>
             </th>
           </tr>
         </thead>
@@ -140,7 +142,7 @@ function LibraryRow({
                     cue.animate && "pk-pop-in",
                   )}
                 >
-                  Added just now
+                  {t("locker.library.justAdded")}
                 </span>
                 {developer ? " · " : null}
               </>
@@ -176,7 +178,10 @@ function LibraryRow({
         {p.kind === "entry"
           ? "–"
           : p.seats
-            ? `${p.seats.inUse} of ${p.seats.limit}`
+            ? t("locker.library.seatsOf", {
+                used: p.seats.inUse,
+                limit: p.seats.limit,
+              })
             : p.deviceCount}
       </td>
       <td className="relative hidden px-2 py-3 text-right desk:table-cell">

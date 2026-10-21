@@ -13,19 +13,29 @@
  * catalog holds.
  */
 import { KIT_COPY_EN, type KitCopyKey } from "@polaris-key/brand/kit-copy";
+import {
+  PORTAL_COPY_EN,
+  type PortalCopyKey,
+} from "@polaris-key/brand/kit-copy/portal";
 import { Copy, type CopyArgs } from "@polaris-key/ui-core";
 
-const english = new Copy({ tables: { en: KIT_COPY_EN }, locale: "en" });
+/** The portal reads the kit catalog and its own namespaces (`portal.ts`; no SDK kit carries them). */
+export type PortalKey = KitCopyKey | PortalCopyKey;
 
-export type { CopyArgs, KitCopyKey };
+const english = new Copy({
+  tables: { en: { ...KIT_COPY_EN, ...PORTAL_COPY_EN } },
+  locale: "en",
+});
+
+export type { CopyArgs };
 
 /** The catalog string for `key` with `args` filled in. */
-export function t(key: KitCopyKey, args?: CopyArgs): string {
+export function t(key: PortalKey, args?: CopyArgs): string {
   return english.format(key, args);
 }
 
 /** Whether the catalog holds `key` (a refusal code the catalog does not word has no key). */
-export function hasCopy(key: string): key is KitCopyKey {
+export function hasCopy(key: string): key is PortalKey {
   return english.has(key);
 }
 
@@ -37,7 +47,7 @@ const SLOT = "\u0001";
  * arguments are filled in as with `t`.
  */
 export function tParts(
-  key: KitCopyKey,
+  key: PortalKey,
   slots: readonly string[],
   args?: CopyArgs,
 ): Array<string | { slot: string }> {

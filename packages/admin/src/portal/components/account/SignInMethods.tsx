@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { ActionMenu } from "../../../ui/ActionMenu.js";
 import { Button } from "../../../ui/Button.js";
-import { t } from "../../../lib/copy.js";
+import { t, tParts } from "../../../lib/copy.js";
 import { expiredCodeText, wrongCodeText } from "../../copy/codeEntry.js";
 import { Callout } from "../../../ui/Callout.js";
 import { Input } from "../../../ui/Input.js";
@@ -19,7 +19,8 @@ import { Skeleton } from "../../../ui/Skeleton.js";
 import { Expand } from "../../../ui/motion/index.js";
 import { announce } from "../../../ui/LiveRegion.js";
 import { toast } from "../../../ui/toast.js";
-import { formatDate, formatRelative } from "../../../lib/format.js";
+import { formatRelative } from "../../../lib/format.js";
+import { formatDay } from "../../date.js";
 import {
   portalApi,
   PortalApiError,
@@ -124,7 +125,7 @@ export function SignInMethods({
       aside={
         !emailOnly && methods.data ? (
           <ActionMenu
-            label="Add a sign-in method"
+            label={t("locker.methods.addMethod")}
             align="end"
             trigger={
               <Button
@@ -132,12 +133,12 @@ export function SignInMethods({
                 className="max-sm:min-h-11"
                 iconStart={<Plus aria-hidden />}
               >
-                Add
+                {t("locker.methods.add")}
               </Button>
             }
             items={[
               {
-                label: "Add an email",
+                label: t("locker.methods.addEmail"),
                 onSelect: () =>
                   later(() => setCmd((c) => ({ ...c, email: c.email + 1 }))),
               },
@@ -155,8 +156,8 @@ export function SignInMethods({
       }
       subtitle={
         emailOnly
-          ? "Receipts and security notices go to your primary email."
-          : "Each one is a key to this account. Connect or disconnect them any time; you need at least one."
+          ? t("locker.methods.subtitleEmail")
+          : t("locker.methods.subtitle")
       }
     >
       {emailOnly ? (
@@ -227,31 +228,33 @@ function callbackNotice(
   view: PortalMethods,
 ): { tone: "success" | "danger"; text: string } | null {
   const method = params.get("method") ?? params.get("connected");
-  const name = isProvider(method) ? PROVIDER_NAME[method] : "That account";
+  const name = isProvider(method)
+    ? PROVIDER_NAME[method]
+    : t("locker.methods.thatAccount");
   const connected = params.get("connected");
   if (connected)
     return isProvider(connected) &&
       view.providers.some((p) => p.kind === connected && p.connected)
-      ? { tone: "success", text: `${name} is connected.` }
+      ? { tone: "success", text: t("locker.methods.connected", { name }) }
       : null;
   const error = params.get("error");
   if (!error) return null;
   if (error === "link_conflict")
     return {
       tone: "danger",
-      text: `That ${name} account is connected to another Polaris Locker account, so it wasn't added here. Connect a different one, or sign in to that account to use it.`,
+      text: t("locker.methods.linkConflict", { name }),
     };
   if (error === "step_up_required")
     return {
       tone: "danger",
-      text: `Confirm it's you, then connect ${name} again.`,
+      text: t("locker.methods.stepUpAgain", { name }),
     };
   if (error === "signin_expired")
     return {
       tone: "danger",
-      text: `That took too long. Connect ${name} again.`,
+      text: t("locker.methods.tookTooLong", { name }),
     };
-  return { tone: "danger", text: `${name} wasn't connected. Try again.` };
+  return { tone: "danger", text: t("locker.methods.notConnected", { name }) };
 }
 
 // 9rem (6rem on desk) below the top: the shell's scroll padding (`--pk-scroll-top`, the header
@@ -345,8 +348,8 @@ function MethodGroups({
   const passkeyByMethod = new Map(view.passkeys.map((p) => [p.methodId, p]));
   const notifyTo = view.primaryEmail ?? account.email;
   const recorded = notifyTo
-    ? `We record the change and email ${notifyTo}.`
-    : "We record the change.";
+    ? t("locker.methods.recordedTo", { email: notifyTo })
+    : t("locker.methods.recorded");
   const rowFor = (
     m: PortalMethod,
     group: keyof typeof ids,
@@ -388,12 +391,12 @@ function MethodGroups({
             <>
               {shape.primary ? (
                 <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs font-medium text-fg">
-                  Primary
+                  {t("locker.methods.primary")}
                 </span>
               ) : null}
               {m.reason === "last_link" ? (
                 <span className="rounded-full bg-accent-subtle px-2 py-0.5 text-xs font-medium text-accent-fg">
-                  Only method
+                  {t("locker.methods.onlyMethod")}
                 </span>
               ) : null}
             </>
@@ -407,7 +410,10 @@ function MethodGroups({
         verb={shape.verb}
         consequences={[
           left
-            ? `${shape.consequence} You still have ${left}.`
+            ? t("locker.methods.consequenceLeft", {
+                detail: shape.consequence,
+                rest: left,
+              })
             : shape.consequence,
           recorded,
         ]}
@@ -430,26 +436,24 @@ function MethodGroups({
       {view.hideMyEmail ? (
         <Callout
           tone="info"
-          title="Bought something with your real email?"
+          title={t("locker.methods.hideTitle")}
           action={
             <Button
               variant="outline"
               className="font-medium max-sm:min-h-11"
               onClick={() => setAddEmailAsked((n) => n + 1)}
             >
-              Add your real email
+              {t("locker.methods.hideAction")}
             </Button>
           }
         >
-          Hide My Email gave us a private address, so we can't match it to your
-          real email. Add your real email and purchases made with it join your
-          library.
+          {t("locker.methods.hideBody")}
         </Callout>
       ) : null}
 
       <div>
         <h3 id={ids.accounts} tabIndex={-1} className={GROUP_HEADING}>
-          Accounts
+          {t("locker.methods.accounts")}
         </h3>
         <ul className="divide-y divide-border">
           {(["apple", "google", "steam"] as const).flatMap((kind) => {
@@ -472,13 +476,19 @@ function MethodGroups({
                 icon: <ProviderGlyph provider={kind} />,
                 title: PROVIDER_NAME[kind],
                 name: PROVIDER_NAME[kind],
-                keepLabel: `Keep ${PROVIDER_NAME[kind]}`,
+                keepLabel: t("locker.methods.keepName", {
+                  name: PROVIDER_NAME[kind],
+                }),
                 guardName: PROVIDER_NAME[kind],
                 identity: methodIdentity(m),
                 meta: methodMeta(m),
                 verb: "Disconnect",
-                consequence: `You won't sign in with ${PROVIDER_NAME[kind]} any more.`,
-                doneText: `${PROVIDER_NAME[kind]} was disconnected`,
+                consequence: t("locker.methods.disconnectNote", {
+                  name: PROVIDER_NAME[kind],
+                }),
+                doneText: t("locker.methods.disconnected", {
+                  name: PROVIDER_NAME[kind],
+                }),
                 notice: flagText(m),
               }),
             );
@@ -493,13 +503,15 @@ function MethodGroups({
                 ),
               title: m.label,
               name: m.label,
-              keepLabel: `Keep ${m.label}`,
+              keepLabel: t("locker.methods.keepName", { name: m.label }),
               guardName: m.label,
               identity: methodIdentity(m),
               meta: methodMeta(m),
               verb: "Disconnect",
-              consequence: `You won't sign in with ${m.label} any more.`,
-              doneText: `${m.label} was disconnected`,
+              consequence: t("locker.methods.disconnectNote", {
+                name: m.label,
+              }),
+              doneText: t("locker.methods.disconnected", { name: m.label }),
               notice: flagText(m),
             }),
           )}
@@ -509,7 +521,10 @@ function MethodGroups({
       <div>
         <h3 id={ids.email} tabIndex={-1} className={GROUP_HEADING}>
           {t("signin.email.label")}
-          <span className="font-normal"> · sign in with a code</span>
+          <span className="font-normal">
+            {" "}
+            · {t("locker.methods.signInWithCode")}
+          </span>
         </h3>
         <ul className="divide-y divide-border">
           {view.emails.map((e) => {
@@ -519,8 +534,8 @@ function MethodGroups({
               icon: <Mail aria-hidden />,
               title: e.email,
               name: e.email,
-              keepLabel: "Keep it",
-              guardName: "this email",
+              keepLabel: t("locker.methods.keepIt"),
+              guardName: t("locker.methods.thisEmail"),
               tool:
                 e.primary || e.productCount === undefined
                   ? undefined
@@ -539,21 +554,23 @@ function MethodGroups({
               primary: e.primary,
               meta: [
                 e.productCount
-                  ? `found ${new Intl.NumberFormat().format(e.productCount)} ${e.productCount === 1 ? "product" : "products"}`
+                  ? t("locker.methods.found", { count: e.productCount })
                   : null,
-                `added ${formatDate(e.connectedAt * 1000)}`,
+                t("locker.methods.addedOn", { date: formatDay(e.connectedAt) }),
                 e.lastUsedAt
-                  ? `last used ${formatRelative(e.lastUsedAt * 1000)}`
-                  : "never used to sign in",
+                  ? t("locker.methods.lastUsed", {
+                      when: formatRelative(e.lastUsedAt * 1000),
+                    })
+                  : t("locker.methods.neverUsed"),
               ]
                 .filter(Boolean)
                 .join(" · ")
                 .replace(/^./, (c) => c.toUpperCase()),
               verb: "Remove",
               consequence: e.primary
-                ? `You won't sign in with ${e.email} any more, and notices go to your next oldest address.`
-                : `You won't sign in with ${e.email} any more.`,
-              doneText: `${e.email} was removed`,
+                ? t("locker.methods.removeNotePrimary", { email: e.email })
+                : t("locker.methods.disconnectNote", { name: e.email }),
+              doneText: t("locker.methods.removed", { name: e.email }),
             });
           })}
           <AddEmail
@@ -569,22 +586,26 @@ function MethodGroups({
 
       <div>
         <h3 id={ids.passkeys} tabIndex={-1} className={GROUP_HEADING}>
-          Passkeys
+          {t("locker.methods.passkeys")}
         </h3>
         <ul className="divide-y divide-border">
           {view.methods
             .filter((m) => m.group === "passkeys")
             .map((m) => {
               const p = passkeyByMethod.get(m.id);
-              const name = p ? passkeyName(p) : "Passkey";
+              const name = p
+                ? passkeyName(p)
+                : t("locker.methods.passkeyDefault");
               const which =
-                name === "Passkey" ? "this passkey" : `the ${name} passkey`;
+                name === t("locker.methods.passkeyDefault")
+                  ? t("locker.methods.thisPasskey")
+                  : t("locker.methods.namedPasskey", { name });
               return rowFor(m, "passkeys", {
                 icon: <PasskeyGlyph passkey={p} />,
                 title: name,
                 name: which,
-                keepLabel: "Keep it",
-                guardName: "this passkey",
+                keepLabel: t("locker.methods.keepIt"),
+                guardName: t("locker.methods.thisPasskey"),
                 tool:
                   p && p.name !== undefined
                     ? (render) => (
@@ -603,8 +624,10 @@ function MethodGroups({
                     : undefined,
                 meta: p ? passkeyMeta(p) : methodMeta(m),
                 verb: "Remove",
-                consequence: `You won't sign in with ${which} any more. It stays on your device until you delete it there.`,
-                doneText: "The passkey was removed",
+                consequence: t("locker.methods.passkeyRemoveNote", {
+                  name: which,
+                }),
+                doneText: t("locker.methods.passkeyRemoved"),
               });
             })}
           <AddPasskey
@@ -621,8 +644,8 @@ function MethodGroups({
       <p className="flex gap-2 text-sm text-fg-muted">
         <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
         {notifyTo
-          ? `Changing a method asks you to confirm it's you. Every change is recorded and emailed to ${notifyTo}.`
-          : "Changing a method asks you to confirm it's you. Every change is recorded."}
+          ? t("locker.methods.footEmailed", { email: notifyTo })
+          : t("locker.methods.foot")}
       </p>
       {linkView.data ? (
         <div className="space-y-3">
@@ -634,7 +657,7 @@ function MethodGroups({
               <span className="min-w-0 [overflow-wrap:anywhere]">
                 {t("signin.join.undoable", {
                   email: u.joined?.email ?? u.joined?.name ?? "",
-                  date: formatDate(u.undoUntil * 1000),
+                  date: formatDay(u.undoUntil),
                 })}
               </span>
               <Button
@@ -669,18 +692,20 @@ function later(fn: () => void): void {
 function passkeyBlock(view: PortalMethods): string | null {
   if (!view.passkey.canAdd)
     return view.passkey.reason === "limit"
-      ? "You have as many passkeys as an account can hold. Remove one to add another."
-      : "Add an email first: it's how you get back in if a passkey is lost.";
-  return passkeysSupported()
-    ? null
-    : "This browser can't make passkeys. Try another browser or device.";
+      ? t("locker.methods.blockLimit")
+      : t("locker.methods.blockEmail");
+  return passkeysSupported() ? null : t("locker.methods.blockBrowser");
 }
 
 function methodMeta(m: PortalMethod): string {
   return [
-    `Connected ${formatDate(m.connectedAt * 1000)}`,
-    m.lastUsedAt ? `last used ${formatRelative(m.lastUsedAt * 1000)}` : null,
-    m.tenantScoped ? "connect only from inside a game" : null,
+    t("locker.methods.connectedOn", { date: formatDay(m.connectedAt) }),
+    m.lastUsedAt
+      ? t("locker.methods.lastUsed", {
+          when: formatRelative(m.lastUsedAt * 1000),
+        })
+      : null,
+    m.tenantScoped ? t("locker.methods.gameOnly") : null,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -689,12 +714,16 @@ function methodMeta(m: PortalMethod): string {
 function passkeyMeta(p: PortalPasskey): string {
   const named = Boolean(p.name?.trim()) || passkeyProvider(p.aaguid) !== null;
   return [
-    `Added ${formatDate(p.createdAt * 1000)}`,
+    t("locker.methods.addedCap", { date: formatDay(p.createdAt) }),
     p.lastUsedAt
-      ? `last used ${formatRelative(p.lastUsedAt * 1000)}`
-      : "never used to sign in",
+      ? t("locker.methods.lastUsed", {
+          when: formatRelative(p.lastUsedAt * 1000),
+        })
+      : t("locker.methods.neverUsed"),
     // The browser it came from, unless it already names the passkey.
-    named && p.addedFrom ? `added on ${p.addedFrom}` : null,
+    named && p.addedFrom
+      ? t("locker.methods.addedFrom", { place: p.addedFrom })
+      : null,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -704,11 +733,11 @@ function passkeyMeta(p: PortalPasskey): string {
 function flagText(m: PortalMethod): string | null {
   switch (m.flag) {
     case "consent_revoked":
-      return `You stopped using ${m.label} with Polaris Locker. Connect it again to sign in with it.`;
+      return t("locker.methods.flagRevoked", { name: m.label });
     case "account_deleted":
-      return `That ${m.label} account was deleted.`;
+      return t("locker.methods.flagDeleted", { name: m.label });
     case "email_disabled":
-      return "Hide My Email stopped forwarding to this address.";
+      return t("locker.methods.flagRelay");
     default:
       return null;
   }
@@ -732,18 +761,20 @@ function changeErrorText(err: unknown, name?: string): string {
     if (err.code === "link_conflict")
       return err.message && err.message !== `portal api ${err.status}`
         ? err.message
-        : `Another Polaris Locker account uses this. Use a different one.`;
+        : t("locker.methods.errLinkConflict");
     if (err.code === "auth_method_disabled" || err.status === 404)
-      return `${name ?? "This"} isn't available here right now.`;
+      return name
+        ? t("locker.methods.errUnavailable", { name })
+        : t("locker.methods.errThisUnavailable");
     if (err.status === 503)
-      return `${name ?? "It"} can't be reached right now. Try again later.`;
-    if (err.status === 429)
-      return "Too many changes. Wait a minute, then try again.";
+      return name
+        ? t("locker.methods.errUnreachable", { name })
+        : t("locker.methods.errThisUnreachable");
+    if (err.status === 429) return t("locker.methods.errTooMany");
     if (err.reason === "email_unverified" || err.reason === "limit")
       return err.message;
   }
-  const copy = portalErrorCopy(err, { account: true });
-  return `${copy.title}. ${copy.description}`;
+  return portalErrorCopy(err).line;
 }
 
 /** When `asked` changes (above 0), focus `ref` after the page's own heading focus, in view. */
@@ -815,7 +846,9 @@ function ConnectRow({
         </span>
         <div className="min-w-0 flex-1 basis-40">
           <p className="font-medium text-fg-strong">{name}</p>
-          <p className="text-sm text-fg-muted">Not connected</p>
+          <p className="text-sm text-fg-muted">
+            {t("locker.methods.notConnectedRow")}
+          </p>
         </div>
         {stepUp ? null : (
           <Button
@@ -827,7 +860,7 @@ function ConnectRow({
             aria-label={t("signin.provider.connect", { provider: name })}
             onClick={() => void connect()}
           >
-            Connect
+            {t("locker.methods.connect")}
           </Button>
         )}
       </div>
@@ -839,7 +872,7 @@ function ConnectRow({
       {stepUp ? (
         <div className="mt-3 space-y-3 rounded-lg border border-border bg-surface-sunken p-4 sm:ml-13">
           <StepUp
-            verb={`connect ${name}`}
+            verb={t("locker.verb.connect", { name })}
             view={view}
             accountId={accountId}
             returnTo={returnTo}
@@ -964,7 +997,7 @@ function AddEmail({
     try {
       const out = await portalApi.startEmailMethod(value);
       if (out.status === "connected") {
-        toast.success(`${out.email} is already on your account`);
+        toast.success(t("locker.methods.emailAlreadyOn", { email: out.email }));
         close();
         return;
       }
@@ -980,7 +1013,7 @@ function AddEmail({
           err instanceof PortalApiError && err.status === 422
             ? t("signin.email.invalid")
             : err instanceof PortalApiError && err.code === "email_unavailable"
-              ? "We can't send email right now. Try again later."
+              ? t("locker.stepUp.noEmail")
               : changeErrorText(err),
         );
       }
@@ -995,9 +1028,9 @@ function AddEmail({
     setError(null);
     try {
       const out = await portalApi.verifyEmailMethod(value);
-      const text = `${out.email} was added`;
+      const text = t("locker.methods.emailAdded", { email: out.email });
       toast.success(text, {
-        description: "Products bought with it join your library.",
+        description: t("locker.methods.emailAddedNote"),
       });
       announce(text);
       refreshAfterMethodChange(qc);
@@ -1031,7 +1064,7 @@ function AddEmail({
           aria-expanded={false}
           onClick={() => setStep({ kind: "enter" })}
         >
-          Add an email
+          {t("locker.methods.addEmail")}
         </Button>
       )}
       <Expand
@@ -1045,10 +1078,12 @@ function AddEmail({
         }
       >
         <div className="space-y-3 rounded-lg border border-border bg-surface-sunken p-4 sm:ml-13">
-          <h4 className="font-semibold text-fg-strong">Add an email</h4>
+          <h4 className="font-semibold text-fg-strong">
+            {t("locker.methods.addEmail")}
+          </h4>
           {step.kind === "stepUp" ? (
             <StepUp
-              verb="add it"
+              verb={t("locker.verb.addIt")}
               view={view}
               accountId={accountId}
               returnTo={returnTo}
@@ -1072,9 +1107,15 @@ function AddEmail({
               }}
             >
               <p role="status" className="text-sm text-fg">
-                We sent a 6-digit code to{" "}
-                <span className="font-medium text-fg-strong">{step.email}</span>
-                . It works for 10 minutes.
+                {tParts("locker.stepUp.sent", ["email"]).map((part, i) =>
+                  typeof part === "string" ? (
+                    part
+                  ) : (
+                    <span key={i} className="font-medium text-fg-strong">
+                      {step.email}
+                    </span>
+                  ),
+                )}
               </p>
               <label
                 htmlFor={codeId}
@@ -1110,7 +1151,7 @@ function AddEmail({
                   busyFocusable
                   disabled={code.length !== CODE_LENGTH}
                 >
-                  Add {step.email}
+                  {t("locker.methods.addEmailName", { email: step.email })}
                 </Button>
                 <Button
                   variant="link"
@@ -1134,7 +1175,7 @@ function AddEmail({
                 htmlFor={fieldId}
                 className="text-sm font-medium text-fg-strong"
               >
-                Email address
+                {t("locker.methods.emailAddress")}
               </label>
               <Input
                 id={fieldId}
@@ -1155,7 +1196,7 @@ function AddEmail({
                 </p>
               ) : (
                 <p className="text-sm text-fg-muted">
-                  We'll send a code to check it's yours.
+                  {t("locker.methods.emailNote")}
                 </p>
               )}
               <div className="flex flex-wrap gap-2">
@@ -1229,10 +1270,10 @@ function AddPasskey({
       const { options } = await portalApi.passkeyRegistrationOptions();
       const response = await createPasskey(options);
       await portalApi.addPasskey(response);
-      toast.success("Passkey added", {
-        description: `Use it to sign in to Polaris Locker on this device.`,
+      toast.success(t("locker.methods.passkeyAdded"), {
+        description: t("locker.methods.passkeyAddedNote"),
       });
-      announce("Passkey added");
+      announce(t("locker.methods.passkeyAdded"));
       refreshAfterMethodChange(qc);
       setStepUp(false);
       setReady(false);
@@ -1242,10 +1283,10 @@ function AddPasskey({
       else if (err instanceof PasskeyError)
         setError(
           err.reason === "exists"
-            ? "This device already has a passkey for your account."
+            ? t("locker.methods.passkeyExists")
             : err.reason === "cancelled"
-              ? "The passkey wasn't added. Try again when you're ready."
-              : "This browser couldn't make a passkey. Try another browser or device.",
+              ? t("locker.methods.passkeyCancelled")
+              : t("locker.methods.passkeyFailed"),
         );
       else setError(changeErrorText(err, "Passkeys"));
     } finally {
@@ -1287,7 +1328,7 @@ function AddPasskey({
       ) : null}
       {ready && !stepUp && !error ? (
         <p role="status" className="text-sm text-fg sm:pl-13">
-          Thanks, that's you. Now add your passkey.
+          {t("locker.methods.passkeyReady")}
         </p>
       ) : null}
       {error ? (
@@ -1298,7 +1339,7 @@ function AddPasskey({
       {stepUp ? (
         <div className="space-y-3 rounded-lg border border-border bg-surface-sunken p-4 sm:ml-13">
           <StepUp
-            verb="add a passkey"
+            verb={t("locker.verb.addPasskey")}
             view={view}
             accountId={accountId}
             returnTo={returnTo}

@@ -488,7 +488,7 @@ describe("Discover (PX-16)", () => {
       within(moss).getByRole("button", { name: "Add to library: Mossgarden" }),
     );
     expect((await within(moss).findByRole("alert")).textContent).toBe(
-      "Couldn't add Mossgarden. Wait a minute, then try again.",
+      "Couldn't add Mossgarden. Wait a moment and try again.",
     );
     // Back on the button, still "Add to library", with the error tied to it and focus returned.
     const retry = within(moss).getByRole("button", {

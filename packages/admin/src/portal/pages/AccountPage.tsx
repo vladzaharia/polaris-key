@@ -37,7 +37,8 @@ import {
   useDocumentTitle,
   type AccountSection,
 } from "../router.js";
-import { t } from "../../lib/copy.js";
+import { t, tParts } from "../../lib/copy.js";
+import { formatDayTime } from "../date.js";
 
 /**
  * Account (PORTAL.md §4.26): Profile first (PX-22, §4.30: name and picture, edited in place),
@@ -61,10 +62,10 @@ import { t } from "../../lib/copy.js";
 const SECTIONS: { id: AccountSection; label: string }[] = [
   { id: "profile", label: t("profile.title") },
   { id: "methods", label: t("signin.join.methodsLink") },
-  { id: "packages", label: "Packages" },
-  { id: "sessions", label: "Where you're signed in" },
-  { id: "appearance", label: "Appearance" },
-  { id: "data", label: "Your data" },
+  { id: "packages", label: t("locker.account.packages") },
+  { id: "sessions", label: t("locker.account.sessions") },
+  { id: "appearance", label: t("locker.appearance.title") },
+  { id: "data", label: t("locker.account.yourData") },
 ];
 
 export function AccountPage({
@@ -76,7 +77,7 @@ export function AccountPage({
   section: AccountSection | null;
   params: URLSearchParams;
 }): React.ReactElement {
-  useDocumentTitle("Account");
+  useDocumentTitle(t("locker.account.title"));
   const sessions = useSessions();
   const sessionsShown = !sessions.isPending && sessions.data !== null;
   const packages = usePersonalTokens();
@@ -143,7 +144,7 @@ export function AccountPage({
             tabIndex={-1}
             className="text-3xl font-semibold leading-tight text-fg-strong outline-none desk:text-display"
           >
-            Account
+            {t("locker.account.title")}
           </h1>
         </div>
         <form method="post" action="/logout">
@@ -158,7 +159,7 @@ export function AccountPage({
         </form>
       </div>
       <nav
-        aria-label="Account sections"
+        aria-label={t("locker.account.sections")}
         // Sticky under the header below desk (at the top on a short screen, where the header
         // scrolls away): the page's scroll padding clears it (styles.css).
         data-section-pills=""
@@ -180,7 +181,7 @@ export function AccountPage({
       </nav>
       <div className="flex gap-8">
         <nav
-          aria-label="On this page"
+          aria-label={t("locker.account.onThisPage")}
           className="sticky top-24 hidden w-56 shrink-0 self-start desk:block short:top-6"
         >
           <ul className="space-y-1">
@@ -249,9 +250,9 @@ function SectionLink({
 }
 
 const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
-  { value: "system", label: "Match device" },
-  { value: "dark", label: "Dark" },
-  { value: "light", label: "Light" },
+  { value: "system", label: t("locker.appearance.matchDevice") },
+  { value: "dark", label: t("locker.appearance.dark") },
+  { value: "light", label: t("locker.appearance.light") },
 ];
 
 const MOTION_OPTIONS: {
@@ -261,13 +262,13 @@ const MOTION_OPTIONS: {
 }[] = [
   {
     value: "system",
-    label: "Match device",
-    description: "Animates unless your device asks for reduced motion.",
+    label: t("locker.appearance.matchDevice"),
+    description: t("locker.appearance.matchNote"),
   },
   {
     value: "reduce",
-    label: "Reduced",
-    description: "Changes happen at once, with no animation.",
+    label: t("locker.appearance.reduced"),
+    description: t("locker.appearance.reducedNote"),
   },
 ];
 
@@ -279,16 +280,16 @@ function Appearance(): React.ReactElement {
   const { preference, setPreference } = useTheme();
   const [motion, setMotion] = useMotionPreference();
   return (
-    <SectionCard id="appearance" title="Appearance">
+    <SectionCard id="appearance" title={t("locker.appearance.title")}>
       <div className="flex flex-col gap-4">
         <SegmentedRow
-          label="Theme"
+          label={t("locker.appearance.theme")}
           value={preference}
           onChange={setPreference}
           options={THEME_OPTIONS}
         />
         <SegmentedRow
-          label="Motion"
+          label={t("locker.appearance.motion")}
           note={MOTION_OPTIONS.find((o) => o.value === motion)?.description}
           value={motion}
           onChange={setMotion}
@@ -326,10 +327,7 @@ function YourData({ account }: { account: PortalAccount }): React.ReactElement {
   const scheduled = account.deletion
     ? {
         at: new Date(account.deletion.dueAt * 1000),
-        label: new Intl.DateTimeFormat(undefined, {
-          dateStyle: "medium",
-          timeStyle: "short",
-        }).format(new Date(account.deletion.dueAt * 1000)),
+        label: formatDayTime(account.deletion.dueAt),
       }
     : null;
   React.useEffect(() => {
@@ -355,7 +353,7 @@ function YourData({ account }: { account: PortalAccount }): React.ReactElement {
     cancel.mutate(undefined, {
       onSuccess: () => {
         setAskCancel(false);
-        toast.success("Deletion canceled", { id: "account-deletion" });
+        toast.success(t("locker.delete.canceled"), { id: "account-deletion" });
         requestAnimationFrame(() =>
           requestAnimationFrame(() => triggerRef.current?.focus()),
         );
@@ -374,7 +372,7 @@ function YourData({ account }: { account: PortalAccount }): React.ReactElement {
       : null;
 
   return (
-    <SectionCard id="data" title="Your data">
+    <SectionCard id="data" title={t("locker.account.yourData")}>
       <div className="space-y-5">
         <DownloadData
           title={YOUR_DATA_COPY["yourData.account.copy.title"]}
@@ -394,18 +392,23 @@ function YourData({ account }: { account: PortalAccount }): React.ReactElement {
                 tabIndex={-1}
                 className="font-medium text-fg-strong outline-none"
               >
-                Your account will be erased on{" "}
-                <time dateTime={scheduled.at.toISOString()}>
-                  {scheduled.label}
-                </time>
+                {tParts("locker.delete.scheduledTitle", ["date"]).map(
+                  (part, i) =>
+                    typeof part === "string" ? (
+                      part
+                    ) : (
+                      <time key={i} dateTime={scheduled.at.toISOString()}>
+                        {scheduled.label}
+                      </time>
+                    ),
+                )}
               </h3>
               <p className="text-sm text-fg">
-                Until then you can use it and cancel. Licenses stay with each
-                developer.
+                {t("locker.delete.scheduledNote")}
               </p>
               {askCancel ? (
                 <StepUpInline
-                  verb="cancel the deletion"
+                  verb={t("locker.delete.verbCancel")}
                   onConfirmed={() => {
                     setAskCancel(false);
                     cancelDeletion();
@@ -415,7 +418,7 @@ function YourData({ account }: { account: PortalAccount }): React.ReactElement {
               ) : null}
               {cancelFailure ? (
                 <p role="alert" className="text-sm text-danger">
-                  {cancelFailure.title}. {cancelFailure.description}
+                  {cancelFailure.line}
                 </p>
               ) : null}
               <Button
@@ -425,7 +428,7 @@ function YourData({ account }: { account: PortalAccount }): React.ReactElement {
                 busyFocusable
                 onClick={cancelDeletion}
               >
-                Cancel deletion
+                {t("locker.delete.cancel")}
               </Button>
             </div>
           ) : open ? (
@@ -435,25 +438,19 @@ function YourData({ account }: { account: PortalAccount }): React.ReactElement {
                 tabIndex={-1}
                 className="font-medium text-fg-strong outline-none"
               >
-                Schedule your Polaris Locker account for deletion?
+                {t("locker.delete.askTitle")}
               </h3>
               <ul className="list-disc space-y-1 pl-5 text-sm text-fg">
-                <li>
-                  In 14 days your account and its links to licenses are erased.
-                  Until then you can use it and cancel.
-                </li>
-                <li>
-                  Licenses stay with each developer. Add them again with a new
-                  account.
-                </li>
-                <li>We'll email {account.email} to confirm the schedule.</li>
+                <li>{t("locker.delete.askErased")}</li>
+                <li>{t("locker.delete.askLicenses")}</li>
+                <li>{t("locker.delete.askEmail", { email: account.email })}</li>
               </ul>
               <div className="space-y-1.5">
                 <label
                   htmlFor={inputId}
                   className="text-sm font-medium text-fg-strong"
                 >
-                  Type {target} to confirm
+                  {t("locker.delete.type", { name: target })}
                 </label>
                 <input
                   id={inputId}
@@ -466,7 +463,7 @@ function YourData({ account }: { account: PortalAccount }): React.ReactElement {
               </div>
               {askSchedule ? (
                 <StepUpInline
-                  verb="schedule deletion"
+                  verb={t("locker.delete.verbSchedule")}
                   onConfirmed={() => {
                     setAskSchedule(false);
                     schedule();
@@ -476,7 +473,7 @@ function YourData({ account }: { account: PortalAccount }): React.ReactElement {
               ) : null}
               {delFailure ? (
                 <p role="alert" className="text-sm text-danger">
-                  {delFailure.title}. {delFailure.description}
+                  {delFailure.line}
                 </p>
               ) : null}
               <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -502,7 +499,7 @@ function YourData({ account }: { account: PortalAccount }): React.ReactElement {
                   iconStart={<Trash2 aria-hidden />}
                   onClick={schedule}
                 >
-                  Schedule deletion
+                  {t("locker.delete.confirm")}
                 </Button>
               </div>
             </div>
@@ -510,17 +507,17 @@ function YourData({ account }: { account: PortalAccount }): React.ReactElement {
             <DataRow
               danger
               icon={<Trash2 aria-hidden />}
-              title="Delete account"
-              description="Erased 14 days after you confirm. Licenses stay with each developer."
+              title={t("locker.delete.rowTitle")}
+              description={t("locker.delete.rowNote")}
             >
               <Button
                 ref={triggerRef}
                 variant="outline"
                 className="w-full border-danger-border text-danger max-sm:min-h-11 sm:w-auto"
-                aria-label="Delete account"
+                aria-label={t("locker.delete.rowTitle")}
                 onClick={() => setOpen(true)}
               >
-                Delete account…
+                {t("locker.delete.open")}
               </Button>
             </DataRow>
           )}

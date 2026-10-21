@@ -1131,7 +1131,7 @@ describe("loading, not found and errors", () => {
     renderPortal();
     const loading = await screen.findByRole("heading", {
       level: 1,
-      name: "Loading",
+      name: "Loading…",
     });
     expect(loading.closest("[aria-busy]")).not.toBeNull();
     // The placeholder's h1 is the only one, and focus waits for the real heading.

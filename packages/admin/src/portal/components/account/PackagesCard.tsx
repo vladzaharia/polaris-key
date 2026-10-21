@@ -12,7 +12,7 @@ import { announce } from "../../../ui/LiveRegion.js";
 import { toast } from "../../../ui/toast.js";
 import { formatRelative } from "../../../lib/format.js";
 import { cn } from "../../../lib/cn.js";
-import { t } from "../../../lib/copy.js";
+import { t, tParts } from "../../../lib/copy.js";
 import type {
   PortalLegacyToken,
   PortalPersonalToken,
@@ -140,10 +140,10 @@ export function PackagesCard(): React.ReactElement | null {
           <span className="inline-flex size-9 items-center justify-center rounded-lg bg-surface-sunken">
             <Package aria-hidden className="size-5 text-fg-strong" />
           </span>
-          Packages
+          {t("locker.account.packages")}
         </span>
       }
-      subtitle="A personal token is one read-only credential that installs every package your licenses include."
+      subtitle={t("locker.packages.subtitle")}
     >
       {q.isPending ? (
         <div aria-busy="true" className="space-y-3">
@@ -167,7 +167,7 @@ export function PackagesCard(): React.ReactElement | null {
                   tabIndex={-1}
                   className="font-semibold text-fg-strong outline-none"
                 >
-                  Your personal tokens
+                  {t("locker.packages.tokensTitle")}
                 </h3>
                 {hasPersonal ? (
                   <Button
@@ -177,18 +177,19 @@ export function PackagesCard(): React.ReactElement | null {
                     onClick={() => setCreating(true)}
                     disabledReason={
                       atLimit
-                        ? `At most ${data.limits.perAccount} personal tokens. Revoke one first`
+                        ? t("locker.packages.atLimit", {
+                            count: data.limits.perAccount,
+                          })
                         : undefined
                     }
                   >
-                    Create personal token
+                    {t("locker.packages.create")}
                   </Button>
                 ) : null}
               </div>
               {listed.length === 0 ? (
                 <p className="text-sm text-fg-muted">
-                  No personal tokens yet. Create one for each computer or build
-                  server.
+                  {t("locker.packages.none")}
                 </p>
               ) : (
                 <ul className="divide-y divide-border border-y border-border">
@@ -203,7 +204,7 @@ export function PackagesCard(): React.ReactElement | null {
                       now={now}
                       active={tok.status === "active"}
                       group="personal"
-                      reconnect="Create a new one and set it again to reconnect."
+                      reconnect={t("locker.packages.reconnectPersonal")}
                       useRevoke={() => {
                         const r = useRevokePersonalToken();
                         return {
@@ -235,7 +236,7 @@ export function PackagesCard(): React.ReactElement | null {
                     );
                   }}
                 >
-                  Show all {listed.length}
+                  {t("locker.packages.showAll", { count: listed.length })}
                 </Button>
               ) : null}
             </div>
@@ -265,12 +266,14 @@ export function PackagesCard(): React.ReactElement | null {
             setCreating(o);
             if (!o) focusLater(() => createRef.current);
           }}
-          title="Create a personal token"
-          description="Reads every package your licenses include, now and for apps you license later. Read-only."
+          title={t("locker.packages.createTitle")}
+          description={t("locker.packages.createBody")}
           limits={data.limits}
           describeError={(err) =>
             (err as { status?: number }).status === 409
-              ? `You already have the most personal tokens (${data.limits.perAccount}). Revoke one first.`
+              ? t("locker.packages.mostTokens", {
+                  count: data.limits.perAccount,
+                })
               : null
           }
           useMint={() => {
@@ -312,25 +315,28 @@ export function PackagesCard(): React.ReactElement | null {
             );
           }}
           size="lg"
-          title="Copy your personal token now"
-          description="This is the only time you'll see it. If you lose it, revoke it and create another."
-          label="Personal token"
+          title={t("locker.packages.copyTitle")}
+          description={t("locker.packages.onceNote")}
+          label={t("locker.packages.tokenLabel")}
           value={minted.token}
-          hint={`“${minted.view.label}” · read-only · expires ${formatDate(minted.view.expiresAt)}`}
+          hint={t("locker.packages.mintedHint", {
+            name: minted.view.label,
+            date: formatDate(minted.view.expiresAt),
+          })}
           onDone={() =>
-            announce(`Personal token ${minted.view.label} is ready`)
+            announce(t("locker.packages.ready", { name: minted.view.label }))
           }
           acknowledgeLast
           details={
             <div className="space-y-4">
               <div className="space-y-1.5">
                 <p className="text-sm font-medium text-fg-strong">
-                  Set it in your shell
+                  {t("locker.packages.setShell")}
                 </p>
                 <CodeBlock
                   code={`export ${TOKEN_ENV}=${minted.token}`}
                   language="sh"
-                  filename="Terminal"
+                  filename={t("locker.packages.terminal")}
                   copy
                   className="[&_button]:min-h-11 [&_button]:min-w-11"
                 />
@@ -412,8 +418,10 @@ function TokenRow({
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-fg-muted">
             <span>
               {lastUsedAt
-                ? `Last used ${formatRelative(lastUsedAt * 1000)}`
-                : "Never used"}
+                ? t("locker.packages.lastUsed", {
+                    when: formatRelative(lastUsedAt * 1000),
+                  })
+                : t("locker.packages.neverUsed")}
             </span>
             <span aria-hidden>·</span>
             {expiry.soon ? (
@@ -439,12 +447,12 @@ function TokenRow({
             variant="outline"
             className="min-h-11 min-w-11"
             onClick={() => setConfirming(true)}
-            aria-label={`Revoke ${label}`}
+            aria-label={t("locker.packages.revokeName", { name: label })}
             {...(group === "personal"
               ? { "data-personal-revoke": "" }
               : { "data-perapp-revoke": "" })}
           >
-            Revoke
+            {t("locker.packages.revoke")}
           </Button>
         ) : null}
       </div>
@@ -463,19 +471,19 @@ function TokenRow({
             tabIndex={-1}
             className="font-medium text-fg-strong outline-none"
           >
-            Revoke {label}?
+            {t("locker.packages.revokeAsk", { name: label })}
           </p>
           <p className="text-sm text-fg">
-            Anything installing with it stops within 30 seconds. {reconnect}
+            {t("locker.packages.revokeNote")} {reconnect}
           </p>
           {revoke.error ? (
             <p role="alert" className="text-sm text-danger">
-              {portalErrorCopy(revoke.error, { account: true }).description}
+              {portalErrorCopy(revoke.error).line}
             </p>
           ) : null}
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" className="min-h-11" onClick={keep}>
-              Keep it
+              {t("locker.methods.keepIt")}
             </Button>
             <Button
               variant="danger"
@@ -485,12 +493,12 @@ function TokenRow({
               onClick={() =>
                 revoke.run(() => {
                   onRevoked?.();
-                  toast.success(`${label} was revoked`);
+                  toast.success(t("locker.packages.revoked", { name: label }));
                   setConfirming(false);
                 })
               }
             >
-              Revoke {label}
+              {t("locker.packages.revokeName", { name: label })}
             </Button>
           </div>
         </div>
@@ -517,11 +525,10 @@ function PerAppTokens({
           tabIndex={-1}
           className="font-semibold text-fg-strong outline-none"
         >
-          Per-app tokens
+          {t("locker.packages.perAppTitle")}
         </h3>
         <p className="text-sm text-fg-muted">
-          Made for one app before personal tokens, or as a Godot editor URL.
-          They work until they expire.
+          {t("locker.packages.perAppBody")}
         </p>
       </div>
       <ul className="divide-y divide-border border-y border-border">
@@ -531,7 +538,7 @@ function PerAppTokens({
             id={tok.tokenId}
             label={tok.label}
             mark={`pkeyr_…${tok.hint}`}
-            app={`${tok.productName}${tok.presentation === "url" ? " · Godot editor URL" : ""}`}
+            app={`${tok.productName}${tok.presentation === "url" ? ` · ${t("locker.packages.godotUrl")}` : ""}`}
             lastUsedAt={tok.lastUsedAt}
             expiresAt={tok.expiresAt}
             now={now}
@@ -539,8 +546,8 @@ function PerAppTokens({
             group="perapp"
             reconnect={
               tok.presentation === "url"
-                ? "Create a new Godot editor URL to reconnect."
-                : "Use a personal token to reconnect."
+                ? t("locker.packages.reconnectGodot")
+                : t("locker.packages.reconnectUse")
             }
             onRevoked={() => onRevoked(i)}
             useRevoke={() => {
@@ -641,13 +648,17 @@ function Setup({
   return (
     <div className="space-y-4">
       {bare ? (
-        <p className="text-sm font-medium text-fg-strong">Set up</p>
+        <p className="text-sm font-medium text-fg-strong">
+          {t("locker.packages.setUp")}
+        </p>
       ) : (
-        <h3 className="font-semibold text-fg-strong">Set up</h3>
+        <h3 className="font-semibold text-fg-strong">
+          {t("locker.packages.setUp")}
+        </h3>
       )}
       {apps.length > 1 ? (
         <Choice
-          label="App"
+          label={t("locker.packages.app")}
           value={current}
           onChange={setApp}
           options={apps.map(([slug, name]) => ({ value: slug, label: name }))}
@@ -655,7 +666,7 @@ function Setup({
       ) : null}
       {mine.length > 1 ? (
         <Choice
-          label="Package type"
+          label={t("locker.packages.type")}
           value={feed.ecosystem}
           onChange={setEco}
           options={mine.map((f) => ({
@@ -683,8 +694,15 @@ function Setup({
         <p className="flex gap-2 text-sm text-fg-muted">
           <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
           <span>
-            Set <code className="font-mono text-fg">{TOKEN_ENV}</code> to one of
-            your personal tokens.
+            {tParts("locker.packages.setEnv", ["name"]).map((part, i) =>
+              typeof part === "string" ? (
+                part
+              ) : (
+                <code key={i} className="font-mono text-fg">
+                  {TOKEN_ENV}
+                </code>
+              ),
+            )}
           </span>
         </p>
       )}
@@ -728,8 +746,10 @@ function GodotUrl({
   return (
     <div className="space-y-3">
       <p className="text-sm text-fg">
-        The Godot editor can't use personal tokens. It reads this feed through a
-        URL made for {feed.productName} only, valid for {GODOT_URL_DAYS} days.
+        {t("locker.packages.godotNote", {
+          product: feed.productName,
+          days: GODOT_URL_DAYS,
+        })}
       </p>
       <Button
         ref={openerRef}
@@ -738,7 +758,7 @@ function GodotUrl({
         iconStart={<Plus aria-hidden />}
         onClick={() => setCreating(true)}
       >
-        Create Godot editor URL
+        {t("locker.packages.createGodot")}
       </Button>
       <CreateDialog
         open={creating}
@@ -746,19 +766,25 @@ function GodotUrl({
           setCreating(o);
           if (!o) focusLater(() => openerRef.current);
         }}
-        title="Create a Godot editor URL"
-        description={`A read-only URL for ${feed.productName}'s Godot feed. It stops working if the license ends.`}
+        title={t("locker.packages.createGodotTitle")}
+        description={t("locker.packages.createGodotBody", {
+          product: feed.productName,
+        })}
         limits={limits}
         fixedDays={GODOT_URL_DAYS}
-        initialLabel="Godot editor"
+        initialLabel={t("locker.packages.godotLabel")}
         describeError={(err) => {
           const e = err as { status?: number; reason?: string };
           if (e.status === 409)
-            return `${feed.productName} already has the most per-app tokens. Revoke one under Per-app tokens first.`;
+            return t("locker.packages.errPerApp", {
+              product: feed.productName,
+            });
           if (e.status === 403)
-            return `Your ${feed.productName} license isn't active.`;
+            return t("locker.packages.errInactive", {
+              product: feed.productName,
+            });
           if (e.status === 422 && e.reason === undefined)
-            return "A Godot editor URL can't be made for this app right now.";
+            return t("locker.packages.errGodot");
           return null;
         }}
         useMint={() => {
@@ -797,13 +823,15 @@ function GodotUrl({
             focusLater(() => openerRef.current);
           }}
           size="lg"
-          title="Copy your Godot editor URL now"
-          description="This is the only time you'll see it. If you lose it, revoke it and create another."
-          label="Godot editor URL (Godot 4.4 to 4.6)"
-          copyLabel="Copy Godot editor URL"
+          title={t("locker.packages.godotCopyTitle")}
+          description={t("locker.packages.onceNote")}
+          label={t("locker.packages.godotValueLabel")}
+          copyLabel={t("locker.packages.godotCopy")}
           value={steps[0].code}
-          hint={`“${minted.label}” · read-only · Godot only. Godot 4.7 and later, and GodotEnv, use the URLs below.`}
-          onDone={() => announce(`Godot editor URL ${minted.label} is ready`)}
+          hint={t("locker.packages.godotHint", { name: minted.label })}
+          onDone={() =>
+            announce(t("locker.packages.godotReady", { name: minted.label }))
+          }
           acknowledgeLast
           details={<SetupTabs snippets={steps} />}
         />
@@ -821,8 +849,7 @@ function godotPasteSteps(snippets: readonly TabSnippet[]): TabSnippet[] {
     s.id === "editor-4.6"
       ? {
           ...s,
-          title:
-            "Godot 4.4 to 4.6: Editor Settings → asset_library/available_urls",
+          title: t("locker.packages.godotStep"),
         }
       : s,
   );
@@ -877,11 +904,11 @@ function CreateDialog({
   }, [open]);
   const trimmed = label.trim();
   const fieldError = empty
-    ? "Give it a name."
+    ? t("locker.packages.needName")
     : mint.error &&
         (mint.error as { status?: number; reason?: string }).status === 422 &&
         (mint.error as { reason?: string }).reason !== undefined
-      ? `Give it a name of up to ${limits.labelMax} characters.`
+      ? t("locker.packages.nameMax", { max: limits.labelMax })
       : null;
   const days = [
     ...new Set(
@@ -906,8 +933,7 @@ function CreateDialog({
   };
   const generic =
     mint.error && !fieldError && !isStepUpRequired(mint.error)
-      ? (describeError?.(mint.error) ??
-        portalErrorCopy(mint.error, { account: true }).description)
+      ? (describeError?.(mint.error) ?? portalErrorCopy(mint.error).line)
       : null;
   return (
     <Dialog
@@ -928,7 +954,7 @@ function CreateDialog({
               htmlFor={labelId}
               className="text-sm font-medium text-fg-strong"
             >
-              Name
+              {t("locker.packages.name")}
             </label>
             <Input
               ref={inputRef}
@@ -936,7 +962,7 @@ function CreateDialog({
               value={label}
               maxLength={limits.labelMax}
               className="max-sm:min-h-11"
-              placeholder="Laptop, CI build server…"
+              placeholder={t("locker.packages.namePlaceholder")}
               onValueChange={(v) => {
                 setLabel(v);
                 setEmpty(false);
@@ -954,7 +980,7 @@ function CreateDialog({
           {fixedDays === undefined ? (
             <label className="block space-y-1.5">
               <span className="text-sm font-medium text-fg-strong">
-                Expires after
+                {t("locker.packages.expiresAfter")}
               </span>
               <select
                 value={String(expires)}
@@ -963,16 +989,20 @@ function CreateDialog({
               >
                 {days.map((d) => (
                   <option key={d} value={d}>
-                    {d === 365 ? "1 year" : `${d} days`}
+                    {d === 365
+                      ? t("locker.packages.oneYear")
+                      : t("locker.packages.days", { count: d })}
                   </option>
                 ))}
               </select>
             </label>
           ) : null}
-          <p className="text-sm text-fg-muted">Expires {expiresOn}.</p>
+          <p className="text-sm text-fg-muted">
+            {t("locker.packages.expiresOn", { date: expiresOn })}
+          </p>
           {askStepUp ? (
             <StepUpInline
-              verb="create it"
+              verb={t("locker.verb.createIt")}
               onConfirmed={() => {
                 setAskStepUp(false);
                 run();
@@ -1002,7 +1032,7 @@ function CreateDialog({
               loading={mint.pending}
               busyFocusable
             >
-              Create
+              {t("locker.packages.createConfirm")}
             </Button>
           </DialogFooter>
         )}

@@ -4,7 +4,8 @@ import { Check, UserRound } from "lucide-react";
 import { Button } from "../../ui/Button.js";
 import { Dialog, DialogBody, DialogFooter } from "../../ui/Dialog.js";
 import { Skeleton } from "../../ui/Skeleton.js";
-import { formatDate, formatRelative } from "../../lib/format.js";
+import { formatRelative } from "../../lib/format.js";
+import { formatDay } from "../date.js";
 import { t } from "../../lib/copy.js";
 import {
   portalApi,
@@ -305,7 +306,7 @@ export function LinkAccountsDialog({
               {action.kind === "joined"
                 ? action.undoUntil
                   ? t("signin.join.doneUntil", {
-                      date: formatDate(action.undoUntil * 1000),
+                      date: formatDay(action.undoUntil),
                     })
                   : t("signin.join.done")
                 : t("signin.join.undone")}
@@ -406,7 +407,7 @@ export function LinkAccountsDialog({
               {t("signin.join.undoConfirm", {
                 email:
                   confirmUndo.joined?.email ?? confirmUndo.joined?.name ?? "",
-                date: formatDate(confirmUndo.undoUntil * 1000),
+                date: formatDay(confirmUndo.undoUntil),
               })}
             </p>
             {problem}
@@ -441,7 +442,7 @@ export function LinkAccountsDialog({
                     <span className="min-w-0 text-fg [overflow-wrap:anywhere]">
                       {t("signin.join.undoable", {
                         email: u.joined?.email ?? u.joined?.name ?? "",
-                        date: formatDate(u.undoUntil * 1000),
+                        date: formatDay(u.undoUntil),
                       })}
                     </span>
                     <Button

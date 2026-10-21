@@ -31,31 +31,23 @@ export function productLabel(slug: string, known?: string | null): string {
   return words.length ? words.join(" ") : slug;
 }
 
-const CUT_SHORT_NO_SLUG =
-  "This key is cut short. It starts with pkey_, the product, then 22 characters. Copy the whole key again.";
-
 /** The inline message for a key that can't be sent yet (§4.19). */
 export function keyProblem(check: KeyCheck): string | null {
   if (check.kind === "notKey")
     return (
-      `That isn't a Polaris Locker license key. Ours start with pkey_.` +
-      (check.steam
-        ? " This one looks like a Steam key: activate it in Steam."
-        : "")
+      t("locker.key.notKey") + (check.steam ? ` ${t("locker.key.steam")}` : "")
     );
-  if (check.kind === "partial") return CUT_SHORT_NO_SLUG;
+  if (check.kind === "partial") return t("locker.key.cutShort");
   if (check.kind === "incomplete") {
-    if (check.reason === "space")
-      return "This key has a space or line break in it. Copy the whole key again in one piece.";
+    if (check.reason === "space") return t("locker.key.space");
     if (!check.slug)
       return check.reason === "short"
-        ? CUT_SHORT_NO_SLUG
-        : "This key doesn't look right. After pkey_ comes the product in lowercase, then _ and 22 characters. Copy the whole key again.";
-    if (check.reason === "short")
-      return `This key is cut short. After ${check.slug}_ come 22 characters, and this has ${check.length}. Copy the whole key again.`;
-    if (check.reason === "long")
-      return `This key is too long. After ${check.slug}_ come 22 characters, and this has ${check.length}. Copy only the key.`;
-    return `This key doesn't look right. After ${check.slug}_ come exactly 22 letters, digits, - or _. Copy the whole key again.`;
+        ? t("locker.key.cutShort")
+        : t("locker.key.noSlug");
+    const args = { prefix: check.slug, used: String(check.length) };
+    if (check.reason === "short") return t("locker.key.short", args);
+    if (check.reason === "long") return t("locker.key.long", args);
+    return t("locker.key.badChars", args);
   }
   return null;
 }
@@ -140,8 +132,7 @@ export function formatVerdict(check: KeyCheck): KeyVerdict | null {
   return message ? { code: "format", tone: "danger", message } : null;
 }
 
-const UNKNOWN_KEY =
-  "We couldn't find that key. Capital letters matter, and l, 1, O and 0 are easy to mix up, so paste the key instead of typing it.";
+const unknownKey = (): string => t("locker.key.unknown");
 
 function ownedVerdict(name: string, extras: KeyVerdictExtras): KeyVerdict {
   const signInUrl = readSignInUrl(extras);
@@ -170,16 +161,21 @@ export function previewVerdict(
       return {
         code: "email_mismatch",
         tone: "danger",
-        message: `${shown} was bought with ${p.maskedEmail ?? "another email"}. It joins only the account with that email verified.`,
+        message: t("locker.key.emailMismatch", {
+          product: shown,
+          email: p.maskedEmail ?? t("locker.key.emailMismatchAny"),
+        }),
       };
     case "portal_off":
       return {
         code: "portal_off",
         tone: "danger",
-        message: `${p.product?.developerName ?? shown} manages this license elsewhere.`,
+        message: t("locker.key.managedElsewhere", {
+          developer: p.product?.developerName ?? shown,
+        }),
       };
     default:
-      return { code: "unknown", tone: "danger", message: UNKNOWN_KEY };
+      return { code: "unknown", tone: "danger", message: unknownKey() };
   }
 }
 
@@ -193,21 +189,21 @@ export function claimVerdict(
     return {
       code: "email_mismatch",
       tone: "danger",
-      message: `${name} joins only the account with the license's email verified.`,
+      message: t("locker.key.claimEmail", { product: name }),
     };
   if (err.status === 401)
-    return { code: "unknown", tone: "danger", message: UNKNOWN_KEY };
+    return { code: "unknown", tone: "danger", message: unknownKey() };
   if (err.status === 404)
     return {
       code: "portal_off",
       tone: "danger",
-      message: `${name} manages this license elsewhere.`,
+      message: t("locker.key.managedElsewhere", { developer: name }),
     };
   if (err.status === 422)
     return {
       code: "format",
       tone: "danger",
-      message: `That isn't a Polaris Locker license key. Ours start with pkey_.`,
+      message: t("locker.key.notKey"),
     };
   if (err.status === 429)
     return {

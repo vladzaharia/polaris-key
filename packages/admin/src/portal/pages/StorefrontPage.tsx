@@ -75,7 +75,7 @@ export function StorefrontPage({
       : q.isPending || held
         ? null
         : notFound
-          ? "Not available"
+          ? t("core.codes.mint-unavailable.title")
           : t("core.fallback.title"),
   );
   if (q.isPending || library.isPending || held) return <StorefrontSkeleton />;
@@ -90,7 +90,7 @@ export function StorefrontPage({
 function StorefrontSkeleton(): React.ReactElement {
   return (
     <div aria-busy className="space-y-6">
-      <h1 className="sr-only">Loading</h1>
+      <h1 className="sr-only">{t("common.loading")}</h1>
       <Skeleton className="h-64 w-full rounded-xl desk:h-80" />
       <div className="grid gap-6 desk:grid-cols-[minmax(0,1fr)_24rem]">
         <Skeleton className="h-64 rounded-xl" />
@@ -106,23 +106,20 @@ function NotOffered(): React.ReactElement {
     <section className="mx-auto flex max-w-xl flex-col items-center gap-4 py-16 text-center">
       <StationaryStar />
       <h1 className="text-3xl font-semibold leading-tight text-fg-strong">
-        There's nothing to add here
+        {t("locker.storefront.nothingTitle")}
       </h1>
-      <p className="text-fg-muted">
-        This link doesn't lead to a product you can add from this account right
-        now.
-      </p>
+      <p className="text-fg-muted">{t("locker.storefront.nothingBody")}</p>
       <div className="flex flex-wrap justify-center gap-3">
         <Button asChild variant="outline" size="lg">
           <a href={href.discover()}>
             <Compass aria-hidden />
-            Browse Discover
+            {t("locker.storefront.browse")}
           </a>
         </Button>
         <Button asChild variant="quiet" size="lg">
           <a href={href.library()}>
             <LayoutGrid aria-hidden />
-            Back to your library
+            {t("locker.discover.empty.back")}
           </a>
         </Button>
       </div>
@@ -162,7 +159,7 @@ function StorefrontBody({
           ? chosen
           : undefined;
       await claim.mutateAsync({ product: slug, path });
-      toast.success(`${product.name} is in your library`);
+      toast.success(t("locker.discover.added", { product: product.name }));
       // The library page takes focus on its heading; this page is replaced, so Back skips it.
       requestHeadingFocus(slug);
       window.location.replace(href.product(slug));
@@ -182,13 +179,13 @@ function StorefrontBody({
   const canAdd = product.cta === "add" && !error?.ended;
   return (
     <div>
-      <nav aria-label="Breadcrumb" className="mb-2">
+      <nav aria-label={t("locker.storefront.breadcrumb")} className="mb-2">
         <a
           href={href.discover()}
           className="inline-flex min-h-11 items-center gap-2 rounded-sm text-sm text-fg-muted hover:text-fg-strong"
         >
           <ArrowLeft aria-hidden className="size-4" />
-          Discover
+          {t("locker.discover.title")}
         </a>
       </nav>
       <div className="flex flex-col gap-6 desk:grid desk:grid-cols-[minmax(0,1fr)_21.25rem] desk:items-start desk:gap-x-8 desk:gap-y-8 wide:grid-cols-[minmax(0,1fr)_24rem]">
@@ -217,7 +214,7 @@ function StorefrontBody({
             {shots.length ? (
               <SectionCard
                 id="screenshots"
-                title="Screenshots"
+                title={t("locker.storefront.screenshots")}
                 className="min-w-0"
               >
                 <ul className="grid gap-3 desk:grid-cols-2">
@@ -225,7 +222,11 @@ function StorefrontBody({
                     <li key={src}>
                       <img
                         src={src}
-                        alt={`${product.name}, screenshot ${i + 1} of ${shots.length}`}
+                        alt={t("locker.storefront.shot", {
+                          product: product.name,
+                          n: i + 1,
+                          total: shots.length,
+                        })}
                         decoding="async"
                         className="aspect-video w-full rounded-lg border border-border bg-surface-sunken object-cover"
                       />
@@ -282,19 +283,26 @@ function DecisionPanel({
       ? hasLinks
       : canAdd || error !== null || product.stores.length > 0;
   return (
-    <SectionCard id="get" title={`Get ${product.name}`}>
+    <SectionCard
+      id="get"
+      title={t("locker.storefront.get", { product: product.name })}
+    >
       <div className="-mx-5 -mb-5 desk:-mx-6 desk:-mb-6">
         {platforms.length || (product.cta === "add" && !several && path) ? (
           <dl className="divide-y divide-border border-t border-border text-sm">
             {platforms.length ? (
-              <Row term="Runs on">
+              <Row term={t("locker.storefront.runsOn")}>
                 {platforms.map((p) => platformConsumerName(p)).join(", ")}
               </Row>
             ) : null}
             {product.cta === "add" && !several && path ? (
               <>
-                <Row term="You’d get">{pathTermsLine(path)}</Row>
-                <Row term="You qualify">{pathCopy(path).text}</Row>
+                <Row term={t("locker.storefront.youGet")}>
+                  {pathTermsLine(path)}
+                </Row>
+                <Row term={t("locker.storefront.youQualify")}>
+                  {pathCopy(path).text}
+                </Row>
               </>
             ) : null}
           </dl>
@@ -303,7 +311,7 @@ function DecisionPanel({
           <div className="border-t border-border px-5 py-4 @max-[20rem]:px-3 desk:px-6">
             <fieldset disabled={lockedIn} className="min-w-0 space-y-2">
               <legend className="mb-1 text-sm text-fg-muted">
-                Ways to add it
+                {t("locker.storefront.ways")}
               </legend>
               {paths.map((p) => (
                 <label
@@ -331,7 +339,10 @@ function DecisionPanel({
         ) : null}
         {product.cta === "link" && !hasLinks ? (
           <p className="border-t border-border px-5 py-4 text-sm text-fg-muted desk:px-6">
-            {`${product.developerName ?? "Its developer"} shows it to everyone with a Polaris Locker account.`}
+            {t("locker.storefront.linkOnly", {
+              developer:
+                product.developerName ?? t("locker.storefront.itsDeveloper"),
+            })}
           </p>
         ) : null}
         {hasFooter ? (
@@ -348,7 +359,7 @@ function DecisionPanel({
                 aria-describedby={error ? errorId : undefined}
                 onClick={onAdd}
               >
-                {adding ? "Adding…" : "Add to library"}
+                {adding ? t("locker.offer.adding") : t("locker.offer.add")}
               </Button>
             ) : null}
             {error ? (
@@ -369,7 +380,7 @@ function DecisionPanel({
                     className="h-auto min-h-12 w-full whitespace-normal px-6 py-2 font-medium"
                   >
                     <a ref={backRef} href={href.discover()}>
-                      Back to Discover
+                      {t("locker.storefront.backDiscover")}
                     </a>
                   </Button>
                 ) : null}
@@ -411,7 +422,7 @@ function AlsoOn({
   const n = product.stores.length;
   return (
     <p className="text-sm text-fg-muted">
-      Also on{" "}
+      {t("locker.offer.alsoOn")}{" "}
       {product.stores.map((s, i) => (
         <React.Fragment key={s.id}>
           {i > 0 ? (i === n - 1 ? " and " : ", ") : null}
@@ -419,7 +430,10 @@ function AlsoOn({
             href={s.url}
             target="_blank"
             rel="noreferrer"
-            aria-label={`${s.label}: ${product.name} (opens in a new tab)`}
+            aria-label={t("locker.offer.newTabAria", {
+              store: s.label,
+              product: product.name,
+            })}
             className="rounded-sm font-medium text-fg-strong underline decoration-fg-subtle underline-offset-[3px] hover:decoration-fg-strong"
           >
             {s.label}
@@ -506,7 +520,7 @@ function PathLines({ path }: { path: PortalObtainPath }): React.ReactElement {
   // A trial's name already says how long: the line under it adds only what is new.
   const line =
     copy.kind === "trial" && devices > 0
-      ? `${devices} ${devices === 1 ? "device" : "devices"}`
+      ? t("devices.count", { count: devices })
       : pathTermsLine(path);
   return (
     <span className="min-w-0">
@@ -536,7 +550,10 @@ function StoreButtons({
           {
             id: "website",
             url: site,
-            label: `Get it from ${product.developerName ?? t("license.developerFallback")}`,
+            label: t("locker.offer.getFrom", {
+              developer:
+                product.developerName ?? t("license.developerFallback"),
+            }),
           },
         ]
       : [];
@@ -560,7 +577,10 @@ function StoreButtons({
               href={l.url}
               target="_blank"
               rel="noreferrer"
-              aria-label={`${l.label}: ${product.name} (opens in a new tab)`}
+              aria-label={t("locker.offer.newTabAria", {
+                store: l.label,
+                product: product.name,
+              })}
             >
               <ExternalLink aria-hidden />
               {l.label}
@@ -587,14 +607,17 @@ function addError(product: PortalStorefrontProduct, err: unknown): AddError {
     err.code === "not_eligible"
   )
     return {
-      text: `${product.developerName ?? t("license.developerFallbackCap")} no longer gives ${product.name} to your account.`,
+      text: t("locker.discover.ended", {
+        developer: product.developerName ?? t("license.developerFallbackCap"),
+        product: product.name,
+      }),
       ended: true,
     };
   // The words PX-34 settled on Discover's tile.
   const offline = err instanceof PortalApiError && err.status === 0;
   const copy = portalErrorCopy(err);
   return {
-    text: `Couldn't add ${product.name}. ${offline ? t("core.codes.transport.message") : copy.description}`,
+    text: `${t("locker.discover.addFailed", { product: product.name })} ${offline ? t("core.codes.transport.message") : copy.description}`,
     ended: false,
   };
 }

@@ -1,3 +1,4 @@
+import { t, tParts } from "../../lib/copy.js";
 import * as React from "react";
 import { flushSync } from "react-dom";
 import { Compass } from "lucide-react";
@@ -55,7 +56,7 @@ export function LibraryPage({
   account: PortalAccount;
   params: URLSearchParams;
 }): React.ReactElement {
-  useDocumentTitle("Library");
+  useDocumentTitle(t("locker.library.title"));
   const lib = useLibrary();
   const count = lib.isPending ? 0 : (lib.products?.length ?? 0);
   // Only the document's first load staggers: never a return (Back from a product), never inside
@@ -67,10 +68,18 @@ export function LibraryPage({
     <section className="pk-vt-scope space-y-6 short:space-y-4">
       <div className="space-y-1">
         <h1 className="text-page-title-sm font-semibold text-fg-strong desk:text-page-title">
-          Your library
+          {t("locker.library.heading")}
         </h1>
         <p className="text-fg-muted">
-          Signed in as <span className="text-fg-strong">{account.email}</span>
+          {tParts("locker.library.signedInAs", ["email"]).map((part, i) =>
+            typeof part === "string" ? (
+              part
+            ) : (
+              <span key={i} className="text-fg-strong">
+                {account.email}
+              </span>
+            ),
+          )}
         </p>
       </div>
       {lib.isPending ? (
@@ -141,18 +150,16 @@ function LibraryBody({
         <p className="flex items-center gap-2 text-fg-muted">
           <Compass aria-hidden className="size-4 shrink-0" />
           <span>
-            That's everything linked to {email}.
+            {t("locker.library.everything", { email })}
             {discoverCount ? (
               <>
                 {" "}
-                {discoverCount === 1 ? "There is " : "There are "}
                 <a
                   href={href.discover()}
                   className="font-medium text-accent-fg underline underline-offset-2"
                 >
-                  {discoverCount} more you can add in Discover
+                  {t("locker.library.more", { count: discoverCount })}
                 </a>
-                .
               </>
             ) : null}
           </span>
@@ -164,7 +171,7 @@ function LibraryBody({
     return (
       <section aria-labelledby="all-h">
         <h2 id="all-h" className="sr-only">
-          All products
+          {t("locker.library.allProducts")}
         </h2>
         <ul ref={stagger.ref} className={cn(TILE_GRID, stagger.className)}>
           {justAddedFirst(products).map((p) => (
@@ -216,7 +223,10 @@ function ScaledLibrary({
   const action = (p: LibraryProduct) =>
     quickAction(p, device, (s) => href.product(p.slug, s));
   const attention = products.filter((p) => p.status.attention).length;
-  const summary = `Showing ${shown.length} of ${products.length}`;
+  const summary = t("locker.library.showing", {
+    count: shown.length,
+    total: products.length,
+  });
   // Any search, filter, sort or view switch ends the first-load stagger for good.
   const stagger = useFirstLoadStagger(
     firstLoad,
@@ -273,10 +283,13 @@ function ScaledLibrary({
       >
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <h2 id="all-h" className="sr-only">
-            All products
+            {t("locker.library.allProducts")}
             <span>
               {" "}
-              · {v.sort === "name" ? "By name" : "Recently added first"}
+              ·{" "}
+              {v.sort === "name"
+                ? t("locker.library.byName")
+                : t("locker.library.recentFirst")}
             </span>
           </h2>
           {filtered ? (
@@ -287,15 +300,16 @@ function ScaledLibrary({
                 className="font-medium text-accent-fg hover:underline"
                 onClick={() => setParams({ q: null, filter: null })}
               >
-                Show all
+                {t("locker.library.showAll")}
               </button>
             </p>
           ) : null}
         </div>
         {shown.length === 0 ? (
           <p className="rounded-xl border border-dashed border-border px-6 py-10 text-center text-fg-muted">
-            Nothing in your library matches
-            {v.q.trim() ? ` “${v.q.trim()}”` : " this filter"}.
+            {v.q.trim()
+              ? t("locker.library.noMatchQuery", { name: v.q.trim() })
+              : t("locker.library.noMatchFilter")}
           </p>
         ) : mode === "list" ? (
           <LibraryList
@@ -305,8 +319,10 @@ function ScaledLibrary({
             actionFor={action}
             actionHeader={
               device.os && !device.phone
-                ? `Quick action for this ${device.os === "macos" ? "Mac" : "computer"}`
-                : "Quick action"
+                ? device.os === "macos"
+                  ? t("locker.library.quickMac")
+                  : t("locker.library.quickComputer")
+                : t("locker.library.quick")
             }
           />
         ) : (

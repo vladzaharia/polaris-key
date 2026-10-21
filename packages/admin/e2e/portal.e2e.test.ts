@@ -608,7 +608,7 @@ describe("Account → Profile (PX-22, §4.30)", () => {
       const field = card.getByLabel("Birth date");
       await field.fill("1987-02-28");
       await card.getByRole("button", { name: "Save profile" }).click();
-      await card.getByText("Born February 28, 1987").waitFor();
+      await card.getByText("Born Feb 28, 1987").waitFor();
       expect(patches).toEqual([{ birthdate: "1987-02-28" }]);
       await card.getByRole("button", { name: "Edit profile" }).click();
       await card.getByRole("button", { name: "Remove birth date" }).click();

@@ -40,12 +40,10 @@ function errorText(err: unknown): string {
     if (err.status === 422)
       return err.message && err.message !== `portal api ${err.status}`
         ? err.message
-        : "Use 1 to 64 characters.";
-    if (err.status === 404)
-      return "It's already gone. The list is up to date now.";
+        : t("locker.methods.nameLength");
+    if (err.status === 404) return t("locker.methods.alreadyGone");
   }
-  const copy = portalErrorCopy(err, { account: true });
-  return `${copy.title}. ${copy.description}`;
+  return portalErrorCopy(err).line;
 }
 
 /** Escape closes an inline panel, as Cancel does. */
@@ -58,7 +56,7 @@ function closeOnEscape(close: () => void) {
   };
 }
 
-const NOTICE = "Receipts and security notices go here now.";
+const notice = (): string => t("locker.methods.noticeHere");
 
 export function MakePrimaryTool({
   methodId,
@@ -80,14 +78,14 @@ export function MakePrimaryTool({
   const headingRef = React.useRef<HTMLHeadingElement>(null);
   const panelId = `primary-${methodId}`;
   const errorId = React.useId();
-  const text = `${email} is now your primary email`;
+  const text = t("locker.methods.primaryNow", { email });
   const previous = view.emails.find((e) => e.primary)?.methodId ?? null;
 
   const run = (): void => {
     mutation.mutate(methodId, {
       onSuccess: () => {
         toast.success(text, {
-          description: NOTICE,
+          description: notice(),
           // Undo is a safe inverse: the sign-in is still fresh for 5 minutes.
           action: previous
             ? {
@@ -129,7 +127,7 @@ export function MakePrimaryTool({
       className="h-11 font-medium"
       loading={mutation.isPending}
       busyFocusable
-      aria-label={`Make ${email} primary`}
+      aria-label={t("locker.methods.makePrimaryName", { email })}
       // A disclosure only when the click opens the panel (a stale sign-in).
       aria-expanded={fresh ? undefined : false}
       aria-controls={fresh ? undefined : panelId}
@@ -139,7 +137,7 @@ export function MakePrimaryTool({
         else setOpen(true);
       }}
     >
-      Make primary
+      {t("locker.methods.makePrimary")}
     </Button>
   );
   const panel = (
@@ -174,16 +172,16 @@ export function MakePrimaryTool({
               tabIndex={-1}
               className="font-medium text-fg-strong outline-none"
             >
-              Make {email} primary?
+              {t("locker.methods.makePrimaryAsk", { email })}
             </h4>
-            <p className="text-sm text-fg-muted">{NOTICE}</p>
+            <p className="text-sm text-fg-muted">{notice()}</p>
             {error ? (
               <p role="alert" className="text-sm text-danger">
                 {error}
               </p>
             ) : null}
             <StepUp
-              verb="make it primary"
+              verb={t("locker.verb.makePrimary")}
               view={view}
               accountId={accountId}
               returnTo={returnTo}
@@ -252,7 +250,12 @@ export function RenamePasskeyTool({
     mutation.mutate(
       { id: passkeyId, name: name === "" ? null : name },
       {
-        onSuccess: () => done(name === "" ? "The name was cleared" : "Renamed"),
+        onSuccess: () =>
+          done(
+            name === ""
+              ? t("locker.methods.nameCleared")
+              : t("locker.methods.renamed"),
+          ),
         onError: (err) => {
           if (isStepUpRequired(err)) setNeedsStepUp(true);
         },
@@ -278,7 +281,7 @@ export function RenamePasskeyTool({
       ref={buttonRef}
       variant="outline"
       className="h-11 font-medium"
-      aria-label={`Rename ${what}`}
+      aria-label={t("locker.methods.renameName", { name: what })}
       aria-expanded={false}
       aria-controls={panelId}
       onClick={() => {
@@ -319,7 +322,7 @@ export function RenamePasskeyTool({
               htmlFor={fieldId}
               className="text-sm font-medium text-fg-strong"
             >
-              Passkey name
+              {t("locker.methods.passkeyName")}
             </label>
             <Input
               id={fieldId}
@@ -342,14 +345,14 @@ export function RenamePasskeyTool({
               </p>
             ) : (
               <p className="text-sm text-fg-muted">
-                Leave it empty to use “{fallback}”.
+                {t("locker.methods.leaveEmpty", { name: fallback })}
               </p>
             )}
           </div>
           {needsStepUp ? (
             <div className="border-t border-border pt-3">
               <StepUp
-                verb="rename it"
+                verb={t("locker.verb.rename")}
                 view={view}
                 accountId={accountId}
                 returnTo={returnTo}

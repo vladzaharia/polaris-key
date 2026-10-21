@@ -100,7 +100,7 @@ export function LibraryHero({
             // An open product (PS-04): nothing to licence, so no licence or seat facts.
             <>
               <dt className="text-fg-muted">{t("license.title")}</dt>
-              <dd className="text-fg-strong">None needed</dd>
+              <dd className="text-fg-strong">{t("locker.hero.none")}</dd>
             </>
           ) : (
             <>
@@ -115,7 +115,12 @@ export function LibraryHero({
               <dt className="text-fg-muted">{t("account.devices")}</dt>
               <dd className="space-y-2 text-fg-strong">
                 <span className="block">
-                  {`${devicesText(product.deviceCount, product.seats?.limit)} in use`}
+                  {t("locker.devices.inUse", {
+                    detail: devicesText(
+                      product.deviceCount,
+                      product.seats?.limit,
+                    ),
+                  })}
                 </span>
                 {product.seats ? (
                   <SeatMeter
@@ -129,13 +134,13 @@ export function LibraryHero({
           )}
           {includes.length ? (
             <>
-              <dt className="text-fg-muted">Includes</dt>
+              <dt className="text-fg-muted">{t("locker.hero.includes")}</dt>
               <dd className="text-fg-strong">{includes.join(", ")}</dd>
             </>
           ) : null}
           {product.platforms.length ? (
             <>
-              <dt className="text-fg-muted">Runs on</dt>
+              <dt className="text-fg-muted">{t("locker.storefront.runsOn")}</dt>
               <dd>
                 <PlatformGlyphs platforms={product.platforms} />
               </dd>
@@ -147,8 +152,8 @@ export function LibraryHero({
           className="mt-auto inline-flex items-center gap-2 self-start font-medium text-accent-fg hover:underline"
         >
           {product.kind === "entry"
-            ? "Details and downloads"
-            : "License, devices and all versions"}
+            ? t("locker.menu.details")
+            : t("locker.hero.licenseAll")}
           <ArrowRight aria-hidden className="size-4" />
         </a>
       </div>

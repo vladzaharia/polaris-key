@@ -43,7 +43,7 @@ export function EmailDownloadButton({
                 description: emailSent(productName, os),
               }),
             onError: (err) =>
-              toast.error("The email didn't go out", {
+              toast.error(t("locker.quick.emailFailed"), {
                 description: portalErrorCopy(err).description,
               }),
           },

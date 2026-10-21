@@ -47,6 +47,10 @@
       "types": "./dist/generated/kit-copy/index.d.ts",
       "default": "./dist/generated/kit-copy/index.js"
     },
+    "./kit-copy/portal": {
+      "types": "./dist/generated/kit-copy/portal.d.ts",
+      "default": "./dist/generated/kit-copy/portal.js"
+    },
     "./email-copy": {
       "types": "./dist/emailCopy.d.ts",
       "default": "./dist/emailCopy.js"

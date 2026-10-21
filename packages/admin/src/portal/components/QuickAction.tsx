@@ -69,7 +69,7 @@ export function QuickActionButton({
               }),
             }),
           onError: (err) =>
-            toast.error("The email didn't go out", {
+            toast.error(t("locker.quick.emailFailed"), {
               description: portalErrorCopy(err).description,
             }),
         },
@@ -82,7 +82,11 @@ export function QuickActionButton({
         loading={email.isPending}
         iconStart={<Mail aria-hidden />}
         onClick={onClick}
-        aria-label={`${action.label}: ${product.name} for ${osName(action.platform)}`}
+        aria-label={t("locker.quick.ariaFor", {
+          label: action.label,
+          product: product.name,
+          platform: osName(action.platform),
+        })}
         className={className}
       >
         <span className="font-medium">{action.label}</span>
@@ -99,7 +103,12 @@ export function QuickActionButton({
         },
         {
           onSuccess: () =>
-            announce(`Downloading ${product.name} ${action.release.version}`),
+            announce(
+              t("locker.quick.downloading", {
+                product: product.name,
+                version: action.release.version,
+              }),
+            ),
           onError: (err) =>
             toast.error(t("getIt.downloadFailed"), {
               description: portalErrorCopy(err).description,
@@ -114,7 +123,11 @@ export function QuickActionButton({
         loading={start.isPending}
         iconStart={twoLine ? undefined : <Download aria-hidden />}
         onClick={onClick}
-        aria-label={`${action.label}: ${product.name} ${action.detail}`}
+        aria-label={t("locker.quick.ariaDetail", {
+          label: action.label,
+          product: product.name,
+          detail: action.detail,
+        })}
         className={cn(twoLine && "h-auto flex-col gap-0 py-2", className)}
       >
         {twoLine ? (
@@ -148,7 +161,10 @@ export function QuickActionButton({
       <a
         href={action.href}
         {...(action.external ? { target: "_blank", rel: "noreferrer" } : {})}
-        aria-label={`${action.label}: ${product.name}`}
+        aria-label={t("locker.quick.ariaPlain", {
+          label: action.label,
+          product: product.name,
+        })}
       >
         <Icon aria-hidden />
         <Label label={action.label} short={shortLabel} />

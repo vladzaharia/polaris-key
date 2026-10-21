@@ -62,13 +62,9 @@ export function RemoveLicenseDialog({
     developer: product.presentation.developer,
   });
   const consequences = [
-    "Its devices keep working.",
-    ...(cloudSync
-      ? ["The devices you signed in on stop syncing it with Cloud Sync."]
-      : []),
-    named
-      ? "It won't be in an account, and it won't come back to this account by itself. To add it again, use its key."
-      : "It won't be in an account: anyone with the key can add it, and it won't come back to this account by itself.",
+    t("locker.remove.licenseKeepsDevices"),
+    ...(cloudSync ? [t("locker.remove.licenseSync")] : []),
+    named ? t("locker.remove.licenseNamed") : t("locker.remove.licenseAnyone"),
   ];
   return (
     <ConfirmDialog
@@ -77,17 +73,17 @@ export function RemoveLicenseDialog({
       intent="danger"
       title={
         others > 0
-          ? `Remove this ${product.name} license from your library?`
-          : `Remove ${product.name} from your library?`
+          ? t("locker.remove.licenseAsk", { product: product.name })
+          : t("locker.remove.ask", { product: product.name })
       }
       description={
         others > 0
-          ? `${which}. ${others === 1 ? "Your other license stays." : `Your other ${others} licenses stay.`}`
+          ? `${which}. ${t("locker.remove.othersStay", { count: others })}`
           : undefined
       }
       consequences={consequences}
-      cancelLabel="Keep it"
-      confirmLabel="Remove from my library"
+      cancelLabel={t("locker.methods.keepIt")}
+      confirmLabel={t("locker.menu.removeLicense")}
       describeError={removeErrorCopy}
       onConfirm={async () => {
         await remove.mutateAsync(license.id);

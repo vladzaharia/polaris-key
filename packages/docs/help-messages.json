@@ -35,10 +35,6 @@
     }
   },
   "portal": {
-    "step_up_required": {
-      "title": "Sign in again to continue",
-      "message": "This needs a sign-in from the last five minutes. Sign out, sign back in, then try again."
-    },
     "file_not_found": {
       "title": "That file is no longer offered",
       "message": "A newer release may have replaced it. Reload the page to see the current downloads."
@@ -51,33 +47,9 @@
       "title": "Your license isn't active",
       "message": "Renew or reactivate your license, then try the download again."
     },
-    "not_entitled": {
-      "title": "Your license doesn't include this version",
-      "message": "Download a version your license covers, or upgrade your license to get this one."
-    },
-    "status-0": {
-      "title": "Can't reach Polaris Locker",
-      "message": "Check your connection, then try again."
-    },
     "status-401": {
       "title": "You're signed out",
       "message": "Sign in again to carry on."
-    },
-    "status-403": {
-      "title": "That didn't go through",
-      "message": "Reload the page and try again."
-    },
-    "status-404": {
-      "title": "That isn't here",
-      "message": "It may have been removed, or the link is out of date."
-    },
-    "status-429": {
-      "title": "Too many tries",
-      "message": "Wait a minute, then try again."
-    },
-    "default": {
-      "title": "Something went wrong",
-      "message": "Try again. If it keeps happening, contact the developer."
     }
   },
   "messages": {
@@ -225,12 +197,6 @@
       "article": "sign-in",
       "why": "Changes to how you sign in, and deleting your account, need a sign-in from the last 5 minutes: adding or removing a passkey (a sign-in saved on your device) or another sign-in method.",
       "fix": "Confirm it's you with your passkey or an emailed code, then repeat what you were doing."
-    },
-    "portal.step_up_required": {
-      "page": "signing-in",
-      "article": "sign-in",
-      "why": "Removing a license from your library and setting up **Package access** on an app's page need a sign-in from the last 5 minutes.",
-      "fix": "Sign out, sign in again, then repeat the change."
     },
     "portal.status-401": {
       "page": "signing-in",
@@ -838,12 +804,6 @@
       "why": "This download needs a working license, and none of the licenses in your account for this app is working. A license may have expired or been turned off.",
       "fix": "Renew the license with the app's developer or the store you bought it from, then try the download again. If it was turned off, ask the app's developer."
     },
-    "portal.not_entitled": {
-      "page": "downloads-and-updates",
-      "article": "download",
-      "why": "Your license doesn't cover this version. Its update period may have ended, or the license itself may have expired or been turned off.",
-      "fix": "Download a version your license covers, or ask the app's developer about extending your license. If the license has ended, renew it with the app's developer or the store you bought it from. If it was turned off, ask the app's developer."
-    },
     "license_owned": {
       "page": "accounts",
       "article": "add-a-license",
@@ -916,11 +876,6 @@
     "network-error": {
       "page": "other",
       "entry": "network"
-    },
-    "portal.status-0": {
-      "page": "other",
-      "why": "Your browser couldn't reach Polaris Key.",
-      "fix": "Check your connection, then try again."
     },
     "transport": {
       "page": "other",
@@ -1053,40 +1008,15 @@
       "why": "Something unexpected happened inside the app.",
       "fix": "Try again. If it keeps happening, tell the app's developer."
     },
-    "portal.default": {
-      "page": "other",
-      "entry": "fallback",
-      "why": "Your library hit a problem it has no specific message for.",
-      "fix": "Try again.",
-      "cta": "contact"
-    },
     "not_found": {
       "page": "other",
       "why": "What was asked for doesn't exist or can't be found. It may have been removed.",
       "fix": "Try again from the beginning. If you expect it to exist, ask the app's developer."
     },
-    "portal.status-404": {
-      "page": "other",
-      "why": "What you opened isn't there. It may have been removed, or the link is out of date.",
-      "fix": "Go back to your library and open it from there.",
-      "cta": "library"
-    },
     "forbidden": {
       "page": "other",
       "why": "You're signed in, but your account isn't allowed to do this.",
       "fix": "Sign in with an account that has permission, or ask the app's developer."
-    },
-    "portal.status-403": {
-      "page": "other",
-      "why": "The request was refused. A fresh copy of the page often fixes it.",
-      "fix": "Reload the page and try again.",
-      "cta": "contact"
-    },
-    "portal.status-429": {
-      "page": "other",
-      "why": "You made too many requests in a short time.",
-      "fix": "Wait a minute, then try again.",
-      "cta": "contact"
     },
     "body_too_large": {
       "page": "other",

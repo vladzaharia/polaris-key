@@ -141,3 +141,20 @@ Reconciled against main in the 2026-10-16 audit. Remaining:
 - ui-qa portal board over e2e/portalStates.ts
 - Owner call: portal browser-error wording vs core.codes.\* catalog text
 - Record pkey-ux-reviewer BUILT pass
+
+## Progress and continuation (2026-10-21)
+
+Closed:
+
+- One customer date format, "Sep 14, 2026" (`portal/date.ts`: `formatDay`, `formatDayTime`; en-US by default, any catalog locale accepted). Every portal date goes through it; `test/portalDates.test.ts` fails on any other `Intl.DateTimeFormat` or `dateStyle` in `src/portal`.
+- Every customer-facing portal string is in the kit copy catalog, in all nine locales: the `locker.*` namespace (about 500 keys) plus `profile.*`, `yourData.*`, `license.*` and `getIt.*`. What stays literal is proper names (Apple, Google, Steam, passkey providers, Intel), CSS and code. The portal copy lint passes without a ledger.
+- The portal-only namespaces (`PORTAL_NAMESPACES` in `kit-copy.ts`) generate to `@polaris-key/brand/kit-copy/portal` and to no SDK, terminal or native table.
+- Browser errors read `core.codes.*` wherever a code exists (network, forbidden, not_found, rate_limited, step_up_required, not_entitled, unknown); the signed-out wording and three download refusals stay the portal's own (`locker.error.*`). `portalErrorCopy` returns `line`, the one-line form.
+- The ui-qa portal board: `e2e/portalBoard.e2e.test.ts` lints every `SHIPPED` state, dark and light at 1440 px, with ui-qa's in-page lint (the rules about what a person sees; the kit-CSS rules do not fit the site's Tailwind layer). 50 findings predate it, in `e2e/portalBoard.debt.json`; the ledger only shrinks.
+
+Wording that changed (portal baselines need re-recording): every date; the browser errors ("Too many attempts", "Can't connect", "Not found", "Not allowed", "Something went wrong"); "Free to use"/"Loading…" headings; "Born Feb 28, 1987".
+
+Remaining:
+
+- Re-record the portal baselines through heavy.sh.
+- Record the pkey-ux-reviewer BUILT pass.

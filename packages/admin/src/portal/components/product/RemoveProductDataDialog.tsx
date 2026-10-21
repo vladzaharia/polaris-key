@@ -2,6 +2,7 @@ import * as React from "react";
 import { Checkbox } from "../../../ui/Checkbox.js";
 import { ConfirmDialog } from "../../../ui/ConfirmDialog.js";
 import { toast } from "../../../ui/toast.js";
+import { t } from "../../../lib/copy.js";
 import { PortalApiError } from "../../api.js";
 import {
   YOUR_DATA_COPY,
@@ -84,7 +85,7 @@ export function RemoveProductDataDialog({
       }
       throw err;
     }
-    toast.success(`Your data was removed from ${name}`, {
+    toast.success(t("locker.productData.removed", { product: name }), {
       description: removedNote({ name, licenses, alsoRemoveLicense }),
     });
     onOpenChange(false);
@@ -96,8 +97,8 @@ export function RemoveProductDataDialog({
       open={open}
       onOpenChange={onOpenChange}
       intent="danger"
-      title={`Remove your data from ${name}?`}
-      description={`This only affects ${name}. Your Polaris Locker account and your other apps stay as they are.`}
+      title={t("locker.productData.removeAsk", { product: name })}
+      description={t("locker.productData.removeBody", { product: name })}
       consequences={removeConsequences({
         name,
         developer: product.presentation.developer,
@@ -126,7 +127,7 @@ export function RemoveProductDataDialog({
     >
       {askFirst ? (
         <StepUpInline
-          verb="remove your data"
+          verb={t("locker.verb.removeData")}
           onConfirmed={() => {
             setAskFirst(false);
             // A refusal shows on the next press of the confirm button.

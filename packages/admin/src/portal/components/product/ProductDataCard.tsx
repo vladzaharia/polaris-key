@@ -46,12 +46,15 @@ export function ProductDataCard({
   const exportData = useExportProductData(product.slug);
   const [removing, setRemoving] = React.useState(false);
   return (
-    <SectionCard id="data" title={`Your data in ${name}`}>
+    <SectionCard
+      id="data"
+      title={t("locker.productData.title", { product: name })}
+    >
       <div className="space-y-5">
         <DownloadData
           title={YOUR_DATA_COPY["yourData.product.copy.title"]}
           description={productCopyBody(product.licenses.length)}
-          label={`Download my data from ${name}`}
+          label={t("locker.productData.download", { product: name })}
           download={exportData}
         />
         <div className="border-t border-border pt-5">
@@ -64,10 +67,10 @@ export function ProductDataCard({
             <Button
               variant="outline"
               className="w-full border-danger-border text-danger sm:w-auto"
-              aria-label={`Remove my data from ${name}`}
+              aria-label={t("locker.productData.removeAria", { product: name })}
               onClick={() => setRemoving(true)}
             >
-              Remove…
+              {t("locker.productData.remove")}
             </Button>
           </DataRow>
         </div>
@@ -107,14 +110,14 @@ function SupportCodeRow({
   React.useEffect(() => {
     if (!asked) return;
     groupRef.current?.focus();
-    setAnnounced(`Support code ${asked}`);
+    setAnnounced(t("locker.productData.supportCode", { detail: asked }));
   }, [asked]);
   const limited =
     create.error instanceof PortalApiError && create.error.status === 429;
   const failure = create.error
     ? limited
       ? t("signin.code.rateLimited")
-      : `${portalErrorCopy(create.error).title}. ${portalErrorCopy(create.error).description}`
+      : portalErrorCopy(create.error).line
     : null;
   return (
     <>
@@ -151,7 +154,7 @@ function SupportCodeRow({
             </div>
             <CopyButton
               value={code}
-              label="Copy support code"
+              label={t("locker.productData.copyCode")}
               size="md"
               showLabel
             />
@@ -163,7 +166,7 @@ function SupportCodeRow({
             loading={create.isPending || view.isPending}
             onClick={() => create.mutate()}
           >
-            Get a support code
+            {t("locker.productData.getCode")}
           </Button>
         )}
       </DataRow>

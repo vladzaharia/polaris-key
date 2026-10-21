@@ -24,20 +24,22 @@ export function PackagesPointer({
           <span className="inline-flex size-9 items-center justify-center rounded-lg bg-surface-sunken">
             <Package aria-hidden className="size-5 text-fg-strong" />
           </span>
-          Packages
+          {t("locker.account.packages")}
         </span>
       }
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-fg">
-          {productName} packages from{" "}
-          {developer ?? t("license.developerFallback")}
+          {t("locker.packagesPointer.body", {
+            product: productName,
+            developer: developer ?? t("license.developerFallback"),
+          })}
         </p>
         <a
           href={href.account("packages")}
           className="inline-flex min-h-11 items-center gap-1.5 rounded-md px-1 text-sm font-medium text-fg-strong underline underline-offset-2 hover:text-accent-fg"
         >
-          Set up in Account → Packages
+          {t("locker.packagesPointer.link")}
           <ArrowRight aria-hidden className="size-4" />
         </a>
       </div>

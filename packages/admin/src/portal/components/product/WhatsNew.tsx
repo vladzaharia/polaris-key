@@ -64,7 +64,7 @@ export function WhatsNew({
                 onClick={() => setFull((v) => !v)}
                 className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-accent-fg hover:underline"
               >
-                {full ? "Show less" : "Show full notes"}
+                {full ? t("locker.notes.less") : t("locker.notes.full")}
                 <ChevronDown
                   aria-hidden
                   className={full ? "size-4 rotate-180" : "size-4"}
@@ -74,15 +74,13 @@ export function WhatsNew({
           ) : null}
         </div>
       ) : (
-        <p className="text-sm text-fg-muted">
-          This version has no release notes.
-        </p>
+        <p className="text-sm text-fg-muted">{t("locker.notes.none")}</p>
       )}
       {earlier.length ? (
         <div className="mt-6">
           <div className="flex items-center justify-between border-b border-border pb-2">
             <h3 className="text-md font-semibold text-fg-strong">
-              Earlier versions
+              {t("locker.notes.earlier")}
             </h3>
             {earlier.length > 3 ? (
               <button
@@ -91,7 +89,9 @@ export function WhatsNew({
                 onClick={() => setAll((v) => !v)}
                 className="inline-flex items-center gap-1 text-sm font-medium text-accent-fg hover:underline"
               >
-                {all ? "Show fewer" : `Show all ${earlier.length}`}
+                {all
+                  ? t("locker.notes.fewer")
+                  : t("locker.packages.showAll", { count: earlier.length })}
                 <ChevronDown
                   aria-hidden
                   className={all ? "size-4 rotate-180" : "size-4"}

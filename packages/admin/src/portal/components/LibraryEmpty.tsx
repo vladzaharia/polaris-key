@@ -32,7 +32,7 @@ export function LibraryEmpty({
         <PolarisMark kind="locker" size={24} theme={theme} />
       </span>
       <h2 id="empty-h" className="text-xl font-semibold text-fg-strong">
-        Nothing here yet
+        {t("locker.library.empty.title")}
       </h2>
       <div className="flex flex-wrap justify-center gap-3">
         <Button
@@ -52,7 +52,7 @@ export function LibraryEmpty({
           >
             <a href={href.discover()}>
               <Sparkles aria-hidden />
-              See {discoverCount} in Discover
+              {t("locker.library.empty.discover", { count: discoverCount })}
             </a>
           </Button>
         ) : null}

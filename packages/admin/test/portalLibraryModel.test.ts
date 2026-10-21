@@ -80,7 +80,7 @@ describe("status model (§5.3), first match wins", () => {
       NOW_S,
     );
     expect(s.kind).toBe("expired");
-    expect(s.note).toMatch(/^Ended \d{1,2} \w{3} \d{4}$/);
+    expect(s.note).toMatch(/^Ended [A-Z][a-z]{2} \d{1,2}, \d{4}$/);
   });
 
   it("expires within 14 days uses relative days, with the tier and end date", () => {
@@ -97,7 +97,7 @@ describe("status model (§5.3), first match wins", () => {
       label: "Expires in 9 days",
       tone: "warning",
     });
-    expect(s.note).toMatch(/^Studio · ends \d{1,2} \w{3}$/);
+    expect(s.note).toMatch(/^Studio · ends [A-Z][a-z]{2} \d{1,2}$/);
   });
 
   it("further out is Active with 'until <date>'", () => {
@@ -111,7 +111,9 @@ describe("status model (§5.3), first match wins", () => {
       NOW_S,
     );
     expect(s.kind).toBe("active");
-    expect(s.note).toMatch(/^Pro · until \d{1,2} \w{3} \d{4} · 2 devices$/);
+    expect(s.note).toMatch(
+      /^Pro · until [A-Z][a-z]{2} \d{1,2}, \d{4} · 2 devices$/,
+    );
   });
 
   it("never claims a seat limit it doesn't know", () => {
@@ -495,7 +497,7 @@ describe("Needs attention", () => {
     });
     // The date's spaces are non-breaking, so "10 Oct" never splits across lines.
     expect(items[0]!.text).toMatch(
-      /^Your Studio license ends on \d+\u00a0\w{3}\.$/,
+      /^Your Studio license ends on [A-Z][a-z]{2}\u00a0\d{1,2}\.$/,
     );
   });
 
@@ -517,7 +519,7 @@ describe("Needs attention", () => {
     );
     const [item] = attentionItems(lib);
     expect(item!.text).toMatch(
-      /^Your license ended on \d+\u00a0\w{3}\u00a0\d{4}\.$/,
+      /^Your license ended on [A-Z][a-z]{2}\u00a0\d{1,2},\u00a0\d{4}\.$/,
     );
     expect(item!.action.label).toBe("Renew with Kiln Games");
   });

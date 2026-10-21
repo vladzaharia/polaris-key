@@ -290,7 +290,21 @@ function portalErrorsSource(): {
   const text = read(
     join(repoRoot, "packages", "admin", "src", "portal", "errors.ts"),
   );
+  // The portal's own words are `locker.error.*` keys of the kit copy catalog (its portal table).
   const kit = JSON.parse(
+    read(
+      join(
+        repoRoot,
+        "packages",
+        "brand",
+        "src",
+        "generated",
+        "kit-copy",
+        "portal-en.json",
+      ),
+    ),
+  ) as Record<string, string>;
+  const core = JSON.parse(
     read(
       join(
         repoRoot,
@@ -303,64 +317,39 @@ function portalErrorsSource(): {
       ),
     ),
   ) as Record<string, string>;
-  const unquote = (s: string): string => JSON.parse(`"${s}"`) as string;
-  const title = (g: Record<string, string | undefined>): string => {
-    if (g.title !== undefined) return unquote(g.title);
-    const value = kit[g.key!];
-    if (value === undefined) throw new Error(`errors.ts: no kit copy ${g.key}`);
+  const word = (key: string): string => {
+    const value = kit[key] ?? core[key];
+    if (value === undefined) throw new Error(`errors.ts: no kit copy ${key}`);
     return value;
   };
   const copies: Record<string, CatalogEntry> = {};
-  const str = String.raw`"(?<title>(?:[^"\\]|\\.)*)"`;
-  const strOrKey = String.raw`(?:"(?<title>(?:[^"\\]|\\.)*)"|t\("(?<key>[\w.]+)"\))`;
-  const desc = String.raw`description:\s*"(?<desc>(?:[^"\\]|\\.)*)",`;
+  const own = String.raw`own\(\s*t\("(?<title>[\w.-]+)"\),\s*t\("(?<desc>[\w.-]+)"\)`;
 
   // The download-link refusals: a table keyed by the Worker's reason.
   const block =
-    /const DOWNLOAD_REFUSALS[^=]*=\s*\{(?<body>[\s\S]*?)\n\};/.exec(text)
-      ?.groups?.body ?? "";
+    /const DOWNLOAD_REFUSALS[^{]*\{(?<body>[\s\S]*?)\n\};/.exec(text)?.groups
+      ?.body ?? "";
   for (const m of block.matchAll(
-    new RegExp(
-      String.raw`^ {2}(?<key>\w+):\s*\{\s*title:\s*${str},\s*${desc}`,
-      "gm",
-    ),
+    new RegExp(String.raw`^ {2}(?<key>\w+):\s*\(\)\s*=>\s*${own}`, "gm"),
   ))
     copies[m.groups!.key!] = {
-      title: unquote(m.groups!.title!),
-      message: unquote(m.groups!.desc!),
+      title: word(m.groups!.title!),
+      message: word(m.groups!.desc!),
     };
-  // A sign-in needed again.
-  const stepUp = new RegExp(
-    String.raw`isStepUpRequired\(err\)\)\s*return\s*\{\s*title:\s*${str},\s*${desc}`,
-  ).exec(text)?.groups;
-  if (stepUp)
-    copies.step_up_required = {
-      title: unquote(stepUp.title!),
-      message: unquote(stepUp.desc!),
-    };
-  // One copy per HTTP status.
+  // One copy per HTTP status the portal words itself (the rest read the catalog's refusal codes).
   for (const m of text.matchAll(
     new RegExp(
-      String.raw`err\.status === (?<status>\d+)\)\s*return\s*\{\s*title:\s*${strOrKey},\s*${desc}`,
+      String.raw`err\.status === (?<status>\d+)\)\s*return\s*${own}`,
       "g",
     ),
   ))
     copies[`status-${m.groups!.status}`] = {
-      title: title(m.groups!),
-      message: unquote(m.groups!.desc!),
-    };
-  // Everything else.
-  const fallback = new RegExp(
-    String.raw`\n {2}return\s*\{\s*title:\s*${strOrKey},\s*${desc}`,
-  ).exec(text)?.groups;
-  if (fallback)
-    copies.default = {
-      title: title(fallback),
-      message: unquote(fallback.desc!),
+      title: word(m.groups!.title!),
+      message: word(m.groups!.desc!),
     };
   return {
     copies,
-    titles: (text.match(/\btitle:\s*(?:"|t\()/g) ?? []).length,
+    titles: (text.match(/\bown\(\s*t\(/g) ?? []).length,
   };
 }
 
@@ -370,8 +359,7 @@ describe("the portal's own copy", () => {
   it("is read whole from errors.ts", () => {
     // A copy errors.ts words in a shape this reader does not know would be missed silently.
     expect(Object.keys(source.copies)).toHaveLength(source.titles);
-    expect(source.copies).toHaveProperty("step_up_required");
-    expect(source.copies).toHaveProperty("default");
+    expect(source.copies).toHaveProperty("file_not_found");
     expect(
       Object.keys(source.copies).some((k) => k.startsWith("status-")),
     ).toBe(true);
@@ -498,7 +486,7 @@ describe("search aliases", () => {
       }
     }
     // The portal's own copy is English only: it has no translated title to index.
-    expect(aliasesFor(["portal.default"])).toEqual([]);
+    expect(aliasesFor(["portal.status-401"])).toEqual([]);
   });
 
   it("include a known title in another language", () => {
@@ -579,20 +567,23 @@ describe("the words", () => {
   });
 
   it("bold only labels a screen shows", () => {
-    const kit = Object.values(
-      JSON.parse(
-        read(
-          join(
-            repoRoot,
-            "packages",
-            "brand",
-            "src",
-            "generated",
-            "kit-copy",
-            "en.json",
+    // The kit table, and the portal's own table (its namespaces generate to portal-en.json).
+    const kit = ["en.json", "portal-en.json"].flatMap((file) =>
+      Object.values(
+        JSON.parse(
+          read(
+            join(
+              repoRoot,
+              "packages",
+              "brand",
+              "src",
+              "generated",
+              "kit-copy",
+              file,
+            ),
           ),
-        ),
-      ) as Record<string, string>,
+        ) as Record<string, string>,
+      ),
     );
     const portalDir = join(repoRoot, "packages", "admin", "src", "portal");
     const portal = withoutComments(
@@ -609,7 +600,9 @@ describe("the words", () => {
     expect(labels.size).toBeGreaterThan(0);
     for (const label of labels)
       expect(
-        kit.includes(label) || wholeWord(label).test(portal),
+        kit.includes(label) ||
+          kit.some((value) => wholeWord(label).test(value)) ||
+          wholeWord(label).test(portal),
         `**${label}** is not a string a kit or the portal shows`,
       ).toBe(true);
   });

@@ -37,11 +37,9 @@ export function StepUpInline({
           onConfirmed={onConfirmed}
         />
       ) : methods.isPending || me.isPending ? (
-        <Spinner className="size-4" label="Loading" />
+        <Spinner className="size-4" label={t("common.loading")} />
       ) : (
-        <p className="text-sm text-fg">
-          Sign out, then sign in again. You can try again for 5 minutes after.
-        </p>
+        <p className="text-sm text-fg">{t("locker.stepUp.signOutRetry")}</p>
       )}
       {onCancel ? (
         <Button

@@ -21,8 +21,8 @@ export function expiresInText(
 /** "2 devices", or "2 of 3 devices" when the seat limit is known (G5). */
 export function devicesText(n: number, limit?: number | null): string {
   if (limit != null && limit > 0)
-    return `${n} of ${limit} ${limit === 1 ? "device" : "devices"}`;
-  return `${n} ${n === 1 ? "device" : "devices"}`;
+    return t("signin.choice.devices", { used: n, limit });
+  return t("devices.count", { count: n });
 }
 
 /**
