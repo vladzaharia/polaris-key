@@ -25,6 +25,7 @@ __all__ = [
     "code_expired",
     "countdown",
     "display_link",
+    "format_bytes",
     "hidden_view",
     "identity_text",
     "link_verdict",
@@ -249,3 +250,24 @@ def countdown(seconds: Any) -> str:
         value = 0
     value = max(0, value)
     return "%d:%02d" % (value // 60, value % 60)
+
+
+def format_bytes(n: Any) -> str:
+    """A byte count as the person reads it: ``820 KB``, ``4.2 MB``, ``61 MB`` (decimal units)."""
+    try:
+        value = float(n)
+    except (TypeError, ValueError):
+        return ""
+    if value < 0:
+        return ""
+    units = ("KB", "MB", "GB", "TB")
+    if value < 1000:
+        return "%d B" % int(value)
+    unit = units[0]
+    value /= 1000.0
+    for unit in units:
+        if value < 1000 or unit == units[-1]:
+            break
+        value /= 1000.0
+    text = ("%.1f" % value) if value < 10 else ("%d" % round(value))
+    return (text[:-2] if text.endswith(".0") else text) + " " + unit

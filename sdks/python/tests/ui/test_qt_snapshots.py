@@ -38,6 +38,7 @@ def _render(kit_app, view, scheme, platform="gnome", size=SIZE, font_scale=1.0, 
         source=source,
         size=size,
         font_scale=font_scale,
+        loading_delay_ms=0,  # the DL7 delay has its own test (test_qt_kit_spec.py)
     )
     try:
         kit.set_view(view)

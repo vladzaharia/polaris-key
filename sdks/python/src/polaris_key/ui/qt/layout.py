@@ -15,9 +15,10 @@ from typing import Any, Dict, List, Mapping, Optional
 
 from ..core.copy import Copy
 from ..core.ui_contract import ACTION_KEYS
-from ..core.ui_view import View, bidi_isolate
+from ..core.ui_loading import DELAYED_LOADING_STATES
+from ..core.ui_view import View, bidi_isolate, format_bytes
 
-__all__ = ["Button", "ScreenSpec", "build_spec", "button_role", "is_button_key"]
+__all__ = ["Button", "Field", "ScreenSpec", "build_spec", "button_role", "is_button_key"]
 
 _HEADING = re.compile(r"\.(title|heading)$|^(gate\.error\.title|part\.status\.blocked)$")
 _ACTION_KEYS = frozenset(key for keys in ACTION_KEYS.values() for key in keys)
@@ -28,18 +29,53 @@ _VERBS = frozenset(
         "signIn useKey trial continueFree restore offline submit install later checkNow skipVersion "
         "restartNow restartWhenReady openStore resume remove rename reset update renew contact "
         "switchChannel useAnotherLicense openBrowser undo copyCode loadFile primary allChanges whatsNew "
-        "appStore googlePlay steam altstore testflight"
+        "appStore googlePlay steam altstore testflight differentKey"
     ).split()
 )
 #: Quiet text buttons (the mockup's "Start a free trial", "Activate offline").
 _QUIET = frozenset(
     ("welcome.trial", "welcome.offline", "welcome.restore", "welcome.continueFree", "common.notNow",
-     "common.dismiss", "update.later", "update.skipVersion", "common.cancel", "common.back")
+     "common.dismiss", "update.later", "update.skipVersion", "common.cancel", "common.back",
+     "update.allChanges", "update.whatsNew")
+
 )
 #: Keys that read as status chips or meters, not paragraphs.
 _NOT_BUTTONS = frozenset(("update.title", "update.current", "update.platform", "update.blockedTitle"))
 _PROGRESS = frozenset(("a11y.progress", "boot.fetchingProgress", "updateProgress.downloading"))
 _A11Y = re.compile(r"^a11y\.")
+#: An entry the person types into (DL7): its label key, and the catalog keys that sit under it as
+#: its placeholder, its hint (the key's product) and its message (the input being wrong).
+_FIELDS = {
+    "part.keyField.label": {
+        "placeholder": "part.keyField.placeholder",
+        "hint": ("part.keyField.forProduct",),
+        "error": ("part.keyField.cutShort", "part.keyField.malformed"),
+    },
+    "devices.renameLabel": {"placeholder": None, "hint": (), "error": ()},
+    "offlineActivation.paste": {"placeholder": None, "hint": (), "error": ()},
+}
+_FIELD_PARTS = frozenset(
+    key
+    for label, parts in _FIELDS.items()
+    for key in (label, parts["placeholder"], *parts["hint"], *parts["error"])
+    if key
+)
+#: Fragments of a row (a setting's source, an account line's label, a device's meta). A row's data
+#: lives in the rich models, so a bare view carries none, and the label alone would dangle with no
+#: value after it. They are left out rather than drawn as sentences.
+_ROW_FRAGMENTS = frozenset(
+    (
+        "settings.off settings.on settings.range settings.source.default settings.source.env "
+        "settings.source.local settings.reset settings.fromDeveloper account.autoUpdate account.channel "
+        "account.cloudSync account.devices account.managedSettings account.tier account.holder "
+        "account.version account.updates devices.meta devices.remove devices.rename "
+        "part.thisDeviceTitle signin.replace.meta signin.replace.leastRecent part.seatMeter.caption"
+    ).split()
+)
+#: Components whose lone action is not the screen's primary (a dismissal, a banner's own control).
+_NOT_FILLED = frozenset(("Toast", "GraceBanner"))
+#: When a heading needs data the view lacks (no product name), this neutral one stands in.
+_FALLBACK_TITLE = "core.fallback.title"
 
 
 def is_button_key(key: str, primary: Optional[str] = None) -> bool:
@@ -63,9 +99,25 @@ class Button:
     text: str
     role: str
     action: Optional[str] = None
+    #: A busy control keeps its label and focus and adds the indicator (DL4).
+    busy: bool = False
 
     def as_dict(self) -> Dict[str, Any]:
-        return {"key": self.key, "text": self.text, "role": self.role, "action": self.action or ""}
+        return {"key": self.key, "text": self.text, "role": self.role, "action": self.action or "", "busy": self.busy}
+
+
+@dataclass(frozen=True)
+class Field:
+    """A text entry with its messages under it (DL7): ``error`` marks the input itself as wrong."""
+
+    key: str
+    label: str
+    placeholder: str = ""
+    hint: str = ""
+    error: str = ""
+
+    def as_dict(self) -> Dict[str, Any]:
+        return {"key": self.key, "label": self.label, "placeholder": self.placeholder, "hint": self.hint, "error": self.error}
 
 
 @dataclass(frozen=True)
@@ -81,6 +133,17 @@ class ScreenSpec:
     busy: bool = False
     product: str = ""
     developer: str = ""
+    #: The identity header (UI-KITS 1.2, DL5): the name beside the icon unless the title names the
+    #: product already; the developer line on Welcome only; ``hero`` sizes the icon up on Welcome.
+    show_name: bool = True
+    developer_line: str = ""
+    hero: bool = False
+    #: DL7: the screen is a load. It shows nothing for the first 250 ms, then the identity, a muted
+    #: label and the 2 px shimmer.
+    loading: bool = False
+    #: The title is in danger only when the screen itself failed; a wrong input marks its field.
+    title_tone: str = ""
+    fields: List[Field] = field(default_factory=list)
     focus: str = ""
     #: The attribution (UI-KITS §1.6): ``""`` (off), ``"line"`` or ``"badge"``, with its text.
     powered_by: str = ""
@@ -98,10 +161,17 @@ class ScreenSpec:
             "busy": self.busy,
             "product": self.product,
             "developer": self.developer,
+            "showName": self.show_name,
+            "developerLine": self.developer_line,
+            "hero": self.hero,
+            "loading": self.loading,
+            "titleTone": self.title_tone,
+            "fields": [f.as_dict() for f in self.fields],
             "focus": self.focus,
             "poweredBy": self.powered_by,
             "poweredByText": self.powered_by_text,
-            "hidden": self.state == "hidden" or not (self.title or self.body or self.buttons),
+            "hidden": self.state == "hidden"
+            or not (self.title or self.body or self.buttons or self.fields or self.progress is not None),
         }
 
 
@@ -129,12 +199,16 @@ def build_spec(
     args = {**({"product": product, "app": product} if product else {}), **_args(view)}
     if developer:
         args.setdefault("developer", bidi_isolate(developer))
+    if isinstance(args.get("size"), int) and not isinstance(args.get("size"), bool):
+        args["size"] = format_bytes(args["size"])  # a byte count reads "50 MB", never 52428800
     primary = view.decisions.primary
     title = ""
+    open_heading = False
     body: List[str] = []
     buttons: List[Button] = []
     progress: Optional[float] = None
     busy = False
+    parts: Dict[str, str] = {}
     for key in view.copy:
         if key == "common.byDeveloper":  # the identity header draws it
             continue
@@ -145,10 +219,18 @@ def build_spec(
             continue
         if key in _PROGRESS and args.get("fraction") is None and not args.get("total"):
             progress = -1.0
+        if key in _ROW_FRAGMENTS:
+            continue
+        if key in _FIELD_PARTS:
+            text = copy(key, **args)
+            if not _open(text):
+                parts[key] = text
+            continue
         if _HEADING.search(key):
             if not title:
                 title = copy(key, **args)
-                title = "" if _open(title) else title
+                if _open(title):
+                    title, open_heading = "", True
             continue
         if is_button_key(key, primary):
             text = copy(key, **args)
@@ -158,17 +240,43 @@ def build_spec(
         text = copy(key, **args)
         if not _open(text):
             body.append(text)
-    if progress is None and (
-        busy
+    if open_heading and not title:
+        title = copy(_FALLBACK_TITLE)  # never a screen with a button and no words
+    fields = [
+        Field(
+            label,
+            parts[label],
+            parts.get(spec["placeholder"] or "", ""),
+            next((parts[k] for k in spec["hint"] if k in parts), ""),
+            next((parts[k] for k in spec["error"] if k in parts), ""),
+        )
+        for label, spec in _FIELDS.items()
+        if label in parts
+    ]
+    loading = (
+        f"{view.component}.{view.state}" in DELAYED_LOADING_STATES
         or (view.component == "Boot" and view.state in ("progress", "fetching"))
-        or (view.component == "UpdateProgress" and view.state in ("queued", "downloading", "installing"))
-    ):
-        progress = -1.0  # honest: no percentage is invented
-    fraction = args.get("fraction")
-    if isinstance(fraction, (int, float)) and not isinstance(fraction, bool):
-        progress = max(0.0, min(1.0, float(fraction)))
+    ) and not buttons
+    counted = isinstance(args.get("fraction"), (int, float)) and not isinstance(args.get("fraction"), bool)
+    if counted:
+        progress = max(0.0, min(1.0, float(args["fraction"])))
     elif isinstance(args.get("done"), (int, float)) and isinstance(args.get("total"), (int, float)) and args["total"]:
         progress = max(0.0, min(1.0, args["done"] / args["total"]))
+    elif loading or progress == -1.0 or (
+        view.component == "UpdateProgress" and view.state in ("queued", "installing")
+    ):
+        progress = -1.0  # the 2 px shimmer: honest, no percentage is invented (DL7)
+    else:
+        progress = None  # a busy control carries its own indicator (DL4); nothing is part-filled
+    # DL4: one filled control, and a lone action is always it. A busy primary keeps its label.
+    if primary and not any(b.key == primary for b in buttons) and busy and not loading:
+        text = copy(primary, **args)
+        if not _open(text):
+            buttons.append(Button(primary, text, "primary"))
+    elif not any(b.role == "primary" for b in buttons) and len(buttons) == 1 and view.component not in _NOT_FILLED:
+        only = buttons[0]
+        buttons = [Button(only.key, only.text, "primary")]
+    busy_primary = busy and bool(primary) and any(b.key == primary for b in buttons)
     # The attribution (UI-KITS §1.6): the theme's `powered_by` alone turns it on for a signed-in account
     # pane or About, whether or not the integrator input carried the catalog key.
     attribution = powered_by if (
@@ -181,7 +289,10 @@ def build_spec(
     ) else ""
     buttons.sort(key=lambda b: {"primary": 0, "secondary": 1, "quiet": 2}[b.role])
     actions = {key: action for action, keys in ACTION_KEYS.items() for key in keys}
-    buttons = [Button(b.key, b.text, b.role, actions.get(b.key)) for b in buttons]
+    buttons = [Button(b.key, b.text, b.role, actions.get(b.key), busy_primary and b.role == "primary") for b in buttons]
+    isolated_product = bidi_isolate(product) if product else ""
+    names_product = bool(product) and (product in title or isolated_product in title)
+    on_field = view.decisions.error_slot in _FIELDS
     return ScreenSpec(
         component=view.component,
         state=view.state,
@@ -193,6 +304,12 @@ def build_spec(
         busy=busy,
         product=product,
         developer=developer,
+        show_name=bool(product) and not names_product,
+        developer_line=copy("common.byDeveloper", developer=bidi_isolate(developer)) if developer and view.component == "Welcome" else "",
+        hero=view.component == "Welcome",
+        loading=loading,
+        title_tone="danger" if view.decisions.tone == "danger" and not on_field else "",
+        fields=fields,
         focus=view.decisions.focus or "",
         powered_by=attribution,
         powered_by_text=copy("part.poweredBy") if attribution else "",
