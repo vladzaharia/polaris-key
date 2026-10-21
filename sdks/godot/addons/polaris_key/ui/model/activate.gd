@@ -116,6 +116,9 @@ static func parse_key(text: String, submitted: bool = false) -> Dictionary:
 
 const FIELD := "part.keyField.label"
 const SUBMIT := "activate.submit"
+## The results that mean the input itself is wrong (DL7): a key the service does not know, or a
+## check that failed. Every other refusal of a well-formed key is a neutral callout (DL6).
+const WRONG_KEY := ["unauthorized", "error"]
 ## What every field-state screen carries: its heading, lede and the key field (ui-matrix v4).
 const BASE := [
 	"activate.title",
@@ -189,7 +192,7 @@ static func activate_view(ctx: RefCounted) -> Dictionary:
 			"copy": BASE + _message_only(Errors.activation_copy(result if result is String else "", activation.get("code"))),
 			"args": {"product": product},
 			"primary": SUBMIT,
-			"tone": "danger" if result == "error" else "neutral",
+			"tone": "danger" if result in WRONG_KEY else "neutral",
 			"errorSlot": FIELD,
 			"focus": FIELD,
 		})

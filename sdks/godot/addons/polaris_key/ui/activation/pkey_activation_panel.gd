@@ -64,6 +64,10 @@ var mode := "main"
 var busy := false
 var message := ""
 var message_ok := false
+## False for a refusal of a well-formed key (license disabled, expired, key-entry limit…): a
+## neutral line, no error stroke on the field (DL6). True for an input that is itself wrong (the
+## key's own shape, a key the service does not know, a failed check) and every other message (DL7).
+var message_danger := true
 ## Where `message` shows: "key" (under the key field), "sign_in" or "free" (under that button).
 var message_slot := "key"
 ## The link "Replace a device" opens, or "" (PX-W8). Never an auth failure: it is only offered.
@@ -438,8 +442,8 @@ func _render() -> void:
 			slots[k].set_meta(DATA_META, true)
 		else:
 			slots[k].remove_meta(DATA_META)
-		(slots[k] as Label).theme_type_variation = &"PKeyMuted" if message_ok else &"PKeyError"
-	_key.theme_type_variation = &"PKeyFieldError" if message != "" and not message_ok and message_slot == "key" else &""
+		(slots[k] as Label).theme_type_variation = &"PKeyMuted" if message_ok or not message_danger else &"PKeyError"
+	_key.theme_type_variation = &"PKeyFieldError" if message != "" and not message_ok and message_danger and message_slot == "key" else &""
 	_render_limit(t)
 
 
@@ -584,6 +588,7 @@ func show_result(r: PKeyActivationResult, key := "", slot := "key") -> void:
 	var m := PKeyActivationController.message_for(r)
 	message = c().text(m[0], m[1])
 	message_ok = r != null and r.ok
+	message_danger = r == null or r.kind == PKeyActivationResult.KIND_UNAUTHORIZED or r.kind == PKeyActivationResult.KIND_ERROR
 	message_slot = slot
 	refresh_view()
 	if message_ok:
@@ -602,6 +607,7 @@ func show_message(text: String, slot := "key") -> void:
 	_message_is_data = true
 	message = text
 	message_ok = false
+	message_danger = true
 	message_slot = slot
 	limit = {}
 	refresh_view()
@@ -622,6 +628,7 @@ func _on_submit() -> void:
 	if key == "":
 		message = c().text("activation_key_empty")
 		message_ok = false
+		message_danger = true
 		message_slot = "key"
 		refresh_view()
 		_key.grab_focus()
