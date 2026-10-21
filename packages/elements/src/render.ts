@@ -268,6 +268,10 @@ export const GLYPHS = {
     glyph(
       svg`<rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>`,
     ),
+  paste: () =>
+    glyph(
+      svg`<rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>`,
+    ),
   offline: (cls = "status-glyph") =>
     glyph(
       svg`<path d="M12 20h.01"/><path d="M8.5 16.43a5 5 0 0 1 7 0"/><path d="M5 12.86a10 10 0 0 1 5.17-2.69"/><path d="M19 12.86a10 10 0 0 0-2-1.43"/><path d="M2 8.82a15 15 0 0 1 4.18-2.65"/><path d="M22 8.82a15 15 0 0 0-11.29-3.76"/><path d="m2 2 20 20"/>`,
@@ -354,6 +358,9 @@ export function productHeader(
   if (size === "none") return nothing;
   const name = c.resolved.identity.name || c.resolved.theme.name;
   const showName = (options.name ?? true) && name !== "";
+  // §1.2: once a key parses, the tier follows the name, and only on the server's answer.
+  const tier =
+    c.input.activation?.result === "ok" ? c.input.activation.tier : undefined;
   const icon = productIcon(c);
   if (icon === nothing && !showName && !options.developer) return nothing;
   return html`<div
@@ -365,6 +372,9 @@ export function productHeader(
     ${icon}
     ${showName
       ? html`<span class="name" data-part="name"><bdi>${name}</bdi></span>`
+      : nothing}
+    ${showName && size !== "hero" && tier
+      ? html`<span class="tier" data-part="tier">· <bdi>${tier}</bdi></span>`
       : nothing}
     ${options.developer
       ? html`<span class="by" data-part="developer"
@@ -595,7 +605,7 @@ export function keyField(
   const keys = new Set(c.view.copy);
   return html`<div class="field" part="key-field" data-part="key-field">
     <label class="label" for="pk-key">${text(c, "part.keyField.label")}</label>
-    <div class="field-row">
+    <div class="field-row field-paste">
       <input
         id="pk-key"
         data-key="part.keyField.label"
@@ -620,7 +630,19 @@ export function keyField(
         }}
       />
       ${keys.has("common.paste")
-        ? button(c, "common.paste", "secondary")
+        ? html`<button
+            type="button"
+            class="btn paste"
+            part="link"
+            data-part="link"
+            data-variant="link"
+            data-key="common.paste"
+            aria-label=${plain(c, "common.paste")}
+            title=${plain(c, "common.paste")}
+            @click=${() => c.act("common.paste")}
+          >
+            ${GLYPHS.paste()}
+          </button>`
         : nothing}
     </div>
   </div>`;
