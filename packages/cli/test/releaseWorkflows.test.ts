@@ -1171,10 +1171,10 @@ describe("workflow hardening", () => {
       const smoke = (deploy.jobs["deploy-worker"]!.steps ?? []).find(
         (s) => s.id === "smoke",
       );
-      // A gated page redirects into sign-in; the public landing is the built site; the /manage
+      // A gated page redirects to the access page (DOC-03b); the public landing is the built site; the /manage
       // proxy never serves a gated docs page (its own shell answers unknown paths with a 200).
       expect(smoke?.run).toContain('"$ORIGIN/docs/contribute/"');
-      expect(smoke?.run).toContain("*/manage/login*");
+      expect(smoke?.run).toContain("*/docs/access/*");
       expect(smoke?.run).toContain('"$ORIGIN/docs/"');
       expect(smoke?.run).toContain(
         '"$ORIGIN/manage/docs/contribute/index.html"',

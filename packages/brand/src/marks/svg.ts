@@ -8,6 +8,7 @@
 // follow the surrounding text colour.
 
 import { GEOMETRY, KIT_PALETTES, SPRITE } from "../generated/geometry.js";
+import { LOCKER_POWERED_BY_PREFIX } from "../generated/locker.js";
 import {
   BADGE_TEMPLATES,
   LOCKUP_GLYPHS,
@@ -40,6 +41,7 @@ import {
   LOCKER_BADGE_CANVAS,
   LOCKER_BADGE_MIN_WIDTH,
   lockerBadgeBody,
+  lockerBadgeBodyWith,
   lockerBadgeAlt,
   lockerBadgeTemplate,
   lockerLockupBody,
@@ -395,6 +397,12 @@ export function badgeInner(opts: LockerBadgeOptions): string {
   return `${title ? `<title>${escapeHtml(title)}</title>` : ""}${lockerBadgeBody(opts.kind, opts.treatment, opts.theme)}`;
 }
 
+/** `badgeInner` for a label whose prefix group the caller holds: the other labels' stay out of the bundle. */
+function badgeInnerWith(opts: LockerBadgeOptions, prefix: string): string {
+  const title = opts.title ?? lockerBadgeAlt(opts.kind);
+  return `${title ? `<title>${escapeHtml(title)}</title>` : ""}${lockerBadgeBodyWith(prefix, opts.treatment, opts.theme)}`;
+}
+
 /**
  * A Polaris Locker badge as an SVG string, for any of the kit's 16 labels ("Open in", "Sync
  * with", "Powered by", ...). The accessible name is "<label> Polaris Locker". The 320 × 104 canvas
@@ -402,13 +410,17 @@ export function badgeInner(opts: LockerBadgeOptions): string {
  * raised to 320. The art is not a control: add a real destination.
  */
 export function badgeSvg(opts: LockerBadgeOptions): string {
+  return badgeSvgOf(opts, badgeInner(opts));
+}
+
+function badgeSvgOf(opts: LockerBadgeOptions, inner: string): string {
   const t = lockerBadgeTemplate(opts.treatment);
   const width =
     opts.width === undefined || !Number.isFinite(opts.width)
       ? LOCKER_BADGE_CANVAS.width
       : Math.max(opts.width, LOCKER_BADGE_MIN_WIDTH);
   const head = a11y(opts.title ?? lockerBadgeAlt(opts.kind));
-  return `<svg xmlns="${SVG_NS}" width="${fmt(width)}" height="${fmt((width * t.height) / t.width)}" viewBox="0 0 ${t.width} ${t.height}"${head.attrs}>${badgeInner(opts)}</svg>`;
+  return `<svg xmlns="${SVG_NS}" width="${fmt(width)}" height="${fmt((width * t.height) / t.width)}" viewBox="0 0 ${t.width} ${t.height}"${head.attrs}>${inner}</svg>`;
 }
 
 /** One of the kit's lockup files (kit/02-lockups), byte for byte. */
@@ -450,23 +462,27 @@ export interface PoweredByOptions {
 
 /** The inner markup of the Locker `powered-by` badge. */
 export function poweredByInner(opts: PoweredByOptions = {}): string {
-  return badgeInner({
-    kind: "locker-powered-by",
-    treatment: opts.treatment,
-    theme: opts.theme,
-    title: opts.title ?? ALT.poweredBy,
-  });
+  return badgeInnerWith(
+    {
+      kind: "locker-powered-by",
+      treatment: opts.treatment,
+      theme: opts.theme,
+      title: opts.title ?? ALT.poweredBy,
+    },
+    LOCKER_POWERED_BY_PREFIX,
+  );
 }
 
 /** The Locker `powered-by` badge as an SVG string; the same markup `<PoweredByBadge>` renders. */
 export function poweredBySvg(opts: PoweredByOptions = {}): string {
-  return badgeSvg({
+  const badge: LockerBadgeOptions = {
     kind: "locker-powered-by",
     treatment: opts.treatment,
     theme: opts.theme,
     width: opts.width,
     title: opts.title ?? ALT.poweredBy,
-  });
+  };
+  return badgeSvgOf(badge, badgeInnerWith(badge, LOCKER_POWERED_BY_PREFIX));
 }
 
 // ── "Powered by Polaris Key": platform references, not offered to integrators ───────────────

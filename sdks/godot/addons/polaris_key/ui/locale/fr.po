@@ -1941,11 +1941,6 @@ msgstr[2] "{n} essais restants."
 msgid "signin.code.tooMany"
 msgstr "Trop d’essais. Envoyez un nouveau code."
 
-#. That code has expired. Send a new code.
-#. Email code step (SIGN-IN.md §3.4).
-msgid "signin.code.expired"
-msgstr "Ce code a expiré. Envoyez un nouveau code."
-
 #. Use a different email
 #. Email code step (SIGN-IN.md §3.4).
 msgid "signin.code.differentEmail"
@@ -6010,6 +6005,16 @@ msgstr "Wrong code"
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_code.message"
 msgstr "That code isn't right. Check the email and try again."
+
+#. Code expired
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.code_expired.title"
+msgstr "Code expired"
+
+#. That code has expired. Send a new code.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.code_expired.message"
+msgstr "That code has expired. Send a new code."
 
 #. Email already in use
 #. Core copy (conformance/parity/copy.en.json, codes).
