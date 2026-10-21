@@ -553,6 +553,13 @@ describe("the session a connection sign-in replaces (B-074)", () => {
     expect(rows).toHaveLength(2);
     expect(rows.filter((r) => r.revoked_at === null)).toHaveLength(1);
     expect((await d.me()).status).toBe(200);
+    // The ending is on the account's audit trail, once, and the first sign-in (nothing to
+    // replace) left none.
+    const audit = await w.db.all(
+      "SELECT 1 FROM portal_audit WHERE account_id = ? AND action = 'account.session.replaced'",
+      ada,
+    );
+    expect(audit).toHaveLength(1);
   });
 
   it("leaves another account's session alone", async () => {
@@ -572,6 +579,12 @@ describe("the session a connection sign-in replaces (B-074)", () => {
       bob,
     );
     expect(live).toHaveLength(1);
+    // Nothing of bob's ended, so nothing is audited on either account.
+    expect(
+      await w.db.all(
+        "SELECT 1 FROM portal_audit WHERE action = 'account.session.replaced'",
+      ),
+    ).toHaveLength(0);
   });
 
   it("a forged or foreign cookie ends nothing", async () => {

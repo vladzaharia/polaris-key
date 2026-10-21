@@ -15,7 +15,7 @@ import {
   type ServicesMap,
 } from "../src/core/services.js";
 import { setServices } from "../src/core/products/store.js";
-import { deviceFlowKey } from "../src/services/identity/oidc.js";
+import { deviceFlowKey, flowKey } from "../src/services/identity/oidc.js";
 import type { Env } from "../src/platform/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 
@@ -127,6 +127,22 @@ describe("the code entry", () => {
     );
     expect(html).not.toContain("<form");
     expect(html).not.toContain('class="alert"');
+  });
+
+  it("B-156: guesses spread over one /24 meet a ceiling no address reaches", async () => {
+    let first429 = -1;
+    for (let i = 0; i < 400 && first429 < 0; i++) {
+      const res = await send(`${API}/djdl/identity/auth/device`, {
+        method: "POST",
+        headers: {
+          ...FORM,
+          "cf-connecting-ip": `192.0.2.${(i % 254) + 1}`,
+        },
+        body: `user_code=AAAA-AAA${i % 10}`,
+      });
+      if (res.status === 429) first429 = i;
+    }
+    expect(first429).toBe(300);
   });
 
   it("gives a JSON client JSON when it is limited", async () => {
@@ -242,6 +258,34 @@ describe("Deny before sign-in (B-096)", () => {
       "SELECT action FROM audit WHERE action = 'identity.signin.device_denied'",
     );
     expect(again).toHaveLength(1);
+  });
+});
+
+describe("a Deny that lost to an approval (hardening)", () => {
+  it("shows the outcome that won, not Sign-in denied, and records no denial", async () => {
+    const { userCode, deviceCode } = await start();
+    const { csrf } = await confirmPage(userCode);
+    // The same flow is approved (another tab finished first) before this Deny lands.
+    const rec = JSON.parse(
+      (await artefacts(env).get(await deviceFlowKey(env, "djdl", deviceCode)))!,
+    ) as { state: string };
+    const stateKey = await flowKey(env, "djdl", rec.state);
+    const flow = JSON.parse((await artefacts(env).get(stateKey))!);
+    flow.approvedAt = NOW;
+    await artefacts(env).put(stateKey, JSON.stringify(flow));
+    const res = await send(`${API}/djdl/identity/auth/device`, {
+      method: "POST",
+      headers: FORM,
+      body: `user_code=${userCode}&csrf=${csrf}&decision=deny`,
+    });
+    const html = await res.text();
+    expect(html).not.toContain("Sign-in denied");
+    expect(html).not.toContain("Nothing was signed in");
+    expect(html).toContain("signed in on");
+    const rows = await db.all(
+      "SELECT 1 FROM audit WHERE action = 'identity.signin.device_denied'",
+    );
+    expect(rows).toHaveLength(0);
   });
 });
 
