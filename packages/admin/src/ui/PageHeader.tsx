@@ -167,7 +167,12 @@ export function PageHeader({
   return (
     <header
       data-masthead={masthead && !nested ? "" : undefined}
-      className={cn("@container relative space-y-3", className)}
+      className={cn(
+        "@container relative",
+        // Tight under the orientation line: the masthead is at most 140 px (B4).
+        masthead && !nested ? "space-y-1" : "space-y-3",
+        className,
+      )}
     >
       {orientation}
       {eyebrowNode}
@@ -181,7 +186,7 @@ export function PageHeader({
           // Three columns when the header itself has the room (a width in rem, so it follows the
           // text size). With less (a phone, or 200 % text) the cluster and the primary action
           // take their own right-aligned rows under the title instead of squeezing it.
-          "grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-3",
+          "grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2",
           hasCluster &&
             primaryAction &&
             "sm:@2xl:grid-cols-[minmax(0,1fr)_auto_auto]",
@@ -227,7 +232,9 @@ export function PageHeader({
               {titleAside}
             </div>
             {description || meta ? (
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-fg-muted">
+              // A meta that is one flex span (its pieces separated by a gap) joins this row, so the
+              // description and the meta share lines instead of stacking (masthead <= 140 px).
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-fg-muted [&>span.flex]:contents">
                 {description ? (
                   <p className="max-w-[72ch]">{description}</p>
                 ) : null}
@@ -310,7 +317,11 @@ export function PageHeader({
           </div>
         ) : null}
       </div>
-      {tabs ? <div className="border-b border-border">{tabs}</div> : null}
+      {tabs ? (
+        <div data-masthead-tabs="" className="border-b border-border pt-1">
+          {tabs}
+        </div>
+      ) : null}
       {/* Out of the flow, so neither adds space under the header. */}
       <div className="pointer-events-none absolute inset-x-0 top-full">
         <RefetchBar active={refetching} />

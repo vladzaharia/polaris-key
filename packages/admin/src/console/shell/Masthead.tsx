@@ -180,7 +180,8 @@ export function baseCrumbs(
     return { crumbs: [{ label: "Platform" }], chip: "platform" };
   }
   if (page === "home") {
-    return { crumbs: [{ label: "Polaris Key" }], chip: "platform" };
+    // products.home: the Pinned K chip and "Platform", the h1 is Home.
+    return { crumbs: [{ label: "Platform" }], chip: "platform" };
   }
   if (page) {
     return {

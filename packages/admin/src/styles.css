@@ -31,6 +31,13 @@
  * only the OS query, so they are redefined here to honour both: every motion-reduce: utility also
  * applies under the preference, and motion-safe: ones stop under it.
  */
+/*
+ * The console's shell v2 treatment (ST-48) on a component the customer portal shares (Section,
+ * Dialog, Drawer, SegmentedControl): `console:` applies only under `html[data-shell="console"]`
+ * (AppShell sets it), so the portal keeps its own look until its packages adopt the rest.
+ */
+@custom-variant console (&:where(html[data-shell="console"] *));
+
 @custom-variant motion-reduce {
   @media (prefers-reduced-motion: reduce) {
     @slot;
@@ -163,11 +170,11 @@
 
 /* The dialog and drawer backdrop is blurred (B4); with reduced transparency it is a flat, darker
    ground with no filter. */
-[data-pk-backdrop] {
+html[data-shell="console"] [data-pk-backdrop] {
   backdrop-filter: blur(6px);
 }
 @media (prefers-reduced-transparency: reduce) {
-  [data-pk-backdrop] {
+  html[data-shell="console"] [data-pk-backdrop] {
     backdrop-filter: none;
     background-color: rgb(0 0 0 / 0.8);
   }

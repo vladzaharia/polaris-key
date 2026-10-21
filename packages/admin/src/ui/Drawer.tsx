@@ -123,7 +123,7 @@ export function Drawer({
           data-drawer-side={side}
           className={cn(
             // The 3 px rule in the origin's accent (B4, B17) along the panel's top edge.
-            "pk-drawer fixed inset-0 z-50 flex flex-col border-t-[3px] border-t-accent bg-surface-overlay text-fg outline-hidden",
+            "pk-drawer fixed inset-0 z-50 flex flex-col bg-surface-overlay text-fg outline-hidden console:border-t-[3px] console:border-t-accent",
             "pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]",
             "lg:inset-y-0 lg:w-full lg:shadow-elevation-3",
             side === "end"
@@ -135,7 +135,7 @@ export function Drawer({
         >
           <div
             data-pk-overlay-header=""
-            className="flex shrink-0 items-start gap-3 border-b border-border bg-(--pk-admin-band-overlay) px-4 py-3 lg:px-6 lg:py-4"
+            className="flex shrink-0 items-start gap-3 border-b border-border px-4 py-3 lg:px-6 lg:py-4 console:bg-(--pk-admin-band-overlay)"
           >
             {closeStyle === "back" ? (
               <button
@@ -155,7 +155,7 @@ export function Drawer({
               <DialogPrimitive.Title
                 ref={titleRef}
                 tabIndex={-1}
-                className="text-xl font-semibold leading-7 text-fg-strong outline-hidden"
+                className="text-lg font-semibold leading-tight text-fg-strong outline-hidden console:text-xl console:leading-7"
               >
                 {title}
               </DialogPrimitive.Title>

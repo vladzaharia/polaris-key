@@ -65,16 +65,15 @@ export function Section({
       )}
     >
       {settings ? (
-        <div className="flex min-h-14 items-start justify-between gap-3 rounded-t-[inherit] border-b border-border bg-(--pk-admin-band) px-5 py-3.5">
+        <div className="flex items-start justify-between gap-3 border-b border-border px-5 py-3.5 console:min-h-14 console:rounded-t-[inherit] console:bg-(--pk-admin-band)">
           <div className="min-w-0 flex-1 space-y-0.5">
             <div className="flex flex-wrap items-center gap-2">
               <Heading
                 id={headingId}
                 className={cn(
                   // The head band's title: 18/24 on a page-level section, 16/24 nested (B4). No numerals.
-                  headingLevel === 2
-                    ? "text-lg font-semibold"
-                    : "text-base font-semibold",
+                  "text-base font-semibold",
+                  headingLevel === 2 && "console:text-lg",
                   danger ? "text-danger" : "text-fg-strong",
                 )}
               >
@@ -97,7 +96,7 @@ export function Section({
         // an action wider than what is left (a phone) wraps under the title.
         <div
           data-card-header=""
-          className="flex min-h-14 flex-wrap items-center justify-between gap-3 rounded-t-[inherit] border-b border-border bg-(--pk-admin-band) px-5 py-3.5"
+          className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3.5 console:min-h-14 console:rounded-t-[inherit] console:bg-(--pk-admin-band)"
         >
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
@@ -105,9 +104,8 @@ export function Section({
                 id={headingId}
                 className={cn(
                   // The head band's title: 18/24 on a page-level section, 16/24 nested (B4). No numerals.
-                  headingLevel === 2
-                    ? "text-lg font-semibold"
-                    : "text-base font-semibold",
+                  "text-base font-semibold",
+                  headingLevel === 2 && "console:text-lg",
                   danger ? "text-danger" : "text-fg-strong",
                 )}
               >

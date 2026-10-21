@@ -30,6 +30,12 @@
  *                   header's right edge: nothing but controls after it, and the header's ink
  *                   ends at its content edge (pills mean attention, ADMIN.md §5.11). A head
  *                   count beside its title (`[data-head-count]`) is exempt.
+ *   masthead        ST-48 (console shell v2, B4, B6): one h1 per page; the masthead at most 140 px
+ *                   tall (176 px when the title wraps to two lines, and on a phone), tabs apart;
+ *                   the 48 px tile only from 1024 px (and aria-hidden); first content at most 160
+ *                   px below the top bar (a tablist adds its own height); the canvas rounded 18 px
+ *                   and inset from 1024 px, full-bleed below, with its 3 px rule; no gradient on the
+ *                   canvas, the masthead, a head band or the workbench toolbar.
  *   overflow        The page or a scroll container scrolls sideways, a table scrolls sideways inside
  *                   its own wrapper (at desktop width; on a phone, a DataTable not drawn as cards),
  *                   a text box clips or spills its text without an intended scroller or a way to
@@ -38,7 +44,12 @@
  */
 
 export interface LayoutViolation {
-  rule: "trailing-space" | "equal-height" | "right-align" | "overflow";
+  rule:
+    | "trailing-space"
+    | "equal-height"
+    | "right-align"
+    | "overflow"
+    | "masthead";
   /** A finer key for grouping (`main`, `settings-row`, `table-numeric`…). */
   kind: string;
   /** A short, stable-ish CSS path to the offending element. */
@@ -475,6 +486,15 @@ export function probeLayout(opts: ProbeOptions): ProbeResult {
       if (!table || e.closest("[data-scroll-x]")) continue;
       const dataTable = e.closest("[data-table-id]");
       if (W < 1024 && !dataTable) continue;
+      // B4: from 1024 to 1279 px (the rail, the inset canvas) a wide table scrolls inside its own
+      // labelled, keyboard-focusable region with the first column pinned.
+      if (
+        W < 1280 &&
+        e.getAttribute("role") === "region" &&
+        e.hasAttribute("aria-label") &&
+        e.tabIndex === 0
+      )
+        continue;
       const er = e.getBoundingClientRect();
       const cut = Array.from(
         table.querySelectorAll("th,[role=columnheader]"),
@@ -1079,6 +1099,132 @@ export function probeLayout(opts: ProbeOptions): ProbeResult {
               : `the card header's pill cluster ends at x=${Math.round(right)}${edgeName()}, header content edge x=${Math.round(edge)} (${Math.round(edge - right)}px short)`,
           cause: `header {${short(h)} justify:${cs(h).justifyContent}} pill {${short(last)}}`,
           html: snip(h),
+        });
+    }
+  }
+  // ── 5 · masthead and canvas (ST-48; B4, B6) ───────────────────────────────────────────────
+  if (mainEl && !behindModal) {
+    const canvas = mainEl.getBoundingClientRect();
+    const ccs = cs(mainEl);
+    const wide = W >= 1024;
+    const radius = px(ccs.borderTopLeftRadius);
+    if (px(ccs.borderTopWidth) !== 3)
+      out.push({
+        rule: "masthead",
+        kind: "canvas-rule",
+        where: where(mainEl),
+        detail: `the canvas's top rule is ${ccs.borderTopWidth}, not 3px`,
+        cause: cls(mainEl),
+      });
+    if (wide ? Math.abs(radius - 18) > 0.5 : radius !== 0)
+      out.push({
+        rule: "masthead",
+        kind: "canvas-inset",
+        where: where(mainEl),
+        detail: `the canvas radius is ${radius}px at ${W}px wide (18px from 1024px, square below)`,
+        cause: cls(mainEl),
+      });
+    if (
+      wide
+        ? Math.abs(W - canvas.right - 16) > 1
+        : canvas.left > 0.5 || W - canvas.right > 0.5
+    )
+      out.push({
+        rule: "masthead",
+        kind: "canvas-inset",
+        where: where(mainEl),
+        detail: `the canvas spans x=${Math.round(canvas.left)}..${Math.round(canvas.right)} of ${W}px (inset 16px from 1024px, full-bleed below)`,
+        cause: cls(mainEl),
+      });
+    const h1s = mainEl.querySelectorAll("h1");
+    if (h1s.length !== 1)
+      out.push({
+        rule: "masthead",
+        kind: "h1-count",
+        where: where(mainEl),
+        detail: `${h1s.length} h1 elements on the page (exactly one)`,
+        cause: "",
+      });
+    const mast = mainEl.querySelector<HTMLElement>("header[data-masthead]");
+    if (mast) {
+      const tabs = mast.querySelector<HTMLElement>("[data-masthead-tabs]");
+      const tabsH = tabs ? tabs.getBoundingClientRect().height : 0;
+      const h1 = mast.querySelector<HTMLElement>("h1");
+      const lineH = h1 ? px(cs(h1).lineHeight) : 0;
+      const twoLines =
+        h1 !== null && h1.getBoundingClientRect().height > lineH * 1.5;
+      const limit = twoLines || W < 640 ? 176 : 140;
+      const height = mast.getBoundingClientRect().height - tabsH;
+      if (height > limit + 0.5)
+        out.push({
+          rule: "masthead",
+          kind: "height",
+          where: where(mast),
+          detail: `the masthead is ${Math.round(height)}px tall at ${W}px wide (at most ${limit}px${tabsH ? ", tabs apart" : ""})`,
+          cause: cls(mast),
+          html: snip(mast),
+        });
+      const next =
+        mast.nextElementSibling ?? mast.parentElement?.nextElementSibling;
+      if (wide && next) {
+        const first = next.getBoundingClientRect().top - canvas.top;
+        // A two-line title is the one case the 176 px masthead cap allows: 19 above, 24 below.
+        const allowed = 160 + tabsH + (twoLines ? 59 : 0);
+        if (first > allowed + 0.5)
+          out.push({
+            rule: "masthead",
+            kind: "first-content",
+            where: where(next),
+            detail: `first content starts ${Math.round(first)}px below the top bar (at most ${allowed}px): the masthead begins ${Math.round(mast.getBoundingClientRect().top - canvas.top)}px down and is ${Math.round(mast.getBoundingClientRect().height)}px tall`,
+            cause: cls(mast),
+          });
+      }
+      for (const tile of mast.querySelectorAll<HTMLElement>(
+        "[data-masthead-tile]",
+      )) {
+        const shown = tile.getBoundingClientRect().width > 0;
+        if (shown && !wide)
+          out.push({
+            rule: "masthead",
+            kind: "tile",
+            where: where(tile),
+            detail: `the 48px masthead tile shows at ${W}px wide (1024px and wider only)`,
+            cause: cls(tile),
+          });
+        if (tile.getAttribute("aria-hidden") !== "true")
+          out.push({
+            rule: "masthead",
+            kind: "tile",
+            where: where(tile),
+            detail: "the masthead tile is not aria-hidden",
+            cause: cls(tile),
+          });
+      }
+      const dense = mast.querySelectorAll("[data-masthead-tile]").length > 1;
+      if (dense)
+        out.push({
+          rule: "masthead",
+          kind: "tile",
+          where: where(mast),
+          detail: "more than one masthead tile",
+          cause: cls(mast),
+        });
+    }
+    // B6: no gradient, wash or glow on the canvas, the masthead, a head band or a toolbar.
+    for (const el of [
+      mainEl,
+      ...mainEl.querySelectorAll<HTMLElement>(
+        "header[data-masthead], header[data-masthead] *, [data-card-header], [data-workbench-toolbar]",
+      ),
+    ]) {
+      const style = cs(el);
+      if (/gradient/.test(style.backgroundImage))
+        out.push({
+          rule: "masthead",
+          kind: "no-gradient",
+          where: where(el),
+          detail: `a gradient background in product chrome: ${style.backgroundImage.slice(0, 80)}`,
+          cause: cls(el),
         });
     }
   }

@@ -454,7 +454,8 @@ export function Dialog({
             "fixed z-50 flex flex-col overflow-hidden border border-border bg-surface-overlay text-fg shadow-elevation-3 outline-hidden animate-pk-in",
             // The 3 px rule in the accent of where the dialog was opened from (B4, B17); a
             // destructive or cautious one keeps the plain hairline.
-            tone === "default" && "border-t-[3px] border-t-accent",
+            tone === "default" &&
+              "console:border-t-[3px] console:border-t-accent",
             // Phones: a bottom sheet that slides up from the bottom edge and back down
             // (pk-sheet, src/motion.css; S-23 §4.2). At ≥ 640 px it rises like any dialog.
             "pk-sheet inset-x-0 bottom-0 max-h-[92dvh] w-full rounded-t-xl pb-[env(safe-area-inset-bottom)]",
@@ -470,7 +471,7 @@ export function Dialog({
           />
           <div
             data-pk-overlay-header=""
-            className="flex shrink-0 items-start gap-4 border-b border-border bg-(--pk-admin-band-overlay) px-6 pb-4 pt-4 sm:pt-5"
+            className="flex shrink-0 items-start gap-4 px-6 pb-2 pt-4 sm:pt-6 console:border-b console:border-border console:bg-(--pk-admin-band-overlay) console:pb-4 console:sm:pt-5"
           >
             {glyph ? (
               <span aria-hidden data-overlay-glyph="" className="mt-0.5 flex">
@@ -481,7 +482,7 @@ export function Dialog({
               <DialogPrimitive.Title
                 ref={setTitle}
                 tabIndex={-1}
-                className="text-xl font-semibold leading-7 text-fg-strong outline-hidden"
+                className="text-lg font-semibold leading-tight text-fg-strong outline-hidden console:text-xl console:leading-7"
               >
                 {title}
               </DialogPrimitive.Title>
@@ -556,7 +557,7 @@ export function DialogBody({
       ref={ref}
       {...region}
       className={cn(
-        "pk-scroll min-h-0 flex-1 overflow-y-auto rounded-md px-6 py-4 text-base",
+        "pk-scroll min-h-0 flex-1 overflow-y-auto rounded-md px-6 py-2 text-base console:py-4",
         // outline-solid: the base `:focus-visible` rule's outline-hidden leaves the outline style
         // at none, which outline-2 alone would keep.
         "focus-visible:outline-2 focus-visible:outline-solid focus-visible:-outline-offset-4 focus-visible:outline-focus focus-visible:ring-0 focus-visible:ring-offset-0",
