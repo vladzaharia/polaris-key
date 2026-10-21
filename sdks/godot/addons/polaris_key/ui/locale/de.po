@@ -5174,7 +5174,7 @@ msgstr "Anmeldeanfrage ungültig"
 #. The app sent a sign-in request we can't read. Try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_request.message"
-msgstr "Die App hat eine Anmeldeanfrage gesendet, die wir nicht lesen können. Versuche es erneut."
+msgstr "Die App hat eine Anmeldeanfrage gesendet, die wir nicht lesen können. Versuchen Sie es erneut."
 
 #. Sign-in can't finish
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5184,7 +5184,7 @@ msgstr "Anmeldung kann nicht abgeschlossen werden"
 #. This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_client.message"
-msgstr "Die Anmeldung dieser App ist nicht richtig eingerichtet, deshalb wurde sie hier zum Schutz deines Kontos angehalten. Sag dem Entwickler Bescheid."
+msgstr "Die Anmeldung dieser App ist nicht richtig eingerichtet, deshalb wurde sie hier zum Schutz Ihres Kontos angehalten. Informieren Sie den Entwickler."
 
 #. Sign-in no longer valid
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5194,7 +5194,7 @@ msgstr "Anmeldung nicht mehr gültig"
 #. That sign-in has expired or was already used. Sign in again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_grant.message"
-msgstr "Diese Anmeldung ist abgelaufen oder wurde bereits verwendet. Melde dich erneut an."
+msgstr "Diese Anmeldung ist abgelaufen oder wurde bereits verwendet. Melden Sie sich erneut an."
 
 #. Sign-in request invalid
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5224,7 +5224,7 @@ msgstr "Anmeldung kann nicht zur App zurückkehren"
 #. This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.redirect_uri_mismatch.message"
-msgstr "Die Anmeldung dieser App ist nicht richtig eingerichtet, deshalb wurde sie hier zum Schutz deines Kontos angehalten. Sag dem Entwickler Bescheid."
+msgstr "Die Anmeldung dieser App ist nicht richtig eingerichtet, deshalb wurde sie hier zum Schutz Ihres Kontos angehalten. Informieren Sie den Entwickler."
 
 #. Choose a license
 #. Core copy (conformance/parity/copy.en.json, codes).

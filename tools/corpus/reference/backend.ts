@@ -27,6 +27,7 @@ export const REF_TYPE_BASE = "https://key.plrs.im/docs/reference/error-codes/#";
 export const REF_LOCALES = [
   "en",
   "de",
+  "fr",
   "es",
   "it",
   "ja",

@@ -16,7 +16,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 /** §14.3: the copy locales, English first. */
-public val BACKEND_LOCALES: List<String> = listOf("en", "de", "es", "it", "ja", "ko", "pt-BR", "zh-Hans")
+public val BACKEND_LOCALES: List<String> = listOf("en", "de", "fr", "es", "it", "ja", "ko", "pt-BR", "zh-Hans")
 
 public const val PROBLEM_TYPE_BASE: String = "https://key.plrs.im/docs/reference/error-codes/#"
 public const val PROBLEM_CONTENT_TYPE: String = "application/problem+json"

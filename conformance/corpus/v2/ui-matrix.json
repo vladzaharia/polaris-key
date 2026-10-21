@@ -11342,7 +11342,7 @@
       "locale": "fr",
       "key": "core.gate.expired.title",
       "args": {},
-      "expect": "License expired"
+      "expect": "Licence expir\u00e9e"
     },
     {
       "name": "ja: core.gate.expired.title",

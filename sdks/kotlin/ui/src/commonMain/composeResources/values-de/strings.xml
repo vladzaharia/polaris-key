@@ -1960,15 +1960,15 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_request_title">Anmeldeanfrage ungültig</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_request_message">Die App hat eine Anmeldeanfrage gesendet, die wir nicht lesen können. Versuche es erneut.</string>
+    <string name="core_codes_invalid_request_message">Die App hat eine Anmeldeanfrage gesendet, die wir nicht lesen können. Versuchen Sie es erneut.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_client_title">Anmeldung kann nicht abgeschlossen werden</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_client_message">Die Anmeldung dieser App ist nicht richtig eingerichtet, deshalb wurde sie hier zum Schutz deines Kontos angehalten. Sag dem Entwickler Bescheid.</string>
+    <string name="core_codes_invalid_client_message">Die Anmeldung dieser App ist nicht richtig eingerichtet, deshalb wurde sie hier zum Schutz Ihres Kontos angehalten. Informieren Sie den Entwickler.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_grant_title">Anmeldung nicht mehr gültig</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_grant_message">Diese Anmeldung ist abgelaufen oder wurde bereits verwendet. Melde dich erneut an.</string>
+    <string name="core_codes_invalid_grant_message">Diese Anmeldung ist abgelaufen oder wurde bereits verwendet. Melden Sie sich erneut an.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_unsupported_grant_type_title">Anmeldeanfrage ungültig</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1980,7 +1980,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_redirect_uri_mismatch_title">Anmeldung kann nicht zur App zurückkehren</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_redirect_uri_mismatch_message">Die Anmeldung dieser App ist nicht richtig eingerichtet, deshalb wurde sie hier zum Schutz deines Kontos angehalten. Sag dem Entwickler Bescheid.</string>
+    <string name="core_codes_redirect_uri_mismatch_message">Die Anmeldung dieser App ist nicht richtig eingerichtet, deshalb wurde sie hier zum Schutz Ihres Kontos angehalten. Informieren Sie den Entwickler.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_choice_required_title">Lizenz wählen</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

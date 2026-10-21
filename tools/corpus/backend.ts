@@ -891,7 +891,7 @@ function problemRows(copy: CopyCodes): ProblemRow[] {
   neg("locale-absent", null, "en");
   neg("locale-empty", "", "en");
   neg("locale-any", "*", "en");
-  neg("locale-without-pack", "fr", "en");
+  neg("locale-without-pack", "nl", "en");
   neg("locale-region-subtag", "de-AT", "de");
   neg("locale-case-insensitive", "PT-br", "pt-BR");
   neg("locale-portuguese-portugal", "pt-PT", "pt-BR");
@@ -899,14 +899,14 @@ function problemRows(copy: CopyCodes): ProblemRow[] {
   neg("locale-chinese-bare", "zh", "zh-Hans");
   neg("locale-chinese-traditional", "zh-TW", "en");
   neg("locale-chinese-hant-then-zh", "zh-Hant-TW, zh;q=0.5", "zh-Hans");
-  neg("locale-next-range-when-no-pack", "fr-CA, fr;q=0.9, de;q=0.8", "de");
+  neg("locale-next-range-when-no-pack", "nl-BE, nl;q=0.9, de;q=0.8", "de");
   neg("locale-weight-order", "en-GB;q=0.5, ja;q=0.9", "ja");
   neg("locale-weight-tie-keeps-order", "it;q=0.5, es;q=0.5", "it");
   neg("locale-weight-zero-dropped", "ja;q=0, ko", "ko");
   neg("locale-bad-weight-dropped", "ja;q=2, ko;q=abc, de", "de");
   neg("locale-first-weight-counts", "de;q=0.1;q=1, es;q=0.5", "es");
   neg("locale-other-parameter-ignored", "ko;level=1", "ko");
-  neg("locale-star-after-unmatched", "fr, *;q=0.5, de;q=0.1", "en");
+  neg("locale-star-after-unmatched", "nl, *;q=0.5, de;q=0.1", "en");
   neg("locale-whitespace", " \tja ; q=0.8 ,de;q=0.7", "ja");
   neg("locale-underscore-no-match", "de_DE", "en");
   neg("realm-of-another-product", "en", "en", "license_required", ACME);

@@ -4812,1989 +4812,1989 @@ msgstr "Pas de code reçu ?"
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).
 msgid "core.fallback.title"
-msgstr "Something went wrong"
+msgstr "Une erreur s’est produite"
 
 #. Something went wrong ({code}). Try again.
 #. Core copy (conformance/parity/copy.en.json, fallback).
 msgid "core.fallback.message"
-msgstr "Something went wrong ({code}). Try again."
+msgstr "Une erreur s’est produite ({code}). Réessayez."
 
 #. Not signed in
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.unauthorized.title"
-msgstr "Not signed in"
+msgstr "Non connecté"
 
 #. This device isn't signed in, or its license is no longer valid. Sign in or activate again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.unauthorized.message"
-msgstr "This device isn't signed in, or its license is no longer valid. Sign in or activate again."
+msgstr "Cet appareil n’est pas connecté, ou sa licence n’est plus valide. Connectez-vous ou activez-le à nouveau."
 
 #. Not found
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.not_found.title"
-msgstr "Not found"
+msgstr "Introuvable"
 
 #. That wasn't found. It may have been removed.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.not_found.message"
-msgstr "That wasn't found. It may have been removed."
+msgstr "Cet élément est introuvable. Il a peut-être été supprimé."
 
 #. Request refused
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.bad_request.title"
-msgstr "Request refused"
+msgstr "Requête refusée"
 
 #. The request wasn't valid. Update the app, then try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.bad_request.message"
-msgstr "The request wasn't valid. Update the app, then try again."
+msgstr "La requête n’était pas valide. Mettez l’app à jour, puis réessayez."
 
 #. Not allowed
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.forbidden.title"
-msgstr "Not allowed"
+msgstr "Non autorisé"
 
 #. You don't have permission to do that.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.forbidden.message"
-msgstr "You don't have permission to do that."
+msgstr "Vous n’avez pas l’autorisation de faire cela."
 
 #. Device check needed
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.attestation_required.title"
-msgstr "Device check needed"
+msgstr "Vérification de l’appareil requise"
 
 #. This needs a verified device. Let the app check this device, then try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.attestation_required.message"
-msgstr "This needs a verified device. Let the app check this device, then try again."
+msgstr "Un appareil vérifié est nécessaire. Laissez l’app vérifier cet appareil, puis réessayez."
 
 #. Device check failed
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.attestation_rejected.title"
-msgstr "Device check failed"
+msgstr "Échec de la vérification de l’appareil"
 
 #. This device couldn't be verified. Try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.attestation_rejected.message"
-msgstr "This device couldn't be verified. Try again."
+msgstr "Cet appareil n’a pas pu être vérifié. Réessayez."
 
 #. Device check unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.attestation_unavailable.title"
-msgstr "Device check unavailable"
+msgstr "Vérification de l’appareil indisponible"
 
 #. Device verification isn't available for this app right now. Try again in a few minutes.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.attestation_unavailable.message"
-msgstr "Device verification isn't available for this app right now. Try again in a few minutes."
+msgstr "La vérification des appareils n’est pas disponible pour cette app pour le moment. Réessayez dans quelques minutes."
 
 #. Too many attempts
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.rate_limited.title"
-msgstr "Too many attempts"
+msgstr "Trop de tentatives"
 
 #. Too many attempts. Wait a moment and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.rate_limited.message"
-msgstr "Too many attempts. Wait a moment and try again."
+msgstr "Trop de tentatives. Patientez un instant, puis réessayez."
 
 #. Too large
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.body_too_large.title"
-msgstr "Too large"
+msgstr "Trop volumineux"
 
 #. That is too large to send.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.body_too_large.message"
-msgstr "That is too large to send."
+msgstr "C’est trop volumineux pour être envoyé."
 
 #. Request refused
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.method_not_allowed.title"
-msgstr "Request refused"
+msgstr "Requête refusée"
 
 #. The request wasn't valid. Update the app, then try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.method_not_allowed.message"
-msgstr "The request wasn't valid. Update the app, then try again."
+msgstr "La requête n’était pas valide. Mettez l’app à jour, puis réessayez."
 
 #. Service not set up
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.misconfigured.title"
-msgstr "Service not set up"
+msgstr "Service non configuré"
 
 #. This service isn't set up correctly. Contact the developer.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.misconfigured.message"
-msgstr "This service isn't set up correctly. Contact the developer."
+msgstr "Ce service n’est pas correctement configuré. Contactez le développeur."
 
 #. Registration closed
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.registration_closed.title"
-msgstr "Registration closed"
+msgstr "Inscription fermée"
 
 #. New devices can't register right now. Activate with a license key or sign in.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.registration_closed.message"
-msgstr "New devices can't register right now. Activate with a license key or sign in."
+msgstr "Les nouveaux appareils ne peuvent pas s’enregistrer pour le moment. Activez avec une clé de licence ou connectez-vous."
 
 #. Value not accepted
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.value_not_representable.title"
-msgstr "Value not accepted"
+msgstr "Valeur refusée"
 
 #. A value couldn't be saved. Change it and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.value_not_representable.message"
-msgstr "A value couldn't be saved. Change it and try again."
+msgstr "Une valeur n’a pas pu être enregistrée. Modifiez-la, puis réessayez."
 
 #. Service problem
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.document_not_representable.title"
-msgstr "Service problem"
+msgstr "Problème de service"
 
 #. The service couldn't prepare your settings. Contact the developer.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.document_not_representable.message"
-msgstr "The service couldn't prepare your settings. Contact the developer."
+msgstr "Le service n’a pas pu préparer vos réglages. Contactez le développeur."
 
 #. Signing unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.signing_unavailable.title"
-msgstr "Signing unavailable"
+msgstr "Signature indisponible"
 
 #. The service can't sign a document right now. Try again in a few minutes.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.signing_unavailable.message"
-msgstr "The service can't sign a document right now. Try again in a few minutes."
+msgstr "Le service ne peut pas signer de document pour le moment. Réessayez dans quelques minutes."
 
 #. Device limit reached
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_limit.title"
-msgstr "Device limit reached"
+msgstr "Limite d’appareils atteinte"
 
 #. This license is already on all its devices. Replace a device to use it here.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_limit.message"
-msgstr "This license is already on all its devices. Replace a device to use it here."
+msgstr "Cette licence est déjà utilisée sur tous ses appareils. Remplacez un appareil pour l’utiliser ici."
 
 #. No key entries left
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.key_entry_limit.title"
-msgstr "No key entries left"
+msgstr "Plus d’utilisations de la clé"
 
 #. This key has no entries left. Add it to your account and sign in instead.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.key_entry_limit.message"
-msgstr "This key has no entries left. Add it to your account and sign in instead."
+msgstr "Cette clé n’a plus d’utilisations disponibles. Ajoutez-la à votre compte et connectez-vous à la place."
 
 #. License disabled
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_disabled.title"
-msgstr "License disabled"
+msgstr "Licence désactivée"
 
 #. This license has been disabled. Contact the developer.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_disabled.message"
-msgstr "This license has been disabled. Contact the developer."
+msgstr "Cette licence a été désactivée. Contactez le développeur."
 
 #. License expired
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_expired.title"
-msgstr "License expired"
+msgstr "Licence expirée"
 
 #. This license has expired. Renew it to continue.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_expired.message"
-msgstr "This license has expired. Renew it to continue."
+msgstr "Cette licence a expiré. Renouvelez-la pour continuer."
 
 #. Not included
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.not_entitled.title"
-msgstr "Not included"
+msgstr "Non inclus"
 
 #. Your license doesn't include this.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.not_entitled.message"
-msgstr "Your license doesn't include this."
+msgstr "Votre licence n’inclut pas cet élément."
 
 #. Update required
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.version_blocked.title"
-msgstr "Update required"
+msgstr "Mise à jour requise"
 
 #. This version can't be used with your license. Update the app to continue.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.version_blocked.message"
-msgstr "This version can't be used with your license. Update the app to continue."
+msgstr "Cette version ne peut pas être utilisée avec votre licence. Mettez l’app à jour pour continuer."
 
 #. Channel not included
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.channel_not_allowed.title"
-msgstr "Channel not included"
+msgstr "Canal non inclus"
 
 #. Your license doesn't include this channel.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.channel_not_allowed.message"
-msgstr "Your license doesn't include this channel."
+msgstr "Votre licence n’inclut pas ce canal."
 
 #. Device changed
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.hardware_mismatch.title"
-msgstr "Device changed"
+msgstr "Appareil modifié"
 
 #. This device's hardware changed. Activate again to use your license here.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.hardware_mismatch.message"
-msgstr "This device's hardware changed. Activate again to use your license here."
+msgstr "Le matériel de cet appareil a changé. Activez à nouveau pour utiliser votre licence ici."
 
 #. Device check failed
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.fingerprint_required.title"
-msgstr "Device check failed"
+msgstr "Échec de la vérification de l’appareil"
 
 #. This license needs a hardware fingerprint, which couldn't be read on this device.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.fingerprint_required.message"
-msgstr "This license needs a hardware fingerprint, which couldn't be read on this device."
+msgstr "Cette licence nécessite une empreinte matérielle, qui n’a pas pu être lue sur cet appareil."
 
 #. No free license
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.enroll_disabled.title"
-msgstr "No free license"
+msgstr "Aucune licence gratuite"
 
 #. This app doesn't offer a free license. Enter a license key or sign in.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.enroll_disabled.message"
-msgstr "This app doesn't offer a free license. Enter a license key or sign in."
+msgstr "Cette app ne propose pas de licence gratuite. Saisissez une clé de licence ou connectez-vous."
 
 #. Sign in to continue
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.enroll_claimed.title"
-msgstr "Sign in to continue"
+msgstr "Connectez-vous pour continuer"
 
 #. This device's free license belongs to an account now. Sign in to use it.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.enroll_claimed.message"
-msgstr "This device's free license belongs to an account now. Sign in to use it."
+msgstr "La licence gratuite de cet appareil appartient désormais à un compte. Connectez-vous pour l’utiliser."
 
 #. Couldn't get a free license
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.enroll_failed.title"
-msgstr "Couldn't get a free license"
+msgstr "Licence gratuite non obtenue"
 
 #. A free license couldn't be issued. Try again in a few minutes.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.enroll_failed.message"
-msgstr "A free license couldn't be issued. Try again in a few minutes."
+msgstr "Une licence gratuite n’a pas pu être émise. Réessayez dans quelques minutes."
 
 #. Set by your organization
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.managed_by_admin.title"
-msgstr "Set by your organization"
+msgstr "Défini par votre organisation"
 
 #. This setting is managed by your organization and can't be changed here.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.managed_by_admin.message"
-msgstr "This setting is managed by your organization and can't be changed here."
+msgstr "Ce réglage est géré par votre organisation et ne peut pas être modifié ici."
 
 #. Settings unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.catalog_unavailable.title"
-msgstr "Settings unavailable"
+msgstr "Réglages indisponibles"
 
 #. Settings can't be loaded right now. Try again in a few minutes.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.catalog_unavailable.message"
-msgstr "Settings can't be loaded right now. Try again in a few minutes."
+msgstr "Les réglages ne peuvent pas être chargés pour le moment. Réessayez dans quelques minutes."
 
 #. License no longer valid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_unusable.title"
-msgstr "License no longer valid"
+msgstr "Licence plus valide"
 
 #. Your license is no longer valid, so settings can't be loaded. Sign in or activate again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_unusable.message"
-msgstr "Your license is no longer valid, so settings can't be loaded. Sign in or activate again."
+msgstr "Votre licence n’est plus valide, les réglages ne peuvent donc pas être chargés. Connectez-vous ou activez à nouveau."
 
 #. Sign-in unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.disabled.title"
-msgstr "Sign-in unavailable"
+msgstr "Connexion indisponible"
 
 #. Sign-in isn't turned on for this app.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.disabled.message"
-msgstr "Sign-in isn't turned on for this app."
+msgstr "La connexion n’est pas activée pour cette app."
 
 #. Sign-in failed
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.oidc_error.title"
-msgstr "Sign-in failed"
+msgstr "Échec de la connexion"
 
 #. Sign-in didn't finish. Try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.oidc_error.message"
-msgstr "Sign-in didn't finish. Try again."
+msgstr "La connexion n’a pas abouti. Réessayez."
 
 #. Sign-in unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.unavailable.title"
-msgstr "Sign-in unavailable"
+msgstr "Connexion indisponible"
 
 #. Sign-in isn't available right now. Try again in a few minutes.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.unavailable.message"
-msgstr "Sign-in isn't available right now. Try again in a few minutes."
+msgstr "La connexion n’est pas disponible pour le moment. Réessayez dans quelques minutes."
 
 #. Account check unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.erasure_ledger_unavailable.title"
-msgstr "Account check unavailable"
+msgstr "Vérification du compte indisponible"
 
 #. We couldn't confirm your account's status right now. Try again in a few minutes.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.erasure_ledger_unavailable.message"
-msgstr "We couldn't confirm your account's status right now. Try again in a few minutes."
+msgstr "Nous n’avons pas pu confirmer l’état de votre compte pour le moment. Réessayez dans quelques minutes."
 
 #. Sign-in unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.identity_disabled.title"
-msgstr "Sign-in unavailable"
+msgstr "Connexion indisponible"
 
 #. Sign-in through this app is turned off. Your installs and licenses keep working.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.identity_disabled.message"
-msgstr "Sign-in through this app is turned off. Your installs and licenses keep working."
+msgstr "La connexion via cette app est désactivée. Vos installations et vos licences continuent de fonctionner."
 
 #. Sign-in unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.unknown_app.title"
-msgstr "Sign-in unavailable"
+msgstr "Connexion indisponible"
 
 #. Sign-in isn't available for this app.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.unknown_app.message"
-msgstr "Sign-in isn't available for this app."
+msgstr "La connexion n’est pas disponible pour cette app."
 
 #. Sign-in request invalid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_request.title"
-msgstr "Sign-in request invalid"
+msgstr "Demande de connexion non valide"
 
 #. The app sent a sign-in request we can't read. Try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_request.message"
-msgstr "The app sent a sign-in request we can't read. Try again."
+msgstr "L’app a envoyé une demande de connexion illisible. Réessayez."
 
 #. Sign-in can't finish
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_client.title"
-msgstr "Sign-in can't finish"
+msgstr "La connexion ne peut pas aboutir"
 
 #. This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_client.message"
-msgstr "This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know."
+msgstr "La connexion de cette app n’est pas correctement configurée. Elle s’est donc arrêtée ici pour protéger votre compte. Prévenez son développeur."
 
 #. Sign-in no longer valid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_grant.title"
-msgstr "Sign-in no longer valid"
+msgstr "Connexion plus valide"
 
 #. That sign-in has expired or was already used. Sign in again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_grant.message"
-msgstr "That sign-in has expired or was already used. Sign in again."
+msgstr "Cette connexion a expiré ou a déjà été utilisée. Connectez-vous à nouveau."
 
 #. Sign-in request invalid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.unsupported_grant_type.title"
-msgstr "Sign-in request invalid"
+msgstr "Demande de connexion non valide"
 
 #. The app asked for a sign-in type we don't support. Contact its developer.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.unsupported_grant_type.message"
-msgstr "The app asked for a sign-in type we don't support. Contact its developer."
+msgstr "L’app a demandé un type de connexion que nous ne prenons pas en charge. Contactez son développeur."
 
 #. Access not available
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_scope.title"
-msgstr "Access not available"
+msgstr "Accès indisponible"
 
 #. The app asked for access this sign-in doesn't offer. Contact its developer.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_scope.message"
-msgstr "The app asked for access this sign-in doesn't offer. Contact its developer."
+msgstr "L’app a demandé un accès que cette connexion ne propose pas. Contactez son développeur."
 
 #. Sign-in can't return to the app
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.redirect_uri_mismatch.title"
-msgstr "Sign-in can't return to the app"
+msgstr "La connexion ne peut pas revenir à l’app"
 
 #. This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.redirect_uri_mismatch.message"
-msgstr "This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know."
+msgstr "La connexion de cette app n’est pas correctement configurée. Elle s’est donc arrêtée ici pour protéger votre compte. Prévenez son développeur."
 
 #. Choose a license
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_choice_required.title"
-msgstr "Choose a license"
+msgstr "Choisissez une licence"
 
 #. Choose which license this device uses, then continue.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_choice_required.message"
-msgstr "Choose which license this device uses, then continue."
+msgstr "Choisissez la licence que cet appareil utilise, puis continuez."
 
 #. Sign-in method unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.auth_method_disabled.title"
-msgstr "Sign-in method unavailable"
+msgstr "Méthode de connexion indisponible"
 
 #. That sign-in method is turned off. Choose another one.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.auth_method_disabled.message"
-msgstr "That sign-in method is turned off. Choose another one."
+msgstr "Cette méthode de connexion est désactivée. Choisissez-en une autre."
 
 #. Email sign-in unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.email_unavailable.title"
-msgstr "Email sign-in unavailable"
+msgstr "Connexion par e-mail indisponible"
 
 #. Email sign-in isn't available right now. Choose another sign-in method.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.email_unavailable.message"
-msgstr "Email sign-in isn't available right now. Choose another sign-in method."
+msgstr "La connexion par e-mail n’est pas disponible pour le moment. Choisissez une autre méthode de connexion."
 
 #. Check didn't pass
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.turnstile_failed.title"
-msgstr "Check didn't pass"
+msgstr "Vérification non réussie"
 
 #. The security check didn't pass. Reload the page and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.turnstile_failed.message"
-msgstr "The security check didn't pass. Reload the page and try again."
+msgstr "La vérification de sécurité n’a pas abouti. Rechargez la page, puis réessayez."
 
 #. Sign-in expired
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.signin_expired.title"
-msgstr "Sign-in expired"
+msgstr "Connexion expirée"
 
 #. This sign-in has expired. Start again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.signin_expired.message"
-msgstr "This sign-in has expired. Start again."
+msgstr "Cette connexion a expiré. Recommencez."
 
 #. Wrong code
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_code.title"
-msgstr "Wrong code"
+msgstr "Code incorrect"
 
 #. That code isn't right. Check the email and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_code.message"
-msgstr "That code isn't right. Check the email and try again."
+msgstr "Ce code n’est pas le bon. Vérifiez l’e-mail, puis réessayez."
 
 #. Code expired
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.code_expired.title"
-msgstr "Code expired"
+msgstr "Code expiré"
 
 #. That code has expired. Send a new code.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.code_expired.message"
-msgstr "That code has expired. Send a new code."
+msgstr "Ce code a expiré. Envoyez-vous un nouveau code."
 
 #. Email already in use
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.email_in_use.title"
-msgstr "Email already in use"
+msgstr "E-mail déjà utilisé"
 
 #. Another Polaris Locker account already uses this email. Join this sign-in to that account, or use a different email.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.email_in_use.message"
-msgstr "Another Polaris Locker account already uses this email. Join this sign-in to that account, or use a different email."
+msgstr "Un autre compte Polaris Locker utilise déjà cette adresse e-mail. Associez cette connexion à ce compte, ou utilisez une autre adresse."
 
 #. Terms not accepted
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.terms_required.title"
-msgstr "Terms not accepted"
+msgstr "Conditions non acceptées"
 
 #. Agree to the terms to continue.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.terms_required.message"
-msgstr "Agree to the terms to continue."
+msgstr "Acceptez les conditions pour continuer."
 
 #. License in another account
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_owned.title"
-msgstr "License in another account"
+msgstr "Licence dans un autre compte"
 
 #. This {product} license is already in another Polaris Locker account. A license never moves by its key.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_owned.message"
-msgstr "This {product} license is already in another Polaris Locker account. A license never moves by its key."
+msgstr "Cette licence {product} est déjà dans un autre compte Polaris Locker. Une licence ne change jamais de compte avec sa clé."
 
 #. Email not verified
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_email_bound.title"
-msgstr "Email not verified"
+msgstr "E-mail non vérifié"
 
 #. This license belongs to an email address your Polaris Locker account hasn't verified. Verify that email in your account, then try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_email_bound.message"
-msgstr "This license belongs to an email address your Polaris Locker account hasn't verified. Verify that email in your account, then try again."
+msgstr "Cette licence est liée à une adresse e-mail que votre compte Polaris Locker n’a pas vérifiée. Vérifiez cette adresse dans votre compte, puis réessayez."
 
 #. Sign-in needed
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.account_required.title"
-msgstr "Sign-in needed"
+msgstr "Connexion nécessaire"
 
 #. Sign in to your Polaris Locker account on this device, then try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.account_required.message"
-msgstr "Sign in to your Polaris Locker account on this device, then try again."
+msgstr "Connectez-vous à votre compte Polaris Locker sur cet appareil, puis réessayez."
 
 #. Email not verified
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.email_mismatch.title"
-msgstr "Email not verified"
+msgstr "E-mail non vérifié"
 
 #. This license belongs to an email address your account hasn't verified. Add and verify that email, then try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.email_mismatch.message"
-msgstr "This license belongs to an email address your account hasn't verified. Add and verify that email, then try again."
+msgstr "Cette licence est liée à une adresse e-mail que votre compte n’a pas vérifiée. Ajoutez et vérifiez cette adresse, puis réessayez."
 
 #. Already linked
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.link_conflict.title"
-msgstr "Already linked"
+msgstr "Déjà associé"
 
 #. That sign-in method belongs to another Polaris Locker account. Sign in to that account, or join the two accounts.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.link_conflict.message"
-msgstr "That sign-in method belongs to another Polaris Locker account. Sign in to that account, or join the two accounts."
+msgstr "Cette méthode de connexion appartient à un autre compte Polaris Locker. Connectez-vous à ce compte, ou fusionnez les deux comptes."
 
 #. Can't remove
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.last_link.title"
-msgstr "Can't remove"
+msgstr "Suppression impossible"
 
 #. This is your account's only sign-in method. Add another one before removing it.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.last_link.message"
-msgstr "This is your account's only sign-in method. Add another one before removing it."
+msgstr "C’est la seule méthode de connexion de votre compte. Ajoutez-en une autre avant de la supprimer."
 
 #. Confirm it's you
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.step_up_required.title"
-msgstr "Confirm it's you"
+msgstr "Confirmez que c’est vous"
 
 #. For your security, sign in again to continue.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.step_up_required.message"
-msgstr "For your security, sign in again to continue."
+msgstr "Pour votre sécurité, connectez-vous à nouveau pour continuer."
 
 #. Offer unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.not_eligible.title"
-msgstr "Offer unavailable"
+msgstr "Offre indisponible"
 
 #. This offer isn't available to your account anymore. Refresh and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.not_eligible.message"
-msgstr "This offer isn't available to your account anymore. Refresh and try again."
+msgstr "Cette offre n’est plus disponible pour votre compte. Actualisez, puis réessayez."
 
 #. Can't remove
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.not_removable.title"
-msgstr "Can't remove"
+msgstr "Suppression impossible"
 
 #. This license can't be added back with a key, so it stays in your library.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.not_removable.message"
-msgstr "This license can't be added back with a key, so it stays in your library."
+msgstr "Cette licence ne peut pas être ajoutée de nouveau avec une clé : elle reste donc dans votre bibliothèque."
 
 #. Sign in to download
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.download_auth_required.title"
-msgstr "Sign in to download"
+msgstr "Connectez-vous pour télécharger"
 
 #. Sign in or activate a license to download this.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.download_auth_required.message"
-msgstr "Sign in or activate a license to download this."
+msgstr "Connectez-vous ou activez une licence pour télécharger cet élément."
 
 #. Download unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.delivery_gate_missing.title"
-msgstr "Download unavailable"
+msgstr "Téléchargement indisponible"
 
 #. This download isn't set up yet. Contact the developer.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.delivery_gate_missing.message"
-msgstr "This download isn't set up yet. Contact the developer."
+msgstr "Ce téléchargement n’est pas encore configuré. Contactez le développeur."
 
 #. Download busy
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.upstream_rate_limited.title"
-msgstr "Download busy"
+msgstr "Téléchargements saturés"
 
 #. Downloads are busy right now. Try again in a few minutes.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.upstream_rate_limited.message"
-msgstr "Downloads are busy right now. Try again in a few minutes."
+msgstr "Les téléchargements sont très sollicités pour le moment. Réessayez dans quelques minutes."
 
 #. Service not set up
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.server_misconfigured.title"
-msgstr "Service not set up"
+msgstr "Service non configuré"
 
 #. This service isn't set up correctly. Contact the developer.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.server_misconfigured.message"
-msgstr "This service isn't set up correctly. Contact the developer."
+msgstr "Ce service n’est pas correctement configuré. Contactez le développeur."
 
 #. Download failed
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.internal_error.title"
-msgstr "Download failed"
+msgstr "Échec du téléchargement"
 
 #. The download server had a problem. Try again in a few minutes.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.internal_error.message"
-msgstr "The download server had a problem. Try again in a few minutes."
+msgstr "Le serveur de téléchargement a rencontré un problème. Réessayez dans quelques minutes."
 
 #. Release refused
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.release_record_rejected.title"
-msgstr "Release refused"
+msgstr "Version refusée"
 
 #. The release wasn't published because a check failed. The publish log names the check.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.release_record_rejected.message"
-msgstr "The release wasn't published because a check failed. The publish log names the check."
+msgstr "La version n’a pas été publiée, car une vérification a échoué. Le journal de publication indique laquelle."
 
 #. Release skipped
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.release_tag_is_pack_release.title"
-msgstr "Release skipped"
+msgstr "Version ignorée"
 
 #. A release was skipped because its tag matches a content pack release. Rename the tag.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.release_tag_is_pack_release.message"
-msgstr "A release was skipped because its tag matches a content pack release. Rename the tag."
+msgstr "Une version a été ignorée, car son tag correspond à une version de pack de contenu. Renommez le tag."
 
 #. Image not updated
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.asset_unreachable.title"
-msgstr "Image not updated"
+msgstr "Image non mise à jour"
 
 #. An image could not be fetched from its source. The previous copy is still shown, and it will be retried automatically.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.asset_unreachable.message"
-msgstr "An image could not be fetched from its source. The previous copy is still shown, and it will be retried automatically."
+msgstr "Une image n’a pas pu être récupérée depuis sa source. La copie précédente reste affichée, et une nouvelle tentative aura lieu automatiquement."
 
 #. Update check unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.feed_not_composable.title"
-msgstr "Update check unavailable"
+msgstr "Vérification des mises à jour indisponible"
 
 #. Updates can't be checked right now. Try again in a few minutes.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.feed_not_composable.message"
-msgstr "Updates can't be checked right now. Try again in a few minutes."
+msgstr "Les mises à jour ne peuvent pas être vérifiées pour le moment. Réessayez dans quelques minutes."
 
 #. Not available
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.service-unavailable.title"
-msgstr "Not available"
+msgstr "Indisponible"
 
 #. This app doesn't use this service.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.service-unavailable.message"
-msgstr "This app doesn't use this service."
+msgstr "Cette app n’utilise pas ce service."
 
 #. Not available
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.service-disabled.title"
-msgstr "Not available"
+msgstr "Indisponible"
 
 #. This service is turned off for this app.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.service-disabled.message"
-msgstr "This service is turned off for this app."
+msgstr "Ce service est désactivé pour cette app."
 
 #. Offline mode
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.local-only.title"
-msgstr "Offline mode"
+msgstr "Mode hors ligne"
 
 #. This app is running offline, so it didn't connect.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.local-only.message"
-msgstr "This app is running offline, so it didn't connect."
+msgstr "Cette app fonctionne hors ligne, elle ne s’est donc pas connectée."
 
 #. Request not sent
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.backend-origin-not-allowed.title"
-msgstr "Request not sent"
+msgstr "Requête non envoyée"
 
 #. The app can send your license only to its own servers.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.backend-origin-not-allowed.message"
-msgstr "The app can send your license only to its own servers."
+msgstr "L’app ne peut envoyer votre licence qu’à ses propres serveurs."
 
 #. Insecure connection
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.insecure-base-url.title"
-msgstr "Insecure connection"
+msgstr "Connexion non sécurisée"
 
 #. The app refused an insecure connection. Contact the developer.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.insecure-base-url.message"
-msgstr "The app refused an insecure connection. Contact the developer."
+msgstr "L’app a refusé une connexion non sécurisée. Contactez le développeur."
 
 #. Activation file not valid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.bundle-jws-rejected.title"
-msgstr "Activation file not valid"
+msgstr "Fichier d’activation non valide"
 
 #. The activation file's signature isn't valid.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.bundle-jws-rejected.message"
-msgstr "The activation file's signature isn't valid."
+msgstr "La signature du fichier d’activation n’est pas valide."
 
 #. Activation file not valid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.bundle-claims-rejected.title"
-msgstr "Activation file not valid"
+msgstr "Fichier d’activation non valide"
 
 #. The activation file is for another product or device, or it has expired.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.bundle-claims-rejected.message"
-msgstr "The activation file is for another product or device, or it has expired."
+msgstr "Le fichier d’activation concerne un autre produit ou un autre appareil, ou il a expiré."
 
 #. Activation file not trusted
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.bundle-trust-rejected.title"
-msgstr "Activation file not trusted"
+msgstr "Fichier d’activation non approuvé"
 
 #. The activation file is signed by a key this app doesn't trust.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.bundle-trust-rejected.message"
-msgstr "The activation file is signed by a key this app doesn't trust."
+msgstr "Le fichier d’activation est signé par une clé que cette app n’approuve pas."
 
 #. Activation file not valid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.inner-doc-rejected.title"
-msgstr "Activation file not valid"
+msgstr "Fichier d’activation non valide"
 
 #. The license inside the activation file isn't valid.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.inner-doc-rejected.message"
-msgstr "The license inside the activation file isn't valid."
+msgstr "La licence contenue dans le fichier d’activation n’est pas valide."
 
 #. Activation file not valid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.bundle.title"
-msgstr "Activation file not valid"
+msgstr "Fichier d’activation non valide"
 
 #. The activation file couldn't be read.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.bundle.message"
-msgstr "The activation file couldn't be read."
+msgstr "Le fichier d’activation n’a pas pu être lu."
 
 #. Connection problem
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.transport.title"
-msgstr "Connection problem"
+msgstr "Problème de connexion"
 
 #. Check your connection and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.transport.message"
-msgstr "Check your connection and try again."
+msgstr "Vérifiez votre connexion, puis réessayez."
 
 #. Can't connect
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.network.title"
-msgstr "Can't connect"
+msgstr "Connexion impossible"
 
 #. Can't reach Polaris Locker. Check your connection and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.network.message"
-msgstr "Can't reach Polaris Locker. Check your connection and try again."
+msgstr "Polaris Locker est inaccessible. Vérifiez votre connexion, puis réessayez."
 
 #. Couldn't refresh
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.refresh-failed.title"
-msgstr "Couldn't refresh"
+msgstr "Actualisation impossible"
 
 #. Your license and settings couldn't be refreshed. Check your connection and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.refresh-failed.message"
-msgstr "Your license and settings couldn't be refreshed. Check your connection and try again."
+msgstr "Votre licence et vos réglages n’ont pas pu être actualisés. Vérifiez votre connexion, puis réessayez."
 
 #. Couldn't check your license
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.sync-failed.title"
-msgstr "Couldn't check your license"
+msgstr "Vérification de la licence impossible"
 
 #. Your license couldn't be checked, so the app can't start. Check your connection and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.sync-failed.message"
-msgstr "Your license couldn't be checked, so the app can't start. Check your connection and try again."
+msgstr "Votre licence n’a pas pu être vérifiée, l’app ne peut donc pas démarrer. Vérifiez votre connexion, puis réessayez."
 
 #. Content missing
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.fetch-failed.title"
-msgstr "Content missing"
+msgstr "Contenu manquant"
 
 #. Required content couldn't be downloaded, so the app can't start. Check your connection and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.fetch-failed.message"
-msgstr "Required content couldn't be downloaded, so the app can't start. Check your connection and try again."
+msgstr "Le contenu requis n’a pas pu être téléchargé, l’app ne peut donc pas démarrer. Vérifiez votre connexion, puis réessayez."
 
 #. App problem
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.bridge-missing.title"
-msgstr "App problem"
+msgstr "Problème d’app"
 
 #. The app's licensing bridge is missing. Reinstall the app or contact the developer.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.bridge-missing.message"
-msgstr "The app's licensing bridge is missing. Reinstall the app or contact the developer."
+msgstr "Le pont de licence de l’app est introuvable. Réinstallez l’app ou contactez le développeur."
 
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.unknown.title"
-msgstr "Something went wrong"
+msgstr "Une erreur s’est produite"
 
 #. Something went wrong. Try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.unknown.message"
-msgstr "Something went wrong. Try again."
+msgstr "Une erreur s’est produite. Réessayez."
 
 #. Not included
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.release-refused.title"
-msgstr "Not included"
+msgstr "Non inclus"
 
 #. Your license doesn't include this release.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.release-refused.message"
-msgstr "Your license doesn't include this release."
+msgstr "Votre licence n’inclut pas cet élément."
 
 #. Activation file not valid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.bundle-rejected.title"
-msgstr "Activation file not valid"
+msgstr "Fichier d’activation non valide"
 
 #. The activation file was refused.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.bundle-rejected.message"
-msgstr "The activation file was refused."
+msgstr "Le fichier d’activation a été refusé."
 
 #. Not available here
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.bundle-import-unsupported.title"
-msgstr "Not available here"
+msgstr "Indisponible ici"
 
 #. Offline activation isn't available here.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.bundle-import-unsupported.message"
-msgstr "Offline activation isn't available here."
+msgstr "L’activation hors ligne n’est pas disponible ici."
 
 #. Not available here
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.report-unsupported.title"
-msgstr "Not available here"
+msgstr "Indisponible ici"
 
 #. Device reports aren't available here.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.report-unsupported.message"
-msgstr "Device reports aren't available here."
+msgstr "Les rapports d’appareil ne sont pas disponibles ici."
 
 #. Not available here
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device-management-unsupported.title"
-msgstr "Not available here"
+msgstr "Indisponible ici"
 
 #. Devices can't be managed from here. Manage them in your account.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device-management-unsupported.message"
-msgstr "Devices can't be managed from here. Manage them in your account."
+msgstr "Les appareils ne peuvent pas être gérés d’ici. Gérez-les dans votre compte."
 
 #. Couldn't load devices
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_list_failed.title"
-msgstr "Couldn't load devices"
+msgstr "Chargement des appareils impossible"
 
 #. Your devices couldn't be loaded. Check your connection and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_list_failed.message"
-msgstr "Your devices couldn't be loaded. Check your connection and try again."
+msgstr "Vos appareils n’ont pas pu être chargés. Vérifiez votre connexion, puis réessayez."
 
 #. Couldn't rename
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_rename_failed.title"
-msgstr "Couldn't rename"
+msgstr "Renommage impossible"
 
 #. The device couldn't be renamed. Try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_rename_failed.message"
-msgstr "The device couldn't be renamed. Try again."
+msgstr "L’appareil n’a pas pu être renommé. Réessayez."
 
 #. Couldn't remove device
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_deauthorize_failed.title"
-msgstr "Couldn't remove device"
+msgstr "Suppression de l’appareil impossible"
 
 #. The device couldn't be removed. Try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_deauthorize_failed.message"
-msgstr "The device couldn't be removed. Try again."
+msgstr "L’appareil n’a pas pu être supprimé. Réessayez."
 
 #. Not available here
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.key-entry-unsupported.title"
-msgstr "Not available here"
+msgstr "Indisponible ici"
 
 #. License keys can't be entered here. Sign in instead.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.key-entry-unsupported.message"
-msgstr "License keys can't be entered here. Sign in instead."
+msgstr "Les clés de licence ne peuvent pas être saisies ici. Connectez-vous à la place."
 
 #. Sign-in failed
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.sign-in-failed.title"
-msgstr "Sign-in failed"
+msgstr "Échec de la connexion"
 
 #. Sign-in didn't finish. Try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.sign-in-failed.message"
-msgstr "Sign-in didn't finish. Try again."
+msgstr "La connexion n’a pas abouti. Réessayez."
 
 #. Sign-out failed
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.sign-out-failed.title"
-msgstr "Sign-out failed"
+msgstr "Échec de la déconnexion"
 
 #. Sign-out didn't finish. Try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.sign-out-failed.message"
-msgstr "Sign-out didn't finish. Try again."
+msgstr "La déconnexion n’a pas abouti. Réessayez."
 
 #. Unexpected answer
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.bad_response.title"
-msgstr "Unexpected answer"
+msgstr "Réponse inattendue"
 
 #. The service sent an answer the app couldn't use. Try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.bad_response.message"
-msgstr "The service sent an answer the app couldn't use. Try again."
+msgstr "Le service a envoyé une réponse que l’app n’a pas pu utiliser. Réessayez."
 
 #. Can't connect
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.network-error.title"
-msgstr "Can't connect"
+msgstr "Connexion impossible"
 
 #. Can't reach Polaris Locker. Check your connection and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.network-error.message"
-msgstr "Can't reach Polaris Locker. Check your connection and try again."
+msgstr "Polaris Locker est inaccessible. Vérifiez votre connexion, puis réessayez."
 
 #. Service problem
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.server-error.title"
-msgstr "Service problem"
+msgstr "Problème de service"
 
 #. The service had a problem. Try again in a few minutes.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.server-error.message"
-msgstr "The service had a problem. Try again in a few minutes."
+msgstr "Le service a rencontré un problème. Réessayez dans quelques minutes."
 
 #. Sign-in canceled
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.cancelled.title"
-msgstr "Sign-in canceled"
+msgstr "Connexion annulée"
 
 #. Sign-in was canceled.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.cancelled.message"
-msgstr "Sign-in was canceled."
+msgstr "La connexion a été annulée."
 
 #. Code expired
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.sign-in-expired.title"
-msgstr "Code expired"
+msgstr "Code expiré"
 
 #. The code expired before sign-in finished. Start again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.sign-in-expired.message"
-msgstr "The code expired before sign-in finished. Start again."
+msgstr "Le code a expiré avant la fin de la connexion. Recommencez."
 
 #. Sign-in declined
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.sign-in-denied.title"
-msgstr "Sign-in declined"
+msgstr "Connexion refusée"
 
 #. Sign-in was declined. Start again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.sign-in-denied.message"
-msgstr "Sign-in was declined. Start again."
+msgstr "La connexion a été refusée. Recommencez."
 
 #. Sign-in unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.sign-in-unavailable.title"
-msgstr "Sign-in unavailable"
+msgstr "Connexion indisponible"
 
 #. Sign-in isn't available right now. Try again in a few minutes.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.sign-in-unavailable.message"
-msgstr "Sign-in isn't available right now. Try again in a few minutes."
+msgstr "La connexion n’est pas disponible pour le moment. Réessayez dans quelques minutes."
 
 #. App not set up
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid-options.title"
-msgstr "App not set up"
+msgstr "App non configurée"
 
 #. The app's licensing isn't set up correctly. Contact the developer.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid-options.message"
-msgstr "The app's licensing isn't set up correctly. Contact the developer."
+msgstr "La gestion des licences de l’app n’est pas correctement configurée. Contactez le développeur."
 
 #. Request not accepted
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid-argument.title"
-msgstr "Request not accepted"
+msgstr "Requête non acceptée"
 
 #. The app sent a request the licensing bridge could not read. Contact the developer.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid-argument.message"
-msgstr "The app sent a request the licensing bridge could not read. Contact the developer."
+msgstr "L’app a envoyé une requête que le pont de licence n’a pas pu lire. Contactez le développeur."
 
 #. Request not allowed
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invoke-not-allowed.title"
-msgstr "Request not allowed"
+msgstr "Requête non autorisée"
 
 #. The app asked for something its licensing bridge does not offer. Contact the developer.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invoke-not-allowed.message"
-msgstr "The app asked for something its licensing bridge does not offer. Contact the developer."
+msgstr "L’app a demandé quelque chose que son pont de licence ne propose pas. Contactez le développeur."
 
 #. Window not allowed
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.sender-refused.title"
-msgstr "Window not allowed"
+msgstr "Fenêtre non autorisée"
 
 #. This window may not use the app's licensing. Contact the developer.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.sender-refused.message"
-msgstr "This window may not use the app's licensing. Contact the developer."
+msgstr "Cette fenêtre n’a pas le droit d’utiliser la gestion des licences de l’app. Contactez le développeur."
 
 #. App not set up
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.not-configured.title"
-msgstr "App not set up"
+msgstr "App non configurée"
 
 #. The app's licensing isn't set up yet. Contact the developer.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.not-configured.message"
-msgstr "The app's licensing isn't set up yet. Contact the developer."
+msgstr "La gestion des licences de l’app n’est pas encore configurée. Contactez le développeur."
 
 #. Not available here
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.unsupported.title"
-msgstr "Not available here"
+msgstr "Indisponible ici"
 
 #. This isn't available here.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.unsupported.message"
-msgstr "This isn't available here."
+msgstr "Cette fonction n’est pas disponible ici."
 
 #. Timed out
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.timeout.title"
-msgstr "Timed out"
+msgstr "Délai dépassé"
 
 #. The service took too long to answer. Check your connection and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.timeout.message"
-msgstr "The service took too long to answer. Check your connection and try again."
+msgstr "Le service a mis trop de temps à répondre. Vérifiez votre connexion, puis réessayez."
 
 #. Unexpected answer
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.response-too-large.title"
-msgstr "Unexpected answer"
+msgstr "Réponse inattendue"
 
 #. The service sent an answer the app couldn't use. Try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.response-too-large.message"
-msgstr "The service sent an answer the app couldn't use. Try again."
+msgstr "Le service a envoyé une réponse que l’app n’a pas pu utiliser. Réessayez."
 
 #. Connection problem
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.too-many-redirects.title"
-msgstr "Connection problem"
+msgstr "Problème de connexion"
 
 #. The connection was redirected too many times. Try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.too-many-redirects.message"
-msgstr "The connection was redirected too many times. Try again."
+msgstr "La connexion a été redirigée trop de fois. Réessayez."
 
 #. Insecure connection
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.insecure-redirect.title"
-msgstr "Insecure connection"
+msgstr "Connexion non sécurisée"
 
 #. The app refused an insecure redirect.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.insecure-redirect.message"
-msgstr "The app refused an insecure redirect."
+msgstr "L’app a refusé une redirection non sécurisée."
 
 #. Service problem
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.http-error.title"
-msgstr "Service problem"
+msgstr "Problème de service"
 
 #. The service answered with an error. Try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.http-error.message"
-msgstr "The service answered with an error. Try again."
+msgstr "Le service a répondu par une erreur. Réessayez."
 
 #. Unexpected answer
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid-response.title"
-msgstr "Unexpected answer"
+msgstr "Réponse inattendue"
 
 #. The service sent an answer the app couldn't use. Try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid-response.message"
-msgstr "The service sent an answer the app couldn't use. Try again."
+msgstr "Le service a envoyé une réponse que l’app n’a pas pu utiliser. Réessayez."
 
 #. Storage problem
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.store-failed.title"
-msgstr "Storage problem"
+msgstr "Problème de stockage"
 
 #. The app couldn't read or save its license on this device. Check that the app can write its data folder.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.store-failed.message"
-msgstr "The app couldn't read or save its license on this device. Check that the app can write its data folder."
+msgstr "L’app n’a pas pu lire ou enregistrer sa licence sur cet appareil. Vérifiez qu’elle peut écrire dans son dossier de données."
 
 #. Platform problem
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.platform-error.title"
-msgstr "Platform problem"
+msgstr "Problème de plateforme"
 
 #. The platform reported an error. Try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.platform-error.message"
-msgstr "The platform reported an error. Try again."
+msgstr "La plateforme a signalé une erreur. Réessayez."
 
 #. Not activated
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.no-token.title"
-msgstr "Not activated"
+msgstr "Non activé"
 
 #. This device isn't activated yet. Activate it or sign in.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.no-token.message"
-msgstr "This device isn't activated yet. Activate it or sign in."
+msgstr "Cet appareil n’est pas encore activé. Activez-le ou connectez-vous."
 
 #. Not available
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.mint-unavailable.title"
-msgstr "Not available"
+msgstr "Indisponible"
 
 #. This isn't available for this app.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.mint-unavailable.message"
-msgstr "This isn't available for this app."
+msgstr "Cette fonction n’est pas disponible pour cette app."
 
 #. Update check failed
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.feed-rejected.title"
-msgstr "Update check failed"
+msgstr "Échec de la vérification des mises à jour"
 
 #. The update information couldn't be verified, so nothing was installed.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.feed-rejected.message"
-msgstr "The update information couldn't be verified, so nothing was installed."
+msgstr "Les informations de mise à jour n’ont pas pu être vérifiées, rien n’a donc été installé."
 
 #. Update check failed
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.feed-rollback.title"
-msgstr "Update check failed"
+msgstr "Échec de la vérification des mises à jour"
 
 #. The update information was older than what this device already has, so it was refused.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.feed-rollback.message"
-msgstr "The update information was older than what this device already has, so it was refused."
+msgstr "Les informations de mise à jour étaient plus anciennes que celles déjà présentes sur cet appareil, elles ont donc été refusées."
 
 #. Update not verified
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.record-rejected.title"
-msgstr "Update not verified"
+msgstr "Mise à jour non vérifiée"
 
 #. The update couldn't be verified, so it wasn't installed.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.record-rejected.message"
-msgstr "The update couldn't be verified, so it wasn't installed."
+msgstr "La mise à jour n’a pas pu être vérifiée, elle n’a donc pas été installée."
 
 #. Update not verified
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.record-mismatch.title"
-msgstr "Update not verified"
+msgstr "Mise à jour non vérifiée"
 
 #. The update didn't match what was published, so it wasn't installed.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.record-mismatch.message"
-msgstr "The update didn't match what was published, so it wasn't installed."
+msgstr "La mise à jour ne correspondait pas à ce qui a été publié, elle n’a donc pas été installée."
 
 #. Download corrupted
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.payload-mismatch.title"
-msgstr "Download corrupted"
+msgstr "Téléchargement corrompu"
 
 #. The update didn't download correctly, so it wasn't installed. Try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.payload-mismatch.message"
-msgstr "The update didn't download correctly, so it wasn't installed. Try again."
+msgstr "La mise à jour ne s’est pas téléchargée correctement, elle n’a donc pas été installée. Réessayez."
 
 #. Can't update here
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.swap-refused.title"
-msgstr "Can't update here"
+msgstr "Mise à jour impossible ici"
 
 #. This installation can't update itself. Update it the way you installed it.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.swap-refused.message"
-msgstr "This installation can't update itself. Update it the way you installed it."
+msgstr "Cette installation ne peut pas se mettre à jour elle-même. Mettez-la à jour comme vous l’avez installée."
 
 #. Update not finished
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.swap-failed.title"
-msgstr "Update not finished"
+msgstr "Mise à jour inachevée"
 
 #. The update couldn't be applied. It will be tried again next launch.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.swap-failed.message"
-msgstr "The update couldn't be applied. It will be tried again next launch."
+msgstr "La mise à jour n’a pas pu être appliquée. Une nouvelle tentative aura lieu au prochain lancement."
 
 #. Content not valid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.files-index-invalid.title"
-msgstr "Content not valid"
+msgstr "Contenu non valide"
 
 #. Some content couldn't be installed. It will be downloaded again next time.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.files-index-invalid.message"
-msgstr "Some content couldn't be installed. It will be downloaded again next time."
+msgstr "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
 
 #. Content refused
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.files-unsafe-path.title"
-msgstr "Content refused"
+msgstr "Contenu refusé"
 
 #. Some content was refused because it contains an unsafe file path.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.files-unsafe-path.message"
-msgstr "Some content was refused because it contains an unsafe file path."
+msgstr "Certains contenus ont été refusés, car ils contiennent un chemin de fichier dangereux."
 
 #. Content not valid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.files-duplicate-path.title"
-msgstr "Content not valid"
+msgstr "Contenu non valide"
 
 #. Some content couldn't be installed. It will be downloaded again next time.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.files-duplicate-path.message"
-msgstr "Some content couldn't be installed. It will be downloaded again next time."
+msgstr "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
 
 #. Content not valid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.files-case-collision.title"
-msgstr "Content not valid"
+msgstr "Contenu non valide"
 
 #. Some content couldn't be installed. It will be downloaded again next time.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.files-case-collision.message"
-msgstr "Some content couldn't be installed. It will be downloaded again next time."
+msgstr "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
 
 #. Content not valid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.files-path-conflict.title"
-msgstr "Content not valid"
+msgstr "Contenu non valide"
 
 #. Some content couldn't be installed. It will be downloaded again next time.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.files-path-conflict.message"
-msgstr "Some content couldn't be installed. It will be downloaded again next time."
+msgstr "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
 
 #. Content not valid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.files-layout-mismatch.title"
-msgstr "Content not valid"
+msgstr "Contenu non valide"
 
 #. Some content couldn't be installed. It will be downloaded again next time.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.files-layout-mismatch.message"
-msgstr "Some content couldn't be installed. It will be downloaded again next time."
+msgstr "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
 
 #. App build problem
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.content-stamp-invalid.title"
-msgstr "App build problem"
+msgstr "Problème de build de l’app"
 
 #. This build's content information isn't valid. Reinstall the app or contact the developer.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.content-stamp-invalid.message"
-msgstr "This build's content information isn't valid. Reinstall the app or contact the developer."
+msgstr "Les informations de contenu de ce build ne sont pas valides. Réinstallez l’app ou contactez le développeur."
 
 #. Download corrupted
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.full-corrupt.title"
-msgstr "Download corrupted"
+msgstr "Téléchargement corrompu"
 
 #. Some content couldn't be installed. It will be downloaded again next time.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.full-corrupt.message"
-msgstr "Some content couldn't be installed. It will be downloaded again next time."
+msgstr "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
 
 #. Download corrupted
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.delta-artifact-mismatch.title"
-msgstr "Download corrupted"
+msgstr "Téléchargement corrompu"
 
 #. Some content couldn't be installed. It will be downloaded again next time.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.delta-artifact-mismatch.message"
-msgstr "Some content couldn't be installed. It will be downloaded again next time."
+msgstr "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
 
 #. Content changed
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.delta-base-mismatch.title"
-msgstr "Content changed"
+msgstr "Contenu modifié"
 
 #. Installed content changed on this device, so a full download is needed.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.delta-base-mismatch.message"
-msgstr "Installed content changed on this device, so a full download is needed."
+msgstr "Le contenu installé a changé sur cet appareil, un téléchargement complet est donc nécessaire."
 
 #. Update not applied
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.delta-apply-failed.title"
-msgstr "Update not applied"
+msgstr "Mise à jour non appliquée"
 
 #. Some content couldn't be installed. It will be downloaded again next time.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.delta-apply-failed.message"
-msgstr "Some content couldn't be installed. It will be downloaded again next time."
+msgstr "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
 
 #. Download corrupted
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.file-corrupt.title"
-msgstr "Download corrupted"
+msgstr "Téléchargement corrompu"
 
 #. Some content couldn't be installed. It will be downloaded again next time.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.file-corrupt.message"
-msgstr "Some content couldn't be installed. It will be downloaded again next time."
+msgstr "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
 
 #. Content missing
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.file-source-missing.title"
-msgstr "Content missing"
+msgstr "Contenu manquant"
 
 #. Some content couldn't be installed. It will be downloaded again next time.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.file-source-missing.message"
-msgstr "Some content couldn't be installed. It will be downloaded again next time."
+msgstr "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
 
 #. Download corrupted
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.payload-hash-mismatch.title"
-msgstr "Download corrupted"
+msgstr "Téléchargement corrompu"
 
 #. Some content couldn't be installed. It will be downloaded again next time.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.payload-hash-mismatch.message"
-msgstr "Some content couldn't be installed. It will be downloaded again next time."
+msgstr "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
 
 #. Content not valid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.chunks-ref-mismatch.title"
-msgstr "Content not valid"
+msgstr "Contenu non valide"
 
 #. Some content couldn't be installed. It will be downloaded again next time.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.chunks-ref-mismatch.message"
-msgstr "Some content couldn't be installed. It will be downloaded again next time."
+msgstr "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
 
 #. Content not valid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.chunks-bad-length.title"
-msgstr "Content not valid"
+msgstr "Contenu non valide"
 
 #. Some content couldn't be installed. It will be downloaded again next time.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.chunks-bad-length.message"
-msgstr "Some content couldn't be installed. It will be downloaded again next time."
+msgstr "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
 
 #. Content not valid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.chunks-bad-magic.title"
-msgstr "Content not valid"
+msgstr "Contenu non valide"
 
 #. Some content couldn't be installed. It will be downloaded again next time.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.chunks-bad-magic.message"
-msgstr "Some content couldn't be installed. It will be downloaded again next time."
+msgstr "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
 
 #. Content not supported
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.chunks-unsupported-version.title"
-msgstr "Content not supported"
+msgstr "Contenu non pris en charge"
 
 #. This content needs a newer version of the app. Update the app.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.chunks-unsupported-version.message"
-msgstr "This content needs a newer version of the app. Update the app."
+msgstr "Ce contenu nécessite une version plus récente de l’app. Mettez l’app à jour."
 
 #. Content not valid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.chunks-bad-record-size.title"
-msgstr "Content not valid"
+msgstr "Contenu non valide"
 
 #. Some content couldn't be installed. It will be downloaded again next time.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.chunks-bad-record-size.message"
-msgstr "Some content couldn't be installed. It will be downloaded again next time."
+msgstr "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
 
 #. Content not valid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.chunks-bad-flags.title"
-msgstr "Content not valid"
+msgstr "Contenu non valide"
 
 #. Some content couldn't be installed. It will be downloaded again next time.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.chunks-bad-flags.message"
-msgstr "Some content couldn't be installed. It will be downloaded again next time."
+msgstr "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
 
 #. Content not valid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.chunks-reserved-nonzero.title"
-msgstr "Content not valid"
+msgstr "Contenu non valide"
 
 #. Some content couldn't be installed. It will be downloaded again next time.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.chunks-reserved-nonzero.message"
-msgstr "Some content couldn't be installed. It will be downloaded again next time."
+msgstr "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
 
 #. Content not valid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.chunks-zero-length.title"
-msgstr "Content not valid"
+msgstr "Contenu non valide"
 
 #. Some content couldn't be installed. It will be downloaded again next time.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.chunks-zero-length.message"
-msgstr "Some content couldn't be installed. It will be downloaded again next time."
+msgstr "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
 
 #. Content not valid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.chunks-bad-clen.title"
-msgstr "Content not valid"
+msgstr "Contenu non valide"
 
 #. Some content couldn't be installed. It will be downloaded again next time.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.chunks-bad-clen.message"
-msgstr "Some content couldn't be installed. It will be downloaded again next time."
+msgstr "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
 
 #. Content not valid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.chunks-bad-bundle-ref.title"
-msgstr "Content not valid"
+msgstr "Contenu non valide"
 
 #. Some content couldn't be installed. It will be downloaded again next time.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.chunks-bad-bundle-ref.message"
-msgstr "Some content couldn't be installed. It will be downloaded again next time."
+msgstr "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
 
 #. Content not valid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.chunks-bad-bundle-range.title"
-msgstr "Content not valid"
+msgstr "Contenu non valide"
 
 #. Some content couldn't be installed. It will be downloaded again next time.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.chunks-bad-bundle-range.message"
-msgstr "Some content couldn't be installed. It will be downloaded again next time."
+msgstr "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
 
 #. Content not valid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.chunks-size-mismatch.title"
-msgstr "Content not valid"
+msgstr "Contenu non valide"
 
 #. Some content couldn't be installed. It will be downloaded again next time.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.chunks-size-mismatch.message"
-msgstr "Some content couldn't be installed. It will be downloaded again next time."
+msgstr "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
 
 #. Content not valid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.chunks-payload-mismatch.title"
-msgstr "Content not valid"
+msgstr "Contenu non valide"
 
 #. Some content couldn't be installed. It will be downloaded again next time.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.chunks-payload-mismatch.message"
-msgstr "Some content couldn't be installed. It will be downloaded again next time."
+msgstr "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
 
 #. Download interrupted
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.chunk-bundle-truncated.title"
-msgstr "Download interrupted"
+msgstr "Téléchargement interrompu"
 
 #. A download was cut short. Check your connection and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.chunk-bundle-truncated.message"
-msgstr "A download was cut short. Check your connection and try again."
+msgstr "Un téléchargement a été interrompu. Vérifiez votre connexion, puis réessayez."
 
 #. Download corrupted
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.chunk-corrupt.title"
-msgstr "Download corrupted"
+msgstr "Téléchargement corrompu"
 
 #. Some content couldn't be installed. It will be downloaded again next time.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.chunk-corrupt.message"
-msgstr "Some content couldn't be installed. It will be downloaded again next time."
+msgstr "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
 
 #. Can't download here
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.plan-transport-unsupported.title"
-msgstr "Can't download here"
+msgstr "Téléchargement impossible ici"
 
 #. This content can't be downloaded on this platform.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.plan-transport-unsupported.message"
-msgstr "This content can't be downloaded on this platform."
+msgstr "Ce contenu ne peut pas être téléchargé sur cette plateforme."
 
 #. Not enough space
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.plan-insufficient-disk.title"
-msgstr "Not enough space"
+msgstr "Espace insuffisant"
 
 #. There isn't enough free space for this content. Free up some space and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.plan-insufficient-disk.message"
-msgstr "There isn't enough free space for this content. Free up some space and try again."
+msgstr "L’espace libre est insuffisant pour ce contenu. Libérez de l’espace, puis réessayez."
 
 #. Can't install content
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.plan-no-strategy.title"
-msgstr "Can't install content"
+msgstr "Installation du contenu impossible"
 
 #. This content can't be installed on this device.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.plan-no-strategy.message"
-msgstr "This content can't be installed on this device."
+msgstr "Ce contenu ne peut pas être installé sur cet appareil."
 
 #. Content not available
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.pack-no-variant.title"
-msgstr "Content not available"
+msgstr "Contenu indisponible"
 
 #. This content isn't available for this device.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.pack-no-variant.message"
-msgstr "This content isn't available for this device."
+msgstr "Ce contenu n’est pas disponible pour cet appareil."
 
 #. Content not supported
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.pack-type-unsupported.title"
-msgstr "Content not supported"
+msgstr "Contenu non pris en charge"
 
 #. This content needs a newer version of the app. Update the app.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.pack-type-unsupported.message"
-msgstr "This content needs a newer version of the app. Update the app."
+msgstr "Ce contenu nécessite une version plus récente de l’app. Mettez l’app à jour."
 
 #. Content not valid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.pack-type-check-failed.title"
-msgstr "Content not valid"
+msgstr "Contenu non valide"
 
 #. Some content failed its check and wasn't installed.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.pack-type-check-failed.message"
-msgstr "Some content failed its check and wasn't installed."
+msgstr "Certains contenus n’ont pas passé leur vérification et n’ont pas été installés."
 
 #. Content not available
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.pack-not-pinned.title"
-msgstr "Content not available"
+msgstr "Contenu indisponible"
 
 #. This content isn't part of this version of the app.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.pack-not-pinned.message"
-msgstr "This content isn't part of this version of the app."
+msgstr "Ce contenu ne fait pas partie de cette version de l’app."
 
 #. Not included
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.pack-not-entitled.title"
-msgstr "Not included"
+msgstr "Non inclus"
 
 #. Your license doesn't include this content.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.pack-not-entitled.message"
-msgstr "Your license doesn't include this content."
+msgstr "Votre licence n’inclut pas ce contenu."
 
 #. Storage problem
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.pack-state-unreadable.title"
-msgstr "Storage problem"
+msgstr "Problème de stockage"
 
 #. Installed content couldn't be read, so nothing new was installed. Restart the app.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.pack-state-unreadable.message"
-msgstr "Installed content couldn't be read, so nothing new was installed. Restart the app."
+msgstr "Le contenu installé n’a pas pu être lu, rien de nouveau n’a donc été installé. Redémarrez l’app."
 
 #. Content refused
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.pck-directory-refused.title"
-msgstr "Content refused"
+msgstr "Contenu refusé"
 
 #. Some content was refused because it contains files a content pack may not hold.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.pck-directory-refused.message"
-msgstr "Some content was refused because it contains files a content pack may not hold."
+msgstr "Certains contenus ont été refusés, car ils contiennent des fichiers qu’un pack de contenu ne peut pas contenir."
 
 #. Content not supported
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.pck-engine-mismatch.title"
-msgstr "Content not supported"
+msgstr "Contenu non pris en charge"
 
 #. This content needs a different version of the game. Update the game.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.pck-engine-mismatch.message"
-msgstr "This content needs a different version of the game. Update the game."
+msgstr "Ce contenu nécessite une autre version du jeu. Mettez le jeu à jour."
 
 #. Content restored
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.pack-rolled-back.title"
-msgstr "Content restored"
+msgstr "Contenu restauré"
 
 #. The last content update didn't start, so the previous version was restored.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.pack-rolled-back.message"
-msgstr "The last content update didn't start, so the previous version was restored."
+msgstr "La dernière mise à jour du contenu n’a pas démarré, la version précédente a donc été restaurée."
 
 #. Content withdrawn
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.pack-revoked.title"
-msgstr "Content withdrawn"
+msgstr "Contenu retiré"
 
 #. This content was withdrawn by its developer and can't be used.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.pack-revoked.message"
-msgstr "This content was withdrawn by its developer and can't be used."
+msgstr "Ce contenu a été retiré par son développeur et ne peut pas être utilisé."
 
 #. Content refused
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.pack-not-data-only.title"
-msgstr "Content refused"
+msgstr "Contenu refusé"
 
 #. Some content was refused because it contains files a data pack may not hold.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.pack-not-data-only.message"
-msgstr "Some content was refused because it contains files a data pack may not hold."
+msgstr "Certains contenus ont été refusés, car ils contiennent des fichiers qu’un pack de données ne peut pas contenir."
 
 #. App build problem
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.marker-rejected.title"
-msgstr "App build problem"
+msgstr "Problème de build de l’app"
 
 #. This build's built-in content isn't valid. Reinstall the app or contact the developer.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.marker-rejected.message"
-msgstr "This build's built-in content isn't valid. Reinstall the app or contact the developer."
+msgstr "Le contenu intégré de ce build n’est pas valide. Réinstallez l’app ou contactez le développeur."
 
 #. License needed
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_required.title"
-msgstr "License needed"
+msgstr "Licence requise"
 
 #. Activate the app, then try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_required.message"
-msgstr "Activate the app, then try again."
+msgstr "Activez l’app, puis réessayez."
 
 #. License not accepted
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_invalid.title"
-msgstr "License not accepted"
+msgstr "Licence non acceptée"
 
 #. Your license couldn't be verified. Reconnect the app, then try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_invalid.message"
-msgstr "Your license couldn't be verified. Reconnect the app, then try again."
+msgstr "Votre licence n’a pas pu être vérifiée. Reconnectez l’app, puis réessayez."
 
 #. License needs refreshing
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_stale.title"
-msgstr "License needs refreshing"
+msgstr "Licence à actualiser"
 
 #. Connect to the internet so the app can refresh your license, then try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_stale.message"
-msgstr "Connect to the internet so the app can refresh your license, then try again."
+msgstr "Connectez-vous à Internet pour que l’app puisse actualiser votre licence, puis réessayez."
 
 #. Sign-in needed
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.sign_in_required.title"
-msgstr "Sign-in needed"
+msgstr "Connexion nécessaire"
 
 #. Sign in to your Polaris Locker account in the app, then try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.sign_in_required.message"
-msgstr "Sign in to your Polaris Locker account in the app, then try again."
+msgstr "Connectez-vous à votre compte Polaris Locker dans l’app, puis réessayez."
 
 #. License active
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.ok.title"
-msgstr "License active"
+msgstr "Licence active"
 
 #. Your license is active.
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.ok.message"
-msgstr "Your license is active."
+msgstr "Votre licence est active."
 
 #. Offline grace
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.grace.title"
-msgstr "Offline grace"
+msgstr "Période de grâce hors ligne"
 
 #. The licensing service can't be reached. You can keep using the app until the grace period ends.
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.grace.message"
-msgstr "The licensing service can't be reached. You can keep using the app until the grace period ends."
+msgstr "Le service de licence est inaccessible. Vous pouvez continuer à utiliser l’app jusqu’à la fin de la période de grâce."
 
 #. License expired
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.expired.title"
-msgstr "License expired"
+msgstr "Licence expirée"
 
 #. Connect to the internet or renew your license to continue.
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.expired.message"
-msgstr "Connect to the internet or renew your license to continue."
+msgstr "Connectez-vous à Internet ou renouvelez votre licence pour continuer."
 
 #. Signed out
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.revoked.title"
-msgstr "Signed out"
+msgstr "Déconnecté"
 
 #. This device was signed out. Sign in or activate again to continue.
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.revoked.message"
-msgstr "This device was signed out. Sign in or activate again to continue."
+msgstr "Cet appareil a été déconnecté. Connectez-vous ou activez à nouveau pour continuer."
 
 #. Activate
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.needs-activation.title"
-msgstr "Activate"
+msgstr "Activer"
 
 #. Enter a license key or sign in to continue.
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.needs-activation.message"
-msgstr "Enter a license key or sign in to continue."
+msgstr "Saisissez une clé de licence ou connectez-vous pour continuer."
 
 #. Update required
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.version-too-old.title"
-msgstr "Update required"
+msgstr "Mise à jour requise"
 
 #. This version is no longer supported. Update the app to continue.
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.version-too-old.message"
-msgstr "This version is no longer supported. Update the app to continue."
+msgstr "Cette version n’est plus prise en charge. Mettez l’app à jour pour continuer."
 
 #. Not available on this license
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.version-too-new.title"
-msgstr "Not available on this license"
+msgstr "Indisponible avec cette licence"
 
 #. This build is newer than your license allows.
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.version-too-new.message"
-msgstr "This build is newer than your license allows."
+msgstr "Ce build est plus récent que ce que votre licence autorise."
 
 #. Channel not included
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.channel-not-entitled.title"
-msgstr "Channel not included"
+msgstr "Canal non inclus"
 
 #. Your license doesn't include this channel.
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.channel-not-entitled.message"
-msgstr "Your license doesn't include this channel."
+msgstr "Votre licence n’inclut pas ce canal."
 
 #. No license needed
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.not-applicable.title"
-msgstr "No license needed"
+msgstr "Aucune licence requise"
 
 #. This app doesn't need a license.
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.not-applicable.message"
-msgstr "This app doesn't need a license."
+msgstr "Cette app n’a pas besoin de licence."
 
 #. Activated
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.ok.title"
-msgstr "Activated"
+msgstr "Activé"
 
 #. Your license is active on this device.
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.ok.message"
-msgstr "Your license is active on this device."
+msgstr "Votre licence est active sur cet appareil."
 
 #. Device limit reached
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.device-limit.title"
-msgstr "Device limit reached"
+msgstr "Limite d’appareils atteinte"
 
 #. This license is already on all its devices. Replace a device to use it here.
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.device-limit.message"
-msgstr "This license is already on all its devices. Replace a device to use it here."
+msgstr "Cette licence est déjà utilisée sur tous ses appareils. Remplacez un appareil pour l’utiliser ici."
 
 #. Device check failed
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.fingerprint-required.title"
-msgstr "Device check failed"
+msgstr "Échec de la vérification de l’appareil"
 
 #. This license needs a hardware fingerprint, which couldn't be read on this device.
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.fingerprint-required.message"
-msgstr "This license needs a hardware fingerprint, which couldn't be read on this device."
+msgstr "Cette licence nécessite une empreinte matérielle, qui n’a pas pu être lue sur cet appareil."
 
 #. Device changed
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.hardware-mismatch.title"
-msgstr "Device changed"
+msgstr "Appareil modifié"
 
 #. This device's hardware changed. Activate again to use your license here.
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.hardware-mismatch.message"
-msgstr "This device's hardware changed. Activate again to use your license here."
+msgstr "Le matériel de cet appareil a changé. Activez à nouveau pour utiliser votre licence ici."
 
 #. Sign in to continue
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.enroll-claimed.title"
-msgstr "Sign in to continue"
+msgstr "Connectez-vous pour continuer"
 
 #. This device's free license belongs to an account now. Sign in to use it.
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.enroll-claimed.message"
-msgstr "This device's free license belongs to an account now. Sign in to use it."
+msgstr "La licence gratuite de cet appareil appartient désormais à un compte. Connectez-vous pour l’utiliser."
 
 #. License disabled
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.license-disabled.title"
-msgstr "License disabled"
+msgstr "Licence désactivée"
 
 #. This license has been disabled. Contact the developer.
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.license-disabled.message"
-msgstr "This license has been disabled. Contact the developer."
+msgstr "Cette licence a été désactivée. Contactez le développeur."
 
 #. License expired
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.license-expired.title"
-msgstr "License expired"
+msgstr "Licence expirée"
 
 #. This license has expired. Renew it to continue.
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.license-expired.message"
-msgstr "This license has expired. Renew it to continue."
+msgstr "Cette licence a expiré. Renouvelez-la pour continuer."
 
 #. Device check needed
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.attestation-required.title"
-msgstr "Device check needed"
+msgstr "Vérification de l’appareil requise"
 
 #. This license needs a verified device. Let the app check this device, then try again.
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.attestation-required.message"
-msgstr "This license needs a verified device. Let the app check this device, then try again."
+msgstr "Cette licence nécessite un appareil vérifié. Laissez l’app vérifier cet appareil, puis réessayez."
 
 #. Too many attempts
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.rate-limited.title"
-msgstr "Too many attempts"
+msgstr "Trop de tentatives"
 
 #. Too many attempts. Wait a moment and try again.
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.rate-limited.message"
-msgstr "Too many attempts. Wait a moment and try again."
+msgstr "Trop de tentatives. Patientez un instant, puis réessayez."
 
 #. Key not accepted
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.unauthorized.title"
-msgstr "Key not accepted"
+msgstr "Clé non acceptée"
 
 #. That license key wasn't accepted. Check it and try again.
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.unauthorized.message"
-msgstr "That license key wasn't accepted. Check it and try again."
+msgstr "Cette clé de licence n’a pas été acceptée. Vérifiez-la, puis réessayez."
 
 #. No free license
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.enroll-disabled.title"
-msgstr "No free license"
+msgstr "Aucune licence gratuite"
 
 #. This app doesn't offer a free license. Enter a license key or sign in.
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.enroll-disabled.message"
-msgstr "This app doesn't offer a free license. Enter a license key or sign in."
+msgstr "Cette app ne propose pas de licence gratuite. Saisissez une clé de licence ou connectez-vous."
 
 #. No key entries left
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.key-entry-limit.title"
-msgstr "No key entries left"
+msgstr "Plus d’utilisations de la clé"
 
 #. This key has no entries left. Add it to your account and sign in instead.
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.key-entry-limit.message"
-msgstr "This key has no entries left. Add it to your account and sign in instead."
+msgstr "Cette clé n’a plus d’utilisations disponibles. Ajoutez-la à votre compte et connectez-vous à la place."
 
 #. Activation refused
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.refused.title"
-msgstr "Activation refused"
+msgstr "Activation refusée"
 
 #. Activation was refused ({code}).
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.refused.message"
-msgstr "Activation was refused ({code})."
+msgstr "L’activation a été refusée ({code})."
 
 #. Activation failed
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.error.title"
-msgstr "Activation failed"
+msgstr "Échec de l’activation"
 
 #. Activation didn't finish. Check your connection and try again.
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.error.message"
-msgstr "Activation didn't finish. Check your connection and try again."
+msgstr "L’activation n’a pas abouti. Vérifiez votre connexion, puis réessayez."

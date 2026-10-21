@@ -742,8 +742,11 @@ describe("the reference formatter", () => {
     expect(refLookup(S, "sv", "welcome.trial", o)).toBe(
       S.kit.en!["welcome.trial"],
     );
-    // copy.fr.json is pending (SP-03): French core copy falls back to English.
+    // copy.fr.json is a real pack: French core copy is its own text, not the English fallback.
     expect(refLookup(S, "fr", "core.gate.expired.title")).toBe(
+      S.core.fr!["core.gate.expired.title"],
+    );
+    expect(S.core.fr!["core.gate.expired.title"]).not.toBe(
       S.core.en!["core.gate.expired.title"],
     );
   });

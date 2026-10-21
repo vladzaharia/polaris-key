@@ -13862,7 +13862,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This license needs a verified device. Let the app check this device, then try again."
+            "value": "Cette licence nécessite un appareil vérifié. Laissez l’app vérifier cet appareil, puis réessayez."
           }
         },
         "es": {
@@ -13922,7 +13922,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Device check needed"
+            "value": "Vérification de l’appareil requise"
           }
         },
         "es": {
@@ -13982,7 +13982,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This license is already on all its devices. Replace a device to use it here."
+            "value": "Cette licence est déjà utilisée sur tous ses appareils. Remplacez un appareil pour l’utiliser ici."
           }
         },
         "es": {
@@ -14042,7 +14042,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Device limit reached"
+            "value": "Limite d’appareils atteinte"
           }
         },
         "es": {
@@ -14102,7 +14102,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This device's free license belongs to an account now. Sign in to use it."
+            "value": "La licence gratuite de cet appareil appartient désormais à un compte. Connectez-vous pour l’utiliser."
           }
         },
         "es": {
@@ -14162,7 +14162,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign in to continue"
+            "value": "Connectez-vous pour continuer"
           }
         },
         "es": {
@@ -14222,7 +14222,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This app doesn't offer a free license. Enter a license key or sign in."
+            "value": "Cette app ne propose pas de licence gratuite. Saisissez une clé de licence ou connectez-vous."
           }
         },
         "es": {
@@ -14282,7 +14282,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "No free license"
+            "value": "Aucune licence gratuite"
           }
         },
         "es": {
@@ -14342,7 +14342,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Activation didn't finish. Check your connection and try again."
+            "value": "L’activation n’a pas abouti. Vérifiez votre connexion, puis réessayez."
           }
         },
         "es": {
@@ -14402,7 +14402,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Activation failed"
+            "value": "Échec de l’activation"
           }
         },
         "es": {
@@ -14462,7 +14462,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This license needs a hardware fingerprint, which couldn't be read on this device."
+            "value": "Cette licence nécessite une empreinte matérielle, qui n’a pas pu être lue sur cet appareil."
           }
         },
         "es": {
@@ -14522,7 +14522,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Device check failed"
+            "value": "Échec de la vérification de l’appareil"
           }
         },
         "es": {
@@ -14582,7 +14582,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This device's hardware changed. Activate again to use your license here."
+            "value": "Le matériel de cet appareil a changé. Activez à nouveau pour utiliser votre licence ici."
           }
         },
         "es": {
@@ -14642,7 +14642,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Device changed"
+            "value": "Appareil modifié"
           }
         },
         "es": {
@@ -14702,7 +14702,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This key has no entries left. Add it to your account and sign in instead."
+            "value": "Cette clé n’a plus d’utilisations disponibles. Ajoutez-la à votre compte et connectez-vous à la place."
           }
         },
         "es": {
@@ -14762,7 +14762,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "No key entries left"
+            "value": "Plus d’utilisations de la clé"
           }
         },
         "es": {
@@ -14822,7 +14822,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This license has been disabled. Contact the developer."
+            "value": "Cette licence a été désactivée. Contactez le développeur."
           }
         },
         "es": {
@@ -14882,7 +14882,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "License disabled"
+            "value": "Licence désactivée"
           }
         },
         "es": {
@@ -14942,7 +14942,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This license has expired. Renew it to continue."
+            "value": "Cette licence a expiré. Renouvelez-la pour continuer."
           }
         },
         "es": {
@@ -15002,7 +15002,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "License expired"
+            "value": "Licence expirée"
           }
         },
         "es": {
@@ -15062,7 +15062,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your license is active on this device."
+            "value": "Votre licence est active sur cet appareil."
           }
         },
         "es": {
@@ -15122,7 +15122,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Activated"
+            "value": "Activé"
           }
         },
         "es": {
@@ -15182,7 +15182,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Too many attempts. Wait a moment and try again."
+            "value": "Trop de tentatives. Patientez un instant, puis réessayez."
           }
         },
         "es": {
@@ -15242,7 +15242,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Too many attempts"
+            "value": "Trop de tentatives"
           }
         },
         "es": {
@@ -15302,7 +15302,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Activation was refused (%1$@)."
+            "value": "L’activation a été refusée (%1$@)."
           }
         },
         "es": {
@@ -15362,7 +15362,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Activation refused"
+            "value": "Activation refusée"
           }
         },
         "es": {
@@ -15422,7 +15422,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "That license key wasn't accepted. Check it and try again."
+            "value": "Cette clé de licence n’a pas été acceptée. Vérifiez-la, puis réessayez."
           }
         },
         "es": {
@@ -15482,7 +15482,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Key not accepted"
+            "value": "Clé non acceptée"
           }
         },
         "es": {
@@ -15542,7 +15542,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign in to your Polaris Locker account on this device, then try again."
+            "value": "Connectez-vous à votre compte Polaris Locker sur cet appareil, puis réessayez."
           }
         },
         "es": {
@@ -15602,7 +15602,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign-in needed"
+            "value": "Connexion nécessaire"
           }
         },
         "es": {
@@ -15662,7 +15662,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "An image could not be fetched from its source. The previous copy is still shown, and it will be retried automatically."
+            "value": "Une image n’a pas pu être récupérée depuis sa source. La copie précédente reste affichée, et une nouvelle tentative aura lieu automatiquement."
           }
         },
         "es": {
@@ -15722,7 +15722,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Image not updated"
+            "value": "Image non mise à jour"
           }
         },
         "es": {
@@ -15782,7 +15782,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This device couldn't be verified. Try again."
+            "value": "Cet appareil n’a pas pu être vérifié. Réessayez."
           }
         },
         "es": {
@@ -15842,7 +15842,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Device check failed"
+            "value": "Échec de la vérification de l’appareil"
           }
         },
         "es": {
@@ -15902,7 +15902,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This needs a verified device. Let the app check this device, then try again."
+            "value": "Un appareil vérifié est nécessaire. Laissez l’app vérifier cet appareil, puis réessayez."
           }
         },
         "es": {
@@ -15962,7 +15962,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Device check needed"
+            "value": "Vérification de l’appareil requise"
           }
         },
         "es": {
@@ -16022,7 +16022,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Device verification isn't available for this app right now. Try again in a few minutes."
+            "value": "La vérification des appareils n’est pas disponible pour cette app pour le moment. Réessayez dans quelques minutes."
           }
         },
         "es": {
@@ -16082,7 +16082,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Device check unavailable"
+            "value": "Vérification de l’appareil indisponible"
           }
         },
         "es": {
@@ -16142,7 +16142,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "That sign-in method is turned off. Choose another one."
+            "value": "Cette méthode de connexion est désactivée. Choisissez-en une autre."
           }
         },
         "es": {
@@ -16202,7 +16202,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign-in method unavailable"
+            "value": "Méthode de connexion indisponible"
           }
         },
         "es": {
@@ -16262,7 +16262,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The app can send your license only to its own servers."
+            "value": "L’app ne peut envoyer votre licence qu’à ses propres serveurs."
           }
         },
         "es": {
@@ -16322,7 +16322,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Request not sent"
+            "value": "Requête non envoyée"
           }
         },
         "es": {
@@ -16382,7 +16382,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The request wasn't valid. Update the app, then try again."
+            "value": "La requête n’était pas valide. Mettez l’app à jour, puis réessayez."
           }
         },
         "es": {
@@ -16442,7 +16442,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Request refused"
+            "value": "Requête refusée"
           }
         },
         "es": {
@@ -16502,7 +16502,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The service sent an answer the app couldn't use. Try again."
+            "value": "Le service a envoyé une réponse que l’app n’a pas pu utiliser. Réessayez."
           }
         },
         "es": {
@@ -16562,7 +16562,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Unexpected answer"
+            "value": "Réponse inattendue"
           }
         },
         "es": {
@@ -16622,7 +16622,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "That is too large to send."
+            "value": "C’est trop volumineux pour être envoyé."
           }
         },
         "es": {
@@ -16682,7 +16682,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Too large"
+            "value": "Trop volumineux"
           }
         },
         "es": {
@@ -16742,7 +16742,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The app's licensing bridge is missing. Reinstall the app or contact the developer."
+            "value": "Le pont de licence de l’app est introuvable. Réinstallez l’app ou contactez le développeur."
           }
         },
         "es": {
@@ -16802,7 +16802,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "App problem"
+            "value": "Problème d’app"
           }
         },
         "es": {
@@ -16862,7 +16862,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The activation file is for another product or device, or it has expired."
+            "value": "Le fichier d’activation concerne un autre produit ou un autre appareil, ou il a expiré."
           }
         },
         "es": {
@@ -16922,7 +16922,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Activation file not valid"
+            "value": "Fichier d’activation non valide"
           }
         },
         "es": {
@@ -16982,7 +16982,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Offline activation isn't available here."
+            "value": "L’activation hors ligne n’est pas disponible ici."
           }
         },
         "es": {
@@ -17042,7 +17042,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Not available here"
+            "value": "Indisponible ici"
           }
         },
         "es": {
@@ -17102,7 +17102,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The activation file's signature isn't valid."
+            "value": "La signature du fichier d’activation n’est pas valide."
           }
         },
         "es": {
@@ -17162,7 +17162,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Activation file not valid"
+            "value": "Fichier d’activation non valide"
           }
         },
         "es": {
@@ -17222,7 +17222,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The activation file was refused."
+            "value": "Le fichier d’activation a été refusé."
           }
         },
         "es": {
@@ -17282,7 +17282,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Activation file not valid"
+            "value": "Fichier d’activation non valide"
           }
         },
         "es": {
@@ -17342,7 +17342,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The activation file is signed by a key this app doesn't trust."
+            "value": "Le fichier d’activation est signé par une clé que cette app n’approuve pas."
           }
         },
         "es": {
@@ -17402,7 +17402,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Activation file not trusted"
+            "value": "Fichier d’activation non approuvé"
           }
         },
         "es": {
@@ -17462,7 +17462,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The activation file couldn't be read."
+            "value": "Le fichier d’activation n’a pas pu être lu."
           }
         },
         "es": {
@@ -17522,7 +17522,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Activation file not valid"
+            "value": "Fichier d’activation non valide"
           }
         },
         "es": {
@@ -17582,7 +17582,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign-in was canceled."
+            "value": "La connexion a été annulée."
           }
         },
         "es": {
@@ -17642,7 +17642,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign-in canceled"
+            "value": "Connexion annulée"
           }
         },
         "es": {
@@ -17702,7 +17702,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Settings can't be loaded right now. Try again in a few minutes."
+            "value": "Les réglages ne peuvent pas être chargés pour le moment. Réessayez dans quelques minutes."
           }
         },
         "es": {
@@ -17762,7 +17762,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Settings unavailable"
+            "value": "Réglages indisponibles"
           }
         },
         "es": {
@@ -17822,7 +17822,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your license doesn't include this channel."
+            "value": "Votre licence n’inclut pas ce canal."
           }
         },
         "es": {
@@ -17882,7 +17882,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Channel not included"
+            "value": "Canal non inclus"
           }
         },
         "es": {
@@ -17942,7 +17942,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "A download was cut short. Check your connection and try again."
+            "value": "Un téléchargement a été interrompu. Vérifiez votre connexion, puis réessayez."
           }
         },
         "es": {
@@ -18002,7 +18002,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Download interrupted"
+            "value": "Téléchargement interrompu"
           }
         },
         "es": {
@@ -18062,7 +18062,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Some content couldn't be installed. It will be downloaded again next time."
+            "value": "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
           }
         },
         "es": {
@@ -18122,7 +18122,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Download corrupted"
+            "value": "Téléchargement corrompu"
           }
         },
         "es": {
@@ -18182,7 +18182,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Some content couldn't be installed. It will be downloaded again next time."
+            "value": "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
           }
         },
         "es": {
@@ -18242,7 +18242,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Content not valid"
+            "value": "Contenu non valide"
           }
         },
         "es": {
@@ -18302,7 +18302,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Some content couldn't be installed. It will be downloaded again next time."
+            "value": "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
           }
         },
         "es": {
@@ -18362,7 +18362,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Content not valid"
+            "value": "Contenu non valide"
           }
         },
         "es": {
@@ -18422,7 +18422,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Some content couldn't be installed. It will be downloaded again next time."
+            "value": "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
           }
         },
         "es": {
@@ -18482,7 +18482,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Content not valid"
+            "value": "Contenu non valide"
           }
         },
         "es": {
@@ -18542,7 +18542,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Some content couldn't be installed. It will be downloaded again next time."
+            "value": "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
           }
         },
         "es": {
@@ -18602,7 +18602,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Content not valid"
+            "value": "Contenu non valide"
           }
         },
         "es": {
@@ -18662,7 +18662,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Some content couldn't be installed. It will be downloaded again next time."
+            "value": "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
           }
         },
         "es": {
@@ -18722,7 +18722,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Content not valid"
+            "value": "Contenu non valide"
           }
         },
         "es": {
@@ -18782,7 +18782,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Some content couldn't be installed. It will be downloaded again next time."
+            "value": "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
           }
         },
         "es": {
@@ -18842,7 +18842,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Content not valid"
+            "value": "Contenu non valide"
           }
         },
         "es": {
@@ -18902,7 +18902,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Some content couldn't be installed. It will be downloaded again next time."
+            "value": "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
           }
         },
         "es": {
@@ -18962,7 +18962,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Content not valid"
+            "value": "Contenu non valide"
           }
         },
         "es": {
@@ -19022,7 +19022,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Some content couldn't be installed. It will be downloaded again next time."
+            "value": "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
           }
         },
         "es": {
@@ -19082,7 +19082,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Content not valid"
+            "value": "Contenu non valide"
           }
         },
         "es": {
@@ -19142,7 +19142,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Some content couldn't be installed. It will be downloaded again next time."
+            "value": "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
           }
         },
         "es": {
@@ -19202,7 +19202,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Content not valid"
+            "value": "Contenu non valide"
           }
         },
         "es": {
@@ -19262,7 +19262,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Some content couldn't be installed. It will be downloaded again next time."
+            "value": "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
           }
         },
         "es": {
@@ -19322,7 +19322,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Content not valid"
+            "value": "Contenu non valide"
           }
         },
         "es": {
@@ -19382,7 +19382,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Some content couldn't be installed. It will be downloaded again next time."
+            "value": "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
           }
         },
         "es": {
@@ -19442,7 +19442,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Content not valid"
+            "value": "Contenu non valide"
           }
         },
         "es": {
@@ -19502,7 +19502,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This content needs a newer version of the app. Update the app."
+            "value": "Ce contenu nécessite une version plus récente de l’app. Mettez l’app à jour."
           }
         },
         "es": {
@@ -19562,7 +19562,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Content not supported"
+            "value": "Contenu non pris en charge"
           }
         },
         "es": {
@@ -19622,7 +19622,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Some content couldn't be installed. It will be downloaded again next time."
+            "value": "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
           }
         },
         "es": {
@@ -19682,7 +19682,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Content not valid"
+            "value": "Contenu non valide"
           }
         },
         "es": {
@@ -19742,7 +19742,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "That code has expired. Send a new code."
+            "value": "Ce code a expiré. Envoyez-vous un nouveau code."
           }
         },
         "es": {
@@ -19802,7 +19802,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Code expired"
+            "value": "Code expiré"
           }
         },
         "es": {
@@ -19862,7 +19862,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This build's content information isn't valid. Reinstall the app or contact the developer."
+            "value": "Les informations de contenu de ce build ne sont pas valides. Réinstallez l’app ou contactez le développeur."
           }
         },
         "es": {
@@ -19922,7 +19922,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "App build problem"
+            "value": "Problème de build de l’app"
           }
         },
         "es": {
@@ -19982,7 +19982,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This download isn't set up yet. Contact the developer."
+            "value": "Ce téléchargement n’est pas encore configuré. Contactez le développeur."
           }
         },
         "es": {
@@ -20042,7 +20042,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Download unavailable"
+            "value": "Téléchargement indisponible"
           }
         },
         "es": {
@@ -20102,7 +20102,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Some content couldn't be installed. It will be downloaded again next time."
+            "value": "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
           }
         },
         "es": {
@@ -20162,7 +20162,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Update not applied"
+            "value": "Mise à jour non appliquée"
           }
         },
         "es": {
@@ -20222,7 +20222,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Some content couldn't be installed. It will be downloaded again next time."
+            "value": "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
           }
         },
         "es": {
@@ -20282,7 +20282,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Download corrupted"
+            "value": "Téléchargement corrompu"
           }
         },
         "es": {
@@ -20342,7 +20342,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Installed content changed on this device, so a full download is needed."
+            "value": "Le contenu installé a changé sur cet appareil, un téléchargement complet est donc nécessaire."
           }
         },
         "es": {
@@ -20402,7 +20402,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Content changed"
+            "value": "Contenu modifié"
           }
         },
         "es": {
@@ -20462,7 +20462,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Devices can't be managed from here. Manage them in your account."
+            "value": "Les appareils ne peuvent pas être gérés d’ici. Gérez-les dans votre compte."
           }
         },
         "es": {
@@ -20522,7 +20522,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Not available here"
+            "value": "Indisponible ici"
           }
         },
         "es": {
@@ -20582,7 +20582,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The device couldn't be removed. Try again."
+            "value": "L’appareil n’a pas pu être supprimé. Réessayez."
           }
         },
         "es": {
@@ -20642,7 +20642,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Couldn't remove device"
+            "value": "Suppression de l’appareil impossible"
           }
         },
         "es": {
@@ -20702,7 +20702,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This license is already on all its devices. Replace a device to use it here."
+            "value": "Cette licence est déjà utilisée sur tous ses appareils. Remplacez un appareil pour l’utiliser ici."
           }
         },
         "es": {
@@ -20762,7 +20762,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Device limit reached"
+            "value": "Limite d’appareils atteinte"
           }
         },
         "es": {
@@ -20822,7 +20822,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your devices couldn't be loaded. Check your connection and try again."
+            "value": "Vos appareils n’ont pas pu être chargés. Vérifiez votre connexion, puis réessayez."
           }
         },
         "es": {
@@ -20882,7 +20882,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Couldn't load devices"
+            "value": "Chargement des appareils impossible"
           }
         },
         "es": {
@@ -20942,7 +20942,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The device couldn't be renamed. Try again."
+            "value": "L’appareil n’a pas pu être renommé. Réessayez."
           }
         },
         "es": {
@@ -21002,7 +21002,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Couldn't rename"
+            "value": "Renommage impossible"
           }
         },
         "es": {
@@ -21062,7 +21062,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign-in isn't turned on for this app."
+            "value": "La connexion n’est pas activée pour cette app."
           }
         },
         "es": {
@@ -21122,7 +21122,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign-in unavailable"
+            "value": "Connexion indisponible"
           }
         },
         "es": {
@@ -21182,7 +21182,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The service couldn't prepare your settings. Contact the developer."
+            "value": "Le service n’a pas pu préparer vos réglages. Contactez le développeur."
           }
         },
         "es": {
@@ -21242,7 +21242,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Service problem"
+            "value": "Problème de service"
           }
         },
         "es": {
@@ -21302,7 +21302,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign in or activate a license to download this."
+            "value": "Connectez-vous ou activez une licence pour télécharger cet élément."
           }
         },
         "es": {
@@ -21362,7 +21362,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign in to download"
+            "value": "Connectez-vous pour télécharger"
           }
         },
         "es": {
@@ -21422,7 +21422,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Another Polaris Locker account already uses this email. Join this sign-in to that account, or use a different email."
+            "value": "Un autre compte Polaris Locker utilise déjà cette adresse e-mail. Associez cette connexion à ce compte, ou utilisez une autre adresse."
           }
         },
         "es": {
@@ -21482,7 +21482,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Email already in use"
+            "value": "E-mail déjà utilisé"
           }
         },
         "es": {
@@ -21542,7 +21542,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This license belongs to an email address your account hasn't verified. Add and verify that email, then try again."
+            "value": "Cette licence est liée à une adresse e-mail que votre compte n’a pas vérifiée. Ajoutez et vérifiez cette adresse, puis réessayez."
           }
         },
         "es": {
@@ -21602,7 +21602,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Email not verified"
+            "value": "E-mail non vérifié"
           }
         },
         "es": {
@@ -21662,7 +21662,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Email sign-in isn't available right now. Choose another sign-in method."
+            "value": "La connexion par e-mail n’est pas disponible pour le moment. Choisissez une autre méthode de connexion."
           }
         },
         "es": {
@@ -21722,7 +21722,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Email sign-in unavailable"
+            "value": "Connexion par e-mail indisponible"
           }
         },
         "es": {
@@ -21782,7 +21782,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This device's free license belongs to an account now. Sign in to use it."
+            "value": "La licence gratuite de cet appareil appartient désormais à un compte. Connectez-vous pour l’utiliser."
           }
         },
         "es": {
@@ -21842,7 +21842,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign in to continue"
+            "value": "Connectez-vous pour continuer"
           }
         },
         "es": {
@@ -21902,7 +21902,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This app doesn't offer a free license. Enter a license key or sign in."
+            "value": "Cette app ne propose pas de licence gratuite. Saisissez une clé de licence ou connectez-vous."
           }
         },
         "es": {
@@ -21962,7 +21962,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "No free license"
+            "value": "Aucune licence gratuite"
           }
         },
         "es": {
@@ -22022,7 +22022,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "A free license couldn't be issued. Try again in a few minutes."
+            "value": "Une licence gratuite n’a pas pu être émise. Réessayez dans quelques minutes."
           }
         },
         "es": {
@@ -22082,7 +22082,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Couldn't get a free license"
+            "value": "Licence gratuite non obtenue"
           }
         },
         "es": {
@@ -22142,7 +22142,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "We couldn't confirm your account's status right now. Try again in a few minutes."
+            "value": "Nous n’avons pas pu confirmer l’état de votre compte pour le moment. Réessayez dans quelques minutes."
           }
         },
         "es": {
@@ -22202,7 +22202,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Account check unavailable"
+            "value": "Vérification du compte indisponible"
           }
         },
         "es": {
@@ -22262,7 +22262,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The update information couldn't be verified, so nothing was installed."
+            "value": "Les informations de mise à jour n’ont pas pu être vérifiées, rien n’a donc été installé."
           }
         },
         "es": {
@@ -22322,7 +22322,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Update check failed"
+            "value": "Échec de la vérification des mises à jour"
           }
         },
         "es": {
@@ -22382,7 +22382,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The update information was older than what this device already has, so it was refused."
+            "value": "Les informations de mise à jour étaient plus anciennes que celles déjà présentes sur cet appareil, elles ont donc été refusées."
           }
         },
         "es": {
@@ -22442,7 +22442,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Update check failed"
+            "value": "Échec de la vérification des mises à jour"
           }
         },
         "es": {
@@ -22502,7 +22502,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Updates can't be checked right now. Try again in a few minutes."
+            "value": "Les mises à jour ne peuvent pas être vérifiées pour le moment. Réessayez dans quelques minutes."
           }
         },
         "es": {
@@ -22562,7 +22562,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Update check unavailable"
+            "value": "Vérification des mises à jour indisponible"
           }
         },
         "es": {
@@ -22622,7 +22622,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Required content couldn't be downloaded, so the app can't start. Check your connection and try again."
+            "value": "Le contenu requis n’a pas pu être téléchargé, l’app ne peut donc pas démarrer. Vérifiez votre connexion, puis réessayez."
           }
         },
         "es": {
@@ -22682,7 +22682,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Content missing"
+            "value": "Contenu manquant"
           }
         },
         "es": {
@@ -22742,7 +22742,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Some content couldn't be installed. It will be downloaded again next time."
+            "value": "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
           }
         },
         "es": {
@@ -22802,7 +22802,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Download corrupted"
+            "value": "Téléchargement corrompu"
           }
         },
         "es": {
@@ -22862,7 +22862,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Some content couldn't be installed. It will be downloaded again next time."
+            "value": "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
           }
         },
         "es": {
@@ -22922,7 +22922,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Content missing"
+            "value": "Contenu manquant"
           }
         },
         "es": {
@@ -22982,7 +22982,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Some content couldn't be installed. It will be downloaded again next time."
+            "value": "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
           }
         },
         "es": {
@@ -23042,7 +23042,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Content not valid"
+            "value": "Contenu non valide"
           }
         },
         "es": {
@@ -23102,7 +23102,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Some content couldn't be installed. It will be downloaded again next time."
+            "value": "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
           }
         },
         "es": {
@@ -23162,7 +23162,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Content not valid"
+            "value": "Contenu non valide"
           }
         },
         "es": {
@@ -23222,7 +23222,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Some content couldn't be installed. It will be downloaded again next time."
+            "value": "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
           }
         },
         "es": {
@@ -23282,7 +23282,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Content not valid"
+            "value": "Contenu non valide"
           }
         },
         "es": {
@@ -23342,7 +23342,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Some content couldn't be installed. It will be downloaded again next time."
+            "value": "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
           }
         },
         "es": {
@@ -23402,7 +23402,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Content not valid"
+            "value": "Contenu non valide"
           }
         },
         "es": {
@@ -23462,7 +23462,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Some content couldn't be installed. It will be downloaded again next time."
+            "value": "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
           }
         },
         "es": {
@@ -23522,7 +23522,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Content not valid"
+            "value": "Contenu non valide"
           }
         },
         "es": {
@@ -23582,7 +23582,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Some content was refused because it contains an unsafe file path."
+            "value": "Certains contenus ont été refusés, car ils contiennent un chemin de fichier dangereux."
           }
         },
         "es": {
@@ -23642,7 +23642,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Content refused"
+            "value": "Contenu refusé"
           }
         },
         "es": {
@@ -23702,7 +23702,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This license needs a hardware fingerprint, which couldn't be read on this device."
+            "value": "Cette licence nécessite une empreinte matérielle, qui n’a pas pu être lue sur cet appareil."
           }
         },
         "es": {
@@ -23762,7 +23762,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Device check failed"
+            "value": "Échec de la vérification de l’appareil"
           }
         },
         "es": {
@@ -23822,7 +23822,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "You don't have permission to do that."
+            "value": "Vous n’avez pas l’autorisation de faire cela."
           }
         },
         "es": {
@@ -23882,7 +23882,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Not allowed"
+            "value": "Non autorisé"
           }
         },
         "es": {
@@ -23942,7 +23942,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Some content couldn't be installed. It will be downloaded again next time."
+            "value": "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
           }
         },
         "es": {
@@ -24002,7 +24002,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Download corrupted"
+            "value": "Téléchargement corrompu"
           }
         },
         "es": {
@@ -24062,7 +24062,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This device's hardware changed. Activate again to use your license here."
+            "value": "Le matériel de cet appareil a changé. Activez à nouveau pour utiliser votre licence ici."
           }
         },
         "es": {
@@ -24122,7 +24122,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Device changed"
+            "value": "Appareil modifié"
           }
         },
         "es": {
@@ -24182,7 +24182,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The service answered with an error. Try again."
+            "value": "Le service a répondu par une erreur. Réessayez."
           }
         },
         "es": {
@@ -24242,7 +24242,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Service problem"
+            "value": "Problème de service"
           }
         },
         "es": {
@@ -24302,7 +24302,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign-in through this app is turned off. Your installs and licenses keep working."
+            "value": "La connexion via cette app est désactivée. Vos installations et vos licences continuent de fonctionner."
           }
         },
         "es": {
@@ -24362,7 +24362,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign-in unavailable"
+            "value": "Connexion indisponible"
           }
         },
         "es": {
@@ -24422,7 +24422,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The license inside the activation file isn't valid."
+            "value": "La licence contenue dans le fichier d’activation n’est pas valide."
           }
         },
         "es": {
@@ -24482,7 +24482,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Activation file not valid"
+            "value": "Fichier d’activation non valide"
           }
         },
         "es": {
@@ -24542,7 +24542,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The app refused an insecure connection. Contact the developer."
+            "value": "L’app a refusé une connexion non sécurisée. Contactez le développeur."
           }
         },
         "es": {
@@ -24602,7 +24602,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Insecure connection"
+            "value": "Connexion non sécurisée"
           }
         },
         "es": {
@@ -24662,7 +24662,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The app refused an insecure redirect."
+            "value": "L’app a refusé une redirection non sécurisée."
           }
         },
         "es": {
@@ -24722,7 +24722,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Insecure connection"
+            "value": "Connexion non sécurisée"
           }
         },
         "es": {
@@ -24782,7 +24782,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The download server had a problem. Try again in a few minutes."
+            "value": "Le serveur de téléchargement a rencontré un problème. Réessayez dans quelques minutes."
           }
         },
         "es": {
@@ -24842,7 +24842,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Download failed"
+            "value": "Échec du téléchargement"
           }
         },
         "es": {
@@ -24902,7 +24902,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The app sent a request the licensing bridge could not read. Contact the developer."
+            "value": "L’app a envoyé une requête que le pont de licence n’a pas pu lire. Contactez le développeur."
           }
         },
         "es": {
@@ -24962,7 +24962,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Request not accepted"
+            "value": "Requête non acceptée"
           }
         },
         "es": {
@@ -25022,7 +25022,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The app's licensing isn't set up correctly. Contact the developer."
+            "value": "La gestion des licences de l’app n’est pas correctement configurée. Contactez le développeur."
           }
         },
         "es": {
@@ -25082,7 +25082,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "App not set up"
+            "value": "App non configurée"
           }
         },
         "es": {
@@ -25142,7 +25142,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The service sent an answer the app couldn't use. Try again."
+            "value": "Le service a envoyé une réponse que l’app n’a pas pu utiliser. Réessayez."
           }
         },
         "es": {
@@ -25202,7 +25202,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Unexpected answer"
+            "value": "Réponse inattendue"
           }
         },
         "es": {
@@ -25256,13 +25256,13 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Die Anmeldung dieser App ist nicht richtig eingerichtet, deshalb wurde sie hier zum Schutz deines Kontos angehalten. Sag dem Entwickler Bescheid."
+            "value": "Die Anmeldung dieser App ist nicht richtig eingerichtet, deshalb wurde sie hier zum Schutz Ihres Kontos angehalten. Informieren Sie den Entwickler."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know."
+            "value": "La connexion de cette app n’est pas correctement configurée. Elle s’est donc arrêtée ici pour protéger votre compte. Prévenez son développeur."
           }
         },
         "es": {
@@ -25322,7 +25322,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign-in can't finish"
+            "value": "La connexion ne peut pas aboutir"
           }
         },
         "es": {
@@ -25382,7 +25382,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "That code isn't right. Check the email and try again."
+            "value": "Ce code n’est pas le bon. Vérifiez l’e-mail, puis réessayez."
           }
         },
         "es": {
@@ -25442,7 +25442,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wrong code"
+            "value": "Code incorrect"
           }
         },
         "es": {
@@ -25496,13 +25496,13 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diese Anmeldung ist abgelaufen oder wurde bereits verwendet. Melde dich erneut an."
+            "value": "Diese Anmeldung ist abgelaufen oder wurde bereits verwendet. Melden Sie sich erneut an."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "That sign-in has expired or was already used. Sign in again."
+            "value": "Cette connexion a expiré ou a déjà été utilisée. Connectez-vous à nouveau."
           }
         },
         "es": {
@@ -25562,7 +25562,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign-in no longer valid"
+            "value": "Connexion plus valide"
           }
         },
         "es": {
@@ -25616,13 +25616,13 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Die App hat eine Anmeldeanfrage gesendet, die wir nicht lesen können. Versuche es erneut."
+            "value": "Die App hat eine Anmeldeanfrage gesendet, die wir nicht lesen können. Versuchen Sie es erneut."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The app sent a sign-in request we can't read. Try again."
+            "value": "L’app a envoyé une demande de connexion illisible. Réessayez."
           }
         },
         "es": {
@@ -25682,7 +25682,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign-in request invalid"
+            "value": "Demande de connexion non valide"
           }
         },
         "es": {
@@ -25742,7 +25742,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The app asked for access this sign-in doesn't offer. Contact its developer."
+            "value": "L’app a demandé un accès que cette connexion ne propose pas. Contactez son développeur."
           }
         },
         "es": {
@@ -25802,7 +25802,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Access not available"
+            "value": "Accès indisponible"
           }
         },
         "es": {
@@ -25862,7 +25862,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The app asked for something its licensing bridge does not offer. Contact the developer."
+            "value": "L’app a demandé quelque chose que son pont de licence ne propose pas. Contactez le développeur."
           }
         },
         "es": {
@@ -25922,7 +25922,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Request not allowed"
+            "value": "Requête non autorisée"
           }
         },
         "es": {
@@ -25982,7 +25982,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "License keys can't be entered here. Sign in instead."
+            "value": "Les clés de licence ne peuvent pas être saisies ici. Connectez-vous à la place."
           }
         },
         "es": {
@@ -26042,7 +26042,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Not available here"
+            "value": "Indisponible ici"
           }
         },
         "es": {
@@ -26102,7 +26102,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This key has no entries left. Add it to your account and sign in instead."
+            "value": "Cette clé n’a plus d’utilisations disponibles. Ajoutez-la à votre compte et connectez-vous à la place."
           }
         },
         "es": {
@@ -26162,7 +26162,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "No key entries left"
+            "value": "Plus d’utilisations de la clé"
           }
         },
         "es": {
@@ -26222,7 +26222,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This is your account's only sign-in method. Add another one before removing it."
+            "value": "C’est la seule méthode de connexion de votre compte. Ajoutez-en une autre avant de la supprimer."
           }
         },
         "es": {
@@ -26282,7 +26282,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Can't remove"
+            "value": "Suppression impossible"
           }
         },
         "es": {
@@ -26342,7 +26342,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Choose which license this device uses, then continue."
+            "value": "Choisissez la licence que cet appareil utilise, puis continuez."
           }
         },
         "es": {
@@ -26402,7 +26402,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Choose a license"
+            "value": "Choisissez une licence"
           }
         },
         "es": {
@@ -26462,7 +26462,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This license has been disabled. Contact the developer."
+            "value": "Cette licence a été désactivée. Contactez le développeur."
           }
         },
         "es": {
@@ -26522,7 +26522,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "License disabled"
+            "value": "Licence désactivée"
           }
         },
         "es": {
@@ -26582,7 +26582,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This license belongs to an email address your Polaris Locker account hasn't verified. Verify that email in your account, then try again."
+            "value": "Cette licence est liée à une adresse e-mail que votre compte Polaris Locker n’a pas vérifiée. Vérifiez cette adresse dans votre compte, puis réessayez."
           }
         },
         "es": {
@@ -26642,7 +26642,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Email not verified"
+            "value": "E-mail non vérifié"
           }
         },
         "es": {
@@ -26702,7 +26702,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This license has expired. Renew it to continue."
+            "value": "Cette licence a expiré. Renouvelez-la pour continuer."
           }
         },
         "es": {
@@ -26762,7 +26762,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "License expired"
+            "value": "Licence expirée"
           }
         },
         "es": {
@@ -26822,7 +26822,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your license couldn't be verified. Reconnect the app, then try again."
+            "value": "Votre licence n’a pas pu être vérifiée. Reconnectez l’app, puis réessayez."
           }
         },
         "es": {
@@ -26882,7 +26882,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "License not accepted"
+            "value": "Licence non acceptée"
           }
         },
         "es": {
@@ -26942,7 +26942,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This %1$@ license is already in another Polaris Locker account. A license never moves by its key."
+            "value": "Cette licence %1$@ est déjà dans un autre compte Polaris Locker. Une licence ne change jamais de compte avec sa clé."
           }
         },
         "es": {
@@ -27002,7 +27002,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "License in another account"
+            "value": "Licence dans un autre compte"
           }
         },
         "es": {
@@ -27062,7 +27062,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Activate the app, then try again."
+            "value": "Activez l’app, puis réessayez."
           }
         },
         "es": {
@@ -27122,7 +27122,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "License needed"
+            "value": "Licence requise"
           }
         },
         "es": {
@@ -27182,7 +27182,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Connect to the internet so the app can refresh your license, then try again."
+            "value": "Connectez-vous à Internet pour que l’app puisse actualiser votre licence, puis réessayez."
           }
         },
         "es": {
@@ -27242,7 +27242,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "License needs refreshing"
+            "value": "Licence à actualiser"
           }
         },
         "es": {
@@ -27302,7 +27302,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your license is no longer valid, so settings can't be loaded. Sign in or activate again."
+            "value": "Votre licence n’est plus valide, les réglages ne peuvent donc pas être chargés. Connectez-vous ou activez à nouveau."
           }
         },
         "es": {
@@ -27362,7 +27362,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "License no longer valid"
+            "value": "Licence plus valide"
           }
         },
         "es": {
@@ -27422,7 +27422,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "That sign-in method belongs to another Polaris Locker account. Sign in to that account, or join the two accounts."
+            "value": "Cette méthode de connexion appartient à un autre compte Polaris Locker. Connectez-vous à ce compte, ou fusionnez les deux comptes."
           }
         },
         "es": {
@@ -27482,7 +27482,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Already linked"
+            "value": "Déjà associé"
           }
         },
         "es": {
@@ -27542,7 +27542,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This app is running offline, so it didn't connect."
+            "value": "Cette app fonctionne hors ligne, elle ne s’est donc pas connectée."
           }
         },
         "es": {
@@ -27602,7 +27602,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Offline mode"
+            "value": "Mode hors ligne"
           }
         },
         "es": {
@@ -27662,7 +27662,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This setting is managed by your organization and can't be changed here."
+            "value": "Ce réglage est géré par votre organisation et ne peut pas être modifié ici."
           }
         },
         "es": {
@@ -27722,7 +27722,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Set by your organization"
+            "value": "Défini par votre organisation"
           }
         },
         "es": {
@@ -27782,7 +27782,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This build's built-in content isn't valid. Reinstall the app or contact the developer."
+            "value": "Le contenu intégré de ce build n’est pas valide. Réinstallez l’app ou contactez le développeur."
           }
         },
         "es": {
@@ -27842,7 +27842,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "App build problem"
+            "value": "Problème de build de l’app"
           }
         },
         "es": {
@@ -27902,7 +27902,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The request wasn't valid. Update the app, then try again."
+            "value": "La requête n’était pas valide. Mettez l’app à jour, puis réessayez."
           }
         },
         "es": {
@@ -27962,7 +27962,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Request refused"
+            "value": "Requête refusée"
           }
         },
         "es": {
@@ -28022,7 +28022,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This isn't available for this app."
+            "value": "Cette fonction n’est pas disponible pour cette app."
           }
         },
         "es": {
@@ -28082,7 +28082,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Not available"
+            "value": "Indisponible"
           }
         },
         "es": {
@@ -28142,7 +28142,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This service isn't set up correctly. Contact the developer."
+            "value": "Ce service n’est pas correctement configuré. Contactez le développeur."
           }
         },
         "es": {
@@ -28202,7 +28202,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Service not set up"
+            "value": "Service non configuré"
           }
         },
         "es": {
@@ -28262,7 +28262,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Can't reach Polaris Locker. Check your connection and try again."
+            "value": "Polaris Locker est inaccessible. Vérifiez votre connexion, puis réessayez."
           }
         },
         "es": {
@@ -28322,7 +28322,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Can't connect"
+            "value": "Connexion impossible"
           }
         },
         "es": {
@@ -28382,7 +28382,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Can't reach Polaris Locker. Check your connection and try again."
+            "value": "Polaris Locker est inaccessible. Vérifiez votre connexion, puis réessayez."
           }
         },
         "es": {
@@ -28442,7 +28442,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Can't connect"
+            "value": "Connexion impossible"
           }
         },
         "es": {
@@ -28502,7 +28502,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This device isn't activated yet. Activate it or sign in."
+            "value": "Cet appareil n’est pas encore activé. Activez-le ou connectez-vous."
           }
         },
         "es": {
@@ -28562,7 +28562,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Not activated"
+            "value": "Non activé"
           }
         },
         "es": {
@@ -28622,7 +28622,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The app's licensing isn't set up yet. Contact the developer."
+            "value": "La gestion des licences de l’app n’est pas encore configurée. Contactez le développeur."
           }
         },
         "es": {
@@ -28682,7 +28682,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "App not set up"
+            "value": "App non configurée"
           }
         },
         "es": {
@@ -28742,7 +28742,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This offer isn't available to your account anymore. Refresh and try again."
+            "value": "Cette offre n’est plus disponible pour votre compte. Actualisez, puis réessayez."
           }
         },
         "es": {
@@ -28802,7 +28802,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Offer unavailable"
+            "value": "Offre indisponible"
           }
         },
         "es": {
@@ -28862,7 +28862,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your license doesn't include this."
+            "value": "Votre licence n’inclut pas cet élément."
           }
         },
         "es": {
@@ -28922,7 +28922,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Not included"
+            "value": "Non inclus"
           }
         },
         "es": {
@@ -28982,7 +28982,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "That wasn't found. It may have been removed."
+            "value": "Cet élément est introuvable. Il a peut-être été supprimé."
           }
         },
         "es": {
@@ -29042,7 +29042,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Not found"
+            "value": "Introuvable"
           }
         },
         "es": {
@@ -29102,7 +29102,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This license can't be added back with a key, so it stays in your library."
+            "value": "Cette licence ne peut pas être ajoutée de nouveau avec une clé : elle reste donc dans votre bibliothèque."
           }
         },
         "es": {
@@ -29162,7 +29162,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Can't remove"
+            "value": "Suppression impossible"
           }
         },
         "es": {
@@ -29222,7 +29222,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign-in didn't finish. Try again."
+            "value": "La connexion n’a pas abouti. Réessayez."
           }
         },
         "es": {
@@ -29282,7 +29282,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign-in failed"
+            "value": "Échec de la connexion"
           }
         },
         "es": {
@@ -29342,7 +29342,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This content isn't available for this device."
+            "value": "Ce contenu n’est pas disponible pour cet appareil."
           }
         },
         "es": {
@@ -29402,7 +29402,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Content not available"
+            "value": "Contenu indisponible"
           }
         },
         "es": {
@@ -29462,7 +29462,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Some content was refused because it contains files a data pack may not hold."
+            "value": "Certains contenus ont été refusés, car ils contiennent des fichiers qu’un pack de données ne peut pas contenir."
           }
         },
         "es": {
@@ -29522,7 +29522,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Content refused"
+            "value": "Contenu refusé"
           }
         },
         "es": {
@@ -29582,7 +29582,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your license doesn't include this content."
+            "value": "Votre licence n’inclut pas ce contenu."
           }
         },
         "es": {
@@ -29642,7 +29642,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Not included"
+            "value": "Non inclus"
           }
         },
         "es": {
@@ -29702,7 +29702,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This content isn't part of this version of the app."
+            "value": "Ce contenu ne fait pas partie de cette version de l’app."
           }
         },
         "es": {
@@ -29762,7 +29762,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Content not available"
+            "value": "Contenu indisponible"
           }
         },
         "es": {
@@ -29822,7 +29822,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This content was withdrawn by its developer and can't be used."
+            "value": "Ce contenu a été retiré par son développeur et ne peut pas être utilisé."
           }
         },
         "es": {
@@ -29882,7 +29882,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Content withdrawn"
+            "value": "Contenu retiré"
           }
         },
         "es": {
@@ -29942,7 +29942,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The last content update didn't start, so the previous version was restored."
+            "value": "La dernière mise à jour du contenu n’a pas démarré, la version précédente a donc été restaurée."
           }
         },
         "es": {
@@ -30002,7 +30002,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Content restored"
+            "value": "Contenu restauré"
           }
         },
         "es": {
@@ -30062,7 +30062,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Installed content couldn't be read, so nothing new was installed. Restart the app."
+            "value": "Le contenu installé n’a pas pu être lu, rien de nouveau n’a donc été installé. Redémarrez l’app."
           }
         },
         "es": {
@@ -30122,7 +30122,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Storage problem"
+            "value": "Problème de stockage"
           }
         },
         "es": {
@@ -30182,7 +30182,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Some content failed its check and wasn't installed."
+            "value": "Certains contenus n’ont pas passé leur vérification et n’ont pas été installés."
           }
         },
         "es": {
@@ -30242,7 +30242,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Content not valid"
+            "value": "Contenu non valide"
           }
         },
         "es": {
@@ -30302,7 +30302,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This content needs a newer version of the app. Update the app."
+            "value": "Ce contenu nécessite une version plus récente de l’app. Mettez l’app à jour."
           }
         },
         "es": {
@@ -30362,7 +30362,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Content not supported"
+            "value": "Contenu non pris en charge"
           }
         },
         "es": {
@@ -30422,7 +30422,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Some content couldn't be installed. It will be downloaded again next time."
+            "value": "Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois."
           }
         },
         "es": {
@@ -30482,7 +30482,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Download corrupted"
+            "value": "Téléchargement corrompu"
           }
         },
         "es": {
@@ -30542,7 +30542,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The update didn't download correctly, so it wasn't installed. Try again."
+            "value": "La mise à jour ne s’est pas téléchargée correctement, elle n’a donc pas été installée. Réessayez."
           }
         },
         "es": {
@@ -30602,7 +30602,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Download corrupted"
+            "value": "Téléchargement corrompu"
           }
         },
         "es": {
@@ -30662,7 +30662,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Some content was refused because it contains files a content pack may not hold."
+            "value": "Certains contenus ont été refusés, car ils contiennent des fichiers qu’un pack de contenu ne peut pas contenir."
           }
         },
         "es": {
@@ -30722,7 +30722,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Content refused"
+            "value": "Contenu refusé"
           }
         },
         "es": {
@@ -30782,7 +30782,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This content needs a different version of the game. Update the game."
+            "value": "Ce contenu nécessite une autre version du jeu. Mettez le jeu à jour."
           }
         },
         "es": {
@@ -30842,7 +30842,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Content not supported"
+            "value": "Contenu non pris en charge"
           }
         },
         "es": {
@@ -30902,7 +30902,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "There isn't enough free space for this content. Free up some space and try again."
+            "value": "L’espace libre est insuffisant pour ce contenu. Libérez de l’espace, puis réessayez."
           }
         },
         "es": {
@@ -30962,7 +30962,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Not enough space"
+            "value": "Espace insuffisant"
           }
         },
         "es": {
@@ -31022,7 +31022,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This content can't be installed on this device."
+            "value": "Ce contenu ne peut pas être installé sur cet appareil."
           }
         },
         "es": {
@@ -31082,7 +31082,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Can't install content"
+            "value": "Installation du contenu impossible"
           }
         },
         "es": {
@@ -31142,7 +31142,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This content can't be downloaded on this platform."
+            "value": "Ce contenu ne peut pas être téléchargé sur cette plateforme."
           }
         },
         "es": {
@@ -31202,7 +31202,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Can't download here"
+            "value": "Téléchargement impossible ici"
           }
         },
         "es": {
@@ -31262,7 +31262,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The platform reported an error. Try again."
+            "value": "La plateforme a signalé une erreur. Réessayez."
           }
         },
         "es": {
@@ -31322,7 +31322,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Platform problem"
+            "value": "Problème de plateforme"
           }
         },
         "es": {
@@ -31382,7 +31382,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Too many attempts. Wait a moment and try again."
+            "value": "Trop de tentatives. Patientez un instant, puis réessayez."
           }
         },
         "es": {
@@ -31442,7 +31442,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Too many attempts"
+            "value": "Trop de tentatives"
           }
         },
         "es": {
@@ -31502,7 +31502,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The update didn't match what was published, so it wasn't installed."
+            "value": "La mise à jour ne correspondait pas à ce qui a été publié, elle n’a donc pas été installée."
           }
         },
         "es": {
@@ -31562,7 +31562,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Update not verified"
+            "value": "Mise à jour non vérifiée"
           }
         },
         "es": {
@@ -31622,7 +31622,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The update couldn't be verified, so it wasn't installed."
+            "value": "La mise à jour n’a pas pu être vérifiée, elle n’a donc pas été installée."
           }
         },
         "es": {
@@ -31682,7 +31682,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Update not verified"
+            "value": "Mise à jour non vérifiée"
           }
         },
         "es": {
@@ -31736,13 +31736,13 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Die Anmeldung dieser App ist nicht richtig eingerichtet, deshalb wurde sie hier zum Schutz deines Kontos angehalten. Sag dem Entwickler Bescheid."
+            "value": "Die Anmeldung dieser App ist nicht richtig eingerichtet, deshalb wurde sie hier zum Schutz Ihres Kontos angehalten. Informieren Sie den Entwickler."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know."
+            "value": "La connexion de cette app n’est pas correctement configurée. Elle s’est donc arrêtée ici pour protéger votre compte. Prévenez son développeur."
           }
         },
         "es": {
@@ -31802,7 +31802,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign-in can't return to the app"
+            "value": "La connexion ne peut pas revenir à l’app"
           }
         },
         "es": {
@@ -31862,7 +31862,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your license and settings couldn't be refreshed. Check your connection and try again."
+            "value": "Votre licence et vos réglages n’ont pas pu être actualisés. Vérifiez votre connexion, puis réessayez."
           }
         },
         "es": {
@@ -31922,7 +31922,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Couldn't refresh"
+            "value": "Actualisation impossible"
           }
         },
         "es": {
@@ -31982,7 +31982,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "New devices can't register right now. Activate with a license key or sign in."
+            "value": "Les nouveaux appareils ne peuvent pas s’enregistrer pour le moment. Activez avec une clé de licence ou connectez-vous."
           }
         },
         "es": {
@@ -32042,7 +32042,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Registration closed"
+            "value": "Inscription fermée"
           }
         },
         "es": {
@@ -32102,7 +32102,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your license doesn't include this release."
+            "value": "Votre licence n’inclut pas cet élément."
           }
         },
         "es": {
@@ -32162,7 +32162,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Not included"
+            "value": "Non inclus"
           }
         },
         "es": {
@@ -32222,7 +32222,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The release wasn't published because a check failed. The publish log names the check."
+            "value": "La version n’a pas été publiée, car une vérification a échoué. Le journal de publication indique laquelle."
           }
         },
         "es": {
@@ -32282,7 +32282,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Release refused"
+            "value": "Version refusée"
           }
         },
         "es": {
@@ -32342,7 +32342,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "A release was skipped because its tag matches a content pack release. Rename the tag."
+            "value": "Une version a été ignorée, car son tag correspond à une version de pack de contenu. Renommez le tag."
           }
         },
         "es": {
@@ -32402,7 +32402,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Release skipped"
+            "value": "Version ignorée"
           }
         },
         "es": {
@@ -32462,7 +32462,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Device reports aren't available here."
+            "value": "Les rapports d’appareil ne sont pas disponibles ici."
           }
         },
         "es": {
@@ -32522,7 +32522,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Not available here"
+            "value": "Indisponible ici"
           }
         },
         "es": {
@@ -32582,7 +32582,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The service sent an answer the app couldn't use. Try again."
+            "value": "Le service a envoyé une réponse que l’app n’a pas pu utiliser. Réessayez."
           }
         },
         "es": {
@@ -32642,7 +32642,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Unexpected answer"
+            "value": "Réponse inattendue"
           }
         },
         "es": {
@@ -32702,7 +32702,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This window may not use the app's licensing. Contact the developer."
+            "value": "Cette fenêtre n’a pas le droit d’utiliser la gestion des licences de l’app. Contactez le développeur."
           }
         },
         "es": {
@@ -32762,7 +32762,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Window not allowed"
+            "value": "Fenêtre non autorisée"
           }
         },
         "es": {
@@ -32822,7 +32822,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The service had a problem. Try again in a few minutes."
+            "value": "Le service a rencontré un problème. Réessayez dans quelques minutes."
           }
         },
         "es": {
@@ -32882,7 +32882,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Service problem"
+            "value": "Problème de service"
           }
         },
         "es": {
@@ -32942,7 +32942,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This service isn't set up correctly. Contact the developer."
+            "value": "Ce service n’est pas correctement configuré. Contactez le développeur."
           }
         },
         "es": {
@@ -33002,7 +33002,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Service not set up"
+            "value": "Service non configuré"
           }
         },
         "es": {
@@ -33062,7 +33062,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This service is turned off for this app."
+            "value": "Ce service est désactivé pour cette app."
           }
         },
         "es": {
@@ -33122,7 +33122,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Not available"
+            "value": "Indisponible"
           }
         },
         "es": {
@@ -33182,7 +33182,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This app doesn't use this service."
+            "value": "Cette app n’utilise pas ce service."
           }
         },
         "es": {
@@ -33242,7 +33242,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Not available"
+            "value": "Indisponible"
           }
         },
         "es": {
@@ -33302,7 +33302,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign-in was declined. Start again."
+            "value": "La connexion a été refusée. Recommencez."
           }
         },
         "es": {
@@ -33362,7 +33362,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign-in declined"
+            "value": "Connexion refusée"
           }
         },
         "es": {
@@ -33422,7 +33422,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The code expired before sign-in finished. Start again."
+            "value": "Le code a expiré avant la fin de la connexion. Recommencez."
           }
         },
         "es": {
@@ -33482,7 +33482,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Code expired"
+            "value": "Code expiré"
           }
         },
         "es": {
@@ -33542,7 +33542,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign-in didn't finish. Try again."
+            "value": "La connexion n’a pas abouti. Réessayez."
           }
         },
         "es": {
@@ -33602,7 +33602,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign-in failed"
+            "value": "Échec de la connexion"
           }
         },
         "es": {
@@ -33662,7 +33662,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign-in isn't available right now. Try again in a few minutes."
+            "value": "La connexion n’est pas disponible pour le moment. Réessayez dans quelques minutes."
           }
         },
         "es": {
@@ -33722,7 +33722,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign-in unavailable"
+            "value": "Connexion indisponible"
           }
         },
         "es": {
@@ -33782,7 +33782,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign-out didn't finish. Try again."
+            "value": "La déconnexion n’a pas abouti. Réessayez."
           }
         },
         "es": {
@@ -33842,7 +33842,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign-out failed"
+            "value": "Échec de la déconnexion"
           }
         },
         "es": {
@@ -33902,7 +33902,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign in to your Polaris Locker account in the app, then try again."
+            "value": "Connectez-vous à votre compte Polaris Locker dans l’app, puis réessayez."
           }
         },
         "es": {
@@ -33962,7 +33962,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign-in needed"
+            "value": "Connexion nécessaire"
           }
         },
         "es": {
@@ -34022,7 +34022,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This sign-in has expired. Start again."
+            "value": "Cette connexion a expiré. Recommencez."
           }
         },
         "es": {
@@ -34082,7 +34082,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign-in expired"
+            "value": "Connexion expirée"
           }
         },
         "es": {
@@ -34142,7 +34142,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The service can't sign a document right now. Try again in a few minutes."
+            "value": "Le service ne peut pas signer de document pour le moment. Réessayez dans quelques minutes."
           }
         },
         "es": {
@@ -34202,7 +34202,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Signing unavailable"
+            "value": "Signature indisponible"
           }
         },
         "es": {
@@ -34262,7 +34262,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "For your security, sign in again to continue."
+            "value": "Pour votre sécurité, connectez-vous à nouveau pour continuer."
           }
         },
         "es": {
@@ -34322,7 +34322,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Confirm it's you"
+            "value": "Confirmez que c’est vous"
           }
         },
         "es": {
@@ -34382,7 +34382,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The app couldn't read or save its license on this device. Check that the app can write its data folder."
+            "value": "L’app n’a pas pu lire ou enregistrer sa licence sur cet appareil. Vérifiez qu’elle peut écrire dans son dossier de données."
           }
         },
         "es": {
@@ -34442,7 +34442,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Storage problem"
+            "value": "Problème de stockage"
           }
         },
         "es": {
@@ -34502,7 +34502,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The update couldn't be applied. It will be tried again next launch."
+            "value": "La mise à jour n’a pas pu être appliquée. Une nouvelle tentative aura lieu au prochain lancement."
           }
         },
         "es": {
@@ -34562,7 +34562,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Update not finished"
+            "value": "Mise à jour inachevée"
           }
         },
         "es": {
@@ -34622,7 +34622,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This installation can't update itself. Update it the way you installed it."
+            "value": "Cette installation ne peut pas se mettre à jour elle-même. Mettez-la à jour comme vous l’avez installée."
           }
         },
         "es": {
@@ -34682,7 +34682,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Can't update here"
+            "value": "Mise à jour impossible ici"
           }
         },
         "es": {
@@ -34742,7 +34742,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your license couldn't be checked, so the app can't start. Check your connection and try again."
+            "value": "Votre licence n’a pas pu être vérifiée, l’app ne peut donc pas démarrer. Vérifiez votre connexion, puis réessayez."
           }
         },
         "es": {
@@ -34802,7 +34802,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Couldn't check your license"
+            "value": "Vérification de la licence impossible"
           }
         },
         "es": {
@@ -34862,7 +34862,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Agree to the terms to continue."
+            "value": "Acceptez les conditions pour continuer."
           }
         },
         "es": {
@@ -34922,7 +34922,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Terms not accepted"
+            "value": "Conditions non acceptées"
           }
         },
         "es": {
@@ -34982,7 +34982,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The service took too long to answer. Check your connection and try again."
+            "value": "Le service a mis trop de temps à répondre. Vérifiez votre connexion, puis réessayez."
           }
         },
         "es": {
@@ -35042,7 +35042,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Timed out"
+            "value": "Délai dépassé"
           }
         },
         "es": {
@@ -35102,7 +35102,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The connection was redirected too many times. Try again."
+            "value": "La connexion a été redirigée trop de fois. Réessayez."
           }
         },
         "es": {
@@ -35162,7 +35162,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Connection problem"
+            "value": "Problème de connexion"
           }
         },
         "es": {
@@ -35222,7 +35222,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Check your connection and try again."
+            "value": "Vérifiez votre connexion, puis réessayez."
           }
         },
         "es": {
@@ -35282,7 +35282,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Connection problem"
+            "value": "Problème de connexion"
           }
         },
         "es": {
@@ -35342,7 +35342,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The security check didn't pass. Reload the page and try again."
+            "value": "La vérification de sécurité n’a pas abouti. Rechargez la page, puis réessayez."
           }
         },
         "es": {
@@ -35402,7 +35402,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Check didn't pass"
+            "value": "Vérification non réussie"
           }
         },
         "es": {
@@ -35462,7 +35462,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This device isn't signed in, or its license is no longer valid. Sign in or activate again."
+            "value": "Cet appareil n’est pas connecté, ou sa licence n’est plus valide. Connectez-vous ou activez-le à nouveau."
           }
         },
         "es": {
@@ -35522,7 +35522,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Not signed in"
+            "value": "Non connecté"
           }
         },
         "es": {
@@ -35582,7 +35582,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign-in isn't available right now. Try again in a few minutes."
+            "value": "La connexion n’est pas disponible pour le moment. Réessayez dans quelques minutes."
           }
         },
         "es": {
@@ -35642,7 +35642,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign-in unavailable"
+            "value": "Connexion indisponible"
           }
         },
         "es": {
@@ -35702,7 +35702,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Something went wrong. Try again."
+            "value": "Une erreur s’est produite. Réessayez."
           }
         },
         "es": {
@@ -35762,7 +35762,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Something went wrong"
+            "value": "Une erreur s’est produite"
           }
         },
         "es": {
@@ -35822,7 +35822,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign-in isn't available for this app."
+            "value": "La connexion n’est pas disponible pour cette app."
           }
         },
         "es": {
@@ -35882,7 +35882,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign-in unavailable"
+            "value": "Connexion indisponible"
           }
         },
         "es": {
@@ -35942,7 +35942,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This isn't available here."
+            "value": "Cette fonction n’est pas disponible ici."
           }
         },
         "es": {
@@ -36002,7 +36002,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Not available here"
+            "value": "Indisponible ici"
           }
         },
         "es": {
@@ -36062,7 +36062,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The app asked for a sign-in type we don't support. Contact its developer."
+            "value": "L’app a demandé un type de connexion que nous ne prenons pas en charge. Contactez son développeur."
           }
         },
         "es": {
@@ -36122,7 +36122,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign-in request invalid"
+            "value": "Demande de connexion non valide"
           }
         },
         "es": {
@@ -36182,7 +36182,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Downloads are busy right now. Try again in a few minutes."
+            "value": "Les téléchargements sont très sollicités pour le moment. Réessayez dans quelques minutes."
           }
         },
         "es": {
@@ -36242,7 +36242,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Download busy"
+            "value": "Téléchargements saturés"
           }
         },
         "es": {
@@ -36302,7 +36302,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "A value couldn't be saved. Change it and try again."
+            "value": "Une valeur n’a pas pu être enregistrée. Modifiez-la, puis réessayez."
           }
         },
         "es": {
@@ -36362,7 +36362,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Value not accepted"
+            "value": "Valeur refusée"
           }
         },
         "es": {
@@ -36422,7 +36422,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This version can't be used with your license. Update the app to continue."
+            "value": "Cette version ne peut pas être utilisée avec votre licence. Mettez l’app à jour pour continuer."
           }
         },
         "es": {
@@ -36482,7 +36482,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Update required"
+            "value": "Mise à jour requise"
           }
         },
         "es": {
@@ -36542,7 +36542,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Something went wrong (%1$@). Try again."
+            "value": "Une erreur s’est produite (%1$@). Réessayez."
           }
         },
         "es": {
@@ -36602,7 +36602,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Something went wrong"
+            "value": "Une erreur s’est produite"
           }
         },
         "es": {
@@ -36662,7 +36662,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your license doesn't include this channel."
+            "value": "Votre licence n’inclut pas ce canal."
           }
         },
         "es": {
@@ -36722,7 +36722,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Channel not included"
+            "value": "Canal non inclus"
           }
         },
         "es": {
@@ -36782,7 +36782,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Connect to the internet or renew your license to continue."
+            "value": "Connectez-vous à Internet ou renouvelez votre licence pour continuer."
           }
         },
         "es": {
@@ -36842,7 +36842,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "License expired"
+            "value": "Licence expirée"
           }
         },
         "es": {
@@ -36902,7 +36902,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "The licensing service can't be reached. You can keep using the app until the grace period ends."
+            "value": "Le service de licence est inaccessible. Vous pouvez continuer à utiliser l’app jusqu’à la fin de la période de grâce."
           }
         },
         "es": {
@@ -36962,7 +36962,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Offline grace"
+            "value": "Période de grâce hors ligne"
           }
         },
         "es": {
@@ -37022,7 +37022,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Enter a license key or sign in to continue."
+            "value": "Saisissez une clé de licence ou connectez-vous pour continuer."
           }
         },
         "es": {
@@ -37082,7 +37082,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Activate"
+            "value": "Activer"
           }
         },
         "es": {
@@ -37142,7 +37142,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This app doesn't need a license."
+            "value": "Cette app n’a pas besoin de licence."
           }
         },
         "es": {
@@ -37202,7 +37202,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "No license needed"
+            "value": "Aucune licence requise"
           }
         },
         "es": {
@@ -37262,7 +37262,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your license is active."
+            "value": "Votre licence est active."
           }
         },
         "es": {
@@ -37322,7 +37322,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "License active"
+            "value": "Licence active"
           }
         },
         "es": {
@@ -37382,7 +37382,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This device was signed out. Sign in or activate again to continue."
+            "value": "Cet appareil a été déconnecté. Connectez-vous ou activez à nouveau pour continuer."
           }
         },
         "es": {
@@ -37442,7 +37442,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Signed out"
+            "value": "Déconnecté"
           }
         },
         "es": {
@@ -37502,7 +37502,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This build is newer than your license allows."
+            "value": "Ce build est plus récent que ce que votre licence autorise."
           }
         },
         "es": {
@@ -37562,7 +37562,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Not available on this license"
+            "value": "Indisponible avec cette licence"
           }
         },
         "es": {
@@ -37622,7 +37622,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This version is no longer supported. Update the app to continue."
+            "value": "Cette version n’est plus prise en charge. Mettez l’app à jour pour continuer."
           }
         },
         "es": {
@@ -37682,7 +37682,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Update required"
+            "value": "Mise à jour requise"
           }
         },
         "es": {

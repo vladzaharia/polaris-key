@@ -1823,799 +1823,799 @@
     <!-- Sign-in card, code step: links to the Help page for a code that has not arrived (DOC-06a). -->
     <string name="signin_code_missing">Pas de code reçu ?</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
-    <string name="core_fallback_title">Something went wrong</string>
+    <string name="core_fallback_title">Une erreur s’est produite</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->
-    <string name="core_fallback_message">Something went wrong (%1$s). Try again.</string>
+    <string name="core_fallback_message">Une erreur s’est produite (%1$s). Réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_unauthorized_title">Not signed in</string>
+    <string name="core_codes_unauthorized_title">Non connecté</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_unauthorized_message">This device isn't signed in, or its license is no longer valid. Sign in or activate again.</string>
+    <string name="core_codes_unauthorized_message">Cet appareil n’est pas connecté, ou sa licence n’est plus valide. Connectez-vous ou activez-le à nouveau.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_not_found_title">Not found</string>
+    <string name="core_codes_not_found_title">Introuvable</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_not_found_message">That wasn't found. It may have been removed.</string>
+    <string name="core_codes_not_found_message">Cet élément est introuvable. Il a peut-être été supprimé.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_bad_request_title">Request refused</string>
+    <string name="core_codes_bad_request_title">Requête refusée</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_bad_request_message">The request wasn't valid. Update the app, then try again.</string>
+    <string name="core_codes_bad_request_message">La requête n’était pas valide. Mettez l’app à jour, puis réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_forbidden_title">Not allowed</string>
+    <string name="core_codes_forbidden_title">Non autorisé</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_forbidden_message">You don't have permission to do that.</string>
+    <string name="core_codes_forbidden_message">Vous n’avez pas l’autorisation de faire cela.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_attestation_required_title">Device check needed</string>
+    <string name="core_codes_attestation_required_title">Vérification de l’appareil requise</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_attestation_required_message">This needs a verified device. Let the app check this device, then try again.</string>
+    <string name="core_codes_attestation_required_message">Un appareil vérifié est nécessaire. Laissez l’app vérifier cet appareil, puis réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_attestation_rejected_title">Device check failed</string>
+    <string name="core_codes_attestation_rejected_title">Échec de la vérification de l’appareil</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_attestation_rejected_message">This device couldn't be verified. Try again.</string>
+    <string name="core_codes_attestation_rejected_message">Cet appareil n’a pas pu être vérifié. Réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_attestation_unavailable_title">Device check unavailable</string>
+    <string name="core_codes_attestation_unavailable_title">Vérification de l’appareil indisponible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_attestation_unavailable_message">Device verification isn't available for this app right now. Try again in a few minutes.</string>
+    <string name="core_codes_attestation_unavailable_message">La vérification des appareils n’est pas disponible pour cette app pour le moment. Réessayez dans quelques minutes.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_rate_limited_title">Too many attempts</string>
+    <string name="core_codes_rate_limited_title">Trop de tentatives</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_rate_limited_message">Too many attempts. Wait a moment and try again.</string>
+    <string name="core_codes_rate_limited_message">Trop de tentatives. Patientez un instant, puis réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_body_too_large_title">Too large</string>
+    <string name="core_codes_body_too_large_title">Trop volumineux</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_body_too_large_message">That is too large to send.</string>
+    <string name="core_codes_body_too_large_message">C’est trop volumineux pour être envoyé.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_method_not_allowed_title">Request refused</string>
+    <string name="core_codes_method_not_allowed_title">Requête refusée</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_method_not_allowed_message">The request wasn't valid. Update the app, then try again.</string>
+    <string name="core_codes_method_not_allowed_message">La requête n’était pas valide. Mettez l’app à jour, puis réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_misconfigured_title">Service not set up</string>
+    <string name="core_codes_misconfigured_title">Service non configuré</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_misconfigured_message">This service isn't set up correctly. Contact the developer.</string>
+    <string name="core_codes_misconfigured_message">Ce service n’est pas correctement configuré. Contactez le développeur.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_registration_closed_title">Registration closed</string>
+    <string name="core_codes_registration_closed_title">Inscription fermée</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_registration_closed_message">New devices can't register right now. Activate with a license key or sign in.</string>
+    <string name="core_codes_registration_closed_message">Les nouveaux appareils ne peuvent pas s’enregistrer pour le moment. Activez avec une clé de licence ou connectez-vous.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_value_not_representable_title">Value not accepted</string>
+    <string name="core_codes_value_not_representable_title">Valeur refusée</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_value_not_representable_message">A value couldn't be saved. Change it and try again.</string>
+    <string name="core_codes_value_not_representable_message">Une valeur n’a pas pu être enregistrée. Modifiez-la, puis réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_document_not_representable_title">Service problem</string>
+    <string name="core_codes_document_not_representable_title">Problème de service</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_document_not_representable_message">The service couldn't prepare your settings. Contact the developer.</string>
+    <string name="core_codes_document_not_representable_message">Le service n’a pas pu préparer vos réglages. Contactez le développeur.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_signing_unavailable_title">Signing unavailable</string>
+    <string name="core_codes_signing_unavailable_title">Signature indisponible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_signing_unavailable_message">The service can't sign a document right now. Try again in a few minutes.</string>
+    <string name="core_codes_signing_unavailable_message">Le service ne peut pas signer de document pour le moment. Réessayez dans quelques minutes.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_device_limit_title">Device limit reached</string>
+    <string name="core_codes_device_limit_title">Limite d’appareils atteinte</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_device_limit_message">This license is already on all its devices. Replace a device to use it here.</string>
+    <string name="core_codes_device_limit_message">Cette licence est déjà utilisée sur tous ses appareils. Remplacez un appareil pour l’utiliser ici.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_key_entry_limit_title">No key entries left</string>
+    <string name="core_codes_key_entry_limit_title">Plus d’utilisations de la clé</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_key_entry_limit_message">This key has no entries left. Add it to your account and sign in instead.</string>
+    <string name="core_codes_key_entry_limit_message">Cette clé n’a plus d’utilisations disponibles. Ajoutez-la à votre compte et connectez-vous à la place.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_license_disabled_title">License disabled</string>
+    <string name="core_codes_license_disabled_title">Licence désactivée</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_license_disabled_message">This license has been disabled. Contact the developer.</string>
+    <string name="core_codes_license_disabled_message">Cette licence a été désactivée. Contactez le développeur.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_license_expired_title">License expired</string>
+    <string name="core_codes_license_expired_title">Licence expirée</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_license_expired_message">This license has expired. Renew it to continue.</string>
+    <string name="core_codes_license_expired_message">Cette licence a expiré. Renouvelez-la pour continuer.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_not_entitled_title">Not included</string>
+    <string name="core_codes_not_entitled_title">Non inclus</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_not_entitled_message">Your license doesn't include this.</string>
+    <string name="core_codes_not_entitled_message">Votre licence n’inclut pas cet élément.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_version_blocked_title">Update required</string>
+    <string name="core_codes_version_blocked_title">Mise à jour requise</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_version_blocked_message">This version can't be used with your license. Update the app to continue.</string>
+    <string name="core_codes_version_blocked_message">Cette version ne peut pas être utilisée avec votre licence. Mettez l’app à jour pour continuer.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_channel_not_allowed_title">Channel not included</string>
+    <string name="core_codes_channel_not_allowed_title">Canal non inclus</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_channel_not_allowed_message">Your license doesn't include this channel.</string>
+    <string name="core_codes_channel_not_allowed_message">Votre licence n’inclut pas ce canal.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_hardware_mismatch_title">Device changed</string>
+    <string name="core_codes_hardware_mismatch_title">Appareil modifié</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_hardware_mismatch_message">This device's hardware changed. Activate again to use your license here.</string>
+    <string name="core_codes_hardware_mismatch_message">Le matériel de cet appareil a changé. Activez à nouveau pour utiliser votre licence ici.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_fingerprint_required_title">Device check failed</string>
+    <string name="core_codes_fingerprint_required_title">Échec de la vérification de l’appareil</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_fingerprint_required_message">This license needs a hardware fingerprint, which couldn't be read on this device.</string>
+    <string name="core_codes_fingerprint_required_message">Cette licence nécessite une empreinte matérielle, qui n’a pas pu être lue sur cet appareil.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_enroll_disabled_title">No free license</string>
+    <string name="core_codes_enroll_disabled_title">Aucune licence gratuite</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_enroll_disabled_message">This app doesn't offer a free license. Enter a license key or sign in.</string>
+    <string name="core_codes_enroll_disabled_message">Cette app ne propose pas de licence gratuite. Saisissez une clé de licence ou connectez-vous.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_enroll_claimed_title">Sign in to continue</string>
+    <string name="core_codes_enroll_claimed_title">Connectez-vous pour continuer</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_enroll_claimed_message">This device's free license belongs to an account now. Sign in to use it.</string>
+    <string name="core_codes_enroll_claimed_message">La licence gratuite de cet appareil appartient désormais à un compte. Connectez-vous pour l’utiliser.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_enroll_failed_title">Couldn't get a free license</string>
+    <string name="core_codes_enroll_failed_title">Licence gratuite non obtenue</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_enroll_failed_message">A free license couldn't be issued. Try again in a few minutes.</string>
+    <string name="core_codes_enroll_failed_message">Une licence gratuite n’a pas pu être émise. Réessayez dans quelques minutes.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_managed_by_admin_title">Set by your organization</string>
+    <string name="core_codes_managed_by_admin_title">Défini par votre organisation</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_managed_by_admin_message">This setting is managed by your organization and can't be changed here.</string>
+    <string name="core_codes_managed_by_admin_message">Ce réglage est géré par votre organisation et ne peut pas être modifié ici.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_catalog_unavailable_title">Settings unavailable</string>
+    <string name="core_codes_catalog_unavailable_title">Réglages indisponibles</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_catalog_unavailable_message">Settings can't be loaded right now. Try again in a few minutes.</string>
+    <string name="core_codes_catalog_unavailable_message">Les réglages ne peuvent pas être chargés pour le moment. Réessayez dans quelques minutes.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_license_unusable_title">License no longer valid</string>
+    <string name="core_codes_license_unusable_title">Licence plus valide</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_license_unusable_message">Your license is no longer valid, so settings can't be loaded. Sign in or activate again.</string>
+    <string name="core_codes_license_unusable_message">Votre licence n’est plus valide, les réglages ne peuvent donc pas être chargés. Connectez-vous ou activez à nouveau.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_disabled_title">Sign-in unavailable</string>
+    <string name="core_codes_disabled_title">Connexion indisponible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_disabled_message">Sign-in isn't turned on for this app.</string>
+    <string name="core_codes_disabled_message">La connexion n’est pas activée pour cette app.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_oidc_error_title">Sign-in failed</string>
+    <string name="core_codes_oidc_error_title">Échec de la connexion</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_oidc_error_message">Sign-in didn't finish. Try again.</string>
+    <string name="core_codes_oidc_error_message">La connexion n’a pas abouti. Réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_unavailable_title">Sign-in unavailable</string>
+    <string name="core_codes_unavailable_title">Connexion indisponible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_unavailable_message">Sign-in isn't available right now. Try again in a few minutes.</string>
+    <string name="core_codes_unavailable_message">La connexion n’est pas disponible pour le moment. Réessayez dans quelques minutes.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_erasure_ledger_unavailable_title">Account check unavailable</string>
+    <string name="core_codes_erasure_ledger_unavailable_title">Vérification du compte indisponible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_erasure_ledger_unavailable_message">We couldn't confirm your account's status right now. Try again in a few minutes.</string>
+    <string name="core_codes_erasure_ledger_unavailable_message">Nous n’avons pas pu confirmer l’état de votre compte pour le moment. Réessayez dans quelques minutes.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_identity_disabled_title">Sign-in unavailable</string>
+    <string name="core_codes_identity_disabled_title">Connexion indisponible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_identity_disabled_message">Sign-in through this app is turned off. Your installs and licenses keep working.</string>
+    <string name="core_codes_identity_disabled_message">La connexion via cette app est désactivée. Vos installations et vos licences continuent de fonctionner.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_unknown_app_title">Sign-in unavailable</string>
+    <string name="core_codes_unknown_app_title">Connexion indisponible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_unknown_app_message">Sign-in isn't available for this app.</string>
+    <string name="core_codes_unknown_app_message">La connexion n’est pas disponible pour cette app.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_request_title">Sign-in request invalid</string>
+    <string name="core_codes_invalid_request_title">Demande de connexion non valide</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_request_message">The app sent a sign-in request we can't read. Try again.</string>
+    <string name="core_codes_invalid_request_message">L’app a envoyé une demande de connexion illisible. Réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_client_title">Sign-in can't finish</string>
+    <string name="core_codes_invalid_client_title">La connexion ne peut pas aboutir</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_client_message">This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know.</string>
+    <string name="core_codes_invalid_client_message">La connexion de cette app n’est pas correctement configurée. Elle s’est donc arrêtée ici pour protéger votre compte. Prévenez son développeur.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_grant_title">Sign-in no longer valid</string>
+    <string name="core_codes_invalid_grant_title">Connexion plus valide</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_grant_message">That sign-in has expired or was already used. Sign in again.</string>
+    <string name="core_codes_invalid_grant_message">Cette connexion a expiré ou a déjà été utilisée. Connectez-vous à nouveau.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_unsupported_grant_type_title">Sign-in request invalid</string>
+    <string name="core_codes_unsupported_grant_type_title">Demande de connexion non valide</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_unsupported_grant_type_message">The app asked for a sign-in type we don't support. Contact its developer.</string>
+    <string name="core_codes_unsupported_grant_type_message">L’app a demandé un type de connexion que nous ne prenons pas en charge. Contactez son développeur.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_scope_title">Access not available</string>
+    <string name="core_codes_invalid_scope_title">Accès indisponible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_scope_message">The app asked for access this sign-in doesn't offer. Contact its developer.</string>
+    <string name="core_codes_invalid_scope_message">L’app a demandé un accès que cette connexion ne propose pas. Contactez son développeur.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_redirect_uri_mismatch_title">Sign-in can't return to the app</string>
+    <string name="core_codes_redirect_uri_mismatch_title">La connexion ne peut pas revenir à l’app</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_redirect_uri_mismatch_message">This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know.</string>
+    <string name="core_codes_redirect_uri_mismatch_message">La connexion de cette app n’est pas correctement configurée. Elle s’est donc arrêtée ici pour protéger votre compte. Prévenez son développeur.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_license_choice_required_title">Choose a license</string>
+    <string name="core_codes_license_choice_required_title">Choisissez une licence</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_license_choice_required_message">Choose which license this device uses, then continue.</string>
+    <string name="core_codes_license_choice_required_message">Choisissez la licence que cet appareil utilise, puis continuez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_auth_method_disabled_title">Sign-in method unavailable</string>
+    <string name="core_codes_auth_method_disabled_title">Méthode de connexion indisponible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_auth_method_disabled_message">That sign-in method is turned off. Choose another one.</string>
+    <string name="core_codes_auth_method_disabled_message">Cette méthode de connexion est désactivée. Choisissez-en une autre.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_email_unavailable_title">Email sign-in unavailable</string>
+    <string name="core_codes_email_unavailable_title">Connexion par e-mail indisponible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_email_unavailable_message">Email sign-in isn't available right now. Choose another sign-in method.</string>
+    <string name="core_codes_email_unavailable_message">La connexion par e-mail n’est pas disponible pour le moment. Choisissez une autre méthode de connexion.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_turnstile_failed_title">Check didn't pass</string>
+    <string name="core_codes_turnstile_failed_title">Vérification non réussie</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_turnstile_failed_message">The security check didn't pass. Reload the page and try again.</string>
+    <string name="core_codes_turnstile_failed_message">La vérification de sécurité n’a pas abouti. Rechargez la page, puis réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_signin_expired_title">Sign-in expired</string>
+    <string name="core_codes_signin_expired_title">Connexion expirée</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_signin_expired_message">This sign-in has expired. Start again.</string>
+    <string name="core_codes_signin_expired_message">Cette connexion a expiré. Recommencez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_code_title">Wrong code</string>
+    <string name="core_codes_invalid_code_title">Code incorrect</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_code_message">That code isn't right. Check the email and try again.</string>
+    <string name="core_codes_invalid_code_message">Ce code n’est pas le bon. Vérifiez l’e-mail, puis réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_code_expired_title">Code expired</string>
+    <string name="core_codes_code_expired_title">Code expiré</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_code_expired_message">That code has expired. Send a new code.</string>
+    <string name="core_codes_code_expired_message">Ce code a expiré. Envoyez-vous un nouveau code.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_email_in_use_title">Email already in use</string>
+    <string name="core_codes_email_in_use_title">E-mail déjà utilisé</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_email_in_use_message">Another Polaris Locker account already uses this email. Join this sign-in to that account, or use a different email.</string>
+    <string name="core_codes_email_in_use_message">Un autre compte Polaris Locker utilise déjà cette adresse e-mail. Associez cette connexion à ce compte, ou utilisez une autre adresse.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_terms_required_title">Terms not accepted</string>
+    <string name="core_codes_terms_required_title">Conditions non acceptées</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_terms_required_message">Agree to the terms to continue.</string>
+    <string name="core_codes_terms_required_message">Acceptez les conditions pour continuer.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_license_owned_title">License in another account</string>
+    <string name="core_codes_license_owned_title">Licence dans un autre compte</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). Arguments: 1=product. -->
-    <string name="core_codes_license_owned_message">This %1$s license is already in another Polaris Locker account. A license never moves by its key.</string>
+    <string name="core_codes_license_owned_message">Cette licence %1$s est déjà dans un autre compte Polaris Locker. Une licence ne change jamais de compte avec sa clé.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_license_email_bound_title">Email not verified</string>
+    <string name="core_codes_license_email_bound_title">E-mail non vérifié</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_license_email_bound_message">This license belongs to an email address your Polaris Locker account hasn't verified. Verify that email in your account, then try again.</string>
+    <string name="core_codes_license_email_bound_message">Cette licence est liée à une adresse e-mail que votre compte Polaris Locker n’a pas vérifiée. Vérifiez cette adresse dans votre compte, puis réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_account_required_title">Sign-in needed</string>
+    <string name="core_codes_account_required_title">Connexion nécessaire</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_account_required_message">Sign in to your Polaris Locker account on this device, then try again.</string>
+    <string name="core_codes_account_required_message">Connectez-vous à votre compte Polaris Locker sur cet appareil, puis réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_email_mismatch_title">Email not verified</string>
+    <string name="core_codes_email_mismatch_title">E-mail non vérifié</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_email_mismatch_message">This license belongs to an email address your account hasn't verified. Add and verify that email, then try again.</string>
+    <string name="core_codes_email_mismatch_message">Cette licence est liée à une adresse e-mail que votre compte n’a pas vérifiée. Ajoutez et vérifiez cette adresse, puis réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_link_conflict_title">Already linked</string>
+    <string name="core_codes_link_conflict_title">Déjà associé</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_link_conflict_message">That sign-in method belongs to another Polaris Locker account. Sign in to that account, or join the two accounts.</string>
+    <string name="core_codes_link_conflict_message">Cette méthode de connexion appartient à un autre compte Polaris Locker. Connectez-vous à ce compte, ou fusionnez les deux comptes.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_last_link_title">Can't remove</string>
+    <string name="core_codes_last_link_title">Suppression impossible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_last_link_message">This is your account's only sign-in method. Add another one before removing it.</string>
+    <string name="core_codes_last_link_message">C’est la seule méthode de connexion de votre compte. Ajoutez-en une autre avant de la supprimer.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_step_up_required_title">Confirm it's you</string>
+    <string name="core_codes_step_up_required_title">Confirmez que c’est vous</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_step_up_required_message">For your security, sign in again to continue.</string>
+    <string name="core_codes_step_up_required_message">Pour votre sécurité, connectez-vous à nouveau pour continuer.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_not_eligible_title">Offer unavailable</string>
+    <string name="core_codes_not_eligible_title">Offre indisponible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_not_eligible_message">This offer isn't available to your account anymore. Refresh and try again.</string>
+    <string name="core_codes_not_eligible_message">Cette offre n’est plus disponible pour votre compte. Actualisez, puis réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_not_removable_title">Can't remove</string>
+    <string name="core_codes_not_removable_title">Suppression impossible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_not_removable_message">This license can't be added back with a key, so it stays in your library.</string>
+    <string name="core_codes_not_removable_message">Cette licence ne peut pas être ajoutée de nouveau avec une clé : elle reste donc dans votre bibliothèque.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_download_auth_required_title">Sign in to download</string>
+    <string name="core_codes_download_auth_required_title">Connectez-vous pour télécharger</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_download_auth_required_message">Sign in or activate a license to download this.</string>
+    <string name="core_codes_download_auth_required_message">Connectez-vous ou activez une licence pour télécharger cet élément.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_delivery_gate_missing_title">Download unavailable</string>
+    <string name="core_codes_delivery_gate_missing_title">Téléchargement indisponible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_delivery_gate_missing_message">This download isn't set up yet. Contact the developer.</string>
+    <string name="core_codes_delivery_gate_missing_message">Ce téléchargement n’est pas encore configuré. Contactez le développeur.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_upstream_rate_limited_title">Download busy</string>
+    <string name="core_codes_upstream_rate_limited_title">Téléchargements saturés</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_upstream_rate_limited_message">Downloads are busy right now. Try again in a few minutes.</string>
+    <string name="core_codes_upstream_rate_limited_message">Les téléchargements sont très sollicités pour le moment. Réessayez dans quelques minutes.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_server_misconfigured_title">Service not set up</string>
+    <string name="core_codes_server_misconfigured_title">Service non configuré</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_server_misconfigured_message">This service isn't set up correctly. Contact the developer.</string>
+    <string name="core_codes_server_misconfigured_message">Ce service n’est pas correctement configuré. Contactez le développeur.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_internal_error_title">Download failed</string>
+    <string name="core_codes_internal_error_title">Échec du téléchargement</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_internal_error_message">The download server had a problem. Try again in a few minutes.</string>
+    <string name="core_codes_internal_error_message">Le serveur de téléchargement a rencontré un problème. Réessayez dans quelques minutes.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_release_record_rejected_title">Release refused</string>
+    <string name="core_codes_release_record_rejected_title">Version refusée</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_release_record_rejected_message">The release wasn't published because a check failed. The publish log names the check.</string>
+    <string name="core_codes_release_record_rejected_message">La version n’a pas été publiée, car une vérification a échoué. Le journal de publication indique laquelle.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_release_tag_is_pack_release_title">Release skipped</string>
+    <string name="core_codes_release_tag_is_pack_release_title">Version ignorée</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_release_tag_is_pack_release_message">A release was skipped because its tag matches a content pack release. Rename the tag.</string>
+    <string name="core_codes_release_tag_is_pack_release_message">Une version a été ignorée, car son tag correspond à une version de pack de contenu. Renommez le tag.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_asset_unreachable_title">Image not updated</string>
+    <string name="core_codes_asset_unreachable_title">Image non mise à jour</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_asset_unreachable_message">An image could not be fetched from its source. The previous copy is still shown, and it will be retried automatically.</string>
+    <string name="core_codes_asset_unreachable_message">Une image n’a pas pu être récupérée depuis sa source. La copie précédente reste affichée, et une nouvelle tentative aura lieu automatiquement.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_feed_not_composable_title">Update check unavailable</string>
+    <string name="core_codes_feed_not_composable_title">Vérification des mises à jour indisponible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_feed_not_composable_message">Updates can't be checked right now. Try again in a few minutes.</string>
+    <string name="core_codes_feed_not_composable_message">Les mises à jour ne peuvent pas être vérifiées pour le moment. Réessayez dans quelques minutes.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_service_unavailable_title">Not available</string>
+    <string name="core_codes_service_unavailable_title">Indisponible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_service_unavailable_message">This app doesn't use this service.</string>
+    <string name="core_codes_service_unavailable_message">Cette app n’utilise pas ce service.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_service_disabled_title">Not available</string>
+    <string name="core_codes_service_disabled_title">Indisponible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_service_disabled_message">This service is turned off for this app.</string>
+    <string name="core_codes_service_disabled_message">Ce service est désactivé pour cette app.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_local_only_title">Offline mode</string>
+    <string name="core_codes_local_only_title">Mode hors ligne</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_local_only_message">This app is running offline, so it didn't connect.</string>
+    <string name="core_codes_local_only_message">Cette app fonctionne hors ligne, elle ne s’est donc pas connectée.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_backend_origin_not_allowed_title">Request not sent</string>
+    <string name="core_codes_backend_origin_not_allowed_title">Requête non envoyée</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_backend_origin_not_allowed_message">The app can send your license only to its own servers.</string>
+    <string name="core_codes_backend_origin_not_allowed_message">L’app ne peut envoyer votre licence qu’à ses propres serveurs.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_insecure_base_url_title">Insecure connection</string>
+    <string name="core_codes_insecure_base_url_title">Connexion non sécurisée</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_insecure_base_url_message">The app refused an insecure connection. Contact the developer.</string>
+    <string name="core_codes_insecure_base_url_message">L’app a refusé une connexion non sécurisée. Contactez le développeur.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_bundle_jws_rejected_title">Activation file not valid</string>
+    <string name="core_codes_bundle_jws_rejected_title">Fichier d’activation non valide</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_bundle_jws_rejected_message">The activation file's signature isn't valid.</string>
+    <string name="core_codes_bundle_jws_rejected_message">La signature du fichier d’activation n’est pas valide.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_bundle_claims_rejected_title">Activation file not valid</string>
+    <string name="core_codes_bundle_claims_rejected_title">Fichier d’activation non valide</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_bundle_claims_rejected_message">The activation file is for another product or device, or it has expired.</string>
+    <string name="core_codes_bundle_claims_rejected_message">Le fichier d’activation concerne un autre produit ou un autre appareil, ou il a expiré.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_bundle_trust_rejected_title">Activation file not trusted</string>
+    <string name="core_codes_bundle_trust_rejected_title">Fichier d’activation non approuvé</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_bundle_trust_rejected_message">The activation file is signed by a key this app doesn't trust.</string>
+    <string name="core_codes_bundle_trust_rejected_message">Le fichier d’activation est signé par une clé que cette app n’approuve pas.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_inner_doc_rejected_title">Activation file not valid</string>
+    <string name="core_codes_inner_doc_rejected_title">Fichier d’activation non valide</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_inner_doc_rejected_message">The license inside the activation file isn't valid.</string>
+    <string name="core_codes_inner_doc_rejected_message">La licence contenue dans le fichier d’activation n’est pas valide.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_bundle_title">Activation file not valid</string>
+    <string name="core_codes_bundle_title">Fichier d’activation non valide</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_bundle_message">The activation file couldn't be read.</string>
+    <string name="core_codes_bundle_message">Le fichier d’activation n’a pas pu être lu.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_transport_title">Connection problem</string>
+    <string name="core_codes_transport_title">Problème de connexion</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_transport_message">Check your connection and try again.</string>
+    <string name="core_codes_transport_message">Vérifiez votre connexion, puis réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_network_title">Can't connect</string>
+    <string name="core_codes_network_title">Connexion impossible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_network_message">Can't reach Polaris Locker. Check your connection and try again.</string>
+    <string name="core_codes_network_message">Polaris Locker est inaccessible. Vérifiez votre connexion, puis réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_refresh_failed_title">Couldn't refresh</string>
+    <string name="core_codes_refresh_failed_title">Actualisation impossible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_refresh_failed_message">Your license and settings couldn't be refreshed. Check your connection and try again.</string>
+    <string name="core_codes_refresh_failed_message">Votre licence et vos réglages n’ont pas pu être actualisés. Vérifiez votre connexion, puis réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_sync_failed_title">Couldn't check your license</string>
+    <string name="core_codes_sync_failed_title">Vérification de la licence impossible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_sync_failed_message">Your license couldn't be checked, so the app can't start. Check your connection and try again.</string>
+    <string name="core_codes_sync_failed_message">Votre licence n’a pas pu être vérifiée, l’app ne peut donc pas démarrer. Vérifiez votre connexion, puis réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_fetch_failed_title">Content missing</string>
+    <string name="core_codes_fetch_failed_title">Contenu manquant</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_fetch_failed_message">Required content couldn't be downloaded, so the app can't start. Check your connection and try again.</string>
+    <string name="core_codes_fetch_failed_message">Le contenu requis n’a pas pu être téléchargé, l’app ne peut donc pas démarrer. Vérifiez votre connexion, puis réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_bridge_missing_title">App problem</string>
+    <string name="core_codes_bridge_missing_title">Problème d’app</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_bridge_missing_message">The app's licensing bridge is missing. Reinstall the app or contact the developer.</string>
+    <string name="core_codes_bridge_missing_message">Le pont de licence de l’app est introuvable. Réinstallez l’app ou contactez le développeur.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_unknown_title">Something went wrong</string>
+    <string name="core_codes_unknown_title">Une erreur s’est produite</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_unknown_message">Something went wrong. Try again.</string>
+    <string name="core_codes_unknown_message">Une erreur s’est produite. Réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_release_refused_title">Not included</string>
+    <string name="core_codes_release_refused_title">Non inclus</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_release_refused_message">Your license doesn't include this release.</string>
+    <string name="core_codes_release_refused_message">Votre licence n’inclut pas cet élément.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_bundle_rejected_title">Activation file not valid</string>
+    <string name="core_codes_bundle_rejected_title">Fichier d’activation non valide</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_bundle_rejected_message">The activation file was refused.</string>
+    <string name="core_codes_bundle_rejected_message">Le fichier d’activation a été refusé.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_bundle_import_unsupported_title">Not available here</string>
+    <string name="core_codes_bundle_import_unsupported_title">Indisponible ici</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_bundle_import_unsupported_message">Offline activation isn't available here.</string>
+    <string name="core_codes_bundle_import_unsupported_message">L’activation hors ligne n’est pas disponible ici.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_report_unsupported_title">Not available here</string>
+    <string name="core_codes_report_unsupported_title">Indisponible ici</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_report_unsupported_message">Device reports aren't available here.</string>
+    <string name="core_codes_report_unsupported_message">Les rapports d’appareil ne sont pas disponibles ici.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_device_management_unsupported_title">Not available here</string>
+    <string name="core_codes_device_management_unsupported_title">Indisponible ici</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_device_management_unsupported_message">Devices can't be managed from here. Manage them in your account.</string>
+    <string name="core_codes_device_management_unsupported_message">Les appareils ne peuvent pas être gérés d’ici. Gérez-les dans votre compte.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_device_list_failed_title">Couldn't load devices</string>
+    <string name="core_codes_device_list_failed_title">Chargement des appareils impossible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_device_list_failed_message">Your devices couldn't be loaded. Check your connection and try again.</string>
+    <string name="core_codes_device_list_failed_message">Vos appareils n’ont pas pu être chargés. Vérifiez votre connexion, puis réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_device_rename_failed_title">Couldn't rename</string>
+    <string name="core_codes_device_rename_failed_title">Renommage impossible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_device_rename_failed_message">The device couldn't be renamed. Try again.</string>
+    <string name="core_codes_device_rename_failed_message">L’appareil n’a pas pu être renommé. Réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_device_deauthorize_failed_title">Couldn't remove device</string>
+    <string name="core_codes_device_deauthorize_failed_title">Suppression de l’appareil impossible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_device_deauthorize_failed_message">The device couldn't be removed. Try again.</string>
+    <string name="core_codes_device_deauthorize_failed_message">L’appareil n’a pas pu être supprimé. Réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_key_entry_unsupported_title">Not available here</string>
+    <string name="core_codes_key_entry_unsupported_title">Indisponible ici</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_key_entry_unsupported_message">License keys can't be entered here. Sign in instead.</string>
+    <string name="core_codes_key_entry_unsupported_message">Les clés de licence ne peuvent pas être saisies ici. Connectez-vous à la place.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_sign_in_failed_title">Sign-in failed</string>
+    <string name="core_codes_sign_in_failed_title">Échec de la connexion</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_sign_in_failed_message">Sign-in didn't finish. Try again.</string>
+    <string name="core_codes_sign_in_failed_message">La connexion n’a pas abouti. Réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_sign_out_failed_title">Sign-out failed</string>
+    <string name="core_codes_sign_out_failed_title">Échec de la déconnexion</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_sign_out_failed_message">Sign-out didn't finish. Try again.</string>
+    <string name="core_codes_sign_out_failed_message">La déconnexion n’a pas abouti. Réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_bad_response_title">Unexpected answer</string>
+    <string name="core_codes_bad_response_title">Réponse inattendue</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_bad_response_message">The service sent an answer the app couldn't use. Try again.</string>
+    <string name="core_codes_bad_response_message">Le service a envoyé une réponse que l’app n’a pas pu utiliser. Réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_network_error_title">Can't connect</string>
+    <string name="core_codes_network_error_title">Connexion impossible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_network_error_message">Can't reach Polaris Locker. Check your connection and try again.</string>
+    <string name="core_codes_network_error_message">Polaris Locker est inaccessible. Vérifiez votre connexion, puis réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_server_error_title">Service problem</string>
+    <string name="core_codes_server_error_title">Problème de service</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_server_error_message">The service had a problem. Try again in a few minutes.</string>
+    <string name="core_codes_server_error_message">Le service a rencontré un problème. Réessayez dans quelques minutes.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_cancelled_title">Sign-in canceled</string>
+    <string name="core_codes_cancelled_title">Connexion annulée</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_cancelled_message">Sign-in was canceled.</string>
+    <string name="core_codes_cancelled_message">La connexion a été annulée.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_sign_in_expired_title">Code expired</string>
+    <string name="core_codes_sign_in_expired_title">Code expiré</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_sign_in_expired_message">The code expired before sign-in finished. Start again.</string>
+    <string name="core_codes_sign_in_expired_message">Le code a expiré avant la fin de la connexion. Recommencez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_sign_in_denied_title">Sign-in declined</string>
+    <string name="core_codes_sign_in_denied_title">Connexion refusée</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_sign_in_denied_message">Sign-in was declined. Start again.</string>
+    <string name="core_codes_sign_in_denied_message">La connexion a été refusée. Recommencez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_sign_in_unavailable_title">Sign-in unavailable</string>
+    <string name="core_codes_sign_in_unavailable_title">Connexion indisponible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_sign_in_unavailable_message">Sign-in isn't available right now. Try again in a few minutes.</string>
+    <string name="core_codes_sign_in_unavailable_message">La connexion n’est pas disponible pour le moment. Réessayez dans quelques minutes.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_options_title">App not set up</string>
+    <string name="core_codes_invalid_options_title">App non configurée</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_options_message">The app's licensing isn't set up correctly. Contact the developer.</string>
+    <string name="core_codes_invalid_options_message">La gestion des licences de l’app n’est pas correctement configurée. Contactez le développeur.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_argument_title">Request not accepted</string>
+    <string name="core_codes_invalid_argument_title">Requête non acceptée</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_argument_message">The app sent a request the licensing bridge could not read. Contact the developer.</string>
+    <string name="core_codes_invalid_argument_message">L’app a envoyé une requête que le pont de licence n’a pas pu lire. Contactez le développeur.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invoke_not_allowed_title">Request not allowed</string>
+    <string name="core_codes_invoke_not_allowed_title">Requête non autorisée</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invoke_not_allowed_message">The app asked for something its licensing bridge does not offer. Contact the developer.</string>
+    <string name="core_codes_invoke_not_allowed_message">L’app a demandé quelque chose que son pont de licence ne propose pas. Contactez le développeur.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_sender_refused_title">Window not allowed</string>
+    <string name="core_codes_sender_refused_title">Fenêtre non autorisée</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_sender_refused_message">This window may not use the app's licensing. Contact the developer.</string>
+    <string name="core_codes_sender_refused_message">Cette fenêtre n’a pas le droit d’utiliser la gestion des licences de l’app. Contactez le développeur.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_not_configured_title">App not set up</string>
+    <string name="core_codes_not_configured_title">App non configurée</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_not_configured_message">The app's licensing isn't set up yet. Contact the developer.</string>
+    <string name="core_codes_not_configured_message">La gestion des licences de l’app n’est pas encore configurée. Contactez le développeur.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_unsupported_title">Not available here</string>
+    <string name="core_codes_unsupported_title">Indisponible ici</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_unsupported_message">This isn't available here.</string>
+    <string name="core_codes_unsupported_message">Cette fonction n’est pas disponible ici.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_timeout_title">Timed out</string>
+    <string name="core_codes_timeout_title">Délai dépassé</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_timeout_message">The service took too long to answer. Check your connection and try again.</string>
+    <string name="core_codes_timeout_message">Le service a mis trop de temps à répondre. Vérifiez votre connexion, puis réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_response_too_large_title">Unexpected answer</string>
+    <string name="core_codes_response_too_large_title">Réponse inattendue</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_response_too_large_message">The service sent an answer the app couldn't use. Try again.</string>
+    <string name="core_codes_response_too_large_message">Le service a envoyé une réponse que l’app n’a pas pu utiliser. Réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_too_many_redirects_title">Connection problem</string>
+    <string name="core_codes_too_many_redirects_title">Problème de connexion</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_too_many_redirects_message">The connection was redirected too many times. Try again.</string>
+    <string name="core_codes_too_many_redirects_message">La connexion a été redirigée trop de fois. Réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_insecure_redirect_title">Insecure connection</string>
+    <string name="core_codes_insecure_redirect_title">Connexion non sécurisée</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_insecure_redirect_message">The app refused an insecure redirect.</string>
+    <string name="core_codes_insecure_redirect_message">L’app a refusé une redirection non sécurisée.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_http_error_title">Service problem</string>
+    <string name="core_codes_http_error_title">Problème de service</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_http_error_message">The service answered with an error. Try again.</string>
+    <string name="core_codes_http_error_message">Le service a répondu par une erreur. Réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_response_title">Unexpected answer</string>
+    <string name="core_codes_invalid_response_title">Réponse inattendue</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_response_message">The service sent an answer the app couldn't use. Try again.</string>
+    <string name="core_codes_invalid_response_message">Le service a envoyé une réponse que l’app n’a pas pu utiliser. Réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_store_failed_title">Storage problem</string>
+    <string name="core_codes_store_failed_title">Problème de stockage</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_store_failed_message">The app couldn't read or save its license on this device. Check that the app can write its data folder.</string>
+    <string name="core_codes_store_failed_message">L’app n’a pas pu lire ou enregistrer sa licence sur cet appareil. Vérifiez qu’elle peut écrire dans son dossier de données.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_platform_error_title">Platform problem</string>
+    <string name="core_codes_platform_error_title">Problème de plateforme</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_platform_error_message">The platform reported an error. Try again.</string>
+    <string name="core_codes_platform_error_message">La plateforme a signalé une erreur. Réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_no_token_title">Not activated</string>
+    <string name="core_codes_no_token_title">Non activé</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_no_token_message">This device isn't activated yet. Activate it or sign in.</string>
+    <string name="core_codes_no_token_message">Cet appareil n’est pas encore activé. Activez-le ou connectez-vous.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_mint_unavailable_title">Not available</string>
+    <string name="core_codes_mint_unavailable_title">Indisponible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_mint_unavailable_message">This isn't available for this app.</string>
+    <string name="core_codes_mint_unavailable_message">Cette fonction n’est pas disponible pour cette app.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_feed_rejected_title">Update check failed</string>
+    <string name="core_codes_feed_rejected_title">Échec de la vérification des mises à jour</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_feed_rejected_message">The update information couldn't be verified, so nothing was installed.</string>
+    <string name="core_codes_feed_rejected_message">Les informations de mise à jour n’ont pas pu être vérifiées, rien n’a donc été installé.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_feed_rollback_title">Update check failed</string>
+    <string name="core_codes_feed_rollback_title">Échec de la vérification des mises à jour</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_feed_rollback_message">The update information was older than what this device already has, so it was refused.</string>
+    <string name="core_codes_feed_rollback_message">Les informations de mise à jour étaient plus anciennes que celles déjà présentes sur cet appareil, elles ont donc été refusées.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_record_rejected_title">Update not verified</string>
+    <string name="core_codes_record_rejected_title">Mise à jour non vérifiée</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_record_rejected_message">The update couldn't be verified, so it wasn't installed.</string>
+    <string name="core_codes_record_rejected_message">La mise à jour n’a pas pu être vérifiée, elle n’a donc pas été installée.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_record_mismatch_title">Update not verified</string>
+    <string name="core_codes_record_mismatch_title">Mise à jour non vérifiée</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_record_mismatch_message">The update didn't match what was published, so it wasn't installed.</string>
+    <string name="core_codes_record_mismatch_message">La mise à jour ne correspondait pas à ce qui a été publié, elle n’a donc pas été installée.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_payload_mismatch_title">Download corrupted</string>
+    <string name="core_codes_payload_mismatch_title">Téléchargement corrompu</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_payload_mismatch_message">The update didn't download correctly, so it wasn't installed. Try again.</string>
+    <string name="core_codes_payload_mismatch_message">La mise à jour ne s’est pas téléchargée correctement, elle n’a donc pas été installée. Réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_swap_refused_title">Can't update here</string>
+    <string name="core_codes_swap_refused_title">Mise à jour impossible ici</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_swap_refused_message">This installation can't update itself. Update it the way you installed it.</string>
+    <string name="core_codes_swap_refused_message">Cette installation ne peut pas se mettre à jour elle-même. Mettez-la à jour comme vous l’avez installée.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_swap_failed_title">Update not finished</string>
+    <string name="core_codes_swap_failed_title">Mise à jour inachevée</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_swap_failed_message">The update couldn't be applied. It will be tried again next launch.</string>
+    <string name="core_codes_swap_failed_message">La mise à jour n’a pas pu être appliquée. Une nouvelle tentative aura lieu au prochain lancement.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_files_index_invalid_title">Content not valid</string>
+    <string name="core_codes_files_index_invalid_title">Contenu non valide</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_files_index_invalid_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <string name="core_codes_files_index_invalid_message">Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_files_unsafe_path_title">Content refused</string>
+    <string name="core_codes_files_unsafe_path_title">Contenu refusé</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_files_unsafe_path_message">Some content was refused because it contains an unsafe file path.</string>
+    <string name="core_codes_files_unsafe_path_message">Certains contenus ont été refusés, car ils contiennent un chemin de fichier dangereux.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_files_duplicate_path_title">Content not valid</string>
+    <string name="core_codes_files_duplicate_path_title">Contenu non valide</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_files_duplicate_path_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <string name="core_codes_files_duplicate_path_message">Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_files_case_collision_title">Content not valid</string>
+    <string name="core_codes_files_case_collision_title">Contenu non valide</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_files_case_collision_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <string name="core_codes_files_case_collision_message">Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_files_path_conflict_title">Content not valid</string>
+    <string name="core_codes_files_path_conflict_title">Contenu non valide</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_files_path_conflict_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <string name="core_codes_files_path_conflict_message">Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_files_layout_mismatch_title">Content not valid</string>
+    <string name="core_codes_files_layout_mismatch_title">Contenu non valide</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_files_layout_mismatch_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <string name="core_codes_files_layout_mismatch_message">Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_content_stamp_invalid_title">App build problem</string>
+    <string name="core_codes_content_stamp_invalid_title">Problème de build de l’app</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_content_stamp_invalid_message">This build's content information isn't valid. Reinstall the app or contact the developer.</string>
+    <string name="core_codes_content_stamp_invalid_message">Les informations de contenu de ce build ne sont pas valides. Réinstallez l’app ou contactez le développeur.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_full_corrupt_title">Download corrupted</string>
+    <string name="core_codes_full_corrupt_title">Téléchargement corrompu</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_full_corrupt_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <string name="core_codes_full_corrupt_message">Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_delta_artifact_mismatch_title">Download corrupted</string>
+    <string name="core_codes_delta_artifact_mismatch_title">Téléchargement corrompu</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_delta_artifact_mismatch_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <string name="core_codes_delta_artifact_mismatch_message">Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_delta_base_mismatch_title">Content changed</string>
+    <string name="core_codes_delta_base_mismatch_title">Contenu modifié</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_delta_base_mismatch_message">Installed content changed on this device, so a full download is needed.</string>
+    <string name="core_codes_delta_base_mismatch_message">Le contenu installé a changé sur cet appareil, un téléchargement complet est donc nécessaire.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_delta_apply_failed_title">Update not applied</string>
+    <string name="core_codes_delta_apply_failed_title">Mise à jour non appliquée</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_delta_apply_failed_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <string name="core_codes_delta_apply_failed_message">Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_file_corrupt_title">Download corrupted</string>
+    <string name="core_codes_file_corrupt_title">Téléchargement corrompu</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_file_corrupt_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <string name="core_codes_file_corrupt_message">Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_file_source_missing_title">Content missing</string>
+    <string name="core_codes_file_source_missing_title">Contenu manquant</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_file_source_missing_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <string name="core_codes_file_source_missing_message">Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_payload_hash_mismatch_title">Download corrupted</string>
+    <string name="core_codes_payload_hash_mismatch_title">Téléchargement corrompu</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_payload_hash_mismatch_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <string name="core_codes_payload_hash_mismatch_message">Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_chunks_ref_mismatch_title">Content not valid</string>
+    <string name="core_codes_chunks_ref_mismatch_title">Contenu non valide</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_chunks_ref_mismatch_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <string name="core_codes_chunks_ref_mismatch_message">Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_chunks_bad_length_title">Content not valid</string>
+    <string name="core_codes_chunks_bad_length_title">Contenu non valide</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_chunks_bad_length_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <string name="core_codes_chunks_bad_length_message">Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_chunks_bad_magic_title">Content not valid</string>
+    <string name="core_codes_chunks_bad_magic_title">Contenu non valide</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_chunks_bad_magic_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <string name="core_codes_chunks_bad_magic_message">Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_chunks_unsupported_version_title">Content not supported</string>
+    <string name="core_codes_chunks_unsupported_version_title">Contenu non pris en charge</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_chunks_unsupported_version_message">This content needs a newer version of the app. Update the app.</string>
+    <string name="core_codes_chunks_unsupported_version_message">Ce contenu nécessite une version plus récente de l’app. Mettez l’app à jour.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_chunks_bad_record_size_title">Content not valid</string>
+    <string name="core_codes_chunks_bad_record_size_title">Contenu non valide</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_chunks_bad_record_size_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <string name="core_codes_chunks_bad_record_size_message">Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_chunks_bad_flags_title">Content not valid</string>
+    <string name="core_codes_chunks_bad_flags_title">Contenu non valide</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_chunks_bad_flags_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <string name="core_codes_chunks_bad_flags_message">Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_chunks_reserved_nonzero_title">Content not valid</string>
+    <string name="core_codes_chunks_reserved_nonzero_title">Contenu non valide</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_chunks_reserved_nonzero_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <string name="core_codes_chunks_reserved_nonzero_message">Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_chunks_zero_length_title">Content not valid</string>
+    <string name="core_codes_chunks_zero_length_title">Contenu non valide</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_chunks_zero_length_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <string name="core_codes_chunks_zero_length_message">Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_chunks_bad_clen_title">Content not valid</string>
+    <string name="core_codes_chunks_bad_clen_title">Contenu non valide</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_chunks_bad_clen_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <string name="core_codes_chunks_bad_clen_message">Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_chunks_bad_bundle_ref_title">Content not valid</string>
+    <string name="core_codes_chunks_bad_bundle_ref_title">Contenu non valide</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_chunks_bad_bundle_ref_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <string name="core_codes_chunks_bad_bundle_ref_message">Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_chunks_bad_bundle_range_title">Content not valid</string>
+    <string name="core_codes_chunks_bad_bundle_range_title">Contenu non valide</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_chunks_bad_bundle_range_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <string name="core_codes_chunks_bad_bundle_range_message">Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_chunks_size_mismatch_title">Content not valid</string>
+    <string name="core_codes_chunks_size_mismatch_title">Contenu non valide</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_chunks_size_mismatch_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <string name="core_codes_chunks_size_mismatch_message">Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_chunks_payload_mismatch_title">Content not valid</string>
+    <string name="core_codes_chunks_payload_mismatch_title">Contenu non valide</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_chunks_payload_mismatch_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <string name="core_codes_chunks_payload_mismatch_message">Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_chunk_bundle_truncated_title">Download interrupted</string>
+    <string name="core_codes_chunk_bundle_truncated_title">Téléchargement interrompu</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_chunk_bundle_truncated_message">A download was cut short. Check your connection and try again.</string>
+    <string name="core_codes_chunk_bundle_truncated_message">Un téléchargement a été interrompu. Vérifiez votre connexion, puis réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_chunk_corrupt_title">Download corrupted</string>
+    <string name="core_codes_chunk_corrupt_title">Téléchargement corrompu</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_chunk_corrupt_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <string name="core_codes_chunk_corrupt_message">Certains contenus n’ont pas pu être installés. Ils seront téléchargés à nouveau la prochaine fois.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_plan_transport_unsupported_title">Can't download here</string>
+    <string name="core_codes_plan_transport_unsupported_title">Téléchargement impossible ici</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_plan_transport_unsupported_message">This content can't be downloaded on this platform.</string>
+    <string name="core_codes_plan_transport_unsupported_message">Ce contenu ne peut pas être téléchargé sur cette plateforme.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_plan_insufficient_disk_title">Not enough space</string>
+    <string name="core_codes_plan_insufficient_disk_title">Espace insuffisant</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_plan_insufficient_disk_message">There isn't enough free space for this content. Free up some space and try again.</string>
+    <string name="core_codes_plan_insufficient_disk_message">L’espace libre est insuffisant pour ce contenu. Libérez de l’espace, puis réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_plan_no_strategy_title">Can't install content</string>
+    <string name="core_codes_plan_no_strategy_title">Installation du contenu impossible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_plan_no_strategy_message">This content can't be installed on this device.</string>
+    <string name="core_codes_plan_no_strategy_message">Ce contenu ne peut pas être installé sur cet appareil.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_pack_no_variant_title">Content not available</string>
+    <string name="core_codes_pack_no_variant_title">Contenu indisponible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_pack_no_variant_message">This content isn't available for this device.</string>
+    <string name="core_codes_pack_no_variant_message">Ce contenu n’est pas disponible pour cet appareil.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_pack_type_unsupported_title">Content not supported</string>
+    <string name="core_codes_pack_type_unsupported_title">Contenu non pris en charge</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_pack_type_unsupported_message">This content needs a newer version of the app. Update the app.</string>
+    <string name="core_codes_pack_type_unsupported_message">Ce contenu nécessite une version plus récente de l’app. Mettez l’app à jour.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_pack_type_check_failed_title">Content not valid</string>
+    <string name="core_codes_pack_type_check_failed_title">Contenu non valide</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_pack_type_check_failed_message">Some content failed its check and wasn't installed.</string>
+    <string name="core_codes_pack_type_check_failed_message">Certains contenus n’ont pas passé leur vérification et n’ont pas été installés.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_pack_not_pinned_title">Content not available</string>
+    <string name="core_codes_pack_not_pinned_title">Contenu indisponible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_pack_not_pinned_message">This content isn't part of this version of the app.</string>
+    <string name="core_codes_pack_not_pinned_message">Ce contenu ne fait pas partie de cette version de l’app.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_pack_not_entitled_title">Not included</string>
+    <string name="core_codes_pack_not_entitled_title">Non inclus</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_pack_not_entitled_message">Your license doesn't include this content.</string>
+    <string name="core_codes_pack_not_entitled_message">Votre licence n’inclut pas ce contenu.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_pack_state_unreadable_title">Storage problem</string>
+    <string name="core_codes_pack_state_unreadable_title">Problème de stockage</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_pack_state_unreadable_message">Installed content couldn't be read, so nothing new was installed. Restart the app.</string>
+    <string name="core_codes_pack_state_unreadable_message">Le contenu installé n’a pas pu être lu, rien de nouveau n’a donc été installé. Redémarrez l’app.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_pck_directory_refused_title">Content refused</string>
+    <string name="core_codes_pck_directory_refused_title">Contenu refusé</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_pck_directory_refused_message">Some content was refused because it contains files a content pack may not hold.</string>
+    <string name="core_codes_pck_directory_refused_message">Certains contenus ont été refusés, car ils contiennent des fichiers qu’un pack de contenu ne peut pas contenir.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_pck_engine_mismatch_title">Content not supported</string>
+    <string name="core_codes_pck_engine_mismatch_title">Contenu non pris en charge</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_pck_engine_mismatch_message">This content needs a different version of the game. Update the game.</string>
+    <string name="core_codes_pck_engine_mismatch_message">Ce contenu nécessite une autre version du jeu. Mettez le jeu à jour.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_pack_rolled_back_title">Content restored</string>
+    <string name="core_codes_pack_rolled_back_title">Contenu restauré</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_pack_rolled_back_message">The last content update didn't start, so the previous version was restored.</string>
+    <string name="core_codes_pack_rolled_back_message">La dernière mise à jour du contenu n’a pas démarré, la version précédente a donc été restaurée.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_pack_revoked_title">Content withdrawn</string>
+    <string name="core_codes_pack_revoked_title">Contenu retiré</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_pack_revoked_message">This content was withdrawn by its developer and can't be used.</string>
+    <string name="core_codes_pack_revoked_message">Ce contenu a été retiré par son développeur et ne peut pas être utilisé.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_pack_not_data_only_title">Content refused</string>
+    <string name="core_codes_pack_not_data_only_title">Contenu refusé</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_pack_not_data_only_message">Some content was refused because it contains files a data pack may not hold.</string>
+    <string name="core_codes_pack_not_data_only_message">Certains contenus ont été refusés, car ils contiennent des fichiers qu’un pack de données ne peut pas contenir.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_marker_rejected_title">App build problem</string>
+    <string name="core_codes_marker_rejected_title">Problème de build de l’app</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_marker_rejected_message">This build's built-in content isn't valid. Reinstall the app or contact the developer.</string>
+    <string name="core_codes_marker_rejected_message">Le contenu intégré de ce build n’est pas valide. Réinstallez l’app ou contactez le développeur.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_license_required_title">License needed</string>
+    <string name="core_codes_license_required_title">Licence requise</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_license_required_message">Activate the app, then try again.</string>
+    <string name="core_codes_license_required_message">Activez l’app, puis réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_license_invalid_title">License not accepted</string>
+    <string name="core_codes_license_invalid_title">Licence non acceptée</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_license_invalid_message">Your license couldn't be verified. Reconnect the app, then try again.</string>
+    <string name="core_codes_license_invalid_message">Votre licence n’a pas pu être vérifiée. Reconnectez l’app, puis réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_license_stale_title">License needs refreshing</string>
+    <string name="core_codes_license_stale_title">Licence à actualiser</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_license_stale_message">Connect to the internet so the app can refresh your license, then try again.</string>
+    <string name="core_codes_license_stale_message">Connectez-vous à Internet pour que l’app puisse actualiser votre licence, puis réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_sign_in_required_title">Sign-in needed</string>
+    <string name="core_codes_sign_in_required_title">Connexion nécessaire</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_sign_in_required_message">Sign in to your Polaris Locker account in the app, then try again.</string>
+    <string name="core_codes_sign_in_required_message">Connectez-vous à votre compte Polaris Locker dans l’app, puis réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
-    <string name="core_gate_ok_title">License active</string>
+    <string name="core_gate_ok_title">Licence active</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
-    <string name="core_gate_ok_message">Your license is active.</string>
+    <string name="core_gate_ok_message">Votre licence est active.</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
-    <string name="core_gate_grace_title">Offline grace</string>
+    <string name="core_gate_grace_title">Période de grâce hors ligne</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
-    <string name="core_gate_grace_message">The licensing service can't be reached. You can keep using the app until the grace period ends.</string>
+    <string name="core_gate_grace_message">Le service de licence est inaccessible. Vous pouvez continuer à utiliser l’app jusqu’à la fin de la période de grâce.</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
-    <string name="core_gate_expired_title">License expired</string>
+    <string name="core_gate_expired_title">Licence expirée</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
-    <string name="core_gate_expired_message">Connect to the internet or renew your license to continue.</string>
+    <string name="core_gate_expired_message">Connectez-vous à Internet ou renouvelez votre licence pour continuer.</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
-    <string name="core_gate_revoked_title">Signed out</string>
+    <string name="core_gate_revoked_title">Déconnecté</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
-    <string name="core_gate_revoked_message">This device was signed out. Sign in or activate again to continue.</string>
+    <string name="core_gate_revoked_message">Cet appareil a été déconnecté. Connectez-vous ou activez à nouveau pour continuer.</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
-    <string name="core_gate_needs_activation_title">Activate</string>
+    <string name="core_gate_needs_activation_title">Activer</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
-    <string name="core_gate_needs_activation_message">Enter a license key or sign in to continue.</string>
+    <string name="core_gate_needs_activation_message">Saisissez une clé de licence ou connectez-vous pour continuer.</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
-    <string name="core_gate_version_too_old_title">Update required</string>
+    <string name="core_gate_version_too_old_title">Mise à jour requise</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
-    <string name="core_gate_version_too_old_message">This version is no longer supported. Update the app to continue.</string>
+    <string name="core_gate_version_too_old_message">Cette version n’est plus prise en charge. Mettez l’app à jour pour continuer.</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
-    <string name="core_gate_version_too_new_title">Not available on this license</string>
+    <string name="core_gate_version_too_new_title">Indisponible avec cette licence</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
-    <string name="core_gate_version_too_new_message">This build is newer than your license allows.</string>
+    <string name="core_gate_version_too_new_message">Ce build est plus récent que ce que votre licence autorise.</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
-    <string name="core_gate_channel_not_entitled_title">Channel not included</string>
+    <string name="core_gate_channel_not_entitled_title">Canal non inclus</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
-    <string name="core_gate_channel_not_entitled_message">Your license doesn't include this channel.</string>
+    <string name="core_gate_channel_not_entitled_message">Votre licence n’inclut pas ce canal.</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
-    <string name="core_gate_not_applicable_title">No license needed</string>
+    <string name="core_gate_not_applicable_title">Aucune licence requise</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
-    <string name="core_gate_not_applicable_message">This app doesn't need a license.</string>
+    <string name="core_gate_not_applicable_message">Cette app n’a pas besoin de licence.</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
-    <string name="core_activation_ok_title">Activated</string>
+    <string name="core_activation_ok_title">Activé</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
-    <string name="core_activation_ok_message">Your license is active on this device.</string>
+    <string name="core_activation_ok_message">Votre licence est active sur cet appareil.</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
-    <string name="core_activation_device_limit_title">Device limit reached</string>
+    <string name="core_activation_device_limit_title">Limite d’appareils atteinte</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
-    <string name="core_activation_device_limit_message">This license is already on all its devices. Replace a device to use it here.</string>
+    <string name="core_activation_device_limit_message">Cette licence est déjà utilisée sur tous ses appareils. Remplacez un appareil pour l’utiliser ici.</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
-    <string name="core_activation_fingerprint_required_title">Device check failed</string>
+    <string name="core_activation_fingerprint_required_title">Échec de la vérification de l’appareil</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
-    <string name="core_activation_fingerprint_required_message">This license needs a hardware fingerprint, which couldn't be read on this device.</string>
+    <string name="core_activation_fingerprint_required_message">Cette licence nécessite une empreinte matérielle, qui n’a pas pu être lue sur cet appareil.</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
-    <string name="core_activation_hardware_mismatch_title">Device changed</string>
+    <string name="core_activation_hardware_mismatch_title">Appareil modifié</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
-    <string name="core_activation_hardware_mismatch_message">This device's hardware changed. Activate again to use your license here.</string>
+    <string name="core_activation_hardware_mismatch_message">Le matériel de cet appareil a changé. Activez à nouveau pour utiliser votre licence ici.</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
-    <string name="core_activation_enroll_claimed_title">Sign in to continue</string>
+    <string name="core_activation_enroll_claimed_title">Connectez-vous pour continuer</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
-    <string name="core_activation_enroll_claimed_message">This device's free license belongs to an account now. Sign in to use it.</string>
+    <string name="core_activation_enroll_claimed_message">La licence gratuite de cet appareil appartient désormais à un compte. Connectez-vous pour l’utiliser.</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
-    <string name="core_activation_license_disabled_title">License disabled</string>
+    <string name="core_activation_license_disabled_title">Licence désactivée</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
-    <string name="core_activation_license_disabled_message">This license has been disabled. Contact the developer.</string>
+    <string name="core_activation_license_disabled_message">Cette licence a été désactivée. Contactez le développeur.</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
-    <string name="core_activation_license_expired_title">License expired</string>
+    <string name="core_activation_license_expired_title">Licence expirée</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
-    <string name="core_activation_license_expired_message">This license has expired. Renew it to continue.</string>
+    <string name="core_activation_license_expired_message">Cette licence a expiré. Renouvelez-la pour continuer.</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
-    <string name="core_activation_attestation_required_title">Device check needed</string>
+    <string name="core_activation_attestation_required_title">Vérification de l’appareil requise</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
-    <string name="core_activation_attestation_required_message">This license needs a verified device. Let the app check this device, then try again.</string>
+    <string name="core_activation_attestation_required_message">Cette licence nécessite un appareil vérifié. Laissez l’app vérifier cet appareil, puis réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
-    <string name="core_activation_rate_limited_title">Too many attempts</string>
+    <string name="core_activation_rate_limited_title">Trop de tentatives</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
-    <string name="core_activation_rate_limited_message">Too many attempts. Wait a moment and try again.</string>
+    <string name="core_activation_rate_limited_message">Trop de tentatives. Patientez un instant, puis réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
-    <string name="core_activation_unauthorized_title">Key not accepted</string>
+    <string name="core_activation_unauthorized_title">Clé non acceptée</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
-    <string name="core_activation_unauthorized_message">That license key wasn't accepted. Check it and try again.</string>
+    <string name="core_activation_unauthorized_message">Cette clé de licence n’a pas été acceptée. Vérifiez-la, puis réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
-    <string name="core_activation_enroll_disabled_title">No free license</string>
+    <string name="core_activation_enroll_disabled_title">Aucune licence gratuite</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
-    <string name="core_activation_enroll_disabled_message">This app doesn't offer a free license. Enter a license key or sign in.</string>
+    <string name="core_activation_enroll_disabled_message">Cette app ne propose pas de licence gratuite. Saisissez une clé de licence ou connectez-vous.</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
-    <string name="core_activation_key_entry_limit_title">No key entries left</string>
+    <string name="core_activation_key_entry_limit_title">Plus d’utilisations de la clé</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
-    <string name="core_activation_key_entry_limit_message">This key has no entries left. Add it to your account and sign in instead.</string>
+    <string name="core_activation_key_entry_limit_message">Cette clé n’a plus d’utilisations disponibles. Ajoutez-la à votre compte et connectez-vous à la place.</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
-    <string name="core_activation_refused_title">Activation refused</string>
+    <string name="core_activation_refused_title">Activation refusée</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). Arguments: 1=code. -->
-    <string name="core_activation_refused_message">Activation was refused (%1$s).</string>
+    <string name="core_activation_refused_message">L’activation a été refusée (%1$s).</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
-    <string name="core_activation_error_title">Activation failed</string>
+    <string name="core_activation_error_title">Échec de l’activation</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
-    <string name="core_activation_error_message">Activation didn't finish. Check your connection and try again.</string>
+    <string name="core_activation_error_message">L’activation n’a pas abouti. Vérifiez votre connexion, puis réessayez.</string>
 </resources>
