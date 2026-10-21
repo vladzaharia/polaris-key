@@ -1176,8 +1176,10 @@
     <string name="cli_help_group">라이선스</string>
     <!-- Terminal help of a host's own command-line tool: what the one namespace command (license) holds, when the license commands are nested under it. -->
     <string name="cli_help_namespace">활성화, 로그인, 기기 및 업데이트</string>
-    <!-- Terminal: the first line when a host command that needs a license sends the person to activate. {command} is the command they ran, such as 'export'. Arguments: 1=command. -->
+    <!-- Terminal: the title when a host command that needs a license is refused because the person has none (needs-activation), and the first line of the inline activate flow. {command} is the command they ran, such as 'export'. Arguments: 1=command. -->
     <string name="cli_gate_needs">%1$s에는 라이선스가 필요합니다</string>
+    <!-- Terminal: the title when a host command is refused because the person's license does not hold the entitlement it needs. They have a license, so it is never 'needs a license'. {command} is the command they ran, such as 'export'. Arguments: 1=command. -->
+    <string name="cli_gate_notIncluded">라이선스에 %1$s이(가) 포함되어 있지 않습니다</string>
     <!-- Terminal help: what the activate command does. The key is typed at a prompt or piped in, never written on the command line. -->
     <string name="cli_verb_activate">라이선스 키 추가 (입력하거나 stdin으로)</string>
     <!-- Terminal help: what the enroll command does. Arguments: 1=product. -->

@@ -521,6 +521,7 @@
     "cli.help.group": "Licencia",
     "cli.help.namespace": "Activar, iniciar sesión, dispositivos y actualizaciones",
     "cli.gate.needs": "{command} requiere una licencia",
+    "cli.gate.notIncluded": "Tu licencia no incluye {command}",
     "cli.verb.activate": "Añadir una clave de licencia (se pide, o por stdin)",
     "cli.verb.enroll": "Obtener la licencia gratuita, si {product} ofrece una",
     "cli.verb.deactivate": "Quitar tu licencia de este dispositivo y liberar su plaza",

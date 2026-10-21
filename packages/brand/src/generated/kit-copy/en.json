@@ -514,6 +514,7 @@
   "cli.help.group": "License",
   "cli.help.namespace": "Activate, sign in, devices and updates",
   "cli.gate.needs": "{command} needs a license",
+  "cli.gate.notIncluded": "Your license doesn't include {command}",
   "cli.verb.activate": "Add a license key (prompted, or piped on stdin)",
   "cli.verb.enroll": "Get the free license, when {product} offers one",
   "cli.verb.deactivate": "Stop using your license on this device and free its seat",

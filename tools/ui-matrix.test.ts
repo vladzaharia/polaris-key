@@ -841,14 +841,52 @@ describe("the cli family (plans/UK-51.md)", () => {
     });
     expect(refGate({ ...base, status: "channel-not-entitled" })).toMatchObject({
       error: "not_entitled",
+      copy: ["core.gate.channel-not-entitled.title"],
+      link: "portal",
       fix: ["status"],
     });
     expect(refGate({ ...base, status: "ok", entitled: false })).toMatchObject({
       error: "not_entitled",
+      copy: ["cli.gate.notIncluded"],
+      link: "portal",
+      fix: ["status"],
       stream: "stderr",
     });
-    // Every licenseStatus, in all four quadrants, entitled or not.
-    expect(cli.gate).toHaveLength(S.enums.licenseStatus!.length * 8);
+    // Too-new is not fixed by updating; needs-activation keeps its own title and no link.
+    expect(refGate({ ...base, status: "version-too-new" })).toMatchObject({
+      copy: ["core.gate.version-too-new.title"],
+      link: "portal",
+      fix: ["status"],
+    });
+    const needs = refGate({ ...base, tty: false, status: "needs-activation" });
+    expect(needs).toMatchObject({
+      copy: ["cli.gate.needs"],
+      fix: ["activate", "login"],
+    });
+    expect(needs).not.toHaveProperty("link");
+    // No product page: the developer's name; no fix verb mounted: the link stands in.
+    expect(
+      refGate({ ...base, status: "ok", entitled: false, portal: false }).link,
+    ).toBe("contact");
+    expect(
+      refGate({
+        ...base,
+        tty: false,
+        status: "version-too-old",
+        mounted: ["status"],
+      }),
+    ).toMatchObject({ fix: [], link: "portal" });
+    // A failed check closes the gate: a cross, exit 4, no fix row, whatever the terminal.
+    for (const check of ["throws", "unknown-status"] as const)
+      expect(refGate({ ...base, status: "ok", check })).toMatchObject({
+        outcome: "fail",
+        mark: "fail",
+        exit: 4,
+        fix: [],
+      });
+    // Every licenseStatus, in all four quadrants, entitled or not; then 8 + 3 + 2 rows for the
+    // failed check, the missing product page and the mount that drops the fix verbs.
+    expect(cli.gate).toHaveLength(S.enums.licenseStatus!.length * 8 + 13);
   });
 
   it("keeps UK-45's capability table verbatim", () => {

@@ -528,6 +528,7 @@ export type KitCopyKey =
   | "cli.help.group"
   | "cli.help.namespace"
   | "cli.gate.needs"
+  | "cli.gate.notIncluded"
   | "cli.verb.activate"
   | "cli.verb.enroll"
   | "cli.verb.deactivate"

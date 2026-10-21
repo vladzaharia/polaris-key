@@ -263,9 +263,9 @@
         "verbs": "Verb ids are a verb's words joined with a space. endUser is the default mount; developer verbs mount only when options.verbs names them; aliases maps another name to a one-word verb.",
         "mount": "Register the kit's verbs into a host CLI whose own top-level commands are input.host, with input.options. mounted: the commands the host gains, as typed (namespace first). error: the registration error (nothing is mounted): every host command equal to a namespace, a verb's first word or an alias, and the two options that resolve it. skipped: the verbs onCollision skip dropped; the kit warns once, naming them. hidden: the options help hides once config is given. The host's own commands are never renamed, removed or re-described.",
         "help": "The root help page's sections in order: the host's, under its headings, then one section whose heading is the kit copy key `copy` with what the mount added at the top level (a namespace is one entry). commands is each section's set; within a section the kit keeps its order.",
-        "gate": "requireLicense(handler, {entitlement?}) before the host's command input.command. run: the action runs and exits as it does. flow: the kit's activate or sign-in flow runs inline, then the action. refuse: mark, the copy keys and the fix verbs as command rows, written once to stream (stderr: no escape off a terminal), the exit; with --json stdout carries only `result`, the envelope's result line (CLI_JSON_VERSION 1).",
+        "gate": "requireLicense(handler, {entitlement?}) before the host's command input.command. run: the action runs and exits as it does. flow: the kit's activate or sign-in flow runs inline, then the action. refuse: mark, the title (copy; {command} is input.command; no message line, because the fix follows), then link (portal: the product page, from the kit's portal URL; contact: `status.contact` with the developer's name, where input.portal is false) and the fix verbs as command rows, written once to stream (stderr: no escape off a terminal), the exit; fix is the verbs filtered by input.mounted (absent: the end-user set), and a link stands in when none is left. fail: input.check (the check throws, or answers a status that is not a licenseStatus) draws a cross with copy (title and message), no fix row, exit 4. With --json stdout carries only `result`, the envelope's result line (CLI_JSON_VERSION 1).",
         "outcomes": "Drive the kit's verb in input.situation (situations) on a Unicode terminal (json false) or with --json, and compare: exit; mark, the outcome's step mark (that symbol is drawn and the other of fail and warn is not); error and code, the result's fields (null: no error); stdout (empty: nothing on stdout; screen: the flow is drawn on stdout; result: only JSON lines, the last the result); fix, the verb ids of the command rows drawn, as a set.",
-        "stdin": "activate with no key, stdin of kind input.stdin (stdinKinds) given input.lines, each followed by a newline (null: nothing is written and the writer stays open). read: prompt (the masked entry), key (the first non-empty line, here the fixture key, without waiting for the writer to close) or none (the copy key, the exit, the error, and with withinMs the run ends, process and all, within that many milliseconds).",
+        "stdin": "activate with no key, stdin of kind input.stdin (stdinKinds) given input.lines, each followed by a newline (null: nothing is written and the writer stays open). read: prompt (the masked entry), key (the first non-empty line, here the fixture key, without waiting for the writer to close) or none (the copy key, the exit, the error, and with withinMs the run ends, process and all, within that many milliseconds). The none screen is drawn on stdout, like every kit verb's screen (outcomes stdout: screen); stderr is the gate's, because a gated host command's stdout is the host's.",
         "capabilities": "detectTerminal over input.env, the streams (tty or pipe) and the flags (color false is --no-color), to colour, unicode, interactive, animate and links.",
         "exit": "The exit codes every terminal kit uses."
       },
@@ -294,6 +294,7 @@
         "status-expired": "`status`: the license expired.",
         "status-version-too-old": "`status`: this version is below the license's allowed range.",
         "status-version-too-new": "`status`: this version is above the license's allowed range.",
+        "status-channel-not-entitled": "`status`: the license does not include this build's channel.",
         "network": "`devices list`: the request fails with the registry code `network`.",
         "key-refused": "`activate`, a well-formed key on a piped stdin: the server answers 401 `unauthorized`.",
         "device-limit": "`activate`, a well-formed key on a piped stdin: the server answers `device_limit` with a `manageUrl`; no key reader, so the flow ends.",
@@ -11833,10 +11834,8 @@
           "mark": "warn",
           "exit": 4,
           "error": "not_entitled",
-          "copy": [
-            "core.codes.not_entitled.message",
-            "core.codes.not_entitled.title"
-          ],
+          "copy": ["cli.gate.notIncluded"],
+          "link": "portal",
           "fix": ["status"],
           "stream": "stderr"
         }
@@ -11866,10 +11865,8 @@
           "mark": "warn",
           "exit": 4,
           "error": "not_entitled",
-          "copy": [
-            "core.codes.not_entitled.message",
-            "core.codes.not_entitled.title"
-          ],
+          "copy": ["cli.gate.notIncluded"],
+          "link": "portal",
           "fix": ["status"],
           "stream": "stdout",
           "result": {
@@ -11907,10 +11904,8 @@
           "mark": "warn",
           "exit": 4,
           "error": "not_entitled",
-          "copy": [
-            "core.codes.not_entitled.message",
-            "core.codes.not_entitled.title"
-          ],
+          "copy": ["cli.gate.notIncluded"],
+          "link": "portal",
           "fix": ["status"],
           "stream": "stderr"
         }
@@ -11940,10 +11935,8 @@
           "mark": "warn",
           "exit": 4,
           "error": "not_entitled",
-          "copy": [
-            "core.codes.not_entitled.message",
-            "core.codes.not_entitled.title"
-          ],
+          "copy": ["cli.gate.notIncluded"],
+          "link": "portal",
           "fix": ["status"],
           "stream": "stdout",
           "result": {
@@ -11981,10 +11974,8 @@
           "mark": "warn",
           "exit": 4,
           "error": "not_entitled",
-          "copy": [
-            "core.codes.not_entitled.message",
-            "core.codes.not_entitled.title"
-          ],
+          "copy": ["cli.gate.notIncluded"],
+          "link": "portal",
           "fix": ["status"],
           "stream": "stderr"
         }
@@ -12014,10 +12005,8 @@
           "mark": "warn",
           "exit": 4,
           "error": "not_entitled",
-          "copy": [
-            "core.codes.not_entitled.message",
-            "core.codes.not_entitled.title"
-          ],
+          "copy": ["cli.gate.notIncluded"],
+          "link": "portal",
           "fix": ["status"],
           "stream": "stdout",
           "result": {
@@ -12055,10 +12044,8 @@
           "mark": "warn",
           "exit": 4,
           "error": "not_entitled",
-          "copy": [
-            "core.codes.not_entitled.message",
-            "core.codes.not_entitled.title"
-          ],
+          "copy": ["cli.gate.notIncluded"],
+          "link": "portal",
           "fix": ["status"],
           "stream": "stderr"
         }
@@ -12088,10 +12075,8 @@
           "mark": "warn",
           "exit": 4,
           "error": "not_entitled",
-          "copy": [
-            "core.codes.not_entitled.message",
-            "core.codes.not_entitled.title"
-          ],
+          "copy": ["cli.gate.notIncluded"],
+          "link": "portal",
           "fix": ["status"],
           "stream": "stdout",
           "result": {
@@ -12140,7 +12125,7 @@
           "mark": "warn",
           "exit": 4,
           "error": "license_required",
-          "copy": ["core.gate.expired.message", "core.gate.expired.title"],
+          "copy": ["core.gate.expired.title"],
           "fix": ["activate", "login"],
           "stream": "stdout",
           "result": {
@@ -12167,7 +12152,7 @@
           "mark": "warn",
           "exit": 4,
           "error": "license_required",
-          "copy": ["core.gate.expired.message", "core.gate.expired.title"],
+          "copy": ["core.gate.expired.title"],
           "fix": ["activate", "login"],
           "stream": "stdout",
           "result": {
@@ -12194,7 +12179,7 @@
           "mark": "warn",
           "exit": 4,
           "error": "license_required",
-          "copy": ["core.gate.expired.message", "core.gate.expired.title"],
+          "copy": ["core.gate.expired.title"],
           "fix": ["activate", "login"],
           "stream": "stderr"
         }
@@ -12213,7 +12198,7 @@
           "mark": "warn",
           "exit": 4,
           "error": "license_required",
-          "copy": ["core.gate.expired.message", "core.gate.expired.title"],
+          "copy": ["core.gate.expired.title"],
           "fix": ["activate", "login"],
           "stream": "stderr"
         }
@@ -12232,7 +12217,7 @@
           "mark": "warn",
           "exit": 4,
           "error": "license_required",
-          "copy": ["core.gate.expired.message", "core.gate.expired.title"],
+          "copy": ["core.gate.expired.title"],
           "fix": ["activate", "login"],
           "stream": "stdout",
           "result": {
@@ -12259,7 +12244,7 @@
           "mark": "warn",
           "exit": 4,
           "error": "license_required",
-          "copy": ["core.gate.expired.message", "core.gate.expired.title"],
+          "copy": ["core.gate.expired.title"],
           "fix": ["activate", "login"],
           "stream": "stdout",
           "result": {
@@ -12308,7 +12293,7 @@
           "mark": "warn",
           "exit": 4,
           "error": "license_required",
-          "copy": ["core.gate.revoked.message", "core.gate.revoked.title"],
+          "copy": ["core.gate.revoked.title"],
           "fix": ["activate", "login"],
           "stream": "stdout",
           "result": {
@@ -12335,7 +12320,7 @@
           "mark": "warn",
           "exit": 4,
           "error": "license_required",
-          "copy": ["core.gate.revoked.message", "core.gate.revoked.title"],
+          "copy": ["core.gate.revoked.title"],
           "fix": ["activate", "login"],
           "stream": "stdout",
           "result": {
@@ -12362,7 +12347,7 @@
           "mark": "warn",
           "exit": 4,
           "error": "license_required",
-          "copy": ["core.gate.revoked.message", "core.gate.revoked.title"],
+          "copy": ["core.gate.revoked.title"],
           "fix": ["activate", "login"],
           "stream": "stderr"
         }
@@ -12381,7 +12366,7 @@
           "mark": "warn",
           "exit": 4,
           "error": "license_required",
-          "copy": ["core.gate.revoked.message", "core.gate.revoked.title"],
+          "copy": ["core.gate.revoked.title"],
           "fix": ["activate", "login"],
           "stream": "stderr"
         }
@@ -12400,7 +12385,7 @@
           "mark": "warn",
           "exit": 4,
           "error": "license_required",
-          "copy": ["core.gate.revoked.message", "core.gate.revoked.title"],
+          "copy": ["core.gate.revoked.title"],
           "fix": ["activate", "login"],
           "stream": "stdout",
           "result": {
@@ -12427,7 +12412,7 @@
           "mark": "warn",
           "exit": 4,
           "error": "license_required",
-          "copy": ["core.gate.revoked.message", "core.gate.revoked.title"],
+          "copy": ["core.gate.revoked.title"],
           "fix": ["activate", "login"],
           "stream": "stdout",
           "result": {
@@ -12476,10 +12461,7 @@
           "mark": "warn",
           "exit": 4,
           "error": "license_required",
-          "copy": [
-            "core.gate.needs-activation.message",
-            "core.gate.needs-activation.title"
-          ],
+          "copy": ["cli.gate.needs"],
           "fix": ["activate", "login"],
           "stream": "stdout",
           "result": {
@@ -12506,10 +12488,7 @@
           "mark": "warn",
           "exit": 4,
           "error": "license_required",
-          "copy": [
-            "core.gate.needs-activation.message",
-            "core.gate.needs-activation.title"
-          ],
+          "copy": ["cli.gate.needs"],
           "fix": ["activate", "login"],
           "stream": "stdout",
           "result": {
@@ -12536,10 +12515,7 @@
           "mark": "warn",
           "exit": 4,
           "error": "license_required",
-          "copy": [
-            "core.gate.needs-activation.message",
-            "core.gate.needs-activation.title"
-          ],
+          "copy": ["cli.gate.needs"],
           "fix": ["activate", "login"],
           "stream": "stderr"
         }
@@ -12558,10 +12534,7 @@
           "mark": "warn",
           "exit": 4,
           "error": "license_required",
-          "copy": [
-            "core.gate.needs-activation.message",
-            "core.gate.needs-activation.title"
-          ],
+          "copy": ["cli.gate.needs"],
           "fix": ["activate", "login"],
           "stream": "stderr"
         }
@@ -12580,10 +12553,7 @@
           "mark": "warn",
           "exit": 4,
           "error": "license_required",
-          "copy": [
-            "core.gate.needs-activation.message",
-            "core.gate.needs-activation.title"
-          ],
+          "copy": ["cli.gate.needs"],
           "fix": ["activate", "login"],
           "stream": "stdout",
           "result": {
@@ -12610,10 +12580,7 @@
           "mark": "warn",
           "exit": 4,
           "error": "license_required",
-          "copy": [
-            "core.gate.needs-activation.message",
-            "core.gate.needs-activation.title"
-          ],
+          "copy": ["cli.gate.needs"],
           "fix": ["activate", "login"],
           "stream": "stdout",
           "result": {
@@ -12640,10 +12607,7 @@
           "mark": "warn",
           "exit": 4,
           "error": "license_required",
-          "copy": [
-            "core.gate.version-too-old.message",
-            "core.gate.version-too-old.title"
-          ],
+          "copy": ["core.gate.version-too-old.title"],
           "fix": ["update apply"],
           "stream": "stderr"
         }
@@ -12662,10 +12626,7 @@
           "mark": "warn",
           "exit": 4,
           "error": "license_required",
-          "copy": [
-            "core.gate.version-too-old.message",
-            "core.gate.version-too-old.title"
-          ],
+          "copy": ["core.gate.version-too-old.title"],
           "fix": ["update apply"],
           "stream": "stderr"
         }
@@ -12684,10 +12645,7 @@
           "mark": "warn",
           "exit": 4,
           "error": "license_required",
-          "copy": [
-            "core.gate.version-too-old.message",
-            "core.gate.version-too-old.title"
-          ],
+          "copy": ["core.gate.version-too-old.title"],
           "fix": ["update apply"],
           "stream": "stdout",
           "result": {
@@ -12714,10 +12672,7 @@
           "mark": "warn",
           "exit": 4,
           "error": "license_required",
-          "copy": [
-            "core.gate.version-too-old.message",
-            "core.gate.version-too-old.title"
-          ],
+          "copy": ["core.gate.version-too-old.title"],
           "fix": ["update apply"],
           "stream": "stdout",
           "result": {
@@ -12744,10 +12699,7 @@
           "mark": "warn",
           "exit": 4,
           "error": "license_required",
-          "copy": [
-            "core.gate.version-too-old.message",
-            "core.gate.version-too-old.title"
-          ],
+          "copy": ["core.gate.version-too-old.title"],
           "fix": ["update apply"],
           "stream": "stderr"
         }
@@ -12766,10 +12718,7 @@
           "mark": "warn",
           "exit": 4,
           "error": "license_required",
-          "copy": [
-            "core.gate.version-too-old.message",
-            "core.gate.version-too-old.title"
-          ],
+          "copy": ["core.gate.version-too-old.title"],
           "fix": ["update apply"],
           "stream": "stderr"
         }
@@ -12788,10 +12737,7 @@
           "mark": "warn",
           "exit": 4,
           "error": "license_required",
-          "copy": [
-            "core.gate.version-too-old.message",
-            "core.gate.version-too-old.title"
-          ],
+          "copy": ["core.gate.version-too-old.title"],
           "fix": ["update apply"],
           "stream": "stdout",
           "result": {
@@ -12818,10 +12764,7 @@
           "mark": "warn",
           "exit": 4,
           "error": "license_required",
-          "copy": [
-            "core.gate.version-too-old.message",
-            "core.gate.version-too-old.title"
-          ],
+          "copy": ["core.gate.version-too-old.title"],
           "fix": ["update apply"],
           "stream": "stdout",
           "result": {
@@ -12848,11 +12791,9 @@
           "mark": "warn",
           "exit": 4,
           "error": "license_required",
-          "copy": [
-            "core.gate.version-too-new.message",
-            "core.gate.version-too-new.title"
-          ],
-          "fix": ["update apply"],
+          "copy": ["core.gate.version-too-new.title"],
+          "link": "portal",
+          "fix": ["status"],
           "stream": "stderr"
         }
       },
@@ -12870,11 +12811,9 @@
           "mark": "warn",
           "exit": 4,
           "error": "license_required",
-          "copy": [
-            "core.gate.version-too-new.message",
-            "core.gate.version-too-new.title"
-          ],
-          "fix": ["update apply"],
+          "copy": ["core.gate.version-too-new.title"],
+          "link": "portal",
+          "fix": ["status"],
           "stream": "stderr"
         }
       },
@@ -12892,11 +12831,9 @@
           "mark": "warn",
           "exit": 4,
           "error": "license_required",
-          "copy": [
-            "core.gate.version-too-new.message",
-            "core.gate.version-too-new.title"
-          ],
-          "fix": ["update apply"],
+          "copy": ["core.gate.version-too-new.title"],
+          "link": "portal",
+          "fix": ["status"],
           "stream": "stdout",
           "result": {
             "v": 1,
@@ -12922,11 +12859,9 @@
           "mark": "warn",
           "exit": 4,
           "error": "license_required",
-          "copy": [
-            "core.gate.version-too-new.message",
-            "core.gate.version-too-new.title"
-          ],
-          "fix": ["update apply"],
+          "copy": ["core.gate.version-too-new.title"],
+          "link": "portal",
+          "fix": ["status"],
           "stream": "stdout",
           "result": {
             "v": 1,
@@ -12952,11 +12887,9 @@
           "mark": "warn",
           "exit": 4,
           "error": "license_required",
-          "copy": [
-            "core.gate.version-too-new.message",
-            "core.gate.version-too-new.title"
-          ],
-          "fix": ["update apply"],
+          "copy": ["core.gate.version-too-new.title"],
+          "link": "portal",
+          "fix": ["status"],
           "stream": "stderr"
         }
       },
@@ -12974,11 +12907,9 @@
           "mark": "warn",
           "exit": 4,
           "error": "license_required",
-          "copy": [
-            "core.gate.version-too-new.message",
-            "core.gate.version-too-new.title"
-          ],
-          "fix": ["update apply"],
+          "copy": ["core.gate.version-too-new.title"],
+          "link": "portal",
+          "fix": ["status"],
           "stream": "stderr"
         }
       },
@@ -12996,11 +12927,9 @@
           "mark": "warn",
           "exit": 4,
           "error": "license_required",
-          "copy": [
-            "core.gate.version-too-new.message",
-            "core.gate.version-too-new.title"
-          ],
-          "fix": ["update apply"],
+          "copy": ["core.gate.version-too-new.title"],
+          "link": "portal",
+          "fix": ["status"],
           "stream": "stdout",
           "result": {
             "v": 1,
@@ -13026,11 +12955,9 @@
           "mark": "warn",
           "exit": 4,
           "error": "license_required",
-          "copy": [
-            "core.gate.version-too-new.message",
-            "core.gate.version-too-new.title"
-          ],
-          "fix": ["update apply"],
+          "copy": ["core.gate.version-too-new.title"],
+          "link": "portal",
+          "fix": ["status"],
           "stream": "stdout",
           "result": {
             "v": 1,
@@ -13056,10 +12983,8 @@
           "mark": "warn",
           "exit": 4,
           "error": "not_entitled",
-          "copy": [
-            "core.gate.channel-not-entitled.message",
-            "core.gate.channel-not-entitled.title"
-          ],
+          "copy": ["core.gate.channel-not-entitled.title"],
+          "link": "portal",
           "fix": ["status"],
           "stream": "stderr"
         }
@@ -13078,10 +13003,8 @@
           "mark": "warn",
           "exit": 4,
           "error": "not_entitled",
-          "copy": [
-            "core.gate.channel-not-entitled.message",
-            "core.gate.channel-not-entitled.title"
-          ],
+          "copy": ["core.gate.channel-not-entitled.title"],
+          "link": "portal",
           "fix": ["status"],
           "stream": "stderr"
         }
@@ -13100,10 +13023,8 @@
           "mark": "warn",
           "exit": 4,
           "error": "not_entitled",
-          "copy": [
-            "core.gate.channel-not-entitled.message",
-            "core.gate.channel-not-entitled.title"
-          ],
+          "copy": ["core.gate.channel-not-entitled.title"],
+          "link": "portal",
           "fix": ["status"],
           "stream": "stdout",
           "result": {
@@ -13130,10 +13051,8 @@
           "mark": "warn",
           "exit": 4,
           "error": "not_entitled",
-          "copy": [
-            "core.gate.channel-not-entitled.message",
-            "core.gate.channel-not-entitled.title"
-          ],
+          "copy": ["core.gate.channel-not-entitled.title"],
+          "link": "portal",
           "fix": ["status"],
           "stream": "stdout",
           "result": {
@@ -13160,10 +13079,8 @@
           "mark": "warn",
           "exit": 4,
           "error": "not_entitled",
-          "copy": [
-            "core.gate.channel-not-entitled.message",
-            "core.gate.channel-not-entitled.title"
-          ],
+          "copy": ["core.gate.channel-not-entitled.title"],
+          "link": "portal",
           "fix": ["status"],
           "stream": "stderr"
         }
@@ -13182,10 +13099,8 @@
           "mark": "warn",
           "exit": 4,
           "error": "not_entitled",
-          "copy": [
-            "core.gate.channel-not-entitled.message",
-            "core.gate.channel-not-entitled.title"
-          ],
+          "copy": ["core.gate.channel-not-entitled.title"],
+          "link": "portal",
           "fix": ["status"],
           "stream": "stderr"
         }
@@ -13204,10 +13119,8 @@
           "mark": "warn",
           "exit": 4,
           "error": "not_entitled",
-          "copy": [
-            "core.gate.channel-not-entitled.message",
-            "core.gate.channel-not-entitled.title"
-          ],
+          "copy": ["core.gate.channel-not-entitled.title"],
+          "link": "portal",
           "fix": ["status"],
           "stream": "stdout",
           "result": {
@@ -13234,10 +13147,8 @@
           "mark": "warn",
           "exit": 4,
           "error": "not_entitled",
-          "copy": [
-            "core.gate.channel-not-entitled.message",
-            "core.gate.channel-not-entitled.title"
-          ],
+          "copy": ["core.gate.channel-not-entitled.title"],
+          "link": "portal",
           "fix": ["status"],
           "stream": "stdout",
           "result": {
@@ -13275,10 +13186,8 @@
           "mark": "warn",
           "exit": 4,
           "error": "not_entitled",
-          "copy": [
-            "core.codes.not_entitled.message",
-            "core.codes.not_entitled.title"
-          ],
+          "copy": ["cli.gate.notIncluded"],
+          "link": "portal",
           "fix": ["status"],
           "stream": "stderr"
         }
@@ -13308,10 +13217,8 @@
           "mark": "warn",
           "exit": 4,
           "error": "not_entitled",
-          "copy": [
-            "core.codes.not_entitled.message",
-            "core.codes.not_entitled.title"
-          ],
+          "copy": ["cli.gate.notIncluded"],
+          "link": "portal",
           "fix": ["status"],
           "stream": "stdout",
           "result": {
@@ -13349,10 +13256,8 @@
           "mark": "warn",
           "exit": 4,
           "error": "not_entitled",
-          "copy": [
-            "core.codes.not_entitled.message",
-            "core.codes.not_entitled.title"
-          ],
+          "copy": ["cli.gate.notIncluded"],
+          "link": "portal",
           "fix": ["status"],
           "stream": "stderr"
         }
@@ -13382,10 +13287,8 @@
           "mark": "warn",
           "exit": 4,
           "error": "not_entitled",
-          "copy": [
-            "core.codes.not_entitled.message",
-            "core.codes.not_entitled.title"
-          ],
+          "copy": ["cli.gate.notIncluded"],
+          "link": "portal",
           "fix": ["status"],
           "stream": "stdout",
           "result": {
@@ -13396,6 +13299,327 @@
             "exit": 4,
             "error": "not_entitled"
           }
+        }
+      },
+      {
+        "name": "the check throws, tty, text",
+        "input": {
+          "status": "ok",
+          "tty": true,
+          "json": false,
+          "entitled": true,
+          "command": "export",
+          "check": "throws"
+        },
+        "expect": {
+          "outcome": "fail",
+          "mark": "fail",
+          "exit": 4,
+          "error": "license_required",
+          "copy": [
+            "core.codes.sync-failed.message",
+            "core.codes.sync-failed.title"
+          ],
+          "fix": [],
+          "stream": "stderr"
+        }
+      },
+      {
+        "name": "the check throws, tty, --json",
+        "input": {
+          "status": "ok",
+          "tty": true,
+          "json": true,
+          "entitled": true,
+          "command": "export",
+          "check": "throws"
+        },
+        "expect": {
+          "outcome": "fail",
+          "mark": "fail",
+          "exit": 4,
+          "error": "license_required",
+          "copy": [
+            "core.codes.sync-failed.message",
+            "core.codes.sync-failed.title"
+          ],
+          "fix": [],
+          "stream": "stdout",
+          "result": {
+            "v": 1,
+            "command": "export",
+            "event": "result",
+            "ok": false,
+            "exit": 4,
+            "error": "license_required"
+          }
+        }
+      },
+      {
+        "name": "the check throws, no tty, text",
+        "input": {
+          "status": "ok",
+          "tty": false,
+          "json": false,
+          "entitled": true,
+          "command": "export",
+          "check": "throws"
+        },
+        "expect": {
+          "outcome": "fail",
+          "mark": "fail",
+          "exit": 4,
+          "error": "license_required",
+          "copy": [
+            "core.codes.sync-failed.message",
+            "core.codes.sync-failed.title"
+          ],
+          "fix": [],
+          "stream": "stderr"
+        }
+      },
+      {
+        "name": "the check throws, no tty, --json",
+        "input": {
+          "status": "ok",
+          "tty": false,
+          "json": true,
+          "entitled": true,
+          "command": "export",
+          "check": "throws"
+        },
+        "expect": {
+          "outcome": "fail",
+          "mark": "fail",
+          "exit": 4,
+          "error": "license_required",
+          "copy": [
+            "core.codes.sync-failed.message",
+            "core.codes.sync-failed.title"
+          ],
+          "fix": [],
+          "stream": "stdout",
+          "result": {
+            "v": 1,
+            "command": "export",
+            "event": "result",
+            "ok": false,
+            "exit": 4,
+            "error": "license_required"
+          }
+        }
+      },
+      {
+        "name": "the check answers an unknown status, tty, text",
+        "input": {
+          "status": "unrecognised",
+          "tty": true,
+          "json": false,
+          "entitled": true,
+          "command": "export",
+          "check": "unknown-status"
+        },
+        "expect": {
+          "outcome": "fail",
+          "mark": "fail",
+          "exit": 4,
+          "error": "license_required",
+          "copy": [
+            "core.codes.sync-failed.message",
+            "core.codes.sync-failed.title"
+          ],
+          "fix": [],
+          "stream": "stderr"
+        }
+      },
+      {
+        "name": "the check answers an unknown status, tty, --json",
+        "input": {
+          "status": "unrecognised",
+          "tty": true,
+          "json": true,
+          "entitled": true,
+          "command": "export",
+          "check": "unknown-status"
+        },
+        "expect": {
+          "outcome": "fail",
+          "mark": "fail",
+          "exit": 4,
+          "error": "license_required",
+          "copy": [
+            "core.codes.sync-failed.message",
+            "core.codes.sync-failed.title"
+          ],
+          "fix": [],
+          "stream": "stdout",
+          "result": {
+            "v": 1,
+            "command": "export",
+            "event": "result",
+            "ok": false,
+            "exit": 4,
+            "error": "license_required"
+          }
+        }
+      },
+      {
+        "name": "the check answers an unknown status, no tty, text",
+        "input": {
+          "status": "unrecognised",
+          "tty": false,
+          "json": false,
+          "entitled": true,
+          "command": "export",
+          "check": "unknown-status"
+        },
+        "expect": {
+          "outcome": "fail",
+          "mark": "fail",
+          "exit": 4,
+          "error": "license_required",
+          "copy": [
+            "core.codes.sync-failed.message",
+            "core.codes.sync-failed.title"
+          ],
+          "fix": [],
+          "stream": "stderr"
+        }
+      },
+      {
+        "name": "the check answers an unknown status, no tty, --json",
+        "input": {
+          "status": "unrecognised",
+          "tty": false,
+          "json": true,
+          "entitled": true,
+          "command": "export",
+          "check": "unknown-status"
+        },
+        "expect": {
+          "outcome": "fail",
+          "mark": "fail",
+          "exit": 4,
+          "error": "license_required",
+          "copy": [
+            "core.codes.sync-failed.message",
+            "core.codes.sync-failed.title"
+          ],
+          "fix": [],
+          "stream": "stdout",
+          "result": {
+            "v": 1,
+            "command": "export",
+            "event": "result",
+            "ok": false,
+            "exit": 4,
+            "error": "license_required"
+          }
+        }
+      },
+      {
+        "name": "ok, no product page, text",
+        "input": {
+          "status": "ok",
+          "tty": false,
+          "json": false,
+          "entitled": false,
+          "command": "export",
+          "portal": false
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "not_entitled",
+          "copy": ["cli.gate.notIncluded"],
+          "link": "contact",
+          "fix": ["status"],
+          "stream": "stderr"
+        }
+      },
+      {
+        "name": "channel-not-entitled, no product page, text",
+        "input": {
+          "status": "channel-not-entitled",
+          "tty": false,
+          "json": false,
+          "entitled": true,
+          "command": "export",
+          "portal": false
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "not_entitled",
+          "copy": ["core.gate.channel-not-entitled.title"],
+          "link": "contact",
+          "fix": ["status"],
+          "stream": "stderr"
+        }
+      },
+      {
+        "name": "version-too-new, no product page, text",
+        "input": {
+          "status": "version-too-new",
+          "tty": false,
+          "json": false,
+          "entitled": true,
+          "command": "export",
+          "portal": false
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "license_required",
+          "copy": ["core.gate.version-too-new.title"],
+          "link": "contact",
+          "fix": ["status"],
+          "stream": "stderr"
+        }
+      },
+      {
+        "name": "version-too-old, the mount offers no update, text",
+        "input": {
+          "status": "version-too-old",
+          "tty": false,
+          "json": false,
+          "entitled": true,
+          "command": "export",
+          "mounted": ["status"]
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "license_required",
+          "copy": ["core.gate.version-too-old.title"],
+          "link": "portal",
+          "fix": [],
+          "stream": "stderr"
+        }
+      },
+      {
+        "name": "needs-activation, the mount offers neither activate nor login, text",
+        "input": {
+          "status": "needs-activation",
+          "tty": false,
+          "json": false,
+          "entitled": true,
+          "command": "export",
+          "mounted": ["status"]
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "license_required",
+          "copy": ["cli.gate.needs"],
+          "link": "portal",
+          "fix": [],
+          "stream": "stderr"
         }
       }
     ],
@@ -13484,7 +13708,8 @@
           "exit": 1,
           "error": null,
           "stdout": "screen",
-          "fix": []
+          "fix": [],
+          "link": "portal"
         }
       },
       {
@@ -13492,6 +13717,31 @@
         "input": {
           "verb": "status",
           "situation": "status-version-too-new",
+          "json": true
+        },
+        "expect": { "exit": 1, "error": null, "stdout": "result" }
+      },
+      {
+        "name": "status-channel-not-entitled",
+        "input": {
+          "verb": "status",
+          "situation": "status-channel-not-entitled",
+          "json": false
+        },
+        "expect": {
+          "mark": "warn",
+          "exit": 1,
+          "error": null,
+          "stdout": "screen",
+          "fix": [],
+          "link": "portal"
+        }
+      },
+      {
+        "name": "status-channel-not-entitled, --json",
+        "input": {
+          "verb": "status",
+          "situation": "status-channel-not-entitled",
           "json": true
         },
         "expect": { "exit": 1, "error": null, "stdout": "result" }

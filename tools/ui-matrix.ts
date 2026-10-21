@@ -37,6 +37,9 @@
 // family, a new top-level section every runner learns. Version 4 (H1b): StatusScreen/revoked
 // offers Sign in and Use a different key, never Sign out; Activate's typing, parsed, cut-short,
 // rejected and busy states carry the base copy; the fixture URLs name https://polaris.locker.
+// Version 4 also carries H1a's `cli` gate rules (rows and rules changed before the first release
+// of version 4): a refusal leads with the product page, a failed check is a cross, and the
+// `status` outcomes for a version or channel refusal stop looping.
 
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -3675,6 +3678,8 @@ export const CLI_SITUATIONS: Readonly<Record<string, string>> = {
     "`status`: this version is below the license's allowed range.",
   "status-version-too-new":
     "`status`: this version is above the license's allowed range.",
+  "status-channel-not-entitled":
+    "`status`: the license does not include this build's channel.",
   network:
     "`devices list`: the request fails with the registry code `network`.",
   "key-refused":
@@ -3711,11 +3716,11 @@ const CLI_VOCABULARY = {
     mount:
       "Register the kit's verbs into a host CLI whose own top-level commands are input.host, with input.options. mounted: the commands the host gains, as typed (namespace first). error: the registration error (nothing is mounted): every host command equal to a namespace, a verb's first word or an alias, and the two options that resolve it. skipped: the verbs onCollision skip dropped; the kit warns once, naming them. hidden: the options help hides once config is given. The host's own commands are never renamed, removed or re-described.",
     help: "The root help page's sections in order: the host's, under its headings, then one section whose heading is the kit copy key `copy` with what the mount added at the top level (a namespace is one entry). commands is each section's set; within a section the kit keeps its order.",
-    gate: "requireLicense(handler, {entitlement?}) before the host's command input.command. run: the action runs and exits as it does. flow: the kit's activate or sign-in flow runs inline, then the action. refuse: mark, the copy keys and the fix verbs as command rows, written once to stream (stderr: no escape off a terminal), the exit; with --json stdout carries only `result`, the envelope's result line (CLI_JSON_VERSION 1).",
+    gate: "requireLicense(handler, {entitlement?}) before the host's command input.command. run: the action runs and exits as it does. flow: the kit's activate or sign-in flow runs inline, then the action. refuse: mark, the title (copy; {command} is input.command; no message line, because the fix follows), then link (portal: the product page, from the kit's portal URL; contact: `status.contact` with the developer's name, where input.portal is false) and the fix verbs as command rows, written once to stream (stderr: no escape off a terminal), the exit; fix is the verbs filtered by input.mounted (absent: the end-user set), and a link stands in when none is left. fail: input.check (the check throws, or answers a status that is not a licenseStatus) draws a cross with copy (title and message), no fix row, exit 4. With --json stdout carries only `result`, the envelope's result line (CLI_JSON_VERSION 1).",
     outcomes:
       "Drive the kit's verb in input.situation (situations) on a Unicode terminal (json false) or with --json, and compare: exit; mark, the outcome's step mark (that symbol is drawn and the other of fail and warn is not); error and code, the result's fields (null: no error); stdout (empty: nothing on stdout; screen: the flow is drawn on stdout; result: only JSON lines, the last the result); fix, the verb ids of the command rows drawn, as a set.",
     stdin:
-      "activate with no key, stdin of kind input.stdin (stdinKinds) given input.lines, each followed by a newline (null: nothing is written and the writer stays open). read: prompt (the masked entry), key (the first non-empty line, here the fixture key, without waiting for the writer to close) or none (the copy key, the exit, the error, and with withinMs the run ends, process and all, within that many milliseconds).",
+      "activate with no key, stdin of kind input.stdin (stdinKinds) given input.lines, each followed by a newline (null: nothing is written and the writer stays open). read: prompt (the masked entry), key (the first non-empty line, here the fixture key, without waiting for the writer to close) or none (the copy key, the exit, the error, and with withinMs the run ends, process and all, within that many milliseconds). The none screen is drawn on stdout, like every kit verb's screen (outcomes stdout: screen); stderr is the gate's, because a gated host command's stdout is the host's.",
     capabilities:
       "detectTerminal over input.env, the streams (tty or pipe) and the flags (color false is --no-color), to colour, unicode, interactive, animate and links.",
     exit: "The exit codes every terminal kit uses.",
@@ -3782,14 +3787,23 @@ export interface CliGateInput {
   /** The entitlement the gate asks for is held, or it asks for none. */
   entitled: boolean;
   command: string;
+  /** The verb ids the host's mount offers; absent: the end-user set. */
+  mounted?: string[];
+  /** The kit knows no product page for this product (so the link is the developer's name). */
+  portal?: false;
+  /** The license check itself fails: `client.status()` throws, or answers a status that is not
+   *  a licenseStatus. */
+  check?: "throws" | "unknown-status";
 }
 export interface CliGateExpect {
-  outcome: "run" | "flow" | "refuse";
+  outcome: "run" | "flow" | "refuse" | "fail";
   mark?: string;
   exit?: number;
   error?: string;
   copy?: string[];
   fix?: string[];
+  /** A row above the fix rows: the product page, or "Contact {developer}" where there is none. */
+  link?: "portal" | "contact";
   stream?: "stderr" | "stdout";
   result?: Obj;
 }
@@ -3802,6 +3816,8 @@ export interface CliOutcomeExpect {
   code?: string;
   stdout?: "empty" | "screen" | "result";
   fix?: string[];
+  /** The product page link drawn instead of a fix row the screen cannot draw. */
+  link?: "portal";
 }
 export interface CliStdinExpect {
   read: "prompt" | "key" | "none";
@@ -3931,12 +3947,40 @@ export function refHelp(input: CliFamily["help"][number]["input"]): {
   };
 }
 
-/** The gate rule (UK-51 §3 `gate`; DL6): a usable license with the entitlement runs the action;
- *  an interactive run resolves needs-activation, expired and revoked inline; everything else is a
- *  refusal, a triangle with its fix, exit 4, on stderr (once, no escape off a terminal) or, with
- *  `--json`, as the result line on stdout. */
+/** The gate rule (UK-51 §3 `gate`; DL6; H1a): a usable license with the entitlement runs the
+ *  action; an interactive run resolves needs-activation, expired and revoked inline; a check that
+ *  fails (it throws, or answers an unknown status) is a cross, exit 4, with no fix; everything
+ *  else is a refusal, a triangle with its fix, exit 4, on stderr (once, no escape off a terminal)
+ *  or, with `--json`, as the result line on stdout. Not-entitled, channel and version-too-new
+ *  refusals lead with the product page link (the developer's name where there is none); a refusal
+ *  whose fix verbs the mount does not offer is led by the link too, so it never has zero rows. */
 export function refGate(i: CliGateInput): CliGateExpect {
   const usable = (CLI_USABLE as readonly string[]).includes(i.status);
+  const stream = i.json ? ("stdout" as const) : ("stderr" as const);
+  const result = (error: string) =>
+    i.json
+      ? {
+          result: {
+            v: 1,
+            command: i.command,
+            event: "result",
+            ok: false,
+            exit: CLI_EXIT.licenseRequired,
+            error,
+          },
+        }
+      : {};
+  if (i.check)
+    return {
+      outcome: "fail",
+      mark: "fail",
+      exit: CLI_EXIT.licenseRequired,
+      error: "license_required",
+      copy: ["core.codes.sync-failed.message", "core.codes.sync-failed.title"],
+      fix: [],
+      stream,
+      ...result("license_required"),
+    };
   if (usable && i.entitled) return { outcome: "run" };
   if (
     !usable &&
@@ -3948,33 +3992,37 @@ export function refGate(i: CliGateInput): CliGateExpect {
   const notEntitled = usable || i.status === "channel-not-entitled";
   const error = notEntitled ? "not_entitled" : "license_required";
   const copy = usable
-    ? ["core.codes.not_entitled.message", "core.codes.not_entitled.title"]
-    : [`core.gate.${i.status}.message`, `core.gate.${i.status}.title`];
-  const fix = notEntitled
+    ? ["cli.gate.notIncluded"]
+    : i.status === "needs-activation"
+      ? ["cli.gate.needs"]
+      : [`core.gate.${i.status}.title`];
+  const verbs = notEntitled
     ? ["status"]
-    : i.status.startsWith("version-")
-      ? ["update apply"]
-      : ["activate", "login"];
+    : i.status === "version-too-new"
+      ? ["status"]
+      : i.status === "version-too-old"
+        ? ["update apply"]
+        : ["activate", "login"];
+  const fix = verbs.filter(
+    (v) => i.mounted === undefined || i.mounted.includes(v),
+  );
+  const leads = notEntitled || i.status === "version-too-new";
+  const link =
+    leads || fix.length === 0
+      ? i.portal === false
+        ? ("contact" as const)
+        : ("portal" as const)
+      : undefined;
   return {
     outcome: "refuse",
     mark: "warn",
     exit: CLI_EXIT.licenseRequired,
     error,
     copy,
+    ...(link ? { link } : {}),
     fix,
-    stream: i.json ? "stdout" : "stderr",
-    ...(i.json
-      ? {
-          result: {
-            v: 1,
-            command: i.command,
-            event: "result",
-            ok: false,
-            exit: CLI_EXIT.licenseRequired,
-            error,
-          },
-        }
-      : {}),
+    stream,
+    ...result(error),
   };
 }
 
@@ -4148,6 +4196,45 @@ function cliFamily(): CliFamily {
             expect: refGate(input),
           });
         }
+  const extra = (name: string, input: CliGateInput) =>
+    gateRows.push({ name, input, expect: refGate(input) });
+  const base = (status: string): CliGateInput => ({
+    status,
+    tty: false,
+    json: false,
+    entitled: status !== "ok",
+    command: CLI_GATE_COMMAND,
+  });
+  // A check that fails closes the gate (H1a): a cross, exit 4, no fix.
+  for (const check of ["throws", "unknown-status"] as const)
+    for (const tty of [true, false])
+      for (const json of [false, true])
+        extra(
+          `the check ${check === "throws" ? "throws" : "answers an unknown status"}, ${tty ? "tty" : "no tty"}, ${json ? "--json" : "text"}`,
+          {
+            status: check === "throws" ? "ok" : "unrecognised",
+            tty,
+            json,
+            entitled: true,
+            command: CLI_GATE_COMMAND,
+            check,
+          },
+        );
+  // No product page: the developer's name stands in for the link.
+  for (const status of ["ok", "channel-not-entitled", "version-too-new"])
+    extra(`${status}, no product page, text`, {
+      ...base(status),
+      portal: false,
+    });
+  // A mount that drops the fix verbs: the link is the fix.
+  extra("version-too-old, the mount offers no update, text", {
+    ...base("version-too-old"),
+    mounted: ["status"],
+  });
+  extra("needs-activation, the mount offers neither activate nor login, text", {
+    ...base("needs-activation"),
+    mounted: ["status"],
+  });
   const outcome = (
     situation: string,
     verb: string,
@@ -4169,18 +4256,28 @@ function cliFamily(): CliFamily {
         ]
       : []),
   ];
-  const statusRow = (status: string, fix: string[]) =>
+  const statusRow = (status: string, fix: string[], link?: "portal") =>
     outcome(
       `status-${status}`,
       "status",
-      { mark: "warn", exit: 1, error: null, stdout: "screen", fix },
+      {
+        mark: "warn",
+        exit: 1,
+        error: null,
+        stdout: "screen",
+        fix,
+        ...(link ? { link } : {}),
+      },
       { exit: 1, error: null },
     );
   const outcomeRows: CliFamily["outcomes"] = [
     ...statusRow("revoked", ["activate", "login"]),
     ...statusRow("expired", ["activate", "login"]),
     ...statusRow("version-too-old", ["update apply"]),
-    ...statusRow("version-too-new", []),
+    // Nothing here is a verb that fixes it: the product page is the way out, not a loop back to
+    // `status` (H1a).
+    ...statusRow("version-too-new", [], "portal"),
+    ...statusRow("channel-not-entitled", [], "portal"),
     ...outcome(
       "network",
       "devices list",
@@ -4419,22 +4516,37 @@ export function checkCli(
   for (const r of cli.gate) {
     const where = `cli.gate "${r.name}"`;
     const i = r.input;
-    if (!statuses.includes(i.status))
+    if (!i.check && !statuses.includes(i.status))
       errors.push(`${where}: ${i.status} is not a licenseStatus`);
-    cells.add(`${i.status}|${i.tty}|${i.json}|${i.entitled}`);
+    if (i.check && statuses.includes(i.status) && i.check === "unknown-status")
+      errors.push(`${where}: an unknown status is not a licenseStatus`);
+    for (const v of i.mounted ?? [])
+      if (!verbs.includes(v))
+        errors.push(`${where}: mounted ${v} is not a verb`);
+    if (!i.check && i.mounted === undefined && i.portal === undefined)
+      cells.add(`${i.status}|${i.tty}|${i.json}|${i.entitled}`);
     if (!same(r.expect, refGate(i)))
       errors.push(`${where}: expectation is not the gate rule's`);
     const e = r.expect;
+    const copyKeys = (e.copy ?? []).filter((k) => !(k in coreEn));
+    for (const k of copyKeys)
+      if (!(k in kitEn)) errors.push(`${where}: ${k} is not core or kit copy`);
+    if (!isSorted(e.copy ?? [])) errors.push(`${where}: copy is not sorted`);
     if (e.outcome === "refuse") {
       if (e.mark !== "warn" || e.exit !== CLI_EXIT.licenseRequired)
         errors.push(`${where}: a refusal is a triangle and exits 4 (DL6)`);
-      if (!e.fix?.length || e.fix.some((v) => !verbs.includes(v)))
+      if (!e.fix?.length && !e.link)
+        errors.push(`${where}: a refusal has a fix verb or a link`);
+      if (e.fix?.some((v) => !verbs.includes(v)))
         errors.push(`${where}: a refusal names its fix as verbs`);
-      for (const k of e.copy ?? [])
-        if (!(k in coreEn)) errors.push(`${where}: ${k} is not core copy`);
-      if (!isSorted(e.copy ?? [])) errors.push(`${where}: copy is not sorted`);
       if (!knownError(e.error ?? ""))
         errors.push(`${where}: error ${String(e.error)} has no core copy`);
+    }
+    if (e.outcome === "fail") {
+      if (e.mark !== "fail" || e.exit !== CLI_EXIT.licenseRequired)
+        errors.push(`${where}: a failed check is a cross and exits 4`);
+      if (e.fix?.length || e.link)
+        errors.push(`${where}: a failed check has no fix row`);
     }
   }
   for (const s of statuses)
@@ -4453,6 +4565,7 @@ export function checkCli(
     "status-expired",
     "status-version-too-old",
     "status-version-too-new",
+    "status-channel-not-entitled",
     "key-refused",
     "device-limit",
     "secret-hidden",
@@ -4486,6 +4599,14 @@ export function checkCli(
       errors.push(`${where}: code ${e.code} has no core copy`);
     for (const v of e.fix ?? [])
       if (!verbs.includes(v)) errors.push(`${where}: fix ${v} is not a verb`);
+    if (
+      !json &&
+      situation.startsWith("status-") &&
+      refusals.has(situation) &&
+      !e.fix?.length &&
+      !e.link
+    )
+      errors.push(`${where}: a refusal has a fix verb or a link`);
   }
   for (const s of Object.keys(CLI_SITUATIONS))
     if (!cli.outcomes.some((r) => r.input.situation === s))
