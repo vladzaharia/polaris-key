@@ -14,6 +14,8 @@ export interface LintOptions {
   chrome?: string[];
   /** Selectors marked as touch variants (touch targets ≥ 44 px). */
   touch?: string[];
+  /** The smallest touch target, in px, inside a `touch` selector (default 44; 24 for WCAG 2.5.8). */
+  minTouch?: number;
   /** rule id → selectors where that rule is allowed (each with its reason in config). */
   allow?: Record<string, string[]>;
   /** Check every authored style rule, not only those that match a linted element (kit CSS). */

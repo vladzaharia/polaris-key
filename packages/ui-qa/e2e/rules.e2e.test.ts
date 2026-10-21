@@ -119,6 +119,101 @@ describe("the modernity lint (UI-KITS §7.3)", () => {
     expect(ok.violations.map((v) => v.rule)).not.toContain("accent-as-status");
   });
 
+  // The patterns the built console and portal rely on, narrowed from false positives (B-233).
+  it("spares an indicator edge, a transparent or neutral-alpha colour, a relative colour, an image in flight, tinted art and a vendor sheet", async () => {
+    const ok = await lint(
+      `<style>
+        .tab { border-bottom: 2px solid var(--c); }
+        .rail { border-inline-start: 3px solid var(--c); }
+        .dim { background-color: rgba(0, 0, 0, 0.6); }
+        .glass { box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1); }
+        .clear { background-color: transparent; color: currentColor; }
+        .rel { background-color: color-mix(in oklab, var(--c), oklch(from var(--c) l c h / 0.5)); }
+        [data-sonner-toast]:focus-visible { box-shadow: 0 4px 12px rgba(255, 0, 0, 0.1), 0 0 0 2px rgba(0, 0, 0, 0.2); margin-left: 4px; }
+      </style>
+      <p class="tab">Tab</p><p class="rail">Rail</p><p class="dim">Dim</p><p class="glass">Glass</p>
+      <p class="clear">Clear</p><p class="rel">Relative</p>
+      <div data-art="fallback" style="inline-size: 40px; block-size: 40px; background-color: var(--c)"></div>`,
+    );
+    expect(ok.violations).toEqual([]);
+  });
+
+  it("reads a state rule written with :not() guards (Tailwind's hover:not-disabled)", async () => {
+    const r = await lint(
+      `<style>
+        .t:hover:not(:disabled):not([aria-disabled="true"]) { background: var(--bg); }
+        .t:active:not(:disabled, [aria-disabled="true"]) { transform: scale(0.98); }
+        .t:disabled, .t[aria-disabled="true"] { opacity: 0.4; }
+        .t:focus-visible { outline: 2px solid var(--c); }
+      </style><button class="t">Go</button>`,
+    );
+    expect(r.violations.map((v) => v.rule)).not.toContain("interactive-states");
+  });
+
+  it("reads a state rule written with :is(:hover, :active) and :where()", async () => {
+    const r = await lint(
+      `<style>
+        :where(.u):is(:hover, :active):not(:disabled, [aria-disabled="true"]) { cursor: pointer; }
+        :where(.u):is(:disabled, [aria-disabled="true"]) { cursor: not-allowed; }
+        .u:focus-visible { outline: 2px solid var(--c); }
+      </style><a class="u" href="#x">Go</a>`,
+    );
+    expect(r.violations.map((v) => v.rule)).not.toContain("interactive-states");
+  });
+
+  it("measures a touch target as the press lands: a stretched link, a label, not a scroll region or a clipped control", async () => {
+    const r = await lint(
+      `<div data-ui-touch>
+        <article style="position: relative; inline-size: 300px; block-size: 120px">
+          <a href="#x" class="stretch" style="display: block; block-size: 20px">Open</a>
+        </article>
+        <label style="display: flex; align-items: center; block-size: 48px; min-inline-size: 120px"><input type="checkbox" style="inline-size: 16px; block-size: 16px"> Remember</label>
+        <div tabindex="0" style="block-size: 16px; overflow: auto">Scroll region</div>
+        <a href="#y" style="position: absolute; clip: rect(0, 0, 0, 0); inline-size: 1px; block-size: 1px; overflow: hidden">Skip</a>
+        <style>.stretch::after { content: ""; position: absolute; inset: 0; }</style>
+      </div>`,
+    );
+    expect(r.violations.map((v) => v.rule)).not.toContain("touch-target");
+    const small = await lint(
+      `<div data-ui-touch><a href="#z" style="display: block; block-size: 20px; inline-size: 80px">Small</a></div>`,
+    );
+    expect(small.violations.map((v) => v.rule)).toContain("touch-target");
+  });
+
+  it("spares an image still loading but not a broken one", async () => {
+    const p = await browser.newPage({ viewport: { width: 1200, height: 900 } });
+    await prepare(p);
+    await p.route("https://img.test/slow.png", () => undefined); // never answers
+    await p.route("https://img.test/gone.png", (r) => r.abort());
+    await p.goto(
+      page(
+        `<img alt="slow" src="https://img.test/slow.png" width="40" height="40"><img alt="gone" src="https://img.test/gone.png" width="40" height="40">`,
+      ),
+      { waitUntil: "commit" },
+    );
+    await p.waitForTimeout(300);
+    const r = await lintPage(p, { fonts: ["Rubik"] });
+    await p.close();
+    const empties = r.violations.filter((v) => v.rule === "empty-placeholder");
+    expect(empties.length).toBe(1);
+  });
+
+  it("still fails a heavy box, an opaque literal and a coloured alpha", async () => {
+    const r = await lint(
+      `<style>.a { border: 2px solid var(--c); } .b { color: #000; } .c { background-color: rgba(255, 0, 0, 0.5); } .d { border-top: 2px solid var(--c); border-bottom: 2px solid var(--c); }</style>
+      <p class="a">A</p><p class="b">B</p><p class="c">C</p><p class="d">D</p>
+      <img alt="" width="40" height="40"><div data-art="fallback" style="inline-size: 40px; block-size: 40px"></div>`,
+    );
+    const rules = r.violations.map((v) => v.rule);
+    expect(
+      rules.filter((x) => x === "border-width").length,
+    ).toBeGreaterThanOrEqual(2);
+    expect(
+      rules.filter((x) => x === "colour-literal").length,
+    ).toBeGreaterThanOrEqual(2);
+    expect(rules.filter((x) => x === "empty-placeholder").length).toBe(2);
+  });
+
   it("records a runtime alert() call", async () => {
     const r = await lint(
       `<button class="k-btn" onclick="alert('x')">Go</button>`,
