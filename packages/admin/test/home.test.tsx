@@ -706,11 +706,10 @@ describe("Home", () => {
         .querySelector("[data-cover=art] img")
         ?.getAttribute("loading"),
     ).toBe("lazy");
-    // No art: a slim solid placeholder, never a tall empty block; with art beside it, as tall.
-    expect(card("Acme").querySelector("[data-cover=flat]")).not.toBeNull();
-    expect(
-      card("Acme").querySelector("[data-cover=flat]")!.className,
-    ).toContain("h-[72px]");
+    // No art, no icon: the initial on a solid surface, as tall as the art beside it.
+    const acme = card("Acme").querySelector("[data-cover=initials]")!;
+    expect(acme.textContent).toBe("A");
+    expect(acme.className).toContain("h-[72px]");
     fireEvent.click(within(main()).getByRole("radio", { name: /Table/ }));
     const table = await within(main()).findByRole("table");
     expect(within(table).getByText("DJDL")).toBeTruthy();
@@ -836,27 +835,38 @@ describe("Home", () => {
 });
 
 describe("ProductCard", () => {
-  it("without art the cover is a slim placeholder: the product's tint when it has one, else neutral", () => {
+  it("without art the cover is never empty: tint, else the icon, else the initial", () => {
     const base = productRow("djdl", "DJDL", ALL_ON) as never as Record<
       string,
       unknown
     >;
-    const plain = { ...base, presentation: { icon: null, header: null } };
-    const { unmount } = render(
-      <ProductCard product={plain as never} attention={[]} />,
-    );
-    const flat = document.querySelector<HTMLElement>("[data-cover=flat]")!;
-    expect(flat.className).toContain("h-8");
-    expect(flat.className).not.toContain("h-[72px]");
-    expect(flat.children).toHaveLength(0);
-    unmount();
-    const tinted = {
-      ...base,
-      presentation: { icon: null, header: null, accent: "#2f8378" },
+    const icon = {
+      url: "https://img.test/x",
+      w64: "https://img.test/x/64.webp",
+      w128: "https://img.test/x/128.webp",
     };
-    render(<ProductCard product={tinted as never} attention={[]} />);
-    const tint = document.querySelector<HTMLElement>("[data-cover=tint]")!;
+    const cover = (presentation: unknown): HTMLElement => {
+      const { unmount } = render(
+        <ProductCard
+          product={{ ...base, presentation } as never}
+          attention={[]}
+        />,
+      );
+      const el = document.querySelector<HTMLElement>("[data-cover]")!;
+      expect(el.className).toContain("h-[72px]");
+      const clone = el.cloneNode(true) as HTMLElement;
+      unmount();
+      return clone;
+    };
+    const tint = cover({ icon: null, header: null, accent: "#2f8378" });
+    expect(tint.getAttribute("data-cover")).toBe("tint");
     expect(tint.style.backgroundColor).not.toBe("");
+    const withIcon = cover({ icon, header: null });
+    expect(withIcon.getAttribute("data-cover")).toBe("icon");
+    expect(withIcon.querySelector("img, [data-logo]")).not.toBeNull();
+    const initials = cover({ icon: null, header: null });
+    expect(initials.getAttribute("data-cover")).toBe("initials");
+    expect(initials.textContent).toBe("D");
   });
 
   it("the system product says System, not a status", () => {

@@ -302,7 +302,6 @@ export function ProductShelf({
       ),
     [rows, state.q, state.filters, attentionKnown],
   );
-  const anyArt = filtered.some((row) => row.product.presentation?.header);
   const filtering =
     state.q.trim() !== "" || Object.keys(state.filters).length > 0;
   const headingId = React.useId();
@@ -463,11 +462,7 @@ export function ProductShelf({
         >
           {filtered.map((row) => (
             <li key={row.slug} className="flex min-w-0">
-              <ProductCard
-                product={row.product}
-                attention={row.attention}
-                tallCover={anyArt}
-              />
+              <ProductCard product={row.product} attention={row.attention} />
             </li>
           ))}
         </ul>
