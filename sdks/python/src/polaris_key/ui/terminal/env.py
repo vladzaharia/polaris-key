@@ -267,7 +267,8 @@ def detect(
         scheme = e["PKEY_THEME"]
     # The background matters for the truecolor accent and for a QR drawn without colour; only
     # then is the terminal asked, so a terminal that never answers costs nothing elsewhere.
-    if scheme is None and interactive and not dumb and color in ("truecolor", "none"):
+    # No query under NO_COLOR or --no-color (UI-KITS-LANGUAGE-MATRIX DL16, as the Node kit).
+    if scheme is None and interactive and not dumb and not (no_color or e.get("NO_COLOR")) and color in ("truecolor", "none"):
         scheme = (osc11 or query_osc11)()
     if scheme is None:
         scheme = parse_colorfgbg(e.get("COLORFGBG"))

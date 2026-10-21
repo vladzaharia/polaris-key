@@ -22,7 +22,7 @@ import threading
 import time
 from typing import IO, Any, Callable, Iterable, List, Optional, Sequence, Tuple, Union
 
-from .env import TermEnv, pop_pending, push_back
+from .env import _OSC11_REPLY, TermEnv, pop_pending, push_back
 from .screen import fit_screen
 from .text import Line, Palette, Span, _merge, cell_len, clean, safe_link, to_ansi
 
@@ -204,6 +204,8 @@ class KeyReader:
         #: thread takes its turn.
         self._lock = threading.Lock()
         self._cursor: Optional[int] = None
+        #: The start of a terminal answer (``ESC ]``) that has not ended yet: it is not a key.
+        self._osc_tail = b""
         self.active = False
 
     def __enter__(self) -> "KeyReader":
@@ -254,10 +256,19 @@ class KeyReader:
             termios.tcsetattr(self._fd, termios.TCSADRAIN, self._old)
 
     def _scan(self, data: bytes) -> bytes:
-        """``data`` without the terminal's cursor-position answers, which are noted, not typed."""
+        """``data`` without the terminal's answers (cursor position, noted; a late OSC 11 background
+        reply, dropped), which are not typed. A reply that has begun (``ESC ]``) but not ended waits
+        for its rest instead of reading as Esc."""
+        data = self._osc_tail + data
+        self._osc_tail = b""
         for m in _CPR.finditer(data):
             self._cursor = int(m.group(1))
-        return _CPR.sub(b"", data)
+        data = _CPR.sub(b"", data)
+        data = _OSC11_REPLY.sub(b"", data)
+        i = data.rfind(b"\x1b]")
+        if i >= 0 and len(data) - i <= 64 and b"\x07" not in data[i:] and b"\x1b\\" not in data[i:]:
+            self._osc_tail, data = data[i:], data[:i]
+        return data
 
     def _read_fd(self, timeout: Optional[float], wake: bool = True) -> bytes:
         import select

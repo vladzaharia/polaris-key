@@ -400,3 +400,18 @@ def test_outcomes(row: Dict[str, Any]) -> None:
         assert fields["event"] == "result" and fields["exit"] == e["exit"] and fields["ok"] is (e["exit"] == 0)
     if "fix" in e:
         assert _fix_verbs(shown) == sorted(e["fix"])
+
+
+def test_no_osc11_query_under_no_color() -> None:
+    # B-116 (DL16): NO_COLOR and --no-color send no OSC 11 query.
+    asked = []
+
+    def ask():
+        asked.append(1)
+        return "light"
+
+    for env, flag in (({"TERM": "xterm", "COLORTERM": "truecolor", "NO_COLOR": "1"}, False), ({"TERM": "xterm", "COLORTERM": "truecolor"}, True)):
+        detect(env=env, stdout=_Stream(True), stdin=_Stream(True), no_color=flag, platform="linux", size=lambda: os.terminal_size((100, 30)), osc11=ask)
+    assert asked == []
+    e = detect(env={"TERM": "xterm", "COLORTERM": "truecolor"}, stdout=_Stream(True), stdin=_Stream(True), platform="linux", size=lambda: os.terminal_size((100, 30)), osc11=ask)
+    assert asked == [1] and e.scheme == "light"

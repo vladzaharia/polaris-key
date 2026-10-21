@@ -2,7 +2,7 @@
 
 Importing this module requires the ``typer`` extra. Like the click adapter, every command is
 built from the one verb table (:mod:`polaris_key.cli.verbs`) and draws through the terminal kit. A consumer mounts the app via
-``app.add_typer(polaris_typer_app(...), name="polaris")``.
+``app.add_typer(polaris_typer_app(...), name="license")``.
 """
 
 from __future__ import annotations
@@ -105,7 +105,7 @@ def polaris_typer_app(
 ) -> typer.Typer:
     """Return a ``typer.Typer`` exposing the Polaris Key commands.
 
-    Mount it with ``app.add_typer(polaris_typer_app(...), name="polaris")``.
+    Mount it with ``app.add_typer(polaris_typer_app(...), name="license")``.
     ``client_factory`` (default: build from the parsed options) lets a consumer pin trust
     keys / base URL; ``theme`` restyles the terminal kit and ``prog`` is the command its fix
     lines name (default: the one the person typed). ``name`` is the group it is mounted under
