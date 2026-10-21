@@ -112,7 +112,7 @@ export const FEED_ACCESS_DESCRIPTIONS: Record<string, string> = {
   public: "Any client can install, with no credentials.",
   customers:
     "Clients with a registry token: yours, your CI's, or a customer's while their license is active.",
-  entitled: "Clients whose license grants the package's entitlement flag.",
+  entitled: "Clients whose license includes the package's entitlement flag.",
 };
 
 /** Why a feed does not answer, in words. */

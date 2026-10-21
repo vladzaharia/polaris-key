@@ -40,10 +40,10 @@ export function ascConnector(
 /** Why the App Store pages are read-only, or `null` when they can act. */
 export function ascBlocked(c: ConnectorStatusDto | null): string | null {
   if (!c)
-    return "This product has no App Store Connect connector. Declare an App Store outlet in .pkey/distribution.";
+    return "This product has no App Store Connect connector. Declare an App Store channel in .pkey/distribution.";
   if (c.inert) return c.inert.message.replace(/^\w/, (x) => x.toUpperCase());
   if (!c.configured)
-    return "App Store Connect isn't configured for this product. Set its key in Outlet credentials.";
+    return "App Store Connect isn't configured for this product. Set its key in Channel credentials.";
   return null;
 }
 

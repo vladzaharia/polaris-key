@@ -50,7 +50,7 @@ function setting(
 }
 
 const ANCHOR = setting("licensing.anchorPolicy", {
-  label: "Anchor licence choice",
+  label: "Anchor license choice",
   spec: { kind: "enum", values: ["rank-first", "most-free-seats", "oldest"] },
   value: "rank-first",
   defaultValue: "rank-first",
@@ -120,7 +120,7 @@ describe("License → Settings", () => {
   it("shows each setting with its value and owner, and the area it reads", async () => {
     const log = boot();
     const c = await card();
-    expect(await within(c).findByText("Anchor licence choice")).toBeTruthy();
+    expect(await within(c).findByText("Anchor license choice")).toBeTruthy();
     expect(within(c).getByText("From manifest")).toBeTruthy();
     expect(within(c).getAllByText("Code default")).toHaveLength(2);
     expect(within(c).getByText("Set in console")).toBeTruthy();
@@ -138,7 +138,7 @@ describe("License → Settings", () => {
   it("groups the settings that do nothing yet after the clamp, read-only, each saying what devices do today (P0-47)", async () => {
     boot();
     const c = await card();
-    await within(c).findByText("Anchor licence choice");
+    await within(c).findByText("Anchor license choice");
     // One subheading over the pending rows, not a pill on each.
     const group = within(c).getByRole("group", { name: "Not in effect yet" });
     expect(within(c).getAllByText("Not in effect yet")).toHaveLength(1);
@@ -146,7 +146,7 @@ describe("License → Settings", () => {
       within(group).getByText(/keep their value but change nothing/),
     ).toBeTruthy();
     for (const name of [
-      "Anchor licence choice",
+      "Anchor license choice",
       "Entitlement holder",
       "Refund grace",
     ]) {
@@ -272,7 +272,7 @@ describe("License → Settings", () => {
   it("hides a setting whose service is off", async () => {
     boot([ANCHOR, { ...HOLDER, serviceEnabled: false }]);
     const c = await card();
-    await within(c).findByText("Anchor licence choice");
+    await within(c).findByText("Anchor license choice");
     expect(within(c).queryByText("Entitlement holder")).toBeNull();
   });
 });

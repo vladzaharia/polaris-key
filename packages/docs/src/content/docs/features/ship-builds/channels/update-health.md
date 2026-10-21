@@ -155,7 +155,7 @@ To connect a Sentry organization:
 1. In Sentry, create an **internal integration** with the **Alert Rule Action** and webhooks
    enabled, and set its webhook URL to `https://key.plrs.im/<product>/distribution/hooks/sentry`.
 2. Store its **client secret** as a channel credential of kind `sentry-integration`
-   (**Distribution → Outlet credentials**; the Health page links there while Sentry is not
+   (**Distribution → Channel credentials**; the Health page links there while Sentry is not
    connected). Without one, the hook answers not-found.
 3. Add the integration as an action on an issue alert rule.
 

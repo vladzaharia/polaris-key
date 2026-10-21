@@ -408,8 +408,8 @@ function setupFacts(
   };
   add("App Store app ID", s.appleId);
   add("Bundle ID", s.bundleId);
-  add("App Store outlet", s.appStoreOutlet);
-  add("TestFlight outlet", s.testflightOutlet);
+  add("App Store channel", s.appStoreOutlet);
+  add("TestFlight channel", s.testflightOutlet);
   add("API key credential", s.apiKeyCredential);
   add("Webhook secret credential", s.webhookSecretCredential);
   add("Package name", s.packageName);

@@ -69,14 +69,14 @@ const VERB_CONSEQUENCES: Record<
 > = {
   pause: (r, v) => [
     `Devices outside the ${formatBasisPoints(r.rolloutBp)} already offered ${v} keep the previous release.`,
-    `The storefront feeds and the download page stop listing ${v} on ${r.outletId}.`,
+    `The install sources and the download page stop listing ${v} on ${r.outletId}.`,
     "Resume continues from the same percentage.",
   ],
   resume: (r, v) => [
     `${v} is offered again on ${r.outletId} / ${r.channel} at ${formatBasisPoints(r.rolloutBp)}.`,
   ],
   halt: (r, v) => [
-    `The signed feed, the updater feeds, the storefront feeds and the download page stop offering ${v} on ${r.outletId}.`,
+    `The signed feed, the updater feeds, the install sources and the download page stop offering ${v} on ${r.outletId}.`,
     "Devices that already installed it keep it.",
     "Only an explicit resume lifts a halt.",
   ],
@@ -390,8 +390,8 @@ function StartRolloutForm({
   const submit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
     const next: Record<string, string> = {};
-    if (!outlet) next.outlet = "Choose an outlet.";
-    if (!channel) next.channel = "Choose a channel.";
+    if (!outlet) next.outlet = "Choose a channel.";
+    if (!channel) next.channel = "Choose a release track.";
     if (!releaseId) next.release = "Choose a release.";
     const bp = toBp(percent);
     const range = numberRangeError(percent, {
@@ -444,7 +444,7 @@ function StartRolloutForm({
       onOpenChange={(o) => !o && !busy && onClose()}
       dismissible={!busy}
       title="Start a rollout"
-      description="Offer a release to a share of the devices on one outlet's channel. Raise the share as it proves itself."
+      description="Offer a release to a share of the devices on one channel's release track. Raise the share as it proves itself."
     >
       <form
         noValidate
@@ -468,7 +468,7 @@ function StartRolloutForm({
           </FormField>
           <FormField<string | null>
             name="outlet"
-            label="Outlet"
+            label="Channel"
             required
             value={outlet}
             onChange={setOutlet}
@@ -480,7 +480,7 @@ function StartRolloutForm({
                 {...field}
                 ref={undefined}
                 placeholder={
-                  outlets.isPending ? "Loading…" : "Choose an outlet"
+                  outlets.isPending ? "Loading…" : "Choose a channel"
                 }
                 options={(outlets.data?.outlets ?? [])
                   .filter((o) => o.removedAt === null)
@@ -494,7 +494,7 @@ function StartRolloutForm({
           </FormField>
           <FormField<string | null>
             name="channel"
-            label="Channel"
+            label="Release track"
             required
             value={channel}
             onChange={setChannel}
@@ -505,7 +505,7 @@ function StartRolloutForm({
               <Select
                 {...field}
                 ref={undefined}
-                placeholder="Choose a channel"
+                placeholder="Choose a release track"
                 options={channels.map((c) => ({ value: c, label: c }))}
               />
             )}
@@ -728,8 +728,8 @@ function HaltEverywhereConfirm({
                 ? ["Stop store rollouts in each store, as shown below."]
                 : []),
               previous
-                ? `Resume per outlet from Rollouts, or roll back to ${previous}.`
-                : "Resume per outlet from Rollouts.",
+                ? `Resume per channel from Rollouts, or roll back to ${previous}.`
+                : "Resume per channel from Rollouts.",
             ]
       }
       confirmLabel={n === 1 ? "Halt 1 rollout" : `Halt ${n} rollouts`}

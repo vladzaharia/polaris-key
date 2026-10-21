@@ -240,7 +240,7 @@ function RowHeader({
             : overlay.live.length || overlay.held.length
               ? [
                   overlay.live.length
-                    ? `Outlets: ${overlay.live.join(", ")}`
+                    ? `Channels: ${overlay.live.join(", ")}`
                     : null,
                   overlay.held.length
                     ? `held on ${overlay.held.join(", ")}`
@@ -248,7 +248,7 @@ function RowHeader({
                 ]
                   .filter(Boolean)
                   .join(" · ")
-              : "On no outlet"}
+              : "On no channel"}
         </div>
       ) : null}
     </div>
@@ -637,8 +637,8 @@ export function CompatibilityPage({
             </Callout>
           ) : null}
           {distributionOn && overlay.error ? (
-            <Callout tone="warning" title="Outlet liveness unavailable">
-              Distribution did not answer, so the rows don't say which outlets
+            <Callout tone="warning" title="Channel liveness unavailable">
+              Distribution did not answer, so the rows don't say which channels
               serve each release.
             </Callout>
           ) : null}

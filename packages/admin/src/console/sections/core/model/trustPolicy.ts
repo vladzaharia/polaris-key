@@ -9,7 +9,7 @@ import type { TrustLevelDto, TrustPolicyDto } from "../../../../api.js";
 export const TRUST_POLICY_KEY = "core.trustPolicy";
 
 export const TRUST_OPERATIONS = [
-  { id: "mint", label: "Device licence and config" },
+  { id: "mint", label: "Device license and config" },
   { id: "gatedDelivery", label: "Gated downloads" },
   { id: "commerceClaim", label: "Store purchase claims" },
 ] as const;

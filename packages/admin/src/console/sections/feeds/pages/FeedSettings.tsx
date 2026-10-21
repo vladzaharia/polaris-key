@@ -320,11 +320,11 @@ function AccessSection({
           <SettingsRow label="Packages without a gate" align="block">
             <Callout
               tone="warning"
-              title="Licence tokens are refused these packages"
+              title="License tokens are refused these packages"
             >
               <p>
-                Entitled admits a licence-bound token only for a package whose
-                delivery access names an entitlement flag the licence holds.
+                Entitled admits a license-bound token only for a package whose
+                delivery access names an entitlement flag the license holds.
                 These {ECOSYSTEM_LABELS[eco]} packages have none:
               </p>
               <ul className="mt-2 space-y-1">

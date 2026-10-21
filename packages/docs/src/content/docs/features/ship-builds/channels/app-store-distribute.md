@@ -155,7 +155,7 @@ a step fails halfway or the connection drops, confirming again resumes from what
 happened instead of repeating it.
 
 When the product has no usable App Store Connect connector (no key, no pin, or a channel that
-names no app) both pages say why and link to **Outlet credentials**.
+names no app) both pages say why and link to **Channel credentials**.
 
 ## The App Store page
 

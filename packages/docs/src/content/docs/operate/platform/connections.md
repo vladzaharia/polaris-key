@@ -284,7 +284,7 @@ recorded in the platform audit trail with the admin who made them. So is every p
 write (`platform.asc.bundle_id.register`, `platform.asc.capability.enable`), with App Store
 Connect's own view of the object before and after.
 
-See also [Outlet credentials](/docs/operate/platform/outlet-credentials/) for a product's own store keys, [Keys & secrets](/docs/operate/console/keys-and-secrets/) for its secrets and signing keys, and [the KEK keyring](/docs/operate/platform/runbook/rotate-the-kek/): the re-seal sweep includes the console
+See also [Channel credentials](/docs/operate/platform/outlet-credentials/) for a product's own store keys, [Keys & secrets](/docs/operate/console/keys-and-secrets/) for its secrets and signing keys, and [the KEK keyring](/docs/operate/platform/runbook/rotate-the-kek/): the re-seal sweep includes the console
 store credentials.
 
 ## Sign-in connections

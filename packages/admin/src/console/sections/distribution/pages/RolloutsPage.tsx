@@ -142,7 +142,7 @@ export function RolloutsPage({ slug }: { slug: string }): React.ReactElement {
     },
     {
       id: "outlet",
-      header: "Outlet",
+      header: "Channel",
       accessorKey: "outletId",
       meta: { priority: 1 },
       cell: ({ row }) => (
@@ -158,7 +158,7 @@ export function RolloutsPage({ slug }: { slug: string }): React.ReactElement {
     },
     {
       id: "channel",
-      header: "Channel",
+      header: "Release track",
       accessorKey: "channel",
       meta: { priority: 1 },
     },
@@ -393,7 +393,7 @@ export function RolloutsPage({ slug }: { slug: string }): React.ReactElement {
               },
               {
                 id: "outlet",
-                label: "Outlet",
+                label: "Channel",
                 options: outlets.map((o) => ({ value: o, label: o })),
               },
             ]}
@@ -407,7 +407,7 @@ export function RolloutsPage({ slug }: { slug: string }): React.ReactElement {
               <EmptyState
                 kind="first-run"
                 title="No rollouts yet"
-                description="A rollout offers a release to a share of the devices on one outlet's channel, so a bad build reaches few before you halt it. Without one, each channel offers its release to everyone."
+                description="A rollout offers a release to a share of the devices on one channel's release track, so a bad build reaches few before you halt it. Without one, each channel offers its release to everyone."
                 primaryAction={
                   <Button onClick={() => setStarting(true)}>
                     Start rollout…

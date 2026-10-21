@@ -93,8 +93,8 @@ const FEED_RULES = (
       <li>
         The channel serves them (beta includes stable; yanked ones drop out).
       </li>
-      <li>They have a build for the outlet.</li>
-      <li>They are live on the outlet, or the outlet is self-hosted.</li>
+      <li>They have a build for the channel.</li>
+      <li>They are live on the channel, or the channel is self-hosted.</li>
       <li>No rollout, halt or readiness hold keeps them back.</li>
       <li>Their payload has an immutable delivery URL.</li>
     </ol>
@@ -177,7 +177,7 @@ export function OutletsPage({ slug }: { slug: string }): React.ReactElement {
   const columns: DataColumn<OutletDto>[] = [
     {
       id: "outlet",
-      header: "Outlet",
+      header: "Channel",
       accessorKey: "outletId",
       meta: { priority: 1, primary: true },
       cell: ({ getValue }) => (
@@ -222,7 +222,7 @@ export function OutletsPage({ slug }: { slug: string }): React.ReactElement {
     },
     {
       id: "capabilities",
-      header: "Capabilities",
+      header: "Allows",
       accessorFn: (o) => capabilitySummary(o),
       meta: { priority: 2 },
       cell: ({ row }) => (
@@ -263,7 +263,7 @@ export function OutletsPage({ slug }: { slug: string }): React.ReactElement {
   return (
     <div className="space-y-8" data-template="collection">
       <PageHeader
-        title="Outlets & feeds"
+        title="Channel setup"
         titleAside={
           outlets.data ? (
             <span className="text-sm tabular-nums text-fg-muted">
@@ -271,7 +271,7 @@ export function OutletsPage({ slug }: { slug: string }): React.ReactElement {
             </span>
           ) : undefined
         }
-        description="Outlets come from .pkey/distribution."
+        description="Channels come from .pkey/distribution."
         meta={
           <Popover
             label="Feed listing rules"
@@ -289,7 +289,7 @@ export function OutletsPage({ slug }: { slug: string }): React.ReactElement {
 
       <DataTable<OutletDto>
         id="outlets"
-        caption="Outlets"
+        caption="Channels"
         data={live}
         columns={columns}
         getRowId={(o) => o.outletId}
@@ -303,7 +303,7 @@ export function OutletsPage({ slug }: { slug: string }): React.ReactElement {
         ]}
         state={state}
         onStateChange={setState}
-        search={{ placeholder: "Search outlets", columns: ["outlet", "kind"] }}
+        search={{ placeholder: "Search channels", columns: ["outlet", "kind"] }}
         facets={[
           {
             id: "kind",
@@ -322,8 +322,8 @@ export function OutletsPage({ slug }: { slug: string }): React.ReactElement {
         empty={
           <EmptyState
             kind="first-run"
-            title="No outlets declared"
-            description="Outlets are where a release reaches people: Polaris Key downloads, the stores, AltStore, F-Droid, Flathub. Declare them under outlets in .pkey/distribution and resync."
+            title="No channels declared"
+            description="Channels are where a release reaches people: Polaris Key downloads, the stores, AltStore, F-Droid, Flathub. Declare them under channels in .pkey/distribution and resync."
             docs="/docs/services/distribution/"
           />
         }
@@ -368,12 +368,12 @@ function OutletDrawer({
         open={open && !narrowing}
         onOpenChange={(o) => !o && onClose()}
         size="lg"
-        title={outlet ? outlet.outletId : "Outlet not found"}
+        title={outlet ? outlet.outletId : "Channel not found"}
         description={outlet ? outletKindLabel(outlet.kind) : undefined}
       >
         <DrawerBody className="space-y-6">
           {!outlet ? (
-            <Callout tone="warning" title={`No outlet ${missing ?? ""}`}>
+            <Callout tone="warning" title={`No channel ${missing ?? ""}`}>
               It is not declared in .pkey/distribution any more, or the link is
               out of date.
             </Callout>
@@ -406,11 +406,11 @@ function OutletDrawer({
                 </p>
               </section>
 
-              <section className="space-y-3" aria-label="Capabilities">
+              <section className="space-y-3" aria-label="What it allows">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="flex items-center gap-2">
                     <h3 className="text-sm font-semibold text-fg-strong">
-                      Capabilities
+                      What it allows
                     </h3>
                     <SourceBadge
                       source={
@@ -432,7 +432,7 @@ function OutletDrawer({
                       variant="outline"
                       onClick={() => setNarrowing(true)}
                     >
-                      Narrow capabilities…
+                      Narrow what it allows…
                     </Button>
                   ) : null}
                 </div>
@@ -453,7 +453,7 @@ function OutletDrawer({
                 ) : (
                   <p className="text-sm text-fg-muted">
                     This build has no defaults for the {outlet.kind} kind, so it
-                    carries no capabilities.
+                    allows nothing to change.
                   </p>
                 )}
               </section>
@@ -513,17 +513,17 @@ function OutletDrawer({
           open={reverting}
           onOpenChange={setReverting}
           intent="caution"
-          title={`Revert ${outlet.outletId}'s capabilities to the manifest?`}
+          title={`Revert what ${outlet.outletId} allows to the manifest?`}
           consequences={[
             `The ${outletKindLabel(outlet.kind)} defaults apply again at once.`,
             "The SDKs read the wider set on their next configuration fetch.",
           ]}
           confirmLabel="Revert to manifest"
-          describeError={describe("Outlet")}
+          describeError={describe("Channel")}
           onConfirm={async () => {
             await mutate("revertOutletCapabilities", slug, outlet.outletId);
             toast.success(
-              `Reverted ${outlet.outletId}'s capabilities to the manifest`,
+              `Reverted what ${outlet.outletId} allows to the manifest`,
             );
           }}
         />
@@ -638,7 +638,7 @@ function NarrowDrawer({
         </Button>
         <Button
           disabledReason={
-            changed.length === 0 ? "Change a capability first." : undefined
+            changed.length === 0 ? "Change a setting first." : undefined
           }
           onClick={() => setConfirming(true)}
         >
@@ -649,7 +649,7 @@ function NarrowDrawer({
         open={confirming}
         onOpenChange={setConfirming}
         intent="caution"
-        title={`Narrow ${outlet.outletId}'s capabilities?`}
+        title={`Narrow what ${outlet.outletId} allows?`}
         consequences={changed.map(
           (k) =>
             `${CAPABILITY_LABEL[k]}: ${capabilityValue(k, outlet.capabilities?.[k])} → ${capabilityValue(
@@ -657,8 +657,8 @@ function NarrowDrawer({
               typeof base[k] === "boolean" ? draft[k] === "true" : draft[k],
             )}`,
         )}
-        confirmLabel="Narrow capabilities"
-        describeError={describe("Outlet")}
+        confirmLabel="Narrow what it allows"
+        describeError={describe("Channel")}
         onConfirm={async () => {
           const b = body();
           if (Object.keys(b).length === 0) {
@@ -666,7 +666,7 @@ function NarrowDrawer({
           } else {
             await mutate("narrowOutletCapabilities", slug, outlet.outletId, b);
           }
-          toast.success(`Narrowed ${outlet.outletId}'s capabilities`);
+          toast.success(`Narrowed what ${outlet.outletId} allows`);
           onClose();
         }}
       />
@@ -745,7 +745,7 @@ function KeysSection({
     },
     {
       id: "outlet",
-      header: "Outlet",
+      header: "Channel",
       accessorFn: (k) => k.outletId ?? "",
       meta: { priority: 2 },
       cell: ({ row }) =>
@@ -1064,8 +1064,8 @@ function KeyDrawer({
           </FormField>
           <FormField<string | null>
             name="key-outlet"
-            label="Outlet"
-            help="Leave as Any when the key signs for every outlet."
+            label="Channel"
+            help="Leave as Any when the key signs for every channel."
             value={d.outlet}
             onChange={(v) => setD({ ...d, outlet: v })}
           >

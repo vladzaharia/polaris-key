@@ -23,6 +23,7 @@ import { describe, expect, it } from "vitest";
  *   storefront feed   → Install source
  *   grant             → Add-on, or a plain verb (give, add); "Automatic grant" is the kept label
  *   capability        → name the feature, the switch, or what the channel allows
+ *   licence           → license (US spelling in UI copy; identifiers and file names keep theirs)
  *
  * Identifiers keep them (`outlet`, `grants`, `outletCapabilities`), so this reads only copy: JSX
  * text, and string or template literals that read as prose. Imports, types, object keys,
@@ -78,7 +79,8 @@ export type CopyRuleId =
   | "storefront-feed"
   | "grant"
   | "capability"
-  | "portal";
+  | "portal"
+  | "licence";
 
 interface CopyRule {
   id: CopyRuleId;
@@ -122,6 +124,12 @@ export const COPY_RULES: readonly CopyRule[] = [
     word: "portal",
     pattern: /\b(?:customer\s+)?portals?\b/i,
     use: "Polaris Locker, then Locker",
+  },
+  {
+    id: "licence",
+    word: "licence",
+    pattern: /\blicences?\b/i,
+    use: "license (US spelling, noun and verb)",
   },
 ];
 
@@ -786,10 +794,7 @@ describe("the portal copy lint", () => {
  * The registry's own words that predate the rule (the worker's `settings/registry`): each is
  * `<key> <field> <rule>`. The list only shrinks: a new hit fails, and so does a stale entry.
  */
-const REGISTRY_COPY_DEBT: readonly string[] = [
-  "distribution.transports description outlet",
-  "release.manualChannels description grant",
-];
+const REGISTRY_COPY_DEBT: readonly string[] = [];
 
 describe("the settings registry's labels", () => {
   it("say no word the console copy rules retire, beyond the recorded debt (All settings reads them)", () => {

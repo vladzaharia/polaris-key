@@ -11,7 +11,7 @@ sidebar:
 authenticates with, whether or not it runs any service: its **Signing keys**, its write-only
 **Secrets** and its **CI publishing** credentials. Signing keys and secrets are sealed under the
 same platform KEK. Edge-mint recipes are approved on their catalog entry, and store credentials
-are on **Distribution → Outlet credentials**.
+are on **Distribution → Channel credentials**.
 
 ## Product secrets
 
@@ -77,11 +77,11 @@ manifest fields feed it.
 `{ secrets: [{ name, configured, usage, createdAt, updatedAt, requiredBy }] }`. It never reads a
 value: the sealed column is not even selected.
 
-## Outlet credentials
+## Channel credentials
 
 Store keys and the Sentry integration secret are not product secrets. They live on
-**Distribution → Outlet credentials**, in their own table, and no edge-mint recipe can name one. A
-platform admin sets them: see Outlet credentials (platform admins).
+**Distribution → Channel credentials**, in their own table, and no edge-mint recipe can name one. A
+platform admin sets them: see Channel credentials (platform admins).
 
 ## Signing keys
 

@@ -1,6 +1,6 @@
 /**
- * Distribution → Outlet credentials (admin chunk 9, ADMIN.md §6.4): moved from Keys & secrets
- * (the "Outlet credentials card (P5-01)" suite lived in `secrets.test.tsx`). Write-only values,
+ * Distribution → Channel credentials (admin chunk 9, ADMIN.md §6.4): moved from Keys & secrets
+ * (the "Channel credentials card (P5-01)" suite lived in `secrets.test.tsx`). Write-only values,
  * pins, kind-first drawer, rotate, delete, the platform store connection's refusal (A-16) and the
  * connector cards. Closes OUT-1 to OUT-7.
  */
@@ -31,7 +31,7 @@ afterEach(() => {
 });
 
 async function table(): Promise<HTMLElement> {
-  const t = await screen.findByRole("table", { name: "Outlet credentials" });
+  const t = await screen.findByRole("table", { name: "Channel credentials" });
   await within(t).findByText("asc-team-key");
   return t;
 }
@@ -45,12 +45,12 @@ async function pick(
   await userEvent.click(await screen.findByRole("option", { name: option }));
 }
 
-describe("Distribution → Outlet credentials", () => {
+describe("Distribution → Channel credentials", () => {
   it("lists metadata and health, never a value, with the last result as text (OUT-1, OUT-6)", async () => {
     bootWith(HASH);
     const t = await table();
     expect(
-      screen.getByRole("heading", { level: 1, name: "Outlet credentials" }),
+      screen.getByRole("heading", { level: 1, name: "Channel credentials" }),
     ).toBeTruthy();
     expect(within(t).getByText("App Store Connect API key")).toBeTruthy();
     expect(within(t).getByText("ABC123DEFG · issuer-1")).toBeTruthy();
@@ -140,7 +140,7 @@ describe("Distribution → Outlet credentials", () => {
       screen.getByRole("button", { name: "Set credential…" }),
     );
     const drawer = await screen.findByRole("dialog", {
-      name: "Set an outlet credential",
+      name: "Set a channel credential",
     });
     // Kind comes first; nothing else until it is chosen.
     expect(within(drawer).queryByLabelText(/Credential ID/)).toBeNull();
@@ -172,7 +172,7 @@ describe("Distribution → Outlet credentials", () => {
       within(drawer).getByLabelText(/App Store Connect app id/),
       "1234567890",
     );
-    await pick(drawer, /Outlet/, /app-store/);
+    await pick(drawer, /Channel/, /app-store/);
     await userEvent.click(
       within(drawer).getByRole("button", { name: "Set credential" }),
     );
@@ -200,7 +200,7 @@ describe("Distribution → Outlet credentials", () => {
       screen.getByRole("button", { name: "Set credential…" }),
     );
     const drawer = await screen.findByRole("dialog", {
-      name: "Set an outlet credential",
+      name: "Set a channel credential",
     });
     await pick(drawer, /Kind/, /Google service account/);
     await userEvent.type(
@@ -240,7 +240,7 @@ describe("Distribution → Outlet credentials", () => {
       screen.getByRole("button", { name: "Set credential…" }),
     );
     const drawer = await screen.findByRole("dialog", {
-      name: "Set an outlet credential",
+      name: "Set a channel credential",
     });
     await pick(drawer, /Kind/, /Sentry internal integration/);
     await userEvent.type(
@@ -287,7 +287,7 @@ describe("Distribution → Outlet credentials", () => {
       screen.getByRole("button", { name: "Set credential…" }),
     );
     const drawer = await screen.findByRole("dialog", {
-      name: "Set an outlet credential",
+      name: "Set a channel credential",
     });
     await pick(drawer, /Kind/, /App Store webhook secret/);
     await userEvent.type(
@@ -354,7 +354,7 @@ describe("Distribution → Outlet credentials", () => {
 
   it("round-trips the kind facet through the URL", async () => {
     bootWith(`${HASH}?kind=google-service-account`);
-    const t = await screen.findByRole("table", { name: "Outlet credentials" });
+    const t = await screen.findByRole("table", { name: "Channel credentials" });
     await waitFor(() => expect(within(t).getAllByRole("row")).toHaveLength(2));
     expect(within(t).getByText("play")).toBeTruthy();
   });
@@ -476,7 +476,7 @@ describe("Distribution → Outlet credentials", () => {
     bootWith(HASH, {
       [P("/outlet-credentials")]: { ...CREDENTIALS, credentials: [] },
     });
-    expect(await screen.findByText("No outlet credentials yet")).toBeTruthy();
+    expect(await screen.findByText("No channel credentials yet")).toBeTruthy();
     cleanup();
     resetConsole();
     let fail = true;

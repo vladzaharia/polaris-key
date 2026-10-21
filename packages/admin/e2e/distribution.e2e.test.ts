@@ -200,19 +200,19 @@ const PAGES: { hash: string; title: string; file: string }[] = [
   },
   {
     hash: "#/p/djdl/distribution/outlets",
-    title: "Outlets & feeds",
+    title: "Channel setup",
     file: "outlets",
   },
   {
     hash: "#/p/djdl/distribution/outlets?outlet=altstore",
-    title: "Outlets & feeds",
+    title: "Channel setup",
     file: "outlet-drawer",
   },
   { hash: "#/p/djdl/distribution/access", title: "Access", file: "access" },
   { hash: "#/p/djdl/distribution/health", title: "Health", file: "health" },
   {
     hash: "#/p/djdl/distribution/credentials",
-    title: "Outlet credentials",
+    title: "Channel credentials",
     file: "credentials",
   },
   // A-17g: the App Store Distribute flow (its steps) and Commerce's App Store products.
@@ -334,7 +334,7 @@ describe("Distribution and Update pages under the Worker's CSP", () => {
 
   it("credentials: the set-credential drawer and its kind select", async () => {
     const { page, errors } = await open("#/p/djdl/distribution/credentials");
-    await title(page, "Outlet credentials");
+    await title(page, "Channel credentials");
     await overlay(page, "set credential", async () => {
       await page.getByRole("button", { name: "Set credential…" }).click();
       await page

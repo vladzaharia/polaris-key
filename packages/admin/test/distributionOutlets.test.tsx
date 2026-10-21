@@ -1,5 +1,5 @@
 /**
- * Distribution → Outlets & feeds (admin chunk 9, ADMIN.md §6.4): the outlets table, the routed
+ * Distribution → Channel setup (admin chunk 9, ADMIN.md §6.4): the outlets table, the routed
  * outlet drawer with capabilities (narrow only; revert to the kind default), the storefront feed
  * URLs and the distribution key inventory.
  */
@@ -29,17 +29,17 @@ afterEach(() => {
 });
 
 async function outlets(): Promise<HTMLElement> {
-  const t = await screen.findByRole("table", { name: "Outlets" });
+  const t = await screen.findByRole("table", { name: "Channels" });
   await within(t).findByText("altstore");
   return t;
 }
 
-describe("Distribution → Outlets & feeds", () => {
+describe("Distribution → Channel setup", () => {
   it("lists the declared outlets with kind, capabilities and feeds", async () => {
     bootWith(HASH);
     const t = await outlets();
     expect(
-      screen.getByRole("heading", { level: 1, name: "Outlets & feeds" }),
+      screen.getByRole("heading", { level: 1, name: "Channel setup" }),
     ).toBeTruthy();
     expect(within(t).getByText("App Store")).toBeTruthy();
     // The `direct` kind reads "Polaris Locker" (S-21 §6.8); its id stays `direct`.
@@ -76,7 +76,7 @@ describe("Distribution → Outlets & feeds", () => {
 
   it("names a missing outlet instead of a blank drawer", async () => {
     bootWith(`${HASH}?outlet=nowhere`);
-    expect(await screen.findByText("No outlet nowhere")).toBeTruthy();
+    expect(await screen.findByText("No channel nowhere")).toBeTruthy();
   });
 
   it("narrows capabilities below the kind default, after a review", async () => {
@@ -87,7 +87,7 @@ describe("Distribution → Outlets & feeds", () => {
     });
     const drawer = await screen.findByRole("dialog", { name: "direct" });
     await userEvent.click(
-      within(drawer).getByRole("button", { name: "Narrow capabilities…" }),
+      within(drawer).getByRole("button", { name: "Narrow what it allows…" }),
     );
     const narrow = await screen.findByRole("dialog", { name: "Narrow direct" });
     await userEvent.click(
@@ -104,7 +104,7 @@ describe("Distribution → Outlets & feeds", () => {
       within(confirm).getByText("Code updates: Allowed → Not allowed"),
     ).toBeTruthy();
     await userEvent.click(
-      within(confirm).getByRole("button", { name: "Narrow capabilities" }),
+      within(confirm).getByRole("button", { name: "Narrow what it allows" }),
     );
     await waitFor(() =>
       expect(writes(calls)).toContainEqual(
@@ -146,7 +146,7 @@ describe("Distribution → Outlets & feeds", () => {
 
   it("round-trips the kind facet in a namespaced URL key", async () => {
     bootWith(`${HASH}?outlets.kind=play`);
-    const t = await screen.findByRole("table", { name: "Outlets" });
+    const t = await screen.findByRole("table", { name: "Channels" });
     await waitFor(() => expect(within(t).getAllByRole("row")).toHaveLength(2));
     expect(within(t).getByText("play")).toBeTruthy();
   });
@@ -155,7 +155,7 @@ describe("Distribution → Outlets & feeds", () => {
     bootWith(HASH, {
       [P("/distribution/outlets")]: { ...OUTLETS, outlets: [] },
     });
-    expect(await screen.findByText("No outlets declared")).toBeTruthy();
+    expect(await screen.findByText("No channels declared")).toBeTruthy();
     cleanup();
     resetConsole();
     let fail = true;

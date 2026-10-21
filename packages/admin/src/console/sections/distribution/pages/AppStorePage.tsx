@@ -214,7 +214,7 @@ export function AppStorePage({ slug }: { slug: string }): React.ReactElement {
           description={blocked ?? "The connector names no app."}
           primaryAction={
             <Button variant="outline" asChild>
-              <Link to={r.credentials(slug)}>Open Outlet credentials</Link>
+              <Link to={r.credentials(slug)}>Open Channel credentials</Link>
             </Button>
           }
           docs="/docs/admin/app-store/"
@@ -1405,7 +1405,7 @@ function PreflightStep({
               }
             >
               <p>
-                Portal-only items are yours to confirm in App Store Connect.
+                Website-only items are yours to confirm in App Store Connect.
               </p>
             </Callout>
           </div>

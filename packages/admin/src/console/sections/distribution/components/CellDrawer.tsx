@@ -122,8 +122,8 @@ export function CellDrawer({
       <DrawerBody className="space-y-5">
         {target && (!release || !outlet) ? (
           <Callout tone="warning" title="This cell isn't in the matrix">
-            The release or the outlet is not among the rows shown. It may be
-            older than the newest {matrix.limit} releases, or the outlet was
+            The release or the channel is not among the rows shown. It may be
+            older than the newest {matrix.limit} releases, or the channel was
             removed.
           </Callout>
         ) : target && release && outlet ? (
@@ -212,7 +212,7 @@ function CellBody({
         ) : (
           <p className="text-sm text-fg-muted">
             Not available here: no report from CI or a store connector, and
-            Polaris Key does not serve this release on this outlet.
+            Polaris Key does not serve this release on this channel.
           </p>
         )}
       </Section>
@@ -363,8 +363,8 @@ function CellBody({
           </ul>
         ) : (
           <p className="text-sm text-fg-muted">
-            No rollout: each channel offers its release to every device on this
-            outlet.
+            No rollout: each release track offers its release to every device on
+            this channel.
           </p>
         )}
       </Section>

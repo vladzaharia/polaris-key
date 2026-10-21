@@ -411,7 +411,7 @@ export function ReadinessRefreshed({
     >
       {refreshed === 0
         ? "Nothing changed: every release's readiness was already current."
-        : `${formatCount(refreshed)} release × outlet ${refreshed === 1 ? "pair was" : "pairs were"} recomputed. Holds follow the new answer.`}
+        : `${formatCount(refreshed)} release × channel ${refreshed === 1 ? "pair was" : "pairs were"} recomputed. Holds follow the new answer.`}
     </Callout>
   );
 }
@@ -572,15 +572,15 @@ export function MatrixBoard({
           kind="first-run"
           headingLevel={2}
           title={`No releases of ${deliverableName} yet`}
-          description="A release appears here once CI publishes one. Each outlet then reports where it is live."
+          description="A release appears here once CI publishes one. Each channel then reports where it is live."
           docs="/docs/services/release/"
         />
       ) : data.outlets.length === 0 ? (
         <EmptyState
           kind="first-run"
           headingLevel={2}
-          title="No outlets declared"
-          description="Outlets are the places a release reaches: Polaris Key downloads, the stores, the storefront feeds. Declare them in .pkey/distribution and resync."
+          title="No channels declared"
+          description="Channels are the places a release reaches: Polaris Key downloads, the stores, the install sources. Declare them in .pkey/distribution and resync."
           docs="/docs/services/distribution/"
         />
       ) : rows.length === 0 ? (
@@ -603,7 +603,7 @@ export function MatrixBoard({
       ) : (
         <div className="rounded-lg border border-border bg-surface-raised">
           <Grid<Release, Outlet>
-            label={`Distribution matrix of ${deliverableName}: releases by outlet`}
+            label={`Distribution matrix of ${deliverableName}: releases by channel`}
             rows={rows}
             columns={data.outlets}
             getRowId={(r) => r.releaseId}

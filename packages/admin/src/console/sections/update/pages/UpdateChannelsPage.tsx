@@ -322,7 +322,7 @@ function CompatSection({
       <SettingsSection
         id="feed-compat"
         title="Compatibility window"
-        description="Every license grant is intersected with this window."
+        description="This window applies on top of every license's own window."
         source={
           <SourceBadge
             source={admin ? "admin" : "manifest"}

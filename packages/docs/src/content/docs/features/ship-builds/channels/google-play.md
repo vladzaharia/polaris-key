@@ -50,10 +50,10 @@ The connector runs for a product when all of these hold:
    track your map does not name (as **unmapped**) without writing anything for it. A Play channel
    naming another package is ignored; the connector serves one app per product.
 
-2. A **`google-service-account` channel credential** is stored under Distribution, on **Outlet credentials** — the service
+2. A **`google-service-account` channel credential** is stored under Distribution, on **Channel credentials** — the service
    account's JSON key file — **pinned** to this product's app: the same package name as the
    `packageName` above (see [Pinning the app](#pinning-the-app)). See
-   [Channel credentials](/docs/operate/console/keys-and-secrets/#outlet-credentials). A credential bound to
+   [Channel credentials](/docs/operate/console/keys-and-secrets/#channel-credentials). A credential bound to
    one of the Play channels (`outletId`) is preferred over an unbound one.
 
 3. **The first release is made by hand** in Play Console. Google requires the first bundle of a
@@ -104,7 +104,7 @@ So the credential carries a **pin** that only a platform admin sets: the package
 used for in this product. The connector runs only while the manifest's `packageName` equals the
 pin.
 
-- **Set it with the key.** **Outlet credentials** under Distribution asks for the package name with the key file. Over the
+- **Set it with the key.** **Channel credentials** under Distribution asks for the package name with the key file. Over the
   API, send it as `pin`:
 
   ```http title="Request"

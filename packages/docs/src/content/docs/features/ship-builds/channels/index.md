@@ -117,9 +117,9 @@ A manifest that names `release` and `update` without `distribution` is refused w
   [Commerce bridge](/docs/features/commerce/).
 - **A console section**, shown only while Distribution is on: the
   [Matrix](/docs/features/ship-builds/channels/) (releases × channels, with a drawer per cell holding
-  its readiness and rollout controls), **Rollouts**, **Outlets & feeds** (capabilities, storefront
+  its readiness and rollout controls), **Rollouts**, **Channel setup** (capabilities, storefront
   feed URLs and the distribution keys), **Access** (delivery access per deliverable), **Health**
-  (the funnel, the auto-halt and the Sentry candidates) and **Outlet credentials**. The
+  (the funnel, the auto-halt and the Sentry candidates) and **Channel credentials**. The
   Release → Distribution → Update chain is shown on **Core → Services**.
 
 With Distribution off, a product serves no downloads at all: every byte route and alias answers
@@ -195,8 +195,8 @@ in Core, in their own sealed table, and Distribution is the only service that ca
 (`core/outletCredentials.ts`, held to that by a test); every open is audited. The JWTs and access
 tokens a connector mints from them (`core/outletTokens.ts`) are cached, sealed, and keyed by a
 non-secret version of the credential, so the cache is checked first and a credential is opened
-only when a fresh token is needed. Operators set them in **Distribution → Outlet credentials** — see
-[Channel credentials](/docs/operate/console/keys-and-secrets/#outlet-credentials). The first connector is
+only when a fresh token is needed. Operators set them in **Distribution → Channel credentials** — see
+[Channel credentials](/docs/operate/console/keys-and-secrets/#channel-credentials). The first connector is
 the [App Store Connect connector](/docs/features/ship-builds/channels/app-store/), then the
 [Google Play connector](/docs/features/ship-builds/channels/google-play/) and the read-only
 [Microsoft Store connector](/docs/features/ship-builds/channels/microsoft-store/).
@@ -258,11 +258,11 @@ release off every surface, yank it or pin the release track under **Release → 
 - **Rollouts** lists every rollout of the product, halted ones first, with its release, channel,
   release track, percentage, state, source and who changed it when. Filter by state and channel; each
   row's menu has the same moves as the drawer, and **Open in matrix** opens its cell.
-- **Outlets & feeds** lists the declared channels with their kind, transports and capabilities.
+- **Channel setup** lists the declared channels with their kind, transports and capabilities.
   A channel's drawer shows its identity, its capabilities against its kind's default, and, for
   AltStore, AltStore PAL, Obtainium, the F-Droid repository, Scoop (the Polaris Key channel, `direct`) and
   Flathub, the public [feed URL](/docs/features/ship-builds/channels/feeds/) of each release track with a copy
-  button. **Narrow capabilities…** can only narrow below the kind's default; **Revert to
+  button. **Narrow what it allows…** can only narrow below the kind's default; **Revert to
   manifest** (from the source badge) restores it. Below the channels, **Distribution keys** is the
   signing-key inventory: add, edit or remove an entry, and add or dismiss a key CI reported that
   matches none.
@@ -270,8 +270,8 @@ release off every surface, yank it or pin the release track under **Release → 
   see [Delivery access](/docs/features/ship-builds/channels/delivery/).
 - **Health** is [update health](/docs/features/ship-builds/channels/update-health/): the funnel per
   rollout, the auto-halt and the Sentry halt candidates.
-- **Outlet credentials** holds the store keys the connectors use and the Sentry integration
-  secret; see [Channel credentials](/docs/operate/console/keys-and-secrets/#outlet-credentials). Its
+- **Channel credentials** holds the store keys the connectors use and the Sentry integration
+  secret; see [Channel credentials](/docs/operate/console/keys-and-secrets/#channel-credentials). Its
   **Store connectors** cards show each connector's state, which key it uses (the product's own or
   the platform's team key, see Store connections) and its
   configuration actions: App Store Connect **Release this version**, **TestFlight public link**

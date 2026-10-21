@@ -181,7 +181,7 @@ export function CatalogPage({ slug }: { slug: string }): React.ReactElement {
       },
       {
         id: "userGrant",
-        header: "User grant",
+        header: "Given to user",
         accessorFn: (e) => (e.userGrant ? "yes" : "no"),
         meta: { priority: 3, align: "center" },
         cell: ({ row }) =>
@@ -431,7 +431,7 @@ function KeyDrawer({
                 ...(entry.kind === "flag"
                   ? [
                       {
-                        term: "User grant",
+                        term: "Given to user",
                         detail: entry.userGrant
                           ? (entry.grantLabel ?? "Yes")
                           : "No",

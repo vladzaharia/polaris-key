@@ -25,7 +25,7 @@ const CANONICAL = new RegExp(CHANNEL_NAME_PATTERN);
 const LEGACY_BETA = "staging";
 
 export const HINT_PR = "Every PR build";
-export const HINT_MANUAL_STAGING = "Manual; the grant also covers beta";
+export const HINT_MANUAL_STAGING = "Manual; a license for it also covers beta";
 export const HINT_LEGACY_STAGING = "Legacy alias of beta";
 export const HINT_DEV = "Skips the version window and channel checks";
 export const HINT_NOT_OFFERED = "Not offered";
