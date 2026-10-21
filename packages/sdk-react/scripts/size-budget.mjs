@@ -27,7 +27,14 @@ const here = dirname(fileURLToPath(import.meta.url));
 const pkgRoot = join(here, "..");
 const KB = 1000;
 
-/** Budgets are gzip bytes of JS over the bare-React baseline. Ratchet down, never up. */
+/**
+ * Budgets are gzip bytes of JS over the bare-React baseline. Ratchet down, never up.
+ *
+ * polaris-key-gate 71.5 -> 83.5 KB (v0.9.12): the gate now carries the Polaris Locker
+ * "Powered by" badge (LK-01/LK-16: the badge templates and the label's outlined prefix, about
+ * 9 KB) and P0-38's sign-in model and copy (about 3 KB). The first version of that art also pulled
+ * the other fifteen badge labels' prefixes in (+12 KB); `LOCKER_POWERED_BY_PREFIX` keeps them out.
+ */
 export const BUDGETS = JSON.parse(
   readFileSync(join(here, "size-budget.json"), "utf8"),
 );
