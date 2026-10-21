@@ -149,6 +149,8 @@ export function AppToaster({
             },
           })}
       visibleToasts={3}
+      // Sonner's own sheet sets ui-sans-serif on the toaster; the toast reads in the app's face.
+      style={{ fontFamily: "inherit" }}
       closeButton
       containerAriaLabel="Notifications"
       icons={{
