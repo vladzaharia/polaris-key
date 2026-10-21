@@ -482,14 +482,14 @@ function rowHtml(
   const noteId = domId("lic-note", row.id);
   const note =
     row.state === "full"
-      ? `<span class="tag" id="${noteId}">No free devices</span>` // signin.choice.tag.full
+      ? `<span class="tag" id="${noteId}">All devices in use</span>` // signin.choice.tag.full
       : "";
   const reason =
     row.state === "blocked"
       ? `<span class="choice-note" id="${noteId}">${escapeHtml(row.blockedReason ?? "Not available for this sign-in")}</span>`
       : "";
   // A key or store licence hides its counter beside a sign-in licence (O-17); a full one keeps
-  // its "No free devices" tag.
+  // its "All devices in use" tag.
   const counter =
     ctx.hideCounter && !row.fromSignIn
       ? ""
