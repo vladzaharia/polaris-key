@@ -100,13 +100,13 @@ describe("All settings → Edit in", () => {
     ],
     [
       "license.fingerprint",
-      "License → Enrollment",
+      "Licensing → Enrollment",
       "Fingerprint policy",
       "#/p/djdl/license/enrollment",
     ],
     [
       "licensing.clampGraceToExpiry",
-      "License → Settings",
+      "Licensing → Settings",
       null,
       "#/p/djdl/license/settings",
     ],
