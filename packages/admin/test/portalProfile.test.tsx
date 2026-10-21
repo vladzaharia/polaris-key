@@ -426,7 +426,7 @@ describe("the birth date (I-33): optional, private, added, changed and removed h
       expect(patches()).toEqual([{ birthdate: "1987-02-28" }]),
     );
     expect(
-      await within(card).findByText("Born February 28, 1987 · private to you"),
+      await within(card).findByText("Born Feb 28, 1987 · private to you"),
     ).toBeTruthy();
   });
 
@@ -434,7 +434,7 @@ describe("the birth date (I-33): optional, private, added, changed and removed h
     mockFetch(profileRoutes({ ...CHOSEN, birthdate: "1987-02-28" }));
     const card = await openProfile();
     expect(
-      within(card).getByText("Born February 28, 1987 · private to you"),
+      within(card).getByText("Born Feb 28, 1987 · private to you"),
     ).toBeTruthy();
     await userEvent.click(
       within(card).getByRole("button", { name: "Edit profile" }),

@@ -6,6 +6,7 @@ import {
   type FeedSnippet,
 } from "@polaris-key/manifest";
 import type { PortalPackageFeed } from "../api.js";
+import { formatDay } from "../date.js";
 import { t } from "../../lib/copy.js";
 import { TOKEN_ENV, ecosystemLabel } from "../../lib/vocab/ecosystems.js";
 import { EXPIRES_SOON_DAYS, expiresInText } from "../../lib/vocab/license.js";
@@ -69,10 +70,7 @@ export function tokenExpiry(
   return { soon: false, text: `Expires ${formatDate(expiresAt)}` };
 }
 
-/** "Oct 1, 2026": the date format the rest of Account uses. */
+/** "Oct 1, 2026": the one date format (../date.ts), read as a UTC day. */
 export function formatDate(at: number): string {
-  return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeZone: "UTC",
-  }).format(new Date(at * 1000));
+  return formatDay(at, true, { utc: true });
 }

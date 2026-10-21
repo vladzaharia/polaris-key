@@ -9,6 +9,7 @@ import { href, type PortalRoute } from "../router.js";
 import { AccountMenu } from "./AccountMenu.js";
 import { Lockup } from "./Lockup.js";
 import { t } from "../../lib/copy.js";
+import { formatDay } from "../date.js";
 
 /**
  * The signed-in frame (PORTAL.md §3.2, §5.2 `PortalShell`):
@@ -144,9 +145,7 @@ export function PortalShell({
             <TriangleAlert aria-hidden className="size-4 shrink-0" />
             <span>
               Your account will be erased on{" "}
-              {new Intl.DateTimeFormat(undefined, {
-                dateStyle: "medium",
-              }).format(new Date(account.deletion.dueAt * 1000))}
+              {formatDay(account.deletion.dueAt)}
               .
             </span>
             <a

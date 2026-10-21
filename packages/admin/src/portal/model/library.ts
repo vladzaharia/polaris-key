@@ -21,6 +21,7 @@ import {
 } from "../api.js";
 import { PLATFORM_ORDER, type PlatformKey } from "../components/Glyphs.js";
 import { t } from "../../lib/copy.js";
+import { formatDay } from "../date.js";
 
 /**
  * The Library's model (PORTAL.md §5.3, §5.4; PX-02, PX-08): one product per library item, the
@@ -56,7 +57,7 @@ export interface ProductStatus {
   /** The pill's word(s): "Expires in 9 days". */
   label: string;
   tone: StatusTone;
-  /** The reason line, in visible text: "Ended 4 Sep 2026", "Lifetime · 2 devices". */
+  /** The reason line, in visible text: "Ended Sep 4, 2026", "Lifetime · 2 devices". */
   note: string;
   /** Not "Active" or "From signing in": counted by the Needs attention filter. */
   attention: boolean;
@@ -267,27 +268,7 @@ export function tierLabel(tier: string | null): string | null {
   return words ? words[0]!.toUpperCase() + words.slice(1) : null;
 }
 
-const MONTHS = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-] as const;
-
-/** "14 Sep 2026" (the spec's form; `Intl`'s en-GB writes "Sept"), in the viewer's time zone. */
-export function formatDay(epochSeconds: number, withYear = true): string {
-  const d = new Date(epochSeconds * 1000);
-  const day = `${d.getDate()} ${MONTHS[d.getMonth()]}`;
-  return withYear ? `${day} ${d.getFullYear()}` : day;
-}
+export { formatDay };
 
 /**
  * A licence issued by signing in (`identityProvider` "oidc") with no key. Activation counts its
@@ -1163,7 +1144,7 @@ function devicesInUse(limit: number): string {
   return `${all} are in use.`;
 }
 
-/** A date that never breaks across lines ("11 Sep 2026"): its spaces are non-breaking. */
+/** A date that never breaks across lines ("Sep 11, 2026"): its spaces are non-breaking. */
 function unbroken(day: string): string {
   return day.replace(/ /g, "\u00a0");
 }

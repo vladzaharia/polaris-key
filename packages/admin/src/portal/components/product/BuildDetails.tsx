@@ -18,7 +18,7 @@ export function BuildDetails({
   sha256,
   hint,
 }: {
-  /** "Stable · 22 Sep 2026" (the day only for the channel's newest release). */
+  /** "Stable · Sep 22, 2026" (the day only for the channel's newest release). */
   channel: string | null;
   sha256: string | null;
   /** What opens the file, from its format (`installHint`). */

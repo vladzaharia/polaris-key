@@ -19,7 +19,8 @@ import { Skeleton } from "../../../ui/Skeleton.js";
 import { Expand } from "../../../ui/motion/index.js";
 import { announce } from "../../../ui/LiveRegion.js";
 import { toast } from "../../../ui/toast.js";
-import { formatDate, formatRelative } from "../../../lib/format.js";
+import { formatRelative } from "../../../lib/format.js";
+import { formatDay } from "../../date.js";
 import {
   portalApi,
   PortalApiError,
@@ -541,7 +542,7 @@ function MethodGroups({
                 e.productCount
                   ? `found ${new Intl.NumberFormat().format(e.productCount)} ${e.productCount === 1 ? "product" : "products"}`
                   : null,
-                `added ${formatDate(e.connectedAt * 1000)}`,
+                `added ${formatDay(e.connectedAt)}`,
                 e.lastUsedAt
                   ? `last used ${formatRelative(e.lastUsedAt * 1000)}`
                   : "never used to sign in",
@@ -634,7 +635,7 @@ function MethodGroups({
               <span className="min-w-0 [overflow-wrap:anywhere]">
                 {t("signin.join.undoable", {
                   email: u.joined?.email ?? u.joined?.name ?? "",
-                  date: formatDate(u.undoUntil * 1000),
+                  date: formatDay(u.undoUntil),
                 })}
               </span>
               <Button
@@ -678,7 +679,7 @@ function passkeyBlock(view: PortalMethods): string | null {
 
 function methodMeta(m: PortalMethod): string {
   return [
-    `Connected ${formatDate(m.connectedAt * 1000)}`,
+    `Connected ${formatDay(m.connectedAt)}`,
     m.lastUsedAt ? `last used ${formatRelative(m.lastUsedAt * 1000)}` : null,
     m.tenantScoped ? "connect only from inside a game" : null,
   ]
@@ -689,7 +690,7 @@ function methodMeta(m: PortalMethod): string {
 function passkeyMeta(p: PortalPasskey): string {
   const named = Boolean(p.name?.trim()) || passkeyProvider(p.aaguid) !== null;
   return [
-    `Added ${formatDate(p.createdAt * 1000)}`,
+    `Added ${formatDay(p.createdAt)}`,
     p.lastUsedAt
       ? `last used ${formatRelative(p.lastUsedAt * 1000)}`
       : "never used to sign in",

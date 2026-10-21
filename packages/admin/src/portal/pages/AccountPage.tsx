@@ -38,6 +38,7 @@ import {
   type AccountSection,
 } from "../router.js";
 import { t } from "../../lib/copy.js";
+import { formatDayTime } from "../date.js";
 
 /**
  * Account (PORTAL.md §4.26): Profile first (PX-22, §4.30: name and picture, edited in place),
@@ -326,10 +327,7 @@ function YourData({ account }: { account: PortalAccount }): React.ReactElement {
   const scheduled = account.deletion
     ? {
         at: new Date(account.deletion.dueAt * 1000),
-        label: new Intl.DateTimeFormat(undefined, {
-          dateStyle: "medium",
-          timeStyle: "short",
-        }).format(new Date(account.deletion.dueAt * 1000)),
+        label: formatDayTime(account.deletion.dueAt),
       }
     : null;
   React.useEffect(() => {

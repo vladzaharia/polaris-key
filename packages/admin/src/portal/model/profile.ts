@@ -1,3 +1,4 @@
+import { formatDay } from "../date.js";
 import {
   PortalApiError,
   type PortalAvatar,
@@ -96,16 +97,13 @@ function birthdateChange(
 }
 
 /**
- * A birth date as the reader's locale writes it ("February 28, 1987"), read as a calendar day
- * (UTC), so no time zone moves it a day.
+ * A birth date in the one date format ("Feb 28, 1987"), read as a calendar day (UTC), so no time
+ * zone moves it a day.
  */
 export function formatBirthdate(value: string, locale?: string): string {
   const at = new Date(`${value}T00:00:00Z`);
   if (Number.isNaN(at.getTime())) return value;
-  return new Intl.DateTimeFormat(locale, {
-    dateStyle: "long",
-    timeZone: "UTC",
-  }).format(at);
+  return formatDay(at.getTime() / 1000, true, { locale, utc: true });
 }
 
 /** Today in the reader's own calendar, `YYYY-MM-DD`: the field's latest date. */

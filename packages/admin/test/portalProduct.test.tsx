@@ -310,7 +310,7 @@ describe("product page on today's data (PX-04)", () => {
       expect(el).toBeTruthy();
       return el!;
     });
-    expect(term.textContent).toMatch(/Ended \d{1,2} \w{3} \d{4}/);
+    expect(term.textContent).toMatch(/Ended [A-Z][a-z]{2} \d{1,2}, \d{4}/);
     // No link to renew with, so nothing promises a renewal.
     expect(term.textContent).not.toContain("Renew");
     expect(

@@ -6,6 +6,7 @@ import type {
   SignInRequestView,
 } from "@polaris-key/protocol/identity";
 import { t } from "../../lib/copy.js";
+import { formatDay } from "../date.js";
 
 /**
  * The app sign-in card's data model (SIGN-IN.md §3.1, §3.6 to §3.8; PX-14a). Pure: the views the
@@ -116,14 +117,10 @@ export function classifyChoice(
   return view.choices.length === 1 ? "one" : "many";
 }
 
-/** "Lifetime" or "Until 12 Jun 2027". */
+/** "Lifetime" or "Until Jun 12, 2027". */
 export function termText(expiresAt: number | null): string {
   if (expiresAt === null) return t("signin.term.lifetime");
-  const date = new Intl.DateTimeFormat(undefined, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(expiresAt * 1000));
+  const date = formatDay(expiresAt);
   return t("signin.term.until", { date });
 }
 
