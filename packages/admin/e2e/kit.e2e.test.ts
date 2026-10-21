@@ -338,7 +338,7 @@ describe("the kit gallery's overlays under the Worker's CSP", () => {
       "tooltip (disabled reason)",
       async () => {
         const trigger = story(page, "button-states")
-          .locator("[aria-disabled=true]")
+          .locator("[aria-disabled=true]:not([aria-busy])")
           .first();
         // Focusing an off-screen trigger scrolls the page, and Radix closes a tooltip on scroll:
         // a race the instant swaps of reduced motion lose. Bring it on screen first.
@@ -504,7 +504,7 @@ describe("overlay exit animations (MO-02)", () => {
       name: "tooltip",
       open: async (page) => {
         const trigger = story(page, "button-states")
-          .locator("[aria-disabled=true]")
+          .locator("[aria-disabled=true]:not([aria-busy])")
           .first();
         // As in the CSP check above: focusing an off-screen trigger scrolls the page, and Radix
         // closes a tooltip on scroll, so bring it on screen first.
