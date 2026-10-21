@@ -6,6 +6,7 @@
  */
 
 import * as React from "react";
+import type { ProductPageId, ServiceState } from "../nav.js";
 
 export const HrefAccess = React.createContext<(href: string) => boolean>(
   () => true,
@@ -14,4 +15,16 @@ export const HrefAccess = React.createContext<(href: string) => boolean>(
 /** Does the member's role open this console href? */
 export function useCanOpenHref(): (href: string) => boolean {
   return React.useContext(HrefAccess);
+}
+
+/** The page a link to a product opens for this member (`landingPage`); Overview outside the shell. */
+export const LandingAccess = React.createContext<
+  (slug: string, services: ServiceState) => ProductPageId
+>(() => "overview");
+
+export function useLandingPage(): (
+  slug: string,
+  services: ServiceState,
+) => ProductPageId {
+  return React.useContext(LandingAccess);
 }

@@ -17,6 +17,7 @@ import { EmptyState } from "../../ui/EmptyState.js";
 import { Spinner } from "../../ui/Spinner.js";
 import {
   SETTINGS_HUB_PAGES,
+  featureOfSection,
   pageOf,
   sectionOf,
   type NavSection,
@@ -161,7 +162,7 @@ export function MovedPage({
     <section className="space-y-6 animate-pk-enter">
       <StateHeading>Page moved</StateHeading>
       <EmptyState
-        kind="not-found"
+        kind="moved"
         headingLevel={2}
         // No-break spaces keep "License → Licenses" on one line when the title wraps on a phone.
         title={
@@ -305,13 +306,14 @@ export function ServiceOffPage({
   productName: string;
 }): React.ReactElement {
   const signIn = section.key === "identity";
-  const label = signIn ? "Sign-in" : section.label;
+  // The operator's words: the feature (the Features tab's rows), never a service slug.
+  const feature = featureOfSection(section.key)?.label ?? section.label;
   return (
     <section
       className="space-y-6 animate-pk-enter"
       data-service={section.accent}
     >
-      <StateHeading>{signIn ? "App sign-in" : section.label}</StateHeading>
+      <StateHeading>{signIn ? "App sign-in" : feature}</StateHeading>
       <EmptyState
         kind="service-off"
         headingLevel={2}
@@ -319,19 +321,20 @@ export function ServiceOffPage({
         title={
           signIn
             ? `Sign-in is off for ${productName}.`
-            : `The ${section.label} service isn’t enabled for ${productName}.`
+            : `${feature} is off for ${productName}.`
         }
         description={
           signIn
             ? `No one can sign in to ${productName} until Sign-in is on. Accounts and settings are kept.`
-            : `${productName} doesn’t run ${section.label}, so there is nothing here to manage. Turn it on in Services and this page comes back.`
+            : `${productName} doesn’t use ${feature}, so there is nothing here to manage. Turn it on in Features and this page comes back.`
         }
         primaryAction={
           signIn ? (
             <TurnOnSignIn slug={slug} />
           ) : (
+            // A link: the Features tab holds the switch and gates it itself.
             <Button asChild>
-              <Link to={r.services(slug)}>Enable {label}</Link>
+              <Link to={r.services(slug)}>Open Features</Link>
             </Button>
           )
         }

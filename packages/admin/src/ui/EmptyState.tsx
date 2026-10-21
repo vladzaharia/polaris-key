@@ -1,5 +1,5 @@
 import * as React from "react";
-import { BookOpen, SearchX } from "lucide-react";
+import { BookOpen, SearchX, Signpost } from "lucide-react";
 import type { ServiceSlug } from "../api.js";
 import { cn } from "../lib/cn.js";
 import { Button } from "./Button.js";
@@ -16,6 +16,7 @@ import { ServiceGlyph, serviceLabel } from "./ServiceBadge.js";
  *   filters ("status: expired"), and Clear filters.
  * - `service-off`: the service's glyph in its accent, and an "Enable {Service}" action.
  * - `not-found`: names what is missing.
+ * - `moved`: the page exists, somewhere else: a signpost, not a search that found nothing.
  *
  * There is no error kind: a failed load is `ErrorState` (UI-14).
  */
@@ -23,7 +24,8 @@ export type EmptyKind =
   | "first-run"
   | "no-results"
   | "service-off"
-  | "not-found";
+  | "not-found"
+  | "moved";
 
 export interface EmptyStateProps {
   kind: EmptyKind;
@@ -187,6 +189,9 @@ export function EmptyState({
       ) : null}
       {kind === "not-found" ? (
         <SearchX aria-hidden className="size-8 text-fg-subtle" />
+      ) : null}
+      {kind === "moved" ? (
+        <Signpost aria-hidden className="size-8 text-fg-subtle" />
       ) : null}
       <div className="max-w-md space-y-1">
         <Title

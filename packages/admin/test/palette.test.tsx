@@ -186,8 +186,18 @@ describe("the palette in the console", () => {
     );
     const live = within(dialog)
       .getAllByRole("status")
-      .find((el) => /result/.test(el.textContent ?? ""))!;
-    expect(live.textContent).toBe(`${optionNames(dialog).length} results`);
+      .find((el) => el.getAttribute("aria-atomic") === "true")!;
+    // Announced when typing pauses (500 ms), and a "See all" row is not a result.
+    const seeAll = optionNames(dialog).filter((n) =>
+      n.startsWith("See all"),
+    ).length;
+    await waitFor(
+      () =>
+        expect(live.textContent).toMatch(
+          new RegExp(`^${optionNames(dialog).length - seeAll} results?`),
+        ),
+      { timeout: 3000 },
+    );
 
     await userEvent.clear(
       within(dialog).getByRole("combobox", { name: "Search or jump to" }),
@@ -196,7 +206,9 @@ describe("the palette in the console", () => {
       within(dialog).getByRole("combobox", { name: "Search or jump to" }),
       "qqqq",
     );
-    await waitFor(() => expect(live.textContent).toBe("No results"));
+    await waitFor(() => expect(live.textContent).toBe("No results"), {
+      timeout: 3000,
+    });
     expect(within(dialog).getByText("Nothing matches “qqqq”.")).toBeTruthy();
   });
 

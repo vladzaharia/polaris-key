@@ -14,6 +14,7 @@ import {
   type ProductPageId,
   type ServiceState,
 } from "../../nav.js";
+import { landingPage } from "../../access/can.js";
 import { globalPage, productPage } from "../../routes.js";
 import type { ProductLike } from "../bits.js";
 import { filterItems } from "./rank.js";
@@ -116,7 +117,11 @@ export function navigationSource(
 }
 
 /** The products source: jump to any product's Overview. */
-export function productSource(products: ProductLike[]): LinkPaletteItem[] {
+export function productSource(
+  products: ProductLike[],
+  landing: (slug: string, services: ServiceState) => ProductPageId = () =>
+    "overview",
+): LinkPaletteItem[] {
   return products.map((p) => ({
     id: `product:${p.slug}`,
     group: "Products",
@@ -124,7 +129,14 @@ export function productSource(products: ProductLike[]): LinkPaletteItem[] {
     detail: p.slug,
     keywords: `${p.slug} product`,
     icon: <Box aria-hidden className="size-4" />,
-    href: productPage(p.slug, "overview"),
+    // A narrowed member lands on a page they can open (B-016).
+    href: productPage(
+      p.slug,
+      landing(
+        p.slug,
+        ("services" in p ? (p.services ?? null) : null) as ServiceState,
+      ),
+    ),
     product: p,
   }));
 }
@@ -171,5 +183,8 @@ export const navigationPaletteSource: PaletteSource = {
 
 export const productsPaletteSource: PaletteSource = {
   id: "products",
-  useItems: (ctx) => productSource(ctx.products),
+  useItems: (ctx) =>
+    productSource(ctx.products, (slug, services) =>
+      landingPage(ctx.me, slug, services),
+    ),
 };

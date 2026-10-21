@@ -98,6 +98,11 @@ export function settingsItems(
       detail: "",
       keywords: query,
       icon,
+      capped: {
+        shown: SETTINGS_ROWS_MAX,
+        total: ordered.length,
+        noun: "settings",
+      },
       href: productPage(ctx.slug, "settings-all", {
         query: { q: query.trim() },
       }),

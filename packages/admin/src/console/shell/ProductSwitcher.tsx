@@ -12,6 +12,7 @@ import { PREF_KEYS, readPref, stringArray, writePref } from "../storage.js";
 import { ServiceDots, type ProductLike } from "./bits.js";
 import type { ProductPresentation } from "../../api.js";
 import { useAttention } from "../data/hooks.js";
+import { useCanOpenHref, useLandingPage } from "../access/context.js";
 
 const RECENT_MAX = 5;
 
@@ -44,6 +45,8 @@ export interface SwitcherContext {
   platform?: boolean;
   /** Called after the switcher navigates (the phone drawer closes, so the page can take focus). */
   onNavigate?: () => void;
+  /** Where `g p` was pressed: a close with no navigation gives focus back there, not to the card. */
+  returnFocusTo?: React.MutableRefObject<HTMLElement | null>;
 }
 
 /** The product's identity tile: its logo, or the Polaris mark for Platform. */
@@ -92,6 +95,7 @@ export function ProductSwitcher({
   onOpenChange: onOpenChangeProp,
   platform = true,
   onNavigate,
+  returnFocusTo,
   rail = false,
 }: SwitcherContext & { rail?: boolean }): React.ReactElement {
   // Navigating from the menu: the route's heading takes focus, not the card Radix would restore.
@@ -118,10 +122,19 @@ export function ProductSwitcher({
     return m;
   }, [attentionItems.data]);
 
+  const canOpenHref = useCanOpenHref();
+  const landing = useLandingPage();
   const select = (p: ProductLike): void => {
     pushRecent(p.slug);
+    const same = productPage(
+      p.slug,
+      page ? sameViewIn(page, servicesOf(p)) : "overview",
+    );
+    // A page the member's role does not include in that product opens one they can (B-016).
     go(
-      productPage(p.slug, page ? sameViewIn(page, servicesOf(p)) : "overview"),
+      canOpenHref(same)
+        ? same
+        : productPage(p.slug, landing(p.slug, servicesOf(p))),
     );
   };
 
@@ -195,7 +208,7 @@ export function ProductSwitcher({
           aria-label={
             current
               ? `Product: ${current.name} (${current.slug}). Change product`
-              : "Platform. Change product"
+              : `${name}. Change product`
           }
           title={name}
           className={cn(
@@ -236,9 +249,14 @@ export function ProductSwitcher({
           sideOffset={6}
           aria-label="Switch product"
           onCloseAutoFocus={(e) => {
+            const back = returnFocusTo?.current ?? null;
+            if (returnFocusTo) returnFocusTo.current = null;
             if (navigated.current) {
               navigated.current = false;
               e.preventDefault();
+            } else if (back?.isConnected) {
+              e.preventDefault();
+              back.focus({ preventScroll: true });
             }
           }}
           className="z-50 w-80 max-w-[calc(100vw-1rem)] rounded-lg border border-border bg-surface-overlay p-1 text-fg shadow-elevation-2 animate-pk-in"
@@ -259,6 +277,7 @@ export function ProductSwitcher({
                 <Command.Group>
                   <Command.Item
                     value="platform"
+                    data-service="core"
                     onSelect={() => go(r.home())}
                     className="flex min-h-10 cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm data-[selected=true]:bg-accent-subtle data-[selected=true]:text-fg-strong"
                   >

@@ -7,9 +7,9 @@ import { fallbackTint } from "../../../../lib/productArt.js";
 import { ProductLogo } from "../../../../ui/ProductLogo.js";
 import { ServiceGlyph } from "../../../../ui/ServiceBadge.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
-import { useCanOpenHref } from "../../../access/context.js";
+import { useCanOpenHref, useLandingPage } from "../../../access/context.js";
 import { Link } from "../../../router.js";
-import { r } from "../../../routes.js";
+import { productPage, r } from "../../../routes.js";
 import {
   cardFeatures,
   featuresSentence,
@@ -119,6 +119,7 @@ export function ProductCard({
   const sentence = featuresSentence(features);
   // A glyph to a page the member's role cannot open is a plain glyph, never a link to a refusal.
   const canOpen = useCanOpenHref();
+  const landing = useLandingPage();
   const roving = useRoving(features.length);
   return (
     <article
@@ -151,7 +152,7 @@ export function ProductCard({
               title={name}
             >
               <Link
-                to={r.overview(p.slug)}
+                to={productPage(p.slug, landing(p.slug, p.services ?? null))}
                 data-card-link=""
                 className="underline-offset-4 outline-none after:absolute after:inset-0 after:rounded-lg after:content-[''] hover:underline focus-visible:ring-0 focus-visible:ring-offset-0"
               >

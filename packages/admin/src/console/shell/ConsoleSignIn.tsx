@@ -82,3 +82,29 @@ export function ConsoleOffline({
     </AuthCard>
   );
 }
+
+/**
+ * `/me` answered, and the answer was a refusal (a 403): the session works, the account is not let
+ * in. Trying again cannot change that, so there is no Try again, only the way to another account.
+ */
+export function ConsoleRefused(): React.ReactElement {
+  const back = `/manage/${window.location.hash}`;
+  return (
+    <AuthCard brand={<ConsoleBrand />} stepKey="refused" focusKey={1}>
+      <AuthTitle>This account can’t open the console</AuthTitle>
+      <p className="text-sm text-fg-muted">
+        Ask an admin to add you, or sign in with another account.
+      </p>
+      <Button
+        asChild
+        variant="neutral"
+        size="lg"
+        className="h-auto min-h-12 w-full py-2 text-base font-semibold"
+      >
+        <a href={`/manage/login?returnTo=${encodeURIComponent(back)}`}>
+          Sign in with another account
+        </a>
+      </Button>
+    </AuthCard>
+  );
+}

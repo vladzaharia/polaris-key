@@ -76,21 +76,34 @@ export function SessionEnded(): React.ReactElement | null {
   // it while the request waited), the page heading takes it, never <body>.
   const wasEnded = React.useRef(false);
   React.useEffect(() => {
-    if (wasEnded.current && !ended) {
-      let frames = 0;
-      // The dialog's own return runs first. If its target goes (a held request just failed and
-      // the page is rebuilding), the heading takes focus instead; watched for about 0.6 s.
-      const settle = (): void => {
-        const active = document.activeElement;
-        if (!active || active === document.body) {
-          const h1 = document.querySelector<HTMLElement>("h1[data-page-title]");
-          if (h1 && frames >= 2) return h1.focus({ preventScroll: true });
-        }
-        if (++frames < 40) requestAnimationFrame(settle);
-      };
-      requestAnimationFrame(settle);
-    }
+    const justClosed = wasEnded.current && !ended;
     wasEnded.current = ended;
+    if (!justClosed) return;
+    // The dialog's own return runs first. If its target goes (a held request just failed and the
+    // page is rebuilding), focus lands on <body>: the heading takes it. Event-driven for about 2 s
+    // (a focusout to <body>, plus one look after the dialog unmounts), never a frame count.
+    const settle = (): void => {
+      const active = document.activeElement;
+      if (active && active !== document.body) return;
+      document
+        .querySelector<HTMLElement>("h1[data-page-title]")
+        ?.focus({ preventScroll: true });
+    };
+    // focusout fires before `activeElement` has moved, so look one task later.
+    const onOut = (): void => {
+      window.setTimeout(settle, 0);
+    };
+    document.addEventListener("focusout", onOut, true);
+    const first = window.setTimeout(settle, 50);
+    const stop = window.setTimeout(
+      () => document.removeEventListener("focusout", onOut, true),
+      2000,
+    );
+    return () => {
+      window.clearTimeout(first);
+      window.clearTimeout(stop);
+      document.removeEventListener("focusout", onOut, true);
+    };
   }, [ended]);
 
   return (
