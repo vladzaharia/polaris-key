@@ -1,3 +1,4 @@
+import { t } from "../../lib/copy.js";
 import * as React from "react";
 import { LayoutGrid, List, Search } from "lucide-react";
 import { SegmentedControl } from "../../ui/SegmentedControl.js";
@@ -70,15 +71,15 @@ export function LibraryToolbar({
     count: number;
     dot?: boolean;
   }[] = [
-    { id: "all", label: "All", count: total },
+    { id: "all", label: t("locker.library.all"), count: total },
     {
       id: "attention",
-      label: "Needs you",
+      label: t("locker.library.needsYou"),
       count: attentionCount,
       dot: true,
     },
   ];
-  const label = "Search your library";
+  const label = t("locker.library.search");
 
   return (
     <div className="flex flex-wrap items-center gap-3">
@@ -108,7 +109,11 @@ export function LibraryToolbar({
         />
       </label>
       <div className="order-3 flex w-full min-w-0 flex-wrap items-center gap-2 wide:order-none wide:w-auto wide:flex-1 wide:basis-72">
-        <div role="group" aria-label="Filter" className="flex flex-wrap gap-2">
+        <div
+          role="group"
+          aria-label={t("locker.library.filter")}
+          className="flex flex-wrap gap-2"
+        >
           {chips
             .filter((c) => c.count > 0)
             .map((c) => {
@@ -141,19 +146,19 @@ export function LibraryToolbar({
             })}
         </div>
         <label className="ml-auto flex items-center">
-          <span className="sr-only">Sort</span>
+          <span className="sr-only">{t("locker.library.sort")}</span>
           <select
             value={sort}
             onChange={(e) => onChange({ sort: e.target.value as LibrarySort })}
             className="h-10 rounded-md border border-border-strong bg-surface-page px-3 text-md text-fg-strong"
           >
-            <option value="recent">Recently added</option>
-            <option value="name">Name</option>
+            <option value="recent">{t("locker.library.sortRecent")}</option>
+            <option value="name">{t("locker.library.sortName")}</option>
           </select>
         </label>
       </div>
       <SegmentedControl
-        aria-label="View"
+        aria-label={t("locker.library.view")}
         className="order-2 h-11 shrink-0 wide:order-none"
         value={mode}
         onChange={onMode}
@@ -163,7 +168,9 @@ export function LibraryToolbar({
             label: (
               <span className="flex items-center gap-2">
                 <LayoutGrid aria-hidden className="size-4" />
-                <span className="sr-only sm:not-sr-only">Grid</span>
+                <span className="sr-only sm:not-sr-only">
+                  {t("locker.library.grid")}
+                </span>
               </span>
             ),
           },
@@ -172,7 +179,9 @@ export function LibraryToolbar({
             label: (
               <span className="flex items-center gap-2">
                 <List aria-hidden className="size-4" />
-                <span className="sr-only sm:not-sr-only">List</span>
+                <span className="sr-only sm:not-sr-only">
+                  {t("locker.library.list")}
+                </span>
               </span>
             ),
           },

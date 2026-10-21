@@ -103,9 +103,7 @@ export function DownloadData({
           {failure ? (
             <p role="alert" className="flex gap-2 text-sm text-danger">
               <AlertCircle aria-hidden className="mt-0.5 size-4 shrink-0" />
-              <span>
-                {failure.title}. {failure.description}
-              </span>
+              <span>{failure.line}</span>
             </p>
           ) : null}
         </>

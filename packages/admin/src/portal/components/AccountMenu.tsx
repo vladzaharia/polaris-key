@@ -36,14 +36,16 @@ export function AccountMenu({
   // The person's name when we have one (profile import, a provider), else their email.
   const name = account.name?.trim();
   const named = Boolean(name) && name !== account.email;
-  const label = named ? name! : account.email || name || "Account";
+  const label = named
+    ? name!
+    : account.email || name || t("locker.account.title");
   return (
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            aria-label={`Account: ${label}`}
+            aria-label={t("locker.account.menuLabel", { name: label })}
             // The avatar alone on phones and tablets, and with no name (PORTAL.md §8); from 1180
             // px the full name and the chevron, the name truncating (min-w-0) only once the ⌘K
             // trigger has given way (PortalShell).
@@ -103,7 +105,7 @@ export function AccountMenu({
           <DropdownMenuItem asChild>
             <a href={href.account()}>
               <User aria-hidden />
-              Account
+              {t("locker.account.title")}
             </a>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
@@ -115,7 +117,7 @@ export function AccountMenu({
           <DropdownMenuItem asChild>
             <a href={href.account("appearance")}>
               <Palette aria-hidden />
-              Appearance
+              {t("locker.appearance.title")}
             </a>
           </DropdownMenuItem>
           <DropdownMenuSeparator />

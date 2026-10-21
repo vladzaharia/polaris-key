@@ -161,7 +161,7 @@ describe("the nav with nothing to discover", () => {
     ).toBeTruthy();
     expect(
       await screen.findByRole("link", {
-        name: "4 more you can add in Discover",
+        name: "There are 4 more you can add in Discover.",
       }),
     ).toBeTruthy();
   });

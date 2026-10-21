@@ -436,8 +436,7 @@ export function DeviceRow({
             </ul>
             {remove.error ? (
               <p role="alert" className="text-sm text-danger">
-                {portalErrorCopy(remove.error).title}.{" "}
-                {portalErrorCopy(remove.error).description}
+                {portalErrorCopy(remove.error).line}
               </p>
             ) : null}
             <div className="flex flex-col gap-2 @[22rem]:flex-row @[22rem]:justify-end">

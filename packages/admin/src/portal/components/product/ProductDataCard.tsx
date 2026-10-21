@@ -113,7 +113,7 @@ function SupportCodeRow({
   const failure = create.error
     ? limited
       ? t("signin.code.rateLimited")
-      : `${portalErrorCopy(create.error).title}. ${portalErrorCopy(create.error).description}`
+      : portalErrorCopy(create.error).line
     : null;
   return (
     <>

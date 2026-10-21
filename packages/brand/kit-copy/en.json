@@ -4745,6 +4745,406 @@
       "value": "Enter your license key.",
       "role": "body",
       "note": "Activate dialog: Continue pressed with an empty field."
+    },
+    "locker.account.title": {
+      "value": "Account",
+      "role": "title",
+      "note": "Account page (Account sections, Appearance, Delete account); moved from the portal's components (P0-36)."
+    },
+    "locker.account.sections": {
+      "value": "Account sections",
+      "role": "a11y",
+      "note": "Account page (Account sections, Appearance, Delete account); moved from the portal's components (P0-36)."
+    },
+    "locker.account.onThisPage": {
+      "value": "On this page",
+      "role": "a11y",
+      "note": "Account page (Account sections, Appearance, Delete account); moved from the portal's components (P0-36)."
+    },
+    "locker.account.packages": {
+      "value": "Packages",
+      "role": "label",
+      "note": "Account page (Account sections, Appearance, Delete account); moved from the portal's components (P0-36)."
+    },
+    "locker.account.sessions": {
+      "value": "Where you're signed in",
+      "role": "label",
+      "note": "Account page (Account sections, Appearance, Delete account); moved from the portal's components (P0-36)."
+    },
+    "locker.appearance.title": {
+      "value": "Appearance",
+      "role": "title",
+      "note": "Account page (Account sections, Appearance, Delete account); moved from the portal's components (P0-36)."
+    },
+    "locker.appearance.theme": {
+      "value": "Theme",
+      "role": "label",
+      "note": "Account page (Account sections, Appearance, Delete account); moved from the portal's components (P0-36)."
+    },
+    "locker.appearance.motion": {
+      "value": "Motion",
+      "role": "label",
+      "note": "Account page (Account sections, Appearance, Delete account); moved from the portal's components (P0-36)."
+    },
+    "locker.appearance.matchDevice": {
+      "value": "Match device",
+      "role": "label",
+      "note": "Account page (Account sections, Appearance, Delete account); moved from the portal's components (P0-36)."
+    },
+    "locker.appearance.dark": {
+      "value": "Dark",
+      "role": "label",
+      "note": "Account page (Account sections, Appearance, Delete account); moved from the portal's components (P0-36)."
+    },
+    "locker.appearance.light": {
+      "value": "Light",
+      "role": "label",
+      "note": "Account page (Account sections, Appearance, Delete account); moved from the portal's components (P0-36)."
+    },
+    "locker.appearance.matchNote": {
+      "value": "Animates unless your device asks for reduced motion.",
+      "role": "hint",
+      "note": "Account page (Account sections, Appearance, Delete account); moved from the portal's components (P0-36)."
+    },
+    "locker.appearance.reduced": {
+      "value": "Reduced",
+      "role": "label",
+      "note": "Account page (Account sections, Appearance, Delete account); moved from the portal's components (P0-36)."
+    },
+    "locker.appearance.reducedNote": {
+      "value": "Changes happen at once, with no animation.",
+      "role": "hint",
+      "note": "Account page (Account sections, Appearance, Delete account); moved from the portal's components (P0-36)."
+    },
+    "locker.delete.canceled": {
+      "value": "Deletion canceled",
+      "role": "hint",
+      "note": "Account page (Account sections, Appearance, Delete account); moved from the portal's components (P0-36)."
+    },
+    "locker.delete.scheduledTitle": {
+      "value": "Your account will be erased on {date}",
+      "role": "title",
+      "note": "Account page (Account sections, Appearance, Delete account); moved from the portal's components (P0-36)."
+    },
+    "locker.delete.banner": {
+      "value": "Your account will be erased on {date}.",
+      "role": "hint",
+      "note": "Account page (Account sections, Appearance, Delete account); moved from the portal's components (P0-36)."
+    },
+    "locker.delete.scheduledNote": {
+      "value": "Until then you can use it and cancel. Licenses stay with each developer.",
+      "role": "body",
+      "note": "Account page (Account sections, Appearance, Delete account); moved from the portal's components (P0-36)."
+    },
+    "locker.delete.cancel": {
+      "value": "Cancel deletion",
+      "role": "button",
+      "note": "Account page (Account sections, Appearance, Delete account); moved from the portal's components (P0-36)."
+    },
+    "locker.delete.verbCancel": {
+      "value": "cancel the deletion",
+      "role": "hint",
+      "note": "Account page (Account sections, Appearance, Delete account); moved from the portal's components (P0-36). A verb phrase: it ends the sentence \"Use your passkey to ...\"."
+    },
+    "locker.delete.askTitle": {
+      "value": "Schedule your Polaris Locker account for deletion?",
+      "role": "title",
+      "note": "Account page (Account sections, Appearance, Delete account); moved from the portal's components (P0-36)."
+    },
+    "locker.delete.askErased": {
+      "value": "In 14 days your account and its links to licenses are erased. Until then you can use it and cancel.",
+      "role": "body",
+      "note": "Account page (Account sections, Appearance, Delete account); moved from the portal's components (P0-36)."
+    },
+    "locker.delete.askLicenses": {
+      "value": "Licenses stay with each developer. Add them again with a new account.",
+      "role": "body",
+      "note": "Account page (Account sections, Appearance, Delete account); moved from the portal's components (P0-36)."
+    },
+    "locker.delete.askEmail": {
+      "value": "We'll email {email} to confirm the schedule.",
+      "role": "body",
+      "note": "Account page (Account sections, Appearance, Delete account); moved from the portal's components (P0-36)."
+    },
+    "locker.delete.type": {
+      "value": "Type {name} to confirm",
+      "role": "label",
+      "note": "Account page (Account sections, Appearance, Delete account); moved from the portal's components (P0-36)."
+    },
+    "locker.delete.verbSchedule": {
+      "value": "schedule deletion",
+      "role": "hint",
+      "note": "Account page (Account sections, Appearance, Delete account); moved from the portal's components (P0-36). A verb phrase: it ends the sentence \"Use your passkey to ...\"."
+    },
+    "locker.delete.confirm": {
+      "value": "Schedule deletion",
+      "role": "button",
+      "note": "Account page (Account sections, Appearance, Delete account); moved from the portal's components (P0-36)."
+    },
+    "locker.delete.rowTitle": {
+      "value": "Delete account",
+      "role": "title",
+      "note": "Account page (Account sections, Appearance, Delete account); moved from the portal's components (P0-36)."
+    },
+    "locker.delete.rowNote": {
+      "value": "Erased 14 days after you confirm. Licenses stay with each developer.",
+      "role": "body",
+      "note": "Account page (Account sections, Appearance, Delete account); moved from the portal's components (P0-36)."
+    },
+    "locker.delete.open": {
+      "value": "Delete account…",
+      "role": "button",
+      "note": "Account page (Account sections, Appearance, Delete account); moved from the portal's components (P0-36)."
+    },
+    "locker.error.fileGone.title": {
+      "value": "That file is no longer offered",
+      "role": "title",
+      "note": "Polaris Locker's own browser error wording where no core.codes.* entry fits (P0-36)."
+    },
+    "locker.error.fileGone.body": {
+      "value": "A newer release may have replaced it. Reload the page to see the current downloads.",
+      "role": "body",
+      "note": "Polaris Locker's own browser error wording where no core.codes.* entry fits (P0-36)."
+    },
+    "locker.error.notHosted.title": {
+      "value": "Not available here yet",
+      "role": "title",
+      "note": "Polaris Locker's own browser error wording where no core.codes.* entry fits (P0-36)."
+    },
+    "locker.error.notHosted.body": {
+      "value": "This file can't be downloaded from here yet. Contact the developer for another way to get it.",
+      "role": "body",
+      "note": "Polaris Locker's own browser error wording where no core.codes.* entry fits (P0-36)."
+    },
+    "locker.error.licenseInactive.title": {
+      "value": "Your license isn't active",
+      "role": "title",
+      "note": "Polaris Locker's own browser error wording where no core.codes.* entry fits (P0-36)."
+    },
+    "locker.error.licenseInactive.body": {
+      "value": "Renew or reactivate your license, then try the download again.",
+      "role": "body",
+      "note": "Polaris Locker's own browser error wording where no core.codes.* entry fits (P0-36)."
+    },
+    "locker.error.signInAgain": {
+      "value": "Sign in again to carry on.",
+      "role": "body",
+      "note": "Polaris Locker's own browser error wording where no core.codes.* entry fits (P0-36)."
+    },
+    "locker.library.title": {
+      "value": "Library",
+      "role": "title",
+      "note": "Library page, its toolbar, empty and list states; moved from the portal's components (P0-36)."
+    },
+    "locker.library.heading": {
+      "value": "Your library",
+      "role": "title",
+      "note": "Library page, its toolbar, empty and list states; moved from the portal's components (P0-36)."
+    },
+    "locker.library.signedInAs": {
+      "value": "Signed in as {email}",
+      "role": "hint",
+      "note": "Library page, its toolbar, empty and list states; moved from the portal's components (P0-36)."
+    },
+    "locker.library.everything": {
+      "value": "That's everything linked to {email}.",
+      "role": "body",
+      "note": "Library page, its toolbar, empty and list states; moved from the portal's components (P0-36)."
+    },
+    "locker.library.more": {
+      "value": "{count, plural, one {There is # more you can add in Discover.} other {There are # more you can add in Discover.}}",
+      "role": "body",
+      "note": "Library page, its toolbar, empty and list states; moved from the portal's components (P0-36)."
+    },
+    "locker.library.allProducts": {
+      "value": "All products",
+      "role": "a11y",
+      "note": "Library page, its toolbar, empty and list states; moved from the portal's components (P0-36)."
+    },
+    "locker.library.byName": {
+      "value": "By name",
+      "role": "a11y",
+      "note": "Library page, its toolbar, empty and list states; moved from the portal's components (P0-36)."
+    },
+    "locker.library.recentFirst": {
+      "value": "Recently added first",
+      "role": "a11y",
+      "note": "Library page, its toolbar, empty and list states; moved from the portal's components (P0-36)."
+    },
+    "locker.library.showing": {
+      "value": "Showing {count} of {total}",
+      "role": "hint",
+      "note": "Library page, its toolbar, empty and list states; moved from the portal's components (P0-36)."
+    },
+    "locker.library.showAll": {
+      "value": "Show all",
+      "role": "button",
+      "note": "Library page, its toolbar, empty and list states; moved from the portal's components (P0-36)."
+    },
+    "locker.library.noMatchQuery": {
+      "value": "Nothing in your library matches “{name}”.",
+      "role": "body",
+      "note": "Library page, its toolbar, empty and list states; moved from the portal's components (P0-36)."
+    },
+    "locker.library.noMatchFilter": {
+      "value": "Nothing in your library matches this filter.",
+      "role": "body",
+      "note": "Library page, its toolbar, empty and list states; moved from the portal's components (P0-36)."
+    },
+    "locker.library.quickMac": {
+      "value": "Quick action for this Mac",
+      "role": "label",
+      "note": "Library page, its toolbar, empty and list states; moved from the portal's components (P0-36)."
+    },
+    "locker.library.quickComputer": {
+      "value": "Quick action for this computer",
+      "role": "label",
+      "note": "Library page, its toolbar, empty and list states; moved from the portal's components (P0-36)."
+    },
+    "locker.library.quick": {
+      "value": "Quick action",
+      "role": "label",
+      "note": "Library page, its toolbar, empty and list states; moved from the portal's components (P0-36)."
+    },
+    "locker.library.all": {
+      "value": "All",
+      "role": "label",
+      "note": "Library page, its toolbar, empty and list states; moved from the portal's components (P0-36)."
+    },
+    "locker.library.needsYou": {
+      "value": "Needs you",
+      "role": "label",
+      "note": "Library page, its toolbar, empty and list states; moved from the portal's components (P0-36)."
+    },
+    "locker.library.search": {
+      "value": "Search your library",
+      "role": "label",
+      "note": "Library page, its toolbar, empty and list states; moved from the portal's components (P0-36)."
+    },
+    "locker.library.filter": {
+      "value": "Filter",
+      "role": "a11y",
+      "note": "Library page, its toolbar, empty and list states; moved from the portal's components (P0-36)."
+    },
+    "locker.library.sort": {
+      "value": "Sort",
+      "role": "a11y",
+      "note": "Library page, its toolbar, empty and list states; moved from the portal's components (P0-36)."
+    },
+    "locker.library.sortRecent": {
+      "value": "Recently added",
+      "role": "label",
+      "note": "Library page, its toolbar, empty and list states; moved from the portal's components (P0-36)."
+    },
+    "locker.library.sortName": {
+      "value": "Name",
+      "role": "label",
+      "note": "Library page, its toolbar, empty and list states; moved from the portal's components (P0-36)."
+    },
+    "locker.library.view": {
+      "value": "View",
+      "role": "a11y",
+      "note": "Library page, its toolbar, empty and list states; moved from the portal's components (P0-36)."
+    },
+    "locker.library.grid": {
+      "value": "Grid",
+      "role": "label",
+      "note": "Library page, its toolbar, empty and list states; moved from the portal's components (P0-36)."
+    },
+    "locker.library.list": {
+      "value": "List",
+      "role": "label",
+      "note": "Library page, its toolbar, empty and list states; moved from the portal's components (P0-36)."
+    },
+    "locker.library.empty.title": {
+      "value": "Nothing here yet",
+      "role": "title",
+      "note": "Library page, its toolbar, empty and list states; moved from the portal's components (P0-36)."
+    },
+    "locker.library.empty.discover": {
+      "value": "See {count} in Discover",
+      "role": "button",
+      "note": "Library page, its toolbar, empty and list states; moved from the portal's components (P0-36)."
+    },
+    "locker.library.table.caption": {
+      "value": "Your products",
+      "role": "a11y",
+      "note": "Library page, its toolbar, empty and list states; moved from the portal's components (P0-36)."
+    },
+    "locker.library.table.icon": {
+      "value": "Icon",
+      "role": "a11y",
+      "note": "Library page, its toolbar, empty and list states; moved from the portal's components (P0-36)."
+    },
+    "locker.library.table.product": {
+      "value": "Product",
+      "role": "label",
+      "note": "Library page, its toolbar, empty and list states; moved from the portal's components (P0-36)."
+    },
+    "locker.library.table.status": {
+      "value": "Status",
+      "role": "label",
+      "note": "Library page, its toolbar, empty and list states; moved from the portal's components (P0-36)."
+    },
+    "locker.library.table.latest": {
+      "value": "Latest",
+      "role": "label",
+      "note": "Library page, its toolbar, empty and list states; moved from the portal's components (P0-36)."
+    },
+    "locker.library.table.open": {
+      "value": "Open",
+      "role": "a11y",
+      "note": "Library page, its toolbar, empty and list states; moved from the portal's components (P0-36)."
+    },
+    "locker.discover.title": {
+      "value": "Discover",
+      "role": "title",
+      "note": "Discover page; moved from the portal's components (P0-36)."
+    },
+    "locker.discover.empty.title": {
+      "value": "Nothing to add right now",
+      "role": "title",
+      "note": "Discover page; moved from the portal's components (P0-36)."
+    },
+    "locker.discover.empty.body": {
+      "value": "When a developer makes something free for you to add, like a free game, a beta or an app your team gets, it appears here.",
+      "role": "body",
+      "note": "Discover page; moved from the portal's components (P0-36)."
+    },
+    "locker.discover.empty.back": {
+      "value": "Back to your library",
+      "role": "button",
+      "note": "Discover page; moved from the portal's components (P0-36)."
+    },
+    "locker.discover.offers": {
+      "value": "Products you can add",
+      "role": "a11y",
+      "note": "Discover page; moved from the portal's components (P0-36)."
+    },
+    "locker.discover.added": {
+      "value": "{product} is in your library",
+      "role": "hint",
+      "note": "Discover page; moved from the portal's components (P0-36)."
+    },
+    "locker.discover.ended": {
+      "value": "{developer} no longer gives {product} to your account.",
+      "role": "body",
+      "note": "Discover page; moved from the portal's components (P0-36)."
+    },
+    "locker.discover.addFailed": {
+      "value": "Couldn't add {product}.",
+      "role": "body",
+      "note": "Discover page; moved from the portal's components (P0-36)."
+    },
+    "locker.account.yourData": {
+      "value": "Your data",
+      "role": "label",
+      "note": "Account page; moved from the portal's components (P0-36)."
+    },
+    "locker.account.menuLabel": {
+      "value": "Account: {name}",
+      "role": "a11y",
+      "note": "Account page; moved from the portal's components (P0-36)."
     }
   }
 }

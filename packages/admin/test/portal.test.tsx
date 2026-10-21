@@ -35,7 +35,7 @@ describe("portal shell and data layer (PX-01)", () => {
     renderPortal();
     expect(
       await screen.findByRole("heading", {
-        name: "Can't reach Polaris Locker",
+        name: "Can't connect",
       }),
     ).toBeTruthy();
     expect(screen.queryByRole("heading", { name: /sign in/i })).toBeNull();

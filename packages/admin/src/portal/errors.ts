@@ -10,6 +10,8 @@ export interface PortalErrorCopy {
   description: string;
   /** Whether trying again can help (a Retry button is offered). */
   retry: boolean;
+  /** Title and description as one line, for a message with no heading above it. */
+  line: string;
 }
 
 export function isSignedOut(err: unknown): boolean {
@@ -36,103 +38,94 @@ export function isNotFound(err: unknown): boolean {
 /**
  * The download-link mint's reasons (`POST …/artifacts/<id>/token`). The Worker sends them only
  * to an account that owns the product, so they can say exactly what is wrong; a stranger gets a
- * plain 404. The last three match the downloads view's per-file `reason`.
+ * plain 404. The last three match the downloads view's per-file `reason`. `not_entitled` has a
+ * code in the catalog, so it reads `core.codes.not_entitled`; the others are Polaris Locker's own
+ * wording (`locker.error.*`).
  */
-const DOWNLOAD_REFUSALS: Record<string, PortalErrorCopy> = {
-  file_not_found: {
-    title: "That file is no longer offered",
-    description:
-      "A newer release may have replaced it. Reload the page to see the current downloads.",
-    retry: false,
-  },
-  not_hosted: {
-    title: "Not available here yet",
-    description:
-      "This file can't be downloaded from here yet. Contact the developer for another way to get it.",
-    retry: false,
-  },
-  license_inactive: {
-    title: "Your license isn't active",
-    description:
-      "Renew or reactivate your license, then try the download again.",
-    retry: false,
-  },
-  not_entitled: {
-    title: "Your license doesn't include this version",
-    description:
-      "Download a version your license covers, or upgrade your license to get this one.",
-    retry: false,
-  },
+const DOWNLOAD_REFUSALS: Record<string, () => PortalErrorCopy> = {
+  file_not_found: () =>
+    own(
+      t("locker.error.fileGone.title"),
+      t("locker.error.fileGone.body"),
+      false,
+    ),
+  not_hosted: () =>
+    own(
+      t("locker.error.notHosted.title"),
+      t("locker.error.notHosted.body"),
+      false,
+    ),
+  license_inactive: () =>
+    own(
+      t("locker.error.licenseInactive.title"),
+      t("locker.error.licenseInactive.body"),
+      false,
+    ),
+  not_entitled: () => fromCode("not_entitled", false),
 };
 
-export function portalErrorCopy(
-  err: unknown,
-  /** `account`: no developer owns the screen, so "contact the developer" names Polaris Key. */
-  opts: { account?: boolean } = {},
+/** Polaris Locker's own wording: the line reads "Title. Description". */
+function own(
+  title: string,
+  description: string,
+  retry: boolean,
 ): PortalErrorCopy {
-  const copy = describePortalError(err);
-  return opts.account
-    ? {
-        ...copy,
-        // Locker's own page has no developer to contact, and no support line to point at.
-        description: copy.description.replace(
-          "Try again. If it keeps happening, contact the developer.",
-          "Try again in a few minutes.",
-        ),
-      }
-    : copy;
+  return { title, description, retry, line: `${title}. ${description}` };
 }
 
-function describePortalError(err: unknown): PortalErrorCopy {
+/** The catalog's wording for a refusal code (`core.codes.<code>`): its title, then its sentence. */
+function fromCode(
+  code:
+    | "not_entitled"
+    | "step_up_required"
+    | "network"
+    | "forbidden"
+    | "not_found"
+    | "rate_limited"
+    | "unknown",
+  retry: boolean,
+): PortalErrorCopy {
+  const title = t(`core.codes.${code}.title`);
+  const message = t(`core.codes.${code}.message`);
+  // A catalog sentence often restates its title ("Too many attempts. Wait a moment and try
+  // again."): under a heading it says only the rest, so no fact shows twice.
+  const rest = message.startsWith(`${title}. `)
+    ? message.slice(title.length + 2)
+    : message;
+  return { title, description: rest, retry, line: message };
+}
+
+/**
+ * Browser errors read the catalog's refusal wording wherever a code exists (lead decision
+ * 2026-10-21): the HTTP statuses map to the code that names them. Only a signed-out browser has no
+ * code (`core.codes.unauthorized` says "this device"), so it keeps its own wording.
+ *
+ * `opts.account` is kept for callers; the catalog's sentences name no developer to contact, so the
+ * account pages and the product pages now read alike.
+ */
+export function portalErrorCopy(
+  err: unknown,
+  _opts: { account?: boolean } = {},
+): PortalErrorCopy {
   if (err instanceof PortalApiError) {
     // Erasing the account, removing a license and minting a package token ask for a
     // sign-in from the last five minutes.
-    if (isStepUpRequired(err))
-      return {
-        title: "Sign in again to continue",
-        description:
-          "This needs a sign-in from the last five minutes. Sign out, sign back in, then try again.",
-        retry: false,
-      };
+    if (isStepUpRequired(err)) return fromCode("step_up_required", false);
     if (
       err.code &&
       Object.prototype.hasOwnProperty.call(DOWNLOAD_REFUSALS, err.code)
     )
-      return DOWNLOAD_REFUSALS[err.code]!;
-    if (err.status === 0)
-      return {
-        title: t("signin.network.title"),
-        description: "Check your connection, then try again.",
-        retry: true,
-      };
+      return DOWNLOAD_REFUSALS[err.code]!();
+    if (err.status === 0) return fromCode("network", true);
     if (err.status === 401)
-      return {
-        title: t("signin.console.signedOut"),
-        description: "Sign in again to carry on.",
-        retry: false,
-      };
-    if (err.status === 403)
-      return {
-        title: "That didn't go through",
-        description: "Reload the page and try again.",
-        retry: false,
-      };
-    if (err.status === 404)
-      return {
-        title: "That isn't here",
-        description: "It may have been removed, or the link is out of date.",
-        retry: false,
-      };
-    if (err.status === 429)
-      return {
-        title: "Too many tries",
-        description: "Wait a minute, then try again.",
-        retry: true,
-      };
+      return own(
+        t("signin.console.signedOut"),
+        t("locker.error.signInAgain"),
+        false,
+      );
+    if (err.status === 403) return fromCode("forbidden", false);
+    if (err.status === 404) return fromCode("not_found", false);
+    if (err.status === 429) return fromCode("rate_limited", true);
   }
-  return {
-    title: t("core.fallback.title"),
-    description: "Try again. If it keeps happening, contact the developer.",
-    retry: true,
-  };
+  return fromCode("unknown", true);
 }

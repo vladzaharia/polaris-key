@@ -413,7 +413,7 @@ function refusalText(err: unknown): string {
     if (err.status === 404) return t("signin.request.gone");
   }
   const copy = portalErrorCopy(err, { account: true });
-  return `${copy.title}. ${copy.description}`;
+  return copy.line;
 }
 
 function Unreachable({

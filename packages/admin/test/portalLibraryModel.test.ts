@@ -111,7 +111,9 @@ describe("status model (§5.3), first match wins", () => {
       NOW_S,
     );
     expect(s.kind).toBe("active");
-    expect(s.note).toMatch(/^Pro · until [A-Z][a-z]{2} \d{1,2}, \d{4} · 2 devices$/);
+    expect(s.note).toMatch(
+      /^Pro · until [A-Z][a-z]{2} \d{1,2}, \d{4} · 2 devices$/,
+    );
   });
 
   it("never claims a seat limit it doesn't know", () => {

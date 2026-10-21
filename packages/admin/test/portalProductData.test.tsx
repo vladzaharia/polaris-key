@@ -282,7 +282,7 @@ describe("Download my data from a product (I-11)", () => {
     }) as HTMLButtonElement;
     await userEvent.click(button);
     expect((await within(card).findByRole("alert")).textContent).toBe(
-      "Too many tries. Wait a minute, then try again.",
+      "Too many attempts. Wait a moment and try again.",
     );
     expect(files.saved).toHaveLength(0);
     expect(button.getAttribute("aria-disabled")).not.toBe("true");
@@ -628,20 +628,20 @@ describe("Remove my data from a product (I-11)", () => {
     [
       "too many tries",
       { status: 429, body: { error: "rate_limited" } },
-      "Too many tries",
-      "Wait a minute, then try again.",
+      "Too many attempts",
+      "Wait a moment and try again.",
     ],
     [
       "an error from the Worker",
       { status: 500, body: { error: "internal" } },
       "Something went wrong",
-      "Try again. If it keeps happening, contact the developer.",
+      "Try again.",
     ],
     [
       "a product the Worker says it holds nothing in",
       { status: 404, body: { error: "not_found" } },
-      "That isn't here",
-      "It may have been removed, or the link is out of date.",
+      "Not found",
+      "That wasn't found. It may have been removed.",
     ],
   ])(
     "%s stays in the dialog, refreshes nothing, and pressing again tries again",

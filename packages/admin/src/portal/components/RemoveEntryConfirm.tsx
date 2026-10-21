@@ -80,7 +80,7 @@ export function RemoveEntryConfirm({
       },
       onError: (err) => {
         const copy = portalErrorCopy(err);
-        setError(`${copy.title}. ${copy.description}`);
+        setError(copy.line);
       },
     });
   };

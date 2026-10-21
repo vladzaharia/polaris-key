@@ -1075,6 +1075,6 @@ function claimError(err: unknown, name: string): KeyVerdict {
   return {
     code: "failed",
     tone: "danger",
-    message: `${copy.title}. ${copy.description}`,
+    message: copy.line,
   };
 }

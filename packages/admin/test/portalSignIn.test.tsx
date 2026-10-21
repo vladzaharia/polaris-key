@@ -102,7 +102,7 @@ describe("LoginCard (SIGN-IN.md §3.1–§3.4, §3.9)", () => {
     renderPortal();
     expect(
       await screen.findByRole("heading", {
-        name: "Can't reach Polaris Locker",
+        name: "Can't connect",
       }),
     ).toBeTruthy();
     expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();

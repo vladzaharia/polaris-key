@@ -123,9 +123,25 @@ export const KEY_NAMESPACES = [
   // The customer portal's License and Get it sections (PX-28a, P0-36): not a kit component.
   "license",
   "getIt",
+  // The customer portal's own pages and states (P0-36): Account sections, Appearance, Delete
+  // account, Library, Discover and its browser errors. Not a kit component.
+  "locker",
   // The terminal kits' own strings: help, key hints, status rows (UK-14, UK-13).
   "cli",
 ] as const;
+
+/**
+ * The customer portal's own namespaces (P0-36): not a kit component, so no SDK kit bundle ships
+ * them. They are written to the portal table (`@polaris-key/brand/kit-copy/portal`) and to no
+ * SDK, terminal or native target, which keeps catalog growth out of the React gate's size budget.
+ */
+export const PORTAL_NAMESPACES: ReadonlySet<string> = new Set([
+  "profile",
+  "yourData",
+  "license",
+  "getIt",
+  "locker",
+]);
 
 /** Namespaces whose keys need not be listed by a component state (parts and shared groups). */
 const SHARED_NAMESPACES = new Set([
@@ -134,10 +150,7 @@ const SHARED_NAMESPACES = new Set([
   "a11y",
   "signin",
   "cli",
-  "profile",
-  "yourData",
-  "license",
-  "getIt",
+  ...PORTAL_NAMESPACES,
 ]);
 
 /** The §4.1 component names, exactly. */
@@ -1050,6 +1063,42 @@ ${model.locales
 `;
 }
 
+/** The customer portal's table: its own namespaces, a separate entry so no kit bundle carries it. */
+export function portalIndex(model: KitCopyModel): string {
+  const keys = model.entries.map((e) => JSON.stringify(e.key));
+  return `${banner("//")}
+/**
+ * The customer portal's copy (P0-36): the \`PORTAL_NAMESPACES\` of the kit copy catalog, one flat
+ * table per launch locale. Only the portal reads it; the SDK kits import \`./index.js\` and never
+ * carry these strings.
+ */
+import en from "./portal-en.json" with { type: "json" };
+import type { KitCopyLocale } from "./index.js";
+
+/** Every key the portal table holds. */
+export type PortalCopyKey =
+  | ${keys.join("\n  | ")};
+
+/** One locale's table. */
+export type PortalCopyTable = Readonly<Record<PortalCopyKey, string>>;
+
+/** The English table, always bundled: every lookup falls back to it key by key. */
+export const PORTAL_COPY_EN: PortalCopyTable = en as PortalCopyTable;
+
+/** Load one locale's table (code-split per locale). */
+export async function loadPortalCopy(locale: KitCopyLocale): Promise<PortalCopyTable> {
+  switch (locale) {
+${model.locales
+  .map(
+    (l) =>
+      `    case ${JSON.stringify(l)}:\n      return (await import("./portal-${l}.json", { with: { type: "json" } })).default as PortalCopyTable;`,
+  )
+  .join("\n")}
+  }
+}
+`;
+}
+
 // Node terminal ------------------------------------------------------------------------------
 
 export function nodeModule(model: KitCopyModel): string {
@@ -1502,8 +1551,20 @@ export interface KitCopyTarget {
 }
 
 let cached: KitCopyModel | undefined;
-const model = (): KitCopyModel =>
+const fullModel = (): KitCopyModel =>
   (cached ??= buildKitCopyModel(loadKitCopySources()));
+const isPortalKey = (e: Entry): boolean =>
+  PORTAL_NAMESPACES.has(e.key.split(".")[0]!);
+/** What every kit and SDK target reads: the catalog without the portal's namespaces. */
+const model = (): KitCopyModel => {
+  const m = fullModel();
+  return { ...m, entries: m.entries.filter((e) => !isPortalKey(e)) };
+};
+/** What the customer portal reads: its own namespaces only. */
+const portalModel = (): KitCopyModel => {
+  const m = fullModel();
+  return { ...m, entries: m.entries.filter(isPortalKey) };
+};
 
 const GODOT_LOCALE_DIR = "sdks/godot/addons/polaris_key/ui/locale";
 const PY_UI = "sdks/python/src/polaris_key/ui";
@@ -1517,6 +1578,16 @@ export const KIT_COPY_TARGETS: KitCopyTarget[] = [
   {
     path: "packages/brand/src/generated/kit-copy/index.ts",
     render: () => webIndex(model()),
+    parser: "typescript",
+  },
+  ...KIT_LOCALES.map((l) => ({
+    path: `packages/brand/src/generated/kit-copy/portal-${l}.json`,
+    render: () => webJson(portalModel(), l),
+    parser: "json" as const,
+  })),
+  {
+    path: "packages/brand/src/generated/kit-copy/portal.ts",
+    render: () => portalIndex(portalModel()),
     parser: "typescript",
   },
   {

@@ -144,15 +144,15 @@ export function PortalShell({
           <p className="mx-auto flex w-full max-w-[82rem] flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 text-sm text-fg desk:px-8">
             <TriangleAlert aria-hidden className="size-4 shrink-0" />
             <span>
-              Your account will be erased on{" "}
-              {formatDay(account.deletion.dueAt)}
-              .
+              {t("locker.delete.banner", {
+                date: formatDay(account.deletion.dueAt),
+              })}
             </span>
             <a
               href={href.account("data")}
               className="inline-flex min-h-6 items-center font-medium text-fg-strong underline underline-offset-2"
             >
-              Cancel deletion
+              {t("locker.delete.cancel")}
             </a>
           </p>
         </div>

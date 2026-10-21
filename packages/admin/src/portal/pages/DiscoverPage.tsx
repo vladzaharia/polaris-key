@@ -51,7 +51,7 @@ export function DiscoverPage({
 }: {
   params: URLSearchParams;
 }): React.ReactElement {
-  useDocumentTitle("Discover");
+  useDocumentTitle(t("locker.discover.title"));
   const discover = useDiscover();
   const library = useLibraryView();
   const claim = useClaimDiscover();
@@ -152,7 +152,7 @@ export function DiscoverPage({
       // Read now, not from this render: another add may have finished meanwhile.
       setParams({ added: withAdded(addedParam(currentParams()), slug) });
       // The tile says "Open"; the toast only confirms.
-      toast.success(`${offer.name} is in your library`);
+      toast.success(t("locker.discover.added", { product: offer.name }));
     } catch (err) {
       const failed = tileError(offer, err);
       setErrors((m) => new Map(m).set(slug, failed));
@@ -180,7 +180,7 @@ export function DiscoverPage({
     <section className="space-y-8">
       <div className="space-y-2">
         <h1 className="text-page-title-sm font-semibold text-fg-strong desk:text-page-title">
-          Discover
+          {t("locker.discover.title")}
         </h1>
       </div>
       {pending ? (
@@ -217,16 +217,15 @@ export function DiscoverPage({
             id="discover-empty-h"
             className="text-2xl font-semibold text-fg-strong desk:text-3xl"
           >
-            Nothing to add right now
+            {t("locker.discover.empty.title")}
           </h2>
           <p className="max-w-prose text-fg-muted">
-            When a developer makes something free for you to add, like a free
-            game, a beta or an app your team gets, it appears here.
+            {t("locker.discover.empty.body")}
           </p>
           <Button asChild variant="action" size="lg" className="h-12">
             <a href={href.library()}>
               <LayoutGrid aria-hidden />
-              Back to your library
+              {t("locker.discover.empty.back")}
             </a>
           </Button>
         </section>
@@ -234,7 +233,7 @@ export function DiscoverPage({
         <>
           <section aria-labelledby="offers-h">
             <h2 id="offers-h" className="sr-only">
-              Products you can add
+              {t("locker.discover.offers")}
             </h2>
             <ul
               ref={stagger.ref}
@@ -290,7 +289,10 @@ function tileError(offer: PortalDiscoverOffer, err: unknown): TileError {
     err.code === "not_eligible"
   ) {
     return {
-      text: `${offer.developerName ?? t("license.developerFallbackCap")} no longer gives ${offer.name} to your account.`,
+      text: t("locker.discover.ended", {
+        developer: offer.developerName ?? t("license.developerFallbackCap"),
+        product: offer.name,
+      }),
       ended: true,
     };
   }
@@ -298,7 +300,7 @@ function tileError(offer: PortalDiscoverOffer, err: unknown): TileError {
   const offline = err instanceof PortalApiError && err.status === 0;
   const copy = portalErrorCopy(err);
   return {
-    text: `Couldn't add ${offer.name}. ${offline ? t("core.codes.transport.message") : copy.description}`,
+    text: `${t("locker.discover.addFailed", { product: offer.name })} ${offline ? t("core.codes.transport.message") : copy.description}`,
     ended: false,
   };
 }
