@@ -133,6 +133,36 @@ body {
   display: grid;
   gap: 12px;
 }
+.board-head,
+.board-sec {
+  flex-basis: 100%;
+  margin: 0;
+}
+.board-head h1 {
+  font: 600 28px/1.2 var(--pk-font-sans);
+  letter-spacing: -0.01em;
+  color: var(--pk-text-strong);
+  margin: 0;
+}
+.board-head p {
+  font: 400 15px/1.4 var(--pk-font-sans);
+  color: var(--pk-text-muted);
+  margin: 6px 0 0;
+}
+.board-sec {
+  font: 600 18px/1.3 var(--pk-font-sans);
+  color: var(--pk-text-strong);
+  padding-top: 16px;
+  border-top: 1px solid var(--pk-border-subtle);
+}
+/* A frame wider than the window scrolls inside its own figure, never the page. */
+.board > figure {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 2px;
+  margin: -2px;
+}
 .board figcaption {
   font: 500 13px/1.3 var(--pk-font-sans);
   color: var(--pk-text-muted);

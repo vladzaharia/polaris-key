@@ -168,7 +168,7 @@ Left: apple.html iPad from built SwiftUI renders (needs a simulator or Xcode; th
 
 - terminal.html: every frame captioned Built today; a new `--json` frame captured by running the Node gate and status verbs (exit 4 and 1). NO_COLOR, ascii and the pipe quadrant were already drawn.
 - godot.html: nine frames re-tiered against real renders of the built kit (tools/ui_screenshots.gd, brand look, dark and light; raw captures in shots/godot-built/): gate, settings, sign-in, device limit, update toast, update, boot, status, error each show a Built today render beside the UK-11 target. Activate and the 1280 x 800 gate stay target only.
-- The built kit disagrees with the targets: sign-in title is "Sign in" at polaris.locker/device (the Node terminal prints key.plrs.im/device); boot draws a part-filled bar, not the DL7 shimmer; status is the gate's Signed out form; the device-limit and error frames have no copy for the cached license.
+- The built kit disagrees with the targets: sign-in title is "Sign in" at polaris.locker/device; boot draws a part-filled bar, not the DL7 shimmer; status is the gate's Signed out form; the device-limit and error frames have no copy for the cached license.
 
 ## Progress and continuation (2026-10-21, slice 5: captions and close-out)
 
@@ -178,12 +178,37 @@ Left: apple.html iPad from built SwiftUI renders (needs a simulator or Xcode; th
 
 ## Kit gaps for UK-11
 
+"Fix in flight: KF-native" marks a gap the parallel KF-native package fixes in code; the lead
+updates those lines after it lands.
+
 - Godot: the boot bar is part-filled; DL7 wants the 2 px shimmer (owner: Godot kit).
 - Godot: status shows the gate's Signed out form with no Renew action; the target has a status screen (owner: Godot kit).
 - Godot: the error and device-limit frames have no copy for the cached license ("play continues on the cached license") (owner: Godot kit).
-- Godot: sign-in title is "Sign in" at polaris.locker/device; the Node terminal prints key.plrs.im/device (owner: Godot kit and terminal copy).
+- Godot: sign-in title is "Sign in", the target says "Sign in with a code" (the URL is already polaris.locker/device) (owner: Godot kit).
 - Godot: no activate dialog (the key form sits on the gate) and no 1280 x 800 render in tools/ui_screenshots.gd (owner: Godot kit).
-- Kotlin: the welcome lede is hard-coded rather than the catalog's (owner: Compose kit).
+- Godot and Compose: no product icon and name (DL5) on most screens; on Godot every built frame, the gate included. Fix in flight: KF-native.
+- Kotlin: the welcome lede is hard-coded rather than the catalog's (owner: Compose kit). Fix in flight: KF-native.
 - Kotlin: no Compose snapshots for tablet portrait, nor a product icon on expired (DL3) (owner: Compose kit).
+- Kotlin: the sign-in code view prints `key.plrs.im/activate`; it must be `polaris.locker/device` (android-compose-sign-in). Fix in flight: KF-native.
+- Kotlin: boot draws a stock spinner, not the DL7 shimmer (owner: Compose kit). Fix in flight: KF-native.
+- Kotlin: the error screen shows the raw code "(sync-failed)" to the user (owner: Compose kit). Fix in flight: KF-native.
+- Swift: boot draws a spinner, not the DL7 shimmer (owner: SwiftUI kit). Fix in flight: KF-native.
+- Swift on iPad: the primary button sits about 600 pt below the content on a 13-inch portrait (owner: SwiftUI kit). Fix in flight: KF-native.
 - Swift: no landscape split Welcome render on iPad (the headless simulator cannot rotate), and no ActivityKit surface or StoreKit paywall in the kit (owner: SwiftUI kit).
+- Terminals (Node and Python): the device-management link is `key.plrs.im/portal/...`, but `CUSTOMER_ORIGIN_DEFAULT` is `polaris.locker` (owner: terminal kits).
+- Terminals: Node and Python word the device-limit sentence differently ("then try again here" versus "continues when you're done"); the board frame matches Python only (owner: terminal kits).
 - Apple and desktop: no built renders of visionOS, tvOS, watchOS or macOS (owner: SwiftUI kit).
+
+Removed: "the Node terminal prints key.plrs.im/device". The Node golden `sign-in-handoff-code` prints
+`polaris.locker/device`.
+
+## Progress and continuation (2026-10-21, fix/uk59-boards)
+
+Fixes after the failed MOCKUP-mode review (kits-final/ux-review.md, UK-59). The boards in
+docs/design/ui-kits are hand-authored HTML with no `_src`, so they were edited in place;
+`pnpm gen design-mockups` does not cover them.
+
+- Built today frames now match the builds: web gate (catalog lede, "Start a free trial", no footer), web activate and device limit at 1440 in two panes, iOS gate lede and three links, the sign-in sheet in the build's order with the persistent header and catalog footnote, device limit as Replace with the inline consequence. The iOS states frame is captioned UK-11 target (shimmer), with status and error redrawn in catalog copy.
+- Device-code address is polaris.locker/device on web and Android; the Android hand-off has Open browser as the primary and no QR.
+- Copy: Android, Godot and iOS drift fixed to catalog (lede, Replace, license expired, can't connect, dates); fixtures went to strings.allow.json with reasons. Debt 177 entries to 45 (169 on the six boards to 45: web 13, terminal 31, apple 1).
+- Boards: title and section headings, frames wider than the window scroll inside their figure (no page sideways scroll at 1600 px), terminal fallbacks 3 + 2 centred, terminal device-limit captions say Python golden.

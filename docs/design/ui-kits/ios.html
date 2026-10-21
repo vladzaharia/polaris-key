@@ -951,7 +951,7 @@
           >by Harbor Audio</span
         >
         <p class="sub" style="margin-top: 12px">
-          Sign in or add your license to start.
+          Sign in or use a license key to continue.
         </p>
       </div>
       <div
@@ -969,20 +969,28 @@
         <div class="glass cap">Use a license key</div>
         <div
           style="
-            display: flex;
-            justify-content: center;
-            gap: 28px;
-            margin-top: 2px;
+            display: grid;
+            justify-items: center;
+            gap: 14px;
+            margin-top: 4px;
           "
         >
-          <span class="link">Restore purchase</span
+          <span class="link">Start a free trial</span
+          ><span class="link">Restore purchase</span
           ><span class="link">Activate offline</span>
         </div>
       </div>
     </template>
 
     <main class="board">
+      <header class="board-head">
+        <h1>iOS board: SwiftUI kit</h1>
+        <p>
+          The built iPhone kit in catalog copy. Each frame ends with its tier.
+        </p>
+      </header>
       <!-- 1. Gate -->
+      <h2 class="board-sec">Gate, activate and sign in</h2>
       <figure>
         <figcaption>ios · gate. Built today</figcaption>
         <div class="shot" data-shot="gate">
@@ -1175,18 +1183,41 @@
             <div class="dim"></div>
             <div class="sheet float" style="padding: 10px 20px 34px">
               <div class="grab"></div>
+              <div
+                style="
+                  display: flex;
+                  gap: 10px;
+                  align-items: center;
+                  margin: 8px 4px 12px;
+                  font: 500 15px var(--pk-font-sans);
+                "
+              >
+                <span
+                  class="k-appicon"
+                  data-art="tidewater"
+                  data-size="28"
+                  style="border-radius: 7px"
+                ></span
+                >Tidewater Studio
+              </div>
               <h2
                 class="title-l"
-                style="
-                  font-size: 24px;
-                  line-height: 30px;
-                  text-align: center;
-                  margin: 6px 0 22px;
-                "
+                style="font-size: 24px; line-height: 30px; margin: 0 4px 8px"
               >
                 Sign in to Tidewater Studio
               </h2>
+              <p
+                class="sub"
+                style="margin: 0 4px 18px; font-size: 15px; line-height: 20px"
+              >
+                Use your Tidewater Studio purchase email or a work or school
+                email.
+              </p>
               <div style="display: grid; gap: 10px">
+                <div class="glass prominent cap">
+                  <span data-icon="mail" data-size="19"></span>Continue with
+                  email<span data-icon="external" data-size="15"></span>
+                </div>
                 <div class="apple">
                   <span data-apple data-size="19"></span>Continue with Apple
                 </div>
@@ -1194,17 +1225,13 @@
                   <span data-icon="passkey" data-size="20"></span>Sign in with a
                   passkey
                 </div>
-                <div class="glass on-plain cap">
-                  <span data-icon="mail" data-size="19"></span>Continue with
-                  email
-                </div>
-                <div class="glass on-plain cap">
-                  <span data-icon="qr" data-size="19"></span>Use another device
+                <div class="link" style="text-align: center; padding: 8px 0">
+                  Sign in on your phone or computer
                 </div>
               </div>
-              <p class="foot-note" style="margin: 18px 12px 0">
-                Polaris Locker handles sign-in. Harbor Audio never sees your
-                passkeys.
+              <p class="foot-note" style="margin: 10px 12px 0">
+                Polaris Locker signs you in for Tidewater Studio. Harbor Audio
+                never sees your codes or passkeys.
               </p>
             </div>
           </div>
@@ -1212,6 +1239,7 @@
       </figure>
 
       <!-- 4. Device limit -->
+      <h2 class="board-sec">Device limit and updates</h2>
       <figure>
         <figcaption>ios · device limit. Built today</figcaption>
         <div class="shot" data-shot="device-limit">
@@ -1265,7 +1293,8 @@
                   line-height: 21px;
                 "
               >
-                To use it on this iPhone, remove one. You can add it back later.
+                To use it on this iPhone, replace one. You can add it back
+                later.
               </p>
               <div
                 class="seat"
@@ -1297,7 +1326,21 @@
                   </div>
                 </div>
               </div>
-              <p class="sec-f">Tidewater Studio signs out on Work laptop.</p>
+              <p
+                class="sec-f"
+                style="
+                  color: var(--pk-text-strong);
+                  font-weight: 600;
+                  font-size: 15px;
+                  margin-bottom: 2px;
+                "
+              >
+                Replace Work laptop?
+              </p>
+              <p class="sec-f" style="margin-top: 0">
+                Work laptop signs out of Tidewater Studio and this iPhone takes
+                its seat. We’ll email you about it.
+              </p>
             </div>
             <div
               style="
@@ -1307,8 +1350,9 @@
                 bottom: 34px;
               "
             >
-              <div class="glass prominent cap">
-                Remove Work laptop and continue
+              <div style="display: grid; gap: 12px">
+                <div class="glass prominent cap">Replace and continue</div>
+                <div class="glass on-plain cap">Back</div>
               </div>
             </div>
           </div>
@@ -1397,8 +1441,8 @@
                   color: var(--pk-text-default);
                 "
               >
-                This update is required. Your library moved to a new format, and
-                2.4.1 can’t open it.
+                This version is below the minimum supported version. Update to
+                keep using Tidewater Studio.
               </p>
               <div
                 style="
@@ -1421,7 +1465,7 @@
                 <span>Stem export in one tap, with loudness matching</span>
                 <span>Track freeze works with every plug-in</span>
               </div>
-              <span class="link" style="margin: 0 2px">Release notes</span>
+              <span class="link" style="margin: 0 2px">All changes in 2.5</span>
               <div class="glass prominent cap" style="margin-top: 10px">
                 Update on the App Store
               </div>
@@ -1431,6 +1475,7 @@
       </figure>
 
       <!-- 7. Settings -->
+      <h2 class="board-sec">Settings and system variants</h2>
       <figure>
         <figcaption>
           ios · settings (account and license). Built today
@@ -1618,7 +1663,7 @@
                 style="border-radius: 20px"
               ></div>
               <h1 class="title-xl">Welcome to Tidewater Studio</h1>
-              <p class="sub">Sign in or add your license to start.</p>
+              <p class="sub">Sign in or use a license key to continue.</p>
               <div
                 style="display: grid; gap: 14px; width: 100%; margin-top: 6px"
               >
@@ -1634,6 +1679,7 @@
       </figure>
 
       <!-- 10. StoreKit paywall -->
+      <h2 class="board-sec">Paywall and Live Activity</h2>
       <figure>
         <figcaption>
           ios · StoreKit paywall (plans from the App Store, the product's
@@ -1792,10 +1838,11 @@
       </figure>
 
       <!-- 12. Boot, status and error -->
+      <h2 class="board-sec">States</h2>
       <figure>
         <figcaption>
-          ios · boot (a neutral 2 px shimmer after the grace, no part-filled
-          bar), status (blocked) and error (offline). Built today
+          ios · boot (the DL7 neutral shimmer; the build shows a spinner),
+          status (license expired, as built) and error (offline). UK-11 target
         </figcaption>
         <div class="row-shot" data-shot="states">
           <div>
@@ -1840,11 +1887,10 @@
                       style="border-radius: 17px"
                     ></div>
                     <h1 class="title-l" style="margin-top: 16px">
-                      Your license has ended
+                      License expired
                     </h1>
                     <p class="sub">
-                      Tidewater Studio Pro ended on 30 September. Renew to keep
-                      working on your sessions.
+                      Connect to the internet or renew your license to continue.
                     </p>
                   </div>
                 </div>
@@ -1858,12 +1904,15 @@
                     gap: 12px;
                   "
                 >
-                  <div class="glass prominent cap">Renew</div>
-                  <div class="glass on-plain cap">Use a different key</div>
+                  <div class="glass prominent cap">
+                    Renew<span data-icon="external" data-size="15"></span>
+                  </div>
+                  <div class="glass on-plain cap">Use another license</div>
+                  <div class="glass on-plain cap">Try again</div>
                 </div>
               </div>
             </div>
-            <span class="lbl">Status: blocked</span>
+            <span class="lbl">Status: expired</span>
           </div>
           <div>
             <div class="shot">
@@ -1872,11 +1921,11 @@
                   <div class="stack">
                     <div class="glyph" data-icon="wifiOff" data-size="26"></div>
                     <h1 class="title-l" style="margin-top: 12px">
-                      Can’t reach Harbor Audio
+                      Can’t connect
                     </h1>
                     <p class="sub">
-                      Check your connection. You can keep working offline for 3
-                      more days.
+                      Can’t reach Polaris Locker. Check your connection and try
+                      again.
                     </p>
                   </div>
                 </div>
