@@ -12,6 +12,8 @@ export function FeatureSubRow({
   control,
   footer,
   stack = false,
+  lockedBy,
+  lockedId,
   className,
 }: {
   title: React.ReactNode;
@@ -23,10 +25,27 @@ export function FeatureSubRow({
   footer?: React.ReactNode;
   /** A wide control (a segmented choice) drops under the text on a phone; a switch stays flush right. */
   stack?: boolean;
+  /**
+   * The feature this row waits on. An off feature's rows all look the same: visible, muted, one
+   * line "Turns on with <feature>", the control disabled. `lines` is not shown.
+   */
+  lockedBy?: string;
+  /** The id of the "Turns on with" line, for the control's `aria-describedby`. */
+  lockedId?: string;
   className?: string;
 }): React.ReactElement {
+  const shown = lockedBy
+    ? [
+        <span key="locked" id={lockedId}>
+          Turns on with {lockedBy}
+        </span>,
+      ]
+    : lines;
   return (
-    <div className={cn("px-4 py-3", className)}>
+    <div
+      data-locked={lockedBy ? "" : undefined}
+      className={cn("px-4 py-3", className)}
+    >
       <div
         className={cn(
           "flex items-center justify-between gap-4",
@@ -37,14 +56,24 @@ export function FeatureSubRow({
           {htmlFor ? (
             <label
               htmlFor={htmlFor}
-              className="block text-sm font-medium text-fg-strong"
+              className={cn(
+                "block text-sm font-medium",
+                lockedBy ? "text-fg-muted" : "text-fg-strong",
+              )}
             >
               {title}
             </label>
           ) : (
-            <p className="text-sm font-medium text-fg-strong">{title}</p>
+            <p
+              className={cn(
+                "text-sm font-medium",
+                lockedBy ? "text-fg-muted" : "text-fg-strong",
+              )}
+            >
+              {title}
+            </p>
           )}
-          {lines.map((line, i) => (
+          {shown.map((line, i) => (
             <p key={i} className="text-sm text-fg-muted">
               {line}
             </p>

@@ -3,6 +3,7 @@ import { Check, Copy } from "lucide-react";
 import { cn } from "../lib/cn.js";
 import { Button, type ButtonSize } from "./Button.js";
 import { IconButton } from "./IconButton.js";
+import { Unlocked } from "./WriteLock.js";
 import { announce } from "./LiveRegion.js";
 
 export type CopyState = "idle" | "copied" | "failed";
@@ -97,44 +98,46 @@ export function CopyButton({
   // The swap to "Copied" pops (src/motion.css `.pk-pop-in`): the check mounts fresh each time.
   const icon = state === "copied" ? <Check className="pk-pop-in" /> : <Copy />;
   return (
-    <span className={cn("inline-flex items-center gap-2", className)}>
-      {showLabel ? (
-        <Button
-          variant="outline"
-          size={size}
-          iconStart={icon}
-          aria-label={label}
-          onClick={() => void run()}
-        >
-          {state === "copied" ? (
-            <span className="pk-pop-in inline-block">Copied</span>
-          ) : (
-            text
-          )}
-        </Button>
-      ) : (
-        <IconButton
-          label={state === "copied" ? `${label}: copied` : label}
-          icon={icon}
-          size={size}
-          onClick={() => void run()}
-        />
-      )}
-      {state === "failed" ? (
-        <span className="inline-flex items-center gap-2">
-          <label htmlFor={fallbackId} className="text-xs text-fg-muted">
-            Press {copyChord()} to copy
-          </label>
-          <input
-            id={fallbackId}
-            ref={fallback}
-            readOnly
-            value={value}
-            onFocus={(e) => e.currentTarget.select()}
-            className="h-7 w-48 rounded-md border border-border-strong bg-surface-sunken px-2 font-mono text-xs text-fg"
+    <Unlocked>
+      <span className={cn("inline-flex items-center gap-2", className)}>
+        {showLabel ? (
+          <Button
+            variant="outline"
+            size={size}
+            iconStart={icon}
+            aria-label={label}
+            onClick={() => void run()}
+          >
+            {state === "copied" ? (
+              <span className="pk-pop-in inline-block">Copied</span>
+            ) : (
+              text
+            )}
+          </Button>
+        ) : (
+          <IconButton
+            label={state === "copied" ? `${label}: copied` : label}
+            icon={icon}
+            size={size}
+            onClick={() => void run()}
           />
-        </span>
-      ) : null}
-    </span>
+        )}
+        {state === "failed" ? (
+          <span className="inline-flex items-center gap-2">
+            <label htmlFor={fallbackId} className="text-xs text-fg-muted">
+              Press {copyChord()} to copy
+            </label>
+            <input
+              id={fallbackId}
+              ref={fallback}
+              readOnly
+              value={value}
+              onFocus={(e) => e.currentTarget.select()}
+              className="h-7 w-48 rounded-md border border-border-strong bg-surface-sunken px-2 font-mono text-xs text-fg"
+            />
+          </span>
+        ) : null}
+      </span>
+    </Unlocked>
   );
 }

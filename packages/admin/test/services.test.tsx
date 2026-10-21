@@ -535,7 +535,7 @@ describe("Services feature groups", () => {
       "feature-ship-builds-in-app-updates-requirements",
     );
     expect(document.getElementById(requirementId!)?.textContent).toMatch(
-      /Turn on Ship builds first/,
+      /Turns on with Ship builds/,
     );
   });
 
@@ -543,7 +543,9 @@ describe("Services feature groups", () => {
     mount();
     const packages = await screen.findByRole("switch", { name: /Packages/i });
     const requirementId = packages.getAttribute("aria-describedby");
-    expect((packages as HTMLButtonElement).disabled).toBe(true);
+    expect((packages as HTMLButtonElement).getAttribute("aria-disabled")).toBe(
+      "true",
+    );
     expect(requirementId).toBe("feature-packages-requirements");
     expect(document.getElementById(requirementId!)?.textContent).toBe(
       "Turns on with Ship builds",
@@ -563,7 +565,7 @@ describe("Services feature groups", () => {
     expect(screen.getByRole("img", { name: "Licensing is on" })).toBeTruthy();
     expect(screen.queryByText("Device registration")).toBeNull();
     const show = screen.getByRole("button", {
-      name: "Slugs and device registration",
+      name: "Show Slugs and device registration",
     });
     expect(show.getAttribute("aria-expanded")).toBe("false");
     await userEvent.setup().click(show);

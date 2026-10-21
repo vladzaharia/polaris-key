@@ -1,5 +1,6 @@
 import * as React from "react";
 import { cn } from "../lib/cn.js";
+import { useWriteLock } from "./WriteLock.js";
 
 export interface TextareaProps extends Omit<
   React.TextareaHTMLAttributes<HTMLTextAreaElement>,
@@ -23,6 +24,7 @@ export function Textarea({
   ref,
   ...props
 }: TextareaProps): React.ReactElement {
+  const { locked } = useWriteLock();
   return (
     <textarea
       ref={ref}
@@ -40,6 +42,7 @@ export function Textarea({
         className,
       )}
       {...props}
+      readOnly={props.readOnly || locked || undefined}
     />
   );
 }

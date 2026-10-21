@@ -9234,6 +9234,24 @@
       "status": "done"
     },
     {
+      "id": "ST-08n",
+      "title": "Product settings hub follow-ups (phone tabs, Presentation layout, locked rows, copy, ST-11 editor)",
+      "phase": "ST",
+      "stage": "phase 2: experience",
+      "lane": "console",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.5, 0.8],
+      "deps": ["ST-08"],
+      "planMode": false,
+      "gates": ["console-csp-parity", "docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["ST-08 re-check evidence: _mockups/review/ST-08/rebuild/"],
+      "brief": "wp/ST-08n-settings-hub-followups.md",
+      "status": "in-review"
+    },
+    {
       "id": "ST-09",
       "title": "Platform settings ordered by use",
       "phase": "ST",
@@ -9275,7 +9293,7 @@
         "DX consolidation 2026-10-07: edit (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/ST-10-settings-search.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "ST-11",

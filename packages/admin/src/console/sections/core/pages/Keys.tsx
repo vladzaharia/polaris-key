@@ -32,7 +32,12 @@ import {
 } from "../../../../api.js";
 import { cn } from "../../../../lib/cn.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
-import { formatDate, formatSpan, fromSeconds } from "../../../../lib/format.js";
+import {
+  formatDate,
+  formatRelative,
+  formatSpan,
+  fromSeconds,
+} from "../../../../lib/format.js";
 import {
   CountUp,
   setMeter,
@@ -54,6 +59,7 @@ import { Timestamp } from "../../../../ui/Timestamp.js";
 import { toast } from "../../../../ui/toast.js";
 import { useLoadingAnnouncement } from "../../../../ui/loading.js";
 import { useProduct } from "../../../data/hooks.js";
+import { ContentKeysSection } from "./KeysContent.js";
 import { mutate } from "../../../data/mutations.js";
 import { qk } from "../../../data/queries.js";
 import { Link } from "../../../router.js";
@@ -117,28 +123,6 @@ function VerificationSection({
           showLabel
           text="Copy URL"
         />
-      </div>
-    </SettingsSection>
-  );
-}
-
-/** Content keys are set by the release pipeline: this section only points at them. */
-function ContentKeysSection({ slug }: { slug: string }): React.ReactElement {
-  return (
-    <SettingsSection
-      id="keys-content"
-      title="Content keys"
-      description="Set by the release pipeline. App release records are signed by your CI release key."
-    >
-      <div className="flex items-center justify-between gap-4 px-5 py-4">
-        <p className="text-sm text-fg-muted">Read-only here.</p>
-        <Link
-          to={r.contentKeys(slug)}
-          className="inline-flex items-center gap-1 text-sm text-accent-fg underline-offset-4 hover:underline"
-        >
-          Content keys
-          <ArrowRight aria-hidden className="size-3.5" />
-        </Link>
       </div>
     </SettingsSection>
   );

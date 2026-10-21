@@ -33,10 +33,13 @@ export function StorefrontListingControl({
   slug,
   name,
   locked,
+  blocked = false,
 }: {
   slug: string;
   name: string;
   locked: boolean;
+  /** Ship builds is off: the row stays, disabled. */
+  blocked?: boolean;
 }): React.ReactElement | null {
   const queryClient = useQueryClient();
   const query = useQuery({
@@ -99,6 +102,8 @@ export function StorefrontListingControl({
     <>
       <FeatureSubRow
         stack
+        lockedBy={blocked ? "Ship builds" : undefined}
+        lockedId={`${id}-requirements`}
         title={<span id={`${id}-label`}>Polaris Locker listing</span>}
         lines={[
           `Who finds ${name} on Discover`,
@@ -130,10 +135,16 @@ export function StorefrontListingControl({
             <SegmentedControl
               size="sm"
               aria-labelledby={`${id}-label`}
-              aria-describedby={failure ? `${id}-error` : undefined}
               options={OPTIONS}
               value={current}
-              disabled={locked || pending || query.isPending}
+              aria-describedby={
+                blocked
+                  ? `${id}-requirements`
+                  : failure
+                    ? `${id}-error`
+                    : undefined
+              }
+              disabled={blocked || locked || pending || query.isPending}
               onChange={request}
             />
           </span>

@@ -149,7 +149,9 @@ describe("All settings → Edit in", () => {
     expect(cell).toContain(where);
     if (section) expect(cell).toContain(section);
     await userEvent.setup().click(link);
-    expect(window.location.hash).toBe(hash);
+    expect(window.location.hash).toBe(
+      `${hash}${hash.includes("?") ? "&" : "?"}setting=${key}`,
+    );
   });
 
   it.each([
@@ -194,7 +196,12 @@ describe("All settings → Edit in", () => {
         expect(
           links.map((l) => l.getAttribute("href")),
           e.key,
-        ).toEqual([productPage("djdl", home.page, { id: home.id })]);
+        ).toEqual([
+          productPage("djdl", home.page, {
+            id: home.id,
+            query: { setting: e.key },
+          }),
+        ]);
       else expect(links, e.key).toEqual([]);
     }
   });

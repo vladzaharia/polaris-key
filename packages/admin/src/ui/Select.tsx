@@ -2,6 +2,7 @@ import * as React from "react";
 import { Select as SelectPrimitive } from "radix-ui";
 import { Check, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "../lib/cn.js";
+import { useWriteLock } from "./WriteLock.js";
 
 /**
  * Select (components.md §3.3), on Radix.
@@ -204,6 +205,7 @@ export function Select({
   ref,
   ...aria
 }: SelectProps): React.ReactElement {
+  const { locked } = useWriteLock();
   const current =
     value === null || value === undefined || value === ""
       ? allowEmpty && value === null
@@ -214,7 +216,7 @@ export function Select({
     <SelectRoot
       value={current}
       name={name}
-      disabled={disabled || readOnly}
+      disabled={disabled || readOnly || locked}
       onValueChange={(v) => onChange?.(v === NONE ? null : v)}
       onOpenChange={(open) => {
         if (!open) onBlur?.();

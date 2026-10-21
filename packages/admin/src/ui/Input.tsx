@@ -2,6 +2,7 @@ import * as React from "react";
 import { X } from "lucide-react";
 import { cn } from "../lib/cn.js";
 import { CONTROL_INPUT } from "./inputBase.js";
+import { useWriteLock } from "./WriteLock.js";
 
 export interface InputProps extends Omit<
   React.InputHTMLAttributes<HTMLInputElement>,
@@ -36,6 +37,7 @@ export function Input({
   ref,
   ...props
 }: InputProps): React.ReactElement {
+  const { locked } = useWriteLock();
   const inner = React.useRef<HTMLInputElement | null>(null);
   const setRef = (el: HTMLInputElement | null): void => {
     inner.current = el;
@@ -62,6 +64,7 @@ export function Input({
         !framed && className,
       )}
       {...props}
+      readOnly={props.readOnly || locked || undefined}
     />
   );
   if (!framed) return input;

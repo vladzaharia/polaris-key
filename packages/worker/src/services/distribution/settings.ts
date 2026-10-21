@@ -73,9 +73,9 @@ export const DISTRIBUTION_SETTINGS_SLICE: ServiceSettingsSlice = {
       scope: "product",
       service: "distribution",
       area: "distribution.outlets",
-      label: "Outlet capabilities",
+      label: "What each channel allows",
       description:
-        "What an install that arrived through each outlet may do (fetch new code, run downloaded scripts, sell things). The starting point is the compiled default for the outlet's kind; an operator may only narrow it.",
+        "What an install that arrived through each channel may do (fetch new code, run downloaded scripts, sell things). The starting point is the compiled default for the channel's kind; an operator may only narrow it.",
       keywords: ["codeUpdates", "downloadedScripts", "commerce", "outlets"],
       docs: "/docs/features/ship-builds/channels/",
       value: {
@@ -99,9 +99,9 @@ export const DISTRIBUTION_SETTINGS_SLICE: ServiceSettingsSlice = {
       scope: "product",
       service: "distribution",
       area: "distribution.outlets",
-      label: "Outlets",
+      label: "Channels",
       description:
-        "The places the product is distributed (direct, App Store, Play, Steam, …) with each store's identity for it.",
+        "The channels the product is distributed through (direct, App Store, Play, Steam, …) with each store's identity for it.",
       keywords: ["stores", "appleId", "bundleId", "packageName"],
       docs: "/docs/features/ship-builds/channels/",
       value: { kind: "json", schema: "outlets (distribution.schema.json)" },

@@ -105,10 +105,10 @@ export function PackageFeedsControl({
       <FeatureSubRow
         title="Packages"
         htmlFor={switchId}
+        lockedBy={blocked ? "Ship builds" : undefined}
+        lockedId={requirementId}
         lines={[
-          blocked ? (
-            <span id={requirementId}>Turns on with Ship builds</span>
-          ) : on ? (
+          on ? (
             registryHost ? (
               <>
                 On <span className="font-mono">{registryHost}</span>
@@ -138,7 +138,8 @@ export function PackageFeedsControl({
             touch
             checked={on}
             saving={pending !== null}
-            disabled={blocked || locked || query.isPending}
+            aria-disabled={blocked || locked || undefined}
+            readOnly={blocked || locked || query.isPending}
             aria-describedby={describedBy}
             onCheckedChange={(next) => {
               if (next) void save(true).catch(() => undefined);
