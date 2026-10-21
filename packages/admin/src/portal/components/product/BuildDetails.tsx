@@ -86,7 +86,7 @@ function Sha256({ value }: { value: string }): React.ReactElement {
               label: C["getIt.flow.sha256"],
               detail: short,
             })}
-            className="-ml-2 inline-flex h-9 items-center rounded-md px-2 font-mono text-code text-fg hover:text-fg-strong"
+            className="-ms-2 inline-flex h-9 items-center rounded-md px-2 font-mono text-code text-fg hover:text-fg-strong"
           >
             <span aria-hidden>{short}</span>
           </button>

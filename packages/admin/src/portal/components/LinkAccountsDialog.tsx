@@ -268,6 +268,7 @@ export function LinkAccountsDialog({
       size="md"
       title={t("signin.join.title")}
       dismissible={!busy}
+      closeButton={false}
       onEscapeKeyDown={stepUpEscape}
       onCloseAutoFocus={(e) => {
         e.preventDefault();

@@ -164,7 +164,7 @@ export function AccountPage({
         // Sticky under the header below desk (at the top on a short screen, where the header
         // scrolls away): the page's scroll padding clears it (styles.css).
         data-section-pills=""
-        className="sticky top-14 z-20 -mx-4 min-w-0 max-w-[100vw] overflow-x-auto border-b border-border bg-surface-page px-4 py-2 short:top-0 bigtext:max-desk:static desk:hidden"
+        className="sticky top-14 z-20 -mx-4 min-w-0 max-w-[calc(100%+2rem)] overflow-x-auto border-b border-border bg-surface-page px-4 py-2 short:top-0 bigtext:max-desk:static desk:hidden"
       >
         <ul className="flex w-max gap-2">
           {sections.map((s) => (
@@ -241,7 +241,7 @@ function SectionLink({
             ? "border-fg-strong bg-hover font-semibold text-fg-strong"
             : "border-border-strong text-fg-strong"
           : on
-            ? "bg-hover font-medium text-fg-strong before:absolute before:inset-y-1 before:left-0 before:w-[3px] before:rounded-full before:bg-accent before:content-[''] forced-colors:before:bg-[Highlight]"
+            ? "bg-hover font-medium text-fg-strong before:absolute before:inset-y-1 before:start-0 before:w-[3px] before:rounded-full before:bg-accent before:content-[''] forced-colors:before:bg-[Highlight]"
             : "text-fg-muted hover:bg-hover hover:text-fg-strong",
       )}
     >

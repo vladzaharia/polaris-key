@@ -49,7 +49,7 @@ export function SessionsCard(): React.ReactElement | null {
           <Button
             ref={buttonRef}
             variant="outline"
-            className="h-auto min-h-9 max-w-full whitespace-normal py-1.5 text-left max-sm:min-h-11 bigtext:[&_svg]:hidden"
+            className="h-auto min-h-9 max-w-full whitespace-normal py-1.5 text-start max-sm:min-h-11 bigtext:[&_svg]:hidden"
             iconStart={<LogOut aria-hidden />}
             aria-expanded={false}
             aria-controls="sign-out-everywhere"
@@ -120,7 +120,7 @@ function SessionList({
       <div className="mt-1">
         <Button
           variant="link"
-          className="h-auto min-h-11 max-w-full whitespace-normal py-2 text-left font-medium [overflow-wrap:anywhere]"
+          className="h-auto min-h-11 max-w-full whitespace-normal py-2 text-start font-medium [overflow-wrap:anywhere]"
           iconStart={<ScanLine aria-hidden />}
           onClick={() => {
             window.location.hash = href.account("sessions", { approve: "" });
@@ -176,7 +176,7 @@ function SessionRow({
         {session.current ? null : (
           <Button
             variant="ghost"
-            className="ml-auto h-10 font-medium max-sm:h-11"
+            className="ms-auto h-10 font-medium max-sm:h-11"
             loading={end.isPending}
             aria-label={t("locker.sessions.signOutOne", { name, when: meta })}
             onClick={() =>
@@ -196,7 +196,7 @@ function SessionRow({
         )}
       </div>
       {end.error ? (
-        <p role="alert" className="mt-2 text-sm text-danger sm:pl-13">
+        <p role="alert" className="mt-2 text-sm text-danger sm:ps-13">
           {portalErrorCopy(end.error).line}
         </p>
       ) : null}
@@ -238,7 +238,7 @@ function Everywhere({
           >
             {t("locker.sessions.askTitle")}
           </h3>
-          <ul className="list-disc space-y-1 pl-5 text-sm text-fg">
+          <ul className="list-disc space-y-1 ps-5 text-sm text-fg">
             <li>
               {others > 0
                 ? t("locker.sessions.askOthers", { count: others })

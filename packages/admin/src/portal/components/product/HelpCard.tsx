@@ -9,7 +9,7 @@ import { HelpLink } from "../HelpLink.js";
 
 /** A long developer name or address wraps inside the button, never past the window (WCAG 1.4.10). */
 const WRAPS =
-  "h-auto min-h-9 max-w-full whitespace-normal py-1.5 text-left [overflow-wrap:anywhere]";
+  "h-auto min-h-9 max-w-full whitespace-normal py-1.5 text-start [overflow-wrap:anywhere]";
 
 /** Help (§4.20): who handles licenses and downloads, and how to reach them (G16). */
 export function HelpCard({

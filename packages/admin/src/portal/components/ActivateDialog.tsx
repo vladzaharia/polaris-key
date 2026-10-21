@@ -480,7 +480,7 @@ export function ActivateDialog({
                             }
                           />
                         ) : helpForRefusal(verdict.code) ? (
-                          <div className="basis-full text-left">
+                          <div className="basis-full text-start">
                             <HelpLink href={helpForRefusal(verdict.code)!}>
                               {t("locker.help.whatToDo")}
                             </HelpLink>
@@ -598,7 +598,7 @@ function RefusalActions({
         </p>
       ) : null}
       {help ? (
-        <div className="basis-full text-left">
+        <div className="basis-full text-start">
           <HelpLink href={help}>{t("locker.help.whatToDo")}</HelpLink>
         </div>
       ) : null}
@@ -1001,8 +1001,8 @@ export function ConfirmStep({
             src={p.iconUrl}
             size={64}
             lift
-            className="relative -mt-8 ml-4 short:mt-0 short:ml-0"
-            tileClassName="border-[3px] border-surface-overlay"
+            className="relative -mt-8 ms-4 short:mt-0 short:ms-0"
+            tileClassName="outline-3 -outline-offset-3 outline-surface-overlay"
           />
         </div>
         <p className="flex items-center gap-2 text-sm text-fg-muted">
@@ -1028,7 +1028,7 @@ export function ConfirmStep({
               </span>
             ) : null}
             {terms ? <span>{terms}</span> : null}
-            <PlatformGlyphs platforms={platforms} className="ml-auto" />
+            <PlatformGlyphs platforms={platforms} className="ms-auto" />
           </div>
         ) : null}
         <div className="flex items-center gap-3 rounded-md border border-border bg-surface-sunken px-3 py-2.5">

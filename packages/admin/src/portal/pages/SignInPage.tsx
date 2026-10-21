@@ -1145,7 +1145,7 @@ function IdChip({
   const host = at > 0 ? email.slice(at) : "";
   return (
     <div className="flex">
-      <div className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-full border border-border py-0.5 pl-3 pr-1 text-sm text-fg">
+      <div className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-full border border-border py-0.5 ps-3 pe-1 text-sm text-fg">
         <span className="flex min-w-0 max-w-full" title={email}>
           <bdi className="min-w-0 truncate">{local}</bdi>
           <bdi className="shrink-0">{host}</bdi>

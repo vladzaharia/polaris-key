@@ -41,7 +41,7 @@ function MarkdownBlock({ block: b }: { block: Block }): React.ReactElement {
       );
     case "ul":
       return (
-        <ul className="list-disc space-y-1.5 pl-5">
+        <ul className="list-disc space-y-1.5 ps-5">
           {b.items.map((item, i) => (
             <li key={i}>
               <Lines lines={item} />
@@ -53,7 +53,7 @@ function MarkdownBlock({ block: b }: { block: Block }): React.ReactElement {
       return (
         <ol
           start={b.start === 1 ? undefined : b.start}
-          className="list-decimal space-y-1.5 pl-5"
+          className="list-decimal space-y-1.5 ps-5"
         >
           {b.items.map((item, i) => (
             <li key={i}>
@@ -64,7 +64,7 @@ function MarkdownBlock({ block: b }: { block: Block }): React.ReactElement {
       );
     case "quote":
       return (
-        <blockquote className="border-l-2 border-border-strong pl-3 text-fg-muted">
+        <blockquote className="border-s-2 border-border-strong ps-3 text-fg-muted">
           <Lines lines={b.lines} />
         </blockquote>
       );

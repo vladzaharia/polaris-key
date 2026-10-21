@@ -48,7 +48,7 @@ export function FocusedFlow({
           e.preventDefault();
           document.getElementById("flow")?.focus();
         }}
-        className="sr-only z-50 rounded-md bg-surface-overlay px-3 py-2 text-fg-strong focus:not-sr-only focus:fixed focus:left-4 focus:top-3"
+        className="sr-only z-50 rounded-md bg-surface-overlay px-3 py-2 text-fg-strong focus:not-sr-only focus:fixed focus:start-4 focus:top-3"
       >
         {t("locker.shell.skip")}
       </a>

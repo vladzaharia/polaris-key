@@ -39,13 +39,13 @@ export function DataRow({
           </div>
         </div>
         {children ? (
-          <div className={cn("ml-13 bigtext:max-sm:ml-0 sm:ml-0 sm:shrink-0")}>
+          <div className={cn("ms-13 bigtext:max-sm:ms-0 sm:ms-0 sm:shrink-0")}>
             {children}
           </div>
         ) : null}
       </div>
       {/* In the text column (icon 2.5 rem + gap 0.75 rem), on a phone as on a desk (B-088). */}
-      {below ? <div className="ml-13 bigtext:max-sm:ml-0">{below}</div> : null}
+      {below ? <div className="ms-13 bigtext:max-sm:ms-0">{below}</div> : null}
     </div>
   );
 }

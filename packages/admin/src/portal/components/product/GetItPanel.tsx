@@ -144,7 +144,7 @@ export function GetItPanel({
       id="get"
       title={t("getIt.heading")}
       aside={
-        <p className="shrink-0 pt-1 text-right text-xs text-fg-muted">
+        <p className="shrink-0 pt-1 text-end text-xs text-fg-muted">
           {shown.publishedAt
             ? t("getIt.latest", {
                 version: shown.version,
@@ -227,7 +227,7 @@ export function GetItPanel({
           tabIndex={0}
           className="relative -mx-5 overflow-x-auto border-y border-border desk:-mx-6"
         >
-          <table className="w-full min-w-[17rem] border-collapse text-left text-sm">
+          <table className="w-full min-w-[17rem] border-collapse text-start text-sm">
             <caption className="sr-only">{t("getIt.table")}</caption>
             <thead>
               <tr className="text-xs text-fg-muted">
@@ -313,7 +313,7 @@ function FileRow({
       {/* The device's own build: tinted, with a strong edge, so it reads in dark too. */}
       <th
         scope="row"
-        className={`border-l-4 px-4 py-3 text-left font-normal desk:px-5 ${mine ? "border-fg-strong" : "border-transparent"}`}
+        className={`border-s-4 px-4 py-3 text-start font-normal desk:px-5 ${mine ? "border-fg-strong" : "border-transparent"}`}
       >
         <span className="flex items-center gap-3">
           <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-md bg-surface-page text-fg-muted">
@@ -349,7 +349,7 @@ function FileRow({
           <FileHash value={r.artifact.sha256} file={r.artifact.name} />
         ) : null}
       </td>
-      <td className="px-5 py-3 text-right desk:px-6">
+      <td className="px-5 py-3 text-end desk:px-6">
         {r.elsewhere ? (
           r.elsewhere.href ? (
             <Button

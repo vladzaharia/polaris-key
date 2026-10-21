@@ -147,6 +147,7 @@ export function ApproveDeviceDialog({
       }}
       size="sm"
       title={title}
+      closeButton={false}
       dismissible={phase.kind !== "deciding" && phase.kind !== "looking"}
       onEscapeKeyDown={(e) => {
         // Escape backs out of the confirmation, one step; the dialog stays.

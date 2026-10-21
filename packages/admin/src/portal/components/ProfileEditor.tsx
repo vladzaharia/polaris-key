@@ -360,8 +360,8 @@ export function ProfileEditor({
                             if (error?.field === "name") setError(null);
                           }}
                           className={cn(
-                            "pk-pressable inline-flex min-h-9 max-w-full items-center gap-1.5 rounded-full border px-3 py-1 text-left text-sm max-sm:min-h-11 pointer-coarse:min-h-11",
-                            "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page",
+                            "pk-pressable inline-flex min-h-9 max-w-full items-center gap-1.5 rounded-full border px-3 py-1 text-start text-sm max-sm:min-h-11 pointer-coarse:min-h-11",
+                            "focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2",
                             on
                               ? "border-accent bg-accent-subtle font-medium text-fg-strong"
                               : "border-border-strong text-fg hover:bg-hover hover:text-fg-strong",
@@ -429,7 +429,7 @@ export function ProfileEditor({
                 }}
                 className={cn(
                   "pk-pressable flex min-h-36 flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-border-strong p-3 text-center hover:bg-hover",
-                  "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page",
+                  "focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2",
                 )}
               >
                 <span
@@ -510,7 +510,7 @@ export function ProfileEditor({
                 onValueChange={typeBirthdate}
                 // The native calendar button inside takes focus without the input being
                 // :focus-visible, so the ring follows plain :focus here.
-                className="min-w-36 max-w-56 flex-1 max-sm:min-h-11 focus:ring-2 focus:ring-focus focus:ring-offset-2 focus:ring-offset-surface-page"
+                className="min-w-36 max-w-56 flex-1 max-sm:min-h-11 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
               />
               {birthdate ? (
                 <Button
@@ -652,7 +652,7 @@ function PictureTileRadio({
       />
       <Check
         aria-hidden
-        className="absolute right-2 top-2 hidden size-4 text-accent-fg group-has-[:checked]:block"
+        className="absolute end-2 top-2 hidden size-4 text-accent-fg group-has-[:checked]:block"
       />
       <Avatar
         name={initialsName}

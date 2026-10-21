@@ -72,7 +72,7 @@ export function PortalShell({
           e.preventDefault();
           mainRef.current?.focus();
         }}
-        className="sr-only z-50 rounded-md bg-surface-overlay px-3 py-2 text-fg-strong focus:not-sr-only focus:fixed focus:left-4 focus:top-3"
+        className="sr-only z-50 rounded-md bg-surface-overlay px-3 py-2 text-fg-strong focus:not-sr-only focus:fixed focus:start-4 focus:top-3"
       >
         {t("locker.shell.skip")}
       </a>
@@ -108,7 +108,7 @@ export function PortalShell({
           </nav>
           {/* min-w-0: when the row is tight from 1180 px, the ⌘K field gives way first (its
               wrapper shrinks far faster, down to 11rem), then the account chip's name. */}
-          <div className="ml-auto flex min-w-0 items-center gap-3">
+          <div className="ms-auto flex min-w-0 items-center gap-3">
             {headerExtra ? (
               <div className="hidden shrink-0 desk:flex wide:min-w-44 wide:shrink-[999]">
                 {headerExtra}
@@ -197,7 +197,7 @@ export function PortalShell({
                 {discoverCount ? (
                   <span
                     aria-hidden
-                    className="absolute -right-1 -top-0.5 size-2 rounded-full bg-accent"
+                    className="absolute -end-1 -top-0.5 size-2 rounded-full bg-accent"
                   />
                 ) : null}
               </span>
