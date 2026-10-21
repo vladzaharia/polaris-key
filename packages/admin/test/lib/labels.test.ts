@@ -37,17 +37,17 @@ describe("labels (ADMIN.md §5.8)", () => {
   });
 });
 
-describe("the direct outlet reads Polaris Key (S-21 §6.8)", () => {
+describe("the direct outlet reads Polaris Locker (S-21 §6.8)", () => {
   it("labels the kind and its subkinds, keeping the id direct", () => {
-    expect(label(OUTLET_KIND_LABELS, "direct")).toBe("Polaris Key");
-    expect(outletLabel("direct")).toBe("Polaris Key");
+    expect(label(OUTLET_KIND_LABELS, "direct")).toBe("Polaris Locker");
+    expect(outletLabel("direct")).toBe("Polaris Locker");
     expect(outletLabel("direct", "homebrew")).toBe(
-      "Polaris Key · via Homebrew",
+      "Polaris Locker · via Homebrew",
     );
     expect(outletLabel("direct", "appimage")).toBe(
-      "Polaris Key · via AppImage",
+      "Polaris Locker · via AppImage",
     );
-    expect(outletLabel("direct", null)).toBe("Polaris Key");
+    expect(outletLabel("direct", null)).toBe("Polaris Locker");
     expect(outletLabel("steam")).toBe("Steam");
   });
 

@@ -42,8 +42,8 @@ describe("Distribution → Outlets & feeds", () => {
       screen.getByRole("heading", { level: 1, name: "Outlets & feeds" }),
     ).toBeTruthy();
     expect(within(t).getByText("App Store")).toBeTruthy();
-    // The `direct` kind reads "Polaris Key" (S-21 §6.8); its id stays `direct`.
-    expect(within(t).getByText("Polaris Key")).toBeTruthy();
+    // The `direct` kind reads "Polaris Locker" (S-21 §6.8); its id stays `direct`.
+    expect(within(t).getByText("Polaris Locker")).toBeTruthy();
     expect(within(t).getByText("direct")).toBeTruthy();
     expect(within(t).queryByText(/direct download/i)).toBeNull();
     expect(within(t).getByText("Narrowed in console")).toBeTruthy();

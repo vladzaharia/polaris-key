@@ -409,21 +409,22 @@ describe("App sign-in", () => {
     expect(screen.queryByRole("textbox")).toBeNull();
   });
 
-  it("saves the two portal switches, listing the changes in words", async () => {
+  it("saves the portal switch, listing the change in words", async () => {
     renderPage();
     await waitFor(() =>
-      expect(checked(toggle("Let customers replace a lost key"))).toBe(false),
+      expect(checked(toggle("Show DJDL in players’ libraries"))).toBe(true),
     );
-    expect(checked(toggle("Show DJDL in players’ libraries"))).toBe(true);
+    // The lost-key switch is hidden until the Locker has the reissue action (G7).
+    expect(screen.queryByText("Let customers replace a lost key")).toBeNull();
     expect(saveButton()).toBeNull();
-    await userEvent.click(toggle("Let customers replace a lost key"));
-    expect(screen.getByText(/1 change: lost key shown/)).toBeTruthy();
+    await userEvent.click(toggle("Show DJDL in players’ libraries"));
+    expect(screen.getByText(/1 change: DJDL hidden in libraries/)).toBeTruthy();
     expect(screen.getAllByText("Not saved").length).toBeGreaterThan(0);
     await userEvent.click(saveButton()!);
     await waitFor(() => expect(updatePortalSettings).toHaveBeenCalledTimes(1));
     expect(updatePortalSettings.mock.calls[0]).toEqual([
       "djdl",
-      { keyReissueEnabled: true },
+      { portalEnabled: false },
     ]);
     expect(
       await screen.findByText("Saved 1 change to App sign-in"),
@@ -435,12 +436,12 @@ describe("App sign-in", () => {
     renderPage();
     await userEvent.click(
       await screen.findByRole("switch", {
-        name: "Let customers replace a lost key",
+        name: "Show DJDL in players’ libraries",
       }),
     );
     await userEvent.click(saveButton()!);
     await waitFor(() => expect(updatePortalSettings).toHaveBeenCalled());
-    expect(checked(toggle("Let customers replace a lost key"))).toBe(true);
+    expect(checked(toggle("Show DJDL in players’ libraries"))).toBe(false);
     expect(saveButton()).toBeTruthy();
   });
 

@@ -378,17 +378,17 @@ describe("the portal-settings route's listing fields (PS-02)", () => {
     ).toEqual([
       [
         "storefront.polarisKey.groupLabels",
-        "Changed the Polaris Key listing for djdl: group labels for 1 group(s)",
+        "Changed the Polaris Locker listing for djdl: group labels for 1 group(s)",
         "u1",
       ],
       [
         "storefront.polarisKey.listed",
-        "Changed the Polaris Key listing for djdl: listing auto → listed",
+        "Changed the Polaris Locker listing for djdl: listing auto → listed",
         "u1",
       ],
       [
         "storefront.polarisKey.offerPaths",
-        "Changed the Polaris Key listing for djdl: ways to obtain all → group, open",
+        "Changed the Polaris Locker listing for djdl: ways to obtain all → group, open",
         "u1",
       ],
     ]);

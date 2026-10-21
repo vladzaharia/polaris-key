@@ -78,7 +78,7 @@ export const CHANNELS: readonly ChannelEntry[] = [
   {
     id: "polaris-key",
     aliases: ["direct"],
-    label: "Polaris Key",
+    label: "Polaris Locker",
     family: "first-party",
     plane: "worker",
     outlet: { kind: "direct" },

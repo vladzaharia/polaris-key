@@ -897,8 +897,8 @@ describe("?setting= deep links", () => {
     ],
     [
       "a Polaris Locker switch",
-      "#/p/djdl/settings/portal?setting=portal.keyReissue",
-      "setting-portal.keyReissue",
+      "#/p/djdl/settings/portal?setting=identity.keyEntry.claimByKey",
+      "setting-identity.keyEntry.claimByKey",
     ],
     [
       "a platform setting row",

@@ -115,7 +115,7 @@ describe("the draft", () => {
 });
 
 describe("Settings → Polaris Locker", () => {
-  it("shows the three switches and the branding fields", async () => {
+  it("shows the two switches and the branding fields", async () => {
     const { container } = mount();
     const checked = (el: HTMLElement) => el.getAttribute("aria-checked");
     expect(
@@ -125,9 +125,10 @@ describe("Settings → Polaris Locker", () => {
         }),
       ),
     ).toBe("true");
+    // Hidden until the Locker has the reissue action (G7).
     expect(
-      checked(screen.getByRole("switch", { name: /replace a lost key/i })),
-    ).toBe("false");
+      screen.queryByRole("switch", { name: /replace a lost key/i }),
+    ).toBeNull();
     expect(
       checked(
         screen.getByRole("switch", { name: /adds its license to whoever/i }),

@@ -9,7 +9,10 @@ import { cleanup, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type * as ApiModule from "../src/api.js";
 import type { Me, ProductDetail } from "../src/api.js";
-import { SETTING_HOMES } from "../src/console/sections/core/model/settingHomes.js";
+import {
+  HIDDEN_SETTINGS,
+  SETTING_HOMES,
+} from "../src/console/sections/core/model/settingHomes.js";
 import { SettingsAllPage } from "../src/console/sections/core/pages/SettingsAll.js";
 import { productPage } from "../src/console/routes.js";
 import { SETTINGS_INDEX } from "../src/console/settings.generated.js";
@@ -118,19 +121,19 @@ describe("All settings → Edit in", () => {
     ],
     [
       "release.compatWindow",
-      "Update → Feed",
+      "In-app updates → Feed",
       "Compatibility window",
       "#/p/djdl/update/feed",
     ],
     [
       "update.operatorPolicy",
-      "Update → Feed",
+      "In-app updates → Feed",
       "Artifact policy",
       "#/p/djdl/update/feed",
     ],
     [
       "storefront.polarisKey.listed",
-      "Distribution → Storefronts",
+      "Rollouts → Storefronts",
       "Polaris Locker → Listing",
       "#/p/djdl/distribution/storefronts/polaris-key",
     ],
@@ -187,12 +190,21 @@ describe("All settings → Edit in", () => {
     expect(within(row).getByText("Admin API only")).toBeTruthy();
   });
 
+  it("does not list portal.keyReissue until the Locker has the reissue action (G7)", async () => {
+    mount();
+    await screen.findByText("core.name");
+    expect(screen.queryByText("portal.keyReissue")).toBeNull();
+  });
+
   it("links every row the way its home says, and no other row", async () => {
     mount();
     await screen.findByText("core.name");
     const rows = SETTINGS_INDEX.filter(
       (e) =>
-        e.scope === "product" && e.pending === null && e.deprecated === null,
+        e.scope === "product" &&
+        e.pending === null &&
+        e.deprecated === null &&
+        !HIDDEN_SETTINGS.has(e.key),
     );
     for (const e of rows) {
       const row = await rowOf(e.key);

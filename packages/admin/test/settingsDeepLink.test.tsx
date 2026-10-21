@@ -81,7 +81,6 @@ describe("the deep link", () => {
   // Every rendered setting row carries `setting-<key>`, so the link lands on the row itself at
   // once (ST-10, UX review M6) rather than on its section after a wait.
   it.each([
-    ["portal.keyReissue", "portal"],
     ["portal.enabled", "portal"],
     ["identity.keyEntry.claimByKey", "portal"],
     ["license.defaults.deviceLimit", "settings"],
