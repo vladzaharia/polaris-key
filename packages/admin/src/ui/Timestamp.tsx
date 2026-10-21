@@ -34,8 +34,8 @@ export interface TimestampProps extends FormatOptions {
 
 /**
  * A point in time (components.md §6.10, ADMIN.md §5.9). Renders `<time dateTime>` and is never
- * focusable itself (fixes ACT-4); in tables the absolute value is in the accessible text, so the
- * tooltip is a convenience, not the only home of the fact.
+ * focusable itself (fixes ACT-4); in tables the accessible text is the absolute value alone (never
+ * the shown date as well), so the tooltip is a convenience, not the only home of the fact.
  */
 export function Timestamp({
   at,
@@ -67,15 +67,16 @@ export function Timestamp({
       <Tooltip content={absolute}>
         <time
           dateTime={iso}
+          // The sr-only text below is the absolute instant already; the open tooltip's
+          // description would read it a second time (B-021).
+          aria-describedby={undefined}
           className={cn(
             "whitespace-nowrap tabular-nums text-fg-muted",
             className,
           )}
         >
           <span aria-hidden>{shown}</span>
-          <span className="sr-only">
-            {shown}, {absolute}
-          </span>
+          <span className="sr-only">{absolute}</span>
         </time>
       </Tooltip>
     );
