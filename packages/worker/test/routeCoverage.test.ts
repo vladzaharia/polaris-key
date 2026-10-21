@@ -853,7 +853,7 @@ function concrete(template: string): string {
     tokenId: "apitok_AAAAAAAAAAAA",
     id: "dst_AAAAAAAAAAAA",
     runId: "mig_AAAAAAAAAAAA",
-    code: "K7M-4QX-9TB",
+    code: "K7M-4QX-9TZ",
   };
   return template.replace(/\{(\w+)\}/g, (_, name: string) => {
     const value = samples[name];

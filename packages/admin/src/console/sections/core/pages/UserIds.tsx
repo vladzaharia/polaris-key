@@ -1,10 +1,12 @@
 import * as React from "react";
 import type { ProductUserDetail } from "../../../../api.js";
-import { IdChip, ValueCopyButton } from "../../../../ui/IdChip.js";
+import { IdChip } from "../../../../ui/IdChip.js";
+import { CopyButton } from "../../../../ui/CopyButton.js";
 
 /**
  * The record header's ids (I-41): the readable support code a customer reads out (when they have
- * asked for one), then the user id. Both copy.
+ * asked for one), then the user id, in one chip style. Both copy. The code sits in a labelled
+ * group so a screen reader hears "Support code, K7M-4QX-9TZ".
  */
 export function UserIds({
   user,
@@ -14,15 +16,20 @@ export function UserIds({
   return (
     <>
       {user.supportCode ? (
-        <span className="inline-flex items-center gap-1">
-          Support code
+        <span className="inline-flex max-w-full items-center gap-1.5">
+          <span>Support code</span>
           <span
+            role="group"
             aria-label="Support code"
-            className="rounded-sm bg-surface-sunken px-1.5 font-mono text-xs tracking-wider text-fg-strong"
+            className="inline-flex max-w-full items-center gap-0.5 rounded-sm bg-surface-sunken pl-1.5 font-mono text-xs text-fg"
           >
-            {user.supportCode}
+            <span>{user.supportCode}</span>
+            <CopyButton
+              value={user.supportCode}
+              label="Copy support code"
+              size="xs"
+            />
           </span>
-          <ValueCopyButton value={user.supportCode} label="Copy support code" />
         </span>
       ) : null}
       <IdChip value={user.subject} noun="user id" />

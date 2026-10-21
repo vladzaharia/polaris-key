@@ -13,7 +13,12 @@
  *   - a 72-hour undo, with the same step-up and a reason.
  */
 
-import { normalizeSupportCode } from "../../../../lib/supportCode.js";
+import {
+  SUPPORT_CODE_BAD_CHECK,
+  SUPPORT_CODE_LOOKALIKE,
+  formatSupportCode,
+  parseSupportCode,
+} from "../../../../lib/supportCode.js";
 import * as React from "react";
 import {
   ApiError,
@@ -140,15 +145,26 @@ export function RelinkDialog({
   const { fresh, markStale } = useStepUp(open);
   const [target, setTarget] = React.useState("");
   const [reason, setReason] = React.useState("");
+  const [missing, setMissing] = React.useState(false);
   React.useEffect(() => {
     if (open) {
       setTarget("");
       setReason("");
+      setMissing(false);
     }
   }, [open]);
+  const parsed = parseSupportCode(target.trim());
   const targetOk =
-    SUBJECT_PATTERN.test(target.trim()) ||
-    normalizeSupportCode(target.trim()) !== null;
+    SUBJECT_PATTERN.test(target.trim()) || parsed.kind === "code";
+  // One line under the field: a typo told from a code nobody holds (the check is public math).
+  const targetError =
+    parsed.kind === "lookalike"
+      ? SUPPORT_CODE_LOOKALIKE
+      : parsed.kind === "bad_check"
+        ? SUPPORT_CODE_BAD_CHECK
+        : missing
+          ? "No user has that code or id."
+          : null;
   const reasonOk = reason.trim().length > 0;
   const hash = r.user(slug, subject, "licenses");
 
@@ -166,9 +182,14 @@ export function RelinkDialog({
       ]}
       confirmLabel="Relink license"
       confirmDisabled={!fresh || !targetOk || !reasonOk}
-      describeError={(e) => errorCopy(e, { thing: "License" })}
+      describeError={(e) =>
+        e instanceof ApiError && e.code === "target_not_found"
+          ? { title: "No user has that code or id" }
+          : errorCopy(e, { thing: "License" })
+      }
       onConfirm={async () => {
         try {
+          setMissing(false);
           const res = await mutate(
             "relinkProductUserLicense",
             slug,
@@ -177,9 +198,11 @@ export function RelinkDialog({
             { target: target.trim(), reason: reason.trim() },
           );
           toast.success("License relinked", {
-            description: `It now belongs to ${res.subject}. Undo is open for 72 hours.`,
+            description: `It now belongs to ${parsed.kind === "code" ? formatSupportCode(parsed.code) : res.subject}. Undo is open for 72 hours.`,
           });
         } catch (e) {
+          if (e instanceof ApiError && e.code === "target_not_found")
+            setMissing(true);
           if (e instanceof ApiError && e.code === "step_up_required")
             markStale();
           throw e;
@@ -202,10 +225,24 @@ export function RelinkDialog({
             placeholder="Support code or ps_…"
             autoComplete="off"
             spellCheck={false}
-            aria-describedby="relink-target-help"
-            aria-invalid={target.trim() !== "" && !targetOk}
-            onChange={(e) => setTarget(e.target.value)}
+            aria-describedby={
+              targetError
+                ? "relink-target-error relink-target-help"
+                : "relink-target-help"
+            }
+            aria-invalid={
+              targetError !== null || (target.trim() !== "" && !targetOk)
+            }
+            onChange={(e) => {
+              setTarget(e.target.value);
+              setMissing(false);
+            }}
           />
+          {targetError ? (
+            <p id="relink-target-error" className="text-xs text-danger">
+              {targetError}
+            </p>
+          ) : null}
           <p id="relink-target-help" className="text-xs text-fg-muted">
             Their support code or user id for this product. They find the code
             on the product's page in their Polaris Locker account.

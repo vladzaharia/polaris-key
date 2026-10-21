@@ -8,7 +8,7 @@ sidebar:
   order: 5
 ---
 
-Your library at key.plrs.im lets you download or remove information held for you, and delete your
+Your library at polaris.locker lets you download or remove information held for you, and delete your
 account. For what an app reads and what Polaris Locker holds, see
 [Your data and privacy](/docs/help/your-data/).
 
@@ -40,7 +40,7 @@ records through that license. Removing the license takes it out of your library 
 
 ## Get a support code
 
-A support code is a short code for one app, like `K7M-4QX-9TB`. Give it to the app's support team
+A support code is a short code for one app, like `K7M-4QX-9TZ`. Give it to the app's support team
 so they can find you without seeing your Locker account. It's only for that app, and it opens
 nothing.
 

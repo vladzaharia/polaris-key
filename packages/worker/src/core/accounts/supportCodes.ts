@@ -8,9 +8,9 @@
  * support, never a credential: it opens nothing on its own, and the console resolves it only for
  * an operator who may read that product's users.
  *
- * Shape. Nine characters from {@link SUPPORT_CODE_ALPHABET} (30 symbols, no 0/O, 1/I/L or U, so a
+ * Shape. Nine characters from {@link SUPPORT_CODE_ALPHABET}, the last a check symbol (30 symbols, no 0/O, 1/I/L or U, so a
  * voice or a bad font cannot confuse two of them), drawn with crypto randomness and rejection
- * sampling so every symbol is equally likely. 30^9 is about 2e13. The three-part shape keeps it
+ * sampling so every symbol is equally likely. 30^8 (about 6.6e11) are random and the ninth symbol is their check. The three-part shape keeps it
  * apart from a device code (`XXXX-XXXX`, `deviceCodeIndex.ts`).
  *
  * Storage. `support_codes` (Identity's table; this file is the one seam). One stable code per
@@ -35,15 +35,32 @@ const REJECT_AT =
   Math.floor(0x1_0000_0000 / SUPPORT_CODE_ALPHABET.length) *
   SUPPORT_CODE_ALPHABET.length;
 
-/** One fresh, uniformly random code, undashed. */
+/**
+ * The check symbol (Luhn mod N over the 30-symbol alphabet) of a payload of alphabet symbols: it
+ * catches every single wrong symbol and most swapped neighbours. Public math, not a secret: the
+ * console tells "one character is wrong" from "no such code" without asking the Worker.
+ */
+export function supportCodeCheck(payload: string): string {
+  const n = SUPPORT_CODE_ALPHABET.length;
+  let factor = 2;
+  let sum = 0;
+  for (let i = payload.length - 1; i >= 0; i--) {
+    const addend = factor * SUPPORT_CODE_ALPHABET.indexOf(payload[i]!);
+    factor = factor === 2 ? 1 : 2;
+    sum += Math.floor(addend / n) + (addend % n);
+  }
+  return SUPPORT_CODE_ALPHABET[(n - (sum % n)) % n]!;
+}
+
+/** One fresh, uniformly random code, undashed: eight random symbols and their check symbol. */
 export function mintSupportCode(draw: () => number = randomUint32): string {
   let out = "";
-  while (out.length < SUPPORT_CODE_LENGTH) {
+  while (out.length < SUPPORT_CODE_LENGTH - 1) {
     const n = draw();
     if (n >= REJECT_AT) continue;
     out += SUPPORT_CODE_ALPHABET[n % SUPPORT_CODE_ALPHABET.length];
   }
-  return out;
+  return out + supportCodeCheck(out);
 }
 
 /** `ABC234XYZ` → `ABC-234-XYZ`. */
@@ -51,17 +68,31 @@ export function formatSupportCode(code: string): string {
   return code.match(new RegExp(`.{1,${SUPPORT_CODE_GROUP}}`, "g"))!.join("-");
 }
 
+/** What was typed, read: not a code, a code with a wrong symbol, or the nine characters. */
+export type ParsedSupportCode =
+  | { kind: "not_code" }
+  | { kind: "bad_check" }
+  | { kind: "code"; code: string };
+
 /**
- * What a person or an operator typed → the stored code, or `null` when it is not a support code.
  * Case-insensitive; spaces, dashes and dots are ignored; anything outside the alphabet (a lookalike
- * included) is not a code.
+ * included) is not a code. Nine symbols whose last is not the first eight's check are `bad_check`.
  */
-export function normalizeSupportCode(input: string): string | null {
-  if (input.length > 40) return null;
+export function parseSupportCode(input: string): ParsedSupportCode {
+  if (input.length > 40) return { kind: "not_code" };
   const s = input.toUpperCase().replace(/[\s.\-]/g, "");
-  if (s.length !== SUPPORT_CODE_LENGTH) return null;
-  for (const ch of s) if (!SUPPORT_CODE_ALPHABET.includes(ch)) return null;
-  return s;
+  if (s.length !== SUPPORT_CODE_LENGTH) return { kind: "not_code" };
+  for (const ch of s)
+    if (!SUPPORT_CODE_ALPHABET.includes(ch)) return { kind: "not_code" };
+  return supportCodeCheck(s.slice(0, -1)) === s.slice(-1)
+    ? { kind: "code", code: s }
+    : { kind: "bad_check" };
+}
+
+/** The stored code a typed string names, or `null` (not a code, or its check fails). */
+export function normalizeSupportCode(input: string): string | null {
+  const p = parseSupportCode(input);
+  return p.kind === "code" ? p.code : null;
 }
 
 /** The person's code for the product (dashed), or `null` when none was asked for yet. */

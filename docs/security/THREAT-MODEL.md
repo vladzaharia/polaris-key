@@ -6569,8 +6569,10 @@ and 12 (cross-tenant correlation) are the deltas.
   `support_codes`, one stable code per (product, person)). It is an identifier for that
   product's support, never a credential: it opens no session, licence, key or data, and the
   signed licence and the export still carry the subject. Three rows:
-  - _Enumeration._ 30^9 (about 2e13) codes, drawn by rejection sampling, so a guess hits a real
-    code with probability under 1e-7 per try even with a million codes issued. The console
+  - _Enumeration._ 30^8 (about 6.6e11) codes: eight symbols drawn by rejection sampling and a ninth
+    that is their Luhn mod 30 check, so a guess hits a real code with probability under 2e-6 per
+    try even with a million codes issued, and a wrong symbol is refused as a check failure before
+    any lookup (public math, no oracle). The console
     route `GET /manage/api/support-codes/<code>` is rate-limited per operator (30 a minute,
     `adminSupportCode`) on top of the admin API budget, and answers only an operator who may read
     the product, so a guess is also a sign-in away. Guessing finds a product's own customer

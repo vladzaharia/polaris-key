@@ -2,7 +2,7 @@
  * "Get a support code" on a product's page (I-11; S-16 §5.2 "How relink names its target", §5.7
  * "Product page"; I-41 made it readable), dispatched by `handlePortalApi` once the session is proven:
  *
- *   POST /api/products/<p>/support-code     → { supportCode }   e.g. "K7M-4QX-9TB"
+ *   POST /api/products/<p>/support-code     → { supportCode }   e.g. "K7M-4QX-9TZ"
  *
  * The support code is a short, readable name for the person's pairwise subject for THIS product:
  * nine characters from an alphabet without lookalikes, shown as `XXX-XXX-XXX` (`core/accounts/

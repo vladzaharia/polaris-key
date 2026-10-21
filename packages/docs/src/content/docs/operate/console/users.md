@@ -8,7 +8,7 @@ sidebar:
 ---
 
 **Core → Users** lists the people who use this product. Every product has the page, whether or
-not Identity is on: licenses of any product attach to a person's Polaris Key account, so a
+not Identity is on: licenses of any product attach to a person's Polaris Locker account, so a
 product that only sells keys still has users, its license owners.
 
 ## What a row is
@@ -42,10 +42,11 @@ an account.
 
 ## Find a user by support code
 
-A support code is nine characters, shown as `K7M-4QX-9TB`. The person reads it from their
+A support code is nine characters, shown as `K7M-4QX-9TZ`. The last is a check symbol: if one
+character is mistyped, the console says so instead of "not found". The person reads it from their
 product page in Polaris Locker. Type it in the **Users** search, or press **Cmd+K** (**Ctrl+K**)
 and type it anywhere in the console. Case, spaces, dashes and dots don't matter. A palette result,
-**Open support code K7M-4QX-9TB**, opens that person's record in their product.
+**Open support code K7M-4QX-9TZ**, opens that person's record in their product.
 
 A code finds someone only in a product you can manage. For any other code, or one that doesn't
 exist, you get the same answer: nothing. The code is not a password. It names the person to

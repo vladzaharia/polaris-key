@@ -12,12 +12,14 @@
 import { describe, expect, it, vi } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
-import { makeEnv, NOW, seedProduct } from "./seed.js";
+import { makeEnv, NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
 import { PRINCIPALS } from "./rbacFixtures.js";
 import type { Env } from "../src/platform/env.js";
 import {
   SUPPORT_CODE_ALPHABET,
   SUPPORT_CODE_PATTERN,
+  parseSupportCode,
+  supportCodeCheck,
   existingSupportCode,
   formatSupportCode,
   mintSupportCode,
@@ -59,8 +61,24 @@ describe("the code's shape", () => {
     }
   });
 
+  it("ends in a check symbol that catches any one wrong symbol", () => {
+    for (let n = 0; n < 200; n++) {
+      const code = mintSupportCode();
+      expect(supportCodeCheck(code.slice(0, 8))).toBe(code[8]);
+      expect(parseSupportCode(code)).toEqual({ kind: "code", code });
+      for (let i = 0; i < 9; i++)
+        for (const ch of SUPPORT_CODE_ALPHABET) {
+          if (ch === code[i]) continue;
+          const wrong = code.slice(0, i) + ch + code.slice(i + 1);
+          expect(parseSupportCode(wrong).kind, wrong).toBe("bad_check");
+        }
+    }
+    expect(parseSupportCode("K7M-4QX-9TB")).toEqual({ kind: "bad_check" });
+    expect(parseSupportCode("K7M-4QX-9T0")).toEqual({ kind: "not_code" });
+  });
+
   it("groups three by three with dashes", () => {
-    expect(formatSupportCode("K7M4QX9TB")).toBe("K7M-4QX-9TB");
+    expect(formatSupportCode("K7M4QX9TZ")).toBe("K7M-4QX-9TZ");
   });
 
   it("rejects the biased tail of the range: every symbol is equally likely", () => {
@@ -69,12 +87,11 @@ describe("the code's shape", () => {
     const draws = [
       reject,
       0xffff_ffff,
-      ...Array.from({ length: 9 }, (_, i) => i),
+      ...Array.from({ length: 8 }, (_, i) => i),
     ];
     let i = 0;
-    expect(mintSupportCode(() => draws[i++]!)).toBe(
-      SUPPORT_CODE_ALPHABET.slice(0, 9),
-    );
+    // Eight random symbols, then their check symbol.
+    expect(mintSupportCode(() => draws[i++]!)).toBe("23456789J");
     expect(i).toBe(draws.length);
   });
 });
@@ -82,20 +99,21 @@ describe("the code's shape", () => {
 describe("normalising what is typed", () => {
   it("ignores case, spaces, dashes and dots", () => {
     for (const typed of [
-      "k7m-4qx-9tb",
-      "K7M 4QX 9TB",
-      " k7m.4qx.9tb ",
-      "K7M4QX9TB",
-      "k7m - 4qx - 9tb",
+      "k7m-4qx-9tz",
+      "K7M 4QX 9TZ",
+      " k7m.4qx.9tz ",
+      "K7M4QX9TZ",
+      "k7m - 4qx - 9tz",
     ])
-      expect(normalizeSupportCode(typed), typed).toBe("K7M4QX9TB");
+      expect(normalizeSupportCode(typed), typed).toBe("K7M4QX9TZ");
   });
 
   it("answers null for anything that is not a code, a lookalike included", () => {
     for (const typed of [
       "",
       "K7M-4QX",
-      "K7M-4QX-9TB-2",
+      "K7M-4QX-9TZ-2",
+      "K7M-4QX-9TB", // a wrong check symbol is no code
       "K7M-4QX-9T0", // zero
       "K7M-4QX-9TO",
       "K7M-4QX-9T1",
@@ -103,7 +121,7 @@ describe("normalising what is typed", () => {
       "K7M-4QX-9TL",
       "K7M-4QX-9TU",
       "ps_Vq3nT8uB1xYk0LpR4sZ7cA",
-      "é7M-4QX-9TB",
+      "é7M-4QX-9TZ",
       "x".repeat(500),
     ])
       expect(normalizeSupportCode(typed), typed).toBeNull();
@@ -129,8 +147,10 @@ describe("minting and resolving", () => {
     const first = await supportCodeFor(db, "djdl", "ps_a", NOW);
     const taken = first.replaceAll("-", "");
     // The second person's first draw is the taken code; the next is free.
-    const seq = [...taken].map((ch) => SUPPORT_CODE_ALPHABET.indexOf(ch));
-    const fresh = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+    const seq = [...taken.slice(0, 8)].map((ch) =>
+      SUPPORT_CODE_ALPHABET.indexOf(ch),
+    );
+    const fresh = [0, 1, 2, 3, 4, 5, 6, 7];
     const draws = [...seq, ...fresh];
     let i = 0;
     const second = await supportCodeFor(
@@ -140,7 +160,7 @@ describe("minting and resolving", () => {
       NOW,
       () => draws[i++]!,
     );
-    expect(second.replaceAll("-", "")).toBe(SUPPORT_CODE_ALPHABET.slice(0, 9));
+    expect(second.replaceAll("-", "")).toBe("23456789J");
     expect(second).not.toBe(first);
     expect(await existingSupportCode(db, "djdl", "ps_a")).toBe(first);
   });
@@ -288,6 +308,32 @@ describe("GET /manage/api/support-codes/<code>", () => {
 });
 
 describe("the Users page search", () => {
+  it("still finds a buyer by an email prefix that is shaped like a code (regression)", async () => {
+    const w = await consoleWorld();
+    const acct = await getOrCreateAccountByEmail(w.db, "p@x.io", NOW);
+    const subject = await subjectFor(w.db, acct.id, "alpha", NOW);
+    await seedLicenseWithKey(w.db, "alpha", { id: "lic_alpha_sarah" });
+    await w.db.run(
+      "UPDATE licenses SET email = ?, account_id = ? WHERE id = ?",
+      "sarah.berger@example.com",
+      acct.id,
+      "lic_alpha_sarah",
+    );
+    const code = await supportCodeFor(w.db, "alpha", subject, NOW);
+    for (const q of [
+      "sarah",
+      "sarah.berg",
+      "SARAH BERG".replace(" ", "."),
+      code,
+    ])
+      expect(
+        (
+          await listProductUsers(w.db, "alpha", { identityOn: false, q })
+        ).users.map((u) => u.subject),
+        q,
+      ).toEqual([subject]);
+  });
+
   it("finds a person by code within the product, listed even before a licence", async () => {
     const w = await consoleWorld();
     const acct = await getOrCreateAccountByEmail(w.db, "p@x.io", NOW);

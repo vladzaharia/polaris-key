@@ -34,6 +34,12 @@ import { Link, navigate } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { CollectionTemplate } from "../../../templates/Collection.js";
 import { useTableUrlState } from "../../../useTableUrlState.js";
+import {
+  SUPPORT_CODE_BAD_CHECK,
+  SUPPORT_CODE_LOOKALIKE,
+  formatSupportCode,
+  parseSupportCode,
+} from "../../../../lib/supportCode.js";
 import { UserRecord } from "./UserRecord.js";
 
 const PAGE_SIZE = 50;
@@ -100,14 +106,19 @@ function UsersCollection({ slug }: { slug: string }): React.ReactElement {
         id: "supportCode",
         header: "Support code",
         accessorFn: (u) => u.supportCode ?? "",
-        meta: { priority: 1, mono: true },
+        enableSorting: false,
+        // A person who never asked has none: a phone card leaves the field out.
+        meta: { priority: 1, mono: true, quiet: (u) => !u.supportCode },
         cell: ({ row }) =>
           row.original.supportCode ? (
             <span className="whitespace-nowrap font-mono text-xs tracking-wider">
               {row.original.supportCode}
             </span>
           ) : (
-            <span className="text-fg-muted">None yet</span>
+            <span className="text-fg-muted">
+              <span aria-hidden>—</span>
+              <span className="sr-only">None</span>
+            </span>
           ),
       },
       {
@@ -176,6 +187,19 @@ function UsersCollection({ slug }: { slug: string }): React.ReactElement {
     return cols;
   }, [identityOn]);
 
+  // A search shaped like a support code that finds nobody here names the code and points to Cmd-K.
+  const typed = parseSupportCode(q);
+  const codeNote =
+    q && !list.isPending && rows.length === 0
+      ? typed.kind === "code"
+        ? `No user of this product has support code ${formatSupportCode(typed.code)}. Press Cmd+K to look it up in every product you manage.`
+        : typed.kind === "bad_check"
+          ? SUPPORT_CODE_BAD_CHECK
+          : typed.kind === "lookalike"
+            ? SUPPORT_CODE_LOOKALIKE
+            : null
+      : null;
+
   const rowHref = (u: ProductUserSummary): string => r.user(slug, u.subject);
 
   return (
@@ -237,6 +261,11 @@ function UsersCollection({ slug }: { slug: string }): React.ReactElement {
         }
         mobile="cards"
       />
+      {codeNote ? (
+        <p role="status" className="text-sm text-fg-muted">
+          {codeNote}
+        </p>
+      ) : null}
     </CollectionTemplate>
   );
 }

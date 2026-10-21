@@ -12244,7 +12244,7 @@ paths:
                       identity: false
                     status: active
                     addedAt: 1790000000
-                    supportCode: K7M-4QX-9TB
+                    supportCode: K7M-4QX-9TZ
                     returnTo:
                       { origins: [https://app.tidewater.example], schemes: [] }
                     licenses:
@@ -12478,7 +12478,7 @@ paths:
               schema: { $ref: "#/components/schemas/PortalSupportCode" }
               examples:
                 code:
-                  value: { supportCode: K7M-4QX-9TB }
+                  value: { supportCode: K7M-4QX-9TZ }
         "401":
           description: No portal session, or the account's erasure has already begun.
           content:

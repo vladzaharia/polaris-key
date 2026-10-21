@@ -527,7 +527,7 @@ describe("the published contract", () => {
     expect(schema.properties.supportCode.pattern).toBe(
       SUPPORT_CODE_PATTERN.source,
     );
-    const code = "K7M-4QX-9TB";
+    const code = "K7M-4QX-9TZ";
     expect(validateAgainst("PortalSupportCode", { supportCode: code })).toEqual(
       [],
     );

@@ -244,28 +244,29 @@ export async function listProductUsers(
     params.push(cursor[0], cursor[0], cursor[1]);
   }
   const q = (opts.q ?? "").trim().slice(0, SEARCH_MAX);
-  // I-41: a support code (dashes optional) is an exact lookup within this product. A person who
-  // read their code out is a targeted find, so it is listed even before a licence or a sign-in.
+  // I-41: a support code (dashes optional) also matches, exactly and within this product, on top of
+  // the prefix and email matches (a nine-letter email prefix is still an email search). A person
+  // who read their code out is a targeted find, so the code's hit is listed even before a licence
+  // or a sign-in.
   const codeHit = q ? await subjectForSupportCode(db, product, q) : null;
   const codeSubject = codeHit
     ? await resolveSubject(db, product, codeHit)
     : null;
-  if (q && normalizeSupportCode(q) !== null) {
-    where.push("s.subject = ?");
-    params.push(codeSubject ?? "");
-  } else if (q) {
+  if (q) {
     const like = `${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
     where.push(
-      `(s.subject LIKE ? ESCAPE '\\'
+      `(s.subject = ?
+        OR s.subject LIKE ? ESCAPE '\\'
         OR EXISTS (SELECT 1 FROM licenses l WHERE l.product = s.product AND l.account_id = s.account_id
                      AND (l.id = ? OR lower(l.email) LIKE lower(?) ESCAPE '\\')))`,
     );
-    params.push(like, q, like);
+    params.push(codeSubject ?? "", like, q, like);
   }
   const listed = opts.identityOn
     ? `(${ROW_LICENSES} > 0 OR ${ROW_SIGNED_IN} > 0 OR ${ROW_LAST_SIGNIN} IS NOT NULL)`
     : `(${ROW_LICENSES} > 0 OR ${ROW_SIGNED_IN} > 0)`;
-  if (!codeSubject) where.push(listed);
+  where.push(codeSubject ? `(s.subject = ? OR ${listed})` : listed);
+  if (codeSubject) params.push(codeSubject);
 
   const rows = await db.all<{
     subject: string;

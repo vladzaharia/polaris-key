@@ -5,7 +5,7 @@
 -- person to ONE product: `subject` is that product's pairwise subject, the id the developer's
 -- Users page and the signed licence carry. It is an identifier, no credential.
 --
---   code        the nine characters, globally unique (30^9 is about 2e13), so a lookup by code alone
+--   code        the nine characters, globally unique (30^8, about 6.6e11, random; the ninth symbol is a check), so a lookup by code alone
 --               finds the row and the retry-on-collision stays rare;
 --   product     the product the code was minted for. A lookup is always checked against it;
 --   subject     the person's subject for that product. An absorbed (merged) subject still resolves

@@ -190,30 +190,30 @@ describe("Users list", () => {
     );
   });
 
-  it("shows the readable support code beside each user, and None yet before one is asked for (I-41)", async () => {
+  it("shows the readable support code beside each user, and nothing before one is asked for (I-41)", async () => {
     productUsers.mockResolvedValue({
       identityOn: false,
-      users: [row({ supportCode: "K7M-4QX-9TB" }), row({ supportCode: null })],
+      users: [row({ supportCode: "K7M-4QX-9TZ" }), row({ supportCode: null })],
       nextCursor: null,
     });
     mount("#/p/djdl/users");
-    expect((await screen.findAllByText("K7M-4QX-9TB")).length).toBeGreaterThan(
+    expect((await screen.findAllByText("K7M-4QX-9TZ")).length).toBeGreaterThan(
       0,
     );
-    expect(screen.getAllByText("None yet").length).toBeGreaterThan(0);
+    expect(screen.queryByText("None yet")).toBeNull();
   });
 
   it("sends a support code as the search, however it was typed", async () => {
     productUsers.mockResolvedValue({
       identityOn: false,
-      users: [row({ supportCode: "K7M-4QX-9TB" })],
+      users: [row({ supportCode: "K7M-4QX-9TZ" })],
       nextCursor: null,
     });
-    mount("#/p/djdl/users?q=k7m4qx9tb");
+    mount("#/p/djdl/users?q=k7m4qx9tz");
     await waitFor(() =>
       expect(productUsers).toHaveBeenCalledWith(
         "djdl",
-        expect.objectContaining({ q: "k7m4qx9tb" }),
+        expect.objectContaining({ q: "k7m4qx9tz" }),
       ),
     );
   });
@@ -249,13 +249,11 @@ describe("User record", () => {
 
   it("shows the support code in the header with Copy, when the person has one (I-41)", async () => {
     productUser.mockResolvedValue({
-      user: detail({ supportCode: "K7M-4QX-9TB" }),
+      user: detail({ supportCode: "K7M-4QX-9TZ" }),
     });
     mount(`#/p/djdl/users/${SUBJECT}`);
-    expect(await screen.findByLabelText("Support code")).toBeTruthy();
-    expect(screen.getByLabelText("Support code").textContent).toBe(
-      "K7M-4QX-9TB",
-    );
+    const group = await screen.findByRole("group", { name: "Support code" });
+    expect(within(group).getByText("K7M-4QX-9TZ")).toBeTruthy();
     expect(
       screen.getByRole("button", { name: "Copy support code" }),
     ).toBeTruthy();
@@ -356,6 +354,21 @@ describe("relink", () => {
     within(dialog).getByRole("button", { name: "Relink license" });
   const disabled = (el: HTMLElement) =>
     el.hasAttribute("disabled") || el.getAttribute("aria-disabled") === "true";
+
+  it("names a mistyped or lookalike support code under the field, linked to it (I-41)", async () => {
+    const dialog = await openRelink();
+    const field = within(dialog).getByRole("textbox", { name: "Move to user" });
+    for (const [typed, line] of [
+      ["K7M-4QX-9TB", "One character is wrong. Ask them to read it again."],
+      ["K7M-4QX-9T0", "Support codes never contain 0, 1, I, L, O or U."],
+    ] as const) {
+      await userEvent.clear(field);
+      await userEvent.type(field, typed);
+      const msg = within(dialog).getByText(line);
+      expect(field.getAttribute("aria-invalid")).toBe("true");
+      expect(field.getAttribute("aria-describedby")).toContain(msg.id);
+    }
+  });
 
   it("asks for a fresh sign-in, back to this user, when the last one is too old", async () => {
     me.mockResolvedValue(meWith(NOW - 600));

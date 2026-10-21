@@ -87,10 +87,7 @@ const EVENTS_PAGE = 100;
 /** A refusal's HTTP status and message (the code is the refusal itself). */
 const REFUSALS: Record<RelinkRefusal, [number, string]> = {
   license_not_found: [404, "This user holds no such license of this product."],
-  target_not_found: [
-    404,
-    "No user of this product has that id or support code. Ask them to sign in to the product, or to get a support code on its page in their Polaris Locker account.",
-  ],
+  target_not_found: [404, "No user has that code or id."],
   same_subject: [409, "That user already holds this license."],
   target_unavailable: [409, "That user's account can't receive licenses."],
   reason_required: [422, "Give a reason of up to 500 characters."],
