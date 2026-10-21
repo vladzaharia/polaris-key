@@ -1747,7 +1747,7 @@ describe("R8-03 login CSRF / flow-fixation", () => {
     ctx.env.PLATFORM_OIDC_CLIENT_ID = AUD;
 
     const login = await handleAdminLogin(
-      req(`${ORIGIN}/manage/login`),
+      req(`${ORIGIN}/manage/login?go=1`),
       ctx.env,
     );
     const state = new URL(login.headers.get("location")!).searchParams.get(

@@ -5,6 +5,7 @@ import { ConsoleQueryProvider } from "./console/data/queryClient.js";
 import { useMe } from "./console/data/hooks.js";
 import { AppShell } from "./console/shell/AppShell.js";
 import { BootScreen } from "./console/shell/StatePages.js";
+import { ConsoleOffline } from "./console/shell/ConsoleSignIn.js";
 import { AppToaster } from "./ui/toast.js";
 
 /**
@@ -60,7 +61,7 @@ function Boot(): React.ReactElement {
   const me = useMe();
   if (me.data) return <AppShell me={me.data} />;
   if (me.isError) {
-    return <BootScreen error onRetry={() => void me.refetch()} />;
+    return <ConsoleOffline onRetry={() => void me.refetch()} />;
   }
   return <BootScreen />;
 }

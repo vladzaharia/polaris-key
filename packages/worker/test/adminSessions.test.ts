@@ -43,7 +43,7 @@ function adminEnv(): Env {
 async function login(env: Env, opts: { stepUp?: boolean; authTime?: number }) {
   const start = await handleAdminLogin(
     new Request(
-      `https://key.plrs.im/manage/login${opts.stepUp ? "?stepUp=1" : ""}`,
+      `https://key.plrs.im/manage/login?go=1${opts.stepUp ? "&stepUp=1" : ""}`,
     ) as unknown as Request,
     env,
   );

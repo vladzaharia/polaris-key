@@ -65,12 +65,14 @@ describe("admin SPA", () => {
       ),
     );
     render(<App />);
-    expect(await screen.findByText("Can’t load the console")).toBeTruthy();
     expect(
-      screen.getByRole("link", { name: "Sign in" }).getAttribute("href"),
-    ).toBe("/manage/login");
+      await screen.findByRole("heading", { name: "Can’t reach Polaris Key" }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "Sign in again" }).getAttribute("href"),
+    ).toBe("/manage/login?ended=1");
     fail = false;
-    await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(
       await screen.findByRole("heading", { level: 1, name: "Home" }),
     ).toBeTruthy();

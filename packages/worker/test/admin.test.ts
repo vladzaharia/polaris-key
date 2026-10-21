@@ -1361,7 +1361,7 @@ describe("admin api", () => {
     env.ADMIN_OIDC_CLIENT_ID = "admin-client";
     const ip = "203.0.113.7";
     const req = () =>
-      new Request("https://key.plrs.im/manage/login", {
+      new Request("https://key.plrs.im/manage/login?go=1", {
         headers: { "cf-connecting-ip": ip },
       }) as unknown as Request;
 

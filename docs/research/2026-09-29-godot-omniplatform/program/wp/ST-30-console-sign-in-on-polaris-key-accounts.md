@@ -134,3 +134,23 @@ Then the full green gate in `AGENTS.md`.
 
 What downstream work packages rely on from this one is named in their briefs (the Unblocks row). The role agent sets `--set ST-30 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set ST-30 done`.
+
+## Progress and continuation (2026-10-20, sign-in card slice)
+
+Built (wp/ST-30-console-signin): the console sign-in card, on the shared AuthCard.
+
+- Worker: `GET /manage/login` serves the card (`console/signinPage.ts`, `renderAuthCard` with
+  `brand: "console"`, the compact Key lockup and "Console"; one rule set with the Locker card, own
+  palette and CSP hash). PKCE starts on Continue (`go=1`), `returnTo` and `stepUp` survive, the
+  typed email goes to the IdP as `login_hint`. States by flag: `signedOut`, `ended`, `stepUp`.
+  Sign-in errors use the same card.
+- SPA: sign out goes to `?signedOut=1`, a 401 to `?ended=1&returnTo=`; the boot error is
+  `ConsoleOffline` (AuthCard, "Can't reach Polaris Key", Try again).
+
+Not in this slice (the rest of the brief stands): cookie v2, `consoleSubject`, binding-based
+membership, break-glass link, audit actor mapping, account-lifecycle exits, threat-model rows,
+docs pages, 'My library' and 'Open console' cross-links.
+Deferred from the card: the passkey button (I-30 provides the endpoint), the known-operator chip
+(needs a last-operator hint), the in-place "session ended" overlay that keeps unsaved edits
+(today a 401 leaves the tab and the card brings the person back to the page), the not-configured
+docs link (the docs tier needs a session), the "Next:" line says the host only (no IdP name).

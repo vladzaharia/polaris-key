@@ -353,7 +353,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
 
   const signOut = (): void => {
     void mutate("logout").finally(() => {
-      window.location.href = "/manage/login";
+      window.location.href = "/manage/login?signedOut=1";
     });
   };
 

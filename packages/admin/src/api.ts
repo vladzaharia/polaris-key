@@ -4787,15 +4787,20 @@ export function setStepUpRedirectForTests(fn?: () => void): void {
     });
 }
 
+/** The 401 sign-in: the card says "Your session ended" and returnTo brings the person back. */
+function endedHref(): string {
+  const back = `/manage/${window.location.hash}`;
+  return `/manage/login?ended=1&returnTo=${encodeURIComponent(back)}`;
+}
 let redirectToLogin = (): void => {
-  window.location.href = "/manage/login";
+  window.location.href = endedHref();
 };
 /** Override the 401 redirect (tests pass a spy; call with no arg to restore the default). */
 export function setLoginRedirectForTests(fn?: () => void): void {
   redirectToLogin =
     fn ??
     (() => {
-      window.location.href = "/manage/login";
+      window.location.href = endedHref();
     });
 }
 

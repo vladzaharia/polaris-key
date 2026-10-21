@@ -244,9 +244,7 @@ function lockerPalette(theme: "dark" | "light"): string {
  * inks, and D9a: coral is identity only, so actions, focus and link text are neutral ink and the
  * link underline (2 px) carries the coral.
  */
-const LOCKER_PAGE_CSS_TAIL = [
-  `:root[data-brand=locker]{${lockerPalette("dark")}}`,
-  `@media (prefers-color-scheme: light){:root[data-brand=locker]{${lockerPalette("light")}}}`,
+const AUTH_CARD_RULES = [
   `[data-brand=locker] a:not(.button){color:var(--strong);text-decoration:underline;text-decoration-color:var(--mb);text-decoration-thickness:2px;text-underline-offset:.2em}`,
   `[data-brand=locker] .button{text-decoration:none}`,
   // ── The AuthCard's Worker twin (`renderAuthCard`; packages/admin/src/ui/auth/AuthCard.tsx is the
@@ -335,12 +333,51 @@ const LOCKER_PAGE_CSS_TAIL = [
   `.tv .ac-body dl{font-size:1.5rem;line-height:2rem}`,
   `.tv .ac-body .small{font-size:1.25rem;line-height:1.75rem}`,
   `@media (max-width: 30rem){.tv .ac-body{padding:1.5rem}.tv .ac-body h1{font-size:2rem;line-height:2.5rem}.tv .ac-body input[type=text]{font-size:min(2rem,7vw)}.tv .ac-foot,.tv .ac-head{padding-left:1.25rem;padding-right:1.25rem}}`,
+];
+
+const LOCKER_PAGE_CSS_TAIL = [
+  `:root[data-brand=locker]{${lockerPalette("dark")}}`,
+  `@media (prefers-color-scheme: light){:root[data-brand=locker]{${lockerPalette("light")}}}`,
+  ...AUTH_CARD_RULES,
 ].join("");
 
 /** The stylesheet of a Locker page: `BRAND_PAGE_CSS` and its tail. */
 export const BRAND_PAGE_CSS_LOCKER = BRAND_PAGE_CSS + LOCKER_PAGE_CSS_TAIL;
 
-export type BrandPageBrand = "key" | "locker";
+/**
+ * The console's card (SIGN-IN.md §3.12): the AuthCard's rules again under `data-brand=console`,
+ * with the Pinned K's own inks (the violet stays the mark's, never the action's) and the same
+ * neutral-ink action, focus and link text. One set of rules, two palettes: no fork.
+ */
+function consolePalette(theme: "dark" | "light"): string {
+  const t = THEME_TOKENS[theme];
+  return [
+    `--accent:${t.action.fill}`,
+    `--accent-fg:${t.text.strong}`,
+    `--on-accent:${t.action.on}`,
+    `--accent-subtle:${t.surface.sunken}`,
+    `--focus:${t.text.strong}`,
+  ].join(";");
+}
+const CONSOLE_PAGE_CSS_TAIL = [
+  `:root[data-brand=console]{${consolePalette("dark")}}`,
+  `@media (prefers-color-scheme: light){:root[data-brand=console]{${consolePalette("light")}}}`,
+  ...AUTH_CARD_RULES.map((r) =>
+    r.replaceAll("[data-brand=locker]", "[data-brand=console]"),
+  ),
+  // The brand row: the compact lockup, a hairline and "Console" (SIGN-IN.md §3.1).
+  `.ac-brand>div{display:flex;align-items:center}`,
+  `.ac-body input[type=email]{display:block;width:100%;min-height:3rem;padding:0 .75rem;border:1px solid var(--edge);border-radius:.5rem;background:var(--sunken);color:var(--strong);font:inherit}`,
+  `.ac-body input[type=email]::placeholder{color:var(--muted);opacity:1}`,
+  `.ac-body .fine{color:var(--muted);font-size:.875rem;line-height:1.25rem;text-align:center;overflow-wrap:anywhere}`,
+  `.ac-brand .ac-surface{margin-left:.75rem;padding-left:.75rem;border-left:1px solid var(--edge);color:var(--muted);font-size:1rem;line-height:1.5rem}`,
+  `@media (forced-colors: active){.ac-brand .ac-surface{color:CanvasText;border-color:CanvasText}}`,
+].join("");
+
+/** The stylesheet of a console page. */
+export const BRAND_PAGE_CSS_CONSOLE = BRAND_PAGE_CSS + CONSOLE_PAGE_CSS_TAIL;
+
+export type BrandPageBrand = "key" | "locker" | "console";
 
 const styleSources = new Map<string, string>();
 
@@ -352,7 +389,12 @@ export function brandPageStyleSource(brand: BrandPageBrand = "locker"): string {
   const key = brand;
   let v = styleSources.get(key);
   if (v === undefined) {
-    const css = brand === "locker" ? BRAND_PAGE_CSS_LOCKER : BRAND_PAGE_CSS;
+    const css =
+      brand === "locker"
+        ? BRAND_PAGE_CSS_LOCKER
+        : brand === "console"
+          ? BRAND_PAGE_CSS_CONSOLE
+          : BRAND_PAGE_CSS;
     v = `'sha256-${createHash("sha256").update(css, "utf8").digest("base64")}'`;
     styleSources.set(key, v);
   }
@@ -409,7 +451,10 @@ export interface AppFacts {
 export type AuthCardOptions = Omit<
   BrandPageOptions,
   "brand" | "surface" | "eyebrow"
->;
+> & {
+  /** `console`: the Polaris Key Console card (the compact Key lockup and "Console"); default Locker. */
+  brand?: "console";
+};
 
 // ── Pieces the pages share (the AuthCard's slots as HTML) ───────────────────────────────────
 
@@ -499,6 +544,7 @@ function passportPane(f: AppFacts): string {
 
 let mark: string | null = null;
 let lockerLockup: string | null = null;
+let consoleLockup: string | null = null;
 
 /**
  * The brand block above the card. `surface` is the already-escaped surface label, or "". Key:
@@ -528,7 +574,7 @@ function brandBlock(
  * than the Worker's module load.
  */
 export function renderBrandPage(opts: BrandPageOptions): string {
-  if (opts.brand !== "key") return renderAuthCard(opts);
+  if (opts.brand !== "key") return renderAuthCard(opts as AuthCardOptions);
   const locker = false;
   const brandName = locker ? "Polaris Locker" : "Polaris Key";
   const app = opts.app
@@ -583,7 +629,9 @@ export function renderBrandPage(opts: BrandPageOptions): string {
  * TRUSTED markup built with the helpers above, every value escaped.
  */
 export function renderAuthCard(opts: AuthCardOptions): string {
+  const consoleCard = opts.brand === "console";
   lockerLockup ??= themedLockup("locker", "horizontal", 40, "mark");
+  consoleLockup ??= themedLockup("key", "compact", 40, "mark");
   const header =
     opts.header ??
     (opts.app
@@ -608,20 +656,22 @@ export function renderAuthCard(opts: AuthCardOptions): string {
   const light = THEME_TOKENS.light.surface.page;
   return [
     `<!doctype html>`,
-    `<html lang="en" data-brand="locker">`,
+    `<html lang="en" data-brand="${consoleCard ? "console" : "locker"}">`,
     `<head>`,
     `<meta charset="utf-8">`,
     `<meta name="viewport" content="width=device-width, initial-scale=1">`,
-    `<title>${escapeHtml(opts.title)} · Polaris Locker</title>`,
+    `<title>${escapeHtml(opts.title)} · ${consoleCard ? "Polaris Key Console" : "Polaris Locker"}</title>`,
     `<meta name="color-scheme" content="dark light">`,
     `<meta name="theme-color" content="${dark}" media="(prefers-color-scheme: dark)">`,
     `<meta name="theme-color" content="${light}" media="(prefers-color-scheme: light)">`,
     `<meta name="robots" content="noindex, nofollow">`,
-    `<link rel="icon" type="image/svg+xml" href="${BRAND_WEB_LOCKER_PATH}/favicon.svg">`,
-    `<style>${BRAND_PAGE_CSS_LOCKER}</style>`,
+    `<link rel="icon" type="image/svg+xml" href="${consoleCard ? BRAND_WEB_KEY_PATH : BRAND_WEB_LOCKER_PATH}/favicon.svg">`,
+    `<style>${consoleCard ? BRAND_PAGE_CSS_CONSOLE : BRAND_PAGE_CSS_LOCKER}</style>`,
     `</head>`,
     opts.variant === "tv" ? `<body class="tv">` : `<body>`,
-    `<header class="${inApp ? "ac-brand quiet" : "ac-brand"}"><div role="img" aria-label="Polaris Locker">${lockerLockup}</div></header>`,
+    consoleCard
+      ? `<header class="ac-brand"><div role="img" aria-label="Polaris Key Console">${consoleLockup}<span class="ac-surface" aria-hidden="true">Console</span></div></header>`
+      : `<header class="${inApp ? "ac-brand quiet" : "ac-brand"}"><div role="img" aria-label="Polaris Locker">${lockerLockup}</div></header>`,
     wide ? `<main class="ac ac-wide">` : `<main class="ac">`,
     header,
     wide ? passportPane(opts.passport!) : "",

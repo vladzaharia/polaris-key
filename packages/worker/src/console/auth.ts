@@ -42,7 +42,11 @@ import {
 } from "../core/accounts/accountCookies.js";
 import { adminOidcConfig } from "../platform/platformOidc.js";
 import { brandedHtmlSecurityHeaders } from "../core/securityHeaders.js";
-import { renderBrandPage } from "../core/brandHtml.js";
+import {
+  renderConsoleNotice,
+  renderConsoleSignin,
+  signinState,
+} from "./signinPage.js";
 import { escapeHtml } from "../platform/html.js";
 import { randomToken } from "../platform/random.js";
 import { can, PLATFORM, resolvePrincipal } from "./authz.js";
@@ -196,16 +200,16 @@ function htmlError(status: number, message: string): Response {
   // A retry can help with an expired, unverified or rate-limited attempt; it cannot fix a
   // missing configuration (500) or a missing admin grant (403).
   const retry = status === 400 || status === 401 || status === 429;
+  const action =
+    status === 403
+      ? { label: "Use another account", href: "/manage/login" }
+      : retry
+        ? { label: "Sign in again", href: "/manage/login" }
+        : status === 502
+          ? { label: "Try again", href: "/manage/login" }
+          : undefined;
   return new Response(
-    renderBrandPage({
-      brand: "key", // the console is the Polaris Key side (LK-07)
-      title: "Console sign-in",
-      surface: "console",
-      heading: message,
-      body: retry
-        ? `<p class="actions"><a class="button" href="${escapeHtml("/manage/login")}">Sign in again</a></p>`
-        : "",
-    }),
+    renderConsoleNotice({ heading: message, ...(action ? { action } : {}) }),
     {
       status,
       headers: brandedHtmlSecurityHeaders(
@@ -213,7 +217,7 @@ function htmlError(status: number, message: string): Response {
           "content-type": "text/html; charset=utf-8",
           "cache-control": "no-store",
         }),
-        { brand: "key" },
+        { brand: "console" },
       ),
     },
   );
@@ -230,7 +234,45 @@ function adminOrigin(env: Env, url: URL): string {
   return url.origin;
 }
 
-/** GET /manage/login — start PKCE + redirect to the IdP authorize endpoint. */
+/** The card, served at `GET /manage/login` until Continue (`go=1`) starts the sign-in. */
+function signinCard(url: URL, rp: { issuer: string }): Response {
+  let host = rp.issuer;
+  try {
+    host = new URL(rp.issuer).host;
+  } catch {
+    // an unparsable issuer is shown as configured
+  }
+  return new Response(
+    renderConsoleSignin({
+      state: signinState(url),
+      returnTo: sanitizeReturnTo(url.searchParams.get("returnTo")),
+      issuerHost: host,
+    }),
+    {
+      status: 200,
+      headers: brandedHtmlSecurityHeaders(
+        new Headers({
+          "content-type": "text/html; charset=utf-8",
+          "cache-control": "no-store",
+        }),
+        { brand: "console" },
+      ),
+    },
+  );
+}
+
+/** A usable `login_hint`: one plausible address, never longer than an email may be. */
+function loginHint(raw: string | null): string | null {
+  const v = raw?.trim() ?? "";
+  return v.length > 0 && v.length <= 254 && /^[^\s@]+@[^\s@]+$/.test(v)
+    ? v
+    : null;
+}
+
+/**
+ * GET /manage/login — the sign-in card; with `go=1` (the Continue button) start PKCE and
+ * redirect to the IdP authorize endpoint.
+ */
 export async function handleAdminLogin(
   req: Request,
   env: Env,
@@ -247,18 +289,21 @@ export async function handleAdminLogin(
       "Too many sign-in attempts. Please wait and try again.",
     );
   const rp = consoleRelyingParty(env);
-  if (!rp) return htmlError(500, "Admin sign-in is not configured.");
+  if (!rp) return htmlError(500, "Admin sign-in isn't set up");
+  if (new URL(req.url).searchParams.get("go") !== "1")
+    return signinCard(new URL(req.url), rp);
   let discovered;
   try {
     discovered = await discover(rp);
   } catch {
-    return htmlError(502, "Sign-in isn't working right now. Try again later.");
+    return htmlError(502, "Can't reach the sign-in provider");
   }
   const { state, nonce, verifier, challenge } = await newFlowSecrets();
   const url = new URL(req.url);
   const redirectUri = `${adminOrigin(env, url)}/manage/callback`;
   const returnTo = sanitizeReturnTo(url.searchParams.get("returnTo"));
   const stepUp = url.searchParams.get("stepUp") === "1";
+  const hint = loginHint(url.searchParams.get("login_hint"));
   const binding = randomToken(32);
   const flow: FlowRecord = {
     verifier,
@@ -283,7 +328,10 @@ export async function handleAdminLogin(
     codeChallenge: challenge,
     // I-12: a step-up re-authenticates now, not a silent SSO. The callback checks `auth_time`
     // when the IdP sends one, so an IdP that ignores these still cannot pass off an old sign-in.
-    extra: stepUp ? { prompt: "login", max_age: "0" } : undefined,
+    extra: {
+      ...(stepUp ? { prompt: "login", max_age: "0" } : {}),
+      ...(hint ? { login_hint: hint } : {}),
+    },
   });
   return new Response(null, {
     status: 302,
