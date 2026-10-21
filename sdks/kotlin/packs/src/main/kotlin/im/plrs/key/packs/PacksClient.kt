@@ -8,7 +8,9 @@
 //              goes only to the control plane's own origin. Any answer but 200 or 206 is a failed fetch.
 //              A refused record fetch keeps its class (B-150, one mapping in every packs client):
 //              401 `unauthorized`, 403 `forbidden`, 5xx `server-error`, a transport failure (no
-//              response) and any other status, 404 included, `network-error`;
+//              response) and any other status, 404 included, `network-error`; an object or range
+//              fetch maps the same way with one change: 401 or 403 is `pack-not-entitled` (the
+//              content route is entitlement-gated), 5xx `server-error` ([objectRefusal]);
 //   storage    [DirPackStorage] under the data directory (never a cache directory): a versioned
 //              directory per tree payload and an atomic pointer swap in `state.json`;
 //   zstd       libzstd through zstd-jni, after a start-up probe ([selectZstd]);

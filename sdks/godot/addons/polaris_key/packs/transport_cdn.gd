@@ -4,7 +4,9 @@ extends PKeyPackTransport
 ##
 ## A refused record fetch keeps its class (B-150, one mapping in every packs client): 401
 ## `unauthorized`, 403 `forbidden`, 5xx `server-error`, a transport failure (no response) and
-## any other status, 404 included, `network-error`.
+## any other status, 404 included, `network-error`. An object or range fetch maps the same way
+## with one change: 401 or 403 is `pack-not-entitled` (the content route is entitlement-gated;
+## PKeyPackEngine.object_refusal), 5xx `server-error`.
 
 var core: PKeyCore
 ## One wall-clock deadline per object request (every hop and the whole body), seconds.

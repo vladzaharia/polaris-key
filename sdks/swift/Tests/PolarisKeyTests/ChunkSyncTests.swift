@@ -162,6 +162,7 @@ final class ChunkServer: @unchecked Sendable {
     private var objects: [String: [UInt8]] = [:]
     private var _calls: [ObjectRequest] = []
     private var _rangeAs200 = false
+    private var _blobStatus: Int?
     private var _cutRange: Int?
     private var _otherEtag = false
     private var _missing = Set<String>()
@@ -203,6 +204,11 @@ final class ChunkServer: @unchecked Sendable {
         get { locked { _otherEtag } }
         set { locked { _otherEtag = newValue } }
     }
+    /// B-150: answer every object or range fetch with this status (0: no response, a throw).
+    var blobStatus: Int? {
+        get { locked { _blobStatus } }
+        set { locked { _blobStatus = newValue } }
+    }
     var cutRange: Int? {
         get { locked { _cutRange } }
         set { locked { _cutRange = newValue; rangeCount = 0 } }
@@ -212,7 +218,7 @@ final class ChunkServer: @unchecked Sendable {
         { [self] h in locked { records[h] }.map { .ok($0) } ?? .failed("not_found") }
     }
 
-    var fetchObject: ObjectFetch { { [self] req in serve(req) } }
+    var fetchObject: ObjectFetch { { [self] req in try serve(req) } }
 
     private static func body(_ bytes: [UInt8], cutAt: Int? = nil) -> AsyncThrowingStream<[UInt8], Error> {
         AsyncThrowingStream { c in
@@ -231,7 +237,12 @@ final class ChunkServer: @unchecked Sendable {
         }
     }
 
-    func serve(_ req: ObjectRequest) -> ObjectResponse {
+    func serve(_ req: ObjectRequest) throws -> ObjectResponse {
+        if let status = locked({ _blobStatus }) {
+            locked { _calls.append(req) }
+            if status == 0 { throw URLError(.notConnectedToInternet) }
+            return ObjectResponse(status: status, contentRange: nil, chunks: AsyncThrowingStream { $0.finish() })
+        }
         let (b, as200, cut, other): ([UInt8]?, Bool, Bool, Bool) = locked {
             _calls.append(req)
             var cut = false
@@ -379,6 +390,29 @@ final class ChunkSyncTests: XCTestCase {
         XCTAssertTrue(server.calls.contains { $0.sha256 == v2.fullSha256 && $0.length == nil })
         let after = try await e.state()
         XCTAssertNil(after.inflight[v2.packId])
+    }
+
+    // B-150 follow-through: a refused range (then the full-payload fallback, refused alike) keeps
+    // its class: 401/403 pack-not-entitled, 5xx server-error, 404 or no response network-error.
+    func testARefusedRangeKeepsItsClass() async throws {
+        let (v1, v2) = releases()
+        let cases: [(Int, String)] = [
+            (401, ErrorCode.packNotEntitled), (403, ErrorCode.packNotEntitled), (500, ErrorCode.serverError),
+            (503, ErrorCode.serverError), (404, ErrorCode.networkError), (0, ErrorCode.networkError),
+        ]
+        for (status, want) in cases {
+            let server = ChunkServer([v1, v2])
+            let e = chunkEngine(server, storage: memoryPackStorage(), pins: [v1.pin])
+            _ = try await e.load()
+            _ = try await e.ensure([v1.packId])
+            server.blobStatus = status
+            do {
+                _ = try await e.ensureReleases([v2.target])
+                XCTFail("status \(status) installed")
+            } catch let err as PackError {
+                XCTAssertEqual(err.code, want, "status \(status)")
+            }
+        }
     }
 
     // 3b: a 206 carrying another ETag is refused the same way (falls back).

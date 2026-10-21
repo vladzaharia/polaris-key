@@ -104,6 +104,7 @@ export {
   type NativePayloadResult,
   type ObjectFetch,
   type ObjectResponse,
+  objectRefusal,
   type PackEngineOptions,
   type PackCheckRefusal,
   type PackHandler,

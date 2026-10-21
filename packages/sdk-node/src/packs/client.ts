@@ -13,6 +13,9 @@
 // A refused record fetch keeps its class (B-150, one mapping in every packs client): 200 is
 // ok; 401 `unauthorized`; 403 `forbidden`; 5xx `server-error`; no response at all (a transport
 // failure) and any other status, 404 included, `network-error`. Only the last is worth a retry.
+// An object or range fetch (the content route is entitlement-gated) maps the same way with one
+// change: 401 or 403 is `pack-not-entitled`; 5xx is `server-error`; no response and any other
+// status, 404 included, is `network-error` (client-core's `objectRefusal`).
 //
 // The running build's pins come from its content stamp (`packs.contentStamp`, a file among the
 // app's own read-only resources, never a user-writable path): a host without a stamp has no packs.

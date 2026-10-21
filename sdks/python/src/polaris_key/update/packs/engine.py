@@ -55,6 +55,7 @@ from ...core.release_record import (
 from .apply import ApplyPorts, ApplyResult, apply_delta, apply_file, apply_full
 from .chunk_apply import (
     INTERRUPTED,
+    RANGE_REFUSED,
     ApplyChunkPorts,
     ChunkSeed,
     accepts_range,
@@ -305,6 +306,18 @@ class PackProgress:
     done: int
     total: int
     issue: Optional[str] = None
+
+
+def object_refusal(status: int) -> str:
+    """The error code for an object or range fetch the content route answered with ``status``
+    (B-150 follow-through, one mapping in every packs client): 401 or 403 ``pack-not-entitled``
+    (content URLs are entitlement-gated), 5xx ``server-error``, anything else (404 included)
+    ``network-error``. A transport failure has no status and is ``network-error``."""
+    if status in (401, 403):
+        return ErrorCode.PACK_NOT_ENTITLED
+    if status >= 500:
+        return ErrorCode.SERVER_ERROR
+    return ErrorCode.NETWORK_ERROR
 
 
 class PackError(PolarisError):
@@ -572,6 +585,8 @@ class PackEngine:
         #: P4-11: seed-index SHA-256s the backfill already tried this process (once each,
         #: success or failure).
         self._seed_index_tried: Set[str] = set()
+        #: The class of the last refused object or range fetch (:func:`object_refusal`).
+        self._fetch_code: str = ErrorCode.NETWORK_ERROR
         #: plans/P4-29.md §2.4: the delta menu of the most recently committed feed of the
         #: canonical channel (``feed_content``'s ``deltas``), fresh or stale, or ``None``. Each
         #: entry for the selected container variant's payload joins the record's deltas as one
@@ -1503,7 +1518,7 @@ class PackEngine:
                     )
             elif files["layout"] == "tree":
                 raise PackError(
-                    ErrorCode.NETWORK_ERROR,
+                    self._fetch_code,
                     f"Fetching {pack_id}'s files index failed.",
                     pack_id=pack_id,
                 )
@@ -2077,7 +2092,7 @@ class PackEngine:
                         break
                     # The journal and what is staged stay for the next `ensure`, which resumes.
                     raise PackError(
-                        ErrorCode.NETWORK_ERROR,
+                        self._fetch_code,
                         f"Fetching {pack_id}'s objects failed; the next ensure resumes.",
                         pack_id=pack_id,
                     )
@@ -2156,7 +2171,9 @@ class PackEngine:
             f = result.verdict
             if first_failure is None:
                 first_failure = PackError(
-                    f["error"],
+                    self._fetch_code
+                    if f["error"] == ErrorCode.NETWORK_ERROR and f.get("detail") == RANGE_REFUSED
+                    else f["error"],
                     f"Installing {pack_id} by {cand['strategy']} failed: {f['error']}.",
                     pack_id=pack_id,
                     path=f.get("path"),
@@ -2488,7 +2505,9 @@ class PackEngine:
             ApplyChunkPorts(
                 objects=objects,
                 zstd=self._zstd,
-                fetch_range=chunk_range_fetch(self._fetch_object),
+                fetch_range=chunk_range_fetch(
+                    self._noting_fetch if accepts_range(self._fetch_object) else self._fetch_object
+                ),
                 output=_Out(),
                 sha256=self._sha256,
             ),
@@ -2621,6 +2640,16 @@ class PackEngine:
             if h not in keep:
                 self._quiet(lambda h=h: store.remove(h))  # type: ignore[misc]
 
+    def _noting_fetch(
+        self, sha256: str, offset: int, if_range: Optional[str], length: Optional[int] = None
+    ) -> ObjectResponse:
+        """``fetch_object`` for a chunk run, remembering the class of a refused range."""
+        self._fetch_code = ErrorCode.NETWORK_ERROR
+        res = self._fetch_object(sha256, offset, if_range, length)
+        if res.status != 206:
+            self._fetch_code = object_refusal(res.status)
+        return res
+
     def _download(
         self,
         plan_id: str,
@@ -2634,6 +2663,7 @@ class PackEngine:
         staged object then has the ref's length and SHA-256; a mismatch resets it and refetches
         once from the start."""
         staged = self._storage.staged_object(plan_id, sha256)
+        self._fetch_code = ErrorCode.NETWORK_ERROR
         for _attempt in range(2):
             have = staged.size()
             if have > nbytes:
@@ -2669,6 +2699,7 @@ class PackEngine:
                 elif res.status == 200:
                     outcome = self._fetch_into(staged, res, sha256, nbytes, hasher, 0, plan_id, pack_id, progress)
                 else:
+                    self._fetch_code = object_refusal(res.status)
                     _close(res)
                     return False
             else:

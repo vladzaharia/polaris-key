@@ -5,6 +5,7 @@
 
 package im.plrs.key.packs
 
+import im.plrs.key.core.ErrorCode
 import im.plrs.key.core.FeedDeltas
 import im.plrs.key.core.TrustSet
 import im.plrs.key.core.ContentHold
@@ -90,6 +91,18 @@ public class ObjectResponse(
 public data class ObjectRequest(val sha256: String, val offset: Long, val ifRange: String?, val length: Long? = null)
 
 public typealias ObjectFetch = suspend (ObjectRequest) -> ObjectResponse
+
+/**
+ * The error code for an object or range fetch the content route answered with [status] (B-150
+ * follow-through, one mapping in every packs client): 401 or 403 `pack-not-entitled` (content URLs
+ * are entitlement-gated), 5xx `server-error`, anything else (404 included) `network-error`. A
+ * transport failure has no status and is `network-error`.
+ */
+public fun objectRefusal(status: Int): String = when {
+    status == 401 || status == 403 -> ErrorCode.packNotEntitled
+    status >= 500 -> ErrorCode.serverError
+    else -> ErrorCode.networkError
+}
 
 /** `GET` of one release record by hash: the body, or the failure's code. */
 public sealed interface RecordFetchResult {

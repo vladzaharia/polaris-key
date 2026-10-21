@@ -196,6 +196,18 @@ export const FILES_TREE_HANDLER: PackHandler = {
   supports: (formatVersion) => formatVersion === 1,
 };
 
+/**
+ * The error code for an object or range fetch the content route answered with `status` (B-150
+ * follow-through, one mapping in every packs client): 401 or 403 `pack-not-entitled` (content
+ * URLs are entitlement-gated), 5xx `server-error`, anything else (404 included) `network-error`.
+ * A transport failure has no status and is `network-error`.
+ */
+export function objectRefusal(status: number): string {
+  if (status === 401 || status === 403) return "pack-not-entitled";
+  if (status >= 500) return "server-error";
+  return "network-error";
+}
+
 /** An object download as the engine reads it (the host adapts its HTTP client). */
 export interface ObjectResponse {
   status: number;
@@ -1728,7 +1740,7 @@ export class PackEngine {
           });
       } else if (variant.files.layout === "tree")
         throw new PackError(
-          "network-error",
+          this.fetchCode,
           `Fetching ${packId}'s files index failed.`,
           { packId },
         );
@@ -1952,6 +1964,8 @@ export class PackEngine {
    * installed payload, and stored by `chunks.sha256`. Best effort: a failure only means no seed.
    */
   /** Seed indexes this process already tried to fetch (once each, success or not). */
+  /** The class of the last refused object or range fetch (`objectRefusal`), else `network-error`. */
+  private fetchCode = "network-error";
   private readonly seedIndexTried = new Set<string>();
 
   private async storeSeedIndexes(): Promise<void> {
@@ -2345,7 +2359,7 @@ export class PackEngine {
             }
             // The journal and what is staged stay for the next `ensure`, which resumes them.
             throw new PackError(
-              "network-error",
+              this.fetchCode,
               `Fetching ${packId}'s objects failed; the next ensure resumes.`,
               { packId },
             );
@@ -2438,7 +2452,10 @@ export class PackEngine {
           { packId, detail: "chunk" },
         );
       firstFailure ??= new PackError(
-        f.error,
+        f.error === "network-error" &&
+          (f as { detail?: string }).detail === "range-refused"
+          ? this.fetchCode
+          : f.error,
         `Installing ${packId} by ${cand.strategy} failed: ${f.error}.`,
         {
           packId,
@@ -2746,7 +2763,12 @@ export class PackEngine {
         },
         zstd: this.opts.zstd,
         sha256: this.opts.sha256,
-        fetchRange: chunkRangeFetch((req) => this.opts.fetchObject(req)),
+        fetchRange: chunkRangeFetch(async (req) => {
+          this.fetchCode = "network-error";
+          const res = await this.opts.fetchObject(req);
+          if (res.status !== 206) this.fetchCode = objectRefusal(res.status);
+          return res;
+        }),
         output,
       },
       {
@@ -2894,6 +2916,7 @@ export class PackEngine {
     progress: { done: number; total: number } | null,
   ): Promise<boolean> {
     const staged = await this.opts.storage.stagedObject(planId, ref.sha256);
+    this.fetchCode = "network-error";
     for (let attempt = 0; attempt < 2; attempt++) {
       let have = await staged.size();
       if (have > ref.bytes) {
@@ -2968,7 +2991,11 @@ export class PackEngine {
             packId,
             progress,
           );
-        } else return false;
+        } else {
+          this.fetchCode = objectRefusal(res.status);
+          await res.chunks[Symbol.asyncIterator]().return?.();
+          return false;
+        }
       } else {
         outcome = (await hasher.digest()) === ref.sha256 ? "ok" : "mismatch";
       }

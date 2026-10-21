@@ -10,6 +10,9 @@ Python's ports:
              packs client): 401 ``unauthorized``, 403 ``forbidden``, 5xx ``server-error``, a
              transport failure (no response) and any other status, 404 included,
              ``network-error``;
+             an object or range fetch maps the same way with one change: 401 or 403 is
+             ``pack-not-entitled`` (the content route is entitlement-gated), 5xx
+             ``server-error``, no response and any other status ``network-error``;
   storage    :class:`DirPackStorage` under the platform data directory (P1b-09), excluded from
              backups: a versioned directory per tree payload and an atomic pointer swap in
              ``state.json``;

@@ -178,6 +178,18 @@ public struct ObjectRequest: Sendable, Equatable {
 
 public typealias ObjectFetch = @Sendable (ObjectRequest) async throws -> ObjectResponse
 
+/// The error code for an object or range fetch the content route answered with `status` (B-150
+/// follow-through, one mapping in every packs client): 401 or 403 `pack-not-entitled` (content
+/// URLs are entitlement-gated), 5xx `server-error`, anything else (404 included) `network-error`.
+/// A transport failure has no status and is `network-error`.
+public func objectRefusal(_ status: Int) -> String {
+    switch status {
+    case 401, 403: return ErrorCode.packNotEntitled
+    case 500...: return ErrorCode.serverError
+    default: return ErrorCode.networkError
+    }
+}
+
 /// `GET` of one release record by hash: the body, or the failure's code.
 public enum RecordFetchResult: Sendable, Equatable {
     case ok(String)
@@ -596,6 +608,9 @@ public actor PackEngine {
     private var tail: Task<Void, Never>?
     /// Seed indexes `storeSeedIndexes` already tried to fetch in this process (P4-11).
     private var seedIndexTried = Set<String>()
+    /// The class of the last refused object or range fetch (`objectRefusal`), else `network-error`.
+    private var fetchCode = ErrorCode.networkError
+    private func setFetchCode(_ code: String) { fetchCode = code }
     /// Save compatibility's record facts, by record hash (`Provides.swift`).
     private var providesMemo = ProvidesMemo()
 
@@ -1650,7 +1665,7 @@ public actor PackEngine {
                 }
             } else if variant.files.layout == "tree" {
                 throw PackError(
-                    ErrorCode.networkError, "Fetching \(packId)'s files index failed.", packId: packId)
+                    fetchCode, "Fetching \(packId)'s files index failed.", packId: packId)
             }
         }
         // plans/P4-19.md §2.5: a delegated release's extension rule over the files index, before
@@ -1856,7 +1871,12 @@ public actor PackEngine {
                     let o = try storage.stagedObject(planId, sha256)
                     return try o.size() > 0 ? try o.source() : nil
                 },
-                zstd: opts.zstd, fetchRange: chunkRangeFetch(opts.fetchObject),
+                zstd: opts.zstd, fetchRange: chunkRangeFetch({ [self, fetch = opts.fetchObject] req in
+                    await self.setFetchCode(ErrorCode.networkError)
+                    let res = try await fetch(req)
+                    if res.status != 206 { await self.setFetchCode(objectRefusal(res.status)) }
+                    return res
+                }),
                 output: PackChunkOutput(sink: sink, reader: read)),
             repair: true, completedRuns: done.with { $0 },
             onRunDone: { k in
@@ -2037,7 +2057,7 @@ public actor PackEngine {
                     }
                     // The journal and what is staged stay for the next `ensure`, which resumes.
                     throw PackError(
-                        ErrorCode.networkError,
+                        fetchCode,
                         "Fetching \(packId)'s objects failed; the next ensure resumes.", packId: packId)
                 }
             }
@@ -2063,7 +2083,9 @@ public actor PackEngine {
                             ErrorCode.networkError, "Fetching \(packId)'s chunks failed; the next ensure resumes.",
                             detail: "chunk", packId: packId)
                     }
-                    result = ApplyResult(verdict: .failed(error: error, path: nil), index: nil)
+                    // A refused range falls back; if every candidate fails, its class is the refusal's.
+                    let code = error == ErrorCode.networkError && detail == "range-refused" ? fetchCode : error
+                    result = ApplyResult(verdict: .failed(error: code, path: nil), index: nil)
                 }
             } else {
                 emit(PackProgress(packId: packId, phase: "apply", done: total, total: total))
@@ -2326,6 +2348,7 @@ public actor PackEngine {
         _ progress: inout (done: Int, total: Int)?
     ) async -> Bool {
         guard let staged = try? opts.storage.stagedObject(planId, ref.sha256) else { return false }
+        fetchCode = ErrorCode.networkError
         for _ in 0..<2 {
             do {
                 var have = try staged.size()
@@ -2371,6 +2394,7 @@ public actor PackEngine {
                     } else if res.status == 200 {
                         outcome = await fetchInto(staged, res, ref, hasher, 0, planId, packId, &progress)
                     } else {
+                        fetchCode = objectRefusal(res.status)
                         return false
                     }
                 } else {
