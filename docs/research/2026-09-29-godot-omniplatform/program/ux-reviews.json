@@ -329,6 +329,11 @@
       "verdict": "pass",
       "date": "2026-10-20",
       "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/PX-32a/recheck/ (re-check PASS-WITH-NOTES after one fix round; lead polish 8b79994c3)"
+    },
+    "PX-14a": {
+      "verdict": "pass",
+      "date": "2026-10-21",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/PX-14a/recheck/ (re-check PASS-WITH-NOTES after one fix round; lead polish 2a7be0504; security PASS)"
     }
   }
 }
