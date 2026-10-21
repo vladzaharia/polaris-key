@@ -180,7 +180,19 @@ export function lockerBadgeBody(
   treatment: LockerBadgeTreatment = "transparent",
   theme: LockerBadgeTheme = "dark",
 ): string {
-  const prefix = LOCKER_BADGE_PREFIXES[slugOf(kind)];
+  return lockerBadgeBodyWith(
+    LOCKER_BADGE_PREFIXES[slugOf(kind)],
+    treatment,
+    theme,
+  );
+}
+
+/** A badge body for a label whose outlined prefix group the caller holds (the table stays out of a bundle that needs one label). */
+export function lockerBadgeBodyWith(
+  prefix: string,
+  treatment: LockerBadgeTreatment = "transparent",
+  theme: LockerBadgeTheme = "dark",
+): string {
   return fillRoles(
     lockerBadgeTemplate(treatment).body.replace("{prefix}", prefix),
     LOCKER_BADGE_PALETTES[treatment][theme],

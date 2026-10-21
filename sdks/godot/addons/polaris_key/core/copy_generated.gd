@@ -65,6 +65,7 @@ const COPY_CODES := {
 	"turnstile_failed": {"title": "Check didn't pass", "message": "The security check didn't pass. Reload the page and try again."},
 	"signin_expired": {"title": "Sign-in expired", "message": "This sign-in has expired. Start again."},
 	"invalid_code": {"title": "Wrong code", "message": "That code isn't right. Check the email and try again."},
+	"code_expired": {"title": "Code expired", "message": "That code has expired. Send a new code."},
 	"email_in_use": {"title": "Email already in use", "message": "Another Polaris Locker account already uses this email. Join this sign-in to that account, or use a different email."},
 	"terms_required": {"title": "Terms not accepted", "message": "Agree to the terms to continue."},
 	"license_owned": {"title": "License in another account", "message": "This {product} license is already in another Polaris Locker account. A license never moves by its key."},

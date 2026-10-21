@@ -709,8 +709,6 @@
     <!-- Email code step (SIGN-IN.md §3.4). -->
     <string name="signin_code_tooMany">尝试次数过多。请发送新验证码。</string>
     <!-- Email code step (SIGN-IN.md §3.4). -->
-    <string name="signin_code_expired">验证码已过期。请发送新验证码。</string>
-    <!-- Email code step (SIGN-IN.md §3.4). -->
     <string name="signin_code_differentEmail">使用其他电子邮件</string>
     <string name="signin_code_differentEmail__macos">使用其他电子邮件</string>
     <!-- Sign-in email subject (SIGN-IN.md §3.15). Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated. Arguments: 1=code. -->
@@ -2272,6 +2270,10 @@
     <string name="core_codes_invalid_code_title">验证码错误</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_code_message">该验证码无效。请检查电子邮件后重新输入。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_code_expired_title">验证码已过期</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_code_expired_message">该验证码已过期。请发送新的验证码。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_in_use_title">电子邮件已被使用</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

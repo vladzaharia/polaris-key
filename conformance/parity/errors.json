@@ -286,10 +286,16 @@
       "description": "400 from the login card: the emailed 6-digit code is wrong. `triesLeft` says how many attempts the code has left; it dies after 5 (I-07)."
     },
     {
+      "code": "code_expired",
+      "kind": "wire",
+      "service": "identity",
+      "description": "400 from the login card's finish gate: the emailed 6-digit code has expired. It spends no try; the card offers to send a new code (PX-21)."
+    },
+    {
       "code": "email_in_use",
       "kind": "wire",
       "service": "identity",
-      "description": "409 from the login card: the proven address belongs to another Polaris Key account. Nothing was created or joined; the card offers to join that account (with proof of both) or to use a different email. Never answered before the address was proven (I-07)."
+      "description": "409 from the login card: the proven address belongs to another Polaris Locker account. Nothing was created or joined; the card offers to join that account (with proof of both) or to use a different email. Never answered before the address was proven (I-07)."
     },
     {
       "code": "terms_required",

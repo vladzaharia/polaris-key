@@ -60,6 +60,8 @@ const ROUTES: Record<string, unknown> = {
   "/manage/api/products": {
     products: [row("djdl", "DJDL"), row("acme", "Acme")],
   },
+  // ST-44: Home reads the attention list.
+  "/manage/api/attention": { items: [] },
   "/manage/api/products/djdl": { product: row("djdl", "DJDL") },
   "/manage/api/products/djdl/license/licenses": { licenses: [] },
   "/manage/api/products/djdl/license/tiers": { tiers: [] },
@@ -694,12 +696,13 @@ describe("overlays under the Worker's CSP", () => {
     await page.context().close();
   });
 
-  it("Home, Products, the new-product wizard and every Platform page load with no violations", async () => {
+  it("Home, the retired Products address, the new-product wizard and every Platform page load with no violations", async () => {
     const page = await open({ width: 1440, height: 900 });
     await violations(page);
     for (const [hash, title] of [
       ["#/", "Home"],
-      ["#/products", "Products"],
+      // ST-44: the Products page retired into Home; its address lands there.
+      ["#/products", "Home"],
       ["#/products/new?via=manual&step=basics", "New product"],
       ["#/platform", "Settings"],
       ["#/platform/operations", "Operations"],
@@ -960,8 +963,8 @@ describe("overlays under the Worker's CSP", () => {
           ?.closest("[aria-hidden=true]"),
       })),
     ).toEqual({ pointerEvents: "auto", mainHidden: false });
-    await page.locator("aside a[data-page=products]").click({ timeout: 2000 });
-    expect(await page.evaluate(() => location.hash)).toBe("#/products");
+    await page.locator("aside a[data-page=home]").click({ timeout: 2000 });
+    expect(await page.evaluate(() => location.hash)).toBe("#/");
     await page.context().close();
     process.stdout.write(`CSP overlay report: ${JSON.stringify(report)}\n`);
   });

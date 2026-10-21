@@ -764,7 +764,7 @@ describe("the portal copy lint", () => {
       "2 signin.code.tooMany",
       "3 signin.session.toastBody",
       "4 signin.code.differentEmail",
-      "5 signin.code.expired",
+      "5 core.codes.code_expired.message",
       "6 signin.off.product",
     ]);
   });

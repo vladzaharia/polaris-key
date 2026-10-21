@@ -8,7 +8,7 @@ import { t } from "../../../lib/copy.js";
  * day it was activated to its end with today on it. A lifetime license is the word and no chart
  * (nothing to plot); an ended one reads "Ended <date>" with the track full.
  *
- * Neutral ink only (D9a: coral is identity, never state): the track is `border-strong` on the
+ * Neutral ink only (D9a: coral is identity, never state): the track is `bg-border-strong` on the
  * sunken box and the elapsed part and the marker are strong text, so the chart reads in both
  * themes and with forced colors. The words say the state; the chart's text alternative is one
  * sentence (`role="img"`), its labels are drawn aria-hidden. `children` is the action under it
@@ -124,10 +124,10 @@ function Timeline({
           />
         ) : null}
         <span
-          className="absolute top-1/2 size-3.5 rounded-full border-2 border-surface-sunken bg-fg-strong forced-colors:bg-[CanvasText]"
+          className="absolute top-1/2 size-3.5 -translate-y-1/2 rounded-full border-2 border-surface-sunken bg-fg-strong forced-colors:bg-[CanvasText]"
           style={{
-            left: `${today}%`,
-            transform: `translate(-${today}%, -50%)`,
+            // The marker slides by its own width as today moves along, so it stays on the track.
+            left: `calc(${today}% - ${(today / 100) * 0.875}rem)`,
           }}
         />
       </div>
