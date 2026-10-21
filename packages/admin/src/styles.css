@@ -552,3 +552,22 @@ html[data-shell="console"]
     box-shadow: none;
   }
 }
+
+/*
+ * A phone at 200 % text (the dialog is under 18 rem wide): the sheet's header, body and footer would
+ * leave the body a 32 px slot to scroll in. The sheet scrolls as a whole instead, so the field
+ * and the actions are reachable (WCAG 1.4.4 / 1.4.10). Unlayered on purpose: it beats the
+ * utilities that size the body and the form.
+ */
+@container (max-width: 18rem) {
+  [data-pk-dialog-inner] {
+    overflow-y: auto;
+  }
+  [data-pk-dialog-inner] > *,
+  [data-pk-dialog-inner] > form > * {
+    flex: none;
+  }
+  [data-pk-dialog-body] {
+    overflow: visible;
+  }
+}

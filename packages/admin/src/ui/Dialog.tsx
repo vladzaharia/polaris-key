@@ -464,61 +464,71 @@ export function Dialog({
             // A `<form>` wrapping the body and footer is a direct child: make it the flex column
             // the body scrolls in, so the footer is never pushed out of a short viewport (B-018).
             // `contents` forms already pass their children through.
-            "[&>form:not(.contents)]:flex [&>form:not(.contents)]:min-h-0 [&>form:not(.contents)]:flex-1 [&>form:not(.contents)]:flex-col",
+            "@container",
             SIZE[size],
             className,
           )}
         >
+          {/* One column inside the dialog's container: at large text on a phone (the container under
+              18 rem) the whole column scrolls (styles.css), so the body is never a sliver. A
+              `<form>` wrapping the body and footer is its direct child: make it the flex column the
+              body scrolls in, so the footer is never pushed out of a short viewport (B-018).
+              `contents` forms already pass their children through. */}
           <div
-            aria-hidden
-            className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-border-strong sm:hidden"
-          />
-          <div
-            data-pk-overlay-header=""
-            className="relative flex shrink-0 items-start gap-4 px-6 pb-2 pt-4 sm:pt-6 console:border-b console:border-border console:bg-(--pk-admin-band-overlay) console:pb-4 console:sm:pt-5"
+            data-pk-dialog-inner=""
+            className="flex min-h-0 flex-1 flex-col overflow-hidden [&>form:not(.contents)]:flex [&>form:not(.contents)]:min-h-0 [&>form:not(.contents)]:flex-1 [&>form:not(.contents)]:flex-col"
           >
-            {glyph ? (
-              <span aria-hidden data-overlay-glyph="" className="mt-0.5 flex">
-                {glyph}
-              </span>
-            ) : null}
-            <div className="min-w-0 flex-1 space-y-1">
-              <DialogPrimitive.Title
-                ref={setTitle}
-                tabIndex={-1}
-                className="text-lg font-semibold leading-tight text-fg-strong outline-hidden max-sm:pr-10 console:text-xl console:leading-7"
-              >
-                {title}
-              </DialogPrimitive.Title>
-              {description ? (
-                <DialogPrimitive.Description
-                  // With `describedBy` the content names both ids itself.
-                  {...(describedBy ? { id: descriptionId } : {})}
-                  className="text-sm text-fg-muted"
+            <div
+              aria-hidden
+              className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-border-strong sm:hidden"
+            />
+            <div
+              data-pk-overlay-header=""
+              className="relative flex shrink-0 items-start gap-4 px-6 @max-[18rem]:px-4 pb-2 pt-4 sm:pt-6 console:border-b console:border-border console:bg-(--pk-admin-band-overlay) console:pb-4 console:sm:pt-5"
+            >
+              {glyph ? (
+                <span aria-hidden data-overlay-glyph="" className="mt-0.5 flex">
+                  {glyph}
+                </span>
+              ) : null}
+              <div className="min-w-0 flex-1 space-y-1">
+                <DialogPrimitive.Title
+                  ref={setTitle}
+                  tabIndex={-1}
+                  className="text-lg font-semibold leading-tight text-fg-strong outline-hidden max-sm:pr-10 @max-[18rem]:pr-[52px] @max-[18rem]:text-base console:text-xl console:leading-7"
                 >
-                  {description}
-                </DialogPrimitive.Description>
+                  {title}
+                </DialogPrimitive.Title>
+                {description ? (
+                  <DialogPrimitive.Description
+                    // With `describedBy` the content names both ids itself.
+                    {...(describedBy ? { id: descriptionId } : {})}
+                    className="text-sm text-fg-muted"
+                  >
+                    {description}
+                  </DialogPrimitive.Description>
+                ) : null}
+              </div>
+              {dismissible ? (
+                <DialogPrimitive.Close
+                  aria-label="Close"
+                  className="-mr-2 -mt-1 inline-flex size-8 shrink-0 max-sm:absolute max-sm:right-1 max-sm:top-0 max-sm:m-0 max-sm:size-11 @max-[18rem]:size-[44px] items-center justify-center rounded-md text-fg-muted hover:bg-hover hover:text-fg-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+                >
+                  <X aria-hidden className="size-4" />
+                </DialogPrimitive.Close>
               ) : null}
             </div>
-            {dismissible ? (
-              <DialogPrimitive.Close
-                aria-label="Close"
-                className="-mr-2 -mt-1 inline-flex size-8 shrink-0 max-sm:absolute max-sm:right-1 max-sm:top-0 max-sm:m-0 max-sm:size-11 items-center justify-center rounded-md text-fg-muted hover:bg-hover hover:text-fg-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
-              >
-                <X aria-hidden className="size-4" />
-              </DialogPrimitive.Close>
+            {dismissal.asking ? (
+              <DiscardStrip
+                className="mt-2 border-t"
+                onKeep={dismissal.keepEditing}
+                onDiscard={dismissal.discard}
+              />
             ) : null}
+            <DismissGuardContext.Provider value={dismissal.register}>
+              {children}
+            </DismissGuardContext.Provider>
           </div>
-          {dismissal.asking ? (
-            <DiscardStrip
-              className="mt-2 border-t"
-              onKeep={dismissal.keepEditing}
-              onDiscard={dismissal.discard}
-            />
-          ) : null}
-          <DismissGuardContext.Provider value={dismissal.register}>
-            {children}
-          </DismissGuardContext.Provider>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>
@@ -560,8 +570,9 @@ export function DialogBody({
     <div
       ref={ref}
       {...region}
+      data-pk-dialog-body=""
       className={cn(
-        "pk-scroll min-h-0 flex-1 overflow-y-auto rounded-md px-6 py-2 text-base console:py-4",
+        "pk-scroll min-h-0 flex-1 overflow-y-auto rounded-md px-6 @max-[18rem]:px-4 py-2 text-base console:py-4",
         // outline-solid: the base `:focus-visible` rule's outline-hidden leaves the outline style
         // at none, which outline-2 alone would keep.
         "focus-visible:outline-2 focus-visible:outline-solid focus-visible:-outline-offset-4 focus-visible:outline-focus focus-visible:ring-0 focus-visible:ring-offset-0",
@@ -605,7 +616,7 @@ export function DialogFooter({
   return (
     <div
       className={cn(
-        "mt-2 flex shrink-0 flex-col-reverse gap-2 border-t border-border px-6 py-4 sm:flex-row sm:justify-end [&>:not(.sr-only)]:w-full sm:[&>:not(.sr-only)]:w-auto",
+        "mt-2 flex shrink-0 flex-col-reverse gap-2 border-t border-border px-6 @max-[18rem]:px-4 py-4 sm:flex-row sm:justify-end [&>:not(.sr-only)]:w-full sm:[&>:not(.sr-only)]:w-auto",
         className,
       )}
       {...props}

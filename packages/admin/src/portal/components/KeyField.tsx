@@ -103,6 +103,8 @@ export function KeyField({
       >
         <div
           aria-hidden
+          // A key is a token: it may break anywhere (the reflow checks leave tokens alone).
+          data-token=""
           className="min-h-[3.25rem] whitespace-pre-wrap py-3.5 pl-4 pr-24 font-mono text-md leading-6 [overflow-wrap:anywhere] [word-break:break-all]"
         >
           {value ? (
