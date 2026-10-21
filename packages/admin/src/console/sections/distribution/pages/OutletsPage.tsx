@@ -271,7 +271,6 @@ export function OutletsPage({ slug }: { slug: string }): React.ReactElement {
             </span>
           ) : undefined
         }
-        description="Channels come from .pkey/distribution."
         meta={
           <Popover
             label="Feed listing rules"
