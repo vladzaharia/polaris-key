@@ -125,9 +125,9 @@ export const ChoiceGroup = React.forwardRef<
               aria-label={o.label}
               data-checked={checked ? "" : undefined}
               className={cn(
-                "relative flex min-h-14 w-full items-start gap-3 overflow-hidden rounded-md border px-3 py-3 text-left",
-                "before:absolute before:inset-y-0 before:left-0 before:w-[3px]",
-                "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page",
+                "relative flex min-h-14 w-full items-start gap-3 overflow-hidden rounded-md border px-3 py-3 text-start",
+                "before:absolute before:inset-y-0 before:start-0 before:w-[3px]",
+                "focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2",
                 checked
                   ? "border-border-strong bg-hover before:bg-[var(--pk-locker-accent)] forced-colors:border-[Highlight] forced-colors:outline forced-colors:outline-2 forced-colors:outline-[Highlight] forced-colors:before:bg-[Highlight]"
                   : "border-border-strong bg-surface-raised hover:bg-hover",
@@ -135,7 +135,7 @@ export const ChoiceGroup = React.forwardRef<
             >
               <span
                 aria-hidden
-                className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border-2 border-fg-muted data-[on]:border-fg-strong"
+                className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full outline-2 -outline-offset-2 outline-fg-muted data-[on]:outline-fg-strong"
                 data-on={checked ? "" : undefined}
               >
                 {checked ? (

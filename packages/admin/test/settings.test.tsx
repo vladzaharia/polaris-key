@@ -354,7 +354,7 @@ describe("Core → Settings", () => {
       "Not enforced: console access is platform-wide.",
     );
     // A long group wraps under the label on a phone and reads from the left.
-    expect(value.className).toContain("max-sm:text-left");
+    expect(value.className).toContain("max-sm:text-start");
     cleanup();
     resetCore();
     // A product with no admin group shows no row at all.

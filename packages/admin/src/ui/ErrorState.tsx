@@ -72,14 +72,14 @@ export function ErrorState({
         </p>
         <p className="text-sm text-fg-muted">{copy.description}</p>
         {copy.lines?.length ? (
-          <ul className="mt-2 list-disc space-y-1 pl-5 text-left text-sm text-fg">
+          <ul className="mt-2 list-disc space-y-1 ps-5 text-start text-sm text-fg">
             {copy.lines.map((l) => (
               <li key={l}>{l}</li>
             ))}
           </ul>
         ) : null}
         {copy.references?.length ? (
-          <ul className="mt-2 space-y-1 text-left text-sm text-fg">
+          <ul className="mt-2 space-y-1 text-start text-sm text-fg">
             {copy.references.map((r) => (
               <li key={r} className="font-mono text-xs">
                 {r}

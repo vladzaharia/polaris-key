@@ -151,7 +151,7 @@ export function AlertDestinations({
               key={d.id}
               data-dest={d.id}
               tabIndex={-1}
-              className="@container outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              className="@container outline-none focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-accent"
             >
               <DestinationRow
                 d={d}
@@ -243,7 +243,7 @@ export function AlertDestinations({
               Your receiver verifies each alert&apos;s{" "}
               <code>webhook-signature</code> header with it, using any{" "}
               <a
-                className="text-accent-fg underline underline-offset-2"
+                className="py-1 text-accent-fg underline underline-offset-2"
                 href="https://www.standardwebhooks.com/"
                 target="_blank"
                 rel="noreferrer"

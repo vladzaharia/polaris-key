@@ -260,7 +260,7 @@ export function OneTimeSecretPanel({
       <DialogFooter>
         {actions}
         {acknowledged ? null : (
-          <p className="text-sm text-fg-muted sm:mr-auto">
+          <p className="text-sm text-fg-muted sm:me-auto">
             Copy it or tick “I&apos;ve stored it” first.
           </p>
         )}

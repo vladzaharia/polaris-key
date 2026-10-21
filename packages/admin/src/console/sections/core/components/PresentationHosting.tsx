@@ -186,6 +186,9 @@ function QuotaRow({
           <Button
             ref={saveRef}
             size="sm"
+            // Two quota rows share this section: a row's save is secondary, so the section has
+            // no more than one primary button.
+            variant="secondary"
             disabled={!changed}
             onClick={() => setConfirm("save")}
           >

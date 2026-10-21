@@ -68,7 +68,7 @@ function Rows({
   label: string;
 }): React.ReactElement {
   return (
-    <table className="w-full text-left" aria-label={label}>
+    <table className="w-full text-start" aria-label={label}>
       <thead className="max-sm:sr-only">
         <tr className="border-b border-border bg-surface-sunken text-sm text-fg-strong">
           <th scope="col" className="px-5 py-2.5 font-medium">

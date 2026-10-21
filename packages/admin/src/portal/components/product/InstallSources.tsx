@@ -211,7 +211,7 @@ function CopyField({
     <div className="space-y-1">
       {caption ? <p className="text-xs text-fg-muted">{caption}</p> : null}
       {/* The button sits beside the value while the value keeps 16rem, else under it (a phone). */}
-      <div className="flex flex-wrap items-start gap-2 rounded-lg border border-border bg-surface-sunken py-1.5 pl-3 pr-1.5">
+      <div className="flex flex-wrap items-start gap-2 rounded-lg border border-border bg-surface-sunken py-1.5 ps-3 pe-1.5">
         <code className="min-w-[min(100%,16rem)] flex-1 break-words py-1 font-mono text-xs leading-5 text-fg-strong">
           <Breakable text={value} />
         </code>
@@ -220,7 +220,7 @@ function CopyField({
           label={copy}
           showLabel
           size="sm"
-          className="ml-auto shrink-0"
+          className="ms-auto shrink-0"
         />
       </div>
     </div>

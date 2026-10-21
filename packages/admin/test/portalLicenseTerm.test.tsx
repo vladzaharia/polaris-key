@@ -33,7 +33,7 @@ describe("LicenseTerm", () => {
     );
     // Halfway: today's label sits at 50 % of the track.
     expect(
-      chart.querySelector<HTMLElement>("[style*='left: 50%']"),
+      chart.querySelector<HTMLElement>("[style*='inset-inline-start: 50%']"),
     ).toBeTruthy();
   });
 
@@ -49,7 +49,7 @@ describe("LicenseTerm", () => {
     expect(
       screen
         .getByRole("img")
-        .querySelector<HTMLElement>("[style*='left: 100%']"),
+        .querySelector<HTMLElement>("[style*='inset-inline-start: 100%']"),
     ).toBeTruthy();
   });
 
@@ -88,7 +88,9 @@ describe("LicenseTerm", () => {
       />,
     );
     const chart = screen.getByRole("img");
-    expect(chart.querySelector("[style*='right: 0']")).toBeTruthy();
-    expect(chart.querySelector("[style*='left: 100%']")).toBeTruthy();
+    expect(chart.querySelector("[class*='end-0']")).toBeTruthy();
+    expect(
+      chart.querySelector("[style*='inset-inline-start: 100%']"),
+    ).toBeTruthy();
   });
 });

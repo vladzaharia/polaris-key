@@ -1,6 +1,6 @@
 /**
  * Distribution → Storefronts → Polaris Key (PS-06; notes/S-21 §6.6, SETUP.md §2.10's Discover
- * tab): the built-in storefront's own page, T4 (label and help left, the control right-aligned).
+ * tab): the built-in storefront's own page, T4 (label and help left, the control end-aligned).
  *
  *   Readiness           PS-01's checklist, from the first-party `status` op
  *   Listing             Automatic / Listed / Not listed, and the audience
@@ -828,20 +828,20 @@ function Analytics({ slug }: { slug: string }): React.ReactElement {
           className="w-full min-w-[32rem] text-sm"
         >
           <thead>
-            <tr className="border-b border-border text-left text-fg-muted">
-              <th scope="col" className="py-2 pr-3 font-normal">
+            <tr className="border-b border-border text-start text-fg-muted">
+              <th scope="col" className="py-2 pe-3 font-normal">
                 Way to add
               </th>
-              <th scope="col" className="py-2 pr-3 text-right font-normal">
+              <th scope="col" className="py-2 pe-3 text-end font-normal">
                 Impressions
               </th>
-              <th scope="col" className="py-2 pr-3 text-right font-normal">
+              <th scope="col" className="py-2 pe-3 text-end font-normal">
                 Adds
               </th>
-              <th scope="col" className="py-2 pr-3 text-right font-normal">
+              <th scope="col" className="py-2 pe-3 text-end font-normal">
                 First activations
               </th>
-              <th scope="col" className="py-2 text-right font-normal">
+              <th scope="col" className="py-2 text-end font-normal">
                 Rate
               </th>
             </tr>
@@ -851,20 +851,20 @@ function Analytics({ slug }: { slug: string }): React.ReactElement {
               <tr key={k.kind} className="border-b border-border">
                 <th
                   scope="row"
-                  className="py-2 pr-3 text-left font-normal text-fg"
+                  className="py-2 pe-3 text-start font-normal text-fg"
                 >
                   {kindLabel(k.kind)}
                 </th>
-                <td className="py-2 pr-3 text-right tabular-nums">
+                <td className="py-2 pe-3 text-end tabular-nums">
                   {count.format(k.impressions)}
                 </td>
-                <td className="py-2 pr-3 text-right tabular-nums">
+                <td className="py-2 pe-3 text-end tabular-nums">
                   {count.format(k.adds)}
                 </td>
-                <td className="py-2 pr-3 text-right tabular-nums">
+                <td className="py-2 pe-3 text-end tabular-nums">
                   {count.format(k.activations)}
                 </td>
-                <td className="py-2 text-right tabular-nums">{rate(k)}</td>
+                <td className="py-2 text-end tabular-nums">{rate(k)}</td>
               </tr>
             ))}
           </tbody>

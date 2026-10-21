@@ -182,7 +182,7 @@ export function HolderLine({
         batch{" "}
         <Link
           to={r.licenseBatch(slug, l.batchId)}
-          className="font-medium text-accent-fg underline-offset-2 hover:underline"
+          className="py-1 font-medium text-accent-fg underline-offset-2 hover:underline"
         >
           {batch?.label ?? "Open batch"}
         </Link>
@@ -195,10 +195,11 @@ export function HolderLine({
       className="inline-flex flex-wrap items-center gap-x-1"
     >
       {parts.map((p, i) => (
-        <React.Fragment key={i}>
-          {i > 0 ? <span aria-hidden>·</span> : null}
-          {typeof p === "string" ? <span>{p}</span> : p}
-        </React.Fragment>
+        // The dot opens its part, inside the part's own box: one text run, never a flex item.
+        <span key={i}>
+          {i > 0 ? <span aria-hidden>· </span> : null}
+          {p}
+        </span>
       ))}
     </span>
   );

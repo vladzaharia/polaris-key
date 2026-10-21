@@ -195,7 +195,11 @@ html[data-shell="console"] [data-pk-backdrop] {
 @media (prefers-reduced-transparency: reduce) {
   html[data-shell="console"] [data-pk-backdrop] {
     backdrop-filter: none;
-    background-color: rgb(0 0 0 / 0.8);
+    background-color: color-mix(
+      in oklab,
+      var(--polaris-key-page-dark) 80%,
+      transparent
+    );
   }
 }
 
@@ -219,6 +223,148 @@ html[data-shell="console"] [data-pk-backdrop] {
   button:not(:disabled),
   [role="button"]:not(:disabled) {
     cursor: pointer;
+  }
+
+  /* The cursor baseline every control answers (UI-KITS.md §1.5 rule 7): the cursor says what the
+     control does, in the three states. It is no visible state (the lint's `interactive-states`
+     ignores a rule that sets only a cursor): each component draws its own hover, pressed and
+     disabled look. A component styles its own look on top (the zero
+     specificity of :where, and this layer, lose to any utility); the focus ring is the
+     :focus-visible rule below. A scroll region that takes focus for the keyboard (WCAG 2.1.1)
+     is no control: it keeps the default cursor. */
+  :where(
+      a[href],
+      button,
+      summary,
+      select,
+      input[type="checkbox"],
+      input[type="radio"],
+      input[type="button"],
+      input[type="submit"],
+      input[type="reset"],
+      input[type="range"],
+      input[type="file"],
+      [role="button"],
+      [role="tab"],
+      [role="menuitem"],
+      [role="radio"],
+      [role="checkbox"],
+      [role="switch"]
+    ):is(:hover, :active):not(:disabled, [aria-disabled="true"]) {
+    cursor: pointer;
+  }
+  :where(
+      input:not(
+        [type="checkbox"],
+        [type="radio"],
+        [type="button"],
+        [type="submit"],
+        [type="reset"],
+        [type="range"],
+        [type="file"],
+        [type="hidden"]
+      ),
+      textarea
+    ):is(:hover, :active):not(:disabled, [aria-disabled="true"]) {
+    cursor: text;
+  }
+  :where([tabindex]:not([tabindex="-1"])):is(:hover, :active) {
+    cursor: auto;
+  }
+  :where(
+    a[href],
+    button,
+    summary,
+    input,
+    select,
+    textarea,
+    [role="button"],
+    [role="tab"],
+    [role="menuitem"],
+    [role="radio"],
+    [role="checkbox"],
+    [role="switch"],
+    [tabindex]:not([tabindex="-1"])
+  ):is(:disabled, [aria-disabled="true"]) {
+    cursor: not-allowed;
+  }
+
+  /* The visible state baseline (UI-KITS.md §1.5 rule 7: hover, pressed at scale 0.98, disabled at
+     42 % opacity). Zero specificity, in this layer: a component's own look (a utility, or the
+     unlayered rules below) wins, and a control with no look of its own still answers. A text field
+     has no pressed look of its own: it shares the hover border. */
+  :where(
+      a[href],
+      button,
+      summary,
+      select,
+      input[type="checkbox"],
+      input[type="radio"],
+      input[type="button"],
+      input[type="submit"],
+      input[type="reset"],
+      input[type="range"],
+      input[type="file"],
+      [role="button"],
+      [role="tab"],
+      [role="menuitem"],
+      [role="radio"],
+      [role="checkbox"],
+      [role="switch"]
+    ):hover:not(:disabled, [aria-disabled="true"]) {
+    background-color: var(--color-hover);
+  }
+  :where(
+      a[href],
+      button,
+      summary,
+      select,
+      input[type="checkbox"],
+      input[type="radio"],
+      input[type="button"],
+      input[type="submit"],
+      input[type="reset"],
+      input[type="range"],
+      input[type="file"],
+      [role="button"],
+      [role="tab"],
+      [role="menuitem"],
+      [role="radio"],
+      [role="checkbox"],
+      [role="switch"]
+    ):active:not(:disabled, [aria-disabled="true"]) {
+    scale: 0.98;
+  }
+  :where(
+      input:not(
+        [type="checkbox"],
+        [type="radio"],
+        [type="button"],
+        [type="submit"],
+        [type="reset"],
+        [type="range"],
+        [type="file"],
+        [type="hidden"]
+      ),
+      textarea
+    ):is(:hover, :active):not(:disabled, [aria-disabled="true"]) {
+    border-color: var(--color-fg-subtle);
+  }
+  :where(
+    a[href],
+    button,
+    summary,
+    input,
+    select,
+    textarea,
+    [role="button"],
+    [role="tab"],
+    [role="menuitem"],
+    [role="radio"],
+    [role="checkbox"],
+    [role="switch"]
+  ):is(:disabled, [aria-disabled="true"]) {
+    opacity: 0.42;
   }
 
   /* Every table cell is vertically centred in its row (the owner's rule: a one-line cell beside a
@@ -337,10 +483,16 @@ html[data-shell="console"] [data-pk-backdrop] {
     text-wrap: balance;
   }
 
+  /* Emphasis is semibold; the brand has no 700 (the lint's `font-weight-700`). */
+  strong,
+  b {
+    font-weight: 600;
+  }
+
   /* Visible focus everywhere keyboard users land: 2 px violet with a 2 px offset in the surface
      colour (BRAND.md §7.4). */
   :focus-visible {
-    @apply outline-hidden ring-2 ring-focus ring-offset-2 ring-offset-surface-page;
+    @apply outline-2 outline-offset-2 outline-focus;
   }
 
   /* A menu's container takes focus when it opens; the highlighted item shows where focus is, so
@@ -363,7 +515,7 @@ html[data-shell="console"] [data-pk-backdrop] {
   /* A portal tile's name link stretches over the whole card (its ::after), so its focus ring is
      the card's: drawn around the name, the heading's truncation clipped it (PS-05 review B1). */
   .pk-pressable-card > article:has(.pk-press-link:focus-visible) {
-    @apply ring-2 ring-focus ring-offset-2 ring-offset-surface-page;
+    @apply outline-2 outline-offset-2 outline-focus;
   }
   .pk-pressable-card .pk-press-link:focus-visible {
     outline: none;
@@ -503,6 +655,72 @@ html[data-shell="console"]
   background-color: var(--pk-action-disabled);
   color: var(--pk-action-disabled-on);
   opacity: 1;
+}
+
+/*
+ * The customer site's touch floor (PORTAL.md §8): below the desk breakpoint every control is at
+ * least 44 px each way, whatever size the component asks for at a desk (the lint's `touch-target`;
+ * WCAG 2.5.8's 24 px is the console's floor, which this leaves alone). Unlayered, so a utility's
+ * smaller `h-9` or `min-h-9` cannot undo it. A checkbox or radio is hit through its label; a
+ * visually hidden control and a link inside a line of text have no box of their own to grow.
+ */
+@media (width < 47.5625rem) {
+  html:not([data-shell="console"])
+    :is(
+      button,
+      select,
+      summary,
+      a[href],
+      input:not(
+        [type="checkbox"],
+        [type="radio"],
+        [type="hidden"],
+        [type="range"],
+        [type="file"]
+      ),
+      [role="button"],
+      [role="tab"],
+      [role="menuitem"]
+    ):not(.sr-only, [role="checkbox"], [role="radio"], [role="switch"]),
+  html:not([data-shell="console"])
+    label:not(.sr-only):has(input:is([type="checkbox"], [type="radio"])),
+  html:not([data-shell="console"])
+    label:not(.sr-only):has(
+      [role="switch"],
+      [role="checkbox"],
+      [role="radio"]
+    ) {
+    min-block-size: 2.75rem;
+    min-inline-size: 2.75rem;
+  }
+}
+
+/*
+ * The console's touch floor: every control is at least 24 px each way (WCAG 2.5.8; the lint's
+ * `touch-target`), however dense the row it sits in. Unlayered, so a utility's smaller height
+ * cannot undo it. A checkbox, radio or switch is hit through its label, which gets the floor
+ * instead; a link inside a line of text is inline and has no box of its own to grow.
+ */
+html[data-shell="console"]
+  :is(
+    button,
+    select,
+    summary,
+    a[href],
+    input:not(
+      [type="checkbox"],
+      [type="radio"],
+      [type="hidden"],
+      [type="range"],
+      [type="file"]
+    ),
+    [role="button"],
+    [role="tab"],
+    [role="menuitem"]
+  ):not(.sr-only, [role="checkbox"], [role="radio"], [role="switch"]),
+html[data-shell="console"] label:not(.sr-only) {
+  min-block-size: 1.5rem;
+  min-inline-size: 1.5rem;
 }
 
 /*

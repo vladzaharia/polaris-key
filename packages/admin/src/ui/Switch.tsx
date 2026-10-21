@@ -64,7 +64,7 @@ export function Switch({
       className={cn(
         // Pressable (src/motion.css): the track presses and its colours ease at `micro`.
         "pk-pressable peer relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border border-border-strong",
-        "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page",
+        "focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2",
         "disabled:cursor-not-allowed disabled:opacity-50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50",
         "data-[state=checked]:border-accent data-[state=checked]:bg-accent data-[state=unchecked]:bg-surface-sunken",
         // Forced colours drop every background to Canvas: the checked track fills with Highlight
@@ -101,7 +101,10 @@ export function Switch({
     // Label first, the switch flush right: a switch reads as a row's trailing control.
     <div className={cn("flex items-start justify-between gap-3", className)}>
       <div className="min-w-0">
-        <label htmlFor={switchId} className="text-sm text-fg">
+        <label
+          htmlFor={switchId}
+          className="inline-flex min-h-6 min-w-6 items-center text-sm text-fg"
+        >
           {label}
         </label>
         {description ? (

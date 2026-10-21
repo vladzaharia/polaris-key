@@ -16,8 +16,8 @@ describe("PageHeader freshness", () => {
   it("pulls a trailing ghost Refresh onto the edge at every width", () => {
     render(<PageHeader title="Operations" freshness={freshness} />);
     expect(refresh().hasAttribute("data-trailing-ghost")).toBe(true);
-    expect(refresh().className).toContain("-mr-3");
-    expect(refresh().className).toContain("sm:-mr-3");
+    expect(refresh().className).toContain("-me-3");
+    expect(refresh().className).toContain("sm:-me-3");
   });
 
   it("leaves it alone when a primary action ends the row on wide screens", () => {
@@ -29,9 +29,9 @@ describe("PageHeader freshness", () => {
       />,
     );
     // Below 640 px the primary action takes its own row, so Refresh still trails there.
-    expect(refresh().className).toMatch(/(^|\s)-mr-3/);
-    expect(refresh().className).toContain("sm:mr-0");
-    expect(refresh().className).not.toContain("sm:-mr-3");
+    expect(refresh().className).toMatch(/(^|\s)-me-3/);
+    expect(refresh().className).toContain("sm:me-0");
+    expect(refresh().className).not.toContain("sm:-me-3");
   });
 
   it("leaves it alone beside an auto-refresh switch", () => {

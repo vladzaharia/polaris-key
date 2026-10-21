@@ -215,7 +215,7 @@ function LicenseFacts({
               <Button
                 asChild
                 variant="quiet"
-                className="h-auto min-h-11 w-full whitespace-normal py-2 text-left sm:w-auto"
+                className="h-auto min-h-11 w-full whitespace-normal py-2 text-start sm:w-auto"
               >
                 <a
                   href={renewHref}

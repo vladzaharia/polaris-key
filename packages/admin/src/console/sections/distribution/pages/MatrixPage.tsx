@@ -222,7 +222,7 @@ function ReleaseHeader({
   now?: number;
 }): React.ReactElement {
   return (
-    <span className="flex min-w-[9rem] flex-col gap-0.5 text-left">
+    <span className="flex min-w-[9rem] flex-col gap-0.5 text-start">
       <span className="flex flex-wrap items-center gap-1.5">
         <span
           className={
@@ -254,7 +254,7 @@ function ReleaseHeader({
 
 function OutletHeader({ outlet }: { outlet: Outlet }): React.ReactElement {
   return (
-    <span className="flex min-w-[8.5rem] flex-col gap-0.5 text-left">
+    <span className="flex min-w-[8.5rem] flex-col gap-0.5 text-start">
       <span className="text-sm font-medium text-fg-strong">
         {outlet.outletId}
       </span>

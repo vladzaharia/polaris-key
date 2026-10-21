@@ -145,7 +145,7 @@ export function MakePrimaryTool({
         <p
           id={errorId}
           role="alert"
-          className="mt-2 text-sm text-danger sm:ml-13"
+          className="mt-2 text-sm text-danger sm:ms-13"
         >
           {error}
         </p>
@@ -161,7 +161,7 @@ export function MakePrimaryTool({
           })
         }
       >
-        <div className="pt-3 sm:ml-13">
+        <div className="pt-3 sm:ms-13">
           <div
             className="max-w-xl space-y-3 rounded-lg border border-border bg-surface-sunken p-4"
             onKeyDown={closeOnEscape(close)}
@@ -309,7 +309,7 @@ export function RenamePasskeyTool({
         })
       }
     >
-      <div className="pt-3 sm:ml-13">
+      <div className="pt-3 sm:ms-13">
         <form
           noValidate
           className="max-w-xl space-y-3 rounded-lg border border-border bg-surface-sunken p-4"

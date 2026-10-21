@@ -387,8 +387,9 @@ function Swatch({
     <span
       role="img"
       aria-label={`Preview of ${color}`}
-      className="inline-block size-5 rounded-full border border-border-strong"
-      style={{ backgroundColor: color }}
+      className="inline-block size-5 rounded-full border border-border-strong bg-(--pk-swatch)"
+      // The colour being previewed is the product's own data, handed over as a custom property.
+      style={{ "--pk-swatch": color } as React.CSSProperties}
     />
   );
 }

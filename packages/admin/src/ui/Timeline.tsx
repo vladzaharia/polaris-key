@@ -73,13 +73,13 @@ export function Timeline<T>({
   const list = (group: T[], ariaLabel?: string) => (
     <ol
       aria-label={ariaLabel}
-      className="relative space-y-1 border-l border-border pl-4"
+      className="relative space-y-1 border-s border-border ps-4"
     >
       {group.map((item) => (
         <li key={getKey(item)} className="relative">
           <span
             aria-hidden
-            className="absolute -left-[1.3125rem] top-3 size-2 rounded-full border border-border-strong bg-surface-page"
+            className="absolute -start-[1.3125rem] top-3 size-2 rounded-full border border-border-strong bg-surface-page"
           />
           {renderItem(item)}
         </li>
@@ -181,7 +181,7 @@ export function TimelineItem({
         <p className="text-fg">
           <time
             dateTime={formatIso(at)}
-            className="mr-2 text-xs text-fg-subtle tabular-nums"
+            className="me-2 text-xs text-fg-subtle tabular-nums"
           >
             <span aria-hidden>{time}</span>
             <span className="sr-only">{formatDateTime(at, opts)}</span>

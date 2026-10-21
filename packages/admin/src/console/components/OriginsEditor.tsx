@@ -97,7 +97,7 @@ export function OriginsEditor({
           {value.map((origin, index) => (
             <li
               key={origin}
-              className="flex items-center justify-between gap-2 py-1 pl-3 pr-1"
+              className="flex items-center justify-between gap-2 py-1 ps-3 pe-1"
             >
               <span className="min-w-0 font-mono text-sm [overflow-wrap:anywhere]">
                 {origin}

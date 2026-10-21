@@ -85,21 +85,20 @@ export function SignedBadge({
           {word}
         </span>
         {kid ? (
-          <>
-            {"\u00a0·\u00a0"}
-            <span
-              className={cn(
-                // A long kid wraps rather than push the page sideways (200 % text on a phone).
-                "font-mono",
-                truncateKid
-                  ? "inline-block max-w-[8rem] truncate align-bottom"
-                  : "whitespace-normal [overflow-wrap:anywhere]",
-              )}
-              title={truncateKid ? kid : undefined}
-            >
-              {kid}
-            </span>
-          </>
+          // The dot is drawn before the kid, not a text node of its own: inside the truncating
+          // flex row a lone dot would be a flex item (the lint's `tier-separator`).
+          <span
+            className={cn(
+              "font-mono before:mx-[0.3em] before:font-sans before:content-['·']",
+              // A long kid wraps rather than push the page sideways (200 % text on a phone).
+              truncateKid
+                ? "inline-block max-w-[8rem] truncate align-bottom"
+                : "whitespace-normal [overflow-wrap:anywhere]",
+            )}
+            title={truncateKid ? kid : undefined}
+          >
+            {kid}
+          </span>
         ) : null}
         {by ? <span className="sr-only"> by {by}</span> : null}
       </span>

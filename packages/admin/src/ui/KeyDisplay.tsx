@@ -87,7 +87,7 @@ export function KeyDisplay({
           )}
         </p>
       ) : value ? (
-        <div className="flex items-center gap-1 rounded-md bg-surface-sunken py-1 pl-3 pr-1">
+        <div className="flex items-center gap-1 rounded-md bg-surface-sunken py-1 ps-3 pe-1">
           <code className="min-w-0 flex-1 break-all font-mono text-xs text-fg-strong">
             {value}
           </code>

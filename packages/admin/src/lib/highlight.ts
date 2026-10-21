@@ -1,6 +1,6 @@
 /**
  * A tiny static highlighter for `CodeBlock` (components.md §6.7): json, ts, sh, toml and yaml,
- * with no runtime library. It is a single left-to-right scan per line that recognises comments,
+ * with no runtime library. It is a single start-to-right scan per line that recognises comments,
  * strings, numbers, keywords, keys and punctuation; anything else is plain text. Good enough for
  * snippets and config excerpts, deliberately not a parser.
  */

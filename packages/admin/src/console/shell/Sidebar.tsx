@@ -315,7 +315,7 @@ export function Sidebar({
               aria-label={rail ? "Expand the sidebar" : "Collapse the sidebar"}
               className={cn(
                 "flex min-h-10 w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm text-fg-muted hover:bg-hover hover:text-fg-strong",
-                "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus",
+                "focus-visible:outline-2 focus-visible:outline-focus",
                 rail && "justify-center px-0",
               )}
             >
@@ -493,11 +493,11 @@ function SidebarGroup({
           onMouseEnter={onPrefetch}
           onFocus={onPrefetch}
           className={cn(
-            "relative flex min-h-10 w-full items-center gap-2 overflow-hidden rounded-md py-1 pl-2 pr-2 text-sm font-medium text-fg-strong",
-            "hover:bg-accent-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent-fg",
+            "relative flex min-h-10 w-full items-center gap-2 overflow-hidden rounded-md py-1 ps-2 pe-2 text-sm font-medium text-fg-strong",
+            "hover:bg-accent-subtle focus-visible:outline-2 focus-visible:outline-accent-fg",
             // The selected row: fill and the 3 px inset marker, never the fill alone.
             current &&
-              "bg-accent-subtle before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-accent forced-colors:before:bg-[Highlight]",
+              "bg-accent-subtle before:absolute before:inset-y-0 before:start-0 before:w-[3px] before:bg-accent forced-colors:before:bg-[Highlight]",
           )}
         >
           <span
@@ -527,10 +527,10 @@ function SidebarGroup({
           data-section-header={groupKey}
           title={active ? "Contains the current page" : undefined}
           className={cn(
-            "group flex min-h-10 w-full items-center gap-2 rounded-md py-1 pl-2 pr-2 text-left text-sm font-medium",
+            "group flex min-h-10 w-full items-center gap-2 rounded-md py-1 ps-2 pe-2 text-start text-sm font-medium",
             // Forced colours draw a button as a bordered box; the header is a row, not a control box.
             "forced-colors:border-0",
-            "text-fg-strong hover:bg-accent-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent-fg",
+            "text-fg-strong hover:bg-accent-subtle focus-visible:outline-2 focus-visible:outline-accent-fg",
             active && "cursor-default hover:bg-transparent",
           )}
         >
@@ -605,11 +605,11 @@ export function SidebarItem({
       onFocus={onPrefetch}
       className={cn(
         "relative flex min-h-10 items-center gap-2.5 overflow-hidden rounded-md px-3 py-2 text-sm transition-colors",
-        "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent-fg",
+        "focus-visible:outline-2 focus-visible:outline-accent-fg",
         rail && "justify-center px-0",
         // The selected row: a subtle accent fill and a 3 px inset marker, never a solid pill.
         active
-          ? "bg-accent-subtle font-medium text-fg-strong before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-accent forced-colors:before:bg-[Highlight]"
+          ? "bg-accent-subtle font-medium text-fg-strong before:absolute before:inset-y-0 before:start-0 before:w-[3px] before:bg-accent forced-colors:before:bg-[Highlight]"
           : "text-fg-muted hover:bg-accent-subtle hover:text-fg-strong",
       )}
     >
@@ -629,14 +629,14 @@ export function SidebarItem({
         <span
           aria-hidden
           data-nav-dot=""
-          className="absolute right-2 top-1.5 size-2 rounded-full bg-warning"
+          className="absolute end-2 top-1.5 size-2 rounded-full bg-warning"
         />
       ) : null}
       {rail ? null : (
         <span className={cn("truncate", RAIL_FADE)}>{page.label}</span>
       )}
       {badge && !rail ? (
-        <span className="ml-auto inline-flex items-center gap-1 text-xs text-warning">
+        <span className="ms-auto inline-flex items-center gap-1 text-xs text-warning">
           <TriangleAlert aria-hidden className="size-3.5" />
           {badge}
           <span className="sr-only">

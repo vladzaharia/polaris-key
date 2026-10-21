@@ -618,7 +618,7 @@ export function ConnectorCard({
         <DescriptionList columns={2} items={setupFacts(connector)} />
       ) : null}
       {connector.notes?.length ? (
-        <ul className="list-disc space-y-1 break-words pl-5 text-xs text-fg-muted">
+        <ul className="list-disc space-y-1 break-words ps-5 text-xs text-fg-muted">
           {connector.notes.map((n) => (
             <li key={n}>{n}</li>
           ))}

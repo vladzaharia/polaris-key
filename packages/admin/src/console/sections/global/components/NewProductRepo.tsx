@@ -450,7 +450,7 @@ export function CheckStep({
         <NoPkey repo={d.repository} onScratch={onScratch} again={again} />
       ) : d.problems.length > 0 ? (
         <Callout tone="danger" title="Fix these in one commit" live>
-          <ul className="mt-1 list-disc space-y-1 pl-5">
+          <ul className="mt-1 list-disc space-y-1 ps-5">
             {d.problems.map((p) => (
               <li key={`${p.file}${p.path}${p.message}`}>
                 {p.file ? (

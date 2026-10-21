@@ -157,7 +157,7 @@ export function AppToaster({
             // The portal's toasts sit inside its content column (82rem, 2rem gutters), not the window's edge.
             offset: {
               bottom: `var(${TOAST_BOTTOM_INSET_VAR}, 24px)`,
-              right: "max(2rem, calc((100vw - 82rem) / 2 + 2rem))",
+              right: "max(2rem, calc((100% - 82rem) / 2 + 2rem))",
             },
             mobileOffset: { bottom: `var(${TOAST_BOTTOM_INSET_VAR}, 16px)` },
           }
@@ -187,7 +187,7 @@ export function AppToaster({
         unstyled: true,
         classNames: {
           toast:
-            "group flex w-full items-start gap-3 rounded-lg border border-border bg-surface-overlay p-4 pr-11 text-sm max-sm:pr-14 text-fg shadow-elevation-3 sm:w-[22rem]",
+            "group flex w-full items-start gap-3 rounded-lg border border-border bg-surface-overlay p-4 pe-11 text-sm max-sm:pe-14 text-fg shadow-elevation-3 sm:w-[22rem]",
           success: "border-success-border",
           info: "border-info-border",
           warning: "border-warning-border",
@@ -197,9 +197,9 @@ export function AppToaster({
           title: "font-semibold text-fg-strong",
           description: "text-fg-muted",
           actionButton:
-            "ml-auto inline-flex h-7 shrink-0 items-center rounded-md border border-border-strong px-2 text-xs text-fg-strong hover:bg-hover focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus",
+            "ms-auto inline-flex h-7 shrink-0 items-center rounded-md border border-border-strong px-2 text-xs text-fg-strong hover:bg-hover focus-visible:outline-2 focus-visible:outline-focus",
           closeButton:
-            "absolute right-1.5 top-1.5 inline-flex size-8 items-center max-sm:size-11 justify-center rounded-md text-fg-muted hover:bg-hover hover:text-fg-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus",
+            "absolute end-1.5 top-1.5 inline-flex size-8 items-center max-sm:size-11 justify-center rounded-md text-fg-muted hover:bg-hover hover:text-fg-strong focus-visible:outline-2 focus-visible:outline-focus",
         },
       }}
     />

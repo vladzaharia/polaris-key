@@ -112,7 +112,7 @@ export function FeedPage({ slug }: { slug: string }): React.ReactElement {
               feed serves the defaults shown here; the compatibility window can
               still be changed.{" "}
               <a
-                className="text-accent-fg underline-offset-4 hover:underline"
+                className="py-1 text-accent-fg underline-offset-4 hover:underline"
                 href={docsUrl("updateAccessNote")}
                 target="_blank"
                 rel="noreferrer"
@@ -254,7 +254,7 @@ function AccessSection({
               </span>
               <Link
                 to={r.access(slug)}
-                className="text-accent-fg underline-offset-4 hover:underline"
+                className="py-1 text-accent-fg underline-offset-4 hover:underline"
               >
                 Change in Rollouts → Access
               </Link>
@@ -264,7 +264,7 @@ function AccessSection({
               {errorCopy(access.error).title}.{" "}
               <Link
                 to={r.access(slug)}
-                className="text-accent-fg underline-offset-4 hover:underline"
+                className="py-1 text-accent-fg underline-offset-4 hover:underline"
               >
                 Open Rollouts → Access
               </Link>

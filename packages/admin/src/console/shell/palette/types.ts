@@ -67,7 +67,7 @@ export interface PaletteItem {
   /** Shown only once the query matches it, never in the untyped list (EXPERIENCE.md §0.3 J-1). */
   matchOnly?: boolean;
   /**
-   * A right-aligned issue pill (EXPERIENCE.md §7: pills only for issues). Entity rows (UX-06b)
+   * A end-aligned issue pill (EXPERIENCE.md §7: pills only for issues). Entity rows (UX-06b)
    * carry one when the thing they name has a problem; healthy rows carry none.
    */
   /** A "See all N" row: the group shows `shown` of `total` rows (the count says so, and skips this row). */

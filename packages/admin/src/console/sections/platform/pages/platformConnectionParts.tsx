@@ -186,7 +186,10 @@ export function ReviewStep({
             {error.link ? (
               <>
                 {" "}
-                <a href={error.link.href} className="text-accent-fg underline">
+                <a
+                  href={error.link.href}
+                  className="py-1 text-accent-fg underline"
+                >
                   {error.link.label}
                 </a>
               </>

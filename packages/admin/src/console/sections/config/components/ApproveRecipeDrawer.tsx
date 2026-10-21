@@ -232,7 +232,7 @@ export function ApproveRecipeDrawer({
   const movedRows = fields.filter((f) => f.moved);
   const keptRows = hasApproval ? fields.filter((f) => !f.moved) : [];
   const shownRows = approved ? fields : hasApproval ? movedRows : fields;
-  // "Name <email>" reads as the name: the angle brackets reorder inside right-to-left text.
+  // "Name <email>" reads as the name: the angle brackets reorder inside end-to-left text.
   const approver = recipe?.approval?.approvedBy?.replace(/\s*<[^>]*>\s*$/, "");
   const draftEdited = ((): boolean => {
     const e = loadDraft(slug)?.entries.find((x) => x.key === recipeId);
@@ -368,7 +368,7 @@ export function ApproveRecipeDrawer({
                     as an edge-mint signing key in{" "}
                     <Link
                       to={r.keys(slug)}
-                      className="text-accent-fg underline underline-offset-2"
+                      className="py-1 text-accent-fg underline underline-offset-2"
                     >
                       Keys &amp; secrets
                     </Link>
@@ -508,7 +508,7 @@ export function ApproveRecipeDrawer({
             // The escape hatch sits apart from the primary action, on the far side.
             <Button
               variant="ghost"
-              className="text-danger sm:mr-auto"
+              className="text-danger sm:me-auto"
               disabled={busy}
               onClick={() => setRevoking(true)}
             >

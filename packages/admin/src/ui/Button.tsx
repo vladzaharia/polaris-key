@@ -29,15 +29,15 @@ import { useWriteLock } from "./WriteLock.js";
  *   S-23 §6.2), so the hover eases with the other colours; `pk-pressable` gives the press.
  */
 export const buttonVariants = cva(
-  // A touch screen's target is 44 px tall (EXPERIENCE §7.3); a link-style button sits in a line of
-  // text, which the target-size exception covers, so it keeps its own height.
+  // A touch screen's target is 44 px tall (EXPERIENCE §7.3); a link-style button keeps its own
+  // height but never goes under the 24 px floor (WCAG 2.5.8) unless a caller sits it in a sentence.
   cn(BUTTON_BASE, "pointer-coarse:min-h-11"),
   {
     variants: { variant: BUTTON_VARIANTS, size: BUTTON_SIZES },
     compoundVariants: [
       {
         variant: "link",
-        class: "h-auto min-w-0 px-0 pointer-coarse:min-h-0",
+        class: "h-auto min-h-6 min-w-0 px-0 pointer-coarse:min-h-6",
       },
     ],
     defaultVariants: { variant: "primary", size: "md" },

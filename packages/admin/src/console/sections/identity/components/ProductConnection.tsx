@@ -32,7 +32,7 @@ function Fact({
   return (
     <div className="grid min-h-10 grid-cols-1 items-center gap-x-4 gap-y-0.5 py-1.5 sm:grid-cols-[7.5rem_minmax(0,1fr)]">
       <dt className="text-sm text-fg-muted">{term}</dt>
-      <dd className="min-w-0 text-right text-sm text-fg-strong [&>*]:justify-end">
+      <dd className="min-w-0 text-end text-sm text-fg-strong [&>*]:justify-end">
         {children}
       </dd>
     </div>
@@ -205,14 +205,14 @@ function GroupsTable({
       role="region"
       aria-label="Groups and tiers"
     >
-      <table className="w-full text-left text-sm">
+      <table className="w-full text-start text-sm">
         <caption className="sr-only">Groups and tiers</caption>
         <thead className="text-xs text-fg-muted">
           <tr className="border-b border-border">
-            <th scope="col" className="py-2 pr-4 font-medium">
+            <th scope="col" className="py-2 pe-4 font-medium">
               Group
             </th>
-            <th scope="col" className="py-2 pr-4 font-medium">
+            <th scope="col" className="py-2 pe-4 font-medium">
               Role
             </th>
             <th scope="col" className="py-2 font-medium">
@@ -223,10 +223,10 @@ function GroupsTable({
         <tbody className="divide-y divide-border">
           {groups.map((g) => (
             <tr key={g.group}>
-              <td className="py-2 pr-4 font-mono text-xs text-fg-strong">
+              <td className="py-2 pe-4 font-mono text-xs text-fg-strong">
                 {g.group}
               </td>
-              <td className="py-2 pr-4">
+              <td className="py-2 pe-4">
                 {g.role ?? <span className="text-fg-muted">None</span>}
               </td>
               <td className="py-2">

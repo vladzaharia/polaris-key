@@ -172,7 +172,7 @@ export function SourceBadge({
           type="button"
           aria-haspopup="dialog"
           className={cn(
-            "inline-flex rounded-full focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page",
+            "inline-flex rounded-full focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2",
             className,
           )}
         >

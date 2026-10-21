@@ -151,7 +151,7 @@ export function Wizard({
           className="text-lg font-semibold text-fg-strong outline-none"
         >
           {titleIcon ? (
-            <span className="mr-2 inline-flex align-text-bottom">
+            <span className="me-2 inline-flex align-text-bottom">
               {titleIcon}
             </span>
           ) : null}
@@ -201,7 +201,7 @@ export function Wizard({
       variant="outline"
       className={cn(
         isDrawer
-          ? "max-sm:order-2 max-sm:ml-auto"
+          ? "max-sm:order-2 max-sm:ms-auto"
           : // The page host on a phone stacks: reason, primary, Back, Do this later, one left edge.
             "max-sm:order-3 max-sm:w-full",
       )}
@@ -256,7 +256,7 @@ export function Wizard({
       ) : null}
       <div
         className={cn(
-          "ml-auto flex flex-wrap items-center gap-2",
+          "ms-auto flex flex-wrap items-center gap-2",
           "max-sm:contents",
         )}
       >
@@ -305,7 +305,8 @@ export function Wizard({
         discard={drawer.discard}
         dismissible={drawer.dismissible}
         eyebrow={drawer.eyebrow}
-        closeStyle="close"
+        // With a "later" action (Cancel) in the footer from sm up, the corner X shows below sm only.
+        closeStyle={footer.later ? "close-narrow" : "close"}
       >
         <DrawerBody className={className} data-wizard="drawer">
           <div className="space-y-4">

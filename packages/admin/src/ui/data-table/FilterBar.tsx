@@ -256,14 +256,14 @@ export function FilterBar({
             </span>
             <Search
               aria-hidden
-              className="pointer-events-none absolute left-2.5 size-4 text-fg-subtle"
+              className="pointer-events-none absolute start-2.5 size-4 text-fg-subtle"
             />
             <input
               type="search"
               value={q}
               placeholder={search.placeholder}
               onChange={(e) => setQ(e.target.value)}
-              className="h-8 w-full rounded-md border border-border-strong bg-surface-sunken pl-8 pr-2 text-sm text-fg"
+              className="h-8 w-full rounded-md border border-border-strong bg-surface-sunken ps-8 pe-2 text-sm text-fg"
             />
           </label>
         ) : null}
@@ -272,7 +272,7 @@ export function FilterBar({
         ))}
         {dateRange}
         {actions ? (
-          <div className="ml-auto flex flex-wrap items-center gap-2">
+          <div className="ms-auto flex flex-wrap items-center gap-2">
             {actions}
           </div>
         ) : null}
@@ -296,7 +296,7 @@ export function FilterBar({
                   "data-[state=closed]:animate-pk-fade-out motion-reduce:animate-none",
                 )}
               >
-                <span className="inline-flex h-7 items-center gap-1 rounded-full border border-accent-fg bg-accent-subtle pl-2.5 pr-1 text-xs text-fg-strong">
+                <span className="inline-flex h-7 items-center gap-1 rounded-full border border-accent-fg bg-accent-subtle ps-2.5 pe-1 text-xs text-fg-strong">
                   {c.facet.label}: {c.label}
                   <button
                     type="button"

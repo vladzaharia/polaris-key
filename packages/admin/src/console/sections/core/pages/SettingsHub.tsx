@@ -95,7 +95,7 @@ export function SettingsHub({
         <nav aria-label="Breadcrumb" className="text-sm text-fg-muted">
           <Link
             to={r.overview(slug)}
-            className="rounded-xs underline-offset-4 hover:underline"
+            className="rounded-xs py-1 underline-offset-4 hover:underline"
           >
             {name}
           </Link>
@@ -114,7 +114,7 @@ export function SettingsHub({
           >
             Settings
           </h1>
-          <div className="ml-auto flex items-center gap-1">
+          <div className="ms-auto flex items-center gap-1">
             <Button asChild variant="ghost" size="sm">
               <Link
                 to={productPage(slug, "settings-all")}

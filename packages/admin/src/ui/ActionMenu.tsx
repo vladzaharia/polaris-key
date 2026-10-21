@@ -58,7 +58,8 @@ export function ActionMenu({
           align={align}
           sideOffset={4}
           aria-label={label}
-          className="z-50 min-w-48 max-w-xs rounded-md border border-border bg-surface-overlay p-1 text-sm text-fg shadow-elevation-2 animate-pk-in"
+          // Scrolls inside the space the viewport leaves (44 px items on a short, zoomed window).
+          className="z-50 max-h-(--radix-dropdown-menu-content-available-height) min-w-48 max-w-xs overflow-y-auto rounded-md border border-border bg-surface-overlay p-1 text-sm text-fg shadow-elevation-2 animate-pk-in"
         >
           {items.map((item, i) =>
             item.type === "separator" ? (

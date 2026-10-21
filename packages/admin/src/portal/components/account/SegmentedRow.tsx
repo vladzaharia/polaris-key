@@ -42,8 +42,8 @@ export function SegmentedRow<V extends string>({
             value={o.value}
             className={cn(
               "inline-flex min-h-9 items-center justify-center rounded-md border border-transparent px-3 text-sm text-fg-muted outline-none",
-              "max-sm:min-h-11 max-sm:flex-1",
-              "hover:text-fg-strong focus-visible:ring-2 focus-visible:ring-focus",
+              "max-desk:min-h-11 max-sm:flex-1",
+              "hover:text-fg-strong focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-focus",
               "data-[state=checked]:border-border-strong data-[state=checked]:bg-surface-raised data-[state=checked]:font-semibold data-[state=checked]:text-fg-strong",
               "forced-colors:data-[state=checked]:border-[Highlight]",
             )}

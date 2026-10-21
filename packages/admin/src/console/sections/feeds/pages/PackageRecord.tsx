@@ -225,7 +225,7 @@ function sourceLine(v: FeedPackageVersion): React.ReactNode {
               href={s.runUrl}
               target="_blank"
               rel="noreferrer"
-              className="text-accent-fg underline underline-offset-4"
+              className="py-1 text-accent-fg underline underline-offset-4"
             >
               run
             </a>

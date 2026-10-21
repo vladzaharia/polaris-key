@@ -491,7 +491,7 @@ function CountdownRing({
       focusable="false"
       data-countdown-ring=""
       viewBox="0 0 16 16"
-      className="mr-1.5 inline-block size-3 align-[-1px]"
+      className="me-1.5 inline-block size-3 align-[-1px]"
     >
       <circle
         cx="8"

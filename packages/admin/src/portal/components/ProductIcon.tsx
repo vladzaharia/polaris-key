@@ -1,7 +1,7 @@
 import * as React from "react";
 import { cn } from "../../lib/cn.js";
 import { iconShape, type IconShape } from "../../lib/productArt.js";
-import { letterOf, tintFor } from "./ProductArt.js";
+import { artTint, letterOf, tintFor } from "./ProductArt.js";
 
 export { iconShape };
 
@@ -106,12 +106,12 @@ export function ProductIcon({
     <span
       aria-hidden
       data-art="fallback"
-      style={neutral ? undefined : { backgroundColor: tintFor(slug, tint) }}
+      style={neutral ? undefined : artTint(tintFor(slug, tint))}
       className={cn(
         "inline-flex shrink-0 items-center justify-center font-medium",
         neutral
           ? "border border-border bg-surface-sunken text-fg-strong"
-          : "text-[#f4f1ff]",
+          : "bg-(--pk-art) text-(--pk-brand-text)",
         SIZE[size],
         TILE[size],
         RADIUS[size],

@@ -75,7 +75,7 @@ export function StepUpCallout({
       action={
         <a
           href={stepUpHref(hash)}
-          className="whitespace-nowrap font-medium text-accent-fg underline underline-offset-2"
+          className="py-1 whitespace-nowrap font-medium text-accent-fg underline underline-offset-2"
         >
           Sign in again
         </a>

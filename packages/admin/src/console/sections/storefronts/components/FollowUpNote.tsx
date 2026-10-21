@@ -33,7 +33,7 @@ export function FollowUpNote({
         ) : null}
       </div>
       {followUp.url ? (
-        <Button size="sm" variant="outline" className="ml-auto" asChild>
+        <Button size="sm" variant="outline" className="ms-auto" asChild>
           <a href={followUp.url} target="_blank" rel="noreferrer noopener">
             <ExternalLink aria-hidden />
             Open {storeLabel}

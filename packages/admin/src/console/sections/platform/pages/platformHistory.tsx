@@ -144,7 +144,7 @@ export function HistorySection({
                       <span className="font-medium text-fg-strong">
                         {s?.label ?? a.target?.id ?? "a setting"}
                         {change ? (
-                          <span className="ml-1 font-normal text-fg-muted">
+                          <span className="ms-1 font-normal text-fg-muted">
                             {change}
                           </span>
                         ) : null}

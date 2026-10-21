@@ -475,7 +475,9 @@ describe.concurrent(
           // The line begins at the box's left edge (beside the icon), not its right, and the name
           // still reads right to left (`dir="auto"`).
           expect(at.textLeft).toBeLessThan(at.textRight + 1);
-          expect(at.align).toBe("left");
+          // `text-align: match-parent`: the page's start edge, so "start" in this LTR page (the
+          // lint bans the physical `left`).
+          expect(["start", "left"]).toContain(at.align);
           expect(at.dir).toBe("auto");
         } finally {
           await o.close();

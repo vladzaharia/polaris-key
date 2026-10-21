@@ -91,7 +91,7 @@ export function LibraryToolbar({
       <label className="relative flex h-11 pointer-coarse:h-[46px] min-w-0 basis-full items-center rounded-md border border-border-strong bg-surface-page wide:w-80 wide:flex-none wide:basis-auto">
         <Search
           aria-hidden
-          className="pointer-events-none absolute left-3 size-4 text-fg-muted"
+          className="pointer-events-none absolute start-3 size-4 text-fg-muted"
         />
         <input
           ref={searchRef}
@@ -101,7 +101,7 @@ export function LibraryToolbar({
           placeholder={label}
           value={q}
           onChange={(e) => onChange({ q: e.target.value })}
-          className="h-full w-full min-w-0 bg-transparent pl-10 pr-10 text-md text-fg-strong outline-none placeholder:text-fg-subtle focus-visible:ring-0 focus-visible:ring-offset-0"
+          className="h-full w-full min-w-0 bg-transparent ps-10 pe-10 text-md text-fg-strong outline-none placeholder:text-fg-subtle"
         />
         <Kbd
           keys={
@@ -110,7 +110,7 @@ export function LibraryToolbar({
               ? "⌘K"
               : "Ctrl K"
           }
-          className="absolute right-3 hidden desk:flex"
+          className="absolute end-3 hidden desk:flex"
         />
       </label>
       <div
@@ -152,7 +152,7 @@ export function LibraryToolbar({
       {/* Sort and the view toggle share a row on a phone (LF3); from `sm` they sit beside the chips. */}
       <div
         data-library-view-row=""
-        className="flex min-w-0 flex-wrap items-center justify-between gap-3 max-sm:basis-full sm:ml-auto"
+        className="flex min-w-0 flex-wrap items-center justify-between gap-3 max-sm:basis-full sm:ms-auto"
       >
         <label className="flex items-center">
           <span className="sr-only">{t("locker.library.sort")}</span>

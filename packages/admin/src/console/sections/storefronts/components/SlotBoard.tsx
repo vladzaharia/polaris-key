@@ -86,7 +86,7 @@ function SlotRow({
           <p className="text-xs text-fg">{slot.spec}</p>
         ) : null}
       </div>
-      <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
+      <div className="ms-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
         {slot.state === "missing" && slot.kind === "human" ? (
           <StatusPill tone="danger" size="sm">
             Needed
@@ -156,7 +156,7 @@ export function SlotBoard({
           <code className="font-mono text-xs">.pkey/</code> assets and run{" "}
           <code className="font-mono text-xs">pkey listing assets</code> in CI.{" "}
           <a
-            className="text-accent-fg underline underline-offset-4"
+            className="py-1 text-accent-fg underline underline-offset-4"
             href={docsUrl("storefrontListing")}
             target="_blank"
             rel="noreferrer"

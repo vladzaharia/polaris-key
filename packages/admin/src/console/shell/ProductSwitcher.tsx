@@ -197,7 +197,7 @@ export function ProductSwitcher({
   const groupHeading =
     "[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:text-fg-muted";
   const link =
-    "flex min-h-10 items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent-fg";
+    "flex min-h-10 items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent-subtle focus-visible:outline-2 focus-visible:outline-accent-fg";
   const name = current ? current.name : platform ? "Platform" : "All products";
   return (
     <Popover.Root open={open} onOpenChange={onOpenChange}>
@@ -212,8 +212,8 @@ export function ProductSwitcher({
           }
           title={name}
           className={cn(
-            "flex w-full min-w-0 items-center overflow-hidden rounded-lg border border-border text-left text-sm",
-            "hover:bg-hover focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus",
+            "flex w-full min-w-0 items-center overflow-hidden rounded-lg border border-border text-start text-sm",
+            "hover:bg-hover focus-visible:outline-2 focus-visible:outline-focus",
             rail ? "min-h-12 justify-center" : "min-h-[72px] gap-3 px-3 py-3",
           )}
         >
@@ -259,7 +259,7 @@ export function ProductSwitcher({
               back.focus({ preventScroll: true });
             }
           }}
-          className="z-50 w-80 max-w-[calc(100vw-1rem)] rounded-lg border border-border bg-surface-overlay p-1 text-fg shadow-elevation-2 animate-pk-in"
+          className="z-50 w-80 max-w-[calc(var(--radix-popper-available-width)-1rem)] rounded-lg border border-border bg-surface-overlay p-1 text-fg shadow-elevation-2 animate-pk-in"
         >
           <Command label="Find a product" shouldFilter={false} loop>
             <Command.Input
@@ -267,7 +267,7 @@ export function ProductSwitcher({
               onValueChange={setQuery}
               placeholder="Find a product…"
               aria-label="Find a product"
-              className="mb-1 w-full rounded-sm border border-border-strong bg-transparent px-2 py-1.5 text-sm outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+              className="mb-1 w-full rounded-sm border border-border-strong bg-transparent px-2 py-1.5 text-sm outline-hidden focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-focus"
             />
             <Command.List label="Products" className="max-h-72 overflow-y-auto">
               <Command.Empty className="px-2 py-3 text-sm text-fg-muted">

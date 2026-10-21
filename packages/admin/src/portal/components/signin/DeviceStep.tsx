@@ -144,7 +144,7 @@ export function DeviceStep({
               height={168}
               className="size-42 shrink-0 rounded-md bg-white p-2"
             />
-            <div className="text-center sm:text-left">
+            <div className="text-center sm:text-start">
               <p
                 data-device-code
                 className="font-mono text-3xl font-medium tracking-widest text-fg-strong"

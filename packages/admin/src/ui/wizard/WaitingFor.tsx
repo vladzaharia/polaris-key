@@ -63,7 +63,7 @@ export function WaitingFor({
           <span className="min-w-0 flex-1 text-fg">
             {timedOutText}. {waiting}.
           </span>
-          <span className="ml-auto flex flex-wrap items-center gap-2">
+          <span className="ms-auto flex flex-wrap items-center gap-2">
             <Button
               size="sm"
               variant="ghost"

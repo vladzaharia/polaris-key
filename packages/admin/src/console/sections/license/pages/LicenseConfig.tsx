@@ -173,7 +173,7 @@ function SignUpOffer({ url }: { url: string }): React.ReactElement {
         href={url}
         target="_blank"
         rel="noreferrer"
-        className="break-all font-mono text-xs text-accent-fg underline underline-offset-2"
+        className="py-1 break-all font-mono text-xs text-accent-fg underline underline-offset-2"
       >
         {url}
       </a>

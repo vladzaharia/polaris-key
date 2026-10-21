@@ -44,6 +44,14 @@ export function tintFor(slug: string, tint: string | null): string {
 
 export { letterOf };
 
+/**
+ * A product's tint, handed to the art as a custom property: the colour is the product's own data,
+ * not a token, and `bg-(--pk-art)` paints it.
+ */
+export function artTint(color: string): React.CSSProperties {
+  return { "--pk-art": color } as React.CSSProperties;
+}
+
 /** `icon` is `ProductIcon`. */
 export type ArtVariant = "banner" | "tile" | "thumb";
 
@@ -165,8 +173,8 @@ export function ProductArt({
       <div
         ref={box}
         data-art="image"
-        style={{ backgroundColor: background }}
-        className={cn("relative overflow-hidden", className)}
+        style={artTint(background)}
+        className={cn("relative overflow-hidden bg-(--pk-art)", className)}
       >
         {fit === "contain" ? img_(true) : null}
         {img_(false)}
@@ -178,14 +186,14 @@ export function ProductArt({
     <div
       ref={box}
       data-art="fallback"
-      style={{ backgroundColor: background }}
-      className={cn("relative overflow-hidden", className)}
+      style={artTint(background)}
+      className={cn("relative overflow-hidden bg-(--pk-art)", className)}
     >
       {showLetter ? (
         <span
           aria-hidden
           className={cn(
-            "absolute left-1/2 top-1/2 inline-flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-[22%] bg-black/25 font-medium text-[#f4f1ff]",
+            "absolute start-1/2 top-1/2 inline-flex -translate-x-1/2 rtl:translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-[22%] bg-(--polaris-key-page-dark)/25 font-medium text-(--pk-brand-text)",
             variant === "banner" && "size-28 text-6xl",
             variant === "tile" && "size-16 text-3xl",
             variant === "thumb" && "size-9 text-lg",

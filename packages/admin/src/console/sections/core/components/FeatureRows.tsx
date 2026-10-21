@@ -70,7 +70,7 @@ function TurnOnFirst({
     <button
       id={id}
       type="button"
-      className="rounded-sm text-left text-sm text-accent-fg underline underline-offset-2 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+      className="rounded-sm text-start text-sm text-accent-fg underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-focus"
       onClick={() => {
         const target = document.getElementById(featureSwitchId(missing[0]!));
         target?.scrollIntoView({ block: "center" });
@@ -145,7 +145,7 @@ function Status({
           href={STOREFRONT_DOCS}
           target="_blank"
           rel="noreferrer"
-          className="text-accent-fg underline underline-offset-2 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+          className="py-1 text-accent-fg underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-focus"
         >
           {text} →
         </a>
@@ -307,7 +307,7 @@ export function FeatureRowItem({
               live
               title={<span id={errorId}>The server refused this change</span>}
             >
-              <ul id={detailId} className="list-disc space-y-1 pl-5">
+              <ul id={detailId} className="list-disc space-y-1 ps-5">
                 {errorMessages.map((message) => (
                   <li key={message}>{message}</li>
                 ))}

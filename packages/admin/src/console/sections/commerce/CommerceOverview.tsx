@@ -30,7 +30,7 @@ const STORES: readonly { id: CommerceStore; label: string }[] = [
   { id: "steam", label: "Steam" },
 ];
 
-const LINK = "text-accent-fg underline underline-offset-2";
+const LINK = "py-1 text-accent-fg underline underline-offset-2";
 
 /** The house vocabulary for what the server says about a store: no raw reasons. */
 function storefrontState(
@@ -51,7 +51,7 @@ function SandboxTag({
 }): React.ReactElement | null {
   if (environment === "Production") return null;
   return (
-    <span className="ml-2 rounded-sm border border-border px-1 text-xs text-fg-muted">
+    <span className="ms-2 rounded-sm border border-border px-1 text-xs text-fg-muted">
       {environment === "Sandbox" ? "Sandbox" : environment}
     </span>
   );
@@ -151,17 +151,17 @@ export function CommerceOverviewPage({
               <ScrollTable
                 label="Storefronts table"
                 caption="Storefronts"
-                className="w-full text-left text-sm"
+                className="w-full text-start text-sm"
               >
                 <thead className="text-xs text-fg-muted">
                   <tr className="border-b border-border">
-                    <th scope="col" className="py-2 pr-4 font-medium">
+                    <th scope="col" className="py-2 pe-4 font-medium">
                       Store
                     </th>
-                    <th scope="col" className="py-2 pr-4 font-medium">
+                    <th scope="col" className="py-2 pe-4 font-medium">
                       Status
                     </th>
-                    <th scope="col" className="py-2 text-right font-medium">
+                    <th scope="col" className="py-2 text-end font-medium">
                       Mapped products
                     </th>
                   </tr>
@@ -169,19 +169,17 @@ export function CommerceOverviewPage({
                 <tbody className="divide-y divide-border">
                   {rows.map((s) => (
                     <tr key={s.id}>
-                      <th scope="row" className="py-2 pr-4 font-medium">
+                      <th scope="row" className="py-2 pe-4 font-medium">
                         {s.label}
                       </th>
-                      <td className="py-2 pr-4">
+                      <td className="py-2 pe-4">
                         <StatusPill
                           domain="storefront"
                           state={s.state}
                           size="sm"
                         />
                       </td>
-                      <td className="py-2 text-right tabular-nums">
-                        {s.mapped}
-                      </td>
+                      <td className="py-2 text-end tabular-nums">{s.mapped}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -238,20 +236,20 @@ export function CommerceOverviewPage({
                   <ScrollTable
                     label="Recent purchases table"
                     caption="Recent purchases"
-                    className="w-full text-left text-sm"
+                    className="w-full text-start text-sm"
                   >
                     <thead className="text-xs text-fg-muted">
                       <tr className="border-b border-border">
-                        <th scope="col" className="py-2 pr-4 font-medium">
+                        <th scope="col" className="py-2 pe-4 font-medium">
                           Store
                         </th>
-                        <th scope="col" className="py-2 pr-4 font-medium">
+                        <th scope="col" className="py-2 pe-4 font-medium">
                           Product
                         </th>
-                        <th scope="col" className="py-2 pr-4 font-medium">
+                        <th scope="col" className="py-2 pe-4 font-medium">
                           State
                         </th>
-                        <th scope="col" className="py-2 text-right font-medium">
+                        <th scope="col" className="py-2 text-end font-medium">
                           Verified
                         </th>
                       </tr>
@@ -259,21 +257,21 @@ export function CommerceOverviewPage({
                     <tbody className="divide-y divide-border">
                       {latest.map((p) => (
                         <tr key={`${p.store}:${p.purchase}`}>
-                          <td className="py-2 pr-4">{storeLabel(p.store)}</td>
-                          <td className="py-2 pr-4">
+                          <td className="py-2 pe-4">{storeLabel(p.store)}</td>
+                          <td className="py-2 pe-4">
                             <code className="break-words font-mono text-xs text-fg-strong">
                               {p.storeProductId}
                             </code>
                             <SandboxTag environment={p.environment} />
                           </td>
-                          <td className="py-2 pr-4">
+                          <td className="py-2 pe-4">
                             <StatusPill
                               domain="purchase"
                               state={p.state}
                               size="sm"
                             />
                           </td>
-                          <td className="py-2 text-right tabular-nums">
+                          <td className="py-2 text-end tabular-nums">
                             {formatTableTime(fromSeconds(p.lastVerified))}
                           </td>
                         </tr>
