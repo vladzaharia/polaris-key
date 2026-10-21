@@ -26927,3 +26927,638 @@ tr.chg {
   }
 }
 /* END portal-shell-2026-10-20 */
+
+/* BEGIN portal-redraw-2026-10-20: the rest of the Locker screens on the 2026-10-20 shell (account,
+   packages, product pages, Activate, the focused flows, the hosted download page). Appended after
+   portal-shell-2026-10-20. kit/README.md "Customer portal: the 2026-10-20 shell". */
+/* shell: what every Locker page shares with the build */
+/* The header is 56 px on a phone (PortalShell and FocusedFlow: h-14 under 761 px, 64 from there);
+   the sticky section pills sit under it. The hosted download page's bar (.solo) keeps its own. */
+@container screen (max-width: 760px) {
+  [data-brand="locker"] .portal-top:not(.solo) {
+    height: 56px;
+  }
+  [data-brand="locker"] .jump-nav {
+    top: 56px;
+  }
+}
+/* A Locker dialog's scrim is ui/Dialog's: black at 60 %, no blur, in both themes. */
+[data-brand="locker"] {
+  --pk-kit-scrim-blur: 0;
+}
+[data-brand="locker"] .overlay {
+  background: rgb(0 0 0 / 0.6);
+}
+/* A page under a dialog is one viewport tall: its header never gives way to a long page. */
+.portal > .portal-top {
+  flex: none;
+}
+/* A dense tile's download shortens like the build's (QuickAction shortLabel: its row under 15 rem,
+   a tile under 264 px, five columns in 1248 px): "Download for macOS" reads "Download"; the
+   button's aria-label keeps the whole label.
+   <button class="btn outline" aria-label="Download for macOS">…Download<span class="lbl-tail"> for macOS</span></button> */
+@container ptile (max-width: 263px) {
+  .portal .portal-grid.dense .ptile-foot .lbl-tail {
+    display: none;
+  }
+}
+/* end shell */
+/* account: Account, Connected apps, Disconnect */
+/* Account's section cards as built (AccountCard, PX-31a): the head (the title, its one action at
+   the right), a muted line under it saying what the section holds, rows led by a 40 px tile with
+   the glyph in strong text, sentence-case group labels between the rows, an add row on the text
+   column, and a footnote. Build: packages/admin/src/portal/components/account/.
+   <section class="card account-card"><div class="card-head">…</div>
+     <p class="card-intro">Each one is a key to this account. …</p>
+     <div class="card-rows"><h3 class="rows-label">Accounts</h3><div class="item-row">…</div>…
+       <div class="item-row add-row"><span aria-hidden="true"></span><button class="btn link">…</button></div></div>
+     <div class="card-foot-note"><p class="icon-line"><i class="ic ic-info"></i><span>…</span></p>…</div></section> */
+.card.account-card {
+  --card-media: 40px;
+}
+.account-card > .card-head > .icon-tile {
+  width: 36px;
+  height: 36px;
+}
+.account-card :is(.item-row, .card-head) > .icon-tile > :is(.ic, .svc, .gmark) {
+  width: 20px;
+  height: 20px;
+}
+.account-card :is(.item-row, .card-head) > .icon-tile.muted {
+  color: var(--pk-text-strong);
+}
+/* A top-aligned row's 40 px media starts level with its title. */
+.account-card .item-row.top > :is(.logo, .icon-tile) {
+  margin-top: 0;
+}
+.account-card > .card-intro {
+  padding: var(--sp-4) var(--card-px) var(--sp-3);
+  font-size: var(--fs-small);
+  line-height: var(--lh-small);
+  color: var(--pk-text-muted);
+}
+.account-card > .card-intro + .card-rows > .item-row:first-child {
+  border-top: 1px solid var(--mk-line);
+}
+/* A group of rows (Accounts, Email, Passkeys): 12 px, sentence case, no rule above it. */
+.account-card .card-rows > .rows-label {
+  padding: var(--sp-4) var(--card-px) var(--sp-1);
+  border-top: 0;
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
+  font-weight: 500;
+  color: var(--pk-text-muted);
+}
+.account-card .card-rows > .rows-label > span {
+  font-weight: 400;
+}
+.account-card .card-rows > .rows-label + * {
+  border-top: 0;
+}
+/* A sub-heading with its action (Your personal tokens · Create personal token). */
+.account-card .card-rows > .rows-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2) var(--sp-3);
+  padding: var(--sp-3) var(--card-px);
+  border-top: 0;
+}
+.account-card .rows-head > :is(h3, h4) {
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  font-weight: 600;
+  color: var(--pk-text-strong);
+}
+/* Add an email, Add a passkey, Approve a new device: a link on the text column, 44 px tall. */
+.account-card .item-row.add-row {
+  min-height: 44px;
+  padding-block: 0;
+}
+.account-card .item-row.add-row > .btn.link {
+  justify-self: start;
+  min-height: 44px;
+  font-weight: 500;
+}
+/* Appearance on a narrow card: the label over its segmented control, which spans the row. */
+@container (max-width: 559px) {
+  .account-card .setting-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--sp-2);
+  }
+  .account-card .setting-row > .segmented {
+    display: flex;
+  }
+  .account-card .setting-row > .segmented > * {
+    flex: 1 1 0;
+    justify-content: center;
+    min-height: 40px;
+  }
+  .account-card .setting-row > .segmented.sm {
+    height: auto;
+  }
+}
+/* A quiet tag beside a row's title (Primary, This browser): outlined, strong text, no fill. */
+.account-card .item-title > .pill.outline {
+  align-self: center;
+  border-color: var(--pk-border-strong);
+  color: var(--pk-text-strong);
+  font-weight: 500;
+}
+/* The card's footnote, under its rows: the glyph, the sentence, then the card's last action. */
+.account-card > .card-foot-note {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--card-px);
+  border-top: 1px solid var(--mk-line);
+  font-size: var(--fs-small);
+  line-height: var(--lh-small);
+  color: var(--pk-text-muted);
+}
+.account-card > .card-foot-note > .icon-line > .ic:first-child {
+  width: 16px;
+  height: var(--lh-small);
+}
+/* A removal confirmed in its row (Disconnect an app, as the build's sign-in methods and tokens do):
+   a danger callout on the text column, its consequences as a list. */
+.account-card .callout ul.bullets {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding-left: var(--sp-5);
+  list-style: disc;
+}
+.account-card .callout.danger strong {
+  color: var(--pk-text-strong);
+}
+@container (max-width: 559px) {
+  .account-card .callout .btn-row > .btn {
+    flex: 1 1 100%;
+  }
+}
+/* end account */
+/* packages: Account → Packages and its token dialogs */
+/* end packages */
+/* product: the license pages */
+/* The license pages (portal.license, portal.license-lapsed) on the built product page's
+   breakpoints (PX-28a, ProductPage.tsx): the in-page nav from 1180 px and the jump bar below it;
+   two columns from 1024 px, the license column 340 px wide (384 from 1180); one column under
+   1024 px, the screen ordering the cards. The content stays 1248 px wide at every width (the
+   build's 82 rem column), and no column sticks: a license column taller than the window would
+   hide its own end. */
+@container screen (min-width: 1024px) {
+  .portal .product-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    align-items: start;
+  }
+  .portal .product-col {
+    display: flex;
+  }
+}
+@container screen (min-width: 1180px) {
+  .portal .product-layout {
+    grid-template-columns: 148px minmax(0, 1fr) 384px;
+  }
+  .portal .product-layout > .toc-nav {
+    display: flex;
+  }
+  .portal .product-layout > .jump-nav {
+    display: none;
+  }
+}
+@container screen (max-width: 1179px) {
+  .portal .product-layout > .toc-nav {
+    display: none;
+  }
+  .portal .product-layout > .jump-nav {
+    display: flex;
+    grid-column: 1 / -1;
+  }
+}
+@container screen (max-width: 1023px) {
+  .portal .product-layout {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .portal .product-col {
+    display: contents;
+  }
+}
+.portal .product-col:last-child {
+  position: static;
+}
+@container screen (min-width: 1024px) and (max-width: 1099px) {
+  .portal:has(.product-hero) {
+    --hero-h: 220px;
+  }
+}
+/* Every Locker page keeps the build's 82 rem column (1248 px of content) at every width, the
+   Library's five columns included: the older 1520 px column from 1700 px is retired. */
+@container screen (min-width: 1700px) {
+  .portal {
+    --portal-max: 1248px;
+  }
+  .portal .portal-page {
+    max-width: calc(1248px + 2 * var(--sp-6));
+  }
+  .portal:has(.product-layout) {
+    --hero-h: 220px;
+  }
+}
+/* The build for this device: tinted, with a 4 px edge in strong ink (a mark, not a selection;
+   coral is identity only, D9a), as GetItPanel draws it. */
+[data-brand="locker"] .product-layout .table tr.recommended td:first-child {
+  box-shadow: inset 4px 0 0 var(--pk-text-strong);
+}
+/* end product */
+/* tasks: Activate and the focused flows */
+/* The portal's dialog, as ui/Dialog draws it outside the console: no head band, no rule under the
+   head and no 3 px top edge (those are the console's, B4); the title, at most one muted line under
+   it, then the body. <div class="dialog plain"><div class="dialog-head"><div class="dialog-titles">
+   <h2>…</h2><p>…</p></div><button class="btn ghost icon sm">…</button></div>… */
+.dialog.plain,
+.overlay.sheet > .dialog.plain {
+  border-top: 1px solid var(--mk-line);
+}
+.dialog.plain > .dialog-head {
+  padding: var(--sp-6) var(--sp-4) 0 var(--sp-6);
+  border-bottom: 0;
+  background: none;
+}
+.dialog.plain > .dialog-body {
+  padding-top: var(--sp-4);
+}
+.dialog-titles {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--sp-1);
+  min-width: 0;
+}
+.dialog-titles > p {
+  font-size: var(--fs-small);
+  line-height: var(--lh-small);
+  color: var(--pk-text-muted);
+}
+@container screen (max-width: 639px) {
+  .overlay.sheet > .dialog.plain > .dialog-head {
+    padding: var(--sp-5) var(--sp-3) 0 var(--sp-5);
+  }
+  .overlay.sheet > .dialog.plain > .dialog-body {
+    padding-top: var(--sp-3);
+  }
+}
+/* "Not you?" in a person row is a form's button (sign out), drawn as the Locker link. */
+.person-row > button.link {
+  flex: none;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+/* The license-key field (KeyField): the whole key in mono, wrapping at any character, never cut
+   short, masked or regrouped; pkey_ and the separator subtle, the product's slug at 500, the secret
+   strong. Paste (outlined) shows only while the field is empty; a valid key gets the success edge
+   and a check at its end. <div class="input mono key-input ok"><span class="key-text"><span
+   class="dim">pkey_</span><b>djdl</b><span class="dim">_</span>7HJM…</span><i class="ic ic-check"></i></div> */
+.input.key-input {
+  align-items: flex-start;
+  height: auto;
+  min-height: 52px;
+  padding: 14px var(--sp-3) 14px var(--sp-4);
+  font-size: 15px;
+  line-height: 24px;
+  white-space: normal;
+}
+.input.key-input.ok {
+  border-color: var(--pk-success);
+}
+.key-input > .ic-check {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  color: var(--pk-success);
+}
+.key-text {
+  flex: 1;
+  min-width: 0;
+  color: var(--pk-text-strong);
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
+.key-text > .dim {
+  color: var(--pk-text-subtle);
+}
+.key-text > b {
+  font-weight: 500;
+}
+/* Under the key: the format check, the product the key names, the help line (until a verdict). */
+.key-notes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.hint.ok,
+.hint.ok > .ic,
+.hint.recognized > .ic-check {
+  color: var(--pk-success);
+}
+.dialog-body .hint > span > strong {
+  font-weight: 500;
+  color: var(--pk-text-strong);
+}
+
+/* Activate's Confirm step (ConfirmStep): the cover as a 144 px band with rounded corners inside the
+   body, the 64 px icon over its lower-left edge, ringed in the dialog's colour (a short screen
+   drops the band); the key echoed in a sunken row with Change key; the tier tag and its terms on
+   one line with the platforms at its end.
+   <div class="dialog-art"><div class="art" data-product="djdl"></div><span class="logo" data-product="djdl"></span></div>
+   <div class="key-echo"><span class="key-text">…</span><button class="btn ghost sm">Change key</button></div> */
+.dialog-art {
+  display: flex;
+  flex-direction: column;
+}
+.dialog-art > .art {
+  height: 144px;
+  aspect-ratio: auto;
+  border-radius: var(--pk-radius-lg);
+}
+.dialog-art > .logo {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  margin: -32px 0 0 var(--sp-4);
+  border-radius: 16px;
+  box-shadow:
+    0 0 0 3px var(--pk-surface-overlay),
+    inset 0 0 0 1px rgb(255 255 255 / 0.08);
+}
+@media (max-height: 560px) {
+  .dialog-art > .art {
+    display: none;
+  }
+  .dialog-art > .logo {
+    margin: 0;
+  }
+}
+.key-echo {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+  padding: var(--sp-1) var(--sp-1) var(--sp-1) var(--sp-3);
+  border: 1px solid var(--mk-line);
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-surface-sunken);
+  font: 400 var(--fs-mono) / var(--lh-mono) var(--pk-font-mono);
+}
+.key-echo > .btn {
+  flex: none;
+}
+.dialog-body .pill-row .terms {
+  font-size: var(--fs-small);
+  line-height: var(--lh-small);
+  color: var(--pk-text-default);
+}
+
+/* The focused flow's chrome (FocusedFlow; PORTAL.md §4.4: free a device, download): the lockup and
+   one way back, no nav, no account, no phone bar, no footer. The way back is "Back to <product>"
+   when an app sent the person, else "See <product> in your library" ("See <product>" on a phone,
+   "Back" under 384 px).
+   <div class="portal focused"><header class="portal-top flow-top"><a class="portal-brand">…</a>
+   <a class="flow-back" href="#"><i class="ic ic-arrow-left"></i><span class="long">See DJDL<span class="tail"> in your library</span></span><span class="short" aria-hidden="true">Back</span></a></header>… */
+.portal-top.flow-top {
+  justify-content: space-between;
+  position: static;
+  backdrop-filter: none;
+}
+.flow-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 var(--sp-2);
+  border-radius: var(--pk-radius-md);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--pk-text-default);
+}
+.flow-back:hover {
+  color: var(--pk-text-strong);
+}
+.flow-back > .ic {
+  flex: none;
+}
+.flow-back > .short {
+  display: none;
+}
+@container screen (max-width: 639px) {
+  .flow-back .tail {
+    display: none;
+  }
+}
+/* The focused header keeps its lockup at every width (there is room beside "Back"). */
+@container screen (max-width: 383px) {
+  [data-brand="locker"] .flow-top > .portal-brand > .lk-lockup {
+    width: 196.65px;
+    height: 36px;
+    background: var(--lk-lockup) -3.6px -10.35px / 207px 57.6px no-repeat;
+  }
+  .flow-back > .long {
+    display: none;
+  }
+  .flow-back > .short {
+    display: inline;
+  }
+}
+
+/* The task frame's head (TaskFrame): a factual 12 px crumb in words, never links ("DJDL /
+   Download", "DJDL / Device access"; the header holds the way back), 8 over the title.
+   <div class="task-head"><p class="task-crumb">DJDL / Download</p><h1>…</h1></div> */
+.portal-page.task > .task-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  width: 100%;
+  max-width: 640px;
+}
+@media (min-width: 1024px) and (max-height: 900px) {
+  .portal-page.task > .task-head {
+    max-width: 1040px;
+  }
+}
+.task-crumb {
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
+  color: var(--pk-text-muted);
+}
+/* The chosen build named before its action: "macOS, Universal · .dmg · 84 MB". */
+.build-line {
+  font-size: 15px;
+  line-height: 24px;
+  color: var(--pk-text-muted);
+}
+.build-line > strong {
+  font-weight: 500;
+  color: var(--pk-text-strong);
+}
+/* The SHA-256, middle-cut at rest (the whole value in a popover) beside a labelled Copy. */
+.hash-row > .hash-short {
+  min-height: 36px;
+  padding: 0 var(--sp-2);
+  border: 0;
+  border-radius: var(--pk-radius-md);
+  background: none;
+  font: inherit;
+  color: var(--pk-text-default);
+  white-space: nowrap;
+  cursor: pointer;
+}
+/* A fact's term sits over its value on a phone, as the build's facts do under 640 px. */
+@container screen (max-width: 639px) {
+  .portal-page.task .kv-rows > div {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: var(--sp-1);
+  }
+}
+/* "Other platforms and architectures": a dashed disclosure, so it never reads as a second card of
+   facts. */
+.card.fold-row.dashed {
+  border-style: dashed;
+  border-color: var(--pk-border-strong);
+}
+/* The task's action row on a phone (StickyActions): stuck to the screen's bottom with a top edge,
+   so Remove is never below the fold; in the flow from 640 px. */
+@container screen (max-width: 639px) {
+  .task-actions.sticky-phone {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    margin-inline: calc(-1 * var(--sp-4));
+    padding: var(--sp-3) var(--sp-4);
+    border-top: 1px solid var(--mk-line);
+    background: var(--pk-surface-page);
+  }
+}
+/* end tasks */
+/* hosted: the hosted download page */
+/* The hosted download page (dl.plrs.im/<product>; BRAND.md §8, PX-29, BR-lockups), as built
+   (services/distribution/page/render.ts): the focused task frame on the bytes host. A 64 px top bar
+   that holds only the trimmed lockup, with its rule; then one centred 704 px column at every width:
+   a 12 px breadcrumb (text, not links), the 120 px cover band (decorative, never under text), the
+   56 px icon beside the h1 (48/52, 32/36 on a phone) and the developer, the pitch; then the
+   recommendation card, the release, one card per platform, the files fold, the signing keys and
+   About; the foot is one Locker line. No Sign in, no tab bar.
+   <div class="portal dlp" data-brand="locker"><header class="portal-top solo">…</header>
+     <main class="portal-page dlp-col"><div class="dlp-head">
+       <p class="crumbs">Diceroll / Download</p><div class="art band" data-product="…"></div>
+       <div class="dlp-id"><span class="logo lg" data-product="…"></span><div class="mk-stack-1"><h1>…</h1><p class="muted">by …</p></div></div>
+       <p class="dlp-pitch">…</p></div>
+       <section class="card dlp-rec"><div class="card-body">…</div></section>…
+       <details class="card dlp-files" open><summary><i class="ic ic-chevron-right"></i>All files and checksums</summary>…</details>
+     </main><footer class="portal-foot">Polaris Locker · Questions about …</footer></div> */
+.portal.dlp {
+  --portal-max: 704px;
+}
+/* The page's 32 px gutters: the column lines up with the bar and the foot. */
+.portal.dlp > .portal-page {
+  max-width: calc(704px + 2 * var(--sp-8));
+}
+/* The bar holds the lockup alone, so the narrowest phone keeps the 36 px lockup (the mark alone is
+   for a crowded row, Locker guide p.7). */
+@container screen (max-width: 383px) {
+  [data-brand="locker"] .portal-top.solo .portal-brand > .lk-lockup {
+    width: 196.65px;
+    height: 36px;
+    background: var(--lk-lockup) -3.6px -10.35px / 207px 57.6px no-repeat;
+  }
+}
+.dlp-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+.dlp-head > .crumbs {
+  margin-bottom: 0;
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
+  color: var(--pk-text-muted);
+}
+.dlp-head > .art.band {
+  aspect-ratio: auto;
+  height: 120px;
+  border-radius: var(--pk-radius-lg);
+}
+.dlp-id {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+.dlp-id > .mk-stack-1 {
+  min-width: 0;
+}
+.dlp-id h1 {
+  overflow-wrap: anywhere;
+}
+.dlp-pitch {
+  max-width: 72ch;
+  color: var(--pk-text-default);
+}
+/* The recommendation: what it is, the platform, one ink primary, the build's facts. */
+.dlp-rec > .card-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.dlp-rec > .card-body > .btn-row {
+  padding-block: var(--sp-2);
+}
+@container screen (max-width: 639px) {
+  .dlp-rec .btn-row > .btn {
+    width: 100%;
+  }
+}
+/* The files fold (a <details>, as built: the page runs no script), drawn open. */
+.dlp-files > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: 48px;
+  padding: 0 var(--card-px);
+  list-style: none;
+  font-weight: 500;
+  color: var(--pk-text-strong);
+  cursor: pointer;
+}
+.dlp-files > summary::-webkit-details-marker {
+  display: none;
+}
+.dlp-files > summary > .ic {
+  color: var(--pk-text-muted);
+}
+.dlp-files[open] > summary > .ic {
+  transform: rotate(90deg);
+}
+.dlp-files > .card-body {
+  border-top: 1px solid var(--mk-line);
+}
+/* A full hash or fingerprint wraps anywhere, so it can be selected whole. */
+.dlp-hash {
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
+/* end hosted */
+/* END portal-redraw-2026-10-20 */

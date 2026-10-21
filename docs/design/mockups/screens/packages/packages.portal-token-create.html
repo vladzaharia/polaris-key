@@ -1,146 +1,163 @@
-<!-- packages.portal-token-create: name a packages token, over Account → Packages. -->
-<div class="portal modal-open" data-service="core">
+<!-- packages.portal-token-create: create a personal token, over Account → Packages. -->
+<div class="portal modal-open" data-brand="locker">
   <header class="portal-top">
-    <a class="portal-brand" href="#"><i class="pk-mark sm"></i>Polaris Key</a>
-    <nav class="portal-nav" aria-label="Portal"><a href="#">Library <span class="count">2</span></a><a href="#">Discover <span class="count">4</span></a></nav>
+    <a class="portal-brand" href="#"><i class="lk-lockup" role="img" aria-label="Polaris Locker"></i></a>
+    <nav class="portal-nav" aria-label="Polaris Locker">
+      <a href="#">Library <span class="count">2</span></a>
+      <a href="#">Discover</a>
+    </nav>
     <div class="portal-actions">
-      <button class="btn outline sm"><i class="ic ic-key-round"></i>Activate license</button>
-      <span class="account"><span class="avatar sm">MF</span><span>Mara Fennick</span><i class="ic ic-chevron-down"></i></span>
+      <span class="account" role="button" aria-haspopup="menu" aria-expanded="false" aria-label="Account: Mara Fennick"><span class="avatar sm">MF</span><span>Mara Fennick</span><i class="ic ic-chevron-down"></i></span>
     </div>
   </header>
 
   <main class="portal-page">
     <div class="mk-split">
-      <div class="mk-stack-2"><h1>Account</h1><p class="muted">Mara Fennick · mara@example.com</p></div>
-      <div><button class="btn outline sm"><i class="ic ic-log-out"></i>Sign out</button></div>
+      <h1>Account</h1>
+      <div><button class="btn outline"><i class="ic ic-log-out"></i>Sign out</button></div>
     </div>
 
-    <!-- Account's sections: a side nav from 1280px, the pill row from 640px, a picker on phone. -->
+    <!-- Account, scrolled to Packages (#/account/packages); the sections above it are portal.account's.
+         The side nav from 1280px, the pill row below it. -->
     <div class="with-toc">
-      <nav class="toc-nav" aria-label="Account"><a href="#">Profile</a><a href="#">Sign-in methods</a><a href="#">Connected apps</a><a href="#">Access tokens</a><a href="#">Where you’re signed in</a><a class="on" href="#" aria-current="page">Packages</a><a href="#">Appearance</a><a href="#">Your data</a></nav>
-      <nav class="jump-nav" aria-label="Account"><a href="#">Profile</a><a href="#">Sign-in methods</a><a href="#">Connected apps</a><a href="#">Access tokens</a><a href="#">Where you’re signed in</a><a class="on" href="#" aria-current="page">Packages</a><a href="#">Appearance</a><a href="#">Your data</a></nav>
-      <div class="select toc-select" role="button" aria-label="Account section: Packages"><i class="ic ic-boxes"></i><span class="grow">Packages</span><i class="ic ic-chevrons-up-down"></i></div>
+      <nav class="jump-nav fade-end" aria-label="Account sections">
+        <a href="#">Profile</a>
+        <a href="#">Sign-in methods</a>
+        <a href="#">Connected apps</a>
+        <a class="on" aria-current="location" href="#">Packages</a>
+        <a href="#">Where you’re signed in</a>
+        <a href="#">Appearance</a>
+        <a href="#">Your data</a>
+      </nav>
+      <nav class="toc-nav" aria-label="On this page">
+        <a href="#">Profile</a>
+        <a href="#">Sign-in methods</a>
+        <a href="#">Connected apps</a>
+        <a class="on" aria-current="location" href="#">Packages</a>
+        <a href="#">Where you’re signed in</a>
+        <a href="#">Appearance</a>
+        <a href="#">Your data</a>
+      </nav>
 
       <div class="toc-body">
-        <!-- F-33: every package the account may install, across products, from its usable licenses. -->
-        <section class="card" aria-labelledby="pk-title">
-          <div class="card-head">
-            <div class="title"><h2 id="pk-title">Packages</h2></div>
-          </div>
-          <table class="table fixed stack-phone flow" aria-label="Packages you can install">
-            <colgroup><col style="width: 52%"><col style="width: 28%"><col style="width: 20%"></colgroup>
-            <thead><tr><th>Package</th><th>Ecosystem</th><th class="num">Stable</th></tr></thead>
-            <tbody>
-              <tr class="group-row"><td colspan="3"><span class="mk-cluster"><span class="logo xs" data-product="djdl"></span><span>DJDL · Standard license</span></span></td></tr>
-              <tr>
-                <td><div class="cell-title type-mono">@djdl/source-kit</div><div class="cell-sub">Write DJDL source plugins</div></td>
-                <td>npm</td>
-                <td class="num type-mono">2.3.0</td>
-              </tr>
-              <tr>
-                <td><div class="cell-title type-mono">@djdl/crate-schema</div><div class="cell-sub">Types for DJDL crate files</div></td>
-                <td>npm</td>
-                <td class="num type-mono">1.0.2</td>
-              </tr>
-              <tr>
-                <td><div class="cell-title type-mono">djdl-crates</div><div class="cell-sub">Read and write DJDL crates</div></td>
-                <td><div class="cell-stack"><span>PyPI</span><span class="cell-sub"><span class="pill sm"><i class="ic ic-globe"></i>Also on PyPI.org</span></span></div></td>
-                <td class="num type-mono">1.1.0</td>
-              </tr>
-              <tr class="group-row"><td colspan="3"><span class="mk-cluster"><span class="logo xs" data-product="diceroll"></span><span>Diceroll · Supporter license</span></span></td></tr>
-              <tr>
-                <td><div class="cell-title type-mono">@diceroll/dice-notation</div><div class="cell-sub">Parse and roll “2d6+1” in your bots and tools</div></td>
-                <td>npm</td>
-                <td class="num type-mono">3.0.1</td>
-              </tr>
-              <tr>
-                <td><div class="cell-title type-mono">diceroll/table-server</div><div class="cell-sub">Host a private Diceroll table for your group</div></td>
-                <td>Docker</td>
-                <td class="num type-mono">1.7.3</td>
-              </tr>
-            </tbody>
-          </table>
-        </section>
+        <!-- F-33: the section is one card: what the account can install, its personal tokens, the setup. -->
+        <section class="card account-card" aria-labelledby="h-pkg">
+          <div class="card-head"><div class="title"><h2 id="h-pkg">Packages</h2></div></div>
+          <p class="card-intro">A personal token is one read-only credential that installs every package your licenses include.</p>
 
-        <!-- Personal tokens (pkeyp_), packages only, one per machine. -->
-        <section class="card" aria-labelledby="tok-title">
-          <div class="card-head">
-            <div class="title"><h2 id="tok-title">Your packages tokens</h2></div>
-            <button class="btn primary sm"><i class="ic ic-plus"></i>Create token</button>
-          </div>
-          <table class="table fixed stack-phone" aria-label="Your packages tokens">
-            <colgroup><col style="width: 46%"><col style="width: 19%"><col style="width: 19%"><col style="width: 16%"></colgroup>
-            <thead><tr><th>Token</th><th>Last used</th><th>Expires</th><th class="end"><span class="sr-only">Actions</span></th></tr></thead>
-            <tbody>
-              <tr>
-                <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-laptop"></i></span><div><div class="cell-title">pkey feeds setup on mara-mbp</div><div class="cell-sub"><span class="mono">pkeyp_…7Q2M</span> · made Oct 7</div></div></div></td>
-                <td><span class="cell-label">Last used</span>2 hours ago</td>
-                <td><span class="cell-label">Expires</span><span class="nowrap">Jan 5, 2027</span></td>
-                <td class="end"><button class="btn outline sm tap-44">Revoke</button></td>
-              </tr>
-              <tr>
-                <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-server"></i></span><div><div class="cell-title">Build server</div><div class="cell-sub"><span class="mono">pkeyp_…K4TN</span> · made Sep 21</div></div></div></td>
-                <td><span class="cell-label">Last used</span>Oct 6</td>
-                <td><span class="cell-label">Expires</span><span class="nowrap">Dec 20, 2026</span></td>
-                <td class="end"><button class="btn outline sm tap-44">Revoke</button></td>
-              </tr>
-            </tbody>
-          </table>
-        </section>
-
-        <!-- F-37: one combined setup for every package manager, the same renderer the CLI writes from. -->
-        <section class="card" aria-labelledby="setup-title">
-          <div class="card-head">
-            <div class="title"><h2 id="setup-title">Set up your package managers</h2></div>
-          </div>
+          <!-- Every package the account may install, grouped by the license that gives it. Build follow-up:
+               the build has no per-person package read yet (F-33's serve-time filtering). -->
           <div class="card-body mk-stack-3">
-            <div class="cmd"><span>pkey feeds setup --write</span><button class="btn ghost icon xs" aria-label="Copy"><i class="ic ic-copy"></i></button></div>
+            <h3 class="type-card" id="h-can">You can install</h3>
+            <table class="table fixed stack-phone flow" aria-labelledby="h-can">
+              <colgroup><col style="width: 52%"><col style="width: 28%"><col style="width: 20%"></colgroup>
+              <thead><tr><th>Package</th><th>Ecosystem</th><th class="num">Stable</th></tr></thead>
+              <tbody>
+                <tr class="group-row"><td colspan="3"><span class="mk-cluster"><span class="logo xs" data-product="djdl"></span><span>DJDL · Standard license</span></span></td></tr>
+                <tr>
+                  <td><div class="cell-title type-mono">@djdl/source-kit</div><div class="cell-sub">Write DJDL source plugins</div></td>
+                  <td>npm</td>
+                  <td class="num type-mono">2.3.0</td>
+                </tr>
+                <tr>
+                  <td><div class="cell-title type-mono">@djdl/crate-schema</div><div class="cell-sub">Types for DJDL crate files</div></td>
+                  <td>npm</td>
+                  <td class="num type-mono">1.0.2</td>
+                </tr>
+                <tr>
+                  <td><div class="cell-title type-mono">djdl-crates</div><div class="cell-sub">Read and write DJDL crates</div></td>
+                  <td><div class="cell-stack"><span>PyPI</span><span class="cell-sub"><span class="pill sm"><i class="ic ic-globe"></i>Also on PyPI.org</span></span></div></td>
+                  <td class="num type-mono">1.1.0</td>
+                </tr>
+                <tr class="group-row"><td colspan="3"><span class="mk-cluster"><span class="logo xs" data-product="diceroll"></span><span>Diceroll · Supporter license</span></span></td></tr>
+                <tr>
+                  <td><div class="cell-title type-mono">@diceroll/dice-notation</div><div class="cell-sub">Parse and roll “2d6+1” in your bots and tools</div></td>
+                  <td>npm</td>
+                  <td class="num type-mono">3.0.1</td>
+                </tr>
+                <tr>
+                  <td><div class="cell-title type-mono">diceroll/table-server</div><div class="cell-sub">Host a private Diceroll table for your group</div></td>
+                  <td>Docker</td>
+                  <td class="num type-mono">1.7.3</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Personal tokens (pkeyp_), read-only, one per computer or build server, by name and last four
+               characters. Revoke confirms in the row (packages.portal-token-revoke). -->
+          <div class="card-body mk-stack-3">
+            <div class="mk-split center">
+              <h3 class="type-card" id="h-tok">Your personal tokens</h3>
+              <div><button class="btn primary sm tap-44"><i class="ic ic-plus"></i>Create personal token</button></div>
+            </div>
+            <div class="card-rows flush" role="list" aria-labelledby="h-tok">
+              <div class="item-row" role="listitem">
+                <span class="icon-tile muted"><i class="ic ic-key-round"></i></span>
+                <div class="item-text"><div class="item-title">pkey feeds setup on mara-mbp</div><div class="item-desc"><span class="mono">pkeyp_…7Q2M</span></div><div class="item-desc">Last used 2 hr. ago · Expires Jan&nbsp;5,&nbsp;2027</div></div>
+                <div class="item-end"><button class="btn outline sm tap-44" aria-label="Revoke pkey feeds setup on mara-mbp">Revoke</button></div>
+              </div>
+              <div class="item-row" role="listitem">
+                <span class="icon-tile muted"><i class="ic ic-key-round"></i></span>
+                <div class="item-text"><div class="item-title">Build server</div><div class="item-desc"><span class="mono">pkeyp_…K4TN</span></div><div class="item-desc">Last used Oct 6 · Expires Dec&nbsp;20,&nbsp;2026</div></div>
+                <div class="item-end"><button class="btn outline sm tap-44" aria-label="Revoke Build server">Revoke</button></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- F-37: 'pkey feeds setup --write' first, then one setup across every product. Build follow-up:
+               the build sets up one product and one package type at a time. -->
+          <div class="card-body mk-stack-3">
+            <h3 class="type-card">Set up</h3>
+            <div class="cmd"><span>pkey feeds setup --write</span><button class="btn ghost icon xs" aria-label="Copy the command"><i class="ic ic-copy"></i></button></div>
             <span class="links links-end"><a class="link" href="#"><i class="ic ic-copy"></i>Copy the npx command</a><a class="link quiet" href="#">pkey CLI docs<i class="ic ic-arrow-up-right"></i></a></span>
-          </div>
-          <div class="card-body mk-stack-3">
             <p class="eyebrow">Or by hand</p>
             <div class="code fade-x wrap-phone">
               <div class="code-head">
-                <div class="code-tabs fade" tabindex="0"><span class="active">npm, pnpm</span><span>Yarn</span><span>Bun</span><span>uv, pip</span><span>Docker</span></div>
+                <div class="code-tabs fade" tabindex="0" aria-label="Package manager"><span class="active">npm and pnpm</span><span>Yarn Berry</span><span>Bun</span><span>uv</span><span>pip</span><span>Docker</span></div>
                 <button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button>
               </div>
 <pre tabindex="0" role="region" aria-label="Code"><span class="t-c"># ~/.npmrc</span>
 <span class="t-p">@djdl:registry</span>=<span class="t-s">https://pkg.plrs.im/npm/djdl/</span>
+<span class="t-p">//pkg.plrs.im/npm/djdl/:_authToken</span>=<span class="t-v">${PKEY_REGISTRY_TOKEN}</span>
 <span class="t-p">@diceroll:registry</span>=<span class="t-s">https://pkg.plrs.im/npm/diceroll/</span>
-<span class="t-p">//pkg.plrs.im/npm/:_authToken</span>=<span class="t-v">${PKEY_PACKAGES_TOKEN}</span></pre>
-              <div class="code-foot"><i class="ic ic-info sm"></i><span>Set <span class="mono">PKEY_PACKAGES_TOKEN</span> to your token.</span></div>
+<span class="t-p">//pkg.plrs.im/npm/diceroll/:_authToken</span>=<span class="t-v">${PKEY_REGISTRY_TOKEN}</span></pre>
+              <div class="code-foot"><i class="ic ic-info sm"></i><span>Set <span class="mono">PKEY_REGISTRY_TOKEN</span> to one of your personal tokens.</span></div>
             </div>
           </div>
         </section>
       </div>
     </div>
   </main>
-
-  <footer class="portal-foot">Polaris Key · <a href="#">key.plrs.im</a> · Help · Privacy · Terms</footer>
-  <nav class="portal-tabbar"><a href="#"><i class="ic ic-layout-grid"></i>Library</a><a class="act" href="#"><i class="ic ic-key-round"></i>Activate</a><a href="#"><i class="ic ic-sparkles"></i>Discover</a></nav>
-  <!-- The step after Create token: the one field, what the token can do, and that nothing else changes. -->
+  <nav class="portal-tabbar docked" aria-label="Polaris Locker tabs">
+    <a href="#"><i class="ic ic-layout-grid"></i>Library</a>
+    <a href="#"><i class="ic ic-sparkles"></i>Discover</a>
+  </nav>
+  <!-- F-33: the step after Create personal token: a name and a lifetime (30, 90, 180 days or a year;
+       90 by default). A sign-in older than 5 minutes asks for a fresh one here, keeping the name. -->
   <div class="overlay center sheet">
-    <div class="dialog" role="dialog" aria-labelledby="tok-new">
+    <div class="dialog plain" role="dialog" aria-modal="true" aria-labelledby="tok-new" aria-describedby="tok-new-d">
       <div class="dialog-head">
-        <h2 id="tok-new">New packages token</h2>
+        <div class="dialog-titles">
+          <h2 id="tok-new">Create a personal token</h2>
+          <p id="tok-new-d">Reads every package your licenses include, now and for apps you license later. Read-only.</p>
+        </div>
         <button class="btn ghost icon sm" aria-label="Close"><i class="ic ic-x"></i></button>
       </div>
       <div class="dialog-body">
         <div class="field">
-          <label class="field-label">Label</label>
-          <div class="input focus"><span class="grow">Work laptop</span></div>
-          <span class="hint">Name the machine</span>
+          <label class="field-label" for="tok-name">Name</label>
+          <div class="input focus" id="tok-name"><span class="grow">Work laptop</span></div>
         </div>
-        <ul class="icon-lines">
-          <li><i class="ic ic-lock"></i><span>Packages only</span></li>
-          <li><i class="ic ic-calendar-clock"></i><span>Expires Jan&nbsp;5,&nbsp;2027 (90 days)</span></li>
-          <li><i class="ic ic-boxes"></i><span>Reaches DJDL and Diceroll</span></li>
-          <li><i class="ic ic-plus"></i><span>Also reaches products you license later</span></li>
-        </ul>
+        <div class="field">
+          <label class="field-label" for="tok-days">Expires after</label>
+          <div class="select" id="tok-days" role="button" aria-haspopup="listbox"><span class="grow">90 days</span><i class="ic ic-chevrons-up-down"></i></div>
+        </div>
+        <p class="muted">Expires Jan&nbsp;5,&nbsp;2027.</p>
       </div>
       <div class="dialog-foot">
         <button class="btn outline">Cancel</button>
-        <button class="btn primary">Create token</button>
+        <button class="btn primary">Create</button>
       </div>
     </div>
   </div>

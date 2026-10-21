@@ -3,16 +3,19 @@
   "title": "Download a build",
   "area": "portal",
   "surface": "portal",
-  "packages": ["PX-29", "P2-13", "LX-15"],
+  "packages": ["PX-29", "P2-13", "LX-15", "PX-35", "BR-lockups"],
   "uxRows": [],
-  "summary": "Priya's focused download of DJDL 4.2.0: breadcrumb, identity row, the chosen build (platform, architecture, file type, size), its channel and date, the SHA-256 with Copy, the install hint, one Download, and other platforms folded. On a phone it says it is showing desktop builds and offers Email me the download instead.",
+  "summary": "Priya's focused download of DJDL 4.2.0 in the focused flow's chrome (the lockup and 'See DJDL in your library'): the crumb 'DJDL / Download', the title, the identity row, the chosen build named before its action ('macOS, Universal · .dmg · 84 MB'), one Download for macOS, its facts in one card (channel and date, the SHA-256 with Copy, the install hint) and the other platforms folded. On a phone it says it is showing desktop builds and offers Email me the download instead.",
   "compare": [
-    "The chosen build matches the visitor's device (macOS, Universal) and says platform, architecture, file type and size in one line (PX-29, portal-27).",
-    "SHA-256 is on this page as well as the product page (P2-13), mono, middle-truncated at rest, with a Copy button named for the value.",
-    "One primary: Download for macOS on a computer; on a phone 'You're viewing desktop builds' and Email me the download instead (no phone build is offered).",
-    "Other platforms fold into one row; download controls never move during transitions (MO-13).",
-    "Breadcrumb 'Library › DJDL' and the identity row (no cropped art band); short-desktop two columns as portal.free-device.",
-    "Round 2 (UX review): The title leads; Download comes before the details table; the build line reads 'macOS, Universal' with '.dmg · 84 MB' as its source, no line starting with a separator (M6, copy nit)."
+    "2026-10-20 shell (PX-35, BR-lockups): drawn as the build's focused flow (FocusedFlow; PORTAL.md §4.4, 'minimal chrome'): the trimmed lockup and one way back, no nav, no account chip, no phone bar, no footer. The old full header (Activate license, the account), the footer and the three-tab bar are gone; the build wins, as the spec says minimal chrome. The way back is 'See DJDL in your library' ('See DJDL' on a phone, 'Back' under 384 px); 'Back to DJDL' only for an app's declared return=.",
+    "Build follow-up: FocusedFlow draws the lockup 52 px tall on a computer and 40 px below 761 px; BRAND.md §15 (Lockups in product chrome) sets 40 px in a 64 px header and 36 px on a phone, as drawn here and in the shell's header.",
+    "Follows the build (TaskFrame): the crumb is factual words, 'DJDL / Download' at 12 px, not links (the header holds the way back); the title leads; the identity row is the 56 px icon, the name and 'From Example Audio' (the tier and term live on the license page, not in a download).",
+    "The chosen build matches the visitor's device and is named before its action, one line: 'macOS, Universal' strong, '.dmg · 84 MB' muted (PX-29, portal-27). Then the one primary, Download for macOS. Follows the build: the build line left the facts card.",
+    "Facts in one card: Channel 'Stable · Sep 22, 2026' (the day only for the channel's newest release); SHA-256 middle-cut at rest ('5be0c2…1f9a', the whole value in a popover) with an outlined, labelled Copy named 'Copy SHA-256' (P2-13; follows the build's labelled Copy); the install hint 'Open the .dmg and drag DJDL to Applications.' On a phone each term sits over its value.",
+    "Other platforms fold into one dashed disclosure, 'Other platforms and architectures' over 'Windows' (the build's words); download controls never move during transitions (MO-13).",
+    "Phone: 'You're viewing desktop builds.' and Email me the download instead of a download (no phone build is offered).",
+    "Two columns, the identity beside the task, on a desktop up to 900 px tall (the 1440×900 and 1024×768 renders); one centred 640 px column otherwise.",
+    "Round 2 (UX review): the title leads; Download comes before the details; no line starts with a separator (M6, copy nit)."
   ],
   "status": "mockup",
   "designReview": null

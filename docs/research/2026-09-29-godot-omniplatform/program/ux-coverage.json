@@ -15389,7 +15389,7 @@
       "title": "Disconnect an app",
       "source": "mockups/screens/identity/identity.disconnect.json",
       "area": "identity",
-      "surface": "dialog",
+      "surface": "portal",
       "overlays": ["ST-48"],
       "owners": ["I-34", "I-11"],
       "built": "mockup-only",
@@ -16460,7 +16460,7 @@
       "title": "Portal: revoke a packages token",
       "source": "brand-mockups/docs/design/mockups/screens/packages/packages.portal-token-revoke.json",
       "area": "packages",
-      "surface": "dialog",
+      "surface": "portal",
       "overlays": ["ST-48", "ST-50", "UK-58"],
       "owners": ["F-33"],
       "built": "partial",
@@ -16621,6 +16621,18 @@
       "built": "partial",
       "brandV2": "no",
       "evidence": "packages/admin/src/portal/components/LibraryEmpty.tsx exists; 'See N in Discover' / Missing-a-license strip not found"
+    },
+    {
+      "id": "portal.library-menu",
+      "kind": "screen",
+      "title": "Library, account menu open",
+      "source": "docs/design/mockups/screens/portal/portal.library-menu",
+      "area": "portal",
+      "surface": "portal",
+      "owners": ["PX-35", "PX-22"],
+      "built": "built",
+      "brandV2": "no",
+      "evidence": "packages/admin/src/portal/components/AccountMenu.tsx (PX-35: the 40 px avatar, name and email; Activate a license, Account, Sign-in methods, Appearance; Help, Privacy; Sign out as a form POST) and PortalShell.tsx (no header Activate, no footer, the trimmed lockup)"
     },
     {
       "id": "portal.discover",

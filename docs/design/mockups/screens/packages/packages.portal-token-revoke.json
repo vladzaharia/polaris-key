@@ -1,20 +1,19 @@
 {
   "id": "packages.portal-token-revoke",
-  "title": "Portal: revoke a packages token",
+  "title": "Portal: revoke a personal token",
   "area": "packages",
-  "surface": "dialog",
+  "surface": "portal",
   "order": 17,
-  "packages": ["F-33"],
+  "packages": ["F-33", "PX-35", "BR-lockups"],
   "uxRows": [],
-  "summary": "The confirmation behind Revoke on Account → Packages: it names the token and the machine where package installs stop and how to set that machine up again.",
+  "summary": "Revoke on Account → Packages, confirmed in the token's row: 'Revoke Build server?', what stops and how to reconnect, Keep it and the danger 'Revoke Build server'.",
   "compare": [
-    "Opens over Account → Packages; a small danger dialog with the warning icon.",
-    "The title names the token by its label: 'Revoke “pkey feeds setup on mara-mbp”?'.",
-    "The body says what stops in plain words (the package managers on mara-mbp can't reach DJDL's or Diceroll's packages) and how to undo it (run 'pkey feeds setup --write' there again). The title names the token, so no line repeats which one keeps working.",
-    "Cancel (outline) and the danger 'Revoke token'.",
-    "Phone: the kit's bottom sheet with the buttons pinned full width, the danger button on top.",
-    "Dialog and drawer head (B4): a 3px rule in the origin's accent along the top (none on a destructive or cautious confirmation), a head band with a hairline, one leading glyph or none (severity on a confirmation, the subject's mark on a record, never a service tile), title at or under 20/28; blurred backdrop with a flat fallback under reduced transparency.",
-    "Portal v2 (B2, B12): the docked header, the one filled primary is ink, tile actions outlined, the page h1 at the display step (48/52, 32/36 on a phone) with no full stop or eyebrow, no glow or wash, no chartreuse; text never painted over art; weights 400/500/600."
+    "2026-10-20 shell (PX-35, BR-lockups): Polaris Locker, not Polaris Key (data-brand=\"locker\", the trimmed outlined Locker lockup, no Key mark, no key.plrs.im footer); no header Activate (the account menu's first item); no footer (Help and Privacy are in the account menu); the docked Library · Discover phone bar, neither tab current on Account; US dates. Reconciled with the build: Revoke confirms inline in the row (PackagesCard.tsx TokenRow; F-33's 'mockups to adopt'), not in a danger dialog.",
+    "The row's Revoke gives way to a danger-tinted box under its text: 'Revoke Build server?', then 'Anything installing with it stops within 30 seconds. Create a new one and set it again to reconnect.', then Keep it (outline) and the danger 'Revoke Build server'. Focus lands on the question; Escape and Keep it return focus to Revoke.",
+    "After the revoke a toast says 'Build server was revoked' and focus moves to the next row's Revoke (or the previous one, or the heading). The other tokens keep working.",
+    "A per-app token (pkeyr_) confirms the same way; its reconnect line is 'Use a personal token to reconnect.' ('Create a new Godot editor URL to reconnect.' for a Godot URL).",
+    "Phone: the box runs under the row's text, the buttons wrap 44 px tall.",
+    "Portal v2 (B2, B12): no filled primary in the confirmation, danger stays red; weights 400/500/600."
   ],
   "status": "mockup",
   "designReview": {

@@ -1398,13 +1398,13 @@ yellow, `c-err` red, `c-info` magenta, `c-dim`, `c-b` bold, `c-u` link, `c-chip`
 
 The portal's real screens are in `packages/admin/e2e/__baselines__/portal/linux/`; match them.
 `.portal-tabbar` shows only on phone, where the top nav hides. Since the 2026-10-20 shell it is
-`.portal-tabbar.docked`: Library · Discover (a `.dot` while there is something to add); the older
-floating bar with Activate (`.act`) is what the portal screens not yet redrawn still show. In phone
+`.portal-tabbar.docked`: Library · Discover (a `.dot` while there is something to add) on every
+portal page; the older floating bar with Activate (`.act`) is retired (no screen draws it). In phone
 shots the renderer draws the bar and any `.toasts` at the end of the page, and a toast sits above
 the bar.
 
-**Page.** The portal's content is 1248px wide from a 1296px screen up (`--portal-max`), so wide
-and desktop draw the same centred column: the portal's sensible max width, with no stretched line.
+**Page.** The portal's content is 1248px wide from a 1296px screen up (`--portal-max`, the build's
+82rem column; no wider column from 1700px), so wide and desktop draw the same centred column: the portal's sensible max width, with no stretched line.
 `.portal-page` stacks its blocks 24 apart. The title block is `.mk-stack-2`: the 40/44 h1, then at
 most one muted line of live state shown nowhere else (the emails the library covers), never a
 count the nav already shows.
@@ -1438,8 +1438,8 @@ count the nav already shows.
   one line, and the action at the foot level with the tiles' actions. With a row to itself (640px
   of tile and up) it is one line: the 48px key, the text, the button. On a phone the 40px key sits
   beside the text and the button runs full width under them.
-- The portal header hides the account's name from 640 to 899px (the avatar and chevron stay), and
-  the footer's links are underlined.
+- The portal header shows the account's name from 1180px and the avatar alone below (the
+  2026-10-20 shell, below).
 
 **Product page** (`portal.license`, `portal.license-lapsed`):
 
@@ -1484,11 +1484,11 @@ count the nav already shows.
   (80 on phone) about a third over its lower edge, the name and maker beside it, 12 clear of the
   art (8 on phone), the actions on the right (full width on phone), `.product-hero-note` under
   them.
-- `.product-layout`: from 1280px the in-page `.toc-nav` (148px), the main column and the 384px
-  license column; tablet (1024–1279) two columns under the sticky `.jump-nav`; below 1024px one
-  column, the screen ordering the cards with `order` (the columns become `display: contents`).
+- `.product-layout`: from 1180px the in-page `.toc-nav` (148px), the main column and the 384px
+  license column; from 1024px two columns (the license column 340px) under the sticky
+  `.jump-nav`; below 1024px one column, the screen ordering the cards with `order` (the columns become `display: contents`).
   Columns and cards are 24 apart, and every card in a `.product-col` titles at 18/24.
-- `.jump-nav`: the page's sections as 32px pills, sticky under the 64px header, scrolling sideways
+- `.jump-nav`: the page's sections as 32px pills, sticky under the header (64px, 56px on a phone), scrolling sideways
   with a faded edge, full bleed to the gutters.
 - `.license-term`: a license's term on a timeline in a sunken box: the title and what happens
   after (`.mk-stack-1`), then `.term-chart` (`.term-today` label, `.term-track` with the covered
@@ -1502,7 +1502,7 @@ count the nav already shows.
   takes a whole row of a fact grid (a sentence, a list); `.md`: release notes drawn from Markdown
   (h3, list, link, emphasis).
 - **License pages** (block `portal-license-pages`; `portal.license`, `portal.license-lapsed`): the
-  portal's hero is the `--hero-h` band (220, 260 from 1700px, 160 under 1100, 112 on phone) with
+  portal's hero is the `--hero-h` band (220, 160 under 1024, 112 on phone) with
   the 56px icon 20 over it (portal-multi-review), and `.product-hero-note` never ends on an orphan
   word. `.device-row` (a device or an account: 28px tile or avatar, `.device-name` over one
   `.device-meta` line whose `span` facts never break, the action at the end; `.this` ends the
@@ -1521,8 +1521,13 @@ The owner's Library trim (2026-10-20, PX-35) and the trimmed lockup (BR-lockups)
 `portal-shell-2026-10-20` at the end of `mockup.css`; screens `portal.library`,
 `portal.library-12`, `portal.library-empty`, `portal.library-menu`, `portal.discover` and
 `portal.discover-detail` use it, and are where to copy it from (it needs a whole `.portal` page, so
-the gallery does not draw it). The other portal screens still draw the older shell (header
-Activate, footer, floating bar) until they are redrawn.
+the gallery does not draw it). Every other Locker screen was redrawn to it the same day (block
+`portal-redraw-2026-10-20`, after it): `portal.account`, `portal.license`, `portal.license-lapsed`,
+`portal.activate`, `portal.activate-confirm`, `portal.download`, `portal.free-device`,
+`identity.connected-apps`, `identity.disconnect`, the four `packages.portal-*` and
+`distribution.download-page`. No screen draws the older shell (header Activate, footer, floating
+bar). Each screen's JSON opens with a dated "2026-10-20 shell" line and marks where the build
+should change as "Build follow-up".
 
 - **Brand.** `.portal-brand > .lk-lockup` in a `[data-brand="locker"]` page is the trimmed,
   outlined Locker lockup (`LOCKER_TRIM`, the kit's 460 × 128 canvas cropped to 437 × 80): 40 px
@@ -1534,6 +1539,12 @@ Activate, footer, floating bar) until they are redrawn.
   `.avatar` and `.menu-who` with the name and email), then Activate a license, Account, Sign-in
   methods, Appearance; Help, Privacy; Sign out (a `button.menu-item`).
 - **No footer.** Help and Privacy are in the account menu.
+- **Phone header** (block `portal-redraw-2026-10-20`, shell): 56px under 761px, as PortalShell and
+  FocusedFlow draw it (64 from 761px); the sticky section pills sit under it.
+- **Dialogs** (`.dialog.plain`, as ui/Dialog draws them outside the console): no head band, no rule
+  under the head, no 3px top edge; `.dialog-titles` holds the h2 and at most one muted line. In a
+  Locker page the scrim is black at 60%, no blur, in both themes (the blurred scrim stays the
+  console's). `portal.activate`, `portal.activate-confirm`, `packages.portal-token*`.
 - **Dense tiles** (`.portal-grid.dense`): two columns on a phone, three from 761 px, four from 1180
   px, five from 1700 px, 12 apart (16 from 761 px). In it a `.ptile` has 5:2 art, the 40 px icon 16
   over the art with the name (16/22, two lines) beside it, 12 px inside, a state `.on-art` on the
@@ -1541,6 +1552,8 @@ Activate, footer, floating bar) until they are redrawn.
   with More level with it, pills and glyphs take a line each, and the action drops its icon. The
   key tile (`.end-tile.entry-tile`) fills the rest of the last row; in a cell it is the 40 px key
   beside its title with the action at the foot, with 640 px of its own one line.
+  A tile under 264 px (five columns in the 1248 px column) shortens `Download for macOS` to
+  `Download` (`.lbl-tail`; the button's `aria-label` keeps the whole label), as QuickAction does.
   `.portal-grid.dense.pair` (Discover with one or two products): centred, at most 768 px, one
   column under 400 px.
 - **Strip** (`.portal-strip`, the Library only): sticky to the window's bottom, full bleed, raised,
@@ -1573,6 +1586,44 @@ Activate, footer, floating bar) until they are redrawn.
   </div>
 </section>
 ```
+
+The rest of the Locker screens' parts (block `portal-redraw-2026-10-20`, one sub-block per group):
+
+- **Account cards** (`.card.account-card`, the build's AccountCard, PX-31a): the head holds the
+  title and the section's one action; a `p.card-intro` muted line under it; rows lead with a 40 px
+  tile (glyph in strong text); `h3.rows-label` sentence-case group labels; `.rows-head` (a
+  sub-heading and its action); `.item-row.add-row` (a `span` then a `.btn.link` on the text
+  column, 44 px); `.pill.outline` quiet tags (Primary, This browser); `.card-foot-note` (an
+  `.icon-line` footnote and the card's last action). On a narrow card an Appearance row stacks its
+  segmented control under the label. A removal confirms in its row: a `.callout.danger` in
+  `.item-more` with `ul.bullets` and a `.btn-row`, Keep first, both full width on a phone. The
+  Account page has the h1 and Sign out and no line under the title; neither phone tab is current.
+- **License pages** (product): the in-page `.toc-nav` from 1180 px and the `.jump-nav` below it;
+  no sticky column. The recommended downloads row takes a 4 px strong-ink edge (D9a), none on a
+  phone. A product page ends in a **Your data** card (`.card-rows` of `.item-row`: Download my
+  data, Remove my data, Support code), last in the nav too.
+- **Key field** (`.input.mono.key-input`, KeyField): the whole key in mono, wrapping, never cut or
+  masked (`.key-text`: `.dim` for `pkey_` and the separator, `b` for the slug at 500); `.ok` adds
+  the success edge and the check; `.key-notes` stacks the format line (`.hint.ok`), the product
+  and the help line. Confirm: `.dialog-art` (144 px band, 64 px icon over its edge) and
+  `.key-echo` (the middle-cut key with Change key).
+- **Focused flow** (`portal.download`, `portal.free-device`; FocusedFlow): `.portal-top.flow-top`
+  holds only the lockup (40 px, 36 px under 761 px, kept under 384 px) and `.flow-back`
+  (`Back to <product>` for an app's `return=`, else `See <product> in your library`; `.tail` drops
+  on a phone, `.short` "Back" under 384 px); no nav, account, phone bar or footer. `.task-head` holds
+  `.task-crumb` (words, not links) and the h1; `.task-actions.sticky-phone` sticks to the bottom
+  under 640 px; `.card.fold-row.dashed` for "Other platforms and architectures".
+- **Hosted download page** (`.portal.dlp`, `distribution.download-page`; BRAND.md §8, as built by
+  `services/distribution/page/render.ts`): the focused task frame on the bytes host.
+  `.portal-top.solo` holds only the lockup (40 px, 36 px under 761 px, never the mark alone: the
+  bar has room), with its rule; no Sign in, no tab bar. One centred 704 px column at every width:
+  `.dlp-head` (`.crumbs` as text `<Product> / Download`, `.art.band` the 120 px cover, `.dlp-id`
+  the 56 px `.logo.lg` beside the h1 and `by <Developer>`, `.dlp-pitch`), the `.card.dlp-rec`
+  recommendation (its line, the platform, one ink primary, the build's facts), the release, one
+  `.card` per platform (`.card-rows.fixed-actions`, 64 px `.qr.xs`), `details.card.dlp-files`
+  (every file's SHA-256 in full, `.dlp-hash`, and SHA256SUMS), Signing keys, About, then
+  `.portal-foot` with the one Locker line. The page runs no script, so it has no Copy buttons and
+  no click state.
 
 ## Frames and boards (surfaces kit, code, dialog)
 

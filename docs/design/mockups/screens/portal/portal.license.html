@@ -3,9 +3,9 @@
   [data-screen="portal.license"] .pill.tier {
     color: var(--pk-text-strong);
   }
-  /* One column under 1100px: the cards in the jump bar's order (Get it, License, Devices, Cloud Sync,
-     DJDL knows you as, What's new, Help). */
-  @container screen (max-width: 1099px) {
+  /* One column under 1024px: the cards in the jump bar's order (Get it, License, Devices, Cloud Sync,
+     DJDL knows you as, What’s new, Help, Your data). */
+  @container screen (max-width: 1023px) {
     [data-screen="portal.license"] .s-get { order: 1; }
     [data-screen="portal.license"] .s-license { order: 2; }
     [data-screen="portal.license"] .s-devices { order: 3; }
@@ -13,11 +13,15 @@
     [data-screen="portal.license"] .s-knows { order: 5; }
     [data-screen="portal.license"] .s-new { order: 6; }
     [data-screen="portal.license"] .s-help { order: 7; }
+    [data-screen="portal.license"] .s-data { order: 8; }
   }
-  /* A phone is not a Mac (PORTAL.md §5.4, decided by the device): no tinted row for it. */
+  /* A phone is not a Mac (PORTAL.md §5.4, decided by the device): no tinted row or edge for it. */
   @container screen (max-width: 639px) {
     [data-screen="portal.license"] .table tr.recommended td {
       background: none;
+    }
+    [data-screen="portal.license"] .portal .product-layout .table tr.recommended td:first-child {
+      box-shadow: none;
     }
   }
 </style>
@@ -30,8 +34,7 @@
       <a href="#">Discover</a>
     </nav>
     <div class="portal-actions">
-      <button class="btn outline sm"><i class="ic ic-key-round accent"></i>Activate license</button>
-      <span class="account"><span class="avatar sm">PR</span><span>Priya Raman</span><i class="ic ic-chevron-down"></i></span>
+      <span class="account" role="button" aria-haspopup="menu" aria-expanded="false" aria-label="Account: Priya Raman"><span class="avatar sm">PR</span><span>Priya Raman</span><i class="ic ic-chevron-down"></i></span>
     </div>
   </header>
 
@@ -65,6 +68,7 @@
         <a href="#">Cloud Sync</a>
         <a href="#">What's new</a>
         <a href="#">Help</a>
+        <a href="#">Your data</a>
       </nav>
       <!-- From 1280px: the in-page nav, the same order. -->
       <nav class="toc-nav" aria-label="On this page">
@@ -74,6 +78,7 @@
         <a href="#">Cloud Sync</a>
         <a href="#">What's new</a>
         <a href="#">Help</a>
+        <a href="#">Your data</a>
       </nav>
 
       <div class="product-col">
@@ -164,6 +169,17 @@
             <button class="btn outline sm"><i class="ic ic-external-link"></i>Contact Example Audio</button>
           </div>
         </section>
+
+        <!-- Your data (I-11): what DJDL holds for this person, last in every layout and in the nav.
+             The account's own file and its deletion are Account's. -->
+        <section class="card s-data" aria-labelledby="data-h">
+          <div class="card-head"><div class="title"><h2 id="data-h">Your data</h2></div></div>
+          <div class="card-rows">
+            <div class="item-row"><span class="icon-tile muted"><i class="ic ic-download"></i></span><div class="item-text"><div class="item-title">Download my data</div><div class="item-desc">Your license, devices, settings and activity.</div></div><div class="item-end"><button class="btn outline sm" aria-label="Download my data from DJDL"><i class="ic ic-download"></i>Download</button></div></div>
+            <div class="item-row"><span class="icon-tile muted"><i class="ic ic-trash-2"></i></span><div class="item-text"><div class="item-title">Remove my data</div><div class="item-desc">Polaris Locker deletes your settings and activity here. This can't be undone.</div></div><div class="item-end"><button class="btn danger-outline sm" aria-label="Remove my data from DJDL">Remove…</button></div></div>
+            <div class="item-row"><span class="icon-tile muted"><i class="ic ic-circle-help"></i></span><div class="item-text"><div class="item-title">Support code</div><div class="item-desc">Give this code to DJDL's support.</div></div><div class="item-end"><button class="btn outline sm">Get a support code</button></div></div>
+          </div>
+        </section>
       </div>
 
       <div class="product-col">
@@ -207,6 +223,22 @@
           </table>
         </section>
 
+        <!-- DJDL has Sign-in on: the account a new device signs in with. After License in the side
+             column (from 1024 px), after Devices in one column, as built (ProductIdentityCard). -->
+        <section class="card s-knows" aria-labelledby="knows-h">
+          <div class="card-head"><div class="title"><h2 id="knows-h">DJDL knows you as</h2></div></div>
+          <div class="card-rows">
+            <div class="device-row">
+              <span class="avatar">PR</span>
+              <div>
+                <div class="device-name">Priya Raman</div>
+                <div class="device-meta"><span>priya@example.edu</span> · <span>passkey</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="card-foot start"><a class="btn link" href="#">Manage sign-in methods<i class="ic ic-arrow-right"></i></a></div>
+        </section>
+
         <!-- Devices: the count lives here and in the nav (ST-36); the meter is neutral (a limit, not an error). -->
         <section class="card s-devices" aria-labelledby="dev-h">
           <div class="card-head">
@@ -244,29 +276,12 @@
           </div>
         </section>
 
-        <!-- DJDL has Sign-in on: the account a new device signs in with. -->
-        <section class="card s-knows" aria-labelledby="knows-h">
-          <div class="card-head"><div class="title"><h2 id="knows-h">DJDL knows you as</h2></div></div>
-          <div class="card-rows">
-            <div class="device-row">
-              <span class="avatar">PR</span>
-              <div>
-                <div class="device-name">Priya Raman</div>
-                <div class="device-meta"><span>priya@example.edu</span> · <span>passkey</span></div>
-              </div>
-            </div>
-          </div>
-          <div class="card-foot start"><a class="btn link" href="#">Manage sign-in methods<i class="ic ic-arrow-right"></i></a></div>
-        </section>
       </div>
     </div>
   </main>
 
-  <footer class="portal-foot">Polaris Locker · Help · Privacy · Terms</footer>
-
-  <nav class="portal-tabbar" aria-label="Polaris Locker tabs">
-    <a class="active" href="#"><i class="ic ic-layout-grid"></i>Library</a>
-    <a class="act" href="#"><i class="ic ic-key-round"></i>Activate</a>
+  <nav class="portal-tabbar docked" aria-label="Polaris Locker tabs">
+    <a class="active" href="#" aria-current="page"><i class="ic ic-layout-grid"></i>Library</a>
     <a href="#"><i class="ic ic-sparkles"></i>Discover</a>
   </nav>
 </div>
