@@ -919,8 +919,8 @@
       <figure>
         <figcaption>
           ipad · welcome, license key and sign-in on the gate's own screen, no
-          sheet. Built today: renders of the SwiftUI kit (examples/ui/swiftui)
-          on an iPad Pro 11-inch (M5) simulator, 820 × 1180 pt
+          sheet. Renders of the SwiftUI kit (examples/ui/swiftui) on an iPad Pro
+          11-inch (M5) simulator, 820 × 1180 pt. Built today
         </figcaption>
         <div class="row-shot" data-shot="ipad">
           <div>
@@ -957,8 +957,8 @@
       </figure>
       <figure>
         <figcaption>
-          ipad · code hand-off, device limit, expired and settings. Built today:
-          same renders, same device
+          ipad · code hand-off, device limit, expired and settings. Same
+          renders, same device. Built today
         </figcaption>
         <div class="row-shot" data-shot="ipad-states">
           <div>
@@ -1020,7 +1020,7 @@
         const ic = (n, s) => icon(n, s);
         const fig = (cap, shot, html) => {
           const f = document.createElement("figure");
-          f.innerHTML = `<figcaption>${cap}</figcaption>${html}`;
+          f.innerHTML = `<figcaption>${cap.replace(/\.?$/, ". UK-11 target")}</figcaption>${html}`;
           main.appendChild(f);
           return f;
         };

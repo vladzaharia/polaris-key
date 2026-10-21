@@ -71,6 +71,7 @@ const SEEDED: Record<string, string> = {
   "accent-as-status": `<style>:root { --pk-service-license: rgb(198 233 64); }</style><p role="status" style="color: rgb(198 233 64)">Active</p>`,
   "state-accent": `<style>:root { --pk-service-license: rgb(198 233 64); --pk-service-config: rgb(250 199 0); }</style><div data-service="license"><a href="#" aria-current="page" style="color: rgb(250 199 0)">Catalog</a></div>`,
   "section-index": `<h2>01 Limits</h2>`,
+  "tier-caption": `<figure><figcaption>ios · gate</figcaption><div data-shot="g">Gate</div></figure>`,
   "masthead-tile": `<span data-masthead-tile style="display: inline-block; inline-size: 48px; block-size: 48px"></span>`,
   "x-beside-cancel": `<div role="dialog"><button class="k-btn" aria-label="Close">×</button><button class="k-btn">Cancel</button></div>`,
 };

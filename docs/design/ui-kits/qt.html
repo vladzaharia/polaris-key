@@ -988,7 +988,7 @@
       const shots = [];
       const shot = (name, caption, cells) =>
         shots.push(
-          `<figure><figcaption>${caption}</figcaption><div class="shot" data-shot="${name}">${cells.join("")}</div></figure>`,
+          `<figure><figcaption>${caption.replace(/\.?$/, ". UK-11 target")}</figcaption><div class="shot" data-shot="${name}">${cells.join("")}</div></figure>`,
         );
       const w = (os, nat, width, height, fn, title) =>
         win({ os, nat, w: width, h: height, title, body: fn({ os, nat }) });
@@ -1101,7 +1101,7 @@
         ],
       );
 
-      shots.push(`<figure><figcaption><b>QWidget parts</b> · from the generated QSS, by object name, with the accent in the @pk-*@ placeholders. The native preset keeps the platform QStyle and applies only spacing and hierarchy.</figcaption>
+      shots.push(`<figure><figcaption><b>QWidget parts</b> · from the generated QSS, by object name, with the accent in the @pk-*@ placeholders. The native preset keeps the platform QStyle and applies only spacing and hierarchy. UK-11 target</figcaption>
         <div class="shot" data-shot="widgets"><div class="win os-mac pk"><div class="tb-mac"><i></i><i></i><i></i></div>
         <div class="parts">
           <div><h3>QFrame#pkCard · QLabel#pkTitle · #pkBody · #pkMeta</h3><div class="w-card"><span style="font:600 22px/28px var(--pk-font-sans)">Tidewater Studio Pro</span><span>Lifetime</span><span class="mute" style="font-size:12px">mara@fennick.studio</span></div></div>

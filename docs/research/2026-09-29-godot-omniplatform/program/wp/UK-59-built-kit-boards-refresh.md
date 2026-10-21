@@ -96,9 +96,9 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] `render.cjs` renders every board in both themes; `pnpm ui:lint` passes with no new exception.
+- [x] `render.cjs` renders every board in both themes; `pnpm ui:lint` passes with no new exception.
 - [ ] A mockup-mode `pkey-ux-reviewer` rates each board good or better.
-- [ ] Board captions say which tier each frame is.
+- [x] Board captions say which tier each frame is. (`tier-caption` rule in `packages/ui-qa`, run by `pnpm ui:lint`.)
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify
@@ -169,3 +169,21 @@ Left: apple.html iPad from built SwiftUI renders (needs a simulator or Xcode; th
 - terminal.html: every frame captioned Built today; a new `--json` frame captured by running the Node gate and status verbs (exit 4 and 1). NO_COLOR, ascii and the pipe quadrant were already drawn.
 - godot.html: nine frames re-tiered against real renders of the built kit (tools/ui_screenshots.gd, brand look, dark and light; raw captures in shots/godot-built/): gate, settings, sign-in, device limit, update toast, update, boot, status, error each show a Built today render beside the UK-11 target. Activate and the 1280 x 800 gate stay target only.
 - The built kit disagrees with the targets: sign-in title is "Sign in" at polaris.locker/device (the Node terminal prints key.plrs.im/device); boot draws a part-filled bar, not the DL7 shimmer; status is the gate's Signed out form; the device-limit and error frames have no copy for the cached license.
+
+## Progress and continuation (2026-10-21, slice 5: captions and close-out)
+
+- Every frame on all ten boards now ends its caption with `Built today` or `UK-11 target` (one trailing parenthetical is allowed). Web: the 14 frames that lacked a tier (gate 390, activate, device limit, update downloading, embedded settings, theming, state sheet, components, layers, motion, forced-colors, native preset) say Built today. iOS: the sign-in sheet, StoreKit paywall and Live Activity captions reordered to end in their tier (Paywall and Live Activity are UK-11 targets). iPad: Built today. Android: the expired shapes frame no longer carries both tiers; it ends Built today. Godot and terminal already complied. visionOS, tvOS, watchOS, macOS (desktop), Linux, Qt and Windows have no committed render of a built kit, so all their frames are `UK-11 target`; UK-56 owns those boards.
+- New rule `tier-caption` (`packages/ui-qa/src/browser/lint.js`, `rules.ts`, seeded case in `e2e/rules.e2e.test.ts`): any `figure` that holds a `[data-shot]` must have a caption ending in a tier. It runs inside `pnpm ui:lint` on every board, JS-generated captions included.
+- Open, not board edits: the MOCKUP-mode `pkey-ux-reviewer` rating and `pnpm ui:report` (lead's review lane); the full green gate (lead).
+
+## Kit gaps for UK-11
+
+- Godot: the boot bar is part-filled; DL7 wants the 2 px shimmer (owner: Godot kit).
+- Godot: status shows the gate's Signed out form with no Renew action; the target has a status screen (owner: Godot kit).
+- Godot: the error and device-limit frames have no copy for the cached license ("play continues on the cached license") (owner: Godot kit).
+- Godot: sign-in title is "Sign in" at polaris.locker/device; the Node terminal prints key.plrs.im/device (owner: Godot kit and terminal copy).
+- Godot: no activate dialog (the key form sits on the gate) and no 1280 x 800 render in tools/ui_screenshots.gd (owner: Godot kit).
+- Kotlin: the welcome lede is hard-coded rather than the catalog's (owner: Compose kit).
+- Kotlin: no Compose snapshots for tablet portrait, nor a product icon on expired (DL3) (owner: Compose kit).
+- Swift: no landscape split Welcome render on iPad (the headless simulator cannot rotate), and no ActivityKit surface or StoreKit paywall in the kit (owner: SwiftUI kit).
+- Apple and desktop: no built renders of visionOS, tvOS, watchOS or macOS (owner: SwiftUI kit).
