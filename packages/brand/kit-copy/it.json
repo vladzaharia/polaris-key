@@ -1486,6 +1486,15 @@
     "locker.entry.free": "{product} è gratuito, senza licenza. {developer} lo distribuisce sul proprio sito.",
     "locker.status.theAppStore": "App Store",
     "locker.devices.tailOf": "su {limit, plural, one {# dispositivo} many {# dispositivi} other {# dispositivi}} in uso",
-    "locker.devices.tail": "{count, plural, one {dispositivo in uso} many {dispositivi in uso} other {dispositivi in uso}}"
+    "locker.devices.tail": "{count, plural, one {dispositivo in uso} many {dispositivi in uso} other {dispositivi in uso}}",
+    "locker.jump.title": "Vai a un prodotto",
+    "locker.jump.short": "Vai a…",
+    "locker.jump.placeholder": "Vai a un prodotto o un'azione",
+    "locker.jump.results": "Risultati",
+    "locker.jump.products": "Prodotti",
+    "locker.jump.actions": "Azioni",
+    "locker.jump.devices": "Gestisci i dispositivi di {product}",
+    "locker.jump.recent": "Recenti",
+    "locker.jump.count": "{count, plural, one {# prodotto} many {# prodotti} other {# prodotti}}"
   }
 }

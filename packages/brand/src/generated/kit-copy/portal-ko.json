@@ -681,5 +681,14 @@
   "locker.entry.free": "{product}은(는) 라이선스 없이 무료로 사용할 수 있어요. {developer}에서 웹사이트로 배포해요.",
   "locker.status.theAppStore": "App Store",
   "locker.devices.tailOf": "/ {limit, plural, other {기기 #대}} 사용 중",
-  "locker.devices.tail": "{count, plural, other {대의 기기 사용 중}}"
+  "locker.devices.tail": "{count, plural, other {대의 기기 사용 중}}",
+  "locker.jump.title": "제품으로 이동",
+  "locker.jump.short": "이동…",
+  "locker.jump.placeholder": "제품이나 작업으로 이동",
+  "locker.jump.results": "결과",
+  "locker.jump.products": "제품",
+  "locker.jump.actions": "작업",
+  "locker.jump.devices": "{product} 기기 관리",
+  "locker.jump.recent": "최근",
+  "locker.jump.count": "{count, plural, other {제품 #개}}"
 }

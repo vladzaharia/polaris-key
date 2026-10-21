@@ -696,7 +696,16 @@ export type PortalCopyKey =
   | "locker.entry.free"
   | "locker.status.theAppStore"
   | "locker.devices.tailOf"
-  | "locker.devices.tail";
+  | "locker.devices.tail"
+  | "locker.jump.title"
+  | "locker.jump.short"
+  | "locker.jump.placeholder"
+  | "locker.jump.results"
+  | "locker.jump.products"
+  | "locker.jump.actions"
+  | "locker.jump.devices"
+  | "locker.jump.recent"
+  | "locker.jump.count";
 
 /** One locale's table. */
 export type PortalCopyTable = Readonly<Record<PortalCopyKey, string>>;

@@ -7420,6 +7420,51 @@
       "value": "{count, plural, one {device} other {devices}} in use",
       "role": "hint",
       "note": "Library and product models: statuses, origins, actions, devices (P0-36)."
+    },
+    "locker.jump.title": {
+      "value": "Jump to a product",
+      "role": "a11y",
+      "note": "Jump palette (P0-36)."
+    },
+    "locker.jump.short": {
+      "value": "Jump to…",
+      "role": "hint",
+      "note": "Jump palette (P0-36)."
+    },
+    "locker.jump.placeholder": {
+      "value": "Jump to a product or action",
+      "role": "hint",
+      "note": "Jump palette (P0-36)."
+    },
+    "locker.jump.results": {
+      "value": "Results",
+      "role": "a11y",
+      "note": "Jump palette (P0-36)."
+    },
+    "locker.jump.products": {
+      "value": "Products",
+      "role": "label",
+      "note": "Jump palette (P0-36)."
+    },
+    "locker.jump.actions": {
+      "value": "Actions",
+      "role": "label",
+      "note": "Jump palette (P0-36)."
+    },
+    "locker.jump.devices": {
+      "value": "Manage devices for {product}",
+      "role": "label",
+      "note": "Jump palette (P0-36)."
+    },
+    "locker.jump.recent": {
+      "value": "Recent",
+      "role": "label",
+      "note": "Jump palette (P0-36)."
+    },
+    "locker.jump.count": {
+      "value": "{count, plural, one {# product} other {# products}}",
+      "role": "a11y",
+      "note": "Jump palette (P0-36)."
     }
   }
 }

@@ -144,10 +144,10 @@ export function JumpPalette({
           )}
         >
           <DialogPrimitive.Title className="sr-only">
-            Jump to a product
+            {t("locker.jump.title")}
           </DialogPrimitive.Title>
           <Command
-            label="Jump to a product"
+            label={t("locker.jump.title")}
             shouldFilter={false}
             loop
             vimBindings={false}
@@ -157,9 +157,9 @@ export function JumpPalette({
               <Command.Input
                 value={query}
                 onValueChange={setQuery}
-                aria-label="Jump to a product"
+                aria-label={t("locker.jump.title")}
                 placeholder={
-                  narrow ? "Jump to…" : "Jump to a product or action"
+                  narrow ? t("locker.jump.short") : t("locker.jump.placeholder")
                 }
                 className="h-14 w-full bg-transparent text-base outline-hidden placeholder:text-fg-subtle focus-visible:ring-0 focus-visible:ring-offset-0"
               />
@@ -168,16 +168,19 @@ export function JumpPalette({
               </DialogPrimitive.Close>
             </div>
             <Command.List
-              label="Results"
+              label={t("locker.jump.results")}
               className="max-h-full overflow-y-auto p-2 desk:max-h-[min(60vh,28rem)]"
             >
               {query.trim() && found.length === 0 ? (
                 <p className="px-3 py-6 text-center text-sm text-fg-muted">
-                  Nothing in your library matches “{query.trim()}”.
+                  {t("locker.library.noMatchQuery", { name: query.trim() })}
                 </p>
               ) : null}
               {found.length ? (
-                <Command.Group heading="Products" className={group}>
+                <Command.Group
+                  heading={t("locker.jump.products")}
+                  className={group}
+                >
                   {found.map((p) => (
                     <Command.Item
                       key={p.slug}
@@ -202,7 +205,10 @@ export function JumpPalette({
                   ))}
                 </Command.Group>
               ) : null}
-              <Command.Group heading="Actions" className={group}>
+              <Command.Group
+                heading={t("locker.jump.actions")}
+                className={group}
+              >
                 {/* An open product's entry (PS-04) has no devices to manage. */}
                 {top && top.kind !== "entry" ? (
                   <Command.Item
@@ -214,7 +220,7 @@ export function JumpPalette({
                       aria-hidden
                       className="size-4 text-fg-muted"
                     />
-                    Manage devices for {top.name}
+                    {t("locker.jump.devices", { product: top.name })}
                   </Command.Item>
                 ) : null}
                 <Command.Item
@@ -226,11 +232,14 @@ export function JumpPalette({
                   className={item}
                 >
                   <KeyRound aria-hidden className="size-4 text-accent-fg" />
-                  Activate a license
+                  {t("locker.activate.title")}
                 </Command.Item>
               </Command.Group>
               {recent.length ? (
-                <Command.Group heading="Recent" className={group}>
+                <Command.Group
+                  heading={t("locker.jump.recent")}
+                  className={group}
+                >
                   {recent.map((p) => (
                     <Command.Item
                       key={p.slug}
@@ -249,7 +258,7 @@ export function JumpPalette({
           <LiveRegion
             message={
               open && query.trim()
-                ? `${found.length} ${found.length === 1 ? "product" : "products"}`
+                ? t("locker.jump.count", { count: found.length })
                 : ""
             }
           />
@@ -279,7 +288,7 @@ export function JumpIconButton({
       type="button"
       onClick={onOpen}
       data-jump-trigger=""
-      aria-label="Jump to a product"
+      aria-label={t("locker.jump.title")}
       className="inline-flex size-[44px] items-center justify-center rounded-full text-fg-strong hover:bg-hover"
     >
       <Search aria-hidden className="size-5" />

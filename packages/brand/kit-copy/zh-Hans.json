@@ -1486,6 +1486,15 @@
     "locker.entry.free": "{product} 可免费使用，无需许可证。{developer} 在其网站上提供。",
     "locker.status.theAppStore": "App Store",
     "locker.devices.tailOf": "/ {limit, plural, other {# 台设备}}已使用",
-    "locker.devices.tail": "{count, plural, other {台设备已使用}}"
+    "locker.devices.tail": "{count, plural, other {台设备已使用}}",
+    "locker.jump.title": "跳转到产品",
+    "locker.jump.short": "跳转到…",
+    "locker.jump.placeholder": "跳转到产品或操作",
+    "locker.jump.results": "结果",
+    "locker.jump.products": "产品",
+    "locker.jump.actions": "操作",
+    "locker.jump.devices": "管理 {product} 的设备",
+    "locker.jump.recent": "最近",
+    "locker.jump.count": "{count, plural, other {# 个产品}}"
   }
 }

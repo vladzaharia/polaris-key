@@ -547,7 +547,7 @@ function startErrorText(err: unknown): string {
     if (err.code === "auth_method_disabled") return t("signin.off.any");
     if (err.code === "turnstile_failed") return t("signin.turnstile.failed");
   }
-  return `${portalErrorCopy(err, { account: true }).title}. ${portalErrorCopy(err, { account: true }).description}`;
+  return portalErrorCopy(err).line;
 }
 
 function MethodsStep({
@@ -881,7 +881,7 @@ function codeErrorText(err: unknown): string {
     if (err.code === "forbidden") return t("signin.refused.title");
     if (err.code === "email_in_use") return t("signin.code.emailInUse");
   }
-  return `${portalErrorCopy(err, { account: true }).title}. ${portalErrorCopy(err, { account: true }).description}`;
+  return portalErrorCopy(err).line;
 }
 
 function CodeStep({

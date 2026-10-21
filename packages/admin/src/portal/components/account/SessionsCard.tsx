@@ -198,8 +198,7 @@ function SessionRow({
       </div>
       {end.error ? (
         <p role="alert" className="mt-2 text-sm text-danger sm:pl-13">
-          {portalErrorCopy(end.error, { account: true }).title}.{" "}
-          {portalErrorCopy(end.error, { account: true }).description}
+          {portalErrorCopy(end.error).line}
         </p>
       ) : null}
     </li>

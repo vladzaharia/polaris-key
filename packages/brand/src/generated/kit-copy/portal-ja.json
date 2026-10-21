@@ -681,5 +681,14 @@
   "locker.entry.free": "{product}は無料で、ライセンスは不要です。{developer}が自社サイトで配布しています。",
   "locker.status.theAppStore": "App Store",
   "locker.devices.tailOf": "/ {limit, plural, other {#台}}使用中",
-  "locker.devices.tail": "{count, plural, other {台のデバイスが使用中}}"
+  "locker.devices.tail": "{count, plural, other {台のデバイスが使用中}}",
+  "locker.jump.title": "製品に移動",
+  "locker.jump.short": "移動…",
+  "locker.jump.placeholder": "製品または操作に移動",
+  "locker.jump.results": "結果",
+  "locker.jump.products": "製品",
+  "locker.jump.actions": "操作",
+  "locker.jump.devices": "{product}のデバイスを管理",
+  "locker.jump.recent": "最近",
+  "locker.jump.count": "{count, plural, other {#件の製品}}"
 }
