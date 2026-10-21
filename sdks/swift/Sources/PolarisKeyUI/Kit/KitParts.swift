@@ -177,16 +177,21 @@ public struct KeyField: View {
                     .accessibilityLabel(strings.string("part.keyField.label"))
                     .privacySensitive()
                     #if os(iOS)
-                        PasteButton(payloadType: String.self) { values in
-                            if let first = values.first {
-                                Task { @MainActor in
-                                    text = first.trimmingCharacters(in: .whitespacesAndNewlines)
+                        // Paste is for an empty field (every kit's model drops it once a key is
+                        // there); the system dims it when the pasteboard holds no text, which read
+                        // as a dead control beside a key that is already entered.
+                        if text.isEmpty {
+                            PasteButton(payloadType: String.self) { values in
+                                if let first = values.first {
+                                    Task { @MainActor in
+                                        text = first.trimmingCharacters(in: .whitespacesAndNewlines)
+                                    }
                                 }
                             }
+                            .labelStyle(.titleAndIcon)
+                            .buttonBorderShape(.capsule)
+                            .tint(style.palette.accentFg)
                         }
-                        .labelStyle(.titleAndIcon)
-                        .buttonBorderShape(.capsule)
-                        .tint(style.palette.accentFg)
                     #endif
                 }
                 .padding(.horizontal, style.space(.md))
