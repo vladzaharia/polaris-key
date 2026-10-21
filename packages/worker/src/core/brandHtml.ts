@@ -22,8 +22,8 @@
  * The shell draws the Polaris Locker identity by default: `data-brand="locker"` on `<html>`, the
  * Locker lockup, the Locker favicon and title suffix, and neutral-ink actions and links with coral
  * as identity only (D9a). Every page the Worker answers to a customer is one. The console's own
- * pages (`console/auth.ts`) pass `brand: "key"`: the Pinned K, the Polaris Key wordmark, the
- * violet accent. Each has its own stylesheet and SHA-256: the Locker one is the Key one plus a
+ * pages (`console/auth.ts`) pass `brand: "key"`: the trimmed Polaris Key lockup (outlined; never live
+ * text), the violet accent. Each has its own stylesheet and SHA-256: the Locker one is the Key one plus a
  * constant tail (`BRAND_PAGE_CSS_LOCKER`).
  *
  * The bytes host never uses this shell: its pages stay on the system stack with no font source
@@ -32,11 +32,7 @@
 
 import { createHash } from "node:crypto";
 import { BRAND, FONT, THEME_TOKENS } from "@polaris-key/brand";
-import {
-  LOCKER_LOCKUP_PALETTES,
-  lockupMetrics,
-  markParts,
-} from "@polaris-key/brand/svg";
+import { LOCKER_LOCKUP_PALETTES, lockupMetrics } from "@polaris-key/brand/svg";
 import { escapeHtml } from "../platform/html.js";
 
 /** Where the admin build emits the brand fonts and the Pinned K web identity. */
@@ -54,15 +50,18 @@ const ROLE_CLASS = { body: "mb", star: "ms", text: "mt" } as const;
  * A brand lockup as inline SVG whose colours come from the page's stylesheet, so one drawing
  * follows the system theme. The geometry is the brand template's, untouched. The kit's gold
  * terminal bit is removed (the default mark has no bit, BRAND §6), and any other placeholder is
- * a brand change this code must not follow silently, so it throws (the tests fail).
+ * a brand change this code must not follow silently, so it throws (the tests fail). `trim`
+ * crops the horizontal canvas to the glyph and wordmark (BRAND §1.4's trimmed lockup, and
+ * `LOCKER_TRIM`), so `height` is the cropped canvas's height and the host supplies the clear space.
  */
 export function themedLockup(
   kind: "key" | "delivery" | "locker",
   layout: "horizontal" | "compact",
   height: number,
   className: string,
+  trim = false,
 ): string {
-  const m = lockupMetrics({ kind, layout, height });
+  const m = lockupMetrics({ kind, layout, height, trim });
   const body = m.template.body
     .replace(/<path fill="\{gold\}" d="[^"]+"\/>/g, "")
     .replace(/fill="\{(\w+)\}"/g, (_, role: string) => {
@@ -74,24 +73,7 @@ export function themedLockup(
     throw new Error("brand: unresolved lockup placeholder");
   const w = Math.round(m.width * 100) / 100;
   const title = escapeHtml(m.template.title);
-  return `<svg class="${className}" xmlns="http://www.w3.org/2000/svg" width="${w}" height="${height}" viewBox="0 0 ${m.template.width} ${m.template.height}" role="img" aria-label="${title}"><title>${title}</title>${body}</svg>`;
-}
-
-/**
- * The Pinned K alone, themed by the page's stylesheet like `themedLockup`: the mark the
- * console's `Logo` draws beside its "Polaris Key" text (the display cut at 48 px, no bit).
- * Decorative: the brand block's visible name says it.
- */
-export function themedMark(size: number, className: string): string {
-  const m = markParts({ kind: "key", size, theme: "dark", bit: "none" });
-  const paths = m.parts
-    .map((p) => {
-      if (p.role === "gold")
-        throw new Error("brand: the default mark has no bit");
-      return `<path class="${ROLE_CLASS[p.role]}" d="${p.d}"/>`;
-    })
-    .join("");
-  return `<svg class="${className}" xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${m.grid} ${m.grid}" aria-hidden="true" focusable="false">${paths}</svg>`;
+  return `<svg class="${className}" xmlns="http://www.w3.org/2000/svg" width="${w}" height="${height}" viewBox="${m.view.x} ${m.view.y} ${m.view.width} ${m.view.height}" role="img" aria-label="${title}"><title>${title}</title>${body}</svg>`;
 }
 
 // ── Stylesheet ───────────────────────────────────────────────────────────────────────────────
@@ -147,11 +129,11 @@ export const BRAND_PAGE_CSS = [
   `main{width:100%;max-width:28rem}`,
   // The console sign-in look (shared with the customer portal's login card and the console's
   // own boot screen): the brand block centred over one card, brand type, generous spacing. The
-  // block is the console `Logo`'s, measure for measure: the 48 px mark, a 12 px gap, "Polaris
-  // Key" in bold at 20 px (the console Logo's 16 px read small beside the 48 px mark) and the surface ("console", "account") as a small uppercase label.
-  `.brand{display:flex;justify-content:center;align-items:center;gap:.75rem;margin:0 0 2rem;color:var(--strong)}`,
-  `.brand svg{display:block;flex:none}`,
-  `.wordmark{display:flex;align-items:baseline;gap:.375rem;font-size:1.25rem;line-height:1.75rem;font-weight:700;letter-spacing:-.025em}`,
+  // block is the trimmed outlined Key lockup (the name is never live text, BRAND.md Don'ts) and the
+  // surface ("console", "account") as a small uppercase label beside it.
+  `.brand{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:.5rem .75rem;margin:0 0 2rem;color:var(--strong)}`,
+  `@media (max-width: 30rem){.brand svg{height:48px;width:auto;max-width:100%}}`,
+  `.brand svg{display:block;flex:none;max-width:100%}`,
   `.surface{color:var(--muted);font-size:.75rem;line-height:1rem;font-weight:400;letter-spacing:.05em;text-transform:uppercase}`,
   `.mb{fill:var(--mb)}.ms{fill:var(--ms)}.mt{fill:var(--mt)}`,
   // The app the page is about (a refusal names it): its icon and name above the card, as the
@@ -252,10 +234,10 @@ const LOCKER_PAGE_CSS_TAIL = [
   // ── The AuthCard's Worker twin (`renderAuthCard`; packages/admin/src/ui/auth/AuthCard.tsx is the
   // React original): the lockup above, one 28.5 rem card (22 px radius) with an optional header,
   // the step body (one primary), and an optional footer. Phones: the card goes edge to edge
-  // under a 56 px lockup row.
+  // under a 56 px lockup row (36 px tall lockup, 196 px wide: the guide's 180 minimum).
   `[data-brand=locker] body{display:block;place-items:normal;min-height:100dvh;padding:clamp(1.5rem,7vh,3.5rem) 1rem 3rem}`,
   `.ac-brand{display:flex;justify-content:center;margin:0 0 1.5rem;color:var(--strong)}`,
-  `.ac-brand svg{display:block;max-width:100%}`,
+  `.ac-brand svg{display:block;max-width:100%;height:auto}`,
   `main.ac{display:block;width:100%;max-width:28.5rem;min-width:0;margin:0 auto;overflow:hidden;border:1px solid var(--rule);border-radius:1.375rem;background:var(--raised);box-shadow:0 8px 24px rgb(0 0 0 / .18)}`,
   `.ac-head{display:flex;gap:1rem;align-items:center;min-width:0;padding:1rem 1.75rem;border-bottom:1px solid var(--rule)}`,
   `.ac-head img,.ac-mono{display:block;flex:none;width:48px;height:48px;border-radius:11px;object-fit:cover}`,
@@ -311,7 +293,7 @@ const LOCKER_PAGE_CSS_TAIL = [
   `@media (forced-colors: active){[data-brand=locker] .choice:has(input:checked){border-color:Highlight;border-left-width:3px}}`,
   `[data-brand=locker] ul.choices a{display:inline-flex;align-items:center;min-height:2.75rem}`,
   `[data-brand=locker] details.replace summary{display:flex;align-items:center;min-height:2.75rem}`,
-  `@media (max-width: 30rem){[data-brand=locker] body{padding:0 0 2rem}.ac-brand{height:3.5rem;align-items:center;margin:0;border-bottom:1px solid var(--rule)}main.ac{max-width:none;border-width:0 0 1px;border-radius:0;box-shadow:none;background:var(--page)}.ac-head,.ac-body,.ac-foot{padding-left:1.25rem;padding-right:1.25rem}.ac-body{padding-top:1.5rem;padding-bottom:1.5rem}}`,
+  `@media (max-width: 30rem){[data-brand=locker] body{padding:0 0 2rem}.ac-brand{height:3.5rem;align-items:center;margin:0;border-bottom:1px solid var(--rule)}.ac-brand svg{height:36px;width:auto}main.ac{max-width:none;border-width:0 0 1px;border-radius:0;box-shadow:none;background:var(--page)}.ac-head,.ac-body,.ac-foot{padding-left:1.25rem;padding-right:1.25rem}.ac-body{padding-top:1.5rem;padding-bottom:1.5rem}}`,
   // The hosted passport: at 960 px and wider in landscape the app sits beside the step, with art,
   // its icon, developer and device each on their own line; narrower, the header strip is shown.
   `@media (min-width: 60rem) and (orientation: landscape){main.ac-wide{max-width:46rem;display:grid;grid-template-columns:minmax(0,17.5rem) minmax(0,1fr)}main.ac-wide .ac-head{display:none}main.ac-wide .ac-passport{display:block;grid-column:1;grid-row:1;border-right:1px solid var(--rule);background:var(--sunken)}main.ac-wide .ac-body{grid-column:2;grid-row:1;align-content:start}main.ac-wide .ac-foot{grid-column:1 / -1;grid-row:2}.ac-art{height:8rem;background:linear-gradient(160deg,color-mix(in srgb,var(--mb) 45%,var(--raised)),var(--sunken))}.ac-pass-body{display:grid;gap:.75rem;padding:0 1.5rem 1.5rem}.ac-pass-body img,.ac-pass-body .ac-mono{width:72px;height:72px;margin-top:-2.25rem;border:3px solid var(--sunken);border-radius:16px;background:var(--raised)}.ac-pass-text{display:grid;gap:.25rem;overflow-wrap:anywhere}.ac-pass-text p{margin:0}.ac-pass-text .ac-head-title{font-size:1.25rem;line-height:1.75rem}}`,
@@ -326,7 +308,7 @@ const LOCKER_PAGE_CSS_TAIL = [
   `.tv .ac-body input[type=text]{min-height:5.5rem;font-size:min(3rem,8vw)}`,
   `[data-brand=locker] .tv .button{min-height:4.5rem;font-size:1.75rem;line-height:2rem}`,
   `.tv .ic{width:2rem;height:2rem}`,
-  `.tv .ac-brand svg{height:56px;width:auto}`,
+  `.tv .ac-brand svg{height:72px;width:auto}`,
   `.tv .ac-head img,.tv .ac-head .ac-mono{width:64px;height:64px}`,
   `.tv .ac-head-title{font-size:1.5rem;line-height:2rem}`,
   `.tv .ac-head-sub{font-size:1.25rem;line-height:1.75rem}`,
@@ -497,13 +479,21 @@ function passportPane(f: AppFacts): string {
   return `<aside class="ac-passport"><div class="ac-art" aria-hidden="true"></div><div class="ac-pass-body">${appArt(f.name, f.iconUrl)}<div class="ac-pass-text">${appLines({ name: f.name, ...(f.action ? { action: f.action } : {}), ...(f.developer ? { sub: f.developer } : {}), device: f.device ?? null })}</div></div></aside>`;
 }
 
-let mark: string | null = null;
+let keyLockup: string | null = null;
 let lockerLockup: string | null = null;
 
+/** Heights (CSS px) of the trimmed lockups on Worker pages (docs/design/BRAND.md §1.4). */
+export const BRAND_LOCKUP_HEIGHT = {
+  /** Key: the glyph is this tall, so >= 48 (the Key guide p.2); about 242 px wide. */
+  key: 56,
+  /** Locker: 437 x 80 canvas, so about 262 px wide (guide p.7 minimum 180). */
+  locker: 48,
+} as const;
+
 /**
- * The brand block above the card. `surface` is the already-escaped surface label, or "". Key:
- * the Pinned K and "Polaris Key" with the label beside it. Locker: the Locker lockup (its own
- * wordmark) with the label beside it.
+ * The brand block above the card. `surface` is the already-escaped surface label, or "". Both
+ * brands draw the trimmed OUTLINED lockup (the name is never live text, BRAND.md Don'ts); the
+ * surface label sits beside it as a small uppercase label, not as part of the name.
  */
 function brandBlock(
   brand: BrandPageBrand | undefined,
@@ -512,17 +502,29 @@ function brandBlock(
   const label = surface ? `<span class="surface">${surface}</span>` : "";
   const aria = surface ? ` ${surface}` : "";
   if (brand === "locker") {
-    lockerLockup ??= themedLockup("locker", "horizontal", 48, "mark");
+    lockerLockup ??= themedLockup(
+      "locker",
+      "horizontal",
+      BRAND_LOCKUP_HEIGHT.locker,
+      "mark",
+      true,
+    );
     // The Locker lockup is its own wordmark: no surface label beside it.
     return `<div class="brand" role="img" aria-label="Polaris Locker${aria}">${lockerLockup}</div>`;
   }
-  mark ??= themedMark(48, "mark");
-  return `<div class="brand" role="img" aria-label="Polaris Key${aria}">${mark}<span class="wordmark" aria-hidden="true">Polaris&nbsp;Key${label}</span></div>`;
+  keyLockup ??= themedLockup(
+    "key",
+    "horizontal",
+    BRAND_LOCKUP_HEIGHT.key,
+    "mark",
+    true,
+  );
+  return `<div class="brand" role="img" aria-label="Polaris Key${aria}">${keyLockup}${label}</div>`;
 }
 
 /**
- * A branded page: the console's brand block (the Pinned K at 48 px, the display cut, BRAND
- * §1.3-1.4, beside "Polaris Key" and the surface label) above one card, so a Worker-served
+ * A branded page: the console's brand block (the trimmed Polaris Key lockup, BRAND
+ * §1.4, with the surface label beside it) above one card, so a Worker-served
  * sign-in error reads as the same design as the console's boot screen and the portal's login.
  * Built on first use, so a brand geometry this shell cannot theme fails that request rather
  * than the Worker's module load.
@@ -583,7 +585,13 @@ export function renderBrandPage(opts: BrandPageOptions): string {
  * TRUSTED markup built with the helpers above, every value escaped.
  */
 export function renderAuthCard(opts: AuthCardOptions): string {
-  lockerLockup ??= themedLockup("locker", "horizontal", 40, "mark");
+  lockerLockup ??= themedLockup(
+    "locker",
+    "horizontal",
+    BRAND_LOCKUP_HEIGHT.locker,
+    "mark",
+    true,
+  );
   const header =
     opts.header ??
     (opts.app
@@ -599,7 +607,7 @@ export function renderAuthCard(opts: AuthCardOptions): string {
             device: opts.passport.device ?? null,
           })
         : "");
-  // One 40 px Locker lockup on every page (no size jump between steps): muted in an app's
+  // One trimmed Locker lockup (48 px tall, 262 wide) on every page (no size jump between steps): muted in an app's
   // context, full on `/tv` and on pages with no app (SIGN-IN.md §3.1).
   const inApp =
     (header !== "" || opts.passport !== undefined) && opts.variant !== "tv";

@@ -139,6 +139,16 @@ export type BadgeLayout = keyof typeof KEY_POWERED_BY.minimum;
  */
 export const LOCKUP_TRIM = { x: 16, y: 32, height: 96, right: 40 } as const;
 
+/**
+ * The trimmed Locker horizontal lockup (`lockupSvg({ kind: "locker", trim: true })`): the kit's
+ * 460 x 128 canvas cropped to the mark's art (x 8..120, y 23.67..102, measured in Chromium) on
+ * the left, top and bottom and to the end of the outlined "Polaris Locker" (x 443) on the right.
+ * Nothing is redrawn; only the viewBox moves, so the mark-to-wordmark ratio is the kit's. The
+ * kit's own canvas leaves 8 to 25 units of margin that make the lockup read small in a header:
+ * the host supplies the clear space (guide p.7: at least a quarter of the glyph height).
+ */
+export const LOCKER_TRIM = { x: 8, y: 23, width: 437, height: 80 } as const;
+
 /** Clear space around standalone marks and lockups, as a fraction of the glyph height. */
 export const CLEAR_SPACE_RATIO = 0.25;
 

@@ -1,6 +1,6 @@
 import * as React from "react";
 import type { BitColor } from "@polaris-key/brand";
-import { PolarisMark } from "@polaris-key/brand/react";
+import { PolarisLockup, PolarisMark } from "@polaris-key/brand/react";
 import type { ServiceAccent } from "../../console/nav.js";
 import { cn } from "../../lib/cn.js";
 import { useTheme } from "../theme.js";
@@ -54,12 +54,12 @@ export function LogoMark({
 }
 
 /**
- * The console header's brand block: the 48 px display-cut Pinned K, then the product name and an
- * optional muted suffix (e.g. "admin"). The mark carries the section bit only inside a service
- * section (`section`); on core pages and in the portal it has none. The name is UI text beside
- * the mark, not a redrawn wordmark; it is hidden from assistive technology because the mark's
- * own name ("Polaris Key") already says it once. Clear space: the block is inset by 8 px inside
- * a 64 px header, the arrangement BRAND.md §6 proves legible.
+ * The Polaris Key brand block for a page or boot screen: the trimmed horizontal lockup (BRAND.md
+ * §1.4), 56 px tall so the display-cut glyph is 56 px (the Key guide, p.2, asks for >= 48 px), then
+ * an optional muted suffix (e.g. "console"). The name is drawn by the lockup and named for assistive
+ * technology by its own title; it is never live text (BRAND.md Don'ts). The mark carries the section
+ * bit only inside a service section (`section`); on core pages and in the portal it has none. The
+ * host supplies the clear space (a quarter of the glyph, 14 px).
  */
 export function Logo({
   className,
@@ -70,20 +70,24 @@ export function Logo({
   subtitle?: string;
   section?: ServiceAccent;
 }): React.ReactElement {
+  const { theme } = useTheme();
   return (
     <span className={cn("inline-flex items-center gap-3 text-fg", className)}>
-      <LogoMark size={48} section={section} />
-      <span
-        className="flex items-baseline gap-1.5 font-medium tracking-tight text-fg-strong"
-        aria-hidden
-      >
-        Polaris&nbsp;Key
-        {subtitle ? (
-          <span className="text-xs font-normal uppercase tracking-wider text-fg-muted">
-            {subtitle}
-          </span>
-        ) : null}
-      </span>
+      <PolarisLockup
+        kind="key"
+        layout="horizontal"
+        theme={theme}
+        height={56}
+        trim
+        bit={sectionBitFor(section)}
+        title="Polaris Key"
+        className="max-w-full"
+      />
+      {subtitle ? (
+        <span className="text-xs font-normal uppercase tracking-wider text-fg-muted">
+          {subtitle}
+        </span>
+      ) : null}
     </span>
   );
 }

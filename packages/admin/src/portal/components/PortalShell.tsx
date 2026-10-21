@@ -7,13 +7,13 @@ import type { PortalAccount } from "../api.js";
 import { useActivate } from "../activate.js";
 import { href, type PortalRoute } from "../router.js";
 import { AccountMenu } from "./AccountMenu.js";
-import { Lockup } from "./Lockup.js";
+import { HeaderBrand } from "./Lockup.js";
 import { t } from "../../lib/copy.js";
 
 /**
  * The signed-in frame (PORTAL.md §3.2, §5.2 `PortalShell`):
  *
- * - **Header** (64 px; 56 on phones): the compact lockup (the link home), the Library nav with
+ * - **Header** (64 px; 56 on phones): the trimmed Locker lockup (the link home; the mark alone under 24 rem), the Library nav with
  *   its count, a slot for the ⌘K trigger, the right-aligned **Activate license** action and the
  *   account menu.
  * - **Tablet header** (761–1179 px, PORTAL.md §8): the same row, compacted so the account menu
@@ -84,8 +84,7 @@ export function PortalShell({
             aria-label="Polaris Locker: your library"
             className="flex shrink-0 items-center rounded-md"
           >
-            <Lockup height={44} className="hidden mid:block" />
-            <Lockup height={44} className="mid:hidden" />
+            <HeaderBrand />
           </a>
           <nav
             aria-label="Main"

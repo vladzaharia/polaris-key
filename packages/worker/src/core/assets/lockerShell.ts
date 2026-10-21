@@ -21,8 +21,17 @@ import { escapeHtml } from "../../platform/html.js";
 const LOCKUP_CLASS = { body: "lb", star: "ls", text: "lt" } as const;
 
 /** The Locker horizontal lockup as inline SVG at `height` px, themed by the page's stylesheet. */
-export function lockerLockup(height: number, className: string): string {
-  const m = lockupMetrics({ kind: "locker", layout: "horizontal", height });
+export function lockerLockup(
+  height: number,
+  className: string,
+  trim = false,
+): string {
+  const m = lockupMetrics({
+    kind: "locker",
+    layout: "horizontal",
+    height,
+    trim,
+  });
   const body = m.template.body.replace(
     /fill="\{(\w+)\}"/g,
     (_, role: string) => {
@@ -35,7 +44,7 @@ export function lockerLockup(height: number, className: string): string {
     throw new Error("locker shell: unresolved placeholder");
   const w = Math.round(m.width * 100) / 100;
   const title = escapeHtml(m.template.title);
-  return `<svg class="${className}" xmlns="http://www.w3.org/2000/svg" width="${w}" height="${height}" viewBox="0 0 ${m.template.width} ${m.template.height}" role="img" aria-label="${title}"><title>${title}</title>${body}</svg>`;
+  return `<svg class="${className}" xmlns="http://www.w3.org/2000/svg" width="${w}" height="${height}" viewBox="${m.view.x} ${m.view.y} ${m.view.width} ${m.view.height}" role="img" aria-label="${title}"><title>${title}</title>${body}</svg>`;
 }
 
 /**

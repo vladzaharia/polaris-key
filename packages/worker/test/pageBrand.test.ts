@@ -42,7 +42,8 @@ describe("the shell", () => {
     const html = renderBrandPage({ ...opts, brand: "key" });
     expect(html).toContain('<html lang="en">');
     expect(html).toContain("· Polaris Key</title>");
-    expect(html).toContain("Polaris&nbsp;Key");
+    expect(html).toContain('aria-label="Polaris Key');
+    expect(html).not.toContain("Polaris&nbsp;Key");
     expect(html).toContain(`<style>${BRAND_PAGE_CSS}</style>`);
     expect(html).not.toContain("Locker");
   });
@@ -107,7 +108,8 @@ describe("the dispatcher", () => {
   it("the console's own sign-in page stays Polaris Key under the Key hash", async () => {
     const res = await get("/manage/callback");
     const html = await res.text();
-    expect(html).toContain("Polaris&nbsp;Key");
+    expect(html).toContain('aria-label="Polaris Key');
+    expect(html).not.toContain("Polaris&nbsp;Key");
     expect(html).not.toContain("data-brand");
     expect(res.headers.get("content-security-policy")).toContain(
       brandPageStyleSource("key"),

@@ -19,6 +19,7 @@ import {
   BRAND,
   CUT_GRID,
   LOCKUP_TRIM,
+  LOCKER_TRIM,
   OPTICAL,
   type BadgeLayout,
   type AnyMarkKind,
@@ -280,9 +281,10 @@ export interface LockupOptions {
   /** Rendered height in CSS px. Default: the kit's natural size. Width follows the aspect ratio. */
   height?: number;
   /**
-   * Crop the horizontal lockup's canvas to its glyph box and wordmark (LOCKUP_TRIM), for a header
-   * that supplies its own clear space. `height` is then the glyph's height: 48 in the 64 px
-   * console header. Horizontal only; any other layout throws.
+   * Crop the horizontal lockup's canvas to its glyph box and wordmark (LOCKUP_TRIM for Key and
+   * Delivery, LOCKER_TRIM for Locker), for a header that supplies its own clear space. `height`
+   * is then the cropped canvas's height: the Key glyph's height (48 in the 64 px console header)
+   * or the Locker mark art's (80 units). Horizontal only; any other layout throws.
    */
   trim?: boolean;
   /**
@@ -310,16 +312,26 @@ export function lockupMetrics(opts: LockupOptions = {}): {
   const { kind = "key", layout = "horizontal" } = opts;
   if (kind === "locker") {
     refuseBit("lockup", opts);
-    if (opts.trim)
-      throw new RangeError("lockup: trim does not apply to the Locker lockup");
+    if (opts.trim && layout !== "horizontal")
+      throw new RangeError(
+        `lockup: trim applies to the horizontal layout, not ${layout}`,
+      );
     const t = lockerLockupTemplate(layout);
-    const height = opts.height ?? t.height;
+    const view = opts.trim
+      ? {
+          x: LOCKER_TRIM.x,
+          y: LOCKER_TRIM.y,
+          width: LOCKER_TRIM.width,
+          height: LOCKER_TRIM.height,
+        }
+      : { x: 0, y: 0, width: t.width, height: t.height };
+    const height = opts.height ?? view.height;
     return {
       template: t,
-      view: { x: 0, y: 0, width: t.width, height: t.height },
-      width: (t.width * height) / t.height,
+      view,
+      width: (view.width * height) / view.height,
       height,
-      glyphPx: height,
+      glyphPx: (128 * height) / view.height,
       cut: "master",
       bit: false,
     };

@@ -226,7 +226,7 @@ export function RequestFlow({
   const footer = view ? <RequestFooter view={view} /> : undefined;
   const brand = (
     <span className="text-fg-muted opacity-80">
-      <Lockup height={40} />
+      <Lockup height={48} />
     </span>
   );
 

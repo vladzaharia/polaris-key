@@ -225,12 +225,14 @@ describe("the TV variant after the code", () => {
     void deviceCode;
   });
 
-  it("one 40 px lockup on every page, quiet in an app's context", async () => {
+  it("one 48 px trimmed lockup on every page, quiet in an app's context", async () => {
     const entry = await (await send(`${CUSTOMER}/device`)).text();
     const { userCode } = await start();
     const confirm = (await confirmPage(userCode)).html;
     for (const html of [entry, confirm])
-      expect(html).toMatch(/<svg class="mark"[^>]* height="40"/);
+      expect(html).toMatch(
+        /<svg class="mark"[^>]* height="48" viewBox="8 23 437 80"/,
+      );
     expect(confirm).toContain('class="ac-brand quiet"');
     expect(entry).toContain(`<header class="ac-brand">`);
   });
