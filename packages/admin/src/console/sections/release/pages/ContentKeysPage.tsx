@@ -189,7 +189,7 @@ export function ContentKeysPage({
             to={productPage(slug, "deliverables", {
               query: { q: row.original.scope },
             })}
-            className="inline-block min-w-6 py-1 text-center text-accent-fg underline-offset-4 hover:underline"
+            className="inline-block min-w-6 py-1 text-end text-accent-fg underline-offset-4 hover:underline"
           >
             {row.original.releaseCount}
             <span className="sr-only">
