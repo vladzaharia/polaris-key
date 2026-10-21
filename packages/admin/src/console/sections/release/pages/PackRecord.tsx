@@ -627,8 +627,7 @@ export function PackRecord({
               "no release yet"
             )}
             {" · "}
-            {decl.releaseCount}{" "}
-            {decl.releaseCount === 1 ? "release" : "releases"}
+            {`${decl.releaseCount} ${decl.releaseCount === 1 ? "release" : "releases"}`}
             {" · "}
             <Link
               to={r.compatibility(slug)}
