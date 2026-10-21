@@ -50,7 +50,10 @@ final class KitRenderTests: XCTestCase {
             ),
             (
                 "Dynamic Type font sizes are partially unsupported", "", "",
-                ["GraceBanner.days-left", "GraceBanner.last-day", "Welcome.default.extras"],
+                [
+                    "GraceBanner.days-left", "GraceBanner.last-day", "Welcome.default.extras",
+                    "UpdatePrompt.available", "UpdatePrompt.ready",
+                ],
                 "Same ViewThatFits as UpdatePrompt.store: the banner (and the extras row) re-flows to a stacked layout when larger text no longer fits, so the audit compares two layouts. Checked on the iPad and iPhone at AX3 and AX5: every line scales and wraps, nothing is cut (these states render at the default row here, to keep the baselines small)."
             ),
             (
