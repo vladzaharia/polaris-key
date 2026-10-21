@@ -118,6 +118,8 @@ static func _apply_look(look: String) -> void:
 		PKeyUiTheme.branding = PKeyUiTheme.BRANDING_POLARIS_KEY
 		PKeyUiTheme.scheme = "light" if look == "brand-light" else "dark"
 		PKeyUiTheme.powered_by = true
+	# The product leads every screen (UI-KITS.md §1.2): a name, and no icon, so the monogram shows.
+	PKeyUiTheme.product_name = "Tidewater Studio"
 
 
 static func _ground(look: String) -> Color:
