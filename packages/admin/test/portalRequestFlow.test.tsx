@@ -191,6 +191,10 @@ describe("the app card, signed out (SIGN-IN.md §3.1)", () => {
     ).toBeTruthy();
     expect(document.body.textContent).not.toMatch(/Evil|Mallory/);
     expect(document.body.textContent).not.toMatch(/Polaris Key/);
+    // Help and Privacy stay under the card in an app's context too (SIGN-IN §3.1).
+    const nav = screen.getByRole("navigation", { name: "Help and policies" });
+    expect(within(nav).getByRole("link", { name: "Help" })).toBeTruthy();
+    expect(within(nav).getByRole("link", { name: "Privacy" })).toBeTruthy();
   });
 
   it("an unverified name draws the neutral frame, not a developer", async () => {

@@ -335,6 +335,26 @@ export function SignInPage({
             ? "unreachable"
             : (ssoKey ?? step.kind);
 
+  const legalNav = (
+    <nav
+      aria-label={t("locker.shell.help")}
+      className="flex flex-wrap justify-center gap-x-5"
+    >
+      <a
+        href={HELP_LINKS.help}
+        className="inline-flex min-h-11 items-center underline underline-offset-4 hover:text-fg-strong"
+      >
+        {t("locker.shell.helpLink")}
+      </a>
+      <a
+        href={HELP_LINKS.privacy}
+        className="inline-flex min-h-11 items-center underline underline-offset-4 hover:text-fg-strong"
+      >
+        {t("locker.shell.privacy")}
+      </a>
+    </nav>
+  );
+
   return (
     <AuthCard
       brand={<AuthBrand muted={Boolean(ctx) || handle !== null} />}
@@ -355,24 +375,13 @@ export function SignInPage({
         ) : handle !== null && request.data && !requestGone ? (
           <RequestFooter view={request.data} />
         ) : (
-          <nav
-            aria-label={t("locker.shell.help")}
-            className="flex flex-wrap justify-center gap-x-5"
-          >
-            <a
-              href={HELP_LINKS.help}
-              className="inline-flex min-h-11 items-center underline underline-offset-4 hover:text-fg-strong"
-            >
-              {t("locker.shell.helpLink")}
-            </a>
-            <a
-              href={HELP_LINKS.privacy}
-              className="inline-flex min-h-11 items-center underline underline-offset-4 hover:text-fg-strong"
-            >
-              {t("locker.shell.privacy")}
-            </a>
-          </nav>
+          legalNav
         )
+      }
+      after={
+        !other && handle !== null && Boolean(request.data) && !requestGone
+          ? legalNav
+          : undefined
       }
       stepKey={stepKey}
       direction={direction}

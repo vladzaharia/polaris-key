@@ -1,6 +1,6 @@
 import * as React from "react";
 import { cn } from "../../lib/cn.js";
-import { Globe, Monitor, Tv } from "lucide-react";
+import { Globe, Monitor, Smartphone, Tv } from "lucide-react";
 import { t, tParts } from "../../lib/copy.js";
 
 /**
@@ -50,6 +50,7 @@ export function AuthCard({
   loadingKey = "loading",
   focusKey = 0,
   receipt = false,
+  after,
   children,
 }: {
   /** The brand row: the lockup (portal: Polaris Locker). Decorative; the page names itself. */
@@ -69,6 +70,8 @@ export function AuthCard({
   focusKey?: number;
   /** The footer is the app's trust receipt: in the passport it sits at the start pane's foot. */
   receipt?: boolean;
+  /** Under the card, outside it (the app card's Help · Privacy, next to its receipt footer). */
+  after?: React.ReactNode;
   children: React.ReactNode;
 }): React.ReactElement {
   const bodyRef = React.useRef<HTMLDivElement>(null);
@@ -193,6 +196,11 @@ export function AuthCard({
             </div>
           ) : null}
         </div>
+        {after ? (
+          <div className="mb-6 text-sm text-fg-muted max-sm:px-5 max-sm:pb-2">
+            {after}
+          </div>
+        ) : null}
         <div aria-live="polite" data-step-announcer className="sr-only">
           {announce}
         </div>
@@ -256,7 +264,10 @@ export type CardHeaderProps =
       name: string;
       developer: string | null;
       /** The key on-ramp of an app's request keeps the device line (§3.1). */
-      where?: { glyph: "globe" | "device" | "tv"; text: string } | null;
+      where?: {
+        glyph: "globe" | "device" | "phone" | "tv";
+        text: string;
+      } | null;
     }
   | {
       variant: "app" | "device";
@@ -266,12 +277,20 @@ export type CardHeaderProps =
       art?: string | null;
       name: string;
       developer: string | null;
-      where: { glyph: "globe" | "device" | "tv"; text: string } | null;
+      where: {
+        glyph: "globe" | "device" | "phone" | "tv";
+        text: string;
+      } | null;
       /** The device-code panel's code (the `device` variant). */
       code?: string | null;
     };
 
-const WHERE_GLYPH = { globe: Globe, device: Monitor, tv: Tv } as const;
+const WHERE_GLYPH = {
+  globe: Globe,
+  device: Monitor,
+  phone: Smartphone,
+  tv: Tv,
+} as const;
 
 /**
  * The pane's art (SIGN-IN.md "the product passport"): a decorative 16:10 `<img>`, cover-fit, edge
@@ -325,7 +344,10 @@ const PANE_TEXT = "passport:px-6";
 function Where({
   where,
 }: {
-  where: { glyph: "globe" | "device" | "tv"; text: string } | null | undefined;
+  where:
+    | { glyph: "globe" | "device" | "phone" | "tv"; text: string }
+    | null
+    | undefined;
 }): React.ReactElement | null {
   if (!where) return null;
   const Glyph = WHERE_GLYPH[where.glyph];
