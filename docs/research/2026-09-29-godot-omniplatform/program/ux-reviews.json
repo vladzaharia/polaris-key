@@ -359,6 +359,11 @@
       "verdict": "pass",
       "date": "2026-10-21",
       "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/PX-15/recheck/ (re-check PASS-WITH-NOTES after one fix round, B1 verified end to end 4 ways; lead polish cd129a065)"
+    },
+    "PX-29": {
+      "verdict": "pass",
+      "date": "2026-10-21",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/PX-29/recheck/ (re-check PASS-WITH-NOTES after one fix round; lead polish 930ecc66c)"
     }
   }
 }
