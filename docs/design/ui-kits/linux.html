@@ -733,9 +733,9 @@
         limit: () => ({
           body: `<div class="lines"><h1 class="gh">Your license is on 3 of 3 devices</h1><p class="gp opt">To use it on this computer, replace one. You can add it back later.</p></div>
             <div class="glist">
-              <div class="gdev">${g("laptop", 20)}<div class="t">Work laptop<small>Windows 11 · last seen 41 days ago</small></div></div>
-              <div class="gdev">${g("tablet", 20)}<div class="t">Mara’s iPad<small>iPadOS 26 · last seen yesterday</small></div></div>
-              <div class="gdev">${g("laptop", 20)}<div class="t">MacBook Pro<small>macOS 26 · last seen today</small></div></div>
+              <div class="gdev">${g("laptop", 20)}<div class="t">Work laptop<small>Windows 11 · last used 41 days ago</small></div></div>
+              <div class="gdev">${g("tablet", 20)}<div class="t">Mara’s iPad<small>iPadOS 26 · last used yesterday</small></div></div>
+              <div class="gdev">${g("laptop", 20)}<div class="t">MacBook Pro<small>macOS 26 · last used today</small></div></div>
             </div>
             <div class="gnote">${g("info", 16)}<span>Replace a device in your browser. Tidewater Studio continues when you’re done.</span></div>`,
           acts: `<div class="acts"><span class="gb pill eq">Back</span><span class="gb pill suggested eq">${g("external", 14)}Open in browser</span></div>`,
@@ -964,7 +964,7 @@
         ),
         sw(
           host(
-            `<div class="banner">${g("wifiOff", 20)}<span class="grow2">Offline · 3 days left to reconnect</span><span class="gb sm">Try again</span></div>`,
+            `<div class="banner">${g("wifiOff", 20)}<span class="grow2">Offline · 3 days left</span><span class="gb sm">Try again</span></div>`,
           ),
           false,
           480,
@@ -988,7 +988,7 @@
         ),
         sw(
           msg(
-            `${appIcon(64, 14)}<div class="lines"><h1 class="gh">License expired</h1><p class="gp">Your license has expired. Connect to the internet or renew it to continue.</p></div><div class="acts"><span class="gb pill">Use another license</span><span class="gb pill suggested">Renew${g("external", 14)}</span></div>`,
+            `${appIcon(64, 14)}<div class="lines"><h1 class="gh">License expired</h1><p class="gp">Connect to the internet or renew your license to continue.</p></div><div class="acts"><span class="gb pill">Use another license</span><span class="gb pill suggested">Renew${g("external", 14)}</span></div>`,
           ),
         ),
       );

@@ -1109,7 +1109,7 @@
           "",
           `<div data-shot="visionos-banners" style="display:flex;gap:40px">${hostRoom(
             "pk",
-            `<div class="ornament"><span class="note">${ic("wifiOff", 24)}Offline · 5 days left to reconnect</span><span class="vb p">Try again</span></div>`,
+            `<div class="ornament"><span class="note">${ic("wifiOff", 24)}Offline · 5 days left</span><span class="vb p">Try again</span></div>`,
           )}${hostRoom(
             "pk",
             `<div class="ornament"><span class="note">Tidewater Studio 2.5 is available</span><span>Later</span><span class="vb p">Update now</span></div>`,
@@ -1126,7 +1126,7 @@
         const tGate = (native) =>
           `<div class="tsafe split"><div class="tpanel">${icon3(280, false)}</div><div class="tstack"><h1 class="tt xl">Welcome to Tidewater Studio</h1><p class="tl">Sign in or use a license key to continue.</p><div class="tacts"><div class="tb p f">Sign in</div><div class="tb">Use a license key</div></div></div></div>`;
         const tSignIn = () =>
-          `<div class="tsafe"><div class="tstack">${thead()}<h1 class="tt">Sign in with a code</h1><p class="tl">Scan the QR code with your phone, or enter this code at the address below.</p><div class="turl">tidewater.app/link</div><div class="tcode mono">WDJB-MJHT</div><div class="twait">${countdown(0.92, 36)}Code expires in 9:12</div></div><div class="tstack">${tqr(11)}<div class="tdev">${ic("monitor", 36)}This TV</div><div class="tacts"><div class="tb f">Use a license key instead</div></div></div></div>`;
+          `<div class="tsafe"><div class="tstack">${thead()}<h1 class="tt">Sign in with a code</h1><p class="tl">Scan the QR code with your phone, or go to this address and enter the code below.</p><div class="turl">tidewater.app/link</div><div class="tcode mono">WDJB-MJHT</div><div class="twait">${countdown(0.92, 36)}Code expires in 9:12</div></div><div class="tstack">${tqr(11)}<div class="tdev">${ic("monitor", 36)}This TV</div><div class="tacts"><div class="tb f">Use a license key instead</div></div></div></div>`;
         const tLimit = () =>
           `<div class="tsafe"><div class="tstack">${thead()}<h1 class="tt">Your license is on 3 of 3 devices</h1><div class="tcall">Scan the code to replace a device on your phone.</div><div class="tdev">${ic("user", 36)}Signed in as m••••@f••••••.studio</div></div><div class="tstack">${tqr(5)}<div class="turl" style="font-size:44px;line-height:52px">tidewater.app/link</div><div class="tcode sm mono">WDJB-MJHT</div><div class="tacts"><div class="tb p f">Try again</div><div class="tb">Use another license</div></div></div></div>`;
         for (const native of [false, true]) {
