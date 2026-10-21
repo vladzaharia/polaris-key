@@ -311,7 +311,6 @@ function OverviewBody({
 }
 
 // ── Moments (EXPERIENCE.md §0.7; MO-11) ────────────────────────────────────────────────────────
-
 const UNKNOWN: MomentObservation = { state: "unknown" };
 const BEFORE: MomentObservation = { state: "before" };
 
@@ -549,7 +548,6 @@ function OverviewMoments({
 }
 
 // ── Service tiles ──────────────────────────────────────────────────────────────────────────────
-
 function ServiceTile({
   slug,
   service,
