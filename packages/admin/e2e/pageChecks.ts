@@ -128,45 +128,25 @@ export function forcedColourBreaches(page: Page): Promise<string[]> {
 }
 
 /**
- * The lint's rules the built console and portal still break on every page at every size: the
- * colour, weight, RTL, state and one-primary rules the mockup boards and kits were written for.
- * UK-63 clears them and deletes this list; until then every OTHER rule (and any new one) must be
- * clean at the wide and zoomed sizes.
+ * Every rule of `pnpm ui:lint --html` over the page, one `rule: target detail` line each.
  */
-export const LINT_DEBT_RULES = new Set([
-  "colour-literal",
-  "font-weight-700",
-  "interactive-states",
-  "rtl-physical",
-  "focus-ring-spread",
-  "border-width",
-  "no-vw",
-  "one-primary",
-  "text-size-floor",
-  "tier-separator",
-  "empty-placeholder",
-  "touch-target",
-  // The console's own: sidebar group labels, a focus ring on :focus, a close X beside Cancel.
-  "button-uppercase",
-  "focus-visible-only",
-  "x-beside-cancel",
-  // A button's focus ring and a font mid-swap, caught in a transition: not a size effect.
-  "button-glow",
-  "font-family",
-]);
-
-/**
- * What `pnpm ui:lint --html` finds on the page outside {@link LINT_DEBT_RULES}, one
- * `rule: target detail` line each.
- */
-export async function lintFindings(page: Page): Promise<string[]> {
+export async function lintFindings(
+  page: Page,
+  /**
+   * Check touch targets too: `minTouch` is the smallest side in px (24 for the console, WCAG 2.5.8;
+   * 44 for the customer site's touch layout, below the `desk` breakpoint).
+   */
+  targets?: { minTouch: number },
+): Promise<string[]> {
   // Evaluated over the DevTools protocol, which the page's CSP does not govern (`lintPage`
   // would inject a script tag, which the policy blocks).
   await page.evaluate(LINT_SCRIPT);
-  const { violations } = await lintPage(page, { scope: "body" });
+  const { violations } = await lintPage(page, {
+    scope: "body",
+    ...(targets ? { touch: ["body"], minTouch: targets.minTouch } : {}),
+  });
   return (
     violations
-      .filter((v) => !LINT_DEBT_RULES.has(v.rule))
       // A line-clamped title is customer content cut at two lines; its tail is not drawn, and
       // `text-wrap: balance` does not apply to a clamped box.
       .filter(
