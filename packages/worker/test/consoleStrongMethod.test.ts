@@ -451,6 +451,13 @@ describe("the computed root rule", () => {
       false,
     );
     expect(rootRuleHolds({}, link(), NOW, EIGHT_HOURS)).toBe(false);
+    // The skew edge: 60 s ahead is allowed, 61 s ahead is not.
+    expect(
+      rootRuleHolds(cfg, link({ assertedAt: NOW + 60 }), NOW, EIGHT_HOURS),
+    ).toBe(true);
+    expect(
+      rootRuleHolds(cfg, link({ assertedAt: NOW + 61 }), NOW, EIGHT_HOURS),
+    ).toBe(false);
     // An assertion from the future (beyond skew) is not fresh.
     expect(
       rootRuleHolds(cfg, link({ assertedAt: NOW + 3600 }), NOW, EIGHT_HOURS),
@@ -650,6 +657,117 @@ describe("the audit actor is the member id", () => {
   });
 });
 
+describe("hardening round", () => {
+  it("b: a v1 logout also ends the operator's v2 sessions (member-id mark)", async () => {
+    const env = adminEnv();
+    const db = makeTestDb();
+    const v2 = await signInThrough(env, db);
+    expect((await me(env, db, v2.token!, NOW + 1)).status).toBe(200);
+    const { issueSession } = await import("../src/core/console/session.js");
+    const v1 = await issueSession(
+      env,
+      { sub: "op-1", name: "Ada", email: "ada@example.com", groups: [GROUP] },
+      NOW + 2,
+    );
+    const csrf = v1.session.csrf;
+    const out = await handleAdmin(
+      new Request("https://key.plrs.im/manage/api/logout", {
+        method: "POST",
+        headers: {
+          cookie: `${ADMIN_COOKIE}=${v1.token}`,
+          "X-PKey-CSRF": csrf,
+        },
+      }) as unknown as Request,
+      env,
+      db,
+      "/api/logout",
+      { now: NOW + 3 },
+    );
+    expect(out.status).toBe(200);
+    resetConsoleSessionCache();
+    expect((await me(env, db, v2.token!, NOW + 5)).status).toBe(401);
+  });
+
+  it("c: the member id resolves with indexed reads regardless of how many links exist", async () => {
+    const env = adminEnv();
+    const db = makeTestDb();
+    const { token } = await signInThrough(env, db);
+    const mbr = await memberIdFor(env, claimsOf(token!).aid);
+    const link = (await consoleLink(db))!;
+    expect(
+      (await db.first<{ member_id: string }>(
+        "SELECT member_id FROM account_links WHERE id = ?",
+        link.id,
+      ))!.member_id,
+    ).toBe(mbr);
+    // 3000 other console-IdP links: the old scan capped at 2000 and missed this one.
+    await db.run(
+      `WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 3000)
+       INSERT INTO account_links (id, account_id, issuer_key, tenant_scope, subject, kind,
+                                  email_verified, created_at, last_used_at)
+       SELECT 'lnk_bulk' || i, ?, ?, '', 'bulk' || i, 'oidc', 0, 1, 1 FROM n`,
+      link.account_id,
+      ISSUER_KEY,
+    );
+    const reads: string[] = [];
+    const real = db.all.bind(db);
+    const realFirst = db.first.bind(db);
+    db.all = (async (...a: Parameters<typeof real>) => {
+      reads.push(String(a[0]));
+      return real(...a);
+    }) as typeof db.all;
+    db.first = (async (...a: Parameters<typeof realFirst>) => {
+      reads.push(String(a[0]));
+      return realFirst(...a);
+    }) as typeof db.first;
+    const aliases = await consoleActorAliases(env, db, mbr);
+    expect(aliases).toContain("op-1");
+    expect(aliases).toContain(mbr);
+    expect(reads.length).toBeLessThanOrEqual(3);
+    expect(reads.join("\n")).not.toMatch(/LIMIT 2000/);
+    // A planted member_id on another account's link never maps: the id is recomputed.
+    await emailPerson(db, "eve@example.com");
+    const eve = await db.first<{ id: string }>(
+      "SELECT id FROM account_links WHERE issuer_key = 'email'",
+    );
+    await db.run(
+      "UPDATE account_links SET member_id = ? WHERE id = ?",
+      "mbr_AAAAAAAAAAAAAAAAAAAAAA",
+      eve!.id,
+    );
+    expect(
+      await consoleActorAliases(env, db, "mbr_AAAAAAAAAAAAAAAAAAAAAA"),
+    ).toEqual(["mbr_AAAAAAAAAAAAAAAAAAAAAA"]);
+  });
+
+  it("f: the member id is keyed by a derived member key, not the pepper over a text prefix", async () => {
+    const env = adminEnv();
+    const id = await memberIdFor(env, "acct_1");
+    const { hmacSha256, importHmacKey } =
+      await import("../src/platform/hash.js");
+    const { b64urlEncode } = await import("../src/platform/bytes.js");
+    const old = await hmacSha256(
+      await importHmacKey(env.KEY_HASH_PEPPER!),
+      "console-member|acct_1",
+    );
+    expect(id).not.toBe("mbr_" + b64urlEncode(old).slice(0, 22));
+    const key = await crypto.subtle.importKey(
+      "raw",
+      (await hmacSha256(
+        await importHmacKey(env.KEY_HASH_PEPPER!),
+        "pkey/console-member-key/v1",
+      )) as BufferSource,
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"],
+    );
+    const mac = new Uint8Array(
+      await crypto.subtle.sign("HMAC", key, new TextEncoder().encode("acct_1")),
+    );
+    expect(id).toBe("mbr_" + b64urlEncode(mac).slice(0, 22));
+  });
+});
+
 describe("merge, disable and delete end console eligibility", () => {
   const ctx = (env: Env, db: Db, now: number) => ({
     db,
@@ -724,6 +842,38 @@ describe("merge, disable and delete end console eligibility", () => {
     const again = await signInThrough(env, db, {}, NOW + 100);
     expect(again.res.status).toBe(302);
     expect((await me(env, db, again.token!, NOW + 101)).status).toBe(200);
+  });
+
+  it("a: disable changes status, sessions and strength in one batch (and a failure leaves none)", async () => {
+    const env = adminEnv();
+    const db = makeTestDb();
+    const { token } = await signInThrough(env, db);
+    const op = claimsOf(token!).aid;
+    const batches: number[] = [];
+    const real = db.batch.bind(db);
+    db.batch = (async (stmts: Parameters<typeof real>[0]) => {
+      batches.push(stmts.length);
+      return real(stmts);
+    }) as typeof db.batch;
+    expect((await disableAccount(ctx(env, db, NOW + 2), op)).ok).toBe(true);
+    // One batch holds the status flip, the mirror, the sessions and the strength clear.
+    expect(batches.some((n) => n >= 4)).toBe(true);
+    // A failing batch applies nothing: strength stays with the (still active) account.
+    const db2 = makeTestDb();
+    const t2 = await signInThrough(env, db2);
+    const op2 = claimsOf(t2.token!).aid;
+    db2.batch = (async () => {
+      throw new Error("d1 down");
+    }) as typeof db2.batch;
+    await expect(disableAccount(ctx(env, db2, NOW + 2), op2)).rejects.toThrow();
+    const st = await db2.first<{ status: string }>(
+      "SELECT status FROM accounts WHERE id = ?",
+      op2,
+    );
+    expect(st!.status).toBe("active");
+    expect((await consoleLink(db2))!.strong_at).toBe(NOW);
+    // Already disabled: not ok, nothing to do.
+    expect((await disableAccount(ctx(env, db, NOW + 3), op)).ok).toBe(false);
   });
 
   it("delete: the console session ends and no link stays eligible", async () => {

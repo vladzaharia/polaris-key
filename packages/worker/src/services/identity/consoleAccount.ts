@@ -209,6 +209,12 @@ export async function consoleSignIn(
   if (!strong) return { status: "refused", reason: "method" };
   await recordLinkGroups(db, result.linkId, identity.groups, now);
   if (!known?.strong_at) await markLinkStrong(db, result.linkId, now);
+  // The member id is derived, never trusted from here: it only indexes the audit alias lookup.
+  await db.run(
+    "UPDATE account_links SET member_id = ? WHERE id = ?",
+    await memberIdFor(env, result.account.id),
+    result.linkId,
+  );
   const { sid } = await openAccountSessionRow(
     env,
     db,
@@ -386,30 +392,56 @@ export async function consoleActorAliases(
   const rp = adminOidcConfig(env);
   if (!rp) return [...out];
   const issuerKey = portalIdentityIssuerKey(rp.issuer);
-  const wanted = isMemberId(actor);
-  const rows = wanted
-    ? await db.all<{ account_id: string; subject: string }>(
-        `SELECT account_id, subject FROM account_links
-          WHERE issuer_key = ? AND tenant_scope = '' LIMIT 2000`,
+  const subjectsOf = async (accountId: string): Promise<string[]> =>
+    (
+      await db.all<{ subject: string }>(
+        `SELECT subject FROM account_links
+          WHERE account_id = ? AND issuer_key = ? AND tenant_scope = '' LIMIT 20`,
+        accountId,
         issuerKey,
       )
-    : await db.all<{ account_id: string; subject: string }>(
-        `SELECT account_id, subject FROM account_links
-          WHERE issuer_key = ? AND tenant_scope = '' AND subject = ? LIMIT 5`,
-        issuerKey,
-        actor,
-      );
-  const accounts = new Map<string, string[]>();
-  for (const r of rows) {
-    const subs = accounts.get(r.account_id) ?? [];
-    subs.push(r.subject);
-    accounts.set(r.account_id, subs);
+    ).map((r) => r.subject);
+  let accountId: string | null = null;
+  if (isMemberId(actor)) {
+    // One indexed read (idx_account_links_member), then the id is recomputed from the account: a
+    // stale or planted column value (a merge moves links) never maps a person it does not name.
+    const row = await db.first<{ account_id: string }>(
+      "SELECT account_id FROM account_links WHERE member_id = ? LIMIT 1",
+      actor,
+    );
+    if (row && (await memberIdFor(env, row.account_id)) === actor)
+      accountId = row.account_id;
+  } else {
+    const row = await db.first<{ account_id: string }>(
+      `SELECT account_id FROM account_links
+        WHERE issuer_key = ? AND tenant_scope = '' AND subject = ? LIMIT 1`,
+      issuerKey,
+      actor,
+    );
+    accountId = row?.account_id ?? null;
   }
-  for (const [accountId, subs] of accounts) {
-    const id = await memberIdFor(env, accountId);
-    if (wanted && id !== actor) continue;
-    out.add(id);
-    for (const sub of subs) out.add(sub);
-  }
+  if (!accountId) return [...out];
+  out.add(await memberIdFor(env, accountId));
+  for (const sub of await subjectsOf(accountId)) out.add(sub);
   return [...out];
+}
+
+/**
+ * The member id of the account behind a console IdP subject, or `null` when no account holds it.
+ * A v1 sign-out uses it to end that operator's v2 sessions too (their mark is under the member id).
+ */
+export async function consoleMemberIdForIdpSub(
+  env: Env,
+  db: Db,
+  sub: string,
+): Promise<string | null> {
+  const rp = adminOidcConfig(env);
+  if (!rp || !sub) return null;
+  const row = await db.first<{ account_id: string }>(
+    `SELECT account_id FROM account_links
+      WHERE issuer_key = ? AND tenant_scope = '' AND subject = ? LIMIT 1`,
+    portalIdentityIssuerKey(rp.issuer),
+    sub,
+  );
+  return row ? memberIdFor(env, row.account_id) : null;
 }

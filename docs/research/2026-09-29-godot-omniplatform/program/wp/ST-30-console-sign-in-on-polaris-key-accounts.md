@@ -233,6 +233,11 @@ strong_at` and `asserted_at`, both NULL on existing rows (nothing is strong unti
 
 Corrections to the brief: the v1 "full authority" comment and `docs.ts` are untouched.
 
+Hardening round (after the security review): `disableAccount` is one batch; a v1 logout also writes
+the member-id mark; `account_links.member_id` (same 0128 file, indexed) makes the mbr\_ alias lookup
+indexed and verified; the member id uses a derived member key; skew +60/+61 s tests. Open (d):
+non-root groups stay readable only for root today; ST-31 owns them.
+
 ### Remaining after slice 2b (ST-30 not finished)
 
 Console membership as a binding (ST-31); SM-3(a)/(d) with the passkey button and the console

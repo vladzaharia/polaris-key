@@ -8,5 +8,7 @@
 --   wrangler d1 execute <DATABASE> --env <ENV> --remote --file scripts/rollback/0128_console_strong_method.down.sql
 -- It is not idempotent: a second run fails with "no such column", changing nothing.
 
+DROP INDEX IF EXISTS idx_account_links_member;
+ALTER TABLE account_links DROP COLUMN member_id;
 ALTER TABLE account_links DROP COLUMN strong_at;
 ALTER TABLE account_links DROP COLUMN asserted_at;

@@ -6832,23 +6832,31 @@ name, email, csrf, exp, authAt, stepUpAt?}` and no `groups` or `sub`. `aid` and 
   `root: false`), and a v2 session's principal takes `root` from it; the 8 h bound still applies to
   a v1 cookie (its own expiry) and to a session kept open after the group was removed at the IdP.
   The groups gate at the callback still uses the groups the IdP asserted in that request.
-- **The audit actor is the member id.** A v2 session's `sub` is
-  `mbr_` + the first 22 base64url characters of `HMAC-SHA-256(KEY_HASH_PEPPER, "console-member|" +
-accountId)` (`core/console/memberId.ts`); it is the `actor_sub` of every console audit row, the
+- **The audit actor is the member id.** A v2 session's `sub` is `mbr_` + the first 22 base64url
+  characters of `HMAC-SHA-256(memberKey, accountId)`, where `memberKey =
+HMAC-SHA-256(KEY_HASH_PEPPER, "pkey/console-member-key/v1")` (`core/console/memberId.ts`): the
+  pepper never keys the account id directly. It is the `actor_sub` of every console audit row, the
   limiter key and what `/me` answers, so the account id appears in none of them. With the pepper
-  unset it falls back to an unkeyed SHA-256 (as every peppered hash); rotating the pepper re-keys
-  every id, which is the pepper's existing cost. Old rows keep the IdP `sub`, `actor_name` and
+  unset `memberKey` is `SHA-256(label)` (as every peppered hash falls back); rotating the pepper
+  re-keys every id, the pepper's existing cost. Old rows keep the IdP `sub`, `actor_name` and
   `actor_email` and are never rewritten. The activity filter `actor=` accepts either id and
-  `consoleActorAliases` expands it to both for the same person (computed from the console IdP's
-  links; an unknown value matches only itself); `/me.priorSubs` carries the IdP `sub` so the SPA
-  still says "you" on old records. Sign-out writes the sign-out mark under the member id and the IdP
-  `sub` (ending the operator's v1 cookies).
+  `consoleActorAliases` expands it to both for the same person with indexed reads:
+  `account_links.member_id` (written at each console sign-in, indexed) gives the account, the id is
+  **recomputed from that account and must equal the filter** (a stale or planted column maps
+  nothing), then the account's console-IdP subjects are read; an unknown value matches only itself.
+  `/me.priorSubs` carries the IdP `sub` so the SPA still says "you" on old records. Sign-out writes
+  the sign-out mark under the member id and the IdP `sub`; a v1 cookie's sign-out resolves the
+  member id from its IdP subject and writes both, so it ends the operator's v2 sessions too.
+- **v1 cookies and API tokens stay groups-only roots.** Until the last v1 cookie expires (at most
+  8 h after the deploy) and for admin API tokens, a session's groups alone root it; the computed
+  rule applies to v2 sessions only.
 - **Merge, disable and delete end console eligibility on the link side.** A merge clears
   `strong_at` and `asserted_at` on the absorbed account's links in the same batch that moves them
   (the survivor does not inherit the operator's access; the person signs in through the console IdP
   once more; a merge undo restores the link but not the mark); the survivor's own links are
-  untouched. Disabling revokes the account's sessions and clears its links' strength (re-enabling
-  does not bring a cookie back); starting an erasure clears them too (the commit deletes the links).
+  untouched. Disabling flips the status, mirrors it, revokes the account's sessions and clears its links'
+  strength in ONE batch (re-enabling does not bring a cookie back, and a crash cannot leave
+  strength on a disabled account); starting an erasure clears them too (the commit deletes the links).
   The 30 s status check already ended the session; this makes the link side agree.
 - **Tests:** `test/consoleStrongMethod.test.ts` (each SM row allowed and refused, nothing written
   on a refusal, the root rule at each condition and at the 8 h edge, `asserted_at` moving only with
