@@ -31,6 +31,8 @@ import {
   type DevServerStartOptions,
 } from "../src/devCommand.js";
 import { COMMANDS } from "../src/help.js";
+// @ts-expect-error plain .mjs script, no types
+import { readApprovalForm } from "../scripts/dev-approve.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PKG = path.join(HERE, "..");
@@ -149,9 +151,31 @@ async function approveDeviceCode(
   // Auto-approve: the IdP answers the authorize request with the callback redirect at once.
   const idp = await fetch(authorize!, { redirect: "manual" });
   expect(idp.status).toBe(302);
-  return fetch(idp.headers.get("location")!, {
+  const callback = await fetch(idp.headers.get("location")!, {
     redirect: "manual",
     headers: { cookie: cookies },
+  });
+  if (callback.status !== 303) return callback;
+  // I-37: the callback hands over to the explicit approval page; the person presses Sign in.
+  jar(callback);
+  const toApprove = new URL(callback.headers.get("location")!, verify);
+  const approvalPage = await fetch(toApprove, {
+    redirect: "manual",
+    headers: { cookie: cookies },
+  });
+  expect(approvalPage.status).toBe(200);
+  jar(approvalPage);
+  const form = readApprovalForm(await approvalPage.text());
+  expect(form, "the approval page has a Sign in form").toBeTruthy();
+  return fetch(new URL(form!.action || toApprove.pathname, toApprove), {
+    method: "POST",
+    redirect: "manual",
+    headers: {
+      "content-type": "application/x-www-form-urlencoded",
+      "sec-fetch-site": "same-origin",
+      cookie: cookies,
+    },
+    body: new URLSearchParams([...form!.fields, ["decision", "approve"]]),
   });
 }
 
