@@ -12,6 +12,7 @@
 import * as React from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "../../ui/Button.js";
+import { toast } from "../../ui/toast.js";
 import { Dialog, DialogFooter } from "../../ui/Dialog.js";
 import { AuthCard, AuthTitle } from "../../ui/auth/index.js";
 import { ConsoleBrand } from "./ConsoleSignIn.js";
@@ -19,6 +20,7 @@ import { qk } from "../data/queries.js";
 import {
   SESSION_CHANNEL,
   clearSessionEnded,
+  onAccountChanged,
   signInAgainHref,
   useSessionEnded,
 } from "./endedState.js";
@@ -27,6 +29,18 @@ export function SessionEnded(): React.ReactElement | null {
   const ended = useSessionEnded();
   const qc = useQueryClient();
   const [opened, setOpened] = React.useState(false);
+
+  // A different person signed in: what was waiting was dropped. Say so, and load their data.
+  React.useEffect(
+    () =>
+      onAccountChanged((name) => {
+        toast.warning(
+          `Signed in as ${name}. Your unsaved change was not sent.`,
+        );
+        void qc.invalidateQueries();
+      }),
+    [qc],
+  );
 
   // The sign-in tab says it is done: read the session again (which re-arms the CSRF token) and
   // retry what failed. A query that is fine is left alone, so no form is rebuilt under the person.

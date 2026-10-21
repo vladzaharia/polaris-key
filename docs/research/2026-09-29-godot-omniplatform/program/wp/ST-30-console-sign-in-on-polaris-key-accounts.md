@@ -204,6 +204,13 @@ Verified against the code: the brief said the callback "goes through I-05 signIn
 (slice 1 minted from the IdP claims). `strong_at` and `asserted_at` do not exist yet, so groups are
 read from the console link as last written by the sign-in, bounded by the 8 h session row.
 
+**Security fix round (2026-10-21).** A held write is replayed only as the account that started it
+(different account on sign-in: dropped with its 401 and a toast; also dropped after 10 minutes);
+the operator join checks the target account is active before writing; tests added for the disabled,
+ambiguous-address and portal-tagged-token cases. Lead rulings: operator join by IdP-verified email
+accepted (needs the platform-admin group; allowlisted IdPs cannot reach it); the cache's
+clear-at-500 accepted; groups stale up to 8 h accepted as documented.
+
 ### Remaining after slice 2a (ST-30 not finished)
 
 Console membership as a binding (ST-31); the strong-method rule and the email-code-only refusal

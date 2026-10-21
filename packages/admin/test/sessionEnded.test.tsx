@@ -2,7 +2,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { api, setLoginRedirectForTests } from "../src/api.js";
-import { clearSessionEnded } from "../src/console/shell/endedState.js";
+import {
+  clearSessionEnded,
+  HOLD_LIMIT_MS,
+  isSessionEnded,
+  markSessionEnded,
+  noteIdentity,
+  waitForSessionBack,
+} from "../src/console/shell/endedState.js";
 import { boot, resetConsole } from "./consoleHarness.js";
 import { expectNoAxeViolations } from "./coreTestUtils.js";
 
@@ -214,5 +221,80 @@ describe("the session-ended overlay", () => {
     await act(async () => channels[0]!.onmessage?.());
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
     expect(await held).toHaveProperty("ok");
+  });
+
+  it("a DIFFERENT account signing in drops the held write (401), says so, and never sends it as them", async () => {
+    await openPage();
+    const real = globalThis.fetch;
+    let sent = 0;
+    vi.stubGlobal("fetch", async (url: RequestInfo | URL) => {
+      if (String(url).includes("/license/licenses")) return EXPIRED();
+      return real(url);
+    });
+    let held!: Promise<unknown>;
+    await act(async () => {
+      held = api.createLicense("djdl", { name: "x", email: "x@x.io" }).then(
+        (v) => ({ ok: v }),
+        (e: unknown) => ({ err: e }),
+      );
+      await screen.findByRole("alertdialog");
+    });
+    const me = await (await real("/manage/api/me")).json();
+    vi.stubGlobal("fetch", async (url: RequestInfo | URL) => {
+      if (String(url).includes("/manage/api/me"))
+        return new Response(
+          JSON.stringify({
+            ...me,
+            sub: "someone-else",
+            name: "Bo Other",
+            csrf: "bo-token",
+          }),
+          { status: 200 },
+        );
+      if (String(url).includes("/license/licenses")) sent++;
+      return real(url);
+    });
+    await act(async () => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(await held).toMatchObject({ err: { status: 401 } });
+    expect(sent).toBe(0);
+    expect(
+      await screen.findByText(
+        "Signed in as Bo Other. Your unsaved change was not sent.",
+      ),
+    ).toBeTruthy();
+  });
+});
+
+describe("the hold is bounded", () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("a request held for 10 minutes fails with its 401 instead of being replayed", async () => {
+    vi.useFakeTimers();
+    noteIdentity("u1", "Ada");
+    markSessionEnded();
+    const held = waitForSessionBack();
+    await vi.advanceTimersByTimeAsync(HOLD_LIMIT_MS - 1);
+    clearSessionEnded("dismissed");
+    expect(await held).toBe(false);
+    markSessionEnded();
+    const late = waitForSessionBack();
+    await vi.advanceTimersByTimeAsync(HOLD_LIMIT_MS);
+    expect(await late).toBe(false);
+    // Even if the same person then signs in, it is not replayed.
+    noteIdentity("u1", "Ada");
+    expect(isSessionEnded()).toBe(false);
+  });
+
+  it("the same account coming back inside the limit releases it as back", async () => {
+    vi.useFakeTimers();
+    noteIdentity("u1", "Ada");
+    markSessionEnded();
+    const held = waitForSessionBack();
+    await vi.advanceTimersByTimeAsync(5 * 60 * 1000);
+    noteIdentity("u1", "Ada");
+    expect(await held).toBe(true);
   });
 });

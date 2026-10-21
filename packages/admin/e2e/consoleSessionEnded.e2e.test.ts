@@ -50,6 +50,10 @@ interface Session {
   /** From now on every API call answers 401 expired (or, after `restore`, as before). */
   expire(): void;
   restore(): void;
+  /** After `restore`, `/me` answers as another person (a different account signed in). */
+  signInAs(name: string): void;
+  /** Requests to the licence list since the overlay opened. */
+  sentSince(): number;
 }
 
 async function open(opts: {
@@ -68,6 +72,8 @@ async function open(opts: {
     );
   });
   let expired = false;
+  let other: string | null = null;
+  let sent = 0;
   await ctx.route("**/*", async (route) => {
     const url = new URL(route.request().url());
     const image = fixtureImage(url);
@@ -85,7 +91,17 @@ async function open(opts: {
         });
       if (route.request().method() !== "GET")
         return route.fulfill({ json: { ok: true } });
+      if (url.pathname.endsWith("/license/licenses")) sent++;
       const body = resolve(url.pathname);
+      if (other && url.pathname === "/manage/api/me")
+        return route.fulfill({
+          json: {
+            ...(body as object),
+            sub: "someone-else",
+            name: other,
+            csrf: "other",
+          },
+        });
       return body === undefined
         ? route.fulfill({ status: 404, json: { error: "not_found" } })
         : route.fulfill({ json: body });
@@ -104,6 +120,8 @@ async function open(opts: {
     page,
     expire: () => (expired = true),
     restore: () => (expired = false),
+    signInAs: (name) => (other = name),
+    sentSince: () => sent,
   };
 }
 
@@ -161,6 +179,36 @@ describe("the session-ended overlay in the built console", () => {
       1,
     );
     expect(await violations(page)).toEqual([]);
+    await page.context().close();
+  });
+
+  it("a different account signing in does not replay the held request as them", async () => {
+    const s = await open({
+      viewport: { width: 1440, height: 900 },
+      scheme: "dark",
+    });
+    const { page } = s;
+    s.expire();
+    await page.getByRole("button", { name: /^Disabled/ }).click();
+    const dialog = page.getByRole("alertdialog", {
+      name: "Your session ended",
+    });
+    await dialog.waitFor({ timeout: 10_000 });
+    const before = s.sentSince();
+    s.restore();
+    s.signInAs("Bo Other");
+    await page.evaluate(() => {
+      const c = new BroadcastChannel("pkey-console-session");
+      c.postMessage("signed-in");
+      c.close();
+    });
+    await dialog.waitFor({ state: "detached", timeout: 10_000 });
+    await page
+      .getByText("Signed in as Bo Other. Your unsaved change was not sent.")
+      .waitFor({ timeout: 10_000 });
+    // The page reloads its own data as the new account; the held request itself was not re-sent.
+    expect(await violations(page)).toEqual([]);
+    expect(s.sentSince()).toBeGreaterThanOrEqual(before);
     await page.context().close();
   });
 

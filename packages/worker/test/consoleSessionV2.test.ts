@@ -32,6 +32,8 @@ import { handlePortalApi } from "./portalHarness.js";
 import { issuePortalSessionRow } from "./portalSessionRow.js";
 import { PORTAL_COOKIE } from "../src/services/identity/portal/session.js";
 import { getOrCreateAccountByEmail } from "../src/services/identity/portal/repo.js";
+import { importHmacKey } from "../src/platform/hash.js";
+import { signHmacToken } from "../src/platform/hmacToken.js";
 import { signIn } from "../src/services/identity/accounts/signIn.js";
 
 const GROUP = "platform-admins";
@@ -214,7 +216,7 @@ describe("the console sign-in lands on an account and mints a v2 cookie", () => 
     expect(links.map((l) => l.issuer_key)).toEqual(["email", ISSUER]);
   });
 
-  it("refuses an operator whose address is unverified at the IdP and used elsewhere", async () => {
+  it("an operator whose address the IdP does not vouch for gets a separate account, not a join", async () => {
     const env = adminEnv();
     const db = makeTestDb();
     await signIn(
@@ -235,6 +237,70 @@ describe("the console sign-in lands on an account and mints a v2 cookie", () => 
     expect(
       (await db.first<{ n: number }>("SELECT COUNT(*) AS n FROM accounts"))!.n,
     ).toBe(2);
+  });
+});
+
+describe("a refused operator join writes nothing", () => {
+  const counts = async (db: Db) => ({
+    accounts: (await db.first<{ n: number }>(
+      "SELECT COUNT(*) AS n FROM accounts",
+    ))!.n,
+    links: (await db.first<{ n: number }>(
+      "SELECT COUNT(*) AS n FROM account_links",
+    ))!.n,
+    sessions: (await db.first<{ n: number }>(
+      "SELECT COUNT(*) AS n FROM account_sessions",
+    ))!.n,
+    audit: (await db.first<{ n: number }>(
+      "SELECT COUNT(*) AS n FROM portal_audit",
+    ))!.n,
+  });
+  const emailAccount = async (db: Db, email: string) => {
+    const made = await signIn(
+      db,
+      {
+        issuerKey: "email",
+        subject: email,
+        kind: "email",
+        email,
+        emailVerified: true,
+      },
+      NOW - 100,
+      { unfenced: true },
+    );
+    if (made.status !== "signed_in") throw new Error("fixture");
+    return made.account.id;
+  };
+
+  it("a disabled account that uses the address is refused before any link or audit row", async () => {
+    const env = adminEnv();
+    const db = makeTestDb();
+    const id = await emailAccount(db, "ada@example.com");
+    await db.run("UPDATE accounts SET status = 'disabled' WHERE id = ?", id);
+    const before = await counts(db);
+    const { res, token } = await signInThrough(env, db);
+    expect(res.status).toBe(403);
+    expect(token).toBeNull();
+    expect(await counts(db)).toEqual(before);
+  });
+
+  it("an address used by more than one account is refused and writes nothing", async () => {
+    const env = adminEnv();
+    const db = makeTestDb();
+    // One account uses it as an email method; another holds it as its verified primary address.
+    await emailAccount(db, "ada@example.com");
+    const other = await emailAccount(db, "other@example.com");
+    await db.run(
+      "UPDATE accounts SET primary_email = ?, primary_email_verified_at = ? WHERE id = ?",
+      "ada@example.com",
+      NOW - 50,
+      other,
+    );
+    const before = await counts(db);
+    const { res, token } = await signInThrough(env, db);
+    expect(res.status).toBe(403);
+    expect(token).toBeNull();
+    expect(await counts(db)).toEqual(before);
   });
 });
 
@@ -407,6 +473,23 @@ describe("cookie versions", () => {
       }),
     ).toString("base64url");
     expect((await call(env, db, `${forged}.${mac}`, NOW + 1)).status).toBe(401);
+  });
+
+  it("a portal-tagged token under the v2 reader is refused", async () => {
+    const env = adminEnv();
+    const db = makeTestDb();
+    // Same key material, another realm's tag: a signature over a different message.
+    const key = await importHmacKey(env.ADMIN_SESSION_SECRET!);
+    const forged = await signHmacToken(key, "pkey.portal.v1|", {
+      aid: "acct_x",
+      sid: "sid_x",
+      name: "n",
+      email: "e@x.io",
+      csrf: "c",
+      exp: NOW + 3600,
+      authAt: NOW,
+    });
+    expect((await call(env, db, forged, NOW + 1)).status).toBe(401);
   });
 
   it("without a database to ask, a v2 cookie is refused", async () => {

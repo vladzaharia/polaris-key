@@ -6752,10 +6752,11 @@ name, email, csrf, exp, authAt, stepUpAt?}` and no `groups` or `sub`. `aid` and 
   the callback gates on the principal first, so an identity outside the platform-admin group gets
   no account and no cookie. An operator whose verified address another account already uses (a
   Polaris Locker account made with an email code) is joined to that account when exactly one
-  account uses it and the IdP vouched for the address (ST-28 SM-3(b)); anyone else, an unverified
+  ACTIVE account uses it (a disabled one is refused before anything is written) and the IdP vouched for the address (ST-28 SM-3(b)); anyone else, an unverified
   address, or an ambiguous address is refused with a card and writes nothing. The join writes an
-  `account.link` row in the account's own history. Residual: the join trusts the console IdP's
-  `email_verified`, the same trust the root rule already places in its `groups`.
+  `account.link` row in the account's own history. Lead ruling (accepted): the join by IdP-verified email needs the platform-admin group, so the
+  actor is already root, and allowlisted non-console IdPs cannot reach it. Also accepted: the live
+  check's cache clears at 500 entries, and groups may be stale for up to 8 h as described below.
 - **`operatorIssuerAllowed`** (`core/rbac/operatorIssuer.ts`) is the one place that decides which
   issuer may sign an operator in. The console IdP always qualifies; any other issuer only when its
   `https` host is on `OIDC_ISSUER_ALLOWLIST`, and it **fails closed**: unset or empty admits
@@ -6782,6 +6783,12 @@ name, email, csrf, exp, authAt, stepUpAt?}` and no `groups` or `sub`. `aid` and 
   first tab then re-reads `/me`, which re-arms its CSRF token. The channel carries no secret and
   grants nothing: a page on another origin cannot join it, a script on this origin could already
   call the API.
+  **A held write is replayed only as the account that started it.** The page records who `/me` said
+  it was when the session ended. When the second tab signs in as someone else, every held request
+  fails with its 401 (never sent under the new session's cookie or CSRF token), the page reloads its
+  data as the new account, and a toast says "Signed in as <name>. Your unsaved change was not sent."
+  A held request also fails, unreplayed, after 10 minutes (`HOLD_LIMIT_MS`). Tests:
+  `packages/admin/test/sessionEnded.test.tsx`, and the different-account case in the Chromium e2e.
 
 **Residual.** The 30 s window is a deliberate cost: a revoked session can serve requests for up to
 30 s in an isolate that cached it as live. The cache is per isolate, so a different isolate asks

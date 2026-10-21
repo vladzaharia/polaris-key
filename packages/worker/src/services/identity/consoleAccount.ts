@@ -29,6 +29,7 @@ import { parseJsonStringList } from "../../platform/json.js";
 import { adminOidcConfig } from "../../platform/platformOidc.js";
 import { accountsUsingEmail } from "./accounts/platformMigration.js";
 import {
+  getAccountRow,
   insertLink,
   rekeyLegacyAccountLinks,
   resolveAccount,
@@ -131,6 +132,10 @@ export async function consoleSignIn(
     const target = using.length === 1 ? using[0]! : null;
     if (!target || target !== result.existingAccountId)
       return { status: "refused", reason: "join" };
+    // A disabled (or deleted) account is never joined: refuse before anything is written.
+    const targetRow = await getAccountRow(db, target);
+    if (!targetRow || targetRow.status !== "active")
+      return { status: "refused", reason: "account" };
     const joined = await insertLink(
       db,
       target,
