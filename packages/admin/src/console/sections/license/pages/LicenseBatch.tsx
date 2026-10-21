@@ -267,7 +267,6 @@ function BatchBody({
           <>
             Created{" "}
             <Timestamp at={fromSeconds(batch.createdAt)} format="date" />
-            {by ? ` by ${by}` : ""}
           </>
         }
         primaryAction={
@@ -323,6 +322,9 @@ function BatchBody({
                 detail: batch.disabled.toLocaleString(),
               },
               ...(tier ? [{ term: "Tier", detail: tier }] : []),
+              // The masthead's description stays one line (a long address wrapped it past the
+              // phone's height budget), so the creator is a fact of the keys instead.
+              ...(by ? [{ term: "Created by", detail: by }] : []),
             ]}
           />
         </div>
