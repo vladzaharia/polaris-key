@@ -70,12 +70,19 @@ describe("the registry", () => {
   it("lists each source once and gives every built-in heading a place", () => {
     const ids = PALETTE_SOURCES.map((s) => s.id);
     expect(new Set(ids).size).toBe(ids.length);
-    expect(ids).toEqual(["support-code", "navigation", "actions", "products"]);
+    expect(ids).toEqual([
+      "support-code",
+      "navigation",
+      "actions",
+      "settings",
+      "products",
+    ]);
     expect(PALETTE_GROUPS.map((g) => g.heading)).toEqual([
       "Recent",
       "Support code",
       "Pages",
       "Actions",
+      "Settings",
       "Products",
       "Platform",
     ]);

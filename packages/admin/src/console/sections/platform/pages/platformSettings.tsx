@@ -18,6 +18,7 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useSettingTarget } from "../../../useSettingTarget.js";
 import { History } from "lucide-react";
 import {
   api,
@@ -234,6 +235,7 @@ export function PlatformSettingsPage(): React.ReactElement {
     queryFn: fetchPlatformSettings,
   });
   const view = query.data;
+  useSettingTarget(view !== undefined, (k) => `platform-setting-${k}`);
   const header = (
     <PageHeader
       title="Settings"

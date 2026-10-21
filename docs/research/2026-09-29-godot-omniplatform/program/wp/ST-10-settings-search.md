@@ -98,7 +98,7 @@ apply says why in one line. One home: EXPERIENCE.md ยง7.3; kits also follow DL1โ
 
 ## Acceptance criteria
 
-- [ ] Palette tests cover filtering and deep links.
+- [x] Palette tests cover filtering and deep links.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify
