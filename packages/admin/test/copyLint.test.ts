@@ -527,6 +527,48 @@ describe("the console copy lint", () => {
   });
 });
 
+/**
+ * The Worker's store-connector messages (M2). Channel credentials shows the connectors' `inert`
+ * messages and notes as they are worded in the Worker, so the lint reads them too. It is narrow on
+ * purpose: only `packages/worker/src/services/distribution/connectors/**` (the connectors' own
+ * files, not the rest of the Worker), only the "outlet" rule (the one word that file family still
+ * said), and through the same literal filter as the console, so identifiers, `…/outlet-credentials`
+ * paths, SQL columns and `outlets.<id>` manifest keys are not copy. There is no ledger: a finding
+ * fails.
+ */
+const CONNECTORS = join(
+  here,
+  "..",
+  "..",
+  "worker",
+  "src",
+  "services",
+  "distribution",
+  "connectors",
+);
+
+function connectorMessages(): string[] {
+  const rule = COPY_RULES.find((r) => r.id === "outlet")!;
+  const out: string[] = [];
+  for (const p of consoleFiles(CONNECTORS)) {
+    const rel = relative(CONNECTORS, p).split(sep).join("/");
+    for (const s of copyStrings(readFileSync(p, "utf8"), p))
+      if (rule.pattern.test(proseOf(s.text)))
+        out.push(`${rel}:${s.line} "${s.text}"`);
+  }
+  return out;
+}
+
+describe("the connector message lint", () => {
+  it("reads the connector files", () => {
+    expect(consoleFiles(CONNECTORS).length).toBeGreaterThan(20);
+  });
+
+  it("finds no connector message that says outlet", () => {
+    expect(connectorMessages()).toEqual([]);
+  });
+});
+
 describe("the console copy lint's fixture", () => {
   const fixture = [
     `export const A = () => <h1>Outlets</h1>;`,

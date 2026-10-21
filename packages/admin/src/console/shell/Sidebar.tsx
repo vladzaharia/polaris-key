@@ -488,6 +488,7 @@ function SidebarGroup({
           aria-current={current ? "page" : undefined}
           data-page={only.page.page}
           data-section-header={groupKey}
+          data-forced-flat=""
           onClick={() => onNavigate?.()}
           onMouseEnter={onPrefetch}
           onFocus={onPrefetch}

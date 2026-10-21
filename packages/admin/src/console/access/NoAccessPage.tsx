@@ -13,7 +13,6 @@
 import * as React from "react";
 import { ArrowRight, LayoutGrid, LogIn } from "lucide-react";
 import type { AccessAdmin, Me, MeRole } from "../../api.js";
-import { cn } from "../../lib/cn.js";
 import { Button } from "../../ui/Button.js";
 import { CopyButton } from "../../ui/CopyButton.js";
 import { PageHeader } from "../../ui/PageHeader.js";
@@ -48,10 +47,6 @@ const AREA_LANDING: Partial<Record<AreaId, ProductPageId>> = {
   core: "overview",
 };
 
-/** The ink fill (B2): the console's one filled action is neutral, never the accent. */
-const INK =
-  "bg-action text-action-on hover:not-disabled:not-aria-disabled:bg-action-hover";
-
 interface Destination {
   key: string;
   label: string;
@@ -64,6 +59,10 @@ interface Destination {
  * behind a service the product does not run is no destination (`services` is the current
  * product's; another product's are not loaded, and its landing page says if a service is off).
  */
+/** What a destination is called: Core is not a page name, its landing page is Overview. */
+const placeName = (area: AreaId): string =>
+  area === "core" ? "Overview" : AREA_NAMES[area];
+
 function destinations(
   me: Me,
   slug: string | null,
@@ -85,8 +84,7 @@ function destinations(
       out.push({
         key: `${s}:${page}`,
         // The area's name; in another product "Acme → Cloud Sync", as the title reads.
-        label:
-          s === slug ? AREA_NAMES[area] : `${name(s)} → ${AREA_NAMES[area]}`,
+        label: s === slug ? placeName(area) : `${name(s)} → ${placeName(area)}`,
         to: productPage(s, page),
         area,
       });
@@ -273,15 +271,12 @@ function YouCanOpen({
   return (
     <Panel title="You can open" className="h-full">
       <div className="flex flex-col gap-3">
-        {places.map((d, i) => (
+        {places.map((d) => (
           <Button
             key={d.key}
             asChild
-            variant={i === 0 ? "primary" : "outline"}
-            className={cn(
-              "h-auto w-full justify-start whitespace-normal py-2 text-left",
-              i === 0 && INK,
-            )}
+            variant="outline"
+            className="h-auto w-full justify-start whitespace-normal py-2 text-left"
             data-service={AREA_ACCENTS[d.area]}
           >
             <Link to={d.to}>{d.label}</Link>

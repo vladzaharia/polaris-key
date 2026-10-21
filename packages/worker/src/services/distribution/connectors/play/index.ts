@@ -68,7 +68,7 @@ export const playConnector: DistributionConnector = {
       controls: Object.keys(PLAY_CONTROLS),
       notes: [
         "inAppUpdatePriority cannot change after a release starts rolling out: set it on a draft, or let rollout/fraction apply the policy when it starts the rollout.",
-        "Halting a completed release rolls the track back to the previously completed release; rollout/halt asks for confirmRollback.",
+        "Halting a completed release rolls the track back to the previously completed release; the halt dialog asks you to confirm.",
       ],
     };
   },

@@ -520,7 +520,16 @@ html[data-shell="console"]
   svg {
     color: CanvasText;
   }
-  :where(button, [role="button"], input, select, textarea, [data-variant]) {
+  /* A row-shaped control (a sidebar group header, a sort button) opts out with data-forced-flat:
+     an unlayered rule beats any utility, so `forced-colors:border-0` cannot. */
+  :where(
+    button:not([data-forced-flat]),
+    [role="button"],
+    input,
+    select,
+    textarea,
+    [data-variant]
+  ) {
     border: 1px solid ButtonText;
   }
   [role="tab"][aria-selected="true"],

@@ -42,7 +42,7 @@ import {
 } from "../model/settingHomes.js";
 import { SETTINGS_AREAS } from "./SettingsHub.js";
 
-/** A page as the console words it elsewhere: `Settings → Features`, `License → Enrollment`. */
+/** A page as the console words it elsewhere: `Settings → Features & general`, `License → Enrollment`. */
 function destination(page: ProductPageId): string {
   // The product's own settings unfold from Features' last row.
   const area = SETTINGS_AREAS.find(
@@ -301,9 +301,12 @@ export function SettingsAllPage({
                         formatSettingValue(live.spec, live.value)
                       ) : (
                         <span className="text-fg-muted">
-                          {home?.kind === "page"
-                            ? "On its page"
-                            : "Not shown here"}
+                          <span aria-hidden>—</span>
+                          <span className="sr-only">
+                            {home?.kind === "page"
+                              ? `Shown in ${destination(home.page)}`
+                              : "Not shown here"}
+                          </span>
                         </span>
                       )}
                     </td>

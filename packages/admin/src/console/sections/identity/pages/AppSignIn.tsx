@@ -180,6 +180,9 @@ function PageBody({
   claimByKey: boolean;
 }): React.ReactElement {
   const gate = useWriteGate("signin", slug);
+  // The Sign-in switch is a Settings write: the one notice names the access a viewer is missing.
+  const settingsGate = useWriteGate("core", slug, "Settings");
+  const notice = settingsGate.disabledReason ?? gate.disabledReason;
   const tierRef = React.useRef<HTMLDivElement>(null);
   const tierDirty = useRowsDirty(tierRef);
   const saved: SignInDraft = {
@@ -273,9 +276,9 @@ function PageBody({
   return (
     <div className="space-y-6" data-template="settings">
       {header}
-      {gate.disabledReason ? (
+      {notice ? (
         <p role="note" className="text-sm text-fg-muted">
-          {gate.disabledReason}
+          {notice}
         </p>
       ) : null}
       <SignInRail sections={sections} variant="pills" />

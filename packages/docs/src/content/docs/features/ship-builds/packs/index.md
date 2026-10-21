@@ -79,7 +79,7 @@ A release key can delegate a content key that may sign only data-only types (`fi
 
 ## In the console
 
-Packs appear in the Release section beside the app. **Deliverables** lists the app and every declared pack with its binding, latest release, gate and how many app releases pin it. A `pinned` pack no app release pins is marked **Not pinned**. A pack's record has four tabs: **Releases**, **Channels**, **Delivery** and **Files**. **Releases** shows which app releases pin each release, so check it before yanking. **Delivery** edits the gate. **Compatibility** sets app releases against pack releases and simulates what a device gets ([Compatibility](/docs/features/ship-builds/releases/compatibility/)). **Content keys** lists each delegation. Delegating and revoking are CI acts, so there are no controls. Apart from yanks, channel policy and the gate, everything is read-only.
+Packs appear in the Release section beside the app. **Deliverables** lists the app and every declared pack with its binding, latest release, gate and how many app releases pin it. A `pinned` pack no app release pins is marked **Not pinned**. A pack's record has four tabs: **Releases**, **Release tracks**, **Delivery** and **Files**. **Releases** shows which app releases pin each release, so check it before yanking. **Delivery** edits the gate. **Compatibility** sets app releases against pack releases and simulates what a device gets ([Compatibility](/docs/features/ship-builds/releases/compatibility/)). **Content keys** lists each delegation. Delegating and revoking are CI acts, so there are no controls. Apart from yanks, channel policy and the gate, everything is read-only.
 
 ## Delivering and installing
 

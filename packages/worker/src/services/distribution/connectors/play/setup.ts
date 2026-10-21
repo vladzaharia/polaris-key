@@ -208,7 +208,7 @@ export async function resolvePlaySetup(
   if (!primary)
     return inert(
       "no_outlet",
-      "declare a play or play-testing outlet with a packageName and tracks in .pkey/distribution",
+      "declare a play or play-testing channel with a packageName and tracks in .pkey/distribution",
     );
   const packageName = primary.packageName!;
   const outlets = candidates
@@ -272,7 +272,7 @@ export async function resolvePlaySetup(
   if (!credential)
     return inert(
       "no_credential",
-      "a platform admin must store a google-service-account outlet credential pinned to this app",
+      "a platform admin must store a google-service-account channel credential pinned to this app",
       { manifestPackageName: packageName },
     );
   const pin = checkOutletCredentialPin(credential, packageName);

@@ -144,7 +144,7 @@ export async function withRun(
     return refuse(
       404,
       "not_configured",
-      "App Store Connect is not configured: declare an app-store or testflight outlet with an appleId and store an asc-api-key credential pinned to that app",
+      "App Store Connect is not configured: declare an app-store or testflight channel with an appleId and store an asc-api-key credential pinned to that app",
     );
   }
   const run = ascRun({
@@ -520,7 +520,7 @@ const registerWebhook: ConnectorControl = (c) =>
       return refuse(
         409,
         "no_webhook_secret",
-        "store an asc-webhook-secret outlet credential first (PUT …/outlet-credentials/<id> with generate: true)",
+        "store an asc-webhook-secret channel credential first (PUT …/outlet-credentials/<id> with generate: true)",
       );
     const secret = await openOutletCredential(
       c.env,

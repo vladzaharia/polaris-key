@@ -23,7 +23,7 @@ import type {
 } from "../../../../api.js";
 import { confirmFor, type ActionId } from "../../../../lib/actions.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
-import { humanize } from "../../../../lib/status.js";
+import { humanize, inertWords } from "../../../../lib/status.js";
 import { Button } from "../../../../ui/Button.js";
 import { Checkbox } from "../../../../ui/Checkbox.js";
 import { Combobox } from "../../../../ui/Combobox.js";
@@ -458,7 +458,7 @@ export function ConnectorCard({
   const has = (c: string) => connector.controls.includes(c);
   const tone = blocked ? (connector.inert ? "warning" : "neutral") : "success";
   const state = connector.inert
-    ? `Not running: ${humanize(connector.inert.reason).toLowerCase()}`
+    ? `Not running: ${inertWords(connector.inert.reason)}`
     : connector.configured
       ? "Connected"
       : "Not configured";

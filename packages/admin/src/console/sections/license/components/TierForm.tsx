@@ -231,7 +231,7 @@ export function TierFields({
       </FormField>
       <FormField
         name="channels"
-        label="Release channels"
+        label="Release tracks"
         help="Every license on this tier gets these, plus its own."
         group
         className="sm:col-span-2"

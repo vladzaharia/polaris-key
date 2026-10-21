@@ -413,7 +413,7 @@ describe("license record: Terms", () => {
     });
     const form = await terms();
     const group = within(form)
-      .getAllByRole("group", { name: "Release channels" })
+      .getAllByRole("group", { name: "Release tracks" })
       .at(-1)!;
     expect(within(group).getByText("Not offered")).toBeTruthy();
     await userEvent.click(within(group).getByLabelText("dev"));

@@ -133,7 +133,7 @@ describe("Tiers", () => {
     await userEvent.type(within(drawer).getByLabelText(/^Label/), "Team");
     await userEvent.type(within(drawer).getByLabelText(/^Device limit/), "10");
     const channels = within(drawer)
-      .getAllByRole("group", { name: "Release channels" })
+      .getAllByRole("group", { name: "Release tracks" })
       .at(-1)!;
     await userEvent.click(within(channels).getByLabelText("stable"));
     await userEvent.click(
@@ -285,7 +285,7 @@ describe("tier record", () => {
     });
     const f = await form();
     const group = within(f)
-      .getAllByRole("group", { name: "Release channels" })
+      .getAllByRole("group", { name: "Release tracks" })
       .at(-1)!;
     expect(within(group).getByText("Not offered")).toBeTruthy();
     await userEvent.click(within(group).getByLabelText("dev"));
@@ -352,7 +352,7 @@ describe("tier channel picker", () => {
     );
     const drawer = await screen.findByRole("dialog", { name: "New tier" });
     return within(drawer)
-      .getAllByRole("group", { name: "Release channels" })
+      .getAllByRole("group", { name: "Release tracks" })
       .at(-1)!;
   }
 

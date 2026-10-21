@@ -79,7 +79,7 @@ describe("effectivePolicy", () => {
       value: "30 days",
       source: "product",
     });
-    expect(line(lines, "Channels")).toMatchObject({
+    expect(line(lines, "Release tracks")).toMatchObject({
       value: "stable",
       source: "default",
     });
@@ -106,7 +106,7 @@ describe("effectivePolicy", () => {
       [{ ...PRO, maxVersion: "2.0.0" }],
       product,
     );
-    expect(line(lines, "Channels").value).toBe("stable, beta");
+    expect(line(lines, "Release tracks").value).toBe("stable, beta");
     // The tier's 1.0.0 floor is higher; the tier's 2.0.0 ceiling is lower.
     expect(line(lines, "Versions").value).toBe("≥ 1.0.0 · ≤ 2.0.0");
   });
@@ -131,7 +131,7 @@ describe("effectivePolicy", () => {
       [{ ...PRO, channels: ["stable"], minVersion: "1.0.0" }],
       product,
     );
-    expect(line(tierOnly, "Channels").from).toBe("from Pro");
+    expect(line(tierOnly, "Release tracks").from).toBe("from Pro");
     expect(line(tierOnly, "Versions").from).toBe("from Pro");
     expect(JSON.stringify(lines)).not.toContain("tier “");
   });

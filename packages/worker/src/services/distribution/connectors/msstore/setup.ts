@@ -182,7 +182,7 @@ export async function resolveMsStoreSetup(
   if (!primary)
     return inert(
       "no_outlet",
-      "declare an ms-store outlet with a productId (the Store ID) in .pkey/distribution",
+      "declare an ms-store channel with a productId (the Store ID) in .pkey/distribution",
     );
   const productId = primary.productId!;
   const outlets = candidates
@@ -250,7 +250,7 @@ export async function resolveMsStoreSetup(
   if (!credential)
     return inert(
       "no_credential",
-      "a platform admin must store an ms-partner-center outlet credential pinned to this app",
+      "a platform admin must store an ms-partner-center channel credential pinned to this app",
       { manifestProductId: productId },
     );
   const pin = checkOutletCredentialPin(credential, productId);

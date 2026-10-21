@@ -163,7 +163,7 @@ export function Drawer({
               <DialogPrimitive.Title
                 ref={titleRef}
                 tabIndex={-1}
-                className="text-lg font-semibold leading-tight text-fg-strong outline-hidden console:text-xl console:leading-7"
+                className="text-lg font-semibold leading-tight text-fg-strong outline-hidden forced-colors:outline-none console:text-xl console:leading-7"
               >
                 {title}
               </DialogPrimitive.Title>

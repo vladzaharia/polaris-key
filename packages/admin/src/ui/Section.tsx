@@ -60,7 +60,7 @@ export function Section({
       className={cn(
         "flex flex-col rounded-xl border bg-surface-raised light:shadow-elevation-1",
         danger ? "border-danger-border" : "border-border",
-        settings && "scroll-mt-20 outline-hidden",
+        settings && "scroll-mt-20 outline-hidden forced-colors:outline-none",
         className,
       )}
     >

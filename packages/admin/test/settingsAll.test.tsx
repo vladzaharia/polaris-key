@@ -97,7 +97,7 @@ describe("All settings → Edit in", () => {
     // [key, where it reads, its section, where the link goes]
     [
       "license.defaults.deviceLimit",
-      "Settings → Features",
+      "Settings → Features & general",
       "License defaults",
       "#/p/djdl/settings",
     ],
@@ -115,25 +115,25 @@ describe("All settings → Edit in", () => {
     ],
     [
       "release.github",
-      "Settings → Features",
+      "Settings → Features & general",
       "Repository",
       "#/p/djdl/settings",
     ],
     [
       "release.compatWindow",
-      "In-app updates → Feed",
+      "Ship builds → Feed",
       "Compatibility window",
       "#/p/djdl/update/feed",
     ],
     [
       "update.operatorPolicy",
-      "In-app updates → Feed",
+      "Ship builds → Feed",
       "Artifact policy",
       "#/p/djdl/update/feed",
     ],
     [
       "storefront.polarisKey.listed",
-      "Rollouts → Storefronts",
+      "Ship builds → Storefronts",
       "Polaris Locker → Listing",
       "#/p/djdl/distribution/storefronts/polaris-key",
     ],

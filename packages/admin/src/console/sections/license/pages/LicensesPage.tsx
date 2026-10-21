@@ -11,7 +11,6 @@
  */
 
 import * as React from "react";
-import { Plus } from "lucide-react";
 import { type LicenseSummary } from "../../../../api.js";
 import { useProduct } from "../../../data/hooks.js";
 import { r } from "../../../routes.js";
@@ -33,6 +32,7 @@ import {
   type DataColumn,
   type Facet,
 } from "../../../../ui/data-table/index.js";
+import { useWriteGate } from "../../../access/useCan.js";
 import { NewLicenseWizard } from "../wizard/NewLicenseWizard.js";
 import {
   BulkEnableDialog,
@@ -40,6 +40,7 @@ import {
   NO_BATCH,
   NO_TIER,
   LicensesFirstRun,
+  NewLicenseButton,
   LicensesForbidden,
   serverFacetIds,
   useServerFilter,
@@ -97,6 +98,7 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
   const tiersQ = useTiers(slug);
   const batchesQ = useLicenseBatches(slug);
   const product = useProduct(slug).data;
+  const gate = useWriteGate("license", slug);
   const openNew = (): void =>
     void navigate(r.newLicense(slug), { replace: false });
   const [cleanupOpen, setCleanupOpen] = React.useState(false);
@@ -278,7 +280,7 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
         : []),
       {
         id: "channel",
-        header: "Channels",
+        header: "Release tracks",
         accessorFn: (l) => l.channels.join(", "),
         meta: { defaultHidden: true },
         cell: ({ getValue }) => (getValue() as string) || "—",
@@ -417,9 +419,7 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
           // First run keeps one primary: the empty state's.
           primaryAction={
             firstRun ? undefined : (
-              <Button iconStart={<Plus />} onClick={openNew}>
-                New license
-              </Button>
+              <NewLicenseButton slug={slug} onClick={openNew} />
             )
           }
           secondaryActions={
@@ -428,6 +428,7 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
               : [
                   {
                     label: "Clean up duplicates…",
+                    disabledReason: gate.disabledReason,
                     onSelect: () => setCleanupOpen(true),
                   },
                   ...(hasBatches

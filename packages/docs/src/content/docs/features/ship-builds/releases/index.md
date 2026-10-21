@@ -150,7 +150,7 @@ applied, and holds the operator controls Release does have:
   (builds and files, the packs it pins, where each channel serves it, its distribution
   row). The **Repo sync** drawer holds the live **Release health** check, the last sync
   attempt and **Resync from repo**, whose result lists what it re-applied.
-- **Channels** shows one lane per channel, for the app and every pack: pointer, what it
+- **Release tracks** shows one lane per track, for the app and every pack: pointer, what it
   serves on each platform, and its policy (promote, pin, minimum supported, critical, the
   rollback floor, a pack's floors per contentApi line, revert to manifest).
 - **Deliverables**, **Content keys** and **Compatibility** cover packs; see

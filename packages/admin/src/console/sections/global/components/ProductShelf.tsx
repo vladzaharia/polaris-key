@@ -408,7 +408,7 @@ export function ProductShelf({
             id={headingId}
             tabIndex={-1}
             data-products-heading=""
-            className="text-lg font-semibold leading-6 text-fg-strong outline-hidden"
+            className="text-lg font-semibold leading-6 text-fg-strong outline-hidden forced-colors:outline-none"
           >
             Products
           </h2>

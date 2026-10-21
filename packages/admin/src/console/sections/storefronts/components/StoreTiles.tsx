@@ -5,6 +5,7 @@ import {
   CapabilityStrip,
   capabilitySummary,
 } from "../../../../ui/CapabilityBadge.js";
+import { useWriteGate } from "../../../access/useCan.js";
 import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { ConnectionIssue, progress } from "./FlowPanels.js";
@@ -21,6 +22,7 @@ export function StoreTile({
   /** The store has a page of its own (`STORE_PANELS`). */
   hasPanel: boolean;
 }): React.ReactElement {
+  const gate = useWriteGate("ship", slug);
   if (store.builtIn)
     return <BuiltInTile slug={slug} store={store} hasPanel={hasPanel} />;
   const p = progress(store);
@@ -60,7 +62,12 @@ export function StoreTile({
             ? `${p.done} of ${p.total} steps done`
             : capabilitySummary(store.capabilities)}
         </span>
-        <Button size="sm" variant="outline" asChild>
+        <Button
+          size="sm"
+          variant="outline"
+          asChild
+          disabledReason={gate.disabledReason}
+        >
           <Link
             to={r.storefronts(slug, {
               flow: "add",

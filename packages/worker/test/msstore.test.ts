@@ -810,7 +810,7 @@ describe("flights", () => {
         action: "distribution.connector.flight_unmapped",
         actor_sub: "connector:ms-store",
         target_id: INSIDERS_FLIGHT,
-        summary: `Microsoft Store lists the package flight Insiders (${INSIDERS_FLIGHT}), which no ms-store outlet maps (outlets.<id>.flights): ignored`,
+        summary: `Microsoft Store lists the package flight Insiders (${INSIDERS_FLIGHT}), which no ms-store channel maps (outlets.<id>.flights): ignored`,
       },
     ]);
     // Once, not every tick.

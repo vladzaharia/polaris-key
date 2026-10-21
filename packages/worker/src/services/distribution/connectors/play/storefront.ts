@@ -154,7 +154,7 @@ async function setupOf(
   return refuse(
     404,
     "not_configured",
-    "Google Play is not configured: declare a play or play-testing outlet with a packageName, and pin a Google service account to that package",
+    "Google Play is not configured: declare a play or play-testing channel with a packageName, and pin a Google service account to that package",
   );
 }
 

@@ -87,9 +87,25 @@ export function Meter({
         </span>
         <span className="tabular-nums text-fg">{text}</span>
       </div>
-      <svg aria-hidden width="100%" height="6" className="block">
-        <rect width="100%" height="6" rx="3" className="fill-border" />
-        <FillRect ratio={ratio} height={6} rx={3} className={FILL[tone]} />
+      {/* Forced colours: the track is an outlined Canvas bar, the fill is Highlight. */}
+      <svg
+        aria-hidden
+        width="100%"
+        height="6"
+        className="block forced-color-adjust-none"
+      >
+        <rect
+          width="100%"
+          height="6"
+          rx="3"
+          className="fill-border forced-colors:fill-[Canvas] forced-colors:stroke-[CanvasText]"
+        />
+        <FillRect
+          ratio={ratio}
+          height={6}
+          rx={3}
+          className={cn(FILL[tone], "forced-colors:fill-[Highlight]")}
+        />
       </svg>
     </div>
   );

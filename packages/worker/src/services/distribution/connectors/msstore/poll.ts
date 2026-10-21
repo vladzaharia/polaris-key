@@ -408,7 +408,7 @@ export async function applyMsStoreState(
         MSSTORE_LABEL,
         "distribution.connector.flight_unmapped",
         { kind: "flight", id: f.flightId },
-        `Microsoft Store lists the package flight ${f.friendlyName ?? f.flightId} (${f.flightId}), which no ms-store outlet maps (outlets.<id>.flights): ignored`,
+        `Microsoft Store lists the package flight ${f.friendlyName ?? f.flightId} (${f.flightId}), which no ms-store channel maps (outlets.<id>.flights): ignored`,
       );
   }
   const listedFlights = new Set(state.flights.map((f) => f.flightId));

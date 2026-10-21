@@ -186,11 +186,11 @@ export function ReleasesPage({ slug }: { slug: string }): React.ReactElement {
     },
     {
       id: "channel",
-      header: "Channels",
+      header: "Release tracks",
       enableSorting: false,
       meta: {
         priority: 1,
-        label: "Channels",
+        label: "Release tracks",
         csv: (x) => servingChannels(x.releaseId, appChannels).join(" "),
       },
       cell: ({ row }) => {

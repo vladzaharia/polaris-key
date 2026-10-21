@@ -360,7 +360,7 @@ function ChannelsTab({
         to={r.channels(slug)}
         className="text-sm text-accent-fg underline-offset-4 hover:underline"
       >
-        Open Channels
+        Open Release tracks
       </Link>
     </div>
   );
@@ -1058,7 +1058,7 @@ export function ReleaseRecord({
     },
     {
       value: "channels",
-      label: "Channels",
+      label: "Release tracks",
       to: r.release(slug, id, "channels"),
     },
     ...(distributionOn

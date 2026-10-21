@@ -29,7 +29,7 @@ export function LoadFailedCard({
         <h2
           id={id}
           tabIndex={-1}
-          className="text-lg font-semibold leading-6 text-fg-strong outline-hidden"
+          className="text-lg font-semibold leading-6 text-fg-strong outline-hidden forced-colors:outline-none"
         >
           {title}
         </h2>
