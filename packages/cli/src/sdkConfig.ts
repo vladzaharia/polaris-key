@@ -250,12 +250,12 @@ export async function resolveSdkFacts(opts: {
   };
 }
 
-/** What `pkey sdk` prints after resolving: each pin's fingerprint, to compare with the console. */
+/** What `pkey sdk` prints after resolving: each pin's fingerprint; the console shows the key itself. */
 export function factsSummary(facts: SdkConfigFacts): string {
   const lines = [
     `Product ${facts.product} at ${facts.baseUrl}`,
     `Services: ${facts.services.join(", ") || "(none)"}`,
-    "Trust pins (compare each fingerprint with the console before you ship):",
+    "Trust pins (compare each key with Public key under Core → Keys & secrets before you ship):",
     ...Object.entries(facts.pinnedKeys).map(
       ([kid, key]) => `  ${kid}  sha256:${fingerprintOf(key)}`,
     ),

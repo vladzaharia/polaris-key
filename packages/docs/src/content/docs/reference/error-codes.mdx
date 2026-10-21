@@ -11,7 +11,7 @@ shape for "no such product", "service not enabled", and "no such route" (hide-do
 17 protocol codes; the worker enum maps each to its response site.
 
 Every code, wire, client and backend, is registered in `conformance/parity/errors.json`
-(172 codes), and `pnpm gen constants` generates each SDK's `ErrorCode` constants
+(175 codes), and `pnpm gen constants` generates each SDK's `ErrorCode` constants
 from it. A new code needs an entry there first.
 
 ## Protocol codes (`@polaris-key/protocol/core`)
@@ -109,6 +109,9 @@ Raised by an SDK, never sent by the Worker. Hosts match on the exact string.
 | `sign-in-denied` | `identity` | A device-code sign-in poll answered the generic `error` state: the sign-in failed, or the person pressed Deny (or Not you?) on the Polaris Locker approval page. The server never says which. Begin again (I-37, I-37b). Every SDK raises it. |
 | `sign-in-unavailable` | `identity` | Node, Python, Swift: starting a device-code sign-in was refused and the response carried no code of its own. |
 | `invalid-options` | `core` | The client's options failed validation when it was constructed or configured (Godot: at configure): a bad product slug, version, base URL or pin, an invalid outlet, or a pinned release key that is also a trust pin. Godot's `config.set_value` also answers it for a value its catalog schema refuses and for a secret key, the refusal the other SDKs and `sync-scenarios.json` name with the canonical `bad_request`; Godot's runners map that canonical code to this one. |
+| `invalid-argument` | `core` | The Electron desktop bridge refused a call because an argument was missing, of the wrong type, or out of bounds (an absolute or escaping download path, an unknown store or kind). One spelling for every verb; the renderer adapter surfaces it as a typed error. |
+| `invoke-not-allowed` | `core` | The Electron desktop bridge's generic invoke named a service method the host does not expose to the renderer. |
+| `sender-refused` | `core` | The Electron desktop bridge refused a call from a window or frame the host's sender rule does not allow (an iframe, a navigated-away window, remote content). |
 | `not-configured` | `core` | A call needs configuration it does not have: in Godot, a call that ran before configure(); in every SDK, update.decide() with no pinned release keys. |
 | `unsupported` | `core` | Every SDK: the feature is not supported here, as `supports(feature)` reports it. Carries `feature`, `reason` (`runtime`, `outlet`, `product`, `dependency` or `version`) and `detail` (PARITY §2.2, P1b-10). Godot also returns it from a stub where a native plugin is absent. |
 | `timeout` | `core` | Godot: The request got no complete answer within its wall-clock budget, every redirect hop included. |

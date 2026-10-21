@@ -1187,7 +1187,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       "deprecated": true
     },
     "defaultMaxOfflineDays": {
-      "$ref": "#/$defs/nonNegativeInteger",
+      "$ref": "#/$defs/offlineDays",
       "description": "Deprecated: write licensing.defaultMaxOfflineDays. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
       "deprecated": true
     },
@@ -1236,7 +1236,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       "type": "object",
       "properties": {
         "defaultDeviceLimit": { "$ref": "#/$defs/deviceLimit" },
-        "defaultMaxOfflineDays": { "$ref": "#/$defs/nonNegativeInteger" },
+        "defaultMaxOfflineDays": { "$ref": "#/$defs/offlineDays" },
         "profiles": {
           "$ref": "#/$defs/profiles",
           "description": "Deprecated: write profiles at the root. Still accepted; pkey validate warns with deprecated_spelling.",
@@ -1630,6 +1630,12 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       "minimum": 0,
       "maximum": 1000
     },
+    "offlineDays": {
+      "description": "An offline window in days: a whole number from 0 to 365 (MAX_OFFLINE_DAYS in @polaris-key/manifest, the console's bound). Rejected, never clamped.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 365
+    },
     "fingerprintMode": {
       "description": "Drift-tolerance strength: off (never enforce) · lenient (4) · normal (2, default) · strict (0, and a fingerprint becomes mandatory).",
       "enum": ["off", "lenient", "normal", "strict"]
@@ -1648,7 +1654,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
           "deprecated": true
         },
         "defaultMaxOfflineDays": {
-          "$ref": "#/$defs/nonNegativeInteger",
+          "$ref": "#/$defs/offlineDays",
           "description": "Deprecated: write licensing.defaultMaxOfflineDays. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
           "deprecated": true
         }
@@ -18853,6 +18859,7 @@ var MAX_PROBE_TARGET_LENGTH = 512;
 var MAX_REDIRECT_URIS = 20;
 var MAX_URL_LENGTH = 2048;
 var MAX_DEVICE_LIMIT = 1e3;
+var MAX_OFFLINE_DAYS = 365;
 var MAX_MANIFEST_BYTES = 64 * 1024;
 var MAX_MANIFEST_DEPTH = 32;
 var MAX_YAML_ALIASES = 100;
@@ -19025,6 +19032,16 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
         "Value must be a non-negative integer."
       );
     }
+  }
+  const declaredOfflineDays = productNode.defaultMaxOfflineDays ?? productRoot.defaultMaxOfflineDays ?? licensing.defaultMaxOfflineDays;
+  if (typeof declaredOfflineDays === "number" && Number.isInteger(declaredOfflineDays) && declaredOfflineDays > MAX_OFFLINE_DAYS) {
+    add4(
+      errors,
+      "product",
+      "/licensing/defaultMaxOfflineDays",
+      "invalid_offline_days",
+      `defaultMaxOfflineDays must be at most ${MAX_OFFLINE_DAYS}.`
+    );
   }
   if (typeof declaredDeviceLimit === "number" && Number.isInteger(declaredDeviceLimit) && declaredDeviceLimit > MAX_DEVICE_LIMIT) {
     add4(
@@ -19227,7 +19244,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
             "product",
             `/licensing/tiers/${i}/channels/${j}`,
             "noncanonical_channel_name",
-            "Channel names should match ^[a-z0-9][a-z0-9-]{0,63}$ and spell a PR with its hyphen (pr-42); this grant is unreachable on the release routes and never matched by the licence gate (WIRE-CONTRACT-V3 §5.1)."
+            "Channel names should match ^[a-z0-9][a-z0-9-]{0,63}$ and spell a PR with its hyphen (pr-42); this grant is unreachable on the release routes and never matched by the licence gate (WIRE-CONTRACT-V4 §5.1)."
           );
         }
       }
@@ -19502,7 +19519,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
               "release",
               `/release/artifactPolicy/channels/${j}`,
               "noncanonical_channel_name",
-              "Channel names should match ^[a-z0-9][a-z0-9-]{0,63}$; uppercase, . and _ are unreachable on the release routes (WIRE-CONTRACT-V3 §5.1)."
+              "Channel names should match ^[a-z0-9][a-z0-9-]{0,63}$; uppercase, . and _ are unreachable on the release routes (WIRE-CONTRACT-V4 §5.1)."
             );
           }
         }
@@ -19552,7 +19569,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
                 "release",
                 `${at}/name`,
                 "noncanonical_channel_name",
-                "Channel names should match ^[a-z0-9][a-z0-9-]{0,63}$; uppercase, . and _ are unreachable on the release routes (WIRE-CONTRACT-V3 §5.1)."
+                "Channel names should match ^[a-z0-9][a-z0-9-]{0,63}$; uppercase, . and _ are unreachable on the release routes (WIRE-CONTRACT-V4 §5.1)."
               );
             } else if (isReservedChannelName(raw.name)) {
               add4(
@@ -19560,7 +19577,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
                 "release",
                 `${at}/name`,
                 "reserved_channel_name",
-                "This manual channel name is taken by a built-in channel (stable, latest, beta, pr, a PR number such as pr-42, or dev), so Release or the licence gate reads it as that channel (WIRE-CONTRACT-V3 §5.1)."
+                "This manual channel name is taken by a built-in channel (stable, latest, beta, pr, a PR number such as pr-42, or dev), so Release or the licence gate reads it as that channel (WIRE-CONTRACT-V4 §5.1)."
               );
             }
             if (typeof raw.regex !== "string" || compileManualChannelRegex(raw.regex) === null) {
@@ -30742,7 +30759,7 @@ function banner2(lang, facts, comment) {
   return [
     `${comment} ${SDK_CONFIG_MARKER} --lang ${lang} --write\` from`,
     `${comment} ${facts.discoveryUrl}. Do not edit: run the command again to refresh.`,
-    `${comment} The trust pins came from discovery; compare each fingerprint with the console before`,
+    `${comment} The trust pins came from discovery; compare each key with Public key under Core > Keys & secrets before`,
     `${comment} you ship (pkey sdk prints them). Release keys match release.releaseKeyFingerprints.`
   ].join("\n");
 }
@@ -32011,7 +32028,7 @@ function factsSummary(facts) {
   const lines4 = [
     `Product ${facts.product} at ${facts.baseUrl}`,
     `Services: ${facts.services.join(", ") || "(none)"}`,
-    "Trust pins (compare each fingerprint with the console before you ship):",
+    "Trust pins (compare each key with Public key under Core → Keys & secrets before you ship):",
     ...Object.entries(facts.pinnedKeys).map(
       ([kid, key]) => `  ${kid}  sha256:${fingerprintOf2(key)}`
     )

@@ -53,7 +53,7 @@ function banner(lang: SdkLang, facts: SdkConfigFacts, comment: string): string {
   return [
     `${comment} ${SDK_CONFIG_MARKER} --lang ${lang} --write\` from`,
     `${comment} ${facts.discoveryUrl}. Do not edit: run the command again to refresh.`,
-    `${comment} The trust pins came from discovery; compare each fingerprint with the console before`,
+    `${comment} The trust pins came from discovery; compare each key with Public key under Core > Keys & secrets before`,
     `${comment} you ship (pkey sdk prints them). Release keys match release.releaseKeyFingerprints.`,
   ].join("\n");
 }
