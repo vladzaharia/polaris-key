@@ -60,7 +60,6 @@ export function DownloadButton({
               : "h-auto min-h-10 whitespace-normal"
         }
         loading={start.isPending}
-        busyFocusable
         aria-describedby={start.isError ? alertId : undefined}
         iconStart={<Download aria-hidden />}
         aria-label={

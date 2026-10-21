@@ -164,7 +164,6 @@ export function HintStep({
           size="lg"
           className={primaryClass}
           loading={pk.busy}
-          busyFocusable
           onClick={() => void pk.run()}
           iconStart={<Fingerprint aria-hidden />}
         >
@@ -191,7 +190,6 @@ export function HintStep({
             size="lg"
             className={primaryClass}
             loading={pk.busy}
-            busyFocusable
             onClick={() => void pk.run()}
             iconStart={<Fingerprint aria-hidden />}
           >

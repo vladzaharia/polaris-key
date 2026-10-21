@@ -37,8 +37,8 @@ export function DataRow({
             {icon}
           </span>
           <div className="min-w-0 space-y-0.5">
-            <p className="font-medium text-fg-strong">{title}</p>
-            <p className="text-sm text-fg-muted">{description}</p>
+            <p className="break-words font-medium text-fg-strong">{title}</p>
+            <p className="break-words text-sm text-fg-muted">{description}</p>
           </div>
         </div>
         {children ? (

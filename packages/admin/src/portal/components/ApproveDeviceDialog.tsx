@@ -216,7 +216,6 @@ export function ApproveDeviceDialog({
               type="submit"
               variant="neutral"
               loading={phase.kind === "looking"}
-              busyFocusable
               iconStart={<ScanLine aria-hidden />}
             >
               {t("signin.approve.look")}
@@ -261,7 +260,6 @@ export function ApproveDeviceDialog({
             <Button
               variant="neutral"
               loading={phase.kind === "deciding"}
-              busyFocusable
               onClick={() => void decide(phase.request, "approve")}
             >
               {t("signin.approve.approve")}

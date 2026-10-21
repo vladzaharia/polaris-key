@@ -11,8 +11,11 @@ import { useWriteLock } from "./WriteLock.js";
  *
  * - `primary` is the section accent (`data-service` scoping): chartreuse in License, yellow in
  *   Config, violet on core pages. `danger` is the danger status, never a section colour.
- * - `loading` keeps the label, swaps the start icon for a spinner, sets `aria-busy` and ALWAYS
- *   disables the button; a caller's `disabled={false}` cannot re-enable it (fixes UI-1).
+ * - `loading` keeps the label, swaps the start icon for a spinner and sets `aria-busy`. The
+ *   button stays focusable (`aria-disabled` and a click guard, never `disabled`, so focus does
+ *   not fall to `<body>` mid-request) and a click does nothing; a caller's `disabled={false}`
+ *   cannot re-enable it (fixes UI-1). An `aria-disabled` button (busy, or locked with a reason)
+ *   wears the disabled look: the filled variants take the action-disabled pair.
  * - `disabledReason` renders `aria-disabled` instead of `disabled`, so the button stays focusable,
  *   shows the reason in a tooltip and links it with `aria-describedby`; clicks do nothing. There
  *   is no `pointer-events: none` anywhere (fixes UI-2).
@@ -37,7 +40,7 @@ export const buttonVariants = cva(
     variants: {
       variant: {
         primary:
-          "bg-accent text-accent-on shadow-elevation-1 hover:not-disabled:not-aria-disabled:bg-[color-mix(in_oklab,var(--pk-accent),white_10%)]",
+          "bg-accent text-accent-on shadow-elevation-1 hover:not-disabled:not-aria-disabled:bg-[color-mix(in_oklab,var(--pk-accent),white_10%)] disabled:bg-action-disabled disabled:text-action-disabled-on disabled:opacity-100 disabled:shadow-none aria-disabled:bg-action-disabled aria-disabled:text-action-disabled-on aria-disabled:opacity-100 aria-disabled:shadow-none",
         /**
          * The action-neutral primary (BRAND.md B2, SIGN-IN.md §3.1): near-white ink on dark,
          * near-black on light, the label in the page colour. The sign-in card's one filled
@@ -52,10 +55,10 @@ export const buttonVariants = cva(
         ghost:
           "bg-transparent text-fg hover:not-disabled:not-aria-disabled:bg-hover hover:not-disabled:not-aria-disabled:text-fg-strong",
         danger:
-          "bg-danger text-danger-on shadow-elevation-1 hover:not-disabled:not-aria-disabled:bg-[color-mix(in_oklab,var(--pk-danger),white_10%)]",
+          "bg-danger text-danger-on shadow-elevation-1 hover:not-disabled:not-aria-disabled:bg-[color-mix(in_oklab,var(--pk-danger),white_10%)] disabled:bg-action-disabled disabled:text-action-disabled-on disabled:opacity-100 disabled:shadow-none aria-disabled:bg-action-disabled aria-disabled:text-action-disabled-on aria-disabled:opacity-100 aria-disabled:shadow-none",
         /** Deprecated alias of `danger`, kept for the legacy views until chunk 11. */
         destructive:
-          "bg-danger text-danger-on shadow-elevation-1 hover:not-disabled:not-aria-disabled:bg-[color-mix(in_oklab,var(--pk-danger),white_10%)]",
+          "bg-danger text-danger-on shadow-elevation-1 hover:not-disabled:not-aria-disabled:bg-[color-mix(in_oklab,var(--pk-danger),white_10%)] disabled:bg-action-disabled disabled:text-action-disabled-on disabled:opacity-100 disabled:shadow-none aria-disabled:bg-action-disabled aria-disabled:text-action-disabled-on aria-disabled:opacity-100 aria-disabled:shadow-none",
         link: "h-auto px-0 text-accent-fg underline-offset-4 hover:underline",
         /**
          * The customer portal's outlined quick action (PORTAL.md §5.2): transparent, a
@@ -95,13 +98,8 @@ export interface ButtonProps
   extends
     Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "type">,
     VariantProps<typeof buttonVariants> {
-  /** Shows a spinner and disables the button; never overridable. */
+  /** Shows a spinner, sets `aria-busy` and ignores clicks, keeping focus; never overridable. */
   loading?: boolean;
-  /**
-   * While `loading`, stay focusable (`aria-disabled` and a click guard instead of `disabled`),
-   * for a button the operator just pressed and may keep pressing or tabbing past.
-   */
-  busyFocusable?: boolean;
   /** Why the button cannot be used right now: shown as a tooltip, linked for assistive tech. */
   disabledReason?: string;
   iconStart?: React.ReactNode;
@@ -117,7 +115,6 @@ export function Button({
   size,
   asChild = false,
   loading = false,
-  busyFocusable = false,
   disabled,
   disabledReason: reason,
   iconStart,
@@ -135,9 +132,8 @@ export function Button({
   if (lock.locked && !asChild && !disabledReason && !loading)
     disabledReason = lock.reason ?? "You can view this, not change it.";
   const softDisabled = Boolean(disabledReason) && !loading;
-  const busySoft = loading && busyFocusable;
-  const hardDisabled =
-    (loading && !busyFocusable) || (Boolean(disabled) && !disabledReason);
+  const busySoft = loading;
+  const hardDisabled = Boolean(disabled) && !disabledReason && !loading;
   const classes = cn(buttonVariants({ variant, size }), className);
   const describedBy =
     [props["aria-describedby"], softDisabled ? reasonId : undefined]
@@ -169,7 +165,7 @@ export function Button({
       className={classes}
       data-variant={variant ?? "primary"}
       data-size={size ?? "md"}
-      aria-disabled={softDisabled || hardDisabled || undefined}
+      aria-disabled={softDisabled || hardDisabled || busySoft || undefined}
       aria-busy={loading || undefined}
       onClick={guardedClick}
       {...props}

@@ -882,7 +882,6 @@ function MethodsStep({
             size="lg"
             className="h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-medium"
             loading={passkeyBusy}
-            busyFocusable
             onClick={() => void withPasskey()}
             iconStart={<Fingerprint aria-hidden />}
           >

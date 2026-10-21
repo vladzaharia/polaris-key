@@ -151,7 +151,6 @@ export function useReachPlan(
                 variant="outline"
                 className="mt-2"
                 loading={q.isFetching}
-                busyFocusable
                 onClick={() => {
                   setRetrying(true);
                   setRetried(true);

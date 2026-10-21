@@ -673,6 +673,15 @@ html[data-shell="console"]
   .pk-pill {
     border: 1px solid ButtonText;
   }
+  /* A disabled, busy or locked control reads as unavailable: GrayText ink and border. */
+  button:disabled,
+  [data-variant][aria-disabled="true"] {
+    color: GrayText;
+    border-color: GrayText;
+  }
+  [data-variant][aria-disabled="true"] svg {
+    color: GrayText;
+  }
   :focus-visible {
     outline: 2px solid Highlight;
     outline-offset: 2px;

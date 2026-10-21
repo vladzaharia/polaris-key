@@ -94,7 +94,12 @@ describe("Button: press, and a hover that never snaps", () => {
       (screen.getByRole("button", { name }) as HTMLButtonElement).disabled;
     expect(disabled("Go")).toBe(false);
     expect(disabled("Off")).toBe(true);
-    expect(disabled(/Saving/)).toBe(true);
+    expect(disabled(/Saving/)).toBe(false);
+    expect(
+      screen
+        .getByRole("button", { name: /Saving/ })
+        .getAttribute("aria-disabled"),
+    ).toBe("true");
     expect(
       screen
         .getByRole("button", { name: "Retire" })

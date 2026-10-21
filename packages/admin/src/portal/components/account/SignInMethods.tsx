@@ -823,7 +823,6 @@ function ConnectRow({
             variant="outline"
             className="ml-auto h-11 font-medium"
             loading={busy}
-            busyFocusable
             aria-label={t("signin.provider.connect", { provider: name })}
             onClick={() => void connect()}
           >
@@ -1107,7 +1106,6 @@ function AddEmail({
                 <Button
                   type="submit"
                   loading={busy}
-                  busyFocusable
                   disabled={code.length !== CODE_LENGTH}
                 >
                   Add {step.email}
@@ -1162,7 +1160,7 @@ function AddEmail({
                 <Button variant="outline" onClick={close}>
                   {t("signin.cancel")}
                 </Button>
-                <Button type="submit" loading={busy} busyFocusable>
+                <Button type="submit" loading={busy}>
                   {t("signin.gate.sendCode")}
                 </Button>
               </div>
@@ -1270,7 +1268,6 @@ function AddPasskey({
           className="h-11 font-medium sm:ml-13"
           iconStart={<KeyRound aria-hidden />}
           loading={busy}
-          busyFocusable
           aria-disabled={reason ? true : undefined}
           aria-describedby={reason ? reasonId : undefined}
           onClick={() => {

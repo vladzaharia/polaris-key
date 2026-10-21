@@ -267,7 +267,6 @@ export function MethodRow({
                   variant="danger"
                   className="max-sm:min-h-11"
                   loading={remove.isPending}
-                  busyFocusable
                   onClick={doRemove}
                 >
                   {verb} {name}

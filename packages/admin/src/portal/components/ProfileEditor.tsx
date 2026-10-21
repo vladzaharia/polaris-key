@@ -541,7 +541,6 @@ export function ProfileEditor({
               type="submit"
               className="max-sm:min-h-11"
               loading={save.isPending}
-              busyFocusable
             >
               {C["profile.save"]}
             </Button>

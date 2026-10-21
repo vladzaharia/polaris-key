@@ -693,8 +693,11 @@ describe("Remove my data from a product (I-11)", () => {
       name: "Remove my data",
     }) as HTMLButtonElement;
     await userEvent.dblClick(confirm);
-    await waitFor(() => expect(confirm.disabled).toBe(true));
+    await waitFor(() =>
+      expect(confirm.getAttribute("aria-disabled")).toBe("true"),
+    );
     expect(confirm.getAttribute("aria-busy")).toBe("true");
+    expect(document.activeElement).toBe(confirm);
     expect(choice.disabled).toBe(true);
     expect(
       (

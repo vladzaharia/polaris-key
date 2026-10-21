@@ -481,7 +481,6 @@ function TokenRow({
               variant="danger"
               className="min-h-11"
               loading={revoke.pending}
-              busyFocusable
               onClick={() =>
                 revoke.run(() => {
                   onRevoked?.();
@@ -996,12 +995,7 @@ function CreateDialog({
             >
               {t("signin.cancel")}
             </Button>
-            <Button
-              type="submit"
-              className="min-h-11"
-              loading={mint.pending}
-              busyFocusable
-            >
+            <Button type="submit" className="min-h-11" loading={mint.pending}>
               Create
             </Button>
           </DialogFooter>
