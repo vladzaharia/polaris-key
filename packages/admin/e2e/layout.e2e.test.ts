@@ -681,7 +681,11 @@ describe("Home's product card (owner polish 2026-10-07)", () => {
         expect(
           await card.locator("[data-feature-icons]").first().isVisible(),
         ).toBe(false);
-        for (const sel of ["[data-logo]", "[data-card-header] [data-status]"])
+        // The card draws two logos (40 px, hidden on a phone; 32 px, phone only): the visible one.
+        for (const sel of [
+          "[data-logo]:visible",
+          "[data-card-header] [data-status]",
+        ])
           expect(await card.locator(sel).first().isVisible(), sel).toBe(true);
         expect(await card.getByText("djdl", { exact: true }).isVisible()).toBe(
           true,

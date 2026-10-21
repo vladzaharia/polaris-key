@@ -85,6 +85,7 @@ import {
   portalFlowKey,
   portalMagicKey,
 } from "../../src/services/identity/portal/auth.js";
+import { getOrCreateAccountByEmail } from "../../src/services/identity/portal/repo.js";
 import {
   handleAdminCallback,
   handleAdminLogin,
@@ -2438,6 +2439,8 @@ describe("R8-08 portal magic link", () => {
       },
     } as unknown as Env["EMAIL"];
     await seedProduct(db, "djdl");
+    // A new address finishes through the gate first (PX-21); this is the returning sign-in.
+    await getOrCreateAccountByEmail(db, "victim@corp.com", NOW);
 
     const res = await handleMagicStart(
       req("https://key.plrs.im/api/auth/magic", {

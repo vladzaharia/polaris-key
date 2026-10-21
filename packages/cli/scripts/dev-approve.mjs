@@ -295,6 +295,30 @@ const FORM_HEADERS = (origin) => ({
   origin,
 });
 
+/** The code the confirmation page shows: `<dd class="code">` (before I-38a) or `<span class="code">`. */
+export function readShownCode(html) {
+  return /<(?:dd|span)\b[^>]*\bclass="code"[^>]*>([^<]*)<\/(?:dd|span)>/i.exec(
+    html,
+  )?.[1];
+}
+
+/** The approval page's form (I-37): a hidden single-use token and a `decision=approve` button. */
+export function readApprovalForm(html) {
+  return readForms(html).find(
+    (f) =>
+      f.method === "post" &&
+      f.fields.some(([name, v]) => name === "token" && v) &&
+      f.buttons.some(([n, v]) => n === "decision" && v === "approve"),
+  );
+}
+
+/** The done page: "Signed in on …" (I-38a) or "{App} is signed in" (I-37). */
+export function isSignedInPage(html) {
+  return /<title>\s*(?:Signed in\b|[^<]*\bis signed in\b)/i.test(html);
+}
+
+const APPROVE_PAGE = /\/identity\/auth\/device\/approve$/;
+
 // ── the approval ─────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -323,7 +347,7 @@ export async function approveDeviceCode(verificationUrl, userCode, opts = {}) {
     );
   if (opened.status !== 200)
     fail(`confirmation page: ${opened.status} ${digest(openedText)}`);
-  const shown = /<dd class="code">([^<]*)<\/dd>/.exec(openedText)?.[1];
+  const shown = readShownCode(openedText);
   if (shown === undefined)
     fail(
       "confirmation page: it shows no code, so it is not the confirmation page",
@@ -352,7 +376,7 @@ export async function approveDeviceCode(verificationUrl, userCode, opts = {}) {
   const confirmed = await send(jar, "confirmation", action, {
     method: "POST",
     headers: FORM_HEADERS(entry.origin),
-    body: new URLSearchParams(confirm.fields),
+    body: new URLSearchParams([...confirm.fields, ["decision", "approve"]]),
   });
   const confirmedText = await confirmed.text();
   const toIdp = redirectTarget(confirmed, action, "confirmation");
@@ -428,13 +452,44 @@ export async function approveDeviceCode(verificationUrl, userCode, opts = {}) {
 
   // 4. The callback, in the browser the flow was confirmed in: the binder cookie must come along.
   say(`callback ${callback.pathname}`);
-  const done = await send(jar, "callback", callback);
-  const doneText = await done.text();
+  let done = await send(jar, "callback", callback);
+  let doneText = await done.text();
+  // I-37: the callback hands over to the explicit approval page (a 303 to .../device/approve),
+  // which shows the request and posts the decision. The person presses "Sign in on <device>".
+  const toApprove = redirectTarget(done, callback, "callback");
+  if (toApprove) {
+    if (
+      toApprove.origin !== entry.origin ||
+      !APPROVE_PAGE.test(toApprove.pathname)
+    )
+      fail(
+        `callback: it redirected to ${toApprove.origin}${toApprove.pathname}, not the approval page`,
+      );
+    say(`approval ${toApprove.pathname}`);
+    const page = await send(jar, "approval page", toApprove);
+    const pageText = await page.text();
+    if (page.status !== 200)
+      fail(`approval page: ${page.status} ${digest(pageText)}`);
+    const form = readApprovalForm(pageText);
+    if (!form) fail("approval page: no form with a token and a Sign in button");
+    const target = new URL(form.action || toApprove.pathname, toApprove);
+    if (target.origin !== entry.origin || !APPROVE_PAGE.test(target.pathname))
+      fail(
+        `approval page: its form posts to ${target.origin}${target.pathname}, not the approval page`,
+      );
+    say("approve the sign-in");
+    done = await send(jar, "approval", target, {
+      method: "POST",
+      headers: FORM_HEADERS(entry.origin),
+      body: new URLSearchParams([...form.fields, ["decision", "approve"]]),
+    });
+    doneText = await done.text();
+  }
   if (done.status !== 200)
     fail(
-      `callback: ${done.status} ${digest(doneText)} (cookies held: ${jar.names().join(", ") || "none"})`,
+      `${toApprove ? "approval" : "callback"}: ${done.status} ${digest(doneText)} (cookies held: ${jar.names().join(", ") || "none"})`,
     );
-  if (!/<title>\s*Signed in\b/i.test(doneText))
+  if (!isSignedInPage(doneText))
     fail(`callback: 200 but not the signed-in page: ${digest(doneText)}`);
   say("signed in");
   return { origin: entry.origin, userCode: displayCode(code) };
