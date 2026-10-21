@@ -34,7 +34,7 @@ export function Textarea({
       }}
       className={cn(
         "min-h-20 w-full rounded-md border border-border-strong bg-surface-sunken px-3 py-2 text-sm text-fg",
-        "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page",
+        "focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2",
         "disabled:cursor-not-allowed disabled:opacity-50 read-only:bg-surface-page read-only:text-fg-muted",
         "aria-[invalid=true]:border-danger",
         autoGrow && "field-sizing-content max-h-96",

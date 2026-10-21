@@ -149,6 +149,7 @@ export function ConfirmDialog({
       onOpenChange={onOpenChange}
       size="md"
       role="alertdialog"
+      closeButton={false}
       tone={intent === "neutral" ? "default" : intent}
       title={
         <span className="flex items-start gap-2">
@@ -175,7 +176,7 @@ export function ConfirmDialog({
               ))}
             </div>
           ) : consequences?.length ? (
-            <ul className="list-disc space-y-1 pl-5 text-fg">
+            <ul className="list-disc space-y-1 ps-5 text-fg">
               {consequences.map((c) => (
                 <li key={c}>{c}</li>
               ))}
@@ -224,7 +225,7 @@ export function ConfirmDialog({
                 }}
                 className={cn(
                   "h-9 w-full rounded-md border border-border-strong bg-surface-sunken px-3 font-mono text-sm text-fg",
-                  "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus",
+                  "focus-visible:outline-2 focus-visible:outline-focus",
                 )}
               />
             </div>

@@ -196,7 +196,7 @@ export function Stepper({
             </span>
           );
           const text = (
-            <span className="flex min-w-0 flex-col text-left">
+            <span className="flex min-w-0 flex-col text-start">
               <span title={step.label} className="truncate">
                 {step.label}
               </span>

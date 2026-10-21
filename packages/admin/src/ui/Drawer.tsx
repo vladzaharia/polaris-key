@@ -62,9 +62,10 @@ export interface DrawerProps {
   glyph?: React.ReactNode;
   /**
    * What the phone header's control is. `back` (default) is a "Back" that closes; `close` is an X
-   * at every width, for a drawer whose body has its own Back (a wizard).
+   * at every width, for a drawer whose body has its own Back (a wizard); `close-narrow` is that X
+   * below sm only, for one whose footer carries a Cancel from sm up.
    */
-  closeStyle?: "back" | "close";
+  closeStyle?: "back" | "close" | "close-narrow";
   /** Replaces the default return of focus to the opener (the handler says where focus goes). */
   onCloseAutoFocus?: (e: Event) => void;
   children?: React.ReactNode;
@@ -130,8 +131,8 @@ export function Drawer({
             "pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]",
             "lg:inset-y-0 lg:w-full lg:shadow-elevation-3",
             side === "end"
-              ? "lg:left-auto lg:right-0 lg:border-l lg:border-border"
-              : "lg:left-0 lg:right-auto lg:border-r lg:border-border",
+              ? "lg:start-auto lg:end-0 lg:border-s lg:border-border"
+              : "lg:start-0 lg:end-auto lg:border-e lg:border-border",
             size === "lg" ? "lg:max-w-[40rem]" : "lg:max-w-[28rem]",
             className,
           )}
@@ -145,7 +146,7 @@ export function Drawer({
                 type="button"
                 onClick={close}
                 disabled={!dismissible}
-                className="-ml-1 inline-flex h-8 shrink-0 items-center gap-1 rounded-md px-2 text-sm text-fg hover:bg-hover disabled:opacity-50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus lg:hidden"
+                className="-ms-1 inline-flex h-8 shrink-0 items-center gap-1 rounded-md px-2 text-sm text-fg hover:bg-hover disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-focus lg:hidden"
               >
                 <ArrowLeft aria-hidden className="size-4" />
                 Back
@@ -173,15 +174,18 @@ export function Drawer({
                 </DialogPrimitive.Description>
               ) : null}
             </div>
-            {dismissible || closeStyle === "close" ? (
+            {dismissible || closeStyle !== "back" ? (
               <DialogPrimitive.Close
                 aria-label="Close"
                 disabled={!dismissible}
                 className={cn(
-                  "-mr-2 size-8 shrink-0 items-center justify-center rounded-md text-fg-muted hover:bg-hover hover:text-fg-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50",
+                  "-me-2 size-8 shrink-0 items-center justify-center rounded-md text-fg-muted hover:bg-hover hover:text-fg-strong focus-visible:outline-2 focus-visible:outline-focus disabled:opacity-50",
                   closeStyle === "close"
                     ? "inline-flex"
-                    : "hidden lg:inline-flex",
+                    : closeStyle === "close-narrow"
+                      ? // Below sm only: from sm up the body's own Cancel is the way out.
+                        "inline-flex sm:hidden"
+                      : "hidden lg:inline-flex",
                 )}
               >
                 <X aria-hidden className="size-4" />

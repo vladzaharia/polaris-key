@@ -12,7 +12,7 @@ export function Kbd({
   return (
     <span
       aria-hidden
-      className={cn("ml-auto flex shrink-0 items-center gap-1", className)}
+      className={cn("ms-auto flex shrink-0 items-center gap-1", className)}
     >
       {keys.split(" ").map((k, i) => (
         <kbd

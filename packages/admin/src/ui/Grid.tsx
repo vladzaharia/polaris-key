@@ -134,9 +134,9 @@ export function Grid<R, C>({
             <th
               scope="col"
               className={cn(
-                "border-b border-border bg-surface-raised px-3 py-2 text-left text-xs font-medium text-fg-muted",
+                "border-b border-border bg-surface-raised px-3 py-2 text-start text-xs font-medium text-fg-muted",
                 stickyColumnHeader && "sticky top-0 z-[2]",
-                stickyRowHeader && "sticky left-0 z-[3]",
+                stickyRowHeader && "sticky start-0 z-[3]",
               )}
             >
               {cornerLabel}
@@ -146,7 +146,7 @@ export function Grid<R, C>({
                 key={getColumnId(col)}
                 scope="col"
                 className={cn(
-                  "border-b border-border bg-surface-raised px-3 py-2 text-left text-xs font-medium text-fg-muted",
+                  "border-b border-border bg-surface-raised px-3 py-2 text-start text-xs font-medium text-fg-muted",
                   stickyColumnHeader && "sticky top-0 z-[1]",
                 )}
               >
@@ -161,8 +161,8 @@ export function Grid<R, C>({
               <th
                 scope="row"
                 className={cn(
-                  "bg-surface-raised px-3 py-2 text-left align-middle font-normal text-fg",
-                  stickyRowHeader && "sticky left-0 z-[1]",
+                  "bg-surface-raised px-3 py-2 text-start align-middle font-normal text-fg",
+                  stickyRowHeader && "sticky start-0 z-[1]",
                 )}
               >
                 {rowHeader(row)}
@@ -192,7 +192,7 @@ export function Grid<R, C>({
                       "px-3 py-2 align-middle text-fg outline-hidden",
                       onCellActivate &&
                         "cursor-pointer hover:bg-surface-overlay",
-                      "focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus",
+                      "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus",
                     )}
                   >
                     <span aria-hidden>{cell(row, col)}</span>

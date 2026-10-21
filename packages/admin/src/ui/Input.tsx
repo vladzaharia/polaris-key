@@ -59,8 +59,7 @@ export function Input({
       className={cn(
         CONTROL_INPUT,
         mono && "font-mono text-xs",
-        framed &&
-          "border-0 bg-transparent px-0 focus-visible:ring-0 focus-visible:ring-offset-0",
+        framed && "border-0 bg-transparent px-0",
         !framed && className,
       )}
       {...props}
@@ -92,7 +91,7 @@ export function Input({
         <button
           type="button"
           aria-label="Clear"
-          className="-mr-1 inline-flex size-7 shrink-0 items-center justify-center rounded-sm text-fg-muted hover:text-fg-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+          className="-me-1 inline-flex size-7 shrink-0 items-center justify-center rounded-sm text-fg-muted hover:text-fg-strong focus-visible:outline-2 focus-visible:outline-focus"
           onClick={() => {
             const el = inner.current;
             if (el) {

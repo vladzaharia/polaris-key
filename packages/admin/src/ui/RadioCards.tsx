@@ -82,10 +82,10 @@ export function RadioCards<V extends string = string>({
             disabled={o.disabled}
             aria-describedby={o.description ? `${itemId}-desc` : undefined}
             className={cn(
-              "group flex items-start gap-3 rounded-lg border border-border bg-surface-raised p-3 text-left",
+              "group flex items-start gap-3 rounded-lg border border-border bg-surface-raised p-3 text-start",
               // Pressable (src/motion.css): the card presses; its border and fill ease at `micro`.
               "pk-pressable hover:border-border-strong",
-              "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page",
+              "focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2",
               "data-[state=checked]:border-accent data-[state=checked]:bg-accent-subtle",
               "disabled:cursor-not-allowed disabled:opacity-50",
             )}

@@ -58,7 +58,7 @@ describe("the passport structure", () => {
     const pane = container.querySelector("[data-pane='passport']")!;
     expect(pane).not.toBeNull();
     expect(pane.className).toContain("passport:bg-surface-sunken");
-    expect(pane.className).toContain("passport:border-r");
+    expect(pane.className).toContain("passport:border-e");
     expect(container.querySelector("[data-passport]")!.className).toContain(
       "passport:max-w-[46rem]",
     );

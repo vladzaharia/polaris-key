@@ -45,7 +45,7 @@ export interface EmptyStateProps {
   /** A ref to the title, which then takes programmatic focus (a page moves focus to it). */
   headingRef?: React.Ref<HTMLElement>;
   /**
-   * `inline` sits inside a card (a settings section, a panel, a table): compact and left-aligned,
+   * `inline` sits inside a card (a settings section, a panel, a table): compact and start-aligned,
    * with no illustration, no dashed border of its own and the docs as a text link, so it never
    * nests a box inside a box. It adds no side padding: the card's body pads it.
    */
@@ -107,7 +107,7 @@ export function EmptyState({
     : {};
   const inline = variant === "inline";
   if (inline && kind !== "service-off") {
-    // In a card: one compact, left-aligned block (title, a line of context, actions), never the
+    // In a card: one compact, start-aligned block (title, a line of context, actions), never the
     // large centred page-level state.
     return (
       <div
@@ -141,7 +141,7 @@ export function EmptyState({
                   href={docs}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1 whitespace-nowrap text-accent-fg underline-offset-2 hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+                  className="inline-flex items-center gap-1 whitespace-nowrap text-accent-fg underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-focus"
                 >
                   <BookOpen aria-hidden className="size-3.5" />
                   Docs

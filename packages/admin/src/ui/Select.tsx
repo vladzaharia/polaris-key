@@ -33,8 +33,8 @@ export function SelectTrigger({
     <SelectPrimitive.Trigger
       ref={ref}
       className={cn(
-        "flex h-9 w-full items-center justify-between gap-2 rounded-md border border-border-strong bg-surface-sunken px-3 text-left text-sm text-fg",
-        "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page",
+        "flex h-9 w-full items-center justify-between gap-2 rounded-md border border-border-strong bg-surface-sunken px-3 text-start text-sm text-fg",
+        "focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2",
         "disabled:cursor-not-allowed disabled:opacity-50 aria-[invalid=true]:border-danger",
         "data-[placeholder]:text-fg-subtle [&>span]:line-clamp-1 pointer-coarse:h-10",
         className,
@@ -121,13 +121,13 @@ export function SelectItem({
     <SelectPrimitive.Item
       ref={ref}
       className={cn(
-        "relative flex w-full cursor-pointer select-none flex-col items-start rounded-sm py-1.5 pl-8 pr-2 text-sm outline-hidden",
+        "relative flex w-full cursor-pointer select-none flex-col items-start rounded-sm py-1.5 ps-8 pe-2 text-sm outline-hidden",
         "focus:bg-hover focus:text-fg-strong data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50",
         className,
       )}
       {...props}
     >
-      <span className="absolute left-2 top-2 flex size-3.5 items-center justify-center">
+      <span className="absolute start-2 top-2 flex size-3.5 items-center justify-center">
         <SelectPrimitive.ItemIndicator>
           <Check aria-hidden className="size-4" />
         </SelectPrimitive.ItemIndicator>

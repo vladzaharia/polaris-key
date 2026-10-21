@@ -104,7 +104,7 @@ export function OrderedMultiSelect({
             <li
               key={v}
               data-row={v}
-              className="flex items-center gap-2 rounded-md border border-border bg-surface-raised py-1 pl-2 pr-1"
+              className="flex items-center gap-2 rounded-md border border-border bg-surface-raised py-1 ps-2 pe-1"
             >
               <span
                 aria-hidden

@@ -171,7 +171,7 @@ export function SaveBar<T extends FieldValues>({
               <button
                 key={name}
                 type="button"
-                className="underline underline-offset-2 hover:text-fg-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+                className="underline underline-offset-2 hover:text-fg-strong focus-visible:outline-2 focus-visible:outline-focus"
                 onClick={() => form.focus(name)}
               >
                 {labels.get(name) ?? name}

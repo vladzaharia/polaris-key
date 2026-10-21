@@ -278,15 +278,18 @@ function TriCheckbox({
     if (ref.current) ref.current.indeterminate = indeterminate;
   }, [indeterminate]);
   return (
-    <input
-      ref={ref}
-      type="checkbox"
-      aria-label={label}
-      aria-checked={indeterminate ? "mixed" : checked}
-      checked={checked}
-      onChange={(e) => onChange(e.target.checked)}
-      className="size-4 cursor-pointer accent-accent align-middle"
-    />
+    // The label is the 24 px target around the 16 px box (WCAG 2.5.8).
+    <label className="inline-flex size-6 cursor-pointer items-center justify-center align-middle">
+      <input
+        ref={ref}
+        type="checkbox"
+        aria-label={label}
+        aria-checked={indeterminate ? "mixed" : checked}
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="size-4 cursor-pointer accent-accent"
+      />
+    </label>
   );
 }
 
@@ -302,10 +305,10 @@ function SortIcon({
 
 function alignClass(align: "start" | "center" | "end" | undefined): string {
   return align === "end"
-    ? "text-right"
+    ? "text-end"
     : align === "center"
       ? "text-center"
-      : "text-left";
+      : "text-start";
 }
 
 // ── List motion (notes/S-23 §6.1 "list", §6.2 rule 4; MO-09) ────────────────────────────────────
@@ -456,7 +459,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
 
   const isPhone = useMediaQuery("(max-width: 767px)");
   // Cards below 1024 px (a phone, a tablet, a narrow window): a wide table there would scroll
-  // sideways and hide its right-most columns, Actions included.
+  // sideways and hide its end-most columns, Actions included.
   const isCardWidth = useMediaQuery("(max-width: 1023px)");
   const isMobileCards = isCardWidth && mobile === "cards";
 
@@ -834,7 +837,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
 
   const stickyPrimary = (col: Column<T, unknown>): string =>
     col.id === primaryId && visibleColumns[0]?.id === primaryId
-      ? cn("sticky z-[1] bg-inherit", selection ? "left-10" : "left-0")
+      ? cn("sticky z-[1] bg-inherit", selection ? "start-10" : "start-0")
       : "";
 
   const rowHeight =
@@ -862,7 +865,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
         )}
       >
         {selection ? (
-          <td className="sticky left-0 z-[1] w-10 bg-inherit px-3 align-middle">
+          <td className="sticky start-0 z-[1] w-10 bg-inherit px-3 align-middle">
             <TriCheckbox
               checked={selected}
               onChange={(v) => row.toggleSelected(v)}
@@ -879,7 +882,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
           </td>
         ))}
         {rowActions ? (
-          <td className="w-12 px-2 text-right align-middle">
+          <td className="w-12 px-2 text-end align-middle">
             <RowMenu label={label} items={rowActions(row.original)} />
           </td>
         ) : null}
@@ -1055,7 +1058,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
       <Button
         size="sm"
         variant="ghost"
-        className="ml-auto"
+        className="ms-auto"
         onClick={() => {
           setAllMatching(false);
           setRowSelection({});
@@ -1343,7 +1346,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
             <Skeleton
               className={cn(
                 "h-4",
-                c.columnDef.meta?.numeric ? "ml-auto w-12" : "w-3/4",
+                c.columnDef.meta?.numeric ? "ms-auto w-12" : "w-3/4",
               )}
             />
           </td>
@@ -1389,7 +1392,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
           {selection ? (
             <th
               scope="col"
-              className="sticky left-0 z-[3] w-10 bg-surface-raised px-3 text-left"
+              className="sticky start-0 z-[3] w-10 bg-surface-raised px-3 text-start"
             >
               <TriCheckbox
                 checked={headerAllChecked}
@@ -1516,7 +1519,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
                     {/* Term left, value flush right: a card reads like a settings row. */}
                     <dd
                       className={cn(
-                        "flex min-w-0 flex-wrap items-center justify-end gap-x-2 text-right text-fg [&>*]:min-w-0",
+                        "flex min-w-0 flex-wrap items-center justify-end gap-x-2 text-end text-fg [&>*]:min-w-0",
                         c.column.columnDef.meta?.mono && "font-mono",
                       )}
                     >
@@ -1604,7 +1607,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
             Showing {formatCount(from)}–{formatCount(to)} of{" "}
             {formatCount(total)}
           </p>
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ms-auto flex items-center gap-2">
             {pagination.pageSizeOptions && pagination.onPageSizeChange ? (
               <label className="flex items-center gap-2 text-xs text-fg-muted">
                 Rows per page

@@ -184,7 +184,7 @@ export function SegmentedControl<V extends string = string>({
         ref={thumb}
         aria-hidden
         data-segmented-thumb=""
-        className="pointer-events-none absolute left-(--pk-thumb-x) top-(--pk-thumb-y) hidden h-(--pk-thumb-h) w-(--pk-thumb-w) origin-left rounded-sm bg-surface-raised shadow-elevation-1 group-data-[moving]/seg:block"
+        className="pointer-events-none absolute start-(--pk-thumb-x) top-(--pk-thumb-y) hidden h-(--pk-thumb-h) w-(--pk-thumb-w) origin-left rounded-sm bg-surface-raised shadow-elevation-1 group-data-[moving]/seg:block"
       />
       {options.map((o) => (
         <RadioGroup.Item
@@ -200,11 +200,13 @@ export function SegmentedControl<V extends string = string>({
             "relative inline-flex items-center justify-center rounded-sm px-3 text-fg-muted",
             wrap ? "min-h-8 min-w-0 py-1 text-center" : "whitespace-nowrap",
             !wrap && (size === "sm" ? "h-7" : "h-8"),
+            // The customer site's touch layout: 44 px (the console keeps its 24 px floor).
+            "max-desk:not-console:min-h-11 max-desk:not-console:min-w-11",
             size === "sm" ? "text-xs" : "text-sm",
             // The text colour eases; the background swaps at once, so the thumb hands over to the
             // checked item's own background without a dip.
             "transition-[color] duration-(--pk-duration-fast) ease-standard hover:text-fg-strong",
-            "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus",
+            "focus-visible:outline-2 focus-visible:outline-focus",
             "data-[state=checked]:bg-surface-raised data-[state=checked]:font-medium data-[state=checked]:text-fg-strong data-[state=checked]:shadow-elevation-1 console:data-[state=checked]:text-accent-fg",
             "group-data-[moving]/seg:data-[state=checked]:bg-transparent group-data-[moving]/seg:data-[state=checked]:shadow-none",
             "disabled:cursor-not-allowed disabled:opacity-50",
