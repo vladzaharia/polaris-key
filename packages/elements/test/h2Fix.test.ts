@@ -171,3 +171,21 @@ describe("the pane's identity header", () => {
     );
   });
 });
+
+describe("the native preset's system scheme", () => {
+  it("is re-resolved when the host toggles its own ground", async () => {
+    const el = (await draw("pk-welcome", {})) as PkElement & {
+      preset?: string;
+    };
+    el.preset = "native";
+    document.body.style.backgroundColor = "rgb(255, 255, 255)";
+    await el.updateComplete;
+    const scheme = () => q(el, ".pk-root")?.getAttribute("data-theme");
+    expect(scheme()).toBe("light");
+    document.body.style.backgroundColor = "rgb(10, 12, 20)";
+    await new Promise((r) => setTimeout(r, 20));
+    await el.updateComplete;
+    expect(scheme()).toBe("dark");
+    document.body.style.backgroundColor = "";
+  });
+});
