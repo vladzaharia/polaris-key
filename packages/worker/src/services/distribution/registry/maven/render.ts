@@ -15,7 +15,7 @@
  * VERSIONS, CHANNELS AND STATES (§6.7; Maven has no yank or deprecation in its protocol):
  *   - `<versions>` lists every version, in publication order (Release's `seq`), oldest first, as
  *     a Maven repository manager writes it, except the yanked ones when the feed's
- *     `yankHidesFromIndex` switch is on (B-097; off by default). A yanked version stays
+ *     `yankHidesFromIndex` switch is on (B-097; on by default: only an explicit `false` lists them). A yanked version stays
  *     downloadable by its exact coordinates, so a build that pinned it keeps working, but with
  *     the switch on no dynamic version (`1.+`, `[1.0,2.0)`, `LATEST`, `RELEASE`) can resolve to it.
  *   - A deprecated version is listed like a live one: the protocol cannot carry the message,
@@ -99,11 +99,12 @@ export function mavenTimestamp(seconds: number): string {
 
 /**
  * Whether a yank takes the version out of `maven-metadata.xml`: the feed's `yankHidesFromIndex`
- * switch (B-097). Off keeps yanked versions listed; with no settings to read (a render the
- * caller gave none to, or a feed with no row) it hides, which is the safe side.
+ * switch (B-097). Hidden unless the switch is explicitly `false` (an absent key hides, so a range like
+ * `1.+` or `LATEST` never resolves to a yanked, possibly compromised version); with no settings
+ * to read (no feed row) it hides too.
  */
 export function yankHides(feed: RenderContext["feed"]): boolean {
-  return feed == null || feed.ext.yankHidesFromIndex === true;
+  return feed == null || feed.ext.yankHidesFromIndex !== false;
 }
 
 /** The versions a feed lists, in publication order: without the yanked ones when the feed hides them. */
