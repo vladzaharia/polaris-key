@@ -16,7 +16,7 @@ import { portalRoutes, type Handler } from "./portalFixtures.js";
  * right-to-left one, at three and four products:
  *
  * - each tile draws its art edge to edge, at most 280 px tall;
- * - the key tile ends the grid, takes its whole row when the products fill theirs (else one cell);
+ * - the key tile ends the grid and fills the rest of the last row (PX-35: never half empty);
  * - "Missing a license?" closes the page;
  * - the page title is 48/52 from 761 px and 32/36 below it;
  * - a long name stays inside its tile; no horizontal page scroll.
@@ -111,20 +111,9 @@ async function geometry(page: Page) {
       "section[aria-label='Missing a license?']",
     );
     return {
-      // PX-34: the key tile takes the whole row when the products fill theirs, else one cell: it
-      // is never part of a row, and a last row of cells may end short.
-      fullRow: (() => {
-        const cols = getComputedStyle(grid)
-          .gridTemplateColumns.split(" ")
-          .filter(Boolean).length;
-        const products = items.length - 1;
-        const k = items[items.length - 1]!;
-        if (cols < 2) return lastLeft - g.left < 2 && g.right - lastRight < 2;
-        const cell = items[0]!.width;
-        return products % cols === 0
-          ? Math.abs(k.width - g.width) < 2
-          : Math.abs(k.width - cell) < 2;
-      })(),
+      // PX-35: the key tile fills the rest of the products' last row (`keyTileSpan`), so the last
+      // row is never half empty; it is a whole row (one line) when the products fill theirs.
+      fullRow: lastLeft - g.left < 2 && g.right - lastRight < 2,
       arts,
       names,
       titleSize: title.fontSize,
@@ -217,9 +206,7 @@ describe.concurrent("library 2-7 grid presence", () => {
               expect
                 .soft(g.strip && g.stripAfter, "Missing a license? after")
                 .toBe(true);
-              expect
-                .soft(g.fullRow, "key tile spans its row or is one cell")
-                .toBe(true);
+              expect.soft(g.fullRow, "key tile fills the last row").toBe(true);
               for (const a of g.arts) {
                 expect.soft(a.h, "art height").toBeLessThanOrEqual(280.5);
                 expect
