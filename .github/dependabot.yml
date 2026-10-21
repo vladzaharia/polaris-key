@@ -27,6 +27,24 @@ updates:
     directory: /sdks/kotlin
     schedule:
       interval: weekly
+    ignore:
+      # Pinned to Godot 4.7.2's Android build template (Kotlin 2.1.21, AGP 8.6.1, compileSdk 36; see
+      # gradle/libs.versions.toml). Each newer release below needs a newer Kotlin or compileSdk 37.
+      # Lift these with the package that raises that toolchain floor.
+      - dependency-name: "org.jetbrains.kotlin*"
+        update-types:
+          ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: org.jetbrains.kotlinx:kotlinx-serialization-json
+        update-types:
+          ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "com.squareup.okhttp3:*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: org.jetbrains.compose
+        update-types:
+          ["version-update:semver-major", "version-update:semver-minor"]
+      # One coordinate covers the JVM jar (zstdJni) and the Android AAR (zstdJniAndroid), and the AAR
+      # stays at 1.5.7-12: 1.5.7-13 and later need compileSdk 37.
+      - dependency-name: com.github.luben:zstd-jni
   - package-ecosystem: github-actions
     # "/" covers .github/workflows; the pinned pnpm/action-setup and actions/setup-node refs
     # live in the local composite action, which Dependabot only scans when listed explicitly.
