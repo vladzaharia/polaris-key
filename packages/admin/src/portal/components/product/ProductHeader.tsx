@@ -58,7 +58,7 @@ export function ProductHeader({
     <div className="space-y-0">
       <a
         href={href.library()}
-        className="mb-4 inline-flex items-center gap-2 rounded-sm text-sm text-fg-muted hover:text-fg-strong pointer-coarse:min-h-11"
+        className="mb-4 inline-flex min-h-6 items-center gap-2 rounded-sm text-sm text-fg-muted hover:text-fg-strong pointer-coarse:min-h-11"
       >
         <ArrowLeft aria-hidden className="size-4" />
         {t("locker.library.title")}

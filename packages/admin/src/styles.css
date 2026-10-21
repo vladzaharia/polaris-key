@@ -195,7 +195,11 @@ html[data-shell="console"] [data-pk-backdrop] {
 @media (prefers-reduced-transparency: reduce) {
   html[data-shell="console"] [data-pk-backdrop] {
     backdrop-filter: none;
-    background-color: color-mix(in oklab, var(--color-black) 80%, transparent);
+    background-color: color-mix(
+      in oklab,
+      var(--polaris-key-page-dark) 80%,
+      transparent
+    );
   }
 }
 
@@ -283,6 +287,84 @@ html[data-shell="console"] [data-pk-backdrop] {
     [tabindex]:not([tabindex="-1"])
   ):is(:disabled, [aria-disabled="true"]) {
     cursor: not-allowed;
+  }
+
+  /* The visible state baseline (UI-KITS.md §1.5 rule 7: hover, pressed at scale 0.98, disabled at
+     42 % opacity). Zero specificity, in this layer: a component's own look (a utility, or the
+     unlayered rules below) wins, and a control with no look of its own still answers. A text field
+     has no pressed look of its own: it shares the hover border. */
+  :where(
+      a[href],
+      button,
+      summary,
+      select,
+      input[type="checkbox"],
+      input[type="radio"],
+      input[type="button"],
+      input[type="submit"],
+      input[type="reset"],
+      input[type="range"],
+      input[type="file"],
+      [role="button"],
+      [role="tab"],
+      [role="menuitem"],
+      [role="radio"],
+      [role="checkbox"],
+      [role="switch"]
+    ):hover:not(:disabled, [aria-disabled="true"]) {
+    background-color: var(--color-hover);
+  }
+  :where(
+      a[href],
+      button,
+      summary,
+      select,
+      input[type="checkbox"],
+      input[type="radio"],
+      input[type="button"],
+      input[type="submit"],
+      input[type="reset"],
+      input[type="range"],
+      input[type="file"],
+      [role="button"],
+      [role="tab"],
+      [role="menuitem"],
+      [role="radio"],
+      [role="checkbox"],
+      [role="switch"]
+    ):active:not(:disabled, [aria-disabled="true"]) {
+    scale: 0.98;
+  }
+  :where(
+      input:not(
+        [type="checkbox"],
+        [type="radio"],
+        [type="button"],
+        [type="submit"],
+        [type="reset"],
+        [type="range"],
+        [type="file"],
+        [type="hidden"]
+      ),
+      textarea
+    ):is(:hover, :active):not(:disabled, [aria-disabled="true"]) {
+    border-color: var(--color-fg-subtle);
+  }
+  :where(
+    a[href],
+    button,
+    summary,
+    input,
+    select,
+    textarea,
+    [role="button"],
+    [role="tab"],
+    [role="menuitem"],
+    [role="radio"],
+    [role="checkbox"],
+    [role="switch"]
+  ):is(:disabled, [aria-disabled="true"]) {
+    opacity: 0.42;
   }
 
   /* Every table cell is vertically centred in its row (the owner's rule: a one-line cell beside a

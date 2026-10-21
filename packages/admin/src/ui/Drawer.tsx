@@ -125,6 +125,8 @@ export function Drawer({
           }}
           // The panel slides in from its edge and back out (src/motion.css `.pk-drawer`; S-23 §6.1).
           data-drawer-side={side}
+          // The 3 px top rule in the origin's accent is the spec'd one (B4, B17).
+          data-ui-allow="border-width"
           className={cn(
             // The 3 px rule in the origin's accent (B4, B17) along the panel's top edge.
             "pk-drawer fixed inset-0 z-50 flex flex-col bg-surface-overlay text-fg outline-hidden console:border-t-[3px] console:border-t-accent",

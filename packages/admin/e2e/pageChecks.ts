@@ -143,6 +143,17 @@ export async function lintFindings(
   await page.evaluate(LINT_SCRIPT);
   const { violations } = await lintPage(page, {
     scope: "body",
+    // Sonner's toaster layout ships bundled into the one stylesheet, so its rules cannot be told
+    // from the app's by sheet. Its physical offsets, its literal shadow colours and its halo focus
+    // are the vendor's (the app re-themes the toast in motion.css, which stays linted for every
+    // other rule); these four rules are allowed on the toaster and nothing else.
+    allow: {
+      "rtl-physical": ["[data-sonner-toaster]"],
+      "colour-literal": ["[data-sonner-toaster]"],
+      "focus-ring-spread": ["[data-sonner-toaster]"],
+      // A toast takes a tab stop so it can be read and dismissed; it is no hover or press control.
+      "interactive-states": ["[data-sonner-toaster]"],
+    },
     ...(targets ? { touch: ["body"], minTouch: targets.minTouch } : {}),
   });
   return (

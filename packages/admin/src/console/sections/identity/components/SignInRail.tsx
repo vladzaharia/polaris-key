@@ -36,6 +36,8 @@ export function SignInRail({
         setActive(s.id);
         go(s.id);
       }}
+      // The rail's current-section marker on the inline-start edge (BRAND.md §5.4, C3).
+      data-ui-allow={pill ? undefined : "border-width"}
       className={cn(
         "inline-flex items-center gap-1.5 text-sm hover:text-fg-strong",
         pill

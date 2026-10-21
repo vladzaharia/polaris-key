@@ -232,7 +232,7 @@ export function CommandPalette({
     <>
       <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
         <DialogPrimitive.Portal>
-          <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs animate-pk-overlay-in" />
+          <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-scrim/60 backdrop-blur-xs animate-pk-overlay-in" />
           <DialogPrimitive.Content
             aria-describedby={undefined}
             onCloseAutoFocus={(e) => {

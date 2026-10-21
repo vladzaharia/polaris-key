@@ -305,7 +305,7 @@ function ScaledLibrary({
               {summary} ·{" "}
               <button
                 type="button"
-                className="font-medium text-accent-fg hover:underline"
+                className="inline-flex min-h-6 items-center font-medium text-accent-fg hover:underline"
                 onClick={() => setParams({ q: null, filter: null })}
               >
                 {t("locker.library.showAll")}

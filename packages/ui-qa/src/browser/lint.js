@@ -342,7 +342,11 @@
 
       // Interactive states, from the authored CSS.
       for (const el of els) {
-        if (!el.matches(INTERACTIVE) || el.matches("[data-ui-static]"))
+        if (
+          !el.matches(INTERACTIVE) ||
+          el.matches("[data-ui-static]") ||
+          tabStopOnly(el)
+        )
           continue;
         const missing = ["hover", "active", "disabled", "focus-visible"].filter(
           (st) => !hasStateRule(el, st),
@@ -386,15 +390,12 @@
       }
     }
 
-    // Authored CSS: every style rule that applies to a linted element. Sonner injects its toast
-    // layout as a stylesheet of its own (no href, marked by its data-attribute selectors): that
-    // sheet is not authored here, though the app's own rules about the same elements are.
+    // Authored CSS: every style rule that applies to a linted element.
     const linted = new Set();
     for (const scope of scopes)
       for (const el of [scope, ...scope.querySelectorAll("*")])
         if (!el.closest("[data-ui-chrome]")) linted.add(el);
     for (const { rule, sheet } of styleRules()) {
-      if (vendorSheet(sheet)) continue;
       let hit = o.allRules ? document.body : null;
       if (!hit)
         try {
@@ -907,7 +908,9 @@
     )
       return false;
     const role = el.getAttribute("role");
-    if (role === "region" || role === "group" || role === "tabpanel")
+    // Landmarks and the container of a composite widget (a radio group, a tab list) hold the focus
+    // or the controls; the controls inside are the targets.
+    if (/^(region|group|tabpanel|radiogroup|tablist|toolbar)$/.test(role || ""))
       return true;
     const cs = getComputedStyle(el);
     return (
@@ -963,7 +966,7 @@
       let y0 = y;
       let x1 = x + w;
       let y1 = y + h;
-      for (let a = el; a && a !== document.body; a = a.parentElement) {
+      for (let a = cb; a && a !== document.body; a = a.parentElement) {
         const as = getComputedStyle(a);
         if (as.overflowX === "visible" && as.overflowY === "visible") continue;
         const ar = a.getBoundingClientRect();
@@ -983,15 +986,6 @@
       bottom = Math.max(bottom, y1);
     }
     return { width: right - left, height: bottom - top };
-  }
-  // Sonner's own injected stylesheet: a <style> with no href that lays out its toaster. The
-  // app's rules about the same elements live in its own linked sheet and stay linted.
-  function vendorSheet(sheet) {
-    if (sheet.href || !sheet.ownerNode) return false;
-    return (
-      sheet.ownerNode.tagName === "STYLE" &&
-      /\[data-sonner-toaster\]/.test(sheet.ownerNode.textContent || "")
-    );
   }
   function inlineLink(el, cs) {
     // WCAG 2.5.8's inline exception: the link sits in a sentence, with text around it that is not

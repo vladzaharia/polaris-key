@@ -76,6 +76,8 @@ export function SetupTabs({
           <Tabs.Trigger
             key={t.key}
             value={t.key}
+            // The selected tab's underline (an underline tablist, BRAND.md B4).
+            data-ui-allow="border-width"
             className="-mb-px min-h-11 shrink-0 whitespace-nowrap border-b-2 border-transparent px-3 text-sm text-fg-muted hover:text-fg-strong data-[state=active]:border-accent data-[state=active]:font-medium data-[state=active]:text-fg-strong"
           >
             {t.label}

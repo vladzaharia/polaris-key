@@ -54,7 +54,7 @@ export function HelpCard({
               href={website}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex max-w-full items-center gap-2 text-sm text-fg-strong [overflow-wrap:anywhere] hover:underline"
+              className="inline-flex min-h-6 max-w-full items-center gap-2 text-sm text-fg-strong [overflow-wrap:anywhere] hover:underline"
             >
               <ExternalLink aria-hidden className="size-4" />
               {new URL(website).host}

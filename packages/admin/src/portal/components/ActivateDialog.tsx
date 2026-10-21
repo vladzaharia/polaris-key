@@ -1053,7 +1053,7 @@ export function ConfirmStep({
           <button
             type="button"
             onClick={onBack}
-            className="shrink-0 rounded-sm text-sm font-medium text-accent-fg underline decoration-2 underline-offset-4 pointer-coarse:min-h-11 hover:text-fg-strong"
+            className="min-h-6 shrink-0 rounded-sm text-sm font-medium text-accent-fg underline decoration-2 underline-offset-4 pointer-coarse:min-h-11 hover:text-fg-strong"
           >
             {t("locker.activate.changeKey")}
           </button>

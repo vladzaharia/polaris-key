@@ -238,7 +238,7 @@ export function DiscoverTile({
                 // Every way to add it, with its terms, is on the product page (S-21 §6.5).
                 <a
                   href={page}
-                  className="relative text-sm font-medium text-accent-fg hover:underline"
+                  className="relative inline-flex min-h-6 items-center text-sm font-medium text-accent-fg hover:underline"
                 >
                   {more}
                   <span className="sr-only">
