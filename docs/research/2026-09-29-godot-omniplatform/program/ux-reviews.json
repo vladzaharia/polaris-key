@@ -439,6 +439,11 @@
       "verdict": "pass",
       "date": "2026-10-21",
       "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/stabilization/locker-final/ux-review.md §Work packages (BUILT, integ/next-stage 0e5fb9d9c: pass; Help links resolve on the customer host)"
+    },
+    "HA-13": {
+      "verdict": "pass",
+      "date": "2026-10-21",
+      "evidence": "_mockups/review/stabilization/kits-final/ux-review.md (HA-13 section; renders in kits-final/ha13/)"
     }
   }
 }
