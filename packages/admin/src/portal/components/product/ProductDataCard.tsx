@@ -125,7 +125,6 @@ function SupportCodeRow({
         icon={<LifeBuoy aria-hidden />}
         title={YOUR_DATA_COPY["yourData.product.support.title"]}
         description={supportCodeHint(name)}
-        flush
         below={
           failure || code ? (
             <>

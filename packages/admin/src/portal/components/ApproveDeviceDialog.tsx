@@ -252,6 +252,7 @@ export function ApproveDeviceDialog({
             <Button
               ref={denyRef}
               variant="outline"
+              className="max-sm:min-h-11"
               disabled={phase.kind === "deciding"}
               onClick={() => void decide(phase.request, "deny")}
             >
@@ -259,6 +260,7 @@ export function ApproveDeviceDialog({
             </Button>
             <Button
               variant="neutral"
+              className="max-sm:min-h-11"
               loading={phase.kind === "deciding"}
               onClick={() => void decide(phase.request, "approve")}
             >

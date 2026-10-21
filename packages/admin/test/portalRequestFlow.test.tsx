@@ -330,7 +330,7 @@ describe("LicenseChoiceStep (§3.6)", () => {
       level: 1,
       name: "Choose a license for this device",
     });
-    expect(screen.getAllByText("No free devices").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("All devices in use").length).toBeGreaterThan(0);
     await userEvent.click(
       screen.getByRole("radio", { name: /Diceroll Family/ }),
     );

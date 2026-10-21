@@ -1,5 +1,6 @@
 import * as React from "react";
 import { Skeleton } from "../../ui/Skeleton.js";
+import { cn } from "../../lib/cn.js";
 import type { PortalAccount } from "../api.js";
 import { DevicesCard } from "../components/product/DevicesCard.js";
 import { GetItPanel, useGetItShown } from "../components/product/GetItPanel.js";
@@ -298,10 +299,17 @@ function ProductBody({
   // Two columns from 1024 px (§4.20, the `split` breakpoint) when the main column has a card from
   // the start (Get it and What's new come with the releases, Help with the developer's links);
   // Package access alone arrives later. Below 1024 px one column in the phone's task order.
+  const identityOn = view.data?.services.identity === true;
   const twoColumns = has("get") || has("new") || has("help");
-  const column = twoColumns
+  // The cards are in the DOM in the order they read and tab (WCAG 2.4.3), never moved by CSS
+  // `order`: the lead (Get it, or the License card with nothing to download), the licence's
+  // stack (License, Devices, product sign-in), then the rest. One column below 1024 px; from there
+  // grid areas put the lead and the rest in the main column and the stack beside them (B-076).
+  const group = twoColumns
     ? "pk-vt-scope contents split:flex split:flex-col split:gap-6"
     : "pk-vt-scope contents";
+  // The stack beside the lead: License (when Get it leads), Devices, product sign-in.
+  const hasStack = has("get") || has("devices") || identityOn;
   const navProps = {
     sections,
     current,
@@ -366,52 +374,31 @@ function ProductBody({
           data-columns={twoColumns ? "two" : "one"}
           className={
             twoColumns
-              ? "flex min-w-0 flex-1 flex-col gap-6 split:grid split:grid-cols-[minmax(0,1fr)_21.25rem] split:items-start wide:grid-cols-[minmax(0,1fr)_24rem]"
+              ? "flex min-w-0 flex-1 flex-col gap-6 split:grid split:grid-cols-[minmax(0,1fr)_21.25rem] split:grid-rows-[auto_1fr] split:items-start wide:grid-cols-[minmax(0,1fr)_24rem]"
               : "flex min-w-0 max-w-2xl flex-1 flex-col gap-6"
           }
         >
-          <div className={column}>
-            {!has("get") ? <div className="order-1">{licenseCard}</div> : null}
+          {/* The lead: the first card of the main column. */}
+          <div className={cn(group, "split:col-start-1 split:row-start-1")}>
             {has("get") ? (
-              <div className="order-1">
-                <GetItPanel product={product} device={here} />
-              </div>
-            ) : null}
-            {has("new") ? (
-              <div className="order-4">
-                <WhatsNew product={product} />
-              </div>
-            ) : null}
-            {has("package") ? (
-              <div className="order-5">
-                <PackagesPointer
-                  productName={product.name}
-                  developer={product.presentation.developer}
-                />
-              </div>
-            ) : null}
-            {/* Help closes the page in every layout (owner polish 2026-10-07): the side column
-                is the licence's (License, product sign-in, Devices), so the nav's one order is
-                the page's order on desktop as on phones. */}
-            {has("help") ? (
-              <div className="order-6">
-                <HelpCard product={product} />
-              </div>
-            ) : null}
-            {/* Your data in this product (I-11): last in every layout, after Help in the main column so the
-                nav's order is the page's order on desktop too. A removal that also took the licenses leaves
-                nothing here, so the page goes back to the Library. */}
-            <div className="order-7">
-              <ProductDataCard
-                product={product}
-                onLeftLibrary={() => navigate(href.library())}
-              />
-            </div>
+              <GetItPanel product={product} device={here} />
+            ) : (
+              licenseCard
+            )}
           </div>
-          <div className={column}>
-            {has("get") ? <div className="order-2">{licenseCard}</div> : null}
-            {has("devices") ? (
-              <div className="order-3">
+          {/* The licence's stack, in the side column from 1024 px: with Get it gone the License
+              card leads the main column, so Renew is not left in the rail. Product sign-in, only
+              with Identity on (§3.1), follows Devices in one column and in two (§4.20's task
+              order); it used to sit after License in the side column (B-076). */}
+          {hasStack ? (
+            <div
+              className={cn(
+                group,
+                "split:col-start-2 split:row-start-1 split:row-span-2",
+              )}
+            >
+              {has("get") ? licenseCard : null}
+              {has("devices") ? (
                 <DevicesCard
                   productName={product.name}
                   emailConfigured={caps.auth.magic}
@@ -422,16 +409,29 @@ function ProductBody({
                   error={detail.error}
                   onRetry={retry}
                 />
-              </div>
-            ) : null}
-            {/* Product sign-in, only with Identity on (§3.1): after License in the side column
-                (from 1024 px), after Devices in one column (§4.20's task order); equal orders keep
-                the source order. */}
-            {view.data?.services.identity === true ? (
-              <div className="order-3 split:order-2">
+              ) : null}
+              {identityOn ? (
                 <ProductIdentityCard productName={product.name} />
-              </div>
+              ) : null}
+            </div>
+          ) : null}
+          <div className={cn(group, "split:col-start-1 split:row-start-2")}>
+            {has("new") ? <WhatsNew product={product} /> : null}
+            {has("package") ? (
+              <PackagesPointer
+                productName={product.name}
+                developer={product.presentation.developer}
+              />
             ) : null}
+            {/* Help closes the page in every layout (owner polish 2026-10-07). */}
+            {has("help") ? <HelpCard product={product} /> : null}
+            {/* Your data in this product (I-11): last in every layout, after Help in the main
+                column so the nav's order is the page's order on desktop too. A removal that also
+                took the licenses leaves nothing here, so the page goes back to the Library. */}
+            <ProductDataCard
+              product={product}
+              onLeftLibrary={() => navigate(href.library())}
+            />
           </div>
         </div>
       </div>
