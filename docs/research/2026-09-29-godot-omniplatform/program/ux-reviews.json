@@ -339,6 +339,11 @@
       "verdict": "pass",
       "date": "2026-10-21",
       "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/PX-31a/recheck/ (re-check PASS-WITH-NOTES after one fix round; lead polish 0af7b3f6f)"
+    },
+    "PX-28a": {
+      "verdict": "pass",
+      "date": "2026-10-21",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/PX-28a/recheck/ (BUILT review FAIL -> fix round -> re-check FAIL on one phone hand-off line -> lead fix 29dbfee0b)"
     }
   }
 }
