@@ -67,7 +67,10 @@ export function tokenExpiry(
       soon: true,
       text: expiresInText(days, { tomorrow: true }),
     };
-  return { soon: false, text: `Expires ${formatDate(expiresAt)}` };
+  return {
+    soon: false,
+    text: t("locker.packages.expires", { date: formatDate(expiresAt) }),
+  };
 }
 
 /** "Oct 1, 2026": the one date format (../date.ts), read as a UTC day. */

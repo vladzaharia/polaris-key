@@ -5825,6 +5825,291 @@
       "value": "This is your account's only email address. Add another one first, then you can remove it.",
       "role": "hint",
       "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.packages.subtitle": {
+      "value": "A personal token is one read-only credential that installs every package your licenses include.",
+      "role": "hint",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.tokensTitle": {
+      "value": "Your personal tokens",
+      "role": "title",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.atLimit": {
+      "value": "At most {count} personal tokens. Revoke one first",
+      "role": "hint",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.create": {
+      "value": "Create personal token",
+      "role": "button",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.none": {
+      "value": "No personal tokens yet. Create one for each computer or build server.",
+      "role": "hint",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.reconnectPersonal": {
+      "value": "Create a new one and set it again to reconnect.",
+      "role": "hint",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.showAll": {
+      "value": "Show all {count}",
+      "role": "button",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.createTitle": {
+      "value": "Create a personal token",
+      "role": "title",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.createBody": {
+      "value": "Reads every package your licenses include, now and for apps you license later. Read-only.",
+      "role": "body",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.mostTokens": {
+      "value": "You already have the most personal tokens ({count}). Revoke one first.",
+      "role": "hint",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.copyTitle": {
+      "value": "Copy your personal token now",
+      "role": "title",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.onceNote": {
+      "value": "This is the only time you'll see it. If you lose it, revoke it and create another.",
+      "role": "body",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.tokenLabel": {
+      "value": "Personal token",
+      "role": "label",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.mintedHint": {
+      "value": "“{name}” · read-only · expires {date}",
+      "role": "hint",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.ready": {
+      "value": "Personal token {name} is ready",
+      "role": "hint",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.setShell": {
+      "value": "Set it in your shell",
+      "role": "label",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.terminal": {
+      "value": "Terminal",
+      "role": "label",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.lastUsed": {
+      "value": "Last used {when}",
+      "role": "hint",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.neverUsed": {
+      "value": "Never used",
+      "role": "hint",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.revokeName": {
+      "value": "Revoke {name}",
+      "role": "a11y",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.revoke": {
+      "value": "Revoke",
+      "role": "button",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.revokeAsk": {
+      "value": "Revoke {name}?",
+      "role": "title",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.revokeNote": {
+      "value": "Anything installing with it stops within 30 seconds.",
+      "role": "body",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.revoked": {
+      "value": "{name} was revoked",
+      "role": "hint",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.perAppTitle": {
+      "value": "Per-app tokens",
+      "role": "title",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.perAppBody": {
+      "value": "Made for one app before personal tokens, or as a Godot editor URL. They work until they expire.",
+      "role": "body",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.godotUrl": {
+      "value": "Godot editor URL",
+      "role": "label",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.reconnectGodot": {
+      "value": "Create a new Godot editor URL to reconnect.",
+      "role": "hint",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.reconnectUse": {
+      "value": "Use a personal token to reconnect.",
+      "role": "hint",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.setUp": {
+      "value": "Set up",
+      "role": "title",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.app": {
+      "value": "App",
+      "role": "label",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.type": {
+      "value": "Package type",
+      "role": "label",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.setEnv": {
+      "value": "Set {name} to one of your personal tokens.",
+      "role": "hint",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.godotNote": {
+      "value": "The Godot editor can't use personal tokens. It reads this feed through a URL made for {product} only, valid for {days} days.",
+      "role": "body",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.createGodot": {
+      "value": "Create Godot editor URL",
+      "role": "button",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.createGodotTitle": {
+      "value": "Create a Godot editor URL",
+      "role": "title",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.createGodotBody": {
+      "value": "A read-only URL for {product}'s Godot feed. It stops working if the license ends.",
+      "role": "body",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.godotLabel": {
+      "value": "Godot editor",
+      "role": "label",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.errPerApp": {
+      "value": "{product} already has the most per-app tokens. Revoke one under Per-app tokens first.",
+      "role": "hint",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.errInactive": {
+      "value": "Your {product} license isn't active.",
+      "role": "hint",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.errGodot": {
+      "value": "A Godot editor URL can't be made for this app right now.",
+      "role": "hint",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.godotCopyTitle": {
+      "value": "Copy your Godot editor URL now",
+      "role": "title",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.godotValueLabel": {
+      "value": "Godot editor URL (Godot 4.4 to 4.6)",
+      "role": "label",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.godotCopy": {
+      "value": "Copy Godot editor URL",
+      "role": "button",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.godotHint": {
+      "value": "“{name}” · read-only · Godot only. Godot 4.7 and later, and GodotEnv, use the URLs below.",
+      "role": "hint",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.godotReady": {
+      "value": "Godot editor URL {name} is ready",
+      "role": "hint",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.godotStep": {
+      "value": "Godot 4.4 to 4.6: Editor Settings → asset_library/available_urls",
+      "role": "hint",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.needName": {
+      "value": "Give it a name.",
+      "role": "hint",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.nameMax": {
+      "value": "Give it a name of up to {max} characters.",
+      "role": "hint",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.name": {
+      "value": "Name",
+      "role": "label",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.namePlaceholder": {
+      "value": "Laptop, CI build server…",
+      "role": "hint",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.expiresAfter": {
+      "value": "Expires after",
+      "role": "label",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.oneYear": {
+      "value": "1 year",
+      "role": "label",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.days": {
+      "value": "{count, plural, one {# day} other {# days}}",
+      "role": "label",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.expiresOn": {
+      "value": "Expires {date}.",
+      "role": "hint",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.expires": {
+      "value": "Expires {date}",
+      "role": "hint",
+      "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.createConfirm": {
+      "value": "Create",
+      "role": "button",
+      "note": "Account → Packages (P0-36)."
     }
   }
 }
