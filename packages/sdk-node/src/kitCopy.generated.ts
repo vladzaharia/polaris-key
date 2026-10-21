@@ -348,8 +348,7 @@ export const KIT_COPY: Readonly<
     "signin.header.app": "{app} wants you to sign in",
     "signin.header.context": "{product} · {developer}",
     "signin.header.contextLine": "Your license, downloads and devices",
-    "signin.header.codePanel":
-      "Code on the screen · {code} · Check it matches the screen",
+    "signin.header.codePanel": "Code · {code} · Check it matches the screen",
     "signin.footer":
       "Polaris Locker signs you in for {app}. {developer} never sees your codes or passkeys.",
     "signin.off.product":
@@ -841,6 +840,36 @@ export const KIT_COPY: Readonly<
     "signin.rateLimitedFew": "Too many codes. Try again in a few minutes.",
     "signin.code.emailInUse":
       "Another Polaris Locker account uses this email. Sign in the way you did before.",
+    "signin.choice.pickOne": "Choose a license to continue.",
+    "signin.choice.pickDevice": "Choose a device to replace.",
+    "signin.choice.replaceAndSignIn": "Replace and sign in",
+    "signin.choice.replaceSafety":
+      "The device you choose signs out of {app}. It can sign in again later if a seat is free. We'll email you about it.",
+    "signin.choice.replacedTitle": "Device replaced",
+    "signin.choice.replacedBody":
+      "{device} signed out of {app}. {thisDevice} is signed in.",
+    "signin.request.goneTitle": "This sign-in has ended",
+    "signin.request.gone": "Go back to the app and start signing in again.",
+    "signin.header.onDevice": "on {device}",
+    "signin.thisBrowser": "this browser",
+    "signin.consent.deny": "Don't allow",
+    "signin.consent.cloudSync": "Cloud Sync",
+    "signin.consent.newLicense":
+      "New: {tier} license, created when you continue",
+    "signin.key.upgradeTitle": "Keep {product} in an account",
+    "signin.key.upgradeLede":
+      "In an account you can get it back and move it to a new device yourself.",
+    "signin.key.createAccount": "Create account",
+    "signin.key.signInInstead": "Sign in instead",
+    "signin.key.noEntriesTitle": "Create an account to keep {product}",
+    "signin.key.noEntriesKeeps":
+      "{product} keeps working on the devices it's already on. Only typing the key again needs an account.",
+    "signin.key.meter": "{used} of {limit} key entries used",
+    "signin.key.keyWorks": "Key works",
+    "signin.footerNoDeveloper": "Polaris Locker signs you in for {app}.",
+    "signin.replace.rateLimitedMinutes":
+      "Too many device changes. Try again in {minutes, plural, one {# minute} other {# minutes}}.",
+    "signin.request.tooMany": "Too many tries. Wait a moment, then try again.",
     "core.fallback.title": "Something went wrong",
     "core.fallback.message": "Something went wrong ({code}). Try again.",
     "core.codes.unauthorized.title": "Not signed in",
@@ -1746,7 +1775,7 @@ export const KIT_COPY: Readonly<
     "signin.header.context": "{product} · {developer}",
     "signin.header.contextLine": "Ihre Lizenz, Downloads und Geräte",
     "signin.header.codePanel":
-      "Code auf dem Bildschirm · {code} · Prüfen Sie, ob er mit dem Bildschirm übereinstimmt",
+      "Code · {code} · Prüfen Sie, ob er mit dem Bildschirm übereinstimmt",
     "signin.footer":
       "Polaris Locker meldet Sie bei {app} an. {developer} sieht Ihre Codes oder Passkeys nie.",
     "signin.off.product":
@@ -2290,6 +2319,38 @@ export const KIT_COPY: Readonly<
       "Zu viele Codes. Versuchen Sie es in ein paar Minuten erneut.",
     "signin.code.emailInUse":
       "Ein anderes Konto bei Polaris Locker verwendet diese E-Mail-Adresse. Melden Sie sich auf dem bisherigen Weg an.",
+    "signin.choice.pickOne": "Wählen Sie eine Lizenz, um fortzufahren.",
+    "signin.choice.pickDevice": "Wählen Sie ein Gerät zum Ersetzen.",
+    "signin.choice.replaceAndSignIn": "Ersetzen und anmelden",
+    "signin.choice.replaceSafety":
+      "Das gewählte Gerät wird von {app} abgemeldet. Es kann sich später wieder anmelden, wenn ein Platz frei ist. Wir benachrichtigen Sie per E-Mail.",
+    "signin.choice.replacedTitle": "Gerät ersetzt",
+    "signin.choice.replacedBody":
+      "{device} wurde von {app} abgemeldet. {thisDevice} ist angemeldet.",
+    "signin.request.goneTitle": "Diese Anmeldung ist beendet",
+    "signin.request.gone":
+      "Gehen Sie zurück zur App und melden Sie sich erneut an.",
+    "signin.header.onDevice": "auf {device}",
+    "signin.thisBrowser": "diesem Browser",
+    "signin.consent.deny": "Nicht erlauben",
+    "signin.consent.cloudSync": "Cloud Sync",
+    "signin.consent.newLicense":
+      "Neu: {tier}-Lizenz, wird beim Fortfahren erstellt",
+    "signin.key.upgradeTitle": "{product} in einem Konto behalten",
+    "signin.key.upgradeLede":
+      "In einem Konto können Sie ihn zurückholen und selbst auf ein neues Gerät übertragen.",
+    "signin.key.createAccount": "Konto erstellen",
+    "signin.key.signInInstead": "Stattdessen anmelden",
+    "signin.key.noEntriesTitle": "Konto erstellen, um {product} zu behalten",
+    "signin.key.noEntriesKeeps":
+      "{product} läuft weiter auf den Geräten, auf denen es schon ist. Nur die erneute Eingabe des Schlüssels braucht ein Konto.",
+    "signin.key.meter": "{used} von {limit} Schlüsseleingaben verwendet",
+    "signin.key.keyWorks": "Schlüssel gültig",
+    "signin.footerNoDeveloper": "Polaris Locker meldet Sie bei {app} an.",
+    "signin.replace.rateLimitedMinutes":
+      "Zu viele Geräteänderungen. Versuchen Sie es in {minutes, plural, one {# Minute} other {# Minuten}} erneut.",
+    "signin.request.tooMany":
+      "Zu viele Versuche. Warten Sie einen Moment und versuchen Sie es erneut.",
     "core.fallback.title": "Ein Fehler ist aufgetreten",
     "core.fallback.message":
       "Ein Fehler ist aufgetreten ({code}). Versuchen Sie es erneut.",
@@ -3209,7 +3270,7 @@ export const KIT_COPY: Readonly<
     "signin.header.contextLine":
       "Votre licence, vos téléchargements et vos appareils",
     "signin.header.codePanel":
-      "Code à l’écran · {code} · Vérifiez qu’il correspond à l’écran",
+      "Code · {code} · Vérifiez qu'il correspond à l'écran",
     "signin.footer":
       "Polaris Locker vous connecte à {app}. {developer} ne voit jamais vos codes ni vos clés d’accès.",
     "signin.off.product":
@@ -3740,6 +3801,37 @@ export const KIT_COPY: Readonly<
     "signin.rateLimitedFew": "Trop de codes. Réessayez dans quelques minutes.",
     "signin.code.emailInUse":
       "Un autre compte Polaris Locker utilise cet e-mail. Connectez-vous comme avant.",
+    "signin.choice.pickOne": "Choisissez une licence pour continuer.",
+    "signin.choice.pickDevice": "Choisissez un appareil à remplacer.",
+    "signin.choice.replaceAndSignIn": "Remplacer et se connecter",
+    "signin.choice.replaceSafety":
+      "L'appareil choisi sera déconnecté de {app}. Il pourra se reconnecter plus tard si une place est libre. Nous vous préviendrons par e-mail.",
+    "signin.choice.replacedTitle": "Appareil remplacé",
+    "signin.choice.replacedBody":
+      "{device} est déconnecté de {app}. {thisDevice} est connecté.",
+    "signin.request.goneTitle": "Cette connexion est terminée",
+    "signin.request.gone": "Retournez dans l'app et reconnectez-vous.",
+    "signin.header.onDevice": "sur {device}",
+    "signin.thisBrowser": "ce navigateur",
+    "signin.consent.deny": "Ne pas autoriser",
+    "signin.consent.cloudSync": "Cloud Sync",
+    "signin.consent.newLicense":
+      "Nouvelle : licence {tier}, créée quand vous continuez",
+    "signin.key.upgradeTitle": "Gardez {product} dans un compte",
+    "signin.key.upgradeLede":
+      "Dans un compte, vous la retrouvez et la déplacez vous-même vers un nouvel appareil.",
+    "signin.key.createAccount": "Créer un compte",
+    "signin.key.signInInstead": "Se connecter à la place",
+    "signin.key.noEntriesTitle": "Créez un compte pour garder {product}",
+    "signin.key.noEntriesKeeps":
+      "{product} continue de fonctionner sur les appareils où il est déjà. Seule la saisie de la clé demande un compte.",
+    "signin.key.meter": "{used} saisies de clé sur {limit} utilisées",
+    "signin.key.keyWorks": "La clé fonctionne",
+    "signin.footerNoDeveloper": "Polaris Locker vous connecte à {app}.",
+    "signin.replace.rateLimitedMinutes":
+      "Trop de changements d'appareil. Réessayez dans {minutes, plural, one {# minute} many {# de minutes} other {# minutes}}.",
+    "signin.request.tooMany":
+      "Trop de tentatives. Patientez un instant, puis réessayez.",
     "core.fallback.title": "Something went wrong",
     "core.fallback.message": "Something went wrong ({code}). Try again.",
     "core.codes.unauthorized.title": "Not signed in",
@@ -4632,7 +4724,7 @@ export const KIT_COPY: Readonly<
     "signin.header.context": "{product} · {developer}",
     "signin.header.contextLine": "Tu licencia, descargas y dispositivos",
     "signin.header.codePanel":
-      "Código en la pantalla · {code} · Comprueba que coincide con la pantalla",
+      "Código · {code} · Comprueba que coincide con la pantalla",
     "signin.footer":
       "Polaris Locker inicia tu sesión en {app}. {developer} nunca ve tus códigos ni tus llaves de acceso.",
     "signin.off.product":
@@ -5162,6 +5254,36 @@ export const KIT_COPY: Readonly<
       "Demasiados códigos. Inténtalo de nuevo en unos minutos.",
     "signin.code.emailInUse":
       "Otra cuenta de Polaris Locker usa este correo. Inicia sesión como antes.",
+    "signin.choice.pickOne": "Elige una licencia para continuar.",
+    "signin.choice.pickDevice": "Elige un dispositivo para reemplazar.",
+    "signin.choice.replaceAndSignIn": "Reemplazar e iniciar sesión",
+    "signin.choice.replaceSafety":
+      "El dispositivo que elijas cerrará sesión en {app}. Podrá iniciar sesión de nuevo más tarde si hay un puesto libre. Te avisaremos por correo.",
+    "signin.choice.replacedTitle": "Dispositivo reemplazado",
+    "signin.choice.replacedBody":
+      "{device} cerró sesión en {app}. {thisDevice} ha iniciado sesión.",
+    "signin.request.goneTitle": "Este inicio de sesión ha terminado",
+    "signin.request.gone": "Vuelve a la app e inicia sesión de nuevo.",
+    "signin.header.onDevice": "en {device}",
+    "signin.thisBrowser": "este navegador",
+    "signin.consent.deny": "No permitir",
+    "signin.consent.cloudSync": "Cloud Sync",
+    "signin.consent.newLicense": "Nueva: licencia {tier}, se crea al continuar",
+    "signin.key.upgradeTitle": "Guarda {product} en una cuenta",
+    "signin.key.upgradeLede":
+      "En una cuenta puedes recuperarla y pasarla a un dispositivo nuevo tú mismo.",
+    "signin.key.createAccount": "Crear cuenta",
+    "signin.key.signInInstead": "Iniciar sesión en su lugar",
+    "signin.key.noEntriesTitle": "Crea una cuenta para guardar {product}",
+    "signin.key.noEntriesKeeps":
+      "{product} sigue funcionando en los dispositivos donde ya está. Solo volver a escribir la clave requiere una cuenta.",
+    "signin.key.meter": "{used} de {limit} entradas de clave usadas",
+    "signin.key.keyWorks": "La clave funciona",
+    "signin.footerNoDeveloper": "Polaris Locker te inicia sesión en {app}.",
+    "signin.replace.rateLimitedMinutes":
+      "Demasiados cambios de dispositivo. Inténtalo de nuevo en {minutes, plural, one {# minuto} many {# de minutos} other {# minutos}}.",
+    "signin.request.tooMany":
+      "Demasiados intentos. Espera un momento e inténtalo de nuevo.",
     "core.fallback.title": "Algo salió mal",
     "core.fallback.message": "Algo salió mal ({code}). Vuelve a intentarlo.",
     "core.codes.unauthorized.title": "Sin sesión iniciada",
@@ -6085,7 +6207,7 @@ export const KIT_COPY: Readonly<
     "signin.header.context": "{product} · {developer}",
     "signin.header.contextLine": "Sua licença, downloads e dispositivos",
     "signin.header.codePanel":
-      "Código na tela · {code} · Confira se é igual ao da tela",
+      "Código · {code} · Confira se é igual ao da tela",
     "signin.footer":
       "O Polaris Locker faz seu acesso ao {app}. {developer} nunca vê seus códigos nem suas chaves de acesso.",
     "signin.off.product":
@@ -6599,6 +6721,36 @@ export const KIT_COPY: Readonly<
       "Muitos códigos. Tente novamente em alguns minutos.",
     "signin.code.emailInUse":
       "Outra conta do Polaris Locker usa este e-mail. Entre como você fazia antes.",
+    "signin.choice.pickOne": "Escolha uma licença para continuar.",
+    "signin.choice.pickDevice": "Escolha um dispositivo para substituir.",
+    "signin.choice.replaceAndSignIn": "Substituir e entrar",
+    "signin.choice.replaceSafety":
+      "O dispositivo escolhido sai de {app}. Ele poderá entrar de novo mais tarde se houver uma vaga livre. Avisaremos você por e-mail.",
+    "signin.choice.replacedTitle": "Dispositivo substituído",
+    "signin.choice.replacedBody":
+      "{device} saiu de {app}. {thisDevice} está conectado.",
+    "signin.request.goneTitle": "Este login foi encerrado",
+    "signin.request.gone": "Volte ao app e entre de novo.",
+    "signin.header.onDevice": "em {device}",
+    "signin.thisBrowser": "este navegador",
+    "signin.consent.deny": "Não permitir",
+    "signin.consent.cloudSync": "Cloud Sync",
+    "signin.consent.newLicense": "Nova: licença {tier}, criada ao continuar",
+    "signin.key.upgradeTitle": "Guarde {product} em uma conta",
+    "signin.key.upgradeLede":
+      "Em uma conta, você a recupera e a move para um novo dispositivo sozinho.",
+    "signin.key.createAccount": "Criar conta",
+    "signin.key.signInInstead": "Entrar em vez disso",
+    "signin.key.noEntriesTitle": "Crie uma conta para guardar {product}",
+    "signin.key.noEntriesKeeps":
+      "{product} continua funcionando nos dispositivos em que já está. Só digitar a chave de novo exige uma conta.",
+    "signin.key.meter": "{used} de {limit} entradas da chave usadas",
+    "signin.key.keyWorks": "A chave funciona",
+    "signin.footerNoDeveloper": "O Polaris Locker conecta você ao {app}.",
+    "signin.replace.rateLimitedMinutes":
+      "Muitas trocas de dispositivo. Tente de novo em {minutes, plural, one {# minuto} many {# de minutos} other {# minutos}}.",
+    "signin.request.tooMany":
+      "Muitas tentativas. Aguarde um instante e tente de novo.",
     "core.fallback.title": "Algo deu errado",
     "core.fallback.message": "Algo deu errado ({code}). Tente novamente.",
     "core.codes.unauthorized.title": "Não conectado",
@@ -7503,7 +7655,7 @@ export const KIT_COPY: Readonly<
     "signin.header.context": "{product} · {developer}",
     "signin.header.contextLine": "La tua licenza, i download e i dispositivi",
     "signin.header.codePanel":
-      "Codice sullo schermo · {code} · Verifica che corrisponda a quello sullo schermo",
+      "Codice · {code} · Controlla che coincida con lo schermo",
     "signin.footer":
       "Polaris Locker gestisce il tuo accesso a {app}. {developer} non vede mai i tuoi codici o le tue passkey.",
     "signin.off.product":
@@ -8025,6 +8177,36 @@ export const KIT_COPY: Readonly<
     "signin.rateLimitedFew": "Troppi codici. Riprova tra qualche minuto.",
     "signin.code.emailInUse":
       "Un altro account Polaris Locker usa questa email. Accedi come prima.",
+    "signin.choice.pickOne": "Scegli una licenza per continuare.",
+    "signin.choice.pickDevice": "Scegli un dispositivo da sostituire.",
+    "signin.choice.replaceAndSignIn": "Sostituisci e accedi",
+    "signin.choice.replaceSafety":
+      "Il dispositivo scelto esce da {app}. Potrà accedere di nuovo più tardi se c'è un posto libero. Ti avviseremo via e-mail.",
+    "signin.choice.replacedTitle": "Dispositivo sostituito",
+    "signin.choice.replacedBody":
+      "{device} è uscito da {app}. {thisDevice} ha effettuato l'accesso.",
+    "signin.request.goneTitle": "Questo accesso è terminato",
+    "signin.request.gone": "Torna all'app e accedi di nuovo.",
+    "signin.header.onDevice": "su {device}",
+    "signin.thisBrowser": "questo browser",
+    "signin.consent.deny": "Non consentire",
+    "signin.consent.cloudSync": "Cloud Sync",
+    "signin.consent.newLicense":
+      "Nuova: licenza {tier}, creata quando continui",
+    "signin.key.upgradeTitle": "Tieni {product} in un account",
+    "signin.key.upgradeLede":
+      "In un account puoi recuperarla e spostarla su un nuovo dispositivo da solo.",
+    "signin.key.createAccount": "Crea account",
+    "signin.key.signInInstead": "Accedi invece",
+    "signin.key.noEntriesTitle": "Crea un account per tenere {product}",
+    "signin.key.noEntriesKeeps":
+      "{product} continua a funzionare sui dispositivi in cui è già. Solo inserire di nuovo la chiave richiede un account.",
+    "signin.key.meter": "{used} di {limit} inserimenti della chiave usati",
+    "signin.key.keyWorks": "La chiave funziona",
+    "signin.footerNoDeveloper": "Polaris Locker ti fa accedere a {app}.",
+    "signin.replace.rateLimitedMinutes":
+      "Troppi cambi di dispositivo. Riprova tra {minutes, plural, one {# minuto} many {# di minuti} other {# minuti}}.",
+    "signin.request.tooMany": "Troppi tentativi. Attendi un momento e riprova.",
     "core.fallback.title": "Si è verificato un problema",
     "core.fallback.message": "Si è verificato un problema ({code}). Riprova.",
     "core.codes.unauthorized.title": "Accesso non effettuato",
@@ -8943,7 +9125,7 @@ export const KIT_COPY: Readonly<
     "signin.header.context": "{product} · {developer}",
     "signin.header.contextLine": "ライセンス、ダウンロード、デバイス",
     "signin.header.codePanel":
-      "画面上のコード · {code} · 画面と一致することを確認してください",
+      "コード · {code} · 画面のコードと一致しているか確認してください",
     "signin.footer":
       "Polaris Lockerが{app}へのサインインを行います。{developer}にコードやパスキーが知られることはありません。",
     "signin.off.product":
@@ -9472,6 +9654,37 @@ export const KIT_COPY: Readonly<
       "コードが多すぎます。数分後にもう一度お試しください。",
     "signin.code.emailInUse":
       "別の Polaris Locker アカウントがこのメールアドレスを使用しています。以前の方法でサインインしてください。",
+    "signin.choice.pickOne": "続けるにはライセンスを選んでください。",
+    "signin.choice.pickDevice": "置き換えるデバイスを選んでください。",
+    "signin.choice.replaceAndSignIn": "置き換えてサインイン",
+    "signin.choice.replaceSafety":
+      "選んだデバイスは {app} からサインアウトされます。空きがあれば、後でもう一度サインインできます。メールでお知らせします。",
+    "signin.choice.replacedTitle": "デバイスを置き換えました",
+    "signin.choice.replacedBody":
+      "{device} は {app} からサインアウトしました。{thisDevice} はサインイン済みです。",
+    "signin.request.goneTitle": "このサインインは終了しました",
+    "signin.request.gone": "アプリに戻って、もう一度サインインしてください。",
+    "signin.header.onDevice": "{device} で",
+    "signin.thisBrowser": "このブラウザ",
+    "signin.consent.deny": "許可しない",
+    "signin.consent.cloudSync": "クラウド同期",
+    "signin.consent.newLicense":
+      "新規: {tier} ライセンス。続けると作成されます",
+    "signin.key.upgradeTitle": "{product} をアカウントに保管",
+    "signin.key.upgradeLede":
+      "アカウントに保管すると、再取得したり、新しいデバイスへ自分で移したりできます。",
+    "signin.key.createAccount": "アカウントを作成",
+    "signin.key.signInInstead": "代わりにサインイン",
+    "signin.key.noEntriesTitle": "{product} を保管するにはアカウントを作成",
+    "signin.key.noEntriesKeeps":
+      "{product} は、すでに入っているデバイスでそのまま使えます。キーをもう一度入力する場合だけアカウントが必要です。",
+    "signin.key.meter": "キー入力 {limit} 回のうち {used} 回を使用",
+    "signin.key.keyWorks": "キーは有効です",
+    "signin.footerNoDeveloper": "Polaris Locker が {app} にサインインします。",
+    "signin.replace.rateLimitedMinutes":
+      "デバイスの変更が多すぎます。{minutes, plural, other {# 分}}後にもう一度お試しください。",
+    "signin.request.tooMany":
+      "試行回数が多すぎます。少し待ってからもう一度お試しください。",
     "core.fallback.title": "問題が発生しました",
     "core.fallback.message":
       "問題が発生しました（{code}）。もう一度お試しください。",
@@ -10387,7 +10600,7 @@ export const KIT_COPY: Readonly<
     "signin.header.context": "{product} · {developer}",
     "signin.header.contextLine": "라이선스, 다운로드 및 기기",
     "signin.header.codePanel":
-      "화면의 코드 · {code} · 화면과 일치하는지 확인하세요",
+      "코드 · {code} · 화면의 코드와 같은지 확인하세요",
     "signin.footer":
       "Polaris Locker가 {app} 로그인을 처리해요. {developer}에게는 코드나 패스키가 절대 공개되지 않아요.",
     "signin.off.product":
@@ -10883,6 +11096,36 @@ export const KIT_COPY: Readonly<
     "signin.rateLimitedFew": "코드가 너무 많습니다. 몇 분 후 다시 시도하세요.",
     "signin.code.emailInUse":
       "다른 Polaris Locker 계정이 이 이메일을 사용하고 있습니다. 이전에 쓰던 방법으로 로그인하세요.",
+    "signin.choice.pickOne": "계속하려면 라이선스를 선택하세요.",
+    "signin.choice.pickDevice": "교체할 기기를 선택하세요.",
+    "signin.choice.replaceAndSignIn": "교체하고 로그인",
+    "signin.choice.replaceSafety":
+      "선택한 기기는 {app}에서 로그아웃됩니다. 자리가 나면 나중에 다시 로그인할 수 있습니다. 이메일로 알려 드립니다.",
+    "signin.choice.replacedTitle": "기기를 교체했습니다",
+    "signin.choice.replacedBody":
+      "{device}이(가) {app}에서 로그아웃했습니다. {thisDevice}이(가) 로그인되었습니다.",
+    "signin.request.goneTitle": "이 로그인은 종료되었습니다",
+    "signin.request.gone": "앱으로 돌아가 다시 로그인하세요.",
+    "signin.header.onDevice": "{device}에서",
+    "signin.thisBrowser": "이 브라우저",
+    "signin.consent.deny": "허용 안 함",
+    "signin.consent.cloudSync": "클라우드 동기화",
+    "signin.consent.newLicense": "새 {tier} 라이선스: 계속하면 만들어집니다",
+    "signin.key.upgradeTitle": "{product}을(를) 계정에 보관",
+    "signin.key.upgradeLede":
+      "계정에 보관하면 다시 받거나 새 기기로 직접 옮길 수 있습니다.",
+    "signin.key.createAccount": "계정 만들기",
+    "signin.key.signInInstead": "대신 로그인",
+    "signin.key.noEntriesTitle": "{product}을(를) 보관하려면 계정을 만드세요",
+    "signin.key.noEntriesKeeps":
+      "{product}은(는) 이미 설치된 기기에서 계속 작동합니다. 키를 다시 입력할 때만 계정이 필요합니다.",
+    "signin.key.meter": "키 입력 {limit}회 중 {used}회 사용",
+    "signin.key.keyWorks": "키가 유효합니다",
+    "signin.footerNoDeveloper": "Polaris Locker가 {app}에 로그인합니다.",
+    "signin.replace.rateLimitedMinutes":
+      "기기 변경이 너무 많습니다. {minutes, plural, other {#분}} 후에 다시 시도하세요.",
+    "signin.request.tooMany":
+      "시도가 너무 많습니다. 잠시 기다린 뒤 다시 시도하세요.",
     "core.fallback.title": "문제가 발생했어요",
     "core.fallback.message": "문제가 발생했어요({code}). 다시 시도하세요.",
     "core.codes.unauthorized.title": "로그인되지 않음",
@@ -11749,7 +11992,7 @@ export const KIT_COPY: Readonly<
     "signin.header.app": "{app}请求你登录",
     "signin.header.context": "{product} · {developer}",
     "signin.header.contextLine": "你的许可证、下载和设备",
-    "signin.header.codePanel": "屏幕上的代码 · {code} · 请确认与屏幕上的一致",
+    "signin.header.codePanel": "代码 · {code} · 请核对是否与屏幕上的一致",
     "signin.footer":
       "Polaris Locker为{app}提供登录服务。{developer}永远不会看到你的验证码或通行密钥。",
     "signin.off.product": "{product}已关闭登录功能。请联系{developer}。",
@@ -12213,6 +12456,35 @@ export const KIT_COPY: Readonly<
     "signin.rateLimitedFew": "验证码过多。请几分钟后重试。",
     "signin.code.emailInUse":
       "另一个 Polaris Locker 账户正在使用此邮箱。请使用之前的方式登录。",
+    "signin.choice.pickOne": "请选择一个许可证以继续。",
+    "signin.choice.pickDevice": "请选择要替换的设备。",
+    "signin.choice.replaceAndSignIn": "替换并登录",
+    "signin.choice.replaceSafety":
+      "你选择的设备将退出 {app}。如有空位，它之后可以重新登录。我们会通过电子邮件通知你。",
+    "signin.choice.replacedTitle": "设备已替换",
+    "signin.choice.replacedBody":
+      "{device} 已退出 {app}。{thisDevice} 已登录。",
+    "signin.request.goneTitle": "此次登录已结束",
+    "signin.request.gone": "请回到应用，重新登录。",
+    "signin.header.onDevice": "在 {device} 上",
+    "signin.thisBrowser": "此浏览器",
+    "signin.consent.deny": "不允许",
+    "signin.consent.cloudSync": "云同步",
+    "signin.consent.newLicense": "新建:{tier} 许可证,继续时创建",
+    "signin.key.upgradeTitle": "将 {product} 保存在账户中",
+    "signin.key.upgradeLede":
+      "保存在账户中后,你可以找回它,也可以自己迁移到新设备。",
+    "signin.key.createAccount": "创建账户",
+    "signin.key.signInInstead": "改为登录",
+    "signin.key.noEntriesTitle": "创建账户以保留 {product}",
+    "signin.key.noEntriesKeeps":
+      "{product} 在已安装的设备上继续可用。只有再次输入密钥才需要账户。",
+    "signin.key.meter": "已使用 {used} / {limit} 次密钥输入",
+    "signin.key.keyWorks": "密钥有效",
+    "signin.footerNoDeveloper": "Polaris Locker 为你登录 {app}。",
+    "signin.replace.rateLimitedMinutes":
+      "设备更改过多。请在 {minutes, plural, other {# 分钟}}后重试。",
+    "signin.request.tooMany": "尝试次数过多。请稍候再试。",
     "core.fallback.title": "出现问题",
     "core.fallback.message": "出现问题（{code}）。请重试。",
     "core.codes.unauthorized.title": "未登录",
@@ -12828,4 +13100,8 @@ export const KIT_COPY_VARIANTS: Readonly<
   "signin.key.withoutKey": { macos: "Sign In Without the Key" },
   "signin.sso.codeIn": { macos: "Email Me a Code in {time}" },
   "signin.sso.code": { macos: "Email Me a Code Instead" },
+  "signin.choice.replaceAndSignIn": { macos: "Replace and Sign In" },
+  "signin.consent.deny": { macos: "Don't Allow" },
+  "signin.key.createAccount": { macos: "Create Account" },
+  "signin.key.signInInstead": { macos: "Sign In Instead" },
 };

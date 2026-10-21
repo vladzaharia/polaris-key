@@ -1,4 +1,23 @@
+import type {
+  AppConsentView,
+  KeyPreview,
+  LicenseChoiceView,
+  ReplaceView,
+  SignInContinueRequest,
+  SignInRedirect,
+  SignInRequestView,
+} from "@polaris-key/protocol/identity";
 import { returnUrl } from "./carriedKey.js";
+
+export type {
+  AppConsentView,
+  KeyPreview,
+  LicenseChoiceView,
+  ReplaceView,
+  SignInContinueRequest,
+  SignInRedirect,
+  SignInRequestView,
+};
 
 export interface PortalAccount {
   id: string;
@@ -1578,6 +1597,50 @@ export const portalApi = {
     call<{ ok: true; current: boolean }>(`/api/sessions/${enc(id)}`, {
       method: "DELETE",
     }),
+  /** PX-14a: the app asking to sign in (SIGN-IN.md §3.1). The binder cookie, not a session. */
+  signinRequest: (handle: string) =>
+    call<SignInRequestView>(`/api/signin/requests/${enc(handle)}`),
+  /** What the app gets if the person continues (§3.8). */
+  signinConsent: (handle: string) =>
+    call<AppConsentView>(`/api/signin/requests/${enc(handle)}/consent`),
+  /** The licence choice for this account (§3.6). */
+  signinLicenses: (handle: string) =>
+    call<LicenseChoiceView>(`/api/signin/requests/${enc(handle)}/licenses`),
+  /** A full licence's seat-holding devices (§3.7). */
+  signinDevices: (handle: string, licenseId: string) =>
+    call<ReplaceView>(
+      `/api/signin/requests/${enc(handle)}/licenses/${enc(licenseId)}/devices`,
+    ),
+  /** Continue to the app: records consent and the choice, answers where to go. */
+  signinContinue: (handle: string, body: SignInContinueRequest) =>
+    call<SignInRedirect>(`/api/signin/requests/${enc(handle)}/continue`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  /** Cancel: `access_denied` goes back to the app. */
+  signinCancel: (handle: string) =>
+    call<SignInRedirect>(`/api/signin/requests/${enc(handle)}/cancel`, {
+      method: "POST",
+      body: "{}",
+    }),
+  /** PX-W9: what a key would do, before anyone signs in. Read-only, never counted. */
+  previewKeySignedOut: (key: string) =>
+    call<KeyPreview>("/api/key/preview", {
+      method: "POST",
+      body: JSON.stringify({ key }),
+    }),
+  /** "Not you?": ends this browser's session and stays on the card. */
+  signOutHere: async (): Promise<void> => {
+    try {
+      await fetch("/logout", {
+        method: "POST",
+        credentials: "same-origin",
+        redirect: "manual",
+      });
+    } catch {
+      throw new PortalApiError(0, "network");
+    }
+  },
   /** Every session and app of the account, this browser's included. */
   signOutEverywhere: () =>
     call<{ ok: true; ended: number; devices?: number }>(

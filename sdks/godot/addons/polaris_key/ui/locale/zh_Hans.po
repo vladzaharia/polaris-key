@@ -1832,10 +1832,10 @@ msgstr "{product} · {developer}"
 msgid "signin.header.contextLine"
 msgstr "你的许可证、下载和设备"
 
-#. Code on the screen · {code} · Check it matches the screen
+#. Code · {code} · Check it matches the screen
 #. Header of the sign-in card when an app asks (SIGN-IN.md §3.1). Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated.
 msgid "signin.header.codePanel"
-msgstr "屏幕上的代码 · {code} · 请确认与屏幕上的一致"
+msgstr "代码 · {code} · 请核对是否与屏幕上的一致"
 
 #. Polaris Locker signs you in for {app}. {developer} never sees your codes or passkeys.
 #. Hosted sign-in card (SIGN-IN.md). Arguments: {app} = the requesting app's name (never translated); {developer} = the developer's name (never translated).
@@ -4191,6 +4191,148 @@ msgstr "验证码过多。请几分钟后重试。"
 #. Sign-in card, code step: the address belongs to another account that does not use it as a sign-in method. Polaris Locker is never translated.
 msgid "signin.code.emailInUse"
 msgstr "另一个 Polaris Locker 账户正在使用此邮箱。请使用之前的方式登录。"
+
+#. Choose a license to continue.
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
+msgid "signin.choice.pickOne"
+msgstr "请选择一个许可证以继续。"
+
+#. Choose a device to replace.
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
+msgid "signin.choice.pickDevice"
+msgstr "请选择要替换的设备。"
+
+#. Replace and sign in
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
+msgid "signin.choice.replaceAndSignIn"
+msgstr "替换并登录"
+
+#. macos: Replace and Sign In
+msgctxt "macos"
+msgid "signin.choice.replaceAndSignIn"
+msgstr "替换并登录"
+
+#. The device you choose signs out of {app}. It can sign in again later if a seat is free. We'll email you about it.
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {app} = the requesting app's name (never translated).
+msgid "signin.choice.replaceSafety"
+msgstr "你选择的设备将退出 {app}。如有空位，它之后可以重新登录。我们会通过电子邮件通知你。"
+
+#. Device replaced
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
+msgid "signin.choice.replacedTitle"
+msgstr "设备已替换"
+
+#. {device} signed out of {app}. {thisDevice} is signed in.
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {device} = the replaced device's label; {app} = the requesting app's name (never translated); {thisDevice} = this device's label or "this browser".
+msgid "signin.choice.replacedBody"
+msgstr "{device} 已退出 {app}。{thisDevice} 已登录。"
+
+#. This sign-in has ended
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
+msgid "signin.request.goneTitle"
+msgstr "此次登录已结束"
+
+#. Go back to the app and start signing in again.
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
+msgid "signin.request.gone"
+msgstr "请回到应用，重新登录。"
+
+#. on {device}
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {device} = a device's friendly name.
+msgid "signin.header.onDevice"
+msgstr "在 {device} 上"
+
+#. this browser
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
+msgid "signin.thisBrowser"
+msgstr "此浏览器"
+
+#. Don't allow
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
+msgid "signin.consent.deny"
+msgstr "不允许"
+
+#. macos: Don't Allow
+msgctxt "macos"
+msgid "signin.consent.deny"
+msgstr "不允许"
+
+#. Cloud Sync
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
+msgid "signin.consent.cloudSync"
+msgstr "云同步"
+
+#. New: {tier} license, created when you continue
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {tier} = the tier's name (never translated).
+msgid "signin.consent.newLicense"
+msgstr "新建:{tier} 许可证,继续时创建"
+
+#. Keep {product} in an account
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "signin.key.upgradeTitle"
+msgstr "将 {product} 保存在账户中"
+
+#. In an account you can get it back and move it to a new device yourself.
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
+msgid "signin.key.upgradeLede"
+msgstr "保存在账户中后,你可以找回它,也可以自己迁移到新设备。"
+
+#. Create account
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
+msgid "signin.key.createAccount"
+msgstr "创建账户"
+
+#. macos: Create Account
+msgctxt "macos"
+msgid "signin.key.createAccount"
+msgstr "创建账户"
+
+#. Sign in instead
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
+msgid "signin.key.signInInstead"
+msgstr "改为登录"
+
+#. macos: Sign In Instead
+msgctxt "macos"
+msgid "signin.key.signInInstead"
+msgstr "改为登录"
+
+#. Create an account to keep {product}
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "signin.key.noEntriesTitle"
+msgstr "创建账户以保留 {product}"
+
+#. {product} keeps working on the devices it's already on. Only typing the key again needs an account.
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "signin.key.noEntriesKeeps"
+msgstr "{product} 在已安装的设备上继续可用。只有再次输入密钥才需要账户。"
+
+#. {used} of {limit} key entries used
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {used} and {limit} = numbers.
+msgid "signin.key.meter"
+msgstr "已使用 {used} / {limit} 次密钥输入"
+
+#. Key works
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
+msgid "signin.key.keyWorks"
+msgstr "密钥有效"
+
+#. Polaris Locker signs you in for {app}.
+#. PX-14a fix round. Arguments: {app} = the requesting app's name (never translated).
+msgid "signin.footerNoDeveloper"
+msgstr "Polaris Locker 为你登录 {app}。"
+
+#. Too many device changes. Try again in {minutes, plural, one {# minute} other {# minutes}}.
+#. PX-14a fix round. Arguments: {minutes} = a number of minutes.
+#. Plural on {minutes}.
+msgid "signin.replace.rateLimitedMinutes"
+msgid_plural "signin.replace.rateLimitedMinutes"
+msgstr[0] "设备更改过多。请在 {minutes} 分钟后重试。"
+
+#. Too many tries. Wait a moment, then try again.
+#. PX-14a fix round.
+msgid "signin.request.tooMany"
+msgstr "尝试次数过多。请稍候再试。"
 
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).

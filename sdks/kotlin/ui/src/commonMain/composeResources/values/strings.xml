@@ -677,7 +677,7 @@
     <!-- Header of the sign-in card when an app asks (SIGN-IN.md §3.1). -->
     <string name="signin_header_contextLine">Your license, downloads and devices</string>
     <!-- Header of the sign-in card when an app asks (SIGN-IN.md §3.1). Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated. Arguments: 1=code. -->
-    <string name="signin_header_codePanel">Code on the screen · %1$s · Check it matches the screen</string>
+    <string name="signin_header_codePanel">Code · %1$s · Check it matches the screen</string>
     <!-- Hosted sign-in card (SIGN-IN.md). Arguments: {app} = the requesting app's name (never translated); {developer} = the developer's name (never translated). Arguments: 1=app, 2=developer. -->
     <string name="signin_footer">Polaris Locker signs you in for %1$s. %2$s never sees your codes or passkeys.</string>
     <!-- Sign-in is turned off (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated); {developer} = the developer's name (never translated). Arguments: 1=product, 2=developer. -->
@@ -1579,6 +1579,61 @@
     <string name="signin_rateLimitedFew">Too many codes. Try again in a few minutes.</string>
     <!-- Sign-in card, code step: the address belongs to another account that does not use it as a sign-in method. Polaris Locker is never translated. -->
     <string name="signin_code_emailInUse">Another Polaris Locker account uses this email. Sign in the way you did before.</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
+    <string name="signin_choice_pickOne">Choose a license to continue.</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
+    <string name="signin_choice_pickDevice">Choose a device to replace.</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
+    <string name="signin_choice_replaceAndSignIn">Replace and sign in</string>
+    <string name="signin_choice_replaceAndSignIn__macos">Replace and Sign In</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_choice_replaceSafety">The device you choose signs out of %1$s. It can sign in again later if a seat is free. We'll email you about it.</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
+    <string name="signin_choice_replacedTitle">Device replaced</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {device} = the replaced device's label; {app} = the requesting app's name (never translated); {thisDevice} = this device's label or "this browser". Arguments: 1=device, 2=app, 3=thisDevice. -->
+    <string name="signin_choice_replacedBody">%1$s signed out of %2$s. %3$s is signed in.</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
+    <string name="signin_request_goneTitle">This sign-in has ended</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
+    <string name="signin_request_gone">Go back to the app and start signing in again.</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {device} = a device's friendly name. Arguments: 1=device. -->
+    <string name="signin_header_onDevice">on %1$s</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
+    <string name="signin_thisBrowser">this browser</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
+    <string name="signin_consent_deny">Don't allow</string>
+    <string name="signin_consent_deny__macos">Don't Allow</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
+    <string name="signin_consent_cloudSync">Cloud Sync</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
+    <string name="signin_consent_newLicense">New: %1$s license, created when you continue</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_key_upgradeTitle">Keep %1$s in an account</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
+    <string name="signin_key_upgradeLede">In an account you can get it back and move it to a new device yourself.</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
+    <string name="signin_key_createAccount">Create account</string>
+    <string name="signin_key_createAccount__macos">Create Account</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
+    <string name="signin_key_signInInstead">Sign in instead</string>
+    <string name="signin_key_signInInstead__macos">Sign In Instead</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_key_noEntriesTitle">Create an account to keep %1$s</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_key_noEntriesKeeps">%1$s keeps working on the devices it's already on. Only typing the key again needs an account.</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {used} and {limit} = numbers. Arguments: 1=used, 2=limit. -->
+    <string name="signin_key_meter">%1$s of %2$s key entries used</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
+    <string name="signin_key_keyWorks">Key works</string>
+    <!-- PX-14a fix round. Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_footerNoDeveloper">Polaris Locker signs you in for %1$s.</string>
+    <!-- PX-14a fix round. Arguments: {minutes} = a number of minutes. Arguments: 1=minutes. -->
+    <plurals name="signin_replace_rateLimitedMinutes">
+        <item quantity="one">Too many device changes. Try again in %1$d minute.</item>
+        <item quantity="other">Too many device changes. Try again in %1$d minutes.</item>
+    </plurals>
+    <!-- PX-14a fix round. -->
+    <string name="signin_request_tooMany">Too many tries. Wait a moment, then try again.</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">Something went wrong</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

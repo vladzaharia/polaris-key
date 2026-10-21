@@ -1842,10 +1842,10 @@ msgstr "{product} · {developer}"
 msgid "signin.header.contextLine"
 msgstr "Votre licence, vos téléchargements et vos appareils"
 
-#. Code on the screen · {code} · Check it matches the screen
+#. Code · {code} · Check it matches the screen
 #. Header of the sign-in card when an app asks (SIGN-IN.md §3.1). Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated.
 msgid "signin.header.codePanel"
-msgstr "Code à l’écran · {code} · Vérifiez qu’il correspond à l’écran"
+msgstr "Code · {code} · Vérifiez qu'il correspond à l'écran"
 
 #. Polaris Locker signs you in for {app}. {developer} never sees your codes or passkeys.
 #. Hosted sign-in card (SIGN-IN.md). Arguments: {app} = the requesting app's name (never translated); {developer} = the developer's name (never translated).
@@ -4211,6 +4211,150 @@ msgstr "Trop de codes. Réessayez dans quelques minutes."
 #. Sign-in card, code step: the address belongs to another account that does not use it as a sign-in method. Polaris Locker is never translated.
 msgid "signin.code.emailInUse"
 msgstr "Un autre compte Polaris Locker utilise cet e-mail. Connectez-vous comme avant."
+
+#. Choose a license to continue.
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
+msgid "signin.choice.pickOne"
+msgstr "Choisissez une licence pour continuer."
+
+#. Choose a device to replace.
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
+msgid "signin.choice.pickDevice"
+msgstr "Choisissez un appareil à remplacer."
+
+#. Replace and sign in
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
+msgid "signin.choice.replaceAndSignIn"
+msgstr "Remplacer et se connecter"
+
+#. macos: Replace and Sign In
+msgctxt "macos"
+msgid "signin.choice.replaceAndSignIn"
+msgstr "Remplacer et se connecter"
+
+#. The device you choose signs out of {app}. It can sign in again later if a seat is free. We'll email you about it.
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {app} = the requesting app's name (never translated).
+msgid "signin.choice.replaceSafety"
+msgstr "L'appareil choisi sera déconnecté de {app}. Il pourra se reconnecter plus tard si une place est libre. Nous vous préviendrons par e-mail."
+
+#. Device replaced
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
+msgid "signin.choice.replacedTitle"
+msgstr "Appareil remplacé"
+
+#. {device} signed out of {app}. {thisDevice} is signed in.
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {device} = the replaced device's label; {app} = the requesting app's name (never translated); {thisDevice} = this device's label or "this browser".
+msgid "signin.choice.replacedBody"
+msgstr "{device} est déconnecté de {app}. {thisDevice} est connecté."
+
+#. This sign-in has ended
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
+msgid "signin.request.goneTitle"
+msgstr "Cette connexion est terminée"
+
+#. Go back to the app and start signing in again.
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
+msgid "signin.request.gone"
+msgstr "Retournez dans l'app et reconnectez-vous."
+
+#. on {device}
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {device} = a device's friendly name.
+msgid "signin.header.onDevice"
+msgstr "sur {device}"
+
+#. this browser
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
+msgid "signin.thisBrowser"
+msgstr "ce navigateur"
+
+#. Don't allow
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
+msgid "signin.consent.deny"
+msgstr "Ne pas autoriser"
+
+#. macos: Don't Allow
+msgctxt "macos"
+msgid "signin.consent.deny"
+msgstr "Ne pas autoriser"
+
+#. Cloud Sync
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
+msgid "signin.consent.cloudSync"
+msgstr "Cloud Sync"
+
+#. New: {tier} license, created when you continue
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {tier} = the tier's name (never translated).
+msgid "signin.consent.newLicense"
+msgstr "Nouvelle : licence {tier}, créée quand vous continuez"
+
+#. Keep {product} in an account
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "signin.key.upgradeTitle"
+msgstr "Gardez {product} dans un compte"
+
+#. In an account you can get it back and move it to a new device yourself.
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
+msgid "signin.key.upgradeLede"
+msgstr "Dans un compte, vous la retrouvez et la déplacez vous-même vers un nouvel appareil."
+
+#. Create account
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
+msgid "signin.key.createAccount"
+msgstr "Créer un compte"
+
+#. macos: Create Account
+msgctxt "macos"
+msgid "signin.key.createAccount"
+msgstr "Créer un compte"
+
+#. Sign in instead
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
+msgid "signin.key.signInInstead"
+msgstr "Se connecter à la place"
+
+#. macos: Sign In Instead
+msgctxt "macos"
+msgid "signin.key.signInInstead"
+msgstr "Se connecter à la place"
+
+#. Create an account to keep {product}
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "signin.key.noEntriesTitle"
+msgstr "Créez un compte pour garder {product}"
+
+#. {product} keeps working on the devices it's already on. Only typing the key again needs an account.
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "signin.key.noEntriesKeeps"
+msgstr "{product} continue de fonctionner sur les appareils où il est déjà. Seule la saisie de la clé demande un compte."
+
+#. {used} of {limit} key entries used
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {used} and {limit} = numbers.
+msgid "signin.key.meter"
+msgstr "{used} saisies de clé sur {limit} utilisées"
+
+#. Key works
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
+msgid "signin.key.keyWorks"
+msgstr "La clé fonctionne"
+
+#. Polaris Locker signs you in for {app}.
+#. PX-14a fix round. Arguments: {app} = the requesting app's name (never translated).
+msgid "signin.footerNoDeveloper"
+msgstr "Polaris Locker vous connecte à {app}."
+
+#. Too many device changes. Try again in {minutes, plural, one {# minute} other {# minutes}}.
+#. PX-14a fix round. Arguments: {minutes} = a number of minutes.
+#. Plural on {minutes}.
+msgid "signin.replace.rateLimitedMinutes"
+msgid_plural "signin.replace.rateLimitedMinutes"
+msgstr[0] "Trop de changements d'appareil. Réessayez dans {minutes} minute."
+msgstr[1] "Trop de changements d'appareil. Réessayez dans {minutes} de minutes."
+msgstr[2] "Trop de changements d'appareil. Réessayez dans {minutes} minutes."
+
+#. Too many tries. Wait a moment, then try again.
+#. PX-14a fix round.
+msgid "signin.request.tooMany"
+msgstr "Trop de tentatives. Patientez un instant, puis réessayez."
 
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).

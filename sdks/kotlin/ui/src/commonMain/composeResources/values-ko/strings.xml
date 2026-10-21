@@ -672,7 +672,7 @@
     <!-- Header of the sign-in card when an app asks (SIGN-IN.md §3.1). -->
     <string name="signin_header_contextLine">라이선스, 다운로드 및 기기</string>
     <!-- Header of the sign-in card when an app asks (SIGN-IN.md §3.1). Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated. Arguments: 1=code. -->
-    <string name="signin_header_codePanel">화면의 코드 · %1$s · 화면과 일치하는지 확인하세요</string>
+    <string name="signin_header_codePanel">코드 · %1$s · 화면의 코드와 같은지 확인하세요</string>
     <!-- Hosted sign-in card (SIGN-IN.md). Arguments: {app} = the requesting app's name (never translated); {developer} = the developer's name (never translated). Arguments: 1=app, 2=developer. -->
     <string name="signin_footer">Polaris Locker가 %1$s 로그인을 처리해요. %2$s에게는 코드나 패스키가 절대 공개되지 않아요.</string>
     <!-- Sign-in is turned off (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated); {developer} = the developer's name (never translated). Arguments: 1=product, 2=developer. -->
@@ -1569,6 +1569,60 @@
     <string name="signin_rateLimitedFew">코드가 너무 많습니다. 몇 분 후 다시 시도하세요.</string>
     <!-- Sign-in card, code step: the address belongs to another account that does not use it as a sign-in method. Polaris Locker is never translated. -->
     <string name="signin_code_emailInUse">다른 Polaris Locker 계정이 이 이메일을 사용하고 있습니다. 이전에 쓰던 방법으로 로그인하세요.</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
+    <string name="signin_choice_pickOne">계속하려면 라이선스를 선택하세요.</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
+    <string name="signin_choice_pickDevice">교체할 기기를 선택하세요.</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
+    <string name="signin_choice_replaceAndSignIn">교체하고 로그인</string>
+    <string name="signin_choice_replaceAndSignIn__macos">교체하고 로그인</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_choice_replaceSafety">선택한 기기는 %1$s에서 로그아웃됩니다. 자리가 나면 나중에 다시 로그인할 수 있습니다. 이메일로 알려 드립니다.</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
+    <string name="signin_choice_replacedTitle">기기를 교체했습니다</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {device} = the replaced device's label; {app} = the requesting app's name (never translated); {thisDevice} = this device's label or "this browser". Arguments: 1=device, 2=app, 3=thisDevice. -->
+    <string name="signin_choice_replacedBody">%1$s이(가) %2$s에서 로그아웃했습니다. %3$s이(가) 로그인되었습니다.</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
+    <string name="signin_request_goneTitle">이 로그인은 종료되었습니다</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
+    <string name="signin_request_gone">앱으로 돌아가 다시 로그인하세요.</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {device} = a device's friendly name. Arguments: 1=device. -->
+    <string name="signin_header_onDevice">%1$s에서</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
+    <string name="signin_thisBrowser">이 브라우저</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
+    <string name="signin_consent_deny">허용 안 함</string>
+    <string name="signin_consent_deny__macos">허용 안 함</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
+    <string name="signin_consent_cloudSync">클라우드 동기화</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
+    <string name="signin_consent_newLicense">새 %1$s 라이선스: 계속하면 만들어집니다</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_key_upgradeTitle">%1$s을(를) 계정에 보관</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
+    <string name="signin_key_upgradeLede">계정에 보관하면 다시 받거나 새 기기로 직접 옮길 수 있습니다.</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
+    <string name="signin_key_createAccount">계정 만들기</string>
+    <string name="signin_key_createAccount__macos">계정 만들기</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
+    <string name="signin_key_signInInstead">대신 로그인</string>
+    <string name="signin_key_signInInstead__macos">대신 로그인</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_key_noEntriesTitle">%1$s을(를) 보관하려면 계정을 만드세요</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_key_noEntriesKeeps">%1$s은(는) 이미 설치된 기기에서 계속 작동합니다. 키를 다시 입력할 때만 계정이 필요합니다.</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {used} and {limit} = numbers. Arguments: 1=used, 2=limit. -->
+    <string name="signin_key_meter">키 입력 %2$s회 중 %1$s회 사용</string>
+    <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
+    <string name="signin_key_keyWorks">키가 유효합니다</string>
+    <!-- PX-14a fix round. Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_footerNoDeveloper">Polaris Locker가 %1$s에 로그인합니다.</string>
+    <!-- PX-14a fix round. Arguments: {minutes} = a number of minutes. Arguments: 1=minutes. -->
+    <plurals name="signin_replace_rateLimitedMinutes">
+        <item quantity="other">기기 변경이 너무 많습니다. %1$d분 후에 다시 시도하세요.</item>
+    </plurals>
+    <!-- PX-14a fix round. -->
+    <string name="signin_request_tooMany">시도가 너무 많습니다. 잠시 기다린 뒤 다시 시도하세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">문제가 발생했어요</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

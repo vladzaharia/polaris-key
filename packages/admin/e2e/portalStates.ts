@@ -1,5 +1,6 @@
 import type { Page } from "playwright";
 import { h1, type Override } from "./portalHarness.js";
+import { REQUEST_STATES } from "./portalRequestStates.js";
 import {
   PROFILE_BORN,
   PROFILE_STEAM,
@@ -1606,6 +1607,7 @@ export const SHIPPED: ShippedState[] = [
       await p.getByRole("alert").getByText("Something went wrong").waitFor();
     },
   },
+  ...REQUEST_STATES,
 ];
 
 export const PENDING: PendingState[] = [

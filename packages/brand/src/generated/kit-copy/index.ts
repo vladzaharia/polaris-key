@@ -719,6 +719,30 @@ export type KitCopyKey =
   | "signin.provider.connectGroup"
   | "signin.rateLimitedFew"
   | "signin.code.emailInUse"
+  | "signin.choice.pickOne"
+  | "signin.choice.pickDevice"
+  | "signin.choice.replaceAndSignIn"
+  | "signin.choice.replaceSafety"
+  | "signin.choice.replacedTitle"
+  | "signin.choice.replacedBody"
+  | "signin.request.goneTitle"
+  | "signin.request.gone"
+  | "signin.header.onDevice"
+  | "signin.thisBrowser"
+  | "signin.consent.deny"
+  | "signin.consent.cloudSync"
+  | "signin.consent.newLicense"
+  | "signin.key.upgradeTitle"
+  | "signin.key.upgradeLede"
+  | "signin.key.createAccount"
+  | "signin.key.signInInstead"
+  | "signin.key.noEntriesTitle"
+  | "signin.key.noEntriesKeeps"
+  | "signin.key.meter"
+  | "signin.key.keyWorks"
+  | "signin.footerNoDeveloper"
+  | "signin.replace.rateLimitedMinutes"
+  | "signin.request.tooMany"
   | "core.fallback.title"
   | "core.fallback.message"
   | "core.codes.unauthorized.title"
@@ -1232,6 +1256,10 @@ export const KIT_COPY_VARIANTS: Readonly<
   "signin.key.withoutKey": { macos: "Sign In Without the Key" },
   "signin.sso.codeIn": { macos: "Email Me a Code in {time}" },
   "signin.sso.code": { macos: "Email Me a Code Instead" },
+  "signin.choice.replaceAndSignIn": { macos: "Replace and Sign In" },
+  "signin.consent.deny": { macos: "Don't Allow" },
+  "signin.key.createAccount": { macos: "Create Account" },
+  "signin.key.signInInstead": { macos: "Sign In Instead" },
 };
 
 /** Locales whose core.* strings are English until their core pack lands. */

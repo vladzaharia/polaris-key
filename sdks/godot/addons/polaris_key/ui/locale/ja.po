@@ -1832,10 +1832,10 @@ msgstr "{product} · {developer}"
 msgid "signin.header.contextLine"
 msgstr "ライセンス、ダウンロード、デバイス"
 
-#. Code on the screen · {code} · Check it matches the screen
+#. Code · {code} · Check it matches the screen
 #. Header of the sign-in card when an app asks (SIGN-IN.md §3.1). Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated.
 msgid "signin.header.codePanel"
-msgstr "画面上のコード · {code} · 画面と一致することを確認してください"
+msgstr "コード · {code} · 画面のコードと一致しているか確認してください"
 
 #. Polaris Locker signs you in for {app}. {developer} never sees your codes or passkeys.
 #. Hosted sign-in card (SIGN-IN.md). Arguments: {app} = the requesting app's name (never translated); {developer} = the developer's name (never translated).
@@ -4191,6 +4191,148 @@ msgstr "コードが多すぎます。数分後にもう一度お試しくださ
 #. Sign-in card, code step: the address belongs to another account that does not use it as a sign-in method. Polaris Locker is never translated.
 msgid "signin.code.emailInUse"
 msgstr "別の Polaris Locker アカウントがこのメールアドレスを使用しています。以前の方法でサインインしてください。"
+
+#. Choose a license to continue.
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
+msgid "signin.choice.pickOne"
+msgstr "続けるにはライセンスを選んでください。"
+
+#. Choose a device to replace.
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
+msgid "signin.choice.pickDevice"
+msgstr "置き換えるデバイスを選んでください。"
+
+#. Replace and sign in
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
+msgid "signin.choice.replaceAndSignIn"
+msgstr "置き換えてサインイン"
+
+#. macos: Replace and Sign In
+msgctxt "macos"
+msgid "signin.choice.replaceAndSignIn"
+msgstr "置き換えてサインイン"
+
+#. The device you choose signs out of {app}. It can sign in again later if a seat is free. We'll email you about it.
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {app} = the requesting app's name (never translated).
+msgid "signin.choice.replaceSafety"
+msgstr "選んだデバイスは {app} からサインアウトされます。空きがあれば、後でもう一度サインインできます。メールでお知らせします。"
+
+#. Device replaced
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
+msgid "signin.choice.replacedTitle"
+msgstr "デバイスを置き換えました"
+
+#. {device} signed out of {app}. {thisDevice} is signed in.
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {device} = the replaced device's label; {app} = the requesting app's name (never translated); {thisDevice} = this device's label or "this browser".
+msgid "signin.choice.replacedBody"
+msgstr "{device} は {app} からサインアウトしました。{thisDevice} はサインイン済みです。"
+
+#. This sign-in has ended
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
+msgid "signin.request.goneTitle"
+msgstr "このサインインは終了しました"
+
+#. Go back to the app and start signing in again.
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
+msgid "signin.request.gone"
+msgstr "アプリに戻って、もう一度サインインしてください。"
+
+#. on {device}
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {device} = a device's friendly name.
+msgid "signin.header.onDevice"
+msgstr "{device} で"
+
+#. this browser
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
+msgid "signin.thisBrowser"
+msgstr "このブラウザ"
+
+#. Don't allow
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
+msgid "signin.consent.deny"
+msgstr "許可しない"
+
+#. macos: Don't Allow
+msgctxt "macos"
+msgid "signin.consent.deny"
+msgstr "許可しない"
+
+#. Cloud Sync
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
+msgid "signin.consent.cloudSync"
+msgstr "クラウド同期"
+
+#. New: {tier} license, created when you continue
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {tier} = the tier's name (never translated).
+msgid "signin.consent.newLicense"
+msgstr "新規: {tier} ライセンス。続けると作成されます"
+
+#. Keep {product} in an account
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "signin.key.upgradeTitle"
+msgstr "{product} をアカウントに保管"
+
+#. In an account you can get it back and move it to a new device yourself.
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
+msgid "signin.key.upgradeLede"
+msgstr "アカウントに保管すると、再取得したり、新しいデバイスへ自分で移したりできます。"
+
+#. Create account
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
+msgid "signin.key.createAccount"
+msgstr "アカウントを作成"
+
+#. macos: Create Account
+msgctxt "macos"
+msgid "signin.key.createAccount"
+msgstr "アカウントを作成"
+
+#. Sign in instead
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
+msgid "signin.key.signInInstead"
+msgstr "代わりにサインイン"
+
+#. macos: Sign In Instead
+msgctxt "macos"
+msgid "signin.key.signInInstead"
+msgstr "代わりにサインイン"
+
+#. Create an account to keep {product}
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "signin.key.noEntriesTitle"
+msgstr "{product} を保管するにはアカウントを作成"
+
+#. {product} keeps working on the devices it's already on. Only typing the key again needs an account.
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "signin.key.noEntriesKeeps"
+msgstr "{product} は、すでに入っているデバイスでそのまま使えます。キーをもう一度入力する場合だけアカウントが必要です。"
+
+#. {used} of {limit} key entries used
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {used} and {limit} = numbers.
+msgid "signin.key.meter"
+msgstr "キー入力 {limit} 回のうち {used} 回を使用"
+
+#. Key works
+#. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
+msgid "signin.key.keyWorks"
+msgstr "キーは有効です"
+
+#. Polaris Locker signs you in for {app}.
+#. PX-14a fix round. Arguments: {app} = the requesting app's name (never translated).
+msgid "signin.footerNoDeveloper"
+msgstr "Polaris Locker が {app} にサインインします。"
+
+#. Too many device changes. Try again in {minutes, plural, one {# minute} other {# minutes}}.
+#. PX-14a fix round. Arguments: {minutes} = a number of minutes.
+#. Plural on {minutes}.
+msgid "signin.replace.rateLimitedMinutes"
+msgid_plural "signin.replace.rateLimitedMinutes"
+msgstr[0] "デバイスの変更が多すぎます。{minutes} 分後にもう一度お試しください。"
+
+#. Too many tries. Wait a moment, then try again.
+#. PX-14a fix round.
+msgid "signin.request.tooMany"
+msgstr "試行回数が多すぎます。少し待ってからもう一度お試しください。"
 
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).

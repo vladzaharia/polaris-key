@@ -1457,7 +1457,7 @@
       "note": "Header of the sign-in card when an app asks (SIGN-IN.md §3.1)."
     },
     "signin.header.codePanel": {
-      "value": "Code on the screen · {code} · Check it matches the screen",
+      "value": "Code · {code} · Check it matches the screen",
       "role": "body",
       "note": "Header of the sign-in card when an app asks (SIGN-IN.md §3.1). Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated."
     },
@@ -3545,6 +3545,126 @@
       "value": "Another Polaris Locker account uses this email. Sign in the way you did before.",
       "role": "body",
       "note": "Sign-in card, code step: the address belongs to another account that does not use it as a sign-in method. Polaris Locker is never translated."
+    },
+    "signin.choice.pickOne": {
+      "value": "Choose a license to continue.",
+      "role": "body",
+      "note": "PX-14a: the app card (SIGN-IN.md §3.6 to §3.9)."
+    },
+    "signin.choice.pickDevice": {
+      "value": "Choose a device to replace.",
+      "role": "body",
+      "note": "PX-14a: the app card (SIGN-IN.md §3.6 to §3.9)."
+    },
+    "signin.choice.replaceAndSignIn": {
+      "value": "Replace and sign in",
+      "role": "button",
+      "note": "PX-14a: the app card (SIGN-IN.md §3.6 to §3.9)."
+    },
+    "signin.choice.replaceSafety": {
+      "value": "The device you choose signs out of {app}. It can sign in again later if a seat is free. We'll email you about it.",
+      "role": "body",
+      "note": "PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {app} = the requesting app's name (never translated)."
+    },
+    "signin.choice.replacedTitle": {
+      "value": "Device replaced",
+      "role": "title",
+      "note": "PX-14a: the app card (SIGN-IN.md §3.6 to §3.9)."
+    },
+    "signin.choice.replacedBody": {
+      "value": "{device} signed out of {app}. {thisDevice} is signed in.",
+      "role": "body",
+      "note": "PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {device} = the replaced device's label; {app} = the requesting app's name (never translated); {thisDevice} = this device's label or \"this browser\"."
+    },
+    "signin.request.goneTitle": {
+      "value": "This sign-in has ended",
+      "role": "title",
+      "note": "PX-14a: the app card (SIGN-IN.md §3.6 to §3.9)."
+    },
+    "signin.request.gone": {
+      "value": "Go back to the app and start signing in again.",
+      "role": "body",
+      "note": "PX-14a: the app card (SIGN-IN.md §3.6 to §3.9)."
+    },
+    "signin.header.onDevice": {
+      "value": "on {device}",
+      "role": "label",
+      "note": "PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {device} = a device's friendly name."
+    },
+    "signin.thisBrowser": {
+      "value": "this browser",
+      "role": "label",
+      "note": "PX-14a: the app card (SIGN-IN.md §3.6 to §3.9)."
+    },
+    "signin.consent.deny": {
+      "value": "Don't allow",
+      "role": "button",
+      "note": "PX-14a: the app card (SIGN-IN.md §3.6 to §3.9)."
+    },
+    "signin.consent.cloudSync": {
+      "value": "Cloud Sync",
+      "role": "body",
+      "note": "PX-14a: the app card (SIGN-IN.md §3.6 to §3.9)."
+    },
+    "signin.consent.newLicense": {
+      "value": "New: {tier} license, created when you continue",
+      "role": "body",
+      "note": "PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {tier} = the tier's name (never translated)."
+    },
+    "signin.key.upgradeTitle": {
+      "value": "Keep {product} in an account",
+      "role": "title",
+      "note": "PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "signin.key.upgradeLede": {
+      "value": "In an account you can get it back and move it to a new device yourself.",
+      "role": "body",
+      "note": "PX-14a: the app card (SIGN-IN.md §3.6 to §3.9)."
+    },
+    "signin.key.createAccount": {
+      "value": "Create account",
+      "role": "button",
+      "note": "PX-14a: the app card (SIGN-IN.md §3.6 to §3.9)."
+    },
+    "signin.key.signInInstead": {
+      "value": "Sign in instead",
+      "role": "button",
+      "note": "PX-14a: the app card (SIGN-IN.md §3.6 to §3.9)."
+    },
+    "signin.key.noEntriesTitle": {
+      "value": "Create an account to keep {product}",
+      "role": "title",
+      "note": "PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "signin.key.noEntriesKeeps": {
+      "value": "{product} keeps working on the devices it's already on. Only typing the key again needs an account.",
+      "role": "body",
+      "note": "PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "signin.key.meter": {
+      "value": "{used} of {limit} key entries used",
+      "role": "a11y",
+      "note": "PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {used} and {limit} = numbers."
+    },
+    "signin.key.keyWorks": {
+      "value": "Key works",
+      "role": "label",
+      "note": "PX-14a: the app card (SIGN-IN.md §3.6 to §3.9)."
+    },
+    "signin.footerNoDeveloper": {
+      "value": "Polaris Locker signs you in for {app}.",
+      "role": "body",
+      "note": "PX-14a fix round. Arguments: {app} = the requesting app's name (never translated)."
+    },
+    "signin.replace.rateLimitedMinutes": {
+      "value": "Too many device changes. Try again in {minutes, plural, one {# minute} other {# minutes}}.",
+      "role": "body",
+      "note": "PX-14a fix round. Arguments: {minutes} = a number of minutes."
+    },
+    "signin.request.tooMany": {
+      "value": "Too many tries. Wait a moment, then try again.",
+      "role": "body",
+      "note": "PX-14a fix round."
     }
   }
 }

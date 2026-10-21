@@ -13,7 +13,9 @@
 //     else is dropped and the person lands on the portal root.
 //   - `?error=identity_disabled`: the portal has no "sign-in is off for this product" screen, so
 //     it lands on the portal root with the product context, like a plain sign-in.
-//   - `?request=<handle>`: PX-14's address, which needs the card; a 404 until then.
+//   - `?request=<handle>`: the app sign-in card (PX-14a). `handleSignInEntry` itself answers 404; the
+//     dispatcher serves the portal shell instead to a browser that holds a request binder, and the
+//     SPA reads the handle.
 //   - `?request=<handle>&bind=<token>` on the customer host: the bind hop (LK-04,
 //     `signInBind.ts`). The token is redeemed once, the browser gets its `__Host-pk_req` binder,
 //     and the 303 goes to `/signin?request=<handle from the store>`: nothing in the query reaches
