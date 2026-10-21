@@ -10,6 +10,7 @@ const fns = vi.hoisted(() => ({
   deleteProduct: vi.fn(),
   resyncProduct: vi.fn(),
   planResync: vi.fn(),
+  settingsDrift: vi.fn(),
   revertClaim: vi.fn(),
   checkRepoLink: vi.fn(),
   linkProductRepo: vi.fn(),
@@ -69,6 +70,11 @@ beforeEach(() => {
   resetCore();
   for (const f of Object.values(fns)) f.mockReset();
   fns.product.mockResolvedValue({ product: product() });
+  fns.settingsDrift.mockResolvedValue({
+    snapshot: null,
+    items: [],
+    lastPlan: null,
+  });
   fns.blobGc.mockResolvedValue({
     enabled: true,
     graceSeconds: 604800,
@@ -225,6 +231,43 @@ describe("Core → Settings", () => {
     expect(within(panel).getByText(/kept the previous keys/)).toBeTruthy();
     expect(within(panel).getByText("Pack sets resolved: 2.")).toBeTruthy();
     await waitFor(() => expect(document.activeElement).toBe(panel));
+  });
+
+  it("lists the plan's warnings in the confirm and does not block the resync (ST-17)", async () => {
+    const user = userEvent.setup();
+    fns.planResync.mockResolvedValue({
+      ...RESYNC_PLAN,
+      plan: {
+        ...RESYNC_PLAN.plan,
+        warnings: [
+          {
+            file: "product",
+            path: "/slug",
+            code: "deprecated_spelling",
+            message: "slug is a deprecated spelling; write product.slug.",
+          },
+        ],
+      },
+    });
+    mount();
+    await user.click(
+      await screen.findByRole("button", { name: "Resync from repo…" }),
+    );
+    const dialog = await screen.findByRole("alertdialog", {
+      name: /Resync DJDL from its repository\?/,
+    });
+    const warnings = await within(dialog).findByTestId("resync-plan-warnings");
+    expect(within(warnings).getByText("1 warning")).toBeTruthy();
+    expect(
+      within(warnings).getByText(
+        "slug is a deprecated spelling; write product.slug.",
+      ),
+    ).toBeTruthy();
+    const resync = within(dialog).getByRole("button", {
+      name: "Resync from repo",
+    });
+    expect(resync.hasAttribute("disabled")).toBe(false);
+    expect(resync.getAttribute("aria-disabled")).not.toBe("true");
   });
 
   it("a plan with conflicts keeps Resync disabled and says how to fix it", async () => {

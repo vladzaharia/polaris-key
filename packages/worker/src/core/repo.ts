@@ -295,6 +295,8 @@ export interface ProductSyncStateRow {
   updated_json: string | null;
   errors_json: string | null;
   message: string | null;
+  /** ST-17: the `StoredSyncPlan` the last apply recorded (written by the ingest, not by `upsertProductSyncState`). */
+  plan_json?: string | null;
 }
 
 // ── Platform deploys (A-11; written only by deploy.yml, read here) ─────────────────────────

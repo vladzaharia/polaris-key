@@ -34,6 +34,13 @@
  *     switch audit summaries cut off at the same length one key later. 1-6, 8-10 and 11-12 were
  *     re-captured for that alone (checked: with the commerce member removed the entries are
  *     unchanged, except the 9-* summaries' truncation point).
+ *   - ST-17 (S-18 §4.5 item 4): an apply records the plan it applied in `product_sync_state.plan_json`,
+ *     in its own batch (`INSERT INTO product_sync_state … ON CONFLICT … SET plan_json`). Every
+ *     apply scenario (3-6, 8-9, 10a, 11a) gained that one write and its end-state row, and its
+ *     round trips grew by the plan's reads (the one `planManifest` the dry runs call); the dry
+ *     runs 10a, 12b and 14b gained the plan's `warnings` (the validator's deprecated spellings of
+ *     the scenario's flat documents). Nothing else moved: checked by diffing every other table's
+ *     writes and end state, and the result outside `warnings`.
  *   - 13-link-secret-default (plans/P0-26.md D5, delta 1): link screens the catalog for delivery
  *     issues, as resync and the console do. Captured from the pre-pipeline code (the link
  *     succeeded), then re-captured from the pipeline when the delta landed (the link refuses).

@@ -23,7 +23,7 @@ import type {
   ManifestPresentation,
   ParsedManifest,
 } from "@polaris-key/manifest";
-import type { ManifestPlan } from "./types.js";
+import type { ManifestPlan, PlanWarning } from "./types.js";
 import { countLicensesListingProfile, snapshotRowIds } from "./shared.js";
 
 const claimed = (source: string | null | undefined): boolean =>
@@ -90,12 +90,15 @@ export async function planManifest(
   slug: string,
   manifest: ParsedManifest,
   now: number,
+  warnings: readonly PlanWarning[] = [],
 ): Promise<ManifestPlan> {
   const plan: ManifestPlan = {
     apply: [],
     skipClaimed: [],
     delete: [],
     conflicts: [],
+    // ST-17: the validator's warnings travel with the plan and never block it.
+    ...(warnings.length > 0 ? { warnings: [...warnings] } : {}),
   };
   const product = await getProduct(db, slug);
   if (!product) return plan;

@@ -57,7 +57,9 @@ import type {
   IngestResult,
   ManifestContribution,
   ManifestContributor,
+  ManifestPlan,
   RowPlanResult,
+  StoredSyncPlan,
 } from "./types.js";
 
 /**
@@ -344,7 +346,7 @@ async function plan(
   if (s.mode !== "apply") return { problems, plan: null, breakGlass: [] };
   return {
     problems,
-    plan: await planManifest(db, s.slug, s.manifest, s.now),
+    plan: await planManifest(db, s.slug, s.manifest, s.now, input.warnings),
     breakGlass: (await s.base.claims()).live,
   };
 }
@@ -431,6 +433,18 @@ async function run(
   }
   const isSecretKey = managedSecretKeyPredicate(catalogs);
 
+  // ST-17: the apply records the plan it is applying, in the same batch, from the one function
+  // the dry runs call (`planManifest`), read from the state the batch is about to change.
+  const planStatement =
+    mode === "apply"
+      ? syncPlanStatement(
+          slug,
+          source,
+          now,
+          await planManifest(db, slug, manifest, now, input.warnings),
+        )
+      : null;
+
   const statements: DbStatement[] = [
     ...parts.flatMap(({ part }) => part.statements),
     ...late.flatMap((f) => f.statements),
@@ -450,6 +464,7 @@ async function run(
       now,
       isSecretKey,
     ),
+    ...(planStatement ? [planStatement] : []),
   ];
   await db.batch(statements);
 
@@ -500,6 +515,33 @@ async function run(
         }
       : {}),
     facts,
+  };
+}
+
+/**
+ * `product_sync_state.plan_json` for an apply (ST-17). The row is created when the product has
+ * none yet (a link, a first deploy); the callers' own sync-state writes leave `plan_json` alone,
+ * so the plan survives their later upsert of the status columns.
+ */
+function syncPlanStatement(
+  slug: string,
+  source: IngestInput["source"],
+  now: number,
+  plan: ManifestPlan,
+): DbStatement {
+  const stored: StoredSyncPlan = {
+    v: 1,
+    origin: source.origin,
+    commit: source.sha,
+    plannedAt: now,
+    plan,
+  };
+  return {
+    sql: `INSERT INTO product_sync_state
+            (product, source, status, last_checked_at, plan_json)
+          VALUES (?, 'manual', 'ok', ?, ?)
+          ON CONFLICT(product) DO UPDATE SET plan_json = excluded.plan_json`,
+    params: [slug, now, JSON.stringify(stored)],
   };
 }
 

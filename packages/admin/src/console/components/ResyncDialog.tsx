@@ -22,6 +22,7 @@ import {
   ApiError,
   type ClaimKey,
   type ManifestPlanItem,
+  type ManifestPlanWarning,
   type ResyncPlanResult,
   type ResyncResult,
 } from "../../api.js";
@@ -161,6 +162,28 @@ export function PlanList({
   );
 }
 
+/** The validator's warnings for the manifest (ST-17): listed, never blocking. */
+export function PlanWarnings({
+  warnings,
+}: {
+  warnings: ManifestPlanWarning[];
+}): React.ReactElement | null {
+  if (warnings.length === 0) return null;
+  return (
+    <section className="space-y-1.5" data-testid="resync-plan-warnings">
+      <h3 className="text-sm font-medium text-fg-strong">
+        {plural(warnings.length, "warning", "warnings")}
+      </h3>
+      <ul className="list-disc space-y-1 pl-5 text-sm text-fg">
+        {warnings.map((w) => (
+          <li key={`${w.file}:${w.path}:${w.code}`}>{w.message}</li>
+        ))}
+      </ul>
+      <p className="text-sm text-fg-muted">They don't stop the resync.</p>
+    </section>
+  );
+}
+
 type PlanState =
   | { status: "loading" }
   | { status: "ready"; data: ResyncPlanResult }
@@ -289,9 +312,12 @@ export function ResyncDialog({
             ) : null}
           </Callout>
         ) : ready && empty ? (
-          <p className="text-sm text-fg">
-            Nothing to change: {name} already matches its manifest.
-          </p>
+          <>
+            <p className="text-sm text-fg">
+              Nothing to change: {name} already matches its manifest.
+            </p>
+            <PlanWarnings warnings={ready.plan.warnings ?? []} />
+          </>
         ) : ready ? (
           <>
             <PlanList
@@ -311,6 +337,7 @@ export function ResyncDialog({
               items={ready.plan.skipClaimed}
             />
             <PlanList title="Removes" items={ready.plan.delete} />
+            <PlanWarnings warnings={ready.plan.warnings ?? []} />
             {conflicts ? (
               <div className="flex justify-end">
                 <Button

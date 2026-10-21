@@ -195,6 +195,8 @@ export const qk = {
   productSettings: (slug: string, area: string) =>
     product(slug, "core", "settings", area),
   productSettingsAll: (slug: string) => product(slug, "core", "settings"),
+  /** ST-17: the claims against the manifest; under `productSettingsAll`, so a revert refreshes it. */
+  settingsDrift: (slug: string) => product(slug, "core", "settings", "drift"),
   /** ST-08: every row-backed setting of the product in one read (Settings → All settings). */
   productSettingsEvery: (slug: string) =>
     product(slug, "core", "settings", "every"),

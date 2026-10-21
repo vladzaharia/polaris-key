@@ -358,6 +358,7 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   // ── One product: Core's resources ─────────────────────────────────────────────────────────
   // Every row-backed key; the handler lists only the keys whose area the caller holds.
   ...rows(["GET"], `${P}/settings/effective`, "core", product),
+  ...rows(["GET"], `${P}/settings/drift`, "core", product),
   ...rows(["PATCH", "DELETE"], `${P}/settings/:key`, "byKey", product),
   ...rows(["GET", "POST"], `${P}/settings/backfill`, "settings", product),
   ...rows(["GET"], `${P}/settings/backfill/:reportId`, "settings", product),

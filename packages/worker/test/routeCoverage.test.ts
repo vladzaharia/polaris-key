@@ -271,6 +271,8 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ],
     // LX-06: the first slice of S-18 §4.7's generic settings API (row-backed claimable keys).
     ["/manage/api/products/{product}/settings/effective", ["get"]],
+    // ST-17: the claims against the last applied manifest, and the last apply's plan.
+    ["/manage/api/products/{product}/settings/drift", ["get"]],
     ["/manage/api/products/{product}/settings/{key}", ["patch", "delete"]],
     // U-03: the licence override batch (entitlements only from the migration's run), and one
     // user's account overrides under I-12's Users routes.

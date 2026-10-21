@@ -39,6 +39,7 @@ import {
 } from "../../../../api.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
 import { formatDateTime, fromSeconds } from "../../../../lib/format.js";
+import { ManifestDriftSection } from "../../../components/ManifestDriftSection.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
 import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
@@ -398,6 +399,7 @@ function SettingsBody({
       </Form>
 
       <RepositorySection slug={slug} product={product} />
+      {claimable ? <ManifestDriftSection slug={slug} /> : null}
       <StorageSection slug={slug} />
       <ProductAlertsSection slug={slug} />
 

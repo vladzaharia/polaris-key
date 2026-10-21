@@ -221,6 +221,7 @@ export async function prepareLink(
       product: slug,
       manifest,
       now,
+      warnings: result.warnings,
       source: {
         origin: "resync",
         sha: commit,
@@ -443,6 +444,7 @@ export async function planResync(
     product: slug,
     manifest,
     now,
+    warnings: read.warnings,
     source: {
       origin: "resync",
       sha: commit,

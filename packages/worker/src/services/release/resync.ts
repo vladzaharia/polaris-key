@@ -42,7 +42,7 @@ import { reservedNamesMode } from "../../core/licensing/reservedNames.js";
 import { reservedDisplayNamesMode } from "../../core/accounts/reservedDisplayNames.js";
 import { type AssetWarning } from "../../core/assets/hostedAssetPulls.js";
 import { repoBlobLookup } from "./assetSource.js";
-import type { Ingest } from "../../core/ingest/types.js";
+import type { Ingest, PlanWarning } from "../../core/ingest/types.js";
 
 export type ResyncResult =
   | {
@@ -205,6 +205,7 @@ async function applyRepoManifest(
     token,
     commit: appliedSha,
     manifest,
+    warnings,
   } = read;
 
   const result = await ingest.run(env, db, {
@@ -212,6 +213,7 @@ async function applyRepoManifest(
     product: slug,
     manifest,
     now,
+    warnings,
     source: {
       origin: "resync",
       sha: appliedSha,
@@ -266,6 +268,8 @@ export type LinkedManifestRead =
       /** The default-branch commit every document was read at (ST-01a). */
       commit: string;
       manifest: ParsedManifest;
+      /** The validator's warnings for the documents (ST-17): carried into the plan. */
+      warnings: PlanWarning[];
     }
   | {
       ok: false;
@@ -377,5 +381,6 @@ export async function readLinkedManifest(
     token,
     commit,
     manifest,
+    warnings: result.warnings,
   };
 }
