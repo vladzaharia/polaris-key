@@ -41,6 +41,11 @@ export const PREF_KEYS = {
   sidebarRail: "pk-admin-sidebar-rail",
   /** Home's product view: `cards` or `table` (ST-44). */
   homeView: "pk-admin-home-view",
+  /**
+   * Prefix: Home's Platform ready guide was hidden, `<prefix><operator id>`. Per operator, kept in
+   * this browser: the console has no server-side operator preference store.
+   */
+  setupGuideHiddenPrefix: "pk-admin-setup-guide-hidden:",
   /** The product switcher's recent products. */
   recentProducts: "pk-admin-recent-products",
   /** The command palette's recent commands. */

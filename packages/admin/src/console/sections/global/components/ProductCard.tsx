@@ -1,6 +1,9 @@
 import * as React from "react";
+import { resolveAccent } from "@polaris-key/brand/accent";
 import type { AttentionItemDto, ProductDetail } from "../../../../api.js";
+import { useTheme } from "../../../../components/theme.js";
 import { cn } from "../../../../lib/cn.js";
+import { letterOf } from "../../../../lib/productArt.js";
 import { ProductLogo } from "../../../../ui/ProductLogo.js";
 import { ServiceGlyph } from "../../../../ui/ServiceBadge.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
@@ -15,17 +18,34 @@ import {
 } from "../model/home.js";
 
 /**
- * The cover (Cards view only, from `sm`): the product's hosted header art, else a neutral band
- * one step lighter than the card: no second logo, never a generated gradient, never read from
- * canvas pixels. The box is 72 px tall before the image arrives, so nothing shifts when it loads.
+ * The cover (Cards view only, from `sm`), always 72 px so a row's names and glyph rows line up,
+ * and never drawn empty. With hosted header art, the art. Without it, a deliberate solid
+ * placeholder (the brand guide: "when absent, use a solid-colour placeholder and initials"): the
+ * product's own tint (`presentation.accent`) when it has one; else a raised neutral surface with
+ * the product's icon centred at 40 px; else the same surface with its initial, large. No
+ * generated gradient, never read from canvas pixels.
  */
 function Cover({ product: p }: { product: ProductDetail }): React.ReactElement {
   const header = p.presentation?.header ?? null;
+  const { theme } = useTheme();
+  const accent =
+    theme === "dark"
+      ? (p.presentation?.accentDark ?? p.presentation?.accent ?? null)
+      : (p.presentation?.accent ?? null);
+  const tint = !header && accent ? resolveAccent(accent, theme) : null;
+  const icon = !header && !tint && p.presentation?.icon;
+  const name = p.name || p.slug;
   return (
     <div
       aria-hidden
-      data-cover={header ? "art" : "flat"}
-      className="h-[72px] shrink-0 overflow-hidden rounded-t-lg border-b border-border bg-hover max-sm:hidden"
+      data-cover={header ? "art" : tint ? "tint" : icon ? "icon" : "initials"}
+      // The tint is set through CSSOM, which the console's `style-src 'self'` allows.
+      style={tint ? { backgroundColor: tint.solid } : undefined}
+      className={cn(
+        "grid h-[72px] shrink-0 place-items-center overflow-hidden rounded-t-lg max-sm:hidden",
+        header && "border-b border-border bg-hover",
+        !header && !tint && "border-b border-border bg-hover",
+      )}
     >
       {header ? (
         <img
@@ -37,6 +57,12 @@ function Cover({ product: p }: { product: ProductDetail }): React.ReactElement {
           height={72}
           className="h-full w-full object-cover"
         />
+      ) : icon ? (
+        <ProductLogo name={name} presentation={p.presentation} size={40} />
+      ) : !tint ? (
+        <span className="select-none text-3xl font-medium leading-none text-fg-muted">
+          {letterOf(name)}
+        </span>
       ) : null}
     </div>
   );
@@ -172,6 +198,15 @@ export function ProductCard({
               className="ml-auto"
             >
               {pillLabel(attention)}
+            </StatusPill>
+          ) : p.system ? (
+            <StatusPill
+              tone="neutral"
+              icon={null}
+              size="sm"
+              className="ml-auto"
+            >
+              System
             </StatusPill>
           ) : null}
         </div>

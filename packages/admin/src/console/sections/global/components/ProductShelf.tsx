@@ -1,15 +1,24 @@
 import * as React from "react";
-import { Download, LayoutGrid, Table2 } from "lucide-react";
+import {
+  Check,
+  Download,
+  LayoutGrid,
+  Plus,
+  Search,
+  Table2,
+} from "lucide-react";
+import { cn } from "../../../../lib/cn.js";
 import { formatCount, fromSeconds } from "../../../../lib/format.js";
 import { label, PROVIDER_LABELS } from "../../../../lib/labels.js";
 import {
   DataTable,
   downloadCsv,
-  FilterBar,
+  SEARCH_DEBOUNCE_MS,
   tableCsv,
   type DataColumn,
   type RowActionItem,
 } from "../../../../ui/data-table/index.js";
+import { ActionMenu } from "../../../../ui/ActionMenu.js";
 import { Button } from "../../../../ui/Button.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { SegmentedControl } from "../../../../ui/SegmentedControl.js";
@@ -60,24 +69,89 @@ const VIEW_OPTIONS = [
   },
 ];
 
-const FACET_LABELS = [
-  {
-    id: "verified",
-    label: "Integration",
-    options: [
-      { value: "yes", label: "Verified" },
-      { value: "no", label: "Not verified" },
-    ],
-  },
-  {
-    id: "attention",
-    label: "Attention",
-    options: [
-      { value: "yes", label: "Needs attention" },
-      { value: "no", label: "Healthy" },
-    ],
-  },
+/** The two facets as toggle chips (the filter's "yes" side), in the toolbar's order. */
+const CHIPS = [
+  { id: "verified", label: "Integration verified" },
+  { id: "attention", label: "Needs attention" },
 ] as const;
+
+/** One toggle chip: off shows a plus, on a check; the state is `aria-pressed`. */
+function FilterChip({
+  label,
+  on,
+  onToggle,
+}: {
+  label: string;
+  on: boolean;
+  onToggle: () => void;
+}): React.ReactElement {
+  const Icon = on ? Check : Plus;
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      data-filter-chip=""
+      onClick={onToggle}
+      className={cn(
+        "inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-sm text-fg-strong pointer-coarse:min-h-11",
+        "hover:bg-hover focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page",
+        on
+          ? "border-fg-strong bg-hover font-medium"
+          : "border-border-strong bg-transparent",
+      )}
+    >
+      <Icon aria-hidden className="size-3.5 text-fg-muted" />
+      {label}
+    </button>
+  );
+}
+
+/** The search field: typing is debounced into the URL state, and Back restores it. */
+function SearchField({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}): React.ReactElement {
+  const [local, setLocal] = React.useState(value);
+  const pending = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latest = React.useRef(onChange);
+  latest.current = onChange;
+  React.useEffect(() => {
+    if (pending.current === null) setLocal(value);
+  }, [value]);
+  React.useEffect(
+    () => () => {
+      if (pending.current) clearTimeout(pending.current);
+    },
+    [],
+  );
+  return (
+    <label className="relative flex min-w-[min(12rem,100%)] flex-1 items-center max-sm:basis-full sm:max-w-sm">
+      <span className="sr-only">Filter products</span>
+      <Search
+        aria-hidden
+        className="pointer-events-none absolute left-2.5 size-4 text-fg-subtle"
+      />
+      <input
+        type="search"
+        value={local}
+        placeholder="Filter products"
+        onChange={(e) => {
+          const v = e.target.value;
+          setLocal(v);
+          if (pending.current) clearTimeout(pending.current);
+          pending.current = setTimeout(() => {
+            pending.current = null;
+            latest.current(v);
+          }, SEARCH_DEBOUNCE_MS);
+        }}
+        className="h-8 w-full rounded-md border border-border-strong bg-surface-sunken pl-8 pr-2 text-sm text-fg pointer-coarse:h-11"
+      />
+    </label>
+  );
+}
 
 /** An epoch-seconds instant, or a dash when the row has none. */
 function When({ seconds }: { seconds: number | undefined }): React.ReactNode {
@@ -268,7 +342,9 @@ export function ProductShelf({
         <div className="flex items-baseline gap-2">
           <h2
             id={headingId}
-            className="text-lg font-semibold leading-6 text-fg-strong"
+            tabIndex={-1}
+            data-products-heading=""
+            className="text-lg font-semibold leading-6 text-fg-strong outline-hidden"
           >
             Products
           </h2>
@@ -282,58 +358,77 @@ export function ProductShelf({
           ) : null}
         </div>
         {many ? (
-          <SegmentedControl
-            size="sm"
-            aria-label="View"
-            options={VIEW_OPTIONS}
-            value={view}
-            onChange={(v) => {
-              setView(v);
-              writePref(PREF_KEYS.homeView, v);
-            }}
-          />
+          <div className="flex items-center gap-2">
+            <SegmentedControl
+              size="sm"
+              aria-label="View"
+              options={VIEW_OPTIONS}
+              value={view}
+              onChange={(v) => {
+                setView(v);
+                writePref(PREF_KEYS.homeView, v);
+              }}
+            />
+            <ActionMenu
+              label="More product actions"
+              items={[
+                {
+                  label: "Export CSV",
+                  icon: <Download />,
+                  disabledReason:
+                    filtered.length === 0
+                      ? "No products to export."
+                      : undefined,
+                  onSelect: () =>
+                    downloadCsv("products.csv", tableCsv(filtered, COLUMNS)),
+                },
+              ]}
+            />
+          </div>
         ) : null}
       </div>
       {many ? (
-        <FilterBar
-          stackSearch
-          search={{
-            value: state.q,
-            onChange: (q) => setState({ ...state, q, offset: 0 }),
-            placeholder: "Filter products",
-          }}
-          facets={FACET_LABELS.filter(
-            (f) => f.id !== "attention" || attentionKnown,
-          ).map((f) => ({
-            id: f.id,
-            label: f.label,
-            options: [...f.options],
-            selected: state.filters[f.id] ?? [],
-            onChange: (next) =>
-              setState({
-                ...state,
-                offset: 0,
-                filters: { ...state.filters, [f.id]: next },
-              }),
-          }))}
-          actions={
+        <div
+          role="search"
+          aria-label="Product filters"
+          className="flex flex-wrap items-center gap-2"
+        >
+          <SearchField
+            value={state.q}
+            onChange={(q) => setState({ ...state, q, offset: 0 })}
+          />
+          {CHIPS.filter((c) => c.id !== "attention" || attentionKnown).map(
+            (c) => {
+              const on = (state.filters[c.id] ?? []).includes("yes");
+              return (
+                <FilterChip
+                  key={c.id}
+                  label={c.label}
+                  on={on}
+                  onToggle={() =>
+                    setState({
+                      ...state,
+                      offset: 0,
+                      filters: { ...state.filters, [c.id]: on ? [] : ["yes"] },
+                    })
+                  }
+                />
+              );
+            },
+          )}
+          {filtering && filtered.length > 0 ? (
             <Button
-              variant="outline"
+              variant="link"
               size="sm"
+              className="min-h-6"
               onClick={() =>
-                downloadCsv("products.csv", tableCsv(filtered, COLUMNS))
+                setState({ ...state, q: "", filters: {}, offset: 0 })
               }
             >
-              <Download aria-hidden />
-              Export CSV
+              Clear filters
             </Button>
-          }
-          onClearAll={
-            filtering
-              ? () => setState({ ...state, q: "", filters: {}, offset: 0 })
-              : undefined
-          }
-        />
+          ) : null}
+        </div>
       ) : null}
       {loading ? (
         <ul
