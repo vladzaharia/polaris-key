@@ -9,7 +9,7 @@
  *
  * Not part of `pnpm test` (it needs Chromium): run it as
  *   PKEY_DOCS_BROWSER=1 _lead/heavy.sh pnpm --filter @polaris-key/worker exec vitest run docsSearchBrowser
- * Skips when the docs dist is absent.
+ * Without the flag it skips; with the flag and no docs dist it fails (CI job help-search).
  */
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -23,7 +23,11 @@ import { makeEnv, NOW } from "./seed.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const dist = join(here, "..", "..", "docs", "dist");
-const enabled = process.env.PKEY_DOCS_BROWSER === "1" && existsSync(dist);
+const requested = process.env.PKEY_DOCS_BROWSER === "1";
+// Requested without a docs dist is a failure (CI), never a silent skip.
+const enabled = requested && existsSync(dist);
+if (requested && !existsSync(dist))
+  throw new Error(`PKEY_DOCS_BROWSER=1 but the docs dist is missing: ${dist}`);
 
 const TYPES: Record<string, string> = {
   ".html": "text/html; charset=utf-8",

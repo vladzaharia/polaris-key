@@ -102,9 +102,11 @@ describe("the hosted passport stylesheet", () => {
     expect(rule).toContain("object-fit:cover");
   });
 
-  it("anchors the receipt at the pane's foot (no void) and handles forced colours", () => {
+  it("anchors the receipt at the pane's foot, keeps the device line with the pane text, and handles forced colours", () => {
     expect(rule).toContain("main.ac-wide .ac-foot{grid-column:1;grid-row:2;");
-    expect(rule).toContain(".ac-pass-where{margin-top:auto;");
+    // Minor 14: "on <device>" sits under the name and developer, not pushed to the foot.
+    expect(rule).toContain(".ac-pass-where{margin-top:.25rem;");
+    expect(rule).not.toContain("ac-pass-where{margin-top:auto");
     expect(rule).toContain(".ac-art+img,.ac-art+.ac-mono{margin-top:-1.75rem");
     expect(BRAND_PAGE_CSS_LOCKER).toContain(
       "@media (forced-colors: active){main.ac-wide .ac-passport",

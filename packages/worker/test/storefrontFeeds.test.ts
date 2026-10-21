@@ -2030,6 +2030,24 @@ describe("storefront feeds: the customer host", () => {
       expect((await key.text()).includes(CUSTOMER)).toBe(false);
     });
 
+  it("an AltStore source keeps one identifier on both hosts: the console-host one subscribers already have", async () => {
+    const w = await setup({ blobOrigin: BYTES });
+    for (const [path, area] of [
+      ["altstore/stable/source.json", "altstore"],
+      ["altstore-pal/stable/source.json", "altstore-pal"],
+    ] as const) {
+      const key = (await (await on(w, CONSOLE, path)).json()) as {
+        identifier: string;
+      };
+      const locker = (await (await on(w, CUSTOMER, path)).json()) as {
+        identifier: string;
+      };
+      // The value before the customer host served feeds: reversed console host.
+      expect(key.identifier).toBe(`test.example.key.${SLUG}.${area}.stable`);
+      expect(locker.identifier).toBe(key.identifier);
+    }
+  });
+
   it("the F-Droid relay is a feed read too, and HEAD works", async () => {
     const w = await setup({ blobOrigin: BYTES });
     const head = await on(w, CUSTOMER, "scoop/stable.json", {
