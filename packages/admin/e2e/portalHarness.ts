@@ -120,6 +120,8 @@ export interface OpenOptions {
    * portal offers a visitor on one (the focused download's Email me the download, PX-29).
    */
   userAgent?: string;
+  /** A touch screen: `(pointer: coarse)` matches, so the coarse-pointer target sizes apply. */
+  hasTouch?: boolean;
 }
 
 export interface PortalHarness {
@@ -162,6 +164,7 @@ export async function startPortal(): Promise<PortalHarness> {
       forcedColors: opts.forcedColors ?? "none",
       contrast: opts.contrast ?? "no-preference",
       userAgent: opts.userAgent ?? USER_AGENT,
+      hasTouch: opts.hasTouch ?? false,
       locale: "en-US",
       timezoneId: "UTC",
       reducedMotion: opts.reducedMotion ?? "reduce",
