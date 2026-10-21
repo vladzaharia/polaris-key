@@ -149,6 +149,7 @@ export function baseCrumbs(
   page: PageId | null,
   route: Route,
   product: ProductLike | null,
+  platform = true,
 ): { crumbs: MastheadCrumb[]; chip: "product" | "service" | "platform" } {
   if (route.kind === "product" && page && isProductPage(page)) {
     const slug = route.slug;
@@ -180,8 +181,12 @@ export function baseCrumbs(
     return { crumbs: [{ label: "Platform" }], chip: "platform" };
   }
   if (page === "home") {
-    // products.home: the Pinned K chip and "Platform", the h1 is Home.
-    return { crumbs: [{ label: "Platform" }], chip: "platform" };
+    // products.home: the Pinned K chip and "Platform", the h1 is Home. A member without the
+    // Platform area is not in "Platform" (the switcher calls their context "All products").
+    return {
+      crumbs: platform ? [{ label: "Platform" }] : [],
+      chip: "platform",
+    };
   }
   if (page) {
     return {
@@ -198,13 +203,16 @@ export function mastheadValue({
   page,
   accent,
   product,
+  platform = true,
 }: {
   route: Route;
   page: PageId | null;
   accent: ServiceAccent;
   product: ProductLike | null;
+  /** The member holds the Platform area (default: yes). */
+  platform?: boolean;
 }): MastheadValue {
-  const { crumbs, chip } = baseCrumbs(page, route, product);
+  const { crumbs, chip } = baseCrumbs(page, route, product, platform);
   const tileKind = page ? pageOf(page).tile : undefined;
   const hasTile =
     tileKind !== undefined && (tileKind === "service" || product !== null);

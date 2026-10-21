@@ -747,6 +747,15 @@ describe("the mobile drawer (SH-2)", () => {
       expect(screen.queryByRole("dialog", { name: "Navigation" })).toBeNull(),
     );
     expect(screen.getByRole("main").closest("[aria-hidden='true']")).toBeNull();
+    // B-007: the top-bar button is `lg:hidden` now; focus goes to the desktop sidebar's current
+    // link (else the content), never <body>.
+    await waitFor(() => {
+      const active = document.activeElement;
+      expect(active).not.toBe(document.body);
+      expect(
+        active?.closest("aside") !== null || active?.id === "content",
+      ).toBe(true);
+    });
   });
 
   it("closes when a link is followed", async () => {
@@ -781,13 +790,33 @@ describe("state pages (T8)", () => {
     ).toBe("#/p/djdl/settings/features");
   });
 
+  it("B-014: Commerce Overview shows its own off view, not the shell's service-off page", async () => {
+    const stores = { configured: false, credential: null, reason: null };
+    boot("#/p/djdl/commerce", {
+      services: { ...ALL_ON, commerce: { enabled: false } },
+      extra: {
+        "/manage/api/products/djdl/commerce": {
+          licenseEnabled: true,
+          setup: { "app-store": stores, play: stores, steam: stores },
+          products: [],
+          purchases: [],
+        },
+      },
+    });
+    expect(
+      await screen.findByText("Commerce is off for this product"),
+    ).toBeTruthy();
+    expect(screen.queryByText(/is off for DJDL\./)).toBeNull();
+    expect(
+      screen.getByRole("link", { name: "Open Features" }).getAttribute("href"),
+    ).toBe("#/p/djdl/settings/features");
+  });
+
   it("gates a record deep link on its collection's section", async () => {
     boot("#/p/djdl/license/licenses/lic_1", {
       services: { ...ALL_ON, license: { enabled: false } },
     });
-    expect(
-      await screen.findByText("Licensing is off for DJDL."),
-    ).toBeTruthy();
+    expect(await screen.findByText("Licensing is off for DJDL.")).toBeTruthy();
   });
 
   it("an unknown product suggests the closest slugs and the registry", async () => {

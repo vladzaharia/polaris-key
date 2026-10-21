@@ -520,12 +520,15 @@ function SidebarGroup({
       <Collapsible.Trigger asChild>
         <button
           type="button"
+          id={`${contentId}-header`}
           aria-controls={contentId}
           aria-disabled={active || undefined}
           data-section-header={groupKey}
           title={active ? "Contains the current page" : undefined}
           className={cn(
             "group flex min-h-10 w-full items-center gap-2 rounded-md py-1 pl-2 pr-2 text-left text-sm font-medium",
+            // Forced colours draw a button as a bordered box; the header is a row, not a control box.
+            "forced-colors:border-0",
             "text-fg-strong hover:bg-accent-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent-fg",
             active && "cursor-default hover:bg-transparent",
           )}
@@ -552,7 +555,12 @@ function SidebarGroup({
         id={contentId}
         className="overflow-hidden data-[state=closed]:animate-pk-collapse-up data-[state=open]:animate-pk-collapse-down motion-reduce:animate-none"
       >
-        <ul className="flex flex-col gap-0.5 pt-1">{items}</ul>
+        <ul
+          aria-labelledby={`${contentId}-header`}
+          className="flex flex-col gap-0.5 pt-1"
+        >
+          {items}
+        </ul>
       </Collapsible.Content>
     </Collapsible.Root>
   );

@@ -118,7 +118,9 @@ describe("admin SPA", () => {
     ).toBeTruthy();
     expect(window.location.hash).toBe("#/products");
     // B-012: a signpost, not the not-found search glyph.
-    expect(document.querySelector("[data-empty=moved] svg.lucide-signpost")).toBeTruthy();
+    expect(
+      document.querySelector("[data-empty=moved] svg.lucide-signpost"),
+    ).toBeTruthy();
     expect(document.querySelector("svg.lucide-search-x")).toBeNull();
     expect(
       screen.getByRole("link", { name: "Go to Home" }).getAttribute("href"),

@@ -29,11 +29,11 @@ import { ProductLogo } from "../../../../ui/ProductLogo.js";
 import { DeleteProductDialog } from "../../../components/DeleteProductDialog.js";
 import { useResyncFlow } from "../../../components/ResyncDialog.js";
 import { navigate, Link } from "../../../router.js";
-import { r } from "../../../routes.js";
+import { productPage, r } from "../../../routes.js";
 import { readPref, writePref, PREF_KEYS } from "../../../storage.js";
 import { useMediaQuery } from "../../../../ui/data-table/DataTable.js";
 import { useTableUrlState } from "../../../useTableUrlState.js";
-import { useCanOpenHref } from "../../../access/context.js";
+import { useCanOpenHref, useLandingPage } from "../../../access/context.js";
 import {
   filterHomeRows,
   HOME_FACETS,
@@ -300,6 +300,7 @@ export function ProductShelf({
     facets: HOME_FACETS,
   });
   const canOpenHref = useCanOpenHref();
+  const landing = useLandingPage();
   const filtered = React.useMemo(
     () =>
       filterHomeRows(
@@ -482,7 +483,12 @@ export function ProductShelf({
           columns={COLUMNS}
           getRowId={(row) => row.slug}
           rowLabel={(row) => row.name}
-          rowHref={(row) => r.overview(row.slug)}
+          rowHref={(row) =>
+            productPage(
+              row.slug,
+              landing(row.slug, row.product.services ?? null),
+            )
+          }
           linkComponent={Link}
           rowActions={rowActions}
           state={state}

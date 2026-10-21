@@ -9,7 +9,14 @@
  */
 
 import type { AreaId, Me, MeRole } from "../../api.js";
-import type { GlobalPageId, PageId, ProductPageId } from "../nav.js";
+import {
+  PRODUCT_PAGES,
+  isPageEnabled,
+  type GlobalPageId,
+  type PageId,
+  type ProductPageId,
+  type ServiceState,
+} from "../nav.js";
 import { parseLocation } from "../routes.js";
 
 export type { AreaId };
@@ -150,6 +157,26 @@ export function canOpenPage(
 ): boolean {
   const area = areaOfPage(page);
   return canIn(me, area, isPlatformArea(area) ? null : slug);
+}
+
+/**
+ * Where a product link should land for this member (B-016): its Overview when they can open it,
+ * else the first page of the product they can (a member narrowed to Licensing lands on Licenses).
+ * Falls back to Overview, whose own no-access page then says who can help.
+ */
+export function landingPage(
+  me: Me | undefined,
+  slug: string,
+  services: ServiceState = null,
+): ProductPageId {
+  if (canOpenPage(me, "overview", slug)) return "overview";
+  const first = PRODUCT_PAGES.find(
+    (p) =>
+      p.inNav &&
+      isPageEnabled(p.page as ProductPageId, services) &&
+      canOpenPage(me, p.page, slug),
+  );
+  return (first?.page as ProductPageId | undefined) ?? "overview";
 }
 
 /** Can the member open what this console href names? Anything that is not a page passes. */

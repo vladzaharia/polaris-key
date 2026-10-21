@@ -70,6 +70,8 @@ export interface PaletteItem {
    * A right-aligned issue pill (EXPERIENCE.md §7: pills only for issues). Entity rows (UX-06b)
    * carry one when the thing they name has a problem; healthy rows carry none.
    */
+  /** A "See all N" row: the group shows `shown` of `total` rows (the count says so, and skips this row). */
+  capped?: { shown: number; total: number; noun: string };
   issue?: { tone: "danger" | "warning"; label: string };
   product?: ProductLike;
 }

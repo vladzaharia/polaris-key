@@ -57,9 +57,15 @@ import { TopBar } from "./TopBar.js";
 import { mastheadValue } from "./Masthead.js";
 import { MastheadContext } from "../../ui/Masthead.js";
 import { mutate } from "../../console/data/mutations.js";
-import { areaOfPage, canIn, canOpenHref, canOpenPage } from "../access/can.js";
+import {
+  areaOfPage,
+  canIn,
+  canOpenHref,
+  canOpenPage,
+  landingPage,
+} from "../access/can.js";
 import { NoAccessPage } from "../access/NoAccessPage.js";
-import { HrefAccess } from "../access/context.js";
+import { HrefAccess, LandingAccess } from "../access/context.js";
 
 /** The Platform section's pages: one lazy chunk (notes/S-13 §9.1). */
 const PlatformPages = React.lazy(() => import("../sections/platform/index.js"));
@@ -251,8 +257,15 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
     return () => root.removeAttribute("data-shell");
   }, []);
   const masthead = React.useMemo(
-    () => mastheadValue({ route, page, accent, product }),
-    [route, page, accent, product],
+    () =>
+      mastheadValue({
+        route,
+        page,
+        accent,
+        product,
+        platform: canIn(me, "platform"),
+      }),
+    [route, page, accent, product, me],
   );
 
   // A page the member's role does not include renders NoAccessPage, so its title says so.
@@ -297,6 +310,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
   }, [openPalette]);
   const [sheetOpen, setSheetOpen] = React.useState(false);
   const [switcherOpen, setSwitcherOpen] = React.useState(false);
+  const switcherOpener = React.useRef<HTMLElement | null>(null);
   // The drawer's own switcher, for `g p` below the desktop breakpoint.
   const [drawerSwitcherOpen, setDrawerSwitcherOpen] = React.useState(false);
   drawerSwitcherRef.current = drawerSwitcherOpen;
@@ -360,8 +374,11 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
         const desktop =
           typeof window.matchMedia !== "function" ||
           window.matchMedia(DESKTOP_QUERY).matches;
-        if (desktop) setSwitcherOpen(true);
-        else {
+        if (desktop) {
+          // Escape from the switcher goes back to where `g p` was pressed (B-006).
+          switcherOpener.current = document.activeElement as HTMLElement | null;
+          setSwitcherOpen(true);
+        } else {
           // The desktop sidebar is hidden here: open the drawer with its switcher.
           setNavOpen(true);
           setDrawerSwitcherOpen(true);
@@ -386,6 +403,13 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
     [me],
   );
 
+  // Where a link to a product opens for this member: Overview, unless their role is narrowed.
+  const landing = React.useCallback(
+    (productSlug: string, svc: ServiceState) =>
+      landingPage(me, productSlug, svc),
+    [me],
+  );
+
   const signOut = (): void => {
     void mutate("logout").finally(() => {
       window.location.href = "/manage/login?signedOut=1";
@@ -394,7 +418,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
 
   const paletteItems = [
     ...navigationSource(slug, productName, services, features),
-    ...productSource(productList),
+    ...productSource(productList, landing),
   ];
 
   const sidebarProps = {
@@ -415,157 +439,174 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
     current: slug ? product : null,
     page: switcherPage,
     platform: canIn(me, "platform"),
+    returnFocusTo: switcherOpener,
   };
 
   return (
     <HrefAccess.Provider value={canOpenHrefForMe}>
-      <TooltipProvider delayDuration={300}>
-        <>
-          <div
-            data-service={accent}
-            style={
-              {
-                "--sidebar-w": rail ? "3.5rem" : "15rem",
-              } as React.CSSProperties
-            }
-            className="relative grid h-dvh grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)] overflow-hidden bg-surface-page text-fg lg:grid-cols-[var(--sidebar-w)_minmax(0,1fr)]"
-          >
-            <a
-              href="#content"
-              onClick={(e) => {
-                e.preventDefault();
-                document.getElementById("content")?.focus();
-              }}
-              className="sr-only z-50 rounded-md bg-surface-overlay px-3 py-2 text-sm font-medium focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:ring-2 focus:ring-focus"
-            >
-              Skip to content
-            </a>
-            <TopBar
-              className="lg:col-span-2"
-              me={me}
-              section={accent}
-              navOpen={navOpen}
-              docsHref={page ? docsFor(page) : "/docs/admin/"}
-              onOpenPalette={() => openPalette()}
-              onOpenNav={() => setNavOpen(true)}
-              onShortcuts={() => setSheetOpen(true)}
-              onSignOut={signOut}
-              version={version.data ?? null}
-            />
-            <aside className="hidden min-h-0 flex-col bg-surface-page lg:flex">
-              <Sidebar
-                {...sidebarProps}
-                switcher={{
-                  ...switcherContext,
-                  open: switcherOpen,
-                  onOpenChange: setSwitcherOpen,
-                }}
-                rail={rail}
-                onToggleRail={toggleRail}
-                idPrefix="sidebar"
-              />
-            </aside>
-            <main
-              id="content"
-              tabIndex={-1}
-              // The phone drawer is modal: the page behind it is inert while it is open.
-              inert={navOpen || undefined}
-              data-canvas=""
+      <LandingAccess.Provider value={landing}>
+        <TooltipProvider delayDuration={300}>
+          <>
+            <div
               data-service={accent}
-              // The canvas (B4): raised, with a 3 px rule in the page's accent along its top edge.
-              // From 1024 px it is inset 16 px from the window's end and bottom and rounded 18 px;
-              // below that it runs edge to edge. Flat: no glow, wash or gradient.
-              className="relative min-h-0 overflow-y-auto border-t-[3px] border-accent bg-surface-raised outline-hidden pk-scroll lg:mb-4 lg:mr-4 lg:rounded-[18px] lg:border lg:border-t-[3px] lg:border-border lg:border-t-accent"
+              style={
+                {
+                  "--sidebar-w": rail ? "3.5rem" : "15rem",
+                } as React.CSSProperties
+              }
+              className="relative grid h-dvh grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)] overflow-hidden bg-surface-page text-fg lg:grid-cols-[var(--sidebar-w)_minmax(0,1fr)]"
             >
-              <div
-                data-service={accent}
-                className="mx-auto w-full max-w-[110rem] px-4 py-4 sm:px-6"
-              >
-                <MastheadContext.Provider value={masthead}>
-                  <PageContent
-                    key={key}
-                    route={route}
-                    me={me}
-                    knownProduct={knownProduct}
-                    services={services}
-                    productName={productName ?? routeSlug ?? ""}
-                    onOpenPalette={openPalette}
-                  />
-                </MastheadContext.Provider>
-              </div>
-            </main>
-          </div>
-
-          <DialogPrimitive.Root open={navOpen} onOpenChange={setNavOpen}>
-            <DialogPrimitive.Portal>
-              <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-black/50 animate-pk-overlay-in lg:hidden" />
-              <DialogPrimitive.Content
-                ref={drawerRef}
-                aria-describedby={undefined}
-                onOpenAutoFocus={(e) => {
-                  // Opening moves focus to the first item, not the close button.
+              <a
+                href="#content"
+                onClick={(e) => {
                   e.preventDefault();
-                  // Opened for `g p`: the switcher's popover takes focus, not the list.
-                  if (drawerSwitcherRef.current) return;
-                  const content = drawerRef.current;
-                  if (!content) return;
-                  // The current row when there is one (the list is already scrolled to it),
-                  // else the first; never scrolled away from it.
-                  (
-                    content.querySelector<HTMLElement>(
-                      "[data-nav-list] [aria-current=page]",
-                    ) ??
-                    content.querySelector<HTMLElement>("[data-nav-list] a") ??
-                    content.querySelector<HTMLElement>("button")
-                  )?.focus({ preventScroll: true });
+                  document.getElementById("content")?.focus();
                 }}
-                onCloseAutoFocus={(e) => {
-                  // The drawer is opened from the top bar, not a Radix trigger: hand focus back,
-                  // unless the route changed: then the page heading has focus.
-                  e.preventDefault();
-                  if (openedAt.current !== keyRef.current) return;
-                  document.getElementById(NAV_BUTTON_ID)?.focus();
-                }}
-                className="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col border-r border-border bg-surface-page pt-[env(safe-area-inset-top,0px)] shadow-elevation-3 animate-pk-in pk-nav-drawer lg:hidden"
+                className="sr-only z-50 rounded-md bg-surface-overlay px-3 py-2 text-sm font-medium focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:ring-2 focus:ring-focus"
               >
-                <div className="flex h-14 shrink-0 items-center justify-between border-b border-border px-4">
-                  <DialogPrimitive.Title className="text-sm font-semibold text-fg-strong">
-                    Navigation
-                  </DialogPrimitive.Title>
-                  <DialogPrimitive.Close
-                    aria-label="Close navigation"
-                    className="rounded-md p-1.5 text-fg-muted hover:bg-hover hover:text-fg-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
-                  >
-                    <X aria-hidden className="size-4" />
-                  </DialogPrimitive.Close>
-                </div>
+                Skip to content
+              </a>
+              <TopBar
+                className="lg:col-span-2"
+                me={me}
+                section={accent}
+                navOpen={navOpen}
+                docsHref={page ? docsFor(page) : "/docs/admin/"}
+                onOpenPalette={() => openPalette()}
+                onOpenNav={() => setNavOpen(true)}
+                onShortcuts={() => setSheetOpen(true)}
+                onSignOut={signOut}
+                version={version.data ?? null}
+              />
+              <aside className="hidden min-h-0 flex-col bg-surface-page lg:flex">
                 <Sidebar
                   {...sidebarProps}
                   switcher={{
                     ...switcherContext,
-                    open: drawerSwitcherOpen,
-                    onOpenChange: setDrawerSwitcherOpen,
-                    onNavigate: () => setNavOpen(false),
+                    open: switcherOpen,
+                    onOpenChange: setSwitcherOpen,
                   }}
-                  idPrefix="drawer"
-                  onNavigate={() => setNavOpen(false)}
+                  rail={rail}
+                  onToggleRail={toggleRail}
+                  idPrefix="sidebar"
                 />
-              </DialogPrimitive.Content>
-            </DialogPrimitive.Portal>
-          </DialogPrimitive.Root>
+              </aside>
+              <main
+                id="content"
+                tabIndex={-1}
+                // The phone drawer is modal: the page behind it is inert while it is open.
+                inert={navOpen || undefined}
+                data-canvas=""
+                data-service={accent}
+                // The canvas (B4): raised, with a 3 px rule in the page's accent along its top edge.
+                // From 1024 px it is inset 16 px from the window's end and bottom and rounded 18 px;
+                // below that it runs edge to edge. Flat: no glow, wash or gradient.
+                className="relative min-h-0 overflow-y-auto border-t-[3px] border-accent bg-surface-raised outline-hidden pk-scroll lg:mb-4 lg:mr-4 lg:rounded-[18px] lg:border lg:border-t-[3px] lg:border-border lg:border-t-accent"
+              >
+                <div
+                  data-service={accent}
+                  className="mx-auto w-full max-w-[110rem] px-4 py-4 sm:px-6"
+                >
+                  <MastheadContext.Provider value={masthead}>
+                    <PageContent
+                      key={key}
+                      route={route}
+                      me={me}
+                      knownProduct={knownProduct}
+                      services={services}
+                      productName={productName ?? routeSlug ?? ""}
+                      onOpenPalette={openPalette}
+                    />
+                  </MastheadContext.Provider>
+                </div>
+              </main>
+            </div>
 
-          <CommandPalette
-            me={me}
-            open={paletteOpen}
-            onOpenChange={setPaletteOpen}
-            initialQuery={paletteQuery}
-            items={paletteItems}
-          />
-          <ShortcutSheet open={sheetOpen} onOpenChange={setSheetOpen} />
-          <LiveRegion message={announcement} id="route-announcer" />
-          <Announcer />
-        </>
-      </TooltipProvider>
+            <DialogPrimitive.Root open={navOpen} onOpenChange={setNavOpen}>
+              <DialogPrimitive.Portal>
+                <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-black/50 animate-pk-overlay-in lg:hidden" />
+                <DialogPrimitive.Content
+                  ref={drawerRef}
+                  aria-describedby={undefined}
+                  onOpenAutoFocus={(e) => {
+                    // Opening moves focus to the first item, not the close button.
+                    e.preventDefault();
+                    // Opened for `g p`: the switcher's popover takes focus, not the list.
+                    if (drawerSwitcherRef.current) return;
+                    const content = drawerRef.current;
+                    if (!content) return;
+                    // The current row when there is one (the list is already scrolled to it),
+                    // else the first; never scrolled away from it.
+                    (
+                      content.querySelector<HTMLElement>(
+                        "[data-nav-list] [aria-current=page]",
+                      ) ??
+                      content.querySelector<HTMLElement>("[data-nav-list] a") ??
+                      content.querySelector<HTMLElement>("button")
+                    )?.focus({ preventScroll: true });
+                  }}
+                  onCloseAutoFocus={(e) => {
+                    // The drawer is opened from the top bar, not a Radix trigger: hand focus back,
+                    // unless the route changed: then the page heading has focus.
+                    e.preventDefault();
+                    if (openedAt.current !== keyRef.current) return;
+                    const button = document.getElementById(NAV_BUTTON_ID);
+                    // Widened past the drawer: the button is `lg:hidden`, so focus would drop to
+                    // <body>. The desktop sidebar's current link (else the content) takes it.
+                    const desktop =
+                      typeof window.matchMedia === "function" &&
+                      window.matchMedia(DESKTOP_QUERY).matches;
+                    if (!button || desktop) {
+                      (
+                        document.querySelector<HTMLElement>(
+                          "aside [data-nav-list] [aria-current=page]",
+                        ) ?? document.getElementById("content")
+                      )?.focus({ preventScroll: true });
+                      return;
+                    }
+                    button.focus();
+                  }}
+                  className="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col border-r border-border bg-surface-page pt-[env(safe-area-inset-top,0px)] shadow-elevation-3 animate-pk-in pk-nav-drawer lg:hidden"
+                >
+                  <div className="flex h-14 shrink-0 items-center justify-between border-b border-border px-4">
+                    <DialogPrimitive.Title className="text-sm font-semibold text-fg-strong">
+                      Navigation
+                    </DialogPrimitive.Title>
+                    <DialogPrimitive.Close
+                      aria-label="Close navigation"
+                      className="rounded-md p-1.5 text-fg-muted hover:bg-hover hover:text-fg-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+                    >
+                      <X aria-hidden className="size-4" />
+                    </DialogPrimitive.Close>
+                  </div>
+                  <Sidebar
+                    {...sidebarProps}
+                    switcher={{
+                      ...switcherContext,
+                      open: drawerSwitcherOpen,
+                      onOpenChange: setDrawerSwitcherOpen,
+                      onNavigate: () => setNavOpen(false),
+                    }}
+                    idPrefix="drawer"
+                    onNavigate={() => setNavOpen(false)}
+                  />
+                </DialogPrimitive.Content>
+              </DialogPrimitive.Portal>
+            </DialogPrimitive.Root>
+
+            <CommandPalette
+              me={me}
+              open={paletteOpen}
+              onOpenChange={setPaletteOpen}
+              initialQuery={paletteQuery}
+              items={paletteItems}
+            />
+            <ShortcutSheet open={sheetOpen} onOpenChange={setSheetOpen} />
+            <LiveRegion message={announcement} id="route-announcer" />
+            <Announcer />
+          </>
+        </TooltipProvider>
+      </LandingAccess.Provider>
     </HrefAccess.Provider>
   );
 }
@@ -704,7 +745,13 @@ function PageContent({
     );
   }
   const section = sectionOf(route.page)!;
-  if (!isPageEnabled(route.page, services)) {
+  // Commerce Overview draws its own off view: it still lists the storefronts and the store
+  // purchases that arrive while Commerce is off (the Attention state), so the shell does not
+  // replace it with the generic page.
+  if (
+    route.page !== "commerce-overview" &&
+    !isPageEnabled(route.page, services)
+  ) {
     return (
       <ServiceOffPage
         section={section}

@@ -55,6 +55,20 @@ function usePaletteContext(me: Me): PaletteContext {
   };
 }
 
+/** `value`, settled: it follows after `ms`, and clearing it is immediate. */
+function useDebounced(value: string, ms: number): string {
+  const [settled, setSettled] = React.useState(value);
+  React.useEffect(() => {
+    if (value === "") {
+      setSettled("");
+      return;
+    }
+    const t = window.setTimeout(() => setSettled(value), ms);
+    return () => window.clearTimeout(t);
+  }, [value, ms]);
+  return settled;
+}
+
 /** Open a console hash in a new tab (⌘↵ / Ctrl+↵ on a row that goes somewhere). */
 function openInNewTab(href: string): void {
   window.open(
@@ -131,11 +145,54 @@ export function CommandPalette({
   const recents = resolveRecents(recentIds, items, ctx.products);
   const groups = rankPalette(items, recents, query, PALETTE_GROUPS);
   const count = groups.reduce((n, g) => n + g.items.length, 0);
+  // The announced count is of results, not of the "See all" row, and says when a group is capped.
+  const cappedRow = groups.flatMap((g) => g.items).find((i) => i.capped);
+  const results = count - (cappedRow ? 1 : 0);
+  const announced = !open
+    ? ""
+    : count === 0
+      ? "No results"
+      : `${results} result${results === 1 ? "" : "s"}${
+          cappedRow?.capped
+            ? `, ${cappedRow.capped.shown} of ${cappedRow.capped.total} ${cappedRow.capped.noun}`
+            : ""
+        }`;
+  // Typing re-ranks on every key: announce when the person pauses, not on each letter.
+  const spoken = useDebounced(announced, 500);
   const valueOf = (heading: string, item: PaletteItem): string =>
     `${heading}:${item.id}`;
   const byValue = new Map(
     groups.flatMap((g) => g.items.map((i) => [valueOf(g.heading, i), i])),
   );
+
+  const firstValue = groups[0]
+    ? valueOf(groups[0].heading, groups[0].items[0]!)
+    : undefined;
+
+  // cmdk points the input's `aria-activedescendant` at the selected row's id, but only re-reads it
+  // when the selected *value* changes. Re-ranking can remount the row under the same value (the
+  // list regroups), which leaves the attribute on an id that no longer exists (axe: critical). So
+  // after each render the attribute is set from the row that is selected now.
+  React.useEffect(() => {
+    if (!open) return;
+    const sync = (): void => {
+      const input = inputRef.current;
+      const root = input?.closest("[cmdk-root]");
+      if (!input || !root) return;
+      const row = root.querySelector<HTMLElement>(
+        "[cmdk-item][aria-selected='true']",
+      );
+      // The input and the list both carry the attribute.
+      for (const el of [input, root.querySelector("[cmdk-list]")]) {
+        if (!el) continue;
+        if (row?.id) el.setAttribute("aria-activedescendant", row.id);
+        else el.removeAttribute("aria-activedescendant");
+      }
+    };
+    sync();
+    const frame = requestAnimationFrame(sync);
+    return () => cancelAnimationFrame(frame);
+  });
 
   /** Go to a hash; a jump to the one already shown lands on its target again. */
   const go = (href: string): void => {
@@ -201,7 +258,9 @@ export function CommandPalette({
               label="Search or jump to"
               shouldFilter={false}
               loop
-              value={selected}
+              // A selection the new ranking dropped would leave `aria-activedescendant` on a row
+              // that no longer exists: fall back to the first row of what is shown (B-003).
+              value={byValue.has(selected) ? selected : (firstValue ?? "")}
               onValueChange={setSelected}
               // Ctrl+K is the palette toggle here, not cmdk's vim "previous item".
               vimBindings={false}
@@ -230,11 +289,10 @@ export function CommandPalette({
               </div>
               <Command.List
                 label="Results"
+                // An empty listbox fails axe (aria-required-children): the message sits beside it.
+                hidden={count === 0}
                 className="min-h-0 flex-1 overflow-y-auto p-1 sm:max-h-[min(60vh,26rem)] sm:flex-none"
               >
-                <Command.Empty className="px-3 py-6 text-center text-sm text-fg-muted">
-                  Nothing matches “{query.trim()}”.
-                </Command.Empty>
                 {groups.map((g) => (
                   <Command.Group
                     key={g.heading}
@@ -295,6 +353,11 @@ export function CommandPalette({
                   </Command.Group>
                 ))}
               </Command.List>
+              {count === 0 ? (
+                <p className="px-3 py-6 text-center text-sm text-fg-muted">
+                  Nothing matches “{query.trim()}”.
+                </p>
+              ) : null}
             </Command>
             <div
               aria-hidden
@@ -313,15 +376,7 @@ export function CommandPalette({
                 close
               </span>
             </div>
-            <LiveRegion
-              message={
-                open
-                  ? count === 0
-                    ? "No results"
-                    : `${count} result${count === 1 ? "" : "s"}`
-                  : ""
-              }
-            />
+            <LiveRegion message={spoken} />
           </DialogPrimitive.Content>
         </DialogPrimitive.Portal>
       </DialogPrimitive.Root>

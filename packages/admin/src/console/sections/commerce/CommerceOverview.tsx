@@ -106,7 +106,7 @@ export function CommerceOverviewPage({
             description="Purchases are not claimed and store refunds do not land. It needs Licensing."
             primaryAction={
               <Link to={r.services(slug)} className={LINK}>
-                Open Services
+                Open Features
               </Link>
             }
           />
