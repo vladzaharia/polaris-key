@@ -683,7 +683,7 @@ export const SHIPPED: ShippedState[] = [
     scenario: "signedOut",
     path: "/",
     routes: { "/api/capabilities": "abort" },
-    ready: (p) => h1(p, "Can't reach Polaris Locker"),
+    ready: (p) => h1(p, "Can't connect"),
   },
   // §4.1 Where the address goes (I-30; mockup identity.sign-in-routes pins 1 and 2).
   {
@@ -1720,7 +1720,7 @@ export const SHIPPED: ShippedState[] = [
     routes: profileRoutes(PROFILE_BORN),
     ready: async (p) => {
       await h1(p, "Account");
-      await p.getByText("Born February 28, 1987").waitFor();
+      await p.getByText("Born Feb 28, 1987").waitFor();
       await p.getByRole("button", { name: "Edit profile" }).click();
       await p.getByRole("button", { name: "Remove birth date" }).waitFor();
     },
@@ -1774,11 +1774,11 @@ export const SHIPPED: ShippedState[] = [
   {
     section: "4.28",
     id: "boot-unreachable",
-    title: "Can't reach Polaris Locker",
+    title: "Can't connect",
     scenario: "three",
     path: "/",
     routes: { "/api/me": "abort" },
-    ready: (p) => h1(p, "Can't reach Polaris Locker"),
+    ready: (p) => h1(p, "Can't connect"),
   },
   {
     section: "4.28",

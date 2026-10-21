@@ -144,16 +144,17 @@ Reconciled against main in the 2026-10-16 audit. Remaining:
 
 ## Progress and continuation (2026-10-21)
 
-Done in the close-out:
+Closed:
 
-- One customer date format, "Sep 14, 2026" (`portal/date.ts`: `formatDay`, `formatDayTime`; en-US by default, any catalog locale accepted). Every portal date goes through it; `test/portalDates.test.ts` fails on any other `Intl.DateTimeFormat` or `dateStyle` in `src/portal`. Date assertions updated.
-- New `locker.*` namespace (78 keys, nine locales): Account section labels, Appearance, the delete-account box, Library page, toolbar, empty and list headers, Discover page, and the download refusals Polaris Locker words itself.
-- Portal-only namespaces (`profile`, `yourData`, `license`, `getIt`, `locker`; `PORTAL_NAMESPACES` in `kit-copy.ts`) now generate to `@polaris-key/brand/kit-copy/portal` and to no SDK, terminal or native table, so catalog growth no longer reaches the React gate bundle.
-- Browser errors read `core.codes.*` (network, forbidden, not_found, rate_limited, step_up_required, not_entitled, unknown); only the signed-out and download-refusal wording is the portal's own.
+- One customer date format, "Sep 14, 2026" (`portal/date.ts`: `formatDay`, `formatDayTime`; en-US by default, any catalog locale accepted). Every portal date goes through it; `test/portalDates.test.ts` fails on any other `Intl.DateTimeFormat` or `dateStyle` in `src/portal`.
+- Every customer-facing portal string is in the kit copy catalog, in all nine locales: the `locker.*` namespace (about 500 keys) plus `profile.*`, `yourData.*`, `license.*` and `getIt.*`. What stays literal is proper names (Apple, Google, Steam, passkey providers, Intel), CSS and code. The portal copy lint passes without a ledger.
+- The portal-only namespaces (`PORTAL_NAMESPACES` in `kit-copy.ts`) generate to `@polaris-key/brand/kit-copy/portal` and to no SDK, terminal or native table.
+- Browser errors read `core.codes.*` wherever a code exists (network, forbidden, not_found, rate_limited, step_up_required, not_entitled, unknown); the signed-out wording and three download refusals stay the portal's own (`locker.error.*`). `portalErrorCopy` returns `line`, the one-line form.
+- The ui-qa portal board: `e2e/portalBoard.e2e.test.ts` lints every `SHIPPED` state, dark and light at 1440 px, with ui-qa's in-page lint (the rules about what a person sees; the kit-CSS rules do not fit the site's Tailwind layer). 50 findings predate it, in `e2e/portalBoard.debt.json`; the ledger only shrinks.
+
+Wording that changed (portal baselines need re-recording): every date; the browser errors ("Too many attempts", "Can't connect", "Not found", "Not allowed", "Something went wrong"); "Free to use"/"Loading…" headings; "Born Feb 28, 1987".
 
 Remaining:
 
-- Hard-coded customer strings still in components: SignInMethods (~95), PackagesCard (~69), ActivateDialog (~48), FreeDevicePage (~38), StorefrontPage (~34), SessionsCard, StepUp, JumpPalette, DiscoverTile, LibraryHero, ProductMenu, QuickAction, and the sentence builders in `model/library.ts`, `model/discover.ts`, `model/methods.ts`, `model/product.ts`, `model/tileFacts.ts`. Move each into `locker.*` (nine locales), then `pnpm gen brand`.
-- ui-qa portal board over `e2e/portalStates.ts`.
-- Re-record portal baselines through heavy.sh (dates and wording changed).
+- Re-record the portal baselines through heavy.sh.
 - Record the pkey-ux-reviewer BUILT pass.

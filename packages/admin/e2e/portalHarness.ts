@@ -228,7 +228,9 @@ export async function startPortal(): Promise<PortalHarness> {
         return route.fulfill({ status: res.status ?? 200, json: res.body });
       }
       // `/signin` as the Worker answers it (the real handler: the 302 back into the portal).
-      if (url.pathname === "/signin") {
+      // With `?request=` the Worker serves the SPA shell instead (handleSignInEntry answers 404 and
+      // the router dispatches the shell first), so that case falls through to the shell below.
+      if (url.pathname === "/signin" && !url.searchParams.has("request")) {
         requests.push(`${req.method()} ${url.pathname}${url.search}`);
         const out = handleSignInEntry(
           new Request(url, { method: req.method() }),
