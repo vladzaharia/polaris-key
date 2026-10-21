@@ -26,7 +26,7 @@ const ROOTS = [
   "sdks/godot/addons/polaris_key/core/constants_generated.gd",
 ];
 const SKIP = new Set(["node_modules", "build", "dist", ".gradle"]);
-const BAD = /key\.plrs\.im\/(device|tv)\b/;
+const BAD = /key\.plrs\.im\/(device|tv|activate)\b/;
 
 function files(path: string): string[] {
   const s = statSync(path, { throwIfNoEntry: false });
@@ -38,7 +38,7 @@ function files(path: string): string[] {
 }
 
 describe("customer-facing device URL", () => {
-  it("never names key.plrs.im/device or key.plrs.im/tv in kit source or copy", () => {
+  it("never names key.plrs.im/device, /tv or /activate in kit source or copy", () => {
     const hits: string[] = [];
     for (const root of ROOTS) {
       for (const f of files(join(REPO_ROOT, root))) {
@@ -50,9 +50,10 @@ describe("customer-facing device URL", () => {
           });
       }
     }
-    expect(hits, "use polaris.locker/device or /tv (DEVICE_CODE_PAGE)").toEqual(
-      [],
-    );
+    expect(
+      hits,
+      "use polaris.locker/device, /tv or /activate (DEVICE_CODE_PAGE, CUSTOMER_ORIGIN_DEFAULT)",
+    ).toEqual([]);
   });
   it("scans something", () => {
     expect(

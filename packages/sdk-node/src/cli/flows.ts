@@ -18,7 +18,8 @@ import type {
 } from "../identity/client.js";
 import type { ActivationResult } from "../license/endpoints.js";
 import { SDK_NAME, SDK_VERSION } from "../version.js";
-import { Feature } from "../constants.generated.js";
+import { CUSTOMER_ORIGIN_DEFAULT, Feature } from "../constants.generated.js";
+import { DEFAULT_BASE } from "../core/context.js";
 import { getConfig } from "./commands.js";
 import type { KitContext } from "./context.js";
 import { eventLine, EXIT, type CliJsonError, type FlowResult } from "./json.js";
@@ -634,13 +635,19 @@ function deviceLimitRows(
 }
 
 /**
- * The product's page on Polaris Key (where a license is checked, renewed or replaced): the root
- * portal the Worker serves at its own origin, opened on this product. The refusals that carry
- * no `manageUrl` of their own link here.
+ * The product's page where a license is checked, renewed or replaced. The refusals that carry
+ * no `manageUrl` of their own link here. A customer sees Polaris Locker, never the console host:
+ * the server's own link wins when the response carried one; otherwise the platform default base
+ * maps to the customer origin, and a self-hosted base keeps its own host.
  */
-function portalUrl(client: PolarisKeyClient): string {
+export function portalUrl(
+  client: PolarisKeyClient,
+  serverLink?: string | null,
+): string {
+  if (serverLink) return serverLink;
   const base = client.core.baseUrl.replace(/\/+$/, "");
-  return `${base}/activate?product=${encodeURIComponent(client.product)}`;
+  const origin = base === DEFAULT_BASE ? CUSTOMER_ORIGIN_DEFAULT : base;
+  return `${origin}/activate?product=${encodeURIComponent(client.product)}`;
 }
 
 /** A link on a row of its own, kept whole (the device limit's way). */
