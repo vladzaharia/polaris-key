@@ -127,6 +127,28 @@ final class KitRulesTests: XCTestCase {
         XCTAssertNotNil(KitFonts.monoName(.medium))
     }
 
+    // MARK: Boot skeleton (DL7)
+
+    func testBootSkeletonIsStaticUnderReduceMotion() {
+        let still = BootSkeletonModel(reduceMotion: true)
+        XCTAssertEqual(still.shimmerStart(elapsed: 0), BootSkeletonModel.restingStart)
+        XCTAssertEqual(still.shimmerStart(elapsed: 0.9), BootSkeletonModel.restingStart)
+    }
+
+    func testBootShimmerSweepsOnceEachPeriodAndLoops() {
+        let moving = BootSkeletonModel(reduceMotion: false)
+        let p = PolarisKit.Motion.shimmer
+        XCTAssertEqual(moving.shimmerStart(elapsed: 0), -BootSkeletonModel.shimmerWidth, accuracy: 1e-9)
+        XCTAssertEqual(moving.shimmerStart(elapsed: p), -BootSkeletonModel.shimmerWidth, accuracy: 1e-9)
+        XCTAssertGreaterThan(moving.shimmerStart(elapsed: p * 0.99), 0.9)
+    }
+
+    func testBootSkeletonIsTwoBarsAndAnnouncesLoading() {
+        XCTAssertEqual(BootSkeletonModel.bars, [1, 0.7])
+        XCTAssertEqual(BootSkeletonModel.announcement.key, "common.loading")
+        XCTAssertEqual(KitCopy.bundled.message("common.loading", locale: "en")?.hasPrefix("Loading"), true)
+    }
+
     // MARK: Baselines
 
     static var snapshots: URL {
