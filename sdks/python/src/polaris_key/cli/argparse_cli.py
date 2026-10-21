@@ -24,9 +24,10 @@ Consumers can inject the same commands into their own argparse CLI via
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from dataclasses import dataclass
-from typing import Any, Callable, List, Mapping, Optional, Sequence, Union
+from typing import Any, Callable, List, Mapping, NoReturn, Optional, Sequence, Union
 
 from ..ui.core import Copy
 from . import core, mount, verbs
@@ -414,6 +415,15 @@ class GroupedHelpParser(argparse.ArgumentParser):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.register("action", "parsers", _GroupedSubParsers)
+
+    def error(self, message: str) -> NoReturn:  # type: ignore[override]
+        """A mistyped command says so and points at the help, instead of argparse's list of every
+        choice (exit 2, as argparse's own errors)."""
+        m = re.match(r"argument [^:]+: invalid choice: '([^']*)'", message)
+        if m is None:
+            super().error(message)
+        self.print_usage(sys.stderr)
+        self.exit(2, f"{self.prog}: error: '{m.group(1)}' is not a command. Run {self.prog} --help to see them.\n")
 
     def add_subparsers(self, **kwargs: Any) -> "argparse._SubParsersAction":
         kwargs.setdefault("parser_class", VerbHelpParser)

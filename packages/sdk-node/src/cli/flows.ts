@@ -1874,9 +1874,7 @@ export async function updateCheckFlow(
           ]
         : []),
     ];
-    return entries.length
-      ? [...gap(ctx), ...commandRows(ctx, entries)]
-      : [];
+    return entries.length ? [...gap(ctx), ...commandRows(ctx, entries)] : [];
   };
   try {
     if (!client.update.decidable) {
@@ -2938,13 +2936,14 @@ function hiddenRows(
   ctx: KitContext,
   title: string,
   command: string,
+  revealKey: "cli.option.reveal" | "cli.mint.reveal" = "cli.option.reveal",
 ): RailRow[] {
   return [
     stepRow("warn", [{ text: title }]),
     ...commandRows(ctx, [
       {
         label: [{ text: command, style: ["strong"], keep: true }],
-        value: [{ text: ctx.copy.t("cli.option.reveal"), style: ["muted"] }],
+        value: [{ text: ctx.copy.t(revealKey), style: ["muted"] }],
       },
     ]),
     endRow(),
@@ -3024,6 +3023,7 @@ export async function mintFlow(
             ctx,
             ctx.copy.t("cli.mint.hidden"),
             `${ctx.bin} mint ${recipeId} --reveal`,
+            "cli.mint.reveal",
           ),
         )
         .join("\n")}\n`,

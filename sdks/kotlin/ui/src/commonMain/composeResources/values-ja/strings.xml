@@ -1388,6 +1388,12 @@
     <string name="cli_secret_hidden">%1$sは設定されていますが、出力していません</string>
     <!-- Terminal: the mint command without -reveal, as the title of a warning; the command that mints and prints follows as a command row. -->
     <string name="cli_mint_hidden">何も発行していません</string>
+    <!-- Terminal: the label of the command row under the mint warning 'Nothing was minted': running it mints a token and prints it. -->
+    <string name="cli_mint_reveal">トークンを発行して表示</string>
+    <!-- Terminal activate -key-file: the warning title when the file holds no key. The file's path follows under it. -->
+    <string name="cli_keyFile_empty">キーファイルが空です</string>
+    <!-- Terminal activate -key-file: the warning title when the file cannot be read. The file's path follows under it. -->
+    <string name="cli_keyFile_unreadable">キーファイルを読み取れません</string>
     <!-- Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language. -->
     <string name="cli_platform_macos">macOS</string>
     <!-- Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language. -->

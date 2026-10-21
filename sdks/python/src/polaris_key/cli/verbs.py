@@ -113,13 +113,17 @@ def activate(client: Any, ns: Dict[str, Any]) -> CommandResult:
     words = list(ns.get("words") or [])
     t = _term(client, ns, "activate")
     key: Optional[str]
+    warned: List[str] = []
     try:
         key = core.resolve_activation_key(
             words[0] if words else None,
             key_file=ns.get("key_file"),
             key_stdin=bool(ns.get("key_stdin")),
             stdin=_NoPrompt(),
+            # The shell-history warning is drawn by the kit, under the header (not above it).
+            warn=warned.append,
         )
+        t.kit.argv_key = bool(warned)
     except ValueError as e:
         if ns.get("key_file"):
             return _done(_flows().key_file_problem(t, str(ns["key_file"]), empty=True), ns)

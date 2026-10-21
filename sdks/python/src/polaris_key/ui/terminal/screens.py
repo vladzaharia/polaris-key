@@ -250,6 +250,7 @@ def key_entry(
     body: Lines = []
     if reason is not None:
         body += k.body([reason]) + _gap(k)
+    body += k.argv_key_warning()
     body += k.step("active", [k.t("part.keyField.label", "strong"), Span("  "), k.t("activate.lede", "muted")])
     cursor = Span(" ", ("code",), None, "symbol") if k.decor and not busy else Span("")
     if raw:
@@ -280,7 +281,7 @@ def _slug_of(k: Kit) -> Optional[str]:
 def _key_done(k: Kit, key: Optional[str]) -> Lines:
     if not key:
         return []
-    return k.step("done", [k.t("part.keyField.label"), k.sep(), k.key(key)])
+    return k.argv_key_warning() + k.step("done", [k.t("part.keyField.label"), k.sep(), k.key(key)])
 
 
 def activate(k: Kit, v: ActivateView, verb: str = "activate") -> Lines:

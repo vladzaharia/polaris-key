@@ -3,68 +3,68 @@
 [2m│[0m
 [33m▲[0m  [1mNothing was minted[0m
 [2m│[0m
-[2m└[0m  [1mtidewater mint cdn --reveal[0m   [2mPrint the value[0m
+[2m└[0m  [1mtidewater mint cdn --reveal[0m   [2mMint and print a token[0m
 ── ansi16 · 80 ──
 [2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · mint[0m
 [2m│[0m
 [33m▲[0m  [1mNothing was minted[0m
 [2m│[0m
-[2m└[0m  [1mtidewater mint cdn --reveal[0m   [2mPrint the value[0m
+[2m└[0m  [1mtidewater mint cdn --reveal[0m   [2mMint and print a token[0m
 ── no-color · 80 ──
 ┌  [7m Tidewater Studio [0m · mint
 │
 ▲  [1mNothing was minted[0m
 │
-└  [1mtidewater mint cdn --reveal[0m   Print the value
+└  [1mtidewater mint cdn --reveal[0m   Mint and print a token
 ── ascii · 80 ──
 [2m+[0m  [1;7;36m Tidewater Studio [0m[2m - mint[0m
 [2m|[0m
 [33m![0m  [1mNothing was minted[0m
 [2m|[0m
-[2m`[0m  [1mtidewater mint cdn --reveal[0m   [2mPrint the value[0m
+[2m`[0m  [1mtidewater mint cdn --reveal[0m   [2mMint and print a token[0m
 ── truecolor · 60 ──
 [2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · mint[0m
 [2m│[0m
 [33m▲[0m  [1mNothing was minted[0m
 [2m│[0m
-[2m└[0m  [1mtidewater mint cdn --reveal[0m   [2mPrint the value[0m
+[2m└[0m  [1mtidewater mint cdn --reveal[0m   [2mMint and print a token[0m
 ── ansi16 · 60 ──
 [2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · mint[0m
 [2m│[0m
 [33m▲[0m  [1mNothing was minted[0m
 [2m│[0m
-[2m└[0m  [1mtidewater mint cdn --reveal[0m   [2mPrint the value[0m
+[2m└[0m  [1mtidewater mint cdn --reveal[0m   [2mMint and print a token[0m
 ── no-color · 60 ──
 ┌  [7m Tidewater Studio [0m · mint
 │
 ▲  [1mNothing was minted[0m
 │
-└  [1mtidewater mint cdn --reveal[0m   Print the value
+└  [1mtidewater mint cdn --reveal[0m   Mint and print a token
 ── ascii · 60 ──
 [2m+[0m  [1;7;36m Tidewater Studio [0m[2m - mint[0m
 [2m|[0m
 [33m![0m  [1mNothing was minted[0m
 [2m|[0m
-[2m`[0m  [1mtidewater mint cdn --reveal[0m   [2mPrint the value[0m
+[2m`[0m  [1mtidewater mint cdn --reveal[0m   [2mMint and print a token[0m
 ── pipe · 80 ──
 Tidewater Studio · mint
 Nothing was minted
 
-tidewater mint cdn --reveal   Print the value
+tidewater mint cdn --reveal   Mint and print a token
 ── truecolor · 40 ──
 [2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · mint[0m
 [2m│[0m
 [33m▲[0m  [1mNothing was minted[0m
 [2m│[0m
 [2m│[0m  [1mtidewater mint cdn --reveal[0m
-[2m└[0m    [2mPrint the value[0m
+[2m└[0m    [2mMint and print a token[0m
 ── no-color · 40 ──
 ┌  [7m Tidewater Studio [0m · mint
 │
 ▲  [1mNothing was minted[0m
 │
 │  [1mtidewater mint cdn --reveal[0m
-└    Print the value
+└    Mint and print a token
 ── truecolor · 32 ──
 [2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · mint[0m
 [2m│[0m
@@ -72,7 +72,7 @@ tidewater mint cdn --reveal   Print the value
 [2m│[0m
 [2m│[0m  [1mtidewater mint cdn[0m
 [2m│[0m      [1m--reveal[0m
-[2m└[0m    [2mPrint the value[0m
+[2m└[0m    [2mMint and print a token[0m
 ── no-color · 32 ──
 ┌  [7m Tidewater Studio [0m · mint
 │
@@ -80,4 +80,4 @@ tidewater mint cdn --reveal   Print the value
 │
 │  [1mtidewater mint cdn[0m
 │      [1m--reveal[0m
-└    Print the value
+└    Mint and print a token

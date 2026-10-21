@@ -304,3 +304,43 @@ def test_the_update_screen_offers_only_the_verbs_the_host_mounted() -> None:
     partial = shown(("update check", "update apply"))
     assert "changelog" not in partial and "tidewater update apply" in partial
     assert "changelog" not in shown(("update check",)) and "update apply" not in shown(("update check",))
+
+
+def test_a_mistyped_command_names_itself_not_every_choice(capsys: pytest.CaptureFixture[str]) -> None:
+    # B-117: argparse's "(choose from 'activate', 'enroll', ...)" list is gone.
+    from polaris_key.cli.argparse_cli import main
+
+    with pytest.raises(SystemExit) as e:
+        main(["stats"])
+    assert e.value.code == 2
+    err = capsys.readouterr().err
+    assert "'stats' is not a command" in err and "--help" in err and "choose from" not in err
+
+
+def test_the_mint_fix_says_it_mints_and_the_key_file_titles_come_from_the_catalog() -> None:
+    from polaris_key.ui.terminal import flows
+
+    out = flows._hidden(_terminal("mint"), "cli.mint.hidden", "mint ci --reveal", {"recipe": "ci"}, reveal_key="cli.mint.reveal")
+    text = "\n".join(out.text)
+    assert "Nothing was minted" in text and "Mint and print a token" in text and "Print the value" not in text
+    assert "The key file is empty" in "\n".join(flows.key_file_problem(_terminal("activate"), "/tmp/k", True).text)
+    assert "can't be read" in "\n".join(flows.key_file_problem(_terminal("activate"), "/tmp/k", False).text)
+
+
+def test_the_key_on_the_command_line_warns_under_the_header_not_above_it(capsys: pytest.CaptureFixture[str]) -> None:
+    # B-114 (Python): the shell-history warning is a row of the screen, never text above the chip.
+    from polaris_key.cli import verbs
+
+    client = SimpleNamespace(
+        product="tidewater",
+        license=SimpleNamespace(activate_with_key=lambda key: SimpleNamespace(kind="ok")),
+        status=lambda: SimpleNamespace(status="ok"),
+        is_licensed=lambda: True,
+        core=SimpleNamespace(version="1.0.0", channel=None),
+    )
+    ns = verbs.namespace(next(v for v in verbs.VERBS if v.name == "activate"), [KEY], {})
+    ns["_term"] = _terminal("activate")
+    result = verbs.activate(client, ns)
+    assert capsys.readouterr().err == "", "nothing is printed above the screen"
+    text = "\n".join(result.lines)
+    assert "shell history" in text and text.index("shell history") < text.index("License key")

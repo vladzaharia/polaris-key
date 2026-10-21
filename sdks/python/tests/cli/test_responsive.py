@@ -813,6 +813,7 @@ def test_the_device_limit_reads_the_same_in_both_kits() -> None:
     snaps: List[List[str]] = []
     t = terminal(term, v, verb="activate", keys=[_snap(term, snaps)])
     client = SimpleNamespace(product=PRODUCT, license=SimpleNamespace(activate_with_key=lambda key: limit), status=lambda: None)
+    t.kit.argv_key = True  # the Node scenario hands the key over as the command's argument
     flows.activate(client, t, KEY)
     assert "\n".join(r.rstrip() for r in snaps[0]).rstrip() == PARITY["device-limit"]
 

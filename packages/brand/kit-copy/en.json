@@ -3116,6 +3116,21 @@
       "role": "body",
       "note": "Terminal: the mint command without --reveal, as the title of a warning; the command that mints and prints follows as a command row."
     },
+    "cli.mint.reveal": {
+      "value": "Mint and print a token",
+      "role": "body",
+      "note": "Terminal: the label of the command row under the mint warning 'Nothing was minted': running it mints a token and prints it."
+    },
+    "cli.keyFile.empty": {
+      "value": "The key file is empty",
+      "role": "body",
+      "note": "Terminal activate --key-file: the warning title when the file holds no key. The file's path follows under it."
+    },
+    "cli.keyFile.unreadable": {
+      "value": "The key file can't be read",
+      "role": "body",
+      "note": "Terminal activate --key-file: the warning title when the file cannot be read. The file's path follows under it."
+    },
     "cli.platform.macos": {
       "value": "macOS",
       "role": "label",

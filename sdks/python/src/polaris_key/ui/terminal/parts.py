@@ -93,6 +93,14 @@ class Kit:
     used: List[str] = field(default_factory=list)
     #: The verb ids the host mounted (``None``: every verb). A fix for one that is not is left out.
     mounted: Optional[Tuple[str, ...]] = None
+    #: The key came from the command line: its shell-history warning is a row under the header.
+    argv_key: bool = False
+
+    def argv_key_warning(self) -> List[Line]:
+        """The shell-history warning for a key typed after the command (empty otherwise)."""
+        if not self.argv_key:
+            return []
+        return self.step("warn", [self.t("cli.activate.argWarning", command=f"{self.prog} activate")])
 
     def offered(self, verb: str) -> bool:
         """Whether the host mounted ``verb`` (``update apply``, ``changelog``…)."""
