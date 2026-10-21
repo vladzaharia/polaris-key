@@ -67,7 +67,7 @@ surface goes back to the developer's own image URLs and the portal's media proxy
 mirroring stops, and the legacy download streams from GitHub; the stored copies stay, release
 files already copied keep serving from their copies, and image URLs already handed out keep
 working. It is not a security gate, so it uses runtime precedence:
-an unreadable settings store does not turn it off. It sits under Delivery in the console. Each
+an unreadable settings store does not turn it off. It sits under **Storefront and hosting** in the console. Each
 product's quotas and its own mirroring switch are on its
 [Presentation page](/docs/operate/console/presentation/#hosting-and-quotas).
 

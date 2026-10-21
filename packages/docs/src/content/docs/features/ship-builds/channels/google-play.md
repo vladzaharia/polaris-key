@@ -53,7 +53,7 @@ The connector runs for a product when all of these hold:
 2. A **`google-service-account` channel credential** is stored under Distribution, on **Channel credentials** — the service
    account's JSON key file — **pinned** to this product's app: the same package name as the
    `packageName` above (see [Pinning the app](#pinning-the-app)). See
-   [Channel credentials](/docs/operate/console/keys-and-secrets/#channel-credentials). A credential bound to
+   Channel credentials (platform admins). A credential bound to
    one of the Play channels (`outletId`) is preferred over an unbound one.
 
 3. **The first release is made by hand** in Play Console. Google requires the first bundle of a

@@ -181,6 +181,6 @@ endpoints alongside the linked repository's owner and name.
 ## See also
 
 - [Public route table](/docs/reference/routes/) for every Release path in one place.
-- [D1 data model](/docs/reference/data-model/) for the full column list behind the truth
+- The D1 data model (platform admins) for the full column list behind the truth
   store.
 - [Update](/docs/features/ship-builds/updates/) for the feed rendered over this truth.

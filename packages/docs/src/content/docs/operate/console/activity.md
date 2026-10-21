@@ -163,5 +163,5 @@ console's Platform section does not show it; call it directly.
 
 ## Reference
 
-- [D1 data model](/docs/reference/data-model/) — the `audit` table's columns, under `core`.
+- The D1 data model (platform admins) — the `audit` table's columns, under `core`.
 - [Console tour](/docs/operate/console/tour/) — where Activity sits in the nav.

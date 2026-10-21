@@ -46,7 +46,7 @@ The connector runs for a product when all of these hold:
    the **App Manager** role (not Admin), as key id, issuer id and the `.p8` file, **pinned** to
    this product's app — its App Store Connect app id, the same digits as the `appleId` above (see
    [Pinning the app](#pinning-the-app)). See
-   [Channel credentials](/docs/operate/console/keys-and-secrets/#channel-credentials). A credential bound to
+   Channel credentials (platform admins). A credential bound to
    one of the Apple channels (`outletId`) is preferred over an unbound one.
 
 3. For webhooks, an **`asc-webhook-secret` channel credential**. Let the Worker generate it — it is

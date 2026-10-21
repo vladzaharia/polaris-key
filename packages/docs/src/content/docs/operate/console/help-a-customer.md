@@ -5,6 +5,7 @@ type: "how-to"
 lastReviewed: "2026-10-16"
 sidebar:
   order: 7
+next: false
 ---
 
 **Requires:** access to **Users**. **Impact:** an export contains personal data, and deleting data can't be undone.

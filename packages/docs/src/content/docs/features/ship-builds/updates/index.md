@@ -163,5 +163,5 @@ license grant governs which builds are even offered. See
 - [Public route table](/docs/reference/routes/) for every Update path in one place.
 - [Wire error codes](/docs/reference/error-codes/) for the nested `entitled` error shape.
 - [Release](/docs/features/ship-builds/releases/) for the truth this service renders a feed over.
-- [D1 data model](/docs/reference/data-model/) for the Release-owned tables that describe
+- The D1 data model (platform admins) for the Release-owned tables that describe
   the same GitHub state this service resolves live, on every request.

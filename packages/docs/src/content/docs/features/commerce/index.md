@@ -75,7 +75,7 @@ mappings (`409`, `commerce_requires_license`).
 Everything is operator-owned: no `.pkey/` manifest field reaches it, so a repo push cannot decide
 what a payment unlocks or whose purchases are believed. As a platform admin:
 
-1. **Store the store's credential** on **Channel credentials** ([Channel credentials](/docs/operate/console/keys-and-secrets/#channel-credentials)),
+1. **Store the store's credential** on **Channel credentials** (Channel credentials (platform admins)),
    pinned to the app: an `app-store-server-key` pinned to the bundle id, a
    `google-service-account` pinned to the package name (the Google Play connector's), a
    `steam-publisher-key` pinned to the game's app id.
@@ -220,5 +220,5 @@ purchase grants the flag (the next license document carries it) and a refund rem
   `POST /<product>/commerce/claim`, `POST /<product>/distribution/hooks/app-store`,
   `POST /<product>/distribution/hooks/play-rtdn` — see the [route table](/docs/reference/routes/).
 - Tables: `dist_store_products`, `dist_purchase_bindings`, `dist_purchases` (Commerce) and
-  `license_store_grants` (License) — see the [data model](/docs/reference/data-model/).
+  `license_store_grants` (License) — see the data model (platform admins).
 - Security: the threat model's commerce section (`docs/security/THREAT-MODEL.md`).

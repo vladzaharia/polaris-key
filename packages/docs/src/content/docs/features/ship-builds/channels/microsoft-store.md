@@ -52,7 +52,7 @@ The connector runs for a product when all of these hold:
 2. An **`ms-partner-center` channel credential** is stored under Distribution, on **Channel credentials** — the Entra ID app's
    tenant id, client id, client secret and seller id — **pinned** to this product's app: the same
    Store ID as the `productId` above (see [Pinning the app](#pinning-the-app)). See
-   [Channel credentials](/docs/operate/console/keys-and-secrets/#channel-credentials). A credential bound to
+   Channel credentials (platform admins). A credential bound to
    the `ms-store` channel (`outletId`) is preferred over an unbound one.
 
 3. **The first submission is made by hand** in Partner Center, including the age-ratings

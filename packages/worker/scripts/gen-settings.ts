@@ -24,6 +24,7 @@ import * as prettier from "prettier";
 import { SETTINGS } from "../src/mount.js";
 import { ownerArea } from "../src/core/settings/define.js";
 import { areaName } from "../src/core/rbac/areas.js";
+import { docsTierOf } from "../src/docs.js";
 import { NOT_A_SETTING } from "./settings-coverage.js";
 import type { NotASetting } from "./settings-coverage.js";
 import type {
@@ -154,9 +155,17 @@ function notes(e: SettingDef): string {
   return n.join("; ") || "—";
 }
 
-/** The setting's name, linked to the page that explains it, then its description. */
+/**
+ * The setting's name, linked to the page that explains it, then its description. This page is
+ * public, so a page above the public tier is named in plain words with who may open it, never
+ * linked (the docs link check's tier rule).
+ */
 function nameCell(e: SettingDef): string {
-  return `[${cell(e.label)}](${e.docs}): ${cell(e.description)}`;
+  const tier = docsTierOf(e.docs);
+  if (tier === "public")
+    return `[${cell(e.label)}](${e.docs}): ${cell(e.description)}`;
+  const who = tier === "admin" ? "platform admins" : "console members";
+  return `${cell(e.label)} (${who}): ${cell(e.description)}`;
 }
 
 // ── the docs page ──────────────────────────────────────────────────────────────

@@ -66,7 +66,7 @@ A build made from the new config activates a test license against production, an
 
 - A pin that the console doesn't list means the file came from another product or base URL. Regenerate it with `--product` and, off `key.plrs.im`, `--base-url`.
 - The publish step is refused when the ref isn't protected. [Publishing from CI](/docs/features/ship-builds/ci/#before-the-first-publish) lists what GitHub must report.
-- [Secrets and keys](/docs/operate/console/keys-and-secrets/): staging, activating and revoking a key.
+- Secrets and keys (console members): staging, activating and revoking a key.
 - [Troubleshoot your integration](/docs/build/troubleshooting/): errors from the app.
 
 ## Next steps
