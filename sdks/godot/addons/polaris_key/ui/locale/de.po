@@ -2233,10 +2233,10 @@ msgstr "Auf diesem Gerät"
 msgid "signin.choice.tag.new"
 msgstr "Neu"
 
-#. No free devices
+#. All devices in use
 #. Choose a license for this device (SIGN-IN.md §3.6).
 msgid "signin.choice.tag.full"
-msgstr "Keine freien Geräte"
+msgstr "Alle Geräte belegt"
 
 #. Keep the license this device uses
 #. Choose a license for this device (SIGN-IN.md §3.6).

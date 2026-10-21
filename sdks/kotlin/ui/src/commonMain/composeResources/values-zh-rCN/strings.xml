@@ -820,7 +820,7 @@
     <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
     <string name="signin_choice_tag_new">新</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
-    <string name="signin_choice_tag_full">无空余设备</string>
+    <string name="signin_choice_tag_full">所有设备均在使用中</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
     <string name="signin_choice_keep">保留此设备当前使用的许可证</string>
     <string name="signin_choice_keep__macos">保留此设备当前使用的许可证</string>

@@ -353,7 +353,7 @@
   "signin.choice.picker.store": "{tier} · {store}",
   "signin.choice.tag.current": "在此设备上",
   "signin.choice.tag.new": "新",
-  "signin.choice.tag.full": "无空余设备",
+  "signin.choice.tag.full": "所有设备均在使用中",
   "signin.choice.keep": "保留此设备当前使用的许可证",
   "signin.choice.keepMeta": "{product}将保持现状继续运行。",
   "signin.choice.create": "创建新的免费许可证",

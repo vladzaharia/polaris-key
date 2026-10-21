@@ -353,7 +353,7 @@
   "signin.choice.picker.store": "{tier} · {store}",
   "signin.choice.tag.current": "Sur cet appareil",
   "signin.choice.tag.new": "Nouvelle",
-  "signin.choice.tag.full": "Aucun appareil libre",
+  "signin.choice.tag.full": "Tous les appareils utilisés",
   "signin.choice.keep": "Garder la licence utilisée par cet appareil",
   "signin.choice.keepMeta": "{product} continue de fonctionner comme maintenant.",
   "signin.choice.create": "Créer une nouvelle licence gratuite",

@@ -50900,55 +50900,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No free devices"
+            "value": "All devices in use"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Keine freien Geräte"
+            "value": "Alle Geräte belegt"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aucun appareil libre"
+            "value": "Tous les appareils utilisés"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sin dispositivos libres"
+            "value": "Todos los dispositivos en uso"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sem dispositivos livres"
+            "value": "Todos os dispositivos em uso"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nessun dispositivo libero"
+            "value": "Tutti i dispositivi in uso"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "空きデバイスなし"
+            "value": "すべての端末が使用中"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "빈 기기 자리 없음"
+            "value": "모든 기기 사용 중"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "无空余设备"
+            "value": "所有设备均在使用中"
           }
         }
       }
