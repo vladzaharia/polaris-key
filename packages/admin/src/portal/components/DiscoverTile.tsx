@@ -179,7 +179,7 @@ export function DiscoverTile({
                 <h3
                   id={id}
                   dir="auto"
-                  className="line-clamp-2 min-w-0 max-w-full break-words text-base font-semibold leading-snug text-fg-strong"
+                  className="line-clamp-2 min-w-0 max-w-full break-words text-left text-base font-semibold leading-snug text-fg-strong [:root[dir=rtl]_&]:text-right"
                 >
                   <a
                     href={page}

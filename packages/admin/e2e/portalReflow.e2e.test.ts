@@ -335,6 +335,13 @@ function clippedText(page: Page): Promise<string[]> {
         if (a === document.documentElement) break;
         const cs = getComputedStyle(a);
         if (cs.overflowX === "visible") continue;
+        // A scroll region a keyboard reaches (a code frame with `tabindex`, a tab strip of
+        // buttons that scroll into view on focus) is meant to scroll (LF3): its text is not cut.
+        if (
+          (cs.overflowX === "auto" || cs.overflowX === "scroll") &&
+          el.closest("button, a[href], [tabindex]")
+        )
+          break;
         if (box.right > a.getBoundingClientRect().right + 1) {
           out.push(
             `${label(el)} past ${a.tagName.toLowerCase()} edge ${Math.round(box.right)}>${Math.round(a.getBoundingClientRect().right)}`,
@@ -528,6 +535,7 @@ const FLOW_STATES = [
     "activate-confirm",
     "device-limit",
     "download-flow",
+    "product-token",
   ].map((id) => ({ id })),
 ] as const;
 
@@ -571,6 +579,26 @@ describe("the one-product Library and the flows lose no text at large text", () 
               : null;
           });
           if (slot) expect(slot.scroll).toBeLessThanOrEqual(slot.client + 1);
+          // A code frame clips what leaves it (LF3, M7): each of its buttons (Wrap, Copy) sits
+          // wholly inside the frame, and so does every Copy button beside a shown-once value.
+          const cut = await o.page.evaluate(() =>
+            [...document.querySelectorAll<HTMLElement>("[role=dialog] button")]
+              .filter((b) => b.checkVisibility())
+              .flatMap((b) => {
+                const frame = b.closest<HTMLElement>(
+                  "[data-code-frame], [data-secret-box]",
+                );
+                if (!frame) return [];
+                const r = b.getBoundingClientRect();
+                const f = frame.getBoundingClientRect();
+                return r.right > f.right + 0.5 || r.left < f.left - 0.5
+                  ? [
+                      `${b.getAttribute("aria-label") ?? b.textContent} ${Math.round(r.left)}-${Math.round(r.right)} in ${Math.round(f.left)}-${Math.round(f.right)}`,
+                    ]
+                  : [];
+              }),
+          );
+          expect(cut).toEqual([]);
           expect(await axe(o.page)).toEqual([]);
         } finally {
           await o.close();

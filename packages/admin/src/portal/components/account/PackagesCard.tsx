@@ -172,7 +172,8 @@ export function PackagesCard(): React.ReactElement | null {
                 {hasPersonal ? (
                   <Button
                     ref={createRef}
-                    className="min-h-11 min-w-11"
+                    // The label wraps at large text on a phone rather than push the page sideways.
+                    className="h-auto min-h-11 min-w-11 max-w-full whitespace-normal py-1.5 text-center"
                     iconStart={<Plus aria-hidden />}
                     onClick={() => setCreating(true)}
                     disabledReason={
@@ -756,7 +757,7 @@ function GodotUrl({
       <Button
         ref={openerRef}
         variant={primary ? "primary" : "outline"}
-        className="min-h-11"
+        className="h-auto min-h-11 max-w-full whitespace-normal py-1.5 text-center"
         iconStart={<Plus aria-hidden />}
         onClick={() => setCreating(true)}
       >

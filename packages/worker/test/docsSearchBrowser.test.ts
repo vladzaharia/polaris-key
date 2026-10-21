@@ -69,6 +69,7 @@ async function searchOn(
   query: string,
   mutate?: (headers: Record<string, string>) => void,
   path = "/docs/help/",
+  viewport?: { width: number; height: number },
 ): Promise<{ page: any; close: () => Promise<void> }> {
   const require = createRequire(join(here, "..", "..", "docs", "package.json"));
   // playwright is the docs package's dependency, not the worker's: resolved from there, untyped here.
@@ -80,7 +81,7 @@ async function searchOn(
   env.CUSTOMER_ORIGIN = "https://polaris.locker";
   env.ASSETS = assets();
   const browser = await chromium.launch();
-  const ctx = await browser.newContext();
+  const ctx = await browser.newContext(viewport ? { viewport } : {});
   await ctx.route(`${origin}/**`, async (route: any) => {
     const req = route.request();
     const res = await dispatchWith(
@@ -153,6 +154,47 @@ describe.skipIf(!enabled)("Help search under the Worker's docs CSP", () => {
       await close();
     }
   }, 90_000);
+
+  it.each([
+    [390, true],
+    [360, true],
+    // Under 20 rem (a 320 px window) there is no room for the words: the mark stands alone.
+    [319, false],
+  ])(
+    "Help's header on a %i px phone draws the Locker lockup: %s (LF3)",
+    async (width, lockup) => {
+      const { page, close } = await searchOn(
+        "https://polaris.locker",
+        "x",
+        undefined,
+        "/docs/help/",
+        { width, height: 800 },
+      );
+      try {
+        await page.keyboard.press("Escape");
+        const seen = await page.evaluate(() => {
+          const g = globalThis as any;
+          const shown = (sel: string): boolean => {
+            const el = [...g.document.querySelectorAll(sel)].find(
+              (e: any) => e.getBoundingClientRect().width > 0,
+            ) as any;
+            return !!el;
+          };
+          return {
+            lockup: shown(".pk-site-title .pk-lockup svg"),
+            mark: shown(".pk-site-title .pk-lockup-mark svg"),
+            sideways: g.document.documentElement.scrollWidth - g.innerWidth,
+          };
+        });
+        expect(seen.lockup).toBe(lockup);
+        expect(seen.mark).toBe(!lockup);
+        expect(seen.sideways).toBeLessThanOrEqual(0);
+      } finally {
+        await close();
+      }
+    },
+    90_000,
+  );
 
   it("says so, instead of spinning, when the engine cannot start", async () => {
     // The pre-fix policy: no 'wasm-unsafe-eval'.

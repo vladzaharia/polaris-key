@@ -135,7 +135,15 @@ function Boot(): React.ReactElement {
     return <StarScreen title="Opening Polaris Locker" busy />;
   }
   if (session.error) {
-    const copy = portalErrorCopy(session.error);
+    const found = portalErrorCopy(session.error);
+    // The catch-all names what failed ("Couldn't open Polaris Locker"); a network failure or a
+    // specific refusal keeps the catalog's own sentence.
+    const copy = found.generic
+      ? {
+          title: t("locker.error.boot.title"),
+          description: t("locker.error.boot.body"),
+        }
+      : found;
     return (
       <StarScreen title={copy.title}>
         <BootTitle title={copy.title} />

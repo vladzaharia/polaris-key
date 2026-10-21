@@ -4992,9 +4992,9 @@
       "note": "Polaris Locker's own browser error wording where no core.codes.* entry fits (P0-36)."
     },
     "locker.error.loadFailed": {
-      "value": "Couldn't load {name}. Check your connection.",
+      "value": "Couldn't load {name}. Try again in a moment.",
       "role": "body",
-      "note": "A page that failed to load (Library, a product): what failed; the Try again button is separate. Arguments: {name} = the page's own name."
+      "note": "A page that failed to load (Library, a product) for a server error; a network failure reads core.codes.network instead. The Try again button is separate. Arguments: {name} = the page's own name."
     },
     "locker.error.thisProduct": {
       "value": "this product",
@@ -5007,9 +5007,19 @@
       "note": "The product page's heading when it failed to load and the product's name is not known; never the raw slug."
     },
     "locker.error.loadFailedLibrary": {
-      "value": "Couldn't load your library. Check your connection.",
+      "value": "Couldn't load your library. Try again in a moment.",
       "role": "body",
-      "note": "The Library page failed to load; the Try again button is separate."
+      "note": "The Library page failed to load for a server error; a network failure reads core.codes.network. The Try again button is separate."
+    },
+    "locker.error.boot.title": {
+      "value": "Couldn't open Polaris Locker",
+      "role": "title",
+      "note": "The boot screen's heading when the session check failed for a reason other than the network."
+    },
+    "locker.error.boot.body": {
+      "value": "Try again in a moment.",
+      "role": "body",
+      "note": "Under locker.error.boot.title; the Try again button is separate."
     },
     "locker.library.title": {
       "value": "Library",
@@ -6426,6 +6436,11 @@
       "role": "hint",
       "note": "License key checks in the Activate dialog (P0-36)."
     },
+    "locker.key.managedElsewhereNext": {
+      "value": "Sign in where you bought it, or ask the developer.",
+      "role": "hint",
+      "note": "Under locker.key.managedElsewhere in the Activate dialog: the refusal's next step (LF3)."
+    },
     "locker.key.claimEmail": {
       "value": "{product} joins only the account with the license's email verified.",
       "role": "hint",
@@ -7567,7 +7582,7 @@
       "note": "Library strip: other ways to get a license (P0-36, PX-35)."
     },
     "locker.missing.inStore": {
-      "value": "Bought in a store? Sign in from the app",
+      "value": "Bought in a store? Sign in from the app.",
       "role": "hint",
       "note": "Library strip: other ways to get a license (P0-36, PX-35)."
     },

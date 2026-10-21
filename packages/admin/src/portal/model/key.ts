@@ -70,7 +70,12 @@ export type KeyVerdictCode =
 
 export interface KeyVerdict {
   code: KeyVerdictCode;
-  tone: "danger" | "warning";
+  /**
+   * `danger`: the key itself is wrong (format, unknown). `info`: a well-formed key the account
+   * can't use here (owned elsewhere, managed elsewhere, email mismatch), which isn't the
+   * person's typo (LF3). `warning`: the entries notice.
+   */
+  tone: "danger" | "info" | "warning";
   message: string;
   /**
    * `license_owned` only: where the person signs in to the account that holds the license
@@ -138,7 +143,7 @@ function ownedVerdict(name: string, extras: KeyVerdictExtras): KeyVerdict {
   const signInUrl = readSignInUrl(extras);
   return {
     code: "license_owned",
-    tone: "danger",
+    tone: "info",
     message: t("core.codes.license_owned.message", { product: name }),
     ...(signInUrl ? { signInUrl } : {}),
   };
@@ -160,7 +165,7 @@ export function previewVerdict(
     case "email_mismatch":
       return {
         code: "email_mismatch",
-        tone: "danger",
+        tone: "info",
         message: t("locker.key.emailMismatch", {
           product: shown,
           email: p.maskedEmail ?? t("locker.key.emailMismatchAny"),
@@ -169,7 +174,7 @@ export function previewVerdict(
     case "portal_off":
       return {
         code: "portal_off",
-        tone: "danger",
+        tone: "info",
         message: t("locker.key.managedElsewhere", {
           developer: p.product?.developerName ?? shown,
         }),
@@ -188,7 +193,7 @@ export function claimVerdict(
   if (err.code === "email_mismatch")
     return {
       code: "email_mismatch",
-      tone: "danger",
+      tone: "info",
       message: t("locker.key.claimEmail", { product: name }),
     };
   if (err.status === 401)
@@ -196,7 +201,7 @@ export function claimVerdict(
   if (err.status === 404)
     return {
       code: "portal_off",
-      tone: "danger",
+      tone: "info",
       message: t("locker.key.managedElsewhere", { developer: name }),
     };
   if (err.status === 422)
@@ -239,6 +244,6 @@ export function entriesVerdict(
  * the key changes; a failure to reach the Worker, a rate limit and the entries notice don't.
  */
 export function blocksResend(verdict: KeyVerdict | null): boolean {
-  if (!verdict || verdict.tone !== "danger") return false;
+  if (!verdict || verdict.tone === "warning") return false;
   return verdict.code !== "failed" && verdict.code !== "rate_limited";
 }

@@ -61,8 +61,8 @@ export function LibraryTile({
   const menuButton = React.useRef<HTMLButtonElement>(null);
   const entry = product.kind === "entry";
   // The tile's own width (PX-35): under 13 rem the More menu joins the name row so the quick
-  // action spans the tile and drops its icon; under 11 rem the icon stacks above the name and the
-  // status pill moves from the art into the meta row. 0 (unmeasured, jsdom) is a wide tile.
+  // action spans the tile and drops its icon; under 11 rem the icon stacks above the name.
+  // 0 (unmeasured, jsdom) is a wide tile.
   const articleRef = React.useRef<HTMLElement>(null);
   const width = useElementWidth(articleRef);
   // One band: the stacked layout holds up to 13 rem (names never break mid-word at 412 px).
@@ -81,11 +81,9 @@ export function LibraryTile({
       )}
     />
   );
-  const pill =
-    product.status.kind === "deviceLimit" ? null : (
-      <ProductStatusPill status={product.status} onArt />
-    );
-  // In the meta row it is the plain pill, free to wrap (no plate, no clipping at 320).
+  // The status pill sits in the tile's body, never on the cover: no text is drawn over a
+  // customer's art (EXPERIENCE §7.3, LF3). It is the plain pill, free to wrap (no plate, no
+  // clipping at 320).
   const metaPill =
     product.status.kind === "deviceLimit" ||
     !isIssueStatus(product.status) ? null : (
@@ -102,8 +100,7 @@ export function LibraryTile({
         ref={articleRef}
         aria-labelledby={`tile-${product.slug}`}
         // A compact tile is a size container (`tile`): under 17rem (its content, like the action
-        // row, under 15rem) the status pill moves to the art's top-right corner, clear of the icon,
-        // and the name takes two lines.
+        // row, under 15rem) the name takes two lines.
         className={cn(
           "group relative flex flex-col overflow-hidden rounded-xl border border-border bg-surface-raised shadow-elevation-1 @container/tile",
         )}
@@ -136,9 +133,6 @@ export function LibraryTile({
               className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
             />
           ) : null}
-          {/* The header's safe bottom-right corner, inset by the card's own padding; the top-right
-              one on a narrow compact tile, where the bottom one meets the icon. */}
-          {tiny ? null : <span className="absolute right-2 top-2">{pill}</span>}
         </ProductArt>
         <div className="flex flex-1 flex-col px-3 pb-3 desk:px-3.5 desk:pb-3.5">
           <div
@@ -189,7 +183,7 @@ export function LibraryTile({
                 id={`tile-${product.slug}`}
                 dir="auto"
                 className={cn(
-                  "min-w-0 flex-1 line-clamp-2 break-words font-semibold bigtext:line-clamp-none leading-snug text-fg-strong [text-align:match-parent]",
+                  "min-w-0 flex-1 line-clamp-2 break-words font-semibold bigtext:line-clamp-none leading-snug text-fg-strong text-left [:root[dir=rtl]_&]:text-right",
                   tiny ? "text-sm" : "text-base",
                 )}
               >
@@ -206,7 +200,7 @@ export function LibraryTile({
               {tiny && noArt ? menu : null}
             </div>
           </div>
-          {tiny && metaPill ? <div className="mt-2">{metaPill}</div> : null}
+          {metaPill ? <div className="mt-2">{metaPill}</div> : null}
           {product.justAdded ? (
             <p className="mt-2 text-sm text-fg-muted">
               <span

@@ -281,7 +281,12 @@ describe("LicenseChoiceStep (§3.6)", () => {
       }),
     ).toBeTruthy();
     expect(
-      screen.getByText("Lifetime · Mara's Pixel 8 becomes device 2 of 3"),
+      // The seat position is a nowrap span (LF3), so the text is read from the paragraph.
+      screen.getByText(
+        (_, el) =>
+          el?.tagName === "P" &&
+          el.textContent === "Lifetime · Mara's Pixel 8 becomes device 2 of 3",
+      ),
     ).toBeTruthy();
     await userEvent.click(
       screen.getByRole("button", { name: "Continue to Diceroll" }),
