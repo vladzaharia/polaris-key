@@ -19,6 +19,10 @@ const NAME =
 /** Exported numeric constants that are implementation tuning, by file. A new one needs a row in `LIMITS` instead. */
 const INTERNAL: Record<string, string[]> = {
   "assetQueue.ts": ["MIRROR_BATCH_BUDGET_MS"],
+  "core/deviceEntry.ts": [
+    "DEVICE_ENTRY_WIDE_LIMIT",
+    "DEVICE_ENTRY_WIDE_WINDOW_SEC",
+  ],
   "core/signInBind.ts": ["BIND_TTL_SECONDS"],
   "console/handlers/access.ts": ["ACCESS_ADMINS_LIMIT"],
   "console/handlers/bundles.ts": ["BUNDLE_IMPORT_WINDOW_SECONDS"],

@@ -3482,6 +3482,10 @@ or a form on this path, and the user code is drawn independently of it. Its KV i
 a peppered hash (R12-04), lives at most for the flow's 600 s, and is deleted the moment the flow
 is confirmed.
 
+**Rate limits.** Both entry paths (this page and the platform `/device` and `/tv` pages) count
+each lookup against the client's network (an IPv4 address or an IPv6 /64) and against a coarser
+ceiling for its IPv4 /24 or IPv6 /48. Both fail closed when the limiter cannot be read.
+
 **What a user-code holder can do** — to a flow someone _else_ started (the flow's own starter
 is the remote-phishing case below, and is not bounded by anything here). The user code is public
 by design: clients show it large

@@ -81,6 +81,9 @@ const FAIL_MODE: Record<string, FailMode> = {
   // The RFC 8628 user-code page: the only brake on guessing a live code (§5.1) besides the
   // code space itself, so an outage must not turn it into an unlimited oracle.
   authDeviceEntry: "closed",
+  // The coarser net-size ceiling beside each device-code entry bucket (/24 or /48).
+  authDeviceEntryWide: "closed",
+  deviceEntryWide: "closed",
   authCallback: "closed",
   authCallbackState: "closed",
   authDevicePoll: "closed",
@@ -396,6 +399,11 @@ export function wideNetworkOf(ip: string): string {
   }
   const hextets = expandIpv6(ip);
   return hextets ? `${hextets.slice(0, 3).join(":")}::/48` : ip;
+}
+
+/** The caller's wider network (`wideNetworkOf` of its address): a coarse ceiling beside `clientNetwork`. */
+export function clientWideNetwork(req: Request): string {
+  return wideNetworkOf(clientIp(req));
 }
 
 /** The eight hextets of an IPv6 address (lower-case, no leading zeros), or null. Accepts `::`
