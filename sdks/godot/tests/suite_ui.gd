@@ -58,6 +58,7 @@ func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
 	var all: Array = _sc.all()
 	await _snapshots(t, all, update)
 	await _focus(t, all)
+	await _headers(t, all)
 	await _copy(t, all)
 	await _behaviour(t)
 	await _motion_and_transparency(t)
@@ -923,6 +924,33 @@ func _controllers(t: PKeyTestContext) -> void:
 
 
 # ── The product's presentation ───────────────────────────────────────────────────────────
+
+## Every screen the kit shows carries the product's header (UI-KITS.md §1.2): its icon or a
+## monogram beside its name, visible in the tree. Not a screen: the gate while it lets the game
+## through (usable, grace) or loads, the update strip and banner (a card inside the game's own
+## screen), and the settings panel (it heads itself with the same header).
+const NO_HEADER := ["ok", "grace", "grace (allow_grace false)", "not-applicable", "loading", "background pill", "update available"]
+
+
+func _headers(t: PKeyTestContext, all: Array) -> void:
+	var checked := 0
+	var missing: PackedStringArray = []
+	for c in all:
+		if c[0] in ["badge", "banner", "dev_menu", "settings"] or String(c[1]) in NO_HEADER:
+			continue
+		var v: Control = await _build(c)
+		var ok := false
+		for n in v.find_children("*", "PKeyProductHeader", true, false):
+			var h := n as PKeyProductHeader
+			if h.is_visible_in_tree() and h.product_name() != "" and (h.find_child("Icon", false, false).visible or h.find_child("Monogram", false, false).visible):
+				ok = true
+		if not ok:
+			missing.append("%s / %s" % [c[0], c[1]])
+		checked += 1
+		_free(v)
+	t.check("header: every kit screen carries the product's icon or monogram and name", missing.is_empty(), "missing: %s" % ", ".join(missing))
+	t.check("header: coverage", checked >= 60, str(checked))
+
 
 ## The gate's hero header after a render.
 func _header(v: Control) -> PKeyProductHeader:

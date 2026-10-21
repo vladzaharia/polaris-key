@@ -73,7 +73,7 @@ func _build() -> void:
 	_text = vbox(_card, "Text", "PKeyTight")
 	_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_text.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	# On the modal card the product leads, its icon at the card size (56 px).
+	# The product leads the card: its icon at the card size (56 px) on the modal, 32 px on the banner.
 	_product = product_header(_text, "Product")
 	_product.card = true
 	_title = label(_text, "Title", "PKeyTitle")
@@ -141,7 +141,8 @@ func _arrange(m: Dictionary) -> void:
 	# In a row the actions sit at the end on one line; stacked, they lead under the words.
 	_actions.size_flags_horizontal = Control.SIZE_SHRINK_END if row else Control.SIZE_FILL
 	_actions.set_meta(&"pkey_align", BoxContainer.ALIGNMENT_END if row else BoxContainer.ALIGNMENT_BEGIN)
-	_product.visible = _covering and _product.visible
+	# The product heads the banner card too (32 px beside its name); the modal's is the 56 px card.
+	_product.card = _covering
 	_title.theme_type_variation = "PKeyTitle" if _covering else "PKeySection"
 	if _covering:
 		if has_theme_stylebox_override("panel") and get_theme_stylebox("panel") is StyleBoxEmpty:
@@ -323,9 +324,7 @@ func _render() -> void:
 		body_text = ""
 	show_text(_title, title_text)
 	show_text(_body, body_text)
-	_product.visible = as_modal
-	if as_modal:
-		_product.refresh()
+	_product.refresh()
 	# A locked answer is never a dead end: with nothing to open or install, the action asks again.
 	if model["visible"] and locked and model["action"] == "" and model["state"] not in ["", "current"] and sdk != null and sdk.get("update") != null:
 		model["action"] = "update_check_again"

@@ -1,16 +1,24 @@
 == v3 newer version ==
+Card/Scroll/Body/Text/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Text/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Body/Text/Title: Label "An update is available"
 Card/Scroll/Body/Text/Message: Label "Version 1.5.0 is available."
 Card/Scroll/Body/Actions/Action: Button "Get the update" [focus 1]
 Card/Scroll/Body/Actions/Dismiss: Button "Not now" [focus 2]
 == v3 up to date (shown) ==
+Card/Scroll/Body/Text/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Text/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Body/Text/Message: Label "You're up to date."
 == code-ready ==
+Card/Scroll/Body/Text/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Text/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Body/Text/Title: Label "An update is ready"
 Card/Scroll/Body/Text/Message: Label "Restart the game to finish updating."
 Card/Scroll/Body/Actions/Action: Button "Restart now" [focus 1]
 Card/Scroll/Body/Actions/Dismiss: Button "Not now" [focus 2]
 == binary on a direct build ==
+Card/Scroll/Body/Text/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Text/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Body/Text/Title: Label "An update is available"
 Card/Scroll/Body/Text/Message: Label "Version 1.5.0 is available."
 Card/Scroll/Body/Actions/Action: Button "Get the update" [focus 1]
@@ -23,51 +31,75 @@ Card/Scroll/Body/Text/Message: Label "You have 0.1.0"
 Card/Scroll/Body/Actions/Action: Button "Get the update" [focus 1]
 Card/Scroll/Body/Actions/Dismiss: Button "Not now" [focus 2]
 == binary mandatory (locked, modal asked) ==
+Card/Scroll/Body/Text/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Text/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Body/Text/Title: Label "Update to keep using Polaris Key SDK"
 Card/Scroll/Body/Actions/Action: Button "Get the update" [focus 1]
 == binary on an itch build ==
+Card/Scroll/Body/Text/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Text/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Body/Text/Title: Label "An update is available"
 Card/Scroll/Body/Text/Message: Label "Version 1.5.0 is available."
 Card/Scroll/Body/Actions/Dismiss: Button "Not now" [focus 1]
 == store ==
+Card/Scroll/Body/Text/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Text/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Body/Text/Title: Label "An update is available"
 Card/Scroll/Body/Text/Message: Label "Version 1.5.0 is available."
 Card/Scroll/Body/Actions/Action: Button "Open the store" [focus 1]
 Card/Scroll/Body/Actions/Dismiss: Button "Not now" [focus 2]
 == platform ==
+Card/Scroll/Body/Text/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Text/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Body/Text/Title: Label "An update is available"
 Card/Scroll/Body/Text/Message: Label "A newer version is available. Steam installs it; restart Steam if it has not arrived."
 Card/Scroll/Body/Actions/Dismiss: Button "Not now" [focus 1]
 == blocked (locked) ==
+Card/Scroll/Body/Text/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Text/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Body/Text/Title: Label "This version is no longer supported"
 Card/Scroll/Body/Text/Message: Label "No update is available here yet. You can keep playing."
 == binary native with no plugin (the download link) ==
+Card/Scroll/Body/Text/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Text/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Body/Text/Title: Label "An update is available"
 Card/Scroll/Body/Text/Message: Label "Version 1.5.0 is available."
 Card/Scroll/Body/Actions/Action: Button "Get the update" [focus 1]
 Card/Scroll/Body/Actions/Dismiss: Button "Not now" [focus 2]
 == binary sidecar-pck (a code pack downloads) ==
+Card/Scroll/Body/Text/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Text/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Body/Text/Title: Label "An update is available"
 Card/Scroll/Body/Text/Message: Label "Version 1.5.0 is available."
 Card/Scroll/Body/Actions/Action: Button "Download the update" [focus 1]
 Card/Scroll/Body/Actions/Dismiss: Button "Not now" [focus 2]
 == store on TestFlight ==
+Card/Scroll/Body/Text/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Text/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Body/Text/Title: Label "An update is available"
 Card/Scroll/Body/Text/Message: Label "Version 1.5.0 is available."
 Card/Scroll/Body/Actions/Action: Button "Open TestFlight" [focus 1]
 Card/Scroll/Body/Actions/Dismiss: Button "Not now" [focus 2]
 == store on AltStore with no source page ==
+Card/Scroll/Body/Text/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Text/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Body/Text/Title: Label "Update to keep using Polaris Key SDK"
 == platform on itch ==
+Card/Scroll/Body/Text/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Text/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Body/Text/Title: Label "An update is available"
 Card/Scroll/Body/Text/Message: Label "A newer version is available. The itch app installs it."
 Card/Scroll/Body/Actions/Dismiss: Button "Not now" [focus 1]
 == platform on the web (reload) ==
+Card/Scroll/Body/Text/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Text/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Body/Text/Title: Label "An update is available"
 Card/Scroll/Body/Text/Message: Label "A newer version is available. Reload the page to play it."
 Card/Scroll/Body/Actions/Action: Button "Reload" [focus 1]
 Card/Scroll/Body/Actions/Dismiss: Button "Not now" [focus 2]
 == platform on a package-managed direct build ==
+Card/Scroll/Body/Text/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Text/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Body/Text/Title: Label "An update is available"
 Card/Scroll/Body/Text/Message: Label "A newer version is available. Your package manager installs it."
 Card/Scroll/Body/Actions/Dismiss: Button "Not now" [focus 1]
