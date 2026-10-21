@@ -744,11 +744,8 @@ async function obtainKey(
 ): Promise<string | typeof CANCEL | typeof INTERRUPT | null> {
   const t = ctx.copy.t.bind(ctx.copy);
   if (args.key) {
-    // The positional key still works, and says why it should not be used (UI-KITS §0, GA).
-    if (!quiet(ctx))
-      ctx.stderr.write(
-        `${ctx.render([stepRow("warn", [{ text: t("cli.activate.argWarning", { command: cmd(ctx, "activate") }) }])]).join("\n")}\n`,
-      );
+    // The positional key still works; why it should not be used is a row under the header
+    // (activateFlow draws it).
     return args.key.trim();
   }
   if (ctx.keys) {
@@ -863,6 +860,15 @@ export async function activateFlow(
       : []),
   ];
   const lead = () => hist;
+  // The shell-history warning sits under the header, never above the product chip (B-114).
+  if (args.key && !quiet(ctx))
+    hist.push(
+      stepRow("warn", [
+        {
+          text: t("cli.activate.argWarning", { command: cmd(ctx, "activate") }),
+        },
+      ]),
+    );
   const key = await obtainKey(ctx, args, lead);
   if (key === CANCEL)
     return {
@@ -2228,6 +2234,9 @@ export async function updateApplyFlow(
     };
   }
   // A program that can neither update itself nor hand off to a store has a download to follow.
+  // Exit 1 on purpose (B-113): a platform hand-off (package manager, store) is a supported way to
+  // finish the install, so it exits 0; a build with no driver is an unsupported configuration, and
+  // a script must not read it as done (`unsupported`, with the download link as the way out).
   if (d.action === "binary" && client.update.driver === null) {
     show(ctx, [
       ...header(),
