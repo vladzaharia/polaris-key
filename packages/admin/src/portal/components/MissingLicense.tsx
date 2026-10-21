@@ -1,5 +1,5 @@
 import * as React from "react";
-import { t } from "../../lib/copy.js";
+import { t, tParts } from "../../lib/copy.js";
 import { Mail, Store } from "lucide-react";
 import { href } from "../router.js";
 import { SteamGlyph } from "./Glyphs.js";
@@ -13,11 +13,26 @@ import { SteamGlyph } from "./Glyphs.js";
 /** Colour alone does not tell a link from the muted text around it (WCAG 1.4.1). */
 const LINK = "font-medium text-accent-fg underline underline-offset-2";
 
+/** A sentence that links to Account → Sign-in methods where it names it. */
+function methodsLine(
+  key: "locker.missing.emailBody" | "locker.missing.steamBody",
+): React.ReactNode {
+  return tParts(key, ["place"]).map((part, i) =>
+    typeof part === "string" ? (
+      part
+    ) : (
+      <a key={i} href={href.account("methods")} className={LINK}>
+        {t("signin.join.methodsLink")}
+      </a>
+    ),
+  );
+}
+
 export function MissingLicense(): React.ReactElement {
   return (
     <section aria-labelledby="missing-h" className="space-y-4">
       <h2 id="missing-h" className="text-lg font-semibold text-fg-strong">
-        Missing a license?
+        {t("locker.missing.title")}
       </h2>
       <ul className="grid gap-4 desk:grid-cols-3">
         <li className="flex gap-3">
@@ -26,13 +41,9 @@ export function MissingLicense(): React.ReactElement {
           </Glyph>
           <p className="text-sm text-fg-muted">
             <strong className="block font-medium text-fg-strong">
-              Sent to another email?
+              {t("locker.missing.emailTitle")}
             </strong>
-            Add that email under{" "}
-            <a href={href.account("methods")} className={LINK}>
-              {t("signin.join.methodsLink")}
-            </a>
-            .
+            {methodsLine("locker.missing.emailBody")}
           </p>
         </li>
         <li className="flex gap-3">
@@ -41,13 +52,9 @@ export function MissingLicense(): React.ReactElement {
           </Glyph>
           <p className="text-sm text-fg-muted">
             <strong className="block font-medium text-fg-strong">
-              Bought on Steam?
+              {t("locker.missing.steamTitle")}
             </strong>
-            Add Steam under{" "}
-            <a href={href.account("methods")} className={LINK}>
-              {t("signin.join.methodsLink")}
-            </a>
-            .
+            {methodsLine("locker.missing.steamBody")}
           </p>
         </li>
         <li className="flex gap-3">
@@ -56,9 +63,9 @@ export function MissingLicense(): React.ReactElement {
           </Glyph>
           <p className="text-sm text-fg-muted">
             <strong className="block font-medium text-fg-strong">
-              Bought on the App Store or Google Play?
+              {t("locker.missing.storeTitle")}
             </strong>
-            Sign in to the game once.
+            {t("locker.missing.storeBody")}
           </p>
         </li>
       </ul>

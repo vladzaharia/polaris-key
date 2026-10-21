@@ -14,18 +14,20 @@ export function HelpCard({
   const { developer, supportUrl, supportEmail, website } = product.presentation;
   const who = developer ?? t("license.developerFallbackCap");
   return (
-    <SectionCard id="help" title="Need help?">
+    <SectionCard id="help" title={t("locker.help.title")}>
       <div className="space-y-4">
         <p className="flex gap-3 text-sm text-fg-muted">
           <LifeBuoy aria-hidden className="mt-0.5 size-4 shrink-0" />
-          {who} handles licenses and downloads for {product.name}.
+          {t("locker.help.body", { developer: who, product: product.name })}
         </p>
         <div className="flex flex-wrap gap-2">
           {supportUrl ? (
             <Button asChild variant="quiet">
               <a href={supportUrl} target="_blank" rel="noreferrer">
                 <ExternalLink aria-hidden />
-                Contact {developer ?? t("license.developerFallback")}
+                {t("locker.help.contact", {
+                  developer: developer ?? t("license.developerFallback"),
+                })}
               </a>
             </Button>
           ) : supportEmail ? (

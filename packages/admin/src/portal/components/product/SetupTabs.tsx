@@ -1,3 +1,4 @@
+import { t } from "../../../lib/copy.js";
 import * as React from "react";
 import { Tabs } from "radix-ui";
 import type { FeedSnippet } from "@polaris-key/manifest";
@@ -15,7 +16,10 @@ interface ClientGroup {
 function clientLabel(clients: string): string {
   const parts = clients.split(/,\s*/);
   return parts.length > 1
-    ? `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`
+    ? t("locker.list.and", {
+        first: parts.slice(0, -1).join(", "),
+        rest: parts[parts.length - 1]!,
+      })
     : clients;
 }
 
@@ -65,7 +69,7 @@ export function SetupTabs({
       className="min-w-0 space-y-3"
     >
       <Tabs.List
-        aria-label="Package manager"
+        aria-label={t("locker.setup.packageManager")}
         className="flex gap-1 overflow-x-auto border-b border-border"
       >
         {tabs.map((t) => (

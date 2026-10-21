@@ -166,7 +166,7 @@ export function KeyField({
       {valid ? (
         <p id={okId} className="flex items-center gap-1.5 text-sm text-success">
           <Check aria-hidden className="size-4" />
-          Key format is valid
+          {t("locker.key.valid")}
         </p>
       ) : null}
       {hint}
@@ -199,7 +199,7 @@ export function KeyField({
       ) : (
         <p id={helpId} className="text-sm text-fg-muted">
           {pasteHint
-            ? `Press ${mac ? "⌘V" : "Ctrl V"} to paste the key. `
+            ? `${t("locker.key.pasteHint", { detail: mac ? "⌘V" : "Ctrl V" })} `
             : null}
           {help}
         </p>

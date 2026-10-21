@@ -1,3 +1,4 @@
+import { t } from "../../lib/copy.js";
 import * as React from "react";
 import { Globe, Smartphone } from "lucide-react";
 import { cn } from "../../lib/cn.js";
@@ -101,7 +102,9 @@ export function PlatformGlyphs({
   className?: string;
 }): React.ReactElement | null {
   if (platforms.length === 0) return null;
-  const label = `Runs on ${platforms.map((p) => platformInSentence(p)).join(", ")}`;
+  const label = t("locker.platform.runsOn", {
+    detail: platforms.map((p) => platformInSentence(p)).join(", "),
+  });
   return (
     <span
       role="img"

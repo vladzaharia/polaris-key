@@ -50,7 +50,7 @@ export function FocusedFlow({
         }}
         className="sr-only z-50 rounded-md bg-surface-overlay px-3 py-2 text-fg-strong focus:not-sr-only focus:fixed focus:left-4 focus:top-3"
       >
-        Skip to content
+        {t("locker.shell.skip")}
       </a>
       <header className="border-b border-border bg-surface-page">
         <div className="mx-auto flex min-h-14 w-full max-w-[82rem] items-center justify-between gap-4 px-4 desk:min-h-16 desk:px-8">
@@ -140,7 +140,10 @@ export function TaskFrame({
   children: React.ReactNode;
   className?: string;
 }): React.ReactElement {
-  const meta = [developer ? `From ${developer}` : null, identityMeta]
+  const meta = [
+    developer ? t("locker.flow.from", { developer }) : null,
+    identityMeta,
+  ]
     .filter((part): part is string => Boolean(part))
     .join(" · ");
   return (
@@ -243,7 +246,7 @@ export function TaskFrameSkeleton(): React.ReactElement {
       aria-busy
       className="mx-auto w-full max-w-[40rem] twocol:max-w-[65rem]"
     >
-      <h1 className="sr-only">Loading</h1>
+      <h1 className="sr-only">{t("common.loading")}</h1>
       <Skeleton className="mb-3 h-3 w-40" />
       <Skeleton className="h-9 w-3/4 desk:h-13" />
       <div className="mt-6 grid gap-6 twocol:grid-cols-[20rem_minmax(0,1fr)] twocol:gap-8">

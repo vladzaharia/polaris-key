@@ -73,7 +73,7 @@ export function ProductPage({
         ? null
         : lib.error
           ? t("core.fallback.title")
-          : "Not in your library",
+          : t("locker.notFound.title"),
   );
   if (lib.isPending) return <ProductSkeleton />;
   if (lib.error)
@@ -95,7 +95,7 @@ export function ProductPage({
 function ProductSkeleton(): React.ReactElement {
   return (
     <div aria-busy className="space-y-6">
-      <h1 className="sr-only">Loading</h1>
+      <h1 className="sr-only">{t("common.loading")}</h1>
       <Skeleton className="h-80 w-full rounded-xl" />
       <div className="grid gap-6 split:grid-cols-[1fr_340px]">
         <Skeleton className="h-64 rounded-xl" />
@@ -158,13 +158,13 @@ function ProductBody({
   const removed = (others: number): void => {
     if (others > 0) {
       toast.success(
-        `The ${tierName(selected)} license was removed from your library`,
+        t("locker.product.licenseRemoved", { tier: tierName(selected) }),
       );
       setParams({ license: null });
       focusPageHeading(() => headingRef.current);
       return;
     }
-    toast.success(`${product.name} was removed from your library`);
+    toast.success(t("locker.product.removed", { product: product.name }));
     navigate(href.library());
   };
 

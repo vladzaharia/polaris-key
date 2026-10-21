@@ -1,3 +1,4 @@
+import { t } from "../../../lib/copy.js";
 import * as React from "react";
 import { KeyRound } from "lucide-react";
 import { Button } from "../../../ui/Button.js";
@@ -21,23 +22,23 @@ export function ProductIdentityCard({
   productName: string;
 }): React.ReactElement {
   return (
-    <SectionCard id="signin" title={`Sign in to ${productName}`}>
+    <SectionCard
+      id="signin"
+      title={t("locker.identity.title", { product: productName })}
+    >
       <div className="flex gap-3">
         <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-surface-sunken text-fg-strong">
           <KeyRound aria-hidden className="size-5" />
         </span>
         <div className="min-w-0 space-y-1 text-sm">
           <p className="text-fg">
-            {productName} signs you in with your Polaris Locker account.
+            {t("locker.identity.body", { product: productName })}
           </p>
-          <p className="text-fg-muted">
-            It gets its own id for you, so developers can't match you across
-            products.
-          </p>
+          <p className="text-fg-muted">{t("locker.identity.note")}</p>
         </div>
       </div>
       <Button asChild variant="quiet" className="mt-4 h-10">
-        <a href={href.account("methods")}>Manage sign-in methods</a>
+        <a href={href.account("methods")}>{t("locker.identity.manage")}</a>
       </Button>
     </SectionCard>
   );

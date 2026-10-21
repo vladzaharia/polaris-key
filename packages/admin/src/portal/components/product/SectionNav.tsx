@@ -1,3 +1,4 @@
+import { t } from "../../../lib/copy.js";
 import * as React from "react";
 import { cn } from "../../../lib/cn.js";
 import { StatusPill } from "../../../ui/StatusPill.js";
@@ -29,7 +30,11 @@ export function SectionNav({
 }): React.ReactElement {
   return (
     <nav
-      aria-label={variant === "toc" ? "On this page" : "Sections"}
+      aria-label={
+        variant === "toc"
+          ? t("locker.account.onThisPage")
+          : t("locker.sections.sections")
+      }
       // The pills stick under the header below 1180 px ("tablet": past the desk breakpoint too):
       // the page's scroll padding clears them (styles.css).
       data-section-pills={variant === "pills" ? "tablet" : undefined}

@@ -1,3 +1,4 @@
+import { t } from "../../lib/copy.js";
 import * as React from "react";
 import { cn } from "../../lib/cn.js";
 
@@ -17,7 +18,9 @@ export function KeyMask({
   return (
     <span
       aria-label={
-        last4 ? `License key ending ${last4}` : `License key for ${slug}`
+        last4
+          ? t("locker.key.endingAria", { detail: last4 })
+          : t("locker.key.forAria", { product: slug })
       }
       role="img"
       className={cn("font-mono text-sm", className)}

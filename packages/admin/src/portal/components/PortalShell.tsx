@@ -75,34 +75,34 @@ export function PortalShell({
         }}
         className="sr-only z-50 rounded-md bg-surface-overlay px-3 py-2 text-fg-strong focus:not-sr-only focus:fixed focus:left-4 focus:top-3"
       >
-        Skip to content
+        {t("locker.shell.skip")}
       </a>
       {/* pk-vt-chrome: kept above a list transition's moving content (src/motion.css). */}
       <header className="pk-vt-chrome sticky top-0 z-30 border-b border-border bg-surface-page short:static">
         <div className="mx-auto flex h-14 w-full max-w-[82rem] items-center gap-4 px-4 desk:h-16 desk:gap-6 desk:px-8 mid:gap-8">
           <a
             href={href.library()}
-            aria-label="Polaris Locker: your library"
+            aria-label={t("locker.shell.home")}
             className="flex shrink-0 items-center rounded-md"
           >
             <Lockup height={44} className="hidden mid:block" />
             <Lockup height={44} className="mid:hidden" />
           </a>
           <nav
-            aria-label="Main"
+            aria-label={t("locker.shell.main")}
             className="hidden h-full shrink-0 items-stretch gap-6 desk:flex mid:gap-8"
           >
             <NavLink
               href={href.library()}
               active={onLibrary}
-              label="Library"
+              label={t("locker.library.title")}
               count={libraryCount}
             />
             {showDiscover ? (
               <NavLink
                 href={href.discover()}
                 active={onDiscover}
-                label="Discover"
+                label={t("locker.discover.title")}
                 count={discoverCount}
                 accentCount
               />
@@ -169,8 +169,8 @@ export function PortalShell({
       <footer className="border-t border-border pb-24 desk:pb-0">
         <div className="mx-auto flex w-full max-w-[82rem] flex-wrap items-center justify-between gap-2 px-4 py-6 text-sm text-fg-muted desk:px-8">
           <span>Polaris Locker</span>
-          <nav aria-label="Help and policies" className="flex gap-4">
-            {FOOT_LINKS.map((l) => (
+          <nav aria-label={t("locker.shell.help")} className="flex gap-4">
+            {footLinks().map((l) => (
               <a
                 key={l.href}
                 href={l.href}
@@ -183,7 +183,7 @@ export function PortalShell({
         </div>
       </footer>
       <nav
-        aria-label="Phone"
+        aria-label={t("locker.shell.phone")}
         className="pk-vt-chrome fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface-page pb-[env(safe-area-inset-bottom)] desk:hidden"
       >
         <div className="grid h-[3.25rem] grid-cols-3 items-center px-2">
@@ -196,7 +196,7 @@ export function PortalShell({
             )}
           >
             <Library aria-hidden className="size-5" />
-            Library
+            {t("locker.library.title")}
           </a>
           <div className="flex justify-center">
             <button
@@ -226,9 +226,11 @@ export function PortalShell({
                   />
                 ) : null}
               </span>
-              Discover
+              {t("locker.discover.title")}
               {discoverCount ? (
-                <span className="sr-only">, {discoverCount} to add</span>
+                <span className="sr-only">
+                  {t("locker.shell.toAdd", { count: discoverCount })}
+                </span>
               ) : null}
             </a>
           ) : (
@@ -267,10 +269,10 @@ function usePhoneBarToastInset(): void {
 }
 
 /** The footer's links: the public Help door and the page on what the site keeps (no terms page exists yet). */
-const FOOT_LINKS = [
-  { label: "Help", href: "/docs/help/" },
-  { label: "Privacy", href: "/docs/help/your-data/" },
-] as const;
+const footLinks = (): readonly { label: string; href: string }[] => [
+  { label: t("locker.shell.helpLink"), href: "/docs/help/" },
+  { label: t("locker.shell.privacy"), href: "/docs/help/your-data/" },
+];
 
 function NavLink({
   href: to,

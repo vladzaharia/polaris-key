@@ -237,6 +237,7 @@ export const STRING_ARGS = [
   "rest",
   "first",
   "detail",
+  "label",
 ] as const;
 
 /** Integer arguments: the only ones a plural may select on (they may also appear plain). */

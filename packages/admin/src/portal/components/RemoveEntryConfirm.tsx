@@ -1,3 +1,4 @@
+import { t } from "../../lib/copy.js";
 import * as React from "react";
 import { AlertCircle, CircleMinus } from "lucide-react";
 import { Button } from "../../ui/Button.js";
@@ -70,11 +71,10 @@ export function RemoveEntryConfirm({
         // A licence arrived meanwhile (PS-05): the entry is gone, but the product stays, so no
         // removal happened to confirm: information, not success (PS-05 review m1).
         if (inLibrary)
-          toast.info(`${name} stays in your library`, {
-            description:
-              "You have a license for it now, so there's nothing to remove.",
+          toast.info(t("locker.remove.entryStays", { product: name }), {
+            description: t("locker.remove.entryStaysNote"),
           });
-        else toast.success(`${name} was removed from your library`);
+        else toast.success(t("locker.product.removed", { product: name }));
         if (onRemoved) onRemoved({ inLibrary });
         else focusPageHeading();
       },
@@ -103,10 +103,10 @@ export function RemoveEntryConfirm({
       )}
     >
       <p id={`${id}-h`} className="font-medium text-fg-strong">
-        Remove {name} from your library?
+        {t("locker.remove.ask", { product: name })}
       </p>
       <p id={`${id}-d`} className="text-sm text-fg-muted">
-        You can add it again from Discover while it is free to add.
+        {t("locker.remove.entryNote")}
       </p>
       {error ? (
         <p role="alert" className="flex gap-2 text-sm text-danger">
@@ -121,7 +121,7 @@ export function RemoveEntryConfirm({
           onClick={onCancel}
           disabled={remove.isPending}
         >
-          Keep it
+          {t("locker.methods.keepIt")}
         </Button>
         <Button
           variant="danger"
@@ -129,7 +129,7 @@ export function RemoveEntryConfirm({
           loading={remove.isPending}
           onClick={confirm}
         >
-          Remove from library
+          {t("locker.menu.removeEntry")}
         </Button>
       </div>
     </div>

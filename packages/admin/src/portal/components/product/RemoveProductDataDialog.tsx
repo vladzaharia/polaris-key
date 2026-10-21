@@ -85,7 +85,7 @@ export function RemoveProductDataDialog({
       }
       throw err;
     }
-    toast.success(`Your data was removed from ${name}`, {
+    toast.success(t("locker.productData.removed", { product: name }), {
       description: removedNote({ name, licenses, alsoRemoveLicense }),
     });
     onOpenChange(false);
@@ -97,8 +97,8 @@ export function RemoveProductDataDialog({
       open={open}
       onOpenChange={onOpenChange}
       intent="danger"
-      title={`Remove your data from ${name}?`}
-      description={`This only affects ${name}. Your Polaris Locker account and your other apps stay as they are.`}
+      title={t("locker.productData.removeAsk", { product: name })}
+      description={t("locker.productData.removeBody", { product: name })}
       consequences={removeConsequences({
         name,
         developer: product.presentation.developer,

@@ -6680,6 +6680,396 @@
       "value": "Back to Discover",
       "role": "button",
       "note": "Discover tiles, offers and the storefront page (P0-36)."
+    },
+    "locker.shell.skip": {
+      "value": "Skip to content",
+      "role": "a11y",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.shell.home": {
+      "value": "Polaris Locker: your library",
+      "role": "a11y",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.shell.main": {
+      "value": "Main",
+      "role": "a11y",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.shell.help": {
+      "value": "Help and policies",
+      "role": "a11y",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.shell.phone": {
+      "value": "Phone",
+      "role": "a11y",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.shell.toAdd": {
+      "value": ", {count} to add",
+      "role": "a11y",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.shell.helpLink": {
+      "value": "Help",
+      "role": "label",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.shell.privacy": {
+      "value": "Privacy",
+      "role": "label",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.missing.title": {
+      "value": "Missing a license?",
+      "role": "title",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.missing.emailTitle": {
+      "value": "Sent to another email?",
+      "role": "label",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.missing.emailBody": {
+      "value": "Add that email under {place}.",
+      "role": "body",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.missing.steamTitle": {
+      "value": "Bought on Steam?",
+      "role": "label",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.missing.steamBody": {
+      "value": "Add Steam under {place}.",
+      "role": "body",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.missing.storeTitle": {
+      "value": "Bought on the App Store or Google Play?",
+      "role": "label",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.missing.storeBody": {
+      "value": "Sign in to the game once.",
+      "role": "body",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.notFound.title": {
+      "value": "Not in your library",
+      "role": "title",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.notFound.heading": {
+      "value": "That product isn't in your library",
+      "role": "title",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.notFound.body": {
+      "value": "You're signed in as {email}. If you got it with another email or a license key, add it to this account.",
+      "role": "body",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.notFound.otherEmail": {
+      "value": "Bought it with another email?",
+      "role": "hint",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.notFound.addEmail": {
+      "value": "Add an email in Account → Sign-in methods",
+      "role": "button",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.product.licenseRemoved": {
+      "value": "The {tier} license was removed from your library",
+      "role": "hint",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.product.removed": {
+      "value": "{product} was removed from your library",
+      "role": "hint",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.menu.copyFailed": {
+      "value": "Couldn't copy the link",
+      "role": "hint",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.menu.more": {
+      "value": "More for {product}",
+      "role": "a11y",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.menu.details": {
+      "value": "Details and downloads",
+      "role": "button",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.menu.licenseDetails": {
+      "value": "License, devices and versions",
+      "role": "button",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.menu.removeEntry": {
+      "value": "Remove from library",
+      "role": "button",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.menu.removeLicense": {
+      "value": "Remove from my library",
+      "role": "button",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.quick.emailFailed": {
+      "value": "The email didn't go out",
+      "role": "hint",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.quick.ariaFor": {
+      "value": "{label}: {product} for {platform}",
+      "role": "a11y",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.quick.downloading": {
+      "value": "Downloading {product} {version}",
+      "role": "a11y",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.quick.ariaDetail": {
+      "value": "{label}: {product} {detail}",
+      "role": "a11y",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.quick.ariaPlain": {
+      "value": "{label}: {product}",
+      "role": "a11y",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.hero.none": {
+      "value": "None needed",
+      "role": "hint",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.hero.includes": {
+      "value": "Includes",
+      "role": "label",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.hero.licenseAll": {
+      "value": "License, devices and all versions",
+      "role": "button",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.flow.from": {
+      "value": "From {developer}",
+      "role": "hint",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.key.valid": {
+      "value": "Key format is valid",
+      "role": "hint",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.key.pasteHint": {
+      "value": "Press {detail} to paste the key.",
+      "role": "hint",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.key.endingAria": {
+      "value": "License key ending {detail}",
+      "role": "a11y",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.key.forAria": {
+      "value": "License key for {product}",
+      "role": "a11y",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.platform.runsOn": {
+      "value": "Runs on {detail}",
+      "role": "a11y",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.remove.entryStays": {
+      "value": "{product} stays in your library",
+      "role": "hint",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.remove.entryStaysNote": {
+      "value": "You have a license for it now, so there's nothing to remove.",
+      "role": "hint",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.remove.ask": {
+      "value": "Remove {product} from your library?",
+      "role": "title",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.remove.entryNote": {
+      "value": "You can add it again from Discover while it is free to add.",
+      "role": "body",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.remove.licenseKeepsDevices": {
+      "value": "Its devices keep working.",
+      "role": "body",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.remove.licenseSync": {
+      "value": "The devices you signed in on stop syncing it with Cloud Sync.",
+      "role": "body",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.remove.licenseNamed": {
+      "value": "It won't be in an account, and it won't come back to this account by itself. To add it again, use its key.",
+      "role": "body",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.remove.licenseAnyone": {
+      "value": "It won't be in an account: anyone with the key can add it, and it won't come back to this account by itself.",
+      "role": "body",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.remove.licenseAsk": {
+      "value": "Remove this {product} license from your library?",
+      "role": "title",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.remove.othersStay": {
+      "value": "{count, plural, one {Your other license stays.} other {Your other # licenses stay.}}",
+      "role": "body",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.productData.title": {
+      "value": "Your data in {product}",
+      "role": "title",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.productData.download": {
+      "value": "Download my data from {product}",
+      "role": "button",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.productData.removeAria": {
+      "value": "Remove my data from {product}",
+      "role": "a11y",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.productData.remove": {
+      "value": "Remove…",
+      "role": "button",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.productData.supportCode": {
+      "value": "Support code {detail}",
+      "role": "hint",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.productData.copyCode": {
+      "value": "Copy support code",
+      "role": "button",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.productData.getCode": {
+      "value": "Get a support code",
+      "role": "button",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.productData.removed": {
+      "value": "Your data was removed from {product}",
+      "role": "hint",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.productData.removeAsk": {
+      "value": "Remove your data from {product}?",
+      "role": "title",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.productData.removeBody": {
+      "value": "This only affects {product}. Your Polaris Locker account and your other apps stay as they are.",
+      "role": "body",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.identity.title": {
+      "value": "Sign in to {product}",
+      "role": "title",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.identity.body": {
+      "value": "{product} signs you in with your Polaris Locker account.",
+      "role": "body",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.identity.note": {
+      "value": "It gets its own id for you, so developers can't match you across products.",
+      "role": "hint",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.identity.manage": {
+      "value": "Manage sign-in methods",
+      "role": "button",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.help.title": {
+      "value": "Need help?",
+      "role": "title",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.help.body": {
+      "value": "{developer} handles licenses and downloads for {product}.",
+      "role": "body",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.help.contact": {
+      "value": "Contact {developer}",
+      "role": "button",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.packagesPointer.body": {
+      "value": "{product} packages from {developer}",
+      "role": "body",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.packagesPointer.link": {
+      "value": "Set up in Account → Packages",
+      "role": "button",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.sections.sections": {
+      "value": "Sections",
+      "role": "a11y",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.notes.less": {
+      "value": "Show less",
+      "role": "button",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.notes.full": {
+      "value": "Show full notes",
+      "role": "button",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.notes.none": {
+      "value": "This version has no release notes.",
+      "role": "hint",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.notes.earlier": {
+      "value": "Earlier versions",
+      "role": "title",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.notes.fewer": {
+      "value": "Show fewer",
+      "role": "button",
+      "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.setup.packageManager": {
+      "value": "Package manager",
+      "role": "a11y",
+      "note": "Portal shell, library and product pages (P0-36)."
     }
   }
 }
