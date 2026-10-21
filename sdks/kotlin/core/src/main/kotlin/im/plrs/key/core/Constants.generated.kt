@@ -1364,7 +1364,7 @@ public const val DEVICE_LABEL_VERSION: Int = 1
 public const val PRESENTATION_MATRIX_VERSION: Int = 1
 
 /** `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json. */
-public const val UI_MATRIX_VERSION: Int = 3
+public const val UI_MATRIX_VERSION: Int = 4
 
 /** `backendMatrixVersion` of conformance/corpus/v2/backend-matrix.json (WIRE-CONTRACT-V4 §14). */
 public const val BACKEND_MATRIX_VERSION: Int = 1

@@ -47,6 +47,18 @@ internal fun welcomeScreen(inputs: KitInputs): KitScreen {
     return screen(KitComponent.welcome, "default", lines)
 }
 
+/** What every field-state Activate screen carries: its heading, lede and the key field (ui-matrix v4). */
+private fun activateBase(context: KitContext): List<CopyLine> = listOf(
+    context.line("activate.title"),
+    context.line("activate.lede"),
+    context.line("part.keyField.label"),
+    context.line("part.keyField.placeholder"),
+    context.line("common.paste"),
+)
+
+/** The refusal's lines less its title: the screen's own heading is already in the base. */
+private fun messageOnly(lines: List<CopyLine>): List<CopyLine> = lines.filter { !it.key.endsWith(".title") }
+
 /**
  * License key entry with a live verdict. A floating key never needs an account (the Must not): an
  * `ok` activation is `done` whether or not anyone is signed in.
@@ -55,7 +67,7 @@ internal fun activateScreen(inputs: KitInputs): KitScreen {
     val context = KitContext(inputs)
     if (!inputs.isOn("license")) return hidden(KitComponent.activate)
     if (inputs.string("pending") == "activate") {
-        return screen(KitComponent.activate, "busy", listOf(context.line("activate.busy"), context.line("a11y.busy")))
+        return screen(KitComponent.activate, "busy", activateBase(context) + listOf(context.line("activate.busy"), context.line("a11y.busy")))
     }
     inputs.obj("activation")?.takeIf { it.string("result") != null }?.let { activation ->
         return activationOutcome(activation, context)
@@ -63,34 +75,27 @@ internal fun activateScreen(inputs: KitInputs): KitScreen {
     val field = inputs.obj("keyField")
     val verdict = KeyVerdict.of(field.string("text") ?: "", submitted = field.boolean("submitted") == true)
     return when (verdict.kind) {
-        KeyVerdict.Kind.SubmittedEmpty -> screen(KitComponent.activate, "rejected", listOf(context.line("part.keyField.empty")))
+        KeyVerdict.Kind.SubmittedEmpty -> screen(KitComponent.activate, "rejected", activateBase(context) + context.line("part.keyField.empty"))
         KeyVerdict.Kind.Empty -> screen(
             KitComponent.activate,
             "empty",
-            listOf(
-                context.line("activate.title"),
-                context.line("activate.lede"),
-                context.line("part.keyField.label"),
-                context.line("part.keyField.placeholder"),
-                context.line("common.paste"),
-                context.line("activate.submit"),
-            ),
+            activateBase(context) + context.line("activate.submit"),
         )
-        KeyVerdict.Kind.Malformed -> screen(KitComponent.activate, "rejected", listOf(context.line("part.keyField.malformed")))
+        KeyVerdict.Kind.Malformed -> screen(KitComponent.activate, "rejected", activateBase(context) + context.line("part.keyField.malformed"))
         KeyVerdict.Kind.Typing -> screen(
             KitComponent.activate,
             "typing",
-            listOf(context.line("part.keyField.label"), context.line("activate.submit")),
+            activateBase(context) + context.line("activate.submit"),
         )
         KeyVerdict.Kind.Parsed -> screen(
             KitComponent.activate,
             "parsed",
-            listOf(context.line("part.keyField.forProduct", context.productArgs), context.line("activate.submit")),
+            activateBase(context) + listOf(context.line("part.keyField.forProduct", context.productArgs), context.line("activate.submit")),
         )
         KeyVerdict.Kind.CutShort -> screen(
             KitComponent.activate,
             "cut-short",
-            listOf(
+            activateBase(context) + listOf(
                 context.line(
                     "part.keyField.cutShort",
                     mapOf(
@@ -139,17 +144,17 @@ private fun activationOutcome(activation: JsonObject, context: KitContext): KitS
             }
             screen(KitComponent.activate, "device-limit", lines)
         }
-        "refused" -> screen(KitComponent.activate, "rejected", context.codeLines(activation.string("code")))
+        "refused" -> screen(KitComponent.activate, "rejected", activateBase(context) + messageOnly(context.codeLines(activation.string("code"))))
         else -> {
             val base = "core.activation.$result"
             if (KitCopy.bundled.has("$base.title")) {
                 screen(
                     KitComponent.activate,
                     "rejected",
-                    listOf(context.line("$base.title"), context.line("$base.message", context.productArgs)),
+                    activateBase(context) + context.line("$base.message", context.productArgs),
                 )
             } else {
-                screen(KitComponent.activate, "rejected", context.codeLines(activation.string("code")))
+                screen(KitComponent.activate, "rejected", activateBase(context) + messageOnly(context.codeLines(activation.string("code"))))
             }
         }
     }

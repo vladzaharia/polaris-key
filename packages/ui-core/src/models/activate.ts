@@ -127,6 +127,14 @@ export type ActivateState =
   | "hidden";
 
 const FIELD = "part.keyField.label";
+/** What every field-state screen carries: the heading, the lede and the key field (H1b). */
+const BASE = [
+  "activate.title",
+  "activate.lede",
+  FIELD,
+  "part.keyField.placeholder",
+  "common.paste",
+];
 const SUBMIT = "activate.submit";
 
 /** License key entry with a live verdict, and the activation's answer. */
@@ -137,7 +145,7 @@ export function activateView(ctx: Context): View<"Activate", ActivateState> {
   if (pending === "activate")
     return makeView(ctx, "Activate", {
       state: "busy",
-      copy: ["activate.busy", "a11y.busy"],
+      copy: [...BASE, "activate.busy", "a11y.busy"],
       primary: SUBMIT,
     });
   if (activation) {
@@ -185,7 +193,13 @@ export function activateView(ctx: Context): View<"Activate", ActivateState> {
     // A refusal of a well-formed key: the key is not wrong, so no danger stroke on the field.
     return makeView(ctx, "Activate", {
       state: "rejected",
-      copy: activationCopy(activation.result, activation.code),
+      // Only the refusal's message: the screen's own title is already BASE's heading.
+      copy: [
+        ...BASE,
+        ...activationCopy(activation.result, activation.code).filter(
+          (k) => !k.endsWith(".title"),
+        ),
+      ],
       args: { product, code: activation.code },
       primary: SUBMIT,
       tone: activation.result === "error" ? "danger" : "neutral",
@@ -206,7 +220,7 @@ export function activateView(ctx: Context): View<"Activate", ActivateState> {
       if (keyField?.submitted)
         return makeView(ctx, "Activate", {
           state: "rejected",
-          copy: ["part.keyField.empty"],
+          copy: [...BASE, "part.keyField.empty"],
           args,
           primary: SUBMIT,
           tone: "danger",
@@ -215,14 +229,7 @@ export function activateView(ctx: Context): View<"Activate", ActivateState> {
         });
       return makeView(ctx, "Activate", {
         state: "empty",
-        copy: [
-          "activate.title",
-          "activate.lede",
-          FIELD,
-          "part.keyField.placeholder",
-          "common.paste",
-          SUBMIT,
-        ],
+        copy: [...BASE, SUBMIT],
         args,
         primary: SUBMIT,
         focus: FIELD,
@@ -230,7 +237,7 @@ export function activateView(ctx: Context): View<"Activate", ActivateState> {
     case "typing":
       return makeView(ctx, "Activate", {
         state: "typing",
-        copy: [FIELD, SUBMIT],
+        copy: [...BASE, SUBMIT],
         args,
         primary: SUBMIT,
         focus: FIELD,
@@ -238,7 +245,7 @@ export function activateView(ctx: Context): View<"Activate", ActivateState> {
     case "parsed":
       return makeView(ctx, "Activate", {
         state: "parsed",
-        copy: ["part.keyField.forProduct", SUBMIT],
+        copy: [...BASE, "part.keyField.forProduct", SUBMIT],
         args,
         primary: SUBMIT,
         focus: FIELD,
@@ -246,7 +253,7 @@ export function activateView(ctx: Context): View<"Activate", ActivateState> {
     case "short":
       return makeView(ctx, "Activate", {
         state: "cut-short",
-        copy: ["part.keyField.cutShort"],
+        copy: [...BASE, "part.keyField.cutShort"],
         args,
         primary: SUBMIT,
         tone: "danger",
@@ -256,7 +263,7 @@ export function activateView(ctx: Context): View<"Activate", ActivateState> {
     case "malformed":
       return makeView(ctx, "Activate", {
         state: "rejected",
-        copy: ["part.keyField.malformed"],
+        copy: [...BASE, "part.keyField.malformed"],
         args,
         primary: SUBMIT,
         tone: "danger",

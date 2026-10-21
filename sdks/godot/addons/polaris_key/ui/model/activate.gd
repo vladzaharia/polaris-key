@@ -116,6 +116,19 @@ static func parse_key(text: String, submitted: bool = false) -> Dictionary:
 
 const FIELD := "part.keyField.label"
 const SUBMIT := "activate.submit"
+## What every field-state screen carries: its heading, lede and the key field (ui-matrix v4).
+const BASE := [
+	"activate.title",
+	"activate.lede",
+	FIELD,
+	"part.keyField.placeholder",
+	"common.paste",
+]
+
+
+## The refusal's lines less its title: the screen's own heading is already in BASE.
+static func _message_only(lines: Array) -> Array:
+	return lines.filter(func(k): return not (k as String).ends_with(".title"))
 
 
 ## License key entry with a live verdict, and the activation's answer.
@@ -128,7 +141,7 @@ static func activate_view(ctx: RefCounted) -> Dictionary:
 	if pending == "activate":
 		return View.make(ctx, "Activate", {
 			"state": "busy",
-			"copy": ["activate.busy", "a11y.busy"],
+			"copy": BASE + ["activate.busy", "a11y.busy"],
 			"primary": SUBMIT,
 		})
 	if View.truthy(ctx.input.get("activation")):
@@ -173,7 +186,7 @@ static func activate_view(ctx: RefCounted) -> Dictionary:
 		# A refusal of a well-formed key: the key is not wrong, so no danger stroke on the field.
 		return View.make(ctx, "Activate", {
 			"state": "rejected",
-			"copy": Errors.activation_copy(result if result is String else "", activation.get("code")),
+			"copy": BASE + _message_only(Errors.activation_copy(result if result is String else "", activation.get("code"))),
 			"args": {"product": product},
 			"primary": SUBMIT,
 			"tone": "danger" if result == "error" else "neutral",
@@ -194,7 +207,7 @@ static func activate_view(ctx: RefCounted) -> Dictionary:
 			if View.truthy(key_field.get("submitted")):
 				return View.make(ctx, "Activate", {
 					"state": "rejected",
-					"copy": ["part.keyField.empty"],
+					"copy": BASE + ["part.keyField.empty"],
 					"args": args,
 					"primary": SUBMIT,
 					"tone": "danger",
@@ -203,14 +216,7 @@ static func activate_view(ctx: RefCounted) -> Dictionary:
 				})
 			return View.make(ctx, "Activate", {
 				"state": "empty",
-				"copy": [
-					"activate.title",
-					"activate.lede",
-					FIELD,
-					"part.keyField.placeholder",
-					"common.paste",
-					SUBMIT,
-				],
+				"copy": BASE + [SUBMIT],
 				"args": args,
 				"primary": SUBMIT,
 				"focus": FIELD,
@@ -218,7 +224,7 @@ static func activate_view(ctx: RefCounted) -> Dictionary:
 		"typing":
 			return View.make(ctx, "Activate", {
 				"state": "typing",
-				"copy": [FIELD, SUBMIT],
+				"copy": BASE + [SUBMIT],
 				"args": args,
 				"primary": SUBMIT,
 				"focus": FIELD,
@@ -226,7 +232,7 @@ static func activate_view(ctx: RefCounted) -> Dictionary:
 		"parsed":
 			return View.make(ctx, "Activate", {
 				"state": "parsed",
-				"copy": ["part.keyField.forProduct", SUBMIT],
+				"copy": BASE + ["part.keyField.forProduct", SUBMIT],
 				"args": args,
 				"primary": SUBMIT,
 				"focus": FIELD,
@@ -234,7 +240,7 @@ static func activate_view(ctx: RefCounted) -> Dictionary:
 		"short":
 			return View.make(ctx, "Activate", {
 				"state": "cut-short",
-				"copy": ["part.keyField.cutShort"],
+				"copy": BASE + ["part.keyField.cutShort"],
 				"args": args,
 				"primary": SUBMIT,
 				"tone": "danger",
@@ -244,7 +250,7 @@ static func activate_view(ctx: RefCounted) -> Dictionary:
 	# "malformed": the last kind.
 	return View.make(ctx, "Activate", {
 		"state": "rejected",
-		"copy": ["part.keyField.malformed"],
+		"copy": BASE + ["part.keyField.malformed"],
 		"args": args,
 		"primary": SUBMIT,
 		"tone": "danger",

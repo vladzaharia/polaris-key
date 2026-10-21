@@ -96,6 +96,20 @@ public struct KeyVerdict: Sendable, Equatable {
 }
 
 extension KitStates {
+    /// What every field-state Activate screen carries: its heading, lede and the key field
+    /// (ui-matrix version 4).
+    static func activateBase(_ c: Ctx) -> [CopyLine] {
+        [
+            c.line("activate.title"), c.line("activate.lede"), c.line("part.keyField.label"),
+            c.line("part.keyField.placeholder"), c.line("common.paste"),
+        ]
+    }
+
+    /// The refusal's lines less its title: the screen's own heading is already in the base.
+    static func messageOnly(_ lines: [CopyLine]) -> [CopyLine] {
+        lines.filter { !$0.key.hasSuffix(".title") }
+    }
+
     /// The gate's first screen: the product hero, Sign in and Use a license key, and the extras
     /// the product supports.
     public static func welcome(_ i: KitInputs) -> KitScreen<WelcomeState> {
@@ -137,7 +151,8 @@ extension KitStates {
         let c = Ctx(i)
         guard i.isOn(.license) else { return .hidden }
         if i.pending == .activate {
-            return KitScreen(.busy, [c.line("activate.busy"), c.line("a11y.busy")])
+            return KitScreen(
+                .busy, activateBase(c) + [c.line("activate.busy"), c.line("a11y.busy")])
         }
         let text = i.keyField?.text ?? ""
         let verdict = KeyVerdict(text, submitted: i.keyField?.submitted ?? false)
@@ -146,27 +161,22 @@ extension KitStates {
         }
         switch verdict.kind {
         case .submittedEmpty:
-            return KitScreen(.rejected, [c.line("part.keyField.empty")])
+            return KitScreen(.rejected, activateBase(c) + [c.line("part.keyField.empty")])
         case .empty:
-            return KitScreen(
-                .empty,
-                [
-                    c.line("activate.title"), c.line("activate.lede"),
-                    c.line("part.keyField.label"), c.line("part.keyField.placeholder"),
-                    c.line("common.paste"), c.line("activate.submit"),
-                ])
+            return KitScreen(.empty, activateBase(c) + [c.line("activate.submit")])
         case .malformed:
-            return KitScreen(.rejected, [c.line("part.keyField.malformed")])
+            return KitScreen(.rejected, activateBase(c) + [c.line("part.keyField.malformed")])
         case .typing:
-            return KitScreen(.typing, [c.line("part.keyField.label"), c.line("activate.submit")])
+            return KitScreen(.typing, activateBase(c) + [c.line("activate.submit")])
         case .parsed:
             return KitScreen(
                 .parsed,
-                [c.line("part.keyField.forProduct", c.productArg), c.line("activate.submit")])
+                activateBase(c)
+                    + [c.line("part.keyField.forProduct", c.productArg), c.line("activate.submit")])
         case .cutShort:
             return KitScreen(
                 .cutShort,
-                [
+                activateBase(c) + [
                     c.line(
                         "part.keyField.cutShort",
                         [
@@ -209,14 +219,14 @@ extension KitStates {
             }
             return KitScreen(.deviceLimit, lines)
         case "refused":
-            return KitScreen(.rejected, c.codeLines(a.code))
+            return KitScreen(.rejected, activateBase(c) + messageOnly(c.codeLines(a.code)))
         default:
             let base = "core.activation.\(a.result)"
             if KitCopy.bundled.has("\(base).title") {
                 return KitScreen(
-                    .rejected, [c.line("\(base).title"), c.line("\(base).message", c.productArg)])
+                    .rejected, activateBase(c) + [c.line("\(base).message", c.productArg)])
             }
-            return KitScreen(.rejected, c.codeLines(a.code))
+            return KitScreen(.rejected, activateBase(c) + messageOnly(c.codeLines(a.code)))
         }
     }
 

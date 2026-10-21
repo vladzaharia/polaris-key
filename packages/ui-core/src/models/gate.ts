@@ -274,14 +274,28 @@ export function statusScreenView(
     max: allowed.max,
   };
   switch (status) {
-    case "revoked":
+    case "revoked": {
+      // Revoked is the account's own state, so Sign in comes first when the build offers it (the
+      // Welcome predicate); a person already signed out is never offered Sign out. Use a
+      // different key follows when key entry is on (DL6, H1b).
+      const signIn = ctx.caps.signIn && ctx.on("identity");
+      const key = ctx.caps.keyEntry;
       return makeView(ctx, "StatusScreen", {
         state: status,
-        copy: [...head, "signin.key.differentKey", "common.signOut"],
+        copy: [
+          ...head,
+          signIn && "welcome.signIn",
+          key && "signin.key.differentKey",
+        ],
         args,
-        primary: "signin.key.differentKey",
+        primary: signIn
+          ? "welcome.signIn"
+          : key
+            ? "signin.key.differentKey"
+            : null,
         tone: "neutral",
       });
+    }
     case "expired":
       return makeView(ctx, "StatusScreen", {
         state: status,

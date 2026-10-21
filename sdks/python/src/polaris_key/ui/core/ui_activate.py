@@ -25,6 +25,13 @@ _KEY_SHAPE = re.compile(r"^pkey_([a-z0-9-]+)_([A-Za-z0-9_-]*)$")
 _PREFIX_SHAPE = re.compile(r"^pkey_[a-z0-9-]*$")
 _FIELD = "part.keyField.label"
 _SUBMIT = "activate.submit"
+# What every field-state screen carries: its heading, lede and the key field (ui-matrix v4).
+_BASE = ("activate.title", "activate.lede", _FIELD, "part.keyField.placeholder", "common.paste")
+
+
+def _message_only(lines):
+    """The refusal's lines less its title: the screen's own heading is already in the base."""
+    return tuple(k for k in lines if not k.endswith(".title"))
 _ACTIVATION_KINDS = frozenset(
     (
         "ok",
@@ -159,7 +166,7 @@ def activate_view(ctx: Context) -> View:
             ctx,
             "Activate",
             "busy",
-            ("activate.busy", "a11y.busy"),
+            _BASE + ("activate.busy", "a11y.busy"),
             primary=_SUBMIT,
         )
     if activation:
@@ -201,7 +208,7 @@ def activate_view(ctx: Context) -> View:
             ctx,
             "Activate",
             "rejected",
-            activation_copy(result_name, activation.get("code")),
+            _BASE + _message_only(activation_copy(result_name, activation.get("code"))),
             args={"product": product},
             primary=_SUBMIT,
             tone="danger" if result_name == "error" else "neutral",
@@ -222,7 +229,7 @@ def activate_view(ctx: Context) -> View:
                 ctx,
                 "Activate",
                 "rejected",
-                ("part.keyField.empty",),
+                _BASE + ("part.keyField.empty",),
                 args=args,
                 primary=_SUBMIT,
                 tone="danger",
@@ -233,19 +240,19 @@ def activate_view(ctx: Context) -> View:
             ctx,
             "Activate",
             "empty",
-            ("activate.title", "activate.lede", _FIELD, "part.keyField.placeholder", "common.paste", _SUBMIT),
+            _BASE + (_SUBMIT,),
             args=args,
             primary=_SUBMIT,
             focus=_FIELD,
         )
     if parsed.kind == "typing":
-        return make_view(ctx, "Activate", "typing", (_FIELD, _SUBMIT), args=args, primary=_SUBMIT, focus=_FIELD)
+        return make_view(ctx, "Activate", "typing", _BASE + (_SUBMIT,), args=args, primary=_SUBMIT, focus=_FIELD)
     if parsed.kind == "parsed":
         return make_view(
             ctx,
             "Activate",
             "parsed",
-            ("part.keyField.forProduct", _SUBMIT),
+            _BASE + ("part.keyField.forProduct", _SUBMIT),
             args=args,
             primary=_SUBMIT,
             focus=_FIELD,
@@ -255,7 +262,7 @@ def activate_view(ctx: Context) -> View:
             ctx,
             "Activate",
             "cut-short",
-            ("part.keyField.cutShort",),
+            _BASE + ("part.keyField.cutShort",),
             args=args,
             primary=_SUBMIT,
             tone="danger",
@@ -266,7 +273,7 @@ def activate_view(ctx: Context) -> View:
         ctx,
         "Activate",
         "rejected",
-        ("part.keyField.malformed",),
+        _BASE + ("part.keyField.malformed",),
         args=args,
         primary=_SUBMIT,
         tone="danger",

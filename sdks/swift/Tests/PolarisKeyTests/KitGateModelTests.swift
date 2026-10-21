@@ -102,11 +102,11 @@
             model.keyText = "pkey_djdl_" + String(repeating: "A", count: 22)
             await model.submitKey()
             XCTAssertEqual(model.activate.state, .rejected)
-            XCTAssertTrue(model.activate.shows("core.codes.license_owned.title"))
+            XCTAssertTrue(model.activate.shows("core.codes.license_owned.message"))
             // Editing clears the refusal (DL7): a new whole key is parsed again.
             model.keyText = "pkey_djdl_" + String(repeating: "B", count: 22)
             XCTAssertEqual(model.activate.state, .parsed)
-            XCTAssertFalse(model.activate.shows("core.codes.license_owned.title"))
+            XCTAssertFalse(model.activate.shows("core.codes.license_owned.message"))
         }
 
         func testUseACodeInsteadShowsTheSameRequestsCode() async throws {

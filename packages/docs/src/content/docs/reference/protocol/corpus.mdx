@@ -22,7 +22,7 @@ only corpus. `corpusVersion 2`,
 `configMatrixVersion 1`,
 `updateMatrixVersion 1`, `outletMatrixVersion 1`,
 `planMatrixVersion 2`, `deviceLabelVersion 1`,
-`presentationMatrixVersion 1`, `uiMatrixVersion 3`,
+`presentationMatrixVersion 1`, `uiMatrixVersion 4`,
 `backendMatrixVersion 1`,
 `contentCorpusVersion 2`, `syncScenariosVersion 2`.
 Wire contract v4 (`docs/security/WIRE-CONTRACT-V4.md`) adds the `feedCases` and
@@ -99,13 +99,13 @@ WIRE-CONTRACT-V4 §5.5 (HA-12): discovery's unsigned `core.presentation`, parsed
 
 WIRE-CONTRACT-V4 §14 (SP-53): a server core's six-step verdict on `X-PKey-License` (signed licence documents, header fields, the server's clock, the products served, `maxAgeSeconds` and the route's requirements, to a status, a code and the attached context), the refusal's problem body with its `WWW-Authenticate` challenge and its locale from `Accept-Language`, and the client half's refresh-and-retry rule. A reference in `tools/corpus/reference/backend.ts` recomputes every row and imports nothing it checks; `@polaris-key/client-core/backend` is checked against the file by the Node and browser runners. Server cores replay `verdict` and `problem`, client halves `client`.
 
-## UI state matrix (`ui-matrix.json`): 356 component rows, 27 theme rows, 78 i18n rows
+## UI state matrix (`ui-matrix.json`): 359 component rows, 27 theme rows, 78 i18n rows
 
 The UI kits' layer (c), pinned once for every language (`plans/UK-02b.md`): each row drives the headless model of one component with an input (SDK results, `plans/I-04.md`'s license-choice views, kit-side values) and names its state, the copy keys it shows and its actions. `hidden` means the drop-in renders nothing because a service it depends on is off. Inline sign-in rows have a sheet twin, every component has a presentation-absent row, and the negative rows carry UI-KITS §4.1's Must not. The `theme` rows pin the accent, scheme, icon and preset resolution; the `i18n` rows the catalog lookup and the ICU subset, computed from the kit copy by the generator. No reference state machine: ui-core, the Swift presentation core, Kotlin `commonMain`, the Godot controllers and `polaris_key.ui.core` each run every row.
 
 | Family | Components | Rows |
 | --- | --- | --- |
-| `gate` | PolarisKeyGate, Boot, StatusScreen, GraceBanner, Toast | 58 |
+| `gate` | PolarisKeyGate, Boot, StatusScreen, GraceBanner, Toast | 61 |
 | `activate` | Welcome, Activate, OfflineActivation | 35 |
 | `signIn` | SignIn, SignInHandoff, LicenseChoice | 147 |
 | `deviceLimit` | DeviceLimit | 8 |
@@ -157,7 +157,7 @@ Every state a kit, or an app drawing its own UI, handles, with the copy keys the
 | Boot | `declined` | `boot.declined.body`, `boot.declined.title`, `common.tryAgain` |
 | Boot | `rolled-back` | `boot.rolledBack` |
 | Boot | `error` | `boot.error.body`, `common.tryAgain`, `gate.error.title` |
-| StatusScreen | `revoked` | `common.signOut`, `core.gate.revoked.message`, `core.gate.revoked.title`, `signin.key.differentKey` |
+| StatusScreen | `revoked` | `core.gate.revoked.message`, `core.gate.revoked.title`, `signin.key.differentKey`, `welcome.signIn` |
 | StatusScreen | `expired` | `core.gate.expired.message`, `core.gate.expired.title`, `status.renew`, `status.useAnotherLicense` |
 | StatusScreen | `version-too-old` | `core.gate.version-too-old.message`, `core.gate.version-too-old.title`, `status.allowedMax`, `status.allowedMin`, `status.allowedRange`, `status.update` |
 | StatusScreen | `version-too-new` | `core.gate.version-too-new.message`, `core.gate.version-too-new.title`, `status.allowedMax`, `status.allowedRange` |
@@ -178,11 +178,11 @@ Every state a kit, or an app drawing its own UI, handles, with the copy keys the
 | Welcome | `capability-limited` | `welcome.ledeKeyOnly`, `welcome.ledeSignInOnly`, `welcome.title` |
 | Welcome | `hidden` | none |
 | Activate | `empty` | `activate.lede`, `activate.submit`, `activate.title`, `common.paste`, `part.keyField.label`, `part.keyField.placeholder` |
-| Activate | `typing` | `activate.submit`, `part.keyField.label` |
-| Activate | `parsed` | `activate.submit`, `part.keyField.forProduct` |
-| Activate | `cut-short` | `part.keyField.cutShort` |
-| Activate | `busy` | `a11y.busy`, `activate.busy` |
-| Activate | `rejected` | `core.activation.key-entry-limit.message`, `core.activation.key-entry-limit.title`, `core.activation.license-disabled.message`, `core.activation.license-disabled.title`, `core.codes.license_owned.message`, `core.codes.license_owned.title`, `part.keyField.empty`, `part.keyField.malformed` |
+| Activate | `typing` | `activate.lede`, `activate.submit`, `activate.title`, `common.paste`, `part.keyField.label`, `part.keyField.placeholder` |
+| Activate | `parsed` | `activate.lede`, `activate.submit`, `activate.title`, `common.paste`, `part.keyField.forProduct`, `part.keyField.label`, `part.keyField.placeholder` |
+| Activate | `cut-short` | `activate.lede`, `activate.title`, `common.paste`, `part.keyField.cutShort`, `part.keyField.label`, `part.keyField.placeholder` |
+| Activate | `busy` | `a11y.busy`, `activate.busy`, `activate.lede`, `activate.title`, `common.paste`, `part.keyField.label`, `part.keyField.placeholder` |
+| Activate | `rejected` | `activate.lede`, `activate.title`, `common.paste`, `core.activation.key-entry-limit.message`, `core.activation.license-disabled.message`, `core.codes.license_owned.message`, `part.keyField.empty`, `part.keyField.label`, `part.keyField.malformed`, `part.keyField.placeholder` |
 | Activate | `device-limit` | `core.activation.device-limit.message`, `core.activation.device-limit.title`, `deviceLimit.noManage`, `deviceLimit.title`, `part.seatMeter.caption` |
 | Activate | `done` | `core.activation.ok.message`, `core.activation.ok.title`, `part.keyField.verdict` |
 | Activate | `hidden` | none |

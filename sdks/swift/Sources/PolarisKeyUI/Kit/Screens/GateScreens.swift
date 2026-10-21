@@ -169,8 +169,8 @@ public struct StatusScreenView: View {
 
     private var fixes: [CopyLine] {
         [
-            "signin.key.differentKey", "status.renew", "status.update", "status.switchChannel",
-            "status.useAnotherLicense", "status.contact", "common.signOut",
+            "welcome.signIn", "signin.key.differentKey", "status.renew", "status.update",
+            "status.switchChannel", "status.useAnotherLicense", "status.contact",
         ]
         .compactMap { screen.line($0) }
         .filter { available.contains($0.key) }
@@ -200,9 +200,7 @@ public struct StatusScreenView: View {
                 }
                 // Try again whenever a refresh can clear the state: no fix the host can run, or
                 // an expiry renewed elsewhere ("connect to the internet or renew").
-                if fixes.isEmpty || !fixes.contains(where: { $0.key != "common.signOut" })
-                    || screen.state == .expired
-                {
+                if fixes.isEmpty || screen.state == .expired {
                     KitButton(
                         line: CopyLine("common.tryAgain"),
                         kind: fixes.isEmpty ? .primary : .secondary,

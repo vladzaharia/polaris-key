@@ -30,17 +30,19 @@
 // `sdk-node` or ui-core.
 //
 // The file is ASCII only (sign-corpus writes it through `asciiJson`) and append-only within
-// `uiMatrixVersion` 3: a new row keeps the version; a changed row, input member or rule bumps it
+// `uiMatrixVersion` 4: a new row keeps the version; a changed row, input member or rule bumps it
 // (plans/UK-02b.md §4.8). Version 2 (UK-03): the `elapsedMs` input member and DL7's
 // delayed-response rows (the `dl7-delayed-response` gap of version 1), and the fixture key's
 // secret corrected to the 22 characters every license key has. Version 3 (UK-51): the `cli`
-// family, a new top-level section every runner learns.
+// family, a new top-level section every runner learns. Version 4 (H1b): StatusScreen/revoked
+// offers Sign in and Use a different key, never Sign out; Activate's typing, parsed, cut-short,
+// rejected and busy states carry the base copy; the fixture URLs name https://polaris.locker.
 
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const UI_MATRIX_VERSION = 3;
+export const UI_MATRIX_VERSION = 4;
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -374,6 +376,25 @@ export const MUST_NOT: Readonly<Record<string, string>> = {
   Toast: "be the only record of an error",
 };
 
+/** What every field-state Activate screen carries: its heading, lede and the key field. */
+const ACTIVATE_BASE = [
+  "activate.title",
+  "activate.lede",
+  "part.keyField.label",
+  "part.keyField.placeholder",
+  "common.paste",
+];
+
+const REVOKED_MUST_NOT = {
+  invariant: "offer Sign out on a device already signed out",
+  copy: ["common.signOut"],
+};
+
+/** Further invariants a component's rows may name besides its UI-KITS §4.1 one. */
+export const EXTRA_MUST_NOT: Readonly<Record<string, readonly string[]>> = {
+  StatusScreen: ["offer Sign out on a device already signed out"],
+};
+
 /** D6: the identity-only keys. A presentation-absent row may drop these from its default row's
  *  copy, and nothing else. `common.byDeveloper` drops out (no developer name without an
  *  integrator or a presentation, UI-KITS §1.2); `a11y.productIcon` stays (the monogram tile is
@@ -701,7 +722,7 @@ const WEB = { os: "web", formFactor: "computer" };
 
 const KEY = "pkey_tidewater_Q2xvdWRzT3ZlclRoZUhpbG"; // a 22-character secret
 const MANAGE_URL =
-  "https://key.plrs.im/#/p/tidewater/free-device?license=lic_pro&for=MacBook%20Pro";
+  "https://polaris.locker/#/p/tidewater/free-device?license=lic_pro&for=MacBook%20Pro";
 const DEVICES = [
   {
     name: "Work laptop",
@@ -728,7 +749,7 @@ const DEVICES = [
 const DEVICES_UNKNOWN_CURRENT = DEVICES.map((d) => ({ ...d, current: false }));
 
 const FREE_DEVICE_URL =
-  "https://key.plrs.im/#/p/tidewater/free-device?license=lic_edu&for=MacBook%20Pro&return=/signin?request=req_tidewater";
+  "https://polaris.locker/#/p/tidewater/free-device?license=lic_edu&for=MacBook%20Pro&return=/signin?request=req_tidewater";
 const lic = (o: Obj): Obj => ({
   id: "lic_pro",
   tierName: "Pro",
@@ -798,7 +819,7 @@ const SIGNIN_PLUS = lic({
   seats: { used: 2, limit: 5 },
 });
 const GET_LICENSE = {
-  activateUrl: "https://key.plrs.im/activate?product=tidewater",
+  activateUrl: "https://polaris.locker/activate?product=tidewater",
   purchaseUrl: "https://tidewater.example/buy",
   keyEntry: true,
 };
@@ -910,7 +931,7 @@ const dc = (phase: string, o: Obj = {}): Obj => ({
 // ── gate: PolarisKeyGate, Boot, StatusScreen, GraceBanner, Toast ───────────────────────────
 
 function gateFamily(a: A): Draft[] {
-  const { row, all, hidden, off } = a;
+  const { row, all, but, hidden, off } = a;
   const G = "PolarisKeyGate";
   const licenseOff = { services: off("license"), registration: "open" };
   const st = (stage: string, outcome: string, emit?: Obj): Obj => ({
@@ -1123,7 +1144,35 @@ function gateFamily(a: A): Draft[] {
       "StatusScreen",
       "revoked",
       "all",
-      { default: true },
+      { default: true, mustNot: REVOKED_MUST_NOT },
+    ),
+    row(
+      "StatusScreen/revoked: no sign-in on this build",
+      { gate: { status: "revoked" }, capabilities: { signIn: false } },
+      "StatusScreen",
+      "revoked",
+      but("StatusScreen", "revoked", "welcome.signIn"),
+      { mustNot: REVOKED_MUST_NOT },
+    ),
+    row(
+      "StatusScreen/revoked: Identity off",
+      {
+        gate: { status: "revoked" },
+        services: off("identity"),
+        capabilities: { signIn: false },
+      },
+      "StatusScreen",
+      "revoked",
+      but("StatusScreen", "revoked", "welcome.signIn"),
+      { mustNot: REVOKED_MUST_NOT },
+    ),
+    row(
+      "StatusScreen/revoked: no key entry",
+      { gate: { status: "revoked" }, capabilities: { keyEntry: false } },
+      "StatusScreen",
+      "revoked",
+      but("StatusScreen", "revoked", "signin.key.differentKey"),
+      { mustNot: REVOKED_MUST_NOT },
     ),
     row(
       "StatusScreen/expired",
@@ -1460,14 +1509,14 @@ function activateFamily(a: A): Draft[] {
       { keyField: { text: "tidewater-2024-pro" } },
       "Activate",
       "rejected",
-      ["part.keyField.malformed"],
+      [...ACTIVATE_BASE, "part.keyField.malformed"],
     ),
     row(
       "Activate/rejected: submitted empty",
       { keyField: { text: "", submitted: true } },
       "Activate",
       "rejected",
-      ["part.keyField.empty"],
+      [...ACTIVATE_BASE, "part.keyField.empty"],
     ),
     row(
       "Activate/rejected: the license is disabled",
@@ -1477,10 +1526,7 @@ function activateFamily(a: A): Draft[] {
       },
       "Activate",
       "rejected",
-      [
-        "core.activation.license-disabled.title",
-        "core.activation.license-disabled.message",
-      ],
+      [...ACTIVATE_BASE, "core.activation.license-disabled.message"],
     ),
     row(
       "Activate/rejected: another account holds the license",
@@ -1490,7 +1536,7 @@ function activateFamily(a: A): Draft[] {
       },
       "Activate",
       "rejected",
-      ["core.codes.license_owned.title", "core.codes.license_owned.message"],
+      [...ACTIVATE_BASE, "core.codes.license_owned.message"],
     ),
     row(
       "Activate/rejected: the key-entry limit",
@@ -1500,10 +1546,7 @@ function activateFamily(a: A): Draft[] {
       },
       "Activate",
       "rejected",
-      [
-        "core.activation.key-entry-limit.title",
-        "core.activation.key-entry-limit.message",
-      ],
+      [...ACTIVATE_BASE, "core.activation.key-entry-limit.message"],
     ),
     row(
       "Activate/device-limit: no link to replace a device",
@@ -4878,7 +4921,10 @@ export function checkUiMatrix(doc: UiMatrix, S: UiMatrixSources): string[] {
       // Must not.
       if (r.mustNot) {
         const m = r.mustNot;
-        if (m.invariant !== MUST_NOT[component])
+        if (
+          m.invariant !== MUST_NOT[component] &&
+          !EXTRA_MUST_NOT[component]?.includes(m.invariant)
+        )
           errors.push(`${where}: mustNot is not ${component}'s invariant`);
         if (m.states?.includes(state))
           errors.push(`${where}: mustNot names its own state`);

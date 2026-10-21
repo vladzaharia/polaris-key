@@ -58,7 +58,6 @@ import {
   adaptPane,
   adaptUpdate,
   withoutLede,
-  adaptStatus,
   HANDOFF_WAITING,
 } from "./adapt.js";
 import { withChoice } from "./licenseRows.js";
@@ -701,8 +700,7 @@ export function PolarisKeyGate(props: PolarisKeyGateProps): ReactNode {
       const screen = gateScreen(v, step);
       if (!screen) return v;
       // Focus follows the view as drawn: a revoked screen focuses its Sign in.
-      const drawn = viewOf(screen, input);
-      return driven ? adaptStatus(drawn, input) : drawn;
+      return viewOf(screen, input);
     },
   );
   const { view, input } = kit;
@@ -726,9 +724,7 @@ export function PolarisKeyGate(props: PolarisKeyGateProps): ReactNode {
   const sub = (component: ComponentName) => {
     const raw = viewOf(component, input);
     // The drop-in keeps each step's context and offers the way back (never in a fixture state).
-    const v = driven
-      ? adaptStatus(adaptActivate(adaptHandoff(raw)), input)
-      : raw;
+    const v = driven ? adaptActivate(adaptHandoff(raw)) : raw;
     const chrome: Chrome = {};
     if (driven && step !== "home" && !v.copy.includes("common.back"))
       chrome.back = true;

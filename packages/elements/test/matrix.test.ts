@@ -50,20 +50,8 @@ const LEFT_OUT = new Set([
   "update.whatsNew",
 ]);
 
-// Keys one state's drawing leaves out on purpose (UK-04 fix): a refused key says it once, under
-// the field (its message, not its title); a revoked device is signed out already, so the screen
-// offers Sign in and Use a different key, never Sign out.
-// Sign out is left out of a revoked screen only where Sign in is offered (UK-02b moves the rule
-// into ui-core, which retires this).
-function leftOutFor(
-  view: { component: string; state: string },
-  key: string,
-  input: UiInput,
-) {
-  if (view.component === "Activate" && view.state === "rejected")
-    return /^core\.(activation|codes)\..*\.title$/.test(key);
-  if (view.component === "StatusScreen" && view.state === "revoked")
-    return key === "common.signOut" && signInOffered(input);
+// Keys one state's drawing leaves out on purpose.
+function leftOutFor(view: { component: string; state: string }, key: string) {
   // The Replace step confirms on its own button: its "Replace a device" openers are gone.
   if (
     (view.component === "LicenseChoice" && view.state === "replace-open") ||
@@ -72,7 +60,6 @@ function leftOutFor(
     return key === "signin.replace.open" || key === "signin.replace.openSystem";
   return false;
 }
-const signInOffered = (input: UiInput) => input.capabilities?.signIn !== false;
 
 // A key whose argument the corpus row leaves out is not drawn (never as `{name}`); the kit says so.
 const dropped = new Set<string>();
@@ -142,7 +129,7 @@ for (const family of COMPONENT_FAMILIES) {
       for (const key of view.copy) {
         const message = en.raw(key) ?? "";
         const lit = literal(message);
-        if (LEFT_OUT.has(key) || leftOutFor(view, key, el.input)) continue;
+        if (LEFT_OUT.has(key) || leftOutFor(view, key)) continue;
         if (dropped.has(key)) {
           expect(root.querySelector(`[data-key="${key}"]`)).toBeNull();
           continue;
@@ -205,24 +192,7 @@ for (const family of COMPONENT_FAMILIES) {
           // The form's Done step always offers Start.
           ...(view.component === "SignIn" ? ["signin.done.start"] : []),
           ...(view.component === "Activate" ? ["common.done"] : []),
-          // A revoked device is offered Sign in first.
-          ...(view.component === "StatusScreen" && view.state === "revoked"
-            ? ["welcome.signIn"]
-            : []),
         ]).toContain(filled[0]!.getAttribute("data-key"));
-      // A revoked device is offered Sign in, and that is the filled control (the view's own
-      // primary stays a secondary here until UK-02b moves the rule into ui-core).
-      if (
-        view.component === "StatusScreen" &&
-        view.state === "revoked" &&
-        signInOffered(el.input)
-      )
-        expect(
-          root.querySelector(
-            '[data-variant="primary"][data-key="welcome.signIn"]',
-          ),
-          "Sign in is the filled control on revoked",
-        ).not.toBeNull();
       // DL4/DL6: a view with a primary draws it as the one filled control (a destructive
       // confirm's is the danger fill).
       if (
@@ -230,11 +200,6 @@ for (const family of COMPONENT_FAMILIES) {
         !dropped.has(view.decisions.primary) &&
         view.component !== "PolarisKeyGate" &&
         view.component !== "OfflineActivation" &&
-        !(
-          view.component === "StatusScreen" &&
-          view.state === "revoked" &&
-          signInOffered(el.input)
-        ) &&
         !(LAYOUTS[view.component].quiet ?? []).includes(view.decisions.primary)
       )
         expect(

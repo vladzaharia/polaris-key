@@ -72,7 +72,14 @@ const EXPECT: Record<string, (input: UiInput) => Expect> = {
   "Boot.declined": () => refusal("common.tryAgain"),
   "Boot.error": () => failed("common.tryAgain", "screen"),
   // DL6: each blocking state is a neutral refusal whose fix is the primary.
-  "StatusScreen.revoked": () => refusal("signin.key.differentKey"),
+  // H1b: Sign in when the build offers it (Welcome's predicate), else the key.
+  "StatusScreen.revoked": (i) =>
+    refusal(
+      i.capabilities?.signIn === false ||
+        i.services?.includes("identity") === false
+        ? "signin.key.differentKey"
+        : "welcome.signIn",
+    ),
   "StatusScreen.expired": () => refusal("status.renew"),
   "StatusScreen.version-too-old": () => refusal("status.update"),
   // A fix the kit cannot reach is named in words: no primary, the heading takes focus.

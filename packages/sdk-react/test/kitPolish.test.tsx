@@ -12,7 +12,6 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { viewOf, type UiInput } from "@polaris-key/ui-core";
 
 import { SignIn } from "@polaris-key/react/kit";
-import { adaptStatus } from "../src/kit/adapt.js";
 
 type Obj = Record<string, unknown>;
 interface Row {
@@ -108,7 +107,9 @@ describe("an existing license in a sheet", () => {
 describe("the revoked screen", () => {
   it("focuses Sign in, the primary", () => {
     const i = input("StatusScreen/revoked");
-    const v = adaptStatus(viewOf("StatusScreen", i), i);
+    const v = viewOf("StatusScreen", i);
+    expect(v.copy).toContain("welcome.signIn");
+    expect(v.copy).not.toContain("common.signOut");
     expect(v.decisions.primary).toBe("welcome.signIn");
     expect(v.decisions.focus).toBe("welcome.signIn");
   });
