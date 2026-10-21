@@ -308,8 +308,7 @@
       <figure>
         <figcaption>
           terminal · device limit on the key path (replace a device in the
-          browser). Built today (Python golden; Node words the hand-off
-          differently)
+          browser). Built today (Node and Python goldens)
         </figcaption>
         <div class="shot cols80" data-shot="device-limit">
           <div class="tbar"><i></i><i></i><i></i>tidewater — 80 × 24</div>
@@ -401,7 +400,7 @@
       <figure>
         <figcaption>
           terminal · 60 columns (the device limit's browser hand-off; the text
-          wraps at the column). Built today (Python golden)
+          wraps at the column). Built today (Node and Python goldens)
         </figcaption>
         <div class="shot cols60" data-shot="narrow">
           <div class="tbar"><i></i><i></i><i></i>tidewater — 60 × 24</div>
@@ -899,19 +898,8 @@
           ["s", "Your license is on 3 of 3 devices"],
         ],
         rail(["s", "●●●"]),
-        ...(cols < 80
-          ? [
-              rail(["", "Replace a device in your browser. Tidewater Studio"]),
-              rail(["", "continues when you're done."]),
-            ]
-          : [
-              rail([
-                "",
-                "Replace a device in your browser. Tidewater Studio continues when",
-              ]),
-              rail(["", "you're done."]),
-            ]),
-        rail(["u", "key.plrs.im/portal/tidewater/devices"]),
+        rail(["", "Replace a device in your browser, then try again here."]),
+        rail(["u", "polaris.locker/#/p/tidewater/devices"]),
         [
           ["m", "└  "],
           ...keys(["Enter", "open in browser"], ["Esc", "cancel"]),
