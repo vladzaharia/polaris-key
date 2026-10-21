@@ -829,11 +829,10 @@ function KeysSection({
                       first seen <Timestamp at={fromSeconds(o.firstSeenAt)} />
                     </span>
                   </span>
-                  <span className="flex flex-wrap gap-2">
+                  <span className="flex flex-wrap gap-2 [&>button]:h-auto [&>button]:min-h-6 [&>button]:max-w-full [&>button]:whitespace-normal [&>button]:py-1">
                     <Button
                       size="xs"
                       variant="outline"
-                      className="h-auto min-h-6 max-w-full whitespace-normal py-1"
                       onClick={() =>
                         setDraft({
                           purpose: o.purpose,

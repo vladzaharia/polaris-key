@@ -167,7 +167,13 @@ export function useOverlayFocus(
         const h1 = document.querySelector<HTMLElement>("h1[data-page-title]");
         if (!h1) return;
         e.preventDefault();
-        h1.focus({ preventScroll: true });
+        // Only when focus was lost: whatever took it since the close (a field the page returns
+        // to) keeps it.
+        requestAnimationFrame(() => {
+          const active = document.activeElement;
+          if (!active || active === document.body)
+            h1.focus({ preventScroll: true });
+        });
         return;
       }
       e.preventDefault();
