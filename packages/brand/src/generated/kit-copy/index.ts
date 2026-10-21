@@ -809,6 +809,9 @@ export type KitCopyKey =
   | "yourData.product.remove.body"
   | "yourData.product.support.title"
   | "yourData.product.support.body"
+  | "yourData.product.support.spell"
+  | "yourData.product.support.spellSymbol"
+  | "yourData.product.support.spellGroup"
   | "yourData.remove.keep"
   | "license.title"
   | "license.term.ended"
@@ -1484,6 +1487,7 @@ export const KIT_COPY_VARIANTS: Readonly<
   "profile.birthdate.remove": { macos: "Remove Birth Date" },
   "profile.save": { macos: "Save Profile" },
   "yourData.account.copy.button": { macos: "Download My Data" },
+  "yourData.product.support.spell": { macos: "Spell It Out" },
   "yourData.remove.keep": { macos: "Keep My Data" },
   "getIt.flow.emailMe": { macos: "Email Me the Download" },
   "signin.gate.passkeyAdd": { macos: "Add a Passkey" },

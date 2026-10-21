@@ -4694,6 +4694,26 @@ msgstr "サポートコード"
 msgid "yourData.product.support.body"
 msgstr "アプリのサポート担当に伝えてください。"
 
+#. Spell it out
+#. Support code readout (I-41s): read aloud to support.
+msgid "yourData.product.support.spell"
+msgstr "読み上げ用に表示"
+
+#. macos: Spell It Out
+msgctxt "macos"
+msgid "yourData.product.support.spell"
+msgstr "読み上げ用に表示"
+
+#. {s} as in {name}
+#. Support code readout (I-41s): read aloud to support.
+msgid "yourData.product.support.spellSymbol"
+msgstr "{s}、{name}"
+
+#. Part {n} of 3
+#. Support code readout (I-41s): read aloud to support.
+msgid "yourData.product.support.spellGroup"
+msgstr "{n}/3 番目"
+
 #. Keep my data
 #. Your data (Account and each product page); moved from the portal's copy tables (P0-36).
 msgid "yourData.remove.keep"

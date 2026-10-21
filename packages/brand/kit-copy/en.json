@@ -3996,6 +3996,21 @@
       "role": "body",
       "note": "Your data (Account and each product page); moved from the portal's copy tables (P0-36)."
     },
+    "yourData.product.support.spell": {
+      "value": "Spell it out",
+      "role": "button",
+      "note": "Support code readout (I-41s): read aloud to support."
+    },
+    "yourData.product.support.spellSymbol": {
+      "value": "{s} as in {name}",
+      "role": "a11y",
+      "note": "Support code readout (I-41s): read aloud to support."
+    },
+    "yourData.product.support.spellGroup": {
+      "value": "Part {n} of 3",
+      "role": "a11y",
+      "note": "Support code readout (I-41s): read aloud to support."
+    },
     "yourData.remove.keep": {
       "value": "Keep my data",
       "role": "button",

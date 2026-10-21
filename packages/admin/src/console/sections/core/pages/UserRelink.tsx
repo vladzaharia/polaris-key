@@ -19,6 +19,7 @@ import {
   formatSupportCode,
   parseSupportCode,
 } from "../../../../lib/supportCode.js";
+import { SpellOut } from "../../../../ui/SpellOut.js";
 import * as React from "react";
 import {
   ApiError,
@@ -247,6 +248,7 @@ export function RelinkDialog({
               {targetError}
             </p>
           ) : null}
+          {parsed.kind === "code" ? <SpellOut code={parsed.code} /> : null}
           <p id="relink-target-help" className="text-xs text-fg-muted">
             Their support code or user id for this product. They find the code
             on the product's page in their Polaris Locker account.

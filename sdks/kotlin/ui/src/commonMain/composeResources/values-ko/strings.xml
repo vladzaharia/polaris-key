@@ -1761,6 +1761,13 @@
     <string name="yourData_product_support_title">지원 코드</string>
     <!-- Your data (Account and each product page); moved from the portal's copy tables (P0-36). -->
     <string name="yourData_product_support_body">앱 지원팀에 알려 주세요.</string>
+    <!-- Support code readout (I-41s): read aloud to support. -->
+    <string name="yourData_product_support_spell">한 글자씩 보기</string>
+    <string name="yourData_product_support_spell__macos">한 글자씩 보기</string>
+    <!-- Support code readout (I-41s): read aloud to support. Arguments: 1=s, 2=name. -->
+    <string name="yourData_product_support_spellSymbol">%1$s, %2$s</string>
+    <!-- Support code readout (I-41s): read aloud to support. Arguments: 1=n. -->
+    <string name="yourData_product_support_spellGroup">3개 중 %1$s번째</string>
     <!-- Your data (Account and each product page); moved from the portal's copy tables (P0-36). -->
     <string name="yourData_remove_keep">내 데이터 유지</string>
     <string name="yourData_remove_keep__macos">내 데이터 유지</string>
