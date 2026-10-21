@@ -11,7 +11,11 @@
  * until one does.
  */
 
-import { IDENTITY_TERMS_VERSION_RE } from "@polaris-key/manifest";
+import {
+  IDENTITY_TERMS_VERSION_RE,
+  PRODUCT_SLUG_RE,
+} from "@polaris-key/manifest";
+import { identityEnabled } from "../../core/accounts/identityGate.js";
 import type { Db } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
 import type { SettingsRegistry } from "../../core/settings/registry.js";
@@ -53,4 +57,16 @@ export async function productTerms(
     TERMS_SETTING,
   );
   return termsRequirementOf(r?.value ?? null);
+}
+
+/**
+ * I-09: the product a sign-in start names (`?product=<slug>`), kept only when it is a product slug
+ * of a product whose Identity is on; anything else is ignored and the sign-in is a plain portal one.
+ */
+export async function signInProduct(
+  db: Db,
+  raw: string | null,
+): Promise<string | null> {
+  if (!raw || !PRODUCT_SLUG_RE.test(raw)) return null;
+  return (await identityEnabled(db, raw)) ? raw : null;
 }

@@ -695,6 +695,7 @@ export type KitCopyKey =
   | "signin.key.withoutKey"
   | "signin.key.onrampLede"
   | "signin.code.expiredRestart"
+  | "signin.sso.expiredRestart"
   | "signin.code.noMore"
   | "signin.sso.title"
   | "signin.sso.required"

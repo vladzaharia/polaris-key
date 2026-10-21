@@ -56,7 +56,6 @@ import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import { readCappedText } from "../../../core/readCapped.js";
 import { identityEnabled } from "../../../core/accounts/identityGate.js";
 import type { SettingsRegistry } from "../../../core/settings/registry.js";
-import { PRODUCT_SLUG_RE } from "@polaris-key/manifest";
 import {
   artefactRef,
   consumeArtefact,
@@ -69,7 +68,7 @@ import { importProfile } from "../card/profile.js";
 import { linkIdentity } from "../accounts/links.js";
 import { accountUsingEmail } from "../accounts/repo.js";
 import { providerVouchesForEmail } from "./vouch.js";
-import { productTerms } from "../productTerms.js";
+import { productTerms, signInProduct } from "../productTerms.js";
 import { htmlError, signInPage } from "../portal/auth.js";
 import { appSecurityHeaders as portalSecurityHeaders } from "../../../core/securityHeaders.js";
 import { portalAuthCapabilities } from "../portal/repo.js";
@@ -159,18 +158,6 @@ export interface ProviderRouteOptions {
   fetch?: ProviderFetch;
   /** The settings registry (ST-04), from the composition root: a product's terms resolve through it. */
   settings?: SettingsRegistry;
-}
-
-/**
- * I-09: the product a sign-in start names (`?product=<slug>`), kept only when it is a product slug
- * of a product whose Identity is on; anything else is ignored and the sign-in is a plain portal one.
- */
-async function signInProduct(
-  db: Db,
-  raw: string | null,
-): Promise<string | null> {
-  if (!raw || !PRODUCT_SLUG_RE.test(raw)) return null;
-  return (await identityEnabled(db, raw)) ? raw : null;
 }
 
 function bindCookie(value: string): string {

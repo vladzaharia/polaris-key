@@ -45,6 +45,9 @@ import {
   PLATFORM_SIGNIN_ENDED,
 } from "../accounts/platformMigration.js";
 import { beginProviderSignIn } from "../card/gate.js";
+import { identityEnabled } from "../../../core/accounts/identityGate.js";
+import type { SettingsRegistry } from "../../../core/settings/registry.js";
+import { productTerms, signInProduct } from "../productTerms.js";
 import { connectionIdentity } from "../connections/claims.js";
 import { autoLinkThroughDomain } from "../connections/autoLink.js";
 import {
@@ -92,6 +95,9 @@ interface FlowRecord {
   /** I-17: the peppered hash of the `__Host-pkey_sso` cookie `/login` set on the browser that
    *  started the flow. `/callback` completes only in that browser. */
   bindingHash?: string;
+  /** B-063: the product the card was opened for (`?product=<slug>`) when its Identity is on, so
+   *  the callback hands the email gate that product and its terms (as `providers/flow.ts`). */
+  product?: string;
 }
 
 /**
@@ -305,6 +311,9 @@ export async function handleConnectionLogin(
     connectionId: conn.id,
     bindingHash: await hashKey(binding, env.KEY_HASH_PEPPER),
   };
+  // B-063: a product that is not a slug, or whose Identity is off, is ignored (a plain sign-in).
+  const product = await signInProduct(db, url.searchParams.get("product"));
+  if (product) flow.product = product;
   await putArtefact(
     env,
     await portalFlowKey(env, state),
@@ -354,6 +363,7 @@ export async function handlePortalCallback(
   env: Env,
   db: Db,
   now: number,
+  settings?: SettingsRegistry,
 ): Promise<Response> {
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
@@ -431,6 +441,7 @@ export async function handlePortalCallback(
       flow,
       { code, iss: url.searchParams.get("iss") },
       now,
+      settings,
     ),
   );
 }
@@ -450,6 +461,7 @@ async function completeConnectionCallback(
   flow: FlowRecord,
   response: { code: string; iss: string | null },
   now: number,
+  settings?: SettingsRegistry,
 ): Promise<Response> {
   const conn = await customerConnection(
     env,
@@ -550,6 +562,18 @@ async function completeConnectionCallback(
       linkAssertion: { groups: identity.groups, claims: identity.claims },
       amr: [`connection:${conn.id}`],
       returnTo: flow.returnTo ?? null,
+      // B-063: a sign-in the card opened for a product goes through it, with its terms. The
+      // toggle is read again here (Identity turned off meanwhile makes it a plain sign-in).
+      product:
+        flow.product && (await identityEnabled(db, flow.product))
+          ? {
+              slug: flow.product,
+              terms: await productTerms(
+                { env, db, registry: settings },
+                flow.product,
+              ),
+            }
+          : null,
     },
     now,
   );

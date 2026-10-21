@@ -10,7 +10,11 @@
 
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
-import { startAccountSession } from "../portal/accountSessions.js";
+import {
+  sessionIdHash,
+  startAccountSession,
+} from "../portal/accountSessions.js";
+import { portalSessionFromRequest } from "../portal/session.js";
 import { portalAudit, syncAccountLicenseLinks } from "../portal/repo.js";
 
 /** The nudge comes back after this long if the account still has a single sign-in method. */
@@ -49,9 +53,43 @@ export async function finishSignIn(
     now,
   );
   // Shown once when due: the answer carries it, and the next sign-in does not repeat it.
+  // B-074: the cookie just replaced belonged to this same account (a step-up through a provider
+  // or single sign-on lands here with it; the provider's top-level GET carries the Lax cookie):
+  // its row would otherwise list this browser twice until it expires. Another account's session,
+  // or a cookie that does not verify, is never touched.
+  await endReplacedSession(env, db, req, account.id, started.idHash, now);
   const nudge = await nudgeDue(db, account.id, now);
   if (nudge) await markNudgeShown(db, account.id, now);
   return { cookie: started.cookie, nudge };
+}
+
+/**
+ * End the account session this browser's cookie named before this sign-in, when it was the same
+ * account's. Best effort: a failure leaves the old row to expire, as before.
+ */
+async function endReplacedSession(
+  env: Env,
+  db: Db,
+  req: Request,
+  accountId: string,
+  newIdHash: string,
+  now: number,
+): Promise<void> {
+  try {
+    const old = await portalSessionFromRequest(env, req, now);
+    if (!old?.sid || old.accountId !== accountId) return;
+    const oldHash = await sessionIdHash(env, old.sid);
+    if (oldHash === newIdHash) return;
+    await db.run(
+      `UPDATE account_sessions SET revoked_at = ?
+        WHERE id_hash = ? AND account_id = ? AND revoked_at IS NULL`,
+      now,
+      oldHash,
+      accountId,
+    );
+  } catch {
+    // The old session expires by itself.
+  }
 }
 
 /**

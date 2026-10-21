@@ -291,7 +291,7 @@ continue**, or **Add and use on this device**).
 provider row, then **Sign in with a passkey** (ghost). Under a rule sit two quiet links: **Have a
 license key?** and **Sign in with another device**.
 
-**Passthrough and product context:** h1 "Sign in", lede "Use the email you bought <Product> with."
+**Passthrough and product context:** h1 "Sign in", lede "Use your <Product> purchase email or a work or school email."
 The device-code variant has h1 "Sign in to finish on <device label>", lede "Use your phone or
 computer here. <device label> continues by itself when you're done.", and "Didn't start this
 yourself? Cancel it. Someone may be trying to use your account." It has no "Sign in with another
@@ -1507,7 +1507,7 @@ keys (`conformance/parity/copy.en.json`) for refusal codes instead of duplicatin
 | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `signin.methods.title`               | Sign in to Polaris Locker                                                                                                                                                                     |
 | `signin.methods.titleApp`            | Sign in                                                                                                                                                                                       |
-| `signin.methods.ledeApp`             | Use the email you bought {product} with.                                                                                                                                                      |
+| `signin.methods.ledeApp`             | Use your {product} purchase email or a work or school email.                                                                                                                                  |
 | `signin.email.label`                 | Email                                                                                                                                                                                         |
 | `signin.email.invalid`               | Enter a full email address, like name@example.com.                                                                                                                                            |
 | `signin.continue`                    | Continue                                                                                                                                                                                      |

@@ -99,14 +99,14 @@ describe("the pane's art", () => {
     expect(img.className).toContain("passport:block");
   });
 
-  it("is a decorative 16:10 cover image, capped at 40 % of the pane", () => {
+  it("is a decorative 16:10 cover image, capped at 40 % of the pane and 10 rem", () => {
     landscape(true);
     const { container } = card(true);
     const img = container.querySelector<HTMLImageElement>("[data-pane-art]")!;
     expect(img.getAttribute("alt")).toBe("");
     expect(img.getAttribute("src")).toBe("/media/diceroll/header?v=ab");
     expect(img.className).toContain("aspect-[16/10]");
-    expect(img.className).toContain("passport:max-h-[40%]");
+    expect(img.className).toContain("passport:max-h-[min(40%,10rem)]");
     expect(img.className).toContain("object-cover");
   });
 

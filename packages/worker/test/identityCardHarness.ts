@@ -12,6 +12,7 @@ import { makeEnv, NOW, seedProduct } from "./seed.js";
 import { asR2, R2Mock } from "./r2Mock.js";
 import { handlePortal } from "../src/services/identity/portal/index.js";
 import { portalHooksFor } from "./portalHarness.js";
+import { SETTINGS } from "../src/mount.js";
 import { PORTAL_CSRF_HEADER } from "../src/services/identity/portal/session.js";
 
 export interface Mail {
@@ -156,6 +157,7 @@ export class Device {
       {
         now: opts.now ?? NOW,
         hooksFor: portalHooksFor(this.w.env, this.w.db),
+        settings: SETTINGS,
       },
     );
     return this.absorb(res);

@@ -214,9 +214,12 @@ describe("LoginCard (SIGN-IN.md §3.1–§3.4, §3.9)", () => {
       await screen.findByRole("textbox", { name: "6-digit code" }),
       "48 1-207",
     );
-    expect(
-      await screen.findByRole("heading", { level: 1, name: "Your library" }),
-    ).toBeTruthy();
+    const library = await screen.findByRole("heading", {
+      level: 1,
+      name: "Your library",
+    });
+    // B-065: the code cells that had focus are gone; focus goes to the page's h1, not `body`.
+    await waitFor(() => expect(document.activeElement).toBe(library));
     const verify = vi
       .mocked(fetch)
       .mock.calls.find(([u]) =>
@@ -736,7 +739,9 @@ describe("LoginCard (SIGN-IN.md §3.1–§3.4, §3.9)", () => {
       await screen.findByRole("heading", { level: 1, name: "Sign in" }),
     ).toBeTruthy();
     expect(
-      screen.getByText("Use the email you bought Nightfall with."),
+      screen.getByText(
+        "Use your Nightfall purchase email or a work or school email.",
+      ),
     ).toBeTruthy();
     expect(screen.getByText("Lanternworks", { exact: false }).textContent).toBe(
       "Nightfall · Lanternworks",
@@ -1002,5 +1007,134 @@ describe("ProviderRow (§4.1)", () => {
       <ProviderRow providers={[]} hrefFor={hrefFor} />,
     );
     expect(container.innerHTML).toBe("");
+  });
+});
+
+describe("E1 sign-in card fixes (B-063, B-066, B-067, B-072)", () => {
+  const LAKESIDE = { id: "conn_lakeside", label: "Lakeside University" };
+  const NIGHTFALL = {
+    slug: "nightfall",
+    name: "Nightfall",
+    developerName: "Lanternworks",
+  };
+
+  it("B-063: every connection and single sign-on link carries the product, so its terms are asked", async () => {
+    window.history.replaceState(null, "", "/?product=nightfall");
+    signedOut({
+      ...CAPS_ALL,
+      product: NIGHTFALL,
+      auth: {
+        oidc: true,
+        magic: false,
+        oidcName: "Acme",
+        connections: [LAKESIDE],
+      },
+    });
+    renderPortal();
+    const oidc = await screen.findByRole("link", {
+      name: "Continue with Acme",
+    });
+    expect(oidc.getAttribute("href")).toMatch(
+      /^\/login\?return_to=[^&]+&product=nightfall$/,
+    );
+    const conn = screen.getByRole("link", {
+      name: "Continue with Lakeside University",
+    });
+    expect(conn.getAttribute("href")).toMatch(
+      /^\/login\/sso\/conn_lakeside\?return_to=[^&]+&product=nightfall$/,
+    );
+  });
+
+  it("B-063: the routed single sign-on step carries the product too, and a plain card none", async () => {
+    window.history.replaceState(null, "", "/?product=nightfall");
+    signedOut(
+      { ...CAPS_ALL, product: NIGHTFALL },
+      {
+        "POST /api/signin/email/start": {
+          ok: true,
+          expiresIn: 600,
+          codeLength: 6,
+          resendIn: 0,
+          next: { kind: "sso", connection: LAKESIDE, enforced: true },
+        },
+      },
+    );
+    renderPortal();
+    await userEvent.type(
+      await screen.findByRole("textbox", { name: "Email" }),
+      "dana@example.edu",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+    const go = await screen.findByRole("link", { name: "Continue" });
+    const href = new URL(go.getAttribute("href")!, "http://localhost");
+    expect(href.pathname).toBe("/login/sso/conn_lakeside");
+    expect(href.searchParams.get("product")).toBe("nightfall");
+    cleanup();
+    window.history.replaceState(null, "", "/");
+    signedOut(CAPS_ALL, {
+      "POST /api/signin/email/start": {
+        ok: true,
+        expiresIn: 600,
+        codeLength: 6,
+        resendIn: 0,
+        next: { kind: "sso", connection: LAKESIDE, enforced: true },
+      },
+    });
+    renderPortal();
+    await userEvent.type(
+      await screen.findByRole("textbox", { name: "Email" }),
+      "dana@example.edu",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+    const plain = await screen.findByRole("link", { name: "Continue" });
+    expect(plain.getAttribute("href")).not.toContain("product=");
+  });
+
+  it("B-066: the brand row is a 36 px lockup on a phone and 48 px from sm", async () => {
+    signedOut();
+    renderPortal();
+    await screen.findByRole("textbox", { name: "Email" });
+    expect(
+      document.querySelector('svg[height="36"].sm\\:hidden'),
+    ).not.toBeNull();
+    expect(document.querySelector('svg[height="48"].hidden')).not.toBeNull();
+  });
+
+  it("B-067: no empty error line is reserved under the email field", async () => {
+    signedOut();
+    renderPortal();
+    const field = await screen.findByRole("textbox", { name: "Email" });
+    expect(field.parentElement?.querySelector(".min-h-5")).toBeNull();
+    expect(field.parentElement?.querySelector("[role=alert]")).toBeNull();
+  });
+
+  it("B-072: a routed step that ran out before any code was sent does not promise a code", async () => {
+    signedOut(CAPS_ALL, {
+      "POST /api/signin/email/start": {
+        ok: true,
+        expiresIn: 600,
+        codeLength: 6,
+        resendIn: 0,
+        next: { kind: "sso", connection: LAKESIDE, enforced: false },
+      },
+      "POST /api/signin/email/resend": {
+        status: 400,
+        body: { error: "signin_expired", message: "Start again." },
+      },
+    });
+    renderPortal();
+    await userEvent.type(
+      await screen.findByRole("textbox", { name: "Email" }),
+      "dana@example.edu",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Email me a code instead" }),
+    );
+    const notice = await screen.findByRole("alert");
+    expect(notice.textContent).toBe(
+      "That took too long. Continue to start again.",
+    );
+    expect(notice.textContent).not.toMatch(/new code/);
   });
 });

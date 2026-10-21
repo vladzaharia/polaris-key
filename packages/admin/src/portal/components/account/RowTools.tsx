@@ -185,15 +185,21 @@ export function MakePrimaryTool({
               accountId={accountId}
               returnTo={returnTo}
               autoFocus={needsStepUp}
+              trailing={
+                <Button
+                  variant="outline"
+                  className="max-sm:min-h-11"
+                  onClick={close}
+                >
+                  {t("common.cancel")}
+                </Button>
+              }
               onConfirmed={() => {
                 headingRef.current?.focus({ preventScroll: true });
                 setNeedsStepUp(false);
                 run();
               }}
             />
-            <Button variant="outline" onClick={close}>
-              {t("common.cancel")}
-            </Button>
           </div>
         </div>
       </Expand>

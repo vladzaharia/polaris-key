@@ -39,7 +39,7 @@ import {
   QuietLinks,
 } from "../../ui/auth/index.js";
 import { HELP_LINKS } from "../helpLinks.js";
-import { Lockup } from "../components/Lockup.js";
+import { AuthLockup } from "../components/Lockup.js";
 import { ProductIcon } from "../components/ProductIcon.js";
 import { KeyField } from "../components/KeyField.js";
 import { portalKeys, useCapabilities } from "../data.js";
@@ -148,14 +148,14 @@ function resendDelay(out: { resendIn?: number } | undefined): number {
 }
 
 /**
- * The brand row (SIGN-IN.md §3.1): one 40 px Locker lockup on every sign-in surface, the same as
+ * The brand row (SIGN-IN.md §3.1): the Locker lockup, 36 px on a phone and 48 px from `sm` (BRAND.md), the same as
  * the Worker's pages; muted in an app or product context so the product reads first. The size
  * never changes between steps.
  */
 function AuthBrand({ muted }: { muted: boolean }): React.ReactElement {
   return (
     <span className={muted ? "text-fg-muted opacity-80" : undefined}>
-      <Lockup height={48} />
+      <AuthLockup />
     </span>
   );
 }
@@ -173,11 +173,14 @@ function returnTo(): string {
 }
 
 /** I-30: a connection's sign-in, with the typed address as the IdP's `login_hint` when there is one. */
-function connectionHref(id: string, email?: string): string {
+function connectionHref(id: string, email?: string, product?: string): string {
   const hint = email && EMAIL_RE.test(email) ? email : null;
+  // B-063: a card opened for a product signs in through it, so its terms are asked.
   return `/login/sso/${encodeURIComponent(id)}?${
     hint ? `login_hint=${encodeURIComponent(hint)}&` : ""
-  }return_to=${encodeURIComponent(returnTo())}`;
+  }return_to=${encodeURIComponent(returnTo())}${
+    product ? `&product=${encodeURIComponent(product)}` : ""
+  }`;
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -447,6 +450,7 @@ export function SignInPage({
       ) : step.kind === "sso" ? (
         <SsoStep
           email={step.email}
+          product={ctx?.slug}
           next={step.next}
           onChangeEmail={() =>
             go({ kind: "methods", email: step.email, focusEmail: true }, "back")
@@ -460,7 +464,7 @@ export function SignInPage({
               {
                 kind: "methods",
                 email: step.email,
-                notice: t("signin.code.expiredRestart"),
+                notice: t("signin.sso.expiredRestart"),
               },
               "back",
             )
@@ -742,7 +746,9 @@ function MethodsStep({
   const ssoLabel = t("signin.provider.continue", {
     provider: caps.auth.oidcName ?? t("signin.sso.name"),
   });
-  const ssoHref = `/login?return_to=${encodeURIComponent(returnTo())}`;
+  const ssoHref = `/login?return_to=${encodeURIComponent(returnTo())}${
+    context ? `&product=${encodeURIComponent(context.slug)}` : ""
+  }`;
 
   if (!magic && !oidc && providers.length === 0 && connections.length === 0) {
     return (
@@ -845,13 +851,12 @@ function MethodsStep({
               aria-describedby={error ? errorId : undefined}
               className="h-12 text-base"
             />
-            <div className="mt-1.5 min-h-5">
-              {error ? (
-                <p id={errorId} role="alert" className="text-sm text-danger">
-                  {error}
-                </p>
-              ) : null}
-            </div>
+            {/* B-067: no reserved line; it opens a 48 px gap above Continue. */}
+            {error ? (
+              <p id={errorId} role="alert" className="pt-1 text-sm text-danger">
+                {error}
+              </p>
+            ) : null}
           </div>
           <Button
             type="submit"
@@ -898,7 +903,7 @@ function MethodsStep({
         <ConnectionButton
           key={c.id}
           connection={c}
-          href={connectionHref(c.id)}
+          href={connectionHref(c.id, undefined, context?.slug)}
           primary={!oidc && providers.length === 0 && c === connections[0]}
         />
       ))}
@@ -1165,6 +1170,7 @@ function IdChip({
 function SsoStep({
   email,
   next,
+  product,
   onChangeEmail,
   onCode,
   onRouted,
@@ -1172,6 +1178,8 @@ function SsoStep({
 }: {
   email: string;
   next: PortalSsoNext;
+  /** B-063: the product the card was opened for; the connection's sign-in carries it. */
+  product?: string;
   onChangeEmail: () => void;
   /** The first code went out (the resend's answer): on to the code step. */
   onCode: (resendIn: number) => void;
@@ -1253,7 +1261,7 @@ function SsoStep({
           className="h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-semibold"
         >
           <a
-            href={connectionHref(connection.id, email)}
+            href={connectionHref(connection.id, email, product)}
             onClick={() => stashCarriedKey()}
           >
             {t("signin.continue")}

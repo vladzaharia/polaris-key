@@ -119,6 +119,18 @@ function Boot(): React.ReactElement {
     ])
       qc.removeQueries({ queryKey: ["portal", key] });
   }, [signedOut, qc]);
+  // B-065: this tab was signed out and is signed in now. The code or sign-in control that had focus
+  // is gone, so focus would fall to `body`: it goes to the page's h1 instead, as a navigation does.
+  // A load that is already signed in keeps the browser's own start (the skip link). An app's
+  // sign-in (`/signin?request=`) manages its own focus.
+  const sawSignedOut = React.useRef(false);
+  React.useEffect(() => {
+    if (session.data === null) sawSignedOut.current = true;
+    else if (session.data && sawSignedOut.current) {
+      sawSignedOut.current = false;
+      if (window.location.pathname !== "/signin") focusPageHeading();
+    }
+  }, [session.data]);
   if (session.isPending) {
     return <StarScreen title="Opening Polaris Locker" busy />;
   }

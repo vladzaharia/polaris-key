@@ -56,7 +56,7 @@ export function FocusedFlow({
         <div className="mx-auto flex min-h-14 w-full max-w-[82rem] items-center justify-between gap-4 px-4 desk:min-h-16 desk:px-8">
           <a
             href={href.library()}
-            aria-label="Polaris Locker: your library"
+            aria-label={t("locker.shell.home")}
             className="flex shrink-0 items-center rounded-md"
           >
             <HeaderBrand />
