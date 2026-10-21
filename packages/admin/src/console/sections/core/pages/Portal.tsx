@@ -124,7 +124,7 @@ const toggleRows = (name: string) =>
       key: "portalEnabled",
       id: "portal.enabled",
       label: `Show ${name} in Polaris Locker`,
-      help: "Off hides this product's licenses, page and downloads in every library. Licenses and sign-in keep working.",
+      help: "Turn off to hide this product's licenses, page and downloads in every library. Licenses and sign-in keep working.",
     },
     {
       key: "keyReissueEnabled",
@@ -276,18 +276,20 @@ function PortalForm({
             htmlFor="portal-tintColor"
             help="A six-digit color for light mode."
             align="stretch"
-            aside={<Swatch color={tint} />}
           >
             <FormField name="tintColor" label="Accent color" hideLabel>
               {(f) => (
-                <Input
-                  {...f}
-                  id="portal-tintColor"
-                  mono
-                  placeholder="#3a7bd5"
-                  autoComplete="off"
-                  disabled={readOnly}
-                />
+                <div className="flex items-center gap-3">
+                  <Input
+                    {...f}
+                    id="portal-tintColor"
+                    mono
+                    placeholder="#3a7bd5"
+                    autoComplete="off"
+                    disabled={readOnly}
+                  />
+                  <Swatch color={tint} />
+                </div>
               )}
             </FormField>
           </SettingsRow>
@@ -296,7 +298,6 @@ function PortalForm({
             htmlFor="portal-tintColorDark"
             help="A six-digit color for dark mode. Empty uses the light one."
             align="stretch"
-            aside={<Swatch color={tintDark} />}
           >
             <FormField
               name="tintColorDark"
@@ -304,14 +305,17 @@ function PortalForm({
               hideLabel
             >
               {(f) => (
-                <Input
-                  {...f}
-                  id="portal-tintColorDark"
-                  mono
-                  placeholder="#8fb4ff"
-                  autoComplete="off"
-                  disabled={readOnly}
-                />
+                <div className="flex items-center gap-3">
+                  <Input
+                    {...f}
+                    id="portal-tintColorDark"
+                    mono
+                    placeholder="#8fb4ff"
+                    autoComplete="off"
+                    disabled={readOnly}
+                  />
+                  <Swatch color={tintDark} />
+                </div>
               )}
             </FormField>
           </SettingsRow>

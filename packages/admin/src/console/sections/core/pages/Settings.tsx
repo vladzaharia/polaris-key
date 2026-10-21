@@ -306,7 +306,7 @@ function SettingsBody({
               source={source("license.defaults.maxOfflineDays")}
             >
               <FormField
-                className="w-44"
+                className="w-44 max-w-full"
                 hideLabel
                 name="defaultMaxOfflineDays"
                 label="Default max offline days"
@@ -327,7 +327,7 @@ function SettingsBody({
               source={source("license.defaults.deviceLimit")}
             >
               <FormField
-                className="w-44"
+                className="w-44 max-w-full"
                 hideLabel
                 name="defaultDeviceLimit"
                 label="Default device limit"

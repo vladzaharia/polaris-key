@@ -294,6 +294,7 @@ const ZOOM_CASES = [
 const TEXT200_CASES = [
   "djdl:settings",
   "djdl:services",
+  "djdl:portal",
   "djdl:licenses/record/overview",
 ];
 /** The console's content column at its widest (BRAND.md §7.6). */

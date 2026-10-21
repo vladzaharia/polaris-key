@@ -224,13 +224,13 @@ export function FeatureRowItem({
       >
         <ServiceGlyph id={feature.services[0]!} />
       </span>
-      <div className="min-w-0 space-y-0.5">
+      <div className="min-w-0 space-y-0.5 @max-[20rem]:col-span-2">
         <p className="hyphens-manual break-words text-base font-medium text-fg-strong">
           {feature.label}
         </p>
         <Needs feature={feature} enabled={enabled} />
       </div>
-      <div className="max-sm:col-span-2 max-sm:col-start-2 max-sm:row-start-2 @max-[20rem]:col-start-1">
+      <div className="max-sm:col-span-2 max-sm:col-start-2 max-sm:row-start-2 @max-[20rem]:col-span-1 @max-[20rem]:col-start-1 @max-[20rem]:row-start-2">
         <Status
           on={on}
           text={factFor(feature, ctx.facts)}
@@ -241,6 +241,7 @@ export function FeatureRowItem({
       </div>
       <Switch
         id={`${rowId}-switch`}
+        className="@max-[20rem]:col-start-2 @max-[20rem]:row-start-2"
         touch
         aria-label={
           needs.length && blocked

@@ -65,8 +65,8 @@ export function Section({
       )}
     >
       {settings ? (
-        <div className="flex items-start justify-between gap-3 border-b border-border px-5 py-3.5 console:min-h-14 console:rounded-t-[inherit] console:bg-(--pk-admin-band)">
-          <div className="min-w-0 flex-1 space-y-0.5">
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-5 py-3.5 console:min-h-14 console:rounded-t-[inherit] console:bg-(--pk-admin-band)">
+          <div className="min-w-0 flex-[1_1_8rem] space-y-0.5">
             <div className="flex flex-wrap items-center gap-2">
               <Heading
                 id={headingId}
@@ -86,7 +86,7 @@ export function Section({
             ) : null}
           </div>
           {actions ? (
-            <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+            <div className="flex max-w-full shrink-0 flex-wrap items-center justify-end gap-2 [&>button]:max-w-full [&>button]:whitespace-normal">
               {actions}
             </div>
           ) : null}
