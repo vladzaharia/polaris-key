@@ -182,7 +182,10 @@ describe("Update → Feed", () => {
       within(access).getByRole("radio", { name: /^Licensed/ }),
     );
     await save("Metadata access");
-    expect(await within(access).findByText("D1 is unavailable")).toBeTruthy();
+    expect(
+      await within(access).findByText("Copy the details for a support report."),
+    ).toBeTruthy();
+    expect(within(access).queryByText("D1 is unavailable")).toBeNull();
   });
 
   it("round-trips a compat edit into the save body, sending only what changed", async () => {

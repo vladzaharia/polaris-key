@@ -190,7 +190,11 @@ describe("Distribution → Access", () => {
     await userEvent.click(
       within(bar).getByRole("button", { name: "Save changes" }),
     );
-    expect(await within(app).findByText("storage unavailable")).toBeTruthy();
+    // A 5xx message is the server's own text: it stays in the details, not the copy (B-212).
+    expect(
+      await within(app).findByText("Copy the details for a support report."),
+    ).toBeTruthy();
+    expect(within(app).queryByText("storage unavailable")).toBeNull();
     expect(
       within(app).getByText("Something went wrong on the server"),
     ).toBeTruthy();

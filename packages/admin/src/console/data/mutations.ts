@@ -20,6 +20,7 @@
 import type { QueryClient, QueryKey } from "@tanstack/react-query";
 import {
   api,
+  ApiError,
   type AdminApi,
   type AlertScope,
   type FeedScope,
@@ -1133,6 +1134,22 @@ export function bindWriteInvalidation(client: QueryClient): () => void {
   };
 }
 
+/**
+ * A refusal with `reason: "no_access"` means the member's role no longer includes the area (their
+ * role changed under an open tab): refetch who they are, so the shell shows the NoAccess state
+ * rather than a page that fails (ST-29, B-212). Anything else is left alone.
+ */
+export function refreshMeOnNoAccess(error: unknown): void {
+  if (
+    !(error instanceof ApiError) ||
+    error.status !== 403 ||
+    error.reason !== "no_access"
+  )
+    return;
+  for (const client of boundClients)
+    void client.invalidateQueries({ queryKey: qk.me(), exact: true });
+}
+
 /** Invalidate a write's declared queries. Active queries refetch; inactive ones go stale. */
 export function invalidateAfter(method: WriteMethod, args: unknown[]): void {
   const targets = invalidationFor(method, args) ?? [];
@@ -1152,7 +1169,13 @@ export async function mutate<K extends WriteMethod>(
   ...args: Parameters<AdminApi[K]>
 ): Promise<Awaited<ReturnType<AdminApi[K]>>> {
   const fn = api[method] as (...a: unknown[]) => ReturnType<AdminApi[K]>;
-  const result = await fn(...args);
+  let result: Awaited<ReturnType<AdminApi[K]>>;
+  try {
+    result = await fn(...args);
+  } catch (e) {
+    refreshMeOnNoAccess(e);
+    throw e;
+  }
   invalidateAfter(method, args);
   return result;
 }

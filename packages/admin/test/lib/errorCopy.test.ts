@@ -80,7 +80,7 @@ const TABLE: [
     "422 errors[]",
     api(422, { code: "bad_request", errors: ["update_requires_distribution"] }),
     {},
-    { title: "These services depend on each other", action: "fields" },
+    { title: "These features depend on each other", action: "fields" },
   ],
   [
     "429",
@@ -398,7 +398,7 @@ describe("errorCopy: manifest problems", () => {
       api(422, { errors: ["update_requires_distribution"] }),
       { area: "services" },
     );
-    expect(copy.title).toBe("These services depend on each other");
+    expect(copy.title).toBe("These features depend on each other");
     expect(copy.problems).toBeUndefined();
     expect(copy.lines).toEqual([
       SERVICE_ERROR_MESSAGES.update_requires_distribution,
@@ -573,8 +573,16 @@ describe("errorCopy never shows an HTTP status", () => {
       errorCopy(api(404, { message: "not found: 404 Not Found" })).description,
     ).toBe("not found");
     expect(
-      errorCopy(api(403, { message: "upstream said (403 forbidden)" }))
+      errorCopy(api(409, { message: "upstream said (409 conflict)" }))
         .description,
     ).toBe("upstream said");
+  });
+
+  it("never quotes the server's message on a 403 or a 5xx (B-212)", () => {
+    for (const status of [403, 500, 502]) {
+      const c = errorCopy(api(status, { message: "internal policy line" }));
+      expect(c.description).not.toContain("internal policy line");
+      expect(JSON.stringify(c.details)).toContain("internal policy line");
+    }
   });
 });
