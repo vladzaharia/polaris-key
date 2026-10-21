@@ -137,7 +137,8 @@ export async function handlePortal(
       settings: opts.settings,
     });
   }
-  if (clean === "/callback") return handlePortalCallback(req, env, db, now);
+  if (clean === "/callback")
+    return handlePortalCallback(req, env, db, now, opts.settings);
   if (clean === "/logout") return handlePortalLogout(req, env, db, now);
   if (clean === "/magic/verify") return handleMagicVerify(req, env, db, now);
   if (clean === "/api" || clean.startsWith("/api/")) {

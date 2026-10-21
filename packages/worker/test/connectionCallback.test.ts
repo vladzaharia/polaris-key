@@ -29,6 +29,9 @@ import {
 } from "../src/core/oidc/connections.js";
 import { open } from "../src/platform/keyvault.js";
 import type { Db } from "../src/db/types.js";
+import { setServices } from "../src/core/products/store.js";
+import { SERVICE_SLUGS } from "../src/core/services.js";
+import { seedProduct } from "./seed.js";
 
 const ISSUER = "https://work.idp.example";
 const CONN = "conn_work";
@@ -137,11 +140,12 @@ async function signInThrough(
   w: CardWorld,
   d: Device,
   claims: Record<string, unknown>,
+  query = "",
 ): Promise<{ login: Response; callback: Response }> {
   installIdp({}, "unused");
   const login = await d.send(
     "GET",
-    `/login/sso/${CONN}?login_hint=ada%40corp.example`,
+    `/login/sso/${CONN}?login_hint=ada%40corp.example${query}`,
   );
   expect(login.status).toBe(302);
   const authorize = new URL(login.headers.get("location")!);
@@ -441,5 +445,151 @@ describe("seed-platform-connection", () => {
     expect(
       (await applyPlatformConnectionSeed(w.env, w.db, NOW)).connection,
     ).toBeNull();
+  });
+});
+
+// B-063: a card opened for a product (`?product=<slug>`) signs in through its connection with that
+// product's terms, as the providers do (I-09). The connection's start used to drop the product.
+describe("a connection sign-in the card opened for a product (B-063)", () => {
+  const TERMS = { version: "2026-10", url: "https://djdl.example/terms" };
+
+  async function djdl(w: CardWorld, identity = true): Promise<void> {
+    await seedProduct(w.db, "djdl");
+    await setServices(
+      w.db,
+      "djdl",
+      JSON.stringify(
+        Object.fromEntries(
+          SERVICE_SLUGS.map((s) => [
+            s,
+            { enabled: s === "license" || (identity && s === "identity") },
+          ]),
+        ),
+      ),
+      "manifest",
+      NOW,
+    );
+    await w.db.run(
+      `INSERT INTO product_settings (product, key, value_json, source, updated_at, updated_by)
+       VALUES ('djdl', 'identity.terms', ?, 'manifest', ?, 'resync')`,
+      JSON.stringify(TERMS),
+      NOW,
+    );
+  }
+
+  async function gateView(
+    d: Device,
+  ): Promise<{ terms: unknown; product: { slug: string } | null }> {
+    return (await (
+      await d.send("GET", "/api/signin/confirm-email", undefined, {
+        headers: { origin: "https://key.plrs.im" },
+      })
+    ).json()) as { terms: unknown; product: { slug: string } | null };
+  }
+
+  const CLAIMS = {
+    sub: "w-1",
+    email: "ada@corp.example",
+    email_verified: true,
+  };
+
+  it("hands the email gate the product and its terms", async () => {
+    const w = await seededWorld();
+    await workConnection(w);
+    await djdl(w);
+    const d = new Device(w);
+    const { callback } = await signInThrough(w, d, CLAIMS, "&product=djdl");
+    expect(callback.status).toBe(302);
+    const view = await gateView(d);
+    expect(view.terms).toEqual(TERMS);
+    expect(view.product?.slug).toBe("djdl");
+  });
+
+  it("a plain sign-in asks no product's terms", async () => {
+    const w = await seededWorld();
+    await workConnection(w);
+    await djdl(w);
+    const d = new Device(w);
+    await signInThrough(w, d, CLAIMS);
+    const view = await gateView(d);
+    expect(view.terms).toBeNull();
+    expect(view.product).toBeNull();
+  });
+
+  it("ignores a product that is not a slug, is unknown, or has Identity off", async () => {
+    for (const product of ["..%2Fdjdl", "nope", "djdl"]) {
+      const w = await seededWorld();
+      await workConnection(w);
+      await djdl(w, product !== "djdl");
+      const d = new Device(w);
+      await signInThrough(w, d, CLAIMS, `&product=${product}`);
+      const view = await gateView(d);
+      expect(view.product, product).toBeNull();
+      expect(view.terms, product).toBeNull();
+    }
+  });
+});
+
+// B-074: signing in again with the same account in a browser that holds its session ends the
+// session the new cookie replaces; another account's session is never touched.
+describe("the session a connection sign-in replaces (B-074)", () => {
+  const CLAIMS = {
+    sub: "w-1",
+    email: "ada@corp.example",
+    email_verified: true,
+  };
+
+  it("ends this account's previous session, so the browser is listed once", async () => {
+    const w = await seededWorld();
+    await workConnection(w, ["corp.example"]);
+    const ada = await emailAccount(w.db, "ada@corp.example");
+    const d = new Device(w);
+    await signInThrough(w, d, CLAIMS);
+    await signInThrough(w, d, CLAIMS);
+    const rows = await w.db.all<{ revoked_at: number | null }>(
+      "SELECT revoked_at FROM account_sessions WHERE account_id = ? ORDER BY created_at, rowid",
+      ada,
+    );
+    expect(rows).toHaveLength(2);
+    expect(rows.filter((r) => r.revoked_at === null)).toHaveLength(1);
+    expect((await d.me()).status).toBe(200);
+  });
+
+  it("leaves another account's session alone", async () => {
+    const w = await seededWorld();
+    await workConnection(w, ["corp.example"]);
+    await emailAccount(w.db, "ada@corp.example");
+    const bob = await emailAccount(w.db, "bob@corp.example");
+    const d = new Device(w);
+    await signInThrough(w, d, {
+      sub: "w-2",
+      email: "bob@corp.example",
+      email_verified: true,
+    });
+    await signInThrough(w, d, CLAIMS);
+    const live = await w.db.all(
+      "SELECT 1 FROM account_sessions WHERE account_id = ? AND revoked_at IS NULL",
+      bob,
+    );
+    expect(live).toHaveLength(1);
+  });
+
+  it("a forged or foreign cookie ends nothing", async () => {
+    const w = await seededWorld();
+    await workConnection(w, ["corp.example"]);
+    const ada = await emailAccount(w.db, "ada@corp.example");
+    const first = new Device(w);
+    await signInThrough(w, first, CLAIMS);
+    const second = new Device(w);
+    second.jar.set(
+      ACCOUNT_SESSION_COOKIE,
+      `${first.jar.get(ACCOUNT_SESSION_COOKIE)!}x`,
+    );
+    await signInThrough(w, second, CLAIMS);
+    const live = await w.db.all(
+      "SELECT 1 FROM account_sessions WHERE account_id = ? AND revoked_at IS NULL",
+      ada,
+    );
+    expect(live).toHaveLength(2);
   });
 });
