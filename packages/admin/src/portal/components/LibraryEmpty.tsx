@@ -5,7 +5,9 @@ import { KeyRound, Sparkles } from "lucide-react";
 import { Button } from "../../ui/Button.js";
 import { useTheme } from "../../components/theme.js";
 import { useActivate } from "../activate.js";
+import { HELP_LINKS } from "../helpLinks.js";
 import { href } from "../router.js";
+import { HelpLink } from "./HelpLink.js";
 
 /**
  * The empty library (§4.12, mockup `portal.library-empty`, portal-17): one centred state, the
@@ -57,6 +59,9 @@ export function LibraryEmpty({
           </Button>
         ) : null}
       </div>
+      <HelpLink href={HELP_LINKS.joinAccounts}>
+        {t("locker.library.empty.missing")}
+      </HelpLink>
     </section>
   );
 }

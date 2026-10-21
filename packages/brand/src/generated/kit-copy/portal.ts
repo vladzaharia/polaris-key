@@ -711,7 +711,11 @@ export type PortalCopyKey =
   | "locker.missing.anotherEmail"
   | "locker.missing.addInMethods"
   | "locker.missing.connectSteam"
-  | "locker.missing.inStore";
+  | "locker.missing.inStore"
+  | "locker.help.guide"
+  | "locker.help.whatToDo"
+  | "locker.devices.help"
+  | "locker.library.empty.missing";
 
 /** One locale's table. */
 export type PortalCopyTable = Readonly<Record<PortalCopyKey, string>>;

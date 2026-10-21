@@ -1,5 +1,6 @@
 import { PortalApiError } from "./api.js";
 import { t } from "../lib/copy.js";
+import { helpForRefusal } from "./helpLinks.js";
 
 /**
  * Error copy for the customer site (PORTAL.md §6.4): what happened, in the person's terms, and
@@ -12,6 +13,8 @@ export interface PortalErrorCopy {
   retry: boolean;
   /** Title and description as one line, for a message with no heading above it. */
   line: string;
+  /** The Help page that explains this refusal, when there is one (DOC-06a). */
+  help?: string;
 }
 
 export function isSignedOut(err: unknown): boolean {
@@ -114,8 +117,10 @@ export function portalErrorCopy(
     if (
       err.code &&
       Object.prototype.hasOwnProperty.call(DOWNLOAD_REFUSALS, err.code)
-    )
-      return DOWNLOAD_REFUSALS[err.code]!();
+    ) {
+      const help = helpForRefusal(err.code);
+      return { ...DOWNLOAD_REFUSALS[err.code]!(), ...(help ? { help } : {}) };
+    }
     if (err.status === 0) return fromCode("network", true);
     if (err.status === 401)
       return own(

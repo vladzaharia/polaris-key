@@ -696,5 +696,9 @@
   "locker.missing.anotherEmail": "Outro e-mail?",
   "locker.missing.addInMethods": "Adicione em Métodos de entrada",
   "locker.missing.connectSteam": "Conectar a Steam",
-  "locker.missing.inStore": "Comprou em uma loja? Entre pelo app"
+  "locker.missing.inStore": "Comprou em uma loja? Entre pelo app",
+  "locker.help.guide": "Quem contatar",
+  "locker.help.whatToDo": "O que fazer",
+  "locker.devices.help": "Ajuda com dispositivos",
+  "locker.library.empty.missing": "Comprou um app e não o vê?"
 }

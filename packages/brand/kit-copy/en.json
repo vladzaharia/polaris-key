@@ -7505,6 +7505,31 @@
       "value": "Bought in a store? Sign in from the app",
       "role": "hint",
       "note": "Library strip: other ways to get a license (P0-36, PX-35)."
+    },
+    "signin.code.missing": {
+      "value": "Didn't get a code?",
+      "role": "label",
+      "note": "Sign-in card, code step: links to the Help page for a code that has not arrived (DOC-06a)."
+    },
+    "locker.help.guide": {
+      "value": "Who to contact",
+      "role": "label",
+      "note": "Need help? card when the developer gave no support contact: links to Help on who to contact (DOC-06a)."
+    },
+    "locker.help.whatToDo": {
+      "value": "What to do",
+      "role": "label",
+      "note": "Link from a refusal or an error to its Help page (DOC-06a)."
+    },
+    "locker.devices.help": {
+      "value": "Help with devices",
+      "role": "label",
+      "note": "Devices card: links to the Help page on devices (DOC-06a)."
+    },
+    "locker.library.empty.missing": {
+      "value": "Bought an app but don't see it?",
+      "role": "label",
+      "note": "Empty Library: links to Help on adding the email a purchase was made with (DOC-06a)."
     }
   }
 }

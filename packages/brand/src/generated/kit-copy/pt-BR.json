@@ -799,6 +799,7 @@
   "signin.join.undoConfirm": "Desfazer a união com {email}? Você pode até {date}.",
   "signin.approve.tooMany": "Muitas tentativas. Aguarde um minuto e tente de novo.",
   "signin.key.enterKey": "Digite sua chave de licença.",
+  "signin.code.missing": "Não recebeu o código?",
   "core.fallback.title": "Algo deu errado",
   "core.fallback.message": "Algo deu errado ({code}). Tente novamente.",
   "core.codes.unauthorized.title": "Não conectado",

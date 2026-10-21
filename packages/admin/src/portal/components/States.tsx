@@ -5,6 +5,7 @@ import { StationaryStar } from "../../ui/EmptyState.js";
 import { cn } from "../../lib/cn.js";
 import { portalErrorCopy } from "../errors.js";
 import { t } from "../../lib/copy.js";
+import { HelpLink } from "./HelpLink.js";
 
 /**
  * A failed load, in the person's words with a Retry (PORTAL.md §4.28, §6.4). Never the HTTP
@@ -39,6 +40,9 @@ export function ErrorPanel({
         {copy.title}
       </Title>
       <p className="text-fg-muted">{copy.description}</p>
+      {copy.help ? (
+        <HelpLink href={copy.help}>{t("locker.help.whatToDo")}</HelpLink>
+      ) : null}
       {onRetry && copy.retry ? (
         <Button
           variant="outline"

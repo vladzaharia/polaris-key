@@ -1503,6 +1503,11 @@
     "locker.missing.anotherEmail": "Eine andere E-Mail-Adresse?",
     "locker.missing.addInMethods": "In den Anmeldemethoden hinzufügen",
     "locker.missing.connectSteam": "Steam verbinden",
-    "locker.missing.inStore": "In einem Store gekauft? Melden Sie sich in der App an"
+    "locker.missing.inStore": "In einem Store gekauft? Melden Sie sich in der App an",
+    "signin.code.missing": "Keinen Code erhalten?",
+    "locker.help.guide": "An wen Sie sich wenden können",
+    "locker.help.whatToDo": "Was Sie tun können",
+    "locker.devices.help": "Hilfe zu Geräten",
+    "locker.library.empty.missing": "App gekauft, aber nicht zu sehen?"
   }
 }

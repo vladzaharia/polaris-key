@@ -11,6 +11,7 @@ export {
   AuthNotice,
   AuthTitle,
   OrDivider,
+  QuietAnchor,
   QuietLink,
   QuietLinks,
   useStepFocus,

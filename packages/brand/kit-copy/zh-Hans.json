@@ -1503,6 +1503,11 @@
     "locker.missing.anotherEmail": "其他邮箱？",
     "locker.missing.addInMethods": "在登录方式中添加",
     "locker.missing.connectSteam": "连接 Steam",
-    "locker.missing.inStore": "在商店购买的？请在应用中登录"
+    "locker.missing.inStore": "在商店购买的？请在应用中登录",
+    "signin.code.missing": "没收到验证码?",
+    "locker.help.guide": "联系谁",
+    "locker.help.whatToDo": "如何处理",
+    "locker.devices.help": "设备帮助",
+    "locker.library.empty.missing": "买了应用却看不到?"
   }
 }

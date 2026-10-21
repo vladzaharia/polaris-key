@@ -954,6 +954,7 @@ export const KIT_COPY: Readonly<
       "Undo the join with {email}? You can until {date}.",
     "signin.approve.tooMany": "Too many tries. Wait a minute, then try again.",
     "signin.key.enterKey": "Enter your license key.",
+    "signin.code.missing": "Didn't get a code?",
     "core.fallback.title": "Something went wrong",
     "core.fallback.message": "Something went wrong ({code}). Try again.",
     "core.codes.unauthorized.title": "Not signed in",
@@ -2530,6 +2531,7 @@ export const KIT_COPY: Readonly<
     "signin.approve.tooMany":
       "Zu viele Versuche. Warten Sie eine Minute und versuchen Sie es erneut.",
     "signin.key.enterKey": "Geben Sie Ihren Lizenzschlüssel ein.",
+    "signin.code.missing": "Keinen Code erhalten?",
     "core.fallback.title": "Ein Fehler ist aufgetreten",
     "core.fallback.message":
       "Ein Fehler ist aufgetreten ({code}). Versuchen Sie es erneut.",
@@ -4101,6 +4103,7 @@ export const KIT_COPY: Readonly<
     "signin.approve.tooMany":
       "Trop d'essais. Attendez une minute, puis réessayez.",
     "signin.key.enterKey": "Saisissez votre clé de licence.",
+    "signin.code.missing": "Pas de code reçu ?",
     "core.fallback.title": "Something went wrong",
     "core.fallback.message": "Something went wrong ({code}). Try again.",
     "core.codes.unauthorized.title": "Not signed in",
@@ -5643,6 +5646,7 @@ export const KIT_COPY: Readonly<
     "signin.approve.tooMany":
       "Demasiados intentos. Espera un minuto e inténtalo de nuevo.",
     "signin.key.enterKey": "Introduce tu clave de licencia.",
+    "signin.code.missing": "¿No te llegó el código?",
     "core.fallback.title": "Algo salió mal",
     "core.fallback.message": "Algo salió mal ({code}). Vuelve a intentarlo.",
     "core.codes.unauthorized.title": "Sin sesión iniciada",
@@ -7199,6 +7203,7 @@ export const KIT_COPY: Readonly<
     "signin.approve.tooMany":
       "Muitas tentativas. Aguarde um minuto e tente de novo.",
     "signin.key.enterKey": "Digite sua chave de licença.",
+    "signin.code.missing": "Não recebeu o código?",
     "core.fallback.title": "Algo deu errado",
     "core.fallback.message": "Algo deu errado ({code}). Tente novamente.",
     "core.codes.unauthorized.title": "Não conectado",
@@ -8742,6 +8747,7 @@ export const KIT_COPY: Readonly<
       "Annullare l'unione con {email}? Puoi fino al {date}.",
     "signin.approve.tooMany": "Troppi tentativi. Aspetta un minuto e riprova.",
     "signin.key.enterKey": "Inserisci la tua chiave di licenza.",
+    "signin.code.missing": "Non hai ricevuto il codice?",
     "core.fallback.title": "Si è verificato un problema",
     "core.fallback.message": "Si è verificato un problema ({code}). Riprova.",
     "core.codes.unauthorized.title": "Accesso non effettuato",
@@ -10310,6 +10316,7 @@ export const KIT_COPY: Readonly<
     "signin.approve.tooMany":
       "試行が多すぎます。1分待ってからもう一度お試しください。",
     "signin.key.enterKey": "ライセンスキーを入力してください。",
+    "signin.code.missing": "コードが届きませんか?",
     "core.fallback.title": "問題が発生しました",
     "core.fallback.message":
       "問題が発生しました（{code}）。もう一度お試しください。",
@@ -11835,6 +11842,7 @@ export const KIT_COPY: Readonly<
     "signin.approve.tooMany":
       "시도가 너무 많습니다. 1분 기다린 뒤 다시 시도하세요.",
     "signin.key.enterKey": "라이선스 키를 입력하세요.",
+    "signin.code.missing": "코드를 받지 못하셨나요?",
     "core.fallback.title": "문제가 발생했어요",
     "core.fallback.message": "문제가 발생했어요({code}). 다시 시도하세요.",
     "core.codes.unauthorized.title": "로그인되지 않음",
@@ -13273,6 +13281,7 @@ export const KIT_COPY: Readonly<
     "signin.join.undoConfirm": "撤销与 {email} 的合并？{date} 前均可撤销。",
     "signin.approve.tooMany": "尝试次数过多，请等一分钟后再试。",
     "signin.key.enterKey": "请输入你的许可证密钥。",
+    "signin.code.missing": "没收到验证码?",
     "core.fallback.title": "出现问题",
     "core.fallback.message": "出现问题（{code}）。请重试。",
     "core.codes.unauthorized.title": "未登录",

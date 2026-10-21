@@ -80,6 +80,24 @@ export function QuietLink({
   );
 }
 
+/** A QuietLink that goes to a page (a Help article) instead of doing something. */
+export function QuietAnchor({
+  href,
+  children,
+}: {
+  href: string;
+  children: React.ReactNode;
+}): React.ReactElement {
+  return (
+    <a
+      href={href}
+      className="inline-flex min-h-11 items-center gap-1.5 rounded-sm px-1 underline decoration-2 underline-offset-4 transition-colors duration-(--pk-duration-fast) hover:text-fg-strong"
+    >
+      {children}
+    </a>
+  );
+}
+
 /**
  * A neutral notice with a glyph (UI-KITS DL6): an outcome the person can read at a glance, never a
  * tint of the accent. `role="alert"`, so it is announced when it replaces the waiting line.

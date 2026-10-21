@@ -799,6 +799,7 @@
   "signin.join.undoConfirm": "{email}과(와)의 합치기를 되돌릴까요? {date}까지 가능합니다.",
   "signin.approve.tooMany": "시도가 너무 많습니다. 1분 기다린 뒤 다시 시도하세요.",
   "signin.key.enterKey": "라이선스 키를 입력하세요.",
+  "signin.code.missing": "코드를 받지 못하셨나요?",
   "core.fallback.title": "문제가 발생했어요",
   "core.fallback.message": "문제가 발생했어요({code}). 다시 시도하세요.",
   "core.codes.unauthorized.title": "로그인되지 않음",

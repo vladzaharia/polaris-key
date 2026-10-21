@@ -46,6 +46,8 @@ import { formatDay, normalisePlatform, tierLabel } from "../model/library.js";
 import { allowedReturn, cardReturn } from "../model/returnUrl.js";
 import { href, navigate, type ActivateNext } from "../router.js";
 import { PLATFORM_ORDER, PlatformGlyphs, type PlatformKey } from "./Glyphs.js";
+import { helpForRefusal } from "../helpLinks.js";
+import { HelpLink } from "./HelpLink.js";
 import { KeyField } from "./KeyField.js";
 import { ProductArt } from "./ProductArt.js";
 import { ProductIcon } from "./ProductIcon.js";
@@ -445,6 +447,7 @@ export function ActivateDialog({
                         verdict.code === "license_owned" ||
                         verdict.code === "email_mismatch" ? (
                           <RefusalActions
+                            help={helpForRefusal(verdict.code)}
                             ownedNotice={verdict.code === "license_owned"}
                             onDifferentKey={() => {
                               setKey("");
@@ -465,6 +468,12 @@ export function ActivateDialog({
                                 : undefined
                             }
                           />
+                        ) : helpForRefusal(verdict.code) ? (
+                          <div className="basis-full text-left">
+                            <HelpLink href={helpForRefusal(verdict.code)!}>
+                              {t("locker.help.whatToDo")}
+                            </HelpLink>
+                          </div>
                         ) : undefined,
                     }
                   : null
@@ -554,10 +563,13 @@ export function ActivateDialog({
  * Add an email open (PX-13).
  */
 function RefusalActions({
+  help,
   ownedNotice,
   onDifferentKey,
   onAddEmail,
 }: {
+  /** The Help page for this refusal (helpLinks.ts). */
+  help?: string | undefined;
   /** Signed in on the portal, `license_owned`: say the account may be theirs (SIGN-IN.md D-27). */
   ownedNotice?: boolean;
   onDifferentKey: () => void;
@@ -569,6 +581,11 @@ function RefusalActions({
         <p className="basis-full text-sm text-fg-muted">
           {t("signin.join.ownedNotice")}
         </p>
+      ) : null}
+      {help ? (
+        <div className="basis-full text-left">
+          <HelpLink href={help}>{t("locker.help.whatToDo")}</HelpLink>
+        </div>
       ) : null}
       <Button
         variant="ghost"

@@ -696,5 +696,9 @@
   "locker.missing.anotherEmail": "Another email?",
   "locker.missing.addInMethods": "Add it in Sign-in methods",
   "locker.missing.connectSteam": "Connect Steam",
-  "locker.missing.inStore": "Bought in a store? Sign in from the app"
+  "locker.missing.inStore": "Bought in a store? Sign in from the app",
+  "locker.help.guide": "Who to contact",
+  "locker.help.whatToDo": "What to do",
+  "locker.devices.help": "Help with devices",
+  "locker.library.empty.missing": "Bought an app but don't see it?"
 }

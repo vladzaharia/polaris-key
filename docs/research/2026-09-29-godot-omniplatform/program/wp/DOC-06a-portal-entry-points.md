@@ -76,6 +76,22 @@ apply says why in one line. One home: EXPERIENCE.md ยง7.3; kits also follow DL1โ
       D-pad focus, TV and title-safe insets, terminal keys with NO_COLOR, ascii and --json paths.
 - [ ] pkey-ux-reviewer passes the built screens (BUILT mode).
 
+## Corrections found against the code (DOC-06a)
+
+- The table is `portal/helpLinks.ts` (`HELP_LINKS` plus `helpForRefusal`), gated by the worker test
+  `portalHelpLinks.test.ts` against `docs/dist/docs-slugs.json`; the brief's `helpLinks.test.ts`
+  lives there because the slug manifest is read from the worker suite, as for the console's tables.
+  `customerHelpLinks.test.ts` now reads this table instead of `AccountMenu.tsx`.
+- The portal has no footer (PortalShell: "No footer"); Help and Privacy are in the account menu.
+  The plain sign-in card had no footer, so it gains Help and Privacy. Terms is not linked: no terms
+  page exists (D5).
+- There is no `LoginCard.tsx`; the card is `ui/auth/AuthCard.tsx` driven by `pages/SignInPage.tsx`.
+- Five strings joined the catalog (`signin.code.missing`, `locker.help.guide`,
+  `locker.help.whatToDo`, `locker.devices.help`, `locker.library.empty.missing`), all nine locales.
+- Not linked: the free-device flow (`/docs/help/new-computer/`) and Account, Delete
+  (`/docs/help/delete-account/`). The delete dialog already lists the consequences; a link there is
+  a follow-up if wanted.
+
 ## Steps
 
 1. Verify this brief against the code and the docs site (the code is the fact) and record any correction here, in the same branch.
