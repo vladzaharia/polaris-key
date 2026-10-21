@@ -82,7 +82,9 @@ describe.skipIf(!existsSync(manifestFile))("dist/docs-slugs.json", () => {
   });
 
   it("drops stubs from the sitemap and marks each one noindex", () => {
-    const sitemap = readFileSync(join(dist, "sitemap-0.xml"), "utf8");
+    const sitemap =
+      readFileSync(join(dist, "sitemap-0.xml"), "utf8") +
+      readFileSync(join(dist, "sitemap-help.xml"), "utf8");
     const stubs = Object.entries(manifest.pages)
       .filter(([, page]) => page.status === "stub")
       .map(([route]) => route);
@@ -114,7 +116,7 @@ describe.skipIf(!existsSync(manifestFile))("dist/docs-slugs.json", () => {
     expect(html).toContain('id="activation.device-limit"');
     expect(html).toContain("Device limit reached");
     expect(html).not.toContain('content="noindex"');
-    expect(readFileSync(join(dist, "sitemap-0.xml"), "utf8")).toContain(
+    expect(readFileSync(join(dist, "sitemap-help.xml"), "utf8")).toContain(
       "/docs/help/messages/devices/",
     );
   });

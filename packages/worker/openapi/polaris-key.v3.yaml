@@ -19865,6 +19865,35 @@ paths:
       description: LK-03. As `GET /.well-known/polaris-host.json`.
       responses:
         "200": { description: The host answers. }
+  /robots.txt:
+    servers:
+      - url: https://polaris.locker
+        description: The customer host (polaris.locker; staging.polaris.locker and dev.polaris.locker in the other environments).
+    get:
+      operationId: getCustomerRobots
+      tags: [customer]
+      summary: Crawler rules (customer host only)
+      description: >
+        LK-09. The host's `robots.txt`: Help under `/docs/help/` is open to crawlers, its
+        `/docs/help/code/` redirect pages, the sign-in paths and `/api/` are not, and a `Sitemap:`
+        line names this host's own `/docs/sitemap-help.xml` (Help only). Every other `/docs` path
+        redirects to the console host, so no gated section is listed. `cache-control: public,
+        max-age=300`. `GET` and `HEAD` only.
+      responses:
+        "200":
+          description: The rules.
+          content:
+            text/plain:
+              schema: { type: string }
+        "405":
+          { description: "Any method but GET and HEAD (`Allow: GET, HEAD`)." }
+    head:
+      operationId: getCustomerRobotsHead
+      tags: [customer]
+      summary: Crawler rules, headers only (customer host only)
+      description: LK-09. As `GET /robots.txt`.
+      responses:
+        "200": { description: The rules' headers. }
   /.well-known/webauthn:
     get:
       operationId: getWebauthnRelatedOrigins

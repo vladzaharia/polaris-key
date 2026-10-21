@@ -17,6 +17,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { loadMap, redirectsFor } from "./scripts/site-map.mjs";
 import { starlightSidebar } from "./src/lib/doors.ts";
 import importedMarkdown from "./scripts/imported-markdown.mjs";
+import { helpCodeRedirects } from "./src/lib/helpMessages.ts";
 
 export default defineConfig({
   site: "https://key.plrs.im",
@@ -26,7 +27,10 @@ export default defineConfig({
   // base included. Astro writes a meta-refresh page at the old path, so old links and console
   // help links keep working and check:links still sees a target. The table is derived from
   // site-map.json (scripts/site-map.mjs): a row redirects once its old page is gone.
-  redirects: redirectsFor(loadMap()),
+  // Plus /help/code/<id> for every message id (docs plan §3.1, §7.4): kits and own-UI apps link
+  // there, and each lands on the id's own anchor. Static pages, so both hosts serve them with
+  // the existing tier gate (the /docs/help/ prefix is public) and no Worker route.
+  redirects: { ...redirectsFor(loadMap()), ...helpCodeRedirects() },
   image: { service: passthroughImageService() },
   build: {
     format: "directory",

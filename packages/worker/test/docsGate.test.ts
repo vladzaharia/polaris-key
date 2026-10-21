@@ -340,7 +340,7 @@ describe("handleDocs: the platform-admin gate", () => {
     ).toBe(200);
   });
 
-  it("serves a signed-in operator with no-store HTML and the hash-carrying CSP", async () => {
+  it("serves a signed-in operator the hash-carrying CSP, public HTML revalidating and gated HTML no-store", async () => {
     const env = docsEnv();
     const res = await handleDocs(
       get("/docs/", await adminCookie(env)),
@@ -349,7 +349,15 @@ describe("handleDocs: the platform-admin gate", () => {
     );
     expect(res.status).toBe(200);
     expect(await res.text()).toContain("docs home");
-    expect(res.headers.get("cache-control")).toBe("no-store");
+    expect(res.headers.get("cache-control")).toBe(
+      "public, max-age=300, must-revalidate",
+    );
+    const gated = await handleDocs(
+      get("/docs/operate/platform/runbook/", await adminCookie(env)),
+      env,
+      NOW,
+    );
+    expect(gated.headers.get("cache-control")).toBe("no-store");
     const csp = res.headers.get("content-security-policy") ?? "";
     expect(csp).toContain("script-src 'self'");
     expect(csp).not.toContain("unsafe-inline");
@@ -384,7 +392,7 @@ describe("handleDocs: asset resolution", () => {
     }
   });
 
-  it("marks content-hashed assets private+immutable, never shared-cacheable", async () => {
+  it("marks public content-hashed assets public+immutable and gated ones private", async () => {
     const env = docsEnv();
     const cookie = await adminCookie(env);
     const res = await handleDocs(
@@ -394,7 +402,7 @@ describe("handleDocs: asset resolution", () => {
     );
     expect(res.status).toBe(200);
     expect(res.headers.get("cache-control")).toBe(
-      "private, max-age=31536000, immutable",
+      "public, max-age=31536000, immutable",
     );
     // Pagefind's LOADER files have stable names — the rotating entry/loader set must
     // revalidate, or a deploy strands cached browsers on deleted shards (search breaks).
@@ -403,15 +411,30 @@ describe("handleDocs: asset resolution", () => {
       env,
       NOW,
     );
-    expect(loader.headers.get("cache-control")).toBe("private, no-cache");
+    expect(loader.headers.get("cache-control")).toBe("public, no-cache");
     const shard = await handleDocs(
       get("/docs/pagefind/index/en_abc123.pf_index", cookie),
       env,
       NOW,
     );
     expect(shard.headers.get("cache-control")).toBe(
+      "public, max-age=31536000, immutable",
+    );
+    // A tier above public is never shared-cacheable.
+    const member = await handleDocs(
+      get("/docs/pagefind-member/index/en_m1.pf_index", cookie),
+      env,
+      NOW,
+    );
+    expect(member.headers.get("cache-control")).toBe(
       "private, max-age=31536000, immutable",
     );
+    const memberLoader = await handleDocs(
+      get("/docs/pagefind-admin/pagefind.js", cookie),
+      env,
+      NOW,
+    );
+    expect(memberLoader.headers.get("cache-control")).toBe("private, no-cache");
   });
 
   it("serves the site's styled 404 for a miss", async () => {

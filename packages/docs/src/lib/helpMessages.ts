@@ -151,6 +151,23 @@ export function helpMessageUrl(doc: HelpMessagesData, id: string): string {
 }
 
 /**
+ * The Astro redirects of the `/help/code/<id>/` links: route without the base -> full target,
+ * for every id the map holds (a message or a developer-only id).
+ */
+export function helpCodeRedirects(
+  doc: HelpMessagesData = HELP_MESSAGES,
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const id of [...Object.keys(doc.messages), ...doc.developerOnly])
+    out[
+      helpCodePath(id)
+        .replace(/^\/docs/, "")
+        .replace(/\/$/, "")
+    ] = helpMessageUrl(doc, id);
+  return out;
+}
+
+/**
  * The link to a Help article (a path under `help/`): the "More help" of a message, and the page the
  * `contact` cta points at. None when the page showing the message is that article (a link to the
  * page you are on says nothing). `pathname` is the page's path with the site base, with or without

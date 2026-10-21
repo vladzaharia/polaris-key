@@ -109,6 +109,8 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/{product}/devices` | core | List the devices sharing this device's seat pool |
 | GET | `https://polaris.locker/.well-known/polaris-host.json` | customer | Customer host health check (customer host only) |
 | HEAD | `https://polaris.locker/.well-known/polaris-host.json` | customer | Customer host health check, headers only (customer host only) |
+| GET | `https://polaris.locker/robots.txt` | customer | Crawler rules (customer host only) |
+| HEAD | `https://polaris.locker/robots.txt` | customer | Crawler rules, headers only (customer host only) |
 | GET | `/{product}/distribution/altstore-pal/{channel}/source.json` | distribution | AltStore PAL source for one channel |
 | GET | `/{product}/distribution/altstore/{channel}/source.json` | distribution | AltStore Classic / SideStore source for one channel |
 | GET | `/{product}/distribution/blobs/sha256/{sha256}` | distribution | Download a content-addressed object |
