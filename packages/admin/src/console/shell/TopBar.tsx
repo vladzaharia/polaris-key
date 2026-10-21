@@ -47,7 +47,7 @@ export function TopBar({
     <header
       data-shell="topbar"
       className={cn(
-        "z-30 flex flex-wrap items-center gap-x-1.5 gap-y-1 border-b border-border bg-surface-raised px-2 sm:gap-x-3 sm:px-4",
+        "z-30 flex flex-wrap items-center gap-x-1.5 gap-y-1 border-b border-border bg-surface-page px-2 sm:gap-x-3 sm:px-4 lg:border-b-0",
         "min-h-[calc(4rem+env(safe-area-inset-top,0px))] pt-[env(safe-area-inset-top,0px)]",
         className,
       )}

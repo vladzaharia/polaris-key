@@ -2,8 +2,8 @@ import * as React from "react";
 import { cn } from "../lib/cn.js";
 
 /**
- * The one titled card both apps build pages from (EXPERIENCE.md §3, §4): radius `xl`, a header at
- * `px-5 py-3.5` over a rule, and elevation 1 in the light theme only (dark separates by surface).
+ * The one titled card both apps build pages from (EXPERIENCE.md §3, §4): radius `xl`, a head band
+ * (the raised step, 56 px, a rule under it; ST-48) with the title at 18/24 and no numeral, and elevation 1 in the light theme only (dark separates by surface).
  *
  * - `variant="content"` (the default; `Panel` is its alias): a dashboard or record panel. The
  *   header holds the title, an optional line of context and one action at its end ("All
@@ -65,13 +65,15 @@ export function Section({
       )}
     >
       {settings ? (
-        <div className="flex items-start justify-between gap-3 border-b border-border px-5 py-3.5">
+        <div className="flex items-start justify-between gap-3 border-b border-border px-5 py-3.5 console:min-h-14 console:rounded-t-[inherit] console:bg-(--pk-admin-band)">
           <div className="min-w-0 flex-1 space-y-0.5">
             <div className="flex flex-wrap items-center gap-2">
               <Heading
                 id={headingId}
                 className={cn(
+                  // The head band's title: 18/24 on a page-level section, 16/24 nested (B4). No numerals.
                   "text-base font-semibold",
+                  headingLevel === 2 && "console:text-lg",
                   danger ? "text-danger" : "text-fg-strong",
                 )}
               >
@@ -94,14 +96,16 @@ export function Section({
         // an action wider than what is left (a phone) wraps under the title.
         <div
           data-card-header=""
-          className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3.5"
+          className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3.5 console:min-h-14 console:rounded-t-[inherit] console:bg-(--pk-admin-band)"
         >
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <Heading
                 id={headingId}
                 className={cn(
+                  // The head band's title: 18/24 on a page-level section, 16/24 nested (B4). No numerals.
                   "text-base font-semibold",
+                  headingLevel === 2 && "console:text-lg",
                   danger ? "text-danger" : "text-fg-strong",
                 )}
               >

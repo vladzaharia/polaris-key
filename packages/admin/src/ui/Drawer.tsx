@@ -58,6 +58,8 @@ export interface DrawerProps {
   discard?: DiscardWords;
   /** A line above the title ("DJDL · Licenses"): where the drawer belongs. */
   eyebrow?: React.ReactNode;
+  /** The ONE leading glyph of the head (B4): the subject's mark for a record, never a service tile. */
+  glyph?: React.ReactNode;
   /**
    * What the phone header's control is. `back` (default) is a "Back" that closes; `close` is an X
    * at every width, for a drawer whose body has its own Back (a wizard).
@@ -80,6 +82,7 @@ export function Drawer({
   unsaved = false,
   discard,
   eyebrow,
+  glyph,
   closeStyle = "back",
   onCloseAutoFocus,
   children,
@@ -122,7 +125,8 @@ export function Drawer({
           // The panel slides in from its edge and back out (src/motion.css `.pk-drawer`; S-23 §6.1).
           data-drawer-side={side}
           className={cn(
-            "pk-drawer fixed inset-0 z-50 flex flex-col bg-surface-overlay text-fg outline-hidden",
+            // The 3 px rule in the origin's accent (B4, B17) along the panel's top edge.
+            "pk-drawer fixed inset-0 z-50 flex flex-col bg-surface-overlay text-fg outline-hidden console:border-t-[3px] console:border-t-accent",
             "pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]",
             "lg:inset-y-0 lg:w-full lg:shadow-elevation-3",
             side === "end"
@@ -134,7 +138,7 @@ export function Drawer({
         >
           <div
             data-pk-overlay-header=""
-            className="flex shrink-0 items-start gap-3 border-b border-border px-4 py-3 lg:px-6 lg:py-4"
+            className="flex shrink-0 items-start gap-3 border-b border-border px-4 py-3 lg:px-6 lg:py-4 console:bg-(--pk-admin-band-overlay)"
           >
             {closeStyle === "back" ? (
               <button
@@ -147,6 +151,11 @@ export function Drawer({
                 Back
               </button>
             ) : null}
+            {glyph ? (
+              <span aria-hidden data-overlay-glyph="" className="mt-0.5 flex">
+                {glyph}
+              </span>
+            ) : null}
             <div className="min-w-0 flex-1 space-y-1">
               {eyebrow ? (
                 <p className="truncate text-xs text-fg-muted">{eyebrow}</p>
@@ -154,7 +163,7 @@ export function Drawer({
               <DialogPrimitive.Title
                 ref={titleRef}
                 tabIndex={-1}
-                className="text-lg font-semibold leading-tight text-fg-strong outline-hidden"
+                className="text-lg font-semibold leading-tight text-fg-strong outline-hidden console:text-xl console:leading-7"
               >
                 {title}
               </DialogPrimitive.Title>

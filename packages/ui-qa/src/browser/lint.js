@@ -32,6 +32,26 @@
   const PRIMARY = '.primary, [data-variant="primary"], [data-part~="primary"]';
   const CLOSE =
     '[aria-label="Close"], [aria-label="close"], [data-part~="close"], button:has(> [data-icon="x"]), .k-iconbtn:has([data-icon="x"])';
+  // The console shell v2 rules (ST-48; BRAND-TRANSITION B4, B17; UK-55's accent-as-status,
+  // state-accent and section-index).
+  const SERVICES = [
+    "core",
+    "license",
+    "config",
+    "release",
+    "distribution",
+    "update",
+    "identity",
+    "sync",
+    "commerce",
+  ];
+  // A status, an alert or a pill: success, warning, danger, info, signed. Never a service accent.
+  const STATUS =
+    '[data-status], [role="status"], [role="alert"], .pk-pill, [data-part~="status"], .k-status, .k-alert';
+  // Selected, current, checked and pressed: the state colour is the nearest service's accent.
+  const STATEFUL =
+    '[aria-selected="true"], [aria-current="page"], [aria-current="true"], [aria-checked="true"], [aria-pressed="true"], [data-state="checked"], [data-state="on"], [data-state="active"]';
+  const ORDERED = "ol, [data-ordered], [data-step], [data-wizard]";
   const SEPARATORS = new Set(["·", "•", "|", "—", "–", "/"]);
   const KEY_RE =
     /^(pkey_[a-z0-9]+_[A-Z0-9…]{4,}|[A-Z0-9]{4,6}(-[A-Z0-9]{4,6}){2,})$/;
@@ -267,6 +287,48 @@
             "x-beside-cancel",
             dismiss,
             `a close X and "${dismiss.textContent.trim()}" on one surface`,
+          );
+      }
+
+      // Console shell v2 (B4, B17).
+      const accents = serviceAccents();
+      for (const el of els) {
+        if (el.matches(STATUS)) {
+          // Core is the platform's own violet, which the info status shares in the light theme
+          // (brand tokens: --pk-info = --pk-service-core); only a service accent is a breach.
+          const hit = accentIn(paint(el), accents, null, "core");
+          if (hit)
+            report(
+              "accent-as-status",
+              el,
+              `a status paints the ${hit} service accent (accent marks context; status keeps its own colour)`,
+            );
+        }
+        if (el.matches(STATEFUL) && !el.matches(STATUS)) {
+          const own = (
+            el.closest("[data-service]")?.getAttribute("data-service") ||
+            document.documentElement.getAttribute("data-service") ||
+            "core"
+          ).replace("commerce", "distribution");
+          const hit = accentIn(paint(el), accents, own);
+          if (hit)
+            report(
+              "state-accent",
+              el,
+              `a selected or checked state paints the ${hit} accent inside ${own} (the nearest data-service decides)`,
+            );
+        }
+        if (el.matches(HEADINGS) && !el.closest(ORDERED) && indexed(el))
+          report(
+            "section-index",
+            el,
+            "a heading carries an ordinal numeral (numbers mark only ordered steps)",
+          );
+        if (el.matches("[data-masthead-tile]") && window.innerWidth < 1024)
+          report(
+            "masthead-tile",
+            el,
+            `the 48 px masthead tile shows at ${window.innerWidth}px (1024px and wider only)`,
           );
       }
 
@@ -791,10 +853,74 @@
       ownText(el.parentElement).trim().length > 0
     );
   }
+  // The service accents as the page computes them, normalised to rgb(): one probe per token.
+  function serviceAccents() {
+    const out = new Map();
+    const probe = document.createElement("span");
+    probe.style.cssText = "position:absolute;visibility:hidden";
+    document.body.appendChild(probe);
+    for (const slug of SERVICES) {
+      for (const suffix of ["", "-fg"]) {
+        const token = `--pk-service-${slug}${suffix}`;
+        if (
+          !getComputedStyle(document.documentElement)
+            .getPropertyValue(token)
+            .trim()
+        )
+          continue;
+        probe.style.color = `var(--pk-service-${slug}${suffix})`;
+        const c = getComputedStyle(probe).color;
+        if (!c) continue;
+        const key = slug === "commerce" ? "distribution" : slug;
+        if (!out.has(c)) out.set(c, new Set());
+        out.get(c).add(key);
+      }
+    }
+    probe.remove();
+    return out;
+  }
+  // The colours an element paints itself with: text, fill, edges, outline and shadow.
+  function paint(el) {
+    const cs = getComputedStyle(el);
+    const list = [
+      cs.color,
+      cs.backgroundColor,
+      cs.borderTopColor,
+      cs.borderRightColor,
+      cs.borderBottomColor,
+      cs.borderLeftColor,
+      cs.outlineColor,
+    ];
+    for (const layer of shadowLayers(cs.boxShadow))
+      if (layer.color) list.push(layer.color);
+    return list.filter(Boolean);
+  }
+  // The first service whose accent is among `colours`, other than `own` (null: any service).
+  function accentIn(colours, accents, own, skip) {
+    for (const c of colours) {
+      const slugs = accents.get(c);
+      if (!slugs) continue;
+      for (const slug of slugs)
+        if (slug !== skip && (own === null || slug !== own)) return slug;
+    }
+    return null;
+  }
+  // "01 Limits", or a bare two-digit index element before the heading text.
+  function indexed(el) {
+    const own = ownText(el).trim();
+    if (/^\d{1,2}[.:·\-–—)]?\s+\S/.test(own) && /^0\d\b|^\d{2}\b/.test(own))
+      return true;
+    const prev = el.previousElementSibling;
+    return (
+      !!prev &&
+      /^0?\d{1,2}$/.test(prev.textContent.trim()) &&
+      prev.childElementCount === 0
+    );
+  }
   function region(el, scope) {
     return (
       el.closest(
-        '[data-region], form, dialog, [role="dialog"], [role="alertdialog"], .k-card, [data-part~="card"], [data-part~="sheet"]',
+        '[data-region], [data-section="settings"], form, dialog, [role="dialog"], [role="alertdialog"], .k-card, [data-part~="card"], [data-part~="sheet"]',
       ) || scope
     );
   }

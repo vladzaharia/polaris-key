@@ -525,20 +525,21 @@ describe("accents and the section bit (BRAND.md §6)", () => {
 
     for (const page of PRODUCT_PAGES.filter((p) => p.inNav)) {
       const section = SECTIONS.find((s) => s.items.includes(page))!;
+      const accent = page.accent ?? section.accent;
       act(() => {
         window.location.hash = `#/p/djdl${page.path ? `/${page.path}` : ""}`;
       });
       await waitFor(() =>
         expect(document.documentElement.getAttribute("data-service")).toBe(
-          section.accent,
+          accent,
         ),
       );
-      if (section.accent === "core") {
+      if (accent === "core") {
         expect(bit(), page.page).toBeNull();
       } else {
         await waitFor(() =>
           expect(bit()?.getAttribute("fill"), page.page).toBe(
-            SERVICE_ACCENTS[theme()][section.accent as ServiceAccentKey].bit,
+            SERVICE_ACCENTS[theme()][accent as ServiceAccentKey].bit,
           ),
         );
         expect(bit()!.classList.contains("polaris-section-bit")).toBe(true);

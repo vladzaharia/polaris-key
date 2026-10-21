@@ -92,17 +92,19 @@ const stripClass = (edges: string) =>
       "[mask-image:linear-gradient(to_right,transparent,#000_2rem,#000_calc(100%-2rem),transparent)]",
   );
 
+// B4: an underline tablist with a 3 px indicator in the service's accent (B17), never a segmented
+// control or a boxed tray. The hover tint and the ring take the same accent.
 const tabClass = (active: boolean) =>
   cn(
-    "relative inline-flex h-10 items-center gap-1.5 whitespace-nowrap border-b-2 px-1 text-sm",
+    "relative inline-flex h-10 items-center gap-1.5 whitespace-nowrap rounded-t-md border-b-[3px] px-1.5 text-sm",
     "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus",
     active
       ? "border-transparent font-medium text-fg-strong"
-      : "border-transparent text-fg-muted hover:border-border-strong hover:text-fg-strong",
+      : "border-transparent text-fg-muted hover:border-border-strong hover:bg-state-hover-tint hover:text-fg-strong",
   );
 
 /**
- * The active tab's underline (S-23 §6.1 morph). It lies exactly over the tab's own 2 px bottom
+ * The active tab's underline (S-23 §6.1 morph). It lies exactly over the tab's own 3 px bottom
  * border, so the tab looks as it always has; being its own element, it is named `pk-indicator`
  * during a `tab` (or `route`) View Transition and slides to the next tab. A border, not a fill, so
  * forced-colors mode keeps it.
@@ -112,7 +114,7 @@ function Indicator(): React.ReactElement {
     <span
       aria-hidden
       data-tab-indicator=""
-      className="pk-vt-indicator pointer-events-none absolute inset-x-0 -bottom-[2px] border-b-2 border-accent"
+      className="pk-vt-indicator pointer-events-none absolute inset-x-0 -bottom-[3px] border-b-[3px] border-accent"
     />
   );
 }

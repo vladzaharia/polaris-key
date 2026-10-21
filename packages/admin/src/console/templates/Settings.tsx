@@ -280,7 +280,7 @@ export function SettingsTemplate({
       >
         {rail ? (
           <nav aria-label="On this page" className="hidden xl:block">
-            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-fg-muted">
+            <p className="mb-2 text-xs font-medium text-fg-muted">
               On this page
             </p>
             <ul className="sticky top-4 space-y-1 border-l border-border text-sm">

@@ -213,3 +213,108 @@ export function rawPlaceholders(page: Page): Promise<string[]> {
     Array.from(document.body.innerText.matchAll(/\{[a-zA-Z]+\}/g), (m) => m[0]),
   );
 }
+
+/**
+ * The console shell v2's state colours, measured on the render (ST-48; B2, B4, B17): the canvas's
+ * 3 px rule and the tab indicator against the surface they sit on (UI 3:1), the primary's label
+ * on its neutral ink (text 4.5:1), the focus ring being the nearest service's state ring, and no
+ * element in the shell's chrome painted with a gradient or a coloured shadow (B6). One line per
+ * breach.
+ */
+export function shellStateBreaches(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const out: string[] = [];
+    const rgb = (c: string): [number, number, number, number] | null => {
+      const m = c.match(/rgba?\(([^)]+)\)/);
+      if (!m) return null;
+      const p = m[1]!
+        .split(/[ ,/]+/)
+        .filter(Boolean)
+        .map(Number);
+      return [p[0]!, p[1]!, p[2]!, p[3] ?? 1];
+    };
+    const lum = (c: [number, number, number, number]) => {
+      const f = (v: number) => {
+        const s = v / 255;
+        return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+      };
+      return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]);
+    };
+    const ratio = (a: string, b: string): number | null => {
+      const x = rgb(a);
+      const y = rgb(b);
+      if (!x || !y) return null;
+      const [hi, lo] = [lum(x), lum(y)].sort((m, n) => n - m) as [
+        number,
+        number,
+      ];
+      return (hi + 0.05) / (lo + 0.05);
+    };
+    const main = document.getElementById("content");
+    if (!main) return out;
+    const mcs = getComputedStyle(main);
+    const rule = ratio(mcs.borderTopColor, mcs.backgroundColor);
+    if (rule !== null && rule < 3)
+      out.push(
+        `the canvas rule is ${rule.toFixed(2)}:1 on the canvas (UI 3:1)`,
+      );
+    const indicator = main.querySelector<HTMLElement>("[data-tab-indicator]");
+    if (indicator) {
+      const r = ratio(
+        getComputedStyle(indicator).borderBottomColor,
+        mcs.backgroundColor,
+      );
+      if (r !== null && r < 3)
+        out.push(`the tab indicator is ${r.toFixed(2)}:1 (UI 3:1)`);
+    }
+    for (const b of main.querySelectorAll<HTMLElement>(
+      '[data-variant="primary"]:not(:disabled):not([aria-disabled="true"])',
+    )) {
+      if (!b.checkVisibility()) continue;
+      const s = getComputedStyle(b);
+      const r = ratio(s.color, s.backgroundColor);
+      if (r !== null && r < 4.5)
+        out.push(
+          `a primary's label is ${r.toFixed(2)}:1 on its ink (text 4.5:1)`,
+        );
+      const bg = rgb(s.backgroundColor);
+      const ink = rgb(
+        getComputedStyle(document.documentElement).getPropertyValue(
+          "--pk-action",
+        ),
+      );
+      if (
+        bg &&
+        ink &&
+        (Math.abs(bg[0] - ink[0]) > 40 || Math.abs(bg[1] - ink[1]) > 40)
+      )
+        out.push(
+          `a primary is ${s.backgroundColor}, not the neutral action ink ${getComputedStyle(document.documentElement).getPropertyValue("--pk-action").trim()}`,
+        );
+      break;
+    }
+    // The focus ring follows the element's service: --pk-focus resolves to --pk-state-ring.
+    for (const el of [
+      main,
+      ...Array.from(main.querySelectorAll("[data-service]")).slice(0, 6),
+    ]) {
+      const s = getComputedStyle(el);
+      const f = s.getPropertyValue("--pk-focus").trim();
+      const w = s.getPropertyValue("--pk-state-ring").trim();
+      if (f !== w)
+        out.push(
+          `the focus ring ${f} is not the state ring ${w} under data-service=${el.getAttribute("data-service")}`,
+        );
+    }
+    for (const el of main.querySelectorAll<HTMLElement>(
+      "header[data-masthead] *, [data-card-header], [data-workbench-toolbar]",
+    )) {
+      const s = getComputedStyle(el);
+      if (/gradient/.test(s.backgroundImage))
+        out.push("a gradient in product chrome");
+      if (s.boxShadow !== "none" && /oklch|color-mix/.test(s.boxShadow))
+        out.push(`a coloured shadow: ${s.boxShadow.slice(0, 60)}`);
+    }
+    return out;
+  });
+}

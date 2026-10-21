@@ -446,3 +446,32 @@ describe("CSV", () => {
     );
   });
 });
+
+describe("the workbench (ST-48, B4)", () => {
+  it("is ONE bordered band holding the toolbar and the table, with 56 px rows", () => {
+    render(<Harness />);
+    const band = document.querySelector("[data-workbench]")!;
+    expect(band.className).toContain("border");
+    expect(band.className).toContain("rounded-xl");
+    expect(band.querySelector("[data-workbench-toolbar]")).not.toBeNull();
+    expect(band.querySelector("table")).not.toBeNull();
+    // The toolbar sits inside the band, above the table, not beside it as a page-level row.
+    expect(
+      band
+        .querySelector("[data-workbench-toolbar]")!
+        .compareDocumentPosition(band.querySelector("table")!) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(band.querySelector("tbody tr")!.className).toContain("h-14");
+    // Sentence-case heads: no transform on a header cell.
+    expect(band.querySelector("thead")!.innerHTML).not.toMatch(/uppercase/);
+  });
+
+  it("draws an applied filter as a solid-outline chip in the service's accent", async () => {
+    render(<Harness initial={{ filters: { status: ["active"] } }} />);
+    const chip = document.querySelector("[data-workbench] .rounded-full.h-7");
+    expect(chip).not.toBeNull();
+    expect(chip!.className).toContain("border-accent-fg");
+    expect(chip!.className).not.toContain("border-dashed");
+  });
+});

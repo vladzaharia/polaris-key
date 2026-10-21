@@ -137,6 +137,7 @@ export function ConfirmDialog({
       onOpenChange={onOpenChange}
       size="md"
       role="alertdialog"
+      tone={intent === "neutral" ? "default" : intent}
       title={
         <span className="flex items-start gap-2">
           {ICON[intent] ? (
