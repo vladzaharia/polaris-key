@@ -47,7 +47,7 @@ describe("ui-matrix.json", () => {
     );
     const file = JSON.parse(text) as UiMatrix;
     expect(file.uiMatrixVersion).toBe(UI_MATRIX_VERSION);
-    expect(UI_MATRIX_VERSION).toBe(3);
+    expect(UI_MATRIX_VERSION).toBe(4);
     expect(JSON.parse(JSON.stringify(DOC))).toEqual(file);
     // eslint-disable-next-line no-control-regex
     expect(/[^\x00-\x7f]/.test(text)).toBe(false);

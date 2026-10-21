@@ -104,7 +104,7 @@ files themselves — `corpusVersion` **2**, `gateMatrixVersion` **2**, `fingerpr
 `stageMatrixVersion` **3**, `headersVersion` **2**, `configMatrixVersion` **1**,
 `updateMatrixVersion` **1**, `outletMatrixVersion` **1**, `planMatrixVersion` **2**,
 `feedUrlMatrixVersion` **1**, `syncScenariosVersion` **2**, `deviceLabelVersion` **1**,
-`contentCorpusVersion` **2**, `presentationMatrixVersion` **1**, `uiMatrixVersion` **3** — and case counts, generated
+`contentCorpusVersion` **2**, `presentationMatrixVersion` **1**, `uiMatrixVersion` **4** — and case counts, generated
 straight from the corpus files, live at
 [Conformance corpus v2](/docs/reference/corpus/).
 

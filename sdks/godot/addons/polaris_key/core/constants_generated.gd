@@ -913,7 +913,7 @@ const DEVICE_LABEL_VERSION := 1
 const PRESENTATION_MATRIX_VERSION := 1
 
 ## `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json.
-const UI_MATRIX_VERSION := 3
+const UI_MATRIX_VERSION := 4
 
 ## `backendMatrixVersion` of conformance/corpus/v2/backend-matrix.json (WIRE-CONTRACT-V4 §14).
 const BACKEND_MATRIX_VERSION := 1

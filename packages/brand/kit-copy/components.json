@@ -292,19 +292,57 @@
           ]
         },
         "typing": {
-          "copy": ["part.keyField.label", "activate.submit"]
+          "copy": [
+            "activate.title",
+            "activate.lede",
+            "part.keyField.label",
+            "part.keyField.placeholder",
+            "common.paste",
+            "activate.submit"
+          ]
         },
         "parsed": {
-          "copy": ["part.keyField.forProduct", "activate.submit"]
+          "copy": [
+            "activate.title",
+            "activate.lede",
+            "part.keyField.label",
+            "part.keyField.placeholder",
+            "common.paste",
+            "part.keyField.forProduct",
+            "activate.submit"
+          ]
         },
         "cut-short": {
-          "copy": ["part.keyField.cutShort"]
+          "copy": [
+            "activate.title",
+            "activate.lede",
+            "part.keyField.label",
+            "part.keyField.placeholder",
+            "common.paste",
+            "part.keyField.cutShort"
+          ]
         },
         "busy": {
-          "copy": ["activate.busy", "a11y.busy"]
+          "copy": [
+            "activate.title",
+            "activate.lede",
+            "part.keyField.label",
+            "part.keyField.placeholder",
+            "common.paste",
+            "activate.busy",
+            "a11y.busy"
+          ]
         },
         "rejected": {
-          "copy": ["part.keyField.malformed", "part.keyField.empty"]
+          "copy": [
+            "activate.title",
+            "activate.lede",
+            "part.keyField.label",
+            "part.keyField.placeholder",
+            "common.paste",
+            "part.keyField.malformed",
+            "part.keyField.empty"
+          ]
         },
         "device-limit": {
           "copy": [
@@ -675,8 +713,8 @@
           "copy": [
             "core.gate.revoked.title",
             "core.gate.revoked.message",
-            "signin.key.differentKey",
-            "common.signOut"
+            "welcome.signIn",
+            "signin.key.differentKey"
           ]
         },
         "expired": {
