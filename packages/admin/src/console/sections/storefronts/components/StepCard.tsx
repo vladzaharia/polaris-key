@@ -151,6 +151,9 @@ function useVerifier(
   };
 }
 
+/** A step's action names what it sends, so it wraps in a narrow column instead of running off it (B-217). */
+const WRAPS = "h-auto min-h-8 max-w-full whitespace-normal py-1 text-left";
+
 export function StepCard({
   slug,
   store,
@@ -185,6 +188,7 @@ export function StepCard({
       <Button
         key="run"
         size="sm"
+        className={WRAPS}
         variant={step.typed ? "danger" : "primary"}
         disabled={blocked}
         disabledReason={gate}
@@ -239,6 +243,7 @@ export function StepCard({
       <Button
         key="assert"
         size="sm"
+        className={WRAPS}
         variant="outline"
         disabled={blocked}
         disabledReason={gate}
@@ -264,6 +269,7 @@ export function StepCard({
       <Button
         key="next"
         size="sm"
+        className={WRAPS}
         disabled={readOnly}
         disabledReason={gate}
         onClick={() =>
