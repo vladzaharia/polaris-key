@@ -102,7 +102,7 @@ export async function decideDeviceFlow(
 /** Deny a device-code flow from the licence chooser's **Cancel** (its own token is spent). */
 export async function denyChosenDeviceFlow(
   env: Env,
-  db: Db,
+  db: Db | undefined,
   product: Product,
   stateKey: ArtefactRef,
   flow: FlowRecord,
@@ -114,7 +114,7 @@ export async function denyChosenDeviceFlow(
     unset: DENY_UNSET,
   });
   if (!done.ok) return false;
-  await auditDecision(db, product, flow, "deny", now);
+  if (db) await auditDecision(db, product, flow, "deny", now);
   return true;
 }
 

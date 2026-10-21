@@ -206,6 +206,43 @@ describe("the confirm step", () => {
   });
 });
 
+describe("Deny before sign-in (B-096)", () => {
+  it("ends the device's poll with `error` and writes one audit row", async () => {
+    const { userCode, deviceCode } = await start();
+    const { csrf } = await confirmPage(userCode);
+    const poll = async () =>
+      (await (
+        await send(`${API}/djdl/identity/auth/device/poll`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ deviceCode, deviceId: "tv-1" }),
+        })
+      ).json()) as { status: string };
+    const res = await send(`${API}/djdl/identity/auth/device`, {
+      method: "POST",
+      headers: FORM,
+      body: `user_code=${userCode}&csrf=${csrf}&decision=deny`,
+    });
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain("Sign-in denied");
+    expect((await poll()).status).toBe("error");
+    const rows = await db.all<{ action: string }>(
+      "SELECT action FROM audit WHERE action = 'identity.signin.device_denied'",
+    );
+    expect(rows).toHaveLength(1);
+    // A replayed Deny (spent token) writes nothing more.
+    await send(`${API}/djdl/identity/auth/device`, {
+      method: "POST",
+      headers: FORM,
+      body: `user_code=${userCode}&csrf=${csrf}&decision=deny`,
+    });
+    const again = await db.all<{ action: string }>(
+      "SELECT action FROM audit WHERE action = 'identity.signin.device_denied'",
+    );
+    expect(again).toHaveLength(1);
+  });
+});
+
 describe("the TV variant after the code", () => {
   it("keeps the large type on confirm, Deny and the stored flow", async () => {
     const { userCode, deviceCode } = await start();
