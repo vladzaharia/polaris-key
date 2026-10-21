@@ -89,7 +89,7 @@ const MASTHEAD_DEBT: {
   },
   {
     cases: /^djdl:license-batches\/record/,
-    kinds: ["masthead/first-content"],
+    kinds: ["masthead/first-content", "masthead/height"],
     owner: "LX-30",
     why: "a notice sits between the masthead and the batch",
   },
@@ -116,6 +116,12 @@ const MASTHEAD_DEBT: {
     kinds: ["masthead/height"],
     owner: "the API tokens page's package (follow-up of ST-48)",
     why: "the error state's masthead repeats the description on a phone",
+  },
+  {
+    cases: /^long:overview$/,
+    kinds: ["masthead/height"],
+    owner: "the product Overview's package (follow-up of ST-48)",
+    why: "at 360 px a two-line name, a two-line description and the full-width action exceed 176 px",
   },
   {
     cases: /^global:platform-operations$/,

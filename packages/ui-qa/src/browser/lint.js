@@ -294,7 +294,9 @@
       const accents = serviceAccents();
       for (const el of els) {
         if (el.matches(STATUS)) {
-          const hit = accentIn(paint(el), accents, null);
+          // Core is the platform's own violet, which the info status shares in the light theme
+          // (brand tokens: --pk-info = --pk-service-core); only a service accent is a breach.
+          const hit = accentIn(paint(el), accents, null, "core");
           if (hit)
             report(
               "accent-as-status",
@@ -894,11 +896,12 @@
     return list.filter(Boolean);
   }
   // The first service whose accent is among `colours`, other than `own` (null: any service).
-  function accentIn(colours, accents, own) {
+  function accentIn(colours, accents, own, skip) {
     for (const c of colours) {
       const slugs = accents.get(c);
       if (!slugs) continue;
-      for (const slug of slugs) if (own === null || slug !== own) return slug;
+      for (const slug of slugs)
+        if (slug !== skip && (own === null || slug !== own)) return slug;
     }
     return null;
   }

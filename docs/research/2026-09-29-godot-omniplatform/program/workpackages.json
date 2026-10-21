@@ -10223,7 +10223,7 @@
         "section changes admin-1-01, -02, -05..-09, -10, -11, -19; admin-2-03, -04..-14 (merged)"
       ],
       "brief": "wp/ST-48-console-shell-v2.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "ST-49",
