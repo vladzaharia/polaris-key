@@ -1,4 +1,5 @@
 ---
+import { BUTTON_BASE, BUTTON_SIZES, BUTTON_VARIANTS } from "../console";
 /**
  * A deep link that opens a console page, "Open Licenses ↗" (docs plan §8.3). The console lives at
  * `/manage` on the same origin, so a console member is already signed in.
@@ -10,6 +11,9 @@ export interface Props {
 
 const { to } = Astro.props;
 const href = `/manage/${to.replace(/^\/+/, "")}`;
+// Customer-facing Help pages take 44 px targets; the developer and operator doors the console's.
+const help = Astro.locals.starlightRoute?.id?.startsWith("help/") ?? false;
+const buttonClass = `${BUTTON_BASE} ${BUTTON_VARIANTS.outline} ${BUTTON_SIZES.sm} not-content no-underline hover:no-underline my-2 ${help ? "min-h-11 min-w-11 px-4" : ""}`;
 ---
 
-<a class="pk-console-link" href={href} target="_blank" rel="noopener"><slot>Open the console</slot> ↗</a>
+<a class:list={["pk-console-link", buttonClass]} href={href} target="_blank" rel="noopener"><slot>Open the console</slot> ↗</a>

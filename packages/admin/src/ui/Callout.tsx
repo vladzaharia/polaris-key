@@ -10,6 +10,9 @@ import { SignedGlyph } from "./SignedBadge.js";
  *
  * `live` gives it `role="status"`: use it for a callout that appears in response to something
  * (a server change, a failed lookup). Static explanatory callouts get no role (EMR-2).
+ *
+ * Links in the body take `fg-strong` and an underline, not the accent: the accent measures under
+ * 4.5:1 on the tinted grounds in dark (test/calloutLinks.test.ts).
  */
 export type CalloutTone = "info" | "success" | "warning" | "danger" | "signed";
 
@@ -81,7 +84,11 @@ export function Callout({
           {title ? (
             <p className={cn("font-semibold", t.title)}>{title}</p>
           ) : null}
-          {children ? <div className="text-fg">{children}</div> : null}
+          {children ? (
+            <div className="text-fg [&_a]:text-fg-strong [&_a]:underline [&_a]:underline-offset-2 [&>*+*]:mt-2">
+              {children}
+            </div>
+          ) : null}
         </div>
       </div>
       {action ? <div className="shrink-0 sm:ml-auto">{action}</div> : null}

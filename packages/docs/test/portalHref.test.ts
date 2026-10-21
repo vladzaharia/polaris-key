@@ -55,7 +55,7 @@ describe.skipIf(
     for (const file of readdirSync(dist, { recursive: true, encoding: "utf8" }))
       if (file.endsWith(".html"))
         for (const m of readFileSync(join(dist, file), "utf8").matchAll(
-          /<a class="pk-portal-link" href="([^"]*)"/g,
+          /<a class="pk-portal-link(?: [^"]*)?" href="([^"]*)"/g,
         ))
           found.push(`${file}: ${m[1]}`);
     // The contributor page's demo and every library link of a message.

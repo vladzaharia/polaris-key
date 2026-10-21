@@ -22,6 +22,8 @@
 @import "@polaris-key/brand/fonts.css";
 @import "@polaris-key/brand/tokens.css";
 @import "@polaris-key/brand/theme.css";
+/* The utility layer the docs share (the @theme blocks: hover, breakpoints, type steps, motion). */
+@import "./ui/theme.css";
 /* sonner's base toast layout, bundled (vite.config.ts stops its inline <style> injection). */
 @import "sonner/dist/styles.css";
 
@@ -142,24 +144,6 @@
 }
 
 /*
- * A neutral fill that stands off BOTH the page and a raised card in either theme: one step up
- * (overlay) on dark, one step down (sunken) on light, where raised and overlay are both white.
- * It backs the old hover fill, the secondary fill and the sidebar's active/hover row.
- */
-:root,
-[data-theme="dark"] {
-  --pk-admin-fill: var(--pk-surface-overlay);
-}
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) {
-    --pk-admin-fill: var(--pk-surface-sunken);
-  }
-}
-[data-theme="light"] {
-  --pk-admin-fill: var(--pk-surface-sunken);
-}
-
-/*
  * The head band (B4): the one raised step a section's head, a workbench toolbar and a dialog or
  * drawer head sit on. On dark, the overlay step; on light, a step toward sunken from raised (raised
  * and overlay are both white there).
@@ -212,172 +196,6 @@ html[data-shell="console"] [data-pk-backdrop] {
   html[data-shell="console"] [data-pk-backdrop] {
     backdrop-filter: none;
     background-color: rgb(0 0 0 / 0.8);
-  }
-}
-
-/* The admin's one colour token of its own: the neutral fill above (hover rows, the sidebar's
-   active row, secondary fills). The brand's `accent` is the section colour, so this is `hover`. */
-@theme inline {
-  --color-hover: var(--pk-admin-fill);
-}
-
-/* Motion through the brand's duration and easing tokens, which collapse to 0 ms under
-   prefers-reduced-motion. The spinner turns on a literal period, outside the token set, so
-   motion.css stops it under reduced motion instead. */
-@theme {
-  /* The customer site's breakpoints (PORTAL.md §8): phones end at 760 px, the three-column
-     product page starts at 1180 px. */
-  --breakpoint-desk: 47.5625rem;
-  /* From 900 px the signed-in header has room for the full lockup and "Activate license" (§8).
-     Named, not min-[900px]: an arbitrary px breakpoint sorts before the rem ones, so it would
-     lose to a desk: utility on the same property. */
-  --breakpoint-mid: 56.25rem;
-  /* 1024 px, where the product page splits into main · side (§4.20); one column in task order
-     below it. */
-  --breakpoint-split: 64rem;
-  --breakpoint-wide: 73.75rem;
-  /* 1700 px: the Library and Discover grids add a fifth column inside the same 82 rem column (PX-35). */
-  --breakpoint-xxl: 106.25rem;
-  /* The type scale's display step (EXPERIENCE.md §3): 40 px, for the portal's Library and
-     Product titles only (`PageHeader size="display"`; 30 px, text-3xl, on phones). */
-  --text-display: 2.5rem;
-  --text-display--line-height: 1.1;
-  /* The portal page title (B12): 48/52 from desk up, 32/36 on phones. Library and Discover. */
-  --text-page-title: 3rem;
-  --text-page-title--line-height: calc(52 / 48);
-  --text-page-title-sm: 2rem;
-  --text-page-title-sm--line-height: calc(36 / 32);
-  /* Steps the brand scale (xs 12 … 5xl 48) does not have, named so no view writes an arbitrary
-     bracketed text size (EXPERIENCE.md §3). Each sets the font size only, as the arbitrary values
-     it replaced did. The type-scale pass maps them onto display / title / section / row. */
-  --text-3xs: 0.625rem; /* 10 px: the letter on the 20 px product tile */
-  --text-2xs: 0.6875rem; /* 11 px: keyboard hints */
-  --text-code: 0.8125rem; /* 13 px: code in the portal's prose and key rows */
-  --text-md: 0.9375rem; /* 15 px: the portal's body and control text */
-  --text-headline: 1.75rem; /* 28 px: portal page titles on phones */
-  --text-headline-lg: 2rem; /* 32 px: portal flow titles from desk up */
-  --animate-pk-in: pk-in var(--pk-duration-fast) var(--pk-ease-enter);
-  /* The motion layer's keyframes (src/motion.css, notes/S-23 §6.1; MO-10), as Tailwind utilities
-     on the same tokens and fills, so a component can say `animate-pk-enter` instead of a rule.
-     Enters fill `backwards` (a finished enter leaves nothing behind), exits `forwards` (Radix
-     unmounts on animationend). Every duration is a token, so under reduced motion (the OS setting
-     or html[data-motion="reduce"]) each one is an instant swap. pk-refetch has no alias: motion.css
-     defines `.animate-pk-refetch` itself. */
-  --animate-pk-enter: pk-enter var(--pk-duration-slow) var(--pk-ease-enter)
-    backwards;
-  --animate-pk-exit: pk-exit var(--pk-duration-base) var(--pk-ease-exit)
-    forwards;
-  --animate-pk-fade-in: pk-fade-in var(--pk-duration-base)
-    var(--pk-ease-standard) backwards;
-  --animate-pk-fade-out: pk-fade-out var(--pk-duration-base) var(--pk-ease-exit)
-    forwards;
-  --animate-pk-pop-in: pk-pop-in var(--pk-duration-slow) var(--pk-ease-spring)
-    backwards;
-  --animate-pk-from-top: pk-from-top var(--pk-duration-fast)
-    var(--pk-ease-enter) backwards;
-  --animate-pk-from-bottom: pk-from-bottom var(--pk-duration-fast)
-    var(--pk-ease-enter) backwards;
-  --animate-pk-from-left: pk-from-left var(--pk-duration-fast)
-    var(--pk-ease-enter) backwards;
-  --animate-pk-from-right: pk-from-right var(--pk-duration-fast)
-    var(--pk-ease-enter) backwards;
-  --animate-pk-drawer-in: pk-drawer-in var(--pk-duration-slow)
-    var(--pk-ease-emphasized) backwards;
-  --animate-pk-drawer-out: pk-drawer-out var(--pk-duration-base)
-    var(--pk-ease-exit) forwards;
-  --animate-pk-sheet-in: pk-sheet-in var(--pk-duration-slow)
-    var(--pk-ease-emphasized) backwards;
-  --animate-pk-sheet-out: pk-sheet-out var(--pk-duration-base)
-    var(--pk-ease-exit) forwards;
-  --animate-pk-nav-in: pk-nav-in var(--pk-duration-slow)
-    var(--pk-ease-emphasized) backwards;
-  --animate-pk-nav-out: pk-nav-out var(--pk-duration-base) var(--pk-ease-exit)
-    forwards;
-  /* A loading indicator, so it loops (the skeleton sheen; motion.css stops it under reduced
-     motion on .pk-skeleton). */
-  --animate-pk-shimmer: pk-shimmer var(--pk-duration-shimmer) linear infinite;
-  --animate-pk-overlay-in: pk-overlay-in var(--pk-duration-fast)
-    var(--pk-ease-standard);
-  --animate-pk-spin: pk-spin 0.7s linear infinite;
-  /* The login card's step change (SIGN-IN.md §3.18 enter, S-23 tokens): the new step fades in
-     `lg` (12 px) from the side of travel, forward from the inline end, Back from the inline start. */
-  --animate-pk-step-forward: pk-step-forward var(--pk-duration-base)
-    var(--pk-ease-enter) both;
-  --animate-pk-step-back: pk-step-back var(--pk-duration-base)
-    var(--pk-ease-enter) both;
-  /* Disclosure (sidebar sections): Radix Collapsible measures the content height. The expand
-     pattern's timing (S-23 §6.1, `moderate`·`standard`); height is its named exception. */
-  --animate-pk-collapse-down: pk-collapse-down var(--pk-duration-moderate)
-    var(--pk-ease-standard);
-  --animate-pk-collapse-up: pk-collapse-up var(--pk-duration-moderate)
-    var(--pk-ease-exit);
-  @keyframes pk-collapse-down {
-    from {
-      height: 0;
-      opacity: 0;
-    }
-    to {
-      height: var(--radix-collapsible-content-height);
-      opacity: 1;
-    }
-  }
-  @keyframes pk-collapse-up {
-    from {
-      height: var(--radix-collapsible-content-height);
-      opacity: 1;
-    }
-    to {
-      height: 0;
-      opacity: 0;
-    }
-  }
-
-  @keyframes pk-in {
-    from {
-      opacity: 0;
-      transform: translateY(4px) scale(0.98);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-    }
-  }
-  @keyframes pk-overlay-in {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-  @keyframes pk-step-forward {
-    from {
-      opacity: 0;
-      transform: translateX(
-        calc(var(--pk-step-dir, 1) * var(--pk-motion-distance-lg))
-      );
-    }
-    to {
-      opacity: 1;
-      transform: none;
-    }
-  }
-  @keyframes pk-step-back {
-    from {
-      opacity: 0;
-      transform: translateX(
-        calc(-1 * var(--pk-step-dir, 1) * var(--pk-motion-distance-lg))
-      );
-    }
-    to {
-      opacity: 1;
-      transform: none;
-    }
-  }
-  @keyframes pk-spin {
-    to {
-      transform: rotate(360deg);
-    }
   }
 }
 

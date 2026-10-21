@@ -180,6 +180,16 @@ export function tokenize(code: string, language: CodeLanguage): Token[][] {
     .map((l) => tokenizeLine(l, language));
 }
 
+/** The label a block's header shows for a language (`CodeBlock`; the docs' code frames). */
+export const LANGUAGE_LABEL: Record<CodeLanguage, string> = {
+  json: "JSON",
+  ts: "TypeScript",
+  sh: "Shell",
+  toml: "TOML",
+  yaml: "YAML",
+  text: "Text",
+};
+
 /**
  * Brand text tokens per kind. Only `fg` tokens (≥ 4.5:1 on every surface, BRAND.md §4) so
  * highlighted code stays readable in both themes.

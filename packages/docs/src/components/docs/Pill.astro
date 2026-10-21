@@ -3,6 +3,7 @@
  * A short status label (the console's `Pill`). Never the only carrier of meaning: it always has
  * a word. `signed` (gold) is only for signature facts.
  */
+import { StatusPill } from "../console";
 import type { PillTone } from "../../lib/docs";
 
 export interface Props {
@@ -12,4 +13,4 @@ export interface Props {
 const { tone = "neutral" } = Astro.props;
 ---
 
-<span class="pk-pill" data-tone={tone}><slot /></span>
+<StatusPill tone={tone} size="sm"><slot /></StatusPill>

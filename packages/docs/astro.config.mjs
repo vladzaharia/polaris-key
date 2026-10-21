@@ -11,7 +11,9 @@
 //   - passthrough image service — no sharp native dependency; the site's images are SVGs and
 //     screenshots served as-is.
 
+import { fileURLToPath } from "node:url";
 import { defineConfig, passthroughImageService } from "astro/config";
+import react from "@astrojs/react";
 import starlight from "@astrojs/starlight";
 import tailwindcss from "@tailwindcss/vite";
 import { loadMap, redirectsFor } from "./scripts/site-map.mjs";
@@ -37,7 +39,27 @@ export default defineConfig({
     inlineStylesheets: "never",
   },
   vite: {
-    plugins: [importedMarkdown(), tailwindcss()],
+    plugins: [
+      importedMarkdown(),
+      tailwindcss(),
+      {
+        // Expressive Code's `<Code>` component resolves ec.config.mjs relative to a virtual
+        // module, finds nothing, and renders with the defaults, so a block from `<Code>`
+        // (Snippet, InstallSteps) would not match one from Markdown. Point it at the file.
+        name: "pk-ec-config",
+        enforce: "pre",
+        resolveId(id) {
+          if (id === "virtual:astro-expressive-code/ec-config")
+            return fileURLToPath(new URL("./ec.config.mjs", import.meta.url));
+        },
+      },
+    ],
+    resolve: {
+      // The console's ui/ components (packages/admin/src/ui, docs plan 8.2) import React from the
+      // admin package; the docs render them with their own. One copy, or elements built by one
+      // are rejected by the other's renderer.
+      dedupe: ["react", "react-dom"],
+    },
     ssr: {
       // Expressive Code's chunk inlines postcss (CJS), whose `require("nanoid/non-secure")`
       // gets rewritten to a DEFAULT import; nanoid v3's ESM build has no default export, so
@@ -47,6 +69,9 @@ export default defineConfig({
     },
   },
   integrations: [
+    // Renders the console's static ui/ components at build time (no client: directive, so no
+    // component ships JavaScript). See src/components/console.ts for the set.
+    react(),
     starlight({
       title: "Polaris Key",
       description:

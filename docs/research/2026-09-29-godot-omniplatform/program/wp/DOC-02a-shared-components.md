@@ -83,6 +83,35 @@ Applied from the brand and transition integration ([Brand transition decisions](
 - The docs landing and section heroes use `@polaris-key/brand/marketing.css` (display scale, tracking, eyebrow) and the service icon set (`icons/services`); article pages and tables never use display tokens. No new brand stylesheet beyond these exports. Depends on UK-58 and UK-57. (brand-33, site-07)
 - CodeBlock and LanguageTabs share one anatomy with the console: filename bar, Copy with a live region and a select fallback, notes footer, logo tabs, URL state `?language=` so a docs link opens the right tab, tabs wrap at 390 px, ligatures off. (brand-33, site-07)
 
+## Corrections found against the code (DOC-02a, 2026-10-21)
+
+- components.md section 7 is already "Data and routing hooks"; the docs section is **section 8**
+  ("The docs site"). BRAND.md section 2 gained one paragraph under its table.
+- Astro 7's default Markdown processor (Satteri) has no rehype hook, so the table wrapper is a
+  build step over `dist/` (`packages/docs/scripts/wrap-tables.ts`), not a Markdown plugin. Dev
+  preview does not wrap tables.
+- The console `CodeBlock` has a filename bar, Copy, a Wrap toggle and line numbers; it has **no
+  notes footer** and no `LanguageTabs` exists in the docs, so neither is built here (nothing
+  unbuilt is described as shipped). Logo tabs and `?language=` stay with the package that adds
+  `LanguageTabs`.
+- Expressive Code's `<Code>` component (Snippet, InstallSteps) silently ignored `ec.config.mjs`
+  (its virtual config module resolved nothing), so it rendered with default themes. A Vite
+  resolve hook in `astro.config.mjs` now points it at the file; without it the two engines emit
+  different assets and `check:links` fails.
+- `ui/classes.ts` carries Button, Table and CodeBlock constants (used by those console
+  components). The top bar, sidebar, page tabs and `CommandPalette` constants go with their
+  docs chrome in DOC-02b and DOC-02c. `PageHeader`, `Section`, `EmptyState` are not rendered
+  (masthead context, actions, router link); `FeatureCard`, `CardGrid`, `Steps` stay on tokens.
+- `packages/docs` moved to React 19 (the console's) with `@astrojs/react`; `@types/react` stays 18
+  for the SDK snippet lanes.
+
+- Fix round (2026-10-21): Starlight's `table{display:block;overflow:auto}` made the table scroll
+  instead of its region (TABLE now forces `display:table`), `:::` asides on 26 pages are
+  re-rendered through the console Callout in `scripts/console-parts.ts`, and the Copy script is
+  the real file `packages/docs/ec-copy.js`. A stale `packages/docs/node_modules/.astro` data
+  store keeps old Expressive Code asset hashes in rendered pages: clear it (with `dist` and
+  `.astro`) before judging `check:links`.
+
 ## Steps
 
 1. Verify this brief against the code and the docs site (the code is the fact) and record any correction here, in the same branch.
@@ -91,10 +120,10 @@ Applied from the brand and transition integration ([Brand transition decisions](
 ## Acceptance criteria
 
 - [ ] The common definition of done in the docs plan §6.3 holds.
-- [ ] Console and portal baselines unchanged (the split is a pure move).
-- [ ] A test renders each listed component in the docs build.
-- [ ] `docs-classes.test.ts` (§8.5).
-- [ ] Syntax-role contrast ≥ 4.5:1 on the code ground.
+- [x] Console and portal baselines unchanged (the split is a pure move).
+- [x] A test renders each listed component in the docs build.
+- [x] `docs-classes.test.ts` (§8.5).
+- [x] Syntax-role contrast ≥ 4.5:1 on the code ground.
 - [ ] `pkey-ux-reviewer` passes the rendered pages in built mode, both themes and phone (§6.3).
 - [ ] `pkey-wp-reviewer` passes the package.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.

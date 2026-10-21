@@ -3,6 +3,7 @@
  * A card that routes to a feature (docs plan §3.2.1): its name, one line, and the feature's
  * service accent through `data-service`.
  */
+import { ServiceGlyph } from "../console";
 import { FEATURES, type FeatureId } from "../../lib/features.generated";
 
 export interface Props {
@@ -18,10 +19,13 @@ const meta = FEATURES[feature];
 ---
 
 <a
-  class="pk-feature-card"
+  class="pk-feature-card not-content group my-2 flex min-w-0 flex-col gap-1 rounded-lg border border-border bg-surface-raised p-4 no-underline hover:bg-state-hover-tint focus-visible:ring-2 focus-visible:ring-focus"
   data-service={meta.accent}
   href={href ?? `/docs/features/${feature}/`}
 >
-  <strong>{meta.label}</strong>
-  <span>{description}</span>
+  <span class="flex items-center gap-2">
+    <ServiceGlyph id={meta.accent as never} size={16} />
+    <strong class="font-semibold text-fg-strong">{meta.label}</strong>
+  </span>
+  <span class="text-sm text-fg-muted">{description}</span>
 </a>

@@ -3,8 +3,16 @@
  * An admonition (style guide §8): four types, each with one meaning. The title states the point
  * ("The key is shown once"), never "Note". On Help a `caution` is titled Important.
  */
-import { Aside } from "@astrojs/starlight/components";
+import { Callout as ConsoleCallout } from "../console";
 import type { CalloutType } from "../../lib/docs";
+
+// The four types are the console Callout's info, success, warning and danger tones (plan 8.2).
+const TONE = {
+  note: "info",
+  tip: "success",
+  caution: "warning",
+  danger: "danger",
+} as const satisfies Record<CalloutType, string>;
 
 export interface Props {
   type: CalloutType;
@@ -15,4 +23,4 @@ export interface Props {
 const { type, title } = Astro.props;
 ---
 
-<div class="pk-callout" data-callout={type}><Aside type={type} title={title}><slot /></Aside></div>
+<div class="pk-callout not-content my-4" data-callout={type}><ConsoleCallout tone={TONE[type]} title={title}><slot /></ConsoleCallout></div>
