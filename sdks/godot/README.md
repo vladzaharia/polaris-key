@@ -32,9 +32,9 @@ Then open **Project → Project Settings → Plugins** and enable **Polaris Key*
 **Polaris Key** setup dock. To update, replace the folder: your settings live outside it.
 
 The zip is pure GDScript. The optional native halves (the iOS xcframework, the Android AARs and
-the desktop updater GDExtensions; see [Apple plugin](#apple-plugin-pkeyapple-p5-05),
-[Android plugin](#android-plugin-pkeyandroid-p5-06) and "Native desktop plugins" under
-[Updates by outlet](#updates-by-outlet-p3-10)) are built from the repository and are not in it;
+the desktop updater GDExtensions; see [Apple plugin](#apple-plugin-pkeyapple),
+[Android plugin](#android-plugin-pkeyandroid) and "Native desktop plugins" under
+[Updates by outlet](#updates-by-outlet)) are built from the repository and are not in it;
 without them every native call answers a typed "unsupported" and the rest works.
 
 ## Set up: the dock and `res://polaris_key.tres`
@@ -95,7 +95,7 @@ func _ready() -> void:
 starts offline from the verified cache, syncs, gates on the license, checks for an update and
 drives packs, showing the `PKeyBoot` screen on a layer above the game until READY. Put a
 `PKeyBoot` in your own boot scene and pass it as `view` to style it yourself. The full stage list
-and options are in [Boot and UI kit](#boot-and-ui-kit-polariskeyboot-pkeyboot-p1-10).
+and options are in [Boot and UI kit](#boot-and-ui-kit-polariskeyboot-pkeyboot).
 
 Without the boot scene, the same steps are calls:
 
@@ -203,13 +203,13 @@ The decision is verified against `pinned_release_keys` only, and the install's o
 itch, a store, a direct download, …) decides what can be done about it: a store or Steam build is
 never talked into updating its own code. `PKeyBoot` and `PKeyUpdatePrompt` do this for you. See
 [Update and release](#update-and-release-polariskeyupdate-polariskeyrelease) and
-[Updates by outlet](#updates-by-outlet-p3-10).
+[Updates by outlet](#updates-by-outlet).
 
 ### Packs
 
 Downloadable content as `godot.pck` and `files.tree` releases, fetched, verified, checked and
 mounted at a boot. A build needs a content stamp at `res://pkey_packs/pkey-content.json` (written
-by CI) to have packs at all. See [Packs](#packs-polariskeyupdatepacks-p4-08).
+by CI) to have packs at all. See [Packs](#packs-polariskeyupdatepacks).
 
 ### Commerce
 
@@ -227,7 +227,7 @@ await PolarisKey.commerce.claim_play(sku, purchase_token) # from your own Play b
 if PolarisKey.commerce.is_unlocked("extras.diceSkins"): print("extras.diceSkins unlocked")
 ```
 
-Store purchases become license flags (P6-01): the store sells, the Worker verifies the purchase
+Store purchases become license flags: the store sells, the Worker verifies the purchase
 and puts the mapped flag on the license. `purchase(flag)` is the whole flow: the binding, the
 store's purchase with the binding token, the claim, the transaction finished only after the
 claim succeeded, then a sync. It drives the App Store on iOS (`PKeyApple`) and Steam through
@@ -279,7 +279,7 @@ PKEY_BUILD_OUTLET=steam PKEY_BUILD_CHANNEL=beta PKEY_BUILD_NUMBER=42 \
   godot --headless --export-release "Linux" build/game.x86_64
 ```
 
-The options, their variables and defaults are in [Build stamp and setup dock](#build-stamp-and-setup-dock-p1-11).
+The options, their variables and defaults are in [Build stamp and setup dock](#build-stamp-and-setup-dock).
 `polaris_key.tres` exports by default. Add `tests/*` to the preset's
 "Filters to exclude" if the project holds the SDK's own tests. A build with packs also ships `pkey_packs/*` (add it
 to the preset's "Filters to export non-resource files"). The `polaris-key/publish` GitHub Action publishes the release after your export and
@@ -522,7 +522,7 @@ kind `unsupported` with that detail). A sub-client whose service is off keeps it
 `service-unavailable` and carries the `product` fields in `detail`. `PolarisKey.caps()` lists the supported feature ids in
 registry order, and every device report carries it as `caps`.
 
-## Build stamp and setup dock (P1-11)
+## Build stamp and setup dock
 
 Every export carries `res://.polaris_key/build.json` (`pkeyBuild: 1`, no timestamps, sorted keys,
 so two exports of one preset are byte-identical): product, version, build, outlet, outletKind
@@ -581,7 +581,7 @@ PKEY_BUILD_OUTLET=itch-beta PKEY_BUILD_OUTLET_KIND=itch \
   `pkey sdk --lang godot --write` and `pkey mirror --lang gdscript` command lines, run them
   through the platform shell and add `pkey_packs/*` to the export presets.
 
-## Boot and UI kit (`PolarisKey.boot()`, `PKeyBoot`, P1-10)
+## Boot and UI kit (`PolarisKey.boot()`, `PKeyBoot`)
 
 ```gdscript
 func _ready() -> void:
@@ -611,7 +611,7 @@ func _ready() -> void:
   `stage_changed(stage, previous)`, `waiting(status)`, `update_available()`, `blocked(reason)`,
   `offline(can_play_offline)`, `error(code)`, `boot_rolled_back()`, `boot_ready()` (a Control
   cannot redeclare `ready`), plus `boot_finished(result)` at every stop.
-- **What PKeyBoot sends** is plans/P1-09.md §2.2, in PKeyBootHost: shell configures from
+- **What PKeyBoot sends** is set in PKeyBootHost: shell configures from
   `res://polaris_key.tres` when needed and starts (offline); guard runs the boot guard (`PolarisKey.update.run_guard()`: `ok`, `applied` or
   `rolled-back`; nothing at all when it swapped or rolled back a pack and restarted); sync runs
   discovery (not counted), registers first when a product without License has an `open`
@@ -621,12 +621,11 @@ func _ready() -> void:
   answer); gate sends `PolarisKey.status()` and sends it again while it waits whenever the
   license state changes; decide is `optional` when `PolarisKey.update.decide()` has something to
   show (or, without the signed decision, the v3 check found a newer version), otherwise `none`.
-  Floors never stop play; a CI-signed revocation of a REQUIRED pack does (plans/P4-13.md
-  decision 4): decide is then `required` and the boot stops at a confirmed BLOCKED
+  Floors never stop play; a CI-signed revocation of a REQUIRED pack does: decide is then `required` and the boot stops at a confirmed BLOCKED
   `update-required` with the revoked-content copy ("Content withdrawn": "Some of this game's
   content was withdrawn by its developer and can't be used. Update the app to keep playing."),
   with the update button when the answer is an offer and none for `blocked`. A `packs` answer is
-  `none`; fetch and mount drive packs (P4-08, see "Packs"), FETCH at its exact releases. `fail` is only for a store failure or an options file that
+  `none`; fetch and mount drive packs (see "Packs"), FETCH at its exact releases. `fail` is only for a store failure or an options file that
   cannot configure. The sync stage has one wall-clock deadline (`sync_timeout_seconds`, 20 s, or
   45 s on a build without threads where a bundle verify runs in frame slices), after which the
   machine gets `sync.timeout` and a late answer is dropped.
@@ -739,7 +738,7 @@ await PolarisKey.identity.sign_out()             # cancel, forget, license.deact
   `license.deactivate()` (best-effort server call, then the mandatory local wipe), so
   `state_changed` fires as for a deactivation. `sign_in_with_browser()` is the interim "Sign in
   with browser": device code with the verification page opened in the system browser. A native
-  redirect sign-in waits on the server's redirect token route (I-15). It polls
+  redirect sign-in waits on the server's redirect token route. It polls
   `/identity/auth/device/poll` like any device-code sign-in; the old `/identity/auth/poll` route
   is retired and the Worker no longer serves it.
 
@@ -777,7 +776,7 @@ await PolarisKey.identity.sign_out()             # cancel, forget, license.deact
   The token's source is held in memory only, so after a restart a licensed product's device asks
   `license/token`. One attempt per sync pass, whichever route.
 - **When every seat is taken.** A device-limit `PKeyActivationResult` carries `manage_url`, the
-  customer-portal link that frees a seat (WIRE-CONTRACT-V4 §5.3), validated, and only while the
+  customer-portal link that frees a seat (the wire contract, v4), validated, and only while the
   product's portal is on. It is never an auth failure. `PKeyManage.with_key(url, key)` adds
   `#key=` to an `/activate` link and `PKeyManage.with_return(url, return_url)` adds `return=`.
   `PKeyActivationPanel` shows **Replace a device** under the error: a button that calls
@@ -811,8 +810,7 @@ channel is dropped. `get_channel()`, `clear_channel()` and `channel_changed(chan
 The server still decides entitlement (`channel_not_allowed`), and the license gate's
 `X-PKey-Channel` stays this build's channel.
 
-**The decision (wire v4, P3-08).** `decide(channel, staged, skip_version)` runs plans/P3-01.md
-§2.5 in the same order as every SDK: it reads `update.endpoints.feed` and
+**The decision (wire v4).** `decide(channel, staged, skip_version)` runs in the same order as every SDK: it reads `update.endpoints.feed` and
 `release.endpoints.record` from discovery (running `discover()` first when this session has not),
 fetches `GET …/update/{channel}/feed.jws?platform=` with the REQUESTED channel name, verifies the
 feed against the effective product trust set (`pkey-feed+jws`, PKeyFeed), binds its `channel`
@@ -827,10 +825,10 @@ fetches the record the target for this platform pins and verifies it hash first,
   `update-matrix.json`'s members), `feed` (`network` | `committed`), `record` (`network` |
   `cache` | `none`), `errors` ({code, detail}: what went wrong on the way), `boot` (`none` |
   `optional` | `required`: floors never stop play; only a CI-signed revocation of a REQUIRED pack
-  gives `required`, plans/P4-13.md decision 4, which amends P3-01 decision 1) and
+  gives `required`) and
   `undismissable` (a mandatory offer or any `blocked`: a prompt the player cannot dismiss over a
   game that keeps running).
-- **The content decision** (plans/P4-13.md §2.5, §2.6; P4-24). With a content stamp, `decide()`
+- **The content decision**. With a content stamp, `decide()`
   hands the flow `packs.content_input()` (the stamp and its holds, the running set with embedded
   baselines, the variant preferences and the stored revocations) and runs steps 10–14: the
   feed's content members (`PKeyFeed.feed_content`, parsed beside the claims: a malformed member
@@ -845,7 +843,7 @@ fetches the record the target for this platform pins and verifies it hash first,
   required and essential packs), an offer made mandatory by a `contentBlock`, `blocked
 {content-floor}` (boot `optional`: a locked banner, the game keeps running) or `blocked
 {revoked-content}` (boot `required`). A build without a stamp decides exactly as before. `feed_doc` and
-  `record_doc` are the verified documents P3-10's adapters act on.
+  `record_doc` are the verified documents the update adapters act on.
 - **After a refusal** it decides from the committed feed (the canonical channel the Worker named,
   else the requested name, else its alias target); a stale committed feed answers
   `none {stale}`. It fails only with nothing to decide from (`feed-rejected` with its step,
@@ -887,7 +885,7 @@ fetches the record the target for this platform pins and verifies it hash first,
 - `feed(channel)` runs steps 1–9 alone (a `PKeyUpdateFeed`) and `release_record(sha256)` one
   record by hash (a `PKeyReleaseRecordResult`; cross-checked and kept only when a committed feed
   pins it).
-- **Outlet detection** (P3-11). With `PKeyOptions.update_outlet` empty and `update_detect` on
+- **Outlet detection**. With `PKeyOptions.update_outlet` empty and `update_detect` on
   (the default), `PolarisKey.update.outlet()` (`PKeyCore.update_outlet()`) resolves the stamp
   moved by run-time evidence, and `PolarisKey.update.detected()` (`PKeyCore.detected_outlet()`)
   returns the detection result, or null when the host names the outlet:
@@ -898,13 +896,13 @@ fetches the record the target for this platform pins and verifies it hash first,
   certificate digest (pure GDScript through `JavaClassWrapper`, no plugin) and a web export's
   display mode; `PKeyOutlet.detect_outlet` maps them, with the stamp, exactly as every SDK does
   (`outlet-matrix.json`). The iOS `AppDistributor` and Windows package-identity readers are hooks
-  on `PKeyOutletEnv` that answer "unavailable" until P5-05 and a Windows native reader land. A
+  on `PKeyOutletEnv` that answer "unavailable" until the Apple plugin and a Windows native reader land. A
   build without `build.json` falls back to its `pkey_outlet_<kind>` feature tag; a web export
   synthesises `outletKind: web`. The device report carries the detected outlet id
   (`PKeyCore.reported_outlet()`), never a raw signal.
-- Acting on the decision is P3-10's (next section); packs are P4-08's ("Packs").
+- Acting on the decision is covered in the next section; packs, under "Packs".
 
-**The v3 check (P1-08).** `check()` is today's check, the same as sdk-node's and Python's:
+**The v3 check.** `check()` is today's check, the same as sdk-node's and Python's:
 `GET /<p>/update/version`, informational on every outlet; a Steam, itch or store build must not
 act on it by itself.
 
@@ -922,12 +920,12 @@ act on it by itself.
   `changelog` answer `service-unavailable` without a request, and `install_url`, `download_url`
   and `appcast_url` return "". `update` and `release` exist before `configure()`, so a signal
   connected early survives it.
-- There is no throttle: the caller decides when to check (P1-10's DECIDE stage checks once per
+- There is no throttle: the caller decides when to check (the boot's DECIDE stage checks once per
   boot). A periodic caller must not let a failed check consume its interval.
 - `download_url` only builds the legacy `release/dl` URL. To download a build, use
   `release.fetch` (below).
 
-### Verified download (`release.fetch`, SP-25)
+### Verified download (`release.fetch`)
 
 ```gdscript
 var check := await PolarisKey.update.decide()
@@ -950,7 +948,7 @@ else:
 - Options: `timeout` (seconds, default 600) and `progress` (`Callable(received, total)`). The
   updater's sidecar and Android APK paths use the same download.
 
-**Native updater feeds (SP-26, `update.feeds`).** `update.feed_url(kind, opts)` answers the URL
+**Native updater feeds (`update.feeds`).** `update.feed_url(kind, opts)` answers the URL
 a native updater polls, expanded from this session's discovery `update.endpoints` templates (no
 host is built client-side): `kind` is `appcast`, `winsparkle`, `velopack`, `appInstaller` or
 `zsync`, and `opts` takes `channel` (default: this build's, else `stable`), `velopack_channel`,
@@ -962,11 +960,11 @@ host is built client-side): `kind` is `appcast`, `winsparkle`, `velopack`, `appI
   one it is the feed directory Velopack's UpdateManager opens. `zsync` needs `build_id`.
 - The answer is ok with `detail = {kind, url}`, or the typed `unsupported` (reason `product`)
   before `discover()`, with Update off, or when the document has no template for the kind (a
-  Worker before P3-09). An unknown kind or a missing `build_id` is `invalid-options`.
+  an older Worker). An unknown kind or a missing `build_id` is `invalid-options`.
 - `PolarisKey.update.updater.feed_url(name)` is the same answer as a plain URL ("" on a refusal);
   the native bridges read their feeds through it.
 
-## Updates by outlet (P3-10)
+## Updates by outlet
 
 ```gdscript
 PolarisKey.update.update_available.connect(func(r):
@@ -1003,7 +1001,7 @@ is never talked into self-updating code.
   the verified AppImage installer in an AppImage, else Velopack, on Linux. The desktop plugin
   bridges call, in order, a `native`
   object a test injects, an Engine singleton (`PolarisKeySparkle`, `PolarisKeyVelopack`,
-  `PolarisKeyWinSparkle`, `PolarisKeyStoreContext`) a game registers itself, or P5-07's facade
+  `PolarisKeyWinSparkle`, `PolarisKeyStoreContext`) a game registers itself, or the native desktop plugins' facade
   (see "Native desktop plugins" below). With no plugin every call is the typed unsupported result
   (`unsupported`, `detail.reason` `dependency`, or `runtime` on the wrong OS), `native` is not
   offered to the decision, and an adapter given `native` anyway opens the download link: a missing
@@ -1054,12 +1052,12 @@ Snap and AppImage installs, in a Velopack install (`sq.version` beside the execu
 `current/` beside `Update.exe`: an update replaces the whole directory), with an embedded pack, and
 where the directory is not writable.
 
-**Windows rename: not measured yet.** No Windows host was available to P3-10 (S-05 §4.4 has the
+**Windows rename: not measured yet.** No Windows host was available to the updater work (S-05 §4.4 has the
 same gap). If Windows refuses to rename the open pack, the rename is retried 12 times 250 ms apart;
 then the staged pack is kept, the game restarts anyway, and the next launch's guard applies it and
 restarts once more (the "second restart" fallback; no detached helper). Godot opens the pack per
 resource read rather than holding it, so the rename is expected to succeed when nothing streams
-from it [I]. D-01 or a Windows CI runner records the measurement.
+from it [I]. A Windows CI runner records the measurement.
 
 **Slots and the boot guard** (`updater/slots.gd`, `updater/boot_guard.gd`; notes/A4 §1.5, P9–P11).
 `user://pkey/<product>/updates/` holds `staged/` (`payload.pck` + `meta.json`), `current/meta.json`
@@ -1085,7 +1083,7 @@ recordHash, sha256, size, engine, scheme}. PKeyBoot's GUARD runs `PKeyBootGuard.
   `confirm_boot()`, and `running` and `error` never. A confirmed launch resets `failedBoots`.
 - While a code pack runs, the decision's `installed.binaryVersion` is the binary's
   (`binaryVersion`); `installed.version` is the running pack's own stamp.
-- **Telemetry** (P6-03). `update_downloaded`, `update_applied`, `update_confirmed` and
+- **Telemetry**. `update_downloaded`, `update_applied`, `update_confirmed` and
   `boot_rolled_back` ride on the device report's `updates` key (at most 16 per report) in the
   Worker's `boundedUpdates` shape: `eventId` (random, unique), `event`, `deliverable` (`app`),
   `release` (the record's tag, else its version), `fromRelease`, `outlet`
@@ -1095,12 +1093,12 @@ recordHash, sha256, size, engine, scheme}. PKeyBoot's GUARD runs `PKeyBootGuard.
 - **MSIX.** `user://` is virtualised to `%LOCALAPPDATA%\Packages\<PFN>\LocalCache\Roaming\…`, kept across
   package updates and deleted on uninstall, so uninstalling removes the slots (S-05 §4.4, from
   Microsoft's documentation). The swap itself is refused under MSIX.
-- **Velopack** builds ship P5-07's launcher shim as `--mainExe`, which answers the `--veloapp-*`
+- **Velopack** builds ship the native plugins' launcher shim as `--mainExe`, which answers the `--veloapp-*`
   hooks in milliseconds without starting the engine. Godot as the main executable also survives
   the hooks (1.0–1.7 s each when an autoload quits from `_init`) but opens its renderer and window
   for every hook: a documented fallback only (S-05 §4.5).
 
-**Native desktop plugins** (P5-07; `addons/polaris_key/native/`, sources in `native/`, docs page
+**Native desktop plugins** (`addons/polaris_key/native/`, sources in `native/`, docs page
 `/docs/services/update/godot-desktop/`). Four GDScript facades over optional GDExtensions, each
 answering `unsupported` (`runtime` on the wrong OS or in an install the updater cannot serve,
 `dependency` without the GDExtension or the library it loads):
@@ -1153,21 +1151,21 @@ recovery; the guard over successive launches with stage-matrix.json's guard and 
 PKeyBoot's GUARD and DECIDE with the real host. About 5 s on an M-series Mac, editor and release
 template alike.
 
-## Packs (`PolarisKey.update.packs`, P4-08)
+## Packs (`PolarisKey.update.packs`)
 
 ```gdscript
-# res://pkey_packs/pkey-content.json: the content stamp CI writes before the export (P4-03); a
+# res://pkey_packs/pkey-content.json: the content stamp CI writes before the export; a
 # build without one has no packs. Embedded baselines sit beside it with their markers.
 await PolarisKey.boot()                        # FETCH, MOUNT and BACKGROUND drive packs
 PolarisKey.update.packs.pack_ready.connect(func(id): print(id, " is usable"))
 var r := await PolarisKey.update.packs.ensure(["diceroll.core3d"])   # outside PKeyBoot
 await PolarisKey.update.packs.mount()          # this boot's godot.pck packs (PKeyBoot does it)
 var dir := PolarisKey.update.packs.path("diceroll.l10n")             # a running files.tree
-if not PolarisKey.update.packs.is_available("foe.goblin"):           # save compatibility (P4-20)
+if not PolarisKey.update.packs.is_available("foe.goblin"):           # save compatibility
 	var p = await PolarisKey.update.packs.pack_for("foe.goblin")     # {packId, release} or null
 ```
 
-**Save compatibility** (P4-20, `packs/provides.gd`, PKeyPackProvides): a pack record may carry
+**Save compatibility** (`packs/provides.gd`, PKeyPackProvides): a pack record may carry
 `provides`, a list of opaque content ids (printable ASCII without the space, 1–128 characters, at
 most 4096, unique; an unusable list provides nothing and never fails the record).
 `is_available(content_id)` is true when a pack in the running set (mounted or active in this
@@ -1205,7 +1203,7 @@ checks `store_buffer` and `get_error()`, and a file is read back from disk and c
 is renamed. Whole-pack hashes, the directory check and rebuilds that touch no engine state run on a
 WorkerThreadPool task.
 
-**The install state** is P4-06's, hardened the same way: a torn `state.json` is held aside as
+**The install state** is hardened the same way: a torn `state.json` is held aside as
 `state.json.torn` with garbage collection held (its snapshot of the store saved as
 `state.json.torn.list` and reused by later loads) until `recover_state()`; an unreadable state
 refuses every write path with `pack-state-unreadable`; an install whose payload check raises stays
@@ -1219,7 +1217,7 @@ directory, once) and `full`.
 Before a rebuilt pack is committed its whole-pack SHA-256 already equals the record's; then the
 header (PCK v2–v4, no encryption, no sparse bundle; the engine at most the running one and inside
 `requires.engine`: `pck-engine-mismatch`) and **the directory check** (S-05 §5 (f), the admission
-list P4-03's publish lint applies, over the record's `handler.prefixes`: in-prefix entries and
+list the publish lint applies, over the record's `handler.prefixes`: in-prefix entries and
 their `.remap`/`.import`, the `.godot/exported/` and `.godot/imported/` files those name,
 `.godot/uid_cache.bin` naming only the pack's own files; refused with its path,
 `pck-directory-refused`: `project.binary`, the class cache, scripts and a `.remap` to one, native
@@ -1243,8 +1241,8 @@ not exactly `path[.<x>] = "<plain literal>"`. Besides `.gd`/`.gdc`/`.cs`, the
 device refuses every extension a loader claims for `Script` (`PKeyPck.refresh_script_kinds`, run by
 `warm()`); the CLI takes `scriptExtensions`/`scriptTypes` (`pkey release publish
 --script-extensions/--script-types`, the Action's `script-extensions`/`script-types`) for another
-script language. Every admitted resource's references outside the pack are checked too (P4-28,
-`PKeyPck.refs_problem`): a text `[ext_resource]` or binary external entry naming an app script (a
+script language. Every admitted resource's references outside the pack are checked too
+(`PKeyPck.refs_problem`): a text `[ext_resource]` or binary external entry naming an app script (a
 script extension, or the type `Script` or a script class) is refused unless
 `PKeyOptions.pack_attachable` lists it (a `res://` path, or under a listed `res://…/`
 directory; an app resource without a script extension is judged by its real type, read from its
@@ -1261,7 +1259,7 @@ list, attaches nothing; `configure` refuses a malformed entry (`invalid-options`
 list in `.pkey/release` as `deliverables.app.content.attachable` so CI refuses the same packs. A
 `files.tree` output's files get the same content scan (not the reference check: a tree is never
 mounted into `res://`). The device check is held to the CLI's verdicts line for line
-over P4-03's fixture PCKs. Packs are data-only on every build (S-07 row 13; `downloadedScripts` is
+over the fixture PCKs. Packs are data-only on every build (S-07 row 13; `downloadedScripts` is
 not in v1; docs/security/THREAT-MODEL.md, "Pack bytes on the device").
 
 **Mounting** (`mount()`, PKeyBoot's MOUNT): after the first frame is drawn
@@ -1290,7 +1288,7 @@ its own. `zstd-patch-from` is advertised only on the engines in `PKeyPackZstd.PA
 (4.6, 4.7: `PACK_FILE_DELTA` arrived in 4.6) whose start-up probe decodes; on the 4.4 floor the
 planner never chooses a delta, and the corpus's decode cases are held to fail closed.
 
-**Feed-offered deltas** (P4-31; plans/P4-29.md §2.4). A signed channel feed may carry a delta
+**Feed-offered deltas**. A signed channel feed may carry a delta
 menu (`deltas`: target payload SHA-256 → `payload` deltas), which `PKeyFeed.feed_content` reads
 under the same rules as client-core: at most 4 per target and 64 in all, both uniqueness rules
 counting dropped entries, an entry of another `scope` dropped alone, and a bad menu nulling only
@@ -1306,7 +1304,7 @@ and a journal whose delta neither the record nor its `feedDelta` names is abando
 re-planned. A platform-bound pack never takes one: its plan is `platform`. Godot has no native
 payload port, so every feed delta goes through the engine's own decode.
 
-**Chunk sync** (P4-11; `PKeyPackChunks`, plans/P4-10.md §2.3, §2.5): `chunk` is in the engine's
+**Chunk sync** (`PKeyPackChunks`): `chunk` is in the engine's
 default strategies (`delta`, `chunk`, `file`, `full`). A container variant carrying a usable
 `pkey-chunks/1` index is rebuilt from **seeds**: this pack's installs, then every other pack's
 active and previous installs (by pack id), then the embedded baselines (by pack id), each a
@@ -1337,7 +1335,7 @@ not persist and the planner falls back to `full` by itself.
 starts the object over); redirects followed by hand, the bearer sent only to the control plane's
 origin and dropped on any cross-origin hop; one wall-clock deadline per request (`object_timeout`,
 600 s; a timeout resumes at the next ensure). A 403 from the blob route (`delivery_gate_missing`,
-`not_entitled`) fails with `pack-not-entitled`. A transport is an interface (`PKeyPackTransport`): P5-08 adds
+`not_entitled`) fails with `pack-not-entitled`. A transport is an interface (`PKeyPackTransport`): the Apple Background Assets transport adds
 the platform ones behind it.
 
 **PKeyBoot.** `required_packs` and `essential_packs` default to the stamp's expects. FETCH runs
@@ -1349,7 +1347,7 @@ decline stops at BLOCKED `content-declined`, never ERROR. MOUNT mounts and then 
 behind a corner pill that never takes input. Offline with the required set present reaches READY;
 an essential pack missing offline offers "Play offline".
 
-**Revocations** (plans/P4-13.md §2.3–§2.5; P4-24). A revocation is a CI-signed `kind:
+**Revocations**. A revocation is a CI-signed `kind:
 revocation` release record naming the revoked pack record by hash (and an optional
 replacement); only a pinned release key verifies it, so the Worker can withhold content but never
 condemn or substitute it. The engine keeps every verified revocation in a sibling document,
@@ -1383,7 +1381,7 @@ and `record_revocations()` are what `decide()` uses. `boot_fetch` takes a `packs
 `install` (PKeyBootHost passes it): required and essential entries install before mount, the rest
 wait in `background_targets` for BACKGROUND.
 
-**Content-key delegation** (plans/P4-19.md §2.3–§2.7 with Amendment A1; P4-26). A CI-signed `kind:
+**Content-key delegation.** A CI-signed `kind:
 delegation` record lets one content key sign tree-layout pack releases of `files.tree`,
 `data.json` or `l10n.table` under a pack-id scope (whole segments: `djdl.events` covers
 `djdl.events.halloween`, never `djdl.eventsx`) inside a signing window. A delegated record names
@@ -1423,7 +1421,7 @@ its delegation in its header (`kid: pkd1-<sha256 of the delegation>`):
 changed the active set: `hot` now, `restart` at this boot's mount or the next boot),
 `pack_ready(id)` (usable in this process: a hot commit, or a mount), `pack_failed(id, err)`.
 
-**Rollback.** The shared boot guard (P3-10) also counts while a pack set the last confirmed launch
+**Rollback.** The shared boot guard also counts while a pack set the last confirmed launch
 did not run is active, and its `roll-back` puts each such pack back to `previous` together with
 the binary; a packs-only rollback needs no restart (the guard runs before MOUNT). Each pack rolled
 back queues `boot_rolled_back` with the pack id and the restored `packSetId`, and its record is
@@ -1442,7 +1440,7 @@ install, update and rollback; resume; refusals; kaykit v1→v2 by the payload de
 delta, file and full, each committing CI's v2 at `store/<sha256>.pck`, mounted by the next boot);
 state (the hardened state); http (the real transport against PKeyFakeServer); boot (the stages
 and signal order); guard (two failed boots roll the set back, with and without the binary);
-feed_deltas (P4-29's engine cases: a feed delta planned for a record that carries none, the
+feed_deltas (the engine cases: a feed delta planned for a record that carries none, the
 fallback after a 404, an artifact mismatch, a wrong output and a changed base, the one-feed-delta
 rule, a record delta winning a tie, a source that answers no menu, resume with `feedDelta` and an
 unknown journal delta re-planned); revocations (`revocations.json`: two loads, torn, unreadable with and without the flag, the flag
@@ -1455,7 +1453,7 @@ delegated bytes, `pack_for`, the update check's step 11 and the facet's holds); 
 `replace_files=true`, the class list unchanged). About 6 s in the editor and 5 s on the macOS
 release template (M-series Mac, 4.7.2).
 
-## Apple plugin (`PKeyApple`, P5-05)
+## Apple plugin (`PKeyApple`)
 
 iOS reaches AppDistributor, AppTransaction, StoreKit 2, the Keychain and Background Assets
 through PolarisKeyPlatform (`sdks/swift`) and a GDExtension written against Godot's C interface
@@ -1471,7 +1469,7 @@ var app_account_token := ""
 var d := await apple.distributor()          # detail: {signal, reason?, provisioned, …}
 var p := await apple.products(["gg.vlad.diceroll.pack.foes"])
 var b := await apple.purchase("gg.vlad.diceroll.pack.foes", app_account_token)
-# the server records b.detail.transaction.jws (P6-01), then:
+# the server records b.detail.transaction.jws, then:
 await apple.finish(b.detail.transaction.id)
 var r := await apple.ensure_packs([{"id": "foes-c3", "path": "foes/content.pck"}])
 ```
@@ -1503,7 +1501,7 @@ simulator (it needs an arm64 simulator `libgodot.a`: the official 4.7.2 template
 slice is x86_64 only). Archiving and signing need the owner's Apple account and are not
 scripted here.
 
-## Android plugin (`PKeyAndroid`, P5-06)
+## Android plugin (`PKeyAndroid`)
 
 Android reaches install source, the Keystore, Play In-App Updates, Play Asset Delivery and the
 verified PackageInstaller self-update through `polaris-key-platform` (`sdks/kotlin`) and the
@@ -1557,7 +1555,7 @@ r = await android.apk_install(path, sha256, version_code)    # direct: verified,
   tests (`sdks/kotlin`, the `android` CI job); `native/android/export_check.sh` exports the probe
   through the Gradle build and, with `DEVICE=`, runs it on an emulator.
 
-## Desktop keyring (`PKeyKeyringStore`, SP-27)
+## Desktop keyring (`PKeyKeyringStore`)
 
 On macOS, Windows and Linux, `PKeyCore` keeps the token in the OS keyring by default, under
 service `pkey:<product>` and account `device-token`, the names the Python and Kotlin desktop SDKs
@@ -1586,7 +1584,7 @@ pwsh sdks/godot/native/windows/build.ps1 -SkipShim -Install <game project>      
 sudo apt-get install libsecret-tools                                               # Linux
 ```
 
-## Device attestation (`PolarisKey.devices.attest()`, P6-02)
+## Device attestation (`PolarisKey.devices.attest()`)
 
 A store install proves it is genuine and the Worker records the device at trust level
 `attested`; every other device stays `basic`, which is expected, not suspicious. The device token
