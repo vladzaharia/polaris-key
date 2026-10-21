@@ -195,14 +195,14 @@ export function Sidebar({
           <div
             aria-hidden
             data-nav-fade="top"
-            className="pointer-events-none absolute inset-x-0 top-0 z-10 h-6 bg-linear-to-b from-surface-page to-transparent"
+            className="pointer-events-none absolute inset-x-0 top-0 z-10 h-6 bg-[linear-gradient(to_bottom,var(--color-surface-page),transparent)]"
           />
         ) : null}
         {edges.bottom ? (
           <div
             aria-hidden
             data-nav-fade="bottom"
-            className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-6 bg-linear-to-t from-surface-page to-transparent"
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-6 bg-[linear-gradient(to_top,var(--color-surface-page),transparent)]"
           />
         ) : null}
         <div
