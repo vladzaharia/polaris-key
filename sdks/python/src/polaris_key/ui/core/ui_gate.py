@@ -233,13 +233,17 @@ def status_screen_view(ctx: Context) -> View:
     head = ("core.gate.%s.title" % status, "core.gate.%s.message" % status)
     args = {"product": identity.name, "developer": identity.developer, "min": minimum, "max": maximum}
     if status == "revoked":
+        # Sign in first when the build offers it (Welcome's rule), then Use a different key when
+        # key entry is on; a device already signed out is never offered Sign out.
+        sign_in = bool(ctx.caps["signIn"] and ctx.on("identity"))
+        key = bool(ctx.caps["keyEntry"])
         return make_view(
             ctx,
             "StatusScreen",
             status,
-            head + ("signin.key.differentKey", "common.signOut"),
+            head + ("welcome.signIn" if sign_in else None, "signin.key.differentKey" if key else None),
             args=args,
-            primary="signin.key.differentKey",
+            primary="welcome.signIn" if sign_in else ("signin.key.differentKey" if key else None),
             tone="neutral",
         )
     if status == "expired":
