@@ -44,7 +44,7 @@ The setup dock (right dock) edits `res://polaris_key.tres`, a `PKeyOptions` reso
 
 1. **Product**: your product slug, and the **Base URL** (default `https://key.plrs.im`).
 2. **Pinned trust keys**: paste the Godot line `pkey trust` prints
-   (`const PINNED_TRUST_KEYS := {...}`) or copy the keys from the console. Pins are compiled in
+   (`pinned_trust_keys = {...}`) or copy the keys from the console. Pins are compiled in
    and never learned: **Fill from discovery** only pre-fills candidates.
 3. **Check** fetches the live trust manifest, verifies it against the pins and lists each key id
    with a SHA-256 fingerprint. Compare them with `pkey trust` or the console, tick the
@@ -53,9 +53,11 @@ The setup dock (right dock) edits `res://polaris_key.tres`, a `PKeyOptions` reso
    the build stamp (see [Export presets and CI](#export-presets-and-ci)).
 5. **Tools** run the Polaris Key CLI (`pkey` on PATH, or set the command, for example
    `npx @polaris-key/cli`):
-   - **Generate config** runs `pkey sdk --lang godot --write` into `res://polaris_key_config.gd`
-     (product, base URL, trust pins, pinned release keys and expected services from discovery;
-     `PolarisKey.configure(preload("res://polaris_key_config.gd").options())`). Release keys have
+   - **Generate config** runs `pkey sdk --lang godot --write`, which sets the product, base URL,
+     trust pins, pinned release keys and expected services from discovery in
+     `res://polaris_key.tres` (the one config file; its other properties stay) and lists the
+     fields it changed. `PolarisKey.boot()` reads it. A leftover `res://polaris_key_config.gd` is
+     no longer read: the dock offers to delete it. Release keys have
      no public route: the command runs in the nearest directory above the project holding
      `.pkey/release`, and without one the keys already in `res://polaris_key.tres` are passed as
      `--release-key`. The CLI refuses, writing nothing, when they do not match discovery's
@@ -278,7 +280,7 @@ PKEY_BUILD_OUTLET=steam PKEY_BUILD_CHANNEL=beta PKEY_BUILD_NUMBER=42 \
 ```
 
 The options, their variables and defaults are in [Build stamp and setup dock](#build-stamp-and-setup-dock-p1-11).
-`polaris_key_config.gd` and `polaris_key.tres` export by default. Add `tests/*` to the preset's
+`polaris_key.tres` exports by default. Add `tests/*` to the preset's
 "Filters to exclude" if the project holds the SDK's own tests. A build with packs also ships `pkey_packs/*` (add it
 to the preset's "Filters to export non-resource files"). The `polaris-key/publish` GitHub Action publishes the release after your export and
 signing steps.

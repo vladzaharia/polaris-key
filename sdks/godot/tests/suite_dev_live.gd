@@ -17,12 +17,12 @@ extends RefCounted
 #   update       update.decide(): a build current on the newest stable release is offered nothing,
 #                and the same build is offered a release the server then publishes
 #
-# The server, the generated config and the approver come from the environment (tests/dev_live/
+# The server, the generated config (polaris_key.tres) and the approver come from the environment (tests/dev_live/
 # support.gd): all three set runs the suite, none set skips it, anything else fails it. A lane
 # that runs it starts `pkey dev --auto-approve`, writes the config with `pkey sdk --lang godot
 # --dev --url <origin> --write --out <a file outside this tree>`, and has `node` on PATH:
 #
-#   PKEY_DEV_BASE_URL=http://127.0.0.1:8787 PKEY_DEV_CONFIG=/tmp/polaris_key_config.gd \
+#   PKEY_DEV_BASE_URL=http://127.0.0.1:8787 PKEY_DEV_CONFIG=/tmp/polaris_key.tres \
 #   PKEY_DEV_APPROVE="$PWD/packages/cli/scripts/dev-approve.mjs" PKEY_TEST_SUITES=dev_live \
 #   sdks/godot/tools/run_tests.sh
 #

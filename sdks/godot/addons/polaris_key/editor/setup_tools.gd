@@ -4,11 +4,14 @@ extends RefCounted
 ## runner exercises it on the editor binary and on a release template alike:
 ##
 ## - "Generate config" runs `pkey sdk --lang godot --write`, which reads the product's discovery
-##   document and writes `res://polaris_key_config.gd` (product, base URL, trust pins, pinned
-##   release keys, expected services). Release keys have no public route: the CLI reads them from
-##   the nearest `.pkey/release` (the command runs in that directory), and the keys already in
-##   `res://polaris_key.tres` ride along as `--release-key` when there is none. The CLI refuses,
-##   writing nothing, when they do not match discovery's `releaseKeyFingerprints`.
+##   document and writes the product, base URL, trust pins, pinned release keys and expected
+##   services INTO `res://polaris_key.tres`, the one config file, leaving its other properties
+##   (channel, theme, update settings) alone. Release keys have no public route: the CLI reads
+##   them from the nearest `.pkey/release` (the command runs in that directory), and the keys
+##   already in `res://polaris_key.tres` ride along as `--release-key` when there is none. The CLI
+##   refuses, writing nothing, when they do not match discovery's `releaseKeyFingerprints`.
+##   `res://polaris_key_config.gd`, which earlier versions wrote, is no longer read; the dock
+##   offers to delete it.
 ## - "Generate catalog mirror" runs `pkey mirror --lang gdscript`, which writes
 ##   `catalog_generated.gd` from the product's public schema route.
 ## - Every export preset's include filter gets `pkey_packs/*`, so the embedded pack baselines and
@@ -20,7 +23,10 @@ extends RefCounted
 const PACK_FILTER := "pkey_packs/*"
 const PACKS_DIR := "res://pkey_packs"
 const EXPORT_PRESETS := "res://export_presets.cfg"
-const CONFIG_MODULE := "res://polaris_key_config.gd"
+const CONFIG_PATH := "res://polaris_key.tres"
+const LEGACY_CONFIG := "res://polaris_key_config.gd"
+## The PKeyOptions properties `pkey sdk --lang godot --write` sets.
+const CLI_FIELDS := ["product", "base_url", "pinned_trust_keys", "pinned_release_keys", "expected_services"]
 const MIRROR_DIR := "res://"
 const DEFAULT_PKEY := "pkey"
 
@@ -98,6 +104,43 @@ static func sdk_args(product: String, base_url: String, out_path: String, releas
 		for kid in kids:
 			a.append_array(["--release-key", "%s=%s" % [kid, release_keys[kid]]])
 	return a
+
+
+## The CLI-owned fields of the PKeyOptions at `path`, name -> value ({} when there is none).
+static func config_fields(path := CONFIG_PATH) -> Dictionary:
+	var out := {}
+	if not ResourceLoader.exists(path):
+		return out
+	var opts = ResourceLoader.load(path, "", ResourceLoader.CACHE_MODE_IGNORE)
+	if not (opts is PKeyOptions):
+		return out
+	for f in CLI_FIELDS:
+		out[f] = opts.get(f)
+	return out
+
+
+## What "Generate config" tells the person: the fields whose value differs between the `before`
+## and `after` snapshots of config_fields().
+static func fields_report(before: Dictionary, after: Dictionary, path := CONFIG_PATH) -> String:
+	var changed := PackedStringArray()
+	for f in CLI_FIELDS:
+		if after.has(f) and (not before.has(f) or before[f] != after[f]):
+			changed.append(f)
+	if after.is_empty():
+		return "%s was not written." % path
+	if changed.is_empty():
+		return "%s already had these fields." % path
+	return "Updated %s: %s." % [path, ", ".join(changed)]
+
+
+## Delete the retired config script `path` (the person confirmed). {ok, message}.
+static func remove_legacy_config(path := LEGACY_CONFIG) -> Dictionary:
+	if not FileAccess.file_exists(path):
+		return {"ok": true, "message": ""}
+	var err := DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+	if err != OK:
+		return {"ok": false, "message": "Could not delete %s (error %d)." % [path, err]}
+	return {"ok": true, "message": "Deleted %s." % path}
 
 
 ## Arguments for `pkey mirror --lang gdscript` from the product's schema route.

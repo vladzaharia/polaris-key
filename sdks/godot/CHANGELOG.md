@@ -9,6 +9,13 @@ as the GitHub Release notes, and the same text is the Asset Store version's chan
 
 ## Unreleased
 
+- **One config file: `res://polaris_key.tres`.** `pkey sdk --lang godot --write` now sets `product`,
+  `base_url`, `pinned_trust_keys`, `pinned_release_keys` and `expected_services` in it (creating it
+  when absent, keeping every other property) instead of writing `polaris_key_config.gd`, and the dock's
+  **Generate config** lists the fields it changed. `polaris_key_config.gd` is no longer read: delete
+  it (the dock offers to) and drop any `preload("res://polaris_key_config.gd").options()`; `await
+PolarisKey.boot()` reads the `.tres`.
+
 - **Powered by Polaris Locker (LK-16).** `ui_powered_by` draws the Locker line (micro mark at 16 px and
   the phrase) at the foot of the settings scene, never the gate or boot. `ui_powered_by_style`
   (`"line"` default, `"badge"`) is the one option; `"badge"` applies to a `PKeyPoweredBy` node with

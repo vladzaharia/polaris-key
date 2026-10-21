@@ -467,7 +467,7 @@ export const GENERATORS: Generator[] = [
       "sdks/python/tests/sdk_config_sample.py",
       "sdks/swift/Tests/PolarisKeyTests/SdkConfigSample.swift",
       "sdks/kotlin/sdk/src/test/kotlin/polaris/generated/PolarisConfig.kt",
-      "sdks/godot/tests/sdk_config/polaris_key_config.gd",
+      "sdks/godot/tests/sdk_config/polaris_key.tres",
     ],
     write: [
       {

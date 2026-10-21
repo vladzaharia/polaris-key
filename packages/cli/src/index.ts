@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
   ADMIN_TOKEN_ENV,
@@ -75,6 +75,7 @@ import {
   factsSummary,
   fingerprintOf,
   isSdkLang,
+  mergeGodotOptions,
   parseReleaseKeyFlags,
   renderSdkConfig,
   resolveSdkFacts,
@@ -1506,17 +1507,45 @@ async function cmdSdk(
     );
   const out = flagString(parsed, "out");
   const pkg = flagString(parsed, "package");
-  const content = renderSdkConfig(lang, facts, {
+  const writing = add || flagBool(parsed, "write");
+  let target: string | undefined;
+  let content = renderSdkConfig(lang, facts, {
     ...(out !== undefined ? { out } : {}),
     ...(pkg !== undefined ? { kotlinPackage: pkg } : {}),
   });
-  if (!add && !flagBool(parsed, "write")) {
+  if (lang === "godot") {
+    // One file: polaris_key.tres beside project.godot. The five facts go into it and every other
+    // property stays; a project without one gets a new file.
+    if (out !== undefined) target = path.resolve(cwd, out);
+    else {
+      const project = await findGodotProject(cwd);
+      if (project) target = path.join(project, SDK_CONFIG_DEFAULT_OUT.godot);
+      else if (writing)
+        throw new Error(
+          `No project.godot at or above ${cwd}; run pkey sdk in the Godot project, or pass --out.`,
+        );
+    }
+    const current = target
+      ? await readFile(target, "utf8").catch(() => null)
+      : null;
+    if (current !== null && !flagBool(parsed, "force")) {
+      try {
+        content = mergeGodotOptions(current, facts);
+      } catch (e) {
+        throw new Error(
+          `${target}: ${(e as Error).message}; pass --force to replace it.`,
+        );
+      }
+    }
+  }
+  if (!writing) {
     stdout.write(content);
     return 0;
   }
-  const target = path.resolve(cwd, out ?? SDK_CONFIG_DEFAULT_OUT[lang]);
+  target ??= path.resolve(cwd, out ?? SDK_CONFIG_DEFAULT_OUT[lang]);
   const existing = await readFile(target, "utf8").catch(() => null);
   if (
+    lang !== "godot" &&
     existing !== null &&
     !existing.includes(SDK_CONFIG_MARKER) &&
     !flagBool(parsed, "force")
@@ -1527,8 +1556,36 @@ async function cmdSdk(
   await mkdir(path.dirname(target), { recursive: true });
   await writeFile(target, content, "utf8");
   stdout.write(`${factsSummary(facts)}\nWrote ${target}\n`);
+  if (lang === "godot") {
+    const old = path.join(path.dirname(target), "polaris_key_config.gd");
+    if (
+      await stat(old).then(
+        () => true,
+        () => false,
+      )
+    )
+      stdout.write(
+        `Note: ${old} is no longer read; delete it. The settings live in polaris_key.tres.\n`,
+      );
+  }
   if (add) stdout.write(addNextSteps(lang, facts));
   return 0;
+}
+
+/** The nearest directory at or above `from` holding `project.godot`, or null. */
+async function findGodotProject(from: string): Promise<string | null> {
+  for (let dir = path.resolve(from); ; ) {
+    if (
+      await stat(path.join(dir, "project.godot")).then(
+        () => true,
+        () => false,
+      )
+    )
+      return dir;
+    const up = path.dirname(dir);
+    if (up === dir) return null;
+    dir = up;
+  }
 }
 
 /** `--expect kid@sha256:<hex>[,kid@sha256:<hex>...]`: the pins the developer saw in the console. */

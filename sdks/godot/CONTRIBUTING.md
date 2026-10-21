@@ -246,7 +246,7 @@ PKEY_TEST_SUITES=ed25519 sdks/godot/tools/run_tests.sh bench 20 # one suite, wit
   run_tests.sh exports into `build/uid_packs/` (`PKEY_UID_PACKS`). Run directly, export both.
 - Logs land in `build/logs/<step>.log` (`build/` is git-ignored).
 - The `dev_live` suite (SP-41) runs the SDK against a live `pkey dev` server over real HTTP, with
-  no fake server or replay: the generated quickstart config, all seven test keys through
+  no fake server or replay: the generated polaris_key.tres, all seven test keys through
   `license.activate_with_key`, a config change event, device-code sign-in and an update decision.
   It is in `ci` and skips itself when none of `PKEY_DEV_BASE_URL`, `PKEY_DEV_CONFIG` and
   `PKEY_DEV_APPROVE` is set; with only some of them set (or one set to nothing) it fails. A lane
@@ -255,8 +255,8 @@ PKEY_TEST_SUITES=ed25519 sdks/godot/tools/run_tests.sh bench 20 # one suite, wit
 
   ```sh
   pkey dev --auto-approve --no-write &   # prints its origin, e.g. http://127.0.0.1:8787
-  pkey sdk --lang godot --dev --url http://127.0.0.1:8787 --write --out /tmp/polaris_key_config.gd
-  PKEY_DEV_BASE_URL=http://127.0.0.1:8787 PKEY_DEV_CONFIG=/tmp/polaris_key_config.gd \
+  pkey sdk --lang godot --dev --url http://127.0.0.1:8787 --write --out /tmp/polaris_key.tres
+  PKEY_DEV_BASE_URL=http://127.0.0.1:8787 PKEY_DEV_CONFIG=/tmp/polaris_key.tres \
   PKEY_DEV_APPROVE="$PWD/packages/cli/scripts/dev-approve.mjs" PKEY_TEST_SUITES=dev_live \
   sdks/godot/tools/run_tests.sh
   ```

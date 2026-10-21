@@ -1,8 +1,8 @@
 extends RefCounted
 # @pkey-feature license.activate core.discover
-# The quickstart against the live server: the polaris_key_config.gd that `pkey sdk --lang godot
+# The quickstart against the live server: the polaris_key.tres that `pkey sdk --lang godot
 # --dev --write` generated is this server's (its product, origin, trust pins, release keys and
-# services), PolarisKey.configure() accepts its options(), the SDK discovers the product over
+# services), PolarisKey.configure() accepts its options, the SDK discovers the product over
 # HTTP, and the first activation with the `ok` test key stores a token and opens the gate on a
 # license document the SDK verified against the generated pins.
 
@@ -13,16 +13,16 @@ func run(t: PKeyTestContext, bed: PKeyDevLive) -> void:
 
 
 func _config(t: PKeyTestContext, bed: PKeyDevLive) -> void:
-	var c := bed.consts
+	var c := bed.config
 	var info := bed.info
 	var trust: Dictionary = info.get("trust", {})
-	t.check("config: the file names the server's product", c.get("PRODUCT") == info.get("product") and String(c.get("PRODUCT", "")) != "", "%s vs %s" % [c.get("PRODUCT"), info.get("product")])
-	t.check("config: BASE_URL is the origin the lane started, which is the server's own", c.get("BASE_URL") == bed.base_url and info.get("baseUrl") == bed.base_url, "%s, %s, %s" % [c.get("BASE_URL"), bed.base_url, info.get("baseUrl")])
-	t.check("config: PINNED_TRUST_KEYS are the server's signing pins", PKeyDevLive.same_pairs(c.get("PINNED_TRUST_KEYS"), trust.get("pinnedKeys")), "%s vs %s" % [c.get("PINNED_TRUST_KEYS"), trust.get("pinnedKeys")])
-	t.check("config: PINNED_RELEASE_KEYS are the server's release keys", PKeyDevLive.same_pairs(c.get("PINNED_RELEASE_KEYS"), info.get("releaseKeys")), "%s vs %s" % [c.get("PINNED_RELEASE_KEYS"), info.get("releaseKeys")])
-	t.check("config: EXPECTED_SERVICES are the services the server runs", PKeyDevLive.same_set(c.get("EXPECTED_SERVICES"), info.get("services")), "%s vs %s" % [c.get("EXPECTED_SERVICES"), info.get("services")])
+	t.check("config: the file names the server's product", c.product == info.get("product") and c.product != "", "%s vs %s" % [c.product, info.get("product")])
+	t.check("config: base_url is the origin the lane started, which is the server's own", c.base_url == bed.base_url and info.get("baseUrl") == bed.base_url, "%s, %s, %s" % [c.base_url, bed.base_url, info.get("baseUrl")])
+	t.check("config: pinned_trust_keys are the server's signing pins", PKeyDevLive.same_pairs(c.pinned_trust_keys, trust.get("pinnedKeys")), "%s vs %s" % [c.pinned_trust_keys, trust.get("pinnedKeys")])
+	t.check("config: pinned_release_keys are the server's release keys", PKeyDevLive.same_pairs(c.pinned_release_keys, info.get("releaseKeys")), "%s vs %s" % [c.pinned_release_keys, info.get("releaseKeys")])
+	t.check("config: expected_services are the services the server runs", PKeyDevLive.same_set(c.expected_services, info.get("services")), "%s vs %s" % [c.expected_services, info.get("services")])
 	var opts := bed.options()
-	t.check("config: options() is a PKeyOptions carrying the product, the origin and both pin sets", opts != null and opts.product == c.get("PRODUCT") and opts.base_url == bed.base_url \
+	t.check("config: options is a PKeyOptions carrying the product, the origin and both pin sets", opts != null and opts.product == c.product and opts.base_url == bed.base_url \
 			and PKeyDevLive.same_pairs(opts.pinned_trust_keys, trust.get("pinnedKeys")) and PKeyDevLive.same_pairs(opts.pinned_release_keys, info.get("releaseKeys")) \
 			and PKeyDevLive.same_set(opts.expected_services, info.get("services")))
 

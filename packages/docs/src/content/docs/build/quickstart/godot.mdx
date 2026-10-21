@@ -1,6 +1,6 @@
 ---
 title: "Godot quickstart"
-description: "Install the Godot addon from the feed, generate polaris_key_config.gd, then boot with the drop-in screens or draw your own on the controllers."
+description: "Install the Godot addon from the feed, generate polaris_key.tres, then boot with the drop-in screens or draw your own on the controllers."
 type: "quickstart"
 sdks: ["godot"]
 lanes: ["kit", "library"]
@@ -36,7 +36,7 @@ You should see the `PolarisKey` autoload registered and the setup dock open.
 
 ## 2. Generate the config
 
-**CLI** Write `polaris_key_config.gd` beside `project.godot`. The setup dock's **Generate config** runs the same command.
+**CLI** Write the product into `polaris_key.tres` beside `project.godot`, creating it if needed and keeping every other setting in it. The setup dock's **Generate config** runs the same command.
 
 ```sh title="Terminal"
 pkey sdk --lang godot --product <slug> --write
@@ -49,7 +49,7 @@ docker run --rm -v "$PWD:/work" pkg.plrs.im/polaris-key/pkey:latest \
   sdk --lang godot --product <slug> --write
 ```
 
-The file holds the slug, base URL, trust pins, advertised services and, when the product has release keys, the pinned release keys. To try this without a registered product, [run Polaris Key locally](/docs/build/local/).
+The command sets the slug, base URL, trust pins, advertised services and, when the product has release keys, the pinned release keys. An old `polaris_key_config.gd` is no longer read; delete it. To try this without a registered product, [run Polaris Key locally](/docs/build/local/).
 
 You should see the file written and each pin's key id and SHA-256 fingerprint. Compare each key in the file with **Public key** under **Core → Keys & secrets** before you ship.
 
@@ -65,15 +65,12 @@ You should see the file written and each pin's key id and SHA-256 fingerprint. C
 ```gdscript title="boot.gd"
 extends Node
 
-const PolarisConfig := preload("res://polaris_key_config.gd")
-
-
 func _ready() -> void:
-	await PolarisKey.boot({options = PolarisConfig.options()})
+	await PolarisKey.boot()  # reads res://polaris_key.tres
 	get_tree().change_scene_to_file("res://game/title.tscn")
 ```
 
-A stop on the way, such as offline or a blocked build, keeps its card with **Try again** on screen, and the await waits through the retries. `{resolve_on_stop = true}` resolves at the first stop instead. `options()` returns a `PKeyOptions` with the product facts. The version comes from `application/config/version`, which must be SemVer. To keep the setup dock's `res://polaris_key.tres` for your own channel, theme or update settings, load it and call `PolarisConfig.apply(opts)` instead.
+A stop on the way, such as offline or a blocked build, keeps its card with **Try again** on screen, and the await waits through the retries. `{resolve_on_stop = true}` resolves at the first stop instead. `boot()` loads `res://polaris_key.tres`, the same file the setup dock edits for your channel, theme and update settings. The version comes from `application/config/version`, which must be SemVer.
 
 The screens are neutral over the game's theme by default. [Godot](/docs/build/ui/frameworks/godot/) has the scenes you can place yourself, theming and the one-line settings panel.
 

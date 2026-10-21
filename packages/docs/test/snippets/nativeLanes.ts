@@ -378,7 +378,7 @@ export async function compileKotlin(snippets: Snippet[]): Promise<Failure[]> {
 
 // ── GDScript ───────────────────────────────────────────────────────────────────────────────────
 
-const GODOT_SAMPLE = join(GODOT_DIR, "tests/sdk_config/polaris_key_config.gd");
+const GODOT_SAMPLE = join(GODOT_DIR, "tests/sdk_config/polaris_key.tres");
 const GODOT_CATALOG_SAMPLE = join(
   GODOT_DIR,
   "tests/config/catalog_generated.gd",
@@ -450,10 +450,7 @@ export async function compileGodot(snippets: Snippet[]): Promise<Failure[]> {
     symlinkSync(join(GODOT_DIR, "addons"), join(dir, "addons"));
     writeFileSync(join(dir, "project.godot"), GODOT_PROJECT);
     writeFileSync(join(dir, "harness.gd"), GODOT_HARNESS);
-    writeFileSync(
-      join(dir, "polaris_key_config.gd"),
-      readFileSync(GODOT_SAMPLE),
-    );
+    writeFileSync(join(dir, "polaris_key.tres"), readFileSync(GODOT_SAMPLE));
     writeFileSync(
       join(dir, "catalog_generated.gd"),
       readFileSync(GODOT_CATALOG_SAMPLE),

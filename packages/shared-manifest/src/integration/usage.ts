@@ -714,11 +714,9 @@ const GODOT_KIT: Partial<Record<IntegrationFeature, Maker>> = {
     code: lines(
       `extends Node`,
       ``,
-      `const PolarisConfig := preload("res://polaris_key_config.gd")`,
-      ``,
       ``,
       `func _ready() -> void:`,
-      `\tawait PolarisKey.boot({options = PolarisConfig.options()})`,
+      `\tawait PolarisKey.boot()  # reads res://polaris_key.tres`,
       `\tget_tree().change_scene_to_file("res://game/title.tscn")`,
     ),
   }),

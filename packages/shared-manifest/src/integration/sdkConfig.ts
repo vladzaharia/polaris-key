@@ -29,7 +29,7 @@ export const SDK_CONFIG_DEFAULT_OUT: Record<SdkLang, string> = {
   python: "polaris_config.py",
   swift: "PolarisConfig.swift",
   kotlin: "PolarisConfig.kt",
-  godot: "polaris_key_config.gd",
+  godot: "polaris_key.tres",
 };
 
 /** The product facts a generated module carries. */
@@ -269,41 +269,114 @@ public object PolarisConfig {
 `;
 }
 
-function gdMap(map: Record<string, string>): string {
+/** The `[ext_resource]` id of the PKeyOptions script in a file this module writes. */
+const GODOT_SCRIPT_ID = "1";
+const GODOT_OPTIONS_SCRIPT = "res://addons/polaris_key/core/options.gd";
+
+/** A Godot text-resource Dictionary: one entry per line, as the editor writes it. */
+function tresDict(map: Record<string, string>): string {
   const rows = Object.entries(map);
   if (rows.length === 0) return "{}";
-  return `{\n${rows.map(([k, v]) => `\t${q(k)}: ${q(v)},`).join("\n")}\n}`;
+  return `{\n${rows.map(([k, v]) => `${q(k)}: ${q(v)}`).join(",\n")}\n}`;
 }
 
+/** The PKeyOptions properties `pkey sdk --lang godot` owns, in file order. */
+export function godotOptionFields(facts: SdkConfigFacts): [string, string][] {
+  return [
+    ["product", q(facts.product)],
+    ["base_url", q(facts.baseUrl)],
+    ["pinned_trust_keys", tresDict(facts.pinnedKeys)],
+    ["pinned_release_keys", tresDict(facts.pinnedReleaseKeys)],
+    [
+      "expected_services",
+      `PackedStringArray(${facts.services.map(q).join(", ")})`,
+    ],
+  ];
+}
+
+/** A new `res://polaris_key.tres`: a PKeyOptions resource carrying the product facts. */
 function renderGodot(facts: SdkConfigFacts): string {
-  return `${banner("godot", facts, "#")}
-extends RefCounted
-## Polaris Key configuration for ${facts.product}. Keep it outside addons/:
-##
-##     const PolarisConfig := preload("res://polaris_key_config.gd")
-##     PolarisKey.configure(PolarisConfig.options())
+  return [
+    `[gd_resource type="Resource" script_class="PKeyOptions" load_steps=2 format=3]`,
+    ``,
+    `[ext_resource type="Script" path="${GODOT_OPTIONS_SCRIPT}" id="${GODOT_SCRIPT_ID}"]`,
+    ``,
+    `[resource]`,
+    `script = ExtResource("${GODOT_SCRIPT_ID}")`,
+    ...godotOptionFields(facts).map(([k, v]) => `${k} = ${v}`),
+    ``,
+  ].join("\n");
+}
 
-const PRODUCT := ${q(facts.product)}
-const BASE_URL := ${q(facts.baseUrl)}
-const PINNED_TRUST_KEYS := ${gdMap(facts.pinnedKeys)}
-const PINNED_RELEASE_KEYS := ${gdMap(facts.pinnedReleaseKeys)}
-const EXPECTED_SERVICES := [${facts.services.map(q).join(", ")}]
+/** Where a property value ends: the first newline outside a string and every bracket. */
+function tresValueEnd(src: string, from: number): number {
+  let depth = 0;
+  let inStr = false;
+  for (let i = from; i < src.length; i++) {
+    const c = src[i] as string;
+    if (inStr) {
+      if (c === "\\") i++;
+      else if (c === '"') inStr = false;
+    } else if (c === '"') inStr = true;
+    else if ("{[(".includes(c)) depth++;
+    else if ("}])".includes(c)) depth--;
+    else if (c === "\n" && depth <= 0) return i;
+  }
+  return src.length;
+}
 
-
-## Writes the product facts into [param opts] and returns it; every other field is left alone.
-static func apply(opts: PKeyOptions) -> PKeyOptions:
-\topts.product = PRODUCT
-\topts.base_url = BASE_URL
-\topts.pinned_trust_keys = PINNED_TRUST_KEYS.duplicate()
-\topts.pinned_release_keys = PINNED_RELEASE_KEYS.duplicate()
-\topts.expected_services = PackedStringArray(EXPECTED_SERVICES)
-\treturn opts
-
-
-## A new [PKeyOptions] carrying the product facts.
-static func options() -> PKeyOptions:
-\treturn apply(PKeyOptions.new())
-`;
+/**
+ * Write the product facts into an existing `res://polaris_key.tres`: the five properties
+ * [godotOptionFields] names are replaced in place (added when absent) and every other line, the
+ * channel, theme and update settings the setup dock wrote included, stays byte for byte. Running
+ * it again with the same facts changes nothing. Throws when `existing` is not a PKeyOptions text
+ * resource.
+ */
+export function mergeGodotOptions(
+  existing: string,
+  facts: SdkConfigFacts,
+): string {
+  const head = /^\[gd_resource [^\n]*\]/.exec(existing)?.[0] ?? "";
+  if (!head.includes('script_class="PKeyOptions"'))
+    throw new Error("it is not a PKeyOptions text resource");
+  const marker = /^\[resource\][ \t]*$/m.exec(existing);
+  if (!marker) throw new Error("it has no [resource] section");
+  let pos = marker.index + marker[0].length;
+  let insertAt = pos;
+  const edits: { from: number; to: number; text: string }[] = [];
+  const owned = new Map(godotOptionFields(facts));
+  const seen = new Set<string>();
+  const gap = /(?:\s|;[^\n]*)*/y;
+  const prop = /([A-Za-z_][A-Za-z0-9_/]*)[ \t]*=[ \t]*/y;
+  for (;;) {
+    gap.lastIndex = pos;
+    gap.exec(existing);
+    pos = gap.lastIndex;
+    if (pos >= existing.length || existing[pos] === "[") break;
+    prop.lastIndex = pos;
+    const pm = prop.exec(existing);
+    if (!pm) throw new Error("it has a line that is not a property");
+    const end = tresValueEnd(existing, prop.lastIndex);
+    const key = pm[1] as string;
+    const next = owned.get(key);
+    if (next !== undefined) {
+      seen.add(key);
+      edits.push({ from: prop.lastIndex, to: end, text: next });
+    }
+    insertAt = end;
+    pos = end;
+  }
+  const missing = [...owned].filter(([k]) => !seen.has(k));
+  if (missing.length > 0)
+    edits.push({
+      from: insertAt,
+      to: insertAt,
+      text: missing.map(([k, v]) => `\n${k} = ${v}`).join(""),
+    });
+  let out = existing;
+  for (const e of edits.sort((a, b) => b.from - a.from))
+    out = out.slice(0, e.from) + e.text + out.slice(e.to);
+  return out;
 }
 
 /** Render one language's module. `out` picks `.js`/`.mjs` for Node and React. */

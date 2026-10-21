@@ -8,8 +8,10 @@ extends VBoxContainer
 ## Pins are compiled in, never learned: "Fill from discovery" only pre-fills candidates, and Save
 ## stays disabled until the confirmation box says the pins match `pkey trust` or the console.
 ##
-## Tools (PKeySetupTools, SP-G12): "Generate config" runs `pkey sdk --lang godot --write` into
-## res://polaris_key_config.gd (release keys too, from the nearest .pkey/release), "Generate
+## Tools (PKeySetupTools, SP-G12): "Generate config" runs `pkey sdk --lang godot --write`, which
+## fills the product, URL, pins, release keys (from the nearest .pkey/release) and services into
+## res://polaris_key.tres and reports the fields it changed. A leftover
+## res://polaris_key_config.gd is no longer read: the dock says so and offers to delete it. "Generate
 ## catalog mirror" runs `pkey mirror --lang gdscript`, and "Add pkey_packs/* to exports" adds the
 ## embedded-pack filter to every export preset (Save does it too once res://pkey_packs exists).
 
@@ -30,6 +32,7 @@ var _pkey_cmd: LineEdit
 var _gen_button: Button
 var _mirror_button: Button
 var _filter_button: Button
+var _legacy_row: HBoxContainer
 var _candidates: Dictionary = {}
 var _busy := false
 
@@ -43,7 +46,7 @@ func _ready() -> void:
 	add_child(_label("Pinned trust keys (paste the output of `pkey trust`)"))
 	_pins = TextEdit.new()
 	_pins.custom_minimum_size = Vector2(0, 96)
-	_pins.placeholder_text = "const PINNED_TRUST_KEYS := {\"kid\": \"base64url key\"}"
+	_pins.placeholder_text = "{\"kid\": \"base64url key\"}"
 	_pins.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
 	_pins.text_changed.connect(_on_pins_changed)
 	add_child(_pins)
@@ -77,6 +80,13 @@ func _ready() -> void:
 	_filter_button = _button("Add pkey_packs/* to exports", _on_filters)
 	add_child(_filter_button)
 	add_child(_label(Tools.cors_note("")))
+	_legacy_row = HBoxContainer.new()
+	var legacy_label := _label("%s is no longer used." % Tools.LEGACY_CONFIG)
+	legacy_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_legacy_row.add_child(legacy_label)
+	_legacy_row.add_child(_button("Delete it", _on_legacy_delete))
+	_legacy_row.visible = false
+	add_child(_legacy_row)
 	_load()
 	_update_buttons()
 
@@ -104,6 +114,7 @@ func _button(text: String, cb: Callable) -> Button:
 
 
 func _load() -> void:
+	_legacy_row.visible = FileAccess.file_exists(Tools.LEGACY_CONFIG)
 	if not ResourceLoader.exists(CONFIG_PATH):
 		_base_url.text = PKeyCore.DEFAULT_BASE
 		return
@@ -217,11 +228,29 @@ func _run_cli(args: PackedStringArray, cwd: String) -> Dictionary:
 func _on_generate() -> void:
 	var project := ProjectSettings.globalize_path("res://")
 	var manifest := Tools.find_manifest_dir(project)
-	var args := Tools.sdk_args(_product.text.strip_edges(), _base_url.text.strip_edges(), ProjectSettings.globalize_path(Tools.CONFIG_MODULE), _current_release_keys(), manifest != "")
+	var before := Tools.config_fields()
+	var args := Tools.sdk_args(_product.text.strip_edges(), _base_url.text.strip_edges(), ProjectSettings.globalize_path(Tools.CONFIG_PATH), _current_release_keys(), manifest != "")
 	var r: Dictionary = await _run_cli(args, manifest if manifest != "" else project)
-	_say("[color=%s]%s[/color]\n%s" % ["green" if r["ok"] else "red", "Wrote %s." % Tools.CONFIG_MODULE if r["ok"] else "pkey sdk failed (exit %d)." % r["exit"], r["output"]])
+	var head := "pkey sdk failed (exit %d)." % r["exit"]
 	if r["ok"]:
-		_refresh(Tools.CONFIG_MODULE)
+		_refresh(Tools.CONFIG_PATH)
+		head = Tools.fields_report(before, Tools.config_fields())
+		_legacy_row.visible = FileAccess.file_exists(Tools.LEGACY_CONFIG)
+	_say("[color=%s]%s[/color]\n%s" % ["green" if r["ok"] else "red", head, r["output"]])
+
+
+func _on_legacy_delete() -> void:
+	var dlg := ConfirmationDialog.new()
+	dlg.dialog_text = "Delete %s? Nothing reads it any more; the settings are in %s." % [Tools.LEGACY_CONFIG, Tools.CONFIG_PATH]
+	dlg.confirmed.connect(func():
+		var r := Tools.remove_legacy_config()
+		_say("[color=%s]%s[/color]" % ["green" if r["ok"] else "red", r["message"]])
+		_refresh(Tools.LEGACY_CONFIG)
+		_legacy_row.visible = FileAccess.file_exists(Tools.LEGACY_CONFIG))
+	dlg.canceled.connect(dlg.queue_free)
+	dlg.confirmed.connect(dlg.queue_free)
+	add_child(dlg)
+	dlg.popup_centered()
 
 
 func _on_mirror() -> void:
