@@ -161,8 +161,9 @@ export function PortalShell({
       {/* The Library's sticky footer, static help every state of it has (PX-35). */}
       {route.kind === "library" ? (
         <MissingLicense
+          // The key tile (2-7 products) and the empty state (none) have Activate of their own.
           hideActivate={
-            libraryCount !== null && libraryCount >= 2 && libraryCount < 8
+            libraryCount !== null && libraryCount !== 1 && libraryCount < 8
           }
         />
       ) : null}

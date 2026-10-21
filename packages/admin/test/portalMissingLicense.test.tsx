@@ -17,7 +17,7 @@ describe("MissingLicense", () => {
       within(strip)
         .getAllByRole("link")
         .map((a) => a.textContent),
-    ).toEqual(["Add it in Sign-in methods", "Connect Steam"]);
+    ).toEqual(["Add it in Sign-in methods"]);
     // Its first item is Activate a license.
     expect(within(strip).getAllByRole("button")[1]!.textContent).toBe(
       "Activate a license",

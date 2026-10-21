@@ -189,7 +189,7 @@ export function LibraryTile({
                 id={`tile-${product.slug}`}
                 dir="auto"
                 className={cn(
-                  "min-w-0 flex-1 line-clamp-2 break-words font-semibold bigtext:line-clamp-none leading-snug text-fg-strong",
+                  "min-w-0 flex-1 line-clamp-2 break-words font-semibold bigtext:line-clamp-none leading-snug text-fg-strong [text-align:match-parent]",
                   tiny ? "text-sm" : "text-base",
                 )}
               >

@@ -60,9 +60,9 @@ export function LibraryKeyTile({
       )}
     >
       {/* A cell: the key and the title, the button at the foot, level with the tiles' actions.
-          A tile with a row to itself is one line: the key, the title, the button on the right. */}
-      <div className="flex flex-col gap-3 overflow-hidden rounded-xl border border-dashed border-border-strong bg-transparent p-3.5 @2xl:flex-row @2xl:items-center @2xl:gap-6 @2xl:p-4">
-        <div className="flex min-w-0 flex-1 items-center gap-3">
+          A tile with a row to itself (from 36 rem) is one line: the key, the title, the button on the right. Under 13 rem the icon sits above the title. */}
+      <div className="flex flex-col gap-3 overflow-hidden rounded-xl border border-dashed border-border-strong bg-transparent p-3.5 @xl:flex-row @xl:items-center @xl:gap-6 @xl:p-4">
+        <div className="flex min-w-0 flex-1 items-center gap-3 @max-[13rem]:flex-col @max-[13rem]:items-start @max-[13rem]:gap-2">
           <span
             aria-hidden
             className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent-subtle text-accent-fg"
@@ -78,7 +78,7 @@ export function LibraryKeyTile({
         </div>
         <Button
           variant="quiet"
-          className="h-auto min-h-10 w-full shrink-0 whitespace-normal py-1.5 text-center pointer-coarse:min-h-11 @max-[13rem]:[&_svg]:hidden @2xl:w-auto"
+          className="h-auto min-h-10 w-full max-w-64 shrink-0 whitespace-normal py-1.5 text-center pointer-coarse:min-h-11 @max-[13rem]:[&_svg]:hidden @xl:w-auto"
           iconStart={<KeyRound aria-hidden />}
           onClick={() => activate.open()}
         >

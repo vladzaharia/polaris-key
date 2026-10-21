@@ -916,9 +916,7 @@ describe("the storefront's words (model/discover.ts, notes/S-21 §6.5)", () => {
     expect(
       p({ kind: "group", detail: "members", label: "Aperture Seven" }),
     ).toBe("Included with Aperture Seven");
-    expect(p({ kind: "group", detail: "members" })).toBe(
-      "For members of members",
-    );
+    expect(p({ kind: "group", detail: "members" })).toBe("For members");
     expect(p({ kind: "product_idp", detail: "Aperture ID" })).toBe(
       "Included with your Aperture ID account",
     );

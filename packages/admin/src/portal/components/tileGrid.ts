@@ -18,5 +18,8 @@ export function discoverGrid(count: number): string {
   if (count === 1) return "mx-auto grid w-full max-w-sm grid-cols-1 gap-4";
   if (count === 2)
     return "mx-auto grid w-full max-w-3xl grid-cols-1 gap-4 min-[400px]:grid-cols-2";
+  // Four offers are two and two until four columns fit, never three and one (B-080).
+  if (count === 4)
+    return "grid grid-cols-1 gap-3 min-[400px]:grid-cols-2 desk:gap-4 wide:grid-cols-4 xxl:grid-cols-4";
   return "grid grid-cols-1 gap-3 min-[400px]:grid-cols-2 desk:grid-cols-3 desk:gap-4 wide:grid-cols-4 xxl:grid-cols-5";
 }
