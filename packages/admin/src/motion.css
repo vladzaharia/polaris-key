@@ -730,6 +730,12 @@
 :root:is([data-vt="tab"], [data-vt="route"]) .pk-vt-indicator {
   view-transition-name: pk-indicator;
 }
+/* A tab strip that scrolls sideways clips its tabs, but a view-transition snapshot is not clipped
+   by it: the indicator would slide in from outside the strip. While the strip overflows, the
+   indicator takes no name and the switch is the panel's fade alone (B-026). */
+:root:root [data-strip-overflow] .pk-vt-indicator {
+  view-transition-name: none;
+}
 :root[data-vt="dialog"] .pk-vt-dialog {
   view-transition-name: pk-dialog;
 }
