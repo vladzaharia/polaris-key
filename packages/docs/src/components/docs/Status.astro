@@ -3,7 +3,10 @@
  * Whether a component, kit or feature ships. "Not built yet" is a row in a generated status
  * table, never a callout (style guide §8); this is the badge in that row.
  */
+import { StatusPill } from "../console";
 import { STATUS_LABELS, type StatusState } from "../../lib/docs";
+
+const TONE = { shipped: "success", "not-built": "neutral", beta: "info" } as const;
 
 export interface Props {
   state: StatusState;
@@ -12,4 +15,4 @@ export interface Props {
 const { state } = Astro.props;
 ---
 
-<span class="pk-status" data-state={state}>{STATUS_LABELS[state]}</span>
+<span class="pk-status" data-state={state}><StatusPill tone={TONE[state]} size="sm">{STATUS_LABELS[state]}</StatusPill></span>

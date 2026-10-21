@@ -1,7 +1,13 @@
 import * as React from "react";
 import { WrapText } from "lucide-react";
 import { cn } from "../lib/cn.js";
-import { TOKEN_CLASS, tokenize, type CodeLanguage } from "../lib/highlight.js";
+import {
+  LANGUAGE_LABEL,
+  TOKEN_CLASS,
+  tokenize,
+  type CodeLanguage,
+} from "../lib/highlight.js";
+import { CODE_BLOCK } from "./classes.js";
 import { ValueCopyButton } from "./IdChip.js";
 
 export interface CodeBlockProps {
@@ -16,15 +22,6 @@ export interface CodeBlockProps {
   wrap?: boolean;
   className?: string;
 }
-
-const LANGUAGE_LABEL: Record<CodeLanguage, string> = {
-  json: "JSON",
-  ts: "TypeScript",
-  sh: "Shell",
-  toml: "TOML",
-  yaml: "YAML",
-  text: "Text",
-};
 
 /**
  * A static, highlighted code snippet (components.md §6.7): a tiny in-house tokenizer
@@ -43,15 +40,10 @@ export function CodeBlock({
   const lines = React.useMemo(() => tokenize(code, language), [code, language]);
   const name = filename ?? `${LANGUAGE_LABEL[language]} snippet`;
   return (
-    <div
-      className={cn(
-        "overflow-hidden rounded-lg border border-border bg-surface-sunken",
-        className,
-      )}
-    >
-      <div className="flex items-center gap-2 border-b border-border px-3 py-1">
+    <div className={cn(CODE_BLOCK.frame, className)}>
+      <div className={CODE_BLOCK.header}>
         <span
-          className="min-w-0 flex-1 truncate font-mono text-xs text-fg-muted"
+          className={CODE_BLOCK.title}
           title={filename ?? LANGUAGE_LABEL[language]}
         >
           {filename ?? LANGUAGE_LABEL[language]}
@@ -75,7 +67,7 @@ export function CodeBlock({
         role="region"
         aria-label={name}
         className={cn(
-          "pk-scroll overflow-x-auto p-3 font-mono text-xs leading-5",
+          CODE_BLOCK.pre,
           wrap ? "whitespace-pre-wrap break-words" : "whitespace-pre",
         )}
       >

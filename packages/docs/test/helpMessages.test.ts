@@ -1471,7 +1471,7 @@ describe.skipIf(!existsSync(join(dist, "help", "messages", "index.html")))(
         // `/activate` and `/assets/` only (packages/worker/src/router.ts), so `/library` is a 404.
         expect(
           text.match(
-            /<p class="pk-help-message__cta"><a class="pk-portal-link" href="\/"[^>]*>Open your library ↗<\/a><\/p>/g,
+            /<p class="pk-help-message__cta"><a class="pk-portal-link(?: [^"]*)?" href="\/"[^>]*>Open your library ↗<\/a><\/p>/g,
           ) ?? [],
           page,
         ).toHaveLength(wanted("library"));

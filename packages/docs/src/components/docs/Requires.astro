@@ -3,6 +3,7 @@
  * The chip row under a title (style guide §8): the features, the role and the SDK minimum the
  * page needs. Requirements are chips, not callouts.
  */
+import { ServiceGlyph, StatusPill } from "../console";
 import { FEATURES, type FeatureId } from "../../lib/features.generated";
 
 export interface Props {
@@ -18,7 +19,7 @@ const { features = [], role, sdk = [] } = Astro.props;
 
 <p class="pk-requires">
   <strong>Requires</strong>
-  {features.map((f) => <span class="pk-chip" data-kind="feature" data-service={FEATURES[f].accent}>{FEATURES[f].label}</span>)}
-  {role && <span class="pk-chip" data-kind="role">{role}</span>}
-  {sdk.map((s) => <span class="pk-chip" data-kind="sdk">{s}</span>)}
+  {features.map((f) => <span class="pk-chip" data-kind="feature" data-service={FEATURES[f].accent}><StatusPill tone="neutral" size="sm" icon={false}><ServiceGlyph id={FEATURES[f].accent as never} size={16} />{FEATURES[f].label}</StatusPill></span>)}
+  {role && <span class="pk-chip" data-kind="role"><StatusPill tone="neutral" size="sm" icon={false}>{role}</StatusPill></span>}
+  {sdk.map((s) => <span class="pk-chip" data-kind="sdk"><StatusPill tone="neutral" size="sm" icon={false}>{s}</StatusPill></span>)}
 </p>

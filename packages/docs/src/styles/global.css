@@ -23,6 +23,10 @@
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
 @import "@polaris-key/brand/theme.css";
+/* The console's utility layer (docs plan 8.2, D7): the same @theme blocks the console builds with,
+   and a scan of the components the docs render so every utility they use exists. */
+@import "../../../admin/src/ui/theme.css";
+@source "../../../admin/src/ui";
 
 @theme {
   --font-sans: var(--pk-font-sans);
@@ -155,12 +159,12 @@ h6,
   color: var(--pk-text-strong);
 }
 
-.sl-markdown-content a {
+.sl-markdown-content a:not(.not-content) {
   color: var(--pk-accent-fg);
   text-underline-offset: 0.18em;
 }
 
-.sl-markdown-content a:hover {
+.sl-markdown-content a:not(.not-content):hover {
   color: var(--pk-text-strong);
 }
 

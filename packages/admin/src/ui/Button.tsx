@@ -2,6 +2,7 @@ import * as React from "react";
 import { Slot } from "radix-ui";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../lib/cn.js";
+import { BUTTON_BASE, BUTTON_SIZES, BUTTON_VARIANTS } from "./classes.js";
 import { Spinner } from "./Spinner.js";
 import { Tooltip } from "./Tooltip.js";
 import { useWriteLock } from "./WriteLock.js";
@@ -27,66 +28,11 @@ import { useWriteLock } from "./WriteLock.js";
  *   not with a `brightness` filter (filters are not transitioned and never animate per frame,
  *   S-23 §6.2), so the hover eases with the other colours; `pk-pressable` gives the press.
  */
-export const buttonVariants = cva(
-  [
-    "inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-md font-normal",
-    // The press pattern (src/motion.css `.pk-pressable`, S-23 §6.1): 0.98 on :active, never when
-    // disabled or busy, with the colours at `micro`. Scale is paint only, so neighbours never move.
-    "pk-pressable",
-    "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page",
-    "disabled:cursor-not-allowed disabled:opacity-50 aria-disabled:not-aria-busy:cursor-not-allowed aria-disabled:not-aria-busy:opacity-50",
-    "[&_svg]:shrink-0",
-  ].join(" "),
-  {
-    variants: {
-      variant: {
-        primary:
-          "bg-accent text-accent-on shadow-elevation-1 hover:not-disabled:not-aria-disabled:bg-[color-mix(in_oklab,var(--pk-accent),white_10%)] disabled:bg-action-disabled disabled:text-action-disabled-on disabled:opacity-100 disabled:shadow-none aria-disabled:not-aria-busy:bg-action-disabled aria-disabled:not-aria-busy:text-action-disabled-on aria-disabled:not-aria-busy:opacity-100 aria-disabled:not-aria-busy:shadow-none",
-        /**
-         * The action-neutral primary (BRAND.md B2, SIGN-IN.md §3.1): near-white ink on dark,
-         * near-black on light, the label in the page colour. The sign-in card's one filled
-         * action; disabled keeps the shape at the role's disabled pair.
-         */
-        neutral:
-          "bg-action text-action-on font-medium hover:not-disabled:not-aria-disabled:bg-action-hover active:not-disabled:not-aria-disabled:bg-action-pressed disabled:bg-action-disabled disabled:text-action-disabled-on disabled:opacity-100 aria-disabled:not-aria-busy:bg-action-disabled aria-disabled:not-aria-busy:text-action-disabled-on aria-disabled:not-aria-busy:opacity-100 forced-colors:bg-[ButtonFace] forced-colors:text-[ButtonText]",
-        secondary:
-          "bg-hover text-fg-strong hover:not-disabled:not-aria-disabled:bg-surface-sunken",
-        outline:
-          "border border-border-strong bg-transparent text-fg hover:not-disabled:not-aria-disabled:bg-hover hover:not-disabled:not-aria-disabled:text-fg-strong",
-        ghost:
-          "bg-transparent text-fg hover:not-disabled:not-aria-disabled:bg-hover hover:not-disabled:not-aria-disabled:text-fg-strong",
-        danger:
-          "bg-danger text-danger-on shadow-elevation-1 hover:not-disabled:not-aria-disabled:bg-[color-mix(in_oklab,var(--pk-danger),white_10%)] disabled:bg-action-disabled disabled:text-action-disabled-on disabled:opacity-100 disabled:shadow-none aria-disabled:not-aria-busy:bg-action-disabled aria-disabled:not-aria-busy:text-action-disabled-on aria-disabled:not-aria-busy:opacity-100 aria-disabled:not-aria-busy:shadow-none",
-        /** Deprecated alias of `danger`, kept for the legacy views until chunk 11. */
-        destructive:
-          "bg-danger text-danger-on shadow-elevation-1 hover:not-disabled:not-aria-disabled:bg-[color-mix(in_oklab,var(--pk-danger),white_10%)] disabled:bg-action-disabled disabled:text-action-disabled-on disabled:opacity-100 disabled:shadow-none aria-disabled:not-aria-busy:bg-action-disabled aria-disabled:not-aria-busy:text-action-disabled-on aria-disabled:not-aria-busy:opacity-100 aria-disabled:not-aria-busy:shadow-none",
-        link: "h-auto px-0 text-accent-fg underline-offset-4 hover:underline",
-        /**
-         * The customer portal's outlined quick action (PORTAL.md §5.2): transparent, a
-         * `border-border-strong` outline, a `text-fg-strong` label, the icon in `text-accent-fg`.
-         */
-        quiet:
-          "border border-border-strong bg-transparent font-medium text-fg-strong [&_svg]:text-accent-fg hover:not-disabled:not-aria-disabled:bg-hover",
-        /**
-         * The portal header's Activate license (PORTAL.md §5.2): `bg-surface-raised`, a
-         * `border-border-strong` outline, the key glyph in `text-accent-fg`.
-         */
-        action:
-          "border border-border-strong bg-surface-raised font-medium text-fg-strong [&_svg]:text-accent-fg hover:not-disabled:not-aria-disabled:bg-hover",
-      },
-      size: {
-        xs: "h-7 min-w-7 px-2 text-xs [&_svg]:size-3.5",
-        sm: "h-8 min-w-8 px-3 text-xs [&_svg]:size-4",
-        md: "h-9 min-w-9 px-4 text-sm [&_svg]:size-4",
-        lg: "h-10 min-w-10 px-6 text-sm [&_svg]:size-4",
-        /** Deprecated: a square icon button. Use `IconButton`. */
-        icon: "size-9 text-sm [&_svg]:size-4",
-      },
-    },
-    compoundVariants: [{ variant: "link", class: "h-auto min-w-0 px-0" }],
-    defaultVariants: { variant: "primary", size: "md" },
-  },
-);
+export const buttonVariants = cva(BUTTON_BASE, {
+  variants: { variant: BUTTON_VARIANTS, size: BUTTON_SIZES },
+  compoundVariants: [{ variant: "link", class: "h-auto min-w-0 px-0" }],
+  defaultVariants: { variant: "primary", size: "md" },
+});
 
 export type ButtonVariant = NonNullable<
   VariantProps<typeof buttonVariants>["variant"]

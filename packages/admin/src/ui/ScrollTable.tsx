@@ -1,4 +1,5 @@
 import * as React from "react";
+import { TABLE } from "./classes.js";
 
 /**
  * A table that may scroll sideways, inside a named, focusable region (WCAG 1.4.10 and 2.1.1; the
@@ -23,7 +24,7 @@ export function ScrollTable({
       role="region"
       aria-label={label}
       tabIndex={0}
-      className="relative overflow-x-auto"
+      className={TABLE.scroller}
     >
       <table className={className}>
         <caption className="sr-only">{caption}</caption>

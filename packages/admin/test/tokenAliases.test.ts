@@ -22,7 +22,11 @@ import { cn } from "../src/lib/cn.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const pkg = join(here, "..");
-const styles = readFileSync(join(pkg, "src", "styles.css"), "utf8");
+// The @theme blocks live in ui/theme.css (shared with the docs site) and styles.css imports it:
+// the console's stylesheet is the two together.
+const styles = ["styles.css", join("ui", "theme.css")]
+  .map((f) => readFileSync(join(pkg, "src", f), "utf8"))
+  .join("\n");
 const brandTheme = readFileSync(
   join(pkg, "..", "brand", "css", "theme.css"),
   "utf8",

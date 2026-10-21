@@ -3,10 +3,10 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "The Polaris Key documentation site — an Astro Starlight build served by the worker at key.plrs.im/docs behind the platform-admin gate.",
+  "description": "The Polaris Key documentation site \u2014 an Astro Starlight build served by the worker at key.plrs.im/docs behind the platform-admin gate.",
   "license": "MIT",
   "scripts": {
-    "build": "node scripts/copy-artifacts.mjs && astro build && node scripts/redirect-fragments.mjs && node scripts/collect-csp-hashes.mjs && node scripts/emit-slug-manifest.mjs && tsx scripts/collect-docs-tiers.ts && tsx scripts/build-search-bundles.ts",
+    "build": "node scripts/copy-artifacts.mjs && astro build && tsx scripts/wrap-tables.ts && node scripts/redirect-fragments.mjs && node scripts/collect-csp-hashes.mjs && node scripts/emit-slug-manifest.mjs && tsx scripts/collect-docs-tiers.ts && tsx scripts/build-search-bundles.ts",
     "dev": "node scripts/copy-artifacts.mjs && astro dev",
     "typecheck": "astro check",
     "test": "vitest run --passWithNoTests",
@@ -19,12 +19,15 @@
     "site-map": "node scripts/site-map.mjs"
   },
   "dependencies": {
+    "@astrojs/react": "^7.1.0",
     "@astrojs/starlight": "^0.42.5",
     "@astrojs/starlight-tailwind": "^5.0.0",
     "@polaris-key/brand": "workspace:*",
     "@tailwindcss/vite": "^4.1.4",
     "astro": "^7.3.5",
     "js-yaml": "^4.3.2",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
     "tailwindcss": "^4.1.4"
   },
   "devDependencies": {
@@ -33,10 +36,10 @@
     "@polaris-key/react": "workspace:*",
     "@polaris-key/server": "workspace:*",
     "@types/node": "^22.14.0",
-    "pagefind": "^1.5.2",
     "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
     "commander": "^15.0.0",
-    "react": "^18.3.1",
+    "pagefind": "^1.5.2",
     "typescript": "^5.8.0",
     "vitest": "^4.1.11"
   }

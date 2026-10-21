@@ -168,6 +168,10 @@ when an adjacent visible label already names it. An icon alone never labels an i
 | SwiftUI gate                          | `sdks/swift/Sources/PolarisKeyUI/BrandTokens.generated.swift` (`PolarisBrand`)                                                              |
 | Any other generator                   | `@polaris-key/brand/tokens.json`                                                                                                            |
 
+The docs site is also the third consumer of the console's `ui/` (components.md §8): it imports
+`ui/theme.css`, renders the static components at build time and shares the class constants in
+`ui/classes.ts`, and adds no stylesheet of its own beyond these brand exports.
+
 Asset paths through the exports map: `@polaris-key/brand/web/{key,delivery}/…` (favicons, PWA
 icons, manifest templates, head snippets), `/games/{key,update}/{dark,light,mono-*}/…-16.svg`
 (Godot editor glyphs) and `/games/powered-by-credit-{dark,light}*`, `/social/{key,delivery}/…` (OG

@@ -184,6 +184,16 @@ export function tokenize(code: string, language: CodeLanguage): Token[][] {
  * Brand text tokens per kind. Only `fg` tokens (≥ 4.5:1 on every surface, BRAND.md §4) so
  * highlighted code stays readable in both themes.
  */
+/** The label a block's header shows for a language (`CodeBlock`; the docs' code frames). */
+export const LANGUAGE_LABEL: Record<CodeLanguage, string> = {
+  json: "JSON",
+  ts: "TypeScript",
+  sh: "Shell",
+  toml: "TOML",
+  yaml: "YAML",
+  text: "Text",
+};
+
 export const TOKEN_CLASS: Record<TokenKind, string> = {
   plain: "text-fg",
   comment: "text-fg-subtle",

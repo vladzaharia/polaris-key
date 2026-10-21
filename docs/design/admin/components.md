@@ -876,3 +876,64 @@ Hand-rolled SVG, no chart library. All charts follow the repo's `dataviz` guidan
 | `useSearchParam(name, codec)`       | Typed hash-query params for page-level state (tab, window, deliverable, drawer id).                                                                                            |
 | `useAttention(slug)`                | Derives sidebar badges and the overview's attention list from already-cached queries (setup, mint recipes, readiness holds, Sentry candidates, expiring licenses). No new API. |
 | `useShortcut(keys, handler, opts)`  | Registers a shortcut with the global help sheet (`?`); suppressed in text inputs.                                                                                              |
+
+---
+
+## 8. The docs site (a third consumer of `ui/`)
+
+The docs site draws with the components the console and the customer portal already share, so a
+change to `packages/admin/src/ui` reaches all three surfaces (docs plan
+`docs/research/2026-10-08-docs/README.md` §8.2, decision D7). There is no `components.css`, no
+extracted mockup kit and no brand stylesheet beyond `@polaris-key/brand`.
+
+**Why this is section 8.** The docs plan calls this "components.md §7"; §7 was already the hooks
+section, so the docs section follows it.
+
+**The utility layer.** `ui/theme.css` holds the `@theme` blocks (the neutral fill `hover`, the
+customer site's breakpoints, the type steps the brand scale lacks, the motion aliases and their
+keyframes). `styles.css` imports it, and the docs import it after `@polaris-key/brand`'s
+`theme.css` (`packages/docs/src/styles/global.css`, with an `@source` over `ui/`, so every utility
+the components use exists). It was moved, not rewritten: the console's and portal's output is
+unchanged.
+
+**Rendered at build time.** `@astrojs/react` renders these with no `client:` directive, so none
+ships JavaScript. `packages/docs/src/components/console.ts` is the one entry point:
+
+| Docs part                              | Console component                                      |
+| -------------------------------------- | ------------------------------------------------------ |
+| `Callout` (note, tip, caution, danger) | `Callout` tones `info`, `success`, `warning`, `danger` |
+| `Pill`, `Status`, `Requires` chips     | `StatusPill`, `ServiceGlyph`                           |
+| Keyboard hints                         | `Kbd`                                                  |
+| Signature facts                        | `SignedBadge`                                          |
+
+A component that needs the console's router, stores or query client (`PageHeader`'s masthead,
+`Section`'s actions, `EmptyState`'s link) is not rendered; its class constants are used instead.
+
+**Class constants (`ui/classes.ts`).** Strings only, used by the console components themselves and
+imported by the docs: `BUTTON_BASE`, `BUTTON_VARIANTS`, `BUTTON_SIZES` (`Button`; `ConsoleLink`
+and `PortalLink` wear the `outline` variant at `sm`), `TABLE` (`DataTable`'s head, row, cell, plus
+the scroll region `ScrollTable` uses) and `CODE_BLOCK` (`CodeBlock`'s frame, header, title and
+code). No docs file writes a class string the constants hold, and no docs stylesheet sets colour,
+radius, spacing or type size on a rendered console component's class
+(`packages/docs/test/docsClasses.test.ts`). Constants for the top bar, sidebar, page tabs and
+`CommandPalette` rows are added with the docs chrome (DOC-02b) and search (DOC-02c).
+
+**Tables.** After the build, `scripts/wrap-tables.ts` puts every Markdown table in a labelled,
+focusable region (`role="region"`, `aria-label` from the heading above it, `tabindex="0"`) with
+the table in `DataTable`'s compact classes, so a dense table scrolls inside its region and the
+page never scrolls sideways.
+
+**Code.** Two Expressive Code themes (dark, light) take their colours from `lib/highlight.ts`
+`TOKEN_CLASS` (keyword is info, string success, number warning, key accent-fg, comment fg-subtle,
+punctuation fg-muted), each at 4.5:1 or better on the code ground
+(`packages/docs/test/codeThemes.test.ts`). The frame is `CodeBlock`'s: a header with the file or
+language label (terminal frames say **Terminal**) with **Copy** docked in it, never over the code;
+ligatures off. Copy announces "Copied" in the frame's live region; when the clipboard refuses, it
+selects the code and says "Press ⌘C to copy". The console's `CodeBlock` has a Wrap toggle and a
+notes footer is not built in either surface, so neither is in the docs.
+
+**Docs-only parts** are built from tokens and the nearest constant: numbered steps, the pager, the
+lane cards, the SDK picker, the message entry frame. Each is drawn in DOC-01.
+
+**What stays out.** `kit.css` (in-app kit measures, used inside kit previews only) and the mockup
+kit (for drawing, not extracted).

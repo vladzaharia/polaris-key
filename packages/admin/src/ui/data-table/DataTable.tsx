@@ -39,6 +39,7 @@ import {
   viewTransition,
   viewTransitionsSupported,
 } from "../motion/index.js";
+import { TABLE } from "../classes.js";
 import { csvValue, downloadCsv, toCsv } from "./csv.js";
 import { FilterBar, type FilterBarFacet } from "./FilterBar.js";
 import {
@@ -823,7 +824,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
   const cellClass = (col: Column<T, unknown>): string => {
     const meta = col.columnDef.meta;
     return cn(
-      "px-3 align-middle",
+      TABLE.cell,
       alignClass(meta?.numeric ? "end" : meta?.align),
       (meta?.numeric || meta?.align === "end") && "tabular-nums",
       meta?.mono && "font-mono text-xs",
@@ -835,7 +836,8 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
       ? cn("sticky z-[1] bg-inherit", selection ? "left-10" : "left-0")
       : "";
 
-  const rowHeight = density === "compact" ? "h-9" : "h-14";
+  const rowHeight =
+    density === "compact" ? TABLE.rowCompact : TABLE.rowComfortable;
 
   const renderRow = (row: Row<T>, extraClass?: string): React.ReactElement => {
     const label = labelOf(row.original);
@@ -850,13 +852,10 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
         className={cn(
           rowHeight,
           // The line under a row is its cells' (border-separate), so a row's View Transition
-          // snapshot carries it and it moves with the row (S-23 §6.1 "list"; MO-09).
-          "bg-surface-raised text-sm text-fg outline-hidden [&>td]:border-b [&>td]:border-border",
-          // B17: the hover tint is the nearest service's (`state-hover-tint`), not a neutral step.
-          "hover:bg-state-hover-tint focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus",
-          "data-[selected]:bg-accent-subtle",
-          // highlight(): a created or edited row's tint wins over the row's own surface.
-          "[&.pk-row-highlight]:bg-accent-subtle",
+          // snapshot carries it and it moves with the row (S-23 §6.1 "list"; MO-09). B17: the
+          // hover tint is the nearest service's (`state-hover-tint`); highlight(): a created or
+          // edited row's tint wins over the row's own surface.
+          TABLE.row,
           rowHref && "cursor-pointer",
           extraClass,
         )}
@@ -1370,10 +1369,10 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
   const headerSome = table.getIsSomeRowsSelected();
 
   const tableEl = (
-    <table className="w-full border-separate [border-spacing:0] text-sm">
+    <table className={TABLE.table}>
       <caption className="sr-only">{caption}</caption>
-      <thead className="sticky top-0 z-[2] bg-surface-raised">
-        <tr className="[&>th]:border-b [&>th]:border-border">
+      <thead className={TABLE.head}>
+        <tr className={TABLE.headRow}>
           {selection ? (
             <th
               scope="col"
@@ -1408,7 +1407,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
                       : undefined
                 }
                 className={cn(
-                  "h-9 px-3 align-middle text-xs leading-4 font-medium whitespace-nowrap text-fg-muted",
+                  TABLE.headCell,
                   alignClass(meta?.numeric ? "end" : meta?.align),
                   stickyPrimary(col) &&
                     cn(stickyPrimary(col), "z-[3] bg-surface-raised"),

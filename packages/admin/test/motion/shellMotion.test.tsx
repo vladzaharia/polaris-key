@@ -19,7 +19,8 @@ import type { Route } from "../../src/console/routes.js";
 const here = dirname(fileURLToPath(import.meta.url));
 const src = join(here, "..", "..", "src");
 const read = (p: string): string => readFileSync(join(src, p), "utf8");
-const styles = read("styles.css");
+// The @theme blocks live in ui/theme.css (shared with the docs); styles.css imports it.
+const styles = `${read("styles.css")}\n${read("ui/theme.css")}`;
 const motion = read("motion.css");
 const strip = (s: string): string => s.replace(/\/\*[\s\S]*?\*\//g, "");
 
