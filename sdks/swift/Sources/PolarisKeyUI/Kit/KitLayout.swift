@@ -97,6 +97,9 @@ struct KitScreenScaffold<Heading: View, Content: View, Actions: View, Footer: Vi
 
     @ViewBuilder private func tall(_ style: KitResolvedStyle) -> some View {
         GeometryReader { geo in
+            // A wide window (an iPad in portrait) keeps the act with the content: the main action
+            // stays in the first view instead of 600 pt below it (UI-KITS: main action first).
+            let regular = geo.size.width > 600
             ScrollView {
                 VStack(spacing: 0) {
                     // A hero screen centres its block near the upper third (spacers 1:2); a
@@ -104,6 +107,7 @@ struct KitScreenScaffold<Heading: View, Content: View, Actions: View, Footer: Vi
                     // stays put while the steps of one form morph under it (SIGN-IN §3.17).
                     if hero {
                         Spacer(minLength: style.space(.md))
+                            .frame(maxHeight: regular ? geo.size.height * 0.25 : .infinity)
                     } else {
                         Color.clear.frame(height: KitArrangement.topInset(height: window.height))
                     }
@@ -123,12 +127,14 @@ struct KitScreenScaffold<Heading: View, Content: View, Actions: View, Footer: Vi
                         .frame(maxWidth: .infinity, alignment: hero ? .center : .leading)
                     }
                     Spacer(minLength: style.space(.lg))
-                    if hero { Spacer(minLength: 0) }
+                        .frame(maxHeight: regular ? style.space(.xl) * 1.5 : .infinity)
+                    if hero && !regular { Spacer(minLength: 0) }
                     VStack(spacing: style.space(.md)) {
                         actions()
                         footer()
                     }
                     .padding(.bottom, style.space(.lg))
+                    if regular { Spacer(minLength: 0) }
                 }
                 .padding(.horizontal, style.space(.lg))
                 .frame(maxWidth: geo.size.width > 600 ? 480 : .infinity)
