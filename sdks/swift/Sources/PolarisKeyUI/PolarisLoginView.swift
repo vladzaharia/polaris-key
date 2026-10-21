@@ -1122,7 +1122,7 @@ private struct OptionalTint: ViewModifier {
             PolarisGateSurface(
                 status: .needsActivation, allowedRange: nil, isWorking: false,
                 lastError: PolarisCopy().activationMessage(.deviceLimit(limit: 1, deviceCount: 1)),
-                manageURL: "https://key.plrs.im/activate?product=aurora&next=free-device",
+                manageURL: "https://polaris.locker/activate?product=aurora&next=free-device",
                 licenseKey: .constant("pkey_aurora_ABCDEFGHIJKLMNOPQRSTUV"), theme: aurora,
                 onSignIn: {}, onActivate: { _ in }, onRefresh: {}, content: { EmptyView() }
             )

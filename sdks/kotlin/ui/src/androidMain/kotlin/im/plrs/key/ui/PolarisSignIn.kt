@@ -401,7 +401,7 @@ internal fun unbroken(address: String): String = buildString {
     }
 }
 
-/** The host and path a player types: `key.plrs.im/activate`, without the scheme. */
+/** The host and path a player types: `polaris.locker/activate`, without the scheme. */
 internal fun displayHost(uri: String): String = try {
     val u = URI(uri)
     val host = u.host ?: return uri

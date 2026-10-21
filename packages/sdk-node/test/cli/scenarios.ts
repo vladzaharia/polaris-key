@@ -341,7 +341,7 @@ export const SCENARIOS: Scenario[] = [
       ...COMMON,
       "activate",
       "pkey_tidewater_",
-      "key.plrs.im/activate?product=tidewater",
+      "polaris.locker/activate?product=tidewater",
     ],
     run: (h) =>
       activateFlow(
