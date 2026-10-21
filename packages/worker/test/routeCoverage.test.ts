@@ -400,6 +400,7 @@ const IMG_PATHS: Array<[string, string[], "asset" | "alias"]> = [
 const CUSTOMER_SERVER = "https://polaris.locker";
 const CUSTOMER_PATHS: Array<[string, string[]]> = [
   ["/.well-known/polaris-host.json", ["get", "head"]],
+  ["/robots.txt", ["get", "head"]],
 ];
 
 function specMethods(path: string): string[] {

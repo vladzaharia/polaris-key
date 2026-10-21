@@ -54,6 +54,7 @@ const CUSTOMER_DOCS_PREFIXES: readonly string[] = [
 const CUSTOMER_DOCS_FILES: ReadonlySet<string> = new Set([
   "/docs/help",
   "/docs/404.html",
+  "/docs/sitemap-help.xml",
 ]);
 
 /** True when the customer host serves this `/docs` path itself. */
@@ -125,8 +126,21 @@ export function customerHostOwnResponse(
 ): Response {
   if (req.method !== "GET" && req.method !== "HEAD") return methodNotAllowed();
   if (pathname === ROBOTS_PATH) {
-    const body =
-      "User-agent: *\nDisallow: /api/\nDisallow: /login\nDisallow: /callback\n";
+    // Help (/docs/help/, public) is the crawlable part of the host; its redirect pages are noindex
+    // and the sign-in and API paths are off limits. Every other /docs path redirects to the console
+    // host, so nothing gated is named here. The sitemap is this host's own (Help only).
+    const origin = new URL(req.url).origin;
+    const body = [
+      "User-agent: *",
+      "Allow: /docs/help/",
+      "Allow: /docs/_astro/",
+      "Disallow: /docs/help/code/",
+      "Disallow: /api/",
+      "Disallow: /login",
+      "Disallow: /callback",
+      `Sitemap: ${origin}/docs/sitemap-help.xml`,
+      "",
+    ].join("\n");
     return new Response(req.method === "HEAD" ? null : body, {
       headers: {
         "content-type": "text/plain; charset=utf-8",

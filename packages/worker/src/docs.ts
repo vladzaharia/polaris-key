@@ -29,9 +29,8 @@
  *
  * Serving mirrors `serveAdminAsset` (`console/index.ts`): extension-less paths resolve to the
  * directory's `index.html` (Starlight builds with `format: "directory"`), unsafe paths are
- * refused before they reach `URL.pathname` (R1-06), HTML is `no-store`, and the
- * content-hashed `/_astro/` + `/pagefind/` assets are cached `private` (browser-cacheable,
- * never shared-cacheable).
+ * refused before they reach `URL.pathname` (R1-06), gated HTML is `no-store`, gated assets are `private`, and
+ * public-tier files are shared-cacheable (`docsCacheControl`).
  */
 
 import type { Env } from "./platform/env.js";
@@ -82,6 +81,37 @@ export function docsSecurityHeaders(headers = new Headers()): Headers {
   staticHtmlSecurityHeaders(headers);
   headers.set("content-security-policy", docsCsp());
   return headers;
+}
+
+/** Public HTML revalidates after five minutes; a deploy reaches readers within that. */
+export const DOCS_PUBLIC_HTML_CACHE = "public, max-age=300, must-revalidate";
+
+/**
+ * The cache policy of a docs file served 2xx (docs plan §3.1 "Caching"). Only a `public`-tier file
+ * is ever shared-cacheable: its bytes are the same for every reader, whoever's cookie rode along.
+ * Public HTML revalidates; the content-hashed `/_astro/` assets and search shards are
+ * `public, immutable`; any other public file revalidates every time. A gated file (member or
+ * admin tier, per `docsTierOf`) keeps the old policy: HTML `no-store`, assets `private`, so a CDN
+ * or proxy never holds text a session earned. A non-2xx answer is never cached.
+ */
+export function docsCacheControl(
+  assetPath: string,
+  tier: DocsTier,
+  status: number,
+): string {
+  // Only a whole 200 is cacheable: errors, redirects and partial (206) answers are never stored.
+  if (status !== 200) return "no-store";
+  const html = assetPath.endsWith(".html");
+  if (tier === "public") {
+    if (html) return DOCS_PUBLIC_HTML_CACHE;
+    return isImmutableAsset(assetPath)
+      ? "public, max-age=31536000, immutable"
+      : "public, no-cache";
+  }
+  if (html) return "no-store";
+  return isImmutableAsset(assetPath)
+    ? "private, max-age=31536000, immutable"
+    : "private, no-cache";
 }
 
 /** Placeholder for tests/local runs without an assets binding — still behind the gate. */
@@ -225,6 +255,8 @@ export const DOCS_TIERS: ReadonlyArray<
   // The sitemap lists public pages only (the build drops the gated ones).
   ["/docs/sitemap-index.xml", "public"],
   ["/docs/sitemap-0.xml", "public"],
+  // Help's own sitemap, listed under polaris.locker (the customer host serves it).
+  ["/docs/sitemap-help.xml", "public"],
   // One search bundle per tier (SEARCH_BUNDLES).
   ...SEARCH_BUNDLES,
 ];
@@ -341,13 +373,7 @@ export async function handleDocs(
       headers,
     });
   }
-  if (assetPath.endsWith(".html")) {
-    headers.set("cache-control", "no-store");
-  } else if (isImmutableAsset(assetPath)) {
-    headers.set("cache-control", "private, max-age=31536000, immutable");
-  } else {
-    headers.set("cache-control", "private, no-cache");
-  }
+  headers.set("cache-control", docsCacheControl(assetPath, tier, res.status));
   docsSecurityHeaders(headers);
   return new Response(res.body, { status: res.status, headers });
 }

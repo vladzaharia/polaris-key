@@ -31,11 +31,11 @@ Re-scoped by Amendment A3: the Help door, the host, and a badges page for the 16
 - [ ] docs `lint:docs`, `check:links` pass; `drift-gate` docs-csp clean
 - [ ] The relevant `plans/LK-00.md` §13 commands pass; the green gate passes (AGENTS.md).
 
-- [ ] `/docs/help/code/<id>/` redirect pages (docs plan section 3.1 and 7.4; deferred from DOC-03b).
-- [ ] `robots.txt` for the docs host: a route and an OpenAPI row (deferred from DOC-03b).
-- [ ] Cacheable public HTML and public `/_astro/` (`public, immutable`; docs plan section 3.1 "Caching"; deferred from DOC-03b).
+- [x] `/docs/help/code/<id>/` redirect pages (docs plan section 3.1 and 7.4; deferred from DOC-03b).
+- [x] `robots.txt` for the docs host: a route and an OpenAPI row (deferred from DOC-03b).
+- [x] Cacheable public HTML and public `/_astro/` (`public, immutable`; docs plan section 3.1 "Caching"; deferred from DOC-03b).
 - [ ] A Polaris Locker mark for the Help header (the brand package has none; the Key mark stays beside the Locker name).
-- [ ] The key.plrs.im sitemap still lists Help pages whose canonical URL is polaris.locker; give the customer host its own sitemap or drop them.
+- [x] The key.plrs.im sitemap still lists Help pages whose canonical URL is polaris.locker; give the customer host its own sitemap or drop them.
 
 ## Hand-off
 
@@ -59,3 +59,11 @@ The role agent sets `--set LK-09 in-review` when it hands off; the lead sets `do
   the footer's Help and Privacy links and `docsLinks.downloadPage` on the customer host. Still
   open: the badges page (LK-12) and the acceptance lines above. Upstream note: three
   `helpMessages.test.ts` cases fail on integ/next because `code_expired` has no Help entry.
+
+### Remainder (wp/LK-09-remainder)
+
+- Code redirects: static pages from Astro `redirects` (`helpCodeRedirects()` in `helpMessages.ts`, merged in `astro.config.mjs`), one per id, to `/docs/help/messages/<page>/#<id>`. Static so both hosts serve them under the public `/docs/help/` prefix with no new route or gate case; key.plrs.im 301s to the customer host.
+- robots.txt: the customer host's own answer, extended (Help open, `/docs/help/code/` closed, own Sitemap line); OpenAPI row plus `routeCoverage`. key.plrs.im still has no robots.txt (its public docs would need a console-host route: follow-up).
+- Cache: `docsCacheControl` in `docs.ts`; public tier only is `public`; tests in `docsCache.test.ts`.
+- Sitemap: Help moved to the customer host's own `/docs/sitemap-help.xml` (polaris.locker URLs); dropped from `sitemap-0.xml`.
+- Open: the Help header Locker mark. `SiteTitle.astro` is the header logo file BR-lockups (wp/brand-lockups) is fixing, and the brand package has no Locker mark; left to that package.
