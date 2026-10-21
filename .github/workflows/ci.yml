@@ -266,6 +266,8 @@ jobs:
         with:
           name: portal-visual-diff
           path: packages/admin/e2e/__baselines__/portal/.out
+          # `.out` is a hidden directory, which upload-artifact v4+ skips unless told otherwise.
+          include-hidden-files: true
           if-no-files-found: ignore
 
   # UK-15: the UI-kit visual QA lane (UI-KITS.md §7). The modernity lint over the mockup boards
@@ -1170,7 +1172,22 @@ jobs:
           ./gradlew --no-daemon publishAllPublicationsToLocalRepository
           ./gradlew --no-daemon -p samples/android-consumer assembleLeanDebug assembleLeanDebugAndroidTest \
             assemblePacksDebug assemblePacksDebugAndroidTest
+      # The emulator now and then fails to boot ("could not connect to TCP port 5554") and passes on
+      # a rerun, so the step runs once more when it fails. A real test failure fails both.
       - name: Instrumented tests (lean and packs)
+        id: emulator
+        continue-on-error: true
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: ${{ matrix.api-level }}
+          target: ${{ matrix.api-level == 24 && 'default' || 'google_apis' }}
+          arch: x86_64
+          disable-animations: true
+          emulator-options: -no-window -no-snapshot -noaudio -no-boot-anim -gpu swiftshader_indirect
+          working-directory: sdks/kotlin
+          script: ./gradlew --no-daemon -p samples/android-consumer connectedLeanDebugAndroidTest connectedPacksDebugAndroidTest
+      - name: Instrumented tests (lean and packs), second attempt
+        if: steps.emulator.outcome == 'failure'
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
           api-level: ${{ matrix.api-level }}

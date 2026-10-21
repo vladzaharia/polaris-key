@@ -131,6 +131,8 @@ jobs:
       - run: pnpm exec turbo run build --filter=@polaris-key/worker^...
       - name: Windows end-to-end
         # Bounded, so a hung case fails with its log instead of running into the job's limit.
+        # run.ps1 has its own 24-minute watchdog that stops the whole process tree, because a stray
+        # child holding the step's output pipe keeps a step from ending at this limit too.
         timeout-minutes: 30
         run: |
           $d = Join-Path $HOME ".cache/pkey-godot/native-$env:GODOT_VERSION"
@@ -139,6 +141,10 @@ jobs:
             -Template (Join-Path $d "windows_release_x86_64.exe") `
             -Work (Join-Path $env:RUNNER_TEMP "e2e-windows")
       - run: git diff --exit-code; if ($LASTEXITCODE -ne 0 -or (git status --porcelain)) { git status --porcelain; exit 1 }
+      - name: Stop what the end-to-end left running
+        if: always()
+        timeout-minutes: 2
+        run: Get-Process pkeye2e, PKeyE2E, PKeyE2E_godot, PKeyE2EWS, Update, python, vpk, ISCC -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
       - if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

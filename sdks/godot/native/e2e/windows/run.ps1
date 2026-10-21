@@ -35,7 +35,8 @@ param(
   [string]$Template = "",
   [string]$Work = "",
   [string]$Deps = "",
-  [int]$Port = 8711
+  [int]$Port = 8711,
+  [int]$DeadlineMinutes = 24
 )
 $ErrorActionPreference = "Stop"
 $e2e = Split-Path $PSScriptRoot -Parent
@@ -48,6 +49,31 @@ if (Test-Path $Work) { Remove-Item -Recurse -Force $Work }
 New-Item -ItemType Directory -Force "$Work\keys", "$Work\out", "$Work\serve\velopack", "$Work\serve\ws", "$Work\run", "$Work\logs" | Out-Null
 $Work = (Resolve-Path $Work).Path
 $fwd = { param($p) $p.Replace("\", "/") }
+
+# Every game, installer, updater and helper this run starts. Left behind they keep the step's
+# output pipe open, and a step whose pipe never closes does not end at its timeout either (the
+# 52-minute run 39548425325 never concluded). Stopped on every exit path and by the watchdog.
+$script:strays = "pkeye2e", "PKeyE2E", "PKeyE2E_godot", "PKeyE2EWS", "Update", "PKeyE2E-1.0.0-Setup", "PKeyE2EWS-1.0.0-setup", "PKeyE2EWS-1.0.1-setup", "winsparkle-tool", "vpk", "ISCC"
+function StopStrays() {
+  Get-Process $script:strays -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+}
+# A watchdog in its own process, with no handle shared with this one: at the deadline it logs, stops
+# this script's process tree and the strays, so a call with no time limit of its own (vpk, ISCC,
+# pnpm, the build) fails the run with its logs instead of running into the job's limit.
+$wdLog = "$Work\logs\watchdog.log"
+$wdCmd = "Start-Sleep -Seconds $($DeadlineMinutes * 60); " +
+  "Add-Content '$wdLog' 'watchdog: run.ps1 passed its $DeadlineMinutes minute deadline; stopping it'; " +
+  "Get-Content '$Work\logs\progress.log' -Tail 5 -ErrorAction SilentlyContinue | Add-Content '$wdLog'; " +
+  "Get-Process $($script:strays -join ',') -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; " +
+  "taskkill /F /T /PID $PID"
+$script:watchdog = Start-Process pwsh -ArgumentList "-NoProfile", "-Command", $wdCmd -PassThru -WindowStyle Hidden -RedirectStandardOutput "$Work\logs\watchdog.out" -RedirectStandardError "$Work\logs\watchdog.err"
+function Stop-Run() {
+  StopStrays
+  if ($script:server) { Stop-Process -Id $script:server.Id -Force -ErrorAction SilentlyContinue }
+  if ($script:watchdog) { Stop-Process -Id $script:watchdog.Id -Force -ErrorAction SilentlyContinue }
+}
+# A terminating error (ErrorActionPreference is Stop) ends the script here, strays stopped first.
+trap { Stop-Run; throw $_ }
 
 $script:failed = 0
 function Check([string]$name, [bool]$ok, [string]$detail = "") {
@@ -172,11 +198,12 @@ Check "the Velopack feed's FileNames are bare file names" (($vfeed.Assets | Wher
 $appcast = Get-Content "$Work\serve\ws\appcast.xml" -Raw
 Check "the WinSparkle appcast carries the verified signature and the silent installer arguments" ($appcast -match "sparkle:edSignature" -and $appcast -match "/SILENT")
 
-$server = Start-Process python -ArgumentList "`"$e2e\server.py`"", $Port, "`"$Work\serve`"", "`"$Work\logs\srv.log`"" -PassThru -WindowStyle Hidden -RedirectStandardError "$Work\logs\server.err"
+$script:server = Start-Process python -ArgumentList "`"$e2e\server.py`"", $Port, "`"$Work\serve`"", "`"$Work\logs\srv.log`"" -PassThru -WindowStyle Hidden -RedirectStandardOutput "$Work\logs\server.out" -RedirectStandardError "$Work\logs\server.err"
 Start-Sleep 2
 
 function RunCase([string]$name, [string]$exe, [string]$case, [string]$feed, [int]$timeout, [switch]$WaitTarget) {
   Write-Host ("── case {0} starting at {1:HH:mm:ss}" -f $name, (Get-Date))
+  Add-Content "$Work\logs\progress.log" ("case {0} at {1:HH:mm:ss}" -f $name, (Get-Date))
   $log = "$Work\logs\case-$name.jsonl"
   @{ case = $case; feed = $feed; log = (& $fwd $log); headers = @{ Authorization = "Bearer e2e-token" }; public_key = $pub; target_version = "1.0.1"; quit_after_s = $timeout } | ConvertTo-Json | Set-Content "$Work\run\config.json"
   $script:mark = if (Test-Path "$Work\logs\srv.log") { (Get-Content "$Work\logs\srv.log").Count } else { 0 }
@@ -201,9 +228,7 @@ function Install([string]$exe, [string[]]$arguments) {
   $p = Start-Process $exe -ArgumentList $arguments -PassThru
   if (-not $p.WaitForExit(180000)) { Write-Host "── install timed out; killing it"; $p.Kill($true) }
 }
-function StopGames() {
-  Get-Process pkeye2e, PKeyE2E, PKeyE2E_godot -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-}
+function StopGames() { StopStrays }
 function HttpSince() { if (Test-Path "$Work\logs\srv.log") { Get-Content "$Work\logs\srv.log" | Select-Object -Skip $script:mark } else { @() } }
 
 # 4a. The facades in a plain export.
@@ -249,7 +274,7 @@ Check "winsparkle: the appcast and the installer carried the bearer" (($http | W
 $dv = (Get-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*" -ErrorAction SilentlyContinue | Where-Object DisplayName -eq "PKeyE2EWS" | Select-Object -First 1).DisplayVersion
 Check "winsparkle: the uninstall entry says 1.0.1" ($dv -eq "1.0.1") "DisplayVersion=$dv"
 
-Stop-Process -Id $server.Id -ErrorAction SilentlyContinue
+Stop-Run
 Remove-Item "$Work\keys\seed.b64" -ErrorAction SilentlyContinue
 Write-Host "── Windows e2e: $script:failed failed; logs in $Work\logs"
 exit $(if ($script:failed -eq 0) { 0 } else { 1 })

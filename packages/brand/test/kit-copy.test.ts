@@ -6,7 +6,7 @@
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 
 import {
   buildKitCopyModel,
@@ -103,14 +103,28 @@ describe("the committed catalog", () => {
     expect(m["signin.term.lifetime"]!.value).toBe("Lifetime");
   });
 
-  it("writes every output with a GENERATED banner where the format has comments", () => {
-    const model = buildKitCopyModel(REAL);
-    for (const t of KIT_COPY_TARGETS) {
-      if (/\.(json|xcstrings)$/.test(t.path)) continue; // JSON: listed in AGENTS rule 3 instead
-      expect(t.render(), t.path).toContain(
+  // One shared render per target (the first call loads the sources and builds the model, the
+  // slow part on a loaded runner), done in a hook so each per-output case below is a string check.
+  const rendered = new Map<string, string>();
+  beforeAll(() => {
+    for (const t of KIT_COPY_TARGETS) rendered.set(t.path, t.render());
+  });
+
+  // JSON: listed in AGENTS rule 3 instead
+  const commented = KIT_COPY_TARGETS.filter(
+    (t) => !/\.(json|xcstrings)$/.test(t.path),
+  );
+  it.each(commented.map((t) => t.path))(
+    "writes %s with a GENERATED banner",
+    (path) => {
+      expect(rendered.get(path), path).toContain(
         "GENERATED FILE — do not edit by hand.",
       );
-    }
+    },
+  );
+
+  it("carries the core fallback title in the model", () => {
+    const model = buildKitCopyModel(REAL);
     expect(model.entries.some((e) => e.key === "core.fallback.title")).toBe(
       true,
     );

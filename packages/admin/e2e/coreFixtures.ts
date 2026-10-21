@@ -683,9 +683,30 @@ export const CORE_ROUTES: Record<string, unknown> = {
     ],
     redirectUri: "https://key.plrs.im/callback",
     builtIns: [
-      { kind: "google", label: "Google", configured: true },
-      { kind: "apple", label: "Apple", configured: true },
-      { kind: "steam", label: "Steam", configured: false },
+      {
+        kind: "google",
+        label: "Google",
+        configured: true,
+        registration: {
+          kind: "redirect-uri",
+          value: "https://key.plrs.im/login/google/callback",
+        },
+      },
+      {
+        kind: "apple",
+        label: "Apple",
+        configured: true,
+        registration: {
+          kind: "redirect-uri",
+          value: "https://key.plrs.im/login/apple/callback",
+        },
+      },
+      {
+        kind: "steam",
+        label: "Steam",
+        configured: false,
+        registration: { kind: "realm", value: "https://key.plrs.im" },
+      },
     ],
     email: { configured: true },
     turnstile: { enabled: false },

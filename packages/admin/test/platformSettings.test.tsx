@@ -39,9 +39,13 @@ const axe = configureAxe({
 
 // The Platform section is a React.lazy chunk (shell/AppShell.tsx). Load it once up front so the
 // first test does not pay its first transform and evaluation inside a findBy wait (it took ~900 ms
-// of the 1 s budget alone, and missed it in a loaded deploy Verify run).
+// of the 1 s budget alone, and missed it in a loaded deploy Verify run). The product's own
+// settings (ST-27, `#/p/djdl/settings`) are the Core section's chunk and miss the same way.
 beforeAll(async () => {
-  await import("../src/console/sections/platform/index.js");
+  await Promise.all([
+    import("../src/console/sections/platform/index.js"),
+    import("../src/console/sections/core/index.js"),
+  ]);
 });
 beforeEach(resetConsole);
 afterEach(() => {

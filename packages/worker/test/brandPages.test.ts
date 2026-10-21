@@ -655,7 +655,11 @@ describe("the console sign-in card's POST (SIGN-IN.md §3.13)", () => {
 });
 
 describe("the console sign-in error cards", () => {
-  const callback = (q: string, e = makeEnv(new KvMock(), [])) => {
+  const callback = (
+    q: string,
+    e = makeEnv(new KvMock(), []),
+    db = makeTestDb(),
+  ) => {
     e.PLATFORM_OIDC_ISSUER = "https://id.example";
     e.PLATFORM_OIDC_CLIENT_ID = "polaris-admin";
     return handleAdminCallback(
@@ -663,7 +667,7 @@ describe("the console sign-in error cards", () => {
         headers: { "cf-connecting-ip": "203.0.113.20" },
       }) as unknown as Request,
       e,
-      makeTestDb(),
+      db,
       1_800_000_000,
     );
   };
@@ -680,7 +684,9 @@ describe("the console sign-in error cards", () => {
   it("the rate-limit card says when to retry and links nowhere", async () => {
     const e = makeEnv(new KvMock(), []);
     let res!: Response;
-    for (let i = 0; i < 25; i++) res = await callback("", e);
+    // The limiter reads the callback's injected clock, so no run of 25 can straddle a real minute.
+    const db = makeTestDb();
+    for (let i = 0; i < 25; i++) res = await callback("", e, db);
     expect(res.status).toBe(429);
     expect(res.headers.get("retry-after")).toBe("60");
     const html = await res.text();
