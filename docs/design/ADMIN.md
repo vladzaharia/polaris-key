@@ -76,7 +76,13 @@ collection; tabs listed here are route tabs, not promises of a future informatio
 
 ### Platform context
 
-Outside a product, the sidebar exposes **Home** (`#/`) and the **Platform** group. Home is the one
+The sidebar has two contexts, never mixed (ST-45). A pinned context card at its top (72 px) names the
+context and opens the switcher: Platform first, then the products, then New product. Below it the
+list scrolls; Collapse (and, in a product, Settings) stays pinned at the foot. Platform pages never
+appear in a product's sidebar, and a product's never in Platform's. A page the member cannot open is
+absent, not disabled. A feature that is off has no group, and a feature with one page is one row.
+
+Outside a product, the sidebar lists **Home** (`#/`), the Platform pages and the token pages. Home is the one
 place for attention, Platform ready and the products, as cards or a table (ST-44); `#/products`
 redirects to it with its filters. What needs attention is the server read
 `GET /manage/api/attention`. `GET /manage/api/summary` and the A-8 fleet facts it carried (active
@@ -90,13 +96,13 @@ licences, newest release, storefronts, users per product) are dropped, not plann
 | Store connections | `#/platform/store-connections` |
 | Package feeds     | `#/platform/feeds`             |
 
-**New product** is `#/products/new` and is reached from the product controls rather than the
+**New product** is `#/products/new` and is reached from the switcher rather than the
 sidebar. Override migration (`#/platform/override-migration`) remains addressable but is not in
 navigation or the palette.
 
 ### Product context
 
-Every product has the **Core** section:
+Every product has **Core**, drawn as a flat list (no group header; Settings sits at the foot):
 
 | Page           | Path and route detail                                                                |
 | -------------- | ------------------------------------------------------------------------------------ |

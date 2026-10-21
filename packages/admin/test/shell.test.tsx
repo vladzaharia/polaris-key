@@ -629,18 +629,35 @@ describe("the mobile drawer (SH-2)", () => {
     expect(
       within(drawer).getByRole("navigation", { name: "Console" }),
     ).toBeTruthy();
-    // The page behind is hidden from assistive tech while the drawer is open.
+    // The page behind is hidden from assistive tech while the drawer is open (inert is stronger).
     expect(
       screen
         .getByRole("main", { hidden: true })
-        .closest("[aria-hidden='true']"),
+        .closest("[aria-hidden='true'], [inert]"),
     ).not.toBeNull();
+
+    // Opening moves focus to the first item; the page behind is inert; the toggle says so.
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(drawer).getAllByRole("link")[0],
+      ),
+    );
+    expect(document.getElementById("content")!.hasAttribute("inert")).toBe(
+      true,
+    );
+    expect(menu.getAttribute("aria-label")).toBe("Close navigation");
+    expect(menu.getAttribute("aria-expanded")).toBe("true");
 
     await userEvent.keyboard("{Escape}");
     await waitFor(() =>
       expect(screen.queryByRole("dialog", { name: "Navigation" })).toBeNull(),
     );
     await waitFor(() => expect(document.activeElement).toBe(menu));
+    expect(menu.getAttribute("aria-label")).toBe("Open navigation");
+    expect(menu.getAttribute("aria-expanded")).toBe("false");
+    expect(document.getElementById("content")!.hasAttribute("inert")).toBe(
+      false,
+    );
   });
 
   it("closes when the window grows to the desktop layout, releasing the page", async () => {
