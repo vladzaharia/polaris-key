@@ -45,6 +45,7 @@ import { completeBrowserFlow } from "./callback.js";
 import {
   approvalFacts,
   deniedPage,
+  lostDenyPage,
   deviceDonePage,
   denyChosenDeviceFlow,
 } from "./deviceApproval.js";
@@ -315,11 +316,21 @@ export async function handleAuthChoose(
     // For a device-code flow Cancel is Deny (I-37): the device's poll answers `error`, and the
     // ending is the one "denied" page. A browser flow is simply dropped.
     if (isDeviceCodeFlow(flow)) {
-      await denyChosenDeviceFlow(env, db, product, stateKey, flow, now);
+      const denied = await denyChosenDeviceFlow(
+        env,
+        db,
+        product,
+        stateKey,
+        flow,
+        now,
+      );
       await deleteArtefact(env, indexKey);
-      return deniedPage(flow, await flowView(env, db, product, flow), [
-        binderClearCookie(),
-      ]);
+      const cancelView = await flowView(env, db, product, flow);
+      if (!denied)
+        return lostDenyPage(env, stateKey, flow, cancelView, [
+          binderClearCookie(),
+        ]);
+      return deniedPage(flow, cancelView, [binderClearCookie()]);
     }
     await deleteArtefact(env, stateKey);
     await deleteArtefact(env, indexKey);

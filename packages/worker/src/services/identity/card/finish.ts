@@ -80,13 +80,21 @@ async function endReplacedSession(
     if (!old?.sid || old.accountId !== accountId) return;
     const oldHash = await sessionIdHash(env, old.sid);
     if (oldHash === newIdHash) return;
-    await db.run(
+    const ended = await db.runChanges(
       `UPDATE account_sessions SET revoked_at = ?
         WHERE id_hash = ? AND account_id = ? AND revoked_at IS NULL`,
       now,
       oldHash,
       accountId,
     );
+    if (ended > 0)
+      await portalAudit(db, {
+        accountId,
+        action: "account.session.replaced",
+        targetKind: "session",
+        summary: "A sign-in on this browser ended the session it replaced",
+        now,
+      });
   } catch {
     // The old session expires by itself.
   }

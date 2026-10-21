@@ -169,6 +169,9 @@ describe("wideNetworkOf", () => {
     expect(wideNetworkOf("2001:db8:1:2:3:4:5:6")).toBe("2001:db8:1::/48");
     expect(wideNetworkOf("2001:db8:1::9")).toBe("2001:db8:1::/48");
     expect(wideNetworkOf("unknown")).toBe("unknown");
+    // An IPv4-mapped address is its IPv4 /24, not one shared IPv6 bucket.
+    expect(wideNetworkOf("::ffff:192.0.2.77")).toBe("192.0.2.0/24");
+    expect(wideNetworkOf("::ffff:198.51.100.1")).toBe("198.51.100.0/24");
   });
 });
 

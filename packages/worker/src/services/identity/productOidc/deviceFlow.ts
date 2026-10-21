@@ -6,7 +6,11 @@ import { HEADER_DEVICE } from "@polaris-key/protocol/core";
 import { hashKey } from "../../../platform/crypto.js";
 import { type Env } from "../../../platform/env.js";
 import { hostOrigin } from "../../../core/hosts.js";
-import { typedCode } from "../../../core/deviceEntry.js";
+import {
+  DEVICE_ENTRY_WIDE_LIMIT,
+  DEVICE_ENTRY_WIDE_WINDOW_SEC,
+  typedCode,
+} from "../../../core/deviceEntry.js";
 import { appForPage } from "../../../core/brandPage.js";
 import type { ServiceHooks } from "../../../core/hooks.js";
 import { randomToken } from "../../../platform/random.js";
@@ -14,7 +18,7 @@ import { parseFlowRecord, tryParseJson } from "../../../platform/json.js";
 import type { Db } from "../../../db/types.js";
 import { type Product } from "../../../core/products.js";
 import { errorResponse, json, methodNotAllowed } from "../../../core/errors.js";
-import { clientNetwork } from "../../../core/rateLimit.js";
+import { clientNetwork, clientWideNetwork } from "../../../core/rateLimit.js";
 import { binderSetCookie } from "../licenseChoice.js";
 import { requestLocation } from "../place.js";
 import {
@@ -25,7 +29,11 @@ import {
 import { readBodyText } from "../../../core/cappedBody.js";
 import { beginAuthFlow } from "./browserFlow.js";
 import { startAgainPage } from "./chooser.js";
-import { denyChosenDeviceFlow, deniedPage } from "./deviceApproval.js";
+import {
+  denyChosenDeviceFlow,
+  deniedPage,
+  lostDenyPage,
+} from "./deviceApproval.js";
 import {
   DEVICE_POLL_INTERVAL_SECONDS,
   type DeviceFlowRecord,
@@ -271,14 +279,16 @@ export async function confirmDeviceFlow(
     );
     const denyFlow = denyRaw ? parseFlowRecord<FlowRecord>(denyRaw) : null;
     if (!denyFlow) return deviceDeniedPage(product, view);
-    await denyChosenDeviceFlow(
+    const denyKey = await flowKey(env, product.slug, record.state);
+    const denied = await denyChosenDeviceFlow(
       env,
       db,
       product,
-      await flowKey(env, product.slug, record.state),
+      denyKey,
       denyFlow,
       now,
     );
+    if (!denied) return lostDenyPage(env, denyKey, denyFlow, view, []);
     return deniedPage(denyFlow, view, []);
   }
 
@@ -431,12 +441,23 @@ export async function handleAuthDeviceEntry(
   // a per-address key would be free to rotate — R10-04b). A product-wide bucket would let one
   // attacker exhaust it and lock every player out of sign-in; 20^8 codes over a 600 s lifetime
   // is what bounds blind guessing (THREAT-MODEL.md, "Brute force").
-  const limited = await rateLimited(env, product, now, {
-    bucket: "authDeviceEntry",
-    id: clientNetwork(req),
-    limit: 30,
-    windowSec: 60,
-  });
+  const limited = await rateLimited(
+    env,
+    product,
+    now,
+    {
+      bucket: "authDeviceEntry",
+      id: clientNetwork(req),
+      limit: 30,
+      windowSec: 60,
+    },
+    {
+      bucket: "authDeviceEntryWide",
+      id: clientWideNetwork(req),
+      limit: DEVICE_ENTRY_WIDE_LIMIT,
+      windowSec: DEVICE_ENTRY_WIDE_WINDOW_SEC,
+    },
+  );
   const url = new URL(req.url);
   // `/tv` carries its large-type variant through the redirect and every step after it.
   const tv = url.searchParams.get("tv") === "1";

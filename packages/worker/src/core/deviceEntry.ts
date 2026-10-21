@@ -23,7 +23,7 @@ import {
   normalizeUserCode,
 } from "./deviceCodeIndex.js";
 import { methodNotAllowed } from "./errors.js";
-import { clientNetwork, rateLimitOk } from "./rateLimit.js";
+import { clientNetwork, clientWideNetwork, rateLimitOk } from "./rateLimit.js";
 import { callout, icon, note, renderAuthCard } from "./brandHtml.js";
 import { brandedHtmlSecurityHeaders } from "./securityHeaders.js";
 
@@ -137,6 +137,14 @@ function page(
   return new Response(html, { status, headers });
 }
 
+/**
+ * The coarser ceiling beside each device-code entry bucket: the per-network bucket (IPv4 address
+ * or IPv6 /64) is cheap to spread across a site's addresses, so every entry path also counts the
+ * IPv4 /24 or IPv6 /48. Generous enough that a shared network of real players never meets it.
+ */
+export const DEVICE_ENTRY_WIDE_LIMIT = 300;
+export const DEVICE_ENTRY_WIDE_WINDOW_SEC = 60;
+
 export async function handleDeviceEntry(
   req: Request,
   env: Env,
@@ -161,6 +169,18 @@ export async function handleDeviceEntry(
     now,
   );
   if (!ok) return page(tv, 429, null, productOrigin);
+  const wideOk = await rateLimitOk(
+    env,
+    "_portal",
+    {
+      bucket: "deviceEntryWide",
+      id: clientWideNetwork(req),
+      limit: DEVICE_ENTRY_WIDE_LIMIT,
+      windowSec: DEVICE_ENTRY_WIDE_WINDOW_SEC,
+    },
+    now,
+  );
+  if (!wideOk) return page(tv, 429, null, productOrigin);
 
   const code = normalizeUserCode(raw);
   const slug = await lookupDeviceCode(env, code ?? DUMMY_CODE);

@@ -458,6 +458,26 @@ async function renderApproval(
   return new Response(html, { status: 200, headers });
 }
 
+/**
+ * A Deny whose compare-and-set lost: show the outcome that actually won, never "denied" over an
+ * approval. The flow is read again; approved shows the done page, denied shows the denied page,
+ * and a flow that is gone or in neither state gets the generic start-again page. Writes nothing.
+ */
+export async function lostDenyPage(
+  env: Env,
+  stateKey: ArtefactRef,
+  flow: FlowRecord,
+  view: PageView,
+  cookies: string[],
+): Promise<Response> {
+  const raw = await getArtefact(env, stateKey);
+  const now = raw ? parseFlowRecord<FlowRecord>(raw) : null;
+  if (now && now.approvedAt !== undefined)
+    return deviceDonePage(deviceLabelOf(now), view, cookies);
+  if (now && now.error === DENIED) return deniedPage(flow, view, cookies);
+  return startAgainPage();
+}
+
 /** Deny: the device's poll answers `error`, and nothing was signed in. */
 export function deniedPage(
   flow: FlowRecord,

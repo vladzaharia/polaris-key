@@ -252,6 +252,23 @@ describe("the platform device-code entry pages", () => {
     ).toBe(404);
   });
 
+  it("B-156: one site spreading guesses over its /24 meets a ceiling none of its addresses reach", async () => {
+    let first429 = -1;
+    for (let i = 0; i < 400 && first429 < 0; i++) {
+      // 254 addresses, at most two lookups each: far under the per-network 30 a minute.
+      const res = await get(
+        "/device?user_code=BBBBBBBB",
+        `192.0.2.${(i % 254) + 1}`,
+      );
+      if (res.status === 429) first429 = i;
+    }
+    expect(first429).toBe(300);
+    // A different /24 is unaffected.
+    expect((await get("/device?user_code=BBBBBBBB", "192.0.3.1")).status).toBe(
+      404,
+    );
+  });
+
   it("refuses other methods", async () => {
     const res = await handleDeviceEntry(
       new Request(`${ORIGIN}/device`, { method: "POST" }),
