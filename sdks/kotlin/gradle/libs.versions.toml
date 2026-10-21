@@ -36,7 +36,7 @@ tink = "1.23.0"
 # aligned, tools/check_16k_alignment.py), and at 1.5.7-12: every AAR from 1.5.7-13 on declares
 # minCompileSdk 37, which compileSdk 36 under AGP 8.6.1 (Godot 4.7.2's template) cannot consume
 # (P6-12). The zstd-jni API :packs calls is the same in both builds.
-zstdJni = "1.5.7-21"
+zstdJni = "1.5.7-23"
 # The JVM desktop OS keyring (UK-40, SP-K12): java-keyring over JNA (macOS Keychain, Windows
 # Credential Manager, Secret Service or KWallet on Linux). compileOnly in :core, so Android and
 # headless JVM builds never carry JNA; a desktop app adds it at runtime.
