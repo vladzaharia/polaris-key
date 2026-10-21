@@ -20,9 +20,22 @@ function sourceFiles(dir: string): string[] {
     return /\.(tsx?|json)$/.test(name) ? [path] : [];
   });
 }
-const portalSource = sourceFiles(portalRoot)
-  .map((f) => readFileSync(f, "utf8"))
-  .join("\n");
+// The portal's words live in the kit copy catalog (P0-36), so its English values count as portal
+// source with the component files.
+const catalog = JSON.parse(
+  readFileSync(
+    join(repoRoot, "packages", "brand", "kit-copy", "en.json"),
+    "utf8",
+  ),
+) as { messages: Record<string, { value: string }> };
+const portalSource = [
+  ...sourceFiles(portalRoot).map((f) => readFileSync(f, "utf8")),
+  ...Object.entries(catalog.messages)
+    .filter(([key]) =>
+      /^(locker|profile|yourData|license|getIt|signin|common)\./.test(key),
+    )
+    .map(([, m]) => m.value),
+].join("\n");
 
 /** Help page (file name) → the portal labels it quotes in bold. */
 const QUOTED: Record<string, string[]> = {
