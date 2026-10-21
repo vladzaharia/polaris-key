@@ -92,7 +92,7 @@
             PolarisGateSurface(
                 status: .needsActivation, allowedRange: nil, isWorking: false,
                 lastError: ErrorCopy.message(ErrorCode.deviceLimit),
-                manageURL: "https://key.plrs.im/portal/tidewater/devices",
+                manageURL: "https://polaris.locker/#/p/tidewater/devices",
                 licenseKey: .constant("pkey_tidewater_7Q2Mx9cLr4TbV0aZ3WPLDA"),
                 theme: Tidewater.theme, onSignIn: {}, onActivate: { _ in }, onRefresh: {},
                 content: { Text("App") })

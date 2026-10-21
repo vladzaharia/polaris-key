@@ -69,6 +69,22 @@ class KitPresentationRulesTest {
     }
 
     @Test
+    fun aWelcomeWithNoProductNameIsTitledWelcomeNotWelcomeTo() {
+        val nameless = """"bundle":{"slug":""},"presentation":null"""
+        for (extra in listOf("", ""","pending":"sign-in"""", ""","capabilities":{"signIn":false}""")) {
+            val screen = KitStates.resolve(KitComponent.welcome, inputs("{$nameless$extra}"))
+            assertTrue(extra, screen.shows("common.welcomeNoProductTitle"))
+            assertFalse(extra, screen.shows("welcome.title"))
+        }
+        val signInOnly = KitStates.resolve(KitComponent.welcome, inputs("{$nameless,\"capabilities\":{\"keyEntry\":false}}"))
+        assertTrue(signInOnly.shows("common.signInToContinue"))
+        assertFalse(signInOnly.shows("welcome.ledeSignInOnly"))
+        assertEquals("Welcome", KitCopy.bundled.format(signInOnly.copy.first { it.key == "common.welcomeNoProductTitle" }, "en"))
+        val named = KitStates.resolve(KitComponent.welcome, inputs("""{"bundle":{"slug":"tidewater","name":"Tidewater Studio"}}"""))
+        assertTrue(named.shows("welcome.title"))
+    }
+
+    @Test
     fun platformPredicatesFollowTheOsAndTheFormFactor() {
         fun platform(os: String, formFactor: String) = inputs("""{"platform":{"os":"$os","formFactor":"$formFactor"}}""")
         assertTrue(platform("macos", "mac").isDesktop)

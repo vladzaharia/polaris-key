@@ -104,6 +104,8 @@ export type KitCopyKey =
   | "boot.consent.download"
   | "boot.error.body"
   | "welcome.title"
+  | "common.welcomeNoProductTitle"
+  | "common.signInToContinue"
   | "welcome.lede"
   | "welcome.ledeKeyOnly"
   | "welcome.ledeSignInOnly"

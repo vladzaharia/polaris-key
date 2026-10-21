@@ -620,6 +620,16 @@ msgstr "{product} n’a pas pu terminer son démarrage ({code})."
 msgid "welcome.title"
 msgstr "Bienvenue dans {product}"
 
+#. Welcome
+#. Welcome screen title when no product name is known anywhere (no integrator name, presentation or bundle). Replaces welcome.title, which needs {product}.
+msgid "common.welcomeNoProductTitle"
+msgstr "Bienvenue"
+
+#. Sign in to continue.
+#. Welcome screen lede for a sign-in-only product when no product name is known anywhere. Replaces welcome.ledeSignInOnly, which needs {product}.
+msgid "common.signInToContinue"
+msgstr "Connectez-vous pour continuer."
+
 #. Sign in or use a license key to continue.
 #. Welcome screen, the gate's first screen.
 msgid "welcome.lede"

@@ -462,6 +462,16 @@
       "role": "title",
       "note": "Welcome screen, the gate's first screen. Arguments: {product} = the product's name from ProductIdentity (never translated)."
     },
+    "common.welcomeNoProductTitle": {
+      "value": "Welcome",
+      "role": "title",
+      "note": "Welcome screen title when no product name is known anywhere (no integrator name, presentation or bundle). Replaces welcome.title, which needs {product}."
+    },
+    "common.signInToContinue": {
+      "value": "Sign in to continue.",
+      "role": "body",
+      "note": "Welcome screen lede for a sign-in-only product when no product name is known anywhere. Replaces welcome.ledeSignInOnly, which needs {product}."
+    },
     "welcome.lede": {
       "value": "Sign in or use a license key to continue.",
       "role": "body",

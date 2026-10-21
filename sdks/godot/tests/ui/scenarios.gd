@@ -246,7 +246,7 @@ func gate_limit(how: String) -> Control:
 	var r := PKeyActivationResult.of(PKeyActivationResult.KIND_DEVICE_LIMIT, PKeyErrors.DEVICE_LIMIT, "", 403)
 	r.limit = 3
 	r.device_count = 3
-	r.manage_url = "https://key.plrs.im/activate?product=djdl&next=free-device&for=Linux%20x86_64"
+	r.manage_url = "https://polaris.locker/activate?product=djdl&next=free-device&for=Linux%20x86_64"
 	g.activation.show_result(r, "pkey_djdl_ABCDEFGHIJKLMNOPQRSTUV")
 	return g
 
@@ -279,7 +279,7 @@ func activation_manage(how: String) -> Control:
 	var r := PKeyActivationResult.of(PKeyActivationResult.KIND_DEVICE_LIMIT, PKeyErrors.DEVICE_LIMIT, "", 403)
 	r.limit = 1
 	r.device_count = 1
-	r.manage_url = "https://key.plrs.im/activate?product=djdl&next=free-device&for=Linux%20x86_64"
+	r.manage_url = "https://polaris.locker/activate?product=djdl&next=free-device&for=Linux%20x86_64"
 	p.show_result(r, "pkey_djdl_ABCDEFGHIJKLMNOPQRSTUV")
 	return p
 

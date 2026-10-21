@@ -242,6 +242,9 @@ async function build(): Promise<Scene[]> {
         expect(kit.querySelector('[data-part="monogram"]')).toBeNull();
         for (const tile of kit.querySelectorAll(".icon"))
           expect(tile.textContent?.trim() || tile.tagName).not.toBe("");
+        // ... and the title is the neutral one, not "Welcome to" with nothing after it.
+        const title = kit.querySelector('[data-part="title"]');
+        expect(title?.textContent?.trim()).toBe("Welcome");
       },
     },
     {

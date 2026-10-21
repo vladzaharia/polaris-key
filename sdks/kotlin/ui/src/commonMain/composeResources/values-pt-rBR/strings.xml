@@ -230,6 +230,10 @@
     <string name="boot_error_body">Não foi possível concluir a inicialização de %1$s (%2$s).</string>
     <!-- Welcome screen, the gate's first screen. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="welcome_title">Boas-vindas ao %1$s</string>
+    <!-- Welcome screen title when no product name is known anywhere (no integrator name, presentation or bundle). Replaces welcome.title, which needs {product}. -->
+    <string name="common_welcomeNoProductTitle">Boas-vindas</string>
+    <!-- Welcome screen lede for a sign-in-only product when no product name is known anywhere. Replaces welcome.ledeSignInOnly, which needs {product}. -->
+    <string name="common_signInToContinue">Entre para continuar.</string>
     <!-- Welcome screen, the gate's first screen. -->
     <string name="welcome_lede">Entre ou use uma chave de licença para continuar.</string>
     <!-- Welcome screen, the gate's first screen. Shown when the product only takes license keys. -->

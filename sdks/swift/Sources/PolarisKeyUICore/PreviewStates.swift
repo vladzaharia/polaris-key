@@ -54,7 +54,7 @@ extension PolarisKeyPreviewState {
     /// A synthetic key with a 22-character secret.
     public static let key = "pkey_tidewater_Q2xvdWRzT3ZlclRoZUhpQQ"
     public static let manageURL =
-        "https://key.plrs.im/#/p/tidewater/free-device?license=lic_pro&for=iPhone"
+        "https://polaris.locker/#/p/tidewater/devices"
 
     public static let devices: [KitDevice] = [
         KitDevice(
@@ -79,7 +79,7 @@ extension PolarisKeyPreviewState {
         KitLicenseChoice(
             id: "lic_pro", tierName: "Pro", origin: "purchase", seats: KitSeats(used: 3, limit: 3),
             state: "full", replace: KitReplaceAllowance(allowed: true),
-            freeDeviceUrl: "https://key.plrs.im/#/p/tidewater/free-device?license=lic_pro"),
+            freeDeviceUrl: "https://polaris.locker/#/p/tidewater/free-device?license=lic_pro"),
         KitLicenseChoice(
             id: "lic_edu", tierName: "Edu", name: "Fennick Studio Edu", origin: "developer",
             seats: KitSeats(used: 3, limit: 3), expiresAt: 1_798_761_600, state: "full",
