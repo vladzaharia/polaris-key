@@ -87,7 +87,7 @@ describe("channelForVersion", () => {
   it("derives the channel from the version-string encoding", () => {
     expect(channelForVersion("1.2.3")).toBe("stable");
     expect(channelForVersion("0.0.0-dev+abc")).toBe("dev");
-    // P0-04: `staging` is the legacy spelling of `beta` (WIRE-CONTRACT-V3 §5.1 rule 2).
+    // P0-04: `staging` is the legacy spelling of `beta` (WIRE-CONTRACT-V4 §5.1 rule 2).
     expect(channelForVersion("0.0.0-staging+abc")).toBe("beta");
     expect(channelForVersion("0.0.0-beta.3")).toBe("beta");
     expect(channelForVersion("0.0.0-pr42+abc")).toBe("pr");

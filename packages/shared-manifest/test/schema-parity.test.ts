@@ -1057,6 +1057,15 @@ const MUTATIONS: Mutation[] = [
     mutate: (d) => (p(d).licensing.defaultDeviceLimit = 100_000_000),
   },
   {
+    code: "invalid_offline_days",
+    file: "product",
+    schema: "rejects",
+    // The ceiling on the offline window (`MAX_OFFLINE_DAYS`): the value becomes the document
+    // window, so an unbounded one made every licence and config document answer 500. The schema
+    // expresses it as `maximum: 365`.
+    mutate: (d) => (p(d).licensing.defaultMaxOfflineDays = 100_000_000),
+  },
+  {
     code: "invalid_tier_label",
     file: "product",
     schema: "rejects",

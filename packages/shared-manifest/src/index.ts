@@ -872,7 +872,7 @@ export function compileManualChannelRegex(
     return null;
   }
 }
-/** The canonical channel alphabet (WIRE-CONTRACT-V3 §5.1 rule 1); `CHANNEL_RE` is wider. */
+/** The canonical channel alphabet (WIRE-CONTRACT-V4 §5.1 rule 1); `CHANNEL_RE` is wider. */
 const CANONICAL_CHANNEL_RE = new RegExp(CHANNEL_NAME_PATTERN);
 /** A PR channel, hyphen optional (`pr-42`, `pr42`). */
 const PR_CHANNEL_RE = new RegExp(PR_CHANNEL_PATTERN);
@@ -893,7 +893,7 @@ const RESERVED_CHANNEL_NAMES: ReadonlySet<string> = new Set([
 /**
  * True when a declared manual channel `name` would be taken over by a built-in: Release matches
  * `stable`/`latest`/`beta`/`pr-<n>` first, and at the licence gate a grant of `dev`, `pr` or a
- * PR-shaped name means the pseudo-channel, the PR family or a PR build (WIRE-CONTRACT-V3 §5.1).
+ * PR-shaped name means the pseudo-channel, the PR family or a PR build (WIRE-CONTRACT-V4 §5.1).
  * `staging` is not reserved. Shared by the validator and the console's channel picker.
  */
 export function isReservedChannelName(name: string): boolean {
@@ -1433,6 +1433,14 @@ const MAX_URL_LENGTH = 2048;
  */
 export const MAX_DEVICE_LIMIT = 1000;
 
+/**
+ * The offline-window ceiling in days: the console's bound (`MAX_OFFLINE_DAYS` in the Worker's
+ * `writeChecks.ts`). `defaultMaxOfflineDays` becomes the document window, `now + days * 86400`,
+ * so an unbounded value overflows the signed integer claims and every licence and config
+ * document answers 500. Rejected, never clamped.
+ */
+export const MAX_OFFLINE_DAYS = 365;
+
 // ── Ingest limits (R7-02) ────────────────────────────────────────────────────
 // `parseDocument` is reachable from a *GitHub push webhook* on a third party's repo
 // (`githubWebhook.ts` → `release/resync.ts` → here), so the bytes it parses are attacker-chosen
@@ -1741,9 +1749,28 @@ function validateDocuments(
       );
     }
   }
+  // `defaultMaxOfflineDays` sets the offline window every document carries (`MAX_OFFLINE_DAYS`):
+  // a whole number past the ceiling would overflow the signed claims. A non-integer is reported
+  // by the rule above, so only a whole number past the ceiling raises this one.
+  const declaredOfflineDays =
+    productNode.defaultMaxOfflineDays ??
+    productRoot.defaultMaxOfflineDays ??
+    licensing.defaultMaxOfflineDays;
+  if (
+    typeof declaredOfflineDays === "number" &&
+    Number.isInteger(declaredOfflineDays) &&
+    declaredOfflineDays > MAX_OFFLINE_DAYS
+  ) {
+    add(
+      errors,
+      "product",
+      "/licensing/defaultMaxOfflineDays",
+      "invalid_offline_days",
+      `defaultMaxOfflineDays must be at most ${MAX_OFFLINE_DAYS}.`,
+    );
+  }
   // A seat cap is not just a number: it bounds the per-seat recursive scan every activation runs
-  // (`MAX_DEVICE_LIMIT`). `defaultMaxOfflineDays` above needs no such ceiling: it is compared
-  // against, never counted through. A non-integer is reported by its own rule above, so only a
+  // (`MAX_DEVICE_LIMIT`). A non-integer is reported by its own rule above, so only a
   // whole number past the ceiling raises this one.
   if (
     typeof declaredDeviceLimit === "number" &&
@@ -1995,7 +2022,7 @@ function validateDocuments(
             "product",
             `/licensing/tiers/${i}/channels/${j}`,
             "noncanonical_channel_name",
-            "Channel names should match ^[a-z0-9][a-z0-9-]{0,63}$ and spell a PR with its hyphen (pr-42); this grant is unreachable on the release routes and never matched by the licence gate (WIRE-CONTRACT-V3 §5.1).",
+            "Channel names should match ^[a-z0-9][a-z0-9-]{0,63}$ and spell a PR with its hyphen (pr-42); this grant is unreachable on the release routes and never matched by the licence gate (WIRE-CONTRACT-V4 §5.1).",
           );
         }
       }
@@ -2302,7 +2329,7 @@ function validateDocuments(
               "release",
               `/release/artifactPolicy/channels/${j}`,
               "noncanonical_channel_name",
-              "Channel names should match ^[a-z0-9][a-z0-9-]{0,63}$; uppercase, . and _ are unreachable on the release routes (WIRE-CONTRACT-V3 §5.1).",
+              "Channel names should match ^[a-z0-9][a-z0-9-]{0,63}$; uppercase, . and _ are unreachable on the release routes (WIRE-CONTRACT-V4 §5.1).",
             );
           }
         }
@@ -2355,7 +2382,7 @@ function validateDocuments(
                 "release",
                 `${at}/name`,
                 "noncanonical_channel_name",
-                "Channel names should match ^[a-z0-9][a-z0-9-]{0,63}$; uppercase, . and _ are unreachable on the release routes (WIRE-CONTRACT-V3 §5.1).",
+                "Channel names should match ^[a-z0-9][a-z0-9-]{0,63}$; uppercase, . and _ are unreachable on the release routes (WIRE-CONTRACT-V4 §5.1).",
               );
             } else if (isReservedChannelName(raw.name)) {
               add(
@@ -2363,7 +2390,7 @@ function validateDocuments(
                 "release",
                 `${at}/name`,
                 "reserved_channel_name",
-                "This manual channel name is taken by a built-in channel (stable, latest, beta, pr, a PR number such as pr-42, or dev), so Release or the licence gate reads it as that channel (WIRE-CONTRACT-V3 §5.1).",
+                "This manual channel name is taken by a built-in channel (stable, latest, beta, pr, a PR number such as pr-42, or dev), so Release or the licence gate reads it as that channel (WIRE-CONTRACT-V4 §5.1).",
               );
             }
             if (

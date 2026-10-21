@@ -1,4 +1,4 @@
-// Unit tests for the environment-value rule (WIRE-CONTRACT-V3 §2.2.1 rule 2) helpers and the
+// Unit tests for the environment-value rule (WIRE-CONTRACT-V4 §2.2.1 rule 2) helpers and the
 // own-property reads. The corpus rows (`config-matrix.json`) run in
 // conformance/runners/node/configMatrix.test.ts; these cover what no corpus row can carry.
 import { describe, expect, it } from "vitest";

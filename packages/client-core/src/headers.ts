@@ -1,4 +1,4 @@
-// Client metadata header values (WIRE-CONTRACT-V3 §5.2), pinned by `headers.json`.
+// Client metadata header values (WIRE-CONTRACT-V4 §5.2), pinned by `headers.json`.
 //
 // A host reads its runtime's own report (Node `os.platform()` / `os.arch()`; a browser has no
 // arch) and maps it here. The lookup folds ASCII A–Z only (never a locale-dependent lowercase),

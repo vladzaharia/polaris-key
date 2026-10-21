@@ -41,7 +41,7 @@
       "deprecated": true
     },
     "defaultMaxOfflineDays": {
-      "$ref": "#/$defs/nonNegativeInteger",
+      "$ref": "#/$defs/offlineDays",
       "description": "Deprecated: write licensing.defaultMaxOfflineDays. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
       "deprecated": true
     },
@@ -90,7 +90,7 @@
       "type": "object",
       "properties": {
         "defaultDeviceLimit": { "$ref": "#/$defs/deviceLimit" },
-        "defaultMaxOfflineDays": { "$ref": "#/$defs/nonNegativeInteger" },
+        "defaultMaxOfflineDays": { "$ref": "#/$defs/offlineDays" },
         "profiles": {
           "$ref": "#/$defs/profiles",
           "description": "Deprecated: write profiles at the root. Still accepted; pkey validate warns with deprecated_spelling.",
@@ -484,6 +484,12 @@
       "minimum": 0,
       "maximum": 1000
     },
+    "offlineDays": {
+      "description": "An offline window in days: a whole number from 0 to 365 (MAX_OFFLINE_DAYS in @polaris-key/manifest, the console's bound). Rejected, never clamped.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 365
+    },
     "fingerprintMode": {
       "description": "Drift-tolerance strength: off (never enforce) · lenient (4) · normal (2, default) · strict (0, and a fingerprint becomes mandatory).",
       "enum": ["off", "lenient", "normal", "strict"]
@@ -502,7 +508,7 @@
           "deprecated": true
         },
         "defaultMaxOfflineDays": {
-          "$ref": "#/$defs/nonNegativeInteger",
+          "$ref": "#/$defs/offlineDays",
           "description": "Deprecated: write licensing.defaultMaxOfflineDays. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
           "deprecated": true
         }
