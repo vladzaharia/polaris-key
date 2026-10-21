@@ -388,11 +388,6 @@
     },
     {
       "board": "ios",
-      "state": "activate",
-      "text": "Your key is in the purchase email from Harbor Audio."
-    },
-    {
-      "board": "ios",
       "state": "ax3",
       "text": "Sign in or add your license to start."
     },
@@ -435,11 +430,6 @@
       "board": "ios",
       "state": "ios18",
       "text": "Sign in or add your license to start."
-    },
-    {
-      "board": "ios",
-      "state": "ios18",
-      "text": "Your key is in the purchase email from Harbor Audio."
     },
     {
       "board": "ios",

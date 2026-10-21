@@ -151,3 +151,15 @@ Still left: web shape rows 844x390, 640x360, 1180x820, 1920x1080 and the identit
 one-form activation and neutral boot indicator; apple.html iPad from the built SwiftUI renders; Android
 frames and the two compose mockups; Godot two tiers per frame; terminal 40/32-column frames; Built
 today / UK-11 target captions on the remaining boards.
+
+## Progress and continuation (2026-10-20, slice 3)
+
+Done (Built today unless noted; renders in docs/design/ui-kits/shots):
+
+- web.html: gate and sign-in code view in two panes at 1440 (identity panel holds the icon only, DL1); new shape rows 844x390, 640x360, 1180x820, 820x1180 (one column) and 1920x1080 for the gate, plus the code view at 844x390 and 1920x1080 (shapes follow elements/src/element.ts measure()); the refused key shows the catalog's core.activation.license-disabled title and message. A new catalog key (activate.keyRefused) was tried and reverted: a kit-copy state key needs a ui-matrix row, which is an all-kit corpus change owned by the kit builders.
+- terminal.html: gate refusal (exit 4) and revoked status (exit 1) at 40 and 32 columns, from the Node kit's narrow renders; strings.allow.json gains one entry for the wrapped fragments.
+- android.html: the Compose kit's own snapshots at phone landscape, small landscape, foldable and tablet for gate, sign-in, device limit and expired (the build shows no product icon on expired yet).
+- godot.html: two real renders of the Godot kit (gate, settings) as Built today; every drawn frame captioned UK-11 target; host-owns-pause note; the boot bar is a 2 px shimmer (DL7).
+- ios.html: inline one-form activation (the sheet is the labelled alternative); neutral boot shimmer; lede from the catalog (string debt shrank).
+
+Left: apple.html iPad from built SwiftUI renders (needs a simulator or Xcode; the committed Swift snapshots are phone-size only); Android states/settings and tablet portrait, compose mockups sdk.compose-activate and sdk.compose-sign-in; Godot built tier for the other nine frames (tools/ui_screenshots.gd stalled after gate and settings under load); iOS and Android frames drawn before this slice still lack a tier caption; the MOCKUP-mode UX review; ui:report.
