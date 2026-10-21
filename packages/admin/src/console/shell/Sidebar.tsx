@@ -11,7 +11,6 @@ import {
   navItems,
   platformItems,
   platformLinks,
-  PLATFORM_GROUP,
   visibleSections,
   type NavFeatures,
   type NavGroupKey,
@@ -33,6 +32,7 @@ import {
 } from "../nav.js";
 import { Tooltip } from "../../ui/Tooltip.js";
 import { PolarisMark } from "@polaris-key/brand/react";
+import { ProductSwitcher, type SwitcherContext } from "./ProductSwitcher.js";
 
 /**
  * Which sidebar sections are open (owner requirements, 2026-10-03).
@@ -99,22 +99,24 @@ export interface SidebarProps {
   idPrefix: string;
   /** ST-29: may the member open this page? Pages it may not are left out. Default: every page. */
   canOpen?: (page: PageId) => boolean;
+  /** The context header's switcher (ST-45): the product in scope, or Platform when `null`. */
+  switcher?: SwitcherContext;
 }
 
 /**
- * The console sidebar (ADMIN.md §2.1, components.md §1.4).
+ * The console sidebar (ADMIN.md §2.1, components.md §1.4, ST-45): two contexts, never mixed.
  *
- * Platform links (Home, Products) always come first. Off a product (Home, Products, the Platform
- * pages) the Platform section (instance-wide pages, notes/S-13 §9.1) follows; inside a product it
- * is hidden (owner, 2026-10-04) and reached through the product switcher, the account menu's
- * version chip and ⌘K instead. With a product in scope, one group per section follows, Core first and then each enabled service in canonical order (a
- * disabled service's group is absent, not greyed out: a dimmed row invites a click that can only
- * fail).
+ * A pinned context header (the switcher card) tops a scrolling list and a pinned foot.
+ * - Platform context (no product in scope): Home, the Platform pages, then the instance-wide token
+ *   pages. The foot holds Collapse.
+ * - Product context: Core's pages as a flat list (Overview, Integration, Devices, Users,
+ *   Activity), then one group per enabled feature in canonical order (a feature that is off has no
+ *   group, not a greyed one). The foot holds Settings and Collapse. No platform page appears here;
+ *   Platform is one step away in the switcher.
  *
- * Section headers are disclosure buttons (`aria-expanded`, `aria-controls`; Enter and Space
- * toggle) with no icon (owner, 2026-10-03); every item has one. Only the active section is open;
- * `expanded` names the sections peeked into by hand (see `useNavCollapse`). A collapsed header
- * keeps its section's accent cue: the accent rule at its start.
+ * Group headers are disclosure buttons (`aria-expanded`, `aria-controls`) with no icon; a feature
+ * with one page is one row, the label being the link. Only the active group is open; `expanded`
+ * names the groups peeked into by hand (see `useNavCollapse`).
  */
 export function Sidebar({
   slug,
@@ -130,108 +132,161 @@ export function Sidebar({
   onPrefetch,
   idPrefix,
   canOpen = () => true,
+  switcher,
 }: SidebarProps): React.ReactElement {
   const sections = slug ? visibleSections(services) : [];
   // Recipes awaiting approval ride the Catalog item, where their entries live.
   const pending = pendingRecipes(useProduct(slug).data).length;
   // ST-29: what the member cannot open is absent, not disabled (ADMIN.md §5.10, hidden vs
-  // disabled). A section with nothing left to show goes too.
+  // disabled). A group with nothing left to show goes too.
   const links = platformLinks().filter((p) => canOpen(p.page));
   const platform = platformItems().filter((p) => canOpen(p.page));
+  const home = links.filter((p) => p.page === "home");
+  const tokens = links.filter((p) => p.page !== "home");
+  const platformList = [...home, ...platform, ...tokens];
   const swapped = useRailSwap(rail);
+  const listRef = React.useRef<HTMLDivElement>(null);
+  const edges = useScrollEdges(listRef);
+  // The current page is kept in view: on every route change, and when the drawer mounts.
+  React.useEffect(() => {
+    listRef.current
+      ?.querySelector<HTMLElement>("[aria-current=page]")
+      ?.scrollIntoView?.({ block: "nearest" });
+  }, [activePage, slug, rail]);
+  const all = sections
+    .map((section) => ({
+      section,
+      items: navItems(section, features).filter((p) => canOpen(p.page)),
+    }))
+    .filter(({ items }) => items.length > 0);
+  const core = all.find(({ section }) => section.key === "core");
+  // Settings sits in the foot, not the list.
+  const coreItems = (core?.items ?? []).filter((p) => p.page !== "settings");
+  const settings = (core?.items ?? []).find((p) => p.page === "settings");
+  const features_ = all.filter(({ section }) => section.key !== "core");
+  const listItem = (p: NavPage, to: string): React.ReactElement => (
+    <li key={p.page}>
+      <SidebarItem
+        page={p}
+        to={to}
+        active={isActivePage(activePage, p.page)}
+        rail={rail}
+        onNavigate={onNavigate}
+      />
+    </li>
+  );
   return (
     <nav
       aria-label="Console"
       data-rail-swap={swapped ? "" : undefined}
-      className={cn(
-        "group/nav flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto pk-scroll",
-        rail ? "px-2 py-3" : "p-3",
-      )}
+      data-context={slug ? "product" : "platform"}
+      className="group/nav flex min-h-0 flex-1 flex-col"
     >
-      <ul className="flex flex-col gap-0.5" data-service="core">
-        {links.map((p) => (
-          <li key={p.page}>
-            <SidebarItem
-              page={p}
-              to={globalPage(p.page as GlobalPageId)}
-              active={isActivePage(activePage, p.page)}
-              rail={rail}
-              onNavigate={onNavigate}
-            />
-          </li>
-        ))}
-      </ul>
-      {/* Off a product only (owner, 2026-10-04): inside a product the Platform section confused
-          the product's own nav. From there it stays one step away: the product switcher's
-          "Platform" entry, the account menu's version chip (Deployment) and ⌘K. */}
-      {slug === null && platform.length > 0 ? (
-        <SidebarGroup
-          groupKey={PLATFORM_GROUP.key}
-          label={PLATFORM_GROUP.label}
-          accent={PLATFORM_GROUP.accent}
-          items={platform.map((p) => ({
-            page: p,
-            to: globalPage(p.page as GlobalPageId),
-          }))}
-          activePage={activePage}
-          active={activeSection === PLATFORM_GROUP.key}
-          open={
-            activeSection === PLATFORM_GROUP.key ||
-            expanded.has(PLATFORM_GROUP.key)
-          }
-          onToggle={() => onToggleSection(PLATFORM_GROUP.key)}
-          rail={rail}
-          onNavigate={onNavigate}
-          contentId={`${idPrefix}-section-${PLATFORM_GROUP.key}`}
-        />
+      {/* Nothing to switch to (no Platform area, at most the one product): no card. */}
+      {switcher &&
+      (switcher.platform !== false || switcher.products.length > 1) ? (
+        <div className={cn("shrink-0", rail ? "px-2 pt-3" : "px-3 pt-3")}>
+          <ProductSwitcher {...switcher} rail={rail} />
+        </div>
       ) : null}
-      {sections
-        .map((section) => ({
-          section,
-          items: navItems(section, features).filter((p) => canOpen(p.page)),
-        }))
-        .filter(({ items }) => items.length > 0)
-        .map(({ section, items }) => (
-          <SidebarGroup
-            key={section.key}
-            groupKey={section.key}
-            label={section.label}
-            accent={section.accent}
-            glyph={section.glyph}
-            items={items.map((p) => ({
-              page: p,
-              to: productPage(slug!, p.page as ProductPageId),
-              badge: p.page === "catalog" ? pending : 0,
-            }))}
-            activePage={activePage}
-            active={section.key === activeSection}
-            open={section.key === activeSection || expanded.has(section.key)}
-            onToggle={() => onToggleSection(section.key)}
-            rail={rail}
-            onNavigate={onNavigate}
-            onPrefetch={() => onPrefetch?.(section.key)}
-            contentId={`${idPrefix}-section-${section.key}`}
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        {/* Scroll-edge fades, drawn only while there is more list that way. */}
+        {edges.top ? (
+          <div
+            aria-hidden
+            data-nav-fade="top"
+            className="pointer-events-none absolute inset-x-0 top-0 z-10 h-6 bg-[linear-gradient(to_bottom,var(--color-surface-page),transparent)]"
           />
-        ))}
-      {onToggleRail ? (
-        <div className="mt-auto pt-2">
-          <button
-            type="button"
-            onClick={onToggleRail}
-            aria-label={rail ? "Expand the sidebar" : "Collapse the sidebar"}
-            className={cn(
-              "flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm text-fg-muted hover:bg-hover hover:text-fg-strong",
-              "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus",
-              rail && "justify-center px-0",
-            )}
-          >
-            {rail ? (
-              <PanelLeftOpen aria-hidden className="size-4" />
-            ) : (
-              <PanelLeftClose aria-hidden className="size-4" />
-            )}
-            {rail ? null : <span className={RAIL_FADE}>Collapse</span>}
-          </button>
+        ) : null}
+        {edges.bottom ? (
+          <div
+            aria-hidden
+            data-nav-fade="bottom"
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-6 bg-[linear-gradient(to_top,var(--color-surface-page),transparent)]"
+          />
+        ) : null}
+        <div
+          ref={listRef}
+          data-nav-list=""
+          className={cn(
+            "flex min-h-0 flex-1 scroll-py-6 flex-col gap-1 overflow-y-auto pk-scroll",
+            rail ? "px-2 py-3" : "p-3",
+          )}
+        >
+          {slug === null ? (
+            <ul className="flex flex-col gap-0.5" data-service="core">
+              {platformList.map((p) =>
+                listItem(p, globalPage(p.page as GlobalPageId)),
+              )}
+            </ul>
+          ) : (
+            <>
+              {coreItems.length > 0 ? (
+                <ul className="flex flex-col gap-0.5" data-service="core">
+                  {coreItems.map((p) =>
+                    listItem(p, productPage(slug, p.page as ProductPageId)),
+                  )}
+                </ul>
+              ) : null}
+              {features_.map(({ section, items }) => (
+                <SidebarGroup
+                  key={section.key}
+                  groupKey={section.key}
+                  label={section.label}
+                  accent={section.accent}
+                  glyph={section.glyph}
+                  items={items.map((p) => ({
+                    page: p,
+                    to: productPage(slug, p.page as ProductPageId),
+                    badge: p.page === "catalog" ? pending : 0,
+                  }))}
+                  activePage={activePage}
+                  active={section.key === activeSection}
+                  open={
+                    section.key === activeSection || expanded.has(section.key)
+                  }
+                  onToggle={() => onToggleSection(section.key)}
+                  rail={rail}
+                  onNavigate={onNavigate}
+                  onPrefetch={() => onPrefetch?.(section.key)}
+                  contentId={`${idPrefix}-section-${section.key}`}
+                />
+              ))}
+            </>
+          )}
+        </div>
+      </div>
+      {settings || onToggleRail ? (
+        <div
+          data-nav-foot=""
+          data-service="core"
+          className={cn(
+            "flex shrink-0 flex-col gap-0.5 border-t border-border",
+            rail ? "px-2 py-2" : "p-3",
+          )}
+        >
+          {slug && settings ? (
+            <ul>{listItem(settings, productPage(slug, "settings"))}</ul>
+          ) : null}
+          {onToggleRail ? (
+            <button
+              type="button"
+              onClick={onToggleRail}
+              aria-label={rail ? "Expand the sidebar" : "Collapse the sidebar"}
+              className={cn(
+                "flex min-h-10 w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm text-fg-muted hover:bg-hover hover:text-fg-strong",
+                "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus",
+                rail && "justify-center px-0",
+              )}
+            >
+              {rail ? (
+                <PanelLeftOpen aria-hidden className="size-4" />
+              ) : (
+                <PanelLeftClose aria-hidden className="size-4" />
+              )}
+              {rail ? null : <span className={RAIL_FADE}>Collapse</span>}
+            </button>
+          ) : null}
         </div>
       ) : null}
     </nav>
@@ -245,6 +300,40 @@ export function Sidebar({
  * phone drawer draw at once. Token-timed, so under reduced motion it is an instant swap.
  */
 const RAIL_FADE = "group-data-[rail-swap]/nav:animate-pk-fade-in";
+
+/** Is the list scrolled off its top, or does it run past its bottom? */
+function useScrollEdges(ref: React.RefObject<HTMLElement | null>): {
+  top: boolean;
+  bottom: boolean;
+} {
+  const [edges, setEdges] = React.useState({ top: false, bottom: false });
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = (): void => {
+      const next = {
+        top: el.scrollTop > 2,
+        bottom: el.scrollTop + el.clientHeight < el.scrollHeight - 2,
+      };
+      setEdges((p) =>
+        p.top === next.top && p.bottom === next.bottom ? p : next,
+      );
+    };
+    measure();
+    el.addEventListener("scroll", measure, { passive: true });
+    const ro =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(measure);
+    ro?.observe(el);
+    for (const c of Array.from(el.children)) ro?.observe(c);
+    return () => {
+      el.removeEventListener("scroll", measure);
+      ro?.disconnect();
+    };
+  }, [ref]);
+  return edges;
+}
 
 /** True once `rail` has changed since mount. */
 function useRailSwap(rail: boolean): boolean {
@@ -348,13 +437,45 @@ function SidebarGroup({
     );
   }
 
+  // A feature with exactly one page is one row: the label is the link, no chevron (B5).
+  if (links.length === 1) {
+    const only = links[0]!;
+    const current = isActivePage(activePage, only.page.page);
+    return (
+      <div data-service={accent} data-section={groupKey} className="pt-1.5">
+        <Link
+          to={only.to}
+          aria-current={current ? "page" : undefined}
+          data-page={only.page.page}
+          data-section-header={groupKey}
+          onClick={() => onNavigate?.()}
+          onMouseEnter={onPrefetch}
+          onFocus={onPrefetch}
+          className={cn(
+            "relative flex min-h-10 w-full items-center gap-2 overflow-hidden rounded-md py-1 pl-2 pr-2 text-sm font-medium text-fg-strong",
+            "hover:bg-accent-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent-fg",
+            // The selected row: fill and the 3 px inset marker, never the fill alone.
+            current &&
+              "bg-accent-subtle before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-accent forced-colors:before:bg-[Highlight]",
+          )}
+        >
+          <span
+            aria-hidden
+            className="h-3.5 w-[3px] shrink-0 rounded-full bg-accent"
+          />
+          <span className="truncate">{label}</span>
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <Collapsible.Root
       open={open}
       onOpenChange={() => onToggle()}
       data-service={accent}
       data-section={groupKey}
-      className="pt-3"
+      className="pt-1.5"
     >
       <Collapsible.Trigger asChild>
         <button
@@ -364,15 +485,15 @@ function SidebarGroup({
           data-section-header={groupKey}
           title={active ? "Contains the current page" : undefined}
           className={cn(
-            "group flex w-full items-center gap-2 rounded-md py-1 pl-2 pr-2 text-left text-xs font-medium uppercase tracking-wider",
-            "text-accent-fg hover:bg-hover focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus",
+            "group flex min-h-10 w-full items-center gap-2 rounded-md py-1 pl-2 pr-2 text-left text-sm font-medium",
+            "text-fg-strong hover:bg-accent-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent-fg",
             active && "cursor-default hover:bg-transparent",
           )}
         >
           {/* The accent cue: visible whether the section is open or collapsed. */}
           <span
             aria-hidden
-            className="h-3.5 w-0.5 shrink-0 rounded-full bg-accent"
+            className="h-3.5 w-[3px] shrink-0 rounded-full bg-accent"
           />
           <span className={cn("flex-1 truncate", RAIL_FADE)}>{label}</span>
           {/* The disclosure indicator, not a section icon: headers carry none (owner, 2026-10-03). */}
@@ -432,12 +553,13 @@ export function SidebarItem({
       onMouseEnter={onPrefetch}
       onFocus={onPrefetch}
       className={cn(
-        "relative flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
-        "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus",
+        "relative flex min-h-10 items-center gap-2.5 overflow-hidden rounded-md px-3 py-2 text-sm transition-colors",
+        "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent-fg",
         rail && "justify-center px-0",
+        // The selected row: a subtle accent fill and a 3 px inset marker, never a solid pill.
         active
-          ? "bg-accent-subtle font-medium text-fg-strong before:absolute before:inset-y-1 before:left-0 before:w-[3px] before:rounded-full before:bg-accent"
-          : "text-fg-muted hover:bg-hover hover:text-fg-strong",
+          ? "bg-accent-subtle font-medium text-fg-strong before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-accent forced-colors:before:bg-[Highlight]"
+          : "text-fg-muted hover:bg-accent-subtle hover:text-fg-strong",
       )}
     >
       {starCut ? (

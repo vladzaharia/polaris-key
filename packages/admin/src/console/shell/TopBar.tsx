@@ -3,19 +3,16 @@ import { BookOpen, Menu, Search } from "lucide-react";
 import type { Me, PlatformIdentity } from "../../api.js";
 import { Button } from "../../ui/Button.js";
 import { cn } from "../../lib/cn.js";
-import type { ProductPageId, ServiceAccent } from "../nav.js";
+import type { ServiceAccent } from "../nav.js";
 import { BrandBlock } from "./BrandBlock.js";
 import { EnvironmentBadge } from "./EnvironmentBadge.js";
-import { ProductSwitcher } from "./ProductSwitcher.js";
 import { ThemeMenu } from "./ThemeMenu.js";
 import { UserMenu } from "./UserMenu.js";
 import { Kbd } from "../../ui/Kbd.js";
-import type { ProductLike } from "./bits.js";
-import { canIn } from "../access/can.js";
 
 /**
  * The top bar (ADMIN.md §2.1–2.2, components.md §1.2): the global tier of navigation. Brand block
- * (Home, with the section bit), the product switcher when a product is in scope, the environment
+ * (Home, with the section bit), the environment
  * badge, the palette trigger, Docs, the theme menu and the account menu. There is no page title
  * here any more: each page owns its one `<h1>` (SH-12).
  *
@@ -24,11 +21,7 @@ import { canIn } from "../access/can.js";
 export function TopBar({
   me,
   section,
-  product,
-  products,
-  page,
-  switcherOpen,
-  onSwitcherOpenChange,
+  navOpen,
   docsHref,
   onOpenPalette,
   onOpenNav,
@@ -39,11 +32,8 @@ export function TopBar({
 }: {
   me: Me;
   section: ServiceAccent;
-  product: ProductLike | null;
-  products: ProductLike[];
-  page: ProductPageId | null;
-  switcherOpen: boolean;
-  onSwitcherOpenChange: (open: boolean) => void;
+  /** The phone navigation drawer is open (the menu button's expanded state). */
+  navOpen: boolean;
   docsHref: string;
   onOpenPalette: () => void;
   onOpenNav: () => void;
@@ -57,8 +47,8 @@ export function TopBar({
     <header
       data-shell="topbar"
       className={cn(
-        "z-30 flex items-center gap-1.5 border-b border-border bg-surface-raised px-2 sm:gap-3 sm:px-4",
-        "h-[calc(4rem+env(safe-area-inset-top,0px))] pt-[env(safe-area-inset-top,0px)]",
+        "z-30 flex flex-wrap items-center gap-x-1.5 gap-y-1 border-b border-border bg-surface-raised px-2 sm:gap-x-3 sm:px-4",
+        "min-h-[calc(4rem+env(safe-area-inset-top,0px))] pt-[env(safe-area-inset-top,0px)]",
         className,
       )}
     >
@@ -68,8 +58,9 @@ export function TopBar({
         className="shrink-0 lg:hidden"
         id="console-nav-button"
         onClick={onOpenNav}
-        aria-label="Open navigation"
+        aria-label={navOpen ? "Close navigation" : "Open navigation"}
         aria-haspopup="dialog"
+        aria-expanded={navOpen}
       >
         <Menu aria-hidden />
       </Button>
@@ -77,16 +68,6 @@ export function TopBar({
         section={section}
         className="max-[24rem]:hidden lg:min-w-[calc(var(--sidebar-w)-1.5rem)]"
       />
-      {product && page ? (
-        <ProductSwitcher
-          products={products}
-          current={product}
-          page={page}
-          open={switcherOpen}
-          onOpenChange={onSwitcherOpenChange}
-          platform={canIn(me, "platform")}
-        />
-      ) : null}
       <EnvironmentBadge environment={me.environment} />
       <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-1.5">
         <button
