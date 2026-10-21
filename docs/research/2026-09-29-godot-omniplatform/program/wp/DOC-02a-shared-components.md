@@ -105,6 +105,13 @@ Applied from the brand and transition integration ([Brand transition decisions](
 - `packages/docs` moved to React 19 (the console's) with `@astrojs/react`; `@types/react` stays 18
   for the SDK snippet lanes.
 
+- Fix round (2026-10-21): Starlight's `table{display:block;overflow:auto}` made the table scroll
+  instead of its region (TABLE now forces `display:table`), `:::` asides on 26 pages are
+  re-rendered through the console Callout in `scripts/console-parts.ts`, and the Copy script is
+  the real file `packages/docs/ec-copy.js`. A stale `packages/docs/node_modules/.astro` data
+  store keeps old Expressive Code asset hashes in rendered pages: clear it (with `dist` and
+  `.astro`) before judging `check:links`.
+
 ## Steps
 
 1. Verify this brief against the code and the docs site (the code is the fact) and record any correction here, in the same branch.
