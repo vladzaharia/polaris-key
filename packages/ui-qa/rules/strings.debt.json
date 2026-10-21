@@ -28,28 +28,13 @@
     },
     {
       "board": "android",
-      "state": "font",
-      "text": "Sign in or add your license to start."
-    },
-    {
-      "board": "android",
       "state": "gate",
       "text": "by Harbor Audio"
     },
     {
       "board": "android",
-      "state": "gate",
-      "text": "Sign in or add your license to start."
-    },
-    {
-      "board": "android",
       "state": "native-dynamic",
       "text": "by Harbor Audio"
-    },
-    {
-      "board": "android",
-      "state": "native-dynamic",
-      "text": "Sign in or add your license to start."
     },
     {
       "board": "android",
@@ -95,11 +80,6 @@
       "board": "android",
       "state": "sign-in",
       "text": "Polaris Locker handles sign-in. Harbor Audio never sees your passkeys."
-    },
-    {
-      "board": "android",
-      "state": "sign-in",
-      "text": "Sign in or add your license to start."
     },
     {
       "board": "android",
