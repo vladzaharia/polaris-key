@@ -187,7 +187,16 @@ def _typer_help(columns: int) -> str:
         """Export a mix"""
 
     register_typer(app, client=HOST)
-    r = click.testing.CliRunner().invoke(typer.main.get_command(app), ["--help"], prog_name="tidewater", terminal_width=columns, env={"TERMINAL_WIDTH": str(columns), "COLUMNS": str(columns), "NO_COLOR": "1"})
+    # typer reads TERMINAL_WIDTH once, at import, so the width of the first test would stick for
+    # every later one (B-119): set the module's width for this render.
+    from typer import rich_utils
+
+    old = rich_utils.MAX_WIDTH
+    rich_utils.MAX_WIDTH = columns
+    try:
+        r = click.testing.CliRunner().invoke(typer.main.get_command(app), ["--help"], prog_name="tidewater", terminal_width=columns, env={"COLUMNS": str(columns), "NO_COLOR": "1"})
+    finally:
+        rich_utils.MAX_WIDTH = old
     return r.output
 
 
@@ -204,6 +213,10 @@ def test_the_default_mount_help(framework: str, columns: int) -> None:
     assert "{" not in text
     assert "sign-in" not in text.replace("Sign in", "") and "sign-out" not in text
     check(HELP / f"help-{framework}-{columns}.txt", text)
+    # Nothing is wider than the terminal, and a wide terminal gets a wide render (B-119).
+    if framework == "typer":
+        widest = max(len(ln) for ln in text.splitlines())
+        assert widest <= columns and (columns < 80 or widest > 40)
 
 
 def test_argparse_aliases_still_run() -> None:

@@ -37,6 +37,14 @@ def test_cli_sample_mounts_every_verb_next_to_its_own_command(capsys: pytest.Cap
     assert "enroll" not in out
 
 
+def test_cli_sample_uses_login_prints_no_stage_ids_and_gates_once() -> None:
+    # B-118: the current verb, no raw stage ids, and one gate (@require_license).
+    source = (EXAMPLES / "python-cli" / "mytool.py").read_text(encoding="utf-8")
+    assert "sign-in" not in source and "on_stage" not in source and ".ready" not in source
+    assert source.count("\n@require_license\n") == 1  # one gate: the decorator
+    assert "mytool.py login" in source
+
+
 def test_renpy_snippet_python_blocks_compile() -> None:
     """Ren'Py's `init python:` and `$` lines are plain Python; compile each one."""
     source = (EXAMPLES / "python-renpy" / "polaris_key.rpy").read_text(encoding="utf-8")
