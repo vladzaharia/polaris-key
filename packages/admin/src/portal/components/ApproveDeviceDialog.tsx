@@ -148,6 +148,8 @@ export function ApproveDeviceDialog({
       size="sm"
       title={title}
       dismissible={phase.kind !== "deciding" && phase.kind !== "looking"}
+      // The step-up carries its own Cancel; one way out, not an X beside it.
+      closeButton={phase.kind !== "stepup"}
       onEscapeKeyDown={(e) => {
         // Escape backs out of the confirmation, one step; the dialog stays.
         if (phase.kind === "stepup") {
