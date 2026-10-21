@@ -9899,7 +9899,6 @@ the bundle directories to the build's. The docs `check:links` adds the tier rule
 content links only to public pages (existing exceptions are held in `link-tier-debt.json`, which
 only shrinks).
 
-
 **Docs CSP and WebAssembly.** The docs `script-src` is `'self'`, `'wasm-unsafe-eval'` and the build's
 hashes. Pagefind compiles a WebAssembly module, and without the keyword Chromium refuses, so Help and
 developer search never returned a result. `'wasm-unsafe-eval'` allows WebAssembly compilation only: it does
