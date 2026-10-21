@@ -31123,8 +31123,8 @@ var NODE_HEAD = (c, imports = "PolarisKeyClient") => lines2(
 );
 var NODE_LIBRARY = {
   licensing: (c) => ({
-    title: "Gate on the licence",
-    filename: "licence.ts",
+    title: "Gate on the license",
+    filename: "license.ts",
     language: "ts",
     code: lines2(
       NODE_HEAD(c, "copy, PolarisKeyClient"),
@@ -31302,14 +31302,14 @@ var NODE_ELECTRON = {
 };
 var NODE_SERVER = {
   licensing: (c) => ({
-    title: "Verify a licence your app sends",
+    title: "Verify a license your app sends",
     filename: "verify.ts",
     language: "ts",
     code: lines2(
       `import { verifyLicenseDocument } from "@polaris-key/server";`,
       `import { polarisConfig } from "./polaris.config.js";`,
       ``,
-      `// The app sends its cached licence document and its device id with the request.`,
+      `// The app sends its cached license document and its device id with the request.`,
       `export async function allowed(jws: string, deviceId: string): Promise<boolean> {`,
       `  const v = await verifyLicenseDocument(jws, {`,
       `    trust: polarisConfig.trust.pinnedKeys,`,
@@ -31346,7 +31346,7 @@ var REACT_KIT = {
 };
 var REACT_LIBRARY = {
   licensing: (c) => ({
-    title: "Gate on the licence",
+    title: "Gate on the license",
     filename: "Gate.tsx",
     language: "tsx",
     code: lines2(
@@ -31436,8 +31436,8 @@ var PY_HEAD = (c, imports = "PolarisKeyClient") => lines2(
 );
 var PY_LIBRARY = {
   licensing: (c) => ({
-    title: "Gate on the licence",
-    filename: "licence.py",
+    title: "Gate on the license",
+    filename: "license.py",
     language: "python",
     code: lines2(
       `from typing import Optional`,
@@ -31599,8 +31599,8 @@ var SWIFT_KIT = {
 };
 var SWIFT_LIBRARY = {
   licensing: (c) => ({
-    title: "Gate on the licence",
-    filename: "Licence.swift",
+    title: "Gate on the license",
+    filename: "License.swift",
     language: "swift",
     code: lines2(
       `import PolarisKey`,
@@ -31643,8 +31643,8 @@ var KOTLIN_KIT = {
 };
 var KOTLIN_LIBRARY = {
   licensing: (c) => ({
-    title: "Gate on the licence",
-    filename: "Licence.kt",
+    title: "Gate on the license",
+    filename: "License.kt",
     language: "kotlin",
     code: lines2(
       `import com.acme.polaris.PolarisConfig`,
@@ -31675,7 +31675,7 @@ var GODOT_KIT = {
 };
 var GODOT_LIBRARY = {
   licensing: () => ({
-    title: "React to the licence state",
+    title: "React to the license state",
     filename: "gate.gd",
     language: "gdscript",
     code: lines2(
@@ -31773,8 +31773,12 @@ var INSTALL = {
     snippets: ["editor-4.7", "editor-4.6"]
   }
 };
-function sdkInstall(sdk) {
-  const spec = INSTALL[sdk];
+var SERVER_INSTALL = {
+  ...INSTALL.node,
+  name: "@polaris-key/server"
+};
+function sdkInstall(sdk, host = "app") {
+  const spec = sdk === "node" && host === "server" ? SERVER_INSTALL : INSTALL[sdk];
   const all = renderFeedSetup(spec.ecosystem, {
     origin: SDK_REGISTRY_ORIGIN,
     owner: FEED_OWNER,
@@ -31846,7 +31850,7 @@ function renderSdkSetup(sdk, o) {
     );
   return {
     sdk,
-    install: sdkInstall(sdk),
+    install: sdkInstall(sdk, fit.host),
     installNote: sdkInstallNote(sdk),
     config: { filename: out, language: CONFIG_LANGUAGE[sdk], code },
     start,
