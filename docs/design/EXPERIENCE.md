@@ -651,7 +651,7 @@ footer ([storyboard](experience/15-story-portal-desktop-dark.png)):
      device-limited (owner, 2026-10-05; SIGN-IN.md D-53). Key and seat licenses hide the counter
      when the account also holds a sign-in license (D-54). Rank-first only orders and preselects; the device's
      current license stays preselected.
-   - A full license shows "No free devices", no radio, **Replace a device** (inline, SIGN-IN.md
+   - A full license shows "All devices in use", no radio, **Replace a device** (inline, SIGN-IN.md
      §3.7: "Replace Work laptop?" with **Replace and continue** and **Back**) and **Free a device**.
    - The primary is **Use this license and continue**. When first-time consent follows, the consent
      step shows the chosen license with **Change**.

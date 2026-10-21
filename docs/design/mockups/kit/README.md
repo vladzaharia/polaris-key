@@ -2616,7 +2616,7 @@ Added by the sdk multi-review (2026-10-08), appended at the end of `mockup.css` 
   neutral fact (Recommended): the fill with a dot, never the product accent. A license row
   (`.kit-option`) is the same in every kit: the title is where the license came from (Automatic
   grant, Steam purchase, Gift, Key ending …) and never wraps; the tier is a pill; the meta line is
-  devices · duration, and a full license says `<span class="warn">No free devices</span>` in that
+  devices · duration, and a full license says `<span class="warn">All devices in use</span>` in that
   slot, in the warning colour, instead of an end tag.
 
 Added by the sdk spacing multi-review (2026-10-08), appended at the end of `mockup.css` in the
