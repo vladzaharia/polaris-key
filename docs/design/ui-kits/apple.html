@@ -897,127 +897,120 @@
         font-size: 32px;
         line-height: 36px;
       }
+      .row-shot {
+        display: flex;
+        gap: 40px;
+        align-items: flex-start;
+      }
+      .row-shot > div {
+        display: grid;
+        gap: 10px;
+        justify-items: center;
+      }
+      .row-shot .lbl {
+        font: 500 13px/18px var(--pk-font-sans);
+        color: var(--pk-text-muted);
+      }
     </style>
   </head>
   <body>
     <main class="board">
-      <!-- 1. iPad, regular width -->
+      <!-- 1. iPad (11-inch, portrait): the SwiftUI kit run in the simulator; one column of about 480 pt (KitLayout) -->
       <figure>
         <figcaption>
-          ipad · regular width (11-inch landscape): the gate and the activate
-          form sheet
+          ipad · welcome, license key and sign-in on the gate's own screen, no
+          sheet. Built today: renders of the SwiftUI kit (examples/ui/swiftui)
+          on an iPad Pro 11-inch (M5) simulator, 820 × 1180 pt
         </figcaption>
-        <div class="ipad" data-shot="ipad">
-          <div class="screen">
-            <div class="bar"><span>9:41 Mon 5 Oct</span><span>100%</span></div>
-            <div class="amb"></div>
-            <div
-              style="
-                position: absolute;
-                inset: 0;
-                display: grid;
-                place-items: center;
-                text-align: center;
-              "
-            >
-              <div
-                style="
-                  display: grid;
-                  justify-items: center;
-                  gap: 12px;
-                  width: 480px;
-                "
-              >
-                <div
-                  class="k-appicon"
-                  data-art="tidewater"
-                  data-size="128"
-                  style="border-radius: 29px"
-                ></div>
-                <h1
-                  class="ttl"
-                  style="font-size: 34px; line-height: 40px; margin-top: 18px"
-                >
-                  Welcome to Tidewater Studio
-                </h1>
-                <span style="font-size: 13px; color: var(--pk-text-subtle)"
-                  >by Harbor Audio</span
-                >
-                <p class="sub">Sign in or add your license to start.</p>
-                <div
-                  style="
-                    display: grid;
-                    gap: 12px;
-                    width: 380px;
-                    margin-top: 18px;
-                  "
-                >
-                  <div class="glass prominent cap">Sign in</div>
-                  <div class="glass cap">Use a license key</div>
-                </div>
-              </div>
-            </div>
-            <div class="dimmer"></div>
-            <div class="formsheet">
-              <div class="sbar">
-                <span
-                  class="glass circ"
-                  data-icon="x"
-                  data-size="20"
-                  aria-label="Cancel"
-                ></span>
-                <span class="mid"
-                  ><span
-                    class="k-appicon"
-                    data-art="tidewater"
-                    data-size="28"
-                    style="border-radius: 7px"
-                  ></span
-                  >Tidewater Studio</span
-                >
-                <span
-                  class="glass prominent circ"
-                  data-icon="check"
-                  data-size="20"
-                  aria-label="Activate"
-                ></span>
-              </div>
-              <h2 class="ttl" style="margin: 0 4px 6px">Add your license</h2>
-              <p
-                class="sub"
-                style="margin: 0 4px 22px; font-size: 15px; line-height: 20px"
-              >
-                Your key is in the purchase email from Harbor Audio.
-              </p>
-              <div class="flabel">License key</div>
-              <div class="fld">
-                <span class="mono"
-                  ><span class="k-key"
-                    ><span>pkey_tidewater_7Q2MXK9RV4TC8HJN</span
-                    ><span>3WPLDA</span></span
-                  ></span
-                >
-              </div>
-              <div
-                class="k-verdict"
-                style="margin: 10px 4px 0; font-size: 15px"
-              >
-                <span data-icon="checkCircle" data-size="16"></span>
-                <span
-                  ><b style="font-weight: 600; color: var(--pk-text-strong)"
-                    >Tidewater Studio Pro</b
-                  >&#8201;·&#8201;Lifetime&#8201;·&#8201;3 devices</span
-                >
-              </div>
-              <div style="display: flex; gap: 12px; margin-top: 28px">
-                <div class="glass cap" style="flex: 1">Cancel</div>
-                <div class="glass prominent cap" style="flex: 1">Activate</div>
-              </div>
-            </div>
+        <div class="row-shot" data-shot="ipad">
+          <div>
+            <img
+              data-built="Welcome.default"
+              width="480"
+              height="697"
+              alt="iPad welcome"
+              style="border-radius: 18px; display: block"
+            />
+            <span class="lbl">Welcome</span>
+          </div>
+          <div>
+            <img
+              data-built="Activate.parsed"
+              width="480"
+              height="697"
+              alt="iPad license key, parsed"
+              style="border-radius: 18px; display: block"
+            />
+            <span class="lbl">License key (inline)</span>
+          </div>
+          <div>
+            <img
+              data-built="SignIn.methods"
+              width="480"
+              height="697"
+              alt="iPad sign-in"
+              style="border-radius: 18px; display: block"
+            />
+            <span class="lbl">Sign in</span>
           </div>
         </div>
       </figure>
+      <figure>
+        <figcaption>
+          ipad · code hand-off, device limit, expired and settings. Built today:
+          same renders, same device
+        </figcaption>
+        <div class="row-shot" data-shot="ipad-states">
+          <div>
+            <img
+              data-built="SignInHandoff.code"
+              width="480"
+              height="697"
+              alt="iPad sign-in code"
+              style="border-radius: 18px; display: block"
+            />
+            <span class="lbl">Code</span>
+          </div>
+          <div>
+            <img
+              data-built="Activate.device-limit"
+              width="480"
+              height="697"
+              alt="iPad device limit"
+              style="border-radius: 18px; display: block"
+            />
+            <span class="lbl">Device limit</span>
+          </div>
+          <div>
+            <img
+              data-built="StatusScreen.expired"
+              width="480"
+              height="697"
+              alt="iPad expired"
+              style="border-radius: 18px; display: block"
+            />
+            <span class="lbl">Expired</span>
+          </div>
+          <div>
+            <img
+              data-built="Settings.list"
+              width="480"
+              height="697"
+              alt="iPad settings"
+              style="border-radius: 18px; display: block"
+            />
+            <span class="lbl">Settings</span>
+          </div>
+        </div>
+      </figure>
+      <!-- The landscape split Welcome (PolarisKitLayout, DL1) has no render: the simulator
+           was headless and cannot rotate, so it is not drawn rather than guessed. -->
     </main>
+    <script>
+      document.querySelectorAll("img[data-built]").forEach((i) => {
+        i.src = `shots/ipad-built/${i.dataset.built}-${window.PK_THEME}.jpg`;
+      });
+    </script>
     <script>
       /* The visionOS, tvOS and watchOS shots are generated from one markup per screen, so the
          polaris-key and native presets (and the sizes) cannot drift apart. Each shot is a

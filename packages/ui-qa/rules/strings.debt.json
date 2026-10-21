@@ -153,21 +153,6 @@
     },
     {
       "board": "apple",
-      "state": "ipad",
-      "text": "by Harbor Audio"
-    },
-    {
-      "board": "apple",
-      "state": "ipad",
-      "text": "Sign in or add your license to start."
-    },
-    {
-      "board": "apple",
-      "state": "ipad",
-      "text": "Your key is in the purchase email from Harbor Audio."
-    },
-    {
-      "board": "apple",
       "state": "watch-states",
       "text": "Continue on iPhone"
     },
