@@ -435,8 +435,8 @@ export function LimitsStep({
           <div id="new-license-more" className="mt-3 space-y-4">
             <FormField
               name="channels"
-              label="Release channels"
-              help="Added to the tier's channels. None ticked: the tier's, else stable only."
+              label="Release tracks"
+              help="Added to the tier's release tracks. None ticked: the tier's, else stable only."
               group
               value={draft.channels}
               onChange={(v: string[]) => set("channels", v)}

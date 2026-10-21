@@ -146,7 +146,7 @@ export function TiersPage({ slug }: { slug: string }): React.ReactElement {
       },
       {
         id: "channels",
-        header: "Channels",
+        header: "Release tracks",
         accessorFn: (t) => t.channels.join(", "),
         meta: { priority: 3 },
         cell: ({ getValue }) =>

@@ -525,7 +525,7 @@ describe("Repo sync drawer (REL-2, REL-8, REL-9)", () => {
     expect(within(item).getByText("Warning")).toBeTruthy();
     expect(within(item).getByText(/beta is floored at 0\.5\.0/)).toBeTruthy();
     expect(
-      within(item).getByRole("link", { name: "Channels" }).getAttribute("href"),
+      within(item).getByRole("link", { name: "Release tracks" }).getAttribute("href"),
     ).toBe("#/p/djdl/release/channels");
   });
 

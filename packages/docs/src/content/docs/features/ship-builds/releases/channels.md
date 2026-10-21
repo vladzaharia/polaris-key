@@ -13,7 +13,7 @@ not from the order GitHub happens to list releases in, and it is the same answer
 surface: the [build routes](/docs/features/ship-builds/releases/artifacts/#builds-files-and-blobs), the
 download route, the [appcast](/docs/features/ship-builds/updates/appcast/) and the version check.
 
-In the console, release tracks are under **Ship builds → Channels**.
+In the console, release tracks are under **Ship builds → Release tracks**.
 
 ## Resolution rules
 

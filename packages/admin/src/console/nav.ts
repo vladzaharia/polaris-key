@@ -533,7 +533,7 @@ export const SECTIONS: NavSection[] = [
       },
       {
         page: "channels",
-        label: "Channels",
+        label: "Release tracks",
         path: "release/channels",
         icon: Waypoints,
         docs: "/docs/features/ship-builds/releases/channels/",

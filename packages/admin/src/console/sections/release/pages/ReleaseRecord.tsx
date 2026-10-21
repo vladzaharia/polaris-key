@@ -1058,7 +1058,7 @@ export function ReleaseRecord({
     },
     {
       value: "channels",
-      label: "Channels",
+      label: "Release tracks",
       to: r.release(slug, id, "channels"),
     },
     ...(distributionOn

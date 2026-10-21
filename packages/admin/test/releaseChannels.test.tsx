@@ -229,7 +229,7 @@ describe("Channels lanes — what each channel serves (CHN-2, CHN-4)", () => {
     const stable = await lane("stable");
     expect(within(stable).getByText(/Newest eligible release/)).toBeTruthy();
     expect(
-      within(stable).getByText("No other channel (the default)"),
+      within(stable).getByText("No other track (the default)"),
     ).toBeTruthy();
     expect(within(stable).getByText("From manifest")).toBeTruthy();
     // The anti-rollback floor (P0-02), with when it was raised (CHN-5).
@@ -275,7 +275,7 @@ describe("Channels lanes — what each channel serves (CHN-2, CHN-4)", () => {
   it("shows skeletons while loading, then an error with Retry", async () => {
     releaseChannels.mockReturnValueOnce(pending());
     const { container } = mountPage();
-    await screen.findByRole("heading", { level: 1, name: "Channels" });
+    await screen.findByRole("heading", { level: 1, name: "Release tracks" });
     expect(container.querySelector("[data-skeleton]")).toBeTruthy();
     cleanup();
     releaseChannels.mockReset();
@@ -290,7 +290,7 @@ describe("Channels lanes — what each channel serves (CHN-2, CHN-4)", () => {
   it("says what a channel is when there is none yet", async () => {
     releaseChannels.mockResolvedValue({ deliverables: [] });
     mountPage();
-    expect(await screen.findByText("No channels yet")).toBeTruthy();
+    expect(await screen.findByText("No release tracks yet")).toBeTruthy();
   });
 
   it("switches deliverables through the URL and shows a pack's floors per contentApi line (CHN-1)", async () => {

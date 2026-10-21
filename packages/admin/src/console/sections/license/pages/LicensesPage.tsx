@@ -278,7 +278,7 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
         : []),
       {
         id: "channel",
-        header: "Channels",
+        header: "Release tracks",
         accessorFn: (l) => l.channels.join(", "),
         meta: { defaultHidden: true },
         cell: ({ getValue }) => (getValue() as string) || "—",
