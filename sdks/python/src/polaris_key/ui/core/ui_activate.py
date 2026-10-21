@@ -25,8 +25,8 @@ _KEY_SHAPE = re.compile(r"^pkey_([a-z0-9-]+)_([A-Za-z0-9_-]*)$")
 _PREFIX_SHAPE = re.compile(r"^pkey_[a-z0-9-]*$")
 _FIELD = "part.keyField.label"
 _SUBMIT = "activate.submit"
-# The results that mean the input itself is wrong (DL7): the danger stroke. Every other refusal of
-# a well-formed key is a neutral callout (DL6).
+# The results that mean the input itself is wrong (DL7): a key the service does not know, or a check
+# that failed. Every other refusal of a well-formed key is a neutral callout (DL6).
 _WRONG_KEY = frozenset(("unauthorized", "error"))
 # What every field-state screen carries: its heading, lede and the key field (ui-matrix v4).
 _BASE = ("activate.title", "activate.lede", _FIELD, "part.keyField.placeholder", "common.paste")

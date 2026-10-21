@@ -62,7 +62,7 @@ describe("Activate's refusal tone", () => {
       keyField: { text: key, submitted: true },
       activation: { result },
     }).decisions.tone;
-  it("is danger only when the key itself is wrong", () => {
+  it("is danger for a key the service does not know and for a failed check", () => {
     expect(tone("unauthorized")).toBe("danger");
     expect(tone("error")).toBe("danger");
   });

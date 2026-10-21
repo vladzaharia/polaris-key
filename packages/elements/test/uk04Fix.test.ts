@@ -116,6 +116,7 @@ describe("UK-04 fix", () => {
       activation: { result: "unauthorized" },
     });
     const field = q(el, "input#pk-key") as HTMLInputElement;
+    // A key the service does not know is the input being wrong (DL7): the stroke and the link.
     expect(field.getAttribute("aria-invalid")).toBe("true");
     expect(field.getAttribute("aria-describedby")).toBe("pk-message");
     const callout = q(el, ".callout");

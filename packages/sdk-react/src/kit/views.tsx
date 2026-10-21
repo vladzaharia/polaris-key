@@ -64,11 +64,11 @@ function contentFor(c: KitCtx): ReactNode {
         ) ||
         // The drop-in keeps the field while a key is checked.
         (view.state === "busy" && keys.has("part.keyField.label"));
-      // An input that is itself wrong takes the stroke and the linked message (DL7); a refusal of
-      // a well-formed key is a neutral callout (DL6), as ui-core's tone says.
-      const refused =
-        (view.state === "rejected" || view.state === "cut-short") &&
-        view.decisions.tone === "danger";
+      // The message under a refused key is linked to the field; only an input that is itself
+      // wrong takes the stroke (DL7). A refusal of a well-formed key is a neutral callout (DL6),
+      // as ui-core's tone says.
+      const refused = view.state === "rejected" || view.state === "cut-short";
+      const wrong = refused && view.decisions.tone === "danger";
       const used = input.activation?.deviceCount;
       const limit = input.activation?.limit;
       return (
@@ -76,7 +76,7 @@ function contentFor(c: KitCtx): ReactNode {
           {editing
             ? keyField(
                 c,
-                invalid || refused,
+                invalid || wrong,
                 verdict.length ? "pk-verdict" : refused ? "pk-message" : null,
               )
             : null}

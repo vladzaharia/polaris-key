@@ -207,10 +207,11 @@ covers device limit, revoked, expired, version too old or too new, and channel n
 - Every blocking state has an action that can change its outcome: revoked shows the sign-in
   methods, expired offers another license. A fix the kit cannot reach is named in words, and Try
   again stays.
-- Activate follows the same split: a refused, well-formed key (license disabled, expired, key-entry
-  limit, owned by another account) is this neutral callout with no `aria-invalid`; a key the service
-  does not know (`unauthorized`) or a check that failed (`error`) is the input being wrong (DL7), in
-  danger. ui-core decides it; no kit overrides the tone.
+- Activate follows the same split: a refusal of a well-formed key (license disabled, expired,
+  key-entry limit, owned by another account) is this neutral callout, linked to the field with no
+  `aria-invalid`. A key the service does not know, a key's own shape (empty, cut short, not a key)
+  and a failed check (`error`) are the input being wrong (DL7), in danger. ui-core decides it; no
+  kit overrides the tone.
 - In a terminal a refusal is ▲ with its fix, never ✗. A refused gate in a host CLI exits 4 and
   `status` exits 1 (UK-51).
 

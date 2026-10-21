@@ -125,21 +125,13 @@ describe("Activate's refusal tone", () => {
       "false",
     );
   });
-  it("is danger, with the stroke, for a key the service does not know", () => {
+  it("is danger, with the stroke, for a key that is not one", () => {
     const { container } = render(
-      <Activate
-        input={input({
-          keyField: {
-            text: "pkey_tidewater_AbCdEfGhIjKlMnOpQrStUv",
-            submitted: true,
-          },
-          activation: { result: "unauthorized" },
-        })}
-      />,
+      <Activate input={input({ keyField: { text: "tidewater-2024-pro" } })} />,
     );
-    expect(container.querySelector(".callout")?.getAttribute("data-tone")).toBe(
-      "danger",
-    );
+    expect(
+      container.querySelector(".callout, .message")?.getAttribute("data-tone"),
+    ).toBe("danger");
     expect(container.querySelector("input")?.getAttribute("aria-invalid")).toBe(
       "true",
     );
