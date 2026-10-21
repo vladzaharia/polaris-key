@@ -249,7 +249,7 @@ describe("the pin decides whether the connector runs", () => {
     expect(pins).toHaveLength(1);
     expect(pins[0]).toMatchObject({ actor_sub: "u1", target_id: "asc" });
     expect(pins[0]!.summary).toBe(
-      `Pinned outlet credential asc (asc-api-key) to appleId ${OTHER_APP} (was ${APPLE_ID})`,
+      `Pinned channel credential asc (asc-api-key) to appleId ${OTHER_APP} (was ${APPLE_ID})`,
     );
 
     const view = await connectorView(w);
@@ -538,7 +538,7 @@ describe("the admin API", () => {
       "outlet_credential.set",
     ]);
     expect(rows[1]!.summary).toBe(
-      `Pinned outlet credential asc (asc-api-key) to appleId ${APPLE_ID} (was unpinned)`,
+      `Pinned channel credential asc (asc-api-key) to appleId ${APPLE_ID} (was unpinned)`,
     );
     expect((await connectorView(w)).configured).toBe(true);
   });

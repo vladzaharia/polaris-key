@@ -51,6 +51,14 @@ const TABLE: [
     { title: "You can't do that", action: "none" },
   ],
   [
+    "403 no_access names the area",
+    Object.assign(api(403, { code: "forbidden", reason: "no_access" }), {
+      area: "settings",
+    }),
+    {},
+    { title: "You don't have access to this", action: "none" },
+  ],
+  [
     "404",
     api(404, { code: "not_found" }),
     { thing: "License" },
@@ -584,5 +592,24 @@ describe("errorCopy never shows an HTTP status", () => {
       expect(c.description).not.toContain("internal policy line");
       expect(JSON.stringify(c.details)).toContain("internal policy line");
     }
+  });
+});
+
+describe("403 refusal wording", () => {
+  it("names the area in the console's vocabulary", () => {
+    const e = Object.assign(api(403, { reason: "no_access" }), {
+      area: "keys",
+    });
+    expect(errorCopy(e, {}).description).toBe(
+      "You need Keys & secrets edit access to do this.",
+    );
+  });
+  it("falls back to plain edit access", () => {
+    expect(errorCopy(api(403, { reason: "no_access" }), {}).description).toBe(
+      "You need edit access to do this.",
+    );
+    expect(errorCopy(api(403, { message: "nope" }), {}).description).toBe(
+      "You need edit access to do this.",
+    );
   });
 });
