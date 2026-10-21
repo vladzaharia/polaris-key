@@ -52,3 +52,15 @@ describe("convertAsides", () => {
     }
   });
 });
+
+describe("running-text columns", () => {
+  const long =
+    "A long description that runs past a label and needs room to read.";
+  const html = `<h2>T</h2><table><thead><tr><th>Key</th><th>Setting</th></tr></thead><tbody><tr><td>k</td><td>${long}</td></tr></tbody></table>`;
+  it("give a column of running text a readable minimum, header and cells alike", () => {
+    const out = wrapTables(html);
+    expect(out.match(/min-w-72/g)).toHaveLength(2);
+    expect(out).toMatch(/<th class="[^"]*min-w-72[^"]*" scope="col">Setting/);
+    expect(out).not.toMatch(/<th class="[^"]*min-w-72[^"]*" scope="col">Key/);
+  });
+});

@@ -83,6 +83,8 @@ export const TABLE = {
   rowComfortable: "h-14",
   row: "bg-surface-raised text-sm text-fg outline-hidden [&>td]:border-b [&>td]:border-border hover:bg-state-hover-tint focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus data-[selected]:bg-accent-subtle [&.pk-row-highlight]:bg-accent-subtle",
   cell: "px-3 align-middle",
+  /** A column of running text (docs tables): wide enough to read, instead of squeezed by its neighbours. */
+  proseCell: "min-w-72",
   /**
    * The labelled, focusable region a table that may scroll sideways sits in (`ScrollTable`). The
    * region scrolls, not the table: a surrounding stylesheet that makes `table` a scrolling block

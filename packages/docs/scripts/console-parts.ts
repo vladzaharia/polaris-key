@@ -63,30 +63,68 @@ function withClass(open: string, classes: string): string {
   return open.replace(/^<(\w+)/, `<$1 class="${classes}"`);
 }
 
+/** Columns whose cells hold running text (longer than a label): they get a readable minimum. */
+function proseColumns(table: string): Set<number> {
+  const prose = new Set<number>();
+  for (const row of table.match(/<tr(?:\s[^>]*)?>[\s\S]*?<\/tr>/g) ?? []) {
+    [...row.matchAll(/<t[dh](?:\s[^>]*)?>([\s\S]*?)<\/t[dh]>/g)].forEach(
+      (cell, i) => {
+        if (plain(cell[1] ?? "").length > 60) prose.add(i);
+      },
+    );
+  }
+  return prose;
+}
+
+/** Applies `fn` to the opening tag of every cell of a row, with the cell's column index. */
+function eachCell(
+  row: string,
+  tag: "th" | "td",
+  fn: (open: string, column: number) => string,
+): string {
+  let column = 0;
+  return row.replace(new RegExp(`<${tag}(\\s[^>]*)?>`, "g"), (open) =>
+    fn(open, column++),
+  );
+}
+
 function styleTable(table: string): string {
+  const prose = proseColumns(table);
+  const proseClass = (column: number): string =>
+    prose.has(column) ? ` ${TABLE.proseCell}` : "";
   let out = table.replace(/^<table>/, `<table class="${TABLE.table}">`);
   out = out.replace(/<thead(\s[^>]*)?>[\s\S]*?<\/thead>/, (head) => {
     let h = head.replace(/^<thead[^>]*>/, (o) => withClass(o, TABLE.head));
-    h = h.replace(/<tr(\s[^>]*)?>/g, (o) => withClass(o, TABLE.headRow));
-    h = h.replace(/<th(\s[^>]*)?>/g, (o) => {
-      const scoped = / scope="/.test(o)
-        ? o
-        : o.replace(/^<th/, '<th scope="col"');
-      const aligned = / (align|style)="/.test(o);
-      return withClass(
-        scoped,
-        aligned ? TABLE.headCell : `${TABLE.headCell} text-left`,
-      );
-    });
+    h = h.replace(/<tr(\s[^>]*)?>[\s\S]*?<\/tr>/g, (row) =>
+      eachCell(
+        row.replace(/^<tr(\s[^>]*)?>/, (o) => withClass(o, TABLE.headRow)),
+        "th",
+        (o, column) => {
+          const scoped = / scope="/.test(o)
+            ? o
+            : o.replace(/^<th/, '<th scope="col"');
+          const aligned = / (align|style)="/.test(o);
+          return withClass(
+            scoped,
+            (aligned ? TABLE.headCell : `${TABLE.headCell} text-left`) +
+              proseClass(column),
+          );
+        },
+      ),
+    );
     return h;
   });
-  out = out.replace(/<tbody(\s[^>]*)?>[\s\S]*?<\/tbody>/, (body) => {
-    let b = body.replace(/<tr(\s[^>]*)?>/g, (o) =>
-      withClass(o, `${TABLE.row} ${TABLE.rowCompact}`),
-    );
-    b = b.replace(/<td(\s[^>]*)?>/g, (o) => withClass(o, TABLE.cell));
-    return b;
-  });
+  out = out.replace(/<tbody(\s[^>]*)?>[\s\S]*?<\/tbody>/, (body) =>
+    body.replace(/<tr(\s[^>]*)?>[\s\S]*?<\/tr>/g, (row) =>
+      eachCell(
+        row.replace(/^<tr(\s[^>]*)?>/, (o) =>
+          withClass(o, `${TABLE.row} ${TABLE.rowCompact}`),
+        ),
+        "td",
+        (o, column) => withClass(o, TABLE.cell + proseClass(column)),
+      ),
+    ),
+  );
   return out;
 }
 
