@@ -986,13 +986,35 @@
       <header class="board-head">
         <h1>iOS board: SwiftUI kit</h1>
         <p>
-          The built iPhone kit in catalog copy. Each frame ends with its tier.
+          Each "Built today" frame is the SwiftUI kit's committed iPhone
+          snapshot, embedded in place. The drawing beside it is the UK-11
+          target. Where no snapshot exists, only the drawing is shown, as a
+          target.
         </p>
       </header>
       <!-- 1. Gate -->
       <h2 class="board-sec">Gate, activate and sign in</h2>
       <figure>
-        <figcaption>ios · gate. Built today</figcaption>
+        <figcaption>
+          ios · gate · the SwiftUI kit's committed iPhone 440 × 956 snapshot
+          (welcome-default). Built today
+        </figcaption>
+        <div
+          class="shot"
+          data-shot="built-gate"
+          style="display: flex; gap: 16px; background: none; box-shadow: none"
+        >
+          <img
+            data-render="swift:welcome-default"
+            width="440"
+            height="956"
+            alt="gate, welcome-default"
+            style="display: block"
+          />
+        </div>
+      </figure>
+      <figure>
+        <figcaption>ios · gate. UK-11 target</figcaption>
         <div class="shot" data-shot="gate">
           <div class="screen" data-tpl="gate"></div>
         </div>
@@ -1001,8 +1023,29 @@
       <!-- 2a. Activate: inline, one form on the gate's screen -->
       <figure>
         <figcaption>
+          ios · activate · the SwiftUI kit's committed iPhone 440 × 956 snapshot
+          (activate-parsed). Built today
+        </figcaption>
+        <div
+          class="shot"
+          data-shot="built-activate-inline"
+          style="display: flex; gap: 16px; background: none; box-shadow: none"
+        >
+          <img
+            data-render="swift:activate-parsed"
+            width="440"
+            height="956"
+            alt="activate, activate-parsed"
+            style="display: block"
+          />
+        </div>
+      </figure>
+      <figure>
+        <figcaption>
           ios · activate · inline, one form, key parsed (the default: the gate
-          pushes it, no sheet). Built today
+          pushes it, no sheet). Target: the catalog title, "Key for Tidewater
+          Studio" and the parsed Pro · Lifetime · 3 devices line, which the
+          build does not draw. UK-11 target
         </figcaption>
         <div class="shot" data-shot="activate-inline">
           <div class="screen">
@@ -1038,7 +1081,7 @@
                 <span style="font-weight: 600">Tidewater Studio</span>
               </div>
               <h2 class="title-l" style="margin: 0 4px 6px">
-                Add your license
+                Enter your license key
               </h2>
               <p
                 class="sub"
@@ -1092,8 +1135,9 @@
       <figure>
         <figcaption>
           ios · activate as a sheet, the labelled alternative when the host
-          presents it over its own screen (large detent, key parsed). Built
-          today
+          presents it over its own screen (large detent, key parsed). The build
+          renders the inline form only; this sheet is the labelled alternative,
+          not built. UK-11 target
         </figcaption>
         <div class="shot" data-shot="activate">
           <div class="screen" data-tpl="gate">
@@ -1120,11 +1164,11 @@
                   class="glass prominent circ"
                   data-icon="check"
                   data-size="20"
-                  aria-label="Activate"
+                  aria-label="Activate license"
                 ></span>
               </div>
               <h2 class="title-l" style="margin: 0 4px 6px">
-                Add your license
+                Enter your license key
               </h2>
               <p
                 class="sub"
@@ -1174,9 +1218,29 @@
       <!-- 3. Sign in: method sheet over the real gate -->
       <figure>
         <figcaption>
+          ios · sign-in methods · the SwiftUI kit's committed iPhone 440 × 956
+          snapshot (sign-in-methods). Built today
+        </figcaption>
+        <div
+          class="shot"
+          data-shot="built-sign-in"
+          style="display: flex; gap: 16px; background: none; box-shadow: none"
+        >
+          <img
+            data-render="swift:sign-in-methods"
+            width="440"
+            height="956"
+            alt="sign-in methods, sign-in-methods"
+            style="display: block"
+          />
+        </div>
+      </figure>
+      <figure>
+        <figcaption>
           ios · sign-in as a sheet, the labelled alternative when the host
           presents it (medium detent, floating; swipe to dismiss). The kit
-          pushes it inline by default (see the iPad board). Built today
+          pushes it inline by default (see the iPad board). Target: the same
+          list as a sheet over the host. UK-11 target
         </figcaption>
         <div class="shot" data-shot="sign-in">
           <div class="screen" data-tpl="gate">
@@ -1241,7 +1305,26 @@
       <!-- 4. Device limit -->
       <h2 class="board-sec">Device limit and updates</h2>
       <figure>
-        <figcaption>ios · device limit. Built today</figcaption>
+        <figcaption>
+          ios · device limit · the SwiftUI kit's committed iPhone 440 × 956
+          snapshot (device-limit-default). Built today
+        </figcaption>
+        <div
+          class="shot"
+          data-shot="built-device-limit"
+          style="display: flex; gap: 16px; background: none; box-shadow: none"
+        >
+          <img
+            data-render="swift:device-limit-default"
+            width="440"
+            height="956"
+            alt="device limit, device-limit-default"
+            style="display: block"
+          />
+        </div>
+      </figure>
+      <figure>
+        <figcaption>ios · device limit. UK-11 target</figcaption>
         <div class="shot" data-shot="device-limit">
           <div class="screen">
             <div class="navbar">
@@ -1362,7 +1445,27 @@
       <!-- 5. Update available: a glass banner, not a sheet -->
       <figure>
         <figcaption>
-          ios · update available (non-blocking banner). Built today
+          ios · update available (banner) · the SwiftUI kit's committed iPhone
+          440 × 956 snapshot (update-prompt-available). Built today
+        </figcaption>
+        <div
+          class="shot"
+          data-shot="built-update"
+          style="display: flex; gap: 16px; background: none; box-shadow: none"
+        >
+          <img
+            data-render="swift:update-prompt-available"
+            width="440"
+            height="956"
+            alt="update available (banner), update-prompt-available"
+            style="display: block"
+          />
+        </div>
+      </figure>
+      <figure>
+        <figcaption>
+          ios · update available (non-blocking banner). Target: one Update pill;
+          the build offers Later and Update now. UK-11 target
         </figcaption>
         <div class="shot" data-shot="update">
           <div class="screen" data-tpl="host">
@@ -1407,7 +1510,28 @@
       <!-- 6. Mandatory update: a sheet with no dismiss -->
       <figure>
         <figcaption>
-          ios · update required (no dismiss, says why). Built today
+          ios · update required · the SwiftUI kit's committed iPhone 440 × 956
+          snapshot (update-prompt-mandatory). Built today
+        </figcaption>
+        <div
+          class="shot"
+          data-shot="built-update-required"
+          style="display: flex; gap: 16px; background: none; box-shadow: none"
+        >
+          <img
+            data-render="swift:update-prompt-mandatory"
+            width="440"
+            height="956"
+            alt="update required, update-prompt-mandatory"
+            style="display: block"
+          />
+        </div>
+      </figure>
+      <figure>
+        <figcaption>
+          ios · update required (no dismiss, says why). Target: a sheet with
+          what is new and the store button; the build is a full screen. UK-11
+          target
         </figcaption>
         <div class="shot" data-shot="update-required">
           <div class="screen" data-tpl="host">
@@ -1478,7 +1602,27 @@
       <h2 class="board-sec">Settings and system variants</h2>
       <figure>
         <figcaption>
-          ios · settings (account and license). Built today
+          ios · settings · the SwiftUI kit's committed iPhone 440 × 956 snapshot
+          (account-and-license-signed-in). Built today
+        </figcaption>
+        <div
+          class="shot"
+          data-shot="built-settings"
+          style="display: flex; gap: 16px; background: none; box-shadow: none"
+        >
+          <img
+            data-render="swift:account-and-license-signed-in"
+            width="440"
+            height="956"
+            alt="settings, account-and-license-signed-in"
+            style="display: block"
+          />
+        </div>
+      </figure>
+      <figure>
+        <figcaption>
+          ios · settings (account and license). Target: the drawn Account list
+          (Manage license, toggles, Restore purchase). UK-11 target
         </figcaption>
         <div class="shot" data-shot="settings">
           <div class="screen">
@@ -1574,7 +1718,7 @@
       <figure>
         <figcaption>
           ios · iOS 18 fallback (same layout on system materials: no Liquid
-          Glass). Built today
+          Glass). No iOS 18 render is committed. UK-11 target
         </figcaption>
         <div class="row-shot" data-shot="ios18">
           <div>
@@ -1590,7 +1734,7 @@
                 <div class="sheet" style="top: 300px; padding-top: 8px">
                   <div class="grab" style="margin-bottom: 18px"></div>
                   <h2 class="title-l" style="margin: 0 4px 6px">
-                    Add your license
+                    Enter your license key
                   </h2>
                   <p
                     class="sub"
@@ -1623,7 +1767,7 @@
                     >
                   </div>
                   <div class="glass prominent cap" style="margin-top: 28px">
-                    Activate
+                    Activate license
                   </div>
                   <div class="glass cap" style="margin-top: 12px">Cancel</div>
                 </div>
@@ -1637,8 +1781,27 @@
       <!-- 9. AX3 Dynamic Type -->
       <figure>
         <figcaption>
+          ios · AX3 Dynamic Type · the SwiftUI kit's committed iPhone 440 × 956
+          snapshot (welcome-default, dark baseline only). Built today
+        </figcaption>
+        <div
+          class="shot"
+          data-shot="built-ax3"
+          style="display: flex; gap: 16px; background: none; box-shadow: none"
+        >
+          <img
+            data-render="swift-ax3:welcome-default"
+            width="440"
+            height="956"
+            alt="AX3 Dynamic Type, welcome-default"
+            style="display: block"
+          />
+        </div>
+      </figure>
+      <figure>
+        <figcaption>
           ios · AX3 Dynamic Type (Rubik through UIFontMetrics; stacks, wraps,
-          scrolls). Built today
+          scrolls). Target: the drawn AX3 welcome. UK-11 target
         </figcaption>
         <div class="shot ax3" data-shot="ax3">
           <div class="screen">
