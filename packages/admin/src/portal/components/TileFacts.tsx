@@ -59,6 +59,7 @@ export function TileFacts({
   facts,
   platforms,
   compact = false,
+  status = null,
   className,
 }: {
   facts: Facts;
@@ -68,6 +69,12 @@ export function TileFacts({
    * and no platform glyphs or lines: the art's pill already says Expired or Expires in …
    */
   compact?: boolean;
+  /**
+   * The product's status pill (Expired, Ends soon…). It takes the tier pill's place on the meta
+   * line, so a tile is as tall with a status as without one (B-084) and nothing is drawn over the
+   * art or on a row of its own.
+   */
+  status?: React.ReactNode;
   className?: string;
 }): React.ReactElement | null {
   const { tier } = facts;
@@ -77,14 +84,22 @@ export function TileFacts({
     ? facts.lines.filter((l) => l.kind === "free")
     : facts.lines.slice(0, 1);
   if (compact) platforms = [];
-  if (!tier && !devices && platforms.length === 0 && lines.length === 0)
+  if (
+    !tier &&
+    !status &&
+    !devices &&
+    platforms.length === 0 &&
+    lines.length === 0
+  )
     return null;
   return (
     <div className={cn("space-y-1.5", className)}>
-      {tier || devices || platforms.length ? (
+      {tier || status || devices || platforms.length ? (
         <div className="flex items-start justify-between gap-x-3 gap-y-1.5 @max-[13rem]/tile:flex-col">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
-            {tier ? (
+            {status ? (
+              status
+            ) : tier ? (
               <Pill icon={KeyRound} className="text-fg-strong">
                 {tier}
               </Pill>

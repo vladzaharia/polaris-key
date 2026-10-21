@@ -96,6 +96,15 @@ describe.concurrent("every shipped §4 state at every size", () => {
 async function focusScrollingBody(
   page: Page,
 ): Promise<{ style: string; width: string } | null> {
+  // The body joins the tab order once its overflow has held for two frames, not at mount.
+  await page.evaluate(
+    () =>
+      new Promise((r) =>
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => requestAnimationFrame(r)),
+        ),
+      ),
+  );
   for (let i = 0; i < 12; i++) {
     await page.keyboard.press("Tab");
     const ring = await page.evaluate(() => {

@@ -604,14 +604,31 @@ export function DialogBody({
   );
 }
 
-/** Whether the element's content is taller than its box, kept current as either resizes. */
+/**
+ * Whether the element's content is taller than its box, kept current as either resizes. It reports
+ * only a settled state: a reading is taken two animation frames after the last resize, mount or
+ * font load, and counts only when both frames agree. A transient overflow while the dialog mounts
+ * (a font swapping in, a first layout pass) must not add a Tab stop that is gone a frame later
+ * (B-092: the fifth Tab landed on a different control run to run).
+ */
 function useOverflowsY(ref: React.RefObject<HTMLElement | null>): boolean {
   const [overflows, setOverflows] = React.useState(false);
   React.useEffect(() => {
     const el = ref.current;
     if (!el || typeof ResizeObserver === "undefined") return;
-    const measure = (): void =>
-      setOverflows(el.scrollHeight > el.clientHeight + 1);
+    let frame = 0;
+    let gone = false;
+    const read = (): boolean => el.scrollHeight > el.clientHeight + 1;
+    const measure = (): void => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const first = read();
+        frame = requestAnimationFrame(() => {
+          if (read() === first) setOverflows(first);
+          else measure();
+        });
+      });
+    };
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     for (const child of Array.from(el.children)) ro.observe(child);
@@ -621,7 +638,13 @@ function useOverflowsY(ref: React.RefObject<HTMLElement | null>): boolean {
     });
     mo.observe(el, { childList: true });
     measure();
+    // Web fonts change line breaks without resizing the box the observer watches first.
+    void document.fonts?.ready.then(() => {
+      if (!gone) measure();
+    });
     return () => {
+      gone = true;
+      cancelAnimationFrame(frame);
       ro.disconnect();
       mo.disconnect();
     };

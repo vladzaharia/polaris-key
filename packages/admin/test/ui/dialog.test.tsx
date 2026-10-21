@@ -251,3 +251,79 @@ describe("Dialog and Drawer unsaved guard (C13)", () => {
     expect(screen.getByTestId("state").textContent).toBe("closed");
   });
 });
+
+describe("DialogBody tab stop", () => {
+  it("joins the tab order only once its overflow has settled (B-092)", async () => {
+    const g = globalThis as unknown as Record<string, unknown>;
+    const realRO = g.ResizeObserver;
+    const callbacks: Array<() => void> = [];
+    g.ResizeObserver = class {
+      constructor(cb: () => void) {
+        callbacks.push(cb);
+      }
+      observe(): void {}
+      disconnect(): void {}
+    };
+    // Animation frames run by hand, so the test decides what each reading sees.
+    const queue: FrameRequestCallback[] = [];
+    const realRaf = globalThis.requestAnimationFrame;
+    const realCaf = globalThis.cancelAnimationFrame;
+    globalThis.requestAnimationFrame = (cb) => queue.push(cb);
+    globalThis.cancelAnimationFrame = (id) => {
+      queue[id - 1] = () => undefined;
+    };
+    const flush = (): void => {
+      while (queue.length) queue.shift()!(0);
+    };
+    let scrollHeight = 500;
+    const sh = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      "scrollHeight",
+    );
+    const ch = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      "clientHeight",
+    );
+    Object.defineProperty(HTMLElement.prototype, "scrollHeight", {
+      configurable: true,
+      get: () => scrollHeight,
+    });
+    Object.defineProperty(HTMLElement.prototype, "clientHeight", {
+      configurable: true,
+      get: () => 300,
+    });
+    try {
+      render(<Harness dismissible />);
+      const body = (): Element =>
+        document.querySelector("[data-pk-dialog-body]")!;
+      // A transient overflow that is gone by the second frame never becomes a tab stop.
+      const first = queue.shift()!;
+      first(0);
+      scrollHeight = 200;
+      flush();
+      expect(body().getAttribute("tabindex")).toBeNull();
+      // A resize while it still overflows, steady across both frames, does.
+      scrollHeight = 500;
+      callbacks.forEach((cb) => cb());
+      await React.act(async () => flush());
+      expect(body().getAttribute("tabindex")).toBe("0");
+      // And it leaves the tab order once the content fits again.
+      scrollHeight = 200;
+      callbacks.forEach((cb) => cb());
+      await React.act(async () => flush());
+      expect(body().getAttribute("tabindex")).toBeNull();
+    } finally {
+      g.ResizeObserver = realRO;
+      globalThis.requestAnimationFrame = realRaf;
+      globalThis.cancelAnimationFrame = realCaf;
+      if (sh) Object.defineProperty(HTMLElement.prototype, "scrollHeight", sh);
+      else
+        delete (HTMLElement.prototype as unknown as Record<string, unknown>)
+          .scrollHeight;
+      if (ch) Object.defineProperty(HTMLElement.prototype, "clientHeight", ch);
+      else
+        delete (HTMLElement.prototype as unknown as Record<string, unknown>)
+          .clientHeight;
+    }
+  });
+});

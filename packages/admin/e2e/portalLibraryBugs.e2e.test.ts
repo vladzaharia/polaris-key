@@ -518,25 +518,15 @@ describe.concurrent("the Library skeleton is a tile's size (B-084)", () => {
         );
         release();
         await o.page.waitForSelector("article h3");
-        // A tile with an issue (Expired) carries its status pill in the body, one row the skeleton
-        // cannot know about (LF3: no text over the art), and a grid row is as tall as its tallest
-        // tile. The reference is the first tile's height without that row.
-        const tile = await o.page.evaluate(() => {
-          const li = document.querySelector("article")!.closest("li")!;
-          const top = li.getBoundingClientRect().top;
-          const row = [...document.querySelectorAll("main article")]
-            .map((a) => a.closest("li")!)
-            .filter((l) => Math.abs(l.getBoundingClientRect().top - top) < 2);
-          const extra = Math.max(
-            0,
-            ...row.flatMap((l) =>
-              [...l.querySelectorAll("[data-tone]")].map(
-                (p) => p.parentElement!.getBoundingClientRect().height + 8,
-              ),
-            ),
-          );
-          return li.getBoundingClientRect().height - extra;
-        });
+        // The whole first tile, status pill or not: the pill sits on the meta line (LF3 kept it
+        // off the art), so a tile has one height whatever its status.
+        const tile = await o.page.evaluate(
+          () =>
+            document
+              .querySelector("article")!
+              .closest("li")!
+              .getBoundingClientRect().height,
+        );
         console.log(`E2 skeleton ${skeleton} tile ${tile} at ${width}`);
         expect(Math.abs(skeleton - tile)).toBeLessThanOrEqual(4);
       } finally {

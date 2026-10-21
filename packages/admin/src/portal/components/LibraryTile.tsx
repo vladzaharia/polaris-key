@@ -81,9 +81,9 @@ export function LibraryTile({
       )}
     />
   );
-  // The status pill sits in the tile's body, never on the cover: no text is drawn over a
-  // customer's art (EXPERIENCE §7.3, LF3). It is the plain pill, free to wrap (no plate, no
-  // clipping at 320).
+  // The status pill sits in the tile's body, never on the cover (EXPERIENCE §7.3, LF3), and on the
+  // meta line in the tier pill's place, not a row of its own: a tile is as tall with a status as
+  // without (B-084). It is the plain pill, free to wrap (no plate, no clipping at 320).
   const metaPill =
     product.status.kind === "deviceLimit" ||
     !isIssueStatus(product.status) ? null : (
@@ -200,7 +200,6 @@ export function LibraryTile({
               {tiny && noArt ? menu : null}
             </div>
           </div>
-          {metaPill ? <div className="mt-2">{metaPill}</div> : null}
           {product.justAdded ? (
             <p className="mt-2 text-sm text-fg-muted">
               <span
@@ -219,6 +218,7 @@ export function LibraryTile({
             facts={libraryTileFacts(product)}
             platforms={product.platforms}
             compact={compact}
+            status={metaPill}
           />
           {note ? (
             <p className="mt-2 flex gap-2 text-sm text-fg-muted">
