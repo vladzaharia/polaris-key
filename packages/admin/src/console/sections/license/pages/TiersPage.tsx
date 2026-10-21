@@ -77,7 +77,7 @@ export function TiersPage({ slug }: { slug: string }): React.ReactElement {
         meta: { priority: 1, primary: true },
         cell: ({ getValue }) => (
           <span
-            className="block max-w-[11rem] truncate"
+            className="block max-w-[9.5rem] truncate"
             title={getValue() as string}
           >
             {getValue() as string}
@@ -110,7 +110,7 @@ export function TiersPage({ slug }: { slug: string }): React.ReactElement {
               kind="profile"
               id={row.original.profile}
               label={profileName(row.original.profile)}
-              className="block max-w-[11rem] truncate"
+              className="block max-w-[9.5rem] truncate"
               title={profileName(row.original.profile)}
             />
           ) : (
@@ -152,7 +152,7 @@ export function TiersPage({ slug }: { slug: string }): React.ReactElement {
         cell: ({ getValue }) =>
           (getValue() as string) ? (
             <span
-              className="block max-w-[9rem] truncate"
+              className="block max-w-[7.5rem] truncate"
               title={getValue() as string}
             >
               {getValue() as string}
