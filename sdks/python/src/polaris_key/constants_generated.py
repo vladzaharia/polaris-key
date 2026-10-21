@@ -203,6 +203,7 @@ class ErrorCode:
     TURNSTILE_FAILED: Final = "turnstile_failed"
     SIGNIN_EXPIRED: Final = "signin_expired"
     INVALID_CODE: Final = "invalid_code"
+    CODE_EXPIRED: Final = "code_expired"
     EMAIL_IN_USE: Final = "email_in_use"
     TERMS_REQUIRED: Final = "terms_required"
     LICENSE_OWNED: Final = "license_owned"
@@ -377,6 +378,7 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "turnstile_failed",
     "signin_expired",
     "invalid_code",
+    "code_expired",
     "email_in_use",
     "terms_required",
     "license_owned",
@@ -553,6 +555,7 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "turnstile_failed": "wire",
         "signin_expired": "wire",
         "invalid_code": "wire",
+        "code_expired": "wire",
         "email_in_use": "wire",
         "terms_required": "wire",
         "license_owned": "wire",

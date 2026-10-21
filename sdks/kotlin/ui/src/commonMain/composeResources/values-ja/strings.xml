@@ -709,8 +709,6 @@
     <!-- Email code step (SIGN-IN.md §3.4). -->
     <string name="signin_code_tooMany">試行回数が多すぎます。新しいコードを送信してください。</string>
     <!-- Email code step (SIGN-IN.md §3.4). -->
-    <string name="signin_code_expired">コードの有効期限が切れました。新しいコードを送信してください。</string>
-    <!-- Email code step (SIGN-IN.md §3.4). -->
     <string name="signin_code_differentEmail">別のメールアドレスを使う</string>
     <string name="signin_code_differentEmail__macos">別のメールアドレスを使う</string>
     <!-- Sign-in email subject (SIGN-IN.md §3.15). Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated. Arguments: 1=code. -->
@@ -2272,6 +2270,10 @@
     <string name="core_codes_invalid_code_title">コードが正しくありません</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_code_message">そのコードは使用できませんでした。メールを確認して、もう一度入力してください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_code_expired_title">コードの有効期限切れ</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_code_expired_message">そのコードは有効期限が切れています。新しいコードを送信してください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_in_use_title">メールアドレスは使用中です</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

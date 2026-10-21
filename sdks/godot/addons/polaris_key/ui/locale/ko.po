@@ -1929,11 +1929,6 @@ msgstr[0] "{n}번 더 시도할 수 있어요."
 msgid "signin.code.tooMany"
 msgstr "시도 횟수가 너무 많아요. 새 코드를 요청하세요."
 
-#. That code has expired. Send a new code.
-#. Email code step (SIGN-IN.md §3.4).
-msgid "signin.code.expired"
-msgstr "코드가 만료됐어요. 새 코드를 요청하세요."
-
 #. Use a different email
 #. Email code step (SIGN-IN.md §3.4).
 msgid "signin.code.differentEmail"
@@ -5978,6 +5973,16 @@ msgstr "잘못된 코드"
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_code.message"
 msgstr "그 코드는 작동하지 않았어요. 이메일을 확인하고 다시 입력하세요."
+
+#. Code expired
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.code_expired.title"
+msgstr "만료된 코드"
+
+#. That code has expired. Send a new code.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.code_expired.message"
+msgstr "그 코드는 만료되었어요. 새 코드를 보내세요."
 
 #. Email already in use
 #. Core copy (conformance/parity/copy.en.json, codes).

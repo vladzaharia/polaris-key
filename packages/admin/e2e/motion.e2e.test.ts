@@ -229,6 +229,14 @@ interface Probe {
  * every change of `html[data-vt]`. Installed over the DevTools protocol after load; listening needs
  * no markup, so the page's CSP is untouched.
  */
+/** ⌘K focuses the Library's toolbar search while the Library is on screen; the palette opens on every other page. */
+async function awayFromLibrary(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    location.hash = "#/account";
+  });
+  await h1(page, "Account");
+}
+
 async function installProbe(page: Page): Promise<void> {
   await page.evaluate(() => {
     const w = window as unknown as { __m: Probe };
@@ -1107,6 +1115,7 @@ describe("motion on: the portal under the Worker's CSP", () => {
         .getByRole("heading", { level: 1, name: "Your library" })
         .waitFor();
       await page.getByText("Glyphsmith").first().waitFor();
+      await awayFromLibrary(page);
       await installProbe(page);
       const tk = await tokens(page);
       await atRest(page);
@@ -1329,6 +1338,7 @@ describe("motion on: the portal under the Worker's CSP", () => {
       const page = o.page;
       await h1(page, "Your library");
       await page.getByText("Glyphsmith").first().waitFor();
+      await awayFromLibrary(page);
       await installProbe(page);
       const tk = await tokens(page);
       await atRest(page);
@@ -1560,6 +1570,7 @@ describe("reduced motion: the same interactions are instant swaps", () => {
         .getByRole("heading", { level: 1, name: "Your library" })
         .waitFor();
       await page.getByText("Glyphsmith").first().waitFor();
+      await awayFromLibrary(page);
       await installProbe(page);
       await takeLog(page);
       await page.keyboard.press("Control+k");
