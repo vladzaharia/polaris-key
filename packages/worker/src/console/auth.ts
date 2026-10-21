@@ -578,7 +578,7 @@ export async function handleAdminCallback(
       limit: 20,
       windowSec: 60,
     },
-    Math.floor(Date.now() / 1000),
+    now,
   );
   if (!ok)
     return htmlError(429, "Too many sign-in attempts", {

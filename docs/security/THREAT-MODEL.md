@@ -6868,8 +6868,8 @@ HMAC-SHA-256(KEY_HASH_PEPPER, "pkey/console-member-key/v1")` (`core/console/memb
 D1 again. The v1 reader exists until its last cookie expires. A group removed at the IdP still ends root
 only when the assertion ages out (8 h) for a session that is already open, because a refused
 sign-in writes nothing. Not yet built: SM-3(a)/(d) (step-up enrolment), break-glass, the passkey
-button, membership as bindings (ST-31). Residual of the migration: it holds two `ADD COLUMN`
-statements in one file (the lead may split it into `_a`/`_b` per R11-04); a replay fails at the
+button, membership as bindings (ST-31). Residual of the migration: it holds three `ADD COLUMN`
+statements and an index in one file (the lead may split it into `_a`/`_b` per R11-04); a replay fails at the
 first statement and strands nothing.
 
 Slice 2a tests: `test/consoleSessionV2.test.ts` (sign-in lands on one account, cookie shape, the 30 s
