@@ -38,7 +38,9 @@ export interface ConfirmDialogProps {
   /** Inputs the confirmation needs (a reason, a version), rendered under the consequences. */
   children?: React.ReactNode;
   /** Turns an error into the inline message, e.g. `errorCopy`. Default: its `message`. */
-  describeError?: (error: unknown) => { title: string; description?: string };
+  describeError?: (
+    error: unknown,
+  ) => { title: string; description?: string } | null;
   /** Close after `onConfirm` resolves. Default true; the legacy views close it themselves. */
   closeOnSuccess?: boolean;
   /** Legacy: overrides the confirm button's variant. Prefer `intent`. */
@@ -121,6 +123,7 @@ export function ConfirmDialog({
     }
   };
 
+  // `null`: the caller shows this error itself (at a field), so no banner.
   const err = error ? describeError(error) : null;
 
   return (

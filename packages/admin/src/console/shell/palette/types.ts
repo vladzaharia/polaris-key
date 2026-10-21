@@ -48,6 +48,8 @@ export interface PaletteItem {
   id: string;
   group: PaletteGroup;
   label: string;
+  /** A value drawn in mono after the label (a support code). */
+  labelMono?: string;
   /** Secondary text: the section and product, the product slug, or what an action needs. */
   detail: string;
   /** Extra words the filter matches. */
@@ -58,6 +60,10 @@ export interface PaletteItem {
   href?: string;
   /** What the row does instead of navigating (open a dialog, switch the theme). */
   perform?: (api: PaletteRunApi) => void;
+  /** A line that says something and goes nowhere: it does not close the palette. */
+  inert?: boolean;
+  /** Runs `perform` without closing the palette (a retry). */
+  keepOpen?: boolean;
   /** Shown only once the query matches it, never in the untyped list (EXPERIENCE.md §0.3 J-1). */
   matchOnly?: boolean;
   /**

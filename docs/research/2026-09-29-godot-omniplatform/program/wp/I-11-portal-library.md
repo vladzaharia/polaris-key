@@ -1,16 +1,16 @@
 # I-11 Account data lifecycle: export, removal, support code, revocation hook
 
-| Field       | Value                                                                                                                                                                                         |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (layer-1, phase-1a)                                                                                                        |
-| Size        | 1.6–2.25 engineer-weeks                                                                                                                                                                       |
-| Depends on  | [I-05](I-05-accounts-core.md), [I-07](I-07-login-card-email.md), [I-09](I-09-key-entry-attach.md)                                                                                             |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [I-19](I-19-identity-docs.md), [I-20](I-20-layer-2-plan.md), [I-34](I-34-granular-consent-connected-apps.md), [U-12](U-12-privacy-settings-portal.md) |
-| Role        | `pkey-implementer`                                                                                                                                                                            |
-| Plan mode   | no: follows the approved [`plans/I-04.md`](../plans/I-04.md) where it names this package                                                                                                      |
-| Gates       | D1 migration; `TABLE_OWNERS`; rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL; privacy docs; console CSP parity                                                                             |
-| Human input | none                                                                                                                                                                                          |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                     |
+| Field       | Value                                                                                                                                                                                                                                 |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (layer-1, phase-1a)                                                                                                                                                |
+| Size        | 1.6–2.25 engineer-weeks                                                                                                                                                                                                               |
+| Depends on  | [I-05](I-05-accounts-core.md), [I-07](I-07-login-card-email.md), [I-09](I-09-key-entry-attach.md)                                                                                                                                     |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [I-19](I-19-identity-docs.md), [I-20](I-20-layer-2-plan.md), [I-34](I-34-granular-consent-connected-apps.md), [I-41](I-41-readable-support-codes.md), [U-12](U-12-privacy-settings-portal.md) |
+| Role        | `pkey-implementer`                                                                                                                                                                                                                    |
+| Plan mode   | no: follows the approved [`plans/I-04.md`](../plans/I-04.md) where it names this package                                                                                                                                              |
+| Gates       | D1 migration; `TABLE_OWNERS`; rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL; privacy docs; console CSP parity                                                                                                                     |
+| Human input | none                                                                                                                                                                                                                                  |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                             |
 
 ## Amendments from approved plans (2026-10-05)
 

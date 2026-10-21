@@ -10,6 +10,7 @@ export function DataRow({
   title,
   description,
   danger = false,
+  flush = false,
   children,
   below,
 }: {
@@ -17,6 +18,8 @@ export function DataRow({
   title: string;
   description: React.ReactNode;
   danger?: boolean;
+  /** The action starts at the row's left edge on a phone (a long value needs the width). */
+  flush?: boolean;
   children?: React.ReactNode;
   below?: React.ReactNode;
 }): React.ReactElement {
@@ -39,7 +42,9 @@ export function DataRow({
           </div>
         </div>
         {children ? (
-          <div className="ml-13 sm:ml-0 sm:shrink-0">{children}</div>
+          <div className={cn(flush ? "" : "ml-13", "sm:ml-0 sm:shrink-0")}>
+            {children}
+          </div>
         ) : null}
       </div>
       {below ? <div className="sm:ml-14">{below}</div> : null}

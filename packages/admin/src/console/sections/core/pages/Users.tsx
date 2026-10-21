@@ -6,7 +6,8 @@
  *   sends the account id, the account's sign-in methods, or anything of another product.
  * - With Identity on the table adds the sign-in columns (signed-in devices, last sign-in); with it
  *   off they are absent, not empty.
- * - Search is the server's: a subject prefix, a licence id, or a buyer email prefix (the
+ * - Search is the server's: a support code (the readable `XXX-XXX-XXX` a customer reads out, dashes
+ *   optional), a subject prefix, a licence id, or a buyer email prefix (the
  *   developer's own records), never the account's own email.
  * - The record is a page (`users/:subject[/:tab]`, `UserRecord`).
  */
@@ -30,9 +31,18 @@ import { useLoadingAnnouncement } from "../../../../ui/loading.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
 import { qk } from "../../../data/queries.js";
 import { Link, navigate } from "../../../router.js";
+import { openPaletteWith, paletteShortcutLabel } from "../../../shortcuts.js";
+import { Button } from "../../../../ui/Button.js";
 import { r } from "../../../routes.js";
 import { CollectionTemplate } from "../../../templates/Collection.js";
 import { useTableUrlState } from "../../../useTableUrlState.js";
+import {
+  SUPPORT_CODE_BAD_CHECK,
+  SUPPORT_CODE_LOOKALIKE,
+  formatSupportCode,
+  looksLikeSupportCode,
+  parseSupportCode,
+} from "../../../../lib/supportCode.js";
 import { UserRecord } from "./UserRecord.js";
 
 const PAGE_SIZE = 50;
@@ -94,6 +104,25 @@ function UsersCollection({ slug }: { slug: string }): React.ReactElement {
             {row.original.subject}
           </span>
         ),
+      },
+      {
+        id: "supportCode",
+        header: "Support code",
+        accessorFn: (u) => u.supportCode ?? "",
+        enableSorting: false,
+        // A person who never asked has none: a phone card leaves the field out.
+        meta: { priority: 1, mono: true, quiet: (u) => !u.supportCode },
+        cell: ({ row }) =>
+          row.original.supportCode ? (
+            <span className="whitespace-nowrap font-mono text-xs tracking-wider">
+              {row.original.supportCode}
+            </span>
+          ) : (
+            <span className="text-fg-muted">
+              <span aria-hidden>—</span>
+              <span className="sr-only">None</span>
+            </span>
+          ),
       },
       {
         id: "contact",
@@ -161,6 +190,39 @@ function UsersCollection({ slug }: { slug: string }): React.ReactElement {
     return cols;
   }, [identityOn]);
 
+  // A search shaped like a support code that finds nobody here says so in the empty state, with
+  // the way to look in every product. Plain text ("john.smith") never gets this.
+  const typed = parseSupportCode(q);
+  const codeShaped = looksLikeSupportCode(q) || typed.kind === "code";
+  const noResults =
+    q && codeShaped
+      ? typed.kind === "bad_check"
+        ? { title: SUPPORT_CODE_BAD_CHECK }
+        : typed.kind === "lookalike"
+          ? { title: SUPPORT_CODE_LOOKALIKE }
+          : typed.kind === "code"
+            ? {
+                title: `No user of this product has support code ${formatSupportCode(typed.code)}`,
+                description: (
+                  <>
+                    Search every product you manage with{" "}
+                    {paletteShortcutLabel()}.
+                  </>
+                ),
+                action: (
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      openPaletteWith(formatSupportCode(typed.code))
+                    }
+                  >
+                    Search all products
+                  </Button>
+                ),
+              }
+            : undefined
+      : undefined;
+
   const rowHref = (u: ProductUserSummary): string => r.user(slug, u.subject);
 
   return (
@@ -192,8 +254,8 @@ function UsersCollection({ slug }: { slug: string }): React.ReactElement {
           ] satisfies RowActionItem[]
         }
         search={{
-          placeholder: "User id, license id or email starts with…",
-          columns: ["subject", "contact"],
+          placeholder: "Support code, user id, license id or email…",
+          columns: ["supportCode", "subject", "contact"],
         }}
         state={state}
         onStateChange={setState}
@@ -221,6 +283,7 @@ function UsersCollection({ slug }: { slug: string }): React.ReactElement {
           )
         }
         mobile="cards"
+        noResults={noResults}
       />
     </CollectionTemplate>
   );

@@ -253,6 +253,156 @@ describe("the palette in the console", () => {
     await waitFor(() => expect(window.location.hash).toBe("#/p/acme"));
   });
 
+  it("offers to open a support code, typed with or without dashes, and jumps to that user (I-41)", async () => {
+    const SUBJECT = `ps_${"A".repeat(22)}`;
+    const log = boot("#/p/djdl", {
+      services: ALL_ON,
+      extra: {
+        "/manage/api/support-codes/K7M4QX9TZ": {
+          product: "acme",
+          subject: SUBJECT,
+        },
+        "/manage/api/support-codes/222222222": () =>
+          new Response(JSON.stringify({ error: "not_found" }), { status: 404 }),
+      },
+    });
+    await screen.findByRole("navigation", { name: "Console" });
+    const dialog = await openPalette();
+    const input = within(dialog).getByRole("combobox", {
+      name: "Search or jump to",
+    });
+    // Nothing is asked for a query that is no code.
+    await userEvent.type(input, "tiers");
+    expect(log.calls.some((c) => c.path.includes("support-codes"))).toBe(false);
+    await userEvent.clear(input);
+    await userEvent.type(input, "k7m 4qx.9tz");
+    const row = await within(dialog).findByRole("option", {
+      name: /Open support code K7M-4QX-9TZ/,
+    });
+    expect(row.textContent).toMatch(/acme/i);
+    expect(within(row).getByText("K7M-4QX-9TZ").tagName).toBe("CODE");
+    await userEvent.click(row);
+    await waitFor(() =>
+      expect(window.location.hash).toBe(`#/p/acme/users/${SUBJECT}`),
+    );
+  });
+
+  it("a nine-character page name still opens its page: no support-code row, Enter works (I-41)", async () => {
+    boot("#/p/djdl", { services: ALL_ON });
+    await screen.findByRole("navigation", { name: "Console" });
+    const dialog = await openPalette();
+    const input = within(dialog).getByRole("combobox", {
+      name: "Search or jump to",
+    });
+    await userEvent.type(input, "API tokens");
+    await waitFor(() => expect(optionNames(dialog).length).toBeGreaterThan(0));
+    expect(
+      optionNames(dialog).some((n) =>
+        /support code|wrong|never contain/i.test(n),
+      ),
+    ).toBe(false);
+    await userEvent.keyboard("{Enter}");
+    await waitFor(() => expect(window.location.hash).toBe("#/tokens"));
+  });
+
+  it("shows no support-code row for a plain word of nine letters", async () => {
+    boot("#/p/djdl", { services: ALL_ON });
+    await screen.findByRole("navigation", { name: "Console" });
+    const dialog = await openPalette();
+    await userEvent.type(
+      within(dialog).getByRole("combobox", { name: "Search or jump to" }),
+      "teammates",
+    );
+    await waitFor(() =>
+      expect(within(dialog).getByText(/Nothing matches/)).toBeTruthy(),
+    );
+    expect(within(dialog).queryByText(/One character is wrong/)).toBeNull();
+  });
+
+  it("says one thing for each state of a support code: wrong character, lookalike, none, too many", async () => {
+    boot("#/p/djdl", {
+      services: ALL_ON,
+      extra: {
+        "/manage/api/support-codes/222222222": () =>
+          new Response(JSON.stringify({ error: "not_found" }), { status: 404 }),
+        "/manage/api/support-codes/2222222JX": () =>
+          new Response(JSON.stringify({ error: "rate_limited" }), {
+            status: 429,
+          }),
+      },
+    });
+    await screen.findByRole("navigation", { name: "Console" });
+    const dialog = await openPalette();
+    const input = within(dialog).getByRole("combobox", {
+      name: "Search or jump to",
+    });
+    const say = async (typed: string, text: RegExp) => {
+      await userEvent.clear(input);
+      await userEvent.type(input, typed);
+      expect(await within(dialog).findByText(text)).toBeTruthy();
+    };
+    await say(
+      "222-222-223",
+      /One character is wrong\. Ask them to read it again\./,
+    );
+    await say(
+      "222-222-220",
+      /Support codes never contain 0, 1, I, L, O or U\./,
+    );
+    await say(
+      "222-222-222",
+      /No user with support code 222-222-222 in your products\./,
+    );
+    await say("222-222-2JX", /Too many lookups\. Try again in a minute\./);
+    // An inert line does not close the palette.
+    await userEvent.keyboard("{Enter}");
+    expect(
+      screen.queryByRole("dialog", { name: "Command palette" }),
+    ).toBeTruthy();
+  });
+
+  it("says one thing for each state of a support code: wrong character, lookalike, none, too many", async () => {
+    boot("#/p/djdl", {
+      services: ALL_ON,
+      extra: {
+        "/manage/api/support-codes/222222222": () =>
+          new Response(JSON.stringify({ error: "not_found" }), { status: 404 }),
+        "/manage/api/support-codes/2222222JX": () =>
+          new Response(JSON.stringify({ error: "rate_limited" }), {
+            status: 429,
+          }),
+      },
+    });
+    await screen.findByRole("navigation", { name: "Console" });
+    const dialog = await openPalette();
+    const input = within(dialog).getByRole("combobox", {
+      name: "Search or jump to",
+    });
+    const say = async (typed: string, text: RegExp) => {
+      await userEvent.clear(input);
+      await userEvent.type(input, typed);
+      expect(await within(dialog).findByText(text)).toBeTruthy();
+    };
+    await say(
+      "222-222-223",
+      /One character is wrong\. Ask them to read it again\./,
+    );
+    await say(
+      "222-222-220",
+      /Support codes never contain 0, 1, I, L, O or U\./,
+    );
+    await say(
+      "222-222-222",
+      /No user with support code 222-222-222 in your products\./,
+    );
+    await say("222-222-2JX", /Too many lookups\. Try again in a minute\./);
+    // An inert line does not close the palette.
+    await userEvent.keyboard("{Enter}");
+    expect(
+      screen.queryByRole("dialog", { name: "Command palette" }),
+    ).toBeTruthy();
+  });
+
   it("pins recent commands first, and remembers them", async () => {
     boot("#/p/djdl", { services: ALL_ON });
     await screen.findByRole("navigation", { name: "Console" });

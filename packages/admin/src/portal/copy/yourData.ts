@@ -27,6 +27,11 @@ export const YOUR_DATA_COPY = {
   "yourData.remove.keep": t("yourData.remove.keep"),
 } as const;
 
+/** The support code's one-line hint (I-41): said to the app's support, so it names the app. */
+export function supportCodeHint(name: string): string {
+  return `Give this code to ${name}'s support.`;
+}
+
 /** What a product's file holds: its licenses only when the person has one. */
 export function productCopyBody(licenses: number): string {
   return licenses > 0

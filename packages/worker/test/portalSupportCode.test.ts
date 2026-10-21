@@ -16,7 +16,6 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { PAIRWISE_SUBJECT_PATTERN as PAIRWISE_SUBJECT_SOURCE } from "@polaris-key/protocol/core";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { handlePortalApi } from "./portalHarness.js";
@@ -25,10 +24,11 @@ import { makeEnv, NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
 import { SPEC, validateAgainst } from "./specSchema.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
-import { PAIRWISE_SUBJECT_PATTERN } from "../src/core/accounts/accountSubjects.js";
+import { SUPPORT_CODE_PATTERN } from "../src/core/accounts/supportCodes.js";
 import { identityEnabled } from "../src/core/accounts/identityGate.js";
 import { attachLicense } from "../src/services/identity/accounts/claim.js";
 import type { AccountContext } from "../src/services/identity/accounts/links.js";
+import { subjectForSupportCode } from "../src/core/accounts/supportCodes.js";
 import {
   listProductUsers,
   lookupProductUser,
@@ -130,6 +130,16 @@ const subjectRow = (db: Db, who: Person, product: string) =>
     product,
   );
 
+/** The code stored for a person in a product, undashed, with the subject it names. */
+const codeRow = (db: Db, who: Person, product: string) =>
+  db.first<{ code: string; subject: string }>(
+    `SELECT c.code, c.subject FROM support_codes c
+       JOIN account_product_subjects s ON s.product = c.product AND s.subject = c.subject
+      WHERE s.account_id = ? AND c.product = ?`,
+    who.accountId,
+    product,
+  );
+
 const createdAudits = (db: Db) =>
   db.all<Record<string, unknown>>(
     `SELECT account_id, action, product, target_kind, target_id, summary
@@ -203,12 +213,15 @@ describe("POST /api/products/<product>/support-code", () => {
     expect(res.headers.get("cache-control")).toBe("no-store");
     const doc = (await res.json()) as Record<string, unknown>;
     expect(Object.keys(doc)).toEqual(["supportCode"]);
-    expect(doc.supportCode).toMatch(PAIRWISE_SUBJECT_PATTERN);
+    expect(doc.supportCode).toMatch(SUPPORT_CODE_PATTERN);
     expect(validateAgainst("PortalSupportCode", doc)).toEqual([]);
-    expect(await subjectRow(w.db, w.ada, "free")).toEqual({
-      subject: doc.supportCode,
-      created_at: NOW,
-    });
+    const subject = await subjectRow(w.db, w.ada, "free");
+    expect(subject?.created_at).toBe(NOW);
+    // The code is a name for the subject, never the subject itself.
+    expect(doc.supportCode).not.toBe(subject?.subject);
+    expect((await codeRow(w.db, w.ada, "free"))?.code).toBe(
+      String(doc.supportCode).replaceAll("-", ""),
+    );
   });
 
   it("is the code the product page shows and the console's relink accepts for a product with Identity off, and its Users page still does not list it", async () => {
@@ -221,15 +234,10 @@ describe("POST /api/products/<product>/support-code", () => {
     const code = await codeOf(await ask(w, w.ada, "free"));
     const pageAfter = await call(w, "GET", "/api/products/free", w.ada);
     expect(await pageAfter.json()).toMatchObject({ supportCode: code });
-    // The relink names its target by this string alone, and only in this product.
-    expect(await lookupProductUser(w.db, "free", code)).toEqual({
-      kind: "found",
-      subject: code,
-      accountId: w.ada.accountId,
-    });
-    expect(await lookupProductUser(w.db, "djdl", code)).toEqual({
-      kind: "not_found",
-    });
+    // The code resolves, in this product only, to the subject the relink and the Users page use.
+    const subject = (await subjectRow(w.db, w.ada, "free"))!.subject;
+    expect(await subjectForSupportCode(w.db, "free", code)).toBe(subject);
+    expect(await subjectForSupportCode(w.db, "djdl", code)).toBeNull();
     // A subject made only for a code stays off the Users page (S-16 §5.2), audit row and all.
     for (const identityOn of [false, true])
       expect(
@@ -247,10 +255,11 @@ describe("POST /api/products/<product>/support-code", () => {
     );
     expect(
       await w.db.all(
-        "SELECT subject FROM account_product_subjects WHERE account_id = ? AND product = 'free'",
+        `SELECT code FROM support_codes c WHERE c.product = 'free'
+            AND c.subject IN (SELECT subject FROM account_product_subjects WHERE account_id = ?)`,
         w.ada.accountId,
       ),
-    ).toEqual([{ subject: first }]);
+    ).toEqual([{ code: first.replaceAll("-", "") }]);
     const audits = await createdAudits(w.db);
     expect(audits).toEqual([
       {
@@ -265,10 +274,12 @@ describe("POST /api/products/<product>/support-code", () => {
     expect(JSON.stringify(audits)).not.toContain(first);
   });
 
-  it("answers the code a licence attach already made, and creates and audits nothing", async () => {
+  it("names the subject a licence attach already made, with a code of its own for each person", async () => {
     const w = await world();
-    expect(await codeOf(await ask(w, w.ada, "djdl"))).toBe(w.adaDjdl);
-    expect(await createdAudits(w.db)).toEqual([]);
+    const adas = await codeOf(await ask(w, w.ada, "djdl"));
+    expect(await subjectForSupportCode(w.db, "djdl", adas)).toBe(w.adaDjdl);
+    // The subject was there; the code is new, so the creation is audited once.
+    expect(await createdAudits(w.db)).toHaveLength(1);
     const rows = await w.db.all<{ subject: string }>(
       "SELECT subject FROM account_product_subjects WHERE product = 'djdl'",
     );
@@ -277,8 +288,8 @@ describe("POST /api/products/<product>/support-code", () => {
     );
     // Bob shares the product and gets his own, never hers.
     const bobs = await codeOf(await ask(w, w.bob, "djdl"));
-    expect(bobs).toBe(w.bobDjdl);
-    expect(bobs).not.toBe(w.adaDjdl);
+    expect(await subjectForSupportCode(w.db, "djdl", bobs)).toBe(w.bobDjdl);
+    expect(bobs).not.toBe(adas);
   });
 
   it("answers the code and nothing else: no account id, address, licence or other product's id", async () => {
@@ -300,8 +311,10 @@ describe("POST /api/products/<product>/support-code", () => {
       ])
         expect(text, `${product}: ${other}`).not.toContain(other);
     }
-    // The code she gets for `free` is not her `djdl` one, and the other way round.
-    expect(await codeOf(await ask(w, w.ada, "free"))).not.toBe(w.adaDjdl);
+    // The code she gets for `free` is not her `djdl` one.
+    expect(await codeOf(await ask(w, w.ada, "free"))).not.toBe(
+      await codeOf(await ask(w, w.ada, "djdl")),
+    );
   });
 
   it("ends with her data in the product, and the next ask makes another", async () => {
@@ -310,15 +323,12 @@ describe("POST /api/products/<product>/support-code", () => {
     const removed = await call(w, "DELETE", "/api/products/free/data", w.ada);
     expect(removed.status).toBe(200);
     expect(await subjectRow(w.db, w.ada, "free")).toBeNull();
-    expect(await lookupProductUser(w.db, "free", first)).toEqual({
-      kind: "not_found",
-    });
+    expect(await subjectForSupportCode(w.db, "free", first)).toBeNull();
+    expect(await w.db.all("SELECT 1 FROM support_codes")).toEqual([]);
     const second = await codeOf(await ask(w, w.ada, "free"));
-    expect(second).toMatch(PAIRWISE_SUBJECT_PATTERN);
+    expect(second).toMatch(SUPPORT_CODE_PATTERN);
     expect(second).not.toBe(first);
-    expect(await lookupProductUser(w.db, "free", second)).toMatchObject({
-      kind: "found",
-    });
+    expect(await subjectForSupportCode(w.db, "free", second)).not.toBeNull();
   });
 });
 
@@ -379,11 +389,8 @@ describe("the support-code route's gates", () => {
     });
     expect(export_.status).toBe(401);
     expect(await export_.json()).toMatchObject({ error: "step_up_required" });
-    const code = await codeOf(await ask(w, w.ada, "free", { now: stale }));
-    expect(await subjectRow(w.db, w.ada, "free")).toEqual({
-      subject: code,
-      created_at: stale,
-    });
+    await codeOf(await ask(w, w.ada, "free", { now: stale }));
+    expect((await subjectRow(w.db, w.ada, "free"))?.created_at).toBe(stale);
   });
 
   it("is limited per account, network and product, and charged only for a product she holds", async () => {
@@ -442,7 +449,14 @@ describe("the support-code route's gates", () => {
       { portalEnabled: true },
       NOW,
     );
-    expect(await codeOf(await ask(w, w.ada, "djdl"))).toBe(w.adaDjdl);
+    expect(await subjectRow(w.db, w.ada, "djdl")).toEqual(before);
+    expect(
+      await subjectForSupportCode(
+        w.db,
+        "djdl",
+        await codeOf(await ask(w, w.ada, "djdl")),
+      ),
+    ).toBe(w.adaDjdl);
   });
 
   it("is a 401 and makes nothing when her erasure began after the session was checked", async () => {
@@ -505,13 +519,15 @@ describe("the published contract", () => {
     ).toEqual([]);
   });
 
-  it("publishes the code's shape as an allow-list of one member, the protocol's subject pattern", () => {
+  it("publishes the code's shape as an allow-list of one member, the readable-code pattern", () => {
     const schema = SPEC.components.schemas.PortalSupportCode as Record<
       string,
       any
     >;
-    expect(schema.properties.supportCode.pattern).toBe(PAIRWISE_SUBJECT_SOURCE);
-    const code = `ps_${"A".repeat(22)}`;
+    expect(schema.properties.supportCode.pattern).toBe(
+      SUPPORT_CODE_PATTERN.source,
+    );
+    const code = "K7M-4QX-9TZ";
     expect(validateAgainst("PortalSupportCode", { supportCode: code })).toEqual(
       [],
     );
@@ -538,7 +554,7 @@ describe("the published contract", () => {
       .map((part: Record<string, any>) => part.properties?.supportCode)
       .find(Boolean);
     expect(declared.type).toEqual(["string", "null"]);
-    expect(declared.pattern).toBe(PAIRWISE_SUBJECT_SOURCE);
+    expect(declared.pattern).toBe(SUPPORT_CODE_PATTERN.source);
     // Optional: a Worker that predates it sends none.
     expect(
       product.allOf.flatMap((part: Record<string, any>) => part.required ?? []),

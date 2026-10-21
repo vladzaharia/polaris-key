@@ -40,6 +40,12 @@ import {
   runSubjectExport,
   subjectDataSize,
 } from "../../../core/accounts/subjectHooks.js";
+import {
+  existingSupportCode,
+  existingSupportCodes,
+  normalizeSupportCode,
+  subjectForSupportCode,
+} from "../../../core/accounts/supportCodes.js";
 import { type LicenseRow } from "../../../core/repo.js";
 import { getLicense, setLicenseHolder } from "../../../core/licensing/store.js";
 import { getProduct } from "../../../core/products/store.js";
@@ -127,6 +133,8 @@ function contactOf(
 
 export interface ProductUserSummary {
   subject: string;
+  /** The readable code the person reads out (`XXX-XXX-XXX`); `null` until they ask for one. */
+  supportCode: string | null;
   createdAt: number;
   contactEmail: string | null;
   contactSource: "license" | "consented" | null;
@@ -236,19 +244,29 @@ export async function listProductUsers(
     params.push(cursor[0], cursor[0], cursor[1]);
   }
   const q = (opts.q ?? "").trim().slice(0, SEARCH_MAX);
+  // I-41: a support code (dashes optional) also matches, exactly and within this product, on top of
+  // the prefix and email matches (a nine-letter email prefix is still an email search). A person
+  // who read their code out is a targeted find, so the code's hit is listed even before a licence
+  // or a sign-in.
+  const codeHit = q ? await subjectForSupportCode(db, product, q) : null;
+  const codeSubject = codeHit
+    ? await resolveSubject(db, product, codeHit)
+    : null;
   if (q) {
     const like = `${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
     where.push(
-      `(s.subject LIKE ? ESCAPE '\\'
+      `(s.subject = ?
+        OR s.subject LIKE ? ESCAPE '\\'
         OR EXISTS (SELECT 1 FROM licenses l WHERE l.product = s.product AND l.account_id = s.account_id
                      AND (l.id = ? OR lower(l.email) LIKE lower(?) ESCAPE '\\')))`,
     );
-    params.push(like, q, like);
+    params.push(codeSubject ?? "", like, q, like);
   }
   const listed = opts.identityOn
     ? `(${ROW_LICENSES} > 0 OR ${ROW_SIGNED_IN} > 0 OR ${ROW_LAST_SIGNIN} IS NOT NULL)`
     : `(${ROW_LICENSES} > 0 OR ${ROW_SIGNED_IN} > 0)`;
-  where.push(listed);
+  where.push(codeSubject ? `(s.subject = ? OR ${listed})` : listed);
+  if (codeSubject) params.push(codeSubject);
 
   const rows = await db.all<{
     subject: string;
@@ -284,6 +302,11 @@ export async function listProductUsers(
     limit + 1,
   );
   const page = rows.slice(0, limit);
+  const codes = await existingSupportCodes(
+    db,
+    product,
+    page.map((r) => r.subject),
+  );
   const users = page.map((r): ProductUserSummary => {
     // A consent grant is product-user data (PX-W17 Q5): read only while Identity is on.
     const contact = contactOf(
@@ -293,6 +316,7 @@ export async function listProductUsers(
     );
     return {
       subject: r.subject,
+      supportCode: codes.get(r.subject) ?? null,
       createdAt: r.created_at,
       contactEmail: contact.email,
       contactSource: contact.source,
@@ -363,6 +387,8 @@ export interface ProductUserRelink {
 
 export interface ProductUserDetail {
   subject: string;
+  /** The readable code the person reads out (`XXX-XXX-XXX`); `null` until they ask for one. */
+  supportCode: string | null;
   createdAt: number;
   identityOn: boolean;
   contact: { email: string | null; source: "license" | "consented" | null };
@@ -581,6 +607,7 @@ export async function productUserDetail(
 
   return {
     subject,
+    supportCode: await existingSupportCode(db, product, subject),
     createdAt: subjectRow?.created_at ?? 0,
     identityOn,
     contact: contactOf(buyer, account?.primary_email ?? null, claims),
@@ -902,7 +929,7 @@ export async function operatorRelinksToday(
 
 /**
  * Relink one of the row subject's licences to another subject of THIS product (S-16 §5.4 item 9).
- * The target is named only by its pairwise subject; it must already exist for this product (the
+ * The target is named only by its pairwise subject or the support code that names it (I-41); it must already exist for this product (the
  * person signed in through the product, or asked for a support code on its portal page). Both
  * accounts are notified, at every verified email, BEFORE the move takes effect; the move is
  * recorded with its reason and actor, and can be undone for 72 hours. The caller has checked the
@@ -927,7 +954,13 @@ export async function relinkLicense(
     args.from.accountId
   )
     return { ok: false, reason: "license_not_found" };
-  const target = await lookupProductUser(db, args.product, args.target.trim());
+  // I-41: the target is a user id of this product or the readable support code that names it.
+  const typed = args.target.trim();
+  const target = await lookupProductUser(
+    db,
+    args.product,
+    (await subjectForSupportCode(db, args.product, typed)) ?? typed,
+  );
   const toSubject =
     target.kind === "found"
       ? target.subject

@@ -131,6 +131,14 @@ export function CommandPalette({
   );
 
   const run = (item: PaletteItem, newTab = false): void => {
+    if (item.inert) return;
+    if (item.keepOpen) {
+      item.perform?.({
+        navigate: (href) => navigate(href),
+        openPanel: () => {},
+      });
+      return;
+    }
     setRecentIds(pushRecent(item.id, recentIds));
     onOpenChange(false);
     if (newTab && item.href && !item.perform) {
@@ -218,11 +226,27 @@ export function CommandPalette({
                       <Command.Item
                         key={valueOf(g.heading, item)}
                         value={valueOf(g.heading, item)}
+                        disabled={item.inert}
                         onSelect={() => run(item)}
-                        className="flex cursor-pointer items-center gap-2.5 rounded-sm px-2 py-2 text-sm transition-colors duration-(--pk-duration-micro) ease-standard data-[selected=true]:bg-accent-subtle data-[selected=true]:text-fg-strong"
+                        className="flex cursor-pointer data-[disabled=true]:cursor-default items-center gap-2.5 rounded-sm px-2 py-2 text-sm transition-colors duration-(--pk-duration-micro) ease-standard data-[selected=true]:bg-accent-subtle data-[selected=true]:text-fg-strong"
                       >
                         <span className="text-fg-muted">{item.icon}</span>
-                        <span className="min-w-0 truncate">{item.label}</span>
+                        <span
+                          className={cn(
+                            "min-w-0",
+                            item.inert ? "whitespace-normal" : "truncate",
+                          )}
+                        >
+                          {item.label}
+                          {item.labelMono ? (
+                            <>
+                              {" "}
+                              <code className="font-mono tracking-wider">
+                                {item.labelMono}
+                              </code>
+                            </>
+                          ) : null}
+                        </span>
                         <span className="min-w-0 truncate text-xs text-fg-muted">
                           {item.detail}
                         </span>

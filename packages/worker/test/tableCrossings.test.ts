@@ -55,6 +55,8 @@ const WRITE_SEAMS: readonly (readonly [string, string, RemovedBy])[] = [
   ["core/accounts/accountOverrides.ts", "account_overrides", "permanent"],
   ["core/accounts/accountSubjects.ts", "account_product_subjects", "permanent"],
   ["core/accounts/accountSubjects.ts", "licenses", "P0-20"],
+  // I-41: the readable support code is minted beside the subject it names.
+  ["core/accounts/supportCodes.ts", "support_codes", "permanent"],
   // The audit row core/notify leaves when a security notice reaches nobody (P0-21).
   ["core/accounts/portalAudit.ts", "portal_audit", "permanent"],
   // P0-12's widening rule has four callers across Core, the console, License and the ingest.

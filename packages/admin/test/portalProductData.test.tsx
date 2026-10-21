@@ -968,15 +968,28 @@ describe("A stale sign-in and the support code (I-11)", () => {
         supportCode: code,
       }),
       "POST /api/products/mossgarden/support-code": () => {
-        code = "ps_abc123";
+        code = "K7M-4QX-9TZ";
         return { supportCode: code };
       },
     });
-    expect(within(card).queryByText("ps_abc123")).toBeNull();
+    expect(within(card).queryByText("K7M-4QX-9TZ")).toBeNull();
     await userEvent.click(
       await within(card).findByRole("button", { name: "Get a support code" }),
     );
-    expect(await within(card).findByText("ps_abc123")).toBeTruthy();
+    expect(await within(card).findByText("K7M-4QX-9TZ")).toBeTruthy();
+    // The one-line hint names the app, and the code is the mono, grouped, dashed string.
+    expect(
+      within(card).getByText(/^Give this code to .+'s support\.$/),
+    ).toBeTruthy();
+    const group = within(card).getByRole("group", { name: "Support code" });
+    expect(within(group).getByText("K7M-4QX-9TZ").className).toContain(
+      "font-mono",
+    );
+    // The new code takes focus and is announced once.
+    await waitFor(() => expect(document.activeElement).toBe(group));
+    expect(within(card).getAllByText("Support code K7M-4QX-9TZ").length).toBe(
+      1,
+    );
     expect(
       within(card).getByRole("button", { name: "Copy support code" }),
     ).toBeTruthy();

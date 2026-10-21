@@ -755,6 +755,12 @@ describe("R11-05 product scoping", () => {
       // route, never by a tenant route.
       "data_migration_runs",
       "data_migration_units",
+      // 0125 (I-41) — the readable support code: the key IS the code, globally unique, because a
+      // code read out loud names a person with no product in front of it. Every read re-checks the
+      // row's product against the caller (`core/accounts/supportCodes.ts`), and the console route
+      // holds the operator to `can(product, core)` before it answers anything. UNIQUE (product,
+      // subject) is the product-first index for the person's own lookups.
+      "support_codes",
     ]);
     const offenders: string[] = [];
     for (const t of tables.map((r) => r.name)) {

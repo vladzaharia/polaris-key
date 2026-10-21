@@ -34,7 +34,6 @@ import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
 import { DescriptionList } from "../../../../ui/DescriptionList.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
-import { IdChip } from "../../../../ui/IdChip.js";
 import { PageSkeleton } from "../../../../ui/Skeleton.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
 import { Timestamp } from "../../../../ui/Timestamp.js";
@@ -50,6 +49,7 @@ import { navigate } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { SettingsSection } from "../../../templates/Settings.js";
 import { RelinkDialog, UndoRelinkDialog } from "./UserRelink.js";
+import { UserIds } from "./UserIds.js";
 import { userSlots } from "../model/userSlots.js";
 
 export const USER_TABS = [
@@ -238,7 +238,7 @@ function UserRecordBody({
         }
         meta={
           <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <IdChip value={user.subject} noun="user id" />
+            <UserIds user={user} />
             <span>
               First seen <Timestamp at={fromSeconds(user.createdAt)} />
             </span>

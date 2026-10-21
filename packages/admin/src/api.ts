@@ -1560,6 +1560,8 @@ export interface ProductDetail {
 /** A row of a product's Users page: one pairwise subject of this product, never the account. */
 export interface ProductUserSummary {
   subject: string;
+  /** The readable code the person reads out (`XXX-XXX-XXX`); `null` until they ask (I-41). */
+  supportCode?: string | null;
   createdAt: number;
   contactEmail: string | null;
   contactSource: "license" | "consented" | null;
@@ -1622,6 +1624,8 @@ export interface ProductUserRelink {
 
 export interface ProductUserDetail {
   subject: string;
+  /** The readable code the person reads out (`XXX-XXX-XXX`); `null` until they ask (I-41). */
+  supportCode?: string | null;
   createdAt: number;
   identityOn: boolean;
   contact: { email: string | null; source: "license" | "consented" | null };
@@ -5279,6 +5283,14 @@ const rawApi = {
   products: () => call<{ products: ProductDetail[] }>("/manage/api/products"),
   /** Home's Needs attention: composed on the server, filtered to what the member can open. */
   attention: () => call<{ items: AttentionItemDto[] }>("/manage/api/attention"),
+  /**
+   * I-41: a support code a customer read out → the product and user it names. A `404` (an
+   * `ApiError`) is every refusal: unknown, malformed, or a product the operator cannot read.
+   */
+  supportCode: (code: string) =>
+    call<{ product: string; subject: string }>(
+      `/manage/api/support-codes/${enc(code)}`,
+    ),
   /** Platform ready: the first-run checklist (platform admins). */
   platformReady: () => call<PlatformReadyDto>("/manage/api/platform/ready"),
   product: (slug: string) => call<{ product: ProductDetail }>(p(slug)),

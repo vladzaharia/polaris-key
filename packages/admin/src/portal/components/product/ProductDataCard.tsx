@@ -1,15 +1,20 @@
 import { t } from "../../../lib/copy.js";
 import * as React from "react";
-import { KeyRound, Trash2 } from "lucide-react";
+import { LifeBuoy, Trash2 } from "lucide-react";
 import { Button } from "../../../ui/Button.js";
 import { CopyButton } from "../../../ui/CopyButton.js";
 import { PortalApiError } from "../../api.js";
-import { YOUR_DATA_COPY, productCopyBody } from "../../copy/yourData.js";
+import {
+  YOUR_DATA_COPY,
+  productCopyBody,
+  supportCodeHint,
+} from "../../copy/yourData.js";
 import {
   useCreateSupportCode,
   useExportProductData,
   useProduct,
 } from "../../data.js";
+import { LiveRegion } from "../../../ui/LiveRegion.js";
 import { portalErrorCopy } from "../../errors.js";
 import type { LibraryProduct } from "../../model/library.js";
 import { DataRow } from "../DataRow.js";
@@ -66,7 +71,7 @@ export function ProductDataCard({
           </DataRow>
         </div>
         <div className="border-t border-border pt-5">
-          <SupportCodeRow slug={product.slug} />
+          <SupportCodeRow slug={product.slug} name={name} />
         </div>
       </div>
       <RemoveProductDataDialog
@@ -79,11 +84,30 @@ export function ProductDataCard({
   );
 }
 
-/** The person's support code for this product: shown with Copy once it exists, else asked for. */
-function SupportCodeRow({ slug }: { slug: string }): React.ReactElement {
+/**
+ * The person's support code for this product (I-41: `XXX-XXX-XXX`, in the mono font): shown with
+ * Copy once it exists, else asked for. Copy puts the dashed form on the clipboard.
+ */
+function SupportCodeRow({
+  slug,
+  name,
+}: {
+  slug: string;
+  name: string;
+}): React.ReactElement {
   const view = useProduct(slug);
   const create = useCreateSupportCode(slug);
   const code = view.data?.supportCode ?? create.data?.supportCode ?? null;
+  // A code the person just asked for takes focus and is announced once; one already there is not.
+  const groupRef = React.useRef<HTMLDivElement>(null);
+  const asked = create.data?.supportCode ?? null;
+  // One polite region, always mounted and empty until the code arrives, so it reads once.
+  const [announced, setAnnounced] = React.useState("");
+  React.useEffect(() => {
+    if (!asked) return;
+    groupRef.current?.focus();
+    setAnnounced(`Support code ${asked}`);
+  }, [asked]);
   const limited =
     create.error instanceof PortalApiError && create.error.status === 429;
   const failure = create.error
@@ -92,38 +116,52 @@ function SupportCodeRow({ slug }: { slug: string }): React.ReactElement {
       : `${portalErrorCopy(create.error).title}. ${portalErrorCopy(create.error).description}`
     : null;
   return (
-    <DataRow
-      icon={<KeyRound aria-hidden />}
-      title={YOUR_DATA_COPY["yourData.product.support.title"]}
-      description={YOUR_DATA_COPY["yourData.product.support.body"]}
-      below={
-        failure ? (
-          <p role="alert" className="text-sm text-danger">
-            {failure}
-          </p>
-        ) : null
-      }
-    >
-      {code ? (
-        <div className="flex flex-wrap items-center gap-2">
-          <code
-            aria-label={t("yourData.product.support.title")}
-            className="break-all rounded-md bg-surface-sunken px-2 py-1 font-mono text-sm text-fg-strong"
+    <>
+      <DataRow
+        icon={<LifeBuoy aria-hidden />}
+        title={YOUR_DATA_COPY["yourData.product.support.title"]}
+        description={supportCodeHint(name)}
+        flush
+        below={
+          failure ? (
+            <p role="alert" className="text-sm text-danger">
+              {failure}
+            </p>
+          ) : null
+        }
+      >
+        {code ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <div
+              ref={groupRef}
+              role="group"
+              aria-label={t("yourData.product.support.title")}
+              tabIndex={-1}
+              className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-focus"
+            >
+              <code className="select-all break-normal rounded-md box-decoration-clone bg-surface-sunken px-3 py-1.5 font-mono text-lg tracking-widest text-fg-strong">
+                {code}
+              </code>
+            </div>
+            <CopyButton
+              value={code}
+              label="Copy support code"
+              size="md"
+              showLabel
+            />
+          </div>
+        ) : (
+          <Button
+            variant="outline"
+            className="w-full sm:w-auto"
+            loading={create.isPending || view.isPending}
+            onClick={() => create.mutate()}
           >
-            {code}
-          </code>
-          <CopyButton value={code} label="Copy support code" showLabel />
-        </div>
-      ) : (
-        <Button
-          variant="outline"
-          className="w-full sm:w-auto"
-          loading={create.isPending || view.isPending}
-          onClick={() => create.mutate()}
-        >
-          Get a support code
-        </Button>
-      )}
-    </DataRow>
+            Get a support code
+          </Button>
+        )}
+      </DataRow>
+      <LiveRegion message={announced} />
+    </>
   );
 }

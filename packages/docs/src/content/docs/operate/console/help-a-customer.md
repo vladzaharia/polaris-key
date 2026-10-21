@@ -25,15 +25,15 @@ The file holds only what your product has for that person. The export is recorde
 2. Select **More actions**, then **Delete data for this product…**.
 3. Type `delete`, then select **Delete data**.
 
-This empties the product's data for the person. Their license and Polaris Key account stay. You can't delete the person's account.
+This empties the product's data for the person. Their license and Polaris Locker account stay. You can't delete the person's account.
 
 ## Move a license to another person
 
-The person who is to hold the license opens your product's page in their library at key.plrs.im and selects **Get a support code**. The code is their user id for your product.
+The person who is to hold the license opens your product's page in Polaris Locker (polaris.locker) and selects **Get a support code**. They read the code, like `K7M-4QX-9TZ`, to you.
 
 1. Open **Users**, then the record of the person who holds the license.
 2. On the **Licenses** tab, select **Relink…** on the license.
-3. Under **Move to user**, enter the support code.
+3. Under **Move to user**, enter the support code. Dashes are optional.
 4. Give a reason.
 5. Select **Relink license**. Sign in again if asked.
 

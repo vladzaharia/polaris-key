@@ -3,9 +3,9 @@
  * this product, and undo it within 72 hours. Relink is the recovery path Polaris offers instead of
  * a recovery desk, so every control the threat model lists is here or on the server:
  *
- *   - the target is named ONLY by its pairwise subject for this product, never by an email (no
- *     cross-tenant oracle). The person gets one by signing in to the product, or with "Get a
- *     support code" on the product's page in their Polaris Key account;
+ *   - the target is named ONLY by its pairwise subject for this product or the readable support
+ *     code that names it (I-41), never by an email (no cross-tenant oracle). The person finds the
+ *     code with "Get a support code" on the product's page in their Polaris Locker account;
  *   - a step-up: the operator's last interactive sign-in no older than five minutes. The console
  *     checks it from `me` before the form and the server checks it again (403 `step_up_required`);
  *   - a mandatory reason, up to 500 characters;
@@ -13,6 +13,12 @@
  *   - a 72-hour undo, with the same step-up and a reason.
  */
 
+import {
+  SUPPORT_CODE_BAD_CHECK,
+  SUPPORT_CODE_LOOKALIKE,
+  formatSupportCode,
+  parseSupportCode,
+} from "../../../../lib/supportCode.js";
 import * as React from "react";
 import {
   ApiError,
@@ -139,13 +145,27 @@ export function RelinkDialog({
   const { fresh, markStale } = useStepUp(open);
   const [target, setTarget] = React.useState("");
   const [reason, setReason] = React.useState("");
+  const [missing, setMissing] = React.useState(false);
+  const targetRef = React.useRef<HTMLInputElement>(null);
   React.useEffect(() => {
     if (open) {
       setTarget("");
       setReason("");
+      setMissing(false);
     }
   }, [open]);
-  const targetOk = SUBJECT_PATTERN.test(target.trim());
+  const parsed = parseSupportCode(target.trim());
+  const targetOk =
+    SUBJECT_PATTERN.test(target.trim()) || parsed.kind === "code";
+  // One line under the field: a typo told from a code nobody holds (the check is public math).
+  const targetError =
+    parsed.kind === "lookalike"
+      ? SUPPORT_CODE_LOOKALIKE
+      : parsed.kind === "bad_check"
+        ? SUPPORT_CODE_BAD_CHECK
+        : missing
+          ? "No user has that code or id."
+          : null;
   const reasonOk = reason.trim().length > 0;
   const hash = r.user(slug, subject, "licenses");
 
@@ -163,9 +183,14 @@ export function RelinkDialog({
       ]}
       confirmLabel="Relink license"
       confirmDisabled={!fresh || !targetOk || !reasonOk}
-      describeError={(e) => errorCopy(e, { thing: "License" })}
+      describeError={(e) =>
+        e instanceof ApiError && e.code === "target_not_found"
+          ? null
+          : errorCopy(e, { thing: "License" })
+      }
       onConfirm={async () => {
         try {
+          setMissing(false);
           const res = await mutate(
             "relinkProductUserLicense",
             slug,
@@ -174,9 +199,13 @@ export function RelinkDialog({
             { target: target.trim(), reason: reason.trim() },
           );
           toast.success("License relinked", {
-            description: `It now belongs to ${res.subject}. Undo is open for 72 hours.`,
+            description: `It now belongs to ${parsed.kind === "code" ? formatSupportCode(parsed.code) : res.subject}. Undo is open for 72 hours.`,
           });
         } catch (e) {
+          if (e instanceof ApiError && e.code === "target_not_found") {
+            setMissing(true);
+            targetRef.current?.focus();
+          }
           if (e instanceof ApiError && e.code === "step_up_required")
             markStale();
           throw e;
@@ -194,19 +223,33 @@ export function RelinkDialog({
           </label>
           <Input
             id="relink-target"
+            ref={targetRef}
             mono
             value={target}
-            placeholder="ps_…"
+            placeholder="Support code or ps_…"
             autoComplete="off"
             spellCheck={false}
-            aria-describedby="relink-target-help"
-            aria-invalid={target.trim() !== "" && !targetOk}
-            onChange={(e) => setTarget(e.target.value)}
+            aria-describedby={
+              targetError
+                ? "relink-target-error relink-target-help"
+                : "relink-target-help"
+            }
+            aria-invalid={
+              targetError !== null || (target.trim() !== "" && !targetOk)
+            }
+            onChange={(e) => {
+              setTarget(e.target.value);
+              setMissing(false);
+            }}
           />
+          {targetError ? (
+            <p id="relink-target-error" className="text-xs text-danger">
+              {targetError}
+            </p>
+          ) : null}
           <p id="relink-target-help" className="text-xs text-fg-muted">
-            Their user id for this product. They get it by signing in to the
-            product, or with Get a support code on the product's page in their
-            Polaris Locker account.
+            Their support code or user id for this product. They find the code
+            on the product's page in their Polaris Locker account.
           </p>
         </div>
         <ReasonField id="relink-reason" value={reason} onChange={setReason} />

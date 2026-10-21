@@ -29,6 +29,19 @@ export function isTypingTarget(target: EventTarget | null): boolean {
   return target.closest("[role=textbox], .cm-editor") !== null;
 }
 
+/** A page's request to open the palette with a query typed in (the Users page's code search). */
+export const OPEN_PALETTE_EVENT = "pk:open-palette";
+export function openPaletteWith(query: string): void {
+  window.dispatchEvent(new CustomEvent(OPEN_PALETTE_EVENT, { detail: query }));
+}
+
+/** The platform's palette shortcut as it reads on this device: ⌘K on Apple platforms, Ctrl+K elsewhere. */
+export function paletteShortcutLabel(): string {
+  return /Mac|iPhone|iPad/i.test(globalThis.navigator?.platform ?? "")
+    ? "⌘K"
+    : "Ctrl+K";
+}
+
 /** Is this the platform's command modifier (⌘ on Apple platforms, Ctrl elsewhere)? */
 export function isModKey(e: KeyboardEvent): boolean {
   return e.metaKey || e.ctrlKey;
