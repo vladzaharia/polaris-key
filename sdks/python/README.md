@@ -488,7 +488,7 @@ license profile (`name`, `email`) — show, for example, "Signed in as Ada Lovel
 <ada@example.com>" with a way to sign out (`client.identity.sign_out()`).
 
 `client.identity.sign_in_with_browser()` is the native interim until the redirect-token route
-(I-15) lands: it begins a device-code sign-in, opens `verificationUriComplete` with
+lands: it begins a device-code sign-in, opens `verificationUriComplete` with
 `webbrowser.open` and waits. Pass `on_prompt` to show the code and a terminal QR
 (`polaris_key.qr.terminal(prompt.verificationUriComplete)`) for a browser on another device.
 The attach opt-in (`confirm_identity=True`, `on_confirm`, `accept_sign_in(..., attach_license=True)`)
@@ -581,7 +581,7 @@ An override env var is `env_prefix + key.replace(".", "__")` (dots → double un
 `run.concurrency` → `PKEY_CONFIG_run__concurrency`, `quality.floor` →
 `PKEY_CONFIG_quality__floor`. The value is the parsed JSON value when the raw string is one
 strict JSON text (`"4"` → int, `"true"` → bool, `"[…]"` → list), and otherwise the raw string,
-unchanged (WIRE-CONTRACT-V3 §2.2.1 rule 2, pinned by `conformance/corpus/v2/config-matrix.json`).
+unchanged (the wire contract, v4; pinned by `conformance/corpus/v2/config-matrix.json`).
 Strict means: no `NaN`, `Infinity` or duplicate member names; no member name holding U+0000; no
 lone surrogate (which `os.environ` holds for a byte it cannot decode); every number zero or of
 magnitude 10^−307 up to below 10^308; and at most 64 levels of nesting. Reading a variable never
@@ -591,7 +591,7 @@ The withdrawn interim `PLRS_CONFIG_*` prefix is **not** read as a fallback.
 
 ### What the SDK sends
 
-`X-PKey-Platform` and `X-PKey-Arch` carry the canonical values of WIRE-CONTRACT-V3 §5.2, mapped
+`X-PKey-Platform` and `X-PKey-Arch` carry the canonical values of the wire contract (v4), mapped
 from `platform.system()` and `platform.machine()` by `canonical_platform` and `canonical_arch`
 (`Darwin` → `macos`, `AMD64` → `x86_64`); a spelling with no value omits its header.
 `X-PKey-SDK` is `python` (`SDK_NAME`, the generated `SdkId.PYTHON`).
@@ -805,7 +805,7 @@ evidence the outlet is `unknown`, which is never offered an update. `client.upda
 
 ## Packs (`client.update.packs`)
 
-Packs are content delivered beside the app (plans/P4-01.md; CONTENT §10): each release is a
+Packs are content delivered beside the app: each release is a
 CI-signed `kind: pack` record, pinned by the app build's **content stamp**
 (`pkey-content.json`, written by CI and shipped among the app's own read-only resources). A host
 without a stamp has no packs.
@@ -857,7 +857,7 @@ garbage collection waits (`state().state_issue == "torn"`) until `recover_state(
 cannot be read at all (`"unreadable"`) blocks every write until the process restarts with it
 readable. The running set's `packSetId` rides on `devices/report` as `content`.
 
-Feed-offered deltas (P4-29): the committed channel feed can list lazy deltas (`deltas`, the
+Feed-offered deltas: the committed channel feed can list lazy deltas (`deltas`, the
 Worker's delta menu). The client keeps the menu of the last feed `update.decide()` or
 `update.feed()` used, fresh or stale, and reads the committed feed from the cache when the pack
 engine starts, so an offline launch still has it. The engine adds the entries for a container's
@@ -878,7 +878,7 @@ run the content corpus and `plan-matrix.json` through them.
 
 With a content stamp, `client.update.decide()` also reads the feed's content members
 (`packSets`, `packFloors`, `revocations`; `feed_content`) and the device's stored revocations, and
-refines the app answer (plans/P4-13.md §2.5, §2.6):
+refines the app answer:
 
 ```python
 import polaris_key
@@ -919,7 +919,7 @@ essential entries before mount. The pure functions (`feed_content`, `revocation_
 exported for hosts that drive their own transport; `tests/test_content_decision.py` runs every
 `feedContentCases`, `revocationCases` and `contentRows` vector through them.
 
-### Delegated content (P4-19)
+### Delegated content
 
 A compatible or standalone pack release signed by a **delegated content key** installs through the
 same engine when it arrives as a feed target (`ensure_releases`, a `packs` decision's `install`):
@@ -945,7 +945,7 @@ code extension. The pure functions (`verify_release_record(..., delegation=)`,
 
 ## Trust, caching, and the offline gate
 
-The SDK follows wire contract v3 (`docs/security/WIRE-CONTRACT-V3.md`):
+The SDK follows the wire contract (v4):
 
 - **Pinned keys are terminal.** The `trust=` map you compile into your application is the
   only root. Keys learned from a signed trust manifest are merged _under_ it, and a

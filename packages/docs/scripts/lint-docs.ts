@@ -111,7 +111,10 @@ const FUTURE = /\b(will|won't|going to)\b/gi;
 
 /** Programme and plan ids a reader cannot resolve. */
 const PROGRAMME_ID =
-  /\b(?:(?:LX|ST|SP|CM|UK|DOC|AX|HA|PX|PS|WP|P[0-5]|[ADFIRTU])-\d{1,3}[a-z]?|P[0-5]-\d{2}[a-z]?)\b|\bplans\/[A-Za-z0-9-]+\.md|\bdocs\/research\//g;
+  /\b(?:(?:LX|ST|SP|CM|UK|DOC|AX|HA|PX|PS|WP|P[0-9]|[ADFIRTU])-\d{1,3}[a-z]?)\b|\bplans\/[A-Za-z0-9-]+\.md|\bdocs\/research\//g;
+
+/** A retired contract file name: the README and PRIVACY.md say "the wire contract (v4)". Pages may cite the old versions as history. */
+const STALE_CONTRACT = /\bWIRE-CONTRACT-V[0-3]\b/g;
 
 /** UK spellings; the docs write US English ("license", "canceled"). Prose only: slugs in code are untouched. */
 const UK_SPELLING =
@@ -379,22 +382,37 @@ export function readPage(id: string, root = contentRoot): PageInfo {
  */
 export const OPERATOR_FILES = ["RUNBOOK.md", "DEPLOYMENT.md"] as const;
 
-/** Published whole too (reference/what-apps-collect), checked for UK spellings only: its programme ids are a separate cleanup. */
-export const SPELLING_ONLY_FILES = ["PRIVACY.md"] as const;
+/** Published whole too (reference/what-apps-collect): programme ids and UK spellings, like the operator files. */
+export const PUBLISHED_FILES = ["PRIVACY.md"] as const;
+
+/**
+ * Every README the site renders whole (the build/sdks/* pages and the Compose page), by repo path.
+ * Programme ids only: they are the registries' READMEs too, so their spelling is not the site's.
+ */
+export const README_FILES = [
+  "packages/sdk-node/README.md",
+  "packages/sdk-react/README.md",
+  "sdks/python/README.md",
+  "sdks/swift/README.md",
+  "sdks/kotlin/README.md",
+  "sdks/kotlin/ui/README.md",
+  "sdks/godot/README.md",
+] as const;
 
 export function lintOperatorFile(
   id: string,
   text: string,
-  opts: { programmeIds?: boolean } = {},
+  opts: { spelling?: boolean } = {},
 ): Hit[] {
   const hits: Hit[] = [];
   for (const l of lines(text, 1)) {
-    if (opts.programmeIds !== false)
-      for (const m of l.text
-        .replace(/\]\([^)]*\)/g, "]")
-        .matchAll(PROGRAMME_ID))
-        hits.push({ id, rule: "programme-id", line: l.n, text: m[0] });
-    if (l.fence) continue;
+    for (const m of l.text
+      .replace(/\]\([^)]*\)/g, "]")
+      .matchAll(
+        new RegExp(`${PROGRAMME_ID.source}|${STALE_CONTRACT.source}`, "g"),
+      ))
+      hits.push({ id, rule: "programme-id", line: l.n, text: m[0] });
+    if (l.fence || opts.spelling === false) continue;
     for (const m of prose(l.text).matchAll(UK_SPELLING))
       hits.push({ id, rule: "uk-spelling", line: l.n, text: m[0] });
   }
@@ -408,17 +426,24 @@ export function lintSite(facts: Facts = loadFacts()): Hit[] {
       readFileSync(join(docsRoot, "..", "..", "docs", file), "utf8"),
     ),
   );
-  const spellingOnly = SPELLING_ONLY_FILES.flatMap((file) =>
+  const published = PUBLISHED_FILES.flatMap((file) =>
     lintOperatorFile(
       `docs/${file}`,
       readFileSync(join(docsRoot, "..", "..", "docs", file), "utf8"),
-      { programmeIds: false },
+    ),
+  );
+  const readmes = README_FILES.flatMap((file) =>
+    lintOperatorFile(
+      file,
+      readFileSync(join(docsRoot, "..", "..", file), "utf8"),
+      { spelling: false },
     ),
   );
   return [
     ...allIds().flatMap((id) => lintPage(readPage(id), facts)),
     ...operator,
-    ...spellingOnly,
+    ...published,
+    ...readmes,
   ];
 }
 
