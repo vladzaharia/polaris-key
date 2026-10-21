@@ -821,8 +821,17 @@ export const LOCKER_BADGE_TEMPLATES: Record<
 /** badges/index.json: slug to label ("open-in" to "Open in"). The accessible name is "<label> Polaris Locker". */
 export const LOCKER_BADGE_LABELS = ${JSON.stringify(k.badgeLabels)} as const;
 
+/**
+ * The "Powered by" label's outlined prefix group, on its own so the React kit's attribution
+ * (\`poweredBySvg\`) bundles this one and not the other fifteen (SP-47 size budget).
+ */
+export const LOCKER_POWERED_BY_PREFIX = ${JSON.stringify(k.badgePrefixes["powered-by"])};
+
 /** Each label's outlined prefix text group, as the kit draws it. */
-export const LOCKER_BADGE_PREFIXES = ${JSON.stringify(k.badgePrefixes)} as const;
+export const LOCKER_BADGE_PREFIXES = {
+  ...${JSON.stringify(Object.fromEntries(Object.entries(k.badgePrefixes).filter(([slug]) => slug !== "powered-by")))},
+  "powered-by": LOCKER_POWERED_BY_PREFIX,
+} as const;
 
 /** The colour each role takes in each badge treatment and theme. */
 export const LOCKER_BADGE_PALETTES = ${JSON.stringify(k.badgePalettes)} as const;

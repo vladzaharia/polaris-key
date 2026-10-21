@@ -58,6 +58,8 @@ const ROUTES: Record<string, unknown> = {
     products: [{ slug: "djdl", name: "DJDL", schemaVersion: 2 }],
   },
   "/manage/api/products": { products: [row("djdl", "DJDL")] },
+  // ST-44: Home (the first page) reads the attention list.
+  "/manage/api/attention": { items: [] },
   "/manage/api/products/djdl": { product: row("djdl", "DJDL") },
   // A platform admin's account menu reads the deployed version (chunk 4).
   "/manage/api/platform/version": {
