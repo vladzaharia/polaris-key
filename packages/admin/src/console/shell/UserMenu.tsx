@@ -57,7 +57,7 @@ export function UserMenu({
   onSignOut: () => void;
 }): React.ReactElement {
   const narrow = useMediaQuery(NARROW_BAR_QUERY);
-  const initials = me.name
+  const initials = (me.name || me.email || "")
     .split(/\s+/)
     .map((s) => s[0])
     .filter(Boolean)
