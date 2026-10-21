@@ -223,6 +223,8 @@ export const SEARCH_BUNDLES: ReadonlyArray<
   ["/docs/pagefind/", "public"],
   ["/docs/pagefind-member/", "member"],
   ["/docs/pagefind-admin/", "admin"],
+  // Help-only (public tier): the customer host's search, so it never offers a developer page.
+  ["/docs/pagefind-help/", "public"],
 ];
 
 /**

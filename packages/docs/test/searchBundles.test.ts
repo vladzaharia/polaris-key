@@ -57,6 +57,12 @@ describe.skipIf(!existsSync(join(dist, "docs-access.json")))(
       ).toBe(true);
     });
 
+    it("give Help its own bundle of Help pages only", () => {
+      const urls = urlsOf("pagefind-help");
+      expect(urls.length).toBeGreaterThan(10);
+      for (const u of urls) expect(u, u).toMatch(/^\/help(\/|$)/);
+    });
+
     it("have no public redirect page that targets a gated page", () => {
       const walk = (dir: string): string[] =>
         readdirSync(dir, { withFileTypes: true }).flatMap((e) =>

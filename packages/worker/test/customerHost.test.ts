@@ -263,7 +263,7 @@ describe("customer host confinement", () => {
         "/docs/help/index.html": "<html>help home</html>",
         "/docs/help/activate/index.html": "<html>help activate</html>",
         "/docs/_astro/app.abc.css": "body{}",
-        "/docs/pagefind/pagefind.js": "export{}",
+        "/docs/pagefind-help/pagefind.js": "export{}",
         "/docs/404.html": "<html>404</html>",
       };
       env.ASSETS = {
@@ -286,7 +286,7 @@ describe("customer host confinement", () => {
         "/docs/help/",
         "/docs/help/activate/",
         "/docs/_astro/app.abc.css",
-        "/docs/pagefind/pagefind.js",
+        "/docs/pagefind-help/pagefind.js",
       ])
         expect((await get(`${CUSTOMER}${path}`)).status, path).toBe(200);
       expect(
@@ -300,6 +300,7 @@ describe("customer host confinement", () => {
         "/docs/",
         "/docs/operate/",
         "/docs/access/",
+        "/docs/pagefind/pagefind.js",
         "/docs/pagefind-member/pagefind.js",
         "/docs/helpful/",
       ]) {

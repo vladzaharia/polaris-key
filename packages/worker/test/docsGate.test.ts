@@ -620,6 +620,7 @@ describe("the docs tiers", () => {
       "public",
       "member",
       "admin",
+      "public",
     ]);
     for (const [dir, tier] of SEARCH_BUNDLES)
       expect(docsTierOf(`${dir}pagefind.js`), dir).toBe(tier);
@@ -632,7 +633,7 @@ describe("the docs tiers", () => {
   it("name every page row the docs site does, and nothing public beyond the site assets", () => {
     const pageRows = DOCS_TIERS.filter(
       ([path]) =>
-        !/^\/docs\/(_astro|branding|schemas|openapi|pagefind(-member|-admin)?)\//.test(
+        !/^\/docs\/(_astro|branding|schemas|openapi|pagefind(-member|-admin|-help)?)\//.test(
           path,
         ) &&
         path !== "/docs/404.html" &&
