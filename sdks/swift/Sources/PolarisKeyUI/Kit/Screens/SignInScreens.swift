@@ -434,6 +434,31 @@ public struct SignInHandoffView: View {
         self.onCopyLink = onCopyLink
     }
 
+    /// The address as shown (the scheme dropped); VoiceOver reads the bare address.
+    private func linkText(_ url: String, _ style: KitResolvedStyle) -> some View {
+        Text(KitLinks.display(url))
+            .font(style.font(.meta))
+            .foregroundStyle(style.palette.textDefault)
+            .lineLimit(1)
+            .truncationMode(.middle)
+            .accessibilityLabel(KitLinks.display(request?.verificationUri ?? url))
+    }
+
+    private func copyLinkButton(_ url: String, _ style: KitResolvedStyle) -> some View {
+        Button(
+            strings.string(
+                screen.state == .linkCopied
+                    ? "signInHandoff.linkCopied" : "signin.handoff.copyLink")
+        ) {
+            KitPasteboard.copy(url)
+            onCopyLink()
+        }
+        .buttonStyle(
+            KitQuietStyle(color: style.palette.accentFg, reduceMotion: style.reduceMotion)
+        )
+        .font(style.font(.label))
+    }
+
     public var body: some View {
         kitStyle { style in
             VStack(alignment: .leading, spacing: style.space(.md)) {
@@ -453,28 +478,12 @@ public struct SignInHandoffView: View {
                 case .noBrowser, .linkCopied:
                     KitText(CopyLine("signin.handoff.noBrowserBody"), .body, color: .default)
                     if let url = request?.verificationUriComplete {
+                        // Copy link keeps its whole label; the address gives way in the middle
+                        // ("pola…JHT") when the column is narrow (iPad, AX sizes).
                         HStack {
-                            Text(KitLinks.display(url))
-                                .font(style.font(.meta))
-                                .foregroundStyle(style.palette.textDefault)
-                                .lineLimit(1)
-                                .truncationMode(.middle)
-                                .accessibilityLabel(
-                                    KitLinks.display(request?.verificationUri ?? url))
-                            Spacer()
-                            Button(
-                                strings.string(
-                                    screen.state == .linkCopied
-                                        ? "signInHandoff.linkCopied" : "signin.handoff.copyLink")
-                            ) {
-                                KitPasteboard.copy(url)
-                                onCopyLink()
-                            }
-                            .buttonStyle(
-                                KitQuietStyle(
-                                    color: style.palette.accentFg, reduceMotion: style.reduceMotion)
-                            )
-                            .font(style.font(.label))
+                            linkText(url, style)
+                            Spacer(minLength: style.space(.xs))
+                            copyLinkButton(url, style).fixedSize()
                         }
                     }
                 case .code:
@@ -579,6 +588,30 @@ public struct LicenseChoiceView: View {
         }
     }
 
+    @ViewBuilder private func tierAndSeats(_ choice: KitLicenseChoice, _ style: KitResolvedStyle)
+        -> some View
+    {
+        Text(choice.tierName)
+            .font(style.font(.footnote))
+            .fixedSize()
+            .padding(.horizontal, 8)
+            .padding(.vertical, 2)
+            .background(Capsule().fill(style.palette.textStrong.opacity(0.09)))
+        if let seats = choice.seats {
+            Text(
+                strings.string(
+                    "signin.choice.devices",
+                    ["used": .number(seats.used), "limit": .number(seats.limit)])
+            )
+            .font(style.font(.footnote))
+            .foregroundStyle(style.palette.textMuted)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+        if choice.isFull {
+            KitText("signin.choice.tag.full", [:], .footnote, color: .muted)
+        }
+    }
+
     @ViewBuilder private func row(_ choice: KitLicenseChoice, _ style: KitResolvedStyle)
         -> some View
     {
@@ -591,26 +624,11 @@ public struct LicenseChoiceView: View {
                     Text(choice.name ?? style.identity.name)
                         .font(style.font(.body))
                         .foregroundStyle(style.palette.textStrong)
-                    HStack(spacing: style.space(.xs)) {
-                        Text(choice.tierName)
-                            .font(style.font(.footnote))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 2)
-                            .background(Capsule().fill(style.palette.textStrong.opacity(0.09)))
-                        if let seats = choice.seats {
-                            Text(
-                                strings.string(
-                                    "signin.choice.devices",
-                                    ["used": .number(seats.used), "limit": .number(seats.limit)])
-                            )
-                            .font(style.font(.footnote))
-                            .foregroundStyle(style.palette.textMuted)
-                            .fixedSize()
-                        }
-                        if choice.isFull {
-                            KitText("signin.choice.tag.full", [:], .footnote, color: .muted)
-                        }
-                    }
+                        .fixedSize(horizontal: false, vertical: true)
+                    // The tier, seats and Full tag share a line when they fit and stack when they
+                    // do not; the tier name never breaks inside its capsule ("Pr/o" at AX5).
+                    // The tier never breaks inside its capsule ("Pr/o" at AX5); the seats wrap.
+                    HStack(spacing: style.space(.xs)) { tierAndSeats(choice, style) }
                     Text(
                         strings.string(
                             "signin.choice.meta",
