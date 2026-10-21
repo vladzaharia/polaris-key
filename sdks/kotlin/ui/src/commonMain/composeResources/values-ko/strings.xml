@@ -1623,6 +1623,146 @@
     </plurals>
     <!-- PX-14a fix round. -->
     <string name="signin_request_tooMany">시도가 너무 많습니다. 잠시 기다린 뒤 다시 시도하세요.</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_title">프로필</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_subtitle">Polaris Locker에서 보이는 모습이며, 동의하면 앱에도 표시됩니다.</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_edit">프로필 편집</string>
+    <string name="profile_edit__macos">프로필 편집</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_editShort">편집</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_addPicture">사진 추가</string>
+    <string name="profile_addPicture__macos">사진 추가</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_preview">미리보기</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_name_label">표시 이름</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_name_yourChoice">직접 입력</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_name_useFrom">다음의 이름 사용</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_name_required">이름을 입력하세요.</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_picture_label">사진</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_picture_inUse">사용 중</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_picture_initials">이니셜</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_picture_initialsNote">사진 없음</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_picture_upload">업로드</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_picture_uploadNote">PNG 또는 JPEG, 최대 5MB</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_picture_uploading">업로드 중…</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_picture_uploaded">사진을 업로드했습니다. 사용하려면 프로필을 저장하세요.</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_picture_yourUpload">내가 올린 사진</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_picture_yourUploadNote">정사각형으로 잘림</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_picture_current">현재 사진</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_picture_currentNote">삭제한 로그인 방법의 사진</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_birthdate_label">생년월일</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_birthdate_optional">선택 사항</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_birthdate_hint">나만 볼 수 있으며 앱에는 전달되지 않습니다.</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_birthdate_remove">생년월일 삭제</string>
+    <string name="profile_birthdate_remove__macos">생년월일 삭제</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_note">사진은 Polaris Locker에 복사되므로 이 페이지와 앱은 제공업체에서 사진을 불러오지 않습니다. 가져온 이름이나 사진은 직접 선택하기 전까지 제공업체를 따르며, 선택한 후에는 선택이 유지됩니다.</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_save">프로필 저장</string>
+    <string name="profile_save__macos">프로필 저장</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_saved">프로필을 저장했습니다</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_loadError">프로필을 불러오지 못했습니다</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_removedMethod">삭제한 로그인 방법</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_error_invalidName">이름을 입력하세요.</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_error_invalidBirthdate">1900년부터 오늘까지의 날짜를 입력하세요.</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_error_unknownSource">이 로그인 방법은 더 이상 이 계정에 없습니다. 다시 선택하세요.</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_error_noName">이 로그인 방법은 이름을 공유하지 않았습니다. 다른 방법을 선택하거나 직접 입력하세요.</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_error_noPicture">이 로그인 방법은 사진을 공유하지 않았습니다. 다른 사진을 선택하세요.</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_error_unknownUpload">업로드가 만료되었습니다. 사진을 다시 업로드하세요.</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_error_tooLarge">5MB 이하의 사진을 사용하세요.</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_error_unsupportedType">PNG 또는 JPEG 사진을 사용하세요.</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_error_unreadableImage">사진을 읽을 수 없습니다. 다른 PNG 또는 JPEG를 사용해 보세요.</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_error_uploadLimit">한 시간에 사진을 10장까지 올릴 수 있습니다. 나중에 다시 시도하세요.</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_error_uploadUnavailable">지금은 사진을 업로드할 수 없습니다. 나중에 다시 시도하세요.</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). Arguments: 1=provider. -->
+    <string name="profile_name_typedHint">직접 입력한 이름이므로 %1$s(으)로 로그인해도 바뀌지 않습니다.</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_name_typedHintAny">직접 입력한 이름이므로 로그인해도 바뀌지 않습니다.</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). Arguments: 1=provider. -->
+    <string name="profile_name_pickedHint">%1$s의 이름을 선택했으므로 로그인해도 바뀌지 않습니다.</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). Arguments: 1=provider. -->
+    <string name="profile_name_followsHint">이 이름은 %1$s에서 가져왔으며, 직접 입력하거나 선택하기 전까지 %1$s를 따릅니다.</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_source_nameTyped">직접 입력한 이름</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). Arguments: 1=provider. -->
+    <string name="profile_source_nameFrom">%1$s의 이름</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). Arguments: 1=provider. -->
+    <string name="profile_source_pictureFrom">%1$s의 사진</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_source_pictureUploaded">직접 올린 사진</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_source_pictureInitials">사진 대신 이니셜</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_source_appleNoPicture">Apple은 사진을 공유하지 않습니다</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_source_noPicture">사진 없음</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). Arguments: 1=provider. -->
+    <string name="profile_picture_earlierNote">%1$s의 이전 사진</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). Arguments: 1=name, 2=provider. -->
+    <string name="profile_name_chip">%2$s의 이름 %1$s 사용</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). Arguments: 1=date. -->
+    <string name="profile_birthdate_line">생일 %1$s · 나만 볼 수 있음</string>
+    <!-- Your data (Account and each product page); moved from the portal's copy tables (P0-36). -->
+    <string name="yourData_account_copy_title">내 데이터 다운로드</string>
+    <!-- Your data (Account and each product page); moved from the portal's copy tables (P0-36). -->
+    <string name="yourData_account_copy_body">계정, 로그인 방법, 라이선스, 기기, 각 앱의 데이터. 키와 토큰은 포함되지 않습니다.</string>
+    <!-- Your data (Account and each product page); moved from the portal's copy tables (P0-36). -->
+    <string name="yourData_account_copy_button">내 데이터 다운로드</string>
+    <string name="yourData_account_copy_button__macos">내 데이터 다운로드</string>
+    <!-- Your data (Account and each product page); moved from the portal's copy tables (P0-36). -->
+    <string name="yourData_copy_private">개인 정보가 들어 있으니 비공개로 보관하세요.</string>
+    <!-- Your data (Account and each product page); moved from the portal's copy tables (P0-36). -->
+    <string name="yourData_copy_started">다운로드를 시작했습니다</string>
+    <!-- Your data (Account and each product page); moved from the portal's copy tables (P0-36). -->
+    <string name="yourData_product_copy_title">내 데이터 다운로드</string>
+    <!-- Your data (Account and each product page); moved from the portal's copy tables (P0-36). -->
+    <string name="yourData_product_remove_title">내 데이터 삭제</string>
+    <!-- Your data (Account and each product page); moved from the portal's copy tables (P0-36). -->
+    <string name="yourData_product_remove_body">Polaris Locker가 여기의 설정과 활동을 삭제합니다. 되돌릴 수 없습니다.</string>
+    <!-- Your data (Account and each product page); moved from the portal's copy tables (P0-36). -->
+    <string name="yourData_product_support_title">지원 코드</string>
+    <!-- Your data (Account and each product page); moved from the portal's copy tables (P0-36). -->
+    <string name="yourData_product_support_body">앱 지원팀에 알려 주세요.</string>
+    <!-- Your data (Account and each product page); moved from the portal's copy tables (P0-36). -->
+    <string name="yourData_remove_keep">내 데이터 유지</string>
+    <string name="yourData_remove_keep__macos">내 데이터 유지</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">문제가 발생했어요</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

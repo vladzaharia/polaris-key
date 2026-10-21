@@ -9,6 +9,7 @@ import {
   Plus,
   ShieldCheck,
 } from "lucide-react";
+import { ActionMenu } from "../../../ui/ActionMenu.js";
 import { Button } from "../../../ui/Button.js";
 import { t } from "../../../lib/copy.js";
 import { expiredCodeText, wrongCodeText } from "../../copy/codeEntry.js";
@@ -60,7 +61,7 @@ import {
   WindowsGlyph,
 } from "../Glyphs.js";
 import { ErrorPanel } from "../States.js";
-import { SectionCard } from "../product/Card.js";
+import { AccountCard as SectionCard } from "./AccountCard.js";
 import { MethodRow } from "./MethodRow.js";
 import {
   MakePrimaryTool,
@@ -106,12 +107,47 @@ export function SignInMethods({
   params: URLSearchParams;
 }): React.ReactElement {
   const methods = useMethods();
+  /** The header menu's commands: each press bumps a counter the groups below act on. */
+  const [cmd, setCmd] = React.useState({ email: 0, passkey: 0 });
+  const passkeyReason = methods.data ? passkeyBlock(methods.data) : null;
   // One card whatever the state, so nothing remounts as the list arrives.
   const emailOnly = methods.data === null;
   return (
     <SectionCard
       id="methods"
       title="Sign-in methods"
+      aside={
+        !emailOnly && methods.data ? (
+          <ActionMenu
+            label="Add a sign-in method"
+            align="end"
+            trigger={
+              <Button
+                variant="outline"
+                className="max-sm:min-h-11"
+                iconStart={<Plus aria-hidden />}
+              >
+                Add
+              </Button>
+            }
+            items={[
+              {
+                label: "Add an email",
+                onSelect: () =>
+                  later(() => setCmd((c) => ({ ...c, email: c.email + 1 }))),
+              },
+              {
+                label: "Add a passkey",
+                disabledReason: passkeyReason ?? undefined,
+                onSelect: () =>
+                  later(() =>
+                    setCmd((c) => ({ ...c, passkey: c.passkey + 1 })),
+                  ),
+              },
+            ]}
+          />
+        ) : null
+      }
       subtitle={
         emailOnly
           ? "Receipts and security notices go to your primary email."
@@ -128,12 +164,18 @@ export function SignInMethods({
         </div>
       ) : methods.error || !methods.data ? (
         <ErrorPanel
+          account
           error={methods.error}
           onRetry={() => void methods.refetch()}
           className="border-0 p-0 shadow-none"
         />
       ) : (
-        <MethodGroups account={account} view={methods.data} params={params} />
+        <MethodGroups
+          account={account}
+          view={methods.data}
+          params={params}
+          cmd={cmd}
+        />
       )}
     </SectionCard>
   );
@@ -217,10 +259,12 @@ function MethodGroups({
   account,
   view,
   params,
+  cmd,
 }: {
   account: PortalAccount;
   view: PortalMethods;
   params: URLSearchParams;
+  cmd: { email: number; passkey: number };
 }): React.ReactElement {
   const ids = {
     accounts: React.useId(),
@@ -383,8 +427,7 @@ function MethodGroups({
           action={
             <Button
               variant="outline"
-              size="sm"
-              className="font-medium"
+              className="font-medium max-sm:min-h-11"
               onClick={() => setAddEmailAsked((n) => n + 1)}
             >
               Add your real email
@@ -510,6 +553,8 @@ function MethodGroups({
             {...common}
             returnTo={returnTo({ add: "email" })}
             asked={addEmailAsked}
+            command={cmd.email}
+            prompt={view.emails.length === 0}
             onAdded={focusGroup("email")}
           />
         </ul>
@@ -559,6 +604,8 @@ function MethodGroups({
             {...common}
             returnTo={returnTo({ add: "passkey" })}
             asked={passkeyAsked}
+            start={cmd.passkey}
+            prompt={view.passkeys.length === 0}
             onAdded={focusGroup("passkeys")}
           />
         </ul>
@@ -572,6 +619,22 @@ function MethodGroups({
       </p>
     </div>
   );
+}
+
+/** After the menu has closed and handed focus back to its trigger: what we focus then stays. */
+function later(fn: () => void): void {
+  setTimeout(() => requestAnimationFrame(fn), 30);
+}
+
+/** Why a passkey can't be added now, or null. */
+function passkeyBlock(view: PortalMethods): string | null {
+  if (!view.passkey.canAdd)
+    return view.passkey.reason === "limit"
+      ? "You have as many passkeys as an account can hold. Remove one to add another."
+      : "Add an email first: it's how you get back in if a passkey is lost.";
+  return passkeysSupported()
+    ? null
+    : "This browser can't make passkeys. Try another browser or device.";
 }
 
 function methodMeta(m: PortalMethod): string {
@@ -640,7 +703,7 @@ function changeErrorText(err: unknown, name?: string): string {
     if (err.reason === "email_unverified" || err.reason === "limit")
       return err.message;
   }
-  const copy = portalErrorCopy(err);
+  const copy = portalErrorCopy(err, { account: true });
   return `${copy.title}. ${copy.description}`;
 }
 
@@ -721,6 +784,7 @@ function ConnectRow({
             variant="outline"
             className="ml-auto h-11 font-medium"
             loading={busy}
+            busyFocusable
             aria-label={t("signin.provider.connect", { provider: name })}
             onClick={() => void connect()}
           >
@@ -778,13 +842,19 @@ function AddEmail({
   accountId,
   returnTo,
   asked,
+  command,
+  prompt,
   onAdded,
 }: {
   view: PortalMethods;
   accountId: string;
   returnTo: string;
-  /** Changes when something else on the page asks for this form (the Hide My Email notice). */
+  /** Changes when something else on the page asks for this form (a link, a notice). */
   asked: number;
+  /** Changes when the header's Add asks for it: the form opens and its field takes focus. */
+  command: number;
+  /** Show the inline button: only while the group is empty (the header's Add does the rest). */
+  prompt: boolean;
   onAdded: () => void;
 }): React.ReactElement {
   const qc = useQueryClient();
@@ -821,13 +891,24 @@ function AddEmail({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [asked]);
 
+  React.useEffect(() => {
+    if (command === 0) return;
+    askedRef.current = true;
+    if (step.kind === "closed") setStep({ kind: "enter" });
+    else focusField();
+    // Only when commanded.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [command]);
+
   const close = (): void => {
     setStep({ kind: "closed" });
     setEmail("");
     setCode("");
     setError(null);
     setInvalid(false);
-    requestAnimationFrame(() => buttonRef.current?.focus());
+    requestAnimationFrame(() =>
+      buttonRef.current ? buttonRef.current.focus() : onAdded(),
+    );
   };
 
   const send = async (): Promise<void> => {
@@ -901,8 +982,8 @@ function AddEmail({
 
   const open = step.kind !== "closed";
   return (
-    <li className="py-3">
-      {open ? null : (
+    <li className={open || prompt ? "py-3" : undefined}>
+      {open || !prompt ? null : (
         <Button
           ref={buttonRef}
           variant="link"
@@ -987,6 +1068,7 @@ function AddEmail({
                 <Button
                   type="submit"
                   loading={busy}
+                  busyFocusable
                   disabled={code.length !== CODE_LENGTH}
                 >
                   Add {step.email}
@@ -1041,7 +1123,7 @@ function AddEmail({
                 <Button variant="outline" onClick={close}>
                   {t("signin.cancel")}
                 </Button>
-                <Button type="submit" loading={busy}>
+                <Button type="submit" loading={busy} busyFocusable>
                   {t("signin.gate.sendCode")}
                 </Button>
               </div>
@@ -1068,6 +1150,8 @@ function AddPasskey({
   accountId,
   returnTo,
   asked,
+  start,
+  prompt,
   onAdded,
 }: {
   view: PortalMethods;
@@ -1075,6 +1159,10 @@ function AddPasskey({
   returnTo: string;
   /** Changes when a provider's step-up comes back to add a passkey (`?add=passkey`). */
   asked: number;
+  /** Changes when the header's Add asks for a passkey: the ceremony starts at once. */
+  start: number;
+  /** Show the inline button: only while the group is empty. */
+  prompt: boolean;
   onAdded: () => void;
 }): React.ReactElement {
   const qc = useQueryClient();
@@ -1084,7 +1172,6 @@ function AddPasskey({
   const [ready, setReady] = React.useState(false);
   const buttonRef = React.useRef<HTMLButtonElement>(null);
   const reasonId = React.useId();
-  const supported = passkeysSupported();
   // Back from a provider's step-up: a browser makes a passkey only from a click, so the button
   // takes focus, ready to press.
   useAskedFocus(asked, buttonRef);
@@ -1094,13 +1181,7 @@ function AddPasskey({
     // Only when asked.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [asked]);
-  const reason = !view.passkey.canAdd
-    ? view.passkey.reason === "limit"
-      ? "You have as many passkeys as an account can hold. Remove one to add another."
-      : "Add an email first: it's how you get back in if a passkey is lost."
-    : !supported
-      ? "This browser can't make passkeys. Try another browser or device."
-      : null;
+  const reason = passkeyBlock(view);
 
   const add = async (): Promise<void> => {
     setBusy(true);
@@ -1133,15 +1214,24 @@ function AddPasskey({
     }
   };
 
+  // The header's Add: a click made the request, so the ceremony starts now.
+  React.useEffect(() => {
+    if (start > 0 && !reason) void add();
+    // Only when asked.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [start]);
+  const showing = prompt || stepUp || busy || ready || Boolean(error);
+  if (!showing) return <></>;
   return (
     <li className="py-3">
-      {stepUp ? null : (
+      {stepUp || !prompt ? null : (
         <Button
           ref={buttonRef}
           variant="link"
           className="h-11 font-medium sm:ml-13"
           iconStart={<KeyRound aria-hidden />}
           loading={busy}
+          busyFocusable
           aria-disabled={reason ? true : undefined}
           aria-describedby={reason ? reasonId : undefined}
           onClick={() => {
@@ -1151,7 +1241,7 @@ function AddPasskey({
           Add a passkey
         </Button>
       )}
-      {reason ? (
+      {reason && prompt ? (
         <p id={reasonId} className="text-sm text-fg-muted sm:pl-13">
           {reason}
         </p>

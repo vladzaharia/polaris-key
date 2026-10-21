@@ -282,7 +282,7 @@ describe("profileErrorCopy: from the Worker's reason, never its message", () => 
 
   it("an unknown case falls back to the portal's copy", () => {
     expect(profileErrorCopy(refusal(500), "save")).toBe(
-      "Something went wrong. Try again. If it keeps happening, contact the developer.",
+      "Something went wrong. Try again in a few minutes.",
     );
     expect(profileErrorCopy(refusal(429), "upload")).toBe(
       "You can upload 10 pictures an hour. Try again later.",

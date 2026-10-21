@@ -34,7 +34,7 @@ import {
   TOKEN_ENV,
   tokenExpiry,
 } from "../../model/packageAccess.js";
-import { SectionCard } from "../product/Card.js";
+import { AccountCard as SectionCard } from "./AccountCard.js";
 import { SetupTabs, type TabSnippet } from "../product/SetupTabs.js";
 import { ErrorPanel } from "../States.js";
 import { StepUpInline } from "./StepUpInline.js";
@@ -481,6 +481,7 @@ function TokenRow({
               variant="danger"
               className="min-h-11"
               loading={revoke.pending}
+              busyFocusable
               onClick={() =>
                 revoke.run(() => {
                   onRevoked?.();
@@ -995,7 +996,12 @@ function CreateDialog({
             >
               {t("signin.cancel")}
             </Button>
-            <Button type="submit" className="min-h-11" loading={mint.pending}>
+            <Button
+              type="submit"
+              className="min-h-11"
+              loading={mint.pending}
+              busyFocusable
+            >
               Create
             </Button>
           </DialogFooter>

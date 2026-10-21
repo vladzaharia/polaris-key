@@ -4344,6 +4344,371 @@ msgstr[1] ""
 msgid "signin.request.tooMany"
 msgstr ""
 
+#. Profile
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.title"
+msgstr ""
+
+#. How you appear in Polaris Locker, and to an app once you agree to share it.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.subtitle"
+msgstr ""
+
+#. Edit profile
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.edit"
+msgstr ""
+
+#. macos: Edit Profile
+msgctxt "macos"
+msgid "profile.edit"
+msgstr ""
+
+#. Edit
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.editShort"
+msgstr ""
+
+#. Add a picture
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.addPicture"
+msgstr ""
+
+#. macos: Add a Picture
+msgctxt "macos"
+msgid "profile.addPicture"
+msgstr ""
+
+#. Preview
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.preview"
+msgstr ""
+
+#. Screen name
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.name.label"
+msgstr ""
+
+#. Your choice
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.name.yourChoice"
+msgstr ""
+
+#. Use a name from
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.name.useFrom"
+msgstr ""
+
+#. Enter a name.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.name.required"
+msgstr ""
+
+#. Picture
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.picture.label"
+msgstr ""
+
+#. In use
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.picture.inUse"
+msgstr ""
+
+#. Initials
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.picture.initials"
+msgstr ""
+
+#. No picture
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.picture.initialsNote"
+msgstr ""
+
+#. Upload
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.picture.upload"
+msgstr ""
+
+#. PNG or JPEG, up to 5 MB
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.picture.uploadNote"
+msgstr ""
+
+#. Uploading…
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.picture.uploading"
+msgstr ""
+
+#. Picture uploaded. Save your profile to use it.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.picture.uploaded"
+msgstr ""
+
+#. Your upload
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.picture.yourUpload"
+msgstr ""
+
+#. Cropped to a square
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.picture.yourUploadNote"
+msgstr ""
+
+#. Current picture
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.picture.current"
+msgstr ""
+
+#. From a sign-in method you removed
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.picture.currentNote"
+msgstr ""
+
+#. Birth date
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.birthdate.label"
+msgstr ""
+
+#. Optional
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.birthdate.optional"
+msgstr ""
+
+#. Private to you. Apps never receive it.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.birthdate.hint"
+msgstr ""
+
+#. Remove birth date
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.birthdate.remove"
+msgstr ""
+
+#. macos: Remove Birth Date
+msgctxt "macos"
+msgid "profile.birthdate.remove"
+msgstr ""
+
+#. Pictures are copied to Polaris Locker, so neither this page nor any app loads them from the provider. An imported name or picture follows its provider until you pick one yourself; after that, your choice stays.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.note"
+msgstr ""
+
+#. Save profile
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.save"
+msgstr ""
+
+#. macos: Save Profile
+msgctxt "macos"
+msgid "profile.save"
+msgstr ""
+
+#. Profile saved
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.saved"
+msgstr ""
+
+#. Your profile didn't load
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.loadError"
+msgstr ""
+
+#. a sign-in method you removed
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.removedMethod"
+msgstr ""
+
+#. Enter a name.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.error.invalidName"
+msgstr ""
+
+#. Enter a date from 1900 to today.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.error.invalidBirthdate"
+msgstr ""
+
+#. That sign-in method isn't on this account anymore. Choose again.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.error.unknownSource"
+msgstr ""
+
+#. That sign-in method didn't share a name. Choose another or type one.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.error.noName"
+msgstr ""
+
+#. That sign-in method didn't share a picture. Choose another picture.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.error.noPicture"
+msgstr ""
+
+#. That upload has expired. Upload the picture again.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.error.unknownUpload"
+msgstr ""
+
+#. Use a picture of 5 MB or less.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.error.tooLarge"
+msgstr ""
+
+#. Use a PNG or JPEG picture.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.error.unsupportedType"
+msgstr ""
+
+#. We couldn't read that picture. Try another PNG or JPEG.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.error.unreadableImage"
+msgstr ""
+
+#. You can upload 10 pictures an hour. Try again later.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.error.uploadLimit"
+msgstr ""
+
+#. Picture uploads aren't available right now. Try again later.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.error.uploadUnavailable"
+msgstr ""
+
+#. You typed this name, so signing in with {provider} won't change it.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.name.typedHint"
+msgstr ""
+
+#. You typed this name, so signing in won't change it.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.name.typedHintAny"
+msgstr ""
+
+#. You picked the name from {provider}, so signing in won't change it.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.name.pickedHint"
+msgstr ""
+
+#. This name comes from {provider} and follows it until you type or pick one yourself.
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.name.followsHint"
+msgstr ""
+
+#. Name typed by you
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.source.nameTyped"
+msgstr ""
+
+#. Name from {provider}
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.source.nameFrom"
+msgstr ""
+
+#. picture from {provider}
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.source.pictureFrom"
+msgstr ""
+
+#. picture uploaded by you
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.source.pictureUploaded"
+msgstr ""
+
+#. initials instead of a picture
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.source.pictureInitials"
+msgstr ""
+
+#. Apple doesn't share a picture
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.source.appleNoPicture"
+msgstr ""
+
+#. no picture
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.source.noPicture"
+msgstr ""
+
+#. An earlier picture from {provider}
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.picture.earlierNote"
+msgstr ""
+
+#. Use the name {name} from {provider}
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.name.chip"
+msgstr ""
+
+#. Born {date} · private to you
+#. Account page (PX-31a); moved from the portal's copy tables (P0-36).
+msgid "profile.birthdate.line"
+msgstr ""
+
+#. Download my data
+#. Your data (Account and each product page); moved from the portal's copy tables (P0-36).
+msgid "yourData.account.copy.title"
+msgstr ""
+
+#. Account, sign-in methods, licenses, devices and each app's data. No keys or tokens.
+#. Your data (Account and each product page); moved from the portal's copy tables (P0-36).
+msgid "yourData.account.copy.body"
+msgstr ""
+
+#. Download my data
+#. Your data (Account and each product page); moved from the portal's copy tables (P0-36).
+msgid "yourData.account.copy.button"
+msgstr ""
+
+#. macos: Download My Data
+msgctxt "macos"
+msgid "yourData.account.copy.button"
+msgstr ""
+
+#. It holds personal details, so keep it private.
+#. Your data (Account and each product page); moved from the portal's copy tables (P0-36).
+msgid "yourData.copy.private"
+msgstr ""
+
+#. Your download has started
+#. Your data (Account and each product page); moved from the portal's copy tables (P0-36).
+msgid "yourData.copy.started"
+msgstr ""
+
+#. Download my data
+#. Your data (Account and each product page); moved from the portal's copy tables (P0-36).
+msgid "yourData.product.copy.title"
+msgstr ""
+
+#. Remove my data
+#. Your data (Account and each product page); moved from the portal's copy tables (P0-36).
+msgid "yourData.product.remove.title"
+msgstr ""
+
+#. Polaris Locker deletes your settings and activity here. This can't be undone.
+#. Your data (Account and each product page); moved from the portal's copy tables (P0-36).
+msgid "yourData.product.remove.body"
+msgstr ""
+
+#. Support code
+#. Your data (Account and each product page); moved from the portal's copy tables (P0-36).
+msgid "yourData.product.support.title"
+msgstr ""
+
+#. Read it to the app's support team.
+#. Your data (Account and each product page); moved from the portal's copy tables (P0-36).
+msgid "yourData.product.support.body"
+msgstr ""
+
+#. Keep my data
+#. Your data (Account and each product page); moved from the portal's copy tables (P0-36).
+msgid "yourData.remove.keep"
+msgstr ""
+
+#. macos: Keep My Data
+msgctxt "macos"
+msgid "yourData.remove.keep"
+msgstr ""
+
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).
 msgid "core.fallback.title"

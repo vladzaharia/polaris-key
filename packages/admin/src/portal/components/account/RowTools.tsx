@@ -44,7 +44,7 @@ function errorText(err: unknown): string {
     if (err.status === 404)
       return "It's already gone. The list is up to date now.";
   }
-  const copy = portalErrorCopy(err);
+  const copy = portalErrorCopy(err, { account: true });
   return `${copy.title}. ${copy.description}`;
 }
 
@@ -128,6 +128,7 @@ export function MakePrimaryTool({
       variant="outline"
       className="h-11 font-medium"
       loading={mutation.isPending}
+      busyFocusable
       aria-label={`Make ${email} primary`}
       // A disclosure only when the click opens the panel (a stale sign-in).
       aria-expanded={fresh ? undefined : false}
@@ -371,6 +372,7 @@ export function RenamePasskeyTool({
             <Button
               type="submit"
               loading={mutation.isPending}
+              busyFocusable
               disabled={needsStepUp}
             >
               {t("common.save")}

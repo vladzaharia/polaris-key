@@ -1,65 +1,58 @@
 /**
  * Account → Profile's copy (PORTAL.md §4.26 Profile, §4.30, §6.2 "Profile"; PX-22).
  *
- * The catalog (`lib/copy.ts` `t()`) holds no `profile.*` keys yet, so the strings live here under
- * the keys they will take, except the two it words (`signin.cancel`, `signin.retry`); the
- * sentences built from data are the functions below the table. US spelling, sentence case, no
+ * Every string is a `profile.*` key in the kit copy catalog (nine locales); this file reads them
+ * through `t()`, and the sentences built from data are the functions below the table. US spelling, sentence case, no
  * jargon (§6.1): a sign-in method, never an "identity link".
  */
 
 import { t } from "../../lib/copy.js";
 export const PROFILE_COPY = {
-  "profile.title": "Profile",
-  "profile.subtitle": `How you appear in Polaris Locker, and to an app once you agree to share it.`,
-  "profile.edit": "Edit profile",
-  "profile.addPicture": "Add a picture",
-  "profile.preview": "Preview",
-  "profile.name.label": "Screen name",
-  "profile.name.yourChoice": "Your choice",
-  "profile.name.useFrom": "Use a name from",
-  "profile.name.required": "Enter a name.",
-  "profile.picture.label": "Picture",
-  "profile.picture.inUse": "In use",
-  "profile.picture.initials": "Initials",
-  "profile.picture.initialsNote": "No picture",
-  "profile.picture.upload": "Upload",
-  "profile.picture.uploadNote": "PNG or JPEG, up to 5 MB",
-  "profile.picture.uploading": "Uploading…",
-  "profile.picture.uploaded": "Picture uploaded. Save your profile to use it.",
-  "profile.picture.yourUpload": "Your upload",
-  "profile.picture.yourUploadNote": "Cropped to a square",
-  "profile.picture.current": "Current picture",
-  "profile.picture.currentNote": "From a sign-in method you removed",
-  "profile.birthdate.label": "Birth date",
-  "profile.birthdate.optional": "Optional",
-  "profile.birthdate.hint": "Private to you. Apps never receive it.",
-  "profile.birthdate.remove": "Remove birth date",
-  "profile.birthdate.removeShort": "Remove",
-  "profile.note": `Pictures are copied to Polaris Locker, so neither this page nor any app loads them from the provider. An imported name or picture follows its provider until you pick one yourself; after that, your choice stays.`,
-  "profile.save": "Save profile",
+  "profile.title": t("profile.title"),
+  "profile.subtitle": t("profile.subtitle"),
+  "profile.edit": t("profile.edit"),
+  "profile.editShort": t("profile.editShort"),
+  "profile.addPicture": t("profile.addPicture"),
+  "profile.preview": t("profile.preview"),
+  "profile.name.label": t("profile.name.label"),
+  "profile.name.yourChoice": t("profile.name.yourChoice"),
+  "profile.name.useFrom": t("profile.name.useFrom"),
+  "profile.name.required": t("profile.name.required"),
+  "profile.picture.label": t("profile.picture.label"),
+  "profile.picture.inUse": t("profile.picture.inUse"),
+  "profile.picture.initials": t("profile.picture.initials"),
+  "profile.picture.initialsNote": t("profile.picture.initialsNote"),
+  "profile.picture.upload": t("profile.picture.upload"),
+  "profile.picture.uploadNote": t("profile.picture.uploadNote"),
+  "profile.picture.uploading": t("profile.picture.uploading"),
+  "profile.picture.uploaded": t("profile.picture.uploaded"),
+  "profile.picture.yourUpload": t("profile.picture.yourUpload"),
+  "profile.picture.yourUploadNote": t("profile.picture.yourUploadNote"),
+  "profile.picture.current": t("profile.picture.current"),
+  "profile.picture.currentNote": t("profile.picture.currentNote"),
+  "profile.birthdate.label": t("profile.birthdate.label"),
+  "profile.birthdate.optional": t("profile.birthdate.optional"),
+  "profile.birthdate.hint": t("profile.birthdate.hint"),
+  "profile.birthdate.remove": t("profile.birthdate.remove"),
+  "profile.birthdate.removeShort": t("devices.remove"),
+  "profile.note": t("profile.note"),
+  "profile.save": t("profile.save"),
   "profile.cancel": t("signin.cancel"),
-  "profile.saved": "Profile saved",
-  "profile.loadError": "Your profile didn't load",
+  "profile.saved": t("profile.saved"),
+  "profile.loadError": t("profile.loadError"),
   "profile.retry": t("signin.retry"),
-  "profile.removedMethod": "a sign-in method you removed",
-  "profile.error.invalidName": "Enter a name.",
-  "profile.error.invalidBirthdate": "Enter a date from 1900 to today.",
-  "profile.error.unknownSource":
-    "That sign-in method isn't on this account anymore. Choose again.",
-  "profile.error.noName":
-    "That sign-in method didn't share a name. Choose another or type one.",
-  "profile.error.noPicture":
-    "That sign-in method didn't share a picture. Choose another picture.",
-  "profile.error.unknownUpload":
-    "That upload has expired. Upload the picture again.",
-  "profile.error.tooLarge": "Use a picture of 5 MB or less.",
-  "profile.error.unsupportedType": "Use a PNG or JPEG picture.",
-  "profile.error.unreadableImage":
-    "We couldn't read that picture. Try another PNG or JPEG.",
-  "profile.error.uploadLimit":
-    "You can upload 10 pictures an hour. Try again later.",
-  "profile.error.uploadUnavailable":
-    "Picture uploads aren't available right now. Try again later.",
+  "profile.removedMethod": t("profile.removedMethod"),
+  "profile.error.invalidName": t("profile.error.invalidName"),
+  "profile.error.invalidBirthdate": t("profile.error.invalidBirthdate"),
+  "profile.error.unknownSource": t("profile.error.unknownSource"),
+  "profile.error.noName": t("profile.error.noName"),
+  "profile.error.noPicture": t("profile.error.noPicture"),
+  "profile.error.unknownUpload": t("profile.error.unknownUpload"),
+  "profile.error.tooLarge": t("profile.error.tooLarge"),
+  "profile.error.unsupportedType": t("profile.error.unsupportedType"),
+  "profile.error.unreadableImage": t("profile.error.unreadableImage"),
+  "profile.error.uploadLimit": t("profile.error.uploadLimit"),
+  "profile.error.uploadUnavailable": t("profile.error.uploadUnavailable"),
 } as const;
 
 /** "Steam", "Steam or Google", "Steam, Google or Game Center". */
@@ -68,48 +61,46 @@ export function orList(names: readonly string[]): string {
   return `${names.slice(0, -1).join(", ")} or ${names[names.length - 1]}`;
 }
 
-/** `profile.name.typed`: "You typed this name, so signing in with Steam or Google won't change it." */
+/** `profile.name.typedHint`: "You typed this name, so signing in with Steam or Google won't change it." */
 export function nameTypedHint(providers: readonly string[]): string {
   return providers.length
-    ? `You typed this name, so signing in with ${orList(providers)} won't change it.`
-    : "You typed this name, so signing in won't change it.";
+    ? t("profile.name.typedHint", { provider: orList(providers) })
+    : t("profile.name.typedHintAny");
 }
 
-/** `profile.name.picked`: a method's name, chosen. */
+/** `profile.name.pickedHint`: a method's name, chosen. */
 export function namePickedHint(provider: string): string {
-  return `You picked the name from ${provider}, so signing in won't change it.`;
+  return t("profile.name.pickedHint", { provider });
 }
 
-/** `profile.name.follows`: an imported name nobody chose. */
+/** `profile.name.followsHint`: an imported name nobody chose. */
 export function nameFollowsHint(provider: string): string {
-  return `This name comes from ${provider} and follows it until you type or pick one yourself.`;
+  return t("profile.name.followsHint", { provider });
 }
 
 /** `profile.source.*`: one part of the "where it came from" line. */
 export const sourceParts = {
-  nameTyped: "Name typed by you",
-  nameFrom: (from: string) => `Name from ${from}`,
-  pictureFrom: (from: string) => `picture from ${from}`,
-  pictureUploaded: "picture uploaded by you",
-  pictureInitials: "initials instead of a picture",
-  appleNoPicture: "Apple doesn't share a picture",
-  noPicture: "no picture",
+  nameTyped: t("profile.source.nameTyped"),
+  nameFrom: (from: string) => t("profile.source.nameFrom", { provider: from }),
+  pictureFrom: (from: string) =>
+    t("profile.source.pictureFrom", { provider: from }),
+  pictureUploaded: t("profile.source.pictureUploaded"),
+  pictureInitials: t("profile.source.pictureInitials"),
+  appleNoPicture: t("profile.source.appleNoPicture"),
+  noPicture: t("profile.source.noPicture"),
 } as const;
 
 /** `profile.picture.earlierNote`: a picked picture its method has since replaced. */
 export function earlierPictureNote(provider: string): string {
-  return `An earlier picture from ${provider}`;
+  return t("profile.picture.earlierNote", { provider });
 }
 
 /** `profile.name.chip`: a name chip's accessible name (its visible text is the name alone). */
 export function chipLabel(provider: string, name: string): string {
-  return `Use the name ${name} from ${provider}`;
+  return t("profile.name.chip", { provider, name });
 }
 
-/**
- * `profile.birthdate.line`: the Profile card's line, with the date as the locale writes it. It
- * says it is private right there, under a subtitle about what apps may receive.
- */
+/** `profile.birthdate.line`: the Profile card's line, with the date as the locale writes it. */
 export function bornLine(date: string): string {
-  return `Born ${date} · private to you`;
+  return t("profile.birthdate.line", { date });
 }

@@ -1623,6 +1623,146 @@
     </plurals>
     <!-- PX-14a fix round. -->
     <string name="signin_request_tooMany">試行回数が多すぎます。少し待ってからもう一度お試しください。</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_title">プロフィール</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_subtitle">Polaris Lockerでの表示と、同意した場合にアプリへ表示される内容です。</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_edit">プロフィールを編集</string>
+    <string name="profile_edit__macos">プロフィールを編集</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_editShort">編集</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_addPicture">画像を追加</string>
+    <string name="profile_addPicture__macos">画像を追加</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_preview">プレビュー</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_name_label">表示名</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_name_yourChoice">自分で入力</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_name_useFrom">次の名前を使う</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_name_required">名前を入力してください。</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_picture_label">画像</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_picture_inUse">使用中</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_picture_initials">イニシャル</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_picture_initialsNote">画像なし</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_picture_upload">アップロード</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_picture_uploadNote">PNGまたはJPEG、5 MBまで</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_picture_uploading">アップロード中…</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_picture_uploaded">画像をアップロードしました。使うにはプロフィールを保存してください。</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_picture_yourUpload">アップロードした画像</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_picture_yourUploadNote">正方形に切り抜き</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_picture_current">現在の画像</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_picture_currentNote">削除したサインイン方法のもの</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_birthdate_label">生年月日</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_birthdate_optional">任意</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_birthdate_hint">自分だけに表示されます。アプリには送信されません。</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_birthdate_remove">生年月日を削除</string>
+    <string name="profile_birthdate_remove__macos">生年月日を削除</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_note">画像はPolaris Lockerにコピーされるため、このページもアプリも提供元から読み込みません。取り込んだ名前や画像は、自分で選ぶまで提供元に追従し、選んだ後はその選択が維持されます。</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_save">プロフィールを保存</string>
+    <string name="profile_save__macos">プロフィールを保存</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_saved">プロフィールを保存しました</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_loadError">プロフィールを読み込めませんでした</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_removedMethod">削除したサインイン方法</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_error_invalidName">名前を入力してください。</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_error_invalidBirthdate">1900年から今日までの日付を入力してください。</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_error_unknownSource">このサインイン方法はもうこのアカウントにありません。選び直してください。</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_error_noName">このサインイン方法は名前を共有していません。別の方法を選ぶか、名前を入力してください。</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_error_noPicture">このサインイン方法は画像を共有していません。別の画像を選んでください。</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_error_unknownUpload">このアップロードは期限切れです。画像をもう一度アップロードしてください。</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_error_tooLarge">5 MB以下の画像を使ってください。</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_error_unsupportedType">PNGまたはJPEGの画像を使ってください。</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_error_unreadableImage">この画像を読み取れませんでした。別のPNGまたはJPEGを試してください。</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_error_uploadLimit">アップロードは1時間に10枚までです。しばらくしてからもう一度お試しください。</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_error_uploadUnavailable">現在、画像をアップロードできません。しばらくしてからもう一度お試しください。</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). Arguments: 1=provider. -->
+    <string name="profile_name_typedHint">この名前は自分で入力したため、%1$sでサインインしても変わりません。</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_name_typedHintAny">この名前は自分で入力したため、サインインしても変わりません。</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). Arguments: 1=provider. -->
+    <string name="profile_name_pickedHint">%1$sの名前を選んだため、サインインしても変わりません。</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). Arguments: 1=provider. -->
+    <string name="profile_name_followsHint">この名前は%1$sのもので、自分で入力または選ぶまで%1$sに追従します。</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_source_nameTyped">自分で入力した名前</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). Arguments: 1=provider. -->
+    <string name="profile_source_nameFrom">%1$sの名前</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). Arguments: 1=provider. -->
+    <string name="profile_source_pictureFrom">%1$sの画像</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_source_pictureUploaded">自分でアップロードした画像</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_source_pictureInitials">画像の代わりにイニシャル</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_source_appleNoPicture">Appleは画像を共有しません</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). -->
+    <string name="profile_source_noPicture">画像なし</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). Arguments: 1=provider. -->
+    <string name="profile_picture_earlierNote">%1$sの以前の画像</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). Arguments: 1=name, 2=provider. -->
+    <string name="profile_name_chip">%2$sの名前「%1$s」を使う</string>
+    <!-- Account page (PX-31a); moved from the portal's copy tables (P0-36). Arguments: 1=date. -->
+    <string name="profile_birthdate_line">生年月日 %1$s · 自分だけに表示</string>
+    <!-- Your data (Account and each product page); moved from the portal's copy tables (P0-36). -->
+    <string name="yourData_account_copy_title">自分のデータをダウンロード</string>
+    <!-- Your data (Account and each product page); moved from the portal's copy tables (P0-36). -->
+    <string name="yourData_account_copy_body">アカウント、サインイン方法、ライセンス、デバイス、各アプリのデータ。キーとトークンは含まれません。</string>
+    <!-- Your data (Account and each product page); moved from the portal's copy tables (P0-36). -->
+    <string name="yourData_account_copy_button">自分のデータをダウンロード</string>
+    <string name="yourData_account_copy_button__macos">自分のデータをダウンロード</string>
+    <!-- Your data (Account and each product page); moved from the portal's copy tables (P0-36). -->
+    <string name="yourData_copy_private">個人情報が含まれます。外部に共有しないでください。</string>
+    <!-- Your data (Account and each product page); moved from the portal's copy tables (P0-36). -->
+    <string name="yourData_copy_started">ダウンロードを開始しました</string>
+    <!-- Your data (Account and each product page); moved from the portal's copy tables (P0-36). -->
+    <string name="yourData_product_copy_title">自分のデータをダウンロード</string>
+    <!-- Your data (Account and each product page); moved from the portal's copy tables (P0-36). -->
+    <string name="yourData_product_remove_title">自分のデータを削除</string>
+    <!-- Your data (Account and each product page); moved from the portal's copy tables (P0-36). -->
+    <string name="yourData_product_remove_body">Polaris Lockerはここでの設定とアクティビティを削除します。元に戻せません。</string>
+    <!-- Your data (Account and each product page); moved from the portal's copy tables (P0-36). -->
+    <string name="yourData_product_support_title">サポートコード</string>
+    <!-- Your data (Account and each product page); moved from the portal's copy tables (P0-36). -->
+    <string name="yourData_product_support_body">アプリのサポート担当に伝えてください。</string>
+    <!-- Your data (Account and each product page); moved from the portal's copy tables (P0-36). -->
+    <string name="yourData_remove_keep">データを残す</string>
+    <string name="yourData_remove_keep__macos">データを残す</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">問題が発生しました</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

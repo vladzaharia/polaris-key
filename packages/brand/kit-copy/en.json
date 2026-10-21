@@ -3665,6 +3665,341 @@
       "value": "Too many tries. Wait a moment, then try again.",
       "role": "body",
       "note": "PX-14a fix round."
+    },
+    "profile.title": {
+      "value": "Profile",
+      "role": "title",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.subtitle": {
+      "value": "How you appear in Polaris Locker, and to an app once you agree to share it.",
+      "role": "body",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.edit": {
+      "value": "Edit profile",
+      "role": "button",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.editShort": {
+      "value": "Edit",
+      "role": "button",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.addPicture": {
+      "value": "Add a picture",
+      "role": "button",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.preview": {
+      "value": "Preview",
+      "role": "label",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.name.label": {
+      "value": "Screen name",
+      "role": "label",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.name.yourChoice": {
+      "value": "Your choice",
+      "role": "label",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.name.useFrom": {
+      "value": "Use a name from",
+      "role": "label",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.name.required": {
+      "value": "Enter a name.",
+      "role": "hint",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.picture.label": {
+      "value": "Picture",
+      "role": "label",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.picture.inUse": {
+      "value": "In use",
+      "role": "label",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.picture.initials": {
+      "value": "Initials",
+      "role": "label",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.picture.initialsNote": {
+      "value": "No picture",
+      "role": "hint",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.picture.upload": {
+      "value": "Upload",
+      "role": "button",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.picture.uploadNote": {
+      "value": "PNG or JPEG, up to 5 MB",
+      "role": "hint",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.picture.uploading": {
+      "value": "Uploading…",
+      "role": "hint",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.picture.uploaded": {
+      "value": "Picture uploaded. Save your profile to use it.",
+      "role": "hint",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.picture.yourUpload": {
+      "value": "Your upload",
+      "role": "label",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.picture.yourUploadNote": {
+      "value": "Cropped to a square",
+      "role": "hint",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.picture.current": {
+      "value": "Current picture",
+      "role": "label",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.picture.currentNote": {
+      "value": "From a sign-in method you removed",
+      "role": "hint",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.birthdate.label": {
+      "value": "Birth date",
+      "role": "label",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.birthdate.optional": {
+      "value": "Optional",
+      "role": "hint",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.birthdate.hint": {
+      "value": "Private to you. Apps never receive it.",
+      "role": "hint",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.birthdate.remove": {
+      "value": "Remove birth date",
+      "role": "button",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.note": {
+      "value": "Pictures are copied to Polaris Locker, so neither this page nor any app loads them from the provider. An imported name or picture follows its provider until you pick one yourself; after that, your choice stays.",
+      "role": "body",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.save": {
+      "value": "Save profile",
+      "role": "button",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.saved": {
+      "value": "Profile saved",
+      "role": "hint",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.loadError": {
+      "value": "Your profile didn't load",
+      "role": "hint",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.removedMethod": {
+      "value": "a sign-in method you removed",
+      "role": "label",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.error.invalidName": {
+      "value": "Enter a name.",
+      "role": "hint",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.error.invalidBirthdate": {
+      "value": "Enter a date from 1900 to today.",
+      "role": "hint",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.error.unknownSource": {
+      "value": "That sign-in method isn't on this account anymore. Choose again.",
+      "role": "hint",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.error.noName": {
+      "value": "That sign-in method didn't share a name. Choose another or type one.",
+      "role": "hint",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.error.noPicture": {
+      "value": "That sign-in method didn't share a picture. Choose another picture.",
+      "role": "hint",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.error.unknownUpload": {
+      "value": "That upload has expired. Upload the picture again.",
+      "role": "hint",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.error.tooLarge": {
+      "value": "Use a picture of 5 MB or less.",
+      "role": "hint",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.error.unsupportedType": {
+      "value": "Use a PNG or JPEG picture.",
+      "role": "hint",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.error.unreadableImage": {
+      "value": "We couldn't read that picture. Try another PNG or JPEG.",
+      "role": "hint",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.error.uploadLimit": {
+      "value": "You can upload 10 pictures an hour. Try again later.",
+      "role": "hint",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.error.uploadUnavailable": {
+      "value": "Picture uploads aren't available right now. Try again later.",
+      "role": "hint",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.name.typedHint": {
+      "value": "You typed this name, so signing in with {provider} won't change it.",
+      "role": "hint",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.name.typedHintAny": {
+      "value": "You typed this name, so signing in won't change it.",
+      "role": "hint",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.name.pickedHint": {
+      "value": "You picked the name from {provider}, so signing in won't change it.",
+      "role": "hint",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.name.followsHint": {
+      "value": "This name comes from {provider} and follows it until you type or pick one yourself.",
+      "role": "hint",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.source.nameTyped": {
+      "value": "Name typed by you",
+      "role": "label",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.source.nameFrom": {
+      "value": "Name from {provider}",
+      "role": "label",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.source.pictureFrom": {
+      "value": "picture from {provider}",
+      "role": "label",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.source.pictureUploaded": {
+      "value": "picture uploaded by you",
+      "role": "label",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.source.pictureInitials": {
+      "value": "initials instead of a picture",
+      "role": "label",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.source.appleNoPicture": {
+      "value": "Apple doesn't share a picture",
+      "role": "label",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.source.noPicture": {
+      "value": "no picture",
+      "role": "label",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.picture.earlierNote": {
+      "value": "An earlier picture from {provider}",
+      "role": "hint",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.name.chip": {
+      "value": "Use the name {name} from {provider}",
+      "role": "a11y",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "profile.birthdate.line": {
+      "value": "Born {date} · private to you",
+      "role": "hint",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
+    "yourData.account.copy.title": {
+      "value": "Download my data",
+      "role": "title",
+      "note": "Your data (Account and each product page); moved from the portal's copy tables (P0-36)."
+    },
+    "yourData.account.copy.body": {
+      "value": "Account, sign-in methods, licenses, devices and each app's data. No keys or tokens.",
+      "role": "body",
+      "note": "Your data (Account and each product page); moved from the portal's copy tables (P0-36)."
+    },
+    "yourData.account.copy.button": {
+      "value": "Download my data",
+      "role": "button",
+      "note": "Your data (Account and each product page); moved from the portal's copy tables (P0-36)."
+    },
+    "yourData.copy.private": {
+      "value": "It holds personal details, so keep it private.",
+      "role": "hint",
+      "note": "Your data (Account and each product page); moved from the portal's copy tables (P0-36)."
+    },
+    "yourData.copy.started": {
+      "value": "Your download has started",
+      "role": "hint",
+      "note": "Your data (Account and each product page); moved from the portal's copy tables (P0-36)."
+    },
+    "yourData.product.copy.title": {
+      "value": "Download my data",
+      "role": "title",
+      "note": "Your data (Account and each product page); moved from the portal's copy tables (P0-36)."
+    },
+    "yourData.product.remove.title": {
+      "value": "Remove my data",
+      "role": "title",
+      "note": "Your data (Account and each product page); moved from the portal's copy tables (P0-36)."
+    },
+    "yourData.product.remove.body": {
+      "value": "Polaris Locker deletes your settings and activity here. This can't be undone.",
+      "role": "body",
+      "note": "Your data (Account and each product page); moved from the portal's copy tables (P0-36)."
+    },
+    "yourData.product.support.title": {
+      "value": "Support code",
+      "role": "title",
+      "note": "Your data (Account and each product page); moved from the portal's copy tables (P0-36)."
+    },
+    "yourData.product.support.body": {
+      "value": "Read it to the app's support team.",
+      "role": "body",
+      "note": "Your data (Account and each product page); moved from the portal's copy tables (P0-36)."
+    },
+    "yourData.remove.keep": {
+      "value": "Keep my data",
+      "role": "button",
+      "note": "Your data (Account and each product page); moved from the portal's copy tables (P0-36)."
     }
   }
 }

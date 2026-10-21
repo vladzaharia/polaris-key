@@ -101,7 +101,7 @@ describe("the Profile card (§4.26)", () => {
       ),
     ).toBeTruthy();
     const img = card.querySelector("img")!;
-    expect(img.getAttribute("src")).toBe(STEAM_PIC.url);
+    expect(img.getAttribute("src")).toBe(`${STEAM_PIC.url}-96`);
     expect(img.getAttribute("alt")).toBe("");
     // The badge of the provider the picture came from.
     expect(card.querySelector("[data-avatar] svg")).toBeTruthy();
