@@ -40,12 +40,14 @@ describe("brand blocks never set the name in live text", () => {
     },
   );
 
-  it("Logo is the outlined Key lockup, 56 px (>= 48 px glyph), with the suffix as its own label", () => {
+  it("Logo is the outlined Key compact lockup, 56 px tall, with the suffix as its own label", () => {
     const { container } = render(<Logo subtitle="console" />);
     const svg = container.querySelector("svg")!;
     expect(svg.getAttribute("role")).toBe("img");
     expect(svg.getAttribute("aria-label")).toBe("Polaris Key");
     expect(svg.getAttribute("height")).toBe("56");
+    // The kit's canvas as supplied, uncropped: the mark-to-wordmark ratio is the kit's.
+    expect(svg.getAttribute("viewBox")).toBe("0 0 222 64");
     expect(Number(svg.getAttribute("width"))).toBeGreaterThanOrEqual(180);
     expect(
       [...container.querySelectorAll("span")]

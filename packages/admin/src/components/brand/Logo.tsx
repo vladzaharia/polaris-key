@@ -54,12 +54,12 @@ export function LogoMark({
 }
 
 /**
- * The Polaris Key brand block for a page or boot screen: the trimmed horizontal lockup (BRAND.md
- * §1.4), 56 px tall so the display-cut glyph is 56 px (the Key guide, p.2, asks for >= 48 px), then
- * an optional muted suffix (e.g. "console"). The name is drawn by the lockup and named for assistive
- * technology by its own title; it is never live text (BRAND.md Don'ts). The mark carries the section
- * bit only inside a service section (`section`); on core pages and in the portal it has none. The
- * host supplies the clear space (a quarter of the glyph, 14 px).
+ * The Polaris Key brand block for a page or boot screen: the kit's compact lockup as supplied
+ * (BRAND.md §1.4; the Key guide, p.2, says compact where the full wordmark would shrink the mark
+ * below 48 px), 56 px tall (194 px wide; plrs.im draws it at 52), then an optional muted suffix
+ * (e.g. "console"). The name is drawn by the lockup and named by its own title; it is never live
+ * text (BRAND.md Don'ts). `section` is accepted for callers, but the compact mark has no room for
+ * the section bit.
  */
 export function Logo({
   className,
@@ -75,11 +75,9 @@ export function Logo({
     <span className={cn("inline-flex items-center gap-3 text-fg", className)}>
       <PolarisLockup
         kind="key"
-        layout="horizontal"
+        layout="compact"
         theme={theme}
         height={56}
-        trim
-        bit={sectionBitFor(section)}
         title="Polaris Key"
         className="max-w-full"
       />

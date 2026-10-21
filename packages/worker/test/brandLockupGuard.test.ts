@@ -74,7 +74,7 @@ describe("Worker brand blocks draw the name from an outlined lockup", () => {
 
   it("the shared helpers refuse nothing below the guide minimum at their page sizes", () => {
     // Locker horizontal: 180 px minimum (guide p.7). Key: the glyph is 96 units tall in a 96 unit
-    // canvas, so height 56 is a 56 px mark (guide p.2 asks for >= 48 px, else the compact lockup).
+    // canvas; Key uses the compact lockup as supplied (guide p.2), 52 px tall like plrs.im, 180 px wide.
     expect(widthOf(lockerLockup(56, "lockup", true))).toBeGreaterThanOrEqual(
       180,
     );
@@ -85,7 +85,7 @@ describe("Worker brand blocks draw the name from an outlined lockup", () => {
       widthOf(themedLockup("locker", "horizontal", 36, "mark", true)),
     ).toBeGreaterThanOrEqual(180);
     expect(
-      widthOf(themedLockup("key", "horizontal", 48, "mark", true)),
+      widthOf(themedLockup("key", "compact", 52, "mark")),
     ).toBeGreaterThanOrEqual(180);
   });
 });

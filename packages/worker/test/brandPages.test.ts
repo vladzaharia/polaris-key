@@ -67,13 +67,13 @@ async function expectBrandedPage(
   expect(csp).toContain(`'sha256-${sha256(styles[0]![1]!)}'`);
   expect(html).not.toMatch(/\sstyle=|<script|\son\w+=/i);
   if (brand === "key") {
-    // The trimmed outlined Key lockup (BRAND.md §1.4): the glyph is 56 px (>= the guide's 48),
+    // The trimmed outlined Key lockup (BRAND.md §1.4): the kit's compact lockup as supplied, 52 px tall (plrs.im's size; Key guide p.2),
     // the name is drawn, never live text, and no kit-canvas lockup is used.
     expect(html).toMatch(
       /<div class="brand" role="img" aria-label="Polaris Key[^"]*">/,
     );
     expect(html).toMatch(
-      /<svg class="mark" xmlns="http:\/\/www.w3.org\/2000\/svg" width="24\d(\.\d+)?" height="56" viewBox="16 32 416 96"/,
+      /<svg class="mark" xmlns="http:\/\/www.w3.org\/2000\/svg" width="180(\.\d+)?" height="52" viewBox="0 0 222 64"/,
     );
     expect(html).not.toContain("Polaris&nbsp;Key");
     expect(html).not.toContain('class="wordmark"');

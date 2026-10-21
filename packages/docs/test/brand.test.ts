@@ -102,6 +102,7 @@ describe("docs marks", () => {
     const title = read(docsRoot, "src", "components", "SiteTitle.astro");
     expect(title).toContain('from "@polaris-key/brand/svg"');
     expect(title).toContain("lockupSvg(");
+    expect(title).toContain('layout: "compact"');
     expect(title).toContain("trim: true");
     // No terminal bit on the default Key lockup (BRAND.md §6), and the name is not text.
     expect(title).not.toMatch(/signed|bit:/);

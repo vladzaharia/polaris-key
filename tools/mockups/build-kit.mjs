@@ -169,12 +169,12 @@ async function brandMarks() {
   return {
     keyDark: plain(m.markSvg({ size: 28, theme: "dark" })),
     keyLight: plain(m.markSvg({ size: 28, theme: "light" })),
-    // The trimmed horizontal Key lockup, 48 px tall (BRAND.md §1.4): the kit's .brand block draws it.
+    // The Key compact lockup as supplied, 52 px tall (BRAND.md §1.4): the kit's .brand block draws it.
     lockupDark: plain(
-      m.lockupSvg({ layout: "horizontal", theme: "dark", trim: true, height: 48, title: "" }),
+      m.lockupSvg({ layout: "compact", theme: "dark", height: 52, title: "" }),
     ).replace(/ width="[\d.]+" height="[\d.]+"/, ""),
     lockupLight: plain(
-      m.lockupSvg({ layout: "horizontal", theme: "light", trim: true, height: 48, title: "" }),
+      m.lockupSvg({ layout: "compact", theme: "light", height: 52, title: "" }),
     ).replace(/ width="[\d.]+" height="[\d.]+"/, ""),
     keyMono: plain(m.markSvg({ size: 28, theme: "mono" })).replaceAll("currentColor", "black"),
     starCut: plain(m.markSvg({ kind: "update", size: 16, theme: "mono" })).replaceAll(
@@ -210,7 +210,7 @@ async function iconsBlock() {
   return lines.join("\n");
 }
 
-/** The trimmed Key lockup per theme, for the kit's .brand block (its own block: no icon set needed). */
+/** The Key compact lockup per theme, for the kit's .brand block (its own block: no icon set needed). */
 async function lockupsBlock() {
   const marks = await brandMarks();
   return [

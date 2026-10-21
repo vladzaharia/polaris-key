@@ -1276,12 +1276,14 @@ the page), so it needs no new role. The capability swatches are display referenc
 never rendered under 120 px wide (kit p.7).
 
 **Lockups in product chrome (BR-lockups, owner 2026-10-20).** A header or brand block draws the
-trimmed outlined lockup, never the name in live text beside a mark (§1.4 Don'ts). Locker guide
+outlined lockup, never the name in live text beside a mark (§1.4 Don'ts). Locker guide
 p.7: the horizontal lockup is at least 180 px wide, so `lockupSvg({ kind: "locker", trim: true })`
 (`LOCKER_TRIM`, a 437 × 80 canvas cropped to the mark art and the wordmark) is drawn from 33 px
 tall: 40 px (218 px wide) in a 64 px header, 48 px (262 px) above a card, 36 px (196 px) in a phone
 bar. Where a row has no room for 180 px, the mark stands alone with an accessible name (p.7: "for
-crowded navigation use the mark alone"). Key guide p.2: the trimmed Key lockup is 48 px tall (a 48 px
-glyph, 208 px wide) in the 64 px bar; below the width that holds it the Pinned K stands alone at 48 px.
-`test/brandLockupGuard.test.ts` (Worker) and `test/brandLockups.test.tsx` (admin) fail on a brand
+crowded navigation use the mark alone"). Key guide p.2: where the full wordmark would make the mark smaller than 48 px (every header), use
+the kit's compact lockup as supplied, uncropped (222 × 64 canvas), at 52 px tall (180 px wide) in the
+64 px bar, the size plrs.im draws; its 26 px mark has no room for the section bit. Below the width
+that holds it the Pinned K stands alone at 48 px. The Locker trimmed lockup is never smaller than
+plrs.im's 176 × 52 horizontal in wordmark height. `test/brandLockupGuard.test.ts` (Worker) and `test/brandLockups.test.tsx` (admin) fail on a brand
 block that sets the name as text.

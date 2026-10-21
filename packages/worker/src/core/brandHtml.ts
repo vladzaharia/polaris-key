@@ -22,7 +22,7 @@
  * The shell draws the Polaris Locker identity by default: `data-brand="locker"` on `<html>`, the
  * Locker lockup, the Locker favicon and title suffix, and neutral-ink actions and links with coral
  * as identity only (D9a). Every page the Worker answers to a customer is one. The console's own
- * pages (`console/auth.ts`) pass `brand: "key"`: the trimmed Polaris Key lockup (outlined; never live
+ * pages (`console/auth.ts`) pass `brand: "key"`: the Polaris Key compact lockup (outlined; never live
  * text), the violet accent. Each has its own stylesheet and SHA-256: the Locker one is the Key one plus a
  * constant tail (`BRAND_PAGE_CSS_LOCKER`).
  *
@@ -129,10 +129,9 @@ export const BRAND_PAGE_CSS = [
   `main{width:100%;max-width:28rem}`,
   // The console sign-in look (shared with the customer portal's login card and the console's
   // own boot screen): the brand block centred over one card, brand type, generous spacing. The
-  // block is the trimmed outlined Key lockup (the name is never live text, BRAND.md Don'ts) and the
+  // block is the kit's compact outlined Key lockup (the name is never live text, BRAND.md Don'ts) and the
   // surface ("console", "account") as a small uppercase label beside it.
   `.brand{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:.5rem .75rem;margin:0 0 2rem;color:var(--strong)}`,
-  `@media (max-width: 30rem){.brand svg{height:48px;width:auto;max-width:100%}}`,
   `.brand svg{display:block;flex:none;max-width:100%}`,
   `.surface{color:var(--muted);font-size:.75rem;line-height:1rem;font-weight:400;letter-spacing:.05em;text-transform:uppercase}`,
   `.mb{fill:var(--mb)}.ms{fill:var(--ms)}.mt{fill:var(--mt)}`,
@@ -484,15 +483,15 @@ let lockerLockup: string | null = null;
 
 /** Heights (CSS px) of the trimmed lockups on Worker pages (docs/design/BRAND.md §1.4). */
 export const BRAND_LOCKUP_HEIGHT = {
-  /** Key: the glyph is this tall, so >= 48 (the Key guide p.2); about 242 px wide. */
-  key: 56,
+  /** Key: the kit's compact lockup as supplied (222 x 64), 52 px tall, 180 px wide: plrs.im's size. */
+  key: 52,
   /** Locker: 437 x 80 canvas, so about 262 px wide (guide p.7 minimum 180). */
   locker: 48,
 } as const;
 
 /**
  * The brand block above the card. `surface` is the already-escaped surface label, or "". Both
- * brands draw the trimmed OUTLINED lockup (the name is never live text, BRAND.md Don'ts); the
+ * brands draw an OUTLINED lockup (Key: the kit's compact one as supplied; Locker: the trimmed horizontal) (the name is never live text, BRAND.md Don'ts); the
  * surface label sits beside it as a small uppercase label, not as part of the name.
  */
 function brandBlock(
@@ -512,18 +511,12 @@ function brandBlock(
     // The Locker lockup is its own wordmark: no surface label beside it.
     return `<div class="brand" role="img" aria-label="Polaris Locker${aria}">${lockerLockup}</div>`;
   }
-  keyLockup ??= themedLockup(
-    "key",
-    "horizontal",
-    BRAND_LOCKUP_HEIGHT.key,
-    "mark",
-    true,
-  );
+  keyLockup ??= themedLockup("key", "compact", BRAND_LOCKUP_HEIGHT.key, "mark");
   return `<div class="brand" role="img" aria-label="Polaris Key${aria}">${keyLockup}${label}</div>`;
 }
 
 /**
- * A branded page: the console's brand block (the trimmed Polaris Key lockup, BRAND
+ * A branded page: the console's brand block (the compact Polaris Key lockup, BRAND
  * §1.4, with the surface label beside it) above one card, so a Worker-served
  * sign-in error reads as the same design as the console's boot screen and the portal's login.
  * Built on first use, so a brand geometry this shell cannot theme fails that request rather
