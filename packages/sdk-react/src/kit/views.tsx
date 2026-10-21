@@ -1173,19 +1173,93 @@ function settingsRows(c: KitCtx): ReactNode {
 
 const warnedRows = new Set<string>();
 
+/** "Stable" from a channel id: the kit has no channel names, the host's ids read as words. */
+const channelLabel = (id: string): string =>
+  id ? id[0]!.toLocaleUpperCase() + id.slice(1) : id;
+
+/** A label-and-value row of the account pane (the elements' markup: label at the start, the
+ *  value or control at the end). */
+function accountRow(
+  key: string,
+  label: ReactNode,
+  value: ReactNode = null,
+): ReactNode {
+  return (
+    <li key={key} className="row" data-part="settings-row">
+      <span className="row-title" data-key={key}>
+        {label}
+      </span>
+      <span className="row-value">{value}</span>
+    </li>
+  );
+}
+
+/** A segmented choice: a radiogroup of buttons, arrows move the choice. */
+function segmented(
+  name: string,
+  options: { id: string; label: string }[],
+  current: string | undefined,
+  pick: (id: string) => void,
+  disabled = false,
+): ReactNode {
+  const at = Math.max(
+    0,
+    options.findIndex((o) => o.id === current),
+  );
+  return (
+    <div
+      className="segmented"
+      role="radiogroup"
+      data-part="segmented"
+      aria-label={name}
+    >
+      {options.map((o, i) => (
+        <button
+          key={o.id}
+          type="button"
+          role="radio"
+          data-id={o.id}
+          aria-checked={i === at ? "true" : "false"}
+          aria-disabled={disabled ? "true" : undefined}
+          tabIndex={i === at ? 0 : -1}
+          onClick={() => {
+            if (!disabled) pick(o.id);
+          }}
+          onKeyDown={(e) => {
+            if (disabled) return;
+            const step =
+              e.key === "ArrowRight" || e.key === "ArrowDown"
+                ? 1
+                : e.key === "ArrowLeft" || e.key === "ArrowUp"
+                  ? -1
+                  : 0;
+            if (!step) return;
+            e.preventDefault();
+            const next = options[(i + step + options.length) % options.length]!;
+            pick(next.id);
+            const group = e.currentTarget.parentElement;
+            queueMicrotask(() =>
+              group
+                ?.querySelector<HTMLElement>(`[data-id="${next.id}"]`)
+                ?.focus(),
+            );
+          }}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** The account pane's rows, grouped as the web settings frames draw them: the license facts,
+ *  then "Updates" over the update controls, then the managed settings. A row whose label names a
+ *  fact the input lacks ("{tier} license") is left out. */
 function accountRows(c: KitCtx): ReactNode {
-  const keys = [
-    "account.tier",
-    "account.devices",
-    "account.cloudSync",
-    "account.updates",
-    "account.autoUpdate",
-    "account.channel",
-    "account.version",
-    "account.managedSettings",
-  ].filter((k) => {
-    if (!c.view.copy.includes(k)) return false;
-    // A row whose label names a fact the input lacks ("{tier} license") is left out.
+  const { copy } = c.view;
+  const input = c.input;
+  const has = (k: string) => copy.includes(k);
+  const usable = (k: string): boolean => {
     if (!unfilled(c, k)) return true;
     // Once per key, so a re-render stays quiet (the elements warn the same way).
     if (!warnedRows.has(k)) {
@@ -1193,20 +1267,119 @@ function accountRows(c: KitCtx): ReactNode {
       console.warn(`[pk] ${k} has no value; not drawn`);
     }
     return false;
-  });
-  if (keys.length === 0) return null;
-  return (
-    <ul className="list" data-part="account-list">
-      {keys.map((k) => (
-        <li key={k} className="row" data-part="settings-row">
-          <span />
-          <span className="row-title" data-key={k}>
-            {text(c, k)}
+  };
+  const pre: ReactNode[] = [];
+  if (has("account.tier") && usable("account.tier"))
+    pre.push(accountRow("account.tier", text(c, "account.tier")));
+  if (has("account.devices")) {
+    const d = input.account?.devices;
+    pre.push(
+      accountRow(
+        "account.devices",
+        text(c, "account.devices"),
+        d && c.copy.has("part.seatMeter.caption") ? (
+          <span className="num">
+            {d.limit === null
+              ? String(d.used)
+              : text(c, "part.seatMeter.caption", {
+                  used: d.used,
+                  limit: d.limit,
+                })}
           </span>
-          <span />
-        </li>
-      ))}
-    </ul>
+        ) : null,
+      ),
+    );
+  }
+  if (has("account.cloudSync")) {
+    const state = input.cloudSync?.state;
+    const k = state ? `cloudSync.${state}` : "";
+    pre.push(
+      accountRow(
+        "account.cloudSync",
+        text(c, "account.cloudSync"),
+        k && c.copy.has(k) ? text(c, k) : null,
+      ),
+    );
+  }
+  const updateRows: ReactNode[] = [];
+  if (has("account.autoUpdate")) {
+    const on = input.account?.autoUpdate === true;
+    updateRows.push(
+      accountRow(
+        "account.autoUpdate",
+        text(c, "account.autoUpdate"),
+        <span className="switch-wrap">
+          <button
+            type="button"
+            role="switch"
+            className="switch"
+            data-part="switch"
+            aria-checked={on ? "true" : "false"}
+            aria-label={plain(c, "account.autoUpdate")}
+            onClick={() => c.edit("autoUpdate", String(!on))}
+          >
+            <span className="switch-thumb" />
+          </button>
+        </span>,
+      ),
+    );
+  }
+  if (has("account.channel"))
+    updateRows.push(
+      accountRow(
+        "account.channel",
+        text(c, "account.channel"),
+        segmented(
+          plain(c, "account.channel"),
+          (input.channel?.options ?? ["stable", "beta"]).map((id) => ({
+            id,
+            label: channelLabel(id),
+          })),
+          input.channel?.current,
+          (id) => c.edit("channel", id),
+          input.channel?.locked === true,
+        ),
+      ),
+    );
+  if (has("account.version") && usable("account.version"))
+    updateRows.push(accountRow("account.version", text(c, "account.version")));
+  const tail: ReactNode[] = [];
+  if (has("account.managedSettings"))
+    tail.push(
+      accountRow("account.managedSettings", text(c, "account.managedSettings")),
+    );
+  if (
+    pre.length + updateRows.length + tail.length === 0 &&
+    !has("account.updates")
+  )
+    return null;
+  return (
+    <>
+      {pre.length ? (
+        <ul className="list" data-part="account-list">
+          {pre}
+        </ul>
+      ) : null}
+      {has("account.updates") ? (
+        <h2
+          className="label group-label"
+          data-key="account.updates"
+          hidden={updateRows.length === 0}
+        >
+          {text(c, "account.updates")}
+        </h2>
+      ) : null}
+      {updateRows.length ? (
+        <ul className="list" data-part="account-list">
+          {updateRows}
+        </ul>
+      ) : null}
+      {tail.length ? (
+        <ul className="list" data-part="account-list">
+          {tail}
+        </ul>
+      ) : null}
+    </>
   );
 }
 

@@ -59,6 +59,7 @@ import {
   adaptHandoff,
   adaptPane,
   adaptUpdate,
+  oneVerb,
   withoutLede,
   HANDOFF_WAITING,
 } from "./adapt.js";
@@ -631,6 +632,7 @@ export function kitComponent(component: ComponentName) {
     // The driven prompt on the web: one Download action (the page cannot install), and Later.
     const download = props.driven && component === "UpdatePrompt";
     const version = kit.input.update?.version;
+    view = oneVerb(view);
     if (download) view = adaptUpdate(view);
     view = withoutLede(view);
     const labels =
