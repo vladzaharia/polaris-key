@@ -2,7 +2,7 @@
 // products each address brought in.
 
 import { describe, expect, it } from "vitest";
-import { NOW, seedProduct } from "./seed.js";
+import { NOW, seedProduct, setPortalToggles } from "./seed.js";
 import {
   Device,
   lastCode,
@@ -284,11 +284,7 @@ describe("emails[].productCount", () => {
     await w.db.run(
       "UPDATE products SET status = 'deleted' WHERE slug = 'gone'",
     );
-    await w.db.run(
-      "INSERT INTO portal_product_settings (product, portal_enabled, created_at, modified_at) VALUES ('off', 0, ?, ?)",
-      NOW,
-      NOW,
-    );
+    await setPortalToggles(w.db, "off", { portalEnabled: false });
     const lic = (product: string, id: string, email: string | null) =>
       w.db.run(
         `INSERT INTO licenses (product, id, status, email, activated_at, modified_at, account_id)

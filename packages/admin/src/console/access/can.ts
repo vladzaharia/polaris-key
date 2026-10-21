@@ -53,6 +53,7 @@ const PRODUCT_PAGE_AREAS: Record<ProductPageId, AreaId> = {
   devices: "core",
   users: "core",
   presentation: "core",
+  portal: "core",
   activity: "core",
   settings: "core",
   "settings-members": "core",

@@ -7,13 +7,10 @@
 import { describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
-import { makeEnv, NOW, seedProduct } from "./seed.js";
+import { makeEnv, NOW, seedProduct, setPortalToggles } from "./seed.js";
 import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
-import {
-  getOrCreateAccountByEmail,
-  upsertPortalProductSettings,
-} from "../src/services/identity/portal/repo.js";
+import { getOrCreateAccountByEmail } from "../src/services/identity/portal/repo.js";
 import {
   PORTAL_COOKIE,
   PORTAL_CSRF_HEADER,
@@ -214,12 +211,7 @@ describe("POST /api/device-login/start", () => {
     expect((await call(env, db, "GET", "/api/device-login/start")).status).toBe(
       405,
     );
-    await upsertPortalProductSettings(
-      db,
-      "djdl",
-      { portalEnabled: false },
-      NOW,
-    );
+    await setPortalToggles(db, "djdl", { portalEnabled: false }, NOW);
     const res = await call(env, db, "POST", "/api/device-login/start");
     expect(res.status).toBe(404);
   });

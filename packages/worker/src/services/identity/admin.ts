@@ -36,6 +36,15 @@ import {
 } from "./signInSettings.js";
 import { CLAIM_BY_KEY_SETTING } from "./settings.js";
 import {
+  PORTAL_ENABLED_SETTING,
+  PORTAL_KEY_REISSUE_SETTING,
+} from "../../core/portalToggles.js";
+import {
+  parsePortalBranding,
+  storedBranding,
+  type PortalBranding,
+} from "./portal/branding.js";
+import {
   getPortalProductSettings,
   listingSettingWrites,
   portalProductSettingsView,
@@ -210,13 +219,14 @@ async function handlePortalSettings(
   const patch: PortalSettingsPatch = {};
   const listing: ListingPatch = {};
   const booleans = ["portalEnabled", "keyReissueEnabled"] as const;
+  const toggles: Partial<Record<(typeof booleans)[number], boolean>> = {};
   const fields: string[] = [];
   // I-29: the retired per-product toggles are refused, not ignored, so a stale client learns.
   for (const key of RETIRED_PORTAL_KEYS) if (key in body) fields.push(key);
   for (const key of booleans) {
     if (body[key] === undefined) continue;
     if (typeof body[key] !== "boolean") fields.push(key);
-    else patch[key] = body[key];
+    else toggles[key] = body[key];
   }
   // I-09: `claimByKey` is the registry setting `identity.keyEntry.claimByKey`, written through
   // `writeSetting()` (a console claim on a manifest-declared value).
@@ -231,7 +241,18 @@ async function handlePortalSettings(
       fields.push("discoverEnabled");
     else listing.discoverEnabled = body.discoverEnabled;
   }
-  if (body.branding !== undefined) patch.branding = body.branding;
+  // ST-14: the branding is validated (`portal/branding.ts`); the editor never writes the sign-in
+  // header name, which stays in the same blob.
+  let editedBranding: PortalBranding | undefined;
+  if (body.branding !== undefined) {
+    const parsed = parsePortalBranding(body.branding);
+    if (!parsed.ok)
+      return err(422, ErrorCode.BadRequest, "invalid portal branding", {
+        fields: Object.keys(parsed.fields).map((f) => `branding.${f}`),
+        reasons: parsed.fields,
+      });
+    editedBranding = parsed.branding;
+  }
   // PS-02: the Polaris Key listing state (S-21 §6.2). Accepted here until ST-05's generic
   // settings API exists; the registry entries are `storefront.polarisKey.*`.
   if (body.storeListed !== undefined) {
@@ -262,6 +283,8 @@ async function handlePortalSettings(
 
   const current = await getPortalProductSettings(db, slug);
   const before = portalProductSettingsView(current);
+  if (editedBranding !== undefined)
+    patch.branding = storedBranding(editedBranding, current.branding_json);
   if (
     listing.storeAudience === "everyone" &&
     before.storeAudience !== "everyone" &&
@@ -287,6 +310,33 @@ async function handlePortalSettings(
       summary: `Changed the Polaris Key listing for ${slug}: ${describeListingChange(before, w.key, w.value)}`,
     },
   }));
+  // ST-14: the two switches are settings rows (`portal.enabled`, `portal.keyReissue`).
+  if (
+    toggles.portalEnabled !== undefined &&
+    toggles.portalEnabled !== (current.portal_enabled === 1)
+  )
+    writes.push({
+      key: PORTAL_ENABLED_SETTING,
+      value: toggles.portalEnabled,
+      audit: {
+        action: "portal.settings.update",
+        target,
+        summary: `Turned Polaris Locker ${toggles.portalEnabled ? "on" : "off"} for ${slug}`,
+      },
+    });
+  if (
+    toggles.keyReissueEnabled !== undefined &&
+    toggles.keyReissueEnabled !== (current.key_reissue_enabled === 1)
+  )
+    writes.push({
+      key: PORTAL_KEY_REISSUE_SETTING,
+      value: toggles.keyReissueEnabled,
+      audit: {
+        action: "portal.settings.update",
+        target,
+        summary: `Turned lost-key replacement ${toggles.keyReissueEnabled ? "on" : "off"} for ${slug}`,
+      },
+    });
   if (claimByKey !== undefined && claimByKey !== (current.claim_by_key === 1))
     writes.push({
       key: CLAIM_BY_KEY_SETTING,
@@ -298,6 +348,10 @@ async function handlePortalSettings(
       },
     });
   const portalSummary = `Updated portal settings for ${slug}`;
+  const hasBranding = patch.branding !== undefined;
+  const switchWrites = writes.some(
+    (w) => w.audit.action === "portal.settings.update",
+  );
   if (writes.length === 0) {
     await upsertPortalProductSettings(db, slug, patch, now);
     await audit(
@@ -328,17 +382,33 @@ async function handlePortalSettings(
         now,
         product: slug,
         strict: false,
+        // The switches carry their own `portal.settings.update` row; the generic one is for the
+        // branding, and for a patch that changed nothing else (a listing-only write).
         extra: (guard) => [
-          stmtUpsertPortalProductSettings(current, slug, patch, now, guard),
-          auditStatementFor(
-            slug,
-            session,
-            now,
-            "portal.settings.update",
-            target,
-            portalSummary,
-            guard,
-          ),
+          ...(hasBranding
+            ? [
+                stmtUpsertPortalProductSettings(
+                  current,
+                  slug,
+                  patch,
+                  now,
+                  guard,
+                ),
+              ]
+            : []),
+          ...(hasBranding || !switchWrites
+            ? [
+                auditStatementFor(
+                  slug,
+                  session,
+                  now,
+                  "portal.settings.update",
+                  target,
+                  portalSummary,
+                  guard,
+                ),
+              ]
+            : []),
         ],
       },
     );

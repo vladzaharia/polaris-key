@@ -18,7 +18,13 @@ import { issuePortalSessionRow } from "./portalSessionRow.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { asR2, R2Mock } from "./r2Mock.js";
-import { makeEnv, NOW, seedProduct, seedTier } from "./seed.js";
+import {
+  makeEnv,
+  NOW,
+  seedProduct,
+  seedTier,
+  setPortalToggles,
+} from "./seed.js";
 import { portalHooksFor } from "./portalHarness.js";
 import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
@@ -39,7 +45,6 @@ import {
   getOrCreateAccountByEmail,
   getOrCreateAccountByIdentity,
   linkLicense,
-  upsertPortalProductSettings,
 } from "../src/services/identity/portal/repo.js";
 import { mergeAccounts } from "../src/services/identity/accounts/merge.js";
 // ST-04: the listing is a registry setting, written through `writeSetting()`.
@@ -872,12 +877,7 @@ describe("library entries (GET /api/library, GET /api/products/<p>, DELETE /api/
   it("hides an entry while the portal is off for the product", async () => {
     const w = await world();
     await claim(w, w.anon, "openutil");
-    await upsertPortalProductSettings(
-      w.db,
-      "openutil",
-      { portalEnabled: false },
-      NOW,
-    );
+    await setPortalToggles(w.db, "openutil", { portalEnabled: false }, NOW);
     expect((await library(w, w.anon)).body.products).toEqual([]);
     expect(
       (await call(w, w.anon, "GET", "/api/products/openutil")).status,

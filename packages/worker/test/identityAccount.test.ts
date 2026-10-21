@@ -18,6 +18,7 @@ import {
   seedLicenseWithKey,
   seedProduct,
   seedTier,
+  setPortalToggles,
 } from "./seed.js";
 import { dispatchWith } from "../src/dispatch.js";
 import { loadProduct, type Product } from "../src/core/products.js";
@@ -489,14 +490,7 @@ describe("attach (§12.3)", () => {
     expect(text).not.toContain("ada@");
     expect(await ownerOf(licenseId)).toBeNull();
     // The developer opted in to claim by key: the same attach goes through.
-    await db.run(
-      `INSERT INTO portal_product_settings (product, claim_by_key, created_at, modified_at)
-       VALUES (?, 1, ?, ?)
-       ON CONFLICT(product) DO UPDATE SET claim_by_key = 1`,
-      SLUG,
-      NOW,
-      NOW,
-    );
+    await setPortalToggles(db, SLUG, { claimByKey: true });
     expect((await attach(token, DEV_A)).status).toBe(200);
     expect(await ownerOf(licenseId)).toBe(other.id);
   });
@@ -995,13 +989,7 @@ describe("discovery (§12.6)", () => {
 
   it("omits accountPortal while the product's portal is off, and says nothing with Identity off", async () => {
     await setIdentity(true);
-    await db.run(
-      `INSERT INTO portal_product_settings (product, portal_enabled, created_at, modified_at)
-       VALUES (?, 0, ?, ?)`,
-      SLUG,
-      NOW,
-      NOW,
-    );
+    await setPortalToggles(db, SLUG, { portalEnabled: false });
     expect((await fragment()).endpoints).not.toHaveProperty("accountPortal");
     await setIdentity(false);
     expect(await fragment()).toEqual({ enabled: false });

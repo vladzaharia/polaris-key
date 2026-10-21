@@ -136,9 +136,15 @@ describe("All settings → Edit in", () => {
     ],
     [
       "identity.keyEntry.claimByKey",
-      "Identity → App sign-in",
-      "License keys",
-      "#/p/djdl/identity/app-sign-in",
+      "Settings → Polaris Locker",
+      "Polaris Locker",
+      "#/p/djdl/settings/portal",
+    ],
+    [
+      "portal.enabled",
+      "Settings → Polaris Locker",
+      "Polaris Locker",
+      "#/p/djdl/settings/portal",
     ],
   ])("%s links to %s and opens it", async (key, where, section, hash) => {
     mount();

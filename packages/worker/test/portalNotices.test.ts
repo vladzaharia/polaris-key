@@ -19,6 +19,7 @@ import {
   seedLicenseWithKey,
   seedProduct,
   setClaimByKey,
+  setPortalToggles,
 } from "./seed.js";
 import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
@@ -599,14 +600,7 @@ describe("POST /api/products/:product/email-download (G23)", () => {
   it("404 when the product's portal is off", async () => {
     {
       const { db, sent, call } = await setup();
-      await db.run(
-        `INSERT INTO portal_product_settings
-           (product, portal_enabled, branding_json, created_at, modified_at)
-         VALUES (?, 0, NULL, ?, ?)`,
-        "djdl",
-        NOW,
-        NOW,
-      );
+      await setPortalToggles(db, "djdl", { portalEnabled: false });
       expect((await call()).status).toBe(404);
       expect(sent).toHaveLength(0);
     }

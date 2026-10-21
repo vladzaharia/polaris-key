@@ -20,7 +20,13 @@ import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { handlePortalApi } from "./portalHarness.js";
 import { issuePortalSessionRow } from "./portalSessionRow.js";
-import { makeEnv, NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
+import {
+  makeEnv,
+  NOW,
+  seedLicenseWithKey,
+  seedProduct,
+  setPortalToggles,
+} from "./seed.js";
 import { SPEC, validateAgainst } from "./specSchema.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
@@ -46,7 +52,6 @@ import {
 import {
   getOrCreateAccountByEmail,
   portalAudit,
-  upsertPortalProductSettings,
 } from "../src/services/identity/portal/repo.js";
 import {
   PORTAL_COOKIE,
@@ -1194,12 +1199,7 @@ describe("GET /api/products/<product>/export", () => {
   it("works for a product whose portal is off: her right does not depend on a toggle", async () => {
     const w = await world();
     const { ada } = await seed(w);
-    await upsertPortalProductSettings(
-      w.db,
-      "djdl",
-      { portalEnabled: false },
-      NOW,
-    );
+    await setPortalToggles(w.db, "djdl", { portalEnabled: false }, NOW);
     expect((await exportProduct(w, ada, "djdl")).status).toBe(200);
   });
 
@@ -1459,12 +1459,7 @@ describe("DELETE /api/products/<product>/data", () => {
   it("is `key_claim_off` for a product whose portal is off, for the licence part only", async () => {
     const w = await world();
     const { ada } = await seed(w);
-    await upsertPortalProductSettings(
-      w.db,
-      "djdl",
-      { portalEnabled: false },
-      NOW,
-    );
+    await setPortalToggles(w.db, "djdl", { portalEnabled: false }, NOW);
     const res = await removeData(w, ada, "djdl", "?alsoRemoveLicense=1");
     expect(res.status).toBe(409);
     expect(await body(res)).toMatchObject({ reason: "key_claim_off" });

@@ -21,6 +21,20 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 - Title: was "Portal settings consolidation: Customer portal hub area visible with Identity off, branding editor and schema, one branding store, `portal_product_settings` into rows, one `claimByKey`".
 - Depends on: added I-29.
 
+## Corrections found at build (ST-14)
+
+- `table:portal_product_settings` is not in `PENDING` on this tree (the table was already declared
+  by the storefront column entries), so there was nothing to remove: `PENDING` and
+  `PENDING_CEILING` (13) are unchanged.
+- Branding stays in `portal_product_settings.branding_json` as the one store (the Locker no longer
+  reads `products.branding_json`; the migration folds a non-NULL value in). It is not a registry
+  key: only `portal.enabled`, `portal.keyReissue` and `identity.keyEntry.claimByKey` are
+  registered, per the consolidation. The table cannot be dropped yet (listing columns, branding):
+  ST-25.
+- Migration `0126_portal_settings_rows.sql` (the lead renumbers at merge). A manifest that stops
+  declaring `claimByKey` now clears it (omit-clears, like every row setting); before, an
+  undeclared value left the column alone.
+
 ## Goal
 
 Portal settings live in the hub's Customer portal area, visible with Identity off, with a branding editor and schema, one branding store, `portal_product_settings` folded into rows and one `claimByKey`.
@@ -105,9 +119,9 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 ## Acceptance criteria
 
 - [ ] Every `PENDING` entry listed under "PENDING entries to remove" is registered and gone from `settings-coverage.ts`, `PENDING_CEILING` is 1 lower, and `settings-coverage.test.ts` passes.
-- [ ] Branding reads from one store (test).
-- [ ] The area is visible with Identity off (e2e).
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
+- [x] Branding reads from one store (test).
+- [x] The area is visible with Identity off (e2e).
+- [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify
 

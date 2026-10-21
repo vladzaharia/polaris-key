@@ -16,10 +16,7 @@ import type {
   ManifestContribution,
   ManifestContributor,
 } from "../../core/ingest/types.js";
-import {
-  identityManifestIngest,
-  manifestClaimByKeyStatements,
-} from "./settings.js";
+import { identityManifestIngest } from "./settings.js";
 
 /** A stored `oidc_config` row's columns (`stmtInsertOidcConfig`'s, after the product). */
 interface OidcColumns {
@@ -107,12 +104,7 @@ function provisioningView(
 export function identityHookStatements(
   ctx: Pick<IngestContext, "manifest" | "slug" | "now" | "enabled">,
 ): DbStatement[] {
-  return [
-    ...(ctx.enabled
-      ? manifestClaimByKeyStatements(ctx.slug, ctx.manifest, ctx.now)
-      : []),
-    ...identityManifestIngest(ctx.manifest, ctx.slug, ctx.now),
-  ];
+  return identityManifestIngest(ctx.manifest, ctx.slug, ctx.now, ctx.enabled);
 }
 
 async function prepare(ctx: IngestContext): Promise<ManifestContribution> {
