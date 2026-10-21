@@ -186,7 +186,7 @@ public struct KeyField: View {
                         }
                         .labelStyle(.titleAndIcon)
                         .buttonBorderShape(.capsule)
-                        .tint(style.palette.textMuted)
+                        .tint(style.palette.accentFg)
                     #endif
                 }
                 .padding(.horizontal, style.space(.md))
