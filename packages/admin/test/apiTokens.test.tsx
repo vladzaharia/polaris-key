@@ -214,7 +214,7 @@ describe("API tokens roster", () => {
           failing ? new Response("{}", { status: 500 }) : { tokens: roster },
       },
     });
-    const retry = await screen.findByRole("button", { name: "Retry" });
+    const retry = await screen.findByRole("button", { name: "Try again" });
     failing = false;
     await userEvent.click(retry);
     expect(await screen.findByText("CI bundle minter")).toBeTruthy();

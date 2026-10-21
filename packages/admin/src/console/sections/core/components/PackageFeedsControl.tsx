@@ -127,7 +127,7 @@ export function PackageFeedsControl({
                 {failureCopy.title}
               </span>
               <Button size="sm" variant="outline" onClick={recover}>
-                {failureCopy.action === "reload" ? "Reload" : "Retry"}
+                {failureCopy.action === "reload" ? "Reload" : "Try again"}
               </Button>
             </div>
           ) : undefined

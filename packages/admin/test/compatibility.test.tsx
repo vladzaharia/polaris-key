@@ -706,7 +706,9 @@ describe("Compatibility matrix (T5, CMP-1 to CMP-7, CMP-11)", () => {
       .mockRejectedValueOnce(new Error("down"))
       .mockResolvedValueOnce({ ...COMPAT, appReleases: [], cells: [] });
     mountMatrix();
-    await userEvent.click(await screen.findByRole("button", { name: "Retry" }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Try again" }),
+    );
     expect(await screen.findByText("No app releases yet")).toBeTruthy();
   });
 

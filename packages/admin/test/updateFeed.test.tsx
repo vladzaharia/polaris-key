@@ -230,7 +230,7 @@ describe("Update → Feed", () => {
     bootWith(HASH, {
       [P("/update/settings")]: () => (fail ? apiError(500, "internal") : FEED),
     });
-    const retry = await screen.findByRole("button", { name: "Retry" });
+    const retry = await screen.findByRole("button", { name: "Try again" });
     fail = false;
     await userEvent.click(retry);
     expect(await section("Metadata access")).toBeTruthy();

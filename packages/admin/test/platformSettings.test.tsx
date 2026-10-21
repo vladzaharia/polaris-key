@@ -487,7 +487,9 @@ describe("the Settings page in the Platform section", () => {
     });
     const failed = await settingsPage();
     const alert = await within(failed).findByRole("alert");
-    expect(within(alert).getByRole("button", { name: "Retry" })).toBeTruthy();
+    expect(
+      within(alert).getByRole("button", { name: "Try again" }),
+    ).toBeTruthy();
   });
 });
 

@@ -519,7 +519,7 @@ describe("Core → Overview", () => {
     const user = userEvent.setup();
     fns.product.mockRejectedValueOnce(new ApiError(500));
     mount();
-    await user.click(await screen.findByRole("button", { name: "Retry" }));
+    await user.click(await screen.findByRole("button", { name: "Try again" }));
     expect(
       await screen.findByRole("heading", { level: 1, name: "DJDL" }),
     ).toBeTruthy();
@@ -534,7 +534,9 @@ describe("Core → Overview", () => {
     });
     const tile = config.closest("section")!;
     expect(
-      await within(tile as HTMLElement).findByRole("button", { name: "Retry" }),
+      await within(tile as HTMLElement).findByRole("button", {
+        name: "Try again",
+      }),
     ).toBeTruthy();
     expect(
       screen.getByRole("heading", { level: 1, name: "DJDL" }),

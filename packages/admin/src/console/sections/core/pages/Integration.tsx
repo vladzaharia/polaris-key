@@ -422,7 +422,7 @@ export function IntegrationPage({
             ref={foot}
             variant="link"
             size="sm"
-            className="h-auto p-0 text-sm"
+            className="h-auto min-h-6 p-0 text-sm"
             disabledReason={setup.allowed ? undefined : setup.disabledReason}
             onClick={() => void toggleHidden()}
           >

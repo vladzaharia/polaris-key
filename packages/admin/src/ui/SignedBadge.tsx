@@ -66,7 +66,7 @@ export function SignedBadge({
   return (
     <span
       className={cn(
-        "pk-pill inline-flex items-center gap-1.5 whitespace-nowrap text-xs",
+        "pk-pill inline-flex max-w-full items-center gap-1.5 whitespace-nowrap text-xs",
         variant === "chip"
           ? "rounded-full border border-signed-border bg-signed px-2 py-0.5 font-medium text-signed-on"
           : "text-fg",
@@ -78,7 +78,9 @@ export function SignedBadge({
       ) : (
         <SignedGlyph size={12} />
       )}
-      <span className={cn(truncateKid && "inline-flex min-w-0 items-baseline")}>
+      <span
+        className={cn("min-w-0", truncateKid && "inline-flex items-baseline")}
+      >
         <span key={word} className={cn(popped && "pk-pop-in inline-block")}>
           {word}
         </span>
@@ -87,9 +89,11 @@ export function SignedBadge({
             {"\u00a0·\u00a0"}
             <span
               className={cn(
+                // A long kid wraps rather than push the page sideways (200 % text on a phone).
                 "font-mono",
-                truncateKid &&
-                  "inline-block max-w-[8rem] truncate align-bottom",
+                truncateKid
+                  ? "inline-block max-w-[8rem] truncate align-bottom"
+                  : "whitespace-normal [overflow-wrap:anywhere]",
               )}
               title={truncateKid ? kid : undefined}
             >

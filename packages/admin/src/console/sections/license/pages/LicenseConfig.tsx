@@ -414,7 +414,7 @@ function ConfigEditor({
               variant="outline"
               onClick={() => void stackQ.refetch()}
             >
-              Retry
+              Try again
             </Button>
           }
         >

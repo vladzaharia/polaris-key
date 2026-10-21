@@ -197,7 +197,7 @@ describe("Core → Activity", () => {
     const user = userEvent.setup();
     activity.mockRejectedValueOnce(new ApiError(500));
     mount();
-    await user.click(await screen.findByRole("button", { name: "Retry" }));
+    await user.click(await screen.findByRole("button", { name: "Try again" }));
     expect(await screen.findByText("Ada Lovelace")).toBeTruthy();
   });
 

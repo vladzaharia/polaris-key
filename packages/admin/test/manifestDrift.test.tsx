@@ -262,7 +262,7 @@ describe("Settings → Differs from the manifest (ST-17)", () => {
     const user = userEvent.setup();
     fns.settingsDrift.mockRejectedValueOnce(new Error("boom"));
     mount();
-    await user.click(await screen.findByRole("button", { name: "Retry" }));
+    await user.click(await screen.findByRole("button", { name: "Try again" }));
     expect(await screen.findByText("Display name")).toBeTruthy();
   });
 

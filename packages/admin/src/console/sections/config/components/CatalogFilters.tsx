@@ -49,7 +49,12 @@ export function CatalogFilters({
   return (
     <Unlocked>
       {mode === "json" ? <div className="flex-1" /> : null}
-      <div className={cn("min-w-48 flex-1", mode === "json" && "hidden")}>
+      <div
+        className={cn(
+          "min-w-[min(12rem,100%)] flex-1",
+          mode === "json" && "hidden",
+        )}
+      >
         <Input
           type="search"
           aria-label="Search entries"
@@ -58,7 +63,7 @@ export function CatalogFilters({
           onChange={(e) => setQuery(e.target.value)}
         />
       </div>
-      <div className={cn("w-40", mode === "json" && "hidden")}>
+      <div className={cn("w-40 max-w-full", mode === "json" && "hidden")}>
         <Select
           aria-label="Type"
           value={kind}

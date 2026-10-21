@@ -57,7 +57,7 @@ export function InlineFailure({
       title={`Couldn't load ${what}`}
       action={
         <Button size="sm" variant="outline" onClick={onRetry}>
-          Retry
+          Try again
         </Button>
       }
     />

@@ -175,7 +175,8 @@ export function SegmentedControl<V extends string = string>({
       }}
       className={cn(
         "group/seg relative inline-flex items-center gap-0.5 rounded-md border border-border bg-surface-sunken p-0.5",
-        wrap && "max-w-full flex-wrap",
+        // Never wider than the room: at 200 % text on a phone the segments wrap onto a second row.
+        "max-w-full flex-wrap",
         className,
       )}
       {...aria}
