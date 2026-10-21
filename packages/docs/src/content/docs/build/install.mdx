@@ -84,17 +84,17 @@ The uv and Poetry blocks resolve the dependencies from your default index, becau
 
 ### Kotlin
 
-| Coordinate                                                   | What                                                                                                                   |
-| ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
-| `polaris-key-sdk`                                            | The umbrella `PolarisKeyClient` (JVM library); pulls in the modules below                                              |
-| `polaris-key-core`                                           | Verification, trust, the verified cache and transport                                                                  |
-| `polaris-key-{license,config,identity,release,update,packs}` | One service module each; each depends on `polaris-key-core` only                                                       |
-| `polaris-key-platform-play`, `polaris-key-platform-direct`   | The Android platform AAR, one per flavour: Play In-App Updates and Asset Delivery, or the PackageInstaller self-update |
-| `polaris-key-android-play`, `polaris-key-android-direct`     | The Kotlin SDK's Android glue, one per flavour                                                                         |
-| `polaris-key-ui`                                             | The Jetpack Compose UI kit over `polaris-key-sdk`                                                                      |
-| `polaris-key-billing`                                        | Play Billing purchases and restores as license flags                                                                   |
+| Coordinate                                                   | What                                                                                                                  |
+| ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| `polaris-key-sdk`                                            | The umbrella `PolarisKeyClient` (JVM library); pulls in the modules below                                             |
+| `polaris-key-core`                                           | Verification, trust, the verified cache and transport                                                                 |
+| `polaris-key-{license,config,identity,release,update,packs}` | One service module each; each depends on `polaris-key-core` only                                                      |
+| `polaris-key-platform-play`, `polaris-key-platform-direct`   | The Android platform AAR, one per flavor: Play In-App Updates and Asset Delivery, or the PackageInstaller self-update |
+| `polaris-key-android-play`, `polaris-key-android-direct`     | The Kotlin SDK's Android glue, one per flavor                                                                         |
+| `polaris-key-ui`                                             | The Jetpack Compose UI kit over `polaris-key-sdk`                                                                     |
+| `polaris-key-billing`                                        | Play Billing purchases and restores as license flags                                                                  |
 
-Pick one platform flavour per build. Play forbids self-update, so the two flavours are a policy boundary.
+Pick one platform flavor per build. Play forbids self-update, so the two flavors are a policy boundary.
 
 ### Versions
 

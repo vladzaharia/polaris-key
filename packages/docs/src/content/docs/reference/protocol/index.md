@@ -142,13 +142,13 @@ them is the most common way to misread a document (spec §9).
 | `corpusVersion`        | `2`   | The conformance corpus at `conformance/corpus/v2/`.                                                          |
 | `gateMatrixVersion`    | `2`   | The gate-transition matrix inside that corpus.                                                               |
 | `fingerprintVersion`   | `1`   | The hardware-fingerprint formulas. Unchanged since v1.                                                       |
-| `stageMatrixVersion`   | `3`   | The boot stage machine (client boot behaviour, outside this contract), owned by `client-core/src/stages.ts`. |
-| `updateMatrixVersion`  | `1`   | The update decision (client behaviour, outside this contract), `update-matrix.json`.                         |
-| `outletMatrixVersion`  | `1`   | Outlet capabilities and detection (client behaviour), `outlet-matrix.json`.                                  |
-| `planMatrixVersion`    | `2`   | The install planner, variant selection and target mapping (client behaviour), `plan-matrix.json`.            |
-| `feedUrlMatrixVersion` | `1`   | The native updater feed URLs (client behaviour), `feed-url-matrix.json`.                                     |
+| `stageMatrixVersion`   | `3`   | The boot stage machine (client boot behavior, outside this contract), owned by `client-core/src/stages.ts`. |
+| `updateMatrixVersion`  | `1`   | The update decision (client behavior, outside this contract), `update-matrix.json`.                         |
+| `outletMatrixVersion`  | `1`   | Outlet capabilities and detection (client behavior), `outlet-matrix.json`.                                  |
+| `planMatrixVersion`    | `2`   | The install planner, variant selection and target mapping (client behavior), `plan-matrix.json`.            |
+| `feedUrlMatrixVersion` | `1`   | The native updater feed URLs (client behavior), `feed-url-matrix.json`.                                     |
 | `contentCorpusVersion` | `2`   | The content corpus, `content/cases.json`: pack byte formats and appliers (spec §2.6).                        |
-| `syncScenariosVersion` | `2`   | The Cloud Sync client state machine (client behaviour), `sync-scenarios.json`.                               |
+| `syncScenariosVersion` | `2`   | The Cloud Sync client state machine (client behavior), `sync-scenarios.json`.                               |
 
 Two more `schemaVersion` fields exist and neither is a wire version:
 
@@ -196,6 +196,6 @@ Case counts for the corpus, generated from the corpus files themselves, are at
 :::note[The reference implementation is not the contract]
 `@polaris-key/client-core` is a _correct_ implementation of these rules, not the definition of
 them. When you port the contract to another language, port it from the spec and prove it with
-the corpus — reading TypeScript and matching its behaviour reproduces its accidents along with
+the corpus — reading TypeScript and matching its behavior reproduces its accidents along with
 its intent.
 :::

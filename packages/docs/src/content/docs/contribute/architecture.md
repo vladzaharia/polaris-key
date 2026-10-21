@@ -47,7 +47,7 @@ is a checklist rather than a one-liner — the table row, its directory and desc
 `core/registry.ts` declares one interface. This is the contract a service has with Core, and it is
 smaller than the design spec's sketch:
 
-```ts
+```ts no-compile
 interface ServiceDescriptor {
   slug: ServiceSlug;
   handle(ctx: ServiceContext): Promise<Response | null>;
@@ -132,7 +132,7 @@ A file under `src/services/<slug>/` may import exactly four things:
 
 Everything else is refused, and two refusals matter most: `services/<a>/` importing `services/<b>/`,
 and reaching up into the console or a composition module (`../../console/…`, `../../router.js`, …)
-— the seam the whole re-organisation exists to remove, and exactly the import a hurried move leaves
+— the seam the whole re-organization exists to remove, and exactly the import a hurried move leaves
 behind.
 
 :::note[The mechanism differs from the design spec]

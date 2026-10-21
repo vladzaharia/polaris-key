@@ -61,6 +61,16 @@ function resolveRedirects(file) {
   return current;
 }
 
+/** The route a /docs/ path ends at once redirect stubs are followed (the path itself if none). */
+function redirectedRoute(path) {
+  const file = distFileFor(path);
+  if (!existsSync(file) || !file.endsWith(".html")) return path;
+  const end = resolveRedirects(file);
+  if (end === file) return path;
+  const rel = relative(dist, end).split(sep).join("/");
+  return "/docs/" + rel.replace(/(^|\/)index\.html$/, "$1");
+}
+
 const idCache = new Map();
 function idsOf(file) {
   if (!idCache.has(file)) {
@@ -118,7 +128,10 @@ for (const file of htmlFiles(dist)) {
   if (pageTier !== "admin") {
     for (const match of main.matchAll(/href="(\/docs\/[^"#]*)/g)) {
       const path = match[1];
-      if (/\.[a-z0-9]+$/i.test(path) || RANK[tierOf(path)] <= RANK[pageTier])
+      // A redirect stub is judged by the page it forwards to: a member page that links a moved
+      // page whose new home is admin-only is a tier jump too.
+      const targetTier = tierOf(redirectedRoute(path));
+      if (/\.[a-z0-9]+$/i.test(path) || RANK[targetTier] <= RANK[pageTier])
         continue;
       if (page === CHROME_EXCEPTION.page && path === CHROME_EXCEPTION.target)
         continue;
@@ -127,7 +140,7 @@ for (const file of htmlFiles(dist)) {
         continue;
       }
       failures.push(
-        `${page}: ${pageTier} page links to a ${tierOf(path)} page ${path}`,
+        `${page}: ${pageTier} page links to a ${targetTier} page ${path}`,
       );
     }
   }

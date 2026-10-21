@@ -80,6 +80,6 @@ counts once, however many slots use it.
 
 A quota is entered in MiB and saved after a confirmation; **Reset** returns it to the platform
 default. Turning mirroring off asks first. When a quota is full, its row says so. When hosted
-assets are off for the whole deployment (Platform → Settings → Delivery), the section says that
+assets are off for the whole deployment (Platform → Settings → Storefront and hosting), the section says that
 first: every image surface then shows the developer's own URLs and no new release file is copied,
 while the copies listed here stay (release files already copied keep serving from them).

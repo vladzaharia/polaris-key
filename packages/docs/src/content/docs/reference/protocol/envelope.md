@@ -80,7 +80,7 @@ decoded, and once against the decoded byte length before anything is parsed. The
 pre-check is the one that matters for denial of service — it means an oversized blob is never
 allocated in the first place:
 
-```ts
+```ts no-compile
 const b64Cap = (bytes: number): number => Math.ceil((bytes * 4) / 3) + 4;
 if (encHeader.length > b64Cap(1024)) return null;
 if (encPayload.length > b64Cap(maxPayloadBytes)) return null;
@@ -102,7 +102,7 @@ raise travels with the `typ` and with an explicit caller-supplied option — and
 
 A value _below_ the frozen 64 KiB default is inert rather than silently tightening one call
 site out of step with the contract, and an absent or non-finite value is byte-identical to the
-cap-less behaviour. The **header** cap is untouched by any `typ`; no artifact widens it.
+cap-less behavior. The **header** cap is untouched by any `typ`; no artifact widens it.
 
 The corpus pins all four boundaries: `payload-at-cap` / `payload-over-cap` and
 `bundle-payload-at-cap` / `bundle-payload-over-cap`.
@@ -223,7 +223,7 @@ document** — license and config carry independent ETags (spec §5).
 One flag, `checkFreshness`, selects between them (spec §3). Everything in "always enforced"
 above runs either way; only the freshness window differs.
 
-```ts
+```ts no-compile
 // network path — the default
 if (doc.issuedAt > now + CLOCK_SKEW_SECONDS) return null;
 if (doc.expiresAt <= now - CLOCK_SKEW_SECONDS) return null;

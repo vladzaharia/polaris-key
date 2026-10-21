@@ -108,7 +108,7 @@ pkey assets push art/icon.png --slot presentation.icon --product diceroll
   nothing.
 - **Who wins a slot.** An upload in the console, then the manifest, then CI. A slot an operator
   uploaded, or one the manifest names, is reported as kept and left as it is; that is not a
-  failure. See [Presentation](/docs/operate/console/presentation/).
+  failure. See Presentation (console members).
 - **Credentials.** The token needs `assets:write`, which an operator adds deliberately (it is not
   a default scope). The files go up through the same upload ticket as a release, so Release must
   be on for the product.

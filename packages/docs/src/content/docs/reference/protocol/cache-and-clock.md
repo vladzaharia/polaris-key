@@ -42,13 +42,13 @@ host's load procedure).
 | `trustJws`                     | Yes     | The compact JWS, verbatim. Never a decoded `kid → key` map                                                                                                                                       |
 | `docs.license` / `docs.config` | Yes     | Per-service slices. An absent slice means the service is unused or not yet fetched — never that it failed open                                                                                   |
 | `etags.*`                      | No      | Non-security. The worst a forged ETag achieves is an unnecessary `200`                                                                                                                           |
-| `bundle`                       | Yes     | The imported bundle, verbatim. Re-verified at every load without its import window; `activation: "bundle"` only when its licence document is the cached one, byte for byte, and no token is held |
+| `bundle`                       | Yes     | The imported bundle, verbatim. Re-verified at every load without its import window; `activation: "bundle"` only when its license document is the cached one, byte for byte, and no token is held |
 | `pinRevocations`               | Yes     | Each tombstoned pin's evidence: the manifest another pin signed. Re-verified at every load in issue order; kept through deactivation and a bundle import                                         |
 | `lastSyncUnauthorized`         | No      | A recorded hard `401`                                                                                                                                                                            |
 | `blocked`                      | No      | The last `403` version/channel block                                                                                                                                                             |
 
 The two hints are for display: no verdict depends on them. A hard `401` removes the document it
-answered for, and a `403` build block removes the licence document, in the same write that sets
+answered for, and a `403` build block removes the license document, in the same write that sets
 the hint. Clearing a hint therefore yields `needs-activation`, never a usable document.
 
 What is emphatically **not** in the record: decoded documents, bare keys, and plaintext
@@ -117,6 +117,10 @@ effectiveNow  = max(systemClock, highWaterMark)
 ```
 
 ```ts
+interface DatedArtifact {
+  issuedAt: number;
+}
+
 export function highWaterMark(artifacts: readonly DatedArtifact[]): number {
   let mark = 0;
   for (const a of artifacts) if (a.issuedAt > mark) mark = a.issuedAt;

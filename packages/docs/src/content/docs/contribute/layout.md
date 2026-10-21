@@ -74,7 +74,7 @@ The **one** sanctioned exception is `services/update → services/release`: Upda
 over Release's truth store, which is a hard dependency by design. Every other cross-service need
 goes through a Core-mediated interface — a hook on `ServiceDescriptor` that Core calls and the
 service answers, never a direct import between services. The chain release ← distribution ←
-update is not a licence to import along it: Distribution reads Release, and Update reads
+update is not a license to import along it: Distribution reads Release, and Update reads
 Distribution, only through the **descriptor hooks** in `core/hooks.ts` (`releaseCatalog`,
 `delivery`, `outletCapabilities`, and License's `licenseProvenance`, which Identity's portal reads).
 Core builds them per request from the registry and the

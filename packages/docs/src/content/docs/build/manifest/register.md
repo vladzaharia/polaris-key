@@ -62,7 +62,7 @@ A resync updates the manifest baseline: product metadata, services, catalog shap
 
 A manifest can't replace a secret value that is already sealed. The whole push is refused, naming the key and profile. To rotate a secret, change it in the console and remove the value from the repo.
 
-[What resync actually re-applies](/docs/operate/console/product-actions/#what-resync-actually-re-applies) lists every row.
+The console's Product actions page (console members) lists every row under "What resync actually re-applies".
 
 ## Services and sign-in
 

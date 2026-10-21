@@ -30,6 +30,8 @@ Implementation: `packages/client-core/src/trust.ts`. Server side:
 The merge is one line, and the order of the spread is the whole rule:
 
 ```ts
+type TrustSet = Readonly<Record<string, string>>; // kid → base64url public key
+
 export function mergeTrust(pinned: TrustSet, discovered: TrustSet): TrustSet {
   return { ...discovered, ...pinned }; // pins spread LAST
 }
@@ -127,7 +129,7 @@ Two reasons, and both matter:
 Everything else in the envelope still applies: signature, `typ: "pkey-trust+jws"`, `aud`,
 `iss`, and the size caps. On top of those, a manifest must satisfy:
 
-| Check                                                                 | Behaviour on failure                       |
+| Check                                                                 | Behavior on failure                       |
 | --------------------------------------------------------------------- | ------------------------------------------ |
 | `schemaVersion` in the supported set (`1` only)                       | Reject the manifest — unknown fails closed |
 | `aud` equals the configured product                                   | Reject                                     |
@@ -273,7 +275,7 @@ A verifier holds exactly two tiers of keys, in strictly decreasing authority, an
 
 They merge with the pins spread **last**:
 
-```ts
+```ts no-compile
 mergeTrust(pinned, discovered) === { ...discovered, ...pinned };
 ```
 

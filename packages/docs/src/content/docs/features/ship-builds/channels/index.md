@@ -196,7 +196,7 @@ in Core, in their own sealed table, and Distribution is the only service that ca
 tokens a connector mints from them (`core/outletTokens.ts`) are cached, sealed, and keyed by a
 non-secret version of the credential, so the cache is checked first and a credential is opened
 only when a fresh token is needed. Operators set them in **Distribution → Channel credentials** — see
-[Channel credentials](/docs/operate/console/keys-and-secrets/#channel-credentials). The first connector is
+Channel credentials (platform admins). The first connector is
 the [App Store Connect connector](/docs/features/ship-builds/channels/app-store/), then the
 [Google Play connector](/docs/features/ship-builds/channels/google-play/) and the read-only
 [Microsoft Store connector](/docs/features/ship-builds/channels/microsoft-store/).
@@ -224,17 +224,22 @@ build stamp, then attested and declared signals; `outlet-matrix.json`).
 | `none`      | `unknown`                                                     | show key entry; no store purchase                    |
 
 ```ts title="TypeScript"
-import { effectiveCapabilities } from "@polaris-key/client-core/decide";
+import { effectiveCapabilities } from "@polaris-key/client-core";
+import type { PolarisKeyClient } from "@polaris-key/node";
 
-const outlet = client.update.outlet; // resolved from the build stamp and signals
-const caps = outlet
-  ? effectiveCapabilities(outlet.kind, {
-      platform: "macos",
-      subkind: outlet.subkind,
-    })
-  : null;
-const showKeyEntry =
-  caps === null || (caps.commerce !== "store-iap" && caps.commerce !== "steam");
+export function showKeyEntry(client: PolarisKeyClient): boolean {
+  const outlet = client.update.outlet; // resolved from the build stamp and signals
+  const caps = outlet
+    ? effectiveCapabilities(outlet.kind, {
+        platform: "macos",
+        subkind: outlet.subkind,
+      })
+    : null;
+  return (
+    caps === null ||
+    (caps.commerce !== "store-iap" && caps.commerce !== "steam")
+  );
+}
 ```
 
 Godot exposes the same table as `PKeyDecision.effective_capabilities(kind, {platform = ..., subkind = ...})`,
@@ -271,7 +276,7 @@ release off every surface, yank it or pin the release track under **Release → 
 - **Health** is [update health](/docs/features/ship-builds/channels/update-health/): the funnel per
   rollout, the auto-halt and the Sentry halt candidates.
 - **Channel credentials** holds the store keys the connectors use and the Sentry integration
-  secret; see [Channel credentials](/docs/operate/console/keys-and-secrets/#channel-credentials). Its
+  secret; see Channel credentials (platform admins). Its
   **Store connectors** cards show each connector's state, which key it uses (the product's own or
   the platform's team key, see Store connections) and its
   configuration actions: App Store Connect **Release this version**, **TestFlight public link**

@@ -88,13 +88,13 @@ dependencyResolutionManagement {
 // build.gradle.kts
 dependencies {
     implementation("im.plrs.key:polaris-key-sdk:0.1.0")
-    // Android: one platform flavour per build
+    // Android: one platform flavor per build
     implementation("im.plrs.key:polaris-key-platform-play:0.1.0") // or -direct
 }
 ```
 
 Maven, the coordinate table and the other SDKs:
-[Installing the SDKs from the feeds](/docs/build/install-from-feeds/).
+[Installing the SDKs from the feeds](https://key.plrs.im/docs/build/install/).
 
 ## :core
 
@@ -473,7 +473,7 @@ permissions into play builds (notes/S-10 §2).
 
 `:android` (P6-12) is the Kotlin SDK's Android glue: the one module that depends on both the SDK
 (`:sdk`, and through it `:core` and every service module) and `:platform`, so `:platform` stays
-standalone for the Godot binding. Flavours match the platform's (`play`, `direct`), and the flavor
+standalone for the Godot binding. Flavors match the platform's (`play`, `direct`), and the flavor
 boundary covers it (`tools/check_flavours.sh` reads the `:boundary` APKs, which now carry it).
 
 ```kotlin
@@ -571,7 +571,7 @@ both zstd paths), `headers.json`, `fingerprint.json`, `stage-matrix.json`,
 runs the JVM line.
 
 `:conformance:liveDevTest` is a separate task, not part of `test` or `testTink`: it runs the
-quickstart against a real `pkey dev` ([Run Polaris Key locally](/docs/build/local/)) on the JCA
+quickstart against a real `pkey dev` ([Run Polaris Key locally](https://key.plrs.im/docs/build/local/)) on the JCA
 backend only. It drives the `PolarisConfig.kt` that `pkey sdk` generated, the SDK's own client over
 its OkHttp transport and the dev server's approval script (Node on PATH): first activation, what
 each of the seven test keys does, a config change event, a device-code sign-in and an update

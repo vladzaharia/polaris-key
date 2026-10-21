@@ -76,7 +76,7 @@ That declaration is valid as long as it is **compatible**:
 Any other name under `license.` or `pkey.` has no compatible form. The validator reports an
 incompatible declaration as `incompatible_reserved_name`. It is a **warning** by default (`pkey
 validate` prints it and link and resync accept it); the platform setting
-[`LICENSING_RESERVED_NAMES`](/docs/operate/platform/settings/#the-runtime-settings) turns it into an
+`LICENSING_RESERVED_NAMES` (platform admins) turns it into an
 error after a window of two minor releases or 60 days, whichever is later. Platform → Settings →
 Licensing lists every registered product with a reserved-name declaration and whether it is
 compatible.

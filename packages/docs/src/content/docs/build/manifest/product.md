@@ -98,7 +98,7 @@ document's `listing.name` and `listing.developerName`.
   so `P0laris-Key` and `ＳＴＥＡＭ` match, and a multi-word term written as one word (`GooglePlay`)
   matches too. `Applesauce Games` and `Steamroller` do not. It is a **warning** by default (`pkey
 validate` prints it and link and resync accept it); the platform setting
-  [`IDENTITY_RESERVED_DISPLAY_NAMES`](/docs/operate/platform/settings/#the-runtime-settings) turns
+  `IDENTITY_RESERVED_DISPLAY_NAMES` (platform admins) turns
   it into an error after a window of two minor releases or 60 days, whichever is later. Either
   way, the sign-in card shows such a product by its slug in a neutral frame.
 

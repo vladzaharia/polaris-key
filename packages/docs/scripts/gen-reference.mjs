@@ -951,7 +951,7 @@ function consoleTour() {
     "",
     `## Platform`,
     "",
-    `Instance-wide pages, shown when no product is open. Its Docs section is ${docsCell(nav.platformDocs)}.`,
+    `Instance-wide pages, shown when no product is open.`,
     "",
     table(
       cols,

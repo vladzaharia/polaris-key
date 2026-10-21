@@ -11,7 +11,7 @@ sidebar:
 authenticates with, whether or not it runs any service: its **Signing keys**, its write-only
 **Secrets** and its **CI publishing** credentials. Signing keys and secrets are sealed under the
 same platform KEK. Edge-mint recipes are approved on their catalog entry, and store credentials
-are on **Distribution → Channel credentials**.
+are on **Ship builds → Channel credentials**.
 
 ## Product secrets
 
@@ -80,7 +80,7 @@ value: the sealed column is not even selected.
 ## Channel credentials
 
 Store keys and the Sentry integration secret are not product secrets. They live on
-**Distribution → Channel credentials**, in their own table, and no edge-mint recipe can name one. A
+**Ship builds → Channel credentials**, in their own table, and no edge-mint recipe can name one. A
 platform admin sets them: see Channel credentials (platform admins).
 
 ## Signing keys
@@ -163,7 +163,7 @@ See [CI publishing](/docs/build/ci/) for the workflow side.
 
 ## Reference
 
-- [D1 data model](/docs/reference/data-model/) — `product_secrets`, `product_keys`,
+- The D1 data model (platform admins) — `product_secrets`, `product_keys`,
   `outlet_credentials` and `edge_mint_approvals`.
 - [Edge-mint](/docs/features/managed-config/edge-mint/) — recipes, the two operator conditions, and the
   mint route.

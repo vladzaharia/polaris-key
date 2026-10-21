@@ -229,8 +229,7 @@ The pane never ends in a void: identity at the top, receipt at the foot.
 
 Product context (developer link, `identity_disabled`) shows the icon, "<Product> · <Developer>" and
 "Your license, downloads and devices". The **trust receipt** ("Polaris Locker signs you in for
-<App>...") closes the start pane at its foot. The pane carries `view-transition-name: pk-head`
-and never moves between steps (§3.18). The brand row stays the one 40 px lockup (muted in an app's context); Help · Privacy ·
+<App>...") closes the start pane at its foot. The pane never moves between steps (§3.18). The brand row stays the one 40 px lockup (muted in an app's context); Help · Privacy ·
 Terms stay under the card. On the Worker's no-JS pages (I-38) the art is a same-origin `<img>` (or the
 image origin the Worker CSP allows through `cspImageOrigin()`, exactly as the app policy does),
 with no inline style or script: the layout is classes and container queries in the hashed

@@ -70,8 +70,8 @@ Free tier** (on); Ship builds asks for the platforms, which the storefronts foll
 **Creates** rail (a collapsed bar on a narrow screen) lists exactly what Create writes. **I'll
 choose later** creates the product with no features. **Create** writes everything in one batch.
 
-Licence defaults are not asked here: tiers own them. A config catalog, the compatibility window
-([Update → Feed](/docs/operate/console/tour/#update)) and everything else are set up later. Under
+License defaults are not asked here: tiers own them. A config catalog, the compatibility window
+([Ship builds → Feed](/docs/operate/console/tour/#update)) and everything else are set up later. Under
 the hood the console sends the name and slug as `.pkey/` documents to the same ingest pipeline a
 linked repository uses, with no repository: the snapshot origin is `link` with no commit.
 **A product can never exist without a usable signing key.** No release row and no edge-mint row are
@@ -133,7 +133,7 @@ for an SDK without another call. If any row fails, none is written.
 The API takes these as `services`, `intendedPlatforms`, `starterTier` (`free` or `none`) and, on
 `link-repo`, `trustReleaseWorkflow`. A service whose requirement is off is refused with its
 `<service>_requires_<requirement>` code. From a repository, `services` adds to what `.pkey/`
-enables. The licence defaults and the compatibility window are not create fields: tiers and
+enables. The license defaults and the compatibility window are not create fields: tiers and
 platform defaults own the first, `release.compatWindow` the second.
 
 ### Reserved slugs
@@ -267,12 +267,12 @@ product's packages are served on the registry host. It is operator-owned (a mani
 it), blocked until Ship builds is on, and saves on its own, through
 `/manage/api/products/<slug>/distribution/package-feeds` (PUT) with `{enabled, expectedVersion}`; a
 stale version is a 409 and nothing changes. Turning it off asks first, because every feed of the
-product answers not-found within 30 seconds. While it is on, **Distribution → Package feeds** is in
+product answers not-found within 30 seconds. While it is on, **Ship builds → Package feeds** is in
 the sidebar: see [Package feeds](/docs/features/ship-builds/packages/).
 
 ## Reference
 
-- [D1 data model](/docs/reference/data-model/) — `products`, `product_keys` and `product_secrets`,
+- The D1 data model (platform admins) — `products`, `product_keys` and `product_secrets`,
   including `services_json` and `services_source`.
 - [Manifest validation codes](/docs/reference/validation-codes/) — every code the `.pkey/`
   validator can emit, including `reserved_slug`.

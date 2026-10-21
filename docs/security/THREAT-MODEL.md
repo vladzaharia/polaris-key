@@ -6807,8 +6807,8 @@ name, email, csrf, exp, authAt, stepUpAt?}` and no `groups` or `sub`. `aid` and 
 **Slice 2b: the strong-method rule, the computed root rule and the audit actor.**
 
 - **SM-1, a strong method only** (`consoleSignIn`, `consoleSubject`; migration
-  `0128_console_strong_method.sql` adds `account_links.strong_at` and `asserted_at`, both NULL on
-  existing rows). The console is entered, and every 30 s check passes, only through a link that has
+  `0128_console_strong_method.sql` adds `account_links.strong_at`, `asserted_at` and `member_id`, all NULL on
+  existing rows, and an index on `member_id`). The console is entered, and every 30 s check passes, only through a link that has
   `strong_at` set, through an issuer `operatorIssuerAllowed` still admits (SM-2, read at every use,
   never frozen into `strong_at`). An email code, a method added in the portal and a console-IdP link
   made by the portal path are never strong (SM-4). A sign-in whose link is known, is not strong and
