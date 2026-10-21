@@ -355,8 +355,11 @@ const SAMPLES: Record<string, RegistryPackage> = {
 const FEED_A: RenderFeed = { namespace: { publisher: "acme" }, ext: {} };
 const FEED_B: RenderFeed = {
   namespace: { publisher: "acme" },
-  ext: { supportLevel: "testing", license: "MIT" },
+  ext: { supportLevel: "testing", license: "MIT", yankHidesFromIndex: true },
 };
+
+// B-097: Maven's metadata shows a yank only through the feed's switch, so its sample has one.
+Object.assign(SAMPLES.maven!.versions[1]!, { state: "yanked" });
 
 /** Sample values for the OpenAPI path parameters, per ecosystem where one differs. */
 const COMMON_PARAMS: Record<string, string> = {

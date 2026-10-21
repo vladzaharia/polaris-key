@@ -737,6 +737,30 @@ describe("the renderer", () => {
     expect(xml).not.toMatch(/<latest>|<release>|<lastUpdated>/);
   });
 
+  it("B-097: yanked versions stay listed unless the feed's switch hides them", () => {
+    const pkg = {
+      ...base,
+      versions: [v("1.0.0", "live", NOW), v("1.1.0", "yanked", NOW + 1)],
+      tags: { latest: "1.0.0" },
+    };
+    const feed = (ext: Record<string, unknown>) => ({ namespace: {}, ext });
+    const body = (ctx?: { feed: ReturnType<typeof feed> | null }) =>
+      renderMaven(pkg, ctx)[0]!.body as string;
+    // Off (the default): listed.
+    expect(body({ feed: feed({}) })).toContain("<version>1.1.0</version>");
+    expect(body({ feed: feed({ yankHidesFromIndex: false }) })).toContain(
+      "<version>1.1.0</version>",
+    );
+    // On: gone, and so is latest.
+    const hidden = body({ feed: feed({ yankHidesFromIndex: true }) });
+    expect(hidden).not.toContain("1.1.0");
+    // No settings to read: the safe side hides.
+    expect(body()).not.toContain("1.1.0");
+    expect(body({ feed: null })).not.toContain("1.1.0");
+    // The stamp covers the settings, so a switch change re-renders.
+    expect(MAVEN_RENDERER.stamp).toBe("package+feed");
+  });
+
   it("omits release when the stable channel serves nothing; a beta is latest only", () => {
     const xml = mavenMetadataXml({
       ...base,

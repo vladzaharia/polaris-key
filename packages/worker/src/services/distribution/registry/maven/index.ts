@@ -21,7 +21,10 @@ export const MAVEN_ADAPTER: FeedAdapter<"maven"> = defineFeedAdapter({
   hostPrefix: "/maven/",
   feedPath: (owner) => `/maven/${owner}/`,
   routes: mavenRoutes(() => MAVEN_RENDERER),
-  renderer: { render: (pkg) => renderMaven(pkg), stamp: "package" },
+  renderer: {
+    render: (pkg, ctx) => renderMaven(pkg, ctx),
+    stamp: "package+feed",
+  },
   ingest: PACKAGE_ECOSYSTEM_RULES.maven,
   settings: { ext: { yankHidesFromIndex: extBoolean } },
   capabilities: {

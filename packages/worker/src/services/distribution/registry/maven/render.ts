@@ -13,10 +13,11 @@
  * as a checksum or as metadata: both are derived, so they cannot disagree with the bytes.
  *
  * VERSIONS, CHANNELS AND STATES (§6.7; Maven has no yank or deprecation in its protocol):
- *   - `<versions>` lists every version that is not yanked, in publication order (Release's
- *     `seq`), oldest first, as a Maven repository manager writes it. A yanked version stays
- *     downloadable by its exact coordinates, so a build that pinned it keeps working, but no
- *     dynamic version (`1.+`, `[1.0,2.0)`, `LATEST`, `RELEASE`) can resolve to it any more.
+ *   - `<versions>` lists every version, in publication order (Release's `seq`), oldest first, as
+ *     a Maven repository manager writes it, except the yanked ones when the feed's
+ *     `yankHidesFromIndex` switch is on (B-097; off by default). A yanked version stays
+ *     downloadable by its exact coordinates, so a build that pinned it keeps working, but with
+ *     the switch on no dynamic version (`1.+`, `[1.0,2.0)`, `LATEST`, `RELEASE`) can resolve to it.
  *   - A deprecated version is listed like a live one: the protocol cannot carry the message,
  *     which the console and the setup page show instead.
  *   - `<release>` is the `latest` tag (the `stable` channel's head under Release's resolution
@@ -37,6 +38,7 @@ import type {
   PackageFile,
   PackageVersion,
   RegistryPackage,
+  RenderContext,
   RenderedObject,
 } from "../materialise.js";
 
@@ -95,17 +97,34 @@ export function mavenTimestamp(seconds: number): string {
   );
 }
 
-/** The versions a feed lists: every one that is not yanked, in publication order. */
-export function listedVersions(pkg: RegistryPackage): PackageVersion[] {
-  return pkg.versions.filter((v) => v.state !== "yanked");
+/**
+ * Whether a yank takes the version out of `maven-metadata.xml`: the feed's `yankHidesFromIndex`
+ * switch (B-097). Off keeps yanked versions listed; with no settings to read (a render the
+ * caller gave none to, or a feed with no row) it hides, which is the safe side.
+ */
+export function yankHides(feed: RenderContext["feed"]): boolean {
+  return feed == null || feed.ext.yankHidesFromIndex === true;
+}
+
+/** The versions a feed lists, in publication order: without the yanked ones when the feed hides them. */
+export function listedVersions(
+  pkg: RegistryPackage,
+  hideYanked = true,
+): PackageVersion[] {
+  return hideYanked
+    ? pkg.versions.filter((v) => v.state !== "yanked")
+    : pkg.versions;
 }
 
 /** `maven-metadata.xml` for one package. */
-export function mavenMetadataXml(pkg: RegistryPackage): string {
+export function mavenMetadataXml(
+  pkg: RegistryPackage,
+  hideYanked = true,
+): string {
   const coords = mavenCoordinates(pkg.name);
   if (!coords)
     throw new Error("maven: the package name is not groupId:artifactId");
-  const listed = listedVersions(pkg);
+  const listed = listedVersions(pkg, hideYanked);
   const names = new Set(listed.map((v) => v.version));
   const release = pkg.tags.latest;
   const lines = [
@@ -156,11 +175,14 @@ export function checksumBody(
 }
 
 /** Every object of one package's Maven render: the metadata and its four sidecars. */
-export function renderMaven(pkg: RegistryPackage): RenderedObject[] {
+export function renderMaven(
+  pkg: RegistryPackage,
+  ctx?: Pick<RenderContext, "feed">,
+): RenderedObject[] {
   const coords = mavenCoordinates(pkg.name);
   if (!coords) return [];
   const dir = artifactDirectory(coords.groupId, coords.artifactId);
-  const body = mavenMetadataXml(pkg);
+  const body = mavenMetadataXml(pkg, yankHides(ctx?.feed));
   const out: RenderedObject[] = [
     { key: `${dir}/${MAVEN_METADATA}`, body, contentType: MAVEN_CONTENT_TYPE },
   ];
