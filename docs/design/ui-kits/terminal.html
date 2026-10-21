@@ -405,6 +405,46 @@
       </figure>
       <figure>
         <figcaption>
+          terminal · the gate refusal on stderr at 40 columns, exit 4: the
+          command and its words stack, nothing passes the edge. Built today
+          (Node narrow render of gate-refused-needs-activation)
+        </figcaption>
+        <div class="shot cols40" data-shot="gate-refusal-40">
+          <div class="tbar"><i></i><i></i><i></i>tidewater — 40 × 11</div>
+          <pre id="gate40"></pre>
+        </div>
+      </figure>
+      <figure>
+        <figcaption>
+          terminal · the same refusal at 32 columns. Built today
+        </figcaption>
+        <div class="shot cols32" data-shot="gate-refusal-32">
+          <div class="tbar"><i></i><i></i><i></i>tidewater — 32 × 11</div>
+          <pre id="gate32"></pre>
+        </div>
+      </figure>
+      <figure>
+        <figcaption>
+          terminal · status after a revoked license at 40 columns, exit 1: a ▲
+          block with the fix. Built today (Node narrow render of
+          status-screen-revoked)
+        </figcaption>
+        <div class="shot cols40" data-shot="status-revoked-40">
+          <div class="tbar"><i></i><i></i><i></i>tidewater — 40 × 13</div>
+          <pre id="revoked40"></pre>
+        </div>
+      </figure>
+      <figure>
+        <figcaption>
+          terminal · the same status at 32 columns. Built today
+        </figcaption>
+        <div class="shot cols32" data-shot="status-revoked-32">
+          <div class="tbar"><i></i><i></i><i></i>tidewater — 32 × 16</div>
+          <pre id="revoked32"></pre>
+        </div>
+      </figure>
+      <figure>
+        <figcaption>
           terminal · an ending is one result block: Esc replaces the code view,
           nothing is left above it
         </figcaption>
@@ -680,6 +720,76 @@
           "└  c copy the code · Esc cancel",
         ].join("\n"),
       );
+
+      // The gate refusal and the revoked status at 40 and 32 columns: real renders of the Node
+      // kit's narrow variants (gate-refused-needs-activation, status-screen-revoked).
+      const narrowGate = (cols) => {
+        const wrap =
+          cols === 40
+            ? ["Enter a license key or sign in", "to continue."]
+            : ["Enter a license key or sign", "in to continue."];
+        return [
+          L(["m", "$ "], ["", "tidewater export"]),
+          L(["warn", "▲"], ["", "  "], ["s", "Activate"]),
+          rail(["", wrap[0]]),
+          rail(["", wrap[1]]),
+          L(["m", "│"]),
+          rail(["s", "tidewater activate"]),
+          rail(["m", "  Use a license key"]),
+          rail(["s", "tidewater login"]),
+          L(["m", "└"], ["", "    "], ["m", "Sign in"]),
+          L(["m", "$ "], ["", "echo $?"]),
+          L(["", "4"]),
+        ];
+      };
+      put("gate40", narrowGate(40));
+      put("gate32", narrowGate(32));
+      const narrowRevoked = (cols) => {
+        const t =
+          cols === 40
+            ? [
+                "This device was signed out. Sign in",
+                "or activate again to continue.",
+                "To keep using Tidewater Studio:",
+              ]
+            : [
+                "This device was signed out.",
+                "Sign in or activate again",
+                "to continue.",
+              ];
+        const keep = cols === 40 ? [] : ["To keep using", "Tidewater Studio:"];
+        const last =
+          cols === 40
+            ? [
+                ["m", "└"],
+                ["", "    "],
+                ["m", "Use the license on your account"],
+              ]
+            : null;
+        return [
+          L(...head("status")),
+          L(["m", "│"]),
+          L(["warn", "▲"], ["", "  "], ["s", "Signed out"]),
+          ...t.slice(0, cols === 40 ? 2 : 3).map((x) => rail(["", x])),
+          L(["m", "│"]),
+          ...(cols === 40
+            ? [rail(["", t[2]])]
+            : keep.map((x) => rail(["", x]))),
+          rail(["s", "tidewater activate"]),
+          rail(["m", "  Use a different key"]),
+          rail(["s", "tidewater login"]),
+          ...(cols === 40
+            ? [L(last[0], last[1], last[2])]
+            : [
+                rail(["m", "  Use the license on"]),
+                L(["m", "└"], ["", "    "], ["m", "your account"]),
+              ]),
+          L(["m", "$ "], ["", "echo $?"]),
+          L(["", "1"]),
+        ];
+      };
+      put("revoked40", narrowRevoked(40));
+      put("revoked32", narrowRevoked(32));
       plain(
         "ended",
         [
