@@ -69,7 +69,7 @@ function product(over: Partial<ProductDetail> = {}): ProductDetail {
         {
           name: "OIDC_CLIENT_SECRET",
           configured: false,
-          sources: ["OIDC client secret"],
+          sources: ["OIDC sign-in"],
         },
       ],
     },
@@ -142,7 +142,7 @@ beforeEach(() => {
         usage: null,
         createdAt: null,
         updatedAt: null,
-        requiredBy: ["OIDC client secret"],
+        requiredBy: ["OIDC sign-in"],
       },
     ],
   });
@@ -164,7 +164,7 @@ describe("Keys & secrets → Secrets", () => {
     expect(screen.getByText("Edge-mint signing key")).toBeTruthy();
     expect(screen.getByText("Configured")).toBeTruthy();
     expect(screen.getByText("Missing")).toBeTruthy();
-    expect(screen.getByText("OIDC client secret")).toBeTruthy();
+    expect(screen.getByText("OIDC sign-in")).toBeTruthy();
   });
 
   it("a required row's Set… preselects its name (SEC-4)", async () => {

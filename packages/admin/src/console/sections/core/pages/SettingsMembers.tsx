@@ -75,7 +75,7 @@ function Rows({
           className={cn("grid items-center gap-x-6 gap-y-2 px-5 py-3", columns)}
         >
           <Person admin={a} you={a.email === meEmail} />
-          <div className="sm:justify-self-end">{role(a)}</div>
+          <div>{role(a)}</div>
         </li>
       ))}
     </ul>
@@ -134,7 +134,7 @@ export function SettingsMembersPage({
               )}
             >
               <span>Member</span>
-              <span className="justify-self-end">Role</span>
+              <span>Role</span>
             </div>
             <Rows
               admins={admins}

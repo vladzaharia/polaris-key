@@ -31,6 +31,7 @@ import { DescriptionList } from "../../../../ui/DescriptionList.js";
 import { Dialog, DialogBody, DialogFooter } from "../../../../ui/Dialog.js";
 import { Drawer, DrawerBody, DrawerFooter } from "../../../../ui/Drawer.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
+import { CopyDetails } from "../../../../ui/CopyDetails.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { FormField } from "../../../../ui/form.js";
 import { Input } from "../../../../ui/Input.js";
@@ -346,7 +347,10 @@ export function PublisherDrawer({
           <ScopePicker value={scopes} onChange={setScopes} />
           {failure ? (
             <Callout tone="danger" title={errorCopy(failure).title}>
-              {errorCopy(failure).description}
+              <p>{errorCopy(failure).description}</p>
+              <div className="mt-2">
+                <CopyDetails copy={errorCopy(failure)} />
+              </div>
             </Callout>
           ) : null}
         </DrawerBody>
@@ -687,7 +691,10 @@ function IssueTokenDialog({
           </FormField>
           {failure ? (
             <Callout tone="danger" title={errorCopy(failure).title}>
-              {errorCopy(failure).description}
+              <p>{errorCopy(failure).description}</p>
+              <div className="mt-2">
+                <CopyDetails copy={errorCopy(failure)} />
+              </div>
             </Callout>
           ) : null}
         </DialogBody>

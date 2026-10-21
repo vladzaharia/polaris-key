@@ -44,9 +44,10 @@ function FoldedRow({
         <Button
           variant="ghost"
           size="sm"
+          id={`${id}-button`}
           aria-expanded={open}
           aria-controls={controls}
-          aria-labelledby={`${id}-title`}
+          aria-labelledby={`${id}-button ${id}-title`}
           iconEnd={
             <ChevronDown
               aria-hidden

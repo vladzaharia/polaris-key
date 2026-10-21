@@ -14,6 +14,56 @@ export interface PageTab {
   dirty?: boolean;
 }
 
+/**
+ * The strip's scroll box: an edge mask on the side that still has tabs behind it, and the active
+ * tab scrolled into view on mount (a phone otherwise hard-clips it).
+ */
+function useScrollEdges(activeKey: string): {
+  ref: React.RefObject<HTMLElement | null>;
+  edges: string;
+  onScroll: () => void;
+} {
+  const ref = React.useRef<HTMLElement | null>(null);
+  const [edges, setEdges] = React.useState("");
+  const measure = React.useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    const left = el.scrollLeft > 1;
+    const right = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+    setEdges((left ? "l" : "") + (right ? "r" : ""));
+  }, []);
+  React.useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const on = el.querySelector<HTMLElement>(
+      '[aria-current="page"],[aria-selected="true"]',
+    );
+    if (on) {
+      const box = el.getBoundingClientRect();
+      const t = on.getBoundingClientRect();
+      if (t.left < box.left || t.right > box.right)
+        el.scrollLeft += t.left - box.left - (box.width - t.width) / 2;
+    }
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [activeKey, measure]);
+  return { ref, edges, onScroll: measure };
+}
+
+const stripClass = (edges: string) =>
+  cn(
+    "pk-scroll -mb-px overflow-x-auto",
+    edges === "r" &&
+      "[mask-image:linear-gradient(to_right,#000_calc(100%-2rem),transparent)]",
+    edges === "l" &&
+      "[mask-image:linear-gradient(to_left,#000_calc(100%-2rem),transparent)]",
+    edges === "lr" &&
+      "[mask-image:linear-gradient(to_right,transparent,#000_2rem,#000_calc(100%-2rem),transparent)]",
+  );
+
 const tabClass = (active: boolean) =>
   cn(
     "relative inline-flex h-10 items-center gap-1.5 whitespace-nowrap border-b-2 px-1 text-sm",
@@ -92,14 +142,20 @@ export function PageTabs({
   idPrefix?: string;
 }): React.ReactElement {
   const routed = items.every((t) => t.to !== undefined);
+  const strip = useScrollEdges(value);
   const refs = React.useRef<(HTMLButtonElement | null)[]>([]);
   /** The tab a running transition is about to select: `value` until its update lands. */
   const pending = React.useRef<string | null>(null);
 
   if (routed) {
     return (
-      <nav aria-label={label} className="pk-scroll -mb-px overflow-x-auto">
-        <ul className="flex gap-6">
+      <nav
+        aria-label={label}
+        ref={strip.ref as React.RefObject<HTMLElement>}
+        onScroll={strip.onScroll}
+        className={stripClass(strip.edges)}
+      >
+        <ul className="flex gap-3 sm:gap-6">
           {items.map((t) => (
             <li key={t.value}>
               <Link
@@ -150,7 +206,9 @@ export function PageTabs({
     <div
       role="tablist"
       aria-label={label}
-      className="pk-scroll -mb-px flex gap-6 overflow-x-auto"
+      ref={strip.ref as React.RefObject<HTMLDivElement>}
+      onScroll={strip.onScroll}
+      className={cn(stripClass(strip.edges), "flex gap-3 sm:gap-6")}
     >
       {items.map((t, i) => {
         const active = t.value === value;

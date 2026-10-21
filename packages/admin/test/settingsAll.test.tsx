@@ -9,7 +9,10 @@ import { cleanup, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type * as ApiModule from "../src/api.js";
 import type { Me, ProductDetail } from "../src/api.js";
-import { SETTING_HOMES } from "../src/console/sections/core/model/settingHomes.js";
+import {
+  anchorOf,
+  SETTING_HOMES,
+} from "../src/console/sections/core/model/settingHomes.js";
 import { SettingsAllPage } from "../src/console/sections/core/pages/SettingsAll.js";
 import { productPage } from "../src/console/routes.js";
 import { SETTINGS_INDEX } from "../src/console/settings.generated.js";
@@ -96,7 +99,7 @@ describe("All settings → Edit in", () => {
       "license.defaults.deviceLimit",
       "Settings → Features",
       "License defaults",
-      "#/p/djdl/settings",
+      "#/p/djdl/settings?at=settings-license",
     ],
     [
       "license.fingerprint",
@@ -114,7 +117,7 @@ describe("All settings → Edit in", () => {
       "release.github",
       "Settings → Features",
       "Repository",
-      "#/p/djdl/settings",
+      "#/p/djdl/settings?at=settings-repository",
     ],
     [
       "release.compatWindow",
@@ -194,7 +197,12 @@ describe("All settings → Edit in", () => {
         expect(
           links.map((l) => l.getAttribute("href")),
           e.key,
-        ).toEqual([productPage("djdl", home.page, { id: home.id })]);
+        ).toEqual([
+          productPage("djdl", home.page, {
+            id: home.id,
+            ...(anchorOf(home) ? { query: { at: anchorOf(home)! } } : {}),
+          }),
+        ]);
       else expect(links, e.key).toEqual([]);
     }
   });

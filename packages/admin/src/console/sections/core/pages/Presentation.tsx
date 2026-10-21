@@ -71,6 +71,7 @@ export function PresentationPage({
       slot={slot}
       locale=""
       asset={byKey.get(`${slot}@`) ?? null}
+      quotaFull={usage.data?.media.full}
     />
   );
   const [heroSlot, ...listingRest] = [
@@ -81,36 +82,39 @@ export function PresentationPage({
   return (
     <div className="space-y-6" data-template="presentation">
       <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
-        <SettingsSection
-          id="presentation-customers"
-          title="What customers see"
-          description="Polaris Key hosts a copy of each file and serves it from its image host; your original is unchanged."
-        >
-          {presentation.map(slotRow)}
-          {slotRow(heroSlot!)}
-        </SettingsSection>
+        <div className="min-w-0 space-y-6">
+          <SettingsSection
+            id="presentation-customers"
+            title="What customers see"
+            description="Polaris Key hosts a copy of each file and serves it from its image host; your original is unchanged."
+          >
+            {presentation.map(slotRow)}
+            {slotRow(heroSlot!)}
+          </SettingsSection>
+          <SettingsSection id="presentation-listing" title="Listing">
+            {listingRest.map(slotRow)}
+          </SettingsSection>
+          {other.length ? (
+            <SettingsSection id="presentation-other" title="Other slots">
+              {other.map((a) => (
+                <PresentationSlotRow
+                  key={`${a.slot}@${a.locale}`}
+                  slug={slug}
+                  slot={a.slot}
+                  locale={a.locale}
+                  asset={a}
+                  quotaFull={usage.data?.media.full}
+                />
+              ))}
+            </SettingsSection>
+          ) : null}
+        </div>
         <PresentationPreview
           name={product.data?.name ?? slug}
           presentation={product.data?.presentation}
           heroUrl={heroUrl}
         />
       </div>
-      <SettingsSection id="presentation-listing" title="Listing">
-        {listingRest.map(slotRow)}
-      </SettingsSection>
-      {other.length ? (
-        <SettingsSection id="presentation-other" title="Other slots">
-          {other.map((a) => (
-            <PresentationSlotRow
-              key={`${a.slot}@${a.locale}`}
-              slug={slug}
-              slot={a.slot}
-              locale={a.locale}
-              asset={a}
-            />
-          ))}
-        </SettingsSection>
-      ) : null}
       <SettingsSection
         id="presentation-hosting"
         title="Hosting and quotas"

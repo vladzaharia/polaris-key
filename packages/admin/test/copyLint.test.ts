@@ -787,10 +787,6 @@ describe("the portal copy lint", () => {
  * `<key> <field> <rule>`. The list only shrinks: a new hit fails, and so does a stale entry.
  */
 const REGISTRY_COPY_DEBT: readonly string[] = [
-  "distribution.capabilities description outlet",
-  "distribution.capabilities label capability",
-  "distribution.capabilities label outlet",
-  "distribution.outlets label outlet",
   "distribution.transports description outlet",
   "release.manualChannels description grant",
 ];

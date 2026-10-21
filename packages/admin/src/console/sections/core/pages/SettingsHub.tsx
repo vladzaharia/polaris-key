@@ -10,15 +10,19 @@
  */
 
 import * as React from "react";
-import { History, ListTree } from "lucide-react";
+import { History, ListTree, Lock } from "lucide-react";
 import { PageHeaderNested } from "../../../../ui/PageHeader.js";
 import { Button } from "../../../../ui/Button.js";
 import { ProductLogo } from "../../../../ui/ProductLogo.js";
 import { PageTabs, type PageTab } from "../../../components/PageTabs.js";
-import { useCan, useAccessAdmins } from "../../../access/useCan.js";
+import {
+  useAccessAdmins,
+  useCan,
+  useWriteGate,
+} from "../../../access/useCan.js";
 import { useProduct } from "../../../data/hooks.js";
 import type { ProductPageId } from "../../../nav.js";
-import { Link } from "../../../router.js";
+import { codecs, Link, useSearchParam } from "../../../router.js";
 import { productPage, r } from "../../../routes.js";
 
 /**
@@ -37,6 +41,39 @@ const TAB_OF: Partial<Record<ProductPageId, ProductPageId>> = {
   settings: "services",
 };
 
+/**
+ * Land on the row an All settings link names (`?at=<element id>`): wait for it to render, scroll
+ * to it and focus it. Each target is taken once, so the reader scrolls on from there.
+ */
+const AT = codecs.string();
+
+function useLandOn(): void {
+  const [at] = useSearchParam("at", AT);
+  React.useEffect(() => {
+    if (!at) return;
+    let done = false;
+    const land = (): boolean => {
+      const el = document.getElementById(at);
+      if (!el) return false;
+      done = true;
+      el.scrollIntoView({ block: "start" });
+      el.focus({ preventScroll: true });
+      return true;
+    };
+    const first = window.setTimeout(land, 50);
+    const obs = new MutationObserver(() => {
+      if (!done && land()) obs.disconnect();
+    });
+    obs.observe(document.body, { childList: true, subtree: true });
+    const stop = window.setTimeout(() => obs.disconnect(), 5000);
+    return () => {
+      window.clearTimeout(first);
+      window.clearTimeout(stop);
+      obs.disconnect();
+    };
+  }, [at]);
+}
+
 export function SettingsHub({
   slug,
   page,
@@ -46,6 +83,15 @@ export function SettingsHub({
   page: ProductPageId;
   children: React.ReactNode;
 }): React.ReactElement {
+  useLandOn();
+  const gate = useWriteGate(page === "keys" ? "keys" : "core", slug);
+  // Features gates its own switches and says why; the other tabs lock whole under one note.
+  const lock =
+    !gate.allowed &&
+    gate.canView &&
+    page !== "services" &&
+    page !== "settings-all" &&
+    page !== "settings-members";
   const canKeys = useCan("keys", slug);
   const product = useProduct(slug);
   const admins = useAccessAdmins("core", slug);
@@ -58,7 +104,7 @@ export function SettingsHub({
     to: productPage(slug, a.page),
     count:
       a.page === "settings-members" && admins.data?.admins
-        ? admins.data.admins.length
+        ? admins.data.admins.filter((m) => m.role !== "superadmin").length
         : undefined,
   }));
   return (
@@ -88,9 +134,12 @@ export function SettingsHub({
           </h1>
           <div className="ml-auto flex items-center gap-1">
             <Button asChild variant="ghost" size="sm">
-              <Link to={productPage(slug, "settings-all")}>
+              <Link
+                to={productPage(slug, "settings-all")}
+                aria-label="All settings"
+              >
                 <ListTree aria-hidden />
-                All settings
+                <span className="max-sm:sr-only">All settings</span>
               </Link>
             </Button>
             <Button asChild variant="ghost" size="sm" className="max-sm:hidden">
@@ -109,7 +158,21 @@ export function SettingsHub({
           />
         </div>
       </header>
-      <PageHeaderNested.Provider value>{children}</PageHeaderNested.Provider>
+      {lock && gate.disabledReason ? (
+        <p
+          role="note"
+          className="flex items-center gap-2 text-sm text-fg-muted"
+        >
+          <Lock aria-hidden className="size-4 shrink-0" />
+          {gate.disabledReason}
+        </p>
+      ) : null}
+      <fieldset
+        disabled={lock}
+        className="m-0 min-w-0 space-y-6 border-0 p-0 [&:disabled_label:has(input:disabled)]:cursor-not-allowed [&:disabled_label:has(input:disabled)]:opacity-50"
+      >
+        <PageHeaderNested.Provider value>{children}</PageHeaderNested.Provider>
+      </fieldset>
     </div>
   );
 }

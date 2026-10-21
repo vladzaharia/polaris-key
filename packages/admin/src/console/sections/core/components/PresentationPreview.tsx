@@ -83,7 +83,7 @@ function PreviewBody({
   return (
     <div
       data-theme={theme}
-      className="space-y-4 rounded-md bg-surface-page p-4 text-fg"
+      className="grid gap-4 rounded-md bg-surface-page p-4 text-fg sm:grid-cols-3 xl:grid-cols-1 [&>*]:min-w-0"
     >
       <Frame caption="Sign-in card">
         <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">

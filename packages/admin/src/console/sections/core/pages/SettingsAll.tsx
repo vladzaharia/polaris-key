@@ -34,7 +34,11 @@ import {
   type SettingsIndexEntry,
 } from "../../../settings.generated.js";
 import { SettingsSection } from "../../../templates/Settings.js";
-import { SETTING_HOMES, type SettingHome } from "../model/settingHomes.js";
+import {
+  anchorOf,
+  SETTING_HOMES,
+  type SettingHome,
+} from "../model/settingHomes.js";
 import { SETTINGS_AREAS } from "./SettingsHub.js";
 
 /** A page as the console words it elsewhere: `Settings → Features`, `License → Enrollment`. */
@@ -68,7 +72,10 @@ function EditIn({
     return (
       <>
         <Link
-          to={productPage(slug, home.page, { id: home.id })}
+          to={productPage(slug, home.page, {
+            id: home.id,
+            ...(anchorOf(home) ? { query: { at: anchorOf(home)! } } : {}),
+          })}
           className="inline-flex min-h-6 items-center gap-1 text-accent-fg underline-offset-4 hover:underline"
         >
           {destination(home.page)}

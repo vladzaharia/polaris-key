@@ -11,6 +11,7 @@ import { toast } from "../../../../ui/toast.js";
 import { mutate } from "../../../data/mutations.js";
 import { qk } from "../../../data/queries.js";
 import {
+  ACCEPTED_FORMATS,
   UPLOAD_ACCEPT,
   binaryBytes,
   reasonWords,
@@ -47,11 +48,14 @@ export function PresentationSlotRow({
   slot,
   locale,
   asset,
+  quotaFull = false,
 }: {
   slug: string;
   slot: string;
   locale: string;
   asset: HostedAssetDto | null;
+  /** The product holds its whole image quota: the Worker would refuse the file. */
+  quotaFull?: boolean;
 }): React.ReactElement {
   const queryClient = useQueryClient();
   const [busy, setBusy] = React.useState(false);
@@ -76,7 +80,7 @@ export function PresentationSlotRow({
     setFailure(null);
     if (file.size > maxBytes) {
       setFailure(
-        `That file is ${binaryBytes(file.size)}: this slot takes ${binaryBytes(maxBytes)} at most. The current copy keeps serving.`,
+        `That file is ${binaryBytes(file.size)}: this slot takes ${binaryBytes(maxBytes)} at most.${asset?.sha256 ? " The current copy keeps serving." : ""}`,
       );
       return;
     }
@@ -94,7 +98,7 @@ export function PresentationSlotRow({
           "It is yours now: a resync and a CI push leave this slot alone.",
       });
     } catch (e) {
-      setFailure(uploadError(e, maxBytes) ?? errorCopy(e).title);
+      setFailure(uploadError(e, maxBytes, Boolean(asset?.sha256)));
     } finally {
       setBusy(false);
     }
@@ -148,8 +152,10 @@ export function PresentationSlotRow({
           : null,
       ].filter(Boolean)
     : ["Nothing hosted yet"];
-  if (uploadable && !failure)
-    facts.push(`PNG, JPEG, WebP, GIF or AVIF, up to ${binaryBytes(maxBytes)}`);
+  if (uploadable && quotaFull)
+    facts.push("Image quota full: free space under Hosting and quotas first");
+  else if (uploadable && !failure)
+    facts.push(`${ACCEPTED_FORMATS}, up to ${binaryBytes(maxBytes)}`);
 
   const menu = canDelete
     ? [{ label: "Delete copy", onSelect: () => setConfirm("delete") }]
@@ -205,8 +211,8 @@ export function PresentationSlotRow({
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 max-sm:col-span-2 max-sm:justify-start">
           {uploadable ? (
             <label
-              aria-disabled={busy || undefined}
-              className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-border-strong px-3 text-xs font-normal text-fg hover:bg-hover focus-within:ring-2 focus-within:ring-focus"
+              aria-disabled={busy || quotaFull || undefined}
+              className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-border-strong px-3 text-xs font-normal text-fg hover:bg-hover focus-within:ring-2 focus-within:ring-focus aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:hover:bg-transparent"
             >
               <Upload aria-hidden className="size-4" />
               {verb}
@@ -216,7 +222,7 @@ export function PresentationSlotRow({
                 aria-label={`${verb} ${label}`}
                 aria-describedby={failure ? errorId : undefined}
                 className="sr-only"
-                disabled={busy}
+                disabled={busy || quotaFull}
                 onChange={(e) => {
                   const f = e.target.files?.[0];
                   e.target.value = "";

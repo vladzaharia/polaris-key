@@ -150,7 +150,7 @@ export const CORE_SLICE: readonly SettingDef[] = [
     scope: "product",
     service: "core",
     area: "services",
-    label: "Services",
+    label: "Features",
     description:
       "Which opt-in services this product runs. A service that is off does not exist from outside.",
     keywords: ["modules", "enablement"],

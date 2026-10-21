@@ -296,7 +296,7 @@ describe("Core → Presentation", () => {
     );
     expect(
       await screen.findByText(
-        "The file was refused: the file is not a PNG, JPEG, WebP, GIF or AVIF image.",
+        "The file was refused: the file is not a PNG, JPEG, WebP, GIF or AVIF image. The current copy keeps serving.",
       ),
     ).toBeTruthy();
   });

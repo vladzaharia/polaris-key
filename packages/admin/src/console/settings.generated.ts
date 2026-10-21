@@ -584,7 +584,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     service: "core",
     area: "services",
     rbacArea: "core",
-    label: "Services",
+    label: "Features",
     description:
       "Which opt-in services this product runs. A service that is off does not exist from outside.",
     keywords: ["modules", "enablement"],
@@ -1565,9 +1565,9 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     service: "distribution",
     area: "distribution.outlets",
     rbacArea: "ship",
-    label: "Outlet capabilities",
+    label: "What each channel allows",
     description:
-      "What an install that arrived through each outlet may do (fetch new code, run downloaded scripts, sell things). The starting point is the compiled default for the outlet's kind; an operator may only narrow it.",
+      "What an install that arrived through each channel may do (fetch new code, run downloaded scripts, sell things). The starting point is the compiled default for the channel's kind; an operator may only narrow it.",
     keywords: ["codeUpdates", "downloadedScripts", "commerce", "outlets"],
     docs: "/docs/features/ship-builds/channels/",
     ownership: "operator",
@@ -1584,9 +1584,9 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     service: "distribution",
     area: "distribution.outlets",
     rbacArea: "ship",
-    label: "Outlets",
+    label: "Channels",
     description:
-      "The places the product is distributed (direct, App Store, Play, Steam, …) with each store's identity for it.",
+      "The channels the product is distributed through (direct, App Store, Play, Steam, …) with each store's identity for it.",
     keywords: ["stores", "appleId", "bundleId", "packageName"],
     docs: "/docs/features/ship-builds/channels/",
     ownership: "manifest",

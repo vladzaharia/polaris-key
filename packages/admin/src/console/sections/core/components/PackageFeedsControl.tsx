@@ -105,10 +105,10 @@ export function PackageFeedsControl({
       <FeatureSubRow
         title="Packages"
         htmlFor={switchId}
+        lockedBy={blocked ? "Ship builds" : undefined}
+        lockedId={requirementId}
         lines={[
-          blocked ? (
-            <span id={requirementId}>Turns on with Ship builds</span>
-          ) : on ? (
+          on ? (
             registryHost ? (
               <>
                 On <span className="font-mono">{registryHost}</span>

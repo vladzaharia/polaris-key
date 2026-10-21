@@ -1132,7 +1132,7 @@ describe("admin api", () => {
       {
         name: "OIDC_SECRET",
         configured: true,
-        sources: ["OIDC client secret"],
+        sources: ["OIDC sign-in"],
       },
     ]);
   });

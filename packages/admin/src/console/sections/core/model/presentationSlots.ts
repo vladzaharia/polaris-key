@@ -120,16 +120,29 @@ export function reasonWords(reason: string | null | undefined): string {
   }
 }
 
-/** A failed upload, worded from the Worker's refusal. */
-export function uploadError(e: unknown, maxBytes: number): string | null {
-  if (!(e instanceof ApiError)) return null;
-  if (e.code === "too_large")
-    return `That file is larger than this slot takes (${binaryBytes(maxBytes)} at most).`;
-  if (e.code === "asset_refused")
-    return `The file was refused: ${reasonWords(e.reason ?? null)}.`;
-  if (e.code === "asset_quota_exceeded")
-    return "This product holds its whole image quota: the file was not stored, and the current copy keeps serving.";
-  return null;
+export const ACCEPTED_FORMATS = "PNG, JPEG, WebP, GIF or AVIF";
+
+/**
+ * A failed upload, worded from the Worker's refusal. Every failure says what keeps serving (when
+ * a copy exists); a 415 names the formats a slot accepts.
+ */
+export function uploadError(
+  e: unknown,
+  maxBytes: number,
+  hasCopy = true,
+): string {
+  const keeps = hasCopy ? " The current copy keeps serving." : "";
+  if (e instanceof ApiError) {
+    if (e.code === "too_large")
+      return `That file is larger than this slot takes (${binaryBytes(maxBytes)} at most).${keeps}`;
+    if (e.code === "asset_refused")
+      return `The file was refused: ${reasonWords(e.reason ?? null)}.${keeps}`;
+    if (e.code === "asset_quota_exceeded")
+      return `This product holds its whole image quota: the file was not stored.${keeps}`;
+    if (e.status === 415)
+      return `That file type is not accepted. Use ${ACCEPTED_FORMATS}.${keeps}`;
+  }
+  return `The upload failed.${keeps}`;
 }
 
 /** The standard slots, plus any other row, in display order. */

@@ -37,6 +37,32 @@ export type SettingHome =
   | { kind: "manifest"; file: ManifestFile }
   | { kind: "api" };
 
+/**
+ * The element a section label scrolls to on its page (`?at=<id>`, read by the hub). A label with
+ * no entry lands on the page.
+ */
+const ANCHORS: Readonly<Record<string, string>> = {
+  "settings|General": "settings-general",
+  "settings|License defaults": "settings-license",
+  "settings|Web origins": "settings-origins",
+  "settings|Repository": "settings-repository",
+  "settings|Alerts": "settings-alerts",
+  "settings|Sign-in mail": "settings-mail",
+  "settings|Lazy deltas": "settings-deltas",
+  "keys|Signing keys": "keys-signing",
+  "keys|Secrets": "keys-secrets",
+  "keys|CI publishing": "keys-ci",
+  "presentation|Hosting and quotas": "presentation-hosting",
+};
+
+/** The element id a home's section lands on, if the page has one for it. */
+export function anchorOf(home: {
+  page: ProductPageId;
+  section?: string;
+}): string | null {
+  return ANCHORS[`${home.page}|${home.section ?? ""}`] ?? null;
+}
+
 const at = (
   page: ProductPageId,
   section?: string,
@@ -76,12 +102,11 @@ export const SETTING_HOMES: Readonly<Record<string, SettingHome>> = {
   "core.keys": at("keys", "Signing keys"),
   // The manifest names the secrets and the console sets each value, sealed.
   "core.secrets": at("keys", "Secrets"),
-  // ST-11: moved out of SQL into registry rows; the settings route writes them, no page has a
-  // control yet (follow-up: a Settings editor).
-  "deltas.lazy.enabled": API,
-  "deltas.lazy.hotDevices": API,
-  "deltas.lazy.dailyCap": API,
-  "email.dailyCap": API,
+  // ST-11: registry rows; Settings → Features → General has their editors (ST-08n).
+  "deltas.lazy.enabled": at("settings", "Lazy deltas"),
+  "deltas.lazy.hotDevices": at("settings", "Lazy deltas"),
+  "deltas.lazy.dailyCap": at("settings", "Lazy deltas"),
+  "email.dailyCap": at("settings", "Sign-in mail"),
   "assets.releases.mirror": at("presentation", "Hosting and quotas"),
   "assets.quota.mediaBytes": at("presentation", "Hosting and quotas"),
   "assets.quota.releaseBytes": at("presentation", "Hosting and quotas"),
