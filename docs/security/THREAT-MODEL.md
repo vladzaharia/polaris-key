@@ -6278,6 +6278,20 @@ The login card is the one place a Polaris Key account's credentials are entered
   requested at <time> from <place>" and confirming only lets the asking browser finish: a link
   phished out of a victim signs in the attacker's own flow at most, never the device that opened
   it. A code and the link complete one flow once (atomic consume).
+- **The flow outlives its code (PX-12).** The expired-link page offers **Send a new code** to the
+  masked address, so the flow record and its `__Host-pkey_signin` cookie live one hour (the
+  per-recipient send window) while the code and link keep their ten minutes. Nothing a ten-minute
+  flow refused is allowed now: verify, the poll and the link's confirm check the code's age first
+  (a stale code is `signin_expired`, no attempt counted), and the link record and the code still
+  expire at ten minutes. What lives longer is the sealed address in the flow record and the right
+  to ask this browser's own flow for a new code, under the resend's wait, the per-flow cap of 5 and
+  I-02's limits. `GET /api/signin/flow` and the expired page show the address masked
+  (`a•••@example.com`) and only to the browser holding the cookie; a link opened anywhere else, or
+  one already used (its flow is gone), names no address. The page's form is a `POST` of the resend
+  route. `SameSite=Lax` is scoped to the site, not the origin, so a sibling host on the same site
+  could carry the cookie: the form `POST` is refused unless `Sec-Fetch-Site` is `same-origin` (or,
+  without fetch metadata, `Origin` equals the request's), and a refusal is the missing-flow page
+  (Sign in again), so no live code is retired and nothing is named.
 - **The email gate and the join offer (owner decisions, 2026-10-04).** No account row and no
   session exist until the gate passes; its record is server-held and named by a host-only
   `__Host-pkey_gate` cookie, so another browser cannot drive it. A provider-asserted verified
@@ -6618,8 +6632,9 @@ and 12 (cross-tenant correlation) are the deltas.
 - **Relink (item 9).** The target is named only by a subject of THIS product (`target_not_found`
   otherwise; never an email, never another product's subject). The operator needs an interactive
   sign-in no older than 5 minutes (`session.stepUpAt`, set only by a `stepUp=1` flow whose ID token
-  carries `auth_time`, which an ordinary sign-in never sets; `isSteppedUp`); `/manage/login?stepUp=1` sends
-  `prompt=login` and `max_age=0`, and the callback refuses a step-up whose `auth_time` is already
+  carries `auth_time`, which an ordinary sign-in never sets; `isSteppedUp`); `/manage/login?stepUp=1` shows the
+  card first, and only its Continue (`go=1`) starts the flow, which sends `prompt=login` and `max_age=0`;
+  the callback refuses a step-up whose `auth_time` is already
   stale. A reason (1 to 500 characters) is mandatory. Both accounts are emailed at their verified
   addresses BEFORE the owner pointer moves; the move is a conditional reassign (a concurrent change
   answers `conflict` and nothing is recorded), it is audited with before and after, and the
@@ -6638,6 +6653,59 @@ and 12 (cross-tenant correlation) are the deltas.
   developer who already holds a buyer email can still find that buyer's row by it: the email is
   the developer's own record. The step-up window is enforced server-side; the console's own check
   only decides whether to offer the form or "Sign in again".
+
+### The console sign-in card (ST-30, slice 1)
+
+**Threat.** `GET /manage/login` used to redirect straight to the IdP. It now serves a card, so the
+page, its policy and the redirect it leads to are new surface: a sign-in that starts without a
+click, a card policy that lets a form post anywhere, a 401 that tells an unauthenticated caller
+about sessions, and an address typed into a URL.
+
+**Controls and rows.**
+
+- **The card starts no flow.** `GET /manage/login` answers 200 with a script-free page and sets no
+  cookie and writes no flow record. Only `go=1` (the Continue button) starts PKCE, sets the
+  binding cookie and counts against the `adminLogin` limit (20 a minute per network); viewing the
+  card is not counted, so a refresh cannot lock anyone out. `returnTo` is re-checked by
+  `sanitizeReturnTo` before it is written into the page or the flow.
+- **`form-action` names the IdP.** Browsers apply `form-action` to every redirect a submission
+  follows, so the card's policy is `form-action 'self'` plus the configured issuer's origin and the
+  authorization-endpoint origin from discovery, never an origin from the request. `discover()`
+  validates the endpoint before it is used: https only, no port, no credentials, no reserved or
+  private address, and a host on the issuer's allowlist. A failed discovery adds nothing; the
+  card then shows and Continue answers the 502 card. The origin set is cached with discovery and a
+  failed discovery is remembered briefly (45 s) for card views, so an IdP outage does not turn every
+  view into an outbound fetch.
+- **The expired-session marker.** The console API's 401 carries `X-PKey-Session: expired` only when
+  the request presented a console session cookie (and no bearer token) that does not resolve. A
+  forged, expired and revoked cookie look the same, a request with no cookie gets no header, and
+  the answer reveals nothing a caller without a cookie could not already see (it names no account
+  and no reason). Same-origin only: the API sends no CORS headers, so a page on another origin
+  cannot read it.
+- **`login_hint`.** The typed address is passed to the IdP as `login_hint` only when it is a single
+  plausible address of at most 254 characters; anything else is dropped. It is a hint: the IdP
+  decides who signs in and the callback decides who may use the console, so a wrong or hostile
+  hint changes nothing about access. It is not stored.
+- **Use another account.** The 403 card's action goes straight to the IdP with
+  `prompt=select_account`, or `prompt=login` when discovery does not list `select_account`. A
+  step-up keeps `prompt=login` and `max_age=0` and ignores this parameter.
+- **The 403 card names the account.** "{email} can't open this console" shows the address the IdP
+  just verified for this browser, to that browser only, on a `no-store` page with
+  `referrer-policy: no-referrer`; it adds nothing a person who just typed it does not know. The
+  email is HTML-escaped.
+- **The step-up email comes from the verified session.** The card shows and forwards an address
+  only from `sessionFromRequest` (signature, expiry and revocation checked), never from the query.
+  Without a valid session the step-up card shows the ordinary field.
+- **Residual: the address is in the GET URL.** The Continue form is a GET, so the typed address
+  appears in `/manage/login?go=1&login_hint=...` in the browser's history and in access logs on
+  the way. `referrer-policy: no-referrer` stops it leaving in a Referer header, and the 302 to the
+  IdP carries it as the IdP's own `login_hint`. SIGN-IN.md §3.13 prefers a POST with a 303; that is
+  slice 2.
+
+Tests: `test/brandPages.test.ts` (the card, its `form-action`, the error cards, no limit on
+views), `test/identityBinders.test.ts` (`login_hint`), `test/admin.test.ts` (the 401 marker),
+`packages/admin/e2e/consoleSignin.e2e.test.ts` (Continue reaches the IdP in Chromium under the real
+policy).
 
 ### Identity as a per-product service (PX-W17)
 
@@ -9649,11 +9717,23 @@ the bundle directories to the build's. The docs `check:links` adds the tier rule
 content links only to public pages (existing exceptions are held in `link-tier-debt.json`, which
 only shrinks).
 
-**Residual.** Until DOC-02b scopes the sidebar to the page's door, a public page's sidebar lists
-gated pages' titles and URLs; no gated page text leaks (the docs source is public anyway).
-Anything placed under `/assets/` in the admin build is public by design. The
-developer door and Help are public, and a file under `/docs/_astro/` that only a gated page uses
-(an imported image) is public with it; the repository that builds them is public too. The search
-UI still loads the public bundle for every reader until DOC-02c picks the bundle by tier, so a
-member searching sees public results only. `robots.txt` for the docs host is not served yet (it
-needs a route, with its OpenAPI row).
+**Per-file tiers.** A file under `/docs/_astro/` is public unless the build finds that only gated
+pages load it: `collect-docs-tiers.ts` writes those into `docsTiers.generated.ts`
+(`DOCS_ASSET_TIERS`, the lowest tier among the pages and files that name it), and `docsTierOf`
+serves them at that tier. A moved-page redirect page is served at its target's tier
+(`DOCS_REDIRECT_TIERS`), so an old Help link reaches Help. `test/docsTiersParity.test.ts` pins both
+tables to the built site. The access page carries the wanted page as `returnTo`, which the Worker
+puts on the Sign in link only after `sanitizeReturnTo` (a hand-made value falls back to the plain
+link); a signed-in reader without the admin area gets the access page's admin wording under a 403.
+
+**The customer host (LK-09).** Help is served at `polaris.locker/docs/help/*` through `handleDocs`,
+confined by `customerDocsPath` (Help, `/docs/_astro/`, `/docs/pagefind/`, `/docs/branding/`, the
+404 page); every other `/docs` path answers a 302 to the console host, and `key.plrs.im/docs/help/*`
+a 301 to the customer host. All served paths are public tier; the gate still runs on each.
+
+**Residual.** The docs sidebar is scoped per door in the page (`routeData.ts`), but a public
+page's HTML still names only its own door's pages. Anything placed under `/assets/` in the admin
+build is public by design. The developer door and Help are public. The search UI still loads the
+public bundle for every reader until DOC-02c picks the bundle by tier, so a member searching sees
+public results only (DOC-02c). `robots.txt` for the docs host is not served yet, and public HTML is
+`no-store`, not cacheable (LK-09).

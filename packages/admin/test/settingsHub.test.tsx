@@ -17,7 +17,7 @@ afterEach(() => {
 });
 
 describe("Settings hub", () => {
-  it("has one h1, four tabs as links, History and All settings in the header, and no area header", () => {
+  it("has one h1, five tabs as links, History and All settings in the header, and no area header", () => {
     renderAt(
       "#/p/djdl/settings/features",
       <SettingsHub slug="djdl" page="services">
@@ -31,6 +31,7 @@ describe("Settings hub", () => {
     expect(links.map((l) => l.textContent)).toEqual([
       "Features",
       "Presentation",
+      "Polaris Locker",
       "Keys & secrets",
       "Members",
     ]);

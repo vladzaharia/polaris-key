@@ -1,5 +1,5 @@
 /**
- * The gated docs site (`/docs`) + the `returnTo` leg of the admin sign-in.
+ * The tiered docs site (`/docs`) + the `returnTo` leg of the admin sign-in.
  *
  * What is pinned here, and why it matters:
  *  - The site is tiered (ST-29; docs plan §3.1, D2): the landing page, Help, the developer sections
@@ -7,8 +7,10 @@
  *    Operate → Platform, Contribute, the full search bundle and every unlisted path need
  *    `can(platform, docs)`. The worker's tier table must agree with the docs site's own
  *    `TIER_PREFIXES`, or a page's sidebar door and its gate would disagree.
- *  - The unauthenticated response is a redirect to the public access page, and the callback honours it ONLY through `sanitizeReturnTo`'s allowlist — the
- *    validator matrix below is the open-redirect defense (R9 discipline).
+ *  - A sessionless request for a gated page is a redirect to the public access page, carrying the
+ *    page as `returnTo`; the access page and the sign-in callback honour it ONLY through
+ *    `sanitizeReturnTo`'s allowlist. The validator matrix below is the open-redirect defense
+ *    (R9 discipline).
  *  - Cache policy is part of the gate: HTML is `no-store`, immutable assets are `private` —
  *    a shared cache must never hold gated bytes.
  */
@@ -34,6 +36,7 @@ import {
 } from "../../docs/src/lib/doors.js";
 import { PRINCIPALS, type PrincipalName } from "./rbacFixtures.js";
 import { matchRoute } from "../src/router.js";
+import { DOCS_ASSET_TIERS } from "../src/docsTiers.generated.js";
 import {
   handleAdminCallback,
   handleAdminLogin,
@@ -68,6 +71,20 @@ const ASSET_FILES: Record<string, { body: string; type: string }> = {
     type: "text/html",
   },
   "/docs/start/index.html": { body: "<html>start</html>", type: "text/html" },
+  "/docs/access/index.html": {
+    body: '<html>access <a href="/manage/login">Sign in</a></html>',
+    type: "text/html",
+  },
+  "/docs/access/admin/index.html": {
+    body: "<html>platform admins only</html>",
+    type: "text/html",
+  },
+  "/docs/sitemap-index.xml": { body: "<sitemapindex/>", type: "text/xml" },
+  "/docs/sitemap-0.xml": { body: "<urlset/>", type: "text/xml" },
+  "/docs/users/activation/index.html": {
+    body: "<html>redirect to help</html>",
+    type: "text/html",
+  },
   "/docs/_astro/app.abc123.css": { body: "body{}", type: "text/css" },
   "/docs/help/activate/index.html": {
     body: "<html>help activate</html>",
@@ -163,13 +180,76 @@ describe("router: /docs is a reserved platform route", () => {
 describe("handleDocs: the platform-admin gate", () => {
   it("sends a sessionless reader of a gated page to the public access page", async () => {
     const res = await handleDocs(
-      get("/docs/services/license/"),
+      get("/docs/operate/console/members/"),
       docsEnv(),
       NOW,
     );
     expect(res.status).toBe(302);
-    expect(res.headers.get("location")).toBe("/docs/access/");
+    expect(res.headers.get("location")).toBe(
+      `/docs/access/?returnTo=${encodeURIComponent("/docs/operate/console/members/")}`,
+    );
     expect(res.headers.get("cache-control")).toBe("no-store");
+  });
+
+  it("puts the page the reader wanted on the access page's Sign in link, and only a valid one", async () => {
+    const env = docsEnv();
+    const ok = await handleDocs(
+      get("/docs/access/?returnTo=%2Fdocs%2Foperate%2Fconsole%2Fmembers%2F"),
+      env,
+      NOW,
+    );
+    expect(await ok.text()).toContain(
+      'href="/manage/login?returnTo=%2Fdocs%2Foperate%2Fconsole%2Fmembers%2F"',
+    );
+    for (const bad of [
+      "https%3A%2F%2Fevil.example%2F",
+      "%2F%2Fevil.example",
+      "%2Fdocs%2F..%2Fmanage",
+      "x%22%3E%3Cscript%3E",
+    ]) {
+      const res = await handleDocs(
+        get(`/docs/access/?returnTo=${bad}`),
+        env,
+        NOW,
+      );
+      expect(await res.text(), bad).toContain('href="/manage/login"');
+    }
+    expect(
+      await (await handleDocs(get("/docs/access/"), env, NOW)).text(),
+    ).toContain('href="/manage/login"');
+  });
+
+  it("serves the sitemap with no session, and the old Help redirect pages at their target's tier", async () => {
+    const env = docsEnv();
+    for (const path of [
+      "/docs/sitemap-index.xml",
+      "/docs/sitemap-0.xml",
+      "/docs/users/activation/",
+    ])
+      expect((await handleDocs(get(path), env, NOW)).status, path).toBe(200);
+  });
+
+  it("gives a signed-in reader without the admin area the access page's admin wording, under 403", async () => {
+    const env = docsEnv();
+    const cookie = await adminCookie(env);
+    env.PLATFORM_ADMIN_GROUP = "someone-else";
+    const res = await handleDocs(
+      get("/docs/operate/platform/runbook/", cookie),
+      env,
+      NOW,
+    );
+    expect(res.status).toBe(403);
+    expect(await res.text()).toContain("platform admins only");
+    // A file stays a bare refusal.
+    expect(
+      (
+        await handleDocs(
+          get("/docs/pagefind-admin/pagefind.js", cookie),
+          env,
+          NOW,
+        )
+      ).status,
+    ).toBe(403);
   });
 
   it("serves Help and the public search bundle with no session", async () => {
@@ -211,8 +291,7 @@ describe("handleDocs: the platform-admin gate", () => {
       "/docs/operate/platform/runbook/",
       "/docs/contribute/",
       "/docs/operate/console/members/",
-      "/docs/services/license/",
-      "/docs/sitemap-index.xml",
+      "/docs/a-new-directory/",
     ]) {
       const res = await handleDocs(get(path), env, NOW);
       expect(res.status, path).toBe(302);
@@ -261,7 +340,7 @@ describe("handleDocs: the platform-admin gate", () => {
     ).toBe(200);
   });
 
-  it("serves a signed-in operator with no-store HTML and the hash-carrying CSP", async () => {
+  it("serves a signed-in operator the hash-carrying CSP, public HTML revalidating and gated HTML no-store", async () => {
     const env = docsEnv();
     const res = await handleDocs(
       get("/docs/", await adminCookie(env)),
@@ -270,7 +349,15 @@ describe("handleDocs: the platform-admin gate", () => {
     );
     expect(res.status).toBe(200);
     expect(await res.text()).toContain("docs home");
-    expect(res.headers.get("cache-control")).toBe("no-store");
+    expect(res.headers.get("cache-control")).toBe(
+      "public, max-age=300, must-revalidate",
+    );
+    const gated = await handleDocs(
+      get("/docs/operate/platform/runbook/", await adminCookie(env)),
+      env,
+      NOW,
+    );
+    expect(gated.headers.get("cache-control")).toBe("no-store");
     const csp = res.headers.get("content-security-policy") ?? "";
     expect(csp).toContain("script-src 'self'");
     expect(csp).not.toContain("unsafe-inline");
@@ -305,7 +392,7 @@ describe("handleDocs: asset resolution", () => {
     }
   });
 
-  it("marks content-hashed assets private+immutable, never shared-cacheable", async () => {
+  it("marks public content-hashed assets public+immutable and gated ones private", async () => {
     const env = docsEnv();
     const cookie = await adminCookie(env);
     const res = await handleDocs(
@@ -315,7 +402,7 @@ describe("handleDocs: asset resolution", () => {
     );
     expect(res.status).toBe(200);
     expect(res.headers.get("cache-control")).toBe(
-      "private, max-age=31536000, immutable",
+      "public, max-age=31536000, immutable",
     );
     // Pagefind's LOADER files have stable names — the rotating entry/loader set must
     // revalidate, or a deploy strands cached browsers on deleted shards (search breaks).
@@ -324,15 +411,30 @@ describe("handleDocs: asset resolution", () => {
       env,
       NOW,
     );
-    expect(loader.headers.get("cache-control")).toBe("private, no-cache");
+    expect(loader.headers.get("cache-control")).toBe("public, no-cache");
     const shard = await handleDocs(
       get("/docs/pagefind/index/en_abc123.pf_index", cookie),
       env,
       NOW,
     );
     expect(shard.headers.get("cache-control")).toBe(
+      "public, max-age=31536000, immutable",
+    );
+    // A tier above public is never shared-cacheable.
+    const member = await handleDocs(
+      get("/docs/pagefind-member/index/en_m1.pf_index", cookie),
+      env,
+      NOW,
+    );
+    expect(member.headers.get("cache-control")).toBe(
       "private, max-age=31536000, immutable",
     );
+    const memberLoader = await handleDocs(
+      get("/docs/pagefind-admin/pagefind.js", cookie),
+      env,
+      NOW,
+    );
+    expect(memberLoader.headers.get("cache-control")).toBe("private, no-cache");
   });
 
   it("serves the site's styled 404 for a miss", async () => {
@@ -430,7 +532,7 @@ const stubVerifier: IdTokenVerifier = {
 
 /** Drive /manage/login and pull the `state` the flow was stored under. */
 async function startLogin(env: Env, returnTo?: string): Promise<string> {
-  const query = returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : "";
+  const query = `?go=1${returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : ""}`;
   const res = await handleAdminLogin(get(`/manage/login${query}`), env);
   expect(res.status).toBe(302);
   const authorize = new URL(res.headers.get("location")!);
@@ -532,7 +634,9 @@ describe("the docs tiers", () => {
       ([path]) =>
         !/^\/docs\/(_astro|branding|schemas|openapi|pagefind(-member|-admin)?)\//.test(
           path,
-        ) && path !== "/docs/404.html",
+        ) &&
+        path !== "/docs/404.html" &&
+        !/^\/docs\/sitemap-/.test(path),
     );
     const sitePrefixes = TIER_PREFIXES.map(([prefix]) =>
       prefix.endsWith("/")
@@ -567,5 +671,28 @@ describe("the docs tiers", () => {
       expect(docsAllows(p, "member"), name).toBe(member);
       expect(docsAllows(p, "admin"), name).toBe(admin);
     }
+  });
+});
+
+describe("the per-file tiers (docsTiers.generated.ts)", () => {
+  it("serve a file only gated pages load at that tier, and everything else under _astro in public", () => {
+    const gated = Object.entries(DOCS_ASSET_TIERS);
+    for (const [path, tier] of gated) expect(docsTierOf(path), path).toBe(tier);
+    expect(docsTierOf("/docs/_astro/never-listed.abc.css")).toBe("public");
+  });
+
+  it("refuse a gated-only asset to a sessionless reader", async () => {
+    const [path] = Object.keys(DOCS_ASSET_TIERS);
+    if (path === undefined) return;
+    const res = await handleDocs(get(path), docsEnv(), NOW);
+    expect(res.status).toBe(302);
+  });
+});
+
+describe("the /help alias", () => {
+  it("matches /help and everything under it", () => {
+    for (const p of ["/help", "/help/", "/help/activate/", "/help/a/b"])
+      expect(matchRoute(p), p).toEqual({ kind: "helpAlias" });
+    expect(matchRoute("/helpful/x")).not.toEqual({ kind: "helpAlias" });
   });
 });

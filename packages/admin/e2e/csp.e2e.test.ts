@@ -948,6 +948,33 @@ describe("overlays under the Worker's CSP", () => {
     await page.context().close();
   });
 
+  it("g p below 1024 px opens the drawer with the switcher open and focus inside it", async () => {
+    const page = await open({ width: 390, height: 844 });
+    await page.keyboard.press("g");
+    await page.keyboard.press("p");
+    await page.getByRole("dialog", { name: "Switch product" }).waitFor();
+    await page.waitForTimeout(300);
+    expect(
+      await page.evaluate(
+        () =>
+          !!document.activeElement?.closest(
+            "[role=dialog][aria-label='Switch product']",
+          ),
+      ),
+    ).toBe(true);
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(300);
+    // Escape closes the switcher first; focus returns to its card, in the drawer.
+    expect(
+      await page.evaluate(
+        () =>
+          document.activeElement?.hasAttribute("data-context-card") ?? false,
+      ),
+    ).toBe(true);
+    await page.unrouteAll({ behavior: "ignoreErrors" });
+    await page.context().close();
+  });
+
   it("closes the drawer when the window grows past 1024 px, releasing the page", async () => {
     const page = await open({ width: 390, height: 844 });
     await page.getByRole("button", { name: "Open navigation" }).click();
@@ -963,8 +990,9 @@ describe("overlays under the Worker's CSP", () => {
           ?.closest("[aria-hidden=true]"),
       })),
     ).toEqual({ pointerEvents: "auto", mainHidden: false });
-    await page.locator("aside a[data-page=home]").click({ timeout: 2000 });
-    expect(await page.evaluate(() => location.hash)).toBe("#/");
+    // The product context has no Home link: Activity is a page it does list.
+    await page.locator("aside a[data-page=activity]").click({ timeout: 2000 });
+    expect(await page.evaluate(() => location.hash)).toMatch(/\/activity$/);
     await page.context().close();
     process.stdout.write(`CSP overlay report: ${JSON.stringify(report)}\n`);
   });

@@ -1,4 +1,6 @@
 <div class="portal" data-brand="locker">
+  <!-- 2026-10-20 shell (PX-35, BR-lockups): the trimmed lockup, the nav, the account chip (Activate a
+       license, Help and Privacy are in its menu: portal.library-menu). -->
   <header class="portal-top">
     <a class="portal-brand" href="#"><i class="lk-lockup" role="img" aria-label="Polaris Locker"></i></a>
     <nav class="portal-nav" aria-label="Polaris Locker">
@@ -6,7 +8,6 @@
       <a href="#">Discover</a>
     </nav>
     <div class="portal-actions">
-      <button class="btn outline sm"><i class="ic ic-key-round accent"></i>Activate license</button>
       <span class="account"><span class="avatar sm">PR</span><span>Priya Raman</span><i class="ic ic-chevron-down"></i></span>
     </div>
   </header>
@@ -22,7 +23,7 @@
       <div class="card-head"><div class="title mk-cluster baseline"><h2 id="attn-title">Needs you</h2><span class="count">2</span></div></div>
       <div class="card-rows">
         <div class="card-row"><span class="logo sm" data-product="diceroll"></span><span class="grow"><strong>Diceroll</strong> is on 3 of 3 devices</span><button class="btn primary sm">Free a device</button></div>
-        <div class="card-row"><span class="logo sm">T</span><span class="grow mk-stack-1"><span><strong>Tidewater Studio</strong> updates end Oct 31</span><span class="meta">Then keeps 2.4</span></span><button class="btn outline sm">Renew</button></div>
+        <div class="card-row"><span class="logo sm">T</span><span class="grow mk-stack-1"><span><strong>Tidewater Studio</strong> updates end Oct 31, 2026</span><span class="meta">Then keeps 2.4</span></span><button class="btn outline sm">Renew</button></div>
       </div>
     </section>
 
@@ -38,8 +39,10 @@
       </div>
     </div>
 
-    <div class="portal-grid compact">
-      <article class="ptile compact" aria-labelledby="t0">
+    <!-- The dense grid (PX-35): four up at 1440 (eight tiles in two rows), five from 1700, three from
+         761, two on a phone; each tile its tier, an issue pill, one outlined action and More. -->
+    <div class="portal-grid dense">
+      <article class="ptile" aria-labelledby="t0">
         <div class="art" data-product="djdl"></div>
         <div class="ptile-head">
           <span class="logo" data-product="djdl"></span>
@@ -47,151 +50,153 @@
         </div>
         <div class="ptile-body"><div class="mk-cluster"><span class="pill sm tier"><i class="ic ic-key-round"></i>Education</span></div></div>
         <div class="ptile-foot">
-          <button class="btn outline sm"><i class="ic ic-download"></i>Download</button>
-          <button class="btn outline icon sm" aria-label="More for DJDL"><i class="ic ic-ellipsis"></i></button>
+          <button class="btn outline"><i class="ic ic-download"></i>Download</button>
+          <button class="btn outline icon" aria-label="More for DJDL"><i class="ic ic-ellipsis"></i></button>
         </div>
       </article>
-      <article class="ptile compact" aria-labelledby="t1">
+      <article class="ptile" aria-labelledby="t1">
         <div class="art" data-product="diceroll"></div>
         <div class="ptile-head">
           <span class="logo" data-product="diceroll"></span>
           <div class="ptile-title"><h2 id="t1"><a href="#">Diceroll</a></h2></div>
         </div>
-        <div class="ptile-body"><div class="mk-cluster"><span class="pill sm tier"><i class="ic ic-key-round"></i>Standard</span></div></div>
+        <div class="ptile-body"><div class="mk-cluster"><span class="pill sm tier"><i class="ic ic-key-round"></i>Standard</span><span class="pill sm warning"><i class="ic ic-triangle-alert"></i>3/3 devices</span></div></div>
         <div class="ptile-foot">
-          <button class="btn outline sm"><i class="ic ic-monitor-smartphone"></i>Free a device</button>
-          <button class="btn outline icon sm" aria-label="More for Diceroll"><i class="ic ic-ellipsis"></i></button>
+          <button class="btn outline"><i class="ic ic-monitor-smartphone"></i>Free a device</button>
+          <button class="btn outline icon" aria-label="More for Diceroll"><i class="ic ic-ellipsis"></i></button>
         </div>
       </article>
-      <article class="ptile compact" aria-labelledby="t2">
+      <article class="ptile" aria-labelledby="t2">
         <div class="art noart" style="--tint: var(--pk-service-sync-subtle)"><span class="logo xl">T</span></div>
         <div class="ptile-head plain">
           <div class="ptile-title"><h2 id="t2"><a href="#">Tidewater Studio</a></h2></div>
         </div>
         <div class="ptile-body"><div class="mk-cluster"><span class="pill sm tier"><i class="ic ic-key-round"></i>Pro</span></div></div>
         <div class="ptile-foot">
-          <button class="btn outline sm"><i class="ic ic-download"></i>Download</button>
-          <button class="btn outline icon sm" aria-label="More for Tidewater Studio"><i class="ic ic-ellipsis"></i></button>
+          <button class="btn outline"><i class="ic ic-download"></i>Download</button>
+          <button class="btn outline icon" aria-label="More for Tidewater Studio"><i class="ic ic-ellipsis"></i></button>
         </div>
       </article>
-      <article class="ptile compact" aria-labelledby="t3">
+      <article class="ptile" aria-labelledby="t3">
         <div class="art noart" style="--tint: var(--pk-service-core-subtle)"><span class="logo xl">N</span></div>
         <div class="ptile-head plain">
           <div class="ptile-title"><h2 id="t3"><a href="#">Nightfall</a></h2></div>
         </div>
         <div class="ptile-body"><div class="mk-cluster"><span class="pill sm tier"><i class="ic ic-key-round"></i>Deluxe</span></div></div>
         <div class="ptile-foot">
-          <button class="btn outline sm"><i class="ic ic-arrow-up-right"></i>Open</button>
-          <button class="btn outline icon sm" aria-label="More for Nightfall"><i class="ic ic-ellipsis"></i></button>
+          <button class="btn outline"><i class="ic ic-arrow-up-right"></i>Open</button>
+          <button class="btn outline icon" aria-label="More for Nightfall"><i class="ic ic-ellipsis"></i></button>
         </div>
       </article>
-      <article class="ptile compact" aria-labelledby="t4">
+      <article class="ptile" aria-labelledby="t4">
         <div class="art noart" style="--tint: var(--pk-service-update-subtle)"><span class="logo xl">S</span></div>
         <div class="ptile-head plain">
           <div class="ptile-title"><h2 id="t4"><a href="#">Storytime</a></h2></div>
         </div>
         <div class="ptile-body"><div class="mk-cluster"><span class="pill sm tier"><i class="ic ic-key-round"></i>Family</span></div></div>
         <div class="ptile-foot">
-          <button class="btn outline sm"><i class="ic ic-arrow-up-right"></i>Open</button>
-          <button class="btn outline icon sm" aria-label="More for Storytime"><i class="ic ic-ellipsis"></i></button>
+          <button class="btn outline"><i class="ic ic-arrow-up-right"></i>Open</button>
+          <button class="btn outline icon" aria-label="More for Storytime"><i class="ic ic-ellipsis"></i></button>
         </div>
       </article>
-      <article class="ptile compact" aria-labelledby="t5">
+      <article class="ptile" aria-labelledby="t5">
         <div class="art noart" style="--tint: var(--pk-service-release-subtle)"><span class="logo xl">C</span></div>
         <div class="ptile-head plain">
           <div class="ptile-title"><h2 id="t5"><a href="#">Cartograph</a></h2></div>
         </div>
         <div class="ptile-body"><div class="mk-cluster"><span class="pill sm tier"><i class="ic ic-key-round"></i>Standard</span></div></div>
         <div class="ptile-foot">
-          <button class="btn outline sm"><i class="ic ic-download"></i>Download</button>
-          <button class="btn outline icon sm" aria-label="More for Cartograph"><i class="ic ic-ellipsis"></i></button>
+          <button class="btn outline"><i class="ic ic-download"></i>Download</button>
+          <button class="btn outline icon" aria-label="More for Cartograph"><i class="ic ic-ellipsis"></i></button>
         </div>
       </article>
-      <article class="ptile compact" aria-labelledby="t6">
+      <article class="ptile" aria-labelledby="t6">
         <div class="art noart" style="--tint: var(--pk-service-config-subtle)"><span class="logo xl">L</span></div>
         <div class="ptile-head plain">
           <div class="ptile-title"><h2 id="t6"><a href="#">Lumen Notes</a></h2></div>
         </div>
         <div class="ptile-body"><div class="mk-cluster"><span class="pill sm tier"><i class="ic ic-key-round"></i>Plus</span></div></div>
         <div class="ptile-foot">
-          <button class="btn outline sm"><i class="ic ic-download"></i>Download</button>
-          <button class="btn outline icon sm" aria-label="More for Lumen Notes"><i class="ic ic-ellipsis"></i></button>
+          <button class="btn outline"><i class="ic ic-download"></i>Download</button>
+          <button class="btn outline icon" aria-label="More for Lumen Notes"><i class="ic ic-ellipsis"></i></button>
         </div>
       </article>
-      <article class="ptile compact" aria-labelledby="t7">
+      <article class="ptile" aria-labelledby="t7">
         <div class="art noart" style="--tint: var(--pk-service-identity-subtle)"><span class="logo xl">P</span></div>
         <div class="ptile-head plain">
           <div class="ptile-title"><h2 id="t7"><a href="#">Pocket Synth</a></h2></div>
         </div>
         <div class="ptile-body"><div class="mk-cluster"><span class="pill sm tier"><i class="ic ic-key-round"></i>Standard</span></div></div>
         <div class="ptile-foot">
-          <button class="btn outline sm"><i class="ic ic-arrow-up-right"></i>Open</button>
-          <button class="btn outline icon sm" aria-label="More for Pocket Synth"><i class="ic ic-ellipsis"></i></button>
+          <button class="btn outline"><i class="ic ic-arrow-up-right"></i>Open</button>
+          <button class="btn outline icon" aria-label="More for Pocket Synth"><i class="ic ic-ellipsis"></i></button>
         </div>
       </article>
-      <article class="ptile compact" aria-labelledby="t8">
+      <article class="ptile" aria-labelledby="t8">
         <div class="art noart" style="--tint: var(--pk-service-license-subtle)"><span class="logo xl">D</span></div>
         <div class="ptile-head plain">
           <div class="ptile-title"><h2 id="t8"><a href="#">Driftwood</a></h2></div>
         </div>
         <div class="ptile-body"><div class="mk-cluster"><span class="pill sm tier"><i class="ic ic-key-round"></i>Trial</span></div></div>
         <div class="ptile-foot">
-          <button class="btn outline sm"><i class="ic ic-download"></i>Download</button>
-          <button class="btn outline icon sm" aria-label="More for Driftwood"><i class="ic ic-ellipsis"></i></button>
+          <button class="btn outline"><i class="ic ic-download"></i>Download</button>
+          <button class="btn outline icon" aria-label="More for Driftwood"><i class="ic ic-ellipsis"></i></button>
         </div>
       </article>
-      <article class="ptile compact" aria-labelledby="t9">
+      <article class="ptile" aria-labelledby="t9">
         <div class="art noart" style="--tint: var(--pk-service-distribution-subtle)"><span class="logo xl">Q</span></div>
         <div class="ptile-head plain">
           <div class="ptile-title"><h2 id="t9"><a href="#">Quill</a></h2></div>
         </div>
         <div class="ptile-body"><div class="mk-cluster"><span class="pill sm tier"><i class="ic ic-key-round"></i>Free</span></div></div>
         <div class="ptile-foot">
-          <button class="btn outline sm"><i class="ic ic-download"></i>Download</button>
-          <button class="btn outline icon sm" aria-label="More for Quill"><i class="ic ic-ellipsis"></i></button>
+          <button class="btn outline"><i class="ic ic-download"></i>Download</button>
+          <button class="btn outline icon" aria-label="More for Quill"><i class="ic ic-ellipsis"></i></button>
         </div>
       </article>
-      <article class="ptile compact" aria-labelledby="t10">
+      <article class="ptile" aria-labelledby="t10">
         <div class="art noart" style="--tint: var(--pk-service-core-subtle)"><span class="logo xl">O</span></div>
         <div class="ptile-head plain">
           <div class="ptile-title"><h2 id="t10"><a href="#">Orbit Racer</a></h2></div>
         </div>
         <div class="ptile-body"><div class="mk-cluster"><span class="pill sm tier"><i class="ic ic-key-round"></i>Standard</span></div></div>
         <div class="ptile-foot">
-          <button class="btn outline sm"><i class="ic ic-arrow-up-right"></i>Open</button>
-          <button class="btn outline icon sm" aria-label="More for Orbit Racer"><i class="ic ic-ellipsis"></i></button>
+          <button class="btn outline"><i class="ic ic-arrow-up-right"></i>Open</button>
+          <button class="btn outline icon" aria-label="More for Orbit Racer"><i class="ic ic-ellipsis"></i></button>
         </div>
       </article>
-      <article class="ptile compact" aria-labelledby="t11">
+      <article class="ptile" aria-labelledby="t11">
         <div class="art noart" style="--tint: var(--pk-service-sync-subtle)"><span class="logo xl">M</span></div>
         <div class="ptile-head plain">
           <div class="ptile-title"><h2 id="t11"><a href="#">Mosaic</a></h2></div>
         </div>
         <div class="ptile-body"><div class="mk-cluster"><span class="pill sm tier"><i class="ic ic-key-round"></i>Lifetime</span></div></div>
         <div class="ptile-foot">
-          <button class="btn outline sm"><i class="ic ic-download"></i>Download</button>
-          <button class="btn outline icon sm" aria-label="More for Mosaic"><i class="ic ic-ellipsis"></i></button>
+          <button class="btn outline"><i class="ic ic-download"></i>Download</button>
+          <button class="btn outline icon" aria-label="More for Mosaic"><i class="ic ic-ellipsis"></i></button>
         </div>
       </article>
     </div>
 
-    <section class="mk-stack-4" aria-labelledby="miss-title">
-      <h2 id="miss-title" class="type-card">Missing a license?</h2>
-      <ul class="media-list">
-        <li><span class="icon-tile muted"><i class="ic ic-mail"></i></span>
-          <span><strong>Sent to another email?</strong>Add that email under <a href="#">Sign-in methods</a>.</span></li>
-        <li><span class="icon-tile muted"><i class="ic ic-steam"></i></span>
-          <span><strong>Bought on Steam?</strong>Add Steam under Sign-in methods.</span></li>
-        <li><span class="icon-tile muted"><i class="ic ic-store"></i></span>
-          <span><strong>Bought on the App Store or Google Play?</strong>Sign in to the game once.</span></li>
-      </ul>
-    </section>
   </main>
 
-  <footer class="portal-foot">Polaris Locker · Help · Privacy · Terms</footer>
-  <nav class="portal-tabbar" aria-label="Polaris Locker tabs">
-    <a class="active" href="#"><i class="ic ic-layout-grid"></i>Library</a>
-    <a class="act" href="#"><i class="ic ic-key-round"></i>Activate</a>
+  <!-- The Library's sticky strip (PX-35). No key tile at eight products and more, so Activate a
+       license leads it. One line from 1180 px; a closed disclosure below, on the bottom bar on a phone. -->
+  <section class="portal-strip" aria-label="Missing a license?">
+    <div class="strip-row">
+      <p class="strip-title" aria-hidden="true">Missing a license?</p>
+      <button class="strip-toggle" type="button" aria-expanded="false" aria-controls="missing-ways">Missing a license?<i class="ic ic-chevron-up"></i></button>
+      <ul class="strip-ways" id="missing-ways">
+        <li><button class="strip-link" type="button">Activate a license</button></li>
+        <li>Another email? <a class="strip-link" href="#">Add it in Sign-in methods</a></li>
+        <li>Bought on Steam? <a class="strip-link" href="#">Connect Steam</a></li>
+        <li>Bought in a store? Sign in from the app</li>
+      </ul>
+    </div>
+  </section>
+
+  <nav class="portal-tabbar docked" aria-label="Polaris Locker tabs">
+    <a class="active" href="#" aria-current="page"><i class="ic ic-layout-grid"></i>Library</a>
     <a href="#"><i class="ic ic-sparkles"></i>Discover</a>
   </nav>
 </div>

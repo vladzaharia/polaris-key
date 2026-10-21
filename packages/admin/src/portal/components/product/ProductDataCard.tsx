@@ -14,6 +14,7 @@ import {
   useExportProductData,
   useProduct,
 } from "../../data.js";
+import { SpellOut } from "../../../ui/SpellOut.js";
 import { LiveRegion } from "../../../ui/LiveRegion.js";
 import { portalErrorCopy } from "../../errors.js";
 import type { LibraryProduct } from "../../model/library.js";
@@ -126,10 +127,15 @@ function SupportCodeRow({
         description={supportCodeHint(name)}
         flush
         below={
-          failure ? (
-            <p role="alert" className="text-sm text-danger">
-              {failure}
-            </p>
+          failure || code ? (
+            <>
+              {failure ? (
+                <p role="alert" className="text-sm text-danger">
+                  {failure}
+                </p>
+              ) : null}
+              {code ? <SpellOut code={code} touch /> : null}
+            </>
           ) : null
         }
       >

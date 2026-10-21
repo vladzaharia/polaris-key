@@ -190,6 +190,10 @@ membership of `PLATFORM_ADMIN_GROUP` at the console's identity provider makes th
 Superadmin. It is read from the session on every request and stored nowhere, so it cannot be
 revoked from the console or lost to a bad write.
 
+- **The sign-in card.** `GET /manage/login` serves the Polaris Key Console card and starts no
+  flow; the redirect to the IdP starts when the person presses Continue (`?go=1`), with the typed
+  email as the IdP's `login_hint`. `?signedOut=1`, `?ended=1` and `?stepUp=1` pick the card's
+  copy only. Scripts and tests that need the redirect request `/manage/login?go=1`.
 - **Locked out.** Add the person to `PLATFORM_ADMIN_GROUP` in Pocket ID (the console client's
   provider, above) and have them sign in again at `/manage`. Their next sign-in carries the group.
   Nothing in D1 needs to change.

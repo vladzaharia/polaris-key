@@ -44,6 +44,7 @@ const PAGES: { name: string; hash: string; title: string }[] = [
     hash: `#/p/djdl/users/${USER_SUBJECT}/licenses`,
     title: USER_SUBJECT,
   },
+  { name: "portal", hash: "#/p/djdl/settings/portal", title: "Settings" },
   { name: "keys", hash: "#/p/djdl/settings/keys", title: "Settings" },
   { name: "settings-all", hash: "#/p/djdl/settings/all", title: "Settings" },
   {
@@ -90,6 +91,7 @@ async function open(
   theme: "dark" | "light",
   hash: string,
   viewport?: { width: number; height: number },
+  routes: Record<string, unknown> = CORE_ROUTES,
 ): Promise<Page> {
   const ctx = await browser.newContext({
     viewport: viewport ?? { width: 1440, height: SHOTS ? 2400 : 1000 },
@@ -108,7 +110,7 @@ async function open(
   await ctx.route("**/*", async (route) => {
     const url = new URL(route.request().url());
     if (url.pathname.startsWith("/manage/api/")) {
-      const body = CORE_ROUTES[url.pathname];
+      const body = routes[url.pathname];
       return body
         ? route.fulfill({ json: body })
         : route.fulfill({ status: 404, json: { error: "not_found" } });
@@ -152,6 +154,78 @@ describe("Core pages under the Worker's CSP", () => {
       }
     });
   }
+
+  // ST-14: the Customer portal area (Settings → Polaris Locker) does not depend on Identity.
+  it("the Polaris Locker area is a tab and a page with Identity off (ST-14)", async () => {
+    const detail = CORE_ROUTES["/manage/api/products/djdl"] as {
+      product: { services: Record<string, unknown> };
+    };
+    const listed = CORE_ROUTES["/manage/api/products/djdl/services"] as {
+      services: Record<string, unknown>;
+    };
+    const identityOff = (
+      s: Record<string, unknown>,
+    ): Record<string, unknown> => ({
+      ...s,
+      identity: { enabled: false },
+    });
+    const routes: Record<string, unknown> = {
+      ...CORE_ROUTES,
+      "/manage/api/products/djdl": {
+        product: {
+          ...detail.product,
+          services: identityOff(detail.product.services),
+        },
+      },
+      "/manage/api/products/djdl/services": {
+        ...listed,
+        services: identityOff(listed.services),
+      },
+    };
+    for (const theme of ["dark", "light"] as const) {
+      for (const [w, h] of [
+        [1440, SHOTS ? 1800 : 1000],
+        [390, SHOTS ? 3200 : 844],
+      ] as const) {
+        const page = await open(
+          theme,
+          "#/p/djdl/settings/portal",
+          { width: w, height: h },
+          routes,
+        );
+        await page
+          .locator("[data-page-title]", { hasText: "Settings" })
+          .waitFor();
+        const tab = page
+          .getByRole("navigation", { name: "Settings" })
+          .getByRole("link", {
+            name: "Polaris Locker",
+          });
+        await tab.waitFor();
+        expect(await tab.getAttribute("aria-current")).toBe("page");
+        const sw = page.getByRole("switch", {
+          name: /Show DJDL in Polaris Locker/,
+        });
+        await sw.waitFor();
+        expect(await sw.getAttribute("aria-checked")).toBe("true");
+        await page.getByLabel("Developer name").waitFor();
+        // No sideways scroll at any width (UX: sizing).
+        expect(
+          await page.evaluate(
+            () => document.documentElement.scrollWidth <= window.innerWidth,
+          ),
+        ).toBe(true);
+        await page.waitForTimeout(300);
+        if (SHOTS)
+          await page.screenshot({
+            path: `${SHOTS}/portal-${theme}-${w}.png`,
+            fullPage: true,
+          });
+        expect(await violations(page), `${theme} ${w}`).toEqual([]);
+        await page.context().close();
+      }
+    }
+  });
 
   it("the Set secret drawer and the Delete product dialog open and close cleanly", async () => {
     const page = await open("dark", "#/p/djdl/settings/keys");

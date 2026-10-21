@@ -1058,7 +1058,7 @@ describe("operator step-up", () => {
     env.PLATFORM_OIDC_CLIENT_ID = "console";
     const login = await handleAdminLogin(
       new Request(
-        "https://key.plrs.im/manage/login?stepUp=1&returnTo=/manage/%23/p/alpha/users",
+        "https://key.plrs.im/manage/login?go=1&stepUp=1&returnTo=/manage/%23/p/alpha/users",
       ) as unknown as Request,
       env,
     );

@@ -719,7 +719,8 @@ describe("the settings API refuses what the registry refuses", () => {
       .map((d) => d.key)
       .sort();
     expect(served).toEqual([
-      // I-09: the identity block's live row-backed settings.
+      // I-09: the identity block's live row-backed settings (claimByKey since ST-14).
+      "identity.keyEntry.claimByKey",
       "identity.keyEntry.limit",
       "identity.oidc.syncTierOnSignIn",
       // I-08: `authorize` reads it.

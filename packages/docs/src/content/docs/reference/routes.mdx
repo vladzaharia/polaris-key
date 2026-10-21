@@ -62,6 +62,7 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | POST | `/manage/api/products/{product}/license/licenses` | admin | Create a licence and mint its first key (shown once) |
 | PATCH | `/manage/api/products/{product}/settings/{key}` | admin | Set a product setting in the console, claiming it from the manifest |
 | DELETE | `/manage/api/products/{product}/settings/{key}` | admin | Revert a console setting to the manifest (or to its default) |
+| GET | `/manage/api/products/{product}/settings/drift` | admin | The console's claims against the last applied manifest, and the last apply's plan |
 | GET | `/manage/api/products/{product}/settings/effective` | admin | The product's row-backed settings, with the value in force and where it came from |
 | GET | `/manage/api/products/{product}/users/{subject}/overrides` | admin | One user's account overrides on a product |
 | PUT | `/manage/api/products/{product}/users/{subject}/overrides` | admin | Edit one user's account overrides on a product |
@@ -109,6 +110,8 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/{product}/devices` | core | List the devices sharing this device's seat pool |
 | GET | `https://polaris.locker/.well-known/polaris-host.json` | customer | Customer host health check (customer host only) |
 | HEAD | `https://polaris.locker/.well-known/polaris-host.json` | customer | Customer host health check, headers only (customer host only) |
+| GET | `https://polaris.locker/robots.txt` | customer | Crawler rules (customer host only) |
+| HEAD | `https://polaris.locker/robots.txt` | customer | Crawler rules, headers only (customer host only) |
 | GET | `/{product}/distribution/altstore-pal/{channel}/source.json` | distribution | AltStore PAL source for one channel |
 | GET | `/{product}/distribution/altstore/{channel}/source.json` | distribution | AltStore Classic / SideStore source for one channel |
 | GET | `/{product}/distribution/blobs/sha256/{sha256}` | distribution | Download a content-addressed object |
@@ -231,6 +234,7 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | POST | `/api/signin/email/resend` | portal | A new code and magic link for this browser's email sign-in |
 | POST | `/api/signin/email/start` | portal | Identifier-first email start (a code and a magic link) |
 | POST | `/api/signin/email/verify` | portal | Redeem the emailed code in the browser that asked |
+| GET | `/api/signin/flow` | portal | This browser's email sign-in flow, for the code step after a plain form POST |
 | POST | `/api/signin/flow` | portal | The asking browser's poll after the link was confirmed elsewhere |
 | POST | `/api/signin/passkey/options` | portal | A passkey sign-in challenge for this browser |
 | POST | `/api/signin/passkey/verify` | portal | Sign in with the passkey's assertion |

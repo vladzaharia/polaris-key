@@ -2,6 +2,7 @@ import * as React from "react";
 import { Switch as SwitchPrimitive } from "radix-ui";
 import { cn } from "../lib/cn.js";
 import { Spinner } from "./Spinner.js";
+import { useWriteLock } from "./WriteLock.js";
 
 type RootProps = React.ComponentPropsWithoutRef<typeof SwitchPrimitive.Root>;
 
@@ -43,6 +44,8 @@ export function Switch({
   ...props
 }: SwitchProps): React.ReactElement {
   const reactId = React.useId();
+  const { locked } = useWriteLock();
+  readOnly = readOnly || locked;
   const switchId = id ?? `sw-${reactId.replace(/:/g, "")}`;
   const descId = description ? `${switchId}-desc` : undefined;
   const control = (
@@ -51,6 +54,7 @@ export function Switch({
       id={switchId}
       checked={checked ?? value ?? false}
       aria-readonly={readOnly || saving || undefined}
+      aria-disabled={locked || props["aria-disabled"] || undefined}
       aria-busy={saving || undefined}
       onCheckedChange={(c) => {
         if (readOnly || saving) return;

@@ -65,13 +65,13 @@ Codes are unique among live flows: if a drawn code is already held, the Worker d
 
 `POST /<product>/identity/auth/device/poll` takes `{ "deviceCode": "<secret>", "deviceId": "<id>" }`. The `deviceId` must equal the one given at start, else `401`, so a stolen code can't be redeemed by another device. The advertised `interval` is enforced: a second poll inside it gets `429` with `{ "status": "slow_down", "interval": 2 }`.
 
-| Status    | Meaning                                                                           |
-| --------- | --------------------------------------------------------------------------------- |
-| `pending` | The person hasn't confirmed, signed in or approved yet                            |
-| `confirm` | See below: the identity is waiting for the device's decision                      |
-| `ready`   | Carries `token` (a device token, never a cookie), `schemaVersion` and `identity`  |
-| `error`   | The provider failed, or the person denied. The same generic shape for every cause |
-| `timeout` | The code expired or is stale                                                      |
+| Status    | Meaning                                                                                                                           |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `pending` | The person hasn't confirmed, signed in or approved yet                                                                            |
+| `confirm` | See below: the identity is waiting for the device's decision                                                                      |
+| `ready`   | Carries `token` (a device token, never a cookie), `schemaVersion` and `identity`                                                  |
+| `error`   | The provider failed, or the person pressed Deny. The same generic shape for every cause; every SDK reports it as `sign-in-denied` |
+| `timeout` | The code expired or is stale                                                                                                      |
 
 Show `identity` (`name`, and `email` only when the provider verified it): if someone else approved the flow, this is where the player sees the device is now on a stranger's account. The flow record is deleted the moment a poll returns `ready` or `timeout`, so a token is handed out once. Minting runs the same seat authorization as activation.
 

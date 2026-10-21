@@ -17,7 +17,13 @@ import { writeListing } from "./listingWrites.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { asR2, R2Mock } from "./r2Mock.js";
-import { makeEnv, NOW, seedProduct, seedTier } from "./seed.js";
+import {
+  makeEnv,
+  NOW,
+  seedProduct,
+  seedTier,
+  setPortalToggles,
+} from "./seed.js";
 import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import { serializeServices, type ServicesMap } from "../src/core/services.js";
@@ -335,12 +341,7 @@ describe("GET /api/discover (G24)", () => {
     await writeListing(db, "hidden", { discoverEnabled: false });
     // The portal turned off.
     await freeProduct(db, "noportal");
-    await upsertPortalProductSettings(
-      db,
-      "noportal",
-      { portalEnabled: false },
-      NOW,
-    );
+    await setPortalToggles(db, "noportal", { portalEnabled: false }, NOW);
     // A tenant-controlled issuer: the platform subject means nothing there (R5-02).
     await freeProduct(db, "custom");
     await oidcConfig(db, "custom", { provider: "custom" });

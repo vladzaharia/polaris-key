@@ -5,6 +5,7 @@ import { formatRelative } from "../lib/format.js";
 import { ActionMenu } from "./ActionMenu.js";
 import { Button } from "./Button.js";
 import { RefetchBar } from "./loading.js";
+import { crumbItemsOf, useMasthead } from "./Masthead.js";
 import { Switch } from "./Switch.js";
 
 /** A secondary or danger page action (rendered inline or in "More actions"). */
@@ -119,6 +120,15 @@ export function PageHeader({
   const mobileMenu = withDanger(toItems(secondaryActions));
 
   const nested = React.useContext(PageHeaderNested);
+  const masthead = useMasthead();
+  // The ONE orientation line (B4): the shell's chip and ancestors, with the page's own crumbs
+  // folded in. A nested (hub child) header and a header outside the console draw none.
+  const crumbItems = crumbItemsOf(eyebrow);
+  const orientation =
+    masthead && !nested ? masthead.orientation(crumbItems ?? []) : null;
+  const eyebrowNode =
+    masthead && !nested ? (crumbItems ? null : eyebrow) : eyebrow;
+  const tile = masthead && !nested ? masthead.tile : null;
   const sentinel = React.useRef<HTMLDivElement>(null);
   const [condensed, setCondensed] = React.useState(false);
   React.useEffect(() => {
@@ -155,8 +165,17 @@ export function PageHeader({
     mobileMenu.length > 0;
 
   return (
-    <header className={cn("@container relative space-y-3", className)}>
-      {eyebrow}
+    <header
+      data-masthead={masthead && !nested ? "" : undefined}
+      className={cn(
+        "@container relative",
+        // Tight under the orientation line: the masthead is at most 140 px (B4).
+        masthead && !nested ? "space-y-1" : "space-y-3",
+        className,
+      )}
+    >
+      {orientation}
+      {eyebrowNode}
       {/* Title left; freshness, secondary actions and the primary action right. Below 640 px the
           "More actions" menu stays on the title row and the primary action takes its own
           full-width row. */}
@@ -167,38 +186,62 @@ export function PageHeader({
           // Three columns when the header itself has the room (a width in rem, so it follows the
           // text size). With less (a phone, or 200 % text) the cluster and the primary action
           // take their own right-aligned rows under the title instead of squeezing it.
-          "grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-3",
+          "grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2",
           hasCluster &&
             primaryAction &&
             "sm:@2xl:grid-cols-[minmax(0,1fr)_auto_auto]",
         )}
       >
-        <div className="min-w-0 space-y-1">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            {nested ? (
-              <h2 className="text-lg font-medium tracking-tight text-fg-strong">
-                {title}
-              </h2>
-            ) : (
-              <h1
-                tabIndex={-1}
-                data-page-title=""
-                className={cn(
-                  "font-medium tracking-tight text-fg-strong outline-hidden",
-                  size === "display" ? "text-3xl lg:text-display" : "text-2xl",
-                )}
-              >
-                {title}
-              </h1>
-            )}
-            {titleAside}
-          </div>
-          {description || meta ? (
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-fg-muted">
-              {description ? <p>{description}</p> : null}
-              {meta}
-            </div>
+        <div className="flex min-w-0 items-start gap-4">
+          {tile ? (
+            <span
+              aria-hidden
+              data-masthead-tile=""
+              className="hidden shrink-0 lg:inline-flex"
+            >
+              {tile}
+            </span>
           ) : null}
+          <div className="min-w-0 space-y-1">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              {nested ? (
+                <h2 className="text-lg font-medium tracking-tight text-fg-strong">
+                  {title}
+                </h2>
+              ) : (
+                <h1
+                  tabIndex={-1}
+                  data-page-title=""
+                  className={cn(
+                    "min-w-0 font-medium tracking-tight text-fg-strong outline-hidden",
+                    size === "display"
+                      ? "text-3xl lg:text-display"
+                      : // 24/32 on a phone, 36/44 on a collection, 32/40 on a record (B4, B6:
+                        // never a display size in the console). A long name wraps twice, then ends.
+                        cn(
+                          "line-clamp-2 text-2xl leading-8 [overflow-wrap:anywhere]",
+                          masthead?.record
+                            ? "sm:text-headline-lg sm:leading-10"
+                            : "sm:text-4xl sm:leading-11",
+                        ),
+                  )}
+                >
+                  {title}
+                </h1>
+              )}
+              {titleAside}
+            </div>
+            {description || meta ? (
+              // A meta that is one flex span (its pieces separated by a gap) joins this row, so the
+              // description and the meta share lines instead of stacking (masthead <= 140 px).
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-fg-muted [&>span.flex]:contents">
+                {description ? (
+                  <p className="max-w-[72ch]">{description}</p>
+                ) : null}
+                {meta}
+              </div>
+            ) : null}
+          </div>
         </div>
         {hasCluster ? (
           <div
@@ -274,7 +317,11 @@ export function PageHeader({
           </div>
         ) : null}
       </div>
-      {tabs ? <div className="border-b border-border">{tabs}</div> : null}
+      {tabs ? (
+        <div data-masthead-tabs="" className="border-b border-border pt-1">
+          {tabs}
+        </div>
+      ) : null}
       {/* Out of the flow, so neither adds space under the header. */}
       <div className="pointer-events-none absolute inset-x-0 top-full">
         <RefetchBar active={refetching} />
@@ -285,7 +332,8 @@ export function PageHeader({
       {sticky && condensed && primaryAction ? (
         <div
           data-condensed-header=""
-          className="fixed inset-x-0 top-16 z-30 flex h-12 items-center justify-between gap-3 border-b border-border bg-surface-raised px-6 lg:left-(--sidebar-w)"
+          // Inside the canvas (B4): under the top bar and its 3 px rule, not over the page frame.
+          className="fixed inset-x-0 top-[67px] z-30 flex h-12 items-center justify-between gap-3 border-b border-border bg-surface-raised px-6 lg:left-(--sidebar-w) lg:right-4 lg:rounded-t-[15px]"
         >
           <span aria-hidden className="truncate font-medium text-fg-strong">
             {title}

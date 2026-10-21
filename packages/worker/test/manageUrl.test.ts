@@ -10,6 +10,7 @@ import {
   NOW,
   seedLicenseWithKey,
   seedProduct,
+  setPortalToggles,
 } from "./seed.js";
 import { loadProduct, type Product } from "../src/core/products.js";
 import {
@@ -41,14 +42,7 @@ function activateReq(
 }
 
 async function setPortal(db: SqliteDb, enabled: boolean): Promise<void> {
-  await db.run(
-    `INSERT INTO portal_product_settings (product, portal_enabled, created_at, modified_at)
-     VALUES ('djdl', ?, ?, ?)
-     ON CONFLICT(product) DO UPDATE SET portal_enabled = excluded.portal_enabled`,
-    enabled ? 1 : 0,
-    NOW,
-    NOW,
-  );
+  await setPortalToggles(db, "djdl", { portalEnabled: enabled });
 }
 
 describe("manageForLabel", () => {

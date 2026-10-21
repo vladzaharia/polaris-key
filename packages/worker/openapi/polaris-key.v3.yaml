@@ -13428,7 +13428,7 @@ paths:
       tags: [portal]
       summary: Identifier-first email start (a code and a magic link)
       description: >
-        Opens an email sign-in bound to this browser (a 10-minute `__Host-pkey_signin` cookie) and,
+        Opens an email sign-in bound to this browser (a one-hour `__Host-pkey_signin` cookie; the code and link work 10 minutes of it) and,
         when every send limit passes, mails one message with a 6-digit code and a magic link.
         Enumeration-safe: a known address, an unknown one, a locked-out or over-limit recipient
         and a suppressed one all answer the same bytes; the address is never looked up here. Limits
@@ -13473,7 +13473,7 @@ paths:
           description: Accepted (whether or not mail was sent).
           headers:
             Set-Cookie:
-              description: "`__Host-pkey_signin=<secret>; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=600`."
+              description: "`__Host-pkey_signin=<secret>; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=3600`."
               schema: { type: string }
           content:
             application/json:
@@ -13539,12 +13539,40 @@ paths:
         limit, with the start's enumeration rule: a refused send answers the same bytes as a sent
         one, which are the start's. A browser without a live flow gets `400 signin_expired`, its
         cookie left alone (a double click's second request must not clear the first one's).
+
+
+        The flow outlives its code (one hour against the code's 10 minutes), so the Worker's
+        expired code/link page can offer **Send a new code** with no script: a plain
+        `application/x-www-form-urlencoded` `POST` of this route (SIGN-IN.md §3.13). That form
+        answers `303` to the page the sign-in was headed for with `signin=code` added to its query
+        (`/?signin=code`, or `/signin?request=rq_…&signin=code`), and the new flow cookie; the sign-in
+        page then reads `GET /api/signin/flow`. A resend asked too soon, or over a cap, lands there
+        too, where the code step shows the wait. No live flow, or a mail failure, is a Worker page
+        (`400`, `503`), not JSON. The form variant is refused (the Sign in again page, `400`) unless
+        `Sec-Fetch-Site` is `same-origin` or, without it, `Origin` equals the request's:
+        `SameSite=Lax` is site-scoped, not origin-scoped.
+      requestBody:
+        required: false
+        content:
+          application/x-www-form-urlencoded:
+            schema: { type: object, additionalProperties: false }
       responses:
+        "303":
+          description: >
+            Form variant only: to the code step's page. `Set-Cookie` carries the new flow when a
+            code was sent.
+          headers:
+            Location:
+              description: The sign-in page the flow was started from, with `signin=code`.
+              schema: { type: string }
+            Set-Cookie:
+              description: "`__Host-pkey_signin=<secret>; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=3600`."
+              schema: { type: string }
         "200":
           description: Accepted (whether or not mail was sent); the flow cookie names the new flow.
           headers:
             Set-Cookie:
-              description: "`__Host-pkey_signin=<secret>; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=600`."
+              description: "`__Host-pkey_signin=<secret>; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=3600`."
               schema: { type: string }
           content:
             application/json:
@@ -13585,6 +13613,42 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
   /api/signin/flow:
+    get:
+      operationId: readCardEmailFlow
+      tags: [portal]
+      summary: This browser's email sign-in flow, for the code step after a plain form POST
+      description: >
+        PX-12 (SIGN-IN.md §3.13). After the expired code/link page's **Send a new code** form
+        (`POST /api/signin/email/resend`, a `303` to the sign-in page with `signin=code`), the page
+        has no state: it reads the flow here and lands on the code step. Answers only to the
+        browser holding the flow cookie, about the address that browser typed, masked
+        (`a•••@example.com`); never the address, `returnTo` or the request handle (the page's URL
+        and the flow record keep those). A browser without a live flow gets `400 signin_expired`
+        and nothing is set. A routed start that has sent no code carries `next`, as the start did.
+      responses:
+        "200":
+          description: The flow.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [email, expiresIn, codeLength, resendIn]
+                properties:
+                  email: { type: string, description: The masked address. }
+                  expiresIn:
+                    type: integer
+                    minimum: 0
+                    maximum: 600
+                    description: Seconds the current code still works; 0 when it has lapsed.
+                  codeLength: { type: integer, enum: [6] }
+                  resendIn:
+                    type: integer
+                    minimum: 0
+                    maximum: 60
+                    description: Seconds before `POST /api/signin/email/resend` accepts this flow.
+                  next:
+                    $ref: "#/components/schemas/CardSsoNext"
+        "400": { $ref: "#/components/responses/CardError" }
     post:
       operationId: pollCardEmailFlow
       tags: [portal]
@@ -13593,7 +13657,8 @@ paths:
         A magic link opened on another device only confirms this browser's flow ("Confirm
         sign-in, requested at <time> from <place>"); it never signs that other device in. This
         browser polls here: `pending` until confirmed, then `signed_in` once (with the account
-        session cookie), then `expired`.
+        session cookie), then `expired`. A flow whose code has lapsed answers `expired` and keeps
+        its cookie, so a resend can still retire it.
       responses:
         "200":
           description: The flow's state, or the completed sign-in.
@@ -16735,6 +16800,105 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/products/{product}/settings/drift:
+    get:
+      operationId: getAdminProductSettingsDrift
+      tags: [admin]
+      summary: The console's claims against the last applied manifest, and the last apply's plan
+      description: >
+        ST-17 (notes/S-18 §4.5 items 4–5). Every live console claim on the product (the column-backed
+        keys and the row-backed ones), each with the console's value, what the last applied manifest
+        declares (`manifest`, from the snapshot) and whether they differ (`differs`; `manifestKnown`
+        is false for a product with no snapshot yet). The catalog lists the keys the manifest adds,
+        drops or changes (`changes`) instead of its value. Revert is `DELETE …/claims/<key>` for
+        `revert: claim` and `DELETE …/settings/<key>` (with `version` as `expectedVersion`) for
+        `revert: setting`; Keep is no call, since a claim stays until reverted. `lastPlan` is the
+        plan the last apply (resync, link or the deploy hook) recorded in
+        `product_sync_state.plan_json`: `apply`, `skipClaimed`, `delete`, `conflicts` and the
+        validator's `warnings`; null before one was recorded. Only the keys whose area the caller
+        holds. Admin session cookie.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The drift view.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [snapshot, items, lastPlan]
+                properties:
+                  snapshot:
+                    nullable: true
+                    type: object
+                    required: [origin, appliedAt, appliedSha]
+                    properties:
+                      origin: { type: string }
+                      appliedAt: { type: integer }
+                      appliedSha: { type: string, nullable: true }
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        [
+                          key,
+                          label,
+                          area,
+                          version,
+                          revert,
+                          manifestKnown,
+                          differs,
+                        ]
+                      properties:
+                        key: { type: string }
+                        label: { type: string }
+                        area: { type: string }
+                        claimedBy: { type: string, nullable: true }
+                        claimedAt: { type: integer, nullable: true }
+                        version: { type: integer }
+                        breakGlass:
+                          type: object
+                          properties:
+                            reason: { type: string }
+                            expiresAt: { type: integer }
+                        revert: { type: string, enum: [claim, setting] }
+                        manifestKnown: { type: boolean }
+                        differs: { type: boolean }
+                        console: {}
+                        manifest: {}
+                        changes:
+                          type: object
+                          properties:
+                            added: { type: array, items: { type: string } }
+                            removed: { type: array, items: { type: string } }
+                            changed: { type: array, items: { type: string } }
+                  lastPlan:
+                    nullable: true
+                    type: object
+                    required: [v, origin, commit, plannedAt, plan]
+                    properties:
+                      v: { type: integer, const: 1 }
+                      origin:
+                        { type: string, enum: [resync, link, deploy-hook] }
+                      commit: { type: string, nullable: true }
+                      plannedAt: { type: integer }
+                      plan:
+                        type: object
+                        required: [apply, skipClaimed, delete, conflicts]
+                        properties:
+                          apply: { type: array, items: { type: object } }
+                          skipClaimed: { type: array, items: { type: object } }
+                          delete: { type: array, items: { type: object } }
+                          conflicts: { type: array, items: { type: object } }
+                          warnings: { type: array, items: { type: object } }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
   /manage/api/products/{product}/settings/{key}:
     patch:
       operationId: updateAdminProductSetting
@@ -19865,6 +20029,35 @@ paths:
       description: LK-03. As `GET /.well-known/polaris-host.json`.
       responses:
         "200": { description: The host answers. }
+  /robots.txt:
+    servers:
+      - url: https://polaris.locker
+        description: The customer host (polaris.locker; staging.polaris.locker and dev.polaris.locker in the other environments).
+    get:
+      operationId: getCustomerRobots
+      tags: [customer]
+      summary: Crawler rules (customer host only)
+      description: >
+        LK-09. The host's `robots.txt`: Help under `/docs/help/` is open to crawlers, its
+        `/docs/help/code/` redirect pages, the sign-in paths and `/api/` are not, and a `Sitemap:`
+        line names this host's own `/docs/sitemap-help.xml` (Help only). Every other `/docs` path
+        redirects to the console host, so no gated section is listed. `cache-control: public,
+        max-age=300`. `GET` and `HEAD` only.
+      responses:
+        "200":
+          description: The rules.
+          content:
+            text/plain:
+              schema: { type: string }
+        "405":
+          { description: "Any method but GET and HEAD (`Allow: GET, HEAD`)." }
+    head:
+      operationId: getCustomerRobotsHead
+      tags: [customer]
+      summary: Crawler rules, headers only (customer host only)
+      description: LK-09. As `GET /robots.txt`.
+      responses:
+        "200": { description: The rules' headers. }
   /.well-known/webauthn:
     get:
       operationId: getWebauthnRelatedOrigins
@@ -19905,8 +20098,10 @@ paths:
       tags: [portal]
       summary: Help (alias)
       description: >
-        DOC-03b. A short link to the public Help site: `302` to `/docs/help/`. No session. `/help/`
-        answers the same. `GET` and `HEAD` only.
+        DOC-03b. A short link to the public Help site: `302` to `/docs/help/`. No session. `/help/` and
+        `/help/<path>` redirect to `/docs/help/<path>` (path and query kept). With a usable customer
+        host (LK-09), the console host redirects to Help on that host, and the customer host answers
+        the same path on itself. `GET` and `HEAD` only.
       responses:
         "302": { description: Redirect to /docs/help/. }
     head:

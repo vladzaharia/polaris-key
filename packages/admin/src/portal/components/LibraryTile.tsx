@@ -9,12 +9,13 @@ import {
 } from "../model/library.js";
 import { href } from "../router.js";
 import { useCueOnce } from "../stagger.js";
+import { useElementWidth } from "./useElementWidth.js";
 import { libraryTileFacts } from "../model/tileFacts.js";
 import { TileFacts } from "./TileFacts.js";
 import { ProductArt } from "./ProductArt.js";
 import { ProductIcon } from "./ProductIcon.js";
 import { ProductMenu } from "./ProductMenu.js";
-import { ProductStatusPill } from "./ProductStatus.js";
+import { isIssueStatus, ProductStatusPill } from "./ProductStatus.js";
 import { QuickActionButton } from "./QuickAction.js";
 import { RemoveEntryConfirm } from "./RemoveEntryConfirm.js";
 
@@ -59,18 +60,52 @@ export function LibraryTile({
   const confirming = ask > 0;
   const menuButton = React.useRef<HTMLButtonElement>(null);
   const entry = product.kind === "entry";
+  // The tile's own width (PX-35): under 13 rem the More menu joins the name row so the quick
+  // action spans the tile and drops its icon; under 11 rem the icon stacks above the name and the
+  // status pill moves from the art into the meta row. 0 (unmeasured, jsdom) is a wide tile.
+  const articleRef = React.useRef<HTMLElement>(null);
+  const width = useElementWidth(articleRef);
+  // One band: the stacked layout holds up to 13 rem (names never break mid-word at 412 px).
+  const tiny = width > 0 && width < 208;
+  const narrow = tiny;
+  const menu = (
+    <ProductMenu
+      slug={product.slug}
+      name={product.name}
+      entry={entry}
+      onRemove={entry ? () => setAsk((n) => n + 1) : undefined}
+      triggerRef={menuButton}
+      className={cn(
+        "relative z-10 inline-flex shrink-0 items-center justify-center rounded-md border border-border-strong text-fg-strong hover:bg-hover",
+        "size-10 pointer-coarse:size-11",
+      )}
+    />
+  );
+  const pill =
+    product.status.kind === "deviceLimit" ? null : (
+      <ProductStatusPill status={product.status} onArt />
+    );
+  // In the meta row it is the plain pill, free to wrap (no plate, no clipping at 320).
+  const metaPill =
+    product.status.kind === "deviceLimit" ||
+    !isIssueStatus(product.status) ? null : (
+      <ProductStatusPill
+        status={product.status}
+        className="h-auto max-w-full whitespace-normal"
+      />
+    );
   // No hosted cover: the stored tint over the same field, the icon large and centred on it.
   const noArt = !pres.headerUrl;
   return (
     <div ref={cue.ref} className="pk-lift pk-pressable-card grid rounded-xl">
       <article
+        ref={articleRef}
         aria-labelledby={`tile-${product.slug}`}
         // A compact tile is a size container (`tile`): under 17rem (its content, like the action
         // row, under 15rem) the status pill moves to the art's top-right corner, clear of the icon,
         // and the name takes two lines.
         className={cn(
-          "group relative flex flex-col overflow-hidden rounded-xl border border-border bg-surface-raised shadow-elevation-1",
-          compact && "@container/tile",
+          "group relative flex flex-col overflow-hidden rounded-xl border border-border bg-surface-raised shadow-elevation-1 @container/tile",
         )}
       >
         <ProductArt
@@ -88,7 +123,7 @@ export function LibraryTile({
           // column's 16:9, so a single wide column never crops it.
           fit="contain"
           // The same 16:9 box with or without a cover, so names and pills line up across a row.
-          className="aspect-video max-h-[17.5rem] w-full"
+          className="aspect-[5/2] w-full"
         >
           {noArt && pres.iconUrl ? (
             <ProductIcon
@@ -96,43 +131,46 @@ export function LibraryTile({
               name={product.name}
               tint={pres.tint}
               src={pres.iconUrl}
-              size={64}
+              size={48}
               lift
               className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
             />
           ) : null}
           {/* The header's safe bottom-right corner, inset by the card's own padding; the top-right
               one on a narrow compact tile, where the bottom one meets the icon. */}
-          <span
-            className={cn(
-              "absolute",
-              compact
-                ? "bottom-4 right-4 @max-[17rem]/tile:bottom-auto @max-[17rem]/tile:right-3 @max-[17rem]/tile:top-3"
-                : "bottom-5 right-5",
-              noArt && "bottom-auto right-3 top-3",
-            )}
-          >
-            {product.status.kind === "deviceLimit" ? null : (
-              <ProductStatusPill status={product.status} onArt />
-            )}
-          </span>
+          {tiny ? null : <span className="absolute right-2 top-2">{pill}</span>}
         </ProductArt>
-        <div
-          className={cn(
-            "flex flex-1 flex-col px-5 pb-5",
-            compact && "px-4 pb-4",
-          )}
-        >
+        <div className="flex flex-1 flex-col px-3 pb-3 desk:px-3.5 desk:pb-3.5">
           <div
-            className={cn("flex items-start gap-3", noArt ? "mt-4" : "-mt-5")}
+            className={cn(
+              "flex items-start gap-2.5",
+              tiny && "flex-col gap-1",
+              noArt ? "mt-1" : "-mt-4",
+            )}
           >
-            {noArt ? null : (
+            {tiny && !noArt ? (
+              // The icon above the name, the More menu level with it: the name gets the whole
+              // width.
+              <div className="flex w-full items-start justify-between">
+                <ProductIcon
+                  slug={product.slug}
+                  name={product.name}
+                  tint={pres.tint}
+                  src={pres.iconUrl}
+                  size={40}
+                  lift
+                  className="relative"
+                  tileClassName="border-[3px] border-surface-raised"
+                />
+                {menu}
+              </div>
+            ) : noArt ? null : (
               <ProductIcon
                 slug={product.slug}
                 name={product.name}
                 tint={pres.tint}
                 src={pres.iconUrl}
-                size={56}
+                size={40}
                 lift
                 className="relative"
                 tileClassName="border-[3px] border-surface-raised"
@@ -140,15 +178,19 @@ export function LibraryTile({
             )}
             {/* Below the art, never over it: the icon overlaps the art by 1.75 rem. The
                 rest of the row is the name's, so its link spans it (PS-05 review v2). */}
-            <div className={cn("min-w-0 flex-1", !noArt && "pt-8")}>
+            <div
+              className={cn(
+                "flex min-w-0 flex-1 items-start gap-1",
+                !noArt && !tiny && "pt-5",
+                tiny && "w-full",
+              )}
+            >
               <h3
                 id={`tile-${product.slug}`}
                 dir="auto"
                 className={cn(
-                  "line-clamp-2 break-words font-semibold text-fg-strong",
-                  compact
-                    ? "text-base @max-[17rem]/tile:whitespace-normal"
-                    : "text-lg",
+                  "min-w-0 flex-1 line-clamp-2 break-words font-semibold leading-snug text-fg-strong",
+                  tiny ? "text-sm" : "text-base",
                 )}
               >
                 <a
@@ -156,19 +198,17 @@ export function LibraryTile({
                   // block: the name's full line is the link (24 px or taller), so a short name
                   // still meets the target size (WCAG 2.5.8; PS-05). Its focus ring is the
                   // card's, which it stretches over (styles.css, .pk-press-link).
-                  className={cn(
-                    "pk-press-link block rounded-sm after:absolute after:inset-0 after:content-[''] focus-visible:outline-none",
-                    compact &&
-                      "@max-[17rem]/tile:line-clamp-2 @max-[17rem]/tile:whitespace-normal @max-[17rem]/tile:break-words",
-                  )}
+                  className="pk-press-link block rounded-sm after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
                 >
                   {product.name}
                 </a>
               </h3>
+              {tiny && noArt ? menu : null}
             </div>
           </div>
+          {tiny && metaPill ? <div className="mt-2">{metaPill}</div> : null}
           {product.justAdded ? (
-            <p className="mt-4 text-sm text-fg-muted">
+            <p className="mt-2 text-sm text-fg-muted">
               <span
                 data-cue="text"
                 className={cn(
@@ -181,43 +221,31 @@ export function LibraryTile({
             </p>
           ) : null}
           <TileFacts
-            className="mt-4"
+            className="mt-2"
             facts={libraryTileFacts(product)}
             platforms={product.platforms}
             compact={compact}
           />
           {note ? (
-            <p className="mt-3 flex gap-2 text-sm text-fg-muted">
+            <p className="mt-2 flex gap-2 text-sm text-fg-muted">
               <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
               {note}
             </p>
           ) : null}
           {/* A size container on a compact tile: its download shortens under 15rem. */}
-          <div
-            className={cn(
-              "relative mt-auto flex gap-2 pt-5",
-              compact && "@container",
-            )}
-          >
+          <div className={cn("relative mt-auto flex gap-2 pt-3 @container")}>
             <QuickActionButton
               product={product}
               action={action}
               lead={product.justAdded && isDownloadAction(action)}
-              shortLabel={compact}
-              size={compact ? "md" : "lg"}
-              className={cn("min-w-0 flex-1", compact ? "h-10" : "h-11")}
-            />
-            <ProductMenu
-              slug={product.slug}
-              name={product.name}
-              entry={entry}
-              onRemove={entry ? () => setAsk((n) => n + 1) : undefined}
-              triggerRef={menuButton}
+              shortLabel
+              size="md"
               className={cn(
-                "inline-flex shrink-0 items-center justify-center rounded-md border border-border-strong text-fg-strong hover:bg-hover",
-                compact ? "size-10" : "size-11",
+                "h-10 min-w-0 flex-1 pointer-coarse:h-11",
+                narrow && "[&_svg]:hidden",
               )}
             />
+            {narrow ? null : menu}
           </div>
           {entry && confirming ? (
             <RemoveEntryConfirm

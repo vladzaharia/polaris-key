@@ -662,8 +662,42 @@
       <!-- 1. Gate -->
       <figure>
         <figcaption>
+          godot · gate · real render of the Godot kit at 1280 × 720 (tests/ui
+          scenario gate, needs-activation; no product art yet). Built today
+        </figcaption>
+        <div class="shot" data-shot="built-gate" style="background: #05070f">
+          <img
+            src="shots/godot-built-gate-dark.png"
+            width="1280"
+            height="720"
+            alt="godot · gate · real render of the Godot kit at 1280 × 720 (tests/ui scenario gate, needs-activation; no product art yet). Built today"
+            style="display: block"
+          />
+        </div>
+      </figure>
+      <figure>
+        <figcaption>
+          godot · settings · real render of the Godot kit at 1280 × 720
+          (tests/ui scenario settings, catalog). Built today
+        </figcaption>
+        <div
+          class="shot"
+          data-shot="built-settings"
+          style="background: #05070f"
+        >
+          <img
+            src="shots/godot-built-settings-dark.png"
+            width="1280"
+            height="720"
+            alt="godot · settings · real render of the Godot kit at 1280 × 720 (tests/ui scenario settings, catalog). Built today"
+            style="display: block"
+          />
+        </div>
+      </figure>
+      <figure>
+        <figcaption>
           godot · gate (title screen; B does nothing on the root, Quit only on
-          desktop builds)
+          desktop builds). UK-11 target
         </figcaption>
         <div class="shot" data-shot="gate">
           <div
@@ -710,7 +744,9 @@
       <!-- 2. Activate -->
       <figure>
         <figcaption>
-          godot · activate (focus on Activate; the field is quiet until edited)
+          godot · activate (focus on Activate; the field is quiet until edited).
+          The game owns pause: the kit never sets SceneTree.paused and emits
+          input_captured(true) while this dialog is open. UK-11 target
         </figcaption>
         <div class="shot" data-shot="activate">
           <div class="scrim"></div>
@@ -785,7 +821,7 @@
       <figure>
         <figcaption>
           godot · sign-in (device code for TV and console; the product’s vanity
-          URL)
+          URL). UK-11 target
         </figcaption>
         <div class="shot" data-shot="sign-in">
           <div class="scrim"></div>
@@ -875,7 +911,7 @@
 
       <!-- 4. Device limit -->
       <figure>
-        <figcaption>godot · device limit</figcaption>
+        <figcaption>godot · device limit. UK-11 target</figcaption>
         <div class="shot" data-shot="device-limit">
           <div class="scrim"></div>
           <div class="glass panel center" style="width: 720px; gap: 22px">
@@ -938,7 +974,7 @@
       <figure>
         <figcaption>
           godot · update during a race (toast only, bottom centre inside
-          title-safe, never over the HUD)
+          title-safe, never over the HUD). UK-11 target
         </figcaption>
         <div class="shot" data-shot="update-toast">
           <div class="hud">
@@ -980,7 +1016,7 @@
       <figure>
         <figcaption>
           godot · update on the results screen (default focus on the safe
-          action; input ignored for 250 ms)
+          action; input ignored for 250 ms). UK-11 target
         </figcaption>
         <div class="shot" data-shot="update">
           <div class="scrim"></div>
@@ -1036,7 +1072,9 @@
 
       <!-- 7. Settings: the Account tab -->
       <figure>
-        <figcaption>godot · Account tab in the game’s own menu</figcaption>
+        <figcaption>
+          godot · Account tab in the game’s own menu. UK-11 target
+        </figcaption>
         <div class="shot" data-shot="settings">
           <div class="scrim" style="background: rgb(0 0 0 / 0.5)"></div>
           <div
@@ -1115,7 +1153,9 @@
 
       <!-- 8. Steam Deck 1280 × 800 -->
       <figure>
-        <figcaption>godot · gate at 1280 × 800 (Steam Deck, 16:10)</figcaption>
+        <figcaption>
+          godot · gate at 1280 × 800 (Steam Deck, 16:10). UK-11 target
+        </figcaption>
         <div class="shot deck" data-shot="gate-deck">
           <div
             class="scrim side"
@@ -1161,8 +1201,9 @@
       <!-- 9. Boot -->
       <figure>
         <figcaption>
-          godot · boot (the game's title art, its wordmark, a determinate bar;
-          no modal)
+          godot · boot (the game's title art, its wordmark; a 2 px shimmer after
+          the grace, never a part-filled bar for a stage, DL7; no modal). UK-11
+          target
         </figcaption>
         <div class="shot" data-shot="boot">
           <div
@@ -1187,8 +1228,11 @@
             "
           >
             <span class="wm-slot"></span>
-            <div class="bar" style="width: 360px">
-              <i style="width: 45%"></i>
+            <div
+              class="bar"
+              style="width: 360px; height: 2px; position: relative"
+            >
+              <span class="k-shimmer"></span>
             </div>
             <span class="gs" style="font-size: 16px; color: #fff; opacity: 0.8"
               >Checking your license</span
@@ -1200,7 +1244,8 @@
       <!-- 10. Status: blocked -->
       <figure>
         <figcaption>
-          godot · status (blocked: the license ended; focus on Renew)
+          godot · status (blocked: the license ended; focus on Renew). UK-11
+          target
         </figcaption>
         <div class="shot" data-shot="status">
           <div class="scrim"></div>
@@ -1238,7 +1283,8 @@
       <!-- 11. Error: offline -->
       <figure>
         <figcaption>
-          godot · error (offline; play continues on the cached license)
+          godot · error (offline; play continues on the cached license). UK-11
+          target
         </figcaption>
         <div class="shot" data-shot="error">
           <div class="scrim"></div>

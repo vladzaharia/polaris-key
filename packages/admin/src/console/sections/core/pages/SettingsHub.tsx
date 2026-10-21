@@ -14,11 +14,19 @@ import { History, ListTree } from "lucide-react";
 import { PageHeaderNested } from "../../../../ui/PageHeader.js";
 import { Button } from "../../../../ui/Button.js";
 import { ProductLogo } from "../../../../ui/ProductLogo.js";
+import { Callout } from "../../../../ui/Callout.js";
+import { WriteLock } from "../../../../ui/WriteLock.js";
 import { PageTabs, type PageTab } from "../../../components/PageTabs.js";
-import { useCan, useAccessAdmins } from "../../../access/useCan.js";
+import {
+  useAccessAdmins,
+  useCan,
+  useWriteGate,
+} from "../../../access/useCan.js";
 import { useProduct } from "../../../data/hooks.js";
 import type { ProductPageId } from "../../../nav.js";
 import { Link } from "../../../router.js";
+import { useSettingTarget } from "../../../useSettingTarget.js";
+import { anchorOfKey } from "../model/settingHomes.js";
 import { productPage, r } from "../../../routes.js";
 
 /**
@@ -28,6 +36,7 @@ import { productPage, r } from "../../../routes.js";
 export const SETTINGS_AREAS: { page: ProductPageId; label: string }[] = [
   { page: "services", label: "Features" },
   { page: "presentation", label: "Presentation" },
+  { page: "portal", label: "Polaris Locker" },
   { page: "keys", label: "Keys & secrets" },
   { page: "settings-members", label: "Members" },
 ];
@@ -37,6 +46,10 @@ const TAB_OF: Partial<Record<ProductPageId, ProductPageId>> = {
   settings: "services",
 };
 
+/**
+ * Land on the row an All settings link names (`?at=<element id>`): wait for it to render, scroll
+ * to it and focus it. Each target is taken once, so the reader scrolls on from there.
+ */
 export function SettingsHub({
   slug,
   page,
@@ -46,6 +59,15 @@ export function SettingsHub({
   page: ProductPageId;
   children: React.ReactNode;
 }): React.ReactElement {
+  useSettingTarget(true, undefined, anchorOfKey);
+  const gate = useWriteGate(page === "keys" ? "keys" : "core", slug);
+  // Features gates its own switches and says why; the other tabs lock whole under one note.
+  const lock =
+    !gate.allowed &&
+    gate.canView &&
+    page !== "services" &&
+    page !== "settings-all" &&
+    page !== "settings-members";
   const canKeys = useCan("keys", slug);
   const product = useProduct(slug);
   const admins = useAccessAdmins("core", slug);
@@ -58,7 +80,7 @@ export function SettingsHub({
     to: productPage(slug, a.page),
     count:
       a.page === "settings-members" && admins.data?.admins
-        ? admins.data.admins.length
+        ? admins.data.admins.filter((m) => m.role !== "superadmin").length
         : undefined,
   }));
   return (
@@ -88,9 +110,12 @@ export function SettingsHub({
           </h1>
           <div className="ml-auto flex items-center gap-1">
             <Button asChild variant="ghost" size="sm">
-              <Link to={productPage(slug, "settings-all")}>
+              <Link
+                to={productPage(slug, "settings-all")}
+                aria-label="All settings"
+              >
                 <ListTree aria-hidden />
-                All settings
+                <span className="max-sm:sr-only">All settings</span>
               </Link>
             </Button>
             <Button asChild variant="ghost" size="sm" className="max-sm:hidden">
@@ -109,7 +134,14 @@ export function SettingsHub({
           />
         </div>
       </header>
-      <PageHeaderNested.Provider value>{children}</PageHeaderNested.Provider>
+      {lock && gate.disabledReason ? (
+        <Callout tone="info" title="You can view these settings">
+          {gate.disabledReason}
+        </Callout>
+      ) : null}
+      <WriteLock locked={lock} reason={gate.disabledReason}>
+        <PageHeaderNested.Provider value>{children}</PageHeaderNested.Provider>
+      </WriteLock>
     </div>
   );
 }

@@ -149,12 +149,13 @@ export const KIT_COPY: Readonly<
       "Scan the QR code with your phone, or enter this code at the address below.",
     "signInHandoff.linkCopied": "Link copied",
     "signInHandoff.confirm":
-      "Choose Continue to {product} on the sign-in page to finish.",
+      "Choose Sign in on {device} on the sign-in page to finish.",
     "signInHandoff.ok": "Signed in",
     "signInHandoff.newCode": "Get a new code",
     "activate.title": "Enter your license key",
     "activate.lede": "You'll find it in your purchase email.",
     "activate.submit": "Activate license",
+    "common.activateLicense": "Activate a license",
     "activate.busy": "Activating…",
     "offlineActivation.title": "Offline activation",
     "offlineActivation.request":
@@ -581,6 +582,7 @@ export const KIT_COPY: Readonly<
     "signin.console.notConfigured": "Admin sign-in isn't set up",
     "signin.expired.title": "That code or link has expired",
     "signin.expired.body": "Codes and links work once, for 10 minutes.",
+    "signin.expired.sendTo": "A new code goes to {email}.",
     "signin.again": "Sign in again",
     "signin.identityOff.notice":
       "{product} doesn't use Polaris Locker sign-in. Open {product} and enter your license key there.",
@@ -1642,12 +1644,13 @@ export const KIT_COPY: Readonly<
       "Scannen Sie den QR-Code mit Ihrem Telefon oder geben Sie diesen Code unter der Adresse unten ein.",
     "signInHandoff.linkCopied": "Link kopiert",
     "signInHandoff.confirm":
-      "Wählen Sie auf der Anmeldeseite „Weiter zu {product}“, um den Vorgang abzuschließen.",
+      "Wählen Sie auf der Anmeldeseite „Sign in on {device}“, um den Vorgang abzuschließen.",
     "signInHandoff.ok": "Angemeldet",
     "signInHandoff.newCode": "Neuen Code anfordern",
     "activate.title": "Lizenzschlüssel eingeben",
     "activate.lede": "Sie finden ihn in Ihrer Kauf-E-Mail.",
     "activate.submit": "Lizenz aktivieren",
+    "common.activateLicense": "Eine Lizenz aktivieren",
     "activate.busy": "Wird aktiviert…",
     "offlineActivation.title": "Offline-Aktivierung",
     "offlineActivation.request":
@@ -2116,6 +2119,7 @@ export const KIT_COPY: Readonly<
     "signin.expired.title": "Dieser Code oder Link ist abgelaufen",
     "signin.expired.body":
       "Codes und Links sind einmal und 10 Minuten lang gültig.",
+    "signin.expired.sendTo": "Ein neuer Code geht an {email}.",
     "signin.again": "Erneut anmelden",
     "signin.identityOff.notice":
       "{product} verwendet keine Anmeldung über Polaris Locker. Öffnen Sie {product} und geben Sie dort Ihren Lizenzschlüssel ein.",
@@ -3235,13 +3239,14 @@ export const KIT_COPY: Readonly<
       "Scannez le code QR avec votre téléphone, ou saisissez ce code à l’adresse ci-dessous.",
     "signInHandoff.linkCopied": "Lien copié",
     "signInHandoff.confirm":
-      "Choisissez Continuer vers {product} sur la page de connexion pour terminer.",
+      "Choisissez Sign in on {device} sur la page de connexion pour terminer.",
     "signInHandoff.ok": "Connecté",
     "signInHandoff.newCode": "Obtenir un nouveau code",
     "activate.title": "Saisissez votre clé de licence",
     "activate.lede":
       "Vous la trouverez dans l’e-mail de confirmation de votre achat.",
     "activate.submit": "Activer la licence",
+    "common.activateLicense": "Activer une licence",
     "activate.busy": "Activation…",
     "offlineActivation.title": "Activation hors ligne",
     "offlineActivation.request":
@@ -3699,6 +3704,7 @@ export const KIT_COPY: Readonly<
     "signin.expired.title": "Ce code ou ce lien a expiré",
     "signin.expired.body":
       "Les codes et les liens ne fonctionnent qu’une fois, pendant 10 minutes.",
+    "signin.expired.sendTo": "Un nouveau code est envoyé à {email}.",
     "signin.again": "Se reconnecter",
     "signin.identityOff.notice":
       "{product} n’utilise pas la connexion Polaris Locker. Ouvrez {product} et saisissez-y votre clé de licence.",
@@ -4781,12 +4787,13 @@ export const KIT_COPY: Readonly<
       "Escanea el código QR con tu teléfono o introduce este código en la dirección de abajo.",
     "signInHandoff.linkCopied": "Enlace copiado",
     "signInHandoff.confirm":
-      "Elige Continuar a {product} en la página de inicio de sesión para terminar.",
+      "Elige Sign in on {device} en la página de inicio de sesión para terminar.",
     "signInHandoff.ok": "Sesión iniciada",
     "signInHandoff.newCode": "Obtener un código nuevo",
     "activate.title": "Escribe tu clave de licencia",
     "activate.lede": "La encontrarás en el correo de tu compra.",
     "activate.submit": "Activar licencia",
+    "common.activateLicense": "Activar una licencia",
     "activate.busy": "Activando…",
     "offlineActivation.title": "Activación sin conexión",
     "offlineActivation.request":
@@ -5236,6 +5243,7 @@ export const KIT_COPY: Readonly<
     "signin.expired.title": "Ese código o enlace venció",
     "signin.expired.body":
       "Los códigos y enlaces funcionan una sola vez, durante 10 minutos.",
+    "signin.expired.sendTo": "Enviaremos un código nuevo a {email}.",
     "signin.again": "Vuelve a iniciar sesión",
     "signin.identityOff.notice":
       "{product} no usa el inicio de sesión de Polaris Locker. Abre {product} y escribe allí tu clave de licencia.",
@@ -6349,12 +6357,13 @@ export const KIT_COPY: Readonly<
       "Escaneie o QR code com o celular ou digite este código no endereço abaixo.",
     "signInHandoff.linkCopied": "Link copiado",
     "signInHandoff.confirm":
-      "Escolha Continuar para {product} na página de acesso para concluir.",
+      "Escolha Sign in on {device} na página de acesso para concluir.",
     "signInHandoff.ok": "Você entrou",
     "signInHandoff.newCode": "Obter novo código",
     "activate.title": "Digite sua chave de licença",
     "activate.lede": "Ela está no e-mail da sua compra.",
     "activate.submit": "Ativar licença",
+    "common.activateLicense": "Ativar uma licença",
     "activate.busy": "Ativando…",
     "offlineActivation.title": "Ativação offline",
     "offlineActivation.request":
@@ -6801,6 +6810,7 @@ export const KIT_COPY: Readonly<
       "O acesso de administrador não está configurado",
     "signin.expired.title": "Esse código ou link expirou",
     "signin.expired.body": "Códigos e links funcionam uma vez, por 10 minutos.",
+    "signin.expired.sendTo": "Um novo código será enviado para {email}.",
     "signin.again": "Entre novamente",
     "signin.identityOff.notice":
       "{product} não usa o acesso do Polaris Locker. Abra {product} e digite sua chave de licença nele.",
@@ -7891,12 +7901,13 @@ export const KIT_COPY: Readonly<
       "Inquadra il codice QR con il telefono, oppure inserisci questo codice all'indirizzo qui sotto.",
     "signInHandoff.linkCopied": "Link copiato",
     "signInHandoff.confirm":
-      "Per finire, scegli Continua su {product} nella pagina di accesso.",
+      "Per finire, scegli Sign in on {device} nella pagina di accesso.",
     "signInHandoff.ok": "Accesso effettuato",
     "signInHandoff.newCode": "Ottieni un nuovo codice",
     "activate.title": "Inserisci la tua chiave di licenza",
     "activate.lede": "La trovi nell'email di acquisto.",
     "activate.submit": "Attiva licenza",
+    "common.activateLicense": "Attiva una licenza",
     "activate.busy": "Attivazione…",
     "offlineActivation.title": "Attivazione offline",
     "offlineActivation.request":
@@ -8343,6 +8354,7 @@ export const KIT_COPY: Readonly<
     "signin.expired.title": "Il codice o il link è scaduto",
     "signin.expired.body":
       "Codici e link funzionano una sola volta, per 10 minuti.",
+    "signin.expired.sendTo": "Un nuovo codice viene inviato a {email}.",
     "signin.again": "Accedi di nuovo",
     "signin.identityOff.notice":
       "{product} non usa l'accesso Polaris Locker. Apri {product} e inserisci lì la tua chiave di licenza.",
@@ -9440,12 +9452,13 @@ export const KIT_COPY: Readonly<
       "スマートフォンでQRコードを読み取るか、下のアドレスでこのコードを入力してください。",
     "signInHandoff.linkCopied": "リンクをコピーしました",
     "signInHandoff.confirm":
-      "完了するには、サインインページで「{product}に進む」を選択してください。",
+      "完了するには、サインインページで「Sign in on {device}」を選択してください。",
     "signInHandoff.ok": "サインインしました",
     "signInHandoff.newCode": "新しいコードを取得",
     "activate.title": "ライセンスキーを入力",
     "activate.lede": "購入時のメールに記載されています。",
     "activate.submit": "ライセンスをアクティベート",
+    "common.activateLicense": "ライセンスをアクティベート",
     "activate.busy": "アクティベートしています…",
     "offlineActivation.title": "オフラインアクティベーション",
     "offlineActivation.request":
@@ -9898,6 +9911,7 @@ export const KIT_COPY: Readonly<
     "signin.console.notConfigured": "管理者サインインが設定されていません",
     "signin.expired.title": "このコードまたはリンクの有効期限が切れています",
     "signin.expired.body": "コードとリンクは1回限り、10分間有効です。",
+    "signin.expired.sendTo": "新しいコードを{email}に送信します。",
     "signin.again": "もう一度サインイン",
     "signin.identityOff.notice":
       "{product}はPolaris Lockerのサインインを使用しません。{product}を開いて、そこでライセンスキーを入力してください。",
@@ -11009,12 +11023,13 @@ export const KIT_COPY: Readonly<
       "휴대전화로 QR 코드를 스캔하거나 아래 주소에서 이 코드를 입력하세요.",
     "signInHandoff.linkCopied": "링크 복사됨",
     "signInHandoff.confirm":
-      "로그인 페이지에서 “{product}에서 계속”을 선택해 완료하세요.",
+      "로그인 페이지에서 “Sign in on {device}”를 선택해 완료하세요.",
     "signInHandoff.ok": "로그인됨",
     "signInHandoff.newCode": "새 코드 받기",
     "activate.title": "라이선스 키를 입력하세요",
     "activate.lede": "구매 확인 이메일에서 찾을 수 있어요.",
     "activate.submit": "라이선스 활성화",
+    "common.activateLicense": "라이선스 활성화",
     "activate.busy": "활성화하는 중…",
     "offlineActivation.title": "오프라인 활성화",
     "offlineActivation.request":
@@ -11447,6 +11462,7 @@ export const KIT_COPY: Readonly<
     "signin.console.notConfigured": "관리자 로그인이 설정되지 않았어요",
     "signin.expired.title": "코드 또는 링크가 만료됐어요",
     "signin.expired.body": "코드와 링크는 10분 동안 한 번만 사용할 수 있어요.",
+    "signin.expired.sendTo": "새 코드를 {email}(으)로 보냅니다.",
     "signin.again": "다시 로그인",
     "signin.identityOff.notice":
       "{product}에서는 Polaris Locker 로그인을 사용하지 않아요. {product}을(를) 열어 라이선스 키를 입력하세요.",
@@ -12501,12 +12517,14 @@ export const KIT_COPY: Readonly<
     "signInHandoff.scan": "用手机扫描二维码，或前往{url}并输入此代码。",
     "signInHandoff.scanTv": "用手机扫描二维码，或在下方地址输入此代码。",
     "signInHandoff.linkCopied": "链接已复制",
-    "signInHandoff.confirm": "在登录页面上选择“继续使用{product}”以完成登录。",
+    "signInHandoff.confirm":
+      "在登录页面上选择“Sign in on {device}”以完成登录。",
     "signInHandoff.ok": "已登录",
     "signInHandoff.newCode": "获取新代码",
     "activate.title": "输入你的许可证密钥",
     "activate.lede": "你可以在购买确认邮件中找到它。",
     "activate.submit": "激活许可证",
+    "common.activateLicense": "激活许可证",
     "activate.busy": "正在激活…",
     "offlineActivation.title": "离线激活",
     "offlineActivation.request": "将此请求代码发送给向你提供许可证的人。",
@@ -12906,6 +12924,7 @@ export const KIT_COPY: Readonly<
     "signin.console.notConfigured": "管理员登录尚未设置",
     "signin.expired.title": "该验证码或链接已过期",
     "signin.expired.body": "验证码和链接仅可使用一次，10分钟内有效。",
+    "signin.expired.sendTo": "新验证码将发送到 {email}。",
     "signin.again": "重新登录",
     "signin.identityOff.notice":
       "{product}不使用Polaris Locker登录。请打开{product}并在其中输入你的许可证密钥。",
@@ -13785,6 +13804,7 @@ export const KIT_COPY_VARIANTS: Readonly<
   "welcome.offline": { macos: "Activate Offline" },
   "signInHandoff.newCode": { macos: "Get a New Code" },
   "activate.submit": { macos: "Activate License" },
+  "common.activateLicense": { macos: "Activate a License" },
   "offlineActivation.copyCode": { macos: "Copy Code" },
   "offlineActivation.loadFile": { macos: "Load File…" },
   "offlineActivation.submit": { macos: "Activate from File" },

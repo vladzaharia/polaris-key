@@ -87,7 +87,8 @@ function useOverflows(ref: React.RefObject<HTMLElement | null>): boolean {
 /** Client mode virtualizes above this many rows (components.md §6.1). */
 export const VIRTUALIZE_ABOVE = 200;
 
-const ROW_HEIGHT: Record<Density, number> = { comfortable: 44, compact: 36 };
+// The workbench's row is 56 px (B4: never 76); compact is the viewer's own denser choice.
+const ROW_HEIGHT: Record<Density, number> = { comfortable: 56, compact: 36 };
 const DENSITY_KEY = "pk-table-density";
 const columnsKey = (id: string) => `pk-table-columns:${id}`;
 
@@ -834,7 +835,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
       ? cn("sticky z-[1] bg-inherit", selection ? "left-10" : "left-0")
       : "";
 
-  const rowHeight = density === "compact" ? "h-9" : "h-11";
+  const rowHeight = density === "compact" ? "h-9" : "h-14";
 
   const renderRow = (row: Row<T>, extraClass?: string): React.ReactElement => {
     const label = labelOf(row.original);
@@ -851,7 +852,8 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
           // The line under a row is its cells' (border-separate), so a row's View Transition
           // snapshot carries it and it moves with the row (S-23 §6.1 "list"; MO-09).
           "bg-surface-raised text-sm text-fg outline-hidden [&>td]:border-b [&>td]:border-border",
-          "hover:bg-surface-overlay focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus",
+          // B17: the hover tint is the nearest service's (`state-hover-tint`), not a neutral step.
+          "hover:bg-state-hover-tint focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus",
           "data-[selected]:bg-accent-subtle",
           // highlight(): a created or edited row's tint wins over the row's own surface.
           "[&.pk-row-highlight]:bg-accent-subtle",
@@ -1655,17 +1657,29 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
   return (
     <div
       ref={rootRef}
-      className={cn("space-y-3", className)}
+      // The workbench (B4): ONE bordered band holds the filters and the table.
+      data-workbench=""
+      className={cn(
+        "overflow-hidden rounded-xl border border-border bg-surface-raised",
+        className,
+      )}
       data-table-id={id}
     >
-      {hasToolbar ? toolbar : null}
+      {hasToolbar ? (
+        <div
+          data-workbench-toolbar=""
+          className="border-b border-border bg-(--pk-admin-band) px-4 py-3"
+        >
+          {toolbar}
+        </div>
+      ) : null}
       {/* pk-vt-scope: during a list transition the card and the footer move with the rows instead
           of jumping (S-23 §3.4 item 2); the toolbar above is part of the page and swaps at once. */}
-      <div className="pk-vt-scope space-y-3">
+      <div className={cn("pk-vt-scope", isMobileCards && "space-y-3 p-3")}>
         {unloaded &&
         narrowedLoaded &&
         (pageRows.length > 0 || unloaded.searchingAll) ? (
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-fg-muted">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-border px-4 py-2 text-sm text-fg-muted">
             <p className="tabular-nums">
               {unloaded.searchingAll
                 ? `Loaded ${formatCount(data.length)}${
@@ -1736,7 +1750,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
               aria-label={overflows ? `${caption} table` : undefined}
               tabIndex={overflows ? 0 : undefined}
               className={cn(
-                "relative overflow-auto rounded-lg border border-border bg-surface-raised pk-scroll",
+                "relative overflow-auto bg-surface-raised pk-scroll",
                 virtual && "max-h-[70vh]",
               )}
             >
@@ -1744,7 +1758,9 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
             </div>
           )}
         </div>
-        {footer}
+        {footer ? (
+          <div className="border-t border-border px-4 py-3">{footer}</div>
+        ) : null}
       </div>
       <LiveRegion
         message={showSkeleton ? `Loading ${caption.toLowerCase()}…` : ""}

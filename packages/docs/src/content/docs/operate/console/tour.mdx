@@ -6,7 +6,7 @@ description: "Every console page by section: its address, whether the sidebar li
 {/* GENERATED PAGE — do not edit. Regenerate with `pnpm --filter @polaris-key/docs gen`.
     Source of truth and emitter: packages/docs/scripts/gen-reference.mjs. */}
 
-The console at `/manage` has a sidebar with one section per service the product runs, after Core. A section's page list below is `SECTIONS` in `packages/admin/src/console/nav.ts`. A product page's address is `#/p/<slug>/<path>`, with a record id and tab after it where the page has one. The session lasts 8 hours, and the account menu shows when it ends.
+The console at `/manage` has a sidebar with two contexts. Platform, off any product, lists Home and the platform's pages. A product lists its own pages, then one group per feature it runs, with Settings at the foot. Switch context from the card at the top. A section's page list below is `SECTIONS` in `packages/admin/src/console/nav.ts`. A product page's address is `#/p/<slug>/<path>`, with a record id and tab after it where the page has one. The session lasts 8 hours, and the account menu shows when it ends.
 
 ## Home, Products and API tokens
 
@@ -45,15 +45,16 @@ Always shown. It has no owning service.
 | **Devices** | `#/p/<slug>/devices` | Sidebar | [Manage licenses](/docs/features/licensing/manage-licenses/) |
 | **Users** | `#/p/<slug>/users` | Sidebar | [Users](/docs/operate/console/users/) |
 | **Presentation** | `#/p/<slug>/settings/presentation` | Tab or sub-page | [Presentation](/docs/operate/console/presentation/) |
+| **Polaris Locker** | `#/p/<slug>/settings/portal` | Tab or sub-page | [Products](/docs/operate/console/products/) |
 | **Keys & secrets** | `#/p/<slug>/settings/keys` | Tab or sub-page | [Keys & secrets](/docs/operate/console/keys-and-secrets/) |
 | **Activity** | `#/p/<slug>/activity` | Sidebar | [Activity](/docs/operate/console/activity/) |
 | **Settings** | `#/p/<slug>/settings` | Sidebar | [Products](/docs/operate/console/products/) |
 | **Members** | `#/p/<slug>/settings/members` | Tab or sub-page | [Products](/docs/operate/console/products/) |
 | **All settings** | `#/p/<slug>/settings/all` | Tab or sub-page | [Products](/docs/operate/console/products/) |
 
-## License
+## Licensing
 
-Shown when the product runs License.
+Shown when the product runs Licensing.
 
 | Page | URL | Where | Docs |
 | --- | --- | --- | --- |
@@ -63,9 +64,9 @@ Shown when the product runs License.
 | **Batches** | `#/p/<slug>/license/batches` | Tab or sub-page | [Manage licenses](/docs/features/licensing/manage-licenses/) |
 | **Settings** | `#/p/<slug>/license/settings` | Sidebar | [The license model](/docs/features/licensing/model/) |
 
-## Config
+## Managed config
 
-Shown when the product runs Config.
+Shown when the product runs Managed config.
 
 | Page | URL | Where | Docs |
 | --- | --- | --- | --- |
@@ -111,9 +112,9 @@ Shown when the product runs Update.
 | --- | --- | --- | --- |
 | **Feed** | `#/p/<slug>/update/feed` | Sidebar | [Eligibility](/docs/features/ship-builds/updates/eligibility/) |
 
-## Identity
+## Sign-in
 
-Shown when the product runs Identity.
+Shown when the product runs Sign-in.
 
 | Page | URL | Where | Docs |
 | --- | --- | --- | --- |

@@ -232,7 +232,7 @@ export function JumpPalette({
                   className={item}
                 >
                   <KeyRound aria-hidden className="size-4 text-accent-fg" />
-                  {t("locker.activate.title")}
+                  {t("common.activateLicense")}
                 </Command.Item>
               </Command.Group>
               {recent.length ? (

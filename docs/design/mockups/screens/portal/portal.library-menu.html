@@ -1,0 +1,169 @@
+<style>
+  /* portal.library-menu: portal.library with the account menu open; only what the kit does not say. No spacing: the kit's portal parts. */
+  [data-screen="portal.library-menu"] .pill.tier {
+    color: var(--pk-text-strong);
+  }
+  /* The whole tile opens the product page: the name's link is stretched over it (its accessible
+     name stays the product name); the buttons sit above the stretched link. */
+  [data-screen="portal.library-menu"] .ptile:not(.end-tile) {
+    position: relative;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+  }
+  [data-screen="portal.library-menu"] .ptile-head {
+    position: static;
+  }
+  [data-screen="portal.library-menu"] .ptile-head .logo {
+    position: relative;
+    z-index: 1;
+  }
+  [data-screen="portal.library-menu"] .ptile-title a::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    border-radius: inherit;
+  }
+  [data-screen="portal.library-menu"] .ptile-foot {
+    position: relative;
+    z-index: 3;
+  }
+  [data-screen="portal.library-menu"] .ptile:has(.ptile-title a:hover) {
+    transform: translateY(-2px);
+    box-shadow: var(--pk-elevation-2);
+  }
+</style>
+
+<div class="portal" data-brand="locker">
+  <!-- The account menu, open (PX-35, PORTAL.md §3.2): Activate a license leads it (the same dialog as
+       the key tile and the palette); Help and Privacy, the old footer's links, are its last group
+       before Sign out. Right-aligned under the chip, 256 px wide, 40 px rows (44 on touch). -->
+  <header class="portal-top">
+    <a class="portal-brand" href="#"><i class="lk-lockup" role="img" aria-label="Polaris Locker"></i></a>
+    <nav class="portal-nav" aria-label="Polaris Locker">
+      <a class="active" href="#">Library <span class="count">2</span></a>
+      <a href="#">Discover</a>
+    </nav>
+    <div class="portal-actions">
+      <div class="popover-anchor">
+        <span class="account open" role="button" aria-haspopup="menu" aria-expanded="true" aria-label="Account: Priya Raman"><span class="avatar sm">PR</span><span>Priya Raman</span><i class="ic ic-chevron-down"></i></span>
+        <div class="popover right">
+          <div class="menu account-menu" role="menu" aria-label="Account">
+            <div class="menu-head"><span class="avatar">PR</span><span class="menu-who"><strong>Priya Raman</strong><span>priya@example.edu</span></span></div>
+            <div class="menu-sep" role="separator"></div>
+            <a class="menu-item" href="#" role="menuitem"><i class="ic ic-key-round"></i>Activate a license</a>
+            <a class="menu-item" href="#" role="menuitem"><i class="ic ic-user-round"></i>Account</a>
+            <a class="menu-item" href="#" role="menuitem"><i class="ic ic-at-sign"></i>Sign-in methods</a>
+            <a class="menu-item" href="#" role="menuitem"><i class="ic ic-palette"></i>Appearance</a>
+            <div class="menu-sep" role="separator"></div>
+            <a class="menu-item" href="#" role="menuitem"><i class="ic ic-circle-help"></i>Help</a>
+            <a class="menu-item" href="#" role="menuitem"><i class="ic ic-shield-check"></i>Privacy</a>
+            <div class="menu-sep" role="separator"></div>
+            <button class="menu-item" type="button" role="menuitem"><i class="ic ic-log-out"></i>Sign out</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="portal-page">
+    <!-- The count is the nav's; the line says who is signed in. -->
+    <div class="mk-stack-2">
+      <h1>Your library</h1>
+      <p class="muted">Signed in as priya@example.edu</p>
+    </div>
+
+    <div class="portal-grid dense">
+      <!-- DJDL: Education from DJDL's access policy (verified email domain example.edu), no key, a
+           fixed year that keeps the last version (LX-41). One line of facts (PX-35): the duration;
+           the source and the add-ons are on the license page (portal.license). -->
+      <article class="ptile" aria-labelledby="tile-djdl">
+        <div class="art" data-product="djdl"></div>
+        <div class="ptile-head">
+          <span class="logo" data-product="djdl"></span>
+          <div class="ptile-title"><h2 id="tile-djdl"><a href="#">DJDL</a></h2></div>
+        </div>
+        <div class="ptile-body">
+          <div class="mk-stack-3">
+            <div class="pill-row">
+              <div class="mk-cluster">
+                <span class="pill sm tier"><i class="ic ic-key-round"></i>Education</span>
+                <span class="pill sm"><i class="ic ic-monitor-smartphone"></i>3/4 devices</span>
+              </div>
+              <span class="platforms" role="img" aria-label="macOS and Windows"><i class="ic ic-apple"></i><i class="ic ic-windows"></i></span>
+            </div>
+            <ul class="icon-lines">
+              <li><i class="ic ic-calendar-clock"></i><span>Updates until Sep 14, 2027</span></li>
+            </ul>
+          </div>
+        </div>
+        <div class="ptile-foot">
+          <!-- A computer gets its build; a phone, where DJDL doesn't run, gets the link by email. -->
+          <button class="btn outline ua-desk"><i class="ic ic-download"></i>Download for macOS</button>
+          <button class="btn outline ua-phone"><i class="ic ic-mail"></i>Email me the download</button>
+          <button class="btn outline icon" aria-label="More for DJDL"><i class="ic ic-ellipsis"></i></button>
+        </div>
+      </article>
+
+      <!-- Diceroll: Standard (the Full game SKU) bought on the App Store, lifetime, every device in use. -->
+      <article class="ptile" aria-labelledby="tile-diceroll">
+        <div class="art" data-product="diceroll"></div>
+        <div class="ptile-head">
+          <span class="logo" data-product="diceroll"></span>
+          <div class="ptile-title"><h2 id="tile-diceroll"><a href="#">Diceroll</a></h2></div>
+        </div>
+        <div class="ptile-body">
+          <div class="mk-stack-3">
+            <div class="pill-row">
+              <div class="mk-cluster">
+                <span class="pill sm tier"><i class="ic ic-key-round"></i>Standard</span>
+                <span class="pill sm warning"><i class="ic ic-triangle-alert"></i>3/3 devices</span>
+              </div>
+              <span class="platforms" role="img" aria-label="iOS, Android, Windows and Linux"><i class="ic ic-smartphone"></i><i class="ic ic-android"></i><i class="ic ic-windows"></i><i class="ic ic-linux"></i></span>
+            </div>
+            <ul class="icon-lines">
+              <li><i class="ic ic-calendar-clock"></i><span>Lifetime</span></li>
+            </ul>
+          </div>
+        </div>
+        <div class="ptile-foot">
+          <button class="btn outline"><i class="ic ic-monitor-smartphone"></i>Free a device</button>
+          <button class="btn outline icon" aria-label="More for Diceroll"><i class="ic ic-ellipsis"></i></button>
+        </div>
+      </article>
+
+      <!-- The Library's own entry for a key (2-7 products): the last tile, dashed, filling the rest of
+           the last row (two cells at 1440, one at 1024, the whole row on a phone). -->
+      <aside class="ptile end-tile entry-tile" aria-labelledby="key-title">
+        <div class="entry-inner">
+          <div class="entry-art"><span class="entry-mark"><i class="ic ic-key-round"></i></span></div>
+          <div class="entry-text">
+            <h2 id="key-title">Have a license key?</h2>
+          </div>
+          <div class="ptile-foot">
+            <button class="btn outline"><i class="ic ic-key-round"></i>Activate a license</button>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <!-- The other ways a license joins the account, as the Library's sticky strip (PX-35). The key tile
+       is on screen, so the strip leaves out Activate a license. One line from 1180 px; a closed
+       disclosure below that, on the bottom bar on a phone. -->
+  <section class="portal-strip" aria-label="Missing a license?">
+    <div class="strip-row">
+      <p class="strip-title" aria-hidden="true">Missing a license?</p>
+      <button class="strip-toggle" type="button" aria-expanded="false" aria-controls="missing-ways">Missing a license?<i class="ic ic-chevron-up"></i></button>
+      <ul class="strip-ways" id="missing-ways">
+        <li>Another email? <a class="strip-link" href="#">Add it in Sign-in methods</a></li>
+        <li>Bought on Steam? <a class="strip-link" href="#">Connect Steam</a></li>
+        <li>Bought in a store? Sign in from the app</li>
+      </ul>
+    </div>
+  </section>
+
+  <nav class="portal-tabbar docked" aria-label="Polaris Locker tabs">
+    <a class="active" href="#" aria-current="page"><i class="ic ic-layout-grid"></i>Library</a>
+    <a href="#"><i class="ic ic-sparkles"></i>Discover</a>
+  </nav>
+</div>

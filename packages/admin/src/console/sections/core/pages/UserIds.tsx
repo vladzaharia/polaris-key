@@ -1,6 +1,7 @@
 import * as React from "react";
 import type { ProductUserDetail } from "../../../../api.js";
 import { IdChip } from "../../../../ui/IdChip.js";
+import { SpellOut } from "../../../../ui/SpellOut.js";
 import { CopyButton } from "../../../../ui/CopyButton.js";
 
 /**
@@ -33,6 +34,7 @@ export function UserIds({
         </span>
       ) : null}
       <IdChip value={user.subject} noun="user id" />
+      {user.supportCode ? <SpellOut code={user.supportCode} inline /> : null}
     </>
   );
 }

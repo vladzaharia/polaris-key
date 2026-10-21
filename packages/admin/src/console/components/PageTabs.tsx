@@ -14,17 +14,97 @@ export interface PageTab {
   dirty?: boolean;
 }
 
+/**
+ * The strip's scroll box: an edge mask on the side that still has tabs behind it, and the active
+ * tab scrolled into view on mount (a phone otherwise hard-clips it).
+ */
+function useScrollEdges(activeKey: string): {
+  ref: React.RefObject<HTMLElement | null>;
+  edges: string;
+  onScroll: () => void;
+} {
+  const ref = React.useRef<HTMLElement | null>(null);
+  const [edges, setEdges] = React.useState("");
+  const measure = React.useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    const left = el.scrollLeft > 1;
+    const right = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+    setEdges((left ? "l" : "") + (right ? "r" : ""));
+  }, []);
+  React.useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    let touched = false;
+    const reveal = (): void => {
+      const on = el.querySelector<HTMLElement>(
+        '[aria-current="page"],[aria-selected="true"]',
+      );
+      if (!on) return;
+      const box = el.getBoundingClientRect();
+      const t = on.getBoundingClientRect();
+      if (t.left < box.left || t.right > box.right)
+        el.scrollLeft += t.left - box.left - (box.width - t.width) / 2;
+    };
+    const settle = (): void => {
+      // A tab's count arrives after the first paint and widens it: keep the active tab in view
+      // until the reader moves the strip themselves.
+      if (!touched) reveal();
+      measure();
+    };
+    const hands = (): void => {
+      touched = true;
+    };
+    el.addEventListener("wheel", hands, { passive: true });
+    el.addEventListener("touchstart", hands, { passive: true });
+    el.addEventListener("pointerdown", hands);
+    settle();
+    if (typeof ResizeObserver === "undefined")
+      return () => {
+        el.removeEventListener("wheel", hands);
+        el.removeEventListener("touchstart", hands);
+        el.removeEventListener("pointerdown", hands);
+      };
+    const ro = new ResizeObserver(settle);
+    ro.observe(el);
+    for (const child of Array.from(el.children)) {
+      ro.observe(child);
+      for (const grand of Array.from(child.children)) ro.observe(grand);
+    }
+    return () => {
+      ro.disconnect();
+      el.removeEventListener("wheel", hands);
+      el.removeEventListener("touchstart", hands);
+      el.removeEventListener("pointerdown", hands);
+    };
+  }, [activeKey, measure]);
+  return { ref, edges, onScroll: measure };
+}
+
+const stripClass = (edges: string) =>
+  cn(
+    "pk-scroll -mb-px overflow-x-auto",
+    edges === "r" &&
+      "[mask-image:linear-gradient(to_right,#000_calc(100%-2rem),transparent)]",
+    edges === "l" &&
+      "[mask-image:linear-gradient(to_left,#000_calc(100%-2rem),transparent)]",
+    edges === "lr" &&
+      "[mask-image:linear-gradient(to_right,transparent,#000_2rem,#000_calc(100%-2rem),transparent)]",
+  );
+
+// B4: an underline tablist with a 3 px indicator in the service's accent (B17), never a segmented
+// control or a boxed tray. The hover tint and the ring take the same accent.
 const tabClass = (active: boolean) =>
   cn(
-    "relative inline-flex h-10 items-center gap-1.5 whitespace-nowrap border-b-2 px-1 text-sm",
+    "relative inline-flex h-10 items-center gap-1.5 whitespace-nowrap rounded-t-md border-b-[3px] px-1.5 text-sm",
     "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus",
     active
       ? "border-transparent font-medium text-fg-strong"
-      : "border-transparent text-fg-muted hover:border-border-strong hover:text-fg-strong",
+      : "border-transparent text-fg-muted hover:border-border-strong hover:bg-state-hover-tint hover:text-fg-strong",
   );
 
 /**
- * The active tab's underline (S-23 §6.1 morph). It lies exactly over the tab's own 2 px bottom
+ * The active tab's underline (S-23 §6.1 morph). It lies exactly over the tab's own 3 px bottom
  * border, so the tab looks as it always has; being its own element, it is named `pk-indicator`
  * during a `tab` (or `route`) View Transition and slides to the next tab. A border, not a fill, so
  * forced-colors mode keeps it.
@@ -34,7 +114,7 @@ function Indicator(): React.ReactElement {
     <span
       aria-hidden
       data-tab-indicator=""
-      className="pk-vt-indicator pointer-events-none absolute inset-x-0 -bottom-[2px] border-b-2 border-accent"
+      className="pk-vt-indicator pointer-events-none absolute inset-x-0 -bottom-[3px] border-b-[3px] border-accent"
     />
   );
 }
@@ -92,14 +172,20 @@ export function PageTabs({
   idPrefix?: string;
 }): React.ReactElement {
   const routed = items.every((t) => t.to !== undefined);
+  const strip = useScrollEdges(value);
   const refs = React.useRef<(HTMLButtonElement | null)[]>([]);
   /** The tab a running transition is about to select: `value` until its update lands. */
   const pending = React.useRef<string | null>(null);
 
   if (routed) {
     return (
-      <nav aria-label={label} className="pk-scroll -mb-px overflow-x-auto">
-        <ul className="flex gap-6">
+      <nav
+        aria-label={label}
+        ref={strip.ref as React.RefObject<HTMLElement>}
+        onScroll={strip.onScroll}
+        className={stripClass(strip.edges)}
+      >
+        <ul className="flex gap-3 sm:gap-6">
           {items.map((t) => (
             <li key={t.value}>
               <Link
@@ -150,7 +236,9 @@ export function PageTabs({
     <div
       role="tablist"
       aria-label={label}
-      className="pk-scroll -mb-px flex gap-6 overflow-x-auto"
+      ref={strip.ref as React.RefObject<HTMLDivElement>}
+      onScroll={strip.onScroll}
+      className={cn(stripClass(strip.edges), "flex gap-3 sm:gap-6")}
     >
       {items.map((t, i) => {
         const active = t.value === value;

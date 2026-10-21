@@ -16,7 +16,7 @@ import {
 import { SingleUseDO } from "../src/singleUseDo.js";
 import type { Env } from "../src/platform/env.js";
 import { KvMock } from "./kvMock.js";
-import { makeEnv, NOW, seedProduct } from "./seed.js";
+import { makeEnv, NOW, seedProduct, setPortalToggles } from "./seed.js";
 import { makeTestDb } from "./helpers.js";
 import { singleUseMock } from "./singleUseMock.js";
 import { StorageMock } from "./updateHealthMock.js";
@@ -25,10 +25,7 @@ import {
   handleMagicVerify,
   portalFlowKey,
 } from "../src/services/identity/portal/auth.js";
-import {
-  getOrCreateAccountByEmail,
-  upsertPortalProductSettings,
-} from "../src/services/identity/portal/repo.js";
+import { getOrCreateAccountByEmail } from "../src/services/identity/portal/repo.js";
 import { artefacts } from "./singleUseMock.js";
 
 // I-02: the atomic single-use store (S-16 §3.2 G15). These run the REAL SingleUseDO class over
@@ -328,7 +325,7 @@ describe("portal magic links and flows are consumed atomically (G15)", () => {
     await seedProduct(db, "acme");
     // A new address finishes through the gate first (PX-21); this is the returning sign-in.
     await getOrCreateAccountByEmail(db, "user@example.com", NOW);
-    await upsertPortalProductSettings(db, "acme", { portalEnabled: true }, NOW);
+    await setPortalToggles(db, "acme", { portalEnabled: true }, NOW);
     const res = await handleMagicStart(
       new Request("https://key.plrs.im/api/magic/start", {
         method: "POST",

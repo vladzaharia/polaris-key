@@ -2,7 +2,7 @@
 //   - dist/docs-access.json: the path prefixes and their tiers, from src/lib/doors.ts;
 //   - one Pagefind bundle per tier, so a search never returns text its reader may not open:
 //     dist/pagefind (public), dist/pagefind-member (public + member), dist/pagefind-admin (all);
-//   - the sitemap keeps public pages only.
+//   - the sitemap keeps public pages only; Help moves to dist/sitemap-help.xml (polaris.locker).
 // The worker serves each bundle at its own tier (SEARCH_BUNDLES in packages/worker/src/docs.ts);
 // packages/docs/test/searchBundles.test.ts pins the two.
 
@@ -98,6 +98,11 @@ await pagefind.close();
 // The sitemap lists public pages only (gated pages are also noindex, via src/routeData.ts).
 let dropped = 0;
 const sitemap = join(dist, "sitemap-0.xml");
+// Help's canonical host is polaris.locker (src/lib/helpHost.ts), so its pages leave key.plrs.im's
+// sitemap and list in the customer host's own `sitemap-help.xml` instead: a sitemap may only list
+// URLs of its own host, and the customer host serves nothing but Help.
+const CUSTOMER_SITE = "https://polaris.locker";
+const helpUrls: string[] = [];
 if (existsSync(sitemap)) {
   // Whole <url> blocks, whatever children they carry (<lastmod>, <xhtml:link>, …).
   const xml = readFileSync(sitemap, "utf8").replace(
@@ -110,12 +115,24 @@ if (existsSync(sitemap)) {
       const tier = loc
         ? (doorOf(loc[1]!.replace(/\/$/, "") || "index")?.tier ?? "admin")
         : "admin";
-      if (tier === "public") return block;
-      dropped += 1;
-      return "";
+      if (tier !== "public") {
+        dropped += 1;
+        return "";
+      }
+      if (loc && /^help(\/|$)/.test(loc[1]!)) {
+        helpUrls.push(`${CUSTOMER_SITE}/docs/${loc[1]!.trim()}`);
+        return "";
+      }
+      return block;
     },
   );
   writeFileSync(sitemap, xml);
+  writeFileSync(
+    join(dist, "sitemap-help.xml"),
+    `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${helpUrls
+      .map((u) => `<url><loc>${u}</loc></url>`)
+      .join("")}</urlset>`,
+  );
 }
 console.log(
   `build-search-bundles: ${counts.join(" ")}; ${dropped} gated pages out of the sitemap`,

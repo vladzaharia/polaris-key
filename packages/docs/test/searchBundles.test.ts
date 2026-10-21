@@ -105,7 +105,12 @@ describe.skipIf(!existsSync(join(dist, "docs-access.json")))(
         xml.match(/<url>/g)?.length ?? 0,
         "no <url> entries",
       ).toBeGreaterThan(0);
-      expect(xml).toContain("/docs/help/");
+      // Help lists in the customer host's own sitemap, not in key.plrs.im's.
+      expect(xml).not.toContain("/docs/help/");
+      const help = readFileSync(join(dist, "sitemap-help.xml"), "utf8");
+      expect(help).toContain("<loc>https://polaris.locker/docs/help/");
+      expect(help).not.toContain("key.plrs.im");
+      expect(help).not.toContain("/docs/help/code/");
       expect(xml).not.toContain("/docs/operate/");
       expect(xml).not.toContain("/docs/contribute/");
       const gated = readFileSync(

@@ -90,7 +90,7 @@ describe("SignedBadge", () => {
 });
 
 describe("ServiceGlyph and ServiceBadge", () => {
-  it("draws the Star Cut for the delivery family", () => {
+  it("draws the brand service icon in the service accent", () => {
     const { container } = render(<ServiceGlyph id="update" />);
     const wrap = container.firstElementChild!;
     expect(wrap.getAttribute("data-service")).toBe("update");
@@ -98,7 +98,7 @@ describe("ServiceGlyph and ServiceBadge", () => {
     expect(wrap.querySelector("svg")!.getAttribute("aria-hidden")).toBe("true");
   });
 
-  it("uses a lucide icon for the others, in their accent", () => {
+  it("sizes the icon from the prop", () => {
     const { container } = render(<ServiceGlyph id="license" size={24} />);
     expect(container.firstElementChild!.getAttribute("data-service")).toBe(
       "license",

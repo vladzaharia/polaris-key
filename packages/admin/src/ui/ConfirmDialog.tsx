@@ -2,6 +2,7 @@ import * as React from "react";
 import { AlertTriangle, CircleAlert, OctagonAlert } from "lucide-react";
 import { cn } from "../lib/cn.js";
 import { Button, type ButtonVariant } from "./Button.js";
+import { CopyDetails } from "./CopyDetails.js";
 import { Dialog, DialogBody, DialogFooter } from "./Dialog.js";
 
 /**
@@ -38,9 +39,13 @@ export interface ConfirmDialogProps {
   /** Inputs the confirmation needs (a reason, a version), rendered under the consequences. */
   children?: React.ReactNode;
   /** Turns an error into the inline message, e.g. `errorCopy`. Default: its `message`. */
-  describeError?: (
-    error: unknown,
-  ) => { title: string; description?: string } | null;
+  describeError?: (error: unknown) => {
+    title: string;
+    description?: string;
+    /** `copy-details` (an `errorCopy`): the dialog adds the Copy details button it promises. */
+    action?: string;
+    details?: Record<string, unknown>;
+  } | null;
   /** Close after `onConfirm` resolves. Default true; the legacy views close it themselves. */
   closeOnSuccess?: boolean;
   /** Legacy: overrides the confirm button's variant. Prefer `intent`. */
@@ -132,6 +137,7 @@ export function ConfirmDialog({
       onOpenChange={onOpenChange}
       size="md"
       role="alertdialog"
+      tone={intent === "neutral" ? "default" : intent}
       title={
         <span className="flex items-start gap-2">
           {ICON[intent] ? (
@@ -178,6 +184,7 @@ export function ConfirmDialog({
                 {err.description ? (
                   <p className="text-fg">{err.description}</p>
                 ) : null}
+                <CopyDetails copy={err} />
               </div>
             </div>
           ) : null}

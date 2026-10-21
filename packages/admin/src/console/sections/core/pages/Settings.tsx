@@ -39,8 +39,10 @@ import {
 } from "../../../../api.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
 import { formatDateTime, fromSeconds } from "../../../../lib/format.js";
+import { ManifestDriftSection } from "../../../components/ManifestDriftSection.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
+import { CopyDetails } from "../../../../ui/CopyDetails.js";
 import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import {
@@ -75,6 +77,7 @@ import { useProduct } from "../../../data/hooks.js";
 import { mutate } from "../../../data/mutations.js";
 import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
+import { ProductSettingsSection } from "../../../components/ProductSettingsSection.js";
 import { ProductAlertsSection } from "../../notify/ProductAlertsSection.js";
 import { listOf } from "../model/listOf.js";
 import { deviceLimitIssue } from "../../../../lib/deviceLimit.js";
@@ -391,15 +394,37 @@ function SettingsBody({
 
         {nonFieldError ? (
           <Callout tone="danger" title={nonFieldError.title}>
-            {nonFieldError.description}
+            <p>{nonFieldError.description}</p>
+            <div className="mt-2">
+              <CopyDetails copy={nonFieldError} />
+            </div>
           </Callout>
         ) : null}
         <SaveBar form={form} saveLabel="Save settings" />
       </Form>
 
       <RepositorySection slug={slug} product={product} />
+      {claimable ? <ManifestDriftSection slug={slug} /> : null}
       <StorageSection slug={slug} />
       <ProductAlertsSection slug={slug} />
+      <ProductSettingsSection
+        slug={slug}
+        area="general"
+        keys={["email.dailyCap"]}
+        id="settings-mail"
+        title="Email"
+      />
+      <ProductSettingsSection
+        slug={slug}
+        area="assets"
+        keys={[
+          "deltas.lazy.enabled",
+          "deltas.lazy.hotDevices",
+          "deltas.lazy.dailyCap",
+        ]}
+        id="settings-deltas"
+        title="Deltas"
+      />
 
       <DangerZone>
         <DangerAction

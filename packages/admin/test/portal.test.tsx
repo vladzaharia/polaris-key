@@ -42,20 +42,23 @@ describe("portal shell and data layer (PX-01)", () => {
     expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
   });
 
-  it("ends every page with the Help and Privacy links, in the public Help door", async () => {
+  it("has no footer: Help and Privacy are the account menu's last links, in the public Help door (PX-35)", async () => {
     mockFetch(signedIn([]));
     renderPortal();
-    const foot = await screen.findByRole("navigation", {
-      name: "Help and policies",
-    });
-    expect(
-      within(foot)
-        .getAllByRole("link")
-        .map((a) => [a.textContent, a.getAttribute("href")]),
-    ).toEqual([
+    await userEvent.click(
+      await screen.findByRole("button", { name: `Account: ${ACCOUNT.name}` }),
+    );
+    const links = (await screen.findAllByRole("menuitem")).filter((i) =>
+      i.matches("a[href^='/docs/']"),
+    );
+    expect(links.map((a) => [a.textContent, a.getAttribute("href")])).toEqual([
       ["Help", "/docs/help/"],
       ["Privacy", "/docs/help/your-data/"],
     ]);
+    expect(screen.queryByRole("contentinfo")).toBeNull();
+    expect(
+      screen.queryByRole("navigation", { name: "Help and policies" }),
+    ).toBeNull();
   });
 
   it("renders the signed-in shell's landmarks, nav and Activate action", async () => {
@@ -77,21 +80,20 @@ describe("portal shell and data layer (PX-01)", () => {
         .getByRole("link", { name: "Skip to content" })
         .getAttribute("href"),
     ).toBe("#content");
-    expect(screen.getByRole("contentinfo").textContent).toContain(
-      "Polaris Locker",
-    );
+    // No footer (PX-35).
+    expect(screen.queryByRole("contentinfo")).toBeNull();
     const nav = screen.getByRole("navigation", { name: "Main" });
     const library = nav.querySelector("a[aria-current=page]");
     expect(library?.textContent).toMatch(/^Library/);
     await waitFor(() => expect(library?.textContent).toBe("Library2"));
     // Discover is hidden from the nav until the Worker can list offers (G24).
     expect(screen.queryByRole("link", { name: /discover/i })).toBeNull();
-    // The header's action (the key tile in the grid says the same, below the title).
+    // Activate is in the account menu, not the header (the key tile in the grid says the same).
     expect(
-      within(screen.getByRole("banner")).getByRole("button", {
-        name: "Activate license",
+      within(screen.getByRole("banner")).queryByRole("button", {
+        name: /^Activate/,
       }),
-    ).toBeTruthy();
+    ).toBeNull();
     expect(
       screen.getByRole("button", { name: `Account: ${ACCOUNT.name}` }),
     ).toBeTruthy();
@@ -111,11 +113,14 @@ describe("portal shell and data layer (PX-01)", () => {
     expect(document.title).toBe("Account · Polaris Locker");
   });
 
-  it("opens the Activate license modal from the header", async () => {
+  it("opens the Activate license modal from the account menu", async () => {
     mockFetch(signedIn());
     renderPortal();
     await userEvent.click(
-      await screen.findByRole("button", { name: "Activate license" }),
+      await screen.findByRole("button", { name: `Account: ${ACCOUNT.name}` }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Activate a license" }),
     );
     expect(
       await screen.findByRole("dialog", { name: "Activate a license" }),

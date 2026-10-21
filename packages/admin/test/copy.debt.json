@@ -62,12 +62,6 @@
       "count": 2
     },
     {
-      "rule": "capability",
-      "file": "console/settings.generated.ts",
-      "text": "Outlet capabilities",
-      "count": 1
-    },
-    {
       "rule": "grant",
       "file": "console/sections/config/components/CatalogEntryForm.tsx",
       "text": "Grant label",
@@ -550,25 +544,7 @@
     {
       "rule": "outlet",
       "file": "console/settings.generated.ts",
-      "text": "Outlet capabilities",
-      "count": 1
-    },
-    {
-      "rule": "outlet",
-      "file": "console/settings.generated.ts",
       "text": "Outlet signing-key fingerprints",
-      "count": 1
-    },
-    {
-      "rule": "outlet",
-      "file": "console/settings.generated.ts",
-      "text": "Outlets",
-      "count": 1
-    },
-    {
-      "rule": "outlet",
-      "file": "console/settings.generated.ts",
-      "text": "What an install that arrived through each outlet may do (fetch new code, run downloaded scripts, sell things). The starting point is the compiled default for the outlet's kind; an operator may only narrow it.",
       "count": 1
     },
     {

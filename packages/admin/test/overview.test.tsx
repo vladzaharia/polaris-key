@@ -77,7 +77,7 @@ function product(over: Partial<ProductDetail> = {}): ProductDetail {
         {
           name: "WEBHOOK_SECRET",
           configured: false,
-          sources: ["OIDC client secret"],
+          sources: ["OIDC sign-in"],
         },
       ],
       warnings: [],

@@ -721,10 +721,10 @@ msgstr "用手机扫描二维码，或在下方地址输入此代码。"
 msgid "signInHandoff.linkCopied"
 msgstr "链接已复制"
 
-#. Choose Continue to {product} on the sign-in page to finish.
-#. SignInHandoff: sign-in continues on another device or in the browser. The hosted page ends with a “Continue to {product}” button. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. Choose Sign in on {device} on the sign-in page to finish.
+#. SignInHandoff: sign-in continues on another device or in the browser. The hosted approval page ends with a “Sign in on {device}” button, next to Deny; the label stays in English. Arguments: {device} = this device's friendly name.
 msgid "signInHandoff.confirm"
-msgstr "在登录页面上选择“继续使用{product}”以完成登录。"
+msgstr "在登录页面上选择“Sign in on {device}”以完成登录。"
 
 #. Signed in
 #. SignInHandoff: sign-in continues on another device or in the browser. Shown for a moment before the product continues.
@@ -759,6 +759,16 @@ msgstr "激活许可证"
 #. macos: Activate License
 msgctxt "macos"
 msgid "activate.submit"
+msgstr "激活许可证"
+
+#. Activate a license
+#. Portal: opens the Activate dialog (account menu, Library key tile, empty Library, Missing a license strip).
+msgid "common.activateLicense"
+msgstr "激活许可证"
+
+#. macos: Activate a License
+msgctxt "macos"
+msgid "common.activateLicense"
 msgstr "激活许可证"
 
 #. Activating…
@@ -2994,6 +3004,11 @@ msgstr "该验证码或链接已过期"
 #. Expired code or link page (SIGN-IN.md §4.12).
 msgid "signin.expired.body"
 msgstr "验证码和链接仅可使用一次，10分钟内有效。"
+
+#. A new code goes to {email}.
+#. Expired code or link page (SIGN-IN.md §4.12). Arguments: {email} = an email address, masked by the Worker. The button is signin.code.resend; the way back is signin.code.differentEmail.
+msgid "signin.expired.sendTo"
+msgstr "新验证码将发送到 {email}。"
 
 #. Sign in again
 #. Expired code or link page (SIGN-IN.md §4.12).

@@ -34,8 +34,8 @@ const page = (body: string) =>
     `<!doctype html><html lang="en"><head><meta charset="utf-8">${BASE}</head><body><div data-shot="s">${body}</div></body></html>`,
   ).toString("base64");
 
-async function lint(body: string): Promise<LintResult> {
-  const p = await browser.newPage({ viewport: { width: 1200, height: 900 } });
+async function lint(body: string, width = 1200): Promise<LintResult> {
+  const p = await browser.newPage({ viewport: { width, height: 900 } });
   await prepare(p);
   await p.goto(page(body));
   const r = await lintPage(p, { fonts: ["Rubik"] });
@@ -67,6 +67,11 @@ const SEEDED: Record<string, string> = {
   "interactive-states": `<button style="font: 500 15px Rubik">Go</button>`,
   "colour-literal": `<p style="color: #ff6a3d">Hello</p>`,
   "one-primary": `<div class="card"><button class="k-btn primary">Activate</button><button class="k-btn primary">Sign in</button></div>`,
+  // Console shell v2 (ST-48; B4, B17): the service accents are the page's own tokens.
+  "accent-as-status": `<style>:root { --pk-service-license: rgb(198 233 64); }</style><p role="status" style="color: rgb(198 233 64)">Active</p>`,
+  "state-accent": `<style>:root { --pk-service-license: rgb(198 233 64); --pk-service-config: rgb(250 199 0); }</style><div data-service="license"><a href="#" aria-current="page" style="color: rgb(250 199 0)">Catalog</a></div>`,
+  "section-index": `<h2>01 Limits</h2>`,
+  "masthead-tile": `<span data-masthead-tile style="display: inline-block; inline-size: 48px; block-size: 48px"></span>`,
   "x-beside-cancel": `<div role="dialog"><button class="k-btn" aria-label="Close">×</button><button class="k-btn">Cancel</button></div>`,
 };
 
@@ -91,12 +96,27 @@ describe("the modernity lint (UI-KITS §7.3)", () => {
     expect(Object.keys(SEEDED).sort()).toEqual(inPage.sort());
   });
 
+  // A rule that depends on the window: the masthead tile is for 1024 px and wider.
+  const WIDTH: Record<string, number> = { "masthead-tile": 800 };
   for (const [rule, body] of Object.entries(SEEDED)) {
     it(`fails on a seeded ${rule}`, async () => {
-      const r = await lint(body);
+      const r = await lint(body, WIDTH[rule]);
       expect(r.violations.map((v) => v.rule)).toContain(rule);
     });
   }
+
+  it("spares what the console shell v2 rules allow", async () => {
+    const tokens = `<style>:root { --pk-service-license: rgb(198 233 64); --pk-service-config: rgb(250 199 0); }</style>`;
+    // A selected row in its own service's accent, an ordered step's numeral, the tile at 1024 px.
+    const ok = await lint(
+      `${tokens}<div data-service="config"><a href="#" aria-current="page" style="color: rgb(250 199 0)">Catalog</a></div><ol><li><h3>01 Create the product</h3></li></ol><span data-masthead-tile style="display: inline-block; inline-size: 48px; block-size: 48px"></span><p role="status">Active</p>`,
+      1100,
+    );
+    expect(ok.violations.map((v) => v.rule)).not.toContain("state-accent");
+    expect(ok.violations.map((v) => v.rule)).not.toContain("section-index");
+    expect(ok.violations.map((v) => v.rule)).not.toContain("masthead-tile");
+    expect(ok.violations.map((v) => v.rule)).not.toContain("accent-as-status");
+  });
 
   it("records a runtime alert() call", async () => {
     const r = await lint(

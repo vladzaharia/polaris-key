@@ -20,6 +20,7 @@ import {
   seedLicenseWithKey,
   seedProduct,
   setClaimByKey,
+  setPortalToggles,
 } from "./seed.js";
 import { issuePortalSessionRow } from "./portalSessionRow.js";
 import { handlePortalApi } from "./portalHarness.js";
@@ -430,13 +431,7 @@ describe("the refusal (§12.2 step 4)", () => {
 
   it("drops the link while the portal is off", async () => {
     const { product, key } = await atLimit({ refusals: true });
-    await db.run(
-      `INSERT INTO portal_product_settings (product, portal_enabled, created_at, modified_at)
-       VALUES (?, 0, ?, ?)`,
-      SLUG,
-      NOW,
-      NOW,
-    );
+    await setPortalToggles(db, SLUG, { portalEnabled: false });
     const res = await activate(product, key, "dev-3", NOW + 60);
     expect(res.status).toBe(403);
     expect(await res.json()).not.toHaveProperty("manageUrl");
@@ -761,13 +756,7 @@ describe("the signed-out key preview (POST /api/key/preview)", () => {
   it("portal_off, an unusable string (422), an unknown key (401)", async () => {
     await setIdentity(true);
     const { key } = await seedLicenseWithKey(db, SLUG);
-    await db.run(
-      `INSERT INTO portal_product_settings (product, portal_enabled, created_at, modified_at)
-       VALUES (?, 0, ?, ?)`,
-      SLUG,
-      NOW,
-      NOW,
-    );
+    await setPortalToggles(db, SLUG, { portalEnabled: false });
     expect(
       await (await portal("/api/key/preview", { key }, null)).json(),
     ).toMatchObject({

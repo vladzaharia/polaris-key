@@ -100,13 +100,13 @@ describe("All settings → Edit in", () => {
     ],
     [
       "license.fingerprint",
-      "License → Enrollment",
+      "Licensing → Enrollment",
       "Fingerprint policy",
       "#/p/djdl/license/enrollment",
     ],
     [
       "licensing.clampGraceToExpiry",
-      "License → Settings",
+      "Licensing → Settings",
       null,
       "#/p/djdl/license/settings",
     ],
@@ -136,9 +136,15 @@ describe("All settings → Edit in", () => {
     ],
     [
       "identity.keyEntry.claimByKey",
-      "Identity → App sign-in",
-      "License keys",
-      "#/p/djdl/identity/app-sign-in",
+      "Settings → Polaris Locker",
+      "Polaris Locker",
+      "#/p/djdl/settings/portal",
+    ],
+    [
+      "portal.enabled",
+      "Settings → Polaris Locker",
+      "Polaris Locker",
+      "#/p/djdl/settings/portal",
     ],
   ])("%s links to %s and opens it", async (key, where, section, hash) => {
     mount();
@@ -149,7 +155,9 @@ describe("All settings → Edit in", () => {
     expect(cell).toContain(where);
     if (section) expect(cell).toContain(section);
     await userEvent.setup().click(link);
-    expect(window.location.hash).toBe(hash);
+    expect(window.location.hash).toBe(
+      `${hash}${hash.includes("?") ? "&" : "?"}setting=${key}`,
+    );
   });
 
   it.each([
@@ -194,7 +202,12 @@ describe("All settings → Edit in", () => {
         expect(
           links.map((l) => l.getAttribute("href")),
           e.key,
-        ).toEqual([productPage("djdl", home.page, { id: home.id })]);
+        ).toEqual([
+          productPage("djdl", home.page, {
+            id: home.id,
+            query: { setting: e.key },
+          }),
+        ]);
       else expect(links, e.key).toEqual([]);
     }
   });

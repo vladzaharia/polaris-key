@@ -9,12 +9,7 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SERVICE_ACCENTS } from "@polaris-key/brand";
-import {
-  PRODUCT_PAGES,
-  SECTIONS,
-  navItems,
-  platformLinks,
-} from "../src/console/nav.js";
+import { PRODUCT_PAGES, SECTIONS, navItems } from "../src/console/nav.js";
 
 type ServiceAccentKey = keyof (typeof SERVICE_ACCENTS)["dark"];
 import { PREF_KEYS } from "../src/console/storage.js";
@@ -43,23 +38,30 @@ const nav = (): HTMLElement =>
   screen.getAllByRole("navigation", { name: "Console" })[0]!;
 
 /**
- * The sidebar's PRODUCT section headers, in render order. The Platform section's header is there
- * on every page (platform.test.tsx covers it), so it is left out of these product assertions.
+ * The sidebar's feature group headers, in render order (ST-45: Core is a flat list with no header,
+ * and a feature with one page is a single link row, which carries the header attribute too).
  */
 function sectionHeaders(): string[] {
-  return [
-    ...nav().querySelectorAll(
-      "[data-section-header]:not([data-section-header=platform])",
-    ),
-  ].map((el) => el.textContent ?? "");
+  return [...nav().querySelectorAll("[data-section-header]")].map(
+    (el) => el.textContent ?? "",
+  );
 }
+
+/** A feature with exactly one page is one row: its label is the link (no disclosure). */
+const isSingle = (s: (typeof SECTIONS)[number]): boolean =>
+  navItems(s, { packageFeeds: false }).length === 1;
+/** The feature groups that fold: every section but Core and the one-page ones. */
+const FOLDING = SECTIONS.filter((s) => s.key !== "core" && !isSingle(s));
+const FEATURES = SECTIONS.filter((s) => s.key !== "core");
 
 const header = (label: string): HTMLElement =>
   within(nav()).getByRole("button", { name: label });
 
 async function ready(): Promise<void> {
   await screen.findByRole("navigation", { name: "Console" });
-  await waitFor(() => expect(sectionHeaders().length).toBeGreaterThan(0));
+  await waitFor(() =>
+    expect(within(nav()).queryAllByRole("link").length).toBeGreaterThan(0),
+  );
 }
 
 const expanded = (label: string): string | null =>
@@ -73,7 +75,7 @@ async function expand(label: string): Promise<void> {
 
 /** Peek into every collapsed section, so every item renders. */
 async function expandAll(): Promise<void> {
-  for (const label of sectionHeaders()) await expand(label);
+  for (const s of FOLDING) await expand(s.label);
 }
 
 /** The labels of the sidebar's links, in render order. */
@@ -88,13 +90,12 @@ describe("sections by enablement (D-15)", () => {
     await ready();
     await waitFor(() =>
       expect(sectionHeaders()).toEqual([
-        "Core",
-        "License",
-        "Config",
+        "Licensing",
+        "Managed config",
         "Release",
         "Distribution",
         "Update",
-        "Identity",
+        "Sign-in",
         "Cloud Sync",
         "Commerce",
       ]),
@@ -112,11 +113,10 @@ describe("sections by enablement (D-15)", () => {
     await ready();
     await waitFor(() =>
       expect(sectionHeaders()).toEqual([
-        "Core",
-        "License",
-        "Config",
+        "Licensing",
+        "Managed config",
         "Distribution",
-        "Identity",
+        "Sign-in",
         "Cloud Sync",
         "Commerce",
       ]),
@@ -128,7 +128,7 @@ describe("sections by enablement (D-15)", () => {
   it("keeps Core → Settings reachable for a product that runs nothing, and Services is its tab", async () => {
     boot("#/p/djdl", { services: NONE });
     await ready();
-    await waitFor(() => expect(sectionHeaders()).toEqual(["Core"]));
+    await waitFor(() => expect(sectionHeaders()).toEqual([]));
     expect(
       within(nav())
         .getByRole("link", { name: "Settings" })
@@ -143,18 +143,19 @@ describe("sections by enablement (D-15)", () => {
     // hiding first then revealing would make the nav jump under the cursor.
     boot("#/p/djdl", { perProduct: { djdl: undefined } });
     await ready();
-    expect(sectionHeaders()).toEqual(SECTIONS.map((s) => s.label));
+    expect(sectionHeaders()).toEqual(FEATURES.map((s) => s.label));
   });
 
   it("shows only platform links off a product (SH-10)", async () => {
     boot("#/");
     await screen.findByRole("navigation", { name: "Console" });
     expect(sectionHeaders()).toEqual([]);
-    // The Platform section is instance-wide: there with or without a product.
-    expect(
-      within(nav()).getByRole("button", { name: "Platform" }),
-    ).toBeTruthy();
+    // The Platform context lists Home and the Platform pages themselves (ST-45), no product's.
     expect(within(nav()).getByRole("link", { name: "Home" })).toBeTruthy();
+    expect(
+      within(nav()).getByRole("link", { name: "Deployment" }),
+    ).toBeTruthy();
+    expect(within(nav()).queryByRole("link", { name: "Overview" })).toBeNull();
     // The products are on Home: no Products link of their own (ST-44).
     expect(within(nav()).queryByRole("link", { name: "Products" })).toBeNull();
   });
@@ -169,9 +170,6 @@ describe("sections by enablement (D-15)", () => {
     cleanup();
     boot("#/");
     await screen.findByRole("navigation", { name: "Console" });
-    await userEvent.click(
-      within(nav()).getByRole("button", { name: "Platform" }),
-    );
     expect(
       await within(nav()).findByRole("link", { name: "Store connections" }),
     ).toBeTruthy();
@@ -189,15 +187,23 @@ describe("items and headers (owner, 2026-10-03)", () => {
     await expandAll();
     const links = within(nav()).getAllByRole("link");
     expect(links.length).toBeGreaterThan(10);
-    // Exactly the nav model's items: the platform links, then every section's.
+    // Exactly the nav model's items: Core's pages, every feature's (a one-page feature is one row
+    // named for the feature), then Settings in the foot. No platform page.
+    const core = SECTIONS.find((x) => x.key === "core")!;
+    const coreItems = navItems(core).filter((p) => p.page !== "settings");
     expect(links.map((a) => a.textContent)).toEqual([
-      ...platformLinks().map((p) => p.label),
+      ...coreItems.map((p) => p.label),
       // The product row says nothing of package feeds, so Distribution → Package feeds is absent.
-      ...SECTIONS.flatMap((s) =>
-        navItems(s, { packageFeeds: false }).map((p) => p.label),
+      ...FEATURES.flatMap((s) =>
+        isSingle(s)
+          ? [s.label]
+          : navItems(s, { packageFeeds: false }).map((p) => p.label),
       ),
+      "Settings",
     ]);
-    for (const link of links) {
+    for (const link of links.filter(
+      (a) => !a.hasAttribute("data-section-header"),
+    )) {
       expect(
         link.querySelector("svg[data-nav-icon]"),
         `${link.textContent} has no icon`,
@@ -214,6 +220,9 @@ describe("items and headers (owner, 2026-10-03)", () => {
   it("section headers render no icon", async () => {
     boot("#/p/djdl", { services: ALL_ON });
     await ready();
+    expect(
+      nav().querySelectorAll("[data-section-header]").length,
+    ).toBeGreaterThan(0);
     for (const el of nav().querySelectorAll("[data-section-header]")) {
       const icons = [...el.querySelectorAll("svg")].filter(
         (svg) => !svg.hasAttribute("data-disclosure"),
@@ -253,7 +262,7 @@ describe("items and headers (owner, 2026-10-03)", () => {
   it("items are real links (middle-click and open in a new tab work, SH-5)", async () => {
     boot("#/p/djdl", { services: ALL_ON });
     await ready();
-    await expand("License");
+    await expand("Licensing");
     expect(
       within(nav())
         .getByRole("link", { name: "Licenses" })
@@ -266,43 +275,50 @@ describe("collapsible section headers (owner, 2026-10-03)", () => {
   it("opens only the active section at load; every other is collapsed", async () => {
     boot("#/p/djdl/license/tiers", { services: ALL_ON });
     await ready();
-    for (const section of SECTIONS) {
+    for (const section of FOLDING) {
       expect(expanded(section.label), section.label).toBe(
         section.key === "license" ? "true" : "false",
       );
     }
-    // Only the active section's items render, beside the platform links.
+    // Only the active group's items render, between Core's pages and the foot's Settings.
     const license = SECTIONS.find((s) => s.key === "license")!;
+    const core = SECTIONS.find((s) => s.key === "core")!;
     expect(navLinkLabels()).toEqual([
-      ...platformLinks().map((p) => p.label),
+      ...navItems(core)
+        .filter((p) => p.page !== "settings")
+        .map((p) => p.label),
       ...navItems(license).map((p) => p.label),
+      ...FEATURES.filter(isSingle).map((s) => s.label),
+      "Settings",
     ]);
   });
 
-  it("on a Core page, Core is the open section", async () => {
+  it("on a Core page, every feature group is collapsed and Core's pages are a flat list", async () => {
     boot("#/p/djdl", { services: ALL_ON });
     await ready();
-    for (const section of SECTIONS) {
-      expect(expanded(section.label), section.label).toBe(
-        section.key === "core" ? "true" : "false",
-      );
+    for (const section of FOLDING) {
+      expect(expanded(section.label), section.label).toBe("false");
     }
+    expect(within(nav()).queryByRole("button", { name: "Core" })).toBeNull();
     const core = SECTIONS.find((s) => s.key === "core")!;
     expect(navLinkLabels()).toEqual([
-      ...platformLinks().map((p) => p.label),
-      ...navItems(core).map((p) => p.label),
+      ...navItems(core)
+        .filter((p) => p.page !== "settings")
+        .map((p) => p.label),
+      ...FEATURES.filter(isSingle).map((s) => s.label),
+      "Settings",
     ]);
   });
 
   it("each header is a disclosure button with aria-expanded and aria-controls", async () => {
     boot("#/p/djdl", { services: ALL_ON });
     await ready();
-    const license = header("License");
+    const license = header("Licensing");
     expect(license.tagName).toBe("BUTTON");
     expect(license.getAttribute("aria-expanded")).toBe("false");
     const controls = license.getAttribute("aria-controls")!;
     expect(controls).toBeTruthy();
-    await expand("License");
+    await expand("Licensing");
     const region = document.getElementById(controls)!;
     expect(within(region).getByRole("link", { name: "Licenses" })).toBeTruthy();
   });
@@ -310,7 +326,7 @@ describe("collapsible section headers (owner, 2026-10-03)", () => {
   it("a collapsed header expands as a peek on click, and with Enter and Space", async () => {
     boot("#/p/djdl", { services: ALL_ON });
     await ready();
-    const license = header("License");
+    const license = header("Licensing");
     expect(within(nav()).queryByRole("link", { name: "Licenses" })).toBeNull();
 
     await userEvent.click(license);
@@ -329,18 +345,19 @@ describe("collapsible section headers (owner, 2026-10-03)", () => {
     expect(license.getAttribute("aria-expanded")).toBe("true");
 
     // A peek touches only its own section.
-    expect(expanded("Core")).toBe("true");
-    expect(expanded("Config")).toBe("false");
+    expect(expanded("Managed config")).toBe("false");
   });
 
   it("a collapsed section keeps its header and its accent cue", async () => {
     boot("#/p/djdl", { services: ALL_ON });
     await ready();
-    expect(expanded("Config")).toBe("false");
+    expect(expanded("Managed config")).toBe("false");
     const group = nav().querySelector('[data-section="config"]')!;
     expect(group.getAttribute("data-service")).toBe("config");
     expect(
-      within(group as HTMLElement).getByRole("button", { name: "Config" }),
+      within(group as HTMLElement).getByRole("button", {
+        name: "Managed config",
+      }),
     ).toBeTruthy();
     expect(
       group.querySelector("[data-section-header] .bg-accent"),
@@ -350,7 +367,7 @@ describe("collapsible section headers (owner, 2026-10-03)", () => {
   it("entering another section opens it and collapses the previous one and every peek", async () => {
     boot("#/p/djdl/license/tiers", { services: ALL_ON });
     await ready();
-    await expand("Config");
+    await expand("Managed config");
     await expand("Release");
 
     // Follow a link inside a peeked section.
@@ -364,8 +381,8 @@ describe("collapsible section headers (owner, 2026-10-03)", () => {
           .getAttribute("aria-current"),
       ).toBe("page"),
     );
-    expect(expanded("Config")).toBe("true");
-    expect(expanded("License")).toBe("false");
+    expect(expanded("Managed config")).toBe("true");
+    expect(expanded("Licensing")).toBe("false");
     expect(expanded("Release")).toBe("false");
     expect(within(nav()).queryByRole("link", { name: "Tiers" })).toBeNull();
     expect(within(nav()).queryByRole("link", { name: "Releases" })).toBeNull();
@@ -374,9 +391,15 @@ describe("collapsible section headers (owner, 2026-10-03)", () => {
     act(() => {
       window.location.hash = "#/p/djdl/activity";
     });
-    await waitFor(() => expect(expanded("Core")).toBe("true"));
-    expect(expanded("Config")).toBe("false");
-    for (const section of SECTIONS.filter((s) => s.key !== "core")) {
+    await waitFor(() =>
+      expect(
+        within(nav())
+          .getByRole("link", { name: "Activity" })
+          .getAttribute("aria-current"),
+      ).toBe("page"),
+    );
+    expect(expanded("Managed config")).toBe("false");
+    for (const section of FOLDING) {
       expect(expanded(section.label), section.label).toBe("false");
     }
   });
@@ -384,7 +407,7 @@ describe("collapsible section headers (owner, 2026-10-03)", () => {
   it("a peek stays open while you move between pages of the active section", async () => {
     boot("#/p/djdl/license/tiers", { services: ALL_ON });
     await ready();
-    await expand("Config");
+    await expand("Managed config");
     await userEvent.click(
       within(nav()).getByRole("link", { name: "Licenses" }),
     );
@@ -395,13 +418,13 @@ describe("collapsible section headers (owner, 2026-10-03)", () => {
           .getAttribute("aria-current"),
       ).toBe("page"),
     );
-    expect(expanded("Config")).toBe("true");
+    expect(expanded("Managed config")).toBe("true");
   });
 
   it("the section holding the current page cannot be collapsed", async () => {
     boot("#/p/djdl/license/tiers", { services: ALL_ON });
     await ready();
-    const license = header("License");
+    const license = header("Licensing");
     expect(license.getAttribute("aria-disabled")).toBe("true");
     await userEvent.click(license);
     expect(license.getAttribute("aria-expanded")).toBe("true");
@@ -423,14 +446,14 @@ describe("collapsible section headers (owner, 2026-10-03)", () => {
     await screen.findByText(/of 1 feature Verified/);
     const before = { ...window.localStorage };
     const setItem = vi.spyOn(Storage.prototype, "setItem");
-    await expand("Config");
+    await expand("Managed config");
     await expand("Release");
     await userEvent.click(header("Release"));
     act(() => {
       window.location.hash = "#/p/djdl/license/tiers";
     });
-    await waitFor(() => expect(expanded("License")).toBe("true"));
-    await expand("Identity");
+    await waitFor(() => expect(expanded("Licensing")).toBe("true"));
+    await expand("Distribution");
     expect(setItem).not.toHaveBeenCalled();
     expect({ ...window.localStorage }).toEqual(before);
     setItem.mockRestore();
@@ -438,10 +461,8 @@ describe("collapsible section headers (owner, 2026-10-03)", () => {
 
     boot("#/p/djdl", { services: ALL_ON });
     await ready();
-    for (const section of SECTIONS) {
-      expect(expanded(section.label), section.label).toBe(
-        section.key === "core" ? "true" : "false",
-      );
+    for (const section of FOLDING) {
+      expect(expanded(section.label), section.label).toBe("false");
     }
   });
 });
@@ -456,20 +477,19 @@ describe("accents and the section bit (BRAND.md §6)", () => {
         el.getAttribute("data-service"),
       ]),
     ).toEqual(
-      // Inside a product the Platform section is hidden (owner, 2026-10-04).
-      SECTIONS.map((s) => [s.key, s.accent]),
+      // Core is a flat list, not a group; no platform group inside a product.
+      FEATURES.map((s) => [s.key, s.accent]),
     );
   });
 
-  it("gives the Platform section the core accent where it shows, off a product", async () => {
+  it("gives the Platform context the core accent, off a product", async () => {
     boot("#/", { services: ALL_ON });
     await screen.findByRole("heading", { level: 1, name: "Home" });
+    expect(nav().getAttribute("data-context")).toBe("platform");
+    expect(nav().querySelector("[data-section]")).toBeNull();
     expect(
-      [...nav().querySelectorAll("[data-section]")].map((el) => [
-        el.getAttribute("data-section"),
-        el.getAttribute("data-service"),
-      ]),
-    ).toEqual([["platform", "core"]]);
+      nav().querySelector("[data-nav-list] ul")?.getAttribute("data-service"),
+    ).toBe("core");
   });
 
   it("accents the content and <html> from the current route's section", async () => {
@@ -491,7 +511,10 @@ describe("accents and the section bit (BRAND.md §6)", () => {
     const brand = await screen.findByRole("link", {
       name: "Polaris Key Console home",
     });
-    expect(brand.querySelector("svg")!.getAttribute("width")).toBe("48");
+    // The kit's compact Key lockup is 52 px tall (as on plrs.im); the mark alone shows under 640 px.
+    expect(brand.querySelector("svg")!.getAttribute("height")).toBe("52");
+    // Guard (BR-lockups): the name is drawn by the lockup, never live text beside the mark.
+    expect(brand.textContent).toBe("");
     const theme = (): "dark" | "light" =>
       document.documentElement.classList.contains("light") ? "light" : "dark";
     const bit = (): Element | null => brand.querySelector(`path[d="${BIT_D}"]`);
@@ -502,20 +525,21 @@ describe("accents and the section bit (BRAND.md §6)", () => {
 
     for (const page of PRODUCT_PAGES.filter((p) => p.inNav)) {
       const section = SECTIONS.find((s) => s.items.includes(page))!;
+      const accent = page.accent ?? section.accent;
       act(() => {
         window.location.hash = `#/p/djdl${page.path ? `/${page.path}` : ""}`;
       });
       await waitFor(() =>
         expect(document.documentElement.getAttribute("data-service")).toBe(
-          section.accent,
+          accent,
         ),
       );
-      if (section.accent === "core") {
+      if (accent === "core") {
         expect(bit(), page.page).toBeNull();
       } else {
         await waitFor(() =>
           expect(bit()?.getAttribute("fill"), page.page).toBe(
-            SERVICE_ACCENTS[theme()][section.accent as ServiceAccentKey].bit,
+            SERVICE_ACCENTS[theme()][accent as ServiceAccentKey].bit,
           ),
         );
         expect(bit()!.classList.contains("polaris-section-bit")).toBe(true);
@@ -599,6 +623,28 @@ describe("the product switcher keeps the page (SH-11)", () => {
   });
 });
 
+describe("context card and selected rows (ST-45 fix round)", () => {
+  it("names the switcher dialog and wraps the card name instead of truncating", async () => {
+    boot("#/p/djdl", { services: ALL_ON });
+    await ready();
+    const card = within(nav()).getByRole("button", { name: /^Product: DJDL/ });
+    expect(card.className).toContain("min-h-[72px]");
+    expect(card.className).not.toMatch(/(^| )h-\[72px\]/);
+    await userEvent.click(card);
+    expect(
+      await screen.findByRole("dialog", { name: "Switch product" }),
+    ).toBeTruthy();
+  });
+
+  it("a selected one-row feature carries the 3 px marker, not the fill alone", async () => {
+    boot("#/p/djdl/sync/data", { services: ALL_ON });
+    await ready();
+    const row = nav().querySelector("[data-section-header=sync]")!;
+    expect(row.getAttribute("aria-current")).toBe("page");
+    expect(row.className).toContain("before:w-[3px]");
+  });
+});
+
 describe("the mobile drawer (SH-2)", () => {
   it("is closed until opened, is a modal, and Escape closes it", async () => {
     boot("#/p/djdl", { services: ALL_ON });
@@ -611,18 +657,35 @@ describe("the mobile drawer (SH-2)", () => {
     expect(
       within(drawer).getByRole("navigation", { name: "Console" }),
     ).toBeTruthy();
-    // The page behind is hidden from assistive tech while the drawer is open.
+    // The page behind is hidden from assistive tech while the drawer is open (inert is stronger).
     expect(
       screen
         .getByRole("main", { hidden: true })
-        .closest("[aria-hidden='true']"),
+        .closest("[aria-hidden='true'], [inert]"),
     ).not.toBeNull();
+
+    // Opening moves focus to the first item; the page behind is inert; the toggle says so.
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(drawer).getAllByRole("link")[0],
+      ),
+    );
+    expect(document.getElementById("content")!.hasAttribute("inert")).toBe(
+      true,
+    );
+    expect(menu.getAttribute("aria-label")).toBe("Close navigation");
+    expect(menu.getAttribute("aria-expanded")).toBe("true");
 
     await userEvent.keyboard("{Escape}");
     await waitFor(() =>
       expect(screen.queryByRole("dialog", { name: "Navigation" })).toBeNull(),
     );
     await waitFor(() => expect(document.activeElement).toBe(menu));
+    expect(menu.getAttribute("aria-label")).toBe("Open navigation");
+    expect(menu.getAttribute("aria-expanded")).toBe("false");
+    expect(document.getElementById("content")!.hasAttribute("inert")).toBe(
+      false,
+    );
   });
 
   it("closes when the window grows to the desktop layout, releasing the page", async () => {
@@ -690,7 +753,7 @@ describe("state pages (T8)", () => {
       services: { ...ALL_ON, license: { enabled: false } },
     });
     expect(
-      await screen.findByText("The License service isn’t enabled for DJDL."),
+      await screen.findByText("The Licensing service isn’t enabled for DJDL."),
     ).toBeTruthy();
   });
 
@@ -754,7 +817,7 @@ describe("state pages (T8)", () => {
     boot("#/p/djdl/nonsense", { services: ALL_ON });
     await screen.findByRole("heading", { name: "Page not found" });
     await ready();
-    expect(sectionHeaders()).toContain("License");
+    expect(sectionHeaders()).toContain("Licensing");
     await userEvent.click(
       screen.getByRole("button", {
         name: "Product: DJDL (djdl). Change product",
@@ -773,7 +836,7 @@ describe("state pages (T8)", () => {
     expect(
       screen.getByRole("heading", {
         level: 2,
-        name: "This page moved to License\u00a0→\u00a0Licenses",
+        name: "This page moved to Licensing\u00a0→\u00a0Licenses",
       }),
     ).toBeTruthy();
     // Not a redirect: the old address stays until the operator follows the link.
@@ -807,7 +870,7 @@ describe("state pages (T8)", () => {
     for (const [old, title, link, href] of [
       [
         "#/p/djdl/licenses/lic_1",
-        "This page moved to License\u00a0→\u00a0Licenses",
+        "This page moved to Licensing\u00a0→\u00a0Licenses",
         "Open license lic_1",
         "#/p/djdl/license/licenses/lic_1",
       ],
@@ -921,7 +984,7 @@ describe("page heading, title and focus", () => {
   it("moves focus to the new page's h1 and announces it", async () => {
     boot("#/p/djdl", { services: ALL_ON });
     await ready();
-    await expand("License");
+    await expand("Licensing");
     await userEvent.click(within(nav()).getByRole("link", { name: "Tiers" }));
     const h1 = await screen.findByRole("heading", { level: 1, name: "Tiers" });
     await waitFor(() => expect(document.activeElement).toBe(h1));
@@ -1113,7 +1176,7 @@ describe("keyboard shortcuts (ADMIN.md §5.5)", () => {
     );
     // Only the active section lists its pages; another section is one icon named for it.
     expect(within(nav()).queryByRole("link", { name: "Licenses" })).toBeNull();
-    expect(within(nav()).getByRole("link", { name: "License" })).toBeTruthy();
+    expect(within(nav()).getByRole("link", { name: "Licensing" })).toBeTruthy();
     expect(window.localStorage.getItem(PREF_KEYS.sidebarRail)).toBe("true");
   });
 });
@@ -1123,6 +1186,6 @@ describe("enablement edits refresh the nav", () => {
     const enablement: Enablement = { ...ALL_ON, identity: { enabled: false } };
     boot("#/p/djdl", { services: enablement });
     await ready();
-    await waitFor(() => expect(sectionHeaders()).not.toContain("Identity"));
+    await waitFor(() => expect(sectionHeaders()).not.toContain("Sign-in"));
   });
 });

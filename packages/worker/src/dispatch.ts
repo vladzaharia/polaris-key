@@ -73,7 +73,10 @@ import { dispatchImgHost, isImgHost } from "./core/assets/imgHost.js";
 import {
   CUSTOMER_ROUTE_KINDS,
   apiOrigin,
+  customerDocsPath,
   customerHostOwnResponse,
+  docsElsewhere,
+  helpAliasResponse,
   isCustomerHostOwnPath,
   oldCustomerUrlRedirect,
 } from "./core/customerHost.js";
@@ -202,6 +205,13 @@ async function routeRequest(
   const route = matchRoute(url.pathname);
   if (onCustomerHost && !CUSTOMER_ROUTE_KINDS.has(route.kind))
     return notFound();
+  // Help is the customer host's only `/docs`; the rest of the site lives on the console host.
+  if (
+    onCustomerHost &&
+    route.kind === "docs" &&
+    !customerDocsPath(url.pathname)
+  )
+    return docsElsewhere(req, env, url);
   // The API host's root is the console's front door once `CUSTOMER_ORIGIN` is set (hard cutover: the
   // customer site lives on its own host then, no switch). Unset, `/` is still the customer portal. A hash route
   // (`/#/library`) never reaches the Worker; those old bookmarks need LK-11's client redirect.
@@ -271,18 +281,9 @@ async function routeRequest(
     // under the prefix — assets and machine-readable artifacts included.
     case "docs":
       return handleDocs(req, env, now);
-    // WebAuthn Related Origin Requests (LK-05): the customer origin may use this host's RP id.
-    // `/help` → the public Help; no session, no database.
+    // `/help[/*]` → the public Help; no session, no database.
     case "helpAlias":
-      return req.method === "GET" || req.method === "HEAD"
-        ? new Response(null, {
-            status: 302,
-            headers: { location: "/docs/help/", "cache-control": "no-store" },
-          })
-        : new Response(null, {
-            status: 405,
-            headers: { allow: "GET, HEAD", "cache-control": "no-store" },
-          });
+      return helpAliasResponse(req, env, url, onCustomerHost);
     case "webauthnOrigins":
       return relatedOriginsResponse(req, env);
     // The platform device-code entry pages: no product, no session, no database.

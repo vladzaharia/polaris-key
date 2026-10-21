@@ -538,9 +538,9 @@
       "note": "SignInHandoff: sign-in continues on another device or in the browser. Confirmation after Copy link."
     },
     "signInHandoff.confirm": {
-      "value": "Choose Continue to {product} on the sign-in page to finish.",
+      "value": "Choose Sign in on {device} on the sign-in page to finish.",
       "role": "body",
-      "note": "SignInHandoff: sign-in continues on another device or in the browser. The hosted page ends with a “Continue to {product}” button. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+      "note": "SignInHandoff: sign-in continues on another device or in the browser. The hosted approval page ends with a “Sign in on {device}” button, next to Deny; the label stays in English. Arguments: {device} = this device's friendly name."
     },
     "signInHandoff.ok": {
       "value": "Signed in",
@@ -566,6 +566,11 @@
       "value": "Activate license",
       "role": "button",
       "note": "Activate: license key entry. Submits the key."
+    },
+    "common.activateLicense": {
+      "value": "Activate a license",
+      "role": "button",
+      "note": "Portal: opens the Activate dialog (account menu, Library key tile, empty Library, Missing a license strip)."
     },
     "activate.busy": {
       "value": "Activating…",
@@ -2421,6 +2426,11 @@
       "role": "body",
       "note": "Expired code or link page (SIGN-IN.md §4.12)."
     },
+    "signin.expired.sendTo": {
+      "value": "A new code goes to {email}.",
+      "role": "body",
+      "note": "Expired code or link page (SIGN-IN.md §4.12). Arguments: {email} = an email address, masked by the Worker. The button is signin.code.resend; the way back is signin.code.differentEmail."
+    },
     "signin.again": {
       "value": "Sign in again",
       "role": "button",
@@ -3990,6 +4000,21 @@
       "value": "Read it to the app's support team.",
       "role": "body",
       "note": "Your data (Account and each product page); moved from the portal's copy tables (P0-36)."
+    },
+    "yourData.product.support.spell": {
+      "value": "Spell it out",
+      "role": "button",
+      "note": "Support code readout (I-41s): read aloud to support."
+    },
+    "yourData.product.support.spellSymbol": {
+      "value": "{s} as in {name}",
+      "role": "a11y",
+      "note": "Support code readout (I-41s): read aloud to support."
+    },
+    "yourData.product.support.spellGroup": {
+      "value": "Part {n} of 3",
+      "role": "a11y",
+      "note": "Support code readout (I-41s): read aloud to support."
     },
     "yourData.remove.keep": {
       "value": "Keep my data",
@@ -6121,11 +6146,6 @@
       "role": "title",
       "note": "Activate a license dialog (P0-36)."
     },
-    "locker.activate.title": {
-      "value": "Activate a license",
-      "role": "title",
-      "note": "Activate a license dialog (P0-36)."
-    },
     "locker.activate.stays": {
       "value": "The product stays in your library even if you lose the key.",
       "role": "body",
@@ -6726,34 +6746,9 @@
       "role": "title",
       "note": "Portal shell, library and product pages (P0-36)."
     },
-    "locker.missing.emailTitle": {
-      "value": "Sent to another email?",
-      "role": "label",
-      "note": "Portal shell, library and product pages (P0-36)."
-    },
-    "locker.missing.emailBody": {
-      "value": "Add that email under {place}.",
-      "role": "body",
-      "note": "Portal shell, library and product pages (P0-36)."
-    },
     "locker.missing.steamTitle": {
       "value": "Bought on Steam?",
       "role": "label",
-      "note": "Portal shell, library and product pages (P0-36)."
-    },
-    "locker.missing.steamBody": {
-      "value": "Add Steam under {place}.",
-      "role": "body",
-      "note": "Portal shell, library and product pages (P0-36)."
-    },
-    "locker.missing.storeTitle": {
-      "value": "Bought on the App Store or Google Play?",
-      "role": "label",
-      "note": "Portal shell, library and product pages (P0-36)."
-    },
-    "locker.missing.storeBody": {
-      "value": "Sign in to the game once.",
-      "role": "body",
       "note": "Portal shell, library and product pages (P0-36)."
     },
     "locker.notFound.title": {
@@ -7485,6 +7480,31 @@
       "value": "Single sign-on",
       "role": "label",
       "note": "Library list, tiles and file details (P0-36)."
+    },
+    "locker.missing.otherWays": {
+      "value": "Other ways in",
+      "role": "label",
+      "note": "Library strip: other ways to get a license (P0-36, PX-35)."
+    },
+    "locker.missing.anotherEmail": {
+      "value": "Another email?",
+      "role": "label",
+      "note": "Library strip: other ways to get a license (P0-36, PX-35)."
+    },
+    "locker.missing.addInMethods": {
+      "value": "Add it in Sign-in methods",
+      "role": "button",
+      "note": "Library strip: other ways to get a license (P0-36, PX-35)."
+    },
+    "locker.missing.connectSteam": {
+      "value": "Connect Steam",
+      "role": "button",
+      "note": "Library strip: other ways to get a license (P0-36, PX-35)."
+    },
+    "locker.missing.inStore": {
+      "value": "Bought in a store? Sign in from the app",
+      "role": "hint",
+      "note": "Library strip: other ways to get a license (P0-36, PX-35)."
     }
   }
 }

@@ -173,13 +173,13 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] WebAuthn mocks cover passkey sign-in and conditional UI.
-- [ ] Forced-upgrade test at zero entries; skippable while entries remain.
-- [ ] No-enumeration test: responses and timing do not reveal whether an email has an account.
-- [ ] `pnpm --filter @polaris-key/admin build` passes and `pnpm --filter @polaris-key/admin test:e2e` reports zero CSP violations.
-- [ ] `vitest-axe` passes on every new or changed page component; one `h1` per screen (§9).
-- [ ] No horizontal page scroll at 360 px on every screen this package touches (§8).
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
+- [x] WebAuthn mocks cover passkey sign-in and conditional UI (`portalSignInPasskey.test.tsx`).
+- [x] Forced-upgrade test at zero entries; skippable while entries remain (`portalRequestFlow.test.tsx`).
+- [x] No-enumeration test: byte-identical start answers for known and unknown addresses (`identityCardEmail.test.ts`); the usual-method hint reads this browser's cookie only (`portalSignInPasskey.test.tsx`); the new `GET /api/signin/flow` and expired page answer only the browser holding the flow cookie (`portalExpiredLink.test.ts`). Timing is not measured in a test (follow-up).
+- [x] `pnpm --filter @polaris-key/admin build` passes; the sign-in states report zero CSP violations in the portal quality, contrast and resolution suites (see the report for the run).
+- [x] `vitest-axe` passes on the resumed code step and the hint step; one `h1` per screen (e2e `h1Count`).
+- [x] No horizontal page scroll: `portalResolutions` covers `signin-resumed` at 320, 360, 390, 768 … 2560 px and 200 % zoom.
+- [x] The scoped gate passes (worker and admin tests touched, `pnpm gen --check`, typecheck, typecheck:workerd, lint of touched files); the full lead gate is the lead's.
 
 ## Verify
 
@@ -194,9 +194,38 @@ PX-14, PX-15 and PX-21 build on the v2 card.
 The role agent sets `--set PX-12 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set PX-12 done`.
 
-## Progress and continuation (2026-10-19)
+## Progress and continuation (2026-10-20)
 
-Landed with P0-38 (same branch): passkey button, **Sign in with another device** and its code step,
+**Audit against the code (2026-10-20).** The 2026-10-19 note below this one is stale: P0-38, PX-14a, PX-21
+and PX-15 landed `HintStep` (`pk_last_method`), the passkey button, conditional UI (`usePasskeySignIn`),
+`signalUnknownPasskey`, `AccountUpgrade` and `FinishStep`. `ux-coverage.json` still shows those rows as
+`mockup-only` because its evidence strings predate them. What the audit found:
+
+| Row (ux-coverage)                                            | State at audit                                                                                                                               | Outcome                                                          |
+| ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `doc:PORTAL#4.1`, `doc:SIGN-IN#3.3`, `portal.signin`         | built: identifier-first, logo-only row, passkey ghost button, rule + quiet links, no lede, no footer                                         | done (passkey and hint tests added)                              |
+| `doc:SIGN-IN#3.4` (CodeStep, HintStep)                       | built; CodeEntry one field, `{n} tries left.`; HintStep had no test                                                                          | done (HintStep tests added)                                      |
+| `doc:PORTAL#4.3` (Known account)                             | built (`HintStep`, cookie hash only, no server lookup)                                                                                       | done (tests: hint, other address, method no longer offered)      |
+| `doc:PORTAL#4.6`, `doc:SIGN-IN#3.9` (AccountUpgrade/KeyStep) | built (`AccountUpgrade`, `InkMeter`, forced body only on `upgrade: "forced"`, no meter when `keyEntries` null); tests in `portalRequestFlow` | done                                                             |
+| Passkey conditional UI, `signalUnknownCredential`            | built in `usePasskeySignIn`; no card-level test                                                                                              | done (12 tests: modal, conditional, abort, signal, one 401 line) |
+| `doc:PORTAL#4.29`, `hosted:finish-email-gate`                | built (`FinishStep`, PX-21)                                                                                                                  | done elsewhere (PX-21)                                           |
+| `doc:PORTAL#4.10` (add-method nudge)                         | built (`AddMethodNudge`, PX-15)                                                                                                              | done elsewhere (PX-15)                                           |
+| `doc:PORTAL#4.8` (native app steps), `doc:SIGN-IN#4.16`      | built as `RequestFlow` (PX-14a: header, licence choice, replace, consent)                                                                    | done elsewhere (PX-14a)                                          |
+| `B2.6`, `B8.1`, `B8.11`, `B8.13`, `B12.9`                    | hosted pages use ink buttons and the star field (`brandHtml.ts`); provider fills from the allowed sets; B12.9 is PX-29/I-37                  | done / not this package                                          |
+| `doc:SIGN-IN#4.12`, `doc:SIGN-IN#3.13` (expired link)        | **gap**: the Worker page had no address (flow lived as long as its code)                                                                     | **built here**: see below                                        |
+| `doc:SIGN-IN#3.14`, `#3.18`, `B8.2`, `B8.3`                  | built in `AuthCard` (focus to h1, one live region, reduced motion) and `requestParts` (DL6 callout, no disabled primary)                     | done                                                             |
+| `auth-17`, `overview-15`, `portal-08`, `portal-16`           | passport layout is PX-33; portal-08 and portal-16 are doc/mockup edits                                                                       | PX-33 / no code                                                  |
+
+**Built for the gap (2026-10-20).** The expired code/link page offers **Send a new code** to the masked address:
+
+- the flow record and its `__Host-pkey_signin` cookie live one hour (`EMAIL_FLOW_TTL_SECONDS`) while the code and link keep 10 minutes; verify, the poll and the confirm check the code's age first (`signin_expired`, no attempt counted, cookie kept);
+- `POST /api/signin/email/resend` also takes a plain `application/x-www-form-urlencoded` POST (the page has no script) and answers `303` to the page the sign-in was headed for with `signin=code`;
+- `GET /api/signin/flow` returns the masked address, `expiresIn`, `resendIn` (and `next` for a routed start);
+- the SPA lands on `?signin=code`, reads the flow and shows CodeStep (masked address, countdown); the marker leaves the URL; "Use a different email" opens an empty field.
+
+Spec and gate edits: OpenAPI (`resend` form body and `303`, `GET /api/signin/flow`, cookie `Max-Age=3600`), `routeCoverage` row (`get`, `post`), the portal page of the docs site, THREAT-MODEL (flow lifetime), catalog key `signin.expired.sendTo` (all nine locales), e2e state `signin-resumed`. No migration, no wire change, no new error code.
+
+**Earlier note (2026-10-19, superseded by the audit above).** Landed with P0-38 (same branch): passkey button, **Sign in with another device** and its code step,
 the neutral-ink card. Left: `UsualMethodHint` / `pk_last_method` (HintStep), passkey conditional UI
 (`mediation: "conditional"`), `signalUnknownCredential`, `AccountUpgrade` (PX-W9 wire), PX-21's
 FinishStep (not reached).

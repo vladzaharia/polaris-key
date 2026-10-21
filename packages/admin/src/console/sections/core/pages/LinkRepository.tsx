@@ -13,6 +13,7 @@
  *      after a check clears it.
  */
 
+import { PlanWarnings } from "../../../components/ResyncDialog.js";
 import * as React from "react";
 import { GitBranch } from "lucide-react";
 import {
@@ -377,6 +378,7 @@ export function LinkRepositoryDrawer({
                 items={plan.skipClaimed}
               />
               <PlanList title="Removes" items={plan.delete} />
+              <PlanWarnings warnings={plan.warnings ?? []} />
               {checked?.remainingSecrets.length ? (
                 <p className="text-sm text-fg-muted">
                   Then set{" "}

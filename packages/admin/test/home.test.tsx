@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import userEvent from "@testing-library/user-event";
 import {
   cleanup,
   fireEvent,
@@ -497,8 +498,12 @@ describe("Home", () => {
     boot("#/", { extra: { ...registry(), "/manage/api/attention": PENDING } });
     await home();
     await waitFor(() => expect(cards()).toHaveLength(2));
-    expect(within(main()).queryByText("Attention")).toBeNull();
-    expect(within(main()).getByText("Integration")).toBeTruthy();
+    expect(
+      within(main()).queryByRole("button", { name: "Needs attention" }),
+    ).toBeNull();
+    expect(
+      within(main()).getByRole("button", { name: "Integration verified" }),
+    ).toBeTruthy();
   });
 
   it("arrow keys on Cards and Table select the view", async () => {
@@ -517,7 +522,7 @@ describe("Home", () => {
     );
   });
 
-  it("Platform ready leaves Home when every row is done, and is never asked for by a member without Platform", async () => {
+  it("Platform ready is one quiet line once every row is done, with Show steps", async () => {
     const done = {
       done: 3,
       total: 3,
@@ -528,9 +533,167 @@ describe("Home", () => {
     });
     await home();
     await waitFor(() => expect(cards()).toHaveLength(2));
+    const line = await within(main()).findByRole("region", {
+      name: "Platform ready",
+    });
+    expect(line.getAttribute("data-platform-ready")).toBe("done");
+    expect(within(line).queryByRole("progressbar")).toBeNull();
+    const steps = within(line).getByRole("button", { name: "Show steps" });
+    expect(steps.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(steps);
+    expect(
+      within(line).getByRole("button", { name: "Hide steps" }),
+    ).toBeTruthy();
+    expect(within(line).getByText("Keyring configured")).toBeTruthy();
+  });
+
+  it("Platform ready is not asked for, or drawn, for a member without Platform", async () => {
+    boot("#/", {
+      me: { platformAdmin: false },
+      extra: { ...registry(), "/manage/api/platform/ready": READY },
+    });
+    await home();
+    await waitFor(() => expect(cards()).toHaveLength(2));
     expect(
       within(main()).queryByRole("region", { name: "Platform ready" }),
     ).toBeNull();
+  });
+
+  describe("the setup guide can be hidden", () => {
+    const KEY = "pk-admin-setup-guide-hidden:u1";
+    const ready = { "/manage/api/platform/ready": READY };
+    const guide = (): HTMLElement | null =>
+      within(main()).queryByRole("region", { name: "Platform ready" });
+
+    it("Hide setup guide removes the card, moves focus to Products, remembers it for this operator", async () => {
+      boot("#/", { extra: { ...registry(), ...ready } });
+      await home();
+      const card = await within(main()).findByRole("region", {
+        name: "Platform ready",
+      });
+      const hide = within(card).getByRole("button", {
+        name: "Hide setup guide",
+      });
+      hide.focus();
+      await userEvent.keyboard("{Enter}");
+      await waitFor(() => expect(guide()).toBeNull());
+      await waitFor(() =>
+        expect(document.activeElement).toBe(
+          within(main()).getByRole("heading", { level: 2, name: /^Products/ }),
+        ),
+      );
+      expect(window.localStorage.getItem(KEY)).toBe("true");
+      // Attention and Products now use the full width: no split on the grid.
+      expect(
+        document.querySelector("[data-home-grid]")!.className,
+      ).not.toContain("grid-cols-[minmax(0,2fr)");
+    });
+
+    it("stays hidden on the next visit, and is another operator's own choice", async () => {
+      window.localStorage.setItem(KEY, "true");
+      boot("#/", { extra: { ...registry(), ...ready } });
+      await home();
+      await waitFor(() => expect(cards()).toHaveLength(2));
+      expect(guide()).toBeNull();
+      cleanup();
+      boot("#/", {
+        me: { sub: "u2" },
+        extra: { ...registry(), ...ready },
+      });
+      await home();
+      expect(
+        await within(main()).findByRole("region", { name: "Platform ready" }),
+      ).toBeTruthy();
+    });
+
+    it("Show setup guide in the header menu brings it back and focuses it", async () => {
+      window.localStorage.setItem(KEY, "true");
+      boot("#/", { extra: { ...registry(), ...ready } });
+      await home();
+      await waitFor(() => expect(cards()).toHaveLength(2));
+      await userEvent.click(
+        within(main()).getByRole("button", { name: "More actions" }),
+      );
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: "Show setup guide" }),
+      );
+      const card = await within(main()).findByRole("region", {
+        name: "Platform ready",
+      });
+      expect(window.localStorage.getItem(KEY)).toBe("false");
+      await waitFor(() =>
+        expect(document.activeElement).toBe(
+          within(card).getByRole("heading", { name: "Platform ready" }),
+        ),
+      );
+      expect(
+        within(main()).queryByRole("button", { name: "More actions" }),
+      ).toBeNull();
+    });
+
+    it("a finished guide hides the same way", async () => {
+      const done = {
+        done: 3,
+        total: 3,
+        rows: READY.rows.map((r) => ({ id: r.id, title: r.title, done: true })),
+      };
+      boot("#/", {
+        extra: { ...registry(), "/manage/api/platform/ready": done },
+      });
+      await home();
+      const line = await within(main()).findByRole("region", {
+        name: "Platform ready",
+      });
+      fireEvent.click(
+        within(line).getByRole("button", { name: "Hide setup guide" }),
+      );
+      await waitFor(() => expect(guide()).toBeNull());
+      expect(window.localStorage.getItem(KEY)).toBe("true");
+    });
+
+    it("no menu while the guide is showing, and none for a member without Platform", async () => {
+      boot("#/", { extra: { ...registry(), ...ready } });
+      await home();
+      await within(main()).findByRole("region", { name: "Platform ready" });
+      expect(
+        within(main()).queryByRole("button", { name: "More actions" }),
+      ).toBeNull();
+    });
+  });
+
+  it("the facets are toggle chips: + Integration verified filters, and the pressed state is announced", async () => {
+    boot("#/", { extra: registry() });
+    await home();
+    await waitFor(() => expect(cards()).toHaveLength(2));
+    const chip = within(main()).getByRole("button", {
+      name: "Integration verified",
+    });
+    expect(chip.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(chip);
+    await waitFor(() => expect(cards()).toHaveLength(1));
+    expect(card("DJDL")).toBeTruthy();
+    expect(chip.getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(chip);
+    await waitFor(() => expect(cards()).toHaveLength(2));
+    // The retired dropdowns are gone.
+    expect(
+      within(main()).queryByRole("button", { name: /Filter by/ }),
+    ).toBeNull();
+  });
+
+  it("Export CSV is in the products' overflow menu, not the toolbar", async () => {
+    boot("#/", { extra: registry() });
+    await home();
+    await waitFor(() => expect(cards()).toHaveLength(2));
+    expect(
+      within(main()).queryByRole("button", { name: /Export CSV/ }),
+    ).toBeNull();
+    await userEvent.click(
+      within(main()).getByRole("button", { name: "More product actions" }),
+    );
+    expect(
+      await screen.findByRole("menuitem", { name: "Export CSV" }),
+    ).toBeTruthy();
   });
 
   it("Cards or Table, one filter bar over both, the choice kept", async () => {
@@ -543,7 +706,10 @@ describe("Home", () => {
         .querySelector("[data-cover=art] img")
         ?.getAttribute("loading"),
     ).toBe("lazy");
-    expect(card("Acme").querySelector("[data-cover=flat]")).not.toBeNull();
+    // No art, no icon: the initial on a solid surface, as tall as the art beside it.
+    const acme = card("Acme").querySelector("[data-cover=initials]")!;
+    expect(acme.textContent).toBe("A");
+    expect(acme.className).toContain("h-[72px]");
     fireEvent.click(within(main()).getByRole("radio", { name: /Table/ }));
     const table = await within(main()).findByRole("table");
     expect(within(table).getByText("DJDL")).toBeTruthy();
@@ -636,9 +802,85 @@ describe("Home", () => {
     const results = await axe(main());
     expect(results.violations.map((v) => v.id)).toEqual([]);
   });
+
+  it("passes axe with the guide hidden, and with it finished", async () => {
+    window.localStorage.setItem("pk-admin-setup-guide-hidden:u1", "true");
+    boot("#/", {
+      extra: { ...registry(), "/manage/api/platform/ready": READY },
+    });
+    await home();
+    await waitFor(() => expect(cards()).toHaveLength(2));
+    expect((await axe(main())).violations.map((v) => v.id)).toEqual([]);
+    cleanup();
+    window.localStorage.clear();
+    boot("#/", {
+      extra: {
+        ...registry(),
+        "/manage/api/platform/ready": {
+          done: 3,
+          total: 3,
+          rows: READY.rows.map((r) => ({
+            id: r.id,
+            title: r.title,
+            done: true,
+          })),
+        },
+      },
+    });
+    await home();
+    await waitFor(() => expect(cards()).toHaveLength(2));
+    await within(main()).findByRole("region", { name: "Platform ready" });
+    expect((await axe(main())).violations.map((v) => v.id)).toEqual([]);
+  });
 });
 
 describe("ProductCard", () => {
+  it("without art the cover is never empty: tint, else the icon, else the initial", () => {
+    const base = productRow("djdl", "DJDL", ALL_ON) as never as Record<
+      string,
+      unknown
+    >;
+    const icon = {
+      url: "https://img.test/x",
+      w64: "https://img.test/x/64.webp",
+      w128: "https://img.test/x/128.webp",
+    };
+    const cover = (presentation: unknown): HTMLElement => {
+      const { unmount } = render(
+        <ProductCard
+          product={{ ...base, presentation } as never}
+          attention={[]}
+        />,
+      );
+      const el = document.querySelector<HTMLElement>("[data-cover]")!;
+      expect(el.className).toContain("h-[72px]");
+      const clone = el.cloneNode(true) as HTMLElement;
+      unmount();
+      return clone;
+    };
+    const tint = cover({ icon: null, header: null, accent: "#2f8378" });
+    expect(tint.getAttribute("data-cover")).toBe("tint");
+    expect(tint.style.backgroundColor).not.toBe("");
+    const withIcon = cover({ icon, header: null });
+    expect(withIcon.getAttribute("data-cover")).toBe("icon");
+    expect(withIcon.querySelector("img, [data-logo]")).not.toBeNull();
+    const initials = cover({ icon: null, header: null });
+    expect(initials.getAttribute("data-cover")).toBe("initials");
+    expect(initials.textContent).toBe("D");
+  });
+
+  it("the system product says System, not a status", () => {
+    const p = {
+      ...(productRow("polaris-key", "Polaris Key", ALL_ON) as never as Record<
+        string,
+        unknown
+      >),
+      system: true,
+    };
+    render(<ProductCard product={p as never} attention={[]} />);
+    expect(screen.getByText("System")).toBeTruthy();
+  });
+
   it("below the small breakpoint: one pip per feature in its accent, named together with the issue", () => {
     const p = {
       ...(productRow("djdl", "DJDL", ALL_ON) as never as Record<

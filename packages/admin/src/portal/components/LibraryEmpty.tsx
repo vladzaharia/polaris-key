@@ -1,7 +1,7 @@
 import * as React from "react";
+import { t } from "../../lib/copy.js";
 import { PolarisMark } from "@polaris-key/brand/react";
 import { KeyRound, Sparkles } from "lucide-react";
-import { t } from "../../lib/copy.js";
 import { Button } from "../../ui/Button.js";
 import { useTheme } from "../../components/theme.js";
 import { useActivate } from "../activate.js";
@@ -10,8 +10,8 @@ import { href } from "../router.js";
 /**
  * The empty library (§4.12, mockup `portal.library-empty`, portal-17): one centred state, the
  * Locker mark in a tile, "Nothing here yet" (the page's subtitle already names the signed-in email),
- * **Activate license** (the header's own label, the one primary) and "See N in Discover" once the
- * Worker counts offers (G24). It takes the space between the title and "Missing a license?".
+ * **Activate license** (its own ink primary, the page's one) and "See N in Discover" once the
+ * Worker counts offers (G24). It takes the space between the title and the sticky "Missing a license?" strip.
  */
 export function LibraryEmpty({
   discoverCount = null,
@@ -37,14 +37,19 @@ export function LibraryEmpty({
       <div className="flex flex-wrap justify-center gap-3">
         <Button
           size="lg"
-          className="h-12 font-medium"
+          className="h-auto min-h-12 whitespace-normal font-medium"
           iconStart={<KeyRound aria-hidden />}
           onClick={() => activate.open()}
         >
-          {t("activate.submit")}
+          {t("common.activateLicense")}
         </Button>
         {discoverCount ? (
-          <Button asChild size="lg" variant="outline" className="h-12">
+          <Button
+            asChild
+            size="lg"
+            variant="outline"
+            className="h-auto min-h-12 whitespace-normal"
+          >
             <a href={href.discover()}>
               <Sparkles aria-hidden />
               {t("locker.library.empty.discover", { count: discoverCount })}

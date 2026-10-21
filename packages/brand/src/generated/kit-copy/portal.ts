@@ -80,6 +80,9 @@ export type PortalCopyKey =
   | "yourData.product.remove.body"
   | "yourData.product.support.title"
   | "yourData.product.support.body"
+  | "yourData.product.support.spell"
+  | "yourData.product.support.spellSymbol"
+  | "yourData.product.support.spellGroup"
   | "yourData.remove.keep"
   | "license.title"
   | "license.term.ended"
@@ -437,7 +440,6 @@ export type PortalCopyKey =
   | "locker.packages.createConfirm"
   | "locker.activate.alreadyIn"
   | "locker.activate.addAsk"
-  | "locker.activate.title"
   | "locker.activate.stays"
   | "locker.activate.keyFor"
   | "locker.activate.keyOwned"
@@ -558,12 +560,7 @@ export type PortalCopyKey =
   | "locker.shell.helpLink"
   | "locker.shell.privacy"
   | "locker.missing.title"
-  | "locker.missing.emailTitle"
-  | "locker.missing.emailBody"
   | "locker.missing.steamTitle"
-  | "locker.missing.steamBody"
-  | "locker.missing.storeTitle"
-  | "locker.missing.storeBody"
   | "locker.notFound.title"
   | "locker.notFound.heading"
   | "locker.notFound.body"
@@ -709,7 +706,12 @@ export type PortalCopyKey =
   | "locker.library.justAdded"
   | "locker.library.seatsOf"
   | "locker.files.showFull"
-  | "locker.methods.sso";
+  | "locker.methods.sso"
+  | "locker.missing.otherWays"
+  | "locker.missing.anotherEmail"
+  | "locker.missing.addInMethods"
+  | "locker.missing.connectSteam"
+  | "locker.missing.inStore";
 
 /** One locale's table. */
 export type PortalCopyTable = Readonly<Record<PortalCopyKey, string>>;

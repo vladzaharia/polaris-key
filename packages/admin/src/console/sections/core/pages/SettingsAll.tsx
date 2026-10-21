@@ -27,7 +27,8 @@ import { canIn } from "../../../access/can.js";
 import { useMe, useProduct } from "../../../data/hooks.js";
 import { qk } from "../../../data/queries.js";
 import { pageOf, sectionOf, type ProductPageId } from "../../../nav.js";
-import { Link } from "../../../router.js";
+import { Link, useLocation } from "../../../router.js";
+import { LAND_EVENT } from "../../../useSettingTarget.js";
 import { productPage } from "../../../routes.js";
 import {
   SETTINGS_INDEX,
@@ -68,7 +69,10 @@ function EditIn({
     return (
       <>
         <Link
-          to={productPage(slug, home.page, { id: home.id })}
+          to={productPage(slug, home.page, {
+            id: home.id,
+            query: { setting: entry.key },
+          })}
           className="inline-flex min-h-6 items-center gap-1 text-accent-fg underline-offset-4 hover:underline"
         >
           {destination(home.page)}
@@ -126,6 +130,21 @@ export function SettingsAllPage({
   const [text, setText] = React.useState("");
   const find = React.useRef<HTMLInputElement>(null);
   const [service, setService] = React.useState<string>(ALL);
+  // A jump to a setting clears what would hide its row (and lands again when it names the same
+  // one twice): the landing itself is the hub's.
+  const query = useLocation().route.query;
+  const target = query.get("setting");
+  const q = query.get("q");
+  React.useEffect(() => {
+    const clear = (): void => {
+      setText("");
+      setService(ALL);
+    };
+    if (target) clear();
+    else if (q) setText(q);
+    window.addEventListener(LAND_EVENT, clear);
+    return () => window.removeEventListener(LAND_EVENT, clear);
+  }, [target, q]);
 
   const entries = React.useMemo(
     () =>
@@ -254,7 +273,12 @@ export function SettingsAllPage({
                 const live = byKey.get(e.key);
                 const home = SETTING_HOMES[e.key];
                 return (
-                  <tr key={e.key}>
+                  <tr
+                    key={e.key}
+                    id={`all-setting-${e.key}`}
+                    tabIndex={-1}
+                    className="scroll-mt-24 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
+                  >
                     <th scope="row" className="px-5 py-3 font-normal">
                       <span className="block font-medium text-fg-strong">
                         {e.label}

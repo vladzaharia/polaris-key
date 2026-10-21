@@ -37,6 +37,38 @@ export type SettingHome =
   | { kind: "manifest"; file: ManifestFile }
   | { kind: "api" };
 
+/**
+ * The element a section label scrolls to on its page (`?setting=<key>` lands there when the page draws no row). A label with
+ * no entry lands on the page.
+ */
+const ANCHORS: Readonly<Record<string, string>> = {
+  "settings|General": "settings-general",
+  "settings|License defaults": "settings-license",
+  "settings|Web origins": "settings-origins",
+  "settings|Repository": "settings-repository",
+  "settings|Alerts": "settings-alerts",
+  "settings|Email": "settings-mail",
+  "settings|Deltas": "settings-deltas",
+  "keys|Signing keys": "keys-signing",
+  "keys|Secrets": "keys-secrets",
+  "keys|CI publishing": "keys-ci",
+  "presentation|Hosting and quotas": "presentation-hosting",
+};
+
+/** The element id a home's section lands on, if the page has one for it. */
+export function anchorOf(home: {
+  page: ProductPageId;
+  section?: string;
+}): string | null {
+  return ANCHORS[`${home.page}|${home.section ?? ""}`] ?? null;
+}
+
+/** The element id of the section a key's home lands on, when its page has one. */
+export function anchorOfKey(key: string): string | null {
+  const home = SETTING_HOMES[key];
+  return home?.kind === "page" ? anchorOf(home) : null;
+}
+
 const at = (
   page: ProductPageId,
   section?: string,
@@ -76,12 +108,14 @@ export const SETTING_HOMES: Readonly<Record<string, SettingHome>> = {
   "core.keys": at("keys", "Signing keys"),
   // The manifest names the secrets and the console sets each value, sealed.
   "core.secrets": at("keys", "Secrets"),
-  // ST-11: moved out of SQL into registry rows; the settings route writes them, no page has a
-  // control yet (follow-up: a Settings editor).
-  "deltas.lazy.enabled": API,
-  "deltas.lazy.hotDevices": API,
-  "deltas.lazy.dailyCap": API,
-  "email.dailyCap": API,
+  // ST-11: registry rows; Settings → Features → General has their editors (ST-08n).
+  "deltas.lazy.enabled": at("settings", "Deltas"),
+  "deltas.lazy.hotDevices": at("settings", "Deltas"),
+  "deltas.lazy.dailyCap": at("settings", "Deltas"),
+  "email.dailyCap": at("settings", "Email"),
+  // ST-14: the Customer portal area (Settings → Polaris Locker).
+  "portal.enabled": at("portal", "Polaris Locker"),
+  "portal.keyReissue": at("portal", "Polaris Locker"),
   "assets.releases.mirror": at("presentation", "Hosting and quotas"),
   "assets.quota.mediaBytes": at("presentation", "Hosting and quotas"),
   "assets.quota.releaseBytes": at("presentation", "Hosting and quotas"),
@@ -174,7 +208,7 @@ export const SETTING_HOMES: Readonly<Record<string, SettingHome>> = {
   // ── Identity ───────────────────────────────────────────────────────────────────────────────
   "identity.keyEntry.limit": manifest("product"),
   // App sign-in, License keys.
-  "identity.keyEntry.claimByKey": at("app-sign-in", "License keys"),
+  "identity.keyEntry.claimByKey": at("portal", "Polaris Locker"),
   "identity.terms": manifest("product"),
   // The paths a web app's sign-in may return to (I-08's `authorize` reads them).
   "identity.redirectPaths": manifest("product"),

@@ -485,10 +485,10 @@ license profile (`name`, `email`) — show, for example, "Signed in as Ada Lovel
 (I-15) lands: it begins a device-code sign-in, opens `verificationUriComplete` with
 `webbrowser.open` and waits. Pass `on_prompt` to show the code and a terminal QR
 (`polaris_key.qr.terminal(prompt.verificationUriComplete)`) for a browser on another device.
-`begin_sign_in(..., confirm_identity=True)` with `on_confirm` is the attach opt-in: the poll
-stops at `confirm` (with `identity` and `attachable`) until the player accepts, and
-`accept_sign_in(prompt, attach_license=True)` attaches this device's free license. It polls
-`/identity/auth/device/poll` like any device-code sign-in; the old `/identity/auth/poll` route is
+The attach opt-in (`confirm_identity=True`, `on_confirm`, `accept_sign_in(..., attach_license=True)`)
+is retired: `attachable` is always `False` and nothing is claimed or merged. The person approving
+presses Sign in or Deny on the Polaris Locker page; a Deny ends the poll as `status="error"` with
+`code="sign-in-denied"`. It polls `/identity/auth/device/poll` like any device-code sign-in; the old `/identity/auth/poll` route is
 retired and the Worker no longer serves it.
 
 The prompt's `repr` leaves out `deviceCode`, and a `MintedToken`'s leaves out `token`, so

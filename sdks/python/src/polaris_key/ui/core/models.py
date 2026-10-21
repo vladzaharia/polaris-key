@@ -288,7 +288,7 @@ class SignInModel:
         if status == "expired":
             return self._set(component="SignInHandoff", state="expired", code="sign-in-expired")
         message = getattr(result, "message", None) or ""
-        if "denied" in message or "access_denied" in message:
+        if getattr(result, "code", None) == "sign-in-denied" or "denied" in message or "access_denied" in message:
             return self._set(component="SignInHandoff", state="denied", code="sign-in-denied")
         return self._set(component="SignIn", state="error", code="sign-in-failed")
 

@@ -1,5 +1,5 @@
-import { t, tParts } from "../../lib/copy.js";
 import * as React from "react";
+import { t, tParts } from "../../lib/copy.js";
 import { KeyRound } from "lucide-react";
 import { Button } from "../../ui/Button.js";
 import { StationaryStar } from "../../ui/EmptyState.js";
@@ -40,7 +40,7 @@ export function NotFoundProduct({
           iconStart={<KeyRound aria-hidden />}
           onClick={() => activate.open()}
         >
-          {t("locker.activate.title")}
+          {t("common.activateLicense")}
         </Button>
       </div>
       <p className="text-sm text-fg-muted">

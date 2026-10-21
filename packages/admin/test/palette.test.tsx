@@ -111,7 +111,7 @@ describe("the sources", () => {
       ...productSource([{ slug: "acme", name: "Acme", schemaVersion: 1 }]),
     ];
     expect(filterItems(items, "lic").map((i) => i.label)[0]).toBe("Licenses");
-    expect(filterItems(items, "license tiers").map((i) => i.label)).toEqual([
+    expect(filterItems(items, "licensing tiers").map((i) => i.label)).toEqual([
       "Tiers",
     ]);
     expect(filterItems(items, "acme").map((i) => i.label)).toEqual(["Acme"]);
@@ -181,14 +181,13 @@ describe("the palette in the console", () => {
       "tiers",
     );
     await waitFor(() =>
-      expect(optionNames(dialog).map((n) => n.split("License")[0])).toEqual([
-        "Tiers",
-      ]),
+      // The Tiers page leads; settings that mention tiers follow, under their own heading.
+      expect(optionNames(dialog)[0]?.startsWith("Tiers")).toBe(true),
     );
     const live = within(dialog)
       .getAllByRole("status")
       .find((el) => /result/.test(el.textContent ?? ""))!;
-    expect(live.textContent).toBe("1 result");
+    expect(live.textContent).toBe(`${optionNames(dialog).length} results`);
 
     await userEvent.clear(
       within(dialog).getByRole("combobox", { name: "Search or jump to" }),

@@ -266,8 +266,8 @@
     <string name="signInHandoff_scanTv">Escanea el código QR con tu teléfono o introduce este código en la dirección de abajo.</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. Confirmation after Copy link. -->
     <string name="signInHandoff_linkCopied">Enlace copiado</string>
-    <!-- SignInHandoff: sign-in continues on another device or in the browser. The hosted page ends with a “Continue to {product}” button. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="signInHandoff_confirm">Elige Continuar a %1$s en la página de inicio de sesión para terminar.</string>
+    <!-- SignInHandoff: sign-in continues on another device or in the browser. The hosted approval page ends with a “Sign in on {device}” button, next to Deny; the label stays in English. Arguments: {device} = this device's friendly name. Arguments: 1=device. -->
+    <string name="signInHandoff_confirm">Elige Sign in on %1$s en la página de inicio de sesión para terminar.</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. Shown for a moment before the product continues. -->
     <string name="signInHandoff_ok">Sesión iniciada</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. After the code expired or was refused. -->
@@ -280,6 +280,9 @@
     <!-- Activate: license key entry. Submits the key. -->
     <string name="activate_submit">Activar licencia</string>
     <string name="activate_submit__macos">Activar licencia</string>
+    <!-- Portal: opens the Activate dialog (account menu, Library key tile, empty Library, Missing a license strip). -->
+    <string name="common_activateLicense">Activar una licencia</string>
+    <string name="common_activateLicense__macos">Activar una licencia</string>
     <!-- Activate: license key entry. -->
     <string name="activate_busy">Activando…</string>
     <!-- OfflineActivation: activation by exchanging a request code and a response file. -->
@@ -1121,6 +1124,8 @@
     <string name="signin_expired_title">Ese código o enlace venció</string>
     <!-- Expired code or link page (SIGN-IN.md §4.12). -->
     <string name="signin_expired_body">Los códigos y enlaces funcionan una sola vez, durante 10 minutos.</string>
+    <!-- Expired code or link page (SIGN-IN.md §4.12). Arguments: {email} = an email address, masked by the Worker. The button is signin.code.resend; the way back is signin.code.differentEmail. Arguments: 1=email. -->
+    <string name="signin_expired_sendTo">Enviaremos un código nuevo a %1$s.</string>
     <!-- Expired code or link page (SIGN-IN.md §4.12). -->
     <string name="signin_again">Vuelve a iniciar sesión</string>
     <string name="signin_again__macos">Vuelve a iniciar sesión</string>

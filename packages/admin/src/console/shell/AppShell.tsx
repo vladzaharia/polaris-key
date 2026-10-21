@@ -54,6 +54,8 @@ import {
   UnknownProductPage,
 } from "./StatePages.js";
 import { TopBar } from "./TopBar.js";
+import { mastheadValue } from "./Masthead.js";
+import { MastheadContext } from "../../ui/Masthead.js";
 import { mutate } from "../../console/data/mutations.js";
 import { areaOfPage, canIn, canOpenHref, canOpenPage } from "../access/can.js";
 import { NoAccessPage } from "../access/NoAccessPage.js";
@@ -240,6 +242,18 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
     root.setAttribute("data-service", accent);
     return () => root.removeAttribute("data-service");
   }, [accent]);
+  // The console's chrome rules (neutral-ink primary B2, the focus ring in the service's accent
+  // B17) are scoped to this attribute in styles.css, so the portal that shares the sheet keeps
+  // its own until its packages (PX-27..32) adopt them.
+  React.useEffect(() => {
+    const root = document.documentElement;
+    root.setAttribute("data-shell", "console");
+    return () => root.removeAttribute("data-shell");
+  }, []);
+  const masthead = React.useMemo(
+    () => mastheadValue({ route, page, accent, product }),
+    [route, page, accent, product],
+  );
 
   // A page the member's role does not include renders NoAccessPage, so its title says so.
   const refused =
@@ -265,6 +279,8 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
     });
   }, []);
   const [navOpen, setNavOpen] = React.useState(false);
+  const drawerRef = React.useRef<HTMLDivElement>(null);
+  const drawerSwitcherRef = React.useRef(false);
   const [paletteOpen, setPaletteOpen] = React.useState(false);
   // What the palette opens already searching for: a not-found page's dead segment, else nothing.
   const [paletteQuery, setPaletteQuery] = React.useState("");
@@ -281,11 +297,15 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
   }, [openPalette]);
   const [sheetOpen, setSheetOpen] = React.useState(false);
   const [switcherOpen, setSwitcherOpen] = React.useState(false);
+  // The drawer's own switcher, for `g p` below the desktop breakpoint.
+  const [drawerSwitcherOpen, setDrawerSwitcherOpen] = React.useState(false);
+  drawerSwitcherRef.current = drawerSwitcherOpen;
   // A refused or unknown page holds no section: open every group the member can use if there are
   // three or fewer, else the first, so the way out is in view.
   const openable =
     refused && slug !== null
       ? visibleSections(services)
+          .filter((sec) => sec.key !== "core")
           .filter((sec) =>
             sec.items.some((item) => canOpenPage(me, item.page, slug)),
           )
@@ -298,6 +318,14 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
   const version = usePlatformVersion(canIn(me, "platform"));
 
   const key = viewKey(route);
+  const keyRef = React.useRef(key);
+  keyRef.current = key;
+  // The route the drawer opened on: a different one at close means the page heading has focus.
+  const openedAt = React.useRef(key);
+  React.useEffect(() => {
+    if (navOpen) openedAt.current = keyRef.current;
+    else setDrawerSwitcherOpen(false);
+  }, [navOpen]);
   React.useEffect(() => {
     setNavOpen(false);
   }, [key]);
@@ -329,8 +357,15 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
     go: (k) => {
       if (k === "h") return navigate(r.home());
       if (k === "p") {
-        if (slug && switcherPage) setSwitcherOpen(true);
-        else navigate(r.home());
+        const desktop =
+          typeof window.matchMedia !== "function" ||
+          window.matchMedia(DESKTOP_QUERY).matches;
+        if (desktop) setSwitcherOpen(true);
+        else {
+          // The desktop sidebar is hidden here: open the drawer with its switcher.
+          setNavOpen(true);
+          setDrawerSwitcherOpen(true);
+        }
         return true;
       }
       if (!slug) return false;
@@ -353,7 +388,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
 
   const signOut = (): void => {
     void mutate("logout").finally(() => {
-      window.location.href = "/manage/login";
+      window.location.href = "/manage/login?signedOut=1";
     });
   };
 
@@ -373,6 +408,13 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
     onPrefetch: prefetchSection,
     // ST-29: what the member cannot open is absent from the sidebar, not disabled.
     canOpen: (id: PageId) => canOpenPage(me, id, slug),
+  };
+  // The context header's switcher: the product in scope, or Platform off a product.
+  const switcherContext = {
+    products: productList,
+    current: slug ? product : null,
+    page: switcherPage,
+    platform: canIn(me, "platform"),
   };
 
   return (
@@ -402,11 +444,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
               className="lg:col-span-2"
               me={me}
               section={accent}
-              product={slug ? product : null}
-              products={productList}
-              page={switcherPage}
-              switcherOpen={switcherOpen}
-              onSwitcherOpenChange={setSwitcherOpen}
+              navOpen={navOpen}
               docsHref={page ? docsFor(page) : "/docs/admin/"}
               onOpenPalette={() => openPalette()}
               onOpenNav={() => setNavOpen(true)}
@@ -414,9 +452,14 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
               onSignOut={signOut}
               version={version.data ?? null}
             />
-            <aside className="hidden min-h-0 flex-col border-r border-border bg-surface-page lg:flex">
+            <aside className="hidden min-h-0 flex-col bg-surface-page lg:flex">
               <Sidebar
                 {...sidebarProps}
+                switcher={{
+                  ...switcherContext,
+                  open: switcherOpen,
+                  onOpenChange: setSwitcherOpen,
+                }}
                 rail={rail}
                 onToggleRail={toggleRail}
                 idPrefix="sidebar"
@@ -425,21 +468,30 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
             <main
               id="content"
               tabIndex={-1}
-              className="relative min-h-0 overflow-y-auto outline-hidden pk-scroll"
+              // The phone drawer is modal: the page behind it is inert while it is open.
+              inert={navOpen || undefined}
+              data-canvas=""
+              data-service={accent}
+              // The canvas (B4): raised, with a 3 px rule in the page's accent along its top edge.
+              // From 1024 px it is inset 16 px from the window's end and bottom and rounded 18 px;
+              // below that it runs edge to edge. Flat: no glow, wash or gradient.
+              className="relative min-h-0 overflow-y-auto border-t-[3px] border-accent bg-surface-raised outline-hidden pk-scroll lg:mb-4 lg:mr-4 lg:rounded-[18px] lg:border lg:border-t-[3px] lg:border-border lg:border-t-accent"
             >
               <div
                 data-service={accent}
-                className="mx-auto w-full max-w-[110rem] px-4 py-6 sm:px-6 lg:px-8"
+                className="mx-auto w-full max-w-[110rem] px-4 py-4 sm:px-6"
               >
-                <PageContent
-                  key={key}
-                  route={route}
-                  me={me}
-                  knownProduct={knownProduct}
-                  services={services}
-                  productName={productName ?? routeSlug ?? ""}
-                  onOpenPalette={openPalette}
-                />
+                <MastheadContext.Provider value={masthead}>
+                  <PageContent
+                    key={key}
+                    route={route}
+                    me={me}
+                    knownProduct={knownProduct}
+                    services={services}
+                    productName={productName ?? routeSlug ?? ""}
+                    onOpenPalette={openPalette}
+                  />
+                </MastheadContext.Provider>
               </div>
             </main>
           </div>
@@ -448,10 +500,30 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
             <DialogPrimitive.Portal>
               <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-black/50 animate-pk-overlay-in lg:hidden" />
               <DialogPrimitive.Content
+                ref={drawerRef}
                 aria-describedby={undefined}
-                onCloseAutoFocus={(e) => {
-                  // The drawer is opened from the top bar, not a Radix trigger: hand focus back.
+                onOpenAutoFocus={(e) => {
+                  // Opening moves focus to the first item, not the close button.
                   e.preventDefault();
+                  // Opened for `g p`: the switcher's popover takes focus, not the list.
+                  if (drawerSwitcherRef.current) return;
+                  const content = drawerRef.current;
+                  if (!content) return;
+                  // The current row when there is one (the list is already scrolled to it),
+                  // else the first; never scrolled away from it.
+                  (
+                    content.querySelector<HTMLElement>(
+                      "[data-nav-list] [aria-current=page]",
+                    ) ??
+                    content.querySelector<HTMLElement>("[data-nav-list] a") ??
+                    content.querySelector<HTMLElement>("button")
+                  )?.focus({ preventScroll: true });
+                }}
+                onCloseAutoFocus={(e) => {
+                  // The drawer is opened from the top bar, not a Radix trigger: hand focus back,
+                  // unless the route changed: then the page heading has focus.
+                  e.preventDefault();
+                  if (openedAt.current !== keyRef.current) return;
                   document.getElementById(NAV_BUTTON_ID)?.focus();
                 }}
                 className="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col border-r border-border bg-surface-page pt-[env(safe-area-inset-top,0px)] shadow-elevation-3 animate-pk-in pk-nav-drawer lg:hidden"
@@ -469,6 +541,12 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
                 </div>
                 <Sidebar
                   {...sidebarProps}
+                  switcher={{
+                    ...switcherContext,
+                    open: drawerSwitcherOpen,
+                    onOpenChange: setDrawerSwitcherOpen,
+                    onNavigate: () => setNavOpen(false),
+                  }}
                   idPrefix="drawer"
                   onNavigate={() => setNavOpen(false)}
                 />

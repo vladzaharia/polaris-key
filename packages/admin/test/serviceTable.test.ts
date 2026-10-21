@@ -42,10 +42,12 @@ describe("the service table, as the console sees it", () => {
         `src/console/nav.ts SECTIONS has no section for the "${row.slug}" service`,
       ).toBeDefined();
       expect(section!.service, `section "${row.slug}" gates on`).toBe(row.slug);
+      // Ship builds is one Release identity (B5): Distribution and Update carry its cyan.
+      const shipBuilds = row.slug === "distribution" || row.slug === "update";
       expect(
         section!.accent,
         `section "${row.slug}" must carry the table's accent "${row.accent}"`,
-      ).toBe(row.accent);
+      ).toBe(shipBuilds ? "release" : row.accent);
       expect(
         section!.items.length,
         `section "${row.slug}" has no views`,

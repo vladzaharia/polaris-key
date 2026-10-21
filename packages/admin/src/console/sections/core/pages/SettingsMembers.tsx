@@ -59,26 +59,37 @@ function Person({
 function Rows({
   admins,
   meEmail,
-  columns,
   role,
+  label,
 }: {
   admins: AccessAdmin[];
   meEmail: string | undefined;
-  columns: string;
   role: (a: AccessAdmin) => React.ReactNode;
+  label: string;
 }): React.ReactElement {
   return (
-    <ul className="divide-y divide-border">
-      {admins.map((a) => (
-        <li
-          key={a.email}
-          className={cn("grid items-center gap-x-6 gap-y-2 px-5 py-3", columns)}
-        >
-          <Person admin={a} you={a.email === meEmail} />
-          <div className="sm:justify-self-end">{role(a)}</div>
-        </li>
-      ))}
-    </ul>
+    <table className="w-full text-left" aria-label={label}>
+      <thead className="max-sm:sr-only">
+        <tr className="border-b border-border bg-surface-sunken text-sm text-fg-strong">
+          <th scope="col" className="w-3/5 px-5 py-2.5 font-medium">
+            Member
+          </th>
+          <th scope="col" className="px-5 py-2.5 font-medium">
+            Role
+          </th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-border">
+        {admins.map((a) => (
+          <tr key={a.email} className="max-sm:block max-sm:px-5 max-sm:py-3">
+            <td className="px-5 py-3 max-sm:block max-sm:p-0 max-sm:pb-2">
+              <Person admin={a} you={a.email === meEmail} />
+            </td>
+            <td className="px-5 py-3 max-sm:block max-sm:p-0">{role(a)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
@@ -92,7 +103,6 @@ export function SettingsMembersPage({
   useLoadingAnnouncement("members", q.isPending);
   const admins = q.data?.admins.filter((a) => a.role !== "superadmin") ?? [];
   const platform = q.data?.admins.filter((a) => a.role === "superadmin") ?? [];
-  const columns = "sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]";
   if (q.isPending)
     return (
       <SettingsSection id="members-admins" title="Admins">
@@ -126,20 +136,10 @@ export function SettingsMembersPage({
           />
         ) : (
           <>
-            <div
-              aria-hidden
-              className={cn(
-                "hidden gap-x-6 border-b border-border bg-surface-sunken px-5 py-2.5 text-sm font-medium text-fg-strong sm:grid",
-                columns,
-              )}
-            >
-              <span>Member</span>
-              <span className="justify-self-end">Role</span>
-            </div>
             <Rows
+              label="Admins"
               admins={admins}
               meEmail={me.data?.email}
-              columns={columns}
               role={() => (
                 <StatusPill tone="neutral" icon={false} size="sm">
                   Product admin
@@ -156,9 +156,9 @@ export function SettingsMembersPage({
           description="Read-only here."
         >
           <Rows
+            label="Platform roles"
             admins={platform}
             meEmail={me.data?.email}
-            columns={columns}
             role={() => (
               <StatusPill tone="neutral" icon={Crown} size="sm">
                 Superadmin

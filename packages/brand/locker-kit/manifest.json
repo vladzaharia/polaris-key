@@ -4813,8 +4813,8 @@
     },
     {
       "path": "source/build.py",
-      "bytes": 30810,
-      "sha256": "76c830c1452fc4d5092d1851bfeb31d97d4a08331c69b387c79cf9aeff6749b4"
+      "bytes": 30942,
+      "sha256": "b2880ce00b57981b8b2a899cc6e83d7e69fe80ba6184d3fe080b90dfb652374f"
     },
     {
       "path": "source/family_guide_pages.py",
@@ -4873,13 +4873,13 @@
     },
     {
       "path": "web/favicon.ico",
-      "bytes": 8159,
-      "sha256": "a67bcba6109359f790af6a73c8a20f5be43f9adac9a136f53c63b32702cb3a47"
+      "bytes": 11361,
+      "sha256": "ea6ed7cf97b38cbbaa673809609da988c2fd66d0a48a86aaa32d8784c8a2b4e5"
     },
     {
       "path": "web/favicon.svg",
-      "bytes": 446,
-      "sha256": "c5b886b68546fb528c596ae096d75b283fe9f4f7f9df13331f969406e4262674"
+      "bytes": 436,
+      "sha256": "ccf007b6cbb95e9c8ee6e3142fd9f427de93456e7025ce4adf8fac3a103c5d22"
     },
     {
       "path": "web/icon-192.png",

@@ -93,7 +93,7 @@ import {
   type UpdateEventEntry,
   type UpdateEventInput,
 } from "../../core/updateEvents.js";
-import type { UpdateEvent } from "../../constants.generated.js";
+import { ErrorCode, type UpdateEvent } from "../../constants.generated.js";
 
 /** How the current token was obtained, which picks the §5 re-acquire route (as Node). */
 export type TokenSource =
@@ -170,7 +170,9 @@ export type SignInPoll =
    *  signed-in identity the server named, when it did (§3.12). */
   | { status: "ready"; identity?: { name?: string; email?: string } }
   | { status: "expired" }
-  | { status: "error"; message: string };
+  /** `code` is `sign-in-denied` when the Worker answered its generic `error`: the provider
+   *  failed, or the person pressed Deny (the server never says which). */
+  | { status: "error"; message: string; code?: "sign-in-denied" };
 
 export type SignInResult = Exclude<
   SignInPoll,
@@ -1508,6 +1510,12 @@ export class BearerSession {
         return { status: "pending" };
       case "timeout":
         return { status: "expired" };
+      case "error":
+        return {
+          status: "error",
+          message: "device sign-in failed.",
+          code: ErrorCode.signInDenied,
+        };
       case "ready": {
         if (!isString(b.token))
           return { status: "error", message: "ready without a token." };

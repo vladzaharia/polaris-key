@@ -37,7 +37,7 @@ function Pill({
   return (
     <span
       className={cn(
-        "inline-flex min-w-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-medium",
+        "inline-flex min-w-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-medium",
         tone === "warning"
           ? "border-warning-border bg-warning-subtle text-warning"
           : "border-border bg-surface-sunken text-fg-muted",
@@ -72,16 +72,17 @@ export function TileFacts({
 }): React.ReactElement | null {
   const { tier } = facts;
   const devices = compact && !facts.devices?.atLimit ? null : facts.devices;
+  // One line of meta (PX-35): the first fact; the 8+ grid keeps only "Free to use".
   const lines = compact
     ? facts.lines.filter((l) => l.kind === "free")
-    : facts.lines;
+    : facts.lines.slice(0, 1);
   if (compact) platforms = [];
   if (!tier && !devices && platforms.length === 0 && lines.length === 0)
     return null;
   return (
-    <div className={cn("space-y-3", className)}>
+    <div className={cn("space-y-1.5", className)}>
       {tier || devices || platforms.length ? (
-        <div className="flex items-start justify-between gap-x-4 gap-y-2">
+        <div className="flex items-start justify-between gap-x-3 gap-y-1.5 @max-[13rem]/tile:flex-col">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             {tier ? (
               <Pill icon={KeyRound} className="text-fg-strong">
@@ -99,12 +100,12 @@ export function TileFacts({
           </div>
           <PlatformGlyphs
             platforms={platforms}
-            className="ml-auto h-5 shrink-0"
+            className="ml-auto h-5 shrink-0 @max-[13rem]/tile:ml-0"
           />
         </div>
       ) : null}
       {lines.length ? (
-        <ul className="space-y-1.5 text-sm text-fg-muted">
+        <ul className="space-y-1 text-sm text-fg-muted">
           {lines.map((l) => (
             <li key={l.text} className="flex items-center gap-2">
               {React.createElement(FACT_ICON[l.kind], {

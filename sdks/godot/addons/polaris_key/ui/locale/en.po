@@ -723,10 +723,10 @@ msgstr "Scan the QR code with your phone, or enter this code at the address belo
 msgid "signInHandoff.linkCopied"
 msgstr "Link copied"
 
-#. Choose Continue to {product} on the sign-in page to finish.
-#. SignInHandoff: sign-in continues on another device or in the browser. The hosted page ends with a “Continue to {product}” button. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. Choose Sign in on {device} on the sign-in page to finish.
+#. SignInHandoff: sign-in continues on another device or in the browser. The hosted approval page ends with a “Sign in on {device}” button, next to Deny; the label stays in English. Arguments: {device} = this device's friendly name.
 msgid "signInHandoff.confirm"
-msgstr "Choose Continue to {product} on the sign-in page to finish."
+msgstr "Choose Sign in on {device} on the sign-in page to finish."
 
 #. Signed in
 #. SignInHandoff: sign-in continues on another device or in the browser. Shown for a moment before the product continues.
@@ -762,6 +762,16 @@ msgstr "Activate license"
 msgctxt "macos"
 msgid "activate.submit"
 msgstr "Activate License"
+
+#. Activate a license
+#. Portal: opens the Activate dialog (account menu, Library key tile, empty Library, Missing a license strip).
+msgid "common.activateLicense"
+msgstr "Activate a license"
+
+#. macos: Activate a License
+msgctxt "macos"
+msgid "common.activateLicense"
+msgstr "Activate a License"
 
 #. Activating…
 #. Activate: license key entry.
@@ -3003,6 +3013,11 @@ msgstr "That code or link has expired"
 #. Expired code or link page (SIGN-IN.md §4.12).
 msgid "signin.expired.body"
 msgstr "Codes and links work once, for 10 minutes."
+
+#. A new code goes to {email}.
+#. Expired code or link page (SIGN-IN.md §4.12). Arguments: {email} = an email address, masked by the Worker. The button is signin.code.resend; the way back is signin.code.differentEmail.
+msgid "signin.expired.sendTo"
+msgstr "A new code goes to {email}."
 
 #. Sign in again
 #. Expired code or link page (SIGN-IN.md §4.12).

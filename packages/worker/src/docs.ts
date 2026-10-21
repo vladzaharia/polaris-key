@@ -22,14 +22,15 @@
  * the gate needs no path co-location with `/manage`.
  *
  * A sessionless request for a gated path 302s to the public access page (`/docs/access/`), which
- * says who may read it and links to sign-in. Search has one Pagefind bundle per tier
+ * says who may read it and links to sign-in, and carries the page it wanted as `returnTo`, so sign-in
+ * lands back on it. A member who opens an admin page gets the access page's admin wording
+ * (`/docs/access/admin/`) under a 403. Search has one Pagefind bundle per tier
  * (`SEARCH_BUNDLES`), so a bundle never holds text its reader may not open.
  *
  * Serving mirrors `serveAdminAsset` (`console/index.ts`): extension-less paths resolve to the
  * directory's `index.html` (Starlight builds with `format: "directory"`), unsafe paths are
- * refused before they reach `URL.pathname` (R1-06), HTML is `no-store`, and the
- * content-hashed `/_astro/` + `/pagefind/` assets are cached `private` (browser-cacheable,
- * never shared-cacheable).
+ * refused before they reach `URL.pathname` (R1-06), gated HTML is `no-store`, gated assets are `private`, and
+ * public-tier files are shared-cacheable (`docsCacheControl`).
  */
 
 import type { Env } from "./platform/env.js";
@@ -37,6 +38,11 @@ import { can, PLATFORM, type AreaId, type Principal } from "./console/authz.js";
 import { resolveConsoleCaller } from "./console/api.js";
 import { isSafeAssetPath } from "./platform/http.js";
 import { staticHtmlSecurityHeaders } from "./core/securityHeaders.js";
+import { sanitizeReturnTo } from "./console/auth.js";
+import {
+  DOCS_ASSET_TIERS,
+  DOCS_REDIRECT_TIERS,
+} from "./docsTiers.generated.js";
 import {
   DOCS_SCRIPT_HASHES,
   DOCS_STYLE_ATTR_HASHES,
@@ -77,6 +83,37 @@ export function docsSecurityHeaders(headers = new Headers()): Headers {
   return headers;
 }
 
+/** Public HTML revalidates after five minutes; a deploy reaches readers within that. */
+export const DOCS_PUBLIC_HTML_CACHE = "public, max-age=300, must-revalidate";
+
+/**
+ * The cache policy of a docs file served 2xx (docs plan §3.1 "Caching"). Only a `public`-tier file
+ * is ever shared-cacheable: its bytes are the same for every reader, whoever's cookie rode along.
+ * Public HTML revalidates; the content-hashed `/_astro/` assets and search shards are
+ * `public, immutable`; any other public file revalidates every time. A gated file (member or
+ * admin tier, per `docsTierOf`) keeps the old policy: HTML `no-store`, assets `private`, so a CDN
+ * or proxy never holds text a session earned. A non-2xx answer is never cached.
+ */
+export function docsCacheControl(
+  assetPath: string,
+  tier: DocsTier,
+  status: number,
+): string {
+  // Only a whole 200 is cacheable: errors, redirects and partial (206) answers are never stored.
+  if (status !== 200) return "no-store";
+  const html = assetPath.endsWith(".html");
+  if (tier === "public") {
+    if (html) return DOCS_PUBLIC_HTML_CACHE;
+    return isImmutableAsset(assetPath)
+      ? "public, max-age=31536000, immutable"
+      : "public, no-cache";
+  }
+  if (html) return "no-store";
+  return isImmutableAsset(assetPath)
+    ? "private, max-age=31536000, immutable"
+    : "private, no-cache";
+}
+
 /** Placeholder for tests/local runs without an assets binding — still behind the gate. */
 function docsShell(): Response {
   return new Response(
@@ -93,12 +130,40 @@ function docsShell(): Response {
   );
 }
 
-/** 302 to the public access page, which says who may read the page and links to sign-in. */
-function accessRedirect(): Response {
+/**
+ * 302 to the public access page, which says who may read the page and links to sign-in. The page
+ * the reader wanted rides along as `returnTo` (only when `sanitizeReturnTo` accepts it), and the
+ * Worker puts it on the page's Sign in link (`withReturnTo`).
+ */
+function accessRedirect(pathname: string): Response {
+  const returnTo = sanitizeReturnTo(pathname);
   return new Response(null, {
     status: 302,
-    headers: { location: "/docs/access/", "cache-control": "no-store" },
+    headers: {
+      location: returnTo
+        ? `/docs/access/?returnTo=${encodeURIComponent(returnTo)}`
+        : "/docs/access/",
+      "cache-control": "no-store",
+    },
   });
+}
+
+/** The Sign in link in the access pages' source (`access.md`, `access/admin.md`). */
+const SIGN_IN_HREF = 'href="/manage/login"';
+
+/**
+ * The access page's Sign in link with the validated `returnTo` on it. The query value is
+ * re-validated here, so a hand-made `?returnTo=` cannot put anything but an allowlisted path on
+ * the link.
+ */
+function withReturnTo(html: string, returnTo: string | null): string {
+  const safe = sanitizeReturnTo(returnTo);
+  return safe
+    ? html.replace(
+        SIGN_IN_HREF,
+        `href="/manage/login?returnTo=${encodeURIComponent(safe)}"`,
+      )
+    : html;
 }
 
 /**
@@ -187,6 +252,11 @@ export const DOCS_TIERS: ReadonlyArray<
   ["/docs/branding/", "public"],
   ["/docs/schemas/", "public"],
   ["/docs/openapi/", "public"],
+  // The sitemap lists public pages only (the build drops the gated ones).
+  ["/docs/sitemap-index.xml", "public"],
+  ["/docs/sitemap-0.xml", "public"],
+  // Help's own sitemap, listed under polaris.locker (the customer host serves it).
+  ["/docs/sitemap-help.xml", "public"],
   // One search bundle per tier (SEARCH_BUNDLES).
   ...SEARCH_BUNDLES,
 ];
@@ -194,6 +264,10 @@ export const DOCS_TIERS: ReadonlyArray<
 /** The tier of a resolved asset path (`docsAssetPath`'s output); `null` (unsafe) is `admin`. */
 export function docsTierOf(assetPath: string | null): DocsTier {
   if (assetPath === null) return "admin";
+  // Per-file tiers the prefixes cannot say (`docsTiers.generated.ts`): a file only gated pages
+  // load, and a moved-page redirect page at its target's tier.
+  const file = DOCS_ASSET_TIERS[assetPath] ?? DOCS_REDIRECT_TIERS[assetPath];
+  if (file !== undefined) return file;
   let best: (typeof DOCS_TIERS)[number] | null = null;
   for (const row of DOCS_TIERS) {
     const hit = row[0].endsWith("/")
@@ -225,8 +299,9 @@ export function docsAllows(
  * `GET|HEAD /docs[/*]` — the tiered documentation site.
  *
  * The gate runs FIRST for every gated path, assets and the search index included, before
- * anything is fetched from the assets root. A sessionless request for a gated path is sent to
- * sign-in; a session whose principal lacks the tier's area is a 403.
+ * anything is fetched from the assets root. A sessionless request for a gated path is sent to the
+ * access page (`accessRedirect`); a session whose principal lacks the tier's area is a 403, with
+ * the access page's admin wording for an admin page.
  */
 export async function handleDocs(
   req: Request,
@@ -246,14 +321,32 @@ export async function handleDocs(
   const tier = docsTierOf(assetPath);
   if (tier !== "public") {
     const caller = await resolveConsoleCaller(env, null, req, now);
-    if (!caller) return accessRedirect();
+    if (!caller) return accessRedirect(url.pathname);
     // The principal is resolved from the current platform group, not the groups the cookie was
     // minted with.
-    if (!docsAllows(caller.principal, tier))
+    if (!docsAllows(caller.principal, tier)) {
+      // A member at an admin page reads the access page's admin wording; anything else (an asset,
+      // no assets binding) is the bare refusal.
+      if (assetPath?.endsWith(".html") && env.ASSETS) {
+        const page = new URL(url);
+        page.pathname = "/docs/access/admin/index.html";
+        const res = await env.ASSETS.fetch(new Request(page, req));
+        if (res.ok)
+          return new Response(res.body, {
+            status: 403,
+            headers: docsSecurityHeaders(
+              new Headers({
+                "content-type": "text/html; charset=utf-8",
+                "cache-control": "no-store",
+              }),
+            ),
+          });
+      }
       return new Response(null, {
         status: 403,
         headers: { "cache-control": "no-store" },
       });
+    }
   }
 
   if (!env.ASSETS) return docsShell();
@@ -265,13 +358,22 @@ export async function handleDocs(
   if (res.status === 404) return docsNotFound(req, env, url);
 
   const headers = new Headers(res.headers);
-  if (assetPath.endsWith(".html")) {
+  if (assetPath === "/docs/access/index.html") {
+    // The one page the Worker edits: its Sign in link carries the page the reader came from.
+    const html = withReturnTo(
+      await res.text(),
+      url.searchParams.get("returnTo"),
+    );
+    headers.delete("content-length");
+    headers.delete("etag");
     headers.set("cache-control", "no-store");
-  } else if (isImmutableAsset(assetPath)) {
-    headers.set("cache-control", "private, max-age=31536000, immutable");
-  } else {
-    headers.set("cache-control", "private, no-cache");
+    docsSecurityHeaders(headers);
+    return new Response(req.method === "HEAD" ? null : html, {
+      status: res.status,
+      headers,
+    });
   }
+  headers.set("cache-control", docsCacheControl(assetPath, tier, res.status));
   docsSecurityHeaders(headers);
   return new Response(res.body, { status: res.status, headers });
 }

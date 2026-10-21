@@ -2123,6 +2123,14 @@ export interface ManifestPlanItem {
 }
 
 /** What applying a repository's `.pkey/` to a product will do. */
+/** One validator warning the plan carries (ST-17): a deprecated or conflicting spelling and the like. */
+export interface ManifestPlanWarning {
+  file: "product" | "schema" | "release" | "distribution";
+  path: string;
+  code: string;
+  message: string;
+}
+
 export interface ManifestPlan {
   apply: ManifestPlanItem[];
   /** Declared by the manifest but set in the console: they stay. */
@@ -2130,6 +2138,44 @@ export interface ManifestPlan {
   delete: ManifestPlanItem[];
   /** What blocks the link. */
   conflicts: ManifestPlanItem[];
+  /** ST-17: the validator's warnings for the manifest. Absent when none; they never block. */
+  warnings?: ManifestPlanWarning[];
+}
+
+/** `GET …/settings/drift` (ST-17): the console's claims against the last applied manifest. */
+export interface SettingsDriftItem {
+  key: string;
+  label: string;
+  area: string;
+  claimedBy: string | null;
+  claimedAt: number | null;
+  version: number;
+  breakGlass?: { reason: string; expiresAt: number };
+  /** `claim`: `revertClaim`; `setting`: `revertProductSetting` with `version`. */
+  revert: "claim" | "setting";
+  manifestKnown: boolean;
+  differs: boolean;
+  console: unknown;
+  manifest: unknown;
+  /** The catalog: which keys the manifest adds, drops or changes. */
+  changes?: { added: string[]; removed: string[]; changed: string[] };
+}
+
+export interface SettingsDrift {
+  snapshot: {
+    origin: string;
+    appliedAt: number;
+    appliedSha: string | null;
+  } | null;
+  items: SettingsDriftItem[];
+  /** What the last apply recorded; null before one did. */
+  lastPlan: {
+    v: 1;
+    origin: "resync" | "link" | "deploy-hook";
+    commit: string | null;
+    plannedAt: number;
+    plan: ManifestPlan;
+  } | null;
 }
 
 /** `POST …/release/link?dryRun=1`: the checks passed; this is what a link would do. A refusal
@@ -4787,15 +4833,26 @@ export function setStepUpRedirectForTests(fn?: () => void): void {
     });
 }
 
-let redirectToLogin = (): void => {
-  window.location.href = "/manage/login";
+/**
+ * The 401 sign-in. The Worker marks a session that existed and no longer holds
+ * (`X-PKey-Session: expired`); the card then says "Your session ended". Without a session (a first
+ * visit) it is the plain sign-in card. `returnTo` brings the person back to the page either way.
+ */
+function loginHref(expired: boolean): string {
+  const back = `/manage/${window.location.hash}`;
+  return `/manage/login?${expired ? "ended=1&" : ""}returnTo=${encodeURIComponent(back)}`;
+}
+let redirectToLogin = (expired = false): void => {
+  window.location.href = loginHref(expired);
 };
 /** Override the 401 redirect (tests pass a spy; call with no arg to restore the default). */
-export function setLoginRedirectForTests(fn?: () => void): void {
+export function setLoginRedirectForTests(
+  fn?: (expired?: boolean) => void,
+): void {
   redirectToLogin =
     fn ??
-    (() => {
-      window.location.href = "/manage/login";
+    ((expired = false) => {
+      window.location.href = loginHref(expired);
     });
 }
 
@@ -4860,7 +4917,7 @@ async function send(
     credentials: "same-origin",
   });
   if (res.status === 401) {
-    redirectToLogin();
+    redirectToLogin(res.headers.get("X-PKey-Session") === "expired");
     throw new ApiError(401);
   }
   if (!res.ok) {
@@ -6348,6 +6405,9 @@ const rawApi = {
     call<{ settings: ProductSetting[] }>(
       `${p(slug)}/settings/effective${area ? `?area=${encodeURIComponent(area)}` : ""}`,
     ),
+  /** ST-17: the console's claims against the last applied manifest, and the last apply's plan. */
+  settingsDrift: (slug: string) =>
+    call<SettingsDrift>(`${p(slug)}/settings/drift`),
   /** Set a setting in the console: on a repo-linked product this claims it from the manifest. */
   updateProductSetting: (
     slug: string,

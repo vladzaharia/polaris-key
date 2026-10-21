@@ -1,4 +1,5 @@
 import * as React from "react";
+import { formatCount } from "../../lib/format.js";
 import { Lock, PencilLine, RotateCcw } from "lucide-react";
 import { Button } from "../Button.js";
 import { NumberInput } from "../NumberInput.js";
@@ -235,9 +236,11 @@ export function SettingRow(props: SettingRowProps): React.ReactElement {
           step={spec.unit === "bytes" ? "any" : 1}
           integer={spec.unit !== "bytes"}
           disabled={off}
+          placeholder={w.draft === null ? "Platform default" : undefined}
         />
         <p id={hintId} className="mt-1 text-xs text-fg-muted">
-          {bounds ?? `${min} to ${max}${unit ? ` ${unit}` : ""}.`}
+          {bounds ??
+            `${formatCount(min)} to ${formatCount(max)}${unit ? ` ${unit}` : ""}.`}
         </p>
       </div>
     );

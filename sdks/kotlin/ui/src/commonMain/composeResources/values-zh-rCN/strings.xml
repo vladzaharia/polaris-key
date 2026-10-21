@@ -262,8 +262,8 @@
     <string name="signInHandoff_scanTv">用手机扫描二维码，或在下方地址输入此代码。</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. Confirmation after Copy link. -->
     <string name="signInHandoff_linkCopied">链接已复制</string>
-    <!-- SignInHandoff: sign-in continues on another device or in the browser. The hosted page ends with a “Continue to {product}” button. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="signInHandoff_confirm">在登录页面上选择“继续使用%1$s”以完成登录。</string>
+    <!-- SignInHandoff: sign-in continues on another device or in the browser. The hosted approval page ends with a “Sign in on {device}” button, next to Deny; the label stays in English. Arguments: {device} = this device's friendly name. Arguments: 1=device. -->
+    <string name="signInHandoff_confirm">在登录页面上选择“Sign in on %1$s”以完成登录。</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. Shown for a moment before the product continues. -->
     <string name="signInHandoff_ok">已登录</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. After the code expired or was refused. -->
@@ -276,6 +276,9 @@
     <!-- Activate: license key entry. Submits the key. -->
     <string name="activate_submit">激活许可证</string>
     <string name="activate_submit__macos">激活许可证</string>
+    <!-- Portal: opens the Activate dialog (account menu, Library key tile, empty Library, Missing a license strip). -->
+    <string name="common_activateLicense">激活许可证</string>
+    <string name="common_activateLicense__macos">激活许可证</string>
     <!-- Activate: license key entry. -->
     <string name="activate_busy">正在激活…</string>
     <!-- OfflineActivation: activation by exchanging a request code and a response file. -->
@@ -1103,6 +1106,8 @@
     <string name="signin_expired_title">该验证码或链接已过期</string>
     <!-- Expired code or link page (SIGN-IN.md §4.12). -->
     <string name="signin_expired_body">验证码和链接仅可使用一次，10分钟内有效。</string>
+    <!-- Expired code or link page (SIGN-IN.md §4.12). Arguments: {email} = an email address, masked by the Worker. The button is signin.code.resend; the way back is signin.code.differentEmail. Arguments: 1=email. -->
+    <string name="signin_expired_sendTo">新验证码将发送到 %1$s。</string>
     <!-- Expired code or link page (SIGN-IN.md §4.12). -->
     <string name="signin_again">重新登录</string>
     <string name="signin_again__macos">重新登录</string>

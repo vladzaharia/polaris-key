@@ -204,7 +204,7 @@ export function landingShell(environment: string | null): {
 } {
   return {
     title: `Delivery${environment ? ` (${environment})` : ""} · Polaris Locker`,
-    lockups: lockerLockup(48, "lockup"),
+    lockups: lockerLockup(56, "lockup", true),
     service: serviceRow(),
     faviconHref: lockerFaviconHref(),
   };

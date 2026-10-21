@@ -129,7 +129,8 @@ const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/api/signin/email/verify", ["post"]],
     // PX-W4: the code step's "Send a new code".
     ["/api/signin/email/resend", ["post"]],
-    ["/api/signin/flow", ["post"]],
+    // PX-12: GET reads the flow (the code step after the expired page's form POST).
+    ["/api/signin/flow", ["get", "post"]],
     ["/api/signin/confirm-email", ["get", "post"]],
     ["/api/signin/confirm-email/verify", ["post"]],
     ["/api/signin/confirm-email/join", ["post"]],
@@ -271,6 +272,8 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ],
     // LX-06: the first slice of S-18 §4.7's generic settings API (row-backed claimable keys).
     ["/manage/api/products/{product}/settings/effective", ["get"]],
+    // ST-17: the claims against the last applied manifest, and the last apply's plan.
+    ["/manage/api/products/{product}/settings/drift", ["get"]],
     ["/manage/api/products/{product}/settings/{key}", ["patch", "delete"]],
     // U-03: the licence override batch (entitlements only from the migration's run), and one
     // user's account overrides under I-12's Users routes.
@@ -400,6 +403,7 @@ const IMG_PATHS: Array<[string, string[], "asset" | "alias"]> = [
 const CUSTOMER_SERVER = "https://polaris.locker";
 const CUSTOMER_PATHS: Array<[string, string[]]> = [
   ["/.well-known/polaris-host.json", ["get", "head"]],
+  ["/robots.txt", ["get", "head"]],
 ];
 
 function specMethods(path: string): string[] {

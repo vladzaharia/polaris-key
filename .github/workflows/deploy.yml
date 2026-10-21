@@ -360,7 +360,7 @@ jobs:
           }
           # The docs site is tiered (packages/worker/src/docs.ts, DOCS_TIERS): the landing page
           # and the developer sections are public, Operate and Contribute are gated. A gated
-          # page must redirect INTO sign-in with no session — a 200 would mean the gate is off,
+          # page must redirect to the access page (sign-in) with no session — a 200 would mean the gate is off,
           # a 5xx that the assembled assets are broken.
           #
           # Poll, do not ask once. `wrangler deploy` returns as soon as the triggers are
@@ -373,7 +373,8 @@ jobs:
           for attempt in $(seq 1 12); do
             DOCS_LOCATION=$(curl --silent --output /dev/null --write-out '%{http_code} %{redirect_url}' "$ORIGIN/docs/contribute/")
             case "$DOCS_LOCATION" in
-              302\ */manage/login*) echo "Docs gate OK: $DOCS_LOCATION"; break ;;
+              # DOC-03b: a sessionless gated page goes to the public access page, which links sign-in.
+              302\ */docs/access/*) echo "Docs gate OK: $DOCS_LOCATION"; break ;;
             esac
             if [ "$attempt" -eq 12 ]; then
               echo "Smoke check failed: /docs/contribute/ unauthenticated returned: $DOCS_LOCATION" >&2

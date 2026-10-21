@@ -1,8 +1,9 @@
 import * as React from "react";
-import { Check, ChevronRight } from "lucide-react";
+import { Check, ChevronRight, X } from "lucide-react";
 import type { PlatformReadyDto, PlatformReadyRow } from "../../../../api.js";
 import { cn } from "../../../../lib/cn.js";
 import { Button } from "../../../../ui/Button.js";
+import { IconButton } from "../../../../ui/IconButton.js";
 import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
 
@@ -19,23 +20,97 @@ const TARGETS: Record<string, (store?: string) => string> = {
   packages: r.platformFeeds,
 };
 
+/** The dismiss control: named, a 24 px target on a console, larger on touch. */
+function Dismiss({ onDismiss }: { onDismiss: () => void }): React.ReactElement {
+  return (
+    <IconButton
+      label="Hide setup guide"
+      icon={<X />}
+      size="xs"
+      data-dismiss-guide=""
+      className="shrink-0 text-fg-muted pointer-coarse:size-11"
+      onClick={onDismiss}
+    />
+  );
+}
+
 /**
- * Platform ready (UX-67): the first-run checklist, shown to platform admins on Home only while a
- * row is open. The head is the title and the meter, nothing else. Open rows come first, each with
- * its one fix; the done rows fold into one disclosure at every size, so the card reads as the
- * work left.
+ * Platform ready (UX-67): the first-run checklist, shown to platform admins on Home. While a row
+ * is open it is a card: the head is the title and the meter (and the dismiss control), open rows
+ * come first each with its one fix, and the done rows fold into one disclosure at every size.
+ * Once every row is done it is one quiet line with "Show steps". The operator can hide it
+ * (`onDismiss`); Home keeps that per operator.
  */
 export function PlatformReady({
   ready,
   className,
+  onDismiss,
 }: {
   ready: PlatformReadyDto;
   className?: string;
+  onDismiss?: () => void;
 }): React.ReactElement | null {
   const [showDone, setShowDone] = React.useState(false);
   const titleId = React.useId();
   const listId = React.useId();
-  if (ready.done >= ready.total) return null;
+  if (ready.done >= ready.total)
+    return (
+      <section
+        aria-labelledby={titleId}
+        data-platform-ready="done"
+        className={cn(
+          "rounded-xl border border-border bg-surface-raised px-5 py-2 light:shadow-elevation-1",
+          className,
+        )}
+      >
+        <div className="flex min-h-8 flex-wrap items-center gap-x-3 gap-y-1">
+          <Check aria-hidden className="size-4 shrink-0 text-success" />
+          <h2
+            id={titleId}
+            tabIndex={-1}
+            className="text-sm font-medium text-fg-strong outline-hidden"
+          >
+            Platform ready
+          </h2>
+          <button
+            type="button"
+            aria-expanded={showDone}
+            aria-controls={listId}
+            onClick={() => setShowDone((v) => !v)}
+            className="inline-flex min-h-6 items-center gap-1 rounded-sm text-sm text-fg-muted hover:text-fg-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+          >
+            <ChevronRight
+              aria-hidden
+              className={cn(
+                "size-4 transition-transform",
+                showDone && "rotate-90",
+              )}
+            />
+            {showDone ? "Hide steps" : "Show steps"}
+          </button>
+          {onDismiss ? (
+            <span className="ml-auto">
+              <Dismiss onDismiss={onDismiss} />
+            </span>
+          ) : null}
+        </div>
+        <ul
+          id={listId}
+          hidden={!showDone}
+          className="space-y-1.5 pb-2 pt-1 text-sm text-fg-muted"
+        >
+          {ready.rows.map((row) => (
+            <li key={row.id} className="flex items-start gap-3">
+              <Check
+                aria-hidden
+                className="mt-0.5 size-4 shrink-0 text-success"
+              />
+              <span>{row.title}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+    );
   const open = ready.rows.filter((row) => !row.done);
   const done = ready.rows.filter((row) => row.done);
   return (
@@ -51,13 +126,16 @@ export function PlatformReady({
         data-card-header=""
         className="space-y-2 border-b border-border px-5 py-3"
       >
-        <h2
-          id={titleId}
-          tabIndex={-1}
-          className="text-lg font-semibold leading-6 text-fg-strong outline-hidden"
-        >
-          Platform ready
-        </h2>
+        <div className="flex items-start justify-between gap-2">
+          <h2
+            id={titleId}
+            tabIndex={-1}
+            className="text-lg font-semibold leading-6 text-fg-strong outline-hidden"
+          >
+            Platform ready
+          </h2>
+          {onDismiss ? <Dismiss onDismiss={onDismiss} /> : null}
+        </div>
         {/* The meter runs the card's full width under the title. */}
         <div className="space-y-1">
           <span className="block text-sm tabular-nums text-fg-muted">

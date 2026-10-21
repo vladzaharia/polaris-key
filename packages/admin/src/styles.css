@@ -31,6 +31,13 @@
  * only the OS query, so they are redefined here to honour both: every motion-reduce: utility also
  * applies under the preference, and motion-safe: ones stop under it.
  */
+/*
+ * The console's shell v2 treatment (ST-48) on a component the customer portal shares (Section,
+ * Dialog, Drawer, SegmentedControl): `console:` applies only under `html[data-shell="console"]`
+ * (AppShell sets it), so the portal keeps its own look until its packages adopt the rest.
+ */
+@custom-variant console (&:where(html[data-shell="console"] *));
+
 @custom-variant motion-reduce {
   @media (prefers-reduced-motion: reduce) {
     @slot;
@@ -117,6 +124,62 @@
   --pk-admin-fill: var(--pk-surface-sunken);
 }
 
+/*
+ * The head band (B4): the one raised step a section's head, a workbench toolbar and a dialog or
+ * drawer head sit on. On dark, the overlay step; on light, a step toward sunken from raised (raised
+ * and overlay are both white there).
+ */
+:root,
+[data-theme="dark"] {
+  --pk-admin-band: var(--pk-surface-overlay);
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --pk-admin-band: color-mix(
+      in oklab,
+      var(--pk-surface-sunken) 55%,
+      var(--pk-surface-raised)
+    );
+  }
+}
+[data-theme="light"] {
+  --pk-admin-band: color-mix(
+    in oklab,
+    var(--pk-surface-sunken) 55%,
+    var(--pk-surface-raised)
+  );
+}
+
+/* A dialog or drawer is the overlay surface, so its head band steps up from it (B4). */
+:root,
+[data-theme="dark"] {
+  --pk-admin-band-overlay: color-mix(
+    in oklab,
+    var(--pk-surface-overlay),
+    var(--pk-text-strong) 6%
+  );
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --pk-admin-band-overlay: var(--pk-admin-band);
+  }
+}
+[data-theme="light"] {
+  --pk-admin-band-overlay: var(--pk-admin-band);
+}
+
+/* The dialog and drawer backdrop is blurred (B4); with reduced transparency it is a flat, darker
+   ground with no filter. */
+html[data-shell="console"] [data-pk-backdrop] {
+  backdrop-filter: blur(6px);
+}
+@media (prefers-reduced-transparency: reduce) {
+  html[data-shell="console"] [data-pk-backdrop] {
+    backdrop-filter: none;
+    background-color: rgb(0 0 0 / 0.8);
+  }
+}
+
 /* The admin's one colour token of its own: the neutral fill above (hover rows, the sidebar's
    active row, secondary fills). The brand's `accent` is the section colour, so this is `hover`. */
 @theme inline {
@@ -138,6 +201,8 @@
      below it. */
   --breakpoint-split: 64rem;
   --breakpoint-wide: 73.75rem;
+  /* 1700 px: the Library and Discover grids add a fifth column inside the same 82 rem column (PX-35). */
+  --breakpoint-xxl: 106.25rem;
   /* The type scale's display step (EXPERIENCE.md §3): 40 px, for the portal's Library and
      Product titles only (`PageHeader size="display"`; 30 px, text-3xl, on phones). */
   --text-display: 2.5rem;
@@ -364,6 +429,19 @@
       --pk-scroll-top: calc(4rem + 1px + 3.25rem + 1px);
     }
   }
+  /* The Library's sticky "Missing a license?" strip (MissingLicense.tsx) publishes its height as
+     --pk-strip-h: a focused control scrolls clear of it (WCAG 2.4.11), above the phone bar below
+     desk. */
+  html:has(.pk-portal-shell [data-missing-strip]) {
+    scroll-padding-bottom: calc(
+      3.25rem + 1px + env(safe-area-inset-bottom) + var(--pk-strip-h, 0px)
+    );
+  }
+  @media (width >= 47.5625rem) {
+    html:has(.pk-portal-shell [data-missing-strip]) {
+      scroll-padding-bottom: var(--pk-strip-h, 0px);
+    }
+  }
   @media (height <= 32rem) {
     html:has(.pk-portal-shell) {
       --pk-scroll-top: 0px;
@@ -514,6 +592,50 @@
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+/*
+ * Console shell v2 (ST-48; BRAND-TRANSITION B2, B4, B17). Scoped to `html[data-shell="console"]`
+ * (AppShell sets it), so the customer portal that shares this sheet keeps its own look until its
+ * packages adopt these. Every colour is a brand token and every accent comes from a `data-service`
+ * rule, never an inline style (console-csp-parity).
+ */
+
+/*
+ * B17: the focus ring takes the accent of the service the element references: the nearest
+ * `data-service` (core violet on platform and core pages). `--pk-state-ring` is re-pointed by
+ * each `data-service` block in tokens.css; re-declaring `--pk-focus` on the same elements makes
+ * `ring-focus` follow it. The doubled attribute out-ranks tokens.css's light-theme `:root` block.
+ */
+html[data-shell="console"][data-shell],
+html[data-shell="console"] [data-service] {
+  --pk-focus: var(--pk-state-ring);
+}
+
+/*
+ * B2: the one filled primary is neutral action ink (dark: near-white with a near-black label;
+ * light: the reverse). Danger stays red; the accent marks context only. Disabled is the role's
+ * own pair, never a dimmed ink.
+ */
+html[data-shell="console"] [data-variant="primary"] {
+  background-color: var(--pk-action);
+  color: var(--pk-action-on);
+  box-shadow: none;
+  font-weight: var(--font-weight-medium);
+}
+html[data-shell="console"]
+  [data-variant="primary"]:hover:not(:disabled):not([aria-disabled="true"]) {
+  background-color: var(--pk-action-hover);
+}
+html[data-shell="console"]
+  [data-variant="primary"]:active:not(:disabled):not([aria-disabled="true"]) {
+  background-color: var(--pk-action-pressed);
+}
+html[data-shell="console"]
+  [data-variant="primary"]:is(:disabled, [aria-disabled="true"]) {
+  background-color: var(--pk-action-disabled);
+  color: var(--pk-action-disabled-on);
+  opacity: 1;
 }
 
 /*

@@ -31,7 +31,7 @@ import {
   SYSTEM_PRODUCT_SLUG,
   type ParsedManifest,
 } from "@polaris-key/manifest";
-import type { Ingest } from "../core/ingest/types.js";
+import type { Ingest, PlanWarning } from "../core/ingest/types.js";
 import { stmtInsertSchema } from "../services/config/public.js";
 import type { Env } from "../platform/env.js";
 import type { Db, DbStatement } from "../db/types.js";
@@ -296,6 +296,8 @@ export async function linkSystemProduct(
     files: Readonly<Record<string, string>>;
     /** The deploy's commit (`PKEY_GIT_SHA`); `null` (or malformed) is stored as NULL. */
     sha: string | null;
+    /** The validator's warnings for the documents (ST-17): recorded with the applied plan. */
+    warnings?: PlanWarning[];
   },
   now: number,
   ingest: Ingest,
@@ -320,6 +322,7 @@ export async function linkSystemProduct(
     product: slug,
     manifest,
     now,
+    ...(applied.warnings ? { warnings: applied.warnings } : {}),
     source: {
       origin: "deploy-hook",
       sha: applied.sha,

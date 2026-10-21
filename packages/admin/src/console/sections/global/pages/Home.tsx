@@ -1,7 +1,8 @@
 import * as React from "react";
-import { Plus } from "lucide-react";
+import { Eye, Plus } from "lucide-react";
 import type { AttentionItemDto } from "../../../../api.js";
 import { releaseSourceOf } from "../../../../lib/products.js";
+import { ActionMenu } from "../../../../ui/ActionMenu.js";
 import { Button } from "../../../../ui/Button.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
@@ -12,6 +13,7 @@ import { useWriteGate } from "../../../access/useCan.js";
 import { useCan } from "../../../access/useCan.js";
 import {
   useAttention,
+  useMe,
   usePlatformReady,
   useProducts,
 } from "../../../data/hooks.js";
@@ -30,6 +32,7 @@ import {
 import { PlatformReady } from "../components/PlatformReady.js";
 import { ProductShelf } from "../components/ProductShelf.js";
 import { attentionHref, type HomeRow } from "../model/home.js";
+import { useSetupGuideHidden } from "../model/setupGuide.js";
 import { cn } from "../../../../lib/cn.js";
 
 /** The attention list's rows: the subject is the product, logo and name, linking to Overview. */
@@ -77,6 +80,8 @@ export function Home(): React.ReactElement {
   const create = useWriteGate("platform");
   const platform = useCan("platform");
   const ready = usePlatformReady(platform);
+  const operator = useMe().data?.sub;
+  const [guideHidden, setGuideHidden] = useSetupGuideHidden(operator);
 
   const list = React.useMemo(() => products.data ?? [], [products.data]);
   const bySlug = React.useMemo(() => {
@@ -102,8 +107,10 @@ export function Home(): React.ReactElement {
 
   // The slot is decided by who is asking (`/me`), never by what the read returns: a platform
   // admin's Platform ready has its place from the first paint, and leaves it only when complete.
-  const readyOpen =
-    platform && !(ready.data && ready.data.done >= ready.data.total);
+  const allDone = Boolean(ready.data && ready.data.done >= ready.data.total);
+  const readyShown = platform && !guideHidden;
+  // The card takes a column beside attention; the finished one-line guide takes a row.
+  const readyOpen = readyShown && !allDone;
   const loading = products.isPending;
   const failed = products.isError && !products.data;
   const firstLoad = useFirstLoad("home", attention.isPending);
@@ -145,7 +152,20 @@ export function Home(): React.ReactElement {
   ) : (
     <AllClear />
   );
-  const readySlot = !readyOpen ? null : ready.isPending ? (
+  const dismissGuide = (): void => {
+    setGuideHidden(true);
+    // The card is gone: focus goes on to the Products heading, never to the page.
+    requestAnimationFrame(() =>
+      document.querySelector<HTMLElement>("[data-products-heading]")?.focus(),
+    );
+  };
+  const restoreGuide = (): void => {
+    setGuideHidden(false);
+    requestAnimationFrame(() =>
+      document.querySelector<HTMLElement>("[data-platform-ready] h2")?.focus(),
+    );
+  };
+  const readySlot = !readyShown ? null : ready.isPending ? (
     <CardSkeleton label="Platform ready" rows={3} className={READY_AREA} />
   ) : ready.isError || !Array.isArray(ready.data?.rows) ? (
     <LoadFailedCard
@@ -155,8 +175,27 @@ export function Home(): React.ReactElement {
       className={READY_AREA}
     />
   ) : (
-    <PlatformReady ready={ready.data} className={READY_AREA} />
+    <PlatformReady
+      ready={ready.data}
+      onDismiss={dismissGuide}
+      className={allDone ? READY_LINE : READY_AREA}
+    />
   );
+  // A dismissed guide comes back from the header's menu; with nothing hidden there is no menu.
+  const guideMenu =
+    platform && guideHidden ? (
+      <ActionMenu
+        label="More actions"
+        size="md"
+        items={[
+          {
+            label: "Show setup guide",
+            icon: <Eye />,
+            onSelect: restoreGuide,
+          },
+        ]}
+      />
+    ) : null;
 
   const header = (
     <PageHeader
@@ -177,13 +216,23 @@ export function Home(): React.ReactElement {
       primaryAction={
         // With no products, the empty state's own two calls to action are the way in.
         platform && (loading || list.length > 0) ? (
-          <Button asChild disabledReason={create.disabledReason}>
-            <Link to={r.productNew()}>
-              <Plus aria-hidden />
-              New product
-            </Link>
-          </Button>
-        ) : undefined
+          <div className="flex items-center gap-2">
+            {guideMenu}
+            <Button
+              asChild
+              variant="neutral"
+              className="max-sm:flex-1"
+              disabledReason={create.disabledReason}
+            >
+              <Link to={r.productNew()}>
+                <Plus aria-hidden />
+                New product
+              </Link>
+            </Button>
+          </div>
+        ) : (
+          (guideMenu ?? undefined)
+        )
       }
     />
   );
@@ -253,7 +302,10 @@ export function Home(): React.ReactElement {
         <div
           className={cn(
             "min-w-0",
-            readyOpen && "@[60rem]:col-start-1 @[60rem]:row-start-2",
+            // Below 80rem the products take the full row under both cards (no well under the
+            // shorter one); from 80rem the guide is an aside beside attention and the products.
+            readyOpen &&
+              "@[60rem]:col-span-full @[80rem]:col-span-1 @[80rem]:col-start-1 @[80rem]:row-start-2",
           )}
         >
           <ProductShelf
@@ -268,8 +320,10 @@ export function Home(): React.ReactElement {
 }
 
 /**
- * Platform ready beside attention and the cards from the 60rem split: it spans both rows, so the
- * products flow under attention, not under the taller card.
+ * Platform ready beside attention from the 60rem split; from 80rem it is an aside spanning both
+ * rows, so the products flow under attention, not under the taller card.
  */
 const READY_AREA =
-  "@[60rem]:col-start-2 @[60rem]:row-span-2 @[60rem]:row-start-1";
+  "@[60rem]:col-start-2 @[60rem]:row-start-1 @[80rem]:row-span-2";
+/** The finished guide is one line across the page, between attention and the products. */
+const READY_LINE = "@[60rem]:col-span-full";

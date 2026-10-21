@@ -14,6 +14,7 @@ import {
   seedLicenseWithKey,
   seedProduct,
   setClaimByKey,
+  setPortalToggles,
 } from "./seed.js";
 import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
@@ -23,10 +24,7 @@ import { hashKey, mintLicenseKey } from "../src/platform/crypto.js";
 import { getTokenRecord } from "../src/platform/kv.js";
 import { getDevice } from "../src/core/devices/store.js";
 import { getKey } from "../src/core/licensing/store.js";
-import {
-  getOrCreateAccountByEmail,
-  upsertPortalProductSettings,
-} from "../src/services/identity/portal/repo.js";
+import { getOrCreateAccountByEmail } from "../src/services/identity/portal/repo.js";
 import {
   PORTAL_COOKIE,
   PORTAL_CSRF_HEADER,
@@ -268,12 +266,7 @@ describe("POST /api/activate/preview (G22)", () => {
     await seedProduct(db, "djdl");
     const { key } = await seedLicenseWithKey(db, "djdl");
     const s = await portalSession(env, db, "bob@example.com");
-    await upsertPortalProductSettings(
-      db,
-      "djdl",
-      { portalEnabled: false },
-      NOW,
-    );
+    await setPortalToggles(db, "djdl", { portalEnabled: false }, NOW);
     const body = (await (await preview(env, db, s, key)).json()) as Record<
       string,
       unknown
@@ -491,12 +484,7 @@ describe("PATCH /api/licenses/:p/:id/devices/:deviceId (G6)", () => {
     );
     expect(other.status).toBe(404);
 
-    await upsertPortalProductSettings(
-      db,
-      "djdl",
-      { portalEnabled: false },
-      NOW,
-    );
+    await setPortalToggles(db, "djdl", { portalEnabled: false }, NOW);
     expect(
       (await call(env, db, "PATCH", path, owner, { label: "x" })).status,
     ).toBe(404);
@@ -531,12 +519,7 @@ describe("POST /api/licenses/:p/:id/keys (G7)", () => {
     await seedProduct(db, "djdl");
     const { key, licenseId } = await seedLicenseWithKey(db, "djdl");
     if (opts.optIn ?? true) {
-      await upsertPortalProductSettings(
-        db,
-        "djdl",
-        { keyReissueEnabled: true },
-        NOW,
-      );
+      await setPortalToggles(db, "djdl", { keyReissueEnabled: true }, NOW);
     }
     const activated = await activate(env, db, key, "dev-1");
     const { token } = (await activated.json()) as { token: string };

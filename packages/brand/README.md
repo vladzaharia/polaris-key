@@ -157,7 +157,8 @@ so it is identical on every platform; export `./GENERATED.sha256`). No generated
   `<PolarisLockup trim height={48} />` crop the kit's horizontal canvas to the glyph's 96-unit box
   and the wordmark (`LOCKUP_TRIM`), keeping the kit's glyph-to-wordmark ratio and gap byte for
   byte. `height` is the glyph's height; the header supplies the clear space (8 px in the 64 px
-  header). The bit shows from a 48 px glyph.
+  header). The bit shows from a 48 px glyph. `kind: "locker"` trims the same way (`LOCKER_TRIM`,
+  `height` = the 80-unit cropped canvas): 33 px tall is the guide's 180 px minimum width.
 
 - `kit/` is a verbatim copy of the Polaris Key Launch Kit v1 (`SHA256SUMS.txt` is the kit's own;
   the tests check every file against it). Never edit it; SVG is the source of truth and marks are

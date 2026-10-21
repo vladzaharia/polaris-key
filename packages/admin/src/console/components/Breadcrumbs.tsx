@@ -1,5 +1,6 @@
 import * as React from "react";
 import { ChevronRight } from "lucide-react";
+import { CRUMBS_MARK } from "../../ui/Masthead.js";
 import { Link } from "../router.js";
 
 export interface Crumb {
@@ -45,3 +46,6 @@ export function Breadcrumbs({ items }: { items: Crumb[] }): React.ReactElement {
     </nav>
   );
 }
+
+/** A `PageHeader` folds these items into its masthead's one orientation line (B4). */
+(Breadcrumbs as unknown as Record<string, boolean>)[CRUMBS_MARK] = true;

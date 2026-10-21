@@ -158,6 +158,7 @@ internal val kitScreens: List<Pair<String, @Composable () -> Unit>> = listOf(
     "sign-in-starting" to { PolarisSignInScreen(PolarisSignInUi.Starting) },
     "sign-in-expired" to { PolarisSignInScreen(PolarisSignInUi.Expired) },
     "sign-in-failed" to { PolarisSignInScreen(PolarisSignInUi.Failed) },
+    "sign-in-denied" to { PolarisSignInScreen(PolarisSignInUi.Denied) },
     "settings" to { PolarisSettingsScreen(sampleSettings) },
     "devices" to { PolarisDevicesScreen(PolarisDevicesUi(loading = false, devices = sampleDevices, nowMillis = NOW * 1000)) },
     "update-banner" to {

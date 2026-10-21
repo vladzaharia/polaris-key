@@ -93,6 +93,7 @@ import {
 import { signIn } from "../accounts/signIn.js";
 import { EMAIL_ISSUER } from "../accounts/repo.js";
 import { portalAuthCapabilities } from "../portal/repo.js";
+import { maskEmail } from "../portal/selfService.js";
 import { sendSignInEmail } from "../../../core/notify/send.js";
 import { emailConfigured } from "../../../core/notify/destinations.js";
 import { finishSignIn } from "./finish.js";
@@ -132,6 +133,14 @@ export const EMAIL_RESEND_AFTER_SECONDS = 60;
  * The resend asks for no new Turnstile token, so this is what one Turnstile pass can buy.
  */
 export const EMAIL_SENDS_PER_FLOW = EMAIL_SEND_PER_RECIPIENT_HOUR;
+/**
+ * How long a flow (its record and its browser cookie) lives: one hour, the per-recipient send
+ * window, so the budget a Turnstile pass buys is also the time it lives. A code and a link live
+ * `EMAIL_CODE_TTL_SECONDS`; the flow outlives them so the expired-link page can offer **Send a new
+ * code** (SIGN-IN.md §3.13) to this browser's own address. Every use of a flow checks the code's
+ * age (`codeAlive`): the longer lifetime opens nothing a 10-minute one did not.
+ */
+export const EMAIL_FLOW_TTL_SECONDS = 3600;
 
 interface FlowRecord {
   v: 1;
@@ -269,6 +278,11 @@ async function currentFlow(
     await getArtefact(env, ref),
   );
   return record ? { ref, record } : null;
+}
+
+/** Whether the flow's current code and link are still inside their 10 minutes. */
+function codeAlive(record: { createdAt: number }, now: number): boolean {
+  return now < record.createdAt + EMAIL_CODE_TTL_SECONDS;
 }
 
 const clearFlow = (): string => clearAccountRealmCookie(SIGNIN_FLOW_COOKIE);
@@ -410,7 +424,7 @@ async function openFlow(
     sends: input.sends,
     link: magicRef.id,
   };
-  await putArtefact(env, ref, JSON.stringify(record), EMAIL_CODE_TTL_SECONDS);
+  await putArtefact(env, ref, JSON.stringify(record), EMAIL_FLOW_TTL_SECONDS);
 
   // Every refusal past this point answers exactly like a send (enumeration safety).
   const { send } = routed
@@ -464,7 +478,7 @@ async function openFlow(
       ...(routed ? { next: ssoNext(routed) } : {}),
     },
     200,
-    [accountRealmCookie(SIGNIN_FLOW_COOKIE, secret, EMAIL_CODE_TTL_SECONDS)],
+    [accountRealmCookie(SIGNIN_FLOW_COOKIE, secret, EMAIL_FLOW_TTL_SECONDS)],
   );
 }
 
@@ -482,7 +496,12 @@ function resendLater(retryAfter: number): Response {
   return res;
 }
 
-/** `POST /api/signin/email/resend`: a new code and link for this browser's flow (PX-W4). */
+/**
+ * `POST /api/signin/email/resend`: a new code and link for this browser's flow (PX-W4). The code
+ * step sends it as JSON and reads JSON back. The expired-link page (PX-12, SIGN-IN.md §3.13) has no
+ * script: its **Send a new code** is a plain form `POST` of the same route, answered with a 303 to
+ * the sign-in page that lands on the code step (`?signin=code`, reading `GET /api/signin/flow`).
+ */
 export async function handleSigninEmailResend(
   req: Request,
   env: Env,
@@ -491,6 +510,60 @@ export async function handleSigninEmailResend(
 ): Promise<Response> {
   if (req.method !== "POST")
     return cardJson({ error: "method_not_allowed" }, 405);
+  const form = (req.headers.get("content-type") ?? "")
+    .toLowerCase()
+    .startsWith("application/x-www-form-urlencoded");
+  if (!form) return resendFlow(req, env, db, now);
+  // A plain form can be posted from any page. SameSite=Lax is site-scoped, so a sibling host
+  // could carry the cookie: only a same-origin post may retire a live code. Same answer as a
+  // missing flow, no detail.
+  if (!sameOriginPost(req)) return expiredLinkPage(env, req, undefined, true);
+  const before = await currentFlow(env, req);
+  const res = await resendFlow(req, env, db, now);
+  // Sent, or too soon / capped / over the budget: the flow lives, and the code step says which.
+  if (res.status === 200 || res.status === 429) {
+    return cardRedirect(
+      codeStepUrl(req, before?.record.returnTo),
+      (res.headers as Headers & { getSetCookie(): string[] }).getSetCookie(),
+      303,
+    );
+  }
+  if (res.status === 503) return emailUnavailablePage();
+  if (res.status === 400) return expiredLinkPage(env, req);
+  return signInOffPage();
+}
+
+/**
+ * `Sec-Fetch-Site: same-origin`, or (no fetch metadata, an older browser) an `Origin` equal to the
+ * request's. Neither header: refused.
+ */
+function sameOriginPost(req: Request): boolean {
+  const site = req.headers.get("sec-fetch-site");
+  if (site !== null) return site === "same-origin";
+  return req.headers.get("origin") === new URL(req.url).origin;
+}
+
+/** Where the plain form's answer lands: the page the sign-in was headed for, on its code step. */
+function codeStepUrl(req: Request, returnTo: string | undefined): string {
+  const origin = new URL(req.url).origin;
+  try {
+    const url = new URL(returnTo ?? "/", origin);
+    if (url.origin === origin) {
+      url.searchParams.set("signin", "code");
+      return `${url.pathname}${url.search}${url.hash}`;
+    }
+  } catch {
+    // A return URL that does not parse falls back to the sign-in page.
+  }
+  return "/?signin=code";
+}
+
+async function resendFlow(
+  req: Request,
+  env: Env,
+  db: Db,
+  now: number,
+): Promise<Response> {
   // One budget with the start: both ask for mail. Its refusal carries a wait (the minute
   // window's upper bound), so a 429 without `retryAfter` means only the per-flow cap below.
   const allowed = await rateLimitOk(
@@ -591,6 +664,9 @@ export async function handleSigninEmailVerify(
   if (!allowed) return cardJson({ error: "rate_limited" }, 429);
   const flow = await currentFlow(env, req);
   if (!flow) return expired();
+  // The flow outlives its code: a code past its 10 minutes is the expired answer, the cookie kept
+  // so "Send a new code" still has a flow to retire. No attempt is counted.
+  if (!codeAlive(flow.record, now)) return expired([]);
   const body = await readJsonObject(req);
   const code = typeof body?.code === "string" ? body.code : "";
   const result = await verifyEmailCode(env, {
@@ -623,6 +699,41 @@ export async function handleSigninEmailVerify(
   return completeEmailSignIn(req, env, db, flow.record, now, "json");
 }
 
+/**
+ * `GET /api/signin/flow` (PX-12): this browser's flow, for the page that lands on the code step
+ * after the expired-link page's plain form `POST` (SIGN-IN.md §3.13). The masked address, the
+ * seconds until a new code may be asked for and until the current one lapses; `returnTo` and the
+ * request handle stay in the flow record and the URL the page lands on, never in this answer. It
+ * answers only to the browser that holds the flow cookie, about the address that browser typed.
+ * A routed start that has sent nothing carries `next`, as the start did.
+ */
+export async function handleSigninFlowRead(
+  req: Request,
+  env: Env,
+  db: Db,
+  now: number,
+): Promise<Response> {
+  if (req.method !== "GET")
+    return cardJson({ error: "method_not_allowed" }, 405);
+  const flow = await currentFlow(env, req);
+  if (!flow) return expired([]);
+  const sent = (flow.record.sends ?? 1) > 0;
+  const route = sent ? null : await cardRoute(db, flow.record.email);
+  const wait = sent
+    ? Math.max(0, flow.record.createdAt + EMAIL_RESEND_AFTER_SECONDS - now)
+    : 0;
+  return cardJson({
+    email: maskEmail(flow.record.email),
+    expiresIn: Math.max(
+      0,
+      flow.record.createdAt + EMAIL_CODE_TTL_SECONDS - now,
+    ),
+    codeLength: EMAIL_CODE_DIGITS,
+    resendIn: wait,
+    ...(route ? { next: ssoNext(route) } : {}),
+  });
+}
+
 /** `POST /api/signin/flow`: the asking browser's poll after a link was confirmed elsewhere. */
 export async function handleSigninFlowPoll(
   req: Request,
@@ -634,6 +745,9 @@ export async function handleSigninFlowPoll(
     return cardJson({ error: "method_not_allowed" }, 405);
   const flow = await currentFlow(env, req);
   if (!flow) return cardJson({ status: "expired" }, 200, [clearFlow()]);
+  // The flow outlives its code (see EMAIL_FLOW_TTL_SECONDS): past it, nothing here can complete,
+  // and the cookie stays for a resend.
+  if (!codeAlive(flow.record, now)) return cardJson({ status: "expired" });
   if (flow.record.status !== "confirmed") {
     return cardJson({
       status: "pending",
@@ -731,17 +845,47 @@ async function completeEmailSignIn(
 }
 
 /**
- * The expired or used code/link page (SIGN-IN.md §3.13, frame 15). The spec's **Send a new code**
- * (a POST to the masked address) is the resend route's, but a flow lives exactly as long as its
- * link, so by the time a link has expired this page knows no address to send to: it takes the
- * spec's "without a known address" branch and offers **Sign in again**, back to where the sign-in
+ * The expired or used code/link page (SIGN-IN.md §3.13, frame 15). With a live flow in this
+ * browser (the flow outlives its code, `EMAIL_FLOW_TTL_SECONDS`), **Send a new code** is a plain
+ * form `POST` to the resend, naming the masked address that flow was started with; **Use a
+ * different email** goes back to the sign-in page. The address comes from the browser's own flow,
+ * never from the link, so a link opened anywhere else, or one that was used (its flow is gone),
+ * takes the spec's "without a known address" branch: **Sign in again**, back to where the sign-in
  * was headed when the link's record still says so.
  */
-function expiredLinkPage(returnTo?: string): Response {
+async function expiredLinkPage(
+  env: Env,
+  req: Request,
+  returnTo?: string,
+  /** Answer as for a browser with no flow (a refused form post names nothing). */
+  anonymous = false,
+): Promise<Response> {
+  const flow = anonymous ? undefined : (await currentFlow(env, req))?.record;
+  const heading = "That code or link has expired"; // signin.expired.title
+  const body = "<p>Codes and links work once, for 10 minutes.</p>"; // signin.expired.body
+  if (flow && emailConfigured(env)) {
+    const back = escapeHtml(flow.returnTo ?? returnTo ?? "/");
+    return cardPage(400, {
+      title: "Sign in",
+      heading,
+      body:
+        `${body}<form method="post" action="/api/signin/email/resend"><p>A new code goes to ${escapeHtml(maskEmail(flow.email))}.</p>` + // signin.expired.sendTo
+        `<p class="actions stack"><button class="button" type="submit">Send a new code</button>` + // signin.code.resend
+        `<a class="button secondary" href="${back}">Use a different email</a></p></form>`, // signin.code.differentEmail
+    });
+  }
   return cardPage(400, {
     title: "Sign in",
-    heading: "That code or link has expired", // signin.expired.title
-    body: `<p>Codes and links work once, for 10 minutes.</p>${signInAgainAction(returnTo ?? "/")}`, // signin.expired.body
+    heading,
+    body: `${body}${signInAgainAction(returnTo ?? "/")}`,
+  });
+}
+
+/** The resend form's answer when mail cannot leave at all (`signin.emailDown`). */
+function emailUnavailablePage(): Response {
+  return cardPage(503, {
+    title: "Sign in",
+    heading: "We can't send email right now. Try another way to sign in.",
   });
 }
 
@@ -771,7 +915,7 @@ export async function handleMagicLanding(
   db: Db,
 ): Promise<Response> {
   const token = new URL(req.url).searchParams.get("token");
-  if (!token) return expiredLinkPage();
+  if (!token) return expiredLinkPage(env, req);
   const caps = await portalAuthCapabilities(db);
   if (!caps.portalEnabled) {
     return signInOffPage();
@@ -782,7 +926,7 @@ export async function handleMagicLanding(
     magicRef,
     await getArtefact(env, magicRef),
   );
-  if (!record) return expiredLinkPage();
+  if (!record) return expiredLinkPage(env, req);
   const form = (label: string) =>
     `<form method="post" action="/magic/verify"><input type="hidden" name="token" value="${escapeHtml(token)}"><p class="actions"><button class="button" type="submit">${escapeHtml(label)}</button></p></form>`;
   if (await isAskingBrowser(env, req, record.flow)) {
@@ -825,7 +969,7 @@ export async function handleMagicConfirm(
   } catch {
     token = null;
   }
-  if (!token) return expiredLinkPage();
+  if (!token) return expiredLinkPage(env, req);
   // Atomic and single-use: two submissions (or a code and a link) cannot both complete.
   const magicRef = await portalMagicKey(env, token);
   const record = await openRecord<MagicRecord>(
@@ -833,7 +977,7 @@ export async function handleMagicConfirm(
     magicRef,
     await consumeArtefact(env, magicRef),
   );
-  if (!record) return expiredLinkPage();
+  if (!record) return expiredLinkPage(env, req);
 
   if (await isAskingBrowser(env, req, record.flow)) {
     if (record.flow) {
@@ -841,7 +985,7 @@ export async function handleMagicConfirm(
         env,
         artefactRef("signin-flow", record.flow),
       );
-      if (!taken) return expiredLinkPage(record.returnTo);
+      if (!taken) return expiredLinkPage(env, req, record.returnTo);
     }
     return completeEmailSignIn(req, env, db, record, now, "redirect");
   }
@@ -853,7 +997,7 @@ export async function handleMagicConfirm(
       set: { status: "confirmed", confirmedAt: now },
     },
   );
-  if (!confirmed.ok) return expiredLinkPage(record.returnTo);
+  if (!confirmed.ok) return expiredLinkPage(env, req, record.returnTo);
   // signin.confirmLink.done
   return cardPage(200, {
     title: "Sign-in confirmed",

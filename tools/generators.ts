@@ -498,6 +498,18 @@ export const GENERATORS: Generator[] = [
     outputs: ["packages/worker/src/docsCsp.generated.ts"],
   },
   {
+    id: "docs-tiers",
+    title: "Docs-site per-file tiers",
+    order: 225,
+    manual:
+      "written by the docs build (packages/docs/scripts/collect-docs-tiers.ts); the Worker suite checks it",
+    inputs: [
+      "packages/docs/scripts/collect-docs-tiers.ts",
+      "packages/docs/src/**",
+    ],
+    outputs: ["packages/worker/src/docsTiers.generated.ts"],
+  },
+  {
     id: "design-mockups",
     title: "Static design mockups built from their _src directories",
     order: 230,

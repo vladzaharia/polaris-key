@@ -34,6 +34,25 @@
  *     switch audit summaries cut off at the same length one key later. 1-6, 8-10 and 11-12 were
  *     re-captured for that alone (checked: with the commerce member removed the entries are
  *     unchanged, except the 9-* summaries' truncation point).
+ *   - ST-14: `identity.keyEntry.claimByKey` became a row-backed setting, applied with the
+ *     `identity:` row settings while Identity is on, so the manifest-row DELETE and the audit
+ *     statement of 1, 3, 4, 5, 6a, 8 and 9 name one more key. Only those statements changed (the
+ *     end states and results are identical: the fixture declares no `claimByKey`).
+ *   - ST-17 (S-18 §4.5 item 4): an apply records the plan it applied in `product_sync_state.plan_json`,
+ *     in its own batch (`INSERT INTO product_sync_state … ON CONFLICT … SET plan_json`). Every
+ *     apply scenario (3-6, 8-9, 10a, 11a/b) gained that one write and its end-state row. The plan
+ *     shares the pipeline's memoised reads (claims, snapshot, active schema, row claim keys, the
+ *     product, and the tiers and profiles `planRows` holds), so the trips grew only by the reads
+ *     nothing else made: the licence counts per dropped tier/profile, `oidc_config`,
+ *     `release_config`, the publisher policy, the edge-mint recipes and the provisioning count.
+ *     Residual: resync +5 to +7 (3: 26->31, 4: 28->34, 5: 26->32, 6a: 27->34, 8: 27->32,
+ *     9-*: 27/28->33/34), link-existing 46->51; the deploy hook (scope `system`, which applies no
+ *     tier, profile, sign-in or release rows) plans none of them: 11a 6->7, 11b 7->8. The dry runs
+ *     10a, 12b and 14b gained the plan's `warnings` (the validator's deprecated spellings of the
+ *     scenario's flat documents). The dry runs 12c, 12d and 12e dropped 1 to 2 trips: `plan()`
+ *     used to read claims, the snapshot and the schema once for the checks and again for the plan,
+ *     and now reads each once. Nothing else moved: checked by diffing every other table's writes
+ *     and end state, and the result outside `warnings`.
  *   - 13-link-secret-default (plans/P0-26.md D5, delta 1): link screens the catalog for delivery
  *     issues, as resync and the console do. Captured from the pre-pipeline code (the link
  *     succeeded), then re-captured from the pipeline when the delta landed (the link refuses).

@@ -87,7 +87,7 @@ describe("Library on today's data (PX-02)", () => {
     await userEvent.click(
       within(
         screen.getByRole("region", { name: "Nothing here yet" }),
-      ).getByRole("button", { name: "Activate license" }),
+      ).getByRole("button", { name: "Activate a license" }),
     );
     expect(
       await screen.findByRole("dialog", { name: "Activate a license" }),
@@ -167,10 +167,10 @@ describe("Library on today's data (PX-02)", () => {
     expect(within(emberTile).getByText("Expired")).toBeTruthy();
     expect(within(emberTile).getByText(/^Ended /)).toBeTruthy();
     // No cover art: a short tint field with the letter once, in the art; no icon row over it.
-    // The same 16:9 field as a tile with art, so names line up across a row.
+    // The same 5:2 field as a tile with art, so names line up across a row.
     const banner = emberTile.querySelector("[data-art='fallback']");
     expect(banner).not.toBeNull();
-    expect(banner!.className).toContain("aspect-video");
+    expect(banner!.className).toContain("aspect-[5/2]");
     expect(
       [...emberTile.querySelectorAll("span[aria-hidden]")].filter(
         (el) => el.textContent === "E",
@@ -279,9 +279,12 @@ describe("Library on today's data (PX-02)", () => {
     });
     // The title and the button only (portal.library): no line between them.
     expect(within(tile).queryByText(/Activate it to add/)).toBeNull();
-    // Three products: it fills the fourth place at two columns and spans the row at three.
-    expect(tile.className).toMatch(/desk:col-span-1/);
-    expect(tile.className).toMatch(/wide:col-span-3/);
+    // Three products: it fills the rest of the last row: one cell at two columns and at four,
+    // the whole row at three, two cells at five.
+    expect(tile.className).toMatch(/(^| )col-span-1/);
+    expect(tile.className).toMatch(/desk:col-span-3/);
+    expect(tile.className).toMatch(/wide:col-span-1/);
+    expect(tile.className).toMatch(/xxl:col-span-2/);
     expect(tile.firstElementChild!.className).toContain("border-dashed");
     expect(
       within(tile).getByRole("heading", {
@@ -291,21 +294,21 @@ describe("Library on today's data (PX-02)", () => {
     ).toBeTruthy();
     const strip = screen.getByRole("region", { name: "Missing a license?" });
     // Both rows link it (the Steam one too), underlined: colour alone is not a link (WCAG 1.4.1).
-    const methods = within(strip).getAllByRole("link", {
-      name: "Sign-in methods",
-    });
-    expect(methods).toHaveLength(2);
+    const methods = [
+      within(strip).getByRole("link", { name: "Add it in Sign-in methods" }),
+      within(strip).getByRole("link", { name: "Connect Steam" }),
+    ];
     for (const a of methods) {
       expect(a.getAttribute("href")).toMatch(/methods/);
       expect(a.className).toContain("underline");
     }
-    expect(within(strip).getByText("Sent to another email?")).toBeTruthy();
-    expect(within(strip).getByText("Bought on Steam?")).toBeTruthy();
+    expect(within(strip).getByText(/Another email\?/)).toBeTruthy();
+    expect(within(strip).getByText(/Bought on Steam\?/)).toBeTruthy();
     expect(
-      within(strip).getByText("Bought on the App Store or Google Play?"),
+      within(strip).getByText("Bought in a store? Sign in from the app"),
     ).toBeTruthy();
     await userEvent.click(
-      within(tile).getByRole("button", { name: "Activate license" }),
+      within(tile).getByRole("button", { name: "Activate a license" }),
     );
     expect(
       await screen.findByRole("dialog", { name: "Activate a license" }),

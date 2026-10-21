@@ -20,6 +20,7 @@ export async function planRows(
   manifest: ParsedManifest,
   previousSnapshotJson: string | undefined,
   now: number,
+  rowClaimKeys?: () => Promise<readonly string[]>,
 ): Promise<{
   plan: RowPlan;
   claimed: string[];
@@ -38,7 +39,12 @@ export async function planRows(
   const nextTierIds = new Set(manifest.tiers.map((t) => t.id));
   // LX-06: row-backed settings the console has claimed. The owning services' contributors skip
   // them in SQL; they are named here so the answer says what was left alone.
-  const claimed: string[] = await liveRowClaimKeys(db, slug, now);
+  // A copy: this list is pushed to below, and a caller's memo is shared.
+  const claimed: string[] = [
+    ...(await (rowClaimKeys
+      ? rowClaimKeys()
+      : liveRowClaimKeys(db, slug, now))),
+  ];
   const conflicts: ManifestConflict[] = [];
   const skip = (
     kind: "tier" | "profile",

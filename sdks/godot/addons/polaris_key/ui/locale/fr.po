@@ -725,10 +725,10 @@ msgstr "Scannez le code QR avec votre téléphone, ou saisissez ce code à l’a
 msgid "signInHandoff.linkCopied"
 msgstr "Lien copié"
 
-#. Choose Continue to {product} on the sign-in page to finish.
-#. SignInHandoff: sign-in continues on another device or in the browser. The hosted page ends with a “Continue to {product}” button. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. Choose Sign in on {device} on the sign-in page to finish.
+#. SignInHandoff: sign-in continues on another device or in the browser. The hosted approval page ends with a “Sign in on {device}” button, next to Deny; the label stays in English. Arguments: {device} = this device's friendly name.
 msgid "signInHandoff.confirm"
-msgstr "Choisissez Continuer vers {product} sur la page de connexion pour terminer."
+msgstr "Choisissez Sign in on {device} sur la page de connexion pour terminer."
 
 #. Signed in
 #. SignInHandoff: sign-in continues on another device or in the browser. Shown for a moment before the product continues.
@@ -764,6 +764,16 @@ msgstr "Activer la licence"
 msgctxt "macos"
 msgid "activate.submit"
 msgstr "Activer la licence"
+
+#. Activate a license
+#. Portal: opens the Activate dialog (account menu, Library key tile, empty Library, Missing a license strip).
+msgid "common.activateLicense"
+msgstr "Activer une licence"
+
+#. macos: Activate a License
+msgctxt "macos"
+msgid "common.activateLicense"
+msgstr "Activer une licence"
 
 #. Activating…
 #. Activate: license key entry.
@@ -3012,6 +3022,11 @@ msgstr "Ce code ou ce lien a expiré"
 #. Expired code or link page (SIGN-IN.md §4.12).
 msgid "signin.expired.body"
 msgstr "Les codes et les liens ne fonctionnent qu’une fois, pendant 10 minutes."
+
+#. A new code goes to {email}.
+#. Expired code or link page (SIGN-IN.md §4.12). Arguments: {email} = an email address, masked by the Worker. The button is signin.code.resend; the way back is signin.code.differentEmail.
+msgid "signin.expired.sendTo"
+msgstr "Un nouveau code est envoyé à {email}."
 
 #. Sign in again
 #. Expired code or link page (SIGN-IN.md §4.12).

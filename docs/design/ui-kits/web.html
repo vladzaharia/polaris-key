@@ -26,6 +26,126 @@
         border-radius: 28px;
       }
 
+      /* Shape rows (DL1): in landscape the gate and the code view are two panes. The start pane is the
+         identity panel (icon only, on the icon ambient in dark and the accent subtle in light); the end
+         pane holds title, lede and act, top-aligned. Phones landscape and the small row drop the gutter
+         and size to the window without an inner scroll. */
+      .w844 {
+        width: 844px;
+        height: 390px;
+        border-radius: 24px;
+      }
+      .w640 {
+        width: 640px;
+        height: 360px;
+        border-radius: 20px;
+      }
+      .w1180 {
+        width: 1180px;
+        height: 820px;
+      }
+      .w820 {
+        width: 820px;
+        height: 1180px;
+      }
+      .w1920 {
+        width: 1920px;
+        height: 1080px;
+      }
+      .split {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        padding: 48px;
+      }
+      .split-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 48px;
+        inline-size: min(1040px, 100%);
+        align-items: stretch;
+      }
+      .panel {
+        position: relative;
+        isolation: isolate;
+        overflow: hidden;
+        display: grid;
+        place-items: center;
+        border-radius: 24px;
+        min-height: 320px;
+        background: var(--pk-surface-raised);
+        box-shadow: 0 0 0 1px var(--pk-border-subtle);
+      }
+      [data-theme="light"] .panel {
+        background: var(--kit-accent-subtle);
+      }
+      .panel .ambient svg {
+        width: 560px;
+        height: 400px;
+      }
+      .panel .ambient > div {
+        top: 50%;
+      }
+      .pane-end {
+        display: grid;
+        gap: 20px;
+        align-content: start;
+        align-self: start;
+        padding-block: 8px;
+      }
+      .pane-end .display {
+        font: 600 2rem / 1.12 var(--pk-font-sans);
+        letter-spacing: -0.02em;
+        color: var(--pk-text-strong);
+        margin: 0;
+        text-wrap: balance;
+      }
+      .pane-end .by {
+        font-size: 13px;
+        line-height: 18px;
+        color: var(--pk-text-subtle);
+      }
+      .pane-end .head {
+        display: grid;
+        gap: 6px;
+      }
+      .pane-end .k-links {
+        justify-content: flex-start;
+      }
+      .split.compact {
+        padding: 20px 28px;
+      }
+      .split.compact .split-row {
+        gap: 28px;
+      }
+      .split.compact .panel {
+        min-height: 0;
+        border-radius: 20px;
+      }
+      .split.compact .pane-end {
+        gap: 12px;
+        padding-block: 0;
+      }
+      .split.compact .pane-end .display {
+        font-size: 1.5rem;
+      }
+      .split.compact .code {
+        padding: 12px 40px;
+      }
+      .split.compact .code .mono {
+        font-size: 30px;
+      }
+      .split.compact .actions {
+        gap: 8px;
+      }
+      .split.compact .k-btn {
+        height: 44px;
+      }
+      .split.compact .waiting {
+        font-size: 13px;
+      }
+
       /* Product ambient (§1.2): the product's own art behind the hero. Dark: the blurred icon.
          Light: the resolved accent's subtle and the icon's sand, never a grey smudge. */
       .ambient {
@@ -1026,25 +1146,29 @@
     <main class="board">
       <!-- 1. Gate, 1440 -->
       <figure>
-        <figcaption>web · gate · 1440 × 900</figcaption>
+        <figcaption>
+          web · gate · 1440 × 900 · two panes, the identity panel holds the icon
+          only (DL1). Built today
+        </figcaption>
         <div class="shot kit w1440" data-shot="gate">
-          <div class="ambient">
-            <div data-art="tidewater" data-size="64"></div>
-          </div>
-          <div class="center">
-            <div class="k-card flow">
-              <div class="hero">
+          <div class="split">
+            <div class="split-row">
+              <div class="panel">
+                <div class="ambient">
+                  <div data-art="tidewater" data-size="64"></div>
+                </div>
                 <div
                   class="k-appicon"
                   data-art="tidewater"
-                  data-size="96"
+                  data-size="120"
                 ></div>
-                <h1 class="display">Welcome to Tidewater Studio</h1>
-                <span class="by">by Harbor Audio</span>
-                <p class="k-lede">Sign in or add your license to start.</p>
               </div>
-              <span class="spacer"></span>
-              <div style="display: grid; gap: 20px">
+              <div class="pane-end">
+                <div class="head">
+                  <h1 class="display">Welcome to Tidewater Studio</h1>
+                  <span class="by">by Harbor Audio</span>
+                </div>
+                <p class="k-lede">Sign in or add your license to start.</p>
                 <div class="actions">
                   <button class="k-btn primary block">Sign in</button>
                   <button class="k-btn secondary block">
@@ -1098,6 +1222,204 @@
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </figure>
+
+      <figure>
+        <figcaption>
+          web · gate · 844 × 390 · phone landscape, two panes, no inner scroll,
+          44 px targets. Built today
+        </figcaption>
+        <div class="shot kit w844" data-shot="gate-844">
+          <div class="split compact">
+            <div class="split-row">
+              <div class="panel">
+                <div class="ambient">
+                  <div data-art="tidewater" data-size="64"></div>
+                </div>
+                <div
+                  class="k-appicon"
+                  data-art="tidewater"
+                  data-size="88"
+                ></div>
+              </div>
+              <div class="pane-end">
+                <div class="head">
+                  <h1 class="display">Welcome to Tidewater Studio</h1>
+                  <span class="by">by Harbor Audio</span>
+                </div>
+                <p class="k-lede">Sign in or add your license to start.</p>
+                <div class="actions">
+                  <button class="k-btn primary block">Sign in</button>
+                  <button class="k-btn secondary block">
+                    Use a license key
+                  </button>
+                </div>
+                <div class="k-links">
+                  <a>Start a 14-day trial</a><a>Activate offline</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <figure>
+        <figcaption>
+          web · gate · 640 × 360 · small landscape. Built today
+        </figcaption>
+        <div class="shot kit w640" data-shot="gate-640">
+          <div class="split compact">
+            <div class="split-row">
+              <div class="panel">
+                <div class="ambient">
+                  <div data-art="tidewater" data-size="64"></div>
+                </div>
+                <div
+                  class="k-appicon"
+                  data-art="tidewater"
+                  data-size="72"
+                ></div>
+              </div>
+              <div class="pane-end">
+                <div class="head">
+                  <h1 class="display">Welcome to Tidewater Studio</h1>
+                  <span class="by">by Harbor Audio</span>
+                </div>
+                <p class="k-lede">Sign in or add your license to start.</p>
+                <div class="actions">
+                  <button class="k-btn primary block">Sign in</button>
+                  <button class="k-btn secondary block">
+                    Use a license key
+                  </button>
+                </div>
+                <div class="k-links">
+                  <a>Start a 14-day trial</a><a>Activate offline</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <figure>
+        <figcaption>
+          web · gate · 1180 × 820 · landscape tablet. Built today
+        </figcaption>
+        <div class="shot kit w1180" data-shot="gate-1180">
+          <div class="split">
+            <div class="split-row">
+              <div class="panel">
+                <div class="ambient">
+                  <div data-art="tidewater" data-size="64"></div>
+                </div>
+                <div
+                  class="k-appicon"
+                  data-art="tidewater"
+                  data-size="120"
+                ></div>
+              </div>
+              <div class="pane-end">
+                <div class="head">
+                  <h1 class="display">Welcome to Tidewater Studio</h1>
+                  <span class="by">by Harbor Audio</span>
+                </div>
+                <p class="k-lede">Sign in or add your license to start.</p>
+                <div class="actions">
+                  <button class="k-btn primary block">Sign in</button>
+                  <button class="k-btn secondary block">
+                    Use a license key
+                  </button>
+                </div>
+                <div class="k-links">
+                  <a>Start a 14-day trial</a><a>Activate offline</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <figure>
+        <figcaption>
+          web · gate · 820 × 1180 · tablet portrait, one centred column (DL1).
+          Built today
+        </figcaption>
+        <div class="shot kit w820" data-shot="gate-820">
+          <div class="ambient">
+            <div data-art="tidewater" data-size="64"></div>
+          </div>
+          <div
+            class="center"
+            style="place-items: start center; padding-top: 220px"
+          >
+            <div class="k-card flow" style="inline-size: 520px">
+              <div class="hero">
+                <div
+                  class="k-appicon"
+                  data-art="tidewater"
+                  data-size="96"
+                ></div>
+                <h1 class="display">Welcome to Tidewater Studio</h1>
+                <span class="by">by Harbor Audio</span>
+                <p class="k-lede">Sign in or add your license to start.</p>
+              </div>
+              <div style="display: grid; gap: 20px">
+                <div class="actions">
+                  <button class="k-btn primary block">Sign in</button>
+                  <button class="k-btn secondary block">
+                    Use a license key
+                  </button>
+                </div>
+                <div class="k-links">
+                  <a>Start a 14-day trial</a><a>Activate offline</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <figure>
+        <figcaption>
+          web · gate · 1920 × 1080 · the row is capped at 1040 and centred.
+          Built today
+        </figcaption>
+        <div class="shot kit w1920" data-shot="gate-1920">
+          <div class="split">
+            <div class="split-row">
+              <div class="panel">
+                <div class="ambient">
+                  <div data-art="tidewater" data-size="64"></div>
+                </div>
+                <div
+                  class="k-appicon"
+                  data-art="tidewater"
+                  data-size="120"
+                ></div>
+              </div>
+              <div class="pane-end">
+                <div class="head">
+                  <h1 class="display">Welcome to Tidewater Studio</h1>
+                  <span class="by">by Harbor Audio</span>
+                </div>
+                <p class="k-lede">Sign in or add your license to start.</p>
+                <div class="actions">
+                  <button class="k-btn primary block">Sign in</button>
+                  <button class="k-btn secondary block">
+                    Use a license key
+                  </button>
+                </div>
+                <div class="k-links">
+                  <a>Start a 14-day trial</a><a>Activate offline</a>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="pagefoot">
+            <span>Help</span><span>Privacy</span
+            ><span>Tidewater Studio <span class="tnum">2.4.1</span></span>
           </div>
         </div>
       </figure>
@@ -1166,33 +1488,31 @@
       <!-- 4. Sign-in hand-off, 1440 -->
       <figure>
         <figcaption>
-          web · sign-in hand-off · 1440 × 900 · no QR on the web (D-67). Built
-          today
+          web · sign-in hand-off · 1440 × 900 · two panes, no QR on the web
+          (D-67). Built today
         </figcaption>
         <div class="shot kit w1440" data-shot="sign-in">
-          <div class="ambient">
-            <div data-art="tidewater" data-size="64"></div>
-          </div>
-          <div class="center">
-            <div class="k-card flow wide">
-              <div class="k-product">
+          <div class="split">
+            <div class="split-row">
+              <div class="panel">
+                <div class="ambient">
+                  <div data-art="tidewater" data-size="64"></div>
+                </div>
                 <div
                   class="k-appicon"
                   data-art="tidewater"
-                  data-size="32"
-                  style="border-radius: 8px"
+                  data-size="120"
                 ></div>
-                <span>Tidewater Studio</span>
               </div>
-              <div style="display: grid; gap: 8px">
-                <h1 class="k-h1">Finish in your browser</h1>
-                <p class="k-lede">
-                  We opened the sign-in page. Check the code there matches this
-                  one.
-                </p>
-              </div>
-              <div class="handoff">
-                <div style="display: grid; gap: 14px">
+              <div class="pane-end">
+                <div class="head">
+                  <h1 class="display">Finish in your browser</h1>
+                  <p class="k-lede">
+                    We opened the sign-in page. Check the code there matches
+                    this one.
+                  </p>
+                </div>
+                <div style="display: grid; gap: 12px">
                   <div class="code">
                     <span class="mono">WDJB-MJHT</span>
                     <span
@@ -1202,15 +1522,7 @@
                       aria-label="Copy code"
                     ></span>
                   </div>
-                  <div class="goto">
-                    Or go to <b>key.plrs.im/activate</b
-                    ><span
-                      class="k-iconbtn"
-                      style="width: 24px; height: 24px"
-                      data-icon="copy"
-                      data-size="14"
-                    ></span>
-                  </div>
+                  <div class="goto">Or go to <b>key.plrs.im/activate</b></div>
                   <div class="waiting tnum">
                     <span data-countdown="0.84"></span>Code expires in 4:12
                   </div>
@@ -1218,13 +1530,13 @@
                     Waiting for you to sign in…
                   </div>
                 </div>
-              </div>
-              <div class="actions row">
-                <button class="k-btn secondary">Cancel</button>
-                <button class="k-btn primary">
-                  <span data-icon="external" data-size="16"></span>Open browser
-                  again
-                </button>
+                <div class="actions row" style="justify-content: flex-start">
+                  <button class="k-btn secondary">Cancel</button>
+                  <button class="k-btn primary">
+                    <span data-icon="external" data-size="16"></span>Open
+                    browser again
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -1283,6 +1595,118 @@
                   <span data-icon="external" data-size="16"></span>Open browser
                   again
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <figure>
+        <figcaption>
+          web · sign-in hand-off · 844 × 390 · phone landscape. Built today
+        </figcaption>
+        <div class="shot kit w844" data-shot="sign-in-844">
+          <div class="split compact">
+            <div class="split-row">
+              <div class="panel">
+                <div class="ambient">
+                  <div data-art="tidewater" data-size="64"></div>
+                </div>
+                <div
+                  class="k-appicon"
+                  data-art="tidewater"
+                  data-size="88"
+                ></div>
+              </div>
+              <div class="pane-end">
+                <div class="head">
+                  <h1 class="display">Finish in your browser</h1>
+                  <p class="k-lede">
+                    We opened the sign-in page. Check the code there matches
+                    this one.
+                  </p>
+                </div>
+                <div style="display: grid; gap: 12px">
+                  <div class="code">
+                    <span class="mono">WDJB-MJHT</span>
+                    <span
+                      class="k-iconbtn"
+                      data-icon="copy"
+                      data-size="18"
+                      aria-label="Copy code"
+                    ></span>
+                  </div>
+                  <div class="goto">Or go to <b>key.plrs.im/activate</b></div>
+                  <div class="waiting tnum">
+                    <span data-countdown="0.84"></span>Code expires in 4:12
+                  </div>
+                  <div class="waiting" role="status">
+                    Waiting for you to sign in…
+                  </div>
+                </div>
+                <div class="actions row" style="justify-content: flex-start">
+                  <button class="k-btn secondary">Cancel</button>
+                  <button class="k-btn primary">
+                    <span data-icon="external" data-size="16"></span>Open
+                    browser again
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <figure>
+        <figcaption>
+          web · sign-in hand-off · 1920 × 1080. Built today
+        </figcaption>
+        <div class="shot kit w1920" data-shot="sign-in-1920">
+          <div class="split">
+            <div class="split-row">
+              <div class="panel">
+                <div class="ambient">
+                  <div data-art="tidewater" data-size="64"></div>
+                </div>
+                <div
+                  class="k-appicon"
+                  data-art="tidewater"
+                  data-size="120"
+                ></div>
+              </div>
+              <div class="pane-end">
+                <div class="head">
+                  <h1 class="display">Finish in your browser</h1>
+                  <p class="k-lede">
+                    We opened the sign-in page. Check the code there matches
+                    this one.
+                  </p>
+                </div>
+                <div style="display: grid; gap: 12px">
+                  <div class="code">
+                    <span class="mono">WDJB-MJHT</span>
+                    <span
+                      class="k-iconbtn"
+                      data-icon="copy"
+                      data-size="18"
+                      aria-label="Copy code"
+                    ></span>
+                  </div>
+                  <div class="goto">Or go to <b>key.plrs.im/activate</b></div>
+                  <div class="waiting tnum">
+                    <span data-countdown="0.84"></span>Code expires in 4:12
+                  </div>
+                  <div class="waiting" role="status">
+                    Waiting for you to sign in…
+                  </div>
+                </div>
+                <div class="actions row" style="justify-content: flex-start">
+                  <button class="k-btn secondary">Cancel</button>
+                  <button class="k-btn primary">
+                    <span data-icon="external" data-size="16"></span>Open
+                    browser again
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -1457,7 +1881,8 @@
       <figure>
         <figcaption>
           web · activate · key refused · 390 × 844 · one danger callout under
-          the field, said once, cleared on edit. Built today
+          the field, said once, cleared on edit; the copy is the catalog's
+          core.activation.license-disabled. Built today
         </figcaption>
         <div class="shot kit w390" data-shot="activate-refused-390">
           <div class="center">
@@ -1498,7 +1923,13 @@
                   </div>
                   <div class="k-error" role="alert">
                     <span class="ic" data-icon="alert" data-size="16"></span>
-                    <span>This license key no longer works</span>
+                    <span style="display: grid"
+                      ><span style="font-weight: 600">License disabled</span
+                      ><span
+                        >This license has been disabled. Contact the
+                        developer.</span
+                      ></span
+                    >
                   </div>
                 </div>
               </div>

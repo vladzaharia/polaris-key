@@ -8,6 +8,7 @@ import type {
 import { cn } from "../../../../lib/cn.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
 import { Button } from "../../../../ui/Button.js";
+import { CopyDetails } from "../../../../ui/CopyDetails.js";
 import { Callout } from "../../../../ui/Callout.js";
 import { ServiceGlyph } from "../../../../ui/ServiceBadge.js";
 import { Switch } from "../../../../ui/Switch.js";
@@ -283,12 +284,13 @@ export function FeatureRowItem({
               />
             </li>
           ))}
-          {feature.id === "ship-builds" && on ? (
+          {feature.id === "ship-builds" ? (
             <li>
               <StorefrontListingControl
                 slug={ctx.slug}
                 name={ctx.name}
                 locked={locked}
+                blocked={!on}
               />
             </li>
           ) : null}
@@ -319,9 +321,12 @@ export function FeatureRowItem({
                 {copy!.description ? (
                   <p id={detailId}>{copy!.description}</p>
                 ) : null}
-                <Button size="sm" variant="outline" onClick={ctx.onRetry}>
-                  Retry
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button size="sm" variant="outline" onClick={ctx.onRetry}>
+                    Retry
+                  </Button>
+                  <CopyDetails copy={copy!} />
+                </div>
               </div>
             </Callout>
           )}
@@ -354,6 +359,7 @@ function SubSwitch({
       const on = ctx.enabled[service];
       const missing = on ? [] : unmetRequirements([service], ctx.enabled);
       const blocked = !on && missing.length > 0;
+      const waiting = !parentOn;
       const id = `feature-${feature.id}-${row.id}`;
       const requirementId = `${id}-requirements`;
       const saving =
@@ -365,6 +371,8 @@ function SubSwitch({
           <FeatureSubRow
             title={row.label}
             htmlFor={id}
+            lockedBy={waiting ? feature.label : undefined}
+            lockedId={requirementId}
             lines={[
               blocked ? (
                 <TurnOnFirst id={requirementId} missing={missing} />
@@ -379,11 +387,11 @@ function SubSwitch({
                 touch
                 checked={on}
                 saving={Boolean(saving)}
-                aria-disabled={blocked || ctx.locked || undefined}
-                readOnly={ctx.busy || blocked || ctx.locked}
+                aria-disabled={waiting || blocked || ctx.locked || undefined}
+                readOnly={ctx.busy || waiting || blocked || ctx.locked}
                 aria-invalid={failedHere ? true : undefined}
                 aria-describedby={describedBy(
-                  blocked ? requirementId : undefined,
+                  waiting || blocked ? requirementId : undefined,
                   errorDescribedBy,
                 )}
                 onCheckedChange={(next) =>
@@ -422,8 +430,17 @@ function SubSwitch({
       return (
         <FeatureSubRow
           title={row.label}
+          lockedBy={parentOn ? undefined : feature.label}
           lines={["A recipe mints only after an operator approves it"]}
-          control={<ReviewRecipeLink slug={ctx.slug} />}
+          control={
+            parentOn ? (
+              <ReviewRecipeLink slug={ctx.slug} />
+            ) : (
+              <span aria-disabled="true" className="text-sm text-fg-muted">
+                Review recipe
+              </span>
+            )
+          }
         />
       );
     default:

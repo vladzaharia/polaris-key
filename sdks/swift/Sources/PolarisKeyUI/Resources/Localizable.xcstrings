@@ -12115,6 +12115,78 @@
         }
       }
     },
+    "common.activateLicense": {
+      "comment": "Portal: opens the Activate dialog (account menu, Library key tile, empty Library, Missing a license strip).",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "device": {
+              "mac": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Activate a License"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Activate a license"
+                }
+              }
+            }
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine Lizenz aktivieren"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activer une licence"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activar una licencia"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ativar uma licença"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Attiva una licenza"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ライセンスをアクティベート"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이선스 활성화"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "激活许可证"
+          }
+        }
+      }
+    },
     "common.back": {
       "comment": "Shared verb used across the kit's screens. Returns to the previous step.",
       "extractionState": "manual",
@@ -45434,61 +45506,61 @@
       }
     },
     "signInHandoff.confirm": {
-      "comment": "SignInHandoff: sign-in continues on another device or in the browser. The hosted page ends with a “Continue to {product}” button. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product.",
+      "comment": "SignInHandoff: sign-in continues on another device or in the browser. The hosted approval page ends with a “Sign in on {device}” button, next to Deny; the label stays in English. Arguments: {device} = this device's friendly name. Arguments: 1=device.",
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Choose Continue to %1$@ on the sign-in page to finish."
+            "value": "Choose Sign in on %1$@ on the sign-in page to finish."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wählen Sie auf der Anmeldeseite „Weiter zu %1$@“, um den Vorgang abzuschließen."
+            "value": "Wählen Sie auf der Anmeldeseite „Sign in on %1$@“, um den Vorgang abzuschließen."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Choisissez Continuer vers %1$@ sur la page de connexion pour terminer."
+            "value": "Choisissez Sign in on %1$@ sur la page de connexion pour terminer."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Elige Continuar a %1$@ en la página de inicio de sesión para terminar."
+            "value": "Elige Sign in on %1$@ en la página de inicio de sesión para terminar."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Escolha Continuar para %1$@ na página de acesso para concluir."
+            "value": "Escolha Sign in on %1$@ na página de acesso para concluir."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Per finire, scegli Continua su %1$@ nella pagina di accesso."
+            "value": "Per finire, scegli Sign in on %1$@ nella pagina di accesso."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "完了するには、サインインページで「%1$@に進む」を選択してください。"
+            "value": "完了するには、サインインページで「Sign in on %1$@」を選択してください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "로그인 페이지에서 “%1$@에서 계속”을 선택해 완료하세요."
+            "value": "로그인 페이지에서 “Sign in on %1$@”를 선택해 완료하세요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "在登录页面上选择“继续使用%1$@”以完成登录。"
+            "value": "在登录页面上选择“Sign in on %1$@”以完成登录。"
           }
         }
       }
@@ -55437,6 +55509,66 @@
           "stringUnit": {
             "state": "translated",
             "value": "验证码和链接仅可使用一次，10分钟内有效。"
+          }
+        }
+      }
+    },
+    "signin.expired.sendTo": {
+      "comment": "Expired code or link page (SIGN-IN.md §4.12). Arguments: {email} = an email address, masked by the Worker. The button is signin.code.resend; the way back is signin.code.differentEmail. Arguments: 1=email.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A new code goes to %1$@."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ein neuer Code geht an %1$@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un nouveau code est envoyé à %1$@."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enviaremos un código nuevo a %1$@."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Um novo código será enviado para %1$@."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un nuovo codice viene inviato a %1$@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新しいコードを%1$@に送信します。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새 코드를 %1$@(으)로 보냅니다."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新验证码将发送到 %1$@。"
           }
         }
       }

@@ -147,6 +147,30 @@ export const RULES: RuleInfo[] = [
     says: "One primary button per region.",
   },
   {
+    id: "accent-as-status",
+    group: "behaviour",
+    spec: "§7.3, B17",
+    says: "A status, alert or pill never paints a service accent: accent marks context, status keeps its own colour.",
+  },
+  {
+    id: "state-accent",
+    group: "behaviour",
+    spec: "§7.3, B17",
+    says: "A selected, current or checked element paints only the accent of its nearest data-service.",
+  },
+  {
+    id: "section-index",
+    group: "behaviour",
+    spec: "§7.3, B4",
+    says: "No ordinal numeral on a heading: numbers mark only ordered steps.",
+  },
+  {
+    id: "masthead-tile",
+    group: "behaviour",
+    spec: "§7.3, B4",
+    says: "The 48 px masthead tile shows at 1024 px and wider only.",
+  },
+  {
     id: "x-beside-cancel",
     group: "behaviour",
     spec: "§1.5 rule 10",

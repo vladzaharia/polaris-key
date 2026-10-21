@@ -378,7 +378,7 @@ export function ActivateDialog({
             : t("locker.discover.added", { product: doneName })
           : confirm
             ? t("locker.activate.addAsk", { product: confirmName })
-            : t("locker.activate.title")
+            : t("common.activateLicense")
       }
       description={done || confirm ? undefined : t("locker.activate.stays")}
       describedBy={

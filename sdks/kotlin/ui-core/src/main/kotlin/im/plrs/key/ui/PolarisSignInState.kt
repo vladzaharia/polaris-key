@@ -3,6 +3,7 @@
 // and restart always obtain a fresh code.
 package im.plrs.key.ui
 
+import im.plrs.key.core.ErrorCode
 import im.plrs.key.identity.SignInPrompt
 import im.plrs.key.identity.SignInResult
 import im.plrs.key.sdk.PolarisKeyClient
@@ -35,6 +36,9 @@ public sealed interface PolarisSignInUi {
     public data object Done : PolarisSignInUi
     public data object Expired : PolarisSignInUi
     public data object Failed : PolarisSignInUi
+
+    /** The person pressed Deny, or the provider failed: the Worker's one generic `error` answer. */
+    public data object Denied : PolarisSignInUi
 }
 
 /** The SDK calls sign-in makes. [PolarisKeyClient.signInActions] adapts the umbrella client. */
@@ -81,7 +85,7 @@ public class PolarisSignInState(
         if (job?.isActive == true) return
         val shown = prompt
         val now = _ui.value
-        val ended = !expiredOnScreen && (now == PolarisSignInUi.Done || now == PolarisSignInUi.Expired || now == PolarisSignInUi.Failed)
+        val ended = !expiredOnScreen && (now == PolarisSignInUi.Done || now == PolarisSignInUi.Expired || now == PolarisSignInUi.Failed || now == PolarisSignInUi.Denied)
         when {
             _ui.value == PolarisSignInUi.Starting || ended -> begin()
             shown != null && (_ui.value is PolarisSignInUi.Showing || expiredOnScreen) -> job = scope.launch { follow(shown) }
@@ -161,7 +165,7 @@ public class PolarisSignInState(
         _ui.value = when (result) {
             SignInResult.Ready -> PolarisSignInUi.Done
             SignInResult.Expired -> PolarisSignInUi.Expired
-            is SignInResult.Error -> PolarisSignInUi.Failed
+            is SignInResult.Error -> if (result.code == ErrorCode.signInDenied) PolarisSignInUi.Denied else PolarisSignInUi.Failed
         }
         if (result == SignInResult.Ready) onSignedIn()
     }

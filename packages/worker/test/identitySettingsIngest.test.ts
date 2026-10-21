@@ -1,13 +1,13 @@
 // I-09: the manifest's `identity:` block at link and resync (plans/I-27.md §3). The row-backed
 // settings (`identity.keyEntry.limit`, `identity.terms`, `identity.redirectPaths`) become claimable
-// `product_settings` rows whatever Identity's enablement; `identity.keyEntry.claimByKey` reaches its
-// column (`portal_product_settings.claim_by_key`) only while Identity is on. A console claim is
-// never overwritten, and an undeclared claimByKey leaves the column alone.
+// `product_settings` rows whatever Identity's enablement; `identity.keyEntry.claimByKey` is a row
+// too since ST-14, written only while Identity is on. A console claim is never overwritten, and
+// a manifest that stops declaring claimByKey clears its row like any other (omit-clears).
 
 import { describe, expect, it } from "vitest";
 import { parseManifest, type ParsedManifest } from "@polaris-key/manifest";
 import { makeTestDb } from "./helpers.js";
-import { NOW, seedProduct, setClaimByKey } from "./seed.js";
+import { NOW, seedProduct } from "./seed.js";
 import type { Db } from "../src/db/types.js";
 import { identityHookStatements } from "../src/services/identity/ingest.js";
 
@@ -50,14 +50,10 @@ async function row(db: Db, key: string) {
   );
 }
 
-async function claimByKey(db: Db): Promise<number | null> {
-  return (
-    (
-      await db.first<{ claim_by_key: number }>(
-        "SELECT claim_by_key FROM portal_product_settings WHERE product = 'acme'",
-      )
-    )?.claim_by_key ?? null
-  );
+/** The claimByKey in force: `null` for no row (the default, off), else the stored boolean. */
+async function claimByKey(db: Db): Promise<boolean | null> {
+  const r = await row(db, "identity.keyEntry.claimByKey");
+  return r ? (JSON.parse(r.value_json) as boolean) : null;
 }
 
 const BLOCK = {
@@ -67,7 +63,7 @@ const BLOCK = {
 };
 
 describe("the identity block at link and resync (I-09)", () => {
-  it("writes the claimable rows and claimByKey's column", async () => {
+  it("writes the claimable rows and claimByKey's row", async () => {
     const db = makeTestDb();
     await seedProduct(db, "acme");
     await ingest(db, parsed(BLOCK));
@@ -81,8 +77,11 @@ describe("the identity block at link and resync (I-09)", () => {
     expect(
       JSON.parse((await row(db, "identity.redirectPaths"))!.value_json),
     ).toEqual(["/auth/callback"]);
-    expect(await claimByKey(db)).toBe(1);
-    // One audit row for the column's change; none when a resync repeats it.
+    expect(await claimByKey(db)).toBe(true);
+    expect(await row(db, "identity.keyEntry.claimByKey")).toMatchObject({
+      source: "manifest",
+    });
+    // One audit row for the row's change; none when a resync repeats it.
     const audits = async () =>
       (
         await db.all<{ target_id: string }>(
@@ -94,25 +93,25 @@ describe("the identity block at link and resync (I-09)", () => {
     expect(await audits()).toBe(1);
   });
 
-  it("omit-clears the rows, but leaves an undeclared claimByKey as it is", async () => {
+  it("omit-clears the rows, claimByKey's included", async () => {
     const db = makeTestDb();
     await seedProduct(db, "acme");
     await ingest(db, parsed(BLOCK));
     await ingest(db, parsed(undefined), NOW + 1);
     expect(await row(db, "identity.keyEntry.limit")).toBeNull();
     expect(await row(db, "identity.terms")).toBeNull();
-    // The console's value from before the block existed is not reset by a resync.
-    expect(await claimByKey(db)).toBe(1);
+    // A manifest row follows the manifest: dropped with the block, back to the default (off).
+    expect(await claimByKey(db)).toBeNull();
     await ingest(db, parsed({ keyEntry: { claimByKey: false } }), NOW + 2);
-    expect(await claimByKey(db)).toBe(0);
+    expect(await claimByKey(db)).toBe(false);
   });
 
   it("writes claimByKey only while Identity is on", async () => {
     const db = makeTestDb();
     await seedProduct(db, "acme");
     await ingest(db, parsed(BLOCK, { license: { enabled: true } }));
-    // The rows are ready for when Identity is turned on; the claim rule (read for every product)
-    // does not change.
+    // The other rows are ready for when Identity is turned on; the claim rule (read for every
+    // product) does not change.
     expect(await row(db, "identity.keyEntry.limit")).not.toBeNull();
     expect(await claimByKey(db)).toBeNull();
   });
@@ -120,7 +119,6 @@ describe("the identity block at link and resync (I-09)", () => {
   it("never overwrites a console claim", async () => {
     const db = makeTestDb();
     await seedProduct(db, "acme");
-    await setClaimByKey(db, "acme", false);
     for (const key of [
       "identity.keyEntry.claimByKey",
       "identity.keyEntry.limit",
@@ -129,11 +127,11 @@ describe("the identity block at link and resync (I-09)", () => {
         `INSERT INTO product_settings (product, key, value_json, source, updated_at, updated_by)
          VALUES ('acme', ?, ?, 'console', ?, 'op')`,
         key,
-        key === "identity.keyEntry.limit" ? "50" : null,
+        key === "identity.keyEntry.limit" ? "50" : "false",
         NOW,
       );
     await ingest(db, parsed(BLOCK), NOW + 1);
-    expect(await claimByKey(db)).toBe(0);
+    expect(await claimByKey(db)).toBe(false);
     expect(await row(db, "identity.keyEntry.limit")).toEqual({
       value_json: "50",
       source: "console",

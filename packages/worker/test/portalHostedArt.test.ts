@@ -19,7 +19,13 @@ import { describe, expect, it } from "vitest";
 import { issuePortalSessionRow } from "./portalSessionRow.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
-import { makeEnv, NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
+import {
+  makeEnv,
+  NOW,
+  seedLicenseWithKey,
+  seedProduct,
+  setPortalToggles,
+} from "./seed.js";
 import { seedHosted, setAssetHosting } from "./hostedFixture.js";
 import { handlePortalApi, portalHooksFor } from "./portalHarness.js";
 import type { Env } from "../src/platform/env.js";
@@ -471,13 +477,7 @@ describe("GET /media/<p>/<asset> redirects to the hosted copy, else proxies per 
     const env = portalEnv();
     await tidewater(db);
     await seedHosted(db, "tidewater", "presentation.icon", { sha256: A });
-    await db.run(
-      `INSERT INTO portal_product_settings (product, portal_enabled, created_at, modified_at)
-            VALUES ('tidewater', 0, ?, ?)
-       ON CONFLICT (product) DO UPDATE SET portal_enabled = 0`,
-      NOW,
-      NOW,
-    );
+    await setPortalToggles(db, "tidewater", { portalEnabled: false });
     const up = recorder();
     expect(
       (await media(env, db, "/media/tidewater/icon", up.fetchImpl)).status,

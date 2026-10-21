@@ -272,7 +272,7 @@ function collectRequiredSecrets(
     secretSources.set(name, sources);
   };
   if ((oidc?.provider ?? "platform") === "custom") {
-    requireSecret(oidc?.client_secret_secret, "OIDC client secret");
+    requireSecret(oidc?.client_secret_secret, "OIDC sign-in");
   }
   for (const row of edgeMint) {
     requireSecret(row.signing_key_secret, `Edge mint ${row.id}`);
@@ -289,7 +289,7 @@ export interface ProductSecretListing {
   usage: "general" | "edge-mint" | null;
   createdAt: number | null;
   updatedAt: number | null;
-  /** What in the product's configuration names it ("OIDC client secret", "Edge mint studio"). */
+  /** What in the product's configuration names it ("OIDC sign-in", "Edge mint studio"). */
   requiredBy: string[];
 }
 

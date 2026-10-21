@@ -198,14 +198,14 @@ async function typeEmail(page: Page, email: string): Promise<void> {
 
 async function openActivate(page: Page): Promise<void> {
   await h1(page, "Your library");
-  // The header action on desktop, the bar's middle pill on a phone: the same name. Not the
-  // Library's key tile (PX-27) in the page: on a phone it is first in the document and clicking
-  // it scrolls the page by however far it loaded, so the screenshots would move.
+  // The account menu's first item (PX-35). Not the Library's key tile (PX-27) in the page: on a
+  // phone it is first in the document and clicking it scrolls the page by however far it
+  // loaded, so the screenshots would move.
   await page
-    .locator("header, nav[aria-label='Phone']")
-    .getByRole("button", { name: /Activate( a)? license|^Activate$/ })
-    .first()
+    .getByRole("banner")
+    .getByRole("button", { name: /^Account:/ })
     .click();
+  await page.getByRole("menuitem", { name: "Activate a license" }).click();
   const dialog = page.getByRole("dialog", { name: "Activate a license" });
   await dialog.waitFor();
   await dialog.getByRole("textbox", { name: "License key" }).fill(KEY);
@@ -652,6 +652,29 @@ export const SHIPPED: ShippedState[] = [
     ready: async (p) => {
       await typeEmail(p, "mara@fennick.studio");
       await h1(p, "Check your email");
+      await p.getByRole("textbox", { name: "6-digit code" }).waitFor();
+    },
+  },
+  {
+    section: "4.1",
+    id: "signin-resumed",
+    title:
+      "Login card, the code step after the expired-link page's Send a new code (masked address)",
+    scenario: "signedOut",
+    path: "/?signin=code",
+    routes: {
+      "GET /api/signin/flow": {
+        body: {
+          email: "m•••@fennick.studio",
+          expiresIn: 600,
+          codeLength: 6,
+          resendIn: 45,
+        },
+      },
+    },
+    ready: async (p) => {
+      await h1(p, "Check your email");
+      await p.getByText("m•••@fennick.studio").waitFor();
       await p.getByRole("textbox", { name: "6-digit code" }).waitFor();
     },
   },

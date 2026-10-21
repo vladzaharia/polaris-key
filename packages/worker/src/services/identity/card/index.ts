@@ -8,6 +8,7 @@
  *   POST /api/signin/email/verify          redeem the code for this browser's flow
  *   POST /api/signin/email/resend          a new code and link for this browser's flow (PX-W4)
  *   POST /api/signin/flow                  the asking browser's poll after a link elsewhere
+ *   GET  /api/signin/flow                  this browser's flow: masked address, resendIn (PX-12)
  *   GET  /api/signin/confirm-email         the email gate's state
  *   POST /api/signin/confirm-email         confirm the provider's email or a typed one (+ terms)
  *   POST /api/signin/confirm-email/verify  the code for a typed or unverified address
@@ -25,6 +26,7 @@ import {
   handleSigninEmailStart,
   handleSigninEmailVerify,
   handleSigninFlowPoll,
+  handleSigninFlowRead,
 } from "./emailSignIn.js";
 import { handleEmailGate } from "./gate.js";
 import { cardJson } from "./http.js";
@@ -64,7 +66,9 @@ export async function handleCardApi(
   if (first === "email" && rest.length === 1 && rest[0] === "resend")
     return handleSigninEmailResend(req, env, db, now);
   if (first === "flow" && rest.length === 0)
-    return handleSigninFlowPoll(req, env, db, now);
+    return req.method === "GET"
+      ? handleSigninFlowRead(req, env, db, now)
+      : handleSigninFlowPoll(req, env, db, now);
   if (first === "confirm-email")
     return handleEmailGate(req, env, db, rest, now);
   if (first === "passkey" && rest.length === 1 && rest[0] === "options")

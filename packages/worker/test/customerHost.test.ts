@@ -249,13 +249,104 @@ describe("customer host confinement", () => {
     for (const path of [
       "/manage",
       "/manage/api/me",
-      "/docs/start/concepts/",
       "/djdl/.well-known/polaris.json",
       "/djdl/identity/auth/device",
       "/webhooks/github",
       "/djdl",
     ])
       expect((await get(`${CUSTOMER}${path}`)).status, path).toBe(404);
+  });
+
+  describe("Help (LK-09, D7)", () => {
+    beforeEach(() => {
+      const files: Record<string, string> = {
+        "/docs/help/index.html": "<html>help home</html>",
+        "/docs/help/activate/index.html": "<html>help activate</html>",
+        "/docs/_astro/app.abc.css": "body{}",
+        "/docs/pagefind/pagefind.js": "export{}",
+        "/docs/404.html": "<html>404</html>",
+      };
+      env.ASSETS = {
+        fetch: async (input: RequestInfo | URL) => {
+          const u = new URL(
+            typeof input === "string" || input instanceof URL
+              ? String(input)
+              : input.url,
+          );
+          const body = files[u.pathname];
+          return body === undefined
+            ? new Response("no", { status: 404 })
+            : new Response(body);
+        },
+      } as unknown as Fetcher;
+    });
+
+    it("serves Help and what Help loads, with no session", async () => {
+      for (const path of [
+        "/docs/help/",
+        "/docs/help/activate/",
+        "/docs/_astro/app.abc.css",
+        "/docs/pagefind/pagefind.js",
+      ])
+        expect((await get(`${CUSTOMER}${path}`)).status, path).toBe(200);
+      expect(
+        await (await get(`${CUSTOMER}/docs/help/activate/`)).text(),
+      ).toContain("help activate");
+    });
+
+    it("sends every other /docs path to the console host", async () => {
+      for (const path of [
+        "/docs/start/concepts/",
+        "/docs/",
+        "/docs/operate/",
+        "/docs/access/",
+        "/docs/pagefind-member/pagefind.js",
+        "/docs/helpful/",
+      ]) {
+        const res = await get(`${CUSTOMER}${path}`);
+        expect(res.status, path).toBe(302);
+        expect(res.headers.get("location"), path).toBe(`${API}${path}`);
+      }
+    });
+
+    it("keeps /help on the customer host", async () => {
+      for (const [from, to] of [
+        ["/help", "/docs/help/"],
+        ["/help/", "/docs/help/"],
+        ["/help/activate/?x=1", "/docs/help/activate/?x=1"],
+      ]) {
+        const res = await get(`${CUSTOMER}${from}`);
+        expect(res.status, from).toBe(302);
+        expect(res.headers.get("location"), from).toBe(to);
+      }
+    });
+
+    it("moves /help and /docs/help/* off the console host", async () => {
+      const alias = await get(`${API}/help/activate/`);
+      expect(alias.headers.get("location")).toBe(
+        `${CUSTOMER}/docs/help/activate/`,
+      );
+      for (const path of [
+        "/docs/help",
+        "/docs/help/",
+        "/docs/help/activate/?a=b",
+      ]) {
+        const res = await get(`${API}${path}`);
+        expect(res.status, path).toBe(301);
+        expect(res.headers.get("location"), path).toBe(`${CUSTOMER}${path}`);
+      }
+      // The rest of the docs, and the files the console host's own pages load, stay.
+      expect((await get(`${API}/docs/start/`)).status).not.toBe(301);
+      expect((await get(`${API}/docs/_astro/app.abc.css`)).status).toBe(200);
+    });
+
+    it("leaves the console host's Help alone with no customer host", async () => {
+      delete env.CUSTOMER_ORIGIN;
+      expect((await get(`${API}/docs/help/`)).status).toBe(200);
+      expect((await get(`${API}/help`)).headers.get("location")).toBe(
+        "/docs/help/",
+      );
+    });
   });
 
   it("serves the customer routes", async () => {

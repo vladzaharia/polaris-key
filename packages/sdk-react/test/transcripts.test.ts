@@ -381,13 +381,17 @@ async function replay(t: Transcript): Promise<void> {
         const poll = await session.pollSignIn(prompt!);
         observed.result = poll.status;
         if (poll.status === "slow-down") observed.interval = poll.interval;
+        if (poll.status === "error" && poll.code) observed.code = poll.code;
         break;
       }
-      case "waitForSignIn":
-        observed.result = (
-          await session.waitForSignIn(prompt!, { sleep: async () => undefined })
-        ).status;
+      case "waitForSignIn": {
+        const done = await session.waitForSignIn(prompt!, {
+          sleep: async () => undefined,
+        });
+        observed.result = done.status;
+        if (done.status === "error" && done.code) observed.code = done.code;
         break;
+      }
       case "mintToken":
         try {
           const minted = await session.mint(String(step.args.recipeId));

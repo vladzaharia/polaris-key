@@ -381,9 +381,12 @@ describe("license record: Terms", () => {
     await userEvent.click(screen.getByRole("link", { name: /Keys/ }));
     await waitFor(() => expect(window.location.hash).toBe(`${REC}/keys`));
     expect(
-      screen.getByRole("link", { name: /Overview/ }).textContent,
+      within(screen.getByRole("main")).getByRole("link", { name: /Overview/ })
+        .textContent,
     ).toContain("unsaved changes");
-    await userEvent.click(screen.getByRole("link", { name: /Overview/ }));
+    await userEvent.click(
+      within(screen.getByRole("main")).getByRole("link", { name: /Overview/ }),
+    );
     expect(
       (
         within(await terms()).getByLabelText(
@@ -838,7 +841,9 @@ describe("license record: device limit (LX-14a)", () => {
     });
     expect(within(policy).getByText(/\(set on this license\)/)).toBeTruthy();
 
-    await userEvent.click(screen.getByRole("link", { name: /Devices/ }));
+    await userEvent.click(
+      within(screen.getByRole("main")).getByRole("link", { name: /Devices/ }),
+    );
     expect((await screen.findByTestId("seat-limit-source")).textContent).toBe(
       "Device limit: 3 · set on this license",
     );

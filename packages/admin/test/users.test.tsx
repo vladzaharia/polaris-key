@@ -281,6 +281,28 @@ describe("User record", () => {
     ).toBeTruthy();
   });
 
+  it("spells the support code out behind a small toggle in the header (I-41s)", async () => {
+    productUser.mockResolvedValue({
+      user: detail({ supportCode: "K7M-4QX-9TZ" }),
+    });
+    mount(`#/p/djdl/users/${SUBJECT}`);
+    const toggle = await screen.findByRole("button", { name: "Spell it out" });
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    await userEvent.click(toggle);
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect(
+      screen.getAllByRole("list", { name: /^Part \d of 3$/ }),
+    ).toHaveLength(3);
+    expect(screen.getByText("Q as in Quebec")).toBeTruthy();
+  });
+
+  it("has no spell-out before the person has a support code (I-41s)", async () => {
+    productUser.mockResolvedValue({ user: detail({ supportCode: null }) });
+    mount(`#/p/djdl/users/${SUBJECT}`);
+    await screen.findAllByText(SUBJECT);
+    expect(screen.queryByRole("button", { name: "Spell it out" })).toBeNull();
+  });
+
   it("lists sign-ins by method kind with Identity on", async () => {
     productUser.mockResolvedValue({
       user: detail({
@@ -390,6 +412,24 @@ describe("relink", () => {
       expect(field.getAttribute("aria-invalid")).toBe("true");
       expect(field.getAttribute("aria-describedby")).toContain(msg.id);
     }
+  });
+
+  it("spells a valid typed code out so the agent can confirm it, and offers nothing for a typo (I-41s)", async () => {
+    const dialog = await openRelink();
+    const field = within(dialog).getByRole("textbox", { name: "Move to user" });
+    expect(
+      within(dialog).queryByRole("button", { name: "Spell it out" }),
+    ).toBeNull();
+    await userEvent.type(field, "K7M-4QX-9TB");
+    expect(
+      within(dialog).queryByRole("button", { name: "Spell it out" }),
+    ).toBeNull();
+    await userEvent.clear(field);
+    await userEvent.type(field, "k7m 4qx 9tz");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Spell it out" }),
+    );
+    expect(within(dialog).getByText("M as in Mike")).toBeTruthy();
   });
 
   it("asks for a fresh sign-in, back to this user, when the last one is too old", async () => {

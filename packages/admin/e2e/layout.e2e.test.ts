@@ -25,6 +25,7 @@ import {
   emptyStateStarBreaches,
   lintFindings,
   forcedColourBreaches,
+  shellStateBreaches,
   unlabelledScrollers,
 } from "./pageChecks.js";
 import {
@@ -65,6 +66,86 @@ const SHOTS = process.env.PK_SHOTS_DIR;
 const REPORT = process.env.PK_LAYOUT_REPORT;
 /** The page wrapper's bottom padding is 24px; 48 allows a card's own padding on top of it. */
 const TRAILING_SLACK = 48;
+
+/**
+ * Masthead and stretch overshoots that belong to a page's own composition, each with the package
+ * that fixes it (ST-48 builds the shell; the area packages build their screens on it). The list
+ * only shrinks: a full run fails when an entry no longer matches a violation, so delete the entry
+ * in the change that fixes the page. A new page never joins it.
+ */
+const MASTHEAD_DEBT: {
+  /** The case name (`djdl:licenses/record/keys`). */
+  cases: RegExp;
+  /** `rule/kind`. */
+  kinds: readonly string[];
+  owner: string;
+  why: string;
+}[] = [
+  {
+    cases: /^djdl:licenses\/record/,
+    kinds: ["masthead/first-content", "masthead/height"],
+    owner: "LX-30",
+    why: "the holder line, key entries, id, device limit, sign-in and changed-by run to three rows",
+  },
+  {
+    cases: /^djdl:license-batches\/record/,
+    kinds: ["masthead/first-content", "masthead/height"],
+    owner: "LX-30",
+    why: "a notice sits between the masthead and the batch",
+  },
+  {
+    cases: /^(djdl|empty):package-feeds|^global:platform-feeds/,
+    kinds: ["masthead/first-content", "masthead/height"],
+    owner: "F-38",
+    why: "the feed switcher is a second row under the orientation line",
+  },
+  {
+    cases: /^djdl:releases\/record/,
+    kinds: ["masthead/first-content", "masthead/height"],
+    owner: "the release record's package (follow-up of ST-48)",
+    why: "the release's facts run to three rows on a phone and two at the 1024 px rail",
+  },
+  {
+    cases: /^djdl:outlets/,
+    kinds: ["right-align/card-consistency"],
+    owner: "the Distribution keys card's package (follow-up of ST-48)",
+    why: "at the 1024 px rail (never measured before ST-48) the warning row ends 17 px short of its neighbours",
+  },
+  {
+    cases: /^global:api-tokens$/,
+    kinds: ["masthead/height"],
+    owner: "the API tokens page's package (follow-up of ST-48)",
+    why: "the error state's masthead repeats the description on a phone",
+  },
+  {
+    cases: /^long:overview$/,
+    kinds: ["masthead/height"],
+    owner: "the product Overview's package (follow-up of ST-48)",
+    why: "at 360 px a two-line name, a two-line description and the full-width action exceed 176 px",
+  },
+  {
+    cases: /^global:platform-operations$/,
+    kinds: ["equal-height/grown-card"],
+    owner: "ST-51",
+    why: "56 px rows lengthen the Cron jobs stack, and Queues stretches to match it (STRETCH_CELL)",
+  },
+];
+const debtMatched = new Set<number>();
+
+/** Splits a page's violations into new ones and those a MASTHEAD_DEBT entry owns. */
+function withoutDebt(
+  name: string,
+  violations: LayoutViolation[],
+): LayoutViolation[] {
+  return violations.filter((v) => {
+    const i = MASTHEAD_DEBT.findIndex(
+      (d) => d.cases.test(name) && d.kinds.includes(`${v.rule}/${v.kind}`),
+    );
+    if (i < 0) return true;
+    debtMatched.add(i);
+    return false;
+  });
+}
 
 interface Case {
   name: string;
@@ -236,6 +317,20 @@ const VIEWPORTS: {
       { label: "laptop", width: 1280, height: 800 },
       // A tablet or a narrow window: no sidebar, but too narrow for wide tables.
       { label: "tablet", width: 768, height: 1024 },
+      // The shell v2 matrix (ST-48): the icon rail at its narrowest (1024), the iPad (834) and the
+      // phone widths (390 above, 360 below). The canvas is inset only from 1024 px.
+      {
+        label: "rail",
+        width: 1024,
+        height: 768,
+        accept: (n) => !n.startsWith("empty:"),
+      },
+      {
+        label: "ipad",
+        width: 834,
+        height: 1112,
+        accept: (n) => !n.startsWith("empty:"),
+      },
       { label: "phone", width: 390, height: 844 },
       // ADMIN.md's narrowest width, for the pages with a product in the top bar: the switcher's
       // chevron once spilled out of its border box here (ADMIN.md §2.2).
@@ -243,7 +338,7 @@ const VIEWPORTS: {
         label: "small-phone",
         width: 360,
         height: 780,
-        only: ["djdl:overview", "djdl:health", "long:overview"],
+        only: [...ZOOM_CASES, "djdl:health", "djdl:rollouts"],
       },
       // UI-KITS.md §7.1's wide desktop: every page with content (the empty-state twins add
       // nothing to a width check). The column stays capped (CONSOLE_COLUMN_MAX).
@@ -337,6 +432,14 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  // A full run owes the debt list its shrinking: an entry that matched nothing is paid.
+  if (!ONLY && !ONLY_CASES && !process.env.PK_LAYOUT_VIEWPORTS) {
+    const paid = MASTHEAD_DEBT.filter((_, i) => !debtMatched.has(i));
+    if (paid.length)
+      throw new Error(
+        `MASTHEAD_DEBT entries that no longer match a violation (delete them): ${paid.map((d) => `${d.cases} (${d.owner})`).join(", ")}`,
+      );
+  }
   await browser?.close();
   await new Promise<void>((r) => server?.httpServer.close(() => r()));
   const lines: string[] = ["", "── Layout lint report ──"];
@@ -521,8 +624,9 @@ for (const vp of VIEWPORTS) {
             );
             const errorState =
               (await page.locator("#content [data-error-action]").count()) > 0;
+            const found = withoutDebt(c.name, violations);
             report[`${vp.label}/${theme} ${c.name} ${c.hash}`] = {
-              violations,
+              violations: found,
               scrollers,
               gaps: [...new Set(gaps)],
               errors,
@@ -545,6 +649,24 @@ for (const vp of VIEWPORTS) {
               // ui:lint over the built page (`pnpm ui:lint --html`; pageChecks.ts).
               expect(await lintFindings(page), "ui:lint findings").toEqual([]);
             }
+            if (
+              ["desktop", "phone", "rail"].includes(vp.label) &&
+              (await page.locator("header[data-masthead]").count()) > 0
+            )
+              // axe zero over the masthead and any workbench (ST-48): landmarks, names, contrast.
+              expect(
+                [
+                  ...(await axeWithin(page, "header[data-masthead]")),
+                  ...((await page.locator("[data-workbench]").count()) > 0
+                    ? await axeWithin(page, "[data-workbench]")
+                    : []),
+                ],
+                "axe: masthead and workbench",
+              ).toEqual([]);
+            expect(
+              await shellStateBreaches(page),
+              "shell state colours (B2, B4, B17)",
+            ).toEqual([]);
             expect(
               await emptyStateStarBreaches(page),
               "stationary star (BRAND.md §7.7)",
@@ -590,7 +712,7 @@ for (const vp of VIEWPORTS) {
               "content column",
             ).toEqual([]);
             expect(
-              violations.map(
+              found.map(
                 (v) => `[${v.rule}/${v.kind}] ${v.detail} @ ${v.where}`,
               ),
             ).toEqual([]);

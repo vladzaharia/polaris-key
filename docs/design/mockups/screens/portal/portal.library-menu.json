@@ -1,0 +1,20 @@
+{
+  "id": "portal.library-menu",
+  "title": "Library, account menu open",
+  "area": "portal",
+  "surface": "portal",
+  "packages": ["PX-35", "PX-22", "BR-lockups"],
+  "uxRows": [],
+  "order": 1.5,
+  "summary": "Priya's two-product Library (portal.library) with the account menu open: her name and email, then Activate a license, Account, Sign-in methods and Appearance; Help and Privacy (the old footer's links); Sign out. The header has no Activate button and the page no footer (owner, 2026-10-20).",
+  "compare": [
+    "2026-10-20 redraw (PX-35, BR-lockups): new screen. The owner moved Activate a license from the header into this menu ('we already have a tile for it separately') and dropped the 'Polaris Locker · Help · Privacy' footer, so Help and Privacy live here. Drawn so the build's AccountMenu has a picture to be compared against.",
+    "The chip: from 1180 px the avatar, the full name (truncating, never its first word alone) and the chevron; below 1180 px the avatar alone in its 40 px ring (44 px on a coarse pointer). Its accessible name is 'Account: Priya Raman'; open, it reads expanded and takes the hover fill.",
+    "The menu: right-aligned under the chip, 256 px wide, never past the window's edge (390 px included). Its head is the 40 px avatar, the name (14/20, 500) and the email (12/16, muted), each on one line with an ellipsis.",
+    "Items, in order, each a 16 px glyph and a 40 px row (44 px on touch): Activate a license (key; the catalog's common.activateLicense, the same dialog as the key tile and the palette; choosing it leaves focus in the dialog, not on the chip), Account (user-round), Sign-in methods (at-sign), Appearance (palette); a separator; Help (circle-help, /docs/help/), Privacy (shield-check, /docs/help/your-data/); a separator; Sign out (log-out, a form POST, never a link that changes state). No Terms until a terms URL exists; no Approve a new device until G29.",
+    "Keyboard: the chip opens the menu with Enter, Space or Down; arrows move between items; Escape closes it and returns focus to the chip. The menu is the same on every portal page (Library, Discover, a product page, Account).",
+    "Header: the trimmed Polaris Locker lockup (40 px tall, 218 px wide; 36 px under 761 px; the mark alone under 384 px), Library 2 with the coral 3 px marker, Discover, the chip. The page under the menu is portal.library as drawn (dense tiles, the key tile, the strip without Activate a license)."
+  ],
+  "status": "mockup",
+  "designReview": null
+}

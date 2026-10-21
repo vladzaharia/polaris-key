@@ -27,6 +27,15 @@
   "/features/sign-in/oidc/index.html": [
     "/docs/operate/platform/sign-in-connections/"
   ],
+  "/operate/console/help-a-customer/index.html": [
+    "/docs/operate/platform/incidents/"
+  ],
+  "/operate/index.html": [
+    "/docs/operate/platform/deploy/",
+    "/docs/operate/platform/incidents/",
+    "/docs/operate/platform/email/",
+    "/docs/operate/platform/settings/"
+  ],
   "/reference/protocol/corpus/index.html": ["/docs/operate/"],
   "/reference/settings/index.html": [
     "/docs/operate/platform/settings/",

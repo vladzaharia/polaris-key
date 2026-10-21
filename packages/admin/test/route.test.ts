@@ -510,6 +510,7 @@ describe("the nav model (nav.ts)", () => {
       "users",
       // HA-06: the images Polaris Key hosts for the product.
       "presentation",
+      "portal",
       "keys",
       "activity",
       "settings",
@@ -569,15 +570,21 @@ describe("the nav model (nav.ts)", () => {
       "license",
       "config",
       "release",
-      "distribution",
-      "update",
+      // Ship builds is ONE Release identity (B5): Distribution's and Update's pages are cyan.
+      "release",
+      "release",
       "identity",
       "sync",
       "commerce",
     ]);
     for (const g of GLOBAL_PAGES) expect(accentOf(g.page)).toBe("core");
     expect(accentOf("tiers")).toBe("license");
-    expect(accentOf("health")).toBe("distribution");
+    expect(accentOf("health")).toBe("release");
+    expect(accentOf("rollouts")).toBe("release");
+    expect(accentOf("feed")).toBe("release");
+    // The sales surfaces keep Distribution green, a page in a mixed section.
+    for (const sales of ["storefronts", "listing", "app-store", "credentials"])
+      expect(accentOf(sales as never), sales).toBe("distribution");
   });
 
   it("every nav ITEM declares an icon component (owner, 2026-10-03)", () => {

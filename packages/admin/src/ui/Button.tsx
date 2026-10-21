@@ -4,6 +4,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../lib/cn.js";
 import { Spinner } from "./Spinner.js";
 import { Tooltip } from "./Tooltip.js";
+import { useWriteLock } from "./WriteLock.js";
 
 /**
  * The console's button (docs/design/admin/components.md §2.1).
@@ -118,7 +119,7 @@ export function Button({
   loading = false,
   busyFocusable = false,
   disabled,
-  disabledReason,
+  disabledReason: reason,
   iconStart,
   iconEnd,
   type = "button",
@@ -128,6 +129,11 @@ export function Button({
   ...props
 }: ButtonProps): React.ReactElement {
   const reasonId = React.useId();
+  let disabledReason = reason;
+  const lock = useWriteLock();
+  // A view-only member's write button: focusable, with the reason, never a link or a read.
+  if (lock.locked && !asChild && !disabledReason && !loading)
+    disabledReason = lock.reason ?? "You can view this, not change it.";
   const softDisabled = Boolean(disabledReason) && !loading;
   const busySoft = loading && busyFocusable;
   const hardDisabled =

@@ -101,11 +101,11 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] Every console page renders inside the canvas with the masthead; one h1 per page; the masthead glyph tile is `aria-hidden`.
-- [ ] First content starts at most 160 px below the top bar at 1440x900; no horizontal scroll at 360 and 390.
-- [ ] `pnpm ui:lint` gains rules: no ordinal numerals in headings, one primary per region, masthead tile only at 1024 px and wider; also the UK-55 accent-as-status, state-accent and section-index rules.
+- [x] Every console page renders inside the canvas with the masthead; one h1 per page; the masthead glyph tile is `aria-hidden`.
+- [x] First content starts at most 160 px below the top bar at 1440x900; no horizontal scroll at 360 and 390.
+- [x] `pnpm ui:lint` gains rules: no ordinal numerals in headings, one primary per region, masthead tile only at 1024 px and wider; also the UK-55 accent-as-status, state-accent and section-index rules.
 - [ ] Baselines re-recorded with reasons at 1920, 1440, 1024 (rail), 834, 390 and 360 in both themes; `console-csp-parity` passes (no inline styles; accent values come from `data-service` stylesheet rules); axe zero; reduced motion.
-- [ ] No glow, gradient, wash, coloured shadow or accent-tinted hairline anywhere (B6).
+- [x] No glow, gradient, wash, coloured shadow or accent-tinted hairline anywhere (B6).
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify
@@ -117,3 +117,14 @@ mise exec node@22 -- pnpm <the package's own tests>
 ## Hand-off
 
 What downstream packages rely on from this one is listed in its Unblocks row. The role agent sets `--set ST-48 in-review` when it hands off; after review the lead adds the last commit `--set ST-48 done`.
+
+## Progress and continuation (2026-10-20)
+
+Parts 1-6 are built on `wp/ST-48-shell-v2` (ST-45's fix round merged). Corrections to this brief, verified against the code:
+
+- **No console visual baselines are committed.** `e2e/__baselines__/` holds the portal's only. The console's gate is the probe-based layout e2e (`e2e/layout.e2e.test.ts`) plus screenshots written with `PK_SHOTS_DIR`; the evidence for this package is those runs, in both themes, at 1920, 1440, 1024 (rail), 834, 390 and 360.
+- The masthead probe, the canvas probe and the shell state-colour probe live in `layoutProbe.ts` and `pageChecks.ts`. Pages whose own composition overshoots the masthead or stretch rules are named in `MASTHEAD_DEBT` with the package that fixes them; the list only shrinks and a full run fails on a paid entry.
+- Console-only treatments of shared components (Section, Dialog, Drawer, SegmentedControl) use the `console:` variant (`html[data-shell="console"]`), so the portal's baselines do not move.
+- Home's page content is owned by `wp/console-home-v2`; the brand block by BR-lockups. This package's shared masthead covers Home's header.
+
+Left for follow-ups: B15 doc edits (ADMIN §2.4, BRAND §5.4/§7.6); the debt entries (licence record and batch: LX-30; feeds: F-38; platform operations: ST-51; release record, Distribution keys card and API tokens error state: their area packages).

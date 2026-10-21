@@ -19,7 +19,11 @@ import {
   brandedHtmlSecurityHeaders,
   secureResponse,
 } from "../src/core/securityHeaders.js";
-import { handleAdminCallback } from "../src/console/auth.js";
+import {
+  handleAdminCallback,
+  handleAdminLogin,
+  resetConsoleDiscoveryFailures,
+} from "../src/console/auth.js";
 import {
   handleMagicVerify,
   signInRefusal,
@@ -51,7 +55,7 @@ function sha256(text: string): string {
 /** The checks every branded page must pass, as served (after the dispatcher's backstop). */
 async function expectBrandedPage(
   res: Response,
-  brand: "key" | "locker" = "locker",
+  brand: "key" | "locker" | "console" = "locker",
 ): Promise<string> {
   const served = secureResponse(res);
   const csp = served.headers.get("content-security-policy")!;
@@ -66,20 +70,31 @@ async function expectBrandedPage(
   expect(styles).toHaveLength(1);
   expect(csp).toContain(`'sha256-${sha256(styles[0]![1]!)}'`);
   expect(html).not.toMatch(/\sstyle=|<script|\son\w+=/i);
-  if (brand === "key") {
-    // The console Logo's brand block: the Pinned K at 48 px (display cut) beside the wordmark
-    // text, without the gold bit, and no lockup drawn at twice the console's size.
+  if (brand === "console") {
+    // The console card: the compact Key lockup and "Console", never Polaris Locker.
+    expect(html).toContain('data-brand="console"');
+    expect(html).toMatch(
+      /<header class="ac-brand"><div role="img" aria-label="Polaris Key Console">/,
+    );
+    expect(html).toContain(
+      '<span class="ac-surface" aria-hidden="true">Console</span>',
+    );
+    // plrs.im's lockup and size: the kit's compact Key lockup as supplied, 52 px tall.
+    expect(html).toMatch(/height="52" viewBox="0 0 222 64"/);
+    expect(html).not.toContain("Locker");
+  } else if (brand === "key") {
+    // The trimmed outlined Key lockup (BRAND.md §1.4): the kit's compact lockup as supplied, 52 px tall (plrs.im's size; Key guide p.2),
+    // the name is drawn, never live text, and no kit-canvas lockup is used.
     expect(html).toMatch(
       /<div class="brand" role="img" aria-label="Polaris Key[^"]*">/,
     );
-    expect(html).toContain(
-      '<svg class="mark" xmlns="http://www.w3.org/2000/svg" width="48" height="48"',
+    expect(html).toMatch(
+      /<svg class="mark" xmlns="http:\/\/www.w3.org\/2000\/svg" width="180(\.\d+)?" height="52" viewBox="0 0 222 64"/,
     );
-    expect(html).toContain(
-      '<span class="wordmark" aria-hidden="true">Polaris&nbsp;Key',
-    );
+    expect(html).not.toContain("Polaris&nbsp;Key");
+    expect(html).not.toContain('class="wordmark"');
   } else {
-    // Every page a customer sees: the Polaris Locker lockup at 48 px tall, never Polaris Key.
+    // Every page a customer sees: the trimmed Polaris Locker lockup (48 px tall, 262 wide), never Polaris Key.
     expect(html).toContain('data-brand="locker"');
     expect(html).toMatch(
       /<header class="ac-brand( quiet)?"><div role="img" aria-label="Polaris Locker">/,
@@ -126,15 +141,14 @@ describe("the branded page shell", () => {
 
   it("shares the console sign-in look: the Logo's brand block over one card, its md button", () => {
     expect(BRAND_PAGE_CSS).toContain(
-      ".brand{display:flex;justify-content:center;align-items:center;gap:.75rem",
+      ".brand{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:.5rem .75rem",
     );
     // The surface label is the Logo subtitle: small, regular weight, uppercase, muted.
     expect(BRAND_PAGE_CSS).toMatch(
       /\.surface\{color:var\(--muted\);font-size:\.75rem;[^}]*font-weight:400;[^}]*text-transform:uppercase/,
     );
-    expect(BRAND_PAGE_CSS).toMatch(
-      /\.wordmark\{[^}]*font-size:1\.25rem;[^}]*font-weight:700/,
-    );
+    // No live-text wordmark style: the name comes from the outlined lockup (BRAND.md Don'ts).
+    expect(BRAND_PAGE_CSS).not.toContain(".wordmark");
     // The console's md Button: 36 px tall, 14 px, regular weight, full width.
     const button = /\.button\{([^}]*)\}/.exec(BRAND_PAGE_CSS)![1]!;
     expect(button).toContain("display:flex;width:100%");
@@ -153,9 +167,7 @@ describe("the branded page shell", () => {
     expect(html).toContain(
       '<div class="brand" role="img" aria-label="Polaris Key console">',
     );
-    expect(html).toContain(
-      'Polaris&nbsp;Key<span class="surface">console</span></span>',
-    );
+    expect(html).toMatch(/<\/svg><span class="surface">console<\/span><\/div>/);
     // Locker: the lockup is its own wordmark, so no surface label sits beside it.
     expect(
       renderBrandPage({ title: "t", heading: "h", surface: "device" }),
@@ -227,9 +239,9 @@ describe("every server-rendered page on the console host uses the shell", () => 
       1_800_000_000,
     );
     expect(res.status).toBe(400);
-    const html = await expectBrandedPage(res, "key");
-    expect(html).toContain("Missing authorization code.");
-    expect(html).toContain('<span class="surface">console</span>');
+    const html = await expectBrandedPage(res, "console");
+    expect(html).toContain("We couldn’t confirm that sign-in");
+    expect(html).not.toContain("authorization code");
     expect(html).not.toContain('class="eyebrow"');
     expect(html).toContain('href="/manage/login"');
   });
@@ -262,7 +274,7 @@ describe("every server-rendered page on the console host uses the shell", () => 
       )!;
       expect(res.status).toBe(403);
       const html = await expectBrandedPage(res);
-      expect(html).toMatch(/This account can(&#39;|&#x27;|')t sign in/);
+      expect(html).toMatch(/This account can(&#x27;|&#x27;|')t sign in/);
       expect(html).toContain(
         `<p class="actions stack"><a class="button" href="${href}">Sign in with another account</a></p>`,
       );
@@ -407,5 +419,146 @@ describe("the portal email", () => {
         origin: null,
       }),
     ).not.toContain("<img");
+  });
+});
+
+describe("the console sign-in card (GET /manage/login)", () => {
+  const env = () => {
+    const e = makeEnv(new KvMock(), []);
+    e.PLATFORM_OIDC_ISSUER = "https://id.example";
+    e.PLATFORM_OIDC_CLIENT_ID = "polaris-admin";
+    return e;
+  };
+  const get = (query: string) =>
+    handleAdminLogin(
+      new Request(`${ORIGIN}/manage/login${query}`, {
+        headers: { "cf-connecting-ip": "203.0.113.9" },
+      }) as unknown as Request,
+      env(),
+    );
+
+  it("serves the card, starts no flow, and keeps returnTo", async () => {
+    const res = await get("?returnTo=/manage/%23/p/alpha");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("location")).toBeNull();
+    expect(res.headers.get("set-cookie")).toBeNull();
+    const html = await expectBrandedPage(res, "console");
+    expect(html).toContain("<h1");
+    expect(html).toContain("Sign in to the console");
+    expect(html).toContain('name="go" value="1"');
+    expect(html).toContain('name="returnTo" value="/manage/#/p/alpha"');
+    expect(html).toContain("Next: sign in at id.example");
+  });
+
+  it("an unsafe returnTo is dropped", async () => {
+    const html = await (await get("?returnTo=https://evil.example/")).text();
+    expect(html).not.toContain("evil.example");
+    expect(html).not.toContain('name="returnTo"');
+  });
+
+  it.each([
+    ["?signedOut=1", "You’re signed out", "Continue"],
+    ["?ended=1", "Your session ended", "Continue"],
+    ["?stepUp=1", "Confirm it’s you", "Sign in again"],
+  ])("%s", async (query, heading, cta) => {
+    const html = await expectBrandedPage(await get(query), "console");
+    expect(html).toContain(heading);
+    expect(html).toContain(`>${cta}<`);
+  });
+
+  it("the card's form-action names the IdP, so Continue's redirect is allowed", async () => {
+    const res = await get("");
+    const csp = res.headers.get("content-security-policy")!;
+    expect(csp).toContain("form-action 'self' https://id.example");
+  });
+
+  it("a step-up card carries the step-up flag", async () => {
+    const e = env();
+    const res = await handleAdminLogin(
+      new Request(`${ORIGIN}/manage/login?stepUp=1`) as unknown as Request,
+      e,
+    );
+    const html = await res.text();
+    expect(html).toContain('name="stepUp" value="1"');
+  });
+
+  it("the typed address survives an error and back", async () => {
+    const html = await (await get("?login_hint=ada%40x.io")).text();
+    expect(html).toContain('value="ada@x.io"');
+  });
+
+  it("a failed discovery is not dialled again for every card view", async () => {
+    resetConsoleDiscoveryFailures();
+    const real = globalThis.fetch;
+    let dials = 0;
+    globalThis.fetch = (async () => {
+      dials++;
+      throw new TypeError("fetch failed");
+    }) as typeof fetch;
+    try {
+      const e = env();
+      e.PLATFORM_OIDC_ISSUER = "https://down.example";
+      for (let i = 0; i < 5; i++) {
+        const res = await handleAdminLogin(
+          new Request(`${ORIGIN}/manage/login`) as unknown as Request,
+          e,
+        );
+        expect(res.status).toBe(200);
+      }
+      expect(dials).toBeLessThanOrEqual(1);
+    } finally {
+      globalThis.fetch = real;
+      resetConsoleDiscoveryFailures();
+    }
+  });
+
+  it("viewing the card is not counted against the sign-in limit", async () => {
+    for (let i = 0; i < 30; i++) expect((await get("")).status).toBe(200);
+  });
+
+  it("an unconfigured console says so on the card", async () => {
+    const res = await handleAdminLogin(
+      new Request(`${ORIGIN}/manage/login`, {
+        headers: { "cf-connecting-ip": "203.0.113.11" },
+      }) as unknown as Request,
+      makeEnv(new KvMock(), []),
+    );
+    expect(res.status).toBe(500);
+    expect(await res.text()).toContain("Admin sign-in isn’t set up");
+  });
+});
+
+describe("the console sign-in error cards", () => {
+  const callback = (q: string, e = makeEnv(new KvMock(), [])) => {
+    e.PLATFORM_OIDC_ISSUER = "https://id.example";
+    e.PLATFORM_OIDC_CLIENT_ID = "polaris-admin";
+    return handleAdminCallback(
+      new Request(`${ORIGIN}/manage/callback${q}`, {
+        headers: { "cf-connecting-ip": "203.0.113.20" },
+      }) as unknown as Request,
+      e,
+      makeTestDb(),
+      1_800_000_000,
+    );
+  };
+
+  it("an unknown or expired flow says it took too long and offers Sign in again", async () => {
+    const res = await callback("?code=c&state=s");
+    expect(res.status).toBe(400);
+    const html = await res.text();
+    expect(html).toContain("This sign-in took too long");
+    expect(html).toContain(">Sign in again<");
+    expect(html).not.toContain("Try again");
+  });
+
+  it("the rate-limit card says when to retry and links nowhere", async () => {
+    const e = makeEnv(new KvMock(), []);
+    let res!: Response;
+    for (let i = 0; i < 25; i++) res = await callback("", e);
+    expect(res.status).toBe(429);
+    expect(res.headers.get("retry-after")).toBe("60");
+    const html = await res.text();
+    expect(html).toContain("Wait a minute, then try again.");
+    expect(html).not.toContain('class="button"');
   });
 });

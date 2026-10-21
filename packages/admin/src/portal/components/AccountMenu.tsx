@@ -1,5 +1,14 @@
 import * as React from "react";
-import { ChevronDown, KeyRound, LogOut, Palette, User } from "lucide-react";
+import {
+  AtSign,
+  ChevronDown,
+  CircleHelp,
+  KeyRound,
+  LogOut,
+  Palette,
+  ShieldCheck,
+  User,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,13 +19,25 @@ import {
 } from "../../ui/DropdownMenu.js";
 import { cn } from "../../lib/cn.js";
 import type { PortalAccount } from "../api.js";
+import { useActivate } from "../activate.js";
 import { href } from "../router.js";
 import { Avatar } from "./Avatar.js";
 import { t } from "../../lib/copy.js";
 
+/** The public Help door and the page on what the site keeps (no terms page exists yet). */
+const FOOT_LINKS = [
+  { label: t("locker.shell.helpLink"), href: "/docs/help/", icon: CircleHelp },
+  {
+    label: t("locker.shell.privacy"),
+    href: "/docs/help/your-data/",
+    icon: ShieldCheck,
+  },
+] as const;
+
 /**
- * The account menu (PORTAL.md §3.2): the avatar chip ("Account: <name or email>"), then Account,
- * Sign-in methods, Appearance and Sign out. The chip and the menu's header show the profile
+ * The account menu (PORTAL.md §3.2): the avatar chip ("Account: <name or email>"), then Activate a
+ * license (PX-35; the same modal as the Library's key tile), Account, Sign-in methods, Appearance,
+ * Help, Privacy and Sign out. The chip and the menu's header show the profile
  * picture (PX-22, §4.30 rule 5) from the signed-in session, else the initials. Approve a new device waits for G29 and Help for a
  * public help URL; both are left out rather than shown as dead ends.
  *
@@ -33,6 +54,9 @@ export function AccountMenu({
   account: PortalAccount;
 }): React.ReactElement {
   const formRef = React.useRef<HTMLFormElement>(null);
+  const activate = useActivate();
+  // The Activate dialog takes focus itself: the menu must not hand it back to its trigger.
+  const activating = React.useRef(false);
   // The person's name when we have one (profile import, a provider), else their email.
   const name = account.name?.trim();
   const named = Boolean(name) && name !== account.email;
@@ -77,7 +101,15 @@ export function AccountMenu({
             ) : null}
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="min-w-64">
+        <DropdownMenuContent
+          align="end"
+          className="min-w-64"
+          onCloseAutoFocus={(e) => {
+            if (!activating.current) return;
+            activating.current = false;
+            e.preventDefault();
+          }}
+        >
           <DropdownMenuLabel>
             <div className="flex items-center gap-3">
               <Avatar
@@ -102,26 +134,52 @@ export function AccountMenu({
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem asChild>
+          <DropdownMenuItem
+            className="pointer-coarse:min-h-11"
+            onSelect={() => {
+              activating.current = true;
+              activate.open();
+            }}
+          >
+            <KeyRound aria-hidden />
+            {t("common.activateLicense")}
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild className="pointer-coarse:min-h-11">
             <a href={href.account()}>
               <User aria-hidden />
               {t("locker.account.title")}
             </a>
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
+          <DropdownMenuItem asChild className="pointer-coarse:min-h-11">
             <a href={href.account("methods")}>
-              <KeyRound aria-hidden />
+              <AtSign aria-hidden />
               {t("signin.join.methodsLink")}
             </a>
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
+          <DropdownMenuItem asChild className="pointer-coarse:min-h-11">
             <a href={href.account("appearance")}>
               <Palette aria-hidden />
               {t("locker.appearance.title")}
             </a>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={() => formRef.current?.requestSubmit()}>
+          {FOOT_LINKS.map((l) => (
+            <DropdownMenuItem
+              key={l.href}
+              asChild
+              className="pointer-coarse:min-h-11"
+            >
+              <a href={l.href}>
+                <l.icon aria-hidden />
+                {l.label}
+              </a>
+            </DropdownMenuItem>
+          ))}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            className="pointer-coarse:min-h-11"
+            onSelect={() => formRef.current?.requestSubmit()}
+          >
             <LogOut aria-hidden />
             {t("common.signOut")}
           </DropdownMenuItem>

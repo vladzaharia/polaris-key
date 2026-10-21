@@ -50,7 +50,7 @@ import { BASE_URL } from "../recorder.js";
 import { retireDeviceBinding } from "../../../src/core/devices.js";
 import { hashKey } from "../../../src/platform/crypto.js";
 import { dispatchWith } from "../../../src/dispatch.js";
-import { seedLicenseWithKey } from "../../seed.js";
+import { seedLicenseWithKey, setPortalToggles } from "../../seed.js";
 import type { World } from "../recorder.js";
 
 /** The sync an acquisition triggers: forced, so no ETag rides along. */
@@ -269,13 +269,7 @@ export const licenseDeviceLimit: Scenario = {
         },
       );
 
-      await world.db.run(
-        `INSERT INTO portal_product_settings (product, portal_enabled, created_at, modified_at)
-         VALUES (?, 0, ?, ?)`,
-        PRODUCT,
-        T0,
-        T0,
-      );
+      await setPortalToggles(world.db, PRODUCT, { portalEnabled: false }, T0);
       await r.step(
         {
           action: "activate",

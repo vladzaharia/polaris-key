@@ -1776,6 +1776,13 @@
 /* 188 lucide icons, 10 platform and store marks, the Star Cut and the Pinned K. */
 /* @generated icons:end */
 
+/* @generated lockups:start — the Key compact lockup per theme (packages/brand, BRAND.md §1.4) */
+:root {
+  --pk-lockup-dark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 222 64'%3E%3Cg transform='translate(12 16) scale(1.3333333333333333)'%3E%3Cpath fill='%239a5cff' d='M3 4 L9 1 L9 19 L3 22 Z'/%3E%3Cpath fill='%239a5cff' d='M11 12 L15 12 L21 18 L18 21 L11 14 Z'/%3E%3Cpath fill='%23ffffff' d='M17 1 L19 4 L23 6 L19 8 L17 11 L15 8 L11 6 L15 4 Z'/%3E%3C/g%3E%3Cg fill='%23ffffff' transform='translate(58.0000 42) scale(0.026 -0.026)'%3E%3Cpath transform='translate(0 0)' d='M660 466Q660 351 586.5 291.0Q513 231 383 231H255V27Q255 16 247.0 8.0Q239 0 228 0H97Q86 0 78.0 8.0Q70 16 70 27V673Q70 684 78.0 692.0Q86 700 97 700H383Q513 700 586.5 640.5Q660 581 660 466ZM378 387Q422 387 448.5 406.5Q475 426 475 466Q475 506 448.5 525.5Q422 545 378 545H255V387Z'/%3E%3Cpath transform='translate(686 0)' d='M308 -10Q229 -10 168.0 21.0Q107 52 73.0 104.5Q39 157 36 221L35 260L36 298Q38 362 72.0 415.0Q106 468 167.5 499.0Q229 530 308 530Q387 530 448.5 499.0Q510 468 544.0 415.0Q578 362 580 298Q581 288 581 260Q581 231 580 221Q577 157 543.0 104.5Q509 52 448.0 21.0Q387 -10 308 -10ZM400 226Q402 246 402 260Q402 274 400 294Q397 332 372.5 353.5Q348 375 308 375Q268 375 243.5 353.5Q219 332 216 294Q215 284 215 260Q215 236 216 226Q219 188 243.5 166.5Q268 145 308 145Q348 145 372.5 166.5Q397 188 400 226Z'/%3E%3Cpath transform='translate(1302 0)' d='M211 0H85Q74 0 66.0 8.0Q58 16 58 27V683Q58 694 66.0 702.0Q74 710 85 710H211Q222 710 230.0 702.0Q238 694 238 683V27Q238 16 230.0 8.0Q222 0 211 0Z'/%3E%3Cpath transform='translate(1598 0)' d='M356 340Q356 395 298 395Q265 395 244 377Q236 369 228.0 367.0Q220 365 208 365H81Q71 365 64.5 371.0Q58 377 59 387Q62 418 93.5 451.5Q125 485 179.0 507.5Q233 530 298 530Q417 530 476.5 476.0Q536 422 536 330V27Q536 16 528.0 8.0Q520 0 509 0H383Q372 0 364.0 8.0Q356 16 356 27V55Q330 23 294.0 6.5Q258 -10 203 -10Q119 -10 71.5 34.0Q24 78 24 148Q24 215 76.0 258.0Q128 301 239 320ZM264 207Q236 202 220.0 189.5Q204 177 204 159Q204 125 252 125Q296 125 326.0 153.0Q356 181 356 221Z'/%3E%3Cpath transform='translate(2187 0)' d='M448 493V392Q448 381 440.0 373.0Q432 365 421 365H330Q285 365 261.5 341.5Q238 318 238 273V27Q238 16 230.0 8.0Q222 0 211 0H85Q74 0 66.0 8.0Q58 16 58 27V493Q58 504 66.0 512.0Q74 520 85 520H201Q212 520 220.0 512.0Q228 504 228 493V470Q280 520 361 520H421Q432 520 440.0 512.0Q448 504 448 493Z'/%3E%3Cpath transform='translate(2646 0)' d='M211 575H85Q74 575 66.0 583.0Q58 591 58 602V703Q58 714 66.0 722.0Q74 730 85 730H211Q222 730 230.0 722.0Q238 714 238 703V602Q238 591 230.0 583.0Q222 575 211 575ZM211 0H85Q74 0 66.0 8.0Q58 16 58 27V493Q58 504 66.0 512.0Q74 520 85 520H211Q222 520 230.0 512.0Q238 504 238 493V27Q238 16 230.0 8.0Q222 0 211 0Z'/%3E%3Cpath transform='translate(2942 0)' d='M40 369Q40 414 69.5 450.5Q99 487 152.5 508.5Q206 530 274 530Q341 530 395.5 509.5Q450 489 482.0 457.0Q514 425 517 390Q518 379 509.5 371.0Q501 363 490 363H371Q360 363 345 374Q332 384 317.0 389.5Q302 395 274 395Q250 395 235.0 388.0Q220 381 220 367Q220 355 225.5 349.0Q231 343 245.5 340.0Q260 337 296 332L358 322Q445 308 488.5 262.5Q532 217 532 154Q532 109 501.5 71.5Q471 34 413.5 12.0Q356 -10 278 -10Q203 -10 147.5 11.5Q92 33 62.5 66.0Q33 99 30 133Q29 144 37.5 152.0Q46 160 57 160H181Q188 160 192.5 157.5Q197 155 203 149Q215 138 230.0 131.5Q245 125 278 125Q309 125 330.5 133.5Q352 142 352 156Q352 172 336.5 177.5Q321 183 270 191L198 203Q122 217 81.0 259.5Q40 302 40 369Z'/%3E%3Cpath transform='translate(3504 0)' d=''/%3E%3Cpath transform='translate(3716 0)' d='M666 22Q666 13 659.5 6.5Q653 0 644 0H485Q472 0 463.0 5.5Q454 11 444 23L255 261V27Q255 16 247.0 8.0Q239 0 228 0H97Q86 0 78.0 8.0Q70 16 70 27V673Q70 684 78.0 692.0Q86 700 97 700H228Q239 700 247.0 692.0Q255 684 255 673V462L431 678Q439 688 447.0 694.0Q455 700 471 700H627Q636 700 642.5 693.5Q649 687 649 678Q649 672 646 667L399 365L663 33Q666 29 666 22Z'/%3E%3Cpath transform='translate(4389 0)' d='M304 125Q332 125 350.0 131.0Q368 137 381 148Q392 157 397.0 159.5Q402 162 414 162H544Q554 162 560.0 156.0Q566 150 566 140Q566 120 536.0 83.5Q506 47 447.0 18.5Q388 -10 304 -10Q175 -10 104.5 61.5Q34 133 34 260Q34 339 65.5 400.0Q97 461 158.0 495.5Q219 530 304 530Q397 530 457.5 490.5Q518 451 546.0 388.5Q574 326 574 258V230Q574 219 566.0 211.0Q558 203 547 203H214Q214 161 241.0 143.0Q268 125 304 125ZM394 314Q390 348 366.5 371.5Q343 395 304 395Q265 395 241.5 371.5Q218 348 214 314Z'/%3E%3Cpath transform='translate(4996 0)' d='M300 -190H169Q159 -190 152.0 -183.0Q145 -176 145 -166Q145 -162 146 -159L222 20L20 489Q19 492 19 496Q19 506 26.0 513.0Q33 520 43 520H174Q194 520 203 496L314 236L424 496Q433 520 453 520H585Q595 520 602.0 513.0Q609 506 609 496Q609 492 608 489L329 -166Q320 -190 300 -190Z'/%3E%3C/g%3E%3C/svg%3E");
+  --pk-lockup-light: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 222 64'%3E%3Cg transform='translate(12 16) scale(1.3333333333333333)'%3E%3Cpath fill='%237a2fff' d='M3 4 L9 1 L9 19 L3 22 Z'/%3E%3Cpath fill='%237a2fff' d='M11 12 L15 12 L21 18 L18 21 L11 14 Z'/%3E%3Cpath fill='%237a2fff' d='M17 1 L19 4 L23 6 L19 8 L17 11 L15 8 L11 6 L15 4 Z'/%3E%3C/g%3E%3Cg fill='%23060912' transform='translate(58.0000 42) scale(0.026 -0.026)'%3E%3Cpath transform='translate(0 0)' d='M660 466Q660 351 586.5 291.0Q513 231 383 231H255V27Q255 16 247.0 8.0Q239 0 228 0H97Q86 0 78.0 8.0Q70 16 70 27V673Q70 684 78.0 692.0Q86 700 97 700H383Q513 700 586.5 640.5Q660 581 660 466ZM378 387Q422 387 448.5 406.5Q475 426 475 466Q475 506 448.5 525.5Q422 545 378 545H255V387Z'/%3E%3Cpath transform='translate(686 0)' d='M308 -10Q229 -10 168.0 21.0Q107 52 73.0 104.5Q39 157 36 221L35 260L36 298Q38 362 72.0 415.0Q106 468 167.5 499.0Q229 530 308 530Q387 530 448.5 499.0Q510 468 544.0 415.0Q578 362 580 298Q581 288 581 260Q581 231 580 221Q577 157 543.0 104.5Q509 52 448.0 21.0Q387 -10 308 -10ZM400 226Q402 246 402 260Q402 274 400 294Q397 332 372.5 353.5Q348 375 308 375Q268 375 243.5 353.5Q219 332 216 294Q215 284 215 260Q215 236 216 226Q219 188 243.5 166.5Q268 145 308 145Q348 145 372.5 166.5Q397 188 400 226Z'/%3E%3Cpath transform='translate(1302 0)' d='M211 0H85Q74 0 66.0 8.0Q58 16 58 27V683Q58 694 66.0 702.0Q74 710 85 710H211Q222 710 230.0 702.0Q238 694 238 683V27Q238 16 230.0 8.0Q222 0 211 0Z'/%3E%3Cpath transform='translate(1598 0)' d='M356 340Q356 395 298 395Q265 395 244 377Q236 369 228.0 367.0Q220 365 208 365H81Q71 365 64.5 371.0Q58 377 59 387Q62 418 93.5 451.5Q125 485 179.0 507.5Q233 530 298 530Q417 530 476.5 476.0Q536 422 536 330V27Q536 16 528.0 8.0Q520 0 509 0H383Q372 0 364.0 8.0Q356 16 356 27V55Q330 23 294.0 6.5Q258 -10 203 -10Q119 -10 71.5 34.0Q24 78 24 148Q24 215 76.0 258.0Q128 301 239 320ZM264 207Q236 202 220.0 189.5Q204 177 204 159Q204 125 252 125Q296 125 326.0 153.0Q356 181 356 221Z'/%3E%3Cpath transform='translate(2187 0)' d='M448 493V392Q448 381 440.0 373.0Q432 365 421 365H330Q285 365 261.5 341.5Q238 318 238 273V27Q238 16 230.0 8.0Q222 0 211 0H85Q74 0 66.0 8.0Q58 16 58 27V493Q58 504 66.0 512.0Q74 520 85 520H201Q212 520 220.0 512.0Q228 504 228 493V470Q280 520 361 520H421Q432 520 440.0 512.0Q448 504 448 493Z'/%3E%3Cpath transform='translate(2646 0)' d='M211 575H85Q74 575 66.0 583.0Q58 591 58 602V703Q58 714 66.0 722.0Q74 730 85 730H211Q222 730 230.0 722.0Q238 714 238 703V602Q238 591 230.0 583.0Q222 575 211 575ZM211 0H85Q74 0 66.0 8.0Q58 16 58 27V493Q58 504 66.0 512.0Q74 520 85 520H211Q222 520 230.0 512.0Q238 504 238 493V27Q238 16 230.0 8.0Q222 0 211 0Z'/%3E%3Cpath transform='translate(2942 0)' d='M40 369Q40 414 69.5 450.5Q99 487 152.5 508.5Q206 530 274 530Q341 530 395.5 509.5Q450 489 482.0 457.0Q514 425 517 390Q518 379 509.5 371.0Q501 363 490 363H371Q360 363 345 374Q332 384 317.0 389.5Q302 395 274 395Q250 395 235.0 388.0Q220 381 220 367Q220 355 225.5 349.0Q231 343 245.5 340.0Q260 337 296 332L358 322Q445 308 488.5 262.5Q532 217 532 154Q532 109 501.5 71.5Q471 34 413.5 12.0Q356 -10 278 -10Q203 -10 147.5 11.5Q92 33 62.5 66.0Q33 99 30 133Q29 144 37.5 152.0Q46 160 57 160H181Q188 160 192.5 157.5Q197 155 203 149Q215 138 230.0 131.5Q245 125 278 125Q309 125 330.5 133.5Q352 142 352 156Q352 172 336.5 177.5Q321 183 270 191L198 203Q122 217 81.0 259.5Q40 302 40 369Z'/%3E%3Cpath transform='translate(3504 0)' d=''/%3E%3Cpath transform='translate(3716 0)' d='M666 22Q666 13 659.5 6.5Q653 0 644 0H485Q472 0 463.0 5.5Q454 11 444 23L255 261V27Q255 16 247.0 8.0Q239 0 228 0H97Q86 0 78.0 8.0Q70 16 70 27V673Q70 684 78.0 692.0Q86 700 97 700H228Q239 700 247.0 692.0Q255 684 255 673V462L431 678Q439 688 447.0 694.0Q455 700 471 700H627Q636 700 642.5 693.5Q649 687 649 678Q649 672 646 667L399 365L663 33Q666 29 666 22Z'/%3E%3Cpath transform='translate(4389 0)' d='M304 125Q332 125 350.0 131.0Q368 137 381 148Q392 157 397.0 159.5Q402 162 414 162H544Q554 162 560.0 156.0Q566 150 566 140Q566 120 536.0 83.5Q506 47 447.0 18.5Q388 -10 304 -10Q175 -10 104.5 61.5Q34 133 34 260Q34 339 65.5 400.0Q97 461 158.0 495.5Q219 530 304 530Q397 530 457.5 490.5Q518 451 546.0 388.5Q574 326 574 258V230Q574 219 566.0 211.0Q558 203 547 203H214Q214 161 241.0 143.0Q268 125 304 125ZM394 314Q390 348 366.5 371.5Q343 395 304 395Q265 395 241.5 371.5Q218 348 214 314Z'/%3E%3Cpath transform='translate(4996 0)' d='M300 -190H169Q159 -190 152.0 -183.0Q145 -176 145 -166Q145 -162 146 -159L222 20L20 489Q19 492 19 496Q19 506 26.0 513.0Q33 520 43 520H174Q194 520 203 496L314 236L424 496Q433 520 453 520H585Q595 520 602.0 513.0Q609 506 609 496Q609 492 608 489L329 -166Q320 -190 300 -190Z'/%3E%3C/g%3E%3C/svg%3E");
+}
+/* @generated lockups:end */
+
 /* ── Kit tokens ──────────────────────────────────────────────────────────────────────── */
 
 :root,
@@ -1789,6 +1796,7 @@
   --mk-pop-shadow: 0 0 0 1px rgb(255 255 255 / 0.04), var(--pk-elevation-3);
   --mk-scrim: rgb(2 4 8 / 0.66);
   --pk-mark: var(--pk-mark-dark);
+  --pk-lockup: var(--pk-lockup-dark);
   --mk-avatar-bg: #2b1f4a;
   --mk-avatar-fg: #d9c7ff;
 
@@ -1833,6 +1841,7 @@
   --mk-pop-shadow: 0 0 0 1px rgb(6 9 18 / 0.06), var(--pk-elevation-3);
   --mk-scrim: rgb(6 9 18 / 0.32);
   --pk-mark: var(--pk-mark-light);
+  --pk-lockup: var(--pk-lockup-light);
   --mk-avatar-bg: #e6dcff;
   --mk-avatar-fg: #4b1aa6;
 
@@ -2758,8 +2767,28 @@ kbd,
   color: var(--pk-text-strong);
   white-space: nowrap;
 }
+/*
+ * The brand block is the kit's outlined Key compact lockup as supplied (docs/design/BRAND.md §1.4),
+ * 52 px tall in the 64 px bar, never the name set as text. Markup stays
+ * <a class="brand"><i class="pk-mark"></i><span>Polaris Key</span></a>: the <i> becomes the lockup
+ * and the <span> is the link's accessible name only (visually hidden). Under the phone breakpoint
+ * the lockup gives way to the mark alone (Key guide p.2: the mark stays 48 px).
+ */
+.brand > .pk-mark {
+  width: 180px;
+  height: 52px;
+  background-image: var(--pk-lockup);
+}
+.brand > span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
 .topbar .brand {
-  width: 196px;
+  width: auto;
 }
 .env {
   display: inline-flex;
@@ -6899,14 +6928,10 @@ pre.code-plain {
     gap: var(--sp-2);
     padding: 0 var(--sp-3);
   }
-  /* The brand keeps its name for screen readers (the link's accessible name). */
-  .topbar .brand > span {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    white-space: nowrap;
+  /* The mark alone: no room for a 180 px lockup. The link's name stays in the hidden span. */
+  .topbar .brand > .pk-mark {
+    width: 48px;
+    background-image: var(--pk-mark);
   }
   .topbar-link,
   .topbar .theme-btn {
@@ -26370,3 +26395,535 @@ tr.chg {
 [data-brand="locker"] .portal-tabbar > a.active {
   box-shadow: inset 0 -3px 0 var(--pk-locker-accent);
 }
+
+/* BEGIN portal-shell-2026-10-20: the Library shell trim (PX-35) and the trimmed Locker lockup
+   (BR-lockups), as built and approved by the owner on 2026-10-20. Appended, so it wins over the
+   blocks above at equal specificity. kit/README.md "Customer portal: the 2026-10-20 shell". */
+
+/* The header's brand is the trimmed outlined Locker lockup (packages/brand LOCKER_TRIM: the kit's
+   460 x 128 canvas cropped to x 8, y 23, 437 x 80), never the mark beside live text: 40 px tall
+   (218 px wide) in the 64 px header, 36 px (197 px) under 761 px, and the mark alone (32 px; the
+   <i> keeps its accessible name) under 384 px, where a 180 px lockup has no room (Locker guide p.7). */
+[data-brand="locker"] .portal-brand > .lk-lockup {
+  width: 218.5px;
+  height: 40px;
+  background-size: 230px 64px;
+  background-position: -4px -11.5px;
+}
+@container screen (max-width: 760px) {
+  [data-brand="locker"] .portal-brand > .lk-lockup {
+    width: 196.65px;
+    height: 36px;
+    background-size: 207px 57.6px;
+    background-position: -3.6px -10.35px;
+  }
+}
+@container screen (max-width: 383px) {
+  [data-brand="locker"] .portal-brand > .lk-lockup {
+    width: 32px;
+    height: 32px;
+    background: var(--lk-mark) center / contain no-repeat;
+  }
+}
+
+/* The account chip: the avatar, the name and the chevron from 1180 px; the avatar alone in its
+   40 px ring below that. It opens the account menu. */
+@container screen (max-width: 1179px) {
+  /* font-size 0 also hides a name written as bare text beside the avatar (older screens). */
+  [data-brand="locker"] .portal-top .account {
+    justify-content: center;
+    gap: 0;
+    width: 40px;
+    padding: 0;
+    border: 1px solid var(--mk-line);
+    font-size: 0;
+  }
+  [data-brand="locker"] .portal-top .account > :not(.avatar) {
+    display: none !important;
+  }
+}
+.portal-top .account.open {
+  background: var(--mk-fill);
+}
+
+/* The account menu, drawn open (PORTAL.md §3.2, PX-35): who is signed in, then Activate a license,
+   Account, Sign-in methods and Appearance; Help and Privacy (the old footer's links); Sign out.
+   <div class="popover-anchor"><span class="account open">…</span>
+     <div class="popover right"><div class="menu account-menu" role="menu">
+       <div class="menu-head"><span class="avatar">PR</span><span class="menu-who"><strong>Priya Raman</strong><span>priya@example.edu</span></span></div>
+       <div class="menu-sep"></div><a class="menu-item" role="menuitem">…</a>…</div></div></div> */
+.menu.account-menu {
+  width: 256px;
+  max-width: calc(100vw - 2 * var(--sp-4));
+}
+.account-menu > .menu-item {
+  height: 40px;
+}
+/* Sign out is a form's button (a state change is never a link), drawn as a menu row. */
+.account-menu > button.menu-item {
+  width: 100%;
+  border: 0;
+  background: none;
+  text-align: start;
+  cursor: pointer;
+}
+.menu-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+  padding: var(--sp-2) var(--sp-3);
+}
+.menu-head > .avatar {
+  width: 40px;
+  height: 40px;
+  font-size: 14px;
+}
+.menu-who {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.menu-who > * {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.menu-who > strong {
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  font-weight: 500;
+  color: var(--pk-text-strong);
+}
+.menu-who > span {
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
+  color: var(--pk-text-muted);
+}
+
+/* Library and Discover tiles, denser (PX-35): the 5:2 art edge to edge, the 40 px icon 16 over its
+   lower edge with the name (16/22, two lines at most) beside it, 12 px inside, one line of facts,
+   the outlined action and More at the foot; a state pill on the art's top-right corner. Two
+   columns on a phone, three from 761 px, four from 1180 px, five from 1700 px; 12 apart, 16 from
+   761 px. <div class="portal-grid dense">…</div> */
+.portal .portal-grid.dense {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-3);
+}
+@container screen (min-width: 761px) {
+  .portal .portal-grid.dense {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--sp-4);
+  }
+}
+@container screen (min-width: 1180px) {
+  .portal .portal-grid.dense {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@container screen (min-width: 1700px) {
+  .portal .portal-grid.dense {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+.portal .portal-grid.dense > .ptile {
+  container: ptile / inline-size;
+  position: relative;
+  border-radius: 12px;
+}
+.portal .portal-grid.dense > .ptile > .art {
+  aspect-ratio: 5 / 2;
+  max-height: none;
+}
+.portal .portal-grid.dense .art > .on-art {
+  top: var(--sp-2);
+  right: var(--sp-2);
+  bottom: auto;
+}
+.portal .portal-grid.dense .ptile-head {
+  align-items: flex-start;
+  gap: var(--sp-3);
+  margin-top: calc(-1 * var(--sp-4));
+  padding: 0 var(--sp-3);
+}
+.portal .portal-grid.dense .ptile-head .logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+}
+.portal .portal-grid.dense .ptile-title {
+  flex: 1 1 auto;
+  padding-top: var(--sp-5);
+}
+.portal .portal-grid.dense .ptile-title > :is(h2, h3) {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: var(--fs-card);
+  line-height: 22px;
+  white-space: normal;
+}
+.portal .portal-grid.dense .ptile-title > :not(h2, h3) {
+  line-height: 22px;
+}
+.portal .portal-grid.dense .ptile-head.plain {
+  margin-top: 0;
+  padding-top: var(--sp-1); /* the name level with its neighbours', which clear their art by 4 */
+}
+.portal .portal-grid.dense .ptile-head.plain > .ptile-title {
+  padding-top: 0;
+}
+.portal .portal-grid.dense .art.noart > .logo.xl {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  font-size: 20px;
+}
+.portal .portal-grid.dense .ptile-body {
+  padding: var(--sp-2) var(--sp-3) 0;
+}
+.portal .portal-grid.dense .ptile-body > .mk-stack-3,
+.portal .portal-grid.dense .ptile-body .mk-stack-3 {
+  gap: var(--sp-2);
+}
+.portal .portal-grid.dense .ptile-body .icon-lines > li {
+  min-height: 20px;
+}
+.portal .portal-grid.dense .ptile-foot {
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+}
+.portal .portal-grid.dense .ptile-foot > .btn {
+  height: 40px;
+}
+.portal .portal-grid.dense .ptile-foot > .btn.icon {
+  width: 40px;
+}
+.portal .portal-grid.dense .ptile-links {
+  min-height: 56px; /* two link lines, so the actions of tiles side by side sit level */
+  padding: 0 var(--sp-3) var(--sp-3);
+}
+.portal .portal-grid.dense .ptile-foot + .ptile-links {
+  margin-top: calc(-1 * var(--sp-1));
+}
+/* A tile under 208 px (two columns on a phone): the icon stacks above the name with More level
+   with it, the pills and the platform glyphs take a line each, and the action spans the tile
+   without its icon (it may take two lines). */
+@container ptile (max-width: 207px) {
+  .portal .portal-grid.dense .ptile-head {
+    flex-direction: column;
+    gap: var(--sp-1);
+  }
+  .portal .portal-grid.dense .ptile-title {
+    width: 100%;
+    padding-top: 0;
+  }
+  .portal .portal-grid.dense .ptile-title > :is(h2, h3) {
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
+  }
+  .portal .portal-grid.dense .ptile-foot {
+    position: static;
+  }
+  .portal .portal-grid.dense .ptile-foot > .btn:not(.icon) {
+    position: relative;
+    z-index: 3;
+    height: auto;
+    min-height: 40px;
+    white-space: normal;
+    text-align: center;
+  }
+  .portal .portal-grid.dense .ptile-foot > .btn:not(.icon) > .ic {
+    display: none;
+  }
+  .portal .portal-grid.dense .ptile-head:not(.plain) ~ .ptile-foot > .btn.icon {
+    position: absolute;
+    z-index: 3;
+    top: calc(40cqi - var(--sp-4));
+    right: var(--sp-3);
+  }
+  .portal .portal-grid.dense .ptile-head.plain ~ .ptile-foot > .btn.icon {
+    position: absolute;
+    z-index: 3;
+    top: calc(40cqi + var(--sp-2));
+    right: var(--sp-3);
+  }
+  .portal .portal-grid.dense .ptile-head.plain > .ptile-title {
+    padding-right: calc(40px + var(--sp-2));
+  }
+  .portal .portal-grid.dense .pill-row {
+    flex-direction: column;
+    gap: var(--sp-2);
+  }
+  .portal .portal-grid.dense .pill-row > .mk-cluster {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .portal .portal-grid.dense .art > .on-art {
+    max-width: calc(100% - 2 * var(--sp-2));
+  }
+}
+
+/* The Library's key tile in the dense grid: it fills the rest of the last row (so the row is
+   always full); in a cell, the 40 px key beside "Have a license key?" with Activate a license at
+   the foot, level with the tiles' actions; with 640 px of its own (a whole row), one line. */
+.portal .portal-grid.dense > .end-tile:nth-child(n) {
+  grid-column: auto;
+}
+@container screen (max-width: 760px) {
+  .portal .portal-grid.dense > .end-tile:nth-child(odd) {
+    grid-column: span 2;
+  }
+}
+@container screen (min-width: 761px) and (max-width: 1179px) {
+  .portal .portal-grid.dense > .end-tile:nth-child(3n + 1) {
+    grid-column: span 3;
+  }
+  .portal .portal-grid.dense > .end-tile:nth-child(3n + 2) {
+    grid-column: span 2;
+  }
+}
+@container screen (min-width: 1180px) and (max-width: 1699px) {
+  .portal .portal-grid.dense > .end-tile:nth-child(4n + 1) {
+    grid-column: span 4;
+  }
+  .portal .portal-grid.dense > .end-tile:nth-child(4n + 2) {
+    grid-column: span 3;
+  }
+  .portal .portal-grid.dense > .end-tile:nth-child(4n + 3) {
+    grid-column: span 2;
+  }
+}
+@container screen (min-width: 1700px) {
+  .portal .portal-grid.dense > .end-tile:nth-child(5n + 1) {
+    grid-column: span 5;
+  }
+  .portal .portal-grid.dense > .end-tile:nth-child(5n + 2) {
+    grid-column: span 4;
+  }
+  .portal .portal-grid.dense > .end-tile:nth-child(5n + 3) {
+    grid-column: span 3;
+  }
+  .portal .portal-grid.dense > .end-tile:nth-child(5n + 4) {
+    grid-column: span 2;
+  }
+}
+.portal .portal-grid.dense > .end-tile.entry-tile {
+  border-radius: 12px;
+}
+.portal .portal-grid.dense .entry-inner {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-content: space-between;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+}
+.portal .portal-grid.dense .entry-art {
+  aspect-ratio: auto;
+  border: 0;
+  background: none;
+}
+.portal .portal-grid.dense .entry-mark {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+}
+.portal .portal-grid.dense .entry-mark > .ic {
+  width: 20px;
+  height: 20px;
+}
+.portal .portal-grid.dense .entry-text {
+  padding: 0;
+}
+.portal .portal-grid.dense .entry-text > :is(h2, h3) {
+  font-size: var(--fs-card);
+  line-height: 22px;
+}
+.portal .portal-grid.dense .entry-inner > .ptile-foot {
+  grid-column: 1 / -1;
+  padding: 0;
+}
+.portal .portal-grid.dense .entry-inner > .ptile-foot > .btn {
+  flex: 1;
+  height: auto;
+  min-height: 40px;
+  white-space: normal;
+}
+@container entry (min-width: 640px) {
+  .portal .portal-grid.dense .entry-inner {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-content: center;
+    column-gap: var(--sp-4);
+    padding: var(--sp-4);
+  }
+  .portal .portal-grid.dense .entry-inner > .ptile-foot {
+    grid-column: auto;
+  }
+}
+
+/* Discover with one or two products: a centred grid at most 768 px wide, one column under 400 px. */
+.portal .portal-grid.dense.pair {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-4);
+  width: 100%;
+  max-width: 768px;
+  margin-inline: auto;
+}
+@container screen (max-width: 399px) {
+  .portal .portal-grid.dense.pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* "Missing a license?" (PX-35): the Library's slim strip, sticky to the window's bottom and resting
+   at the page's end, so it never covers the last row; full bleed, raised, a hairline on top, no
+   shadow. From 1180 px one line: the question, then the ways in as 44 px links in ink with the
+   coral 2 px underline (D9a). Below 1180 px it is a "Missing a license?" disclosure that opens
+   upward (drawn closed); on a phone it sits on the bottom bar. Library only: Discover has none.
+   <section class="portal-strip" aria-label="Missing a license?"><div class="strip-row">
+     <p class="strip-title" aria-hidden="true">Missing a license?</p>
+     <button class="strip-toggle" aria-expanded="false">Missing a license?<i class="ic ic-chevron-up"></i></button>
+     <ul class="strip-ways"><li>Another email? <a class="strip-link" href="#">Add it in Sign-in methods</a></li>…</ul>
+   </div></section> */
+.portal-strip {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  padding: 0 max(var(--sp-6), calc((100% - var(--portal-max)) / 2));
+  border-top: 1px solid var(--mk-line);
+  background: var(--pk-surface-raised);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--pk-text-muted);
+}
+.strip-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--sp-6);
+  min-height: 44px;
+}
+.strip-title {
+  font-weight: 500;
+  color: var(--pk-text-strong);
+}
+.strip-ways {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--sp-6);
+}
+.strip-ways > li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  min-height: 44px;
+}
+.strip-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-weight: 500;
+  color: var(--pk-text-strong);
+  text-decoration: underline 2px var(--pk-locker-accent, var(--pk-accent));
+  text-underline-offset: 4px;
+  cursor: pointer;
+}
+.strip-toggle {
+  display: none;
+}
+@container screen (max-width: 1179px) {
+  .strip-title,
+  .strip-ways {
+    display: none;
+  }
+  .strip-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-2);
+    width: 100%;
+    min-height: 44px;
+    padding: 0;
+    border: 0;
+    background: none;
+    font-weight: 500;
+    color: var(--pk-text-strong);
+    cursor: pointer;
+  }
+  .strip-toggle > .ic {
+    color: var(--pk-text-muted);
+  }
+}
+/* A page that ends in the strip needs less room under its last block. */
+.portal:has(> .portal-strip) > .portal-page {
+  padding-bottom: var(--sp-8);
+}
+
+/* The phone bar, docked (PX-35, as built): full width on the window's bottom edge, 52 px and a
+   hairline, one tab per destination (Library, Discover), the icon over the label; the current tab
+   is strong text at 500 with the coral marker. Activate is in the account menu. The page keeps the bar's height clear
+   at its end, and the strip and any toast sit on top of the bar.
+   <nav class="portal-tabbar docked">… */
+@container screen (max-width: 639px) {
+  [data-brand="locker"] .portal-tabbar.docked,
+  .portal-tabbar.docked {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: grid;
+    grid-auto-columns: minmax(0, 1fr);
+    grid-auto-flow: column;
+    gap: 0;
+    height: 53px;
+    padding: 0 var(--sp-2);
+    border: 0;
+    border-top: 1px solid var(--mk-line);
+    border-radius: 0;
+    background: var(--pk-surface-page);
+    backdrop-filter: none;
+    box-shadow: none;
+    transform: none;
+  }
+  .portal-tabbar.docked > a,
+  [data-brand="locker"] .portal-tabbar.docked > a.active {
+    justify-content: center;
+    gap: var(--sp-0-5);
+    min-width: 0;
+    height: 100%;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    font-size: var(--fs-meta);
+  }
+  /* The current tab: strong text at 500 and the 3 px coral marker on its top edge (D9a; the
+     header's marker sits on its bottom edge, toward the page, and so does this one). */
+  [data-brand="locker"] .portal-tabbar.docked > a.active {
+    box-shadow: inset 0 3px 0 var(--pk-locker-accent);
+    color: var(--pk-text-strong);
+    font-weight: 500;
+  }
+  .portal:has(> .portal-tabbar.docked) {
+    padding-bottom: 53px;
+  }
+  .portal:has(> .portal-tabbar.docked) > .portal-page {
+    padding-bottom: var(--sp-8);
+  }
+  .portal:has(> .portal-tabbar.docked):has(> .toasts) > .portal-page {
+    padding-bottom: calc(var(--sp-16) + var(--sp-10));
+  }
+  .portal:has(> .portal-tabbar.docked) > .portal-strip {
+    bottom: 53px;
+    padding: 0 var(--sp-4);
+  }
+  .portal:has(> .portal-tabbar.docked) > .toasts {
+    bottom: calc(53px + var(--sp-3));
+  }
+}
+/* END portal-shell-2026-10-20 */

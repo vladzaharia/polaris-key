@@ -2,6 +2,7 @@ import * as React from "react";
 import { RadioGroup } from "radix-ui";
 import { cn } from "../lib/cn.js";
 import { reducedMotion, tokenMs } from "./motion/reducedMotion.js";
+import { useWriteLock } from "./WriteLock.js";
 
 export interface SegmentedOption<V extends string = string> {
   value: V;
@@ -139,6 +140,7 @@ export function SegmentedControl<V extends string = string>({
   ref,
   ...aria
 }: SegmentedControlProps<V>): React.ReactElement {
+  const { locked } = useWriteLock();
   const root = React.useRef<HTMLDivElement | null>(null);
   const thumb = React.useRef<HTMLSpanElement | null>(null);
   const items = React.useRef(new Map<string, HTMLButtonElement>());
@@ -159,7 +161,7 @@ export function SegmentedControl<V extends string = string>({
       id={id}
       name={name}
       value={value}
-      disabled={disabled}
+      disabled={disabled || locked}
       orientation="horizontal"
       loop
       onValueChange={(v) => onChange?.(v as V)}
@@ -195,7 +197,7 @@ export function SegmentedControl<V extends string = string>({
             // checked item's own background without a dip.
             "transition-[color] duration-(--pk-duration-fast) ease-standard hover:text-fg-strong",
             "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus",
-            "data-[state=checked]:bg-surface-raised data-[state=checked]:font-medium data-[state=checked]:text-fg-strong data-[state=checked]:shadow-elevation-1",
+            "data-[state=checked]:bg-surface-raised data-[state=checked]:font-medium data-[state=checked]:text-fg-strong data-[state=checked]:shadow-elevation-1 console:data-[state=checked]:text-accent-fg",
             "group-data-[moving]/seg:data-[state=checked]:bg-transparent group-data-[moving]/seg:data-[state=checked]:shadow-none",
             "disabled:cursor-not-allowed disabled:opacity-50",
           )}

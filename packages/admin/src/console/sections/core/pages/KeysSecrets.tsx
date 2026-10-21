@@ -26,6 +26,7 @@ import {
 } from "../../../../lib/secretUsage.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
+import { CopyDetails } from "../../../../ui/CopyDetails.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
 import { Skeleton } from "../../../../ui/Skeleton.js";
@@ -207,7 +208,8 @@ export function SecretsSection({
               </Button>
             }
           >
-            The full list could not load. {errorCopy(secrets.error).description}
+            The full list could not load. {errorCopy(secrets.error).description}{" "}
+            <CopyDetails copy={errorCopy(secrets.error)} />
           </Callout>
         </div>
       ) : null}
@@ -355,7 +357,10 @@ function SetSecretDrawer({
           </FormField>
           {failure ? (
             <Callout tone="danger" title={errorCopy(failure).title}>
-              {errorCopy(failure).description}
+              <p>{errorCopy(failure).description}</p>
+              <div className="mt-2">
+                <CopyDetails copy={errorCopy(failure)} />
+              </div>
             </Callout>
           ) : null}
         </DrawerBody>
