@@ -412,11 +412,11 @@ describe("App sign-in", () => {
   it("saves the two portal switches, listing the changes in words", async () => {
     renderPage();
     await waitFor(() =>
-      expect(checked(toggle("Show a lost key again"))).toBe(false),
+      expect(checked(toggle("Let customers replace a lost key"))).toBe(false),
     );
     expect(checked(toggle("Show DJDL in players’ libraries"))).toBe(true);
     expect(saveButton()).toBeNull();
-    await userEvent.click(toggle("Show a lost key again"));
+    await userEvent.click(toggle("Let customers replace a lost key"));
     expect(screen.getByText(/1 change: lost key shown/)).toBeTruthy();
     expect(screen.getAllByText("Not saved").length).toBeGreaterThan(0);
     await userEvent.click(saveButton()!);
@@ -434,11 +434,13 @@ describe("App sign-in", () => {
     updatePortalSettings.mockRejectedValue(new Error("boom"));
     renderPage();
     await userEvent.click(
-      await screen.findByRole("switch", { name: "Show a lost key again" }),
+      await screen.findByRole("switch", {
+        name: "Let customers replace a lost key",
+      }),
     );
     await userEvent.click(saveButton()!);
     await waitFor(() => expect(updatePortalSettings).toHaveBeenCalled());
-    expect(checked(toggle("Show a lost key again"))).toBe(true);
+    expect(checked(toggle("Let customers replace a lost key"))).toBe(true);
     expect(saveButton()).toBeTruthy();
   });
 

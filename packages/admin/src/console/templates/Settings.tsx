@@ -361,7 +361,9 @@ export function DangerAction({
         <p className="text-sm font-semibold text-fg-strong">{title}</p>
         <p className="text-sm text-fg-muted">{consequence}</p>
       </div>
-      <div className="shrink-0">{action}</div>
+      <div className="min-w-0 max-w-full sm:shrink-0 [&>button]:max-w-full [&>button]:whitespace-normal">
+        {action}
+      </div>
     </div>
   );
 }

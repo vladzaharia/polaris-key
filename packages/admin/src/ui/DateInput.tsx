@@ -64,7 +64,10 @@ export function DateInput({
           const ms = endOfLocalDay(raw, { timeZone });
           if (ms !== null) onChange?.(ms);
         }}
-        className={cn(CONTROL_INPUT, "w-auto min-w-44 tabular-nums")}
+        className={cn(
+          CONTROL_INPUT,
+          "w-auto min-w-[min(11rem,100%)] max-w-full tabular-nums",
+        )}
         aria-describedby={[describedBy, resolvedId].filter(Boolean).join(" ")}
         {...props}
       />

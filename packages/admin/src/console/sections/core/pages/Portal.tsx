@@ -122,16 +122,19 @@ const toggleRows = (name: string) =>
   [
     {
       key: "portalEnabled",
+      id: "portal.enabled",
       label: `Show ${name} in Polaris Locker`,
-      help: "Off hides this product's licenses, page and downloads in every library. Licenses and sign-in keep working.",
+      help: "Turn off to hide this product's licenses, page and downloads in every library. Licenses and sign-in keep working.",
     },
     {
       key: "keyReissueEnabled",
-      label: "Let customers show a lost key again",
-      help: "A customer can replace a license's key in Polaris Locker. The old key stops working at once.",
+      id: "portal.keyReissue",
+      label: "Let customers replace a lost key",
+      help: "Polaris Locker issues a new key. The old key stops working at once.",
     },
     {
       key: "claimByKey",
+      id: "identity.keyEntry.claimByKey",
       label: "A key adds its license to whoever enters it",
       help: "Off: only to the account with the buyer’s email.",
     },
@@ -208,11 +211,6 @@ function PortalForm({
 
   return (
     <div className="space-y-6" data-template="portal">
-      {gate.disabledReason ? (
-        <p role="note" className="text-sm text-fg-muted">
-          {gate.disabledReason}
-        </p>
-      ) : null}
       <Form
         form={form}
         aria-label="Polaris Locker settings"
@@ -226,6 +224,7 @@ function PortalForm({
           {toggleRows(name).map((row) => (
             <SettingsRow
               key={row.key}
+              id={`setting-${row.id}`}
               label={row.label}
               htmlFor={`portal-${row.key}`}
               help={row.help}
@@ -277,18 +276,20 @@ function PortalForm({
             htmlFor="portal-tintColor"
             help="A six-digit color for light mode."
             align="stretch"
-            aside={<Swatch color={tint} />}
           >
             <FormField name="tintColor" label="Accent color" hideLabel>
               {(f) => (
-                <Input
-                  {...f}
-                  id="portal-tintColor"
-                  mono
-                  placeholder="#3a7bd5"
-                  autoComplete="off"
-                  disabled={readOnly}
-                />
+                <div className="flex items-center gap-3">
+                  <Input
+                    {...f}
+                    id="portal-tintColor"
+                    mono
+                    placeholder="#3a7bd5"
+                    autoComplete="off"
+                    disabled={readOnly}
+                  />
+                  <Swatch color={tint} />
+                </div>
               )}
             </FormField>
           </SettingsRow>
@@ -297,7 +298,6 @@ function PortalForm({
             htmlFor="portal-tintColorDark"
             help="A six-digit color for dark mode. Empty uses the light one."
             align="stretch"
-            aside={<Swatch color={tintDark} />}
           >
             <FormField
               name="tintColorDark"
@@ -305,14 +305,17 @@ function PortalForm({
               hideLabel
             >
               {(f) => (
-                <Input
-                  {...f}
-                  id="portal-tintColorDark"
-                  mono
-                  placeholder="#8fb4ff"
-                  autoComplete="off"
-                  disabled={readOnly}
-                />
+                <div className="flex items-center gap-3">
+                  <Input
+                    {...f}
+                    id="portal-tintColorDark"
+                    mono
+                    placeholder="#8fb4ff"
+                    autoComplete="off"
+                    disabled={readOnly}
+                  />
+                  <Swatch color={tintDark} />
+                </div>
               )}
             </FormField>
           </SettingsRow>

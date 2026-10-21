@@ -38,7 +38,8 @@ export function RevertClaimDialog({
   claim: ClaimKey;
   onOpenChange: (open: boolean) => void;
 }): React.ReactElement {
-  const label = CLAIM_LABELS[claim];
+  // A key this console predates still opens, in the key's own words.
+  const label = CLAIM_LABELS[claim] ?? claim;
   return (
     <ConfirmDialog
       open
@@ -46,7 +47,7 @@ export function RevertClaimDialog({
       intent={intentOf("manifest.revert")}
       title={`Return ${label.toLowerCase()} to the manifest?`}
       consequences={[
-        `The value from the last applied ${MANIFEST_FILE[claim]} replaces the console value now. A product not resynced since claims arrived gets it at the next resync.`,
+        `The value from the last applied ${MANIFEST_FILE[claim] ?? ".pkey/"} replaces the console value now. A product not resynced since claims arrived gets it at the next resync.`,
         "Later resyncs keep it in line with the manifest.",
       ]}
       confirmLabel="Revert to manifest"

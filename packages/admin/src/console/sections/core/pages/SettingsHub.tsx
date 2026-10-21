@@ -60,14 +60,20 @@ export function SettingsHub({
   children: React.ReactNode;
 }): React.ReactElement {
   useSettingTarget(true, undefined, anchorOfKey);
-  const gate = useWriteGate(page === "keys" ? "keys" : "core", slug);
-  // Features gates its own switches and says why; the other tabs lock whole under one note.
-  const lock =
+  // The access is named by the tab's words, never the area's internal name ("Core").
+  const gate = useWriteGate(
+    page === "keys" ? "keys" : "core",
+    slug,
+    page === "keys" ? "Keys & secrets" : "Settings",
+  );
+  // One notice per page, on every tab that has something to edit. Features gates its own
+  // switches; the other tabs lock whole.
+  const viewOnly =
     !gate.allowed &&
     gate.canView &&
-    page !== "services" &&
     page !== "settings-all" &&
     page !== "settings-members";
+  const lock = viewOnly && page !== "services";
   const canKeys = useCan("keys", slug);
   const product = useProduct(slug);
   const admins = useAccessAdmins("core", slug);
@@ -134,7 +140,7 @@ export function SettingsHub({
           />
         </div>
       </header>
-      {lock && gate.disabledReason ? (
+      {viewOnly && gate.disabledReason ? (
         <Callout tone="info" title="You can view these settings">
           {gate.disabledReason}
         </Callout>

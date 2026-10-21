@@ -130,10 +130,11 @@ export function StorefrontListingControl({
           ) : undefined
         }
         control={
-          <span className="inline-flex items-center gap-2">
+          <span className="inline-flex min-w-0 max-w-full items-center gap-2">
             {pending ? <Spinner label="" /> : null}
             <SegmentedControl
               size="sm"
+              wrap
               aria-labelledby={`${id}-label`}
               options={OPTIONS}
               value={current}

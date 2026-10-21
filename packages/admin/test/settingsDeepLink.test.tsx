@@ -6,6 +6,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, waitFor } from "@testing-library/react";
 import type * as ApiModule from "../src/api.js";
 import { SettingsHub } from "../src/console/sections/core/pages/SettingsHub.js";
+import { PortalPage } from "../src/console/sections/core/pages/Portal.js";
+import { SettingsPage } from "../src/console/sections/core/pages/Settings.js";
 import { SettingsAllPage } from "../src/console/sections/core/pages/SettingsAll.js";
 import { SETTINGS_INDEX } from "../src/console/settings.generated.js";
 import { ALL_ON, ME } from "./consoleHarness.js";
@@ -15,6 +17,7 @@ const fns = vi.hoisted(() => ({
   me: vi.fn(),
   product: vi.fn(),
   productSettings: vi.fn(),
+  portalSettings: vi.fn(),
 }));
 vi.mock("../src/api.js", async () => {
   const actual = await vi.importActual<typeof ApiModule>("../src/api.js");
@@ -39,6 +42,15 @@ describe("the deep link", () => {
       product: { slug: "djdl", name: "DJDL", services: ALL_ON },
     });
     fns.productSettings.mockResolvedValue({ settings: [] });
+    fns.portalSettings.mockResolvedValue({
+      settings: {
+        portalEnabled: true,
+        keyReissueEnabled: false,
+        claimByKey: false,
+        branding: null,
+        modifiedAt: 1,
+      },
+    });
   });
   afterEach(cleanup);
 
@@ -64,5 +76,39 @@ describe("the deep link", () => {
     await expectNoAxeViolations(
       document.getElementById(`all-setting-${e.key}`)!.closest("table")!,
     );
+  });
+
+  // Every rendered setting row carries `setting-<key>`, so the link lands on the row itself at
+  // once (ST-10, UX review M6) rather than on its section after a wait.
+  it.each([
+    ["portal.keyReissue", "portal"],
+    ["portal.enabled", "portal"],
+    ["identity.keyEntry.claimByKey", "portal"],
+    ["license.defaults.deviceLimit", "settings"],
+    ["license.defaults.maxOfflineDays", "settings"],
+    ["core.web.origins", "settings"],
+  ] as const)("%s lands on its own row", async (key, page) => {
+    const started = Date.now();
+    renderAt(
+      `#/p/djdl/settings/${page}?setting=${encodeURIComponent(key)}`,
+      <SettingsHub slug="djdl" page={page === "portal" ? "portal" : "settings"}>
+        {page === "portal" ? (
+          <PortalPage slug="djdl" />
+        ) : (
+          <SettingsPage slug="djdl" />
+        )}
+      </SettingsHub>,
+    );
+    const id = `setting-${key}`;
+    await waitFor(
+      () =>
+        expect(
+          document.getElementById(id)?.contains(document.activeElement),
+        ).toBe(true),
+      { timeout: 1400 },
+    );
+    // Not the 1.5 s section fallback.
+    expect(Date.now() - started).toBeLessThan(1400);
+    expect(document.getElementById(id)?.tagName).toBe("DIV");
   });
 });

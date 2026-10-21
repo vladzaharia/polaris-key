@@ -206,7 +206,7 @@ const PORTAL_KEY_REISSUE: SettingDef = setting({
   scope: "product",
   service: "identity",
   area: "portal",
-  label: "Show a lost key again",
+  label: "Let customers replace a lost key",
   description:
     "Whether a customer may replace a license's key from Polaris Locker. The old key stops working at once.",
   keywords: ["reissue", "lost key", "new key", "replace key"],

@@ -1736,7 +1736,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     service: "identity",
     area: "portal",
     rbacArea: "core",
-    label: "Show a lost key again",
+    label: "Let customers replace a lost key",
     description:
       "Whether a customer may replace a license's key from Polaris Locker. The old key stops working at once.",
     keywords: ["reissue", "lost key", "new key", "replace key"],

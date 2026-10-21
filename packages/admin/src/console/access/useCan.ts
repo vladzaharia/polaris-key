@@ -64,10 +64,10 @@ export function askReason(
   area: AreaId,
   admins: readonly AccessAdmin[] | undefined,
   hasView = false,
+  /** What the page calls the access, when the area's own name is not a word its reader knows. */
+  name: string = AREA_NAMES[area],
 ): string {
-  const what = hasView
-    ? `${AREA_NAMES[area]} edit access`
-    : `${AREA_NAMES[area]} access`;
+  const what = hasView ? `${name} edit access` : `${name} access`;
   if (!admins?.length)
     return `You don't have ${what}. A Superadmin can give it to you.`;
   const [first, ...rest] = admins;
@@ -85,6 +85,7 @@ export function askReason(
 export function useWriteGate(
   area: AreaId,
   slug: string | null = null,
+  name?: string,
 ): { allowed: boolean; disabledReason: string | undefined; canView: boolean } {
   const allowed = useCan(area, slug, "edit");
   const canView = useCan(area, slug, "view");
@@ -94,6 +95,6 @@ export function useWriteGate(
     canView,
     disabledReason: allowed
       ? undefined
-      : askReason(area, admins.data?.admins, canView),
+      : askReason(area, admins.data?.admins, canView, name),
   };
 }

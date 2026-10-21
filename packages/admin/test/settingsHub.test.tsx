@@ -4,7 +4,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import * as React from "react";
-import { renderAt, resetCore } from "./coreTestUtils.js";
+import { renderAt, resetCore, testQueryClient } from "./coreTestUtils.js";
+import { qk } from "../src/console/data/queries.js";
+import { ME } from "./consoleHarness.js";
 import { SettingsHub } from "../src/console/sections/core/pages/SettingsHub.js";
 import {
   OriginsEditor,
@@ -61,6 +63,43 @@ describe("Settings hub", () => {
         .getAttribute("aria-current"),
     ).toBe("page");
   });
+});
+
+describe("the view-only notice (UX review M8)", () => {
+  const viewOnly = () =>
+    testQueryClient().setQueryData(qk.me(), {
+      ...ME,
+      platformAdmin: false,
+      permissions: {
+        platform: { view: [], edit: [] },
+        products: { djdl: { view: ["core", "keys"], edit: [] } },
+      },
+    });
+  it.each([
+    ["services", "Settings"],
+    ["settings", "Settings"],
+    ["portal", "Settings"],
+    ["presentation", "Settings"],
+    ["keys", "Keys & secrets"],
+  ] as const)(
+    "%s: one callout, naming %s access and never Core",
+    async (page, name) => {
+      resetCore();
+      viewOnly();
+      renderAt(
+        `#/p/djdl/settings/${page}`,
+        <SettingsHub slug="djdl" page={page}>
+          <p>Body</p>
+        </SettingsHub>,
+      );
+      const notice = await screen.findByText("You can view these settings");
+      expect(notice).toBeTruthy();
+      expect(document.body.textContent).toContain(`${name} edit access`);
+      expect(document.body.textContent).not.toMatch(/\bCore\b/);
+      // The sentence is said once on the page.
+      expect(screen.getAllByText(/edit access/)).toHaveLength(1);
+    },
+  );
 });
 
 describe("originProblem", () => {

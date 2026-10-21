@@ -126,7 +126,7 @@ describe("Settings → Polaris Locker", () => {
       ),
     ).toBe("true");
     expect(
-      checked(screen.getByRole("switch", { name: /show a lost key again/i })),
+      checked(screen.getByRole("switch", { name: /replace a lost key/i })),
     ).toBe("false");
     expect(
       checked(

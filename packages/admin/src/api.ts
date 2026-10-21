@@ -4894,11 +4894,20 @@ async function send(
     if (init.body && !headers.has("Content-Type"))
       headers.set("Content-Type", "application/json");
   }
-  const res = await fetch(path, {
-    ...init,
-    headers,
-    credentials: "same-origin",
-  });
+  let res: Response;
+  try {
+    res = await fetch(path, {
+      ...init,
+      headers,
+      credentials: "same-origin",
+    });
+  } catch (e) {
+    // Tag fetch's own failure, so the error copy can tell it from a render crash (also a
+    // TypeError). A caller's abort is not a network failure.
+    if (e instanceof Error && e.name !== "AbortError")
+      Object.defineProperty(e, "isFetchFailure", { value: true });
+    throw e;
+  }
   if (res.status === 401) {
     const expired = res.headers.get("X-PKey-Session") === "expired";
     // A page that had a session stays where it is under the overlay (`csrf` is set once `/me`
