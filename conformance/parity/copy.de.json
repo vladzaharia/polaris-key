@@ -429,6 +429,18 @@
       "title": "App nicht eingerichtet",
       "message": "Die Lizenzierung der App ist nicht korrekt eingerichtet. Wenden Sie sich an den Entwickler."
     },
+    "invalid-argument": {
+      "title": "Anfrage nicht akzeptiert",
+      "message": "Die App hat eine Anfrage gesendet, die die Lizenz-Schnittstelle nicht lesen konnte. Wenden Sie sich an den Entwickler."
+    },
+    "invoke-not-allowed": {
+      "title": "Anfrage nicht erlaubt",
+      "message": "Die App hat etwas angefordert, das ihre Lizenz-Schnittstelle nicht anbietet. Wenden Sie sich an den Entwickler."
+    },
+    "sender-refused": {
+      "title": "Fenster nicht erlaubt",
+      "message": "Dieses Fenster darf die Lizenzierung der App nicht verwenden. Wenden Sie sich an den Entwickler."
+    },
     "not-configured": {
       "title": "App nicht eingerichtet",
       "message": "Die Lizenzierung der App ist noch nicht eingerichtet. Wenden Sie sich an den Entwickler."

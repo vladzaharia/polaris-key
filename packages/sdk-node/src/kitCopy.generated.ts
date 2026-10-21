@@ -1262,6 +1262,15 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid-options.title": "App not set up",
     "core.codes.invalid-options.message":
       "The app's licensing isn't set up correctly. Contact the developer.",
+    "core.codes.invalid-argument.title": "Request not accepted",
+    "core.codes.invalid-argument.message":
+      "The app sent a request the licensing bridge could not read. Contact the developer.",
+    "core.codes.invoke-not-allowed.title": "Request not allowed",
+    "core.codes.invoke-not-allowed.message":
+      "The app asked for something its licensing bridge does not offer. Contact the developer.",
+    "core.codes.sender-refused.title": "Window not allowed",
+    "core.codes.sender-refused.message":
+      "This window may not use the app's licensing. Contact the developer.",
     "core.codes.not-configured.title": "App not set up",
     "core.codes.not-configured.message":
       "The app's licensing isn't set up yet. Contact the developer.",
@@ -2863,6 +2872,15 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid-options.title": "App nicht eingerichtet",
     "core.codes.invalid-options.message":
       "Die Lizenzierung der App ist nicht korrekt eingerichtet. Wenden Sie sich an den Entwickler.",
+    "core.codes.invalid-argument.title": "Anfrage nicht akzeptiert",
+    "core.codes.invalid-argument.message":
+      "Die App hat eine Anfrage gesendet, die die Lizenz-Schnittstelle nicht lesen konnte. Wenden Sie sich an den Entwickler.",
+    "core.codes.invoke-not-allowed.title": "Anfrage nicht erlaubt",
+    "core.codes.invoke-not-allowed.message":
+      "Die App hat etwas angefordert, das ihre Lizenz-Schnittstelle nicht anbietet. Wenden Sie sich an den Entwickler.",
+    "core.codes.sender-refused.title": "Fenster nicht erlaubt",
+    "core.codes.sender-refused.message":
+      "Dieses Fenster darf die Lizenzierung der App nicht verwenden. Wenden Sie sich an den Entwickler.",
     "core.codes.not-configured.title": "App nicht eingerichtet",
     "core.codes.not-configured.message":
       "Die Lizenzierung der App ist noch nicht eingerichtet. Wenden Sie sich an den Entwickler.",
@@ -4426,6 +4444,15 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid-options.title": "App not set up",
     "core.codes.invalid-options.message":
       "The app's licensing isn't set up correctly. Contact the developer.",
+    "core.codes.invalid-argument.title": "Request not accepted",
+    "core.codes.invalid-argument.message":
+      "The app sent a request the licensing bridge could not read. Contact the developer.",
+    "core.codes.invoke-not-allowed.title": "Request not allowed",
+    "core.codes.invoke-not-allowed.message":
+      "The app asked for something its licensing bridge does not offer. Contact the developer.",
+    "core.codes.sender-refused.title": "Window not allowed",
+    "core.codes.sender-refused.message":
+      "This window may not use the app's licensing. Contact the developer.",
     "core.codes.not-configured.title": "App not set up",
     "core.codes.not-configured.message":
       "The app's licensing isn't set up yet. Contact the developer.",
@@ -6000,6 +6027,15 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid-options.title": "App no configurada",
     "core.codes.invalid-options.message":
       "Las licencias de la app no están configuradas correctamente. Contacta con el desarrollador.",
+    "core.codes.invalid-argument.title": "Solicitud no aceptada",
+    "core.codes.invalid-argument.message":
+      "La app envió una solicitud que el puente de licencias no pudo leer. Contacta con el desarrollador.",
+    "core.codes.invoke-not-allowed.title": "Solicitud no permitida",
+    "core.codes.invoke-not-allowed.message":
+      "La app pidió algo que su puente de licencias no ofrece. Contacta con el desarrollador.",
+    "core.codes.sender-refused.title": "Ventana no permitida",
+    "core.codes.sender-refused.message":
+      "Esta ventana no puede usar las licencias de la app. Contacta con el desarrollador.",
     "core.codes.not-configured.title": "App no configurada",
     "core.codes.not-configured.message":
       "Las licencias de la app todavía no están configuradas. Contacta con el desarrollador.",
@@ -7557,6 +7593,15 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid-options.title": "App não configurado",
     "core.codes.invalid-options.message":
       "O licenciamento do app não está configurado corretamente. Contate o desenvolvedor.",
+    "core.codes.invalid-argument.title": "Solicitação não aceita",
+    "core.codes.invalid-argument.message":
+      "O app enviou uma solicitação que a ponte de licenciamento não conseguiu ler. Contate o desenvolvedor.",
+    "core.codes.invoke-not-allowed.title": "Solicitação não permitida",
+    "core.codes.invoke-not-allowed.message":
+      "O app pediu algo que sua ponte de licenciamento não oferece. Contate o desenvolvedor.",
+    "core.codes.sender-refused.title": "Janela não permitida",
+    "core.codes.sender-refused.message":
+      "Esta janela não pode usar o licenciamento do app. Contate o desenvolvedor.",
     "core.codes.not-configured.title": "App não configurado",
     "core.codes.not-configured.message":
       "O licenciamento do app ainda não está configurado. Contate o desenvolvedor.",
@@ -9116,6 +9161,15 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid-options.title": "App non configurata",
     "core.codes.invalid-options.message":
       "La gestione delle licenze dell'app non è configurata correttamente. Contatta lo sviluppatore.",
+    "core.codes.invalid-argument.title": "Richiesta non accettata",
+    "core.codes.invalid-argument.message":
+      "L'app ha inviato una richiesta che il bridge delle licenze non ha potuto leggere. Contatta lo sviluppatore.",
+    "core.codes.invoke-not-allowed.title": "Richiesta non consentita",
+    "core.codes.invoke-not-allowed.message":
+      "L'app ha chiesto qualcosa che il suo bridge delle licenze non offre. Contatta lo sviluppatore.",
+    "core.codes.sender-refused.title": "Finestra non consentita",
+    "core.codes.sender-refused.message":
+      "Questa finestra non può usare le licenze dell'app. Contatta lo sviluppatore.",
     "core.codes.not-configured.title": "App non configurata",
     "core.codes.not-configured.message":
       "La gestione delle licenze dell'app non è ancora configurata. Contatta lo sviluppatore.",
@@ -10695,6 +10749,15 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid-options.title": "アプリが設定されていません",
     "core.codes.invalid-options.message":
       "アプリのライセンス設定が正しくありません。開発者に問い合わせてください。",
+    "core.codes.invalid-argument.title": "リクエストを受け付けられません",
+    "core.codes.invalid-argument.message":
+      "アプリが送ったリクエストをライセンスブリッジが読み取れませんでした。開発者に問い合わせてください。",
+    "core.codes.invoke-not-allowed.title": "リクエストは許可されていません",
+    "core.codes.invoke-not-allowed.message":
+      "アプリがライセンスブリッジの提供していない操作を要求しました。開発者に問い合わせてください。",
+    "core.codes.sender-refused.title": "このウィンドウは許可されていません",
+    "core.codes.sender-refused.message":
+      "このウィンドウはアプリのライセンス機能を使えません。開発者に問い合わせてください。",
     "core.codes.not-configured.title": "アプリが設定されていません",
     "core.codes.not-configured.message":
       "アプリのライセンスはまだ設定されていません。開発者に問い合わせてください。",
@@ -12211,6 +12274,15 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid-options.title": "앱이 설정되지 않음",
     "core.codes.invalid-options.message":
       "앱의 라이선스 설정이 올바르지 않아요. 개발자에게 문의하세요.",
+    "core.codes.invalid-argument.title": "요청을 받을 수 없음",
+    "core.codes.invalid-argument.message":
+      "앱이 보낸 요청을 라이선스 브리지가 읽지 못했어요. 개발자에게 문의하세요.",
+    "core.codes.invoke-not-allowed.title": "허용되지 않는 요청",
+    "core.codes.invoke-not-allowed.message":
+      "앱이 라이선스 브리지가 제공하지 않는 작업을 요청했어요. 개발자에게 문의하세요.",
+    "core.codes.sender-refused.title": "허용되지 않는 창",
+    "core.codes.sender-refused.message":
+      "이 창은 앱의 라이선스를 사용할 수 없어요. 개발자에게 문의하세요.",
     "core.codes.not-configured.title": "앱이 설정되지 않음",
     "core.codes.not-configured.message":
       "앱의 라이선스가 아직 설정되지 않았어요. 개발자에게 문의하세요.",
@@ -13625,6 +13697,15 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid-options.title": "应用未设置",
     "core.codes.invalid-options.message":
       "应用的许可功能未正确设置。请联系开发者。",
+    "core.codes.invalid-argument.title": "请求未被接受",
+    "core.codes.invalid-argument.message":
+      "应用发送的请求，许可桥接无法读取。请联系开发者。",
+    "core.codes.invoke-not-allowed.title": "请求不被允许",
+    "core.codes.invoke-not-allowed.message":
+      "应用请求了许可桥接不提供的操作。请联系开发者。",
+    "core.codes.sender-refused.title": "窗口不被允许",
+    "core.codes.sender-refused.message":
+      "此窗口不能使用应用的许可功能。请联系开发者。",
     "core.codes.not-configured.title": "应用未设置",
     "core.codes.not-configured.message":
       "应用的许可功能尚未设置。请联系开发者。",

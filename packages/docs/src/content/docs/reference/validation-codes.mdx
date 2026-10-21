@@ -8,7 +8,7 @@ description: "Every error and warning validateManifestDocuments and validateInge
 
 The `.pkey/` validator (`@polaris-key/manifest`) aggregates ALL problems instead of
 stopping at the first; `pkey validate` and the console's link/resync surfaces show these
-codes with their JSON-pointer paths. 253 distinct emit sites.
+codes with their JSON-pointer paths. 254 distinct emit sites.
 
 Interpolated segments (`${…}`) in paths/messages are per-instance values — an array index,
 the offending value, or the allowed set.
@@ -122,6 +122,7 @@ the offending value, or the allowed set.
 | `invalid_manual_channel` | error | release | `${at}/name` | manualChannels[].name must match ^[A-Za-z0-9][A-Za-z0-9._-]\{0,63\}$. |
 | `invalid_manual_channel` | error | release | `${at}/regex` | manualChannels[].regex must be a backtracking-free regular expression of at most $\{MANUAL_CHANNEL_REGEX_MAX\} characters (it is matched anchored against release tags; backreferences, lookaround and \\b are refused because they cannot be matched in linear time). |
 | `invalid_name` | error | product | `/product/name` | product.name |
+| `invalid_offline_days` | error | product | `/licensing/defaultMaxOfflineDays` | defaultMaxOfflineDays must be at most $\{MAX_OFFLINE_DAYS\}. |
 | `invalid_oidc_client_id` | error | product | `/oidc/clientId` | oidc.clientId must match ^[A-Za-z0-9][A-Za-z0-9._:@/~-]\{0,255\}$. |
 | `invalid_oidc_issuer` | error | product | `/oidc/issuer` | oidc.issuer $\{issuerProblem\}. It is the base of the token request that carries this product's OIDC client secret. |
 | `invalid_oidc_provider` | error | product | `/oidc/provider` | oidc.provider must be platform or custom. |
@@ -223,14 +224,14 @@ the offending value, or the allowed set.
 | `missing_product` | error | product | `/` | .pkey/product is required at ingest. |
 | `missing_release` | error | release | `/` | Releases are enabled, so .pkey/release.yaml or release.json is required. |
 | `missing_schema` | error | schema | `/` | .pkey/schema is required at ingest even when Config is off; an empty catalog is schemaVersion: 1 with no entries. |
-| `noncanonical_channel_name` | warning | product | `/licensing/tiers/${i}/channels/${j}` | Channel names should match ^[a-z0-9][a-z0-9-]\{0,63\}$ and spell a PR with its hyphen (pr-42); this grant is unreachable on the release routes and never matched by the licence gate (WIRE-CONTRACT-V3 §5.1). |
-| `noncanonical_channel_name` | warning | release | `/release/artifactPolicy/channels/${j}` | Channel names should match ^[a-z0-9][a-z0-9-]\{0,63\}$; uppercase, . and _ are unreachable on the release routes (WIRE-CONTRACT-V3 §5.1). |
-| `noncanonical_channel_name` | warning | release | `${at}/name` | Channel names should match ^[a-z0-9][a-z0-9-]\{0,63\}$; uppercase, . and _ are unreachable on the release routes (WIRE-CONTRACT-V3 §5.1). |
+| `noncanonical_channel_name` | warning | product | `/licensing/tiers/${i}/channels/${j}` | Channel names should match ^[a-z0-9][a-z0-9-]\{0,63\}$ and spell a PR with its hyphen (pr-42); this grant is unreachable on the release routes and never matched by the licence gate (WIRE-CONTRACT-V4 §5.1). |
+| `noncanonical_channel_name` | warning | release | `/release/artifactPolicy/channels/${j}` | Channel names should match ^[a-z0-9][a-z0-9-]\{0,63\}$; uppercase, . and _ are unreachable on the release routes (WIRE-CONTRACT-V4 §5.1). |
+| `noncanonical_channel_name` | warning | release | `${at}/name` | Channel names should match ^[a-z0-9][a-z0-9-]\{0,63\}$; uppercase, . and _ are unreachable on the release routes (WIRE-CONTRACT-V4 §5.1). |
 | `outlet_kind_mismatch` | error | distribution | `/outlets/${id}/kind` | outlet $\{id\} is itself an outlet kind, so its kind may only be $\{id\} (or omitted); declare another id, such as $\{id\}-beta, for an outlet of a different kind. |
 | `pack_field_not_supported` | error | release | `${at}/${field}` | $\{field\} is never declared: it belongs to one release, so pass it to pkey release publish --$\{field\}. |
 | `package_name_collision` | error | release | `/release/deliverables/${id}/name` | $\{id\} and $\{other\} declare the same $\{def.ecosystem as string\} package name (names compare case-insensitively, and PyPI names after PEP 503 normalisation). |
 | `release_key_reused` | error | release | `${at}/publicKey` | A release key must not be release.sparkleEd25519Pub: one key would sign both archive bytes and JWS signing inputs. |
-| `reserved_channel_name` | warning | release | `${at}/name` | This manual channel name is taken by a built-in channel (stable, latest, beta, pr, a PR number such as pr-42, or dev), so Release or the licence gate reads it as that channel (WIRE-CONTRACT-V3 §5.1). |
+| `reserved_channel_name` | warning | release | `${at}/name` | This manual channel name is taken by a built-in channel (stable, latest, beta, pr, a PR number such as pr-42, or dev), so Release or the licence gate reads it as that channel (WIRE-CONTRACT-V4 §5.1). |
 | `reserved_display_name` | error | distribution | `/listing/developerName` | listing.developerName uses a reserved platform or store name; a developer may not present itself as one. Rename it, or ask the platform operator to approve it. |
 | `reserved_display_name` | warning | distribution | `/listing/developerName` | listing.developerName uses a reserved platform or store name; the sign-in card leaves the developer out instead. This becomes an error once the platform enforces reserved display names. |
 | `reserved_display_name` | error | distribution | `/listing/name` | listing.name uses a reserved platform or store name; an app may not present itself as one. Rename it, or ask the platform operator to approve it. |

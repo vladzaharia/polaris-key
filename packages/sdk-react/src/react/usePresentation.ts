@@ -56,7 +56,14 @@ export function usePresentationOf(
     }
   }, [source]);
 
-  const iconKey = presentation?.icon?.sha256 ?? null;
+  // Every hash the icon names: a change to the sizes alone makes the source revoke the blob URL
+  // it handed out, so the hook must fetch a fresh one rather than keep showing the revoked URL.
+  const iconKey = presentation?.icon
+    ? [
+        presentation.icon.sha256,
+        ...presentation.icon.sizes.map((s) => s.sha256),
+      ].join(",")
+    : null;
   useEffect(() => {
     let live = true;
     setIconUrl(null);

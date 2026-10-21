@@ -1,4 +1,4 @@
-// Layered config resolution (WIRE-CONTRACT-V3 §2.2.1), pinned by `config-matrix.json`. The
+// Layered config resolution (WIRE-CONTRACT-V4 §2.2.1), pinned by `config-matrix.json`. The
 // signed remote config document carries, per key, a `ManagedEntry` with a management `state`.
 // The client honors that state and otherwise layers local + environment overrides on top of the
 // remote default:

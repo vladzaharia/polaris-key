@@ -5818,6 +5818,36 @@ msgstr "アプリが設定されていません"
 msgid "core.codes.invalid-options.message"
 msgstr "アプリのライセンス設定が正しくありません。開発者に問い合わせてください。"
 
+#. Request not accepted
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid-argument.title"
+msgstr "リクエストを受け付けられません"
+
+#. The app sent a request the licensing bridge could not read. Contact the developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid-argument.message"
+msgstr "アプリが送ったリクエストをライセンスブリッジが読み取れませんでした。開発者に問い合わせてください。"
+
+#. Request not allowed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invoke-not-allowed.title"
+msgstr "リクエストは許可されていません"
+
+#. The app asked for something its licensing bridge does not offer. Contact the developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invoke-not-allowed.message"
+msgstr "アプリがライセンスブリッジの提供していない操作を要求しました。開発者に問い合わせてください。"
+
+#. Window not allowed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sender-refused.title"
+msgstr "このウィンドウは許可されていません"
+
+#. This window may not use the app's licensing. Contact the developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sender-refused.message"
+msgstr "このウィンドウはアプリのライセンス機能を使えません。開発者に問い合わせてください。"
+
 #. App not set up
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.not-configured.title"

@@ -2237,6 +2237,18 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_options_message">La gestione delle licenze dell'app non è configurata correttamente. Contatta lo sviluppatore.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_argument_title">Richiesta non accettata</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_argument_message">L'app ha inviato una richiesta che il bridge delle licenze non ha potuto leggere. Contatta lo sviluppatore.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invoke_not_allowed_title">Richiesta non consentita</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invoke_not_allowed_message">L'app ha chiesto qualcosa che il suo bridge delle licenze non offre. Contatta lo sviluppatore.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sender_refused_title">Finestra non consentita</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sender_refused_message">Questa finestra non può usare le licenze dell'app. Contatta lo sviluppatore.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_not_configured_title">App non configurata</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_not_configured_message">La gestione delle licenze dell'app non è ancora configurata. Contatta lo sviluppatore.</string>

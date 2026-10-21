@@ -429,6 +429,18 @@
       "title": "App no configurada",
       "message": "Las licencias de la app no están configuradas correctamente. Contacta con el desarrollador."
     },
+    "invalid-argument": {
+      "title": "Solicitud no aceptada",
+      "message": "La app envió una solicitud que el puente de licencias no pudo leer. Contacta con el desarrollador."
+    },
+    "invoke-not-allowed": {
+      "title": "Solicitud no permitida",
+      "message": "La app pidió algo que su puente de licencias no ofrece. Contacta con el desarrollador."
+    },
+    "sender-refused": {
+      "title": "Ventana no permitida",
+      "message": "Esta ventana no puede usar las licencias de la app. Contacta con el desarrollador."
+    },
     "not-configured": {
       "title": "App no configurada",
       "message": "Las licencias de la app todavía no están configuradas. Contacta con el desarrollador."

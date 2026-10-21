@@ -212,10 +212,27 @@ describe("a tier's policyDeviceLimit is bounded in every spelling", () => {
   });
 });
 
-describe("the other seat-adjacent numbers keep their own bounds", () => {
-  it("leaves defaultMaxOfflineDays uncapped: it is compared against, never counted through", () => {
-    expect(
-      codes(withRoot({ licensing: { defaultMaxOfflineDays: 100_000 } })),
-    ).toEqual([]);
-  });
+describe("defaultMaxOfflineDays is bounded in every spelling (B-149)", () => {
+  const OFFLINE: Record<string, (value: unknown) => ManifestDocuments> = {
+    "licensing.defaultMaxOfflineDays": (value) =>
+      withRoot({ licensing: { defaultMaxOfflineDays: value } }),
+    "a flat document's root defaultMaxOfflineDays": (value) =>
+      withRoot({ defaultMaxOfflineDays: value }),
+  };
+  for (const [spelling, docs] of Object.entries(OFFLINE)) {
+    it(`refuses ${spelling} past 365, accepts 0, a real count and 365`, () => {
+      for (const over of [366, 100_000_000, 1e300]) {
+        const res = validateManifestDocuments(docs(over));
+        expect(res.ok, `${over}`).toBe(false);
+        expect(
+          res.errors.find((e) => e.code === "invalid_offline_days"),
+        ).toMatchObject({
+          path: "/licensing/defaultMaxOfflineDays",
+          message: "defaultMaxOfflineDays must be at most 365.",
+        });
+      }
+      for (const ok of [0, 30, 365])
+        expect(codes(docs(ok)), `${ok}`).toEqual([]);
+    });
+  }
 });

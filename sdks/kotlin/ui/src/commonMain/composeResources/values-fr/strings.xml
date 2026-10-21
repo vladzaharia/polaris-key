@@ -2237,6 +2237,18 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_options_message">The app's licensing isn't set up correctly. Contact the developer.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_argument_title">Request not accepted</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_argument_message">The app sent a request the licensing bridge could not read. Contact the developer.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invoke_not_allowed_title">Request not allowed</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invoke_not_allowed_message">The app asked for something its licensing bridge does not offer. Contact the developer.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sender_refused_title">Window not allowed</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sender_refused_message">This window may not use the app's licensing. Contact the developer.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_not_configured_title">App not set up</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_not_configured_message">The app's licensing isn't set up yet. Contact the developer.</string>

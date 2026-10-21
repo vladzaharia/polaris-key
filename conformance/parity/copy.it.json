@@ -429,6 +429,18 @@
       "title": "App non configurata",
       "message": "La gestione delle licenze dell'app non è configurata correttamente. Contatta lo sviluppatore."
     },
+    "invalid-argument": {
+      "title": "Richiesta non accettata",
+      "message": "L'app ha inviato una richiesta che il bridge delle licenze non ha potuto leggere. Contatta lo sviluppatore."
+    },
+    "invoke-not-allowed": {
+      "title": "Richiesta non consentita",
+      "message": "L'app ha chiesto qualcosa che il suo bridge delle licenze non offre. Contatta lo sviluppatore."
+    },
+    "sender-refused": {
+      "title": "Finestra non consentita",
+      "message": "Questa finestra non può usare le licenze dell'app. Contatta lo sviluppatore."
+    },
     "not-configured": {
       "title": "App non configurata",
       "message": "La gestione delle licenze dell'app non è ancora configurata. Contatta lo sviluppatore."

@@ -1,5 +1,5 @@
 // Client-side semver + channel helpers. `channelForVersion` matches the Worker's function of
-// the same name (`packages/worker/src/core/channels.ts`, WIRE-CONTRACT-V3 §5.1 rule 2); only the
+// the same name (`packages/worker/src/core/channels.ts`, WIRE-CONTRACT-V4 §5.1 rule 2); only the
 // Worker narrows a PR build to `pr-<n>`. Pinned by the conformance corpus so all SDKs agree.
 
 import type { BuildChannel } from "@polaris-key/protocol";

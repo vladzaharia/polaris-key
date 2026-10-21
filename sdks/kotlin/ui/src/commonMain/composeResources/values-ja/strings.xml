@@ -2211,6 +2211,18 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_options_message">アプリのライセンス設定が正しくありません。開発者に問い合わせてください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_argument_title">リクエストを受け付けられません</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_argument_message">アプリが送ったリクエストをライセンスブリッジが読み取れませんでした。開発者に問い合わせてください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invoke_not_allowed_title">リクエストは許可されていません</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invoke_not_allowed_message">アプリがライセンスブリッジの提供していない操作を要求しました。開発者に問い合わせてください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sender_refused_title">このウィンドウは許可されていません</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sender_refused_message">このウィンドウはアプリのライセンス機能を使えません。開発者に問い合わせてください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_not_configured_title">アプリが設定されていません</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_not_configured_message">アプリのライセンスはまだ設定されていません。開発者に問い合わせてください。</string>
