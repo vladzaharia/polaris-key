@@ -74,6 +74,7 @@ Generator families that read or write files here (a family regenerates with `pnp
 | `route-ledger`  | reads            | `pnpm gen route-ledger`             |
 | `integration`   | reads            | `pnpm gen integration`              |
 | `mirrors`       | reads            | `pnpm gen mirrors` (named run only) |
+| `mockup-kit`    | reads            | `pnpm gen mockup-kit`               |
 
 <!-- work-on-it:end -->
 
