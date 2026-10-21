@@ -320,6 +320,7 @@ export function LimitsStep({
             <SegmentedControl
               {...f}
               wrap
+              className="self-start"
               options={[
                 {
                   value: "inherit",
@@ -365,7 +366,14 @@ export function LimitsStep({
           value={expiryMode}
           onChange={(v: ExpiryMode) => set("expiryMode", v)}
         >
-          {(f) => <SegmentedControl {...f} wrap options={expiryOptions} />}
+          {(f) => (
+            <SegmentedControl
+              {...f}
+              wrap
+              className="self-start"
+              options={expiryOptions}
+            />
+          )}
         </FormField>
         {expiryMode === "date" ? (
           <FormField

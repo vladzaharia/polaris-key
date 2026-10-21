@@ -22,9 +22,6 @@ import { DiffViewer } from "../../../../ui/DiffViewer.js";
 import { Drawer, DrawerBody, DrawerFooter } from "../../../../ui/Drawer.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
-import { Input } from "../../../../ui/Input.js";
-import { SegmentedControl } from "../../../../ui/SegmentedControl.js";
-import { Select } from "../../../../ui/Select.js";
 import { PageSkeleton } from "../../../../ui/Skeleton.js";
 import { SourceBadge } from "../../../../ui/SourceBadge.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
@@ -39,6 +36,9 @@ import { qk } from "../../../data/queries.js";
 import { codecs, navigate, useSearchParam } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { CatalogEntryForm } from "../components/CatalogEntryForm.js";
+import { CatalogFilters, ViewOnlyNote } from "../components/CatalogFilters.js";
+import { WriteLock } from "../../../../ui/WriteLock.js";
+import { useWriteGate } from "../../../access/useCan.js";
 import { JsonMode, TypeGlyph } from "../components/EditorParts.js";
 import {
   clearDraft,
@@ -59,11 +59,7 @@ import {
   useCatalog,
   useCatalogUsage,
 } from "../data.js";
-import {
-  ENTRY_TYPE_LABELS,
-  entryType,
-  type EntryType,
-} from "../components/entryType.js";
+import { ENTRY_TYPE_LABELS, entryType } from "../components/entryType.js";
 import { entryFieldView, typeChangeNotes } from "../model/diffView.js";
 
 const MODE = codecs.oneOf(["form", "json"] as const, "form");
@@ -80,11 +76,11 @@ const CHANGED = codecs.oneOf(["0", "1"] as const, "0");
  *   error markers; **JSON mode** edits the whole document in CodeMirror with the catalog
  *   validator as its linter and Format (CAT-4). Both edit one draft.
  * - The draft persists in `sessionStorage` (CAT-6); the header carries one "Draft v9" chip with
- *   the version publishing creates (EXPERIENCE.md §0.4 S4).
- * - **Review** is a structured diff. Removed keys are cross-checked against what still sets them
- *   (A-7b); a breaking removal needs the acknowledgement (L2). Errors stay inline (CAT-6).
- * - **Publish** sends `expectedVersion` (A-6); a 409 shows what changed on the server.
- * - With no catalog yet the draft starts from `{schemaVersion: 1, entries: []}` (CAT-1).
+ *   the version publishing creates (EXPERIENCE.md §0.4 S4). A view-only member gets no editor.
+ * - **Review** is a structured diff; removed keys are cross-checked against what still sets them
+ *   (A-7b) and a breaking removal needs the acknowledgement (L2). Errors stay inline (CAT-6).
+ * - **Publish** sends `expectedVersion` (A-6); a 409 shows what changed on the server. With no
+ *   catalog the draft starts from `{schemaVersion: 1, entries: []}` (CAT-1).
  */
 export function CatalogEditorPage({
   slug,
@@ -93,6 +89,7 @@ export function CatalogEditorPage({
 }): React.ReactElement {
   const catalog = useCatalog(slug);
   const { data: product } = useProduct(slug);
+  const gate = useWriteGate("config", slug);
   const missing = isNotFound(catalog.error);
   const loaded = catalog.data !== undefined || missing;
 
@@ -125,18 +122,20 @@ export function CatalogEditorPage({
   if (!draft) return <PageSkeleton template="form" label="the catalog" />;
 
   return (
-    <Editor
-      slug={slug}
-      draft={draft}
-      setDraft={setDraft}
-      server={catalog.data ?? null}
-      source={catalogSource(product)}
-      authoritative={product?.manifestAuthoritative?.value ?? false}
-      onDiscard={() => {
-        clearDraft(slug);
-        setDraftState(draftFrom(catalog.data ?? null));
-      }}
-    />
+    <WriteLock locked={!gate.allowed} reason={gate.disabledReason}>
+      <Editor
+        slug={slug}
+        draft={draft}
+        setDraft={setDraft}
+        server={catalog.data ?? null}
+        source={catalogSource(product)}
+        authoritative={product?.manifestAuthoritative?.value ?? false}
+        onDiscard={() => {
+          clearDraft(slug);
+          setDraftState(draftFrom(catalog.data ?? null));
+        }}
+      />
+    </WriteLock>
   );
 }
 
@@ -245,8 +244,7 @@ function Editor({
     groups.set(cat, [...(groups.get(cat) ?? []), item]);
   }
 
-  // The entry being edited, by position while its key is being typed (a key that briefly
-  // matches another entry's must not move the selection to that entry).
+  // The entry being edited, by position while its key is typed (a briefly matching key must not jump).
   const [pinned, setPinned] = React.useState<number | null>(null);
   const selectedIndex =
     pinned !== null && pinned < entries.length
@@ -307,7 +305,7 @@ function Editor({
         title="Edit catalog"
         aside={
           <span className="inline-flex flex-wrap items-center gap-2">
-            <StatusPill tone="accent" icon={false} size="sm">
+            <StatusPill tone="neutral" icon={false} size="sm">
               Draft v{nextVersion}
             </StatusPill>
             <SourceBadge source={source} path={CATALOG_PATH} />
@@ -336,50 +334,19 @@ function Editor({
         </Callout>
       ) : null}
 
+      <ViewOnlyNote />
+
       <div className="flex flex-wrap items-center gap-3">
-        {mode === "json" ? <div className="flex-1" /> : null}
-        <div className={cn("min-w-48 flex-1", mode === "json" && "hidden")}>
-          <Input
-            type="search"
-            aria-label="Search entries"
-            placeholder="Search key, label, category…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-        </div>
-        <div className={cn("w-40", mode === "json" && "hidden")}>
-          <Select
-            aria-label="Type"
-            value={kind}
-            options={[
-              { value: "all", label: "All types" },
-              ...(
-                [
-                  "setting",
-                  "secret",
-                  "minted",
-                  ...(entries.some((e) => e.kind === "flag") ? ["flag"] : []),
-                ] as EntryType[]
-              ).map((k) => ({ value: k, label: ENTRY_TYPE_LABELS[k] })),
-            ]}
-            onChange={(v) => setKind((v ?? "all") as typeof kind)}
-          />
-        </div>
-        {mode === "json" ? null : (
-          <Checkbox
-            label="Changed only"
-            checked={changedOnly === "1"}
-            onCheckedChange={(on) => setChangedOnly(on ? "1" : "0")}
-          />
-        )}
-        <SegmentedControl<"form" | "json">
-          aria-label="Editing mode"
-          value={mode}
-          onChange={(m) => setMode(m)}
-          options={[
-            { value: "form", label: "Form" },
-            { value: "json", label: "JSON" },
-          ]}
+        <CatalogFilters
+          mode={mode}
+          setMode={setMode}
+          query={query}
+          setQuery={setQuery}
+          kind={kind}
+          setKind={setKind}
+          changedOnly={changedOnly}
+          setChangedOnly={setChangedOnly}
+          hasFlags={entries.some((e) => e.kind === "flag")}
         />
         <Button
           variant="outline"
@@ -405,8 +372,7 @@ function Editor({
           }
         />
       ) : (
-        // An explicit single track below 1024 px, so a long key truncates instead of widening
-        // the page; there the list scrolls in a short box so the form is reached quickly.
+        // A single track below 1024 px: a long key truncates, and the list scrolls in a short box.
         <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[18rem_minmax(0,1fr)]">
           <nav
             aria-label="Catalog entries"
@@ -530,9 +496,8 @@ function Editor({
 
           <section
             aria-label={selected ? `Entry ${selected.key}` : "Entry"}
-            // Its own height, not the key list's: a long list beside it would otherwise stretch
-            // the pane into a tall empty card.
-            className="min-w-0 self-start rounded-lg border border-border bg-surface-raised p-4"
+            // Its own height, not the key list's (a long list would stretch it into a tall empty card).
+            className="min-w-0 max-w-[55rem] self-start rounded-lg border border-border bg-surface-raised p-4"
           >
             {selected ? (
               <div className="space-y-4">

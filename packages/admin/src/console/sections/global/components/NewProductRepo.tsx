@@ -97,6 +97,20 @@ export function RepoStep({
   );
 }
 
+/**
+ * Enter on a repository row continues, as it does in the text field (B-232). A radio button takes
+ * Enter for itself (it never submits), so the row is chosen if it was only focused, and the step's
+ * form submits once that choice has landed.
+ */
+export function enterSubmits(e: React.KeyboardEvent<HTMLElement>): void {
+  const row = (e.target as HTMLElement).closest<HTMLElement>("[role=radio]");
+  if (e.key !== "Enter" || !row) return;
+  e.preventDefault();
+  const form = e.currentTarget.closest("form");
+  if (row.getAttribute("aria-checked") !== "true") row.click();
+  setTimeout(() => form?.requestSubmit(), 0);
+}
+
 function RepoPicker({
   list,
   value,
@@ -182,7 +196,7 @@ function RepoPicker({
     return <p className="text-sm text-fg-muted">No repository matches.</p>;
   const rows = data.repositories.slice(0, shown);
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" onKeyDown={enterSubmits}>
       <RadioCards
         id="np-repos"
         aria-label="Repositories the Polaris Key app can read"

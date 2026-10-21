@@ -274,6 +274,7 @@ export function CatalogEntryForm({
         >
           {(f) => (
             <SegmentedControl<EntryType>
+              wrap
               className="w-fit self-start"
               aria-labelledby={f["aria-labelledby"]}
               value={entryType(entry)}

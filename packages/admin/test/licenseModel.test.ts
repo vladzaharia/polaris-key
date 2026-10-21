@@ -111,6 +111,31 @@ describe("effectivePolicy", () => {
     expect(line(lines, "Versions").value).toBe("≥ 1.0.0 · ≤ 2.0.0");
   });
 
+  it("B-229: names every tier source the same way, 'from Pro', never 'tier “Pro”'", () => {
+    const lines = effectivePolicy(
+      { ...base, tier: "pro", channels: ["beta"], minVersion: "1.5.0" },
+      [
+        {
+          ...PRO,
+          channels: ["stable"],
+          minVersion: "1.0.0",
+          maxVersion: "2.0.0",
+        },
+      ],
+      product,
+    );
+    expect(line(lines, "Device limit").from).toBe("from Pro");
+    expect(line(lines, "Versions").from).toBe("this license and Pro");
+    const tierOnly = effectivePolicy(
+      { ...base, tier: "pro" },
+      [{ ...PRO, channels: ["stable"], minVersion: "1.0.0" }],
+      product,
+    );
+    expect(line(tierOnly, "Channels").from).toBe("from Pro");
+    expect(line(tierOnly, "Versions").from).toBe("from Pro");
+    expect(JSON.stringify(lines)).not.toContain("tier “");
+  });
+
   it("calls a non-positive product limit unlimited", () => {
     const lines = effectivePolicy(base, [], {
       ...product,

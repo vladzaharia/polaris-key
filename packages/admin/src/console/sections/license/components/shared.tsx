@@ -235,7 +235,8 @@ export interface PolicyInput {
   maxVersion: string | null;
 }
 
-const tierName = (t: TierSummary) => `tier “${t.label || t.id}”`;
+/** The tier in words, in the sentence's own shape: "from Pro", "from this license and Pro". */
+const tierName = (t: TierSummary) => t.label || t.id;
 
 // ── Device limit (LX-14a) ──────────────────────────────────────────────────────────────────────
 
@@ -437,7 +438,7 @@ export function effectivePolicy(
               ? `this license and ${tierName(tier!)}`
               : ch.source === "license"
                 ? "this license"
-                : tierName(tier!),
+                : `from ${tierName(tier!)}`,
         },
   );
 
@@ -459,7 +460,7 @@ export function effectivePolicy(
           ? `this license and ${tierName(tier!)}`
           : fromLicense
             ? "this license"
-            : tierName(tier!),
+            : `from ${tierName(tier!)}`,
     });
   } else {
     lines.push({

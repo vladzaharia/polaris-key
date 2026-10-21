@@ -43,6 +43,7 @@ import {
 } from "../components/entryType.js";
 import { RetiredMark } from "../components/EntryMarks.js";
 import { defaultText, retiredNotes } from "../model/entryNotes.js";
+import { EditCatalogButton } from "../components/CatalogViewOnly.js";
 import { HistoryDrawer } from "../components/HistoryDrawer.js";
 import { RecipeApproval, RecipePill } from "../components/RecipeState.js";
 import { CollectionTemplate } from "../../../templates/Collection.js";
@@ -273,13 +274,7 @@ export function CatalogPage({ slug }: { slug: string }): React.ReactElement {
         ) : null
       }
       refetching={catalog.isFetching && !catalog.isPending}
-      primaryAction={
-        catalog.data ? (
-          <Button asChild iconStart={<Pencil aria-hidden />}>
-            <Link to={r.catalogEdit(slug)}>Edit catalog</Link>
-          </Button>
-        ) : null
-      }
+      primaryAction={catalog.data ? <EditCatalogButton slug={slug} /> : null}
       secondaryActions={
         catalog.data
           ? [
@@ -354,11 +349,7 @@ export function CatalogPage({ slug }: { slug: string }): React.ReactElement {
             kind="first-run"
             title="This catalog has no keys"
             description="Edit the catalog to add the first setting, secret or minted token."
-            primaryAction={
-              <Button asChild>
-                <Link to={r.catalogEdit(slug)}>Edit catalog</Link>
-              </Button>
-            }
+            primaryAction={<EditCatalogButton slug={slug} icon={false} />}
           />
         }
       />

@@ -3,7 +3,7 @@ import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { configureAxe } from "vitest-axe";
 import type { ConfigEntry, ProductCatalog } from "../src/api.js";
-import { resetConsole } from "./consoleHarness.js";
+import { ME, resetConsole } from "./consoleHarness.js";
 import { apiError, bootConfig } from "./configHarness.js";
 import {
   guessDefault,
@@ -842,5 +842,74 @@ describe("Catalog entry form", () => {
       await screen.findByRole("spinbutton", { name: /^Default/ }),
     ).toBeTruthy();
     expect(screen.queryByText("Guessed from the default.")).toBeNull();
+  });
+});
+
+// ── Bug package W: view-only members and the editor's layout (B-230, B-231) ───────────────────
+
+const CONFIG_VIEWER = {
+  ...ME,
+  platformAdmin: false,
+  permissions: {
+    roles: [],
+    platform: { view: ["console"], edit: [] },
+    products: {
+      djdl: { view: ["core", "config"], edit: [] },
+      acme: { view: ["core", "config"], edit: [] },
+    },
+  },
+};
+
+describe("Catalog: view-only members (B-230)", () => {
+  it("the catalog page's Edit catalog is off, with whom to ask, and is not a link", async () => {
+    bootConfig("#/p/djdl/config/catalog", {
+      "/manage/api/me": CONFIG_VIEWER,
+      [`${P}/config/catalog`]: CATALOG,
+    });
+    await screen.findByText("network.timeout");
+    expect(screen.queryByRole("link", { name: "Edit catalog" })).toBeNull();
+    const edit = screen.getByRole("button", { name: "Edit catalog" });
+    expect(edit.getAttribute("aria-disabled")).toBe("true");
+  });
+
+  it("the editor opens read-only for them: a note with whom to ask, the writes off, the search still works", async () => {
+    bootConfig("#/p/djdl/config/catalog/edit?entry=network.timeout", {
+      "/manage/api/me": CONFIG_VIEWER,
+      [`${P}/config/catalog`]: CATALOG,
+      [`${P}/config/catalog/usage`]: NO_USAGE(["x"]),
+    });
+    await screen.findByText("You can view this catalog, not change it");
+    expect(
+      screen
+        .getByRole("button", { name: "Add entry" })
+        .getAttribute("aria-disabled"),
+    ).toBe("true");
+    expect(
+      screen
+        .getByRole("button", { name: "Remove entry" })
+        .getAttribute("aria-disabled"),
+    ).toBe("true");
+    const search = screen.getByRole("searchbox", { name: "Search entries" });
+    expect(search.hasAttribute("readonly")).toBe(false);
+  });
+
+  it("a member who can edit still gets the link", async () => {
+    bootConfig("#/p/djdl/config/catalog", {
+      [`${P}/config/catalog`]: CATALOG,
+    });
+    await screen.findByText("network.timeout");
+    expect(screen.getByRole("link", { name: "Edit catalog" })).toBeTruthy();
+  });
+});
+
+describe("Catalog editor: layout (B-231)", () => {
+  it("the Draft chip is not the accent (status colour is for status), the entry pane is capped, and the Type options wrap", async () => {
+    await openEditor();
+    const chip = screen.getByText(/^Draft v\d+$/).closest("[data-tone]");
+    expect(chip?.getAttribute("data-tone")).toBe("neutral");
+    const pane = screen.getByRole("region", { name: /^Entry / });
+    expect(pane.className).toContain("max-w-[55rem]");
+    const type = screen.getByRole("radiogroup", { name: "Type" });
+    expect(type.className).toContain("flex-wrap");
   });
 });

@@ -592,6 +592,19 @@ describe("New product from a repository", () => {
     expect(log.calls.some((c) => c.method === "POST")).toBe(false);
   });
 
+  it("B-232: Enter on a focused repository row chooses it and continues, as Enter in the text field does", async () => {
+    boot("#/products/new?via=github", { extra: routes() });
+    await page();
+    const row = await within(main()).findByRole("radio", {
+      name: /acme\/tonebox/,
+    });
+    row.focus();
+    await userEvent.keyboard("{Enter}");
+    expect(
+      await screen.findByRole("heading", { level: 2, name: "Check it" }),
+    ).toBeTruthy();
+  });
+
   it("picks a repository, checks it (W23), and creates it with the digest", async () => {
     const log = boot("#/products/new?via=github", { extra: routes() });
     await page();
