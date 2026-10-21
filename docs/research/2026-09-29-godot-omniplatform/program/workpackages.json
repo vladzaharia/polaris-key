@@ -9249,7 +9249,7 @@
       "optional": false,
       "refs": ["ST-08 re-check evidence: _mockups/review/ST-08/rebuild/"],
       "brief": "wp/ST-08n-settings-hub-followups.md",
-      "status": "in-progress"
+      "status": "in-review"
     },
     {
       "id": "ST-09",
