@@ -823,7 +823,7 @@
           >by Harbor Audio</span
         >
         <p class="body" style="margin-top: 12px; max-width: 30ch">
-          Sign in or add your license to start.
+          Sign in or use a license key to continue.
         </p>
       </div>
       <div
@@ -880,7 +880,7 @@
     <main class="board">
       <!-- 1. Gate -->
       <figure>
-        <figcaption>android · gate</figcaption>
+        <figcaption>android · gate · UK-11 target</figcaption>
         <div class="shot" data-shot="gate">
           <div class="screen" data-tpl="gate"></div>
         </div>
@@ -889,7 +889,8 @@
       <!-- 2. Activate with the IME -->
       <figure>
         <figcaption>
-          android · activate (key parsed, IME up, Activate rides the IME)
+          android · activate (key parsed, IME up, Activate rides the IME) ·
+          UK-11 target
         </figcaption>
         <div class="shot" data-shot="activate">
           <div class="screen">
@@ -976,7 +977,8 @@
       <!-- 3. Sign in: Credential Manager over the gate -->
       <figure>
         <figcaption>
-          android · sign-in (Credential Manager first, then the kit’s methods)
+          android · sign-in (Credential Manager first, then the kit’s methods) ·
+          UK-11 target
         </figcaption>
         <div class="shot" data-shot="sign-in">
           <div class="screen" data-tpl="gate">
@@ -1053,7 +1055,9 @@
 
       <!-- 4. Sign-in hand-off -->
       <figure>
-        <figcaption>android · sign-in hand-off (another device)</figcaption>
+        <figcaption>
+          android · sign-in hand-off (another device) · UK-11 target
+        </figcaption>
         <div class="shot" data-shot="sign-in-handoff">
           <div class="screen">
             <div
@@ -1129,7 +1133,7 @@
 
       <!-- 5. Device limit -->
       <figure>
-        <figcaption>android · device limit</figcaption>
+        <figcaption>android · device limit · UK-11 target</figcaption>
         <div class="shot" data-shot="device-limit">
           <div class="screen">
             <div
@@ -1218,7 +1222,8 @@
       <!-- 6. Update sheet over the host app -->
       <figure>
         <figcaption>
-          android · update prompt (modal bottom sheet, downloading)
+          android · update prompt (modal bottom sheet, downloading) · UK-11
+          target
         </figcaption>
         <div class="shot" data-shot="update">
           <div class="screen" data-tpl="host">
@@ -1294,7 +1299,9 @@
 
       <!-- 7. Settings -->
       <figure>
-        <figcaption>android · settings (account and license)</figcaption>
+        <figcaption>
+          android · settings (account and license) · UK-11 target
+        </figcaption>
         <div class="shot" data-shot="settings">
           <div class="screen">
             <div class="appbar">
@@ -1395,7 +1402,7 @@
       <figure>
         <figcaption>
           android · tablet (1280 × 800 dp): account list and the devices detail
-          pane
+          pane · UK-11 target
         </figcaption>
         <div class="tab" data-shot="tablet">
           <div class="screen">
@@ -1486,6 +1493,7 @@
       <figure>
         <figcaption>
           android · font size 200 % (non-linear scaling; stacks, wraps, scrolls)
+          · UK-11 target
         </figcaption>
         <div class="shot f200" data-shot="font-200">
           <div class="screen">
@@ -1505,7 +1513,7 @@
             >
               <div class="picon" data-art="tidewater" data-size="88"></div>
               <h1 class="display">Welcome to Tidewater Studio</h1>
-              <p class="body">Sign in or add your license to start.</p>
+              <p class="body">Sign in or use a license key to continue.</p>
               <div
                 style="display: grid; gap: 12px; width: 100%; margin-top: 8px"
               >
@@ -1521,7 +1529,8 @@
       <!-- 10. Predictive back -->
       <figure>
         <figcaption>
-          android · predictive back from Activate to the gate (mid-gesture)
+          android · predictive back from Activate to the gate (mid-gesture) ·
+          UK-11 target
         </figcaption>
         <div class="shot" data-shot="predictive-back">
           <div class="screen">
@@ -1578,7 +1587,7 @@
       <figure>
         <figcaption>
           android · native preset with dynamic colour (the host's wallpaper
-          scheme and font)
+          scheme and font) · UK-11 target
         </figcaption>
         <div class="shot dyn" data-shot="native-dynamic">
           <div class="screen" data-tpl="gate"></div>
@@ -1588,7 +1597,7 @@
       <!-- 12. Boot, status, error -->
       <figure>
         <figcaption>
-          android · boot, status (blocked) and error (offline)
+          android · boot, status (blocked) and error (offline) · UK-11 target
         </figcaption>
         <div class="row-shot" data-shot="states">
           <div>
@@ -1825,7 +1834,7 @@
         <figcaption>
           android · expired · four window shapes from the gate-expired snapshot;
           the build shows no product icon yet, the target adds it (DL3). Built
-          today
+          today · UK-11 target
         </figcaption>
         <div class="row-shot" data-shot="shapes-expired">
           <div>
@@ -1867,6 +1876,203 @@
               style="border-radius: 12px; display: block"
             />
             <span class="lbl">Tablet 1280 × 800, shown at half size</span>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 14. Built kit renders (Compose snapshots): states, settings, list-detail, compose mockups -->
+      <figure>
+        <figcaption>
+          android · sdk.compose-activate · the Compose kit's welcome (Sign in
+          and License key with Activate) and the device-limit refusal on
+          activation, phone, branded dark and light. Built today
+        </figcaption>
+        <div class="row-shot" data-shot="compose-activate">
+          <div>
+            <img
+              src="../../../sdks/kotlin/ui/src/test/snapshots/gate-activation/phone-branded-dark.png"
+              width="411"
+              height="891"
+              alt="Welcome with the license key field, dark"
+              style="border-radius: 12px; display: block"
+            />
+            <span class="lbl">Welcome with license key, branded dark</span>
+          </div>
+          <div>
+            <img
+              src="../../../sdks/kotlin/ui/src/test/snapshots/gate-activation/phone-branded-light.png"
+              width="411"
+              height="891"
+              alt="Welcome with the license key field, light"
+              style="border-radius: 12px; display: block"
+            />
+            <span class="lbl">Welcome with license key, branded light</span>
+          </div>
+          <div>
+            <img
+              src="../../../sdks/kotlin/ui/src/test/snapshots/gate-activation-error/phone-branded-light.png"
+              width="411"
+              height="891"
+              alt="Device limit reached on activation, light"
+              style="border-radius: 12px; display: block"
+            />
+            <span class="lbl">Device limit on activation, branded light</span>
+          </div>
+          <div>
+            <img
+              src="../../../sdks/kotlin/ui/src/test/snapshots/gate-activation/phone-font150-polaris-light.png"
+              width="411"
+              height="891"
+              alt="Welcome at font scale 1.5"
+              style="border-radius: 12px; display: block"
+            />
+            <span class="lbl">Font scale 1.5, polaris light</span>
+          </div>
+        </div>
+      </figure>
+      <figure>
+        <figcaption>
+          android · sdk.compose-sign-in · the Compose kit's code step (code,
+          Code expires in m:ss, the device name) and its declined state, phone.
+          Built today
+        </figcaption>
+        <div class="row-shot" data-shot="compose-sign-in">
+          <div>
+            <img
+              src="../../../sdks/kotlin/ui/src/test/snapshots/sign-in/phone-branded-dark.png"
+              width="411"
+              height="891"
+              alt="Sign in with a code, dark"
+              style="border-radius: 12px; display: block"
+            />
+            <span class="lbl">Code step, branded dark</span>
+          </div>
+          <div>
+            <img
+              src="../../../sdks/kotlin/ui/src/test/snapshots/sign-in/phone-branded-light.png"
+              width="411"
+              height="891"
+              alt="Sign in with a code, light"
+              style="border-radius: 12px; display: block"
+            />
+            <span class="lbl">Code step, branded light</span>
+          </div>
+          <div>
+            <img
+              src="../../../sdks/kotlin/ui/src/test/snapshots/sign-in-denied/phone-branded-dark.png"
+              width="411"
+              height="891"
+              alt="Sign-in declined, dark"
+              style="border-radius: 12px; display: block"
+            />
+            <span class="lbl">Sign-in declined, branded dark</span>
+          </div>
+          <div>
+            <img
+              src="../../../sdks/kotlin/ui/src/test/snapshots/sign-in-expired/phone-branded-light.png"
+              width="411"
+              height="891"
+              alt="Sign-in code expired, light"
+              style="border-radius: 12px; display: block"
+            />
+            <span class="lbl">Code expired, branded light</span>
+          </div>
+        </div>
+      </figure>
+      <figure>
+        <figcaption>
+          android · boot and blocked states from the Compose kit: pack progress,
+          offline, update required and error, phone. Built today
+        </figcaption>
+        <div class="row-shot" data-shot="states-built">
+          <div>
+            <img
+              src="../../../sdks/kotlin/ui/src/test/snapshots/boot-progress/phone-branded-dark.png"
+              width="411"
+              height="891"
+              alt="Boot progress, dark"
+              style="border-radius: 12px; display: block"
+            />
+            <span class="lbl">Boot: downloading</span>
+          </div>
+          <div>
+            <img
+              src="../../../sdks/kotlin/ui/src/test/snapshots/boot-offline/phone-branded-light.png"
+              width="411"
+              height="891"
+              alt="Offline, light"
+              style="border-radius: 12px; display: block"
+            />
+            <span class="lbl">Offline</span>
+          </div>
+          <div>
+            <img
+              src="../../../sdks/kotlin/ui/src/test/snapshots/boot-blocked/phone-branded-dark.png"
+              width="411"
+              height="891"
+              alt="Update required, dark"
+              style="border-radius: 12px; display: block"
+            />
+            <span class="lbl">Update required</span>
+          </div>
+          <div>
+            <img
+              src="../../../sdks/kotlin/ui/src/test/snapshots/boot-error/phone-branded-light.png"
+              width="411"
+              height="891"
+              alt="Error, light"
+              style="border-radius: 12px; display: block"
+            />
+            <span class="lbl">Error</span>
+          </div>
+        </div>
+      </figure>
+      <figure>
+        <figcaption>
+          android · settings from the Compose kit: phone (account and
+          configuration stacked) and tablet 1280 × 800 dp (licence and
+          configuration side by side, shown at half size). Built today
+        </figcaption>
+        <div class="row-shot" data-shot="settings-built">
+          <div>
+            <img
+              src="../../../sdks/kotlin/ui/src/test/snapshots/settings/phone-branded-dark.png"
+              width="411"
+              height="891"
+              alt="Settings on a phone, dark"
+              style="border-radius: 12px; display: block"
+            />
+            <span class="lbl">Phone, branded dark</span>
+          </div>
+          <div>
+            <img
+              src="../../../sdks/kotlin/ui/src/test/snapshots/settings/phone-neutral-light.png"
+              width="411"
+              height="891"
+              alt="Settings on a phone, light"
+              style="border-radius: 12px; display: block"
+            />
+            <span class="lbl">Phone, neutral light</span>
+          </div>
+          <div>
+            <img
+              src="../../../sdks/kotlin/ui/src/test/snapshots/settings/tablet-branded-dark.png"
+              width="640"
+              height="400"
+              alt="Settings on a tablet, dark"
+              style="border-radius: 12px; display: block"
+            />
+            <span class="lbl">Tablet 1280 × 800, half size, branded dark</span>
+          </div>
+          <div>
+            <img
+              src="../../../sdks/kotlin/ui/src/test/snapshots/settings/tablet-neutral-light.png"
+              width="640"
+              height="400"
+              alt="Settings on a tablet, light"
+              style="border-radius: 12px; display: block"
+            />
+            <span class="lbl">Tablet 1280 × 800, half size, neutral light</span>
           </div>
         </div>
       </figure>
