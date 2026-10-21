@@ -45,3 +45,49 @@ export function scopeSidebar<T extends SidebarEntry>(
   }
   return out;
 }
+
+interface PageLink {
+  href: string;
+  label: string;
+  attrs?: Record<string, unknown>;
+}
+interface PaginationEntry extends SidebarEntry {
+  label?: string;
+  isCurrent?: boolean;
+  attrs?: Record<string, unknown>;
+}
+
+/** The links of a sidebar in reading order. */
+function flatLinks(entries: readonly PaginationEntry[]): PaginationEntry[] {
+  return entries.flatMap((e) =>
+    e.type === "link" ? [e] : flatLinks((e.entries ?? []) as PaginationEntry[]),
+  );
+}
+
+/**
+ * Previous and next from the door's own sidebar, so a page never points across doors or hosts
+ * (B-163: /docs/start/'s Previous was a Help page that answers a 301 to polaris.locker). A
+ * direction the page sets in its frontmatter (`prev`, `next`) is left as Starlight made it.
+ */
+export function scopedPagination<P extends { prev?: unknown; next?: unknown }>(
+  sidebar: readonly SidebarEntry[],
+  pagination: P,
+  explicit: { prev: boolean; next: boolean },
+): P {
+  const links = flatLinks(sidebar as PaginationEntry[]);
+  const at = links.findIndex((l) => l.isCurrent);
+  if (at < 0) return pagination;
+  const to = (l: PaginationEntry | undefined) =>
+    l?.href === undefined || l.label === undefined
+      ? undefined
+      : {
+          href: l.href,
+          label: l.label,
+          ...(l.attrs ? { attrs: l.attrs } : {}),
+        };
+  return {
+    ...pagination,
+    ...(explicit.prev ? {} : { prev: to(links[at - 1]) }),
+    ...(explicit.next ? {} : { next: to(links[at + 1]) }),
+  };
+}

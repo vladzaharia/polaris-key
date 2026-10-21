@@ -7,7 +7,12 @@ import {
   type TocItem,
 } from "./lib/helpMessages";
 import { doorOf } from "./lib/doors";
-import { CUSTOMER_SITE, helpRoute, scopeSidebar } from "./lib/helpHost";
+import {
+  CUSTOMER_SITE,
+  helpRoute,
+  scopedPagination,
+  scopeSidebar,
+} from "./lib/helpHost";
 import { slugifyHeading } from "./lib/runbook";
 
 /**
@@ -84,8 +89,15 @@ export const onRequest = defineRouteMiddleware(async (context) => {
   const { toc, id, entry, head } = route;
   // Each page shows its own door's sidebar only.
   const door = doorOf(id)?.door;
-  if (route.sidebar && door && door !== "landing")
+  if (route.sidebar && door && door !== "landing") {
     route.sidebar = scopeSidebar(route.sidebar, door);
+    // Previous and next follow the same sidebar, so they stay inside the door.
+    const data = (entry as { data?: { prev?: unknown; next?: unknown } }).data;
+    route.pagination = scopedPagination(route.sidebar, route.pagination, {
+      prev: data?.prev !== undefined,
+      next: data?.next !== undefined,
+    });
+  }
   // Help is the customer's site (LK-09, D7): it is served at polaris.locker/docs/help/, so its
   // name, its address and its home link say so.
   if (helpRoute(id)) {

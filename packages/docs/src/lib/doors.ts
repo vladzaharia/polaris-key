@@ -165,7 +165,6 @@ export const DOOR_TREES: readonly DoorTree[] = [
         label: "Purchases",
         items: leaves("help/restore-purchase", "help/refunds"),
       },
-      { label: "Cloud Sync", items: leaves("help/sync") },
       {
         label: "Account and privacy",
         items: leaves(

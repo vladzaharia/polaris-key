@@ -16,7 +16,7 @@ import { FEEDS, INSTALL_LABELS, type InstallTarget } from "../src/lib/feeds";
 const here = dirname(fileURLToPath(import.meta.url));
 const read = (...p: string[]) => readFileSync(join(here, "..", ...p), "utf8");
 
-const TARGETS: InstallTarget[] = [...SDK_IDS, "cli"];
+const TARGETS: InstallTarget[] = [...SDK_IDS, "cli", "server"];
 
 interface Snippet {
   id: string;
@@ -55,6 +55,7 @@ const EXPECTED: Record<InstallTarget, { ecosystem: string; package: string }> =
     kotlin: { ecosystem: "maven", package: "im.plrs.key:polaris-key-sdk" },
     godot: { ecosystem: "godot", package: "polaris_key" },
     cli: { ecosystem: "npm", package: "@polaris-key/cli" },
+    server: { ecosystem: "npm", package: "@polaris-key/server" },
   };
 
 describe("InstallSteps FEEDS mapping", () => {

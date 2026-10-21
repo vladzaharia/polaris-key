@@ -1628,6 +1628,15 @@
       "nearest": "/docs/help/download/",
       "package": "F-36",
       "pri": "P2"
+    },
+    {
+      "path": "help/sync",
+      "type": "help",
+      "title": "Cloud Sync",
+      "description": "How your settings and saves follow you between devices, what its status messages mean, and what happens when your storage is full.",
+      "nearest": "/docs/help/",
+      "package": "U-05",
+      "pri": "P2"
     }
   ],
   "extraRedirects": {
