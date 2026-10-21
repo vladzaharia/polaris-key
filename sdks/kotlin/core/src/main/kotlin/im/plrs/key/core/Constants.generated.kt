@@ -60,6 +60,7 @@ public object ErrorCode {
     public const val turnstileFailed: String = "turnstile_failed"
     public const val signinExpired: String = "signin_expired"
     public const val invalidCode: String = "invalid_code"
+    public const val codeExpired: String = "code_expired"
     public const val emailInUse: String = "email_in_use"
     public const val termsRequired: String = "terms_required"
     public const val licenseOwned: String = "license_owned"
@@ -234,6 +235,7 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "turnstile_failed",
     "signin_expired",
     "invalid_code",
+    "code_expired",
     "email_in_use",
     "terms_required",
     "license_owned",
@@ -408,6 +410,7 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "turnstile_failed" to "wire",
     "signin_expired" to "wire",
     "invalid_code" to "wire",
+    "code_expired" to "wire",
     "email_in_use" to "wire",
     "terms_required" to "wire",
     "license_owned" to "wire",

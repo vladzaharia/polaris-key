@@ -16,5 +16,5 @@ export function wrongCodeText(triesLeft: number | undefined): string {
 
 /** A code whose sign-in has expired. */
 export function expiredCodeText(): string {
-  return t("signin.code.expired");
+  return t("core.codes.code_expired.message");
 }
