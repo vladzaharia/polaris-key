@@ -23,4 +23,4 @@ export interface Props {
 const { type, title } = Astro.props;
 ---
 
-<div class="pk-callout not-content" data-callout={type}><ConsoleCallout tone={TONE[type]} title={title}><slot /></ConsoleCallout></div>
+<div class="pk-callout not-content my-4" data-callout={type}><ConsoleCallout tone={TONE[type]} title={title}><slot /></ConsoleCallout></div>

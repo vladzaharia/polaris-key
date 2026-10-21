@@ -892,45 +892,51 @@ section, so the docs section follows it.
 **The utility layer.** `ui/theme.css` holds the `@theme` blocks (the neutral fill `hover`, the
 customer site's breakpoints, the type steps the brand scale lacks, the motion aliases and their
 keyframes). `styles.css` imports it, and the docs import it after `@polaris-key/brand`'s
-`theme.css` (`packages/docs/src/styles/global.css`, with an `@source` over `ui/`, so every utility
-the components use exists). It was moved, not rewritten: the console's and portal's output is
+`theme.css` (`packages/docs/src/styles/global.css`, with an `@source` over the rendered components and
+`classes.ts`, so every utility they use exists). It was moved, not rewritten: the console's and portal's output is
 unchanged.
 
 **Rendered at build time.** `@astrojs/react` renders these with no `client:` directive, so none
 ships JavaScript. `packages/docs/src/components/console.ts` is the one entry point:
 
-| Docs part                              | Console component                                      |
-| -------------------------------------- | ------------------------------------------------------ |
-| `Callout` (note, tip, caution, danger) | `Callout` tones `info`, `success`, `warning`, `danger` |
-| `Pill`, `Status`, `Requires` chips     | `StatusPill`, `ServiceGlyph`                           |
-| Keyboard hints                         | `Kbd`                                                  |
-| Signature facts                        | `SignedBadge`                                          |
+| Docs part                                    | Console component                                      |
+| -------------------------------------------- | ------------------------------------------------------ |
+| `Callout`, and every `:::` aside in Markdown | `Callout` tones `info`, `success`, `warning`, `danger` |
+| `Pill`, `Status`, the `Requires` chips       | `StatusPill`                                           |
+| The service glyph in a feature chip or card  | `ServiceGlyph`                                         |
 
-A component that needs the console's router, stores or query client (`PageHeader`'s masthead,
-`Section`'s actions, `EmptyState`'s link) is not rendered; its class constants are used instead.
+`Kbd`, `SignedBadge` and `ServiceBadge` are exported from `console.ts` and covered by a render
+test, but no docs page uses them yet. A component that needs the console's router, stores or query
+client (`PageHeader`'s masthead, `Section`'s actions, `EmptyState`'s link) is not rendered; its
+class constants are used instead. Links in a callout body are `fg-strong` and underlined, so they
+read at 4.5:1 on every callout ground in both themes.
 
 **Class constants (`ui/classes.ts`).** Strings only, used by the console components themselves and
 imported by the docs: `BUTTON_BASE`, `BUTTON_VARIANTS`, `BUTTON_SIZES` (`Button`; `ConsoleLink`
-and `PortalLink` wear the `outline` variant at `sm`), `TABLE` (`DataTable`'s head, row, cell, plus
-the scroll region `ScrollTable` uses) and `CODE_BLOCK` (`CodeBlock`'s frame, header, title and
-code). No docs file writes a class string the constants hold, and no docs stylesheet sets colour,
-radius, spacing or type size on a rendered console component's class
+and `PortalLink` wear the `outline` variant at `sm`, 44 px on Help), `TABLE` (`DataTable`'s head,
+row, cell, plus the scroll region `ScrollTable` uses) and `CODE_BLOCK` (`CodeBlock`'s frame,
+header, title and code). No docs file writes a class string the constants hold, and no docs
+stylesheet sets colour, radius, spacing or type size on a rendered console component's class
 (`packages/docs/test/docsClasses.test.ts`). Constants for the top bar, sidebar, page tabs and
 `CommandPalette` rows are added with the docs chrome (DOC-02b) and search (DOC-02c).
 
-**Tables.** After the build, `scripts/wrap-tables.ts` puts every Markdown table in a labelled,
-focusable region (`role="region"`, `aria-label` from the heading above it, `tabindex="0"`) with
-the table in `DataTable`'s compact classes, so a dense table scrolls inside its region and the
-page never scrolls sideways.
+**Tables.** After the build, `scripts/console-parts.ts` puts every table in a labelled region
+(`role="region"`, `aria-label` from the heading above it) that scrolls sideways itself, with
+Markdown tables in `DataTable`'s compact classes. A region takes a tab stop only while its content
+overflows (`src/scripts/regions.ts`), so the page never scrolls sideways and a table that fits has
+no ring. Reference pages use a wider measure.
 
 **Code.** Two Expressive Code themes (dark, light) take their colours from `lib/highlight.ts`
 `TOKEN_CLASS` (keyword is info, string success, number warning, key accent-fg, comment fg-subtle,
 punctuation fg-muted), each at 4.5:1 or better on the code ground
-(`packages/docs/test/codeThemes.test.ts`). The frame is `CodeBlock`'s: a header with the file or
-language label (terminal frames say **Terminal**) with **Copy** docked in it, never over the code;
-ligatures off. Copy announces "Copied" in the frame's live region; when the clipboard refuses, it
-selects the code and says "Press ⌘C to copy". The console's `CodeBlock` has a Wrap toggle and a
-notes footer is not built in either surface, so neither is in the docs.
+(`packages/docs/test/codeThemes.test.ts`). The frame follows `CodeBlock`: one flat header on the
+code ground with the file or language label in mono, muted text (terminal frames say **Terminal**)
+and a quiet 28 px **Copy** docked in it, never over the code; ligatures off. Copy is named by what
+it copies ("Copy .npmrc", "Copy command"), says "Copied" in the frame's polite live region, and
+when the clipboard refuses it selects the code and shows a neutral "Press ⌘C to copy" that stays
+until focus or the selection moves. A code block that scrolls sideways is a named, focusable
+region. The console's `CodeBlock` has a Wrap toggle and a notes footer is not built in either
+surface, so neither is in the docs.
 
 **Docs-only parts** are built from tokens and the nearest constant: numbered steps, the pager, the
 lane cards, the SDK picker, the message entry frame. Each is drawn in DOC-01.

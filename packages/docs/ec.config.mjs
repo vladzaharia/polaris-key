@@ -9,13 +9,18 @@
 
 import { createRequire } from "node:module";
 import { defineEcConfig } from "@astrojs/starlight/expressive-code";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
-// The docs package directory. Not `import.meta.url`: the `<Code>` component's copy of this file is
-// bundled into the SSR output (astro.config.mjs maps its config module here), where that URL
-// is the bundle's. Astro builds with the package as the working directory.
-const ROOT = process.cwd();
+// The docs package directory: this file's own folder, or, when the `<Code>` component's copy of it
+// is bundled into the SSR output (astro.config.mjs maps its config module here) and
+// `import.meta.url` is the bundle's, the working directory Astro builds from.
+const ROOT = [dirname(fileURLToPath(import.meta.url)), process.cwd()].find(
+  (d) => existsSync(join(d, "ec-copy.js")),
+);
+if (!ROOT)
+  throw new Error("ec.config.mjs: cannot find the docs package directory");
 
 // The console's highlight roles, read from its source: this file is loaded by plain Node, which
 // cannot import the admin package's TypeScript. test/codeThemes.test.ts pins the parse against the
@@ -201,38 +206,58 @@ const TERMINAL = new Set([
   "cmd",
 ]);
 
-const COPY_MODULE = `try{(()=>{
-const chord=()=>/Mac|iPhone|iPad|iPod/.test((navigator.platform||"")+" "+(navigator.userAgent||""))?"\u2318C":"Ctrl+C";
-const say=(box,text)=>{const live=box&&box.querySelector("[aria-live]");if(!live)return;live.querySelectorAll(".feedback").forEach(n=>n.remove());const f=document.createElement("div");f.className="feedback";f.textContent=text;live.append(f);requestAnimationFrame(()=>f.classList.add("show"));setTimeout(()=>f.classList.remove("show"),2500);setTimeout(()=>f.remove(),3000)};
-const exec=(text)=>{const pre=document.createElement("pre");Object.assign(pre.style,{opacity:"0",pointerEvents:"none",position:"absolute",left:"0",top:"0",width:"20px",height:"20px",userSelect:"all"});pre.setAttribute("aria-hidden","true");pre.textContent=text;document.body.appendChild(pre);const r=document.createRange();r.selectNode(pre);const s=getSelection();if(!s){pre.remove();return false}s.removeAllRanges();s.addRange(r);let ok=false;try{ok=document.execCommand("copy")}finally{s.removeAllRanges();pre.remove()}return ok};
-document.addEventListener("click",async(e)=>{
-const btn=e.target instanceof Element?e.target.closest(".expressive-code .copy button"):null;
-if(!btn)return;
-e.stopPropagation();
-const text=btn.dataset.code.replace(/\u007f/g,"\n");
-const box=btn.parentElement;
-let ok=false;
-try{await navigator.clipboard.writeText(text);ok=true}catch{ok=exec(text)}
-if(ok){say(box,btn.dataset.copied||"Copied");return}
-const code=btn.closest("figure")?.querySelector("pre code");
-if(code){const r=document.createRange();r.selectNodeContents(code);const s=getSelection();s?.removeAllRanges();s?.addRange(r)}
-say(box,"Press "+chord()+" to copy");
-},true);
-})();}catch(e){console.error("[pk] copy module failed:",e)}`;
+// The Copy behaviour is a real script file (ec-copy.js), so it is parsed, linted and tested as one.
+export const COPY_MODULE = readFileSync(join(ROOT, "ec-copy.js"), "utf8");
 
 const brandFrame = {
   name: "pk-brand-frame",
   baseStyles: `
     /* The console's code block: no ligatures (components.md 6.7). */
     pre, code { font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; }
-    /* Copy is docked in the header bar, never over the code. */
-    .frame.has-title .copy, .frame.is-terminal .copy {
-      inset-block-start: calc(var(--header-border-width, 1px) + (var(--header-height, 2.25rem) - 2.25rem) / 2);
-      inset-inline-end: 0.25rem;
+
+    /* One flat header: a mono, muted label on the left, Copy docked on the right. */
+    .frame .header { min-height: 2.25rem; padding-inline-end: 2.5rem; align-items: center; }
+    .frame .header::before, .frame .header::after { display: none; }
+    .frame .header .title {
+      font-family: var(--pk-font-mono);
+      font-size: 0.75rem;
+      line-height: 1rem;
+      font-weight: 400;
+      color: var(--pk-text-muted);
+      background: none;
+      border: 0;
+      border-radius: 0;
+      padding: 0 0.75rem;
+      margin: 0;
+      text-align: start;
     }
-    .frame.has-title .copy button, .frame.is-terminal .copy button { width: 2.25rem; height: 2.25rem; opacity: 1; }
-    .frame .copy .feedback { inset-block-start: 100%; }
-    .frame figcaption.header { min-height: 2.25rem; }
+    .frame .header .title::before, .frame .header .title::after { display: none; }
+    /* A terminal title sits on the left like a file label, over the same hairline. */
+    .frame.is-terminal .header { justify-content: flex-start !important; border-bottom: 1px solid var(--pk-border-subtle); }
+    .frame.is-terminal .header .title { margin-inline-start: 0; }
+
+    /* Copy: a quiet 28 px ghost button inside the header (never over the code). */
+    .frame .copy {
+      inset-block-start: 0.25rem;
+      inset-inline-end: 0.5rem;
+      align-items: flex-start;
+    }
+    .frame .copy button { width: 1.75rem; height: 1.75rem; opacity: 1; background: transparent; border-radius: var(--pk-radius-md); }
+    .frame .copy button:hover, .frame .copy button:focus-visible { background: var(--pk-admin-fill, var(--pk-surface-overlay)); }
+    .frame .copy button:hover::after, .frame .copy button:focus-visible::after { background-color: var(--pk-text-strong); }
+    .frame .copy .feedback { inset-block-start: 100%; inset-inline-end: 0; }
+    /* The hint when the clipboard refused is not a success: neutral, and it stays. */
+    .frame .copy .feedback.pk-hint {
+      background: var(--pk-surface-raised);
+      color: var(--pk-text-default);
+      border: 1px solid var(--pk-border-strong);
+    }
+    @media (forced-colors: active) {
+      .frame .copy button { border: 1px solid ButtonText; forced-color-adjust: none; }
+      .frame .copy button::after { background-color: ButtonText; forced-color-adjust: none; }
+      .frame .copy button:hover::after, .frame .copy button:focus-visible::after { background-color: ButtonText; }
+      .frame .copy .feedback { background: Canvas; color: CanvasText; border: 1px solid CanvasText; }
+    }
   `,
   jsModules: [COPY_MODULE],
   hooks: {
@@ -255,20 +280,31 @@ export default defineEcConfig({
     const sunken = theme.type === "dark" ? SUNKEN.dark : SUNKEN.light;
     theme.bg = sunken;
     theme.colors["editor.background"] = sunken;
+    // The console CodeBlock's frame: one flat header on the code ground, a quiet label, no editor
+    // tab, no traffic lights, no shadow (components.md 6.7).
     theme.styleOverrides.frames = {
       ...theme.styleOverrides.frames,
+      frameBoxShadowCssValue: "none",
       editorBackground: "var(--pk-surface-sunken)",
       terminalBackground: "var(--pk-surface-sunken)",
+      editorTabBarBackground: "var(--pk-surface-sunken)",
+      terminalTitlebarBackground: "var(--pk-surface-sunken)",
       editorActiveTabBackground: "var(--pk-surface-sunken)",
-      editorTabBarBackground: "var(--pk-surface-raised)",
-      terminalTitlebarBackground: "var(--pk-surface-raised)",
+      editorActiveTabForeground: "var(--pk-text-muted)",
+      terminalTitlebarForeground: "var(--pk-text-muted)",
+      editorActiveTabBorderColor: "transparent",
+      editorActiveTabIndicatorHeight: "0px",
+      editorActiveTabIndicatorTopColor: "transparent",
+      editorActiveTabIndicatorBottomColor: "transparent",
+      editorTabBarBorderColor: "transparent",
       editorTabBarBorderBottomColor: "var(--pk-border-subtle)",
       terminalTitlebarBorderBottomColor: "var(--pk-border-subtle)",
-      editorActiveTabIndicatorTopColor: "var(--pk-accent)",
+      terminalTitlebarDotsOpacity: "0",
       inlineButtonForeground: "var(--pk-text-muted)",
-      inlineButtonBorder: "var(--pk-border-strong)",
-      tooltipSuccessBackground: "var(--pk-success)",
-      tooltipSuccessForeground: "var(--pk-success-on)",
+      inlineButtonBackground: "var(--pk-text-muted)",
+      inlineButtonBorderOpacity: "0",
+      tooltipSuccessBackground: "var(--pk-success-subtle)",
+      tooltipSuccessForeground: "var(--pk-text-strong)",
     };
     return theme;
   },

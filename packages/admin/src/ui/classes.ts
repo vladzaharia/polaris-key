@@ -74,7 +74,7 @@ export const BUTTON_SIZES = {
  * docs use compact on reference pages); the line under a row belongs to its cells.
  */
 export const TABLE = {
-  table: "w-full border-separate [border-spacing:0] text-sm",
+  table: "table w-full min-w-full border-separate [border-spacing:0] text-sm",
   head: "sticky top-0 z-[2] bg-surface-raised",
   headRow: "[&>th]:border-b [&>th]:border-border",
   headCell:
@@ -83,8 +83,13 @@ export const TABLE = {
   rowComfortable: "h-14",
   row: "bg-surface-raised text-sm text-fg outline-hidden [&>td]:border-b [&>td]:border-border hover:bg-state-hover-tint focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus data-[selected]:bg-accent-subtle [&.pk-row-highlight]:bg-accent-subtle",
   cell: "px-3 align-middle",
-  /** The labelled, focusable region a table that may scroll sideways sits in (`ScrollTable`). */
-  scroller: "relative overflow-x-auto",
+  /**
+   * The labelled, focusable region a table that may scroll sideways sits in (`ScrollTable`). The
+   * region scrolls, not the table: a surrounding stylesheet that makes `table` a scrolling block
+   * (Starlight's prose does) is undone here.
+   */
+  scroller:
+    "relative overflow-x-auto [&>table]:table [&>table]:min-w-full [&>table]:overflow-visible",
 } as const;
 
 // ---- Code block (ui/CodeBlock.tsx) -----------------------------------------------------------

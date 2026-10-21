@@ -1,17 +1,33 @@
-// Puts every Markdown table in the console's table container (docs plan 8.3, 8.5): a labelled,
-// focusable region that scrolls sideways on its own (WCAG 1.4.10, the console's `ScrollTable`),
-// the table in `DataTable`'s compact classes. The page itself never scrolls sideways at 320 px.
+// Build step over dist/ that makes Markdown output use the console's parts (docs plan 8.2, 8.3):
 //
-// A build step over dist/, not a Markdown plugin: Astro 7's default Markdown processor (Sätteri)
-// has no rehype hook, and a second processor for one wrapper is not worth its weight. A region's
-// name is unique on the page: the nearest heading above the table plus "table", numbered from the
-// second table under one heading. The same text is the table's screen-reader caption. Only bare
-// `<table>` elements (what Markdown emits) also take `DataTable`'s classes; a table a component
-// renders with its own class keeps its own look and just gains the region.
+// - Tables: every table sits in a labelled, focusable region that scrolls sideways on its own
+//   (WCAG 1.4.10, the console's `ScrollTable`), the table in `DataTable`'s compact classes.
+//   `src/scripts/regions.ts` takes the tab stop away while the region fits. A region's name is
+//   unique on the page: the nearest heading above the table plus "table", numbered from the
+//   second table under one heading; the same text is the table's screen-reader caption. Only
+//   bare `<table>` elements (what Markdown emits) also take `DataTable`'s classes; a table a
+//   component renders with its own class keeps its own look and just gains the region.
+// - Asides: a `:::note` / `:::tip` / `:::caution` / `:::danger` block is a Starlight aside; it is
+//   re-rendered through the console's `Callout` (note is info, tip success, caution warning,
+//   danger danger), so the site has one callout look.
+// - The React client bundle Astro emits for the renderer is deleted when no page loads it: the
+//   docs render the console's components at build time and ship no component JavaScript.
+//
+// A build step, not a Markdown plugin: Astro 7's default Markdown processor (Satteri) has no
+// rehype hook, and a second processor for one wrapper is not worth its weight.
 
-import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import {
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { Callout } from "../../admin/src/ui/Callout.tsx";
 import { TABLE } from "../../admin/src/ui/classes.ts";
 
 const dist = join(dirname(fileURLToPath(import.meta.url)), "..", "dist");
@@ -74,6 +90,36 @@ function styleTable(table: string): string {
   return out;
 }
 
+const ASIDE =
+  /<aside aria-label="([^"]*)" class="starlight-aside starlight-aside--(note|tip|caution|danger)"><p class="starlight-aside__title" aria-hidden="true">[\s\S]*?<\/p><div class="starlight-aside__content">([\s\S]*?)<\/div><\/aside>/g;
+const TONE = {
+  note: "info",
+  tip: "success",
+  caution: "warning",
+  danger: "danger",
+} as const;
+
+/** Re-renders Starlight asides through the console's Callout. */
+export function convertAsides(html: string): string {
+  return html.replace(
+    ASIDE,
+    (_m, label: string, type: keyof typeof TONE, inner: string) => {
+      const title = label
+        .replace(/&amp;/g, "&")
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'");
+      const callout = renderToStaticMarkup(
+        createElement(
+          Callout,
+          { tone: TONE[type], title },
+          createElement("div", { dangerouslySetInnerHTML: { __html: inner } }),
+        ),
+      );
+      return `<div class="pk-callout not-content my-4" data-callout="${type}">${callout}</div>`;
+    },
+  );
+}
+
 export function wrapTables(html: string): string {
   // Only the article body: the chrome has no Markdown tables.
   let heading = "Page";
@@ -101,15 +147,31 @@ export function wrapTables(html: string): string {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  let wrapped = 0;
+  let tables = 0;
+  let asides = 0;
+  const pages: string[] = [];
   for (const file of htmlFiles(dist)) {
     const html = readFileSync(file, "utf8");
-    if (!html.includes("<table")) continue;
-    const next = wrapTables(html);
+    pages.push(html);
+    if (!html.includes("<table") && !html.includes("starlight-aside")) continue;
+    const next = convertAsides(wrapTables(html));
     if (next !== html) {
       writeFileSync(file, next);
-      wrapped += (next.match(/data-pk-table/g) ?? []).length;
+      tables += (next.match(/data-pk-table/g) ?? []).length;
+      asides += (html.match(/class="starlight-aside /g) ?? []).length;
     }
   }
-  console.log(`wrap-tables: ${wrapped} table(s) wrapped`);
+  // Astro's React client entry: delete it when nothing references it.
+  const assets = join(dist, "_astro");
+  let removed = 0;
+  for (const f of readdirSync(assets).filter((n) =>
+    /^client\..*\.js$/.test(n),
+  )) {
+    if (pages.some((h) => h.includes(f))) continue;
+    rmSync(join(assets, f));
+    removed++;
+  }
+  console.log(
+    `console-parts: ${tables} table(s) wrapped, ${asides} aside(s) as callouts, ${removed} unused client bundle(s) removed`,
+  );
 }

@@ -9,12 +9,18 @@ import Default from "@astrojs/starlight/components/PageFrame.astro";
 import { sectionFor } from "../lib/section";
 
 const section = sectionFor(Astro.locals.starlightRoute.id);
+// The top-level folder (start, build, reference, help, ...): reference pages take a wider measure.
+const kind = Astro.locals.starlightRoute.id.split("/")[0];
 ---
 
-<div class="pk-section" data-service={section.slug}>
+<div class="pk-section" data-service={section.slug} data-kind={kind}>
   <Default>
     <slot name="header" slot="header" />
     <slot name="sidebar" slot="sidebar" />
     <slot />
   </Default>
 </div>
+
+<script>
+  import "../scripts/regions";
+</script>

@@ -9,7 +9,9 @@ export interface Props {
 }
 
 const { to } = Astro.props;
-const buttonClass = `${BUTTON_BASE} ${BUTTON_VARIANTS.outline} ${BUTTON_SIZES.sm} not-content`;
+// Customer-facing Help pages take 44 px targets; the developer and operator doors the console's.
+const help = Astro.locals.starlightRoute?.id?.startsWith("help/") ?? false;
+const buttonClass = `${BUTTON_BASE} ${BUTTON_VARIANTS.outline} ${BUTTON_SIZES.sm} not-content no-underline hover:no-underline my-2 ${help ? "min-h-11 min-w-11 px-4" : ""}`;
 ---
 
 <a class:list={["pk-portal-link", buttonClass]} href={portalHref(to)} target="_blank" rel="noopener"><slot>Open the portal</slot> ↗</a>

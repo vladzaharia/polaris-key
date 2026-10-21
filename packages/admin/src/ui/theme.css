@@ -5,8 +5,27 @@
  * Moved unchanged out of src/styles.css (the admin's one colour token `hover`, the customer
  * site's breakpoints, the type steps the brand scale lacks, the motion aliases and their
  * keyframes). styles.css imports it; the docs import it after @polaris-key/brand's tokens.css
- * and theme.css. No colour is defined here: every value is a brand token.
+ * and theme.css. Besides the @theme blocks it holds the three rules that define the neutral fill
+ * `--pk-admin-fill`, which `hover` aliases. Every value is a brand token.
  */
+
+/*
+ * A neutral fill that stands off BOTH the page and a raised card in either theme: one step up
+ * (overlay) on dark, one step down (sunken) on light, where raised and overlay are both white.
+ * It backs the old hover fill, the secondary fill and the sidebar's active/hover row.
+ */
+:root,
+[data-theme="dark"] {
+  --pk-admin-fill: var(--pk-surface-overlay);
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --pk-admin-fill: var(--pk-surface-sunken);
+  }
+}
+[data-theme="light"] {
+  --pk-admin-fill: var(--pk-surface-sunken);
+}
 
 /* The admin's one colour token of its own: the neutral fill above (hover rows, the sidebar's
    active row, secondary fills). The brand's `accent` is the section colour, so this is `hover`. */
