@@ -3,7 +3,7 @@ import { act, cleanup, render } from "@testing-library/react";
 import * as React from "react";
 import { SaveBar } from "../../src/ui/SaveBar.js";
 import { useAdminForm } from "../../src/ui/form.js";
-import { SAVE_BAR_INSET_VAR } from "../../src/ui/toast.js";
+import { AppToaster, SAVE_BAR_INSET_VAR, toast } from "../../src/ui/toast.js";
 
 afterEach(cleanup);
 
@@ -27,5 +27,14 @@ describe("SaveBar and toasts", () => {
     expect(root.getPropertyValue(SAVE_BAR_INSET_VAR)).toMatch(/^\d+px$/);
     act(() => form.discard());
     expect(root.getPropertyValue(SAVE_BAR_INSET_VAR)).toBe("");
+  });
+
+  it("lifts an error toast (which stays until dismissed) by the same inset", async () => {
+    const { findByText, container } = render(<AppToaster />);
+    act(() => void toast.error("Nothing was saved. Try again."));
+    await findByText("Nothing was saved. Try again.");
+    const list = document.querySelector("[data-sonner-toaster]") as HTMLElement;
+    expect(list.getAttribute("style")).toContain(SAVE_BAR_INSET_VAR);
+    void container;
   });
 });

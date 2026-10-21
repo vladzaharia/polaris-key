@@ -958,13 +958,22 @@ function consoleTour() {
       nav.platform.map((p) => row(p, `#/${p.path}`)),
     ),
   );
+  // The sidebar groups a product's sections by feature (tools/services.json, `console.group`):
+  // Release, Distribution and Update all sit under Ship builds.
+  const catalog = JSON.parse(read("tools", "services.json"));
+  const featureOf = (slug) => {
+    const group = catalog.services.find((x) => x.slug === slug)?.console?.group;
+    return catalog.features.find((f) => f.id === group)?.label;
+  };
   for (const s of nav.sections) {
+    const named = s.service ? featureOf(s.service) : undefined;
+    const feature = named !== s.label ? named : undefined;
     parts.push(
       "",
       `## ${s.label}`,
       "",
       s.service
-        ? `Shown when the product runs ${s.label}.`
+        ? `Shown${feature ? ` under ${feature}` : ""} when the product runs ${s.label}.`
         : "Always shown. It has no owning service.",
       "",
       table(

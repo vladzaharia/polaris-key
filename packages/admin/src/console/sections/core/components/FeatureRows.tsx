@@ -373,7 +373,7 @@ function SubSwitch({
         ctx.pending.change.requested.length === 1 &&
         ctx.pending.change.requested[0] === service;
       return (
-        <div data-service={service}>
+        <div data-service={feature.accent}>
           <FeatureSubRow
             title={row.label}
             htmlFor={id}
@@ -411,7 +411,7 @@ function SubSwitch({
     }
     case "packages":
       return (
-        <div data-service="distribution">
+        <div data-service={feature.accent}>
           <PackageFeedsControl
             slug={ctx.slug}
             distributionOn={ctx.enabled.distribution}
@@ -422,7 +422,7 @@ function SubSwitch({
       );
     case "customer-portal":
       return (
-        <div data-service="identity">
+        <div data-service={feature.accent}>
           <CustomerPortalControl
             slug={ctx.slug}
             blocked={!parentOn}

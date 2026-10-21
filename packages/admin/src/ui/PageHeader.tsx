@@ -247,6 +247,10 @@ export function PageHeader({
           <div
             className={cn(
               "flex shrink-0 items-center justify-end gap-2 sm:@max-2xl:col-span-2 sm:@max-2xl:justify-self-end",
+              // A short window (200 % zoom on a laptop): the cluster and the primary action share
+              // one row under the title instead of taking one each.
+              primaryAction &&
+                "sm:@max-2xl:short:col-span-1 sm:@max-2xl:short:col-start-1 sm:@max-2xl:short:row-start-2",
               // With an auto-refresh switch the cluster is too wide to share a phone's title row.
               freshness?.auto && "col-span-2 sm:col-span-1",
             )}
@@ -309,7 +313,7 @@ export function PageHeader({
         {primaryAction ? (
           <div
             className={cn(
-              "col-span-2 sm:@2xl:col-span-1 sm:@2xl:row-start-1 [&>:not(.sr-only)]:w-full sm:[&>:not(.sr-only)]:w-auto sm:@max-2xl:justify-self-end",
+              "col-span-2 sm:@2xl:col-span-1 sm:@2xl:row-start-1 [&>:not(.sr-only)]:w-full sm:[&>:not(.sr-only)]:w-auto sm:@max-2xl:justify-self-end sm:@max-2xl:short:col-span-1 sm:@max-2xl:short:col-start-2 sm:@max-2xl:short:row-start-2",
               hasCluster ? "sm:@2xl:col-start-3" : "sm:@2xl:col-start-2",
             )}
           >
