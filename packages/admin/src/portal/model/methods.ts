@@ -83,7 +83,7 @@ export function passkeyName(
     p.name?.trim() ||
     passkeyProvider(p.aaguid)?.name ||
     p.addedFrom?.trim() ||
-    "Passkey"
+    t("locker.methods.passkeyDefault")
   );
 }
 
@@ -100,7 +100,10 @@ export function plural(n: number, one: string, many: string): string {
 
 function list(parts: string[]): string {
   if (parts.length <= 1) return parts.join("");
-  return `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
+  return t("locker.list.and", {
+    first: parts.slice(0, -1).join(", "),
+    rest: parts[parts.length - 1]!,
+  });
 }
 
 /**
@@ -120,8 +123,10 @@ export function remainingAfter(
   const passkeys = left.filter((m) => m.group === "passkeys").length;
   return list([
     ...accounts,
-    ...(emails ? [plural(emails, "email", "emails")] : []),
-    ...(passkeys ? [plural(passkeys, "passkey", "passkeys")] : []),
+    ...(emails ? [t("locker.methods.emailsCount", { count: emails })] : []),
+    ...(passkeys
+      ? [t("locker.methods.passkeysCount", { count: passkeys })]
+      : []),
   ]);
 }
 
@@ -132,7 +137,7 @@ const SESSION_METHOD: Record<string, string> = {
   google: "Google",
   apple: "Apple",
   steam: "Steam",
-  device: "another device",
+  device: t("locker.methods.anotherDevice"),
   oidc: t("signin.sso.name"),
 };
 
@@ -172,6 +177,9 @@ export function stepUpProviders(view: PortalMethods): PortalProvider[] {
 /** An account method's row label: the connected identity ("Sam's Apple Account · Hide My Email"). */
 export function methodIdentity(m: PortalMethod): string | null {
   const shown = m.display?.trim() || null;
-  if (m.relay) return shown ? `${shown} · Hide My Email` : "Hide My Email";
+  if (m.relay) {
+    const relay = t("locker.methods.hideMyEmail");
+    return shown ? `${shown} · ${relay}` : relay;
+  }
   return shown;
 }

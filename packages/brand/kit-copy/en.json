@@ -5345,6 +5345,486 @@
       "value": "remove",
       "role": "hint",
       "note": "A verb phrase that ends a sentence (\"Use your passkey to ...\"); keep it short (P0-36)."
+    },
+    "locker.methods.addMethod": {
+      "value": "Add a sign-in method",
+      "role": "a11y",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.add": {
+      "value": "Add",
+      "role": "button",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.addEmail": {
+      "value": "Add an email",
+      "role": "button",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.subtitleEmail": {
+      "value": "Receipts and security notices go to your primary email.",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.subtitle": {
+      "value": "Each one is a key to this account. Connect or disconnect them any time; you need at least one.",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.connected": {
+      "value": "{name} is connected.",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.thatAccount": {
+      "value": "That account",
+      "role": "label",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.linkConflict": {
+      "value": "That {name} account is connected to another Polaris Locker account, so it wasn't added here. Connect a different one, or sign in to that account to use it.",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.stepUpAgain": {
+      "value": "Confirm it's you, then connect {name} again.",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.tookTooLong": {
+      "value": "That took too long. Connect {name} again.",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.notConnected": {
+      "value": "{name} wasn't connected. Try again.",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.recordedTo": {
+      "value": "We record the change and email {email}.",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.recorded": {
+      "value": "We record the change.",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.primary": {
+      "value": "Primary",
+      "role": "label",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.onlyMethod": {
+      "value": "Only method",
+      "role": "label",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.keepName": {
+      "value": "Keep {name}",
+      "role": "button",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.keepIt": {
+      "value": "Keep it",
+      "role": "button",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.disconnect": {
+      "value": "Disconnect",
+      "role": "button",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.remove": {
+      "value": "Remove",
+      "role": "button",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.disconnectName": {
+      "value": "Disconnect {name}",
+      "role": "button",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.removeName": {
+      "value": "Remove {name}",
+      "role": "button",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.disconnectNote": {
+      "value": "You won't sign in with {name} any more.",
+      "role": "body",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.disconnected": {
+      "value": "{name} was disconnected",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.removed": {
+      "value": "{name} was removed",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.removeNotePrimary": {
+      "value": "You won't sign in with {email} any more, and notices go to your next oldest address.",
+      "role": "body",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.passkeyRemoveNote": {
+      "value": "You won't sign in with {name} any more. It stays on your device until you delete it there.",
+      "role": "body",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.passkeyRemoved": {
+      "value": "The passkey was removed",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.thisEmail": {
+      "value": "this email",
+      "role": "label",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.thisPasskey": {
+      "value": "this passkey",
+      "role": "label",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.namedPasskey": {
+      "value": "the {name} passkey",
+      "role": "label",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.passkeyDefault": {
+      "value": "Passkey",
+      "role": "label",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.passkeys": {
+      "value": "Passkeys",
+      "role": "label",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.accounts": {
+      "value": "Accounts",
+      "role": "label",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.signInWithCode": {
+      "value": "sign in with a code",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.found": {
+      "value": "found {count, plural, one {# product} other {# products}}",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.addedOn": {
+      "value": "added {date}",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.lastUsed": {
+      "value": "last used {when}",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.neverUsed": {
+      "value": "never used to sign in",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.connectedOn": {
+      "value": "Connected {date}",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.addedCap": {
+      "value": "Added {date}",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.gameOnly": {
+      "value": "connect only from inside a game",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.addedFrom": {
+      "value": "added on {place}",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.footEmailed": {
+      "value": "Changing a method asks you to confirm it's you. Every change is recorded and emailed to {email}.",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.foot": {
+      "value": "Changing a method asks you to confirm it's you. Every change is recorded.",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.hideTitle": {
+      "value": "Bought something with your real email?",
+      "role": "title",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.hideAction": {
+      "value": "Add your real email",
+      "role": "button",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.hideBody": {
+      "value": "Hide My Email gave us a private address, so we can't match it to your real email. Add your real email and purchases made with it join your library.",
+      "role": "body",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.flagRevoked": {
+      "value": "You stopped using {name} with Polaris Locker. Connect it again to sign in with it.",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.flagDeleted": {
+      "value": "That {name} account was deleted.",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.flagRelay": {
+      "value": "Hide My Email stopped forwarding to this address.",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.hideMyEmail": {
+      "value": "Hide My Email",
+      "role": "label",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.blockLimit": {
+      "value": "You have as many passkeys as an account can hold. Remove one to add another.",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.blockEmail": {
+      "value": "Add an email first: it's how you get back in if a passkey is lost.",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.blockBrowser": {
+      "value": "This browser can't make passkeys. Try another browser or device.",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.errLinkConflict": {
+      "value": "Another Polaris Locker account uses this. Use a different one.",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.errUnavailable": {
+      "value": "{name} isn't available here right now.",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.errThisUnavailable": {
+      "value": "This isn't available here right now.",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.errUnreachable": {
+      "value": "{name} can't be reached right now. Try again later.",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.errThisUnreachable": {
+      "value": "It can't be reached right now. Try again later.",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.errTooMany": {
+      "value": "Too many changes. Wait a minute, then try again.",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.alreadyGone": {
+      "value": "It's already gone. The list is up to date now.",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.nameLength": {
+      "value": "Use 1 to 64 characters.",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.noticeHere": {
+      "value": "Receipts and security notices go here now.",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.primaryNow": {
+      "value": "{email} is now your primary email",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.makePrimaryName": {
+      "value": "Make {email} primary",
+      "role": "a11y",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.makePrimary": {
+      "value": "Make primary",
+      "role": "button",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.makePrimaryAsk": {
+      "value": "Make {email} primary?",
+      "role": "title",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.nameCleared": {
+      "value": "The name was cleared",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.renamed": {
+      "value": "Renamed",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.renameName": {
+      "value": "Rename {name}",
+      "role": "a11y",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.rename": {
+      "value": "Rename",
+      "role": "button",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.passkeyName": {
+      "value": "Passkey name",
+      "role": "label",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.leaveEmpty": {
+      "value": "Leave it empty to use “{name}”.",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.notConnectedRow": {
+      "value": "Not connected",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.connect": {
+      "value": "Connect",
+      "role": "button",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.emailAlreadyOn": {
+      "value": "{email} is already on your account",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.emailAdded": {
+      "value": "{email} was added",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.emailAddedNote": {
+      "value": "Products bought with it join your library.",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.addEmailName": {
+      "value": "Add {email}",
+      "role": "button",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.emailAddress": {
+      "value": "Email address",
+      "role": "label",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.emailNote": {
+      "value": "We'll send a code to check it's yours.",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.passkeyAdded": {
+      "value": "Passkey added",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.passkeyAddedNote": {
+      "value": "Use it to sign in to Polaris Locker on this device.",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.passkeyExists": {
+      "value": "This device already has a passkey for your account.",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.passkeyCancelled": {
+      "value": "The passkey wasn't added. Try again when you're ready.",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.passkeyFailed": {
+      "value": "This browser couldn't make a passkey. Try another browser or device.",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.passkeyReady": {
+      "value": "Thanks, that's you. Now add your passkey.",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.anotherDevice": {
+      "value": "another device",
+      "role": "label",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.emailsCount": {
+      "value": "{count, plural, one {# email} other {# emails}}",
+      "role": "label",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.passkeysCount": {
+      "value": "{count, plural, one {# passkey} other {# passkeys}}",
+      "role": "label",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.list.and": {
+      "value": "{first} and {rest}",
+      "role": "label",
+      "note": "A list of two or more items: items before the last, then the last (P0-36)."
+    },
+    "locker.methods.consequenceLeft": {
+      "value": "{detail} You still have {rest}.",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.disconnectAsk": {
+      "value": "Disconnect {name}?",
+      "role": "title",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.removeAsk": {
+      "value": "Remove {name}?",
+      "role": "title",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.lastLink": {
+      "value": "This is your only way to sign in. Connect another one first, then you can remove {name}.",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
+    },
+    "locker.methods.onlyEmail": {
+      "value": "This is your account's only email address. Add another one first, then you can remove it.",
+      "role": "hint",
+      "note": "Account → Sign-in methods (P0-36)."
     }
   }
 }
