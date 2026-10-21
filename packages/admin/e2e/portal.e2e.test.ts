@@ -1308,6 +1308,36 @@ describe("main flows", () => {
     expect(await o.violations()).toEqual([]);
     await o.close();
   });
+
+  it("Delete account is a modal dialog: Tab stays inside, Escape closes it and returns focus (B-092)", async () => {
+    const o = await open("three", "/#/account/data");
+    await h1(o.page, "Account");
+    const trigger = o.page.getByRole("button", { name: "Delete account" });
+    await trigger.click();
+    const dialog = o.page.getByRole("alertdialog", {
+      name: "Schedule your Polaris Locker account for deletion?",
+    });
+    await dialog.waitFor();
+    for (let i = 0; i < 5; i += 1) {
+      await o.page.keyboard.press("Tab");
+      expect(
+        await o.page.evaluate(
+          () => !!document.activeElement?.closest("[role=alertdialog]"),
+        ),
+      ).toBe(true);
+    }
+    await o.page.keyboard.press("Escape");
+    await dialog.waitFor({ state: "detached" });
+    await expect
+      .poll(() =>
+        o.page.evaluate(
+          () => document.activeElement?.textContent?.trim() ?? "",
+        ),
+      )
+      .toBe("Delete account…");
+    expect(o.requests).not.toContain("DELETE /api/me");
+    await o.close();
+  });
 });
 
 describe("product page, owner polish 2026-10-07", () => {

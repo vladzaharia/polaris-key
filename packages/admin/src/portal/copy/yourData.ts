@@ -21,7 +21,6 @@ export const YOUR_DATA_COPY = {
   "yourData.copy.started": t("yourData.copy.started"),
   "yourData.product.copy.title": t("yourData.product.copy.title"),
   "yourData.product.remove.title": t("yourData.product.remove.title"),
-  "yourData.product.remove.body": t("yourData.product.remove.body"),
   "yourData.product.support.title": t("yourData.product.support.title"),
   "yourData.product.support.body": t("yourData.product.support.body"),
   "yourData.remove.keep": t("yourData.remove.keep"),
@@ -29,39 +28,90 @@ export const YOUR_DATA_COPY = {
 
 /** The support code's one-line hint (I-41): said to the app's support, so it names the app. */
 export function supportCodeHint(name: string): string {
-  return `Give this code to ${name}'s support.`;
+  return t("yourData.support.hint", { name });
 }
 
-/** What a product's file holds: its licenses only when the person has one. */
-export function productCopyBody(licenses: number): string {
-  return licenses > 0
-    ? `Your ${licenses === 1 ? "license" : "licenses"}, devices, settings and activity.`
-    : "Your settings and activity.";
+/** A service map from the product's page (`services.config`, `services.sync`); `undefined` until read. */
+export type DataServices = Readonly<Record<string, boolean>> | undefined;
+
+/**
+ * What a product holds for the person, named from the services it has on (never a fixed list):
+ * settings only with Config, synced data only with Cloud Sync, activity always (settings and activity until the product's services are known). The license and its
+ * devices count only when the person has one (`withLicense`). Joined as a list in the reader's
+ * language ("settings, synced data and activity").
+ */
+function kinds(
+  services: DataServices,
+  licenses: number,
+  withLicense: boolean,
+): string {
+  // Before the product's page answers: the long-standing "settings and activity".
+  const on = services ?? { config: true };
+  const out: string[] = [];
+  if (withLicense && licenses > 0) {
+    out.push(
+      t(licenses === 1 ? "yourData.kind.license" : "yourData.kind.licenses"),
+      t("yourData.kind.devices"),
+    );
+  }
+  if (on.config) out.push(t("yourData.kind.settings"));
+  if (on.sync) out.push(t("yourData.kind.synced"));
+  out.push(t("yourData.kind.activity"));
+  return new Intl.ListFormat("en", {
+    style: "long",
+    type: "conjunction",
+  }).format(out);
+}
+
+/** What a product's file holds. */
+export function productCopyBody(
+  licenses: number,
+  services: DataServices,
+): string {
+  return t("yourData.product.copy.body", {
+    detail: kinds(services, licenses, true),
+  });
+}
+
+/** What the removal deletes (the data, never the license): the card row's sentence. */
+export function removeBody(services: DataServices): string {
+  return t("yourData.product.remove.body", {
+    detail: kinds(services, 0, false),
+  });
 }
 
 /**
- * The removal's consequences, one effect per line. While a license stays (the default, D25) the
- * developer can still connect the person to the old records through it, and the line says so; with
- * the choice to remove it too, that line gives way to the choice's own words. An open product has
- * no license: only that it stays in the library.
+ * The removal's consequences, one effect per line, each fact once. While a license stays (the
+ * default, D25) the developer can still connect the person to the old records through it, and the
+ * line says so; with the choice to remove it too, that line gives way to the choice's own words. An
+ * open product has no license: only that it stays in the library.
  */
 export function removeConsequences(o: {
   name: string;
   developer: string | null;
   licenses: number;
   alsoRemoveLicense: boolean;
+  services: DataServices;
 }): string[] {
   const list = [
-    `Polaris Locker deletes your settings and activity for ${o.name}. This can't be undone.`,
-    `${o.developer ?? t("license.developerFallbackCap")} is told, so they can delete their own copy.`,
+    t("yourData.remove.goes", {
+      detail: kinds(o.services, 0, false),
+      product: o.name,
+    }),
+    t("yourData.remove.developerTold", {
+      developer: o.developer ?? t("license.developerFallbackCap"),
+    }),
   ];
-  if (o.licenses === 0) list.push(`${o.name} stays in your library.`);
+  if (o.licenses === 0)
+    list.push(t("yourData.remove.entryStays", { product: o.name }));
   else if (!o.alsoRemoveLicense) {
-    const who = o.developer ?? t("license.developerFallback");
     list.push(
-      o.licenses === 1
-        ? `Your license stays in your library. While it does, ${who} can still connect you to your old records through it.`
-        : `Your licenses stay in your library. While they do, ${who} can still connect you to your old records through them.`,
+      t(
+        o.licenses === 1
+          ? "yourData.remove.licenseStaysOne"
+          : "yourData.remove.licenseStaysMany",
+        { developer: o.developer ?? t("license.developerFallback") },
+      ),
     );
   }
   return list;
@@ -70,14 +120,16 @@ export function removeConsequences(o: {
 /** The choice, offered only when every license can be added back with its key. */
 export function alsoRemoveLabel(licenses: number): string {
   return licenses === 1
-    ? "Also remove my license from my library"
-    : `Also remove my ${licenses} licenses from my library`;
+    ? t("yourData.remove.alsoLabelOne")
+    : t("yourData.remove.alsoLabelMany", { count: licenses });
 }
 
 export function alsoRemoveNote(licenses: number): string {
-  return licenses === 1
-    ? "It won't come back to this account by itself. To add it again, use its key."
-    : "They won't come back to this account by themselves. To add them again, use their keys.";
+  return t(
+    licenses === 1
+      ? "yourData.remove.alsoNoteOne"
+      : "yourData.remove.alsoNoteMany",
+  );
 }
 
 /** The confirm button names the choice made, so the bigger removal is never a surprise. */
@@ -86,25 +138,11 @@ export function removeConfirm(
   licenses: number,
 ): string {
   if (!alsoRemoveLicense) return t("yourData.product.remove.title");
-  return licenses === 1
-    ? "Remove my data and license"
-    : "Remove my data and licenses";
-}
-
-/** The toast's second line: what became of the license, or that an open product stays. */
-export function removedNote(o: {
-  name: string;
-  licenses: number;
-  alsoRemoveLicense: boolean;
-}): string {
-  if (o.licenses === 0) return `${o.name} stays in your library.`;
-  if (o.alsoRemoveLicense)
-    return o.licenses === 1
-      ? "Your license also left your library. To add it again, use its key."
-      : "Your licenses also left your library. To add them again, use their keys.";
-  return o.licenses === 1
-    ? "Your license stays in your library."
-    : "Your licenses stay in your library.";
+  return t(
+    licenses === 1
+      ? "yourData.remove.confirmAlsoOne"
+      : "yourData.remove.confirmAlsoMany",
+  );
 }
 
 /**
@@ -118,12 +156,12 @@ export function notRemovableCopy(
 ): { title: string; description: string } {
   const why =
     reason === "no_active_key"
-      ? "A license has no active key, so it couldn't be added back later. It stays in your library."
+      ? t("yourData.remove.refused.noKey")
       : reason === "key_claim_off"
-        ? `${name} doesn't let you add a license with its key, so it couldn't be added back later. It stays in your library.`
+        ? t("yourData.remove.refused.keyClaimOff", { name })
         : t("core.codes.not_removable.message");
   return {
-    title: "Nothing was removed",
-    description: `${why} You can still remove your data and keep your license.`,
+    title: t("yourData.remove.refused.title"),
+    description: `${why} ${t("yourData.remove.refused.rest")}`,
   };
 }

@@ -62,7 +62,7 @@ function productView(product: string, licenses: PortalLicenseSummary[]) {
     iconUrl: null,
     headerUrl: null,
     support: null,
-    services: { license: true },
+    services: { license: true, config: true, sync: true },
     status: "active",
     addedAt: NOW_S - 30 * 86_400,
     licenses: licenses.map((l) => ({
@@ -150,13 +150,23 @@ async function open(
 async function openRemove(
   card: HTMLElement,
   name = "Mossgarden",
+  { typed = true }: { typed?: boolean } = {},
 ): Promise<HTMLElement> {
   await userEvent.click(
     within(card).getByRole("button", { name: `Remove my data from ${name}` }),
   );
-  return screen.findByRole("alertdialog", {
+  const dialog = await screen.findByRole("alertdialog", {
     name: `Remove your data from ${name}?`,
   });
+  // The removal can't be undone: it waits for the app's name (any case).
+  if (typed)
+    await userEvent.type(
+      within(dialog).getByRole("textbox", {
+        name: /Type the app's name to confirm/,
+      }),
+      name.toLowerCase(),
+    );
+  return dialog;
 }
 
 const count = (request: string): number =>
@@ -179,7 +189,9 @@ describe("Download my data from a product (I-11)", () => {
   it("shows the product's own card, scoped in its words, and fetches nothing until pressed", async () => {
     const card = await open(worker().routes);
     expect(
-      within(card).getByText("Your license, devices, settings and activity."),
+      within(card).getByText(
+        "Your license, devices, settings, synced data, and activity.",
+      ),
     ).toBeTruthy();
     expect(
       within(card).getByRole("button", {
@@ -297,7 +309,7 @@ describe("Remove my data from a product (I-11)", () => {
     const { routes, removals } = worker();
     const card = await open(routes);
     const libraryReads = count("GET /api/library");
-    const dialog = await openRemove(card);
+    const dialog = await openRemove(card, "Mossgarden", { typed: false });
     expect(
       within(dialog).getByText(
         "This only affects Mossgarden. Your Polaris Locker account and your other apps stay as they are.",
@@ -308,7 +320,7 @@ describe("Remove my data from a product (I-11)", () => {
         .getAllByRole("listitem")
         .map((li) => li.textContent),
     ).toEqual([
-      "Polaris Locker deletes your settings and activity for Mossgarden. This can't be undone.",
+      "Polaris Locker deletes your settings, synced data, and activity for Mossgarden. This can't be undone.",
       "Little Fern is told, so they can delete their own copy.",
       "Your license stays in your library. While it does, Little Fern can still connect you to your old records through it.",
     ]);
@@ -333,7 +345,7 @@ describe("Remove my data from a product (I-11)", () => {
       ),
     );
     // Escape cancels too.
-    await openRemove(card);
+    await openRemove(card, "Mossgarden", { typed: false });
     await userEvent.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
     await settle();
@@ -376,9 +388,10 @@ describe("Remove my data from a product (I-11)", () => {
     expect(
       await screen.findByText("Your data was removed from Mossgarden"),
     ).toBeTruthy();
+    // The dialog said what stays; the toast only says it is done.
     expect(
-      screen.getByText("Your license stays in your library."),
-    ).toBeTruthy();
+      screen.queryByText("Your license stays in your library."),
+    ).toBeNull();
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
     await waitFor(() =>
       expect(count("GET /api/library")).toBe(before.library + 1),
@@ -429,11 +442,6 @@ describe("Remove my data from a product (I-11)", () => {
     expect(
       await screen.findByText("Your data was removed from Mossgarden"),
     ).toBeTruthy();
-    expect(
-      screen.getByText(
-        "Your license also left your library. To add it again, use its key.",
-      ),
-    ).toBeTruthy();
     await waitFor(() => expect(window.location.hash).toBe("#/"));
     await screen.findByRole("heading", { level: 1, name: "Your library" });
     // Ember, held separately, stays; Mossgarden went with its license.
@@ -455,7 +463,9 @@ describe("Remove my data from a product (I-11)", () => {
     ]);
     const card = await open(routes);
     expect(
-      within(card).getByText("Your licenses, devices, settings and activity."),
+      within(card).getByText(
+        "Your licenses, devices, settings, synced data, and activity.",
+      ),
     ).toBeTruthy();
     const dialog = await openRemove(card);
     expect(
@@ -484,9 +494,7 @@ describe("Remove my data from a product (I-11)", () => {
       ]),
     );
     expect(
-      await screen.findByText(
-        "Your licenses also left your library. To add them again, use their keys.",
-      ),
+      await screen.findByText("Your data was removed from Mossgarden"),
     ).toBeTruthy();
     await waitFor(() => expect(window.location.hash).toBe("#/"));
   });
@@ -792,9 +800,6 @@ describe("an open product's page (I-11)", () => {
       await screen.findByText("Your data was removed from Driftwood Notes"),
     ).toBeTruthy();
     // The entry stays: the page is still its page, with its card.
-    expect(
-      screen.getByText("Driftwood Notes stays in your library."),
-    ).toBeTruthy();
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
     expect(window.location.hash).toBe("#/p/driftwood");
     expect(
@@ -922,6 +927,104 @@ describe("A stale sign-in and the support code (I-11)", () => {
       await screen.findByText("Your data was removed from Mossgarden"),
     ).toBeTruthy();
     expect(removals).toHaveLength(2);
+  });
+
+  it("remove: a refusal on the retry after the prompt shows in the dialog, not nowhere (B-093)", async () => {
+    let asked = 0;
+    const { routes, removals } = worker([mine()], (_url, done) =>
+      ++asked === 1
+        ? STEP_UP
+        : asked === 2
+          ? { status: 500, body: { error: "internal_error" } }
+          : done(),
+    );
+    const card = await open({
+      ...routes,
+      "/api/me/methods": STALE,
+      "POST /api/signin/email/start": {
+        ok: true,
+        expiresIn: 600,
+        codeLength: 6,
+        resendIn: 60,
+      },
+      "POST /api/signin/email/verify": { status: "signed_in", next: "/" },
+    });
+    const dialog = await openRemove(card);
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Remove my data" }),
+    );
+    const prompt = await within(dialog).findByRole("group", {
+      name: "Confirm it's you first",
+    });
+    await userEvent.click(
+      within(prompt).getByRole("button", {
+        name: `Email me a code at ${ACCOUNT.email}`,
+      }),
+    );
+    await userEvent.type(
+      await within(prompt).findByRole("textbox", { name: "6-digit code" }),
+      "481920",
+    );
+    await waitFor(() => expect(removals).toHaveLength(2));
+    expect(await within(dialog).findByRole("alert")).toBeTruthy();
+    expect(
+      screen.queryByText("Your data was removed from Mossgarden"),
+    ).toBeNull();
+    // Pressing again tries again, and clears the message.
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Remove my data" }),
+    );
+    expect(
+      await screen.findByText("Your data was removed from Mossgarden"),
+    ).toBeTruthy();
+  });
+
+  it("remove waits for the app's name, and offers the download first (B-093)", async () => {
+    const { routes, removals } = worker();
+    const card = await open(routes);
+    const dialog = await openRemove(card, "Mossgarden", { typed: false });
+    const confirm = (): HTMLElement =>
+      within(dialog).getByRole("button", { name: "Remove my data" });
+    expect(confirm().getAttribute("aria-disabled")).toBe("true");
+    await userEvent.click(confirm());
+    expect(removals).toEqual([]);
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Download my data first" }),
+    );
+    await waitFor(() => expect(files.saved).toHaveLength(1));
+    // The download left the dialog open, and still nothing was removed.
+    expect(screen.getByRole("alertdialog")).toBeTruthy();
+    expect(removals).toEqual([]);
+    await userEvent.type(
+      within(dialog).getByRole("textbox", {
+        name: /Type the app's name to confirm/,
+      }),
+      "MOSSGARDEN",
+    );
+    expect(confirm().getAttribute("aria-disabled")).toBeNull();
+    await userEvent.click(confirm());
+    await waitFor(() => expect(removals).toHaveLength(1));
+  });
+
+  it("the lists follow the product's services: no settings or synced data where those are off (B-094)", async () => {
+    const { routes } = worker();
+    const card = await open({
+      ...routes,
+      "/api/products/mossgarden": {
+        ...productView("mossgarden", [mine()]),
+        services: { license: true },
+      },
+    });
+    expect(
+      await within(card).findByText("Your license, devices, and activity."),
+    ).toBeTruthy();
+    const dialog = await openRemove(card, "Mossgarden", { typed: false });
+    expect(
+      within(dialog).getByText(
+        "Polaris Locker deletes your activity for Mossgarden. This can't be undone.",
+      ),
+    ).toBeTruthy();
+    expect(dialog.textContent).not.toMatch(/settings|synced/);
   });
 
   it("download: the prompt takes the refusal's place, and confirming downloads", async () => {

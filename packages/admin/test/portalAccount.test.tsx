@@ -55,6 +55,9 @@ describe("Account v1 (PX-07)", () => {
       "Appearance",
       "Your data",
     ]);
+    // A coarse pointer gets the 44 px target (B-095).
+    for (const a of within(nav).getAllByRole("link"))
+      expect(a.className).toMatch(/pointer-coarse:min-h-11|max-sm:h-11/);
     const signOut = within(screen.getByRole("main")).getByRole("button", {
       name: "Sign out",
     });
@@ -122,28 +125,27 @@ describe("Account v1 (PX-07)", () => {
     await userEvent.click(
       within(data).getByRole("button", { name: "Delete account" }),
     );
-    const heading = within(data).getByRole("heading", {
+    const dialog = await screen.findByRole("alertdialog", {
       name: "Schedule your Polaris Locker account for deletion?",
     });
-    await waitFor(() => expect(document.activeElement).toBe(heading));
-    const confirm = within(data).getByRole("button", {
-      name: "Schedule deletion",
-    }) as HTMLButtonElement;
-    expect(confirm.disabled).toBe(true);
-    await userEvent.type(
-      within(data).getByRole("textbox", {
-        name: `Type ${ACCOUNT.email} to confirm`,
-      }),
-      "mara@",
+    // Focus starts on the least destructive button; the page behind is inert.
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(dialog).getByRole("button", { name: "Cancel" }),
+      ),
     );
-    expect(confirm.disabled).toBe(true);
-    await userEvent.type(
-      within(data).getByRole("textbox", {
-        name: `Type ${ACCOUNT.email} to confirm`,
-      }),
-      "fennick.studio",
-    );
-    expect(confirm.disabled).toBe(false);
+    const confirmBtn = (): HTMLElement =>
+      within(dialog).getByRole("button", { name: "Schedule deletion" });
+    expect(confirmBtn().getAttribute("aria-disabled")).toBe("true");
+    const field = within(dialog).getByRole("textbox", {
+      name: new RegExp(`Type your email to confirm\\s*${ACCOUNT.email}`),
+    });
+    await userEvent.type(field, "mara@");
+    expect(confirmBtn().getAttribute("aria-disabled")).toBe("true");
+    // Any case matches: it is an email address.
+    await userEvent.type(field, "FENNICK.studio");
+    expect(confirmBtn().getAttribute("aria-disabled")).toBeNull();
+    const confirm = confirmBtn();
     await userEvent.click(confirm);
     await waitFor(() => expect(fetchedRequests()).toContain("DELETE /api/me"));
     expect(
@@ -182,10 +184,31 @@ describe("Account v1 (PX-07)", () => {
     await userEvent.click(
       within(data).getByRole("button", { name: "Delete account" }),
     );
-    await userEvent.click(within(data).getByRole("button", { name: "Cancel" }));
-    expect(
-      within(data).queryByRole("heading", { name: /Delete your/ }),
-    ).toBeNull();
+    const dialog = await screen.findByRole("alertdialog");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Cancel" }),
+    );
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(fetchedRequests()).not.toContain("DELETE /api/me");
+  });
+
+  it("Delete account is a modal dialog: Escape closes it, focus goes back, and nothing is sent (B-092)", async () => {
+    mockFetch(signedIn());
+    renderPortal();
+    const data = await screen.findByRole("region", { name: "Your data" });
+    const trigger = within(data).getByRole("button", {
+      name: "Delete account",
+    });
+    await userEvent.click(trigger);
+    const dialog = await screen.findByRole("alertdialog");
+    // Focus is trapped: Tab never leaves the dialog.
+    for (let i = 0; i < 6; i += 1) {
+      await userEvent.tab();
+      expect(dialog.contains(document.activeElement)).toBe(true);
+    }
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
     expect(fetchedRequests()).not.toContain("DELETE /api/me");
   });
 
@@ -503,15 +526,16 @@ describe("Your data: a stale sign-in asks to confirm it's you in place (I-11)", 
     await userEvent.click(
       within(data).getByRole("button", { name: "Delete account" }),
     );
-    const field = within(data).getByRole("textbox", {
-      name: `Type ${ACCOUNT.email} to confirm`,
+    const dialog = await screen.findByRole("alertdialog");
+    const field = within(dialog).getByRole("textbox", {
+      name: /Type your email to confirm/,
     }) as HTMLInputElement;
     await userEvent.type(field, ACCOUNT.email);
     await userEvent.click(
-      within(data).getByRole("button", { name: "Schedule deletion" }),
+      within(dialog).getByRole("button", { name: "Schedule deletion" }),
     );
-    expect(within(data).queryByRole("alert")).toBeNull();
-    await confirmItsYou(data);
+    expect(within(dialog).queryByRole("alert")).toBeNull();
+    await confirmItsYou(dialog);
     await waitFor(() => expect(deletes).toBe(2));
     expect(field.value).toBe(ACCOUNT.email);
   });
