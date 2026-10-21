@@ -6,6 +6,7 @@ import {
 } from "../../components/motionPreference.js";
 import { useTheme, type ThemePreference } from "../../components/theme.js";
 import { Button } from "../../ui/Button.js";
+import { ConfirmDialog } from "../../ui/ConfirmDialog.js";
 import { toast } from "../../ui/toast.js";
 import { cn } from "../../lib/cn.js";
 import type { PortalAccount } from "../api.js";
@@ -234,7 +235,7 @@ function SectionLink({
       className={cn(
         pill
           ? "inline-flex h-9 items-center whitespace-nowrap rounded-full border px-4 text-sm max-sm:h-11"
-          : "relative block rounded-md px-3 py-2 text-sm",
+          : "relative flex items-center rounded-md px-3 py-2 text-sm pointer-coarse:min-h-11",
         pill
           ? on
             ? "border-fg-strong bg-hover font-semibold text-fg-strong"
@@ -273,8 +274,8 @@ const MOTION_OPTIONS: {
 ];
 
 /**
- * Appearance (§0.3): the theme (Match my device / Dark / Light, persisted and applied before
- * paint) and Motion (notes/S-23 §6.6, MO-12: Match my device / Reduced, stored in this browser).
+ * Appearance (§0.3): the theme (Match device / Dark / Light, persisted and applied before
+ * paint) and Motion (notes/S-23 §6.6, MO-12: Match device / Reduced, stored in this browser).
  */
 function Appearance(): React.ReactElement {
   const { preference, setPreference } = useTheme();
@@ -312,43 +313,33 @@ function Appearance(): React.ReactElement {
  */
 function YourData({ account }: { account: PortalAccount }): React.ReactElement {
   const [open, setOpen] = React.useState(false);
-  const [typed, setTyped] = React.useState("");
   const [askSchedule, setAskSchedule] = React.useState(false);
   const [askCancel, setAskCancel] = React.useState(false);
+  // What the retry after a step-up prompt met: shown in the dialog like any other refusal.
+  const [retryError, setRetryError] = React.useState<unknown>(null);
   const exportData = useExportAccountData();
   const del = useDeleteAccount();
   const cancel = useCancelAccountDeletion();
-  const headingRef = React.useRef<HTMLHeadingElement>(null);
   const scheduledRef = React.useRef<HTMLHeadingElement>(null);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
-  const inputId = React.useId();
   const target = account.email || account.name;
-  const matches = typed.trim().toLowerCase() === target.toLowerCase();
   const scheduled = account.deletion
     ? {
         at: new Date(account.deletion.dueAt * 1000),
         label: formatDayTime(account.deletion.dueAt),
       }
     : null;
-  React.useEffect(() => {
-    if (open) headingRef.current?.focus();
-  }, [open]);
 
-  const schedule = (): void =>
-    del.mutate(undefined, {
-      onSuccess: () => {
-        setOpen(false);
-        setTyped("");
-        setAskSchedule(false);
-        // The box mounts once the account is read again: focus its heading then.
-        requestAnimationFrame(() =>
-          requestAnimationFrame(() => scheduledRef.current?.focus()),
-        );
-      },
-      onError: (err) => {
-        if (isStepUpRequired(err)) setAskSchedule(true);
-      },
-    });
+  /** Schedules the erasure; throws what the Worker refused (a stale sign-in included). */
+  const schedule = async (): Promise<void> => {
+    await del.mutateAsync();
+    setOpen(false);
+    setAskSchedule(false);
+    // The box mounts once the account is read again: focus its heading then.
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => scheduledRef.current?.focus()),
+    );
+  };
   const cancelDeletion = (): void =>
     cancel.mutate(undefined, {
       onSuccess: () => {
@@ -362,10 +353,6 @@ function YourData({ account }: { account: PortalAccount }): React.ReactElement {
         if (isStepUpRequired(err)) setAskCancel(true);
       },
     });
-  const delFailure =
-    del.error && !isStepUpRequired(del.error)
-      ? portalErrorCopy(del.error, { account: true })
-      : null;
   const cancelFailure =
     cancel.error && !isStepUpRequired(cancel.error)
       ? portalErrorCopy(cancel.error, { account: true })
@@ -430,77 +417,6 @@ function YourData({ account }: { account: PortalAccount }): React.ReactElement {
                 {t("locker.delete.cancel")}
               </Button>
             </div>
-          ) : open ? (
-            <div className="space-y-4 rounded-lg border border-danger-border bg-danger-subtle p-4">
-              <h3
-                ref={headingRef}
-                tabIndex={-1}
-                className="font-medium text-fg-strong outline-none"
-              >
-                {t("locker.delete.askTitle")}
-              </h3>
-              <ul className="list-disc space-y-1 pl-5 text-sm text-fg">
-                <li>{t("locker.delete.askErased")}</li>
-                <li>{t("locker.delete.askLicenses")}</li>
-                <li>{t("locker.delete.askEmail", { email: account.email })}</li>
-              </ul>
-              <div className="space-y-1.5">
-                <label
-                  htmlFor={inputId}
-                  className="text-sm font-medium text-fg-strong"
-                >
-                  {t("locker.delete.type", { name: target })}
-                </label>
-                <input
-                  id={inputId}
-                  value={typed}
-                  autoComplete="off"
-                  spellCheck={false}
-                  onChange={(e) => setTyped(e.target.value)}
-                  className="h-11 w-full rounded-md border border-border-strong bg-surface-page px-3 text-fg-strong"
-                />
-              </div>
-              {askSchedule ? (
-                <StepUpInline
-                  verb={t("locker.delete.verbSchedule")}
-                  onConfirmed={() => {
-                    setAskSchedule(false);
-                    schedule();
-                  }}
-                  onCancel={() => setAskSchedule(false)}
-                />
-              ) : null}
-              {delFailure ? (
-                <p role="alert" className="text-sm text-danger">
-                  {delFailure.line}
-                </p>
-              ) : null}
-              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                <Button
-                  variant="outline"
-                  className="max-sm:min-h-11"
-                  onClick={() => {
-                    setOpen(false);
-                    setTyped("");
-                    setAskSchedule(false);
-                    del.reset();
-                    requestAnimationFrame(() => triggerRef.current?.focus());
-                  }}
-                >
-                  {t("common.cancel")}
-                </Button>
-                <Button
-                  variant="danger"
-                  className="max-sm:min-h-11"
-                  disabled={!matches}
-                  loading={del.isPending}
-                  iconStart={<Trash2 aria-hidden />}
-                  onClick={schedule}
-                >
-                  {t("locker.delete.confirm")}
-                </Button>
-              </div>
-            </div>
           ) : (
             <DataRow
               danger
@@ -521,6 +437,62 @@ function YourData({ account }: { account: PortalAccount }): React.ReactElement {
           )}
         </div>
       </div>
+      <ConfirmDialog
+        open={open}
+        onOpenChange={(o) => {
+          setOpen(o);
+          if (!o) {
+            setAskSchedule(false);
+            setRetryError(null);
+            del.reset();
+            requestAnimationFrame(() => triggerRef.current?.focus());
+          }
+        }}
+        intent="danger"
+        title={t("locker.delete.askTitle")}
+        consequences={[
+          t("locker.delete.askErased"),
+          t("locker.delete.askLicenses"),
+          t("locker.delete.askEmail", { email: account.email }),
+        ]}
+        typedConfirmation={{
+          value: target,
+          label: t("locker.delete.type"),
+          ignoreCase: true,
+        }}
+        confirmLabel={t("locker.delete.confirm")}
+        cancelLabel={t("common.cancel")}
+        closeOnSuccess={false}
+        error={retryError}
+        describeError={(err) => portalErrorCopy(err, { account: true })}
+        onConfirm={async () => {
+          setRetryError(null);
+          try {
+            await schedule();
+          } catch (err) {
+            // A stale sign-in: the prompt shows below, and confirming runs it again.
+            if (isStepUpRequired(err)) {
+              setAskSchedule(true);
+              return;
+            }
+            throw err;
+          }
+        }}
+      >
+        {askSchedule ? (
+          <StepUpInline
+            verb={t("locker.delete.verbSchedule")}
+            onConfirmed={() => {
+              setAskSchedule(false);
+              schedule().catch((err: unknown) => {
+                if (isStepUpRequired(err)) setAskSchedule(true);
+                else setRetryError(err);
+              });
+            }}
+            onCancel={() => setAskSchedule(false)}
+          />
+        ) : null}
+      </ConfirmDialog>
     </SectionCard>
   );
 }

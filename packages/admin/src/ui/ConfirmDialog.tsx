@@ -34,8 +34,14 @@ export interface ConfirmDialogProps {
   /** Repeats the verb: "Yank 2.4.0". */
   confirmLabel?: string;
   cancelLabel?: string;
-  typedConfirmation?: { value: string; label: string };
+  /** `ignoreCase`: the match trims and ignores case (an email address). */
+  typedConfirmation?: { value: string; label: string; ignoreCase?: boolean };
   onConfirm: () => void | Promise<void>;
+  /**
+   * An error the caller met outside `onConfirm` (a retry after a step-up prompt), shown inline like
+   * a rejection. Pass `null` to clear it.
+   */
+  error?: unknown;
   /** Inputs the confirmation needs (a reason, a version), rendered under the consequences. */
   children?: React.ReactNode;
   /** Turns an error into the inline message, e.g. `errorCopy`. Default: its `message`. */
@@ -86,6 +92,7 @@ export function ConfirmDialog({
   cancelLabel = "Cancel",
   typedConfirmation,
   onConfirm,
+  error: callerError = null,
   children,
   describeError = defaultDescribe,
   closeOnSuccess = true,
@@ -110,7 +117,11 @@ export function ConfirmDialog({
   }, [open]);
 
   const busy = pending || loading;
-  const typedOk = !typedConfirmation || typed === typedConfirmation.value;
+  const typedOk =
+    !typedConfirmation ||
+    (typedConfirmation.ignoreCase
+      ? typed.trim().toLowerCase() === typedConfirmation.value.toLowerCase()
+      : typed === typedConfirmation.value);
   const variant: ButtonVariant =
     confirmVariant ?? (intent === "danger" ? "danger" : "primary");
 
@@ -129,7 +140,8 @@ export function ConfirmDialog({
   };
 
   // `null`: the caller shows this error itself (at a field), so no banner.
-  const err = error ? describeError(error) : null;
+  const shown = error ?? callerError;
+  const err = shown ? describeError(shown) : null;
 
   return (
     <Dialog

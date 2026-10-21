@@ -89,6 +89,40 @@ describe("ConfirmDialog", () => {
     );
   });
 
+  it("ignoreCase: a typed email matches in any case and with stray spaces", async () => {
+    const user = userEvent.setup();
+    const onConfirm = vi.fn();
+    render(
+      <Harness
+        intent="danger"
+        typedConfirmation={{
+          value: "Ada@Example.com",
+          label: "Type your email",
+          ignoreCase: true,
+        }}
+        onConfirm={onConfirm}
+      />,
+    );
+    await screen.findByRole("alertdialog");
+    await user.type(
+      screen.getByLabelText(/Type your email/),
+      " ada@example.COM ",
+    );
+    await user.click(screen.getByRole("button", { name: "Delete product" }));
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows an error the caller passes in, like a rejection", async () => {
+    render(
+      <Harness
+        onConfirm={() => undefined}
+        error={new Error("The retry failed.")}
+      />,
+    );
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("The retry failed.");
+  });
+
   it("keeps the dialog open with the error inline, then retries", async () => {
     const user = userEvent.setup();
     const onConfirm = vi
