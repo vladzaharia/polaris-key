@@ -214,35 +214,58 @@ describe("covered pages", () => {
 });
 
 describe("other sources (advisory)", () => {
-  let failing: string[] = [];
-  beforeAll(async () => {
-    const ts = compileTs(advisory.filter(isTs));
-    const py = python ? compilePython(advisory.filter(isPy), python) : [];
-    const native: Failure[] = [];
-    for (const lang of NATIVE_LANGS) {
-      if (skipReasonOf(lang)) continue;
-      native.push(
-        ...(await compileOf(
-          lang,
-          advisory.filter((s) => s.lang === lang),
-        )),
-      );
-    }
-    failing = [
-      ...new Set([...ts, ...py, ...native].map((f) => idOf(f.snippet))),
-    ].sort();
-  }, 300_000);
+  // One test per lane, each with its own budget: a single hook compiling every lane in turn ran
+  // into its 300 s limit when the machine was loaded. The baseline check below runs after them.
+  const failing = new Set<string>();
+  const note = (fs: Failure[]): void => {
+    for (const f of fs) failing.add(idOf(f.snippet));
+  };
+
+  it(
+    "compiles in the TypeScript lane",
+    () => {
+      note(compileTs(advisory.filter(isTs)));
+    },
+    LONG,
+  );
+
+  pyIt(
+    "compiles in the Python lane",
+    () => {
+      note(compilePython(advisory.filter(isPy), python ?? "python3"));
+    },
+    LONG,
+  );
+
+  for (const lang of NATIVE_LANGS) {
+    const reason = skipReasonOf(lang);
+    (reason ? it.skip : it)(
+      `compiles in the ${lang} lane`,
+      async () => {
+        note(
+          await compileOf(
+            lang,
+            advisory.filter((s) => s.lang === lang),
+          ),
+        );
+      },
+      LONG * 3,
+    );
+  }
 
   it("fail no block that is not in the baseline", () => {
     if (process.env.UPDATE_SNIPPET_BASELINE) {
-      writeFileSync(BASELINE, `${JSON.stringify(failing, null, 2)}\n`);
+      writeFileSync(
+        BASELINE,
+        `${JSON.stringify([...failing].sort(), null, 2)}\n`,
+      );
       return;
     }
     const known = new Set(
       JSON.parse(readFileSync(BASELINE, "utf8")) as string[],
     );
     // A lane that could not run here leaves its entries alone; only a run of every lane may shrink.
-    expect(failing.filter((id) => !known.has(id))).toEqual([]);
+    expect([...failing].filter((id) => !known.has(id))).toEqual([]);
   });
 });
 
