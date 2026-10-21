@@ -462,6 +462,7 @@ function YourData({ account }: { account: PortalAccount }): React.ReactElement {
         }}
         confirmLabel={t("locker.delete.confirm")}
         cancelLabel={t("common.cancel")}
+        closeButton={false}
         closeOnSuccess={false}
         error={retryError}
         describeError={(err) => portalErrorCopy(err, { account: true })}

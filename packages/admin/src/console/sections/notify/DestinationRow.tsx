@@ -214,7 +214,7 @@ export function DestinationRow({
         : null;
   const showError = d.enabled && d.lastError && d.lastStatus !== "ok";
   return (
-    <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-3 px-4 py-2.5">
+    <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-2 px-4 py-2.5 @[16rem]:grid-cols-[auto_minmax(0,1fr)_auto]">
       <Glyph
         aria-hidden
         className={cn(
@@ -262,8 +262,10 @@ export function DestinationRow({
           </p>
         ) : null}
       </div>
+      {/* The switch ends the row: the menu sits before it. Under the text when the row is too narrow for three columns (a phone at 200 % text). */}
       {canEdit ? (
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="col-start-2 flex shrink-0 items-center gap-2 justify-self-end @[16rem]:col-start-auto">
+          <ActionMenu label={`Actions for ${name}`} items={items} />
           <Switch
             aria-label={`Send alerts to ${name}`}
             checked={d.enabled}
@@ -278,10 +280,9 @@ export function DestinationRow({
               });
             }}
           />
-          <ActionMenu label={`Actions for ${name}`} items={items} />
         </div>
       ) : (
-        <span />
+        <span className="hidden @[16rem]:block" />
       )}
       <ConfirmDialog
         open={removing}

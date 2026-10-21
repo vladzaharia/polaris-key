@@ -323,7 +323,7 @@ describe("Distribution and Update pages under the Worker's CSP", () => {
     );
     await page.getByRole("dialog", { name: "direct" }).waitFor();
     await violations(page);
-    await page.getByRole("button", { name: "Narrow capabilities…" }).click();
+    await page.getByRole("button", { name: "Narrow what it allows…" }).click();
     await page.getByRole("dialog", { name: "Narrow direct" }).waitFor();
     await page.waitForTimeout(250);
     expect(await locked(page)).toBe(true);
@@ -338,12 +338,12 @@ describe("Distribution and Update pages under the Worker's CSP", () => {
     await overlay(page, "set credential", async () => {
       await page.getByRole("button", { name: "Set credential…" }).click();
       await page
-        .getByRole("dialog", { name: "Set an outlet credential" })
+        .getByRole("dialog", { name: "Set a channel credential" })
         .waitFor();
     });
     await page.getByRole("button", { name: "Set credential…" }).click();
     await page
-      .getByRole("dialog", { name: "Set an outlet credential" })
+      .getByRole("dialog", { name: "Set a channel credential" })
       .waitFor();
     await violations(page);
     await page.getByRole("combobox", { name: /Kind/ }).click();

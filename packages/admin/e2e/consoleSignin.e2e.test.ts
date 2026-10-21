@@ -127,9 +127,9 @@ describe("console sign-in card in Chromium", () => {
       await nav.waitFor();
       const links = nav.getByRole("link");
       expect(await links.allTextContents()).toEqual(["Help", "Privacy"]);
-      expect(await links.nth(0).getAttribute("href")).toBe("/docs/help/");
+      expect(await links.nth(0).getAttribute("href")).toBe("/docs/");
       expect(await links.nth(1).getAttribute("href")).toBe(
-        "/docs/help/your-data/",
+        "/docs/reference/what-apps-collect/",
       );
       // Under the card, in the first viewport, targets of at least 24 px, no sideways scroll.
       const card = (await page.locator("main.ac").boundingBox())!;

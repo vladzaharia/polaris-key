@@ -34,6 +34,8 @@ export interface ConfirmDialogProps {
   /** Repeats the verb: "Yank 2.4.0". */
   confirmLabel?: string;
   cancelLabel?: string;
+  /** False leaves out the title bar's close X, for a flow whose Cancel is the one dismissal. */
+  closeButton?: boolean;
   /** `ignoreCase`: the match trims and ignores case (an email address). */
   typedConfirmation?: { value: string; label: string; ignoreCase?: boolean };
   onConfirm: () => void | Promise<void>;
@@ -90,6 +92,7 @@ export function ConfirmDialog({
   lead,
   confirmLabel = "Confirm",
   cancelLabel = "Cancel",
+  closeButton,
   typedConfirmation,
   onConfirm,
   error: callerError = null,
@@ -162,6 +165,7 @@ export function ConfirmDialog({
       description={description}
       className="max-sm:overflow-y-auto"
       dismissible={!busy}
+      closeButton={closeButton}
       initialFocusRef={cancelRef}
     >
       {lead || consequences?.length || children || err || typedConfirmation ? (

@@ -1,21 +1,21 @@
 {
   "library-12/dark": [
-    "text-size-floor: div.flex.flex-wrap > label.relative.order-1 > span.ml-auto.shrink-0 > kbd.rounded-xs.border \"⌘K\" font-size 11px (min 12px)"
+    "text-size-floor: div.flex.flex-wrap > label.relative.flex > span.ml-auto.shrink-0 > kbd.rounded-xs.border \"⌘K\" font-size 11px (min 12px)"
   ],
   "library-12/light": [
-    "text-size-floor: div.flex.flex-wrap > label.relative.order-1 > span.ml-auto.shrink-0 > kbd.rounded-xs.border \"⌘K\" font-size 11px (min 12px)"
+    "text-size-floor: div.flex.flex-wrap > label.relative.flex > span.ml-auto.shrink-0 > kbd.rounded-xs.border \"⌘K\" font-size 11px (min 12px)"
   ],
   "library-12-list/dark": [
-    "text-size-floor: div.flex.flex-wrap > label.relative.order-1 > span.ml-auto.shrink-0 > kbd.rounded-xs.border \"⌘K\" font-size 11px (min 12px)"
+    "text-size-floor: div.flex.flex-wrap > label.relative.flex > span.ml-auto.shrink-0 > kbd.rounded-xs.border \"⌘K\" font-size 11px (min 12px)"
   ],
   "library-12-list/light": [
-    "text-size-floor: div.flex.flex-wrap > label.relative.order-1 > span.ml-auto.shrink-0 > kbd.rounded-xs.border \"⌘K\" font-size 11px (min 12px)"
+    "text-size-floor: div.flex.flex-wrap > label.relative.flex > span.ml-auto.shrink-0 > kbd.rounded-xs.border \"⌘K\" font-size 11px (min 12px)"
   ],
   "library-12-search/dark": [
-    "text-size-floor: div.flex.flex-wrap > label.relative.order-1 > span.ml-auto.shrink-0 > kbd.rounded-xs.border \"⌘K\" font-size 11px (min 12px)"
+    "text-size-floor: div.flex.flex-wrap > label.relative.flex > span.ml-auto.shrink-0 > kbd.rounded-xs.border \"⌘K\" font-size 11px (min 12px)"
   ],
   "library-12-search/light": [
-    "text-size-floor: div.flex.flex-wrap > label.relative.order-1 > span.ml-auto.shrink-0 > kbd.rounded-xs.border \"⌘K\" font-size 11px (min 12px)"
+    "text-size-floor: div.flex.flex-wrap > label.relative.flex > span.ml-auto.shrink-0 > kbd.rounded-xs.border \"⌘K\" font-size 11px (min 12px)"
   ],
   "discover-added/dark": [
     "font-family: ol > li.group.flex > div.flex.min-w-0 > div.font-semibold.text-fg-strong \"Mossgarden is in your library\" font-family ui-sans-serif is not the theme's (rubik, jetbrains mono)"
@@ -60,7 +60,7 @@
     "text-size-floor: div.pk-scroll.min-h-0 > div.space-y-2 > p.flex.items-center > span.inline-flex.shrink-0 \"M\" font-size 10px (min 12px)"
   ],
   "activate-error-already-yours/dark": [
-    "text-size-floor: div.flex.flex-wrap > label.relative.order-1 > span.ml-auto.shrink-0 > kbd.rounded-xs.border \"⌘K\" font-size 11px (min 12px)"
+    "text-size-floor: div.flex.flex-wrap > label.relative.flex > span.ml-auto.shrink-0 > kbd.rounded-xs.border \"⌘K\" font-size 11px (min 12px)"
   ],
   "activate-link-app/dark": [
     "text-size-floor: div.pk-scroll.min-h-0 > div.space-y-2 > p.flex.items-center > span.inline-flex.shrink-0 \"M\" font-size 10px (min 12px)"
@@ -69,7 +69,7 @@
     "text-size-floor: div.pk-scroll.min-h-0 > div.space-y-2 > p.flex.items-center > span.inline-flex.shrink-0 \"M\" font-size 10px (min 12px)"
   ],
   "activate-error-already-yours/light": [
-    "text-size-floor: div.flex.flex-wrap > label.relative.order-1 > span.ml-auto.shrink-0 > kbd.rounded-xs.border \"⌘K\" font-size 11px (min 12px)"
+    "text-size-floor: div.flex.flex-wrap > label.relative.flex > span.ml-auto.shrink-0 > kbd.rounded-xs.border \"⌘K\" font-size 11px (min 12px)"
   ],
   "activate-error-owned/dark": [
     "text-size-floor: div.pk-scroll.min-h-0 > div.space-y-2 > p.flex.items-center > span.inline-flex.shrink-0 \"M\" font-size 10px (min 12px)"

@@ -346,6 +346,11 @@ export interface DialogProps {
   description?: React.ReactNode;
   /** False while busy: Escape, outside click and the close button do nothing. Default true. */
   dismissible?: boolean;
+  /**
+   * False leaves out the close X (Escape and outside click still dismiss): a surface with its own
+   * Cancel carries one dismissal (UI-KITS §1.5 rule 10). Default true.
+   */
+  closeButton?: boolean;
   children?: React.ReactNode;
   onEscapeKeyDown?: (e: KeyboardEvent) => void;
   /** Where focus lands on open (a confirm's Cancel). Default: the first focusable element. */
@@ -383,6 +388,7 @@ export function Dialog({
   title,
   description,
   dismissible = true,
+  closeButton = true,
   children,
   onEscapeKeyDown,
   initialFocusRef,
@@ -500,7 +506,7 @@ export function Dialog({
                 </DialogPrimitive.Description>
               ) : null}
             </div>
-            {dismissible ? (
+            {dismissible && closeButton ? (
               <DialogPrimitive.Close
                 aria-label="Close"
                 className="-mr-2 -mt-1 inline-flex size-8 shrink-0 max-sm:absolute max-sm:right-1 max-sm:top-0 max-sm:m-0 max-sm:size-11 items-center justify-center rounded-md text-fg-muted hover:bg-hover hover:text-fg-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
