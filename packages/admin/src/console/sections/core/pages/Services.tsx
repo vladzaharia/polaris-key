@@ -193,11 +193,6 @@ function ServicesForm({
 
   return (
     <div className="space-y-6" data-template="features">
-      {gate.disabledReason ? (
-        <p role="note" className="text-sm text-fg-muted">
-          {gate.disabledReason}
-        </p>
-      ) : null}
       <section
         aria-label="Features"
         className="overflow-hidden rounded-lg border border-border bg-surface-raised"
@@ -211,7 +206,7 @@ function ServicesForm({
           <span>Status</span>
           <span className="w-9" />
         </div>
-        <ul className="divide-y divide-border">
+        <ul className="@container divide-y divide-border">
           {FEATURES.map((feature) => (
             <FeatureRowItem key={feature.id} feature={feature} ctx={ctx} />
           ))}

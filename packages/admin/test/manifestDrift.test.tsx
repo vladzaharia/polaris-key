@@ -143,7 +143,20 @@ describe("Settings → Differs from the manifest (ST-17)", () => {
         "The manifest adds run.mode; changes run.max",
       ),
     ).toBeTruthy();
-    expect(screen.getByText("3 differ")).toBeTruthy();
+    expect(screen.getByText("3 of 4 differ")).toBeTruthy();
+  });
+
+  it("a claim this console doesn't know shows no Revert and does not crash (UX review M11)", async () => {
+    fns.settingsDrift.mockResolvedValue({
+      ...DRIFT,
+      items: [item({ key: "core.futureClaim", label: "Future claim" })],
+    });
+    mount();
+    const row = (
+      await screen.findByRole("heading", { name: "Future claim" })
+    ).closest("li") as HTMLElement;
+    expect(within(row).queryByRole("button", { name: /^Revert/ })).toBeNull();
+    expect(within(row).getByText("Revert in a newer console")).toBeTruthy();
   });
 
   it("Revert asks, then calls the claim route and refreshes the view", async () => {

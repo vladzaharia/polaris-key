@@ -131,6 +131,22 @@ const TABLE: [
     { title: "Can't reach Polaris Key", action: "retry" },
   ],
   [
+    "a render crash (a TypeError that is not fetch's)",
+    new TypeError(
+      "Cannot read properties of undefined (reading 'toLowerCase')",
+    ),
+    {},
+    { title: "Something went wrong", action: "copy-details" },
+  ],
+  [
+    "a fetch failure the api client tagged",
+    Object.assign(new TypeError("NetworkError when attempting to fetch"), {
+      isFetchFailure: true,
+    }),
+    {},
+    { title: "Can't reach Polaris Key", action: "retry" },
+  ],
+  [
     "unknown",
     api(418, { code: "teapot" }),
     {},

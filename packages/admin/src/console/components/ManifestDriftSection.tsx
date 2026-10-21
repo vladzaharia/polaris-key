@@ -35,7 +35,7 @@ import { mutate } from "../data/mutations.js";
 import { qk } from "../data/queries.js";
 import { intentOf } from "../sections/core/pages/confirmGate.js";
 import { SettingsSection } from "../templates/Settings.js";
-import { RevertClaimDialog } from "./RevertClaimDialog.js";
+import { CLAIM_LABELS, RevertClaimDialog } from "./RevertClaimDialog.js";
 
 /** A value the way an operator reads it: text as is, lists joined, anything else as JSON. */
 export function driftValue(v: unknown): string {
@@ -123,6 +123,8 @@ function DriftRow({
     <StatusPill tone="success">Matches</StatusPill>
   );
   const catalog = item.changes;
+  // A claim this console doesn't know (a newer Worker added it) can't be worded or reverted here.
+  const unknownClaim = isClaimKey(item) && !(item.key in CLAIM_LABELS);
   return (
     <li
       className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-start sm:justify-between"
@@ -158,14 +160,20 @@ function DriftRow({
         )}
       </div>
       <div className="flex shrink-0 gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          aria-label={`Revert ${item.label} to the manifest`}
-          onClick={onRevert}
-        >
-          Revert
-        </Button>
+        {unknownClaim ? (
+          <span className="self-center text-sm text-fg-muted">
+            Revert in a newer console
+          </span>
+        ) : (
+          <Button
+            variant="outline"
+            size="sm"
+            aria-label={`Revert ${item.label} to the manifest`}
+            onClick={onRevert}
+          >
+            Revert
+          </Button>
+        )}
         <Button
           variant="ghost"
           size="sm"
@@ -265,7 +273,7 @@ export function ManifestDriftSection({
             <GitCompareArrows aria-hidden className="size-4" />
             {differing === 0
               ? "All match"
-              : `${formatCount(differing)} ${differing === 1 ? "differs" : "differ"}`}
+              : `${formatCount(differing)} of ${formatCount(data.items.length)} ${differing === 1 ? "differs" : "differ"}`}
           </span>
         ) : undefined
       }

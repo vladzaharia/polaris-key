@@ -290,6 +290,12 @@ const ZOOM_CASES = [
   "long:overview",
   "dialog:set-secret",
 ];
+/** The pages the phone-at-200%-text row opens. */
+const TEXT200_CASES = [
+  "djdl:settings",
+  "djdl:services",
+  "djdl:licenses/record/overview",
+];
 /** The console's content column at its widest (BRAND.md §7.6). */
 const CONSOLE_COLUMN_MAX = 1760;
 /** `PK_LAYOUT_VIEWPORTS=1280x720,1920x1080` swaps the gate viewports for others locally. */
@@ -301,6 +307,8 @@ const VIEWPORTS: {
   only?: readonly string[];
   /** Only the cases this accepts (the wide and zoom rows skip the empty-state twins). */
   accept?: (name: string) => boolean;
+  /** The root font size as a percentage (WCAG 1.4.4 text resize), on top of the viewport. */
+  rootFontPercent?: number;
   /** The device pixel ratio: browser zoom is a smaller CSS viewport at a higher ratio. */
   deviceScaleFactor?: number;
   /** Emulate a Windows contrast theme, or `prefers-contrast: more`. */
@@ -360,6 +368,15 @@ const VIEWPORTS: {
         },
         { label: "zoom400", width: 320, height: 256, deviceScaleFactor: 4 },
       ].map((v) => ({ ...v, only: ZOOM_CASES })),
+      // 200 % text on a phone (WCAG 1.4.4): the Settings tabs and a licence record, where a
+      // word broke into letters, a control ran off the screen and a date input spilled.
+      {
+        label: "phone-text200",
+        width: 390,
+        height: 844,
+        rootFontPercent: 200,
+        only: TEXT200_CASES,
+      },
       // Forced colours (a Windows contrast theme) and `prefers-contrast: more`: Home, Licenses and
       // Services.
       {
@@ -485,6 +502,7 @@ async function open(
     width: number;
     height: number;
     deviceScaleFactor?: number;
+    rootFontPercent?: number;
     forcedColors?: "active";
     contrast?: "more";
   },
@@ -537,6 +555,12 @@ async function open(
   });
   const page = await ctx.newPage();
   page.on("pageerror", (e) => errors.push(e.message));
+  if (viewport.rootFontPercent)
+    await ctx.addInitScript((pct) => {
+      document.addEventListener("DOMContentLoaded", () => {
+        document.documentElement.style.fontSize = `${pct}%`;
+      });
+    }, viewport.rootFontPercent);
   await page.goto(`${base}/manage.html${c.hash}`);
   await page
     .locator("[data-page-title], [data-error-action]")
@@ -616,7 +640,9 @@ for (const vp of VIEWPORTS) {
           const { page, gaps, errors } = await open(c, theme, vp);
           try {
             const { violations, scrollers } = await page.evaluate(probeLayout, {
-              trailingSlack: TRAILING_SLACK,
+              // The page's bottom padding is in rem, so it grows with the text.
+              trailingSlack:
+                TRAILING_SLACK * ((vp.rootFontPercent ?? 100) / 100),
               rows: vp.width >= 1024,
             });
             const csp = await page.evaluate(() =>
@@ -848,6 +874,52 @@ describe("Home's product card (owner polish 2026-10-07)", () => {
         expect(await axeWithin(page, CARDS)).toEqual([]);
       } finally {
         await phone.page.context().close();
+      }
+    });
+  }
+});
+
+// ── `?setting=` deep links land on their row (UX review M6) ───────────────────────────────────
+
+describe("?setting= deep links", () => {
+  const LINKS: [string, string, string][] = [
+    [
+      "a product row",
+      "#/p/djdl/settings?setting=license.defaults.deviceLimit",
+      "setting-license.defaults.deviceLimit",
+    ],
+    [
+      "a Polaris Locker switch",
+      "#/p/djdl/settings/portal?setting=portal.keyReissue",
+      "setting-portal.keyReissue",
+    ],
+    [
+      "a platform setting row",
+      "#/platform/settings?setting=LAZY_DELTAS",
+      "platform-setting-LAZY_DELTAS",
+    ],
+  ];
+  for (const [what, hash, id] of LINKS) {
+    it(`${what} takes the focus and scrolls into view`, async () => {
+      const { page } = await open({ name: `link:${id}`, hash }, "dark", {
+        width: 1440,
+        height: 900,
+      });
+      try {
+        await page.waitForFunction(
+          (rowId) =>
+            document.getElementById(rowId)?.contains(document.activeElement),
+          id,
+          { timeout: 1500 },
+        );
+        const box = await page.evaluate((rowId) => {
+          const r = document.getElementById(rowId)!.getBoundingClientRect();
+          return { top: r.top, bottom: r.bottom, h: innerHeight };
+        }, id);
+        expect(box.top).toBeGreaterThanOrEqual(0);
+        expect(box.bottom).toBeLessThanOrEqual(box.h);
+      } finally {
+        await page.context().close();
       }
     });
   }

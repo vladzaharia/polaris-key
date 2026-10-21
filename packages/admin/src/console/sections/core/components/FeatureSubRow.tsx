@@ -82,7 +82,7 @@ export function FeatureSubRow({
         <div
           className={cn(
             "flex shrink-0 items-center",
-            stack && "max-sm:w-full max-sm:justify-start",
+            stack && "max-sm:w-full max-sm:min-w-0 max-sm:justify-start",
           )}
         >
           {control}

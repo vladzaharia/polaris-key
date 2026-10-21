@@ -247,19 +247,18 @@ function SettingsBody({
         : "Set by .pkey/product: this product is manifest-authoritative, so a change here is a break-glass claim.";
     return fallback;
   };
-
   const nonFieldError =
     form.submitError &&
     !(form.submitError instanceof SaveCancelled) &&
     Object.keys(form.errors).length === 0
       ? errorCopy(form.submitError)
       : null;
-
   return (
     <SettingsTemplate header={null} sections={[]}>
       <Form form={form} aria-label="Product settings" className="space-y-6">
         <SettingsSection id="settings-general" title="General">
           <SettingsRow
+            id="setting-core.name"
             label="Display name"
             source={source("core.name")}
             help={
@@ -302,6 +301,7 @@ function SettingsBody({
         {licenseOn ? (
           <SettingsSection id="settings-license" title="License defaults">
             <SettingsRow
+              id="setting-license.defaults.maxOfflineDays"
               label="Default max offline days"
               source={source("license.defaults.maxOfflineDays")}
             >
@@ -322,6 +322,7 @@ function SettingsBody({
               </FormField>
             </SettingsRow>
             <SettingsRow
+              id="setting-license.defaults.deviceLimit"
               label="Default device limit"
               source={source("license.defaults.deviceLimit")}
             >
@@ -363,6 +364,7 @@ function SettingsBody({
 
         <SettingsSection id="settings-origins" title="Web origins">
           <SettingsRow
+            id="setting-core.web.origins"
             label="Allowed origins"
             align="stretch"
             source={source("core.web.origins")}

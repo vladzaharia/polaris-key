@@ -53,6 +53,7 @@ const ANCHORS: Readonly<Record<string, string>> = {
   "keys|Secrets": "keys-secrets",
   "keys|CI publishing": "keys-ci",
   "keys|Device trust": "keys-trust",
+  "portal|Polaris Locker": "portal-switches",
   "presentation|Hosting and quotas": "presentation-hosting",
 };
 

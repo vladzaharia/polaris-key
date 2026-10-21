@@ -210,22 +210,27 @@ export function FeatureRowItem({
       className={cn(
         "grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-3 px-4 py-4",
         "sm:grid-cols-[auto_minmax(0,1fr)_minmax(0,18rem)_auto] sm:px-5",
+        "@max-[20rem]:grid-cols-[minmax(0,1fr)_auto]",
       )}
     >
       <span
         aria-hidden
         className={cn(
           "inline-flex size-8 items-center justify-center rounded-md border border-border bg-surface-sunken",
+          // Large text on a phone: the name needs the width more than the glyph does.
+          "@max-[20rem]:hidden",
           !on && "opacity-60",
         )}
       >
         <ServiceGlyph id={feature.services[0]!} />
       </span>
       <div className="min-w-0 space-y-0.5">
-        <p className="text-base font-medium text-fg-strong">{feature.label}</p>
+        <p className="hyphens-manual break-words text-base font-medium text-fg-strong">
+          {feature.label}
+        </p>
         <Needs feature={feature} enabled={enabled} />
       </div>
-      <div className="max-sm:col-span-2 max-sm:col-start-2 max-sm:row-start-2">
+      <div className="max-sm:col-span-2 max-sm:col-start-2 max-sm:row-start-2 @max-[20rem]:col-start-1">
         <Status
           on={on}
           text={factFor(feature, ctx.facts)}

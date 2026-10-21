@@ -167,7 +167,7 @@ export function SegmentedControl<V extends string = string>({
       onValueChange={(v) => onChange?.(v as V)}
       className={cn(
         "group/seg relative inline-flex items-center gap-0.5 rounded-md border border-border bg-surface-sunken p-0.5",
-        wrap && "max-w-full",
+        wrap && "max-w-full flex-wrap",
         className,
       )}
       {...aria}

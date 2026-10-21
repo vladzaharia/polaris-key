@@ -172,7 +172,7 @@ export function LockerSection({
       key: "portalEnabled",
       label: `Show ${name} in players’ libraries`,
     },
-    { key: "keyReissueEnabled", label: "Show a lost key again" },
+    { key: "keyReissueEnabled", label: "Let customers replace a lost key" },
   ] as const;
   return (
     <SettingsSection id="polaris-locker" title="Polaris Locker">

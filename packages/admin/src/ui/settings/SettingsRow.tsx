@@ -18,6 +18,7 @@ import { cn } from "../../lib/cn.js";
  * `htmlFor` ties the label to a control; for a read-only fact, omit it.
  */
 export function SettingsRow({
+  id,
   label,
   help,
   htmlFor,
@@ -30,6 +31,8 @@ export function SettingsRow({
   footer,
   state,
 }: {
+  /** The row's own element id: a `?setting=<key>` deep link lands on `setting-<key>`. */
+  id?: string;
   label: React.ReactNode;
   help?: React.ReactNode;
   htmlFor?: string;
@@ -81,6 +84,7 @@ export function SettingsRow({
   );
   return (
     <div
+      id={id}
       className={cn(
         "relative px-5",
         compact ? "py-2.5" : "py-4",

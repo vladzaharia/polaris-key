@@ -648,6 +648,23 @@ describe("Hosted assets (HA-10)", () => {
   });
 });
 
+describe("the ?setting= deep link", () => {
+  it.each([
+    ["licensing.reservedNames", "platform-setting-LICENSING_RESERVED_NAMES"],
+    ["LAZY_DELTAS", "platform-setting-LAZY_DELTAS"],
+  ])("%s lands on its row at once", async (key, id) => {
+    boot(`#/platform/settings?setting=${key}`, { extra: routes() });
+    // A segmented control hands its focus to the checked option inside it.
+    await waitFor(
+      () =>
+        expect(
+          document.getElementById(id)?.contains(document.activeElement),
+        ).toBe(true),
+      { timeout: 1000 },
+    );
+  });
+});
+
 describe("Licensing (LX-05)", () => {
   it("shows the reserved-names severity, the reserved keys and each declaring product", async () => {
     boot("#/platform/settings", { extra: routes() });

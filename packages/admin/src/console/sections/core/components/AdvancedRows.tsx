@@ -30,7 +30,7 @@ function FoldedRow({
   return (
     <Unlocked>
       <div id={id} className="border-t border-border px-4 py-4 sm:px-5">
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <span
             aria-hidden
             className="inline-flex size-8 items-center justify-center rounded-md border border-border bg-surface-sunken text-fg-muted"
@@ -39,7 +39,7 @@ function FoldedRow({
           </span>
           <p
             id={`${id}-title`}
-            className="min-w-0 flex-1 text-base font-medium text-fg-strong"
+            className="min-w-0 flex-[1_1_8rem] hyphens-manual break-words text-base font-medium text-fg-strong"
           >
             {title}
           </p>

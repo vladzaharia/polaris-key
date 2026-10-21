@@ -309,9 +309,14 @@ function firstField(error: ApiError): string | undefined {
   return error.fields?.[0];
 }
 
-/** Is this a network failure (fetch rejected before any response)? */
+/**
+ * Is this a network failure (fetch rejected before any response)? Only fetch's own failure is:
+ * the api client tags it (`isFetchFailure`), and other fetch callers' errors read as one by their
+ * message. A bare `TypeError` is usually a render crash, which is not "Can't reach Polaris Key".
+ */
 function isNetworkError(error: unknown): boolean {
-  if (error instanceof TypeError) return true;
+  if ((error as { isFetchFailure?: unknown } | null)?.isFetchFailure === true)
+    return true;
   return (
     error instanceof Error &&
     /network|failed to fetch|load failed/i.test(error.message)
