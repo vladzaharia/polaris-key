@@ -208,7 +208,7 @@ from the provider's allowed set for that scheme (PORTAL §4.1); never a lavender
 
 **Layout: the product passport.** When the card has an App request or Product context header and
 the viewport is landscape (width of at least 60 rem / 960 CSS px and a width to height ratio of at
-least 1.2), the header leaves the top of the card and becomes a start pane 17.5 rem (280 px) wide
+least 1.2, and a card container with room for 46 rem, so 200 % text stacks the strip), the header leaves the top of the card and becomes a start pane 17.5 rem (280 px) wide
 beside the form pane, which keeps every measure above (28.5 rem, 48 to 52 px controls, a 24 px h1);
 the card is about 46 rem wide. Portrait, tablet portrait (834 px) and phones keep the stacked header
 strip: never two narrow panes in portrait (UI-KITS DL1). The pane is a neutral `surface-sunken` in
@@ -216,16 +216,20 @@ both themes, never a violet wash and never a dark pane in the light theme, with 
 `text-muted` text. Top to bottom, top-aligned with the form's h1, each fact once:
 
 1. Optional product art from Core Presentation (HA-12), an `<img>` with `object-fit: cover`, 16:10,
-   at most 40 % of the pane height, `alt=""`. No art: icon and text only, no generated fill.
-2. The 56 px icon (radius 14).
+   at most 40 % of the pane height, `alt=""`, edge to edge at the top of the pane. No art: icon and
+   text only at the top, no generated fill.
+2. The 56 px icon (radius 14), overlapping the art's lower edge.
 3. "<App> wants you to sign in" (18/24, name semibold). No eyebrow.
 4. The developer on its own line.
-5. The device or origin glyph and its label on its own line, with no trailing separator.
-6. The device-code panel, when present.
+5. The device-code panel, when present: the label, the code on its own line, then the check line.
+6. The device or origin glyph and its label on its own line, with no trailing separator, anchored
+   at the pane's foot above the trust receipt.
+
+The pane never ends in a void: identity at the top, receipt at the foot.
 
 Product context (developer link, `identity_disabled`) shows the icon, "<Product> · <Developer>" and
 "Your license, downloads and devices". The **trust receipt** ("Polaris Locker signs you in for
-<App>...") spans the full width of the form pane. The pane carries `view-transition-name: pk-head`
+<App>...") closes the start pane at its foot. The pane carries `view-transition-name: pk-head`
 and never moves between steps (§3.18). The brand row stays the one 40 px lockup (muted in an app's context); Help · Privacy ·
 Terms stay under the card. On the Worker's no-JS pages (I-38) the art is a same-origin `<img>` (or the
 image origin the Worker CSP allows through `cspImageOrigin()`, exactly as the app policy does),

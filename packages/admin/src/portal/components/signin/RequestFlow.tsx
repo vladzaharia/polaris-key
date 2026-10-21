@@ -395,6 +395,7 @@ export function RequestFlow({
       brand={brand}
       header={header}
       footer={footer}
+      receipt={footer !== undefined}
       stepKey={key}
       direction={direction}
     >

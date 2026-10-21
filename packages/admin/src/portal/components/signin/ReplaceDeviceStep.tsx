@@ -53,6 +53,18 @@ export function ReplaceDeviceStep({
   const [value, setValue] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
   const group = React.useRef<HTMLDivElement>(null);
+  // The list replaces the loading view's h1 with a new one, which drops the focus the card gave
+  // it on arrival: put it back when nothing else holds it.
+  const wasPending = React.useRef(true);
+  React.useEffect(() => {
+    if (q.isPending || !wasPending.current) return;
+    wasPending.current = false;
+    const held = document.activeElement;
+    if (!held || held === document.body)
+      document
+        .querySelector<HTMLElement>("[data-step] h1")
+        ?.focus({ preventScroll: true });
+  }, [q.isPending]);
   const m = rowModel(row, rows, { product, developer });
   const devices = q.data ? deviceRows(q.data) : [];
 

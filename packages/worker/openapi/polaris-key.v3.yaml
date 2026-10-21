@@ -22549,6 +22549,11 @@ components:
           description: >
             Same-origin `/media/<product>/icon?v=…`, or null. Since HA-07 that path 302s to the
             product's hosted icon on the image host, and `v` is the copy's hash prefix.
+        artUrl:
+          type: string
+          description: >
+            Same-origin `/media/<product>/header?v=…`, the product's art for the landscape sign-in
+            card (PX-33); absent when the product has none. Display data, never authority.
         origins: { type: array, items: { type: string } }
         services:
           type: object

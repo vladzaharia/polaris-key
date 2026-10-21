@@ -16,7 +16,9 @@
 
 ## Goal
 
-For app sign-in at 1180 px and wider and 700 px tall and taller, the requesting product's own cover sits beside the 456 px card as a decorative panel (`alt=""`).
+For app sign-in in a landscape window, the app request (or product context) header becomes the product passport: a 17.5 rem neutral start pane beside the form pane, with the requesting product's optional art on top (`alt=""`).
+
+> **Corrected 2026-10-20 (lead decision, owner asked for every mockup).** Un-parked. `docs/design/SIGN-IN.md` "Layout: the product passport" wins over the text above: landscape is a width of at least 60 rem (960 CSS px) AND a width to height ratio of at least 1.2 (not 1180 px by 700 px), the card is about 46 rem (not 456 px beside), and the art `<img>` is the pane's first item at 16:10, at most 40 % of the pane. The code is the fact: the Worker's hosted pages already had a passport (I-38a) with a generated gradient fill and a 72 px icon; this package brought both to the spec. Art is served as `ClientRecord.artUrl` (optional, same-origin `/media/<product>/header?v=`) on the portal and from the image host through `cspImageOrigin()` on the Worker's pages; no CSP was widened.
 
 ## Why
 
@@ -86,7 +88,8 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] CSP unchanged (`img-src 'self'`); e2e at 1440, 1180 and 1024; UX review in BUILT mode.
+- [x] CSP unchanged (the portal's `img-src` already names the image host; the hosted pages use `cspImageOrigin()`); e2e at 1440x900, 1180x800, 1024x768 (passport), 960x700 (boundary), 959x700, 1000x900, 834x1194 and 390x844 (stacked), zero violations.
+- [ ] UX review in BUILT mode (the lead runs it).
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

@@ -44,7 +44,7 @@ export const buttonVariants = cva(
          * action; disabled keeps the shape at the role's disabled pair.
          */
         neutral:
-          "bg-action text-action-on font-medium hover:not-disabled:not-aria-disabled:bg-action-hover active:not-disabled:not-aria-disabled:bg-action-pressed disabled:bg-action-disabled disabled:text-action-disabled-on disabled:opacity-100 aria-disabled:bg-action-disabled aria-disabled:text-action-disabled-on aria-disabled:opacity-100",
+          "bg-action text-action-on font-medium forced-colors:bg-[ButtonFace] forced-colors:text-[ButtonText] hover:not-disabled:not-aria-disabled:bg-action-hover active:not-disabled:not-aria-disabled:bg-action-pressed disabled:bg-action-disabled disabled:text-action-disabled-on disabled:opacity-100 aria-disabled:bg-action-disabled aria-disabled:text-action-disabled-on aria-disabled:opacity-100",
         secondary:
           "bg-hover text-fg-strong hover:not-disabled:not-aria-disabled:bg-surface-sunken",
         outline:

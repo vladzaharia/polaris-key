@@ -330,13 +330,14 @@ async function approvalApp(
   product: Product,
   hooks: ServiceHooks | undefined,
 ): Promise<{
-  app: { name: string; iconUrl: string | null };
+  app: { name: string; iconUrl: string | null; artUrl: string | null };
   developer: string | null;
   imgOrigin: string | null;
 }> {
   const raw = await appForPage({ product, env, db, hooks }).catch(() => ({
     name: product.name,
     iconUrl: null,
+    artUrl: null,
   }));
   const developer = await listingDeveloper(hooks);
   const named = {
@@ -348,7 +349,11 @@ async function approvalApp(
   };
   const shown = pageApp(named);
   return {
-    app: { name: shown.app.name, iconUrl: shown.app.iconUrl ?? null },
+    app: {
+      name: shown.app.name,
+      iconUrl: shown.app.iconUrl ?? null,
+      artUrl: shown.app.artUrl ?? null,
+    },
     developer:
       developer && checkDisplayName(developer, { slug: product.slug }) === null
         ? developer
@@ -433,6 +438,7 @@ async function renderApproval(
     passport: {
       name: app.app.name,
       iconUrl: app.app.iconUrl,
+      artUrl: app.app.artUrl,
       developer: app.developer,
       device: label,
       action: "wants you to sign in",
