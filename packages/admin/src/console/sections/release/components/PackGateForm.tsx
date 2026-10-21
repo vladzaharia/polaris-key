@@ -74,9 +74,9 @@ export function PackGateForm({
 
   if (!distributionOn)
     return (
-      <Callout tone="info" title="Distribution is off">
-        Delivery gates are Distribution's: turn Distribution on in Services to
-        gate who may download {deliverable.id}.
+      <Callout tone="info" title="Rollouts are off">
+        Delivery gates belong to Rollouts: turn Rollouts on in Features to gate
+        who may download {deliverable.id}.
       </Callout>
     );
   if (access.isPending) return <Skeleton className="h-40 w-full" />;

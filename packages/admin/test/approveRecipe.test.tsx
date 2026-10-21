@@ -196,7 +196,7 @@ describe("Approve a minted token's recipe", () => {
       within(drawer).getByRole("link", { name: /autoIssue block/ }),
     ).toBeTruthy();
     expect(
-      within(drawer).queryByRole("link", { name: /Change in Services/ }),
+      within(drawer).queryByRole("link", { name: /Change in Features/ }),
     ).toBeNull();
   });
 
@@ -275,7 +275,7 @@ describe("Approve a minted token's recipe", () => {
       within(drawer).getByText(/Because registration is open/),
     ).toBeTruthy();
     expect(
-      within(drawer).getByRole("link", { name: "Change in Services" }),
+      within(drawer).getByRole("link", { name: "Change in Features" }),
     ).toBeTruthy();
     expect(within(drawer).queryByText(/The mint became public/)).toBeNull();
     await userEvent.click(within(drawer).getByRole("checkbox"));

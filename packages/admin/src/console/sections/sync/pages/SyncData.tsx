@@ -7,7 +7,7 @@
  * entitlement, set on Tiers, so it is not here.
  *
  * Cloud Sync has no principal without sign-in (plans/U-01.md §0): a device gets one only when a
- * person signs in through the product; a device activated with a licence key keeps its settings
+ * person signs in through the product; a device activated with a license key keeps its settings
  * on the device. The page says so up front, because it is the first thing an operator asks.
  */
 
@@ -105,13 +105,13 @@ export function SyncDataPage({ slug }: { slug: string }): React.ReactElement {
         service="sync"
         headingLevel={2}
         title="Cloud Sync is off for this product"
-        description="Settings stay on each device and nothing syncs until Cloud Sync is on. It needs Config and Identity."
+        description="Settings stay on each device and nothing syncs until Cloud Sync is on. It needs Managed config and Sign-in."
         primaryAction={
           <Link
             to={r.services(slug)}
             className="text-accent-fg underline underline-offset-2"
           >
-            Open Services
+            Open Features
           </Link>
         }
       />
@@ -156,7 +156,7 @@ function SyncDataBody({
     <div className="space-y-6">
       <Callout title="Only signed-in people sync">
         A device syncs once a person signs in through this product. Devices
-        activated with a licence key keep their settings on the device.
+        activated with a license key keep their settings on the device.
       </Callout>
 
       <SettingsSection
@@ -344,7 +344,7 @@ function SyncDataBody({
               {
                 term: "Default quota",
                 detail: formatBinaryBytes(CLOUD_SYNC_DEFAULTS.quotaBytes),
-                help: `Without a licence: ${formatBinaryBytes(CLOUD_SYNC_DEFAULTS.unlicensedQuotaBytes)}, no files.`,
+                help: `Without a license: ${formatBinaryBytes(CLOUD_SYNC_DEFAULTS.unlicensedQuotaBytes)}, no files.`,
               },
               {
                 term: "Quota per person",

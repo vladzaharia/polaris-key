@@ -595,7 +595,7 @@ describe("the Feeds overview", () => {
     ).toBeTruthy();
     expect(
       within(main())
-        .getByRole("link", { name: "Open Services" })
+        .getByRole("link", { name: "Open Features" })
         .getAttribute("href"),
     ).toBe("#/p/djdl/settings/features");
     expect(

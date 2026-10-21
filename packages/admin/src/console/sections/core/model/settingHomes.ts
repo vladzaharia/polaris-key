@@ -106,7 +106,7 @@ export const SETTING_HOMES: Readonly<Record<string, SettingHome>> = {
   "core.trustPolicy": at("keys", "Device trust"),
   // The wizards' saved choices (ST-39): written by their own steps, never a settings control.
   "core.setup": API,
-  "core.services": at("services", "Enabled services"),
+  "core.services": at("services", "Enabled features"),
   "core.keys": at("keys", "Signing keys"),
   // The manifest names the secrets and the console sets each value, sealed.
   "core.secrets": at("keys", "Secrets"),
