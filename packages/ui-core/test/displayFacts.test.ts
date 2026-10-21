@@ -84,7 +84,7 @@ describe("the arguments a model fills from what it holds", () => {
       gate: { status: "grace", graceDaysLeft: 5, graceDate: "Dec 4, 2026" },
     };
     expect(en.strings(viewOf("GraceBanner", grace))["grace.deadline"]).toBe(
-      "Reconnect by Dec 4, 2026",
+      "Works offline until Dec 4, 2026",
     );
     expect(
       en.strings(
@@ -93,7 +93,7 @@ describe("the arguments a model fills from what it holds", () => {
           gate: { status: "grace", graceDaysLeft: 1 },
         }),
       )["grace.lastDay"],
-    ).toBe("Offline · reconnect today to keep using Tidewater Studio");
+    ).toBe("Offline · last day to use Tidewater Studio");
     const toast = viewOf("Toast", {
       ...base,
       toast: { kind: "update", closesIn: "8 seconds" },
@@ -153,7 +153,7 @@ describe("the arguments a model fills from what it holds", () => {
           channel: { locked: true, store: "Steam" },
         }),
       )["channel.locked"],
-    ).toBe("Steam sets the release channel.");
+    ).toBe("Steam sets the channel.");
     expect(
       en.strings(
         viewOf("CloudSyncStatus", {
@@ -189,7 +189,7 @@ describe("the sign-in provider", () => {
       error: { code: "sign-in-failed" },
     });
     expect(en.strings(failed)["signIn.methodError"]).toBe(
-      "Google sign-in didn't finish. Try another way.",
+      "Google sign-in didn't finish. Try again.",
     );
   });
 

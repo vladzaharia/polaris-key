@@ -133,7 +133,7 @@ export const LAYOUTS: Readonly<Record<ComponentName, Layout>> = {
       "common.cancel",
     ],
     links: ["signin.handoff.useCode", "part.qr.scanInstead", "part.qr.enlarge"],
-    titles: ["signInHandoff.ok"],
+    titles: ["signInHandoff.ok", "signin.handoff.noBrowser"],
     meta: [
       "signInHandoff.starting",
       "signInHandoff.linkCopied",
@@ -386,7 +386,7 @@ export const LAYOUTS: Readonly<Record<ComponentName, Layout>> = {
   CloudSyncStatus: {
     kind: "inline",
     header: "none",
-    controls: ["cloudSync.signIn"],
+    controls: ["cloudSync.signIn", "common.review"],
     meta: ["cloudSync.synced", "cloudSync.syncing", "cloudSync.offline"],
   },
   About: {

@@ -36,6 +36,8 @@
     <string name="common_copy">Copiar</string>
     <!-- Confirmation shown briefly after something is copied to the clipboard. -->
     <string name="common_copied">Copiado</string>
+    <!-- Shared verb used across the kit's screens. Opens the changes that need a decision, like a sync conflict. Shown only when the host handles it. -->
+    <string name="common_review">Revisar</string>
     <!-- Shared verb used across the kit's screens. Pastes from the clipboard into a field. -->
     <string name="common_paste">Colar</string>
     <!-- Busy label on a button or screen while an action runs. -->
@@ -257,13 +259,13 @@
     <!-- SignIn: shown when the build enables no sign-in method. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signIn_noMethods">Nenhum método de acesso está disponível para %1$s. Use uma chave de licença.</string>
     <!-- SignIn: inline error under the method that failed. Arguments: {method} = a sign-in method's name (Apple, Google, passkey…). Arguments: 1=method. -->
-    <string name="signIn_methodError">O acesso com %1$s não foi concluído. Tente outra forma.</string>
+    <string name="signIn_methodError">O acesso com %1$s não foi concluído. Tente novamente.</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. -->
     <string name="signInHandoff_starting">Obtendo um código de acesso…</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. TV and console layout. Arguments: {url} = a web address, shown as is. Arguments: 1=url. -->
     <string name="signInHandoff_scan">Escaneie o código com o celular ou acesse %1$s e digite este código.</string>
     <!-- SignInHandoff on a TV: the QR code sits beside it and the web address follows on its own line, so the sentence does not repeat it. -->
-    <string name="signInHandoff_scanTv">Escaneie o QR code com o celular ou digite este código no endereço abaixo.</string>
+    <string name="signInHandoff_scanTv">Escaneie o QR code com o celular ou acesse este endereço e digite o código abaixo.</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. Confirmation after Copy link. -->
     <string name="signInHandoff_linkCopied">Link copiado</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. The hosted approval page ends with a “Sign in on {device}” button, next to Deny; the label stays in English. Arguments: {device} = this device's friendly name. Arguments: 1=device. -->
@@ -332,7 +334,7 @@
     <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Confirm block under the selected device. On macOS the kit wraps {device} in curly quotes. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
     <string name="deviceLimit_confirmTitle">Substituir %1$s?</string>
     <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Confirm block body. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”). Arguments: 1=device, 2=product, 3=thisDevice. -->
-    <string name="deviceLimit_consequence">%1$s sai de %2$s e %3$s ocupa a vaga. %1$s poderá entrar novamente depois, se houver uma vaga livre. Enviaremos um e-mail sobre isso.</string>
+    <string name="deviceLimit_consequence">%1$s sai de %2$s e %3$s ocupa a vaga. Enviaremos um e-mail sobre isso.</string>
     <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Primary button. -->
     <string name="deviceLimit_primary">Substituir e continuar</string>
     <string name="deviceLimit_primary__macos">Substituir e continuar</string>
@@ -354,7 +356,7 @@
     <!-- Devices: the list of devices using the license. -->
     <string name="devices_lede">Dispositivos que usam esta licença.</string>
     <!-- Devices: the list of devices using the license. Second line of a device row. Arguments: {platform} = the device's platform name (macOS, Windows, iPhone…); {when} = a relative time already formatted by the platform (“2 days ago”). Arguments: 1=platform, 2=when. -->
-    <string name="devices_meta">%1$s · visto por último %2$s</string>
+    <string name="devices_meta">%1$s · usado por último %2$s</string>
     <!-- Devices: the list of devices using the license. Arguments: {count} = a number of items. Arguments: 1=count. -->
     <plurals name="devices_count">
         <item quantity="one">%1$d dispositivo</item>
@@ -513,14 +515,14 @@
     <string name="status_contact">Contatar %1$s</string>
     <!-- GraceBanner: the product works offline for a limited time. Arguments: {days} = a number of days. Arguments: 1=days. -->
     <plurals name="grace_daysLeft">
-        <item quantity="one">Offline · %1$d dia restante para reconectar</item>
-        <item quantity="many">Offline · %1$d de dias restantes para reconectar</item>
-        <item quantity="other">Offline · %1$d dias restantes para reconectar</item>
+        <item quantity="one">Offline · %1$d dia restante</item>
+        <item quantity="many">Offline · %1$d de dias restantes</item>
+        <item quantity="other">Offline · %1$d dias restantes</item>
     </plurals>
     <!-- GraceBanner: the product works offline for a limited time. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="grace_lastDay">Offline · reconecte hoje para continuar usando %1$s</string>
+    <string name="grace_lastDay">Offline · último dia para usar %1$s</string>
     <!-- GraceBanner: the product works offline for a limited time. Arguments: {date} = a date already formatted by the platform. Arguments: 1=date. -->
-    <string name="grace_deadline">Reconecte até %1$s</string>
+    <string name="grace_deadline">Funciona offline até %1$s</string>
     <!-- AccountAndLicense: the settings pane for the license and account. -->
     <string name="account_title">Conta e licença</string>
     <!-- AccountAndLicense: the settings pane for the license and account. Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
@@ -617,9 +619,11 @@
     <!-- CloudSyncStatus: a small sync status. -->
     <string name="cloudSync_offline">Offline · as alterações serão sincronizadas quando você reconectar</string>
     <!-- CloudSyncStatus: a small sync status. -->
-    <string name="cloudSync_conflict">Algumas alterações estão em conflito. Revise-as.</string>
+    <string name="cloudSync_conflict">Algumas alterações estão em conflito.</string>
     <!-- CloudSyncStatus: a small sync status. -->
     <string name="cloudSync_error">Não foi possível sincronizar. Tente novamente mais tarde.</string>
+    <!-- CloudSyncStatus: a small sync status. Shown instead of the error line when nobody is signed in, with Sign in to sync beside it. -->
+    <string name="cloudSync_signedOut">Você saiu da conta.</string>
     <!-- CloudSyncStatus: a small sync status. Cloud Sync needs an account. -->
     <string name="cloudSync_signIn">Entrar para sincronizar</string>
     <string name="cloudSync_signIn__macos">Entrar para sincronizar</string>
@@ -638,7 +642,7 @@
     <!-- ChannelPicker: the release channel choice. -->
     <string name="channel_title">Canal de lançamento</string>
     <!-- ChannelPicker: the store fixes the channel. Arguments: {store} = a store's name (App Store, Google Play, Steam). Arguments: 1=store. -->
-    <string name="channel_locked">%1$s define o canal de lançamento.</string>
+    <string name="channel_locked">%1$s define o canal.</string>
     <!-- Toast action. -->
     <string name="toast_undo">Desfazer</string>
     <!-- Toast: an update is available. Arguments: {product} = the product's name from ProductIdentity (never translated); {version} = a version string such as 2.4.1. Arguments: 1=product, 2=version. -->
@@ -897,7 +901,7 @@
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
     <string name="signin_replace_title">Substituir %1$s?</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”). Arguments: 1=device, 2=product, 3=thisDevice. -->
-    <string name="signin_replace_consequence">%1$s sai de %2$s e %3$s ocupa a vaga. %1$s poderá entrar novamente depois, se houver uma vaga livre. Enviaremos um e-mail sobre isso.</string>
+    <string name="signin_replace_consequence">%1$s sai de %2$s e %3$s ocupa a vaga. Enviaremos um e-mail sobre isso.</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
     <string name="signin_replace_inUse">%1$s está em uso agora.</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
@@ -1905,7 +1909,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_channel_not_allowed_title">Canal não incluído</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_channel_not_allowed_message">Sua licença não inclui este canal de lançamento.</string>
+    <string name="core_codes_channel_not_allowed_message">Sua licença não inclui este canal.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_hardware_mismatch_title">Dispositivo alterado</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1967,9 +1971,9 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_request_message">O app enviou uma solicitação que não conseguimos ler. Tente de novo.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_client_title">App não reconhecido</string>
+    <string name="core_codes_invalid_client_title">Não foi possível concluir o login</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_client_message">Este app não está configurado para login. Fale com o desenvolvedor.</string>
+    <string name="core_codes_invalid_client_message">O login deste app não está configurado corretamente, então foi interrompido aqui para proteger sua conta. Avise o desenvolvedor.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_grant_title">Login não é mais válido</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1983,9 +1987,9 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_scope_message">O app pediu um acesso que este login não oferece. Fale com o desenvolvedor.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_redirect_uri_mismatch_title">Endereço de retorno não permitido</string>
+    <string name="core_codes_redirect_uri_mismatch_title">O login não consegue voltar ao app</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_redirect_uri_mismatch_message">O endereço de retorno deste app não está registrado, então não redirecionamos você. Fale com o desenvolvedor.</string>
+    <string name="core_codes_redirect_uri_mismatch_message">O login deste app não está configurado corretamente, então foi interrompido aqui para proteger sua conta. Avise o desenvolvedor.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_choice_required_title">Escolha uma licença</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2529,7 +2533,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
     <string name="core_gate_expired_title">Licença expirada</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
-    <string name="core_gate_expired_message">Sua licença expirou. Conecte-se à internet ou renove-a para continuar.</string>
+    <string name="core_gate_expired_message">Conecte-se à internet ou renove a licença para continuar.</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
     <string name="core_gate_revoked_title">Desconectado</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
@@ -2549,7 +2553,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
     <string name="core_gate_channel_not_entitled_title">Canal não incluído</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
-    <string name="core_gate_channel_not_entitled_message">Sua licença não inclui este canal de lançamento.</string>
+    <string name="core_gate_channel_not_entitled_message">Sua licença não inclui este canal.</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
     <string name="core_gate_not_applicable_title">Nenhuma licença necessária</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->

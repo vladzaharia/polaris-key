@@ -80,7 +80,7 @@ describe("the SDK gate's date", () => {
     const { container } = render(
       <GraceBanner input={{ ...input, presentation }} />,
     );
-    expect(text(container)).toContain("Reconnect by Dec 4, 2026");
+    expect(text(container)).toContain("Works offline until Dec 4, 2026");
     expect(text(container)).not.toMatch(OPEN);
   });
 });

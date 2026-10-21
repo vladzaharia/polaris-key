@@ -9,6 +9,15 @@ SDK: `.github/workflows/publish-sdks.yml` stamps `plugin.cfg`'s `version` and `P
 
 ## Unreleased
 
+- **US spelling and shorter kit copy.** The English template strings `Sign-in was cancelled.`, `The
+purchase was cancelled.` and `Last seen %s` read `Sign-in was canceled.`, `The purchase was
+canceled.` and `Last used %s`; `Your license doesn't include this release channel.` drops
+  "release", and the expired line no longer repeats its title. A game's own Translation keyed by the
+  old English string must move its key to the new one (the shipped `locale/*.po` files are keyed by
+  catalog id and follow on their own). The activation panel shows a refusal of a well-formed key
+  (license disabled, expired, rate limited…) as a neutral line with no error stroke on the field;
+  an unknown key and a failed check keep the error style (UI-KITS DL6, DL7).
+
 - **One config file: `res://polaris_key.tres`.** `pkey sdk --lang godot --write` now sets `product`,
   `base_url`, `pinned_trust_keys`, `pinned_release_keys` and `expected_services` in it (creating it
   when absent, keeping every other property) instead of writing `polaris_key_config.gd`, and the dock's

@@ -1,8 +1,8 @@
 ── truecolor · 80 ──
 [2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · status[0m
 [2m│[0m
-[33m▲[0m  [1mOffline · reconnect today to keep using Tidewater Studio[0m
-[2m│[0m  [2mReconnect by Oct 3[0m
+[33m▲[0m  [1mOffline · last day to use Tidewater Studio[0m
+[2m│[0m  [2mWorks offline until Oct 3[0m
 [2m│[0m
 [32m✓[0m  License   [1mPro[0m[2m · Lifetime · mara@fennick.studio[0m
 [32m✓[0m  Offline   [1muntil Oct 3[0m
@@ -12,8 +12,8 @@
 ── ansi16 · 80 ──
 [2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · status[0m
 [2m│[0m
-[33m▲[0m  [1mOffline · reconnect today to keep using Tidewater Studio[0m
-[2m│[0m  [2mReconnect by Oct 3[0m
+[33m▲[0m  [1mOffline · last day to use Tidewater Studio[0m
+[2m│[0m  [2mWorks offline until Oct 3[0m
 [2m│[0m
 [32m✓[0m  License   [1mPro[0m[2m · Lifetime · mara@fennick.studio[0m
 [32m✓[0m  Offline   [1muntil Oct 3[0m
@@ -23,8 +23,8 @@
 ── no-color · 80 ──
 ┌  [7m Tidewater Studio [0m · status
 │
-▲  [1mOffline · reconnect today to keep using Tidewater Studio[0m
-│  Reconnect by Oct 3
+▲  [1mOffline · last day to use Tidewater Studio[0m
+│  Works offline until Oct 3
 │
 ✓  License   [1mPro[0m · Lifetime · mara@fennick.studio
 ✓  Offline   [1muntil Oct 3[0m
@@ -34,8 +34,8 @@
 ── ascii · 80 ──
 [2m+[0m  [1;7;36m Tidewater Studio [0m[2m - status[0m
 [2m|[0m
-[33m![0m  [1mOffline - reconnect today to keep using Tidewater Studio[0m
-[2m|[0m  [2mReconnect by Oct 3[0m
+[33m![0m  [1mOffline - last day to use Tidewater Studio[0m
+[2m|[0m  [2mWorks offline until Oct 3[0m
 [2m|[0m
 [32m+[0m  License   [1mPro[0m[2m - Lifetime - mara@fennick.studio[0m
 [32m+[0m  Offline   [1muntil Oct 3[0m
@@ -45,8 +45,8 @@
 ── truecolor · 60 ──
 [2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · status[0m
 [2m│[0m
-[33m▲[0m  [1mOffline · reconnect today to keep using Tidewater Studio[0m
-[2m│[0m  [2mReconnect by Oct 3[0m
+[33m▲[0m  [1mOffline · last day to use Tidewater Studio[0m
+[2m│[0m  [2mWorks offline until Oct 3[0m
 [2m│[0m
 [32m✓[0m  License   [1mPro[0m[2m · Lifetime · mara@fennick.studio[0m
 [32m✓[0m  Offline   [1muntil Oct 3[0m
@@ -56,8 +56,8 @@
 ── ansi16 · 60 ──
 [2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · status[0m
 [2m│[0m
-[33m▲[0m  [1mOffline · reconnect today to keep using Tidewater Studio[0m
-[2m│[0m  [2mReconnect by Oct 3[0m
+[33m▲[0m  [1mOffline · last day to use Tidewater Studio[0m
+[2m│[0m  [2mWorks offline until Oct 3[0m
 [2m│[0m
 [32m✓[0m  License   [1mPro[0m[2m · Lifetime · mara@fennick.studio[0m
 [32m✓[0m  Offline   [1muntil Oct 3[0m
@@ -67,8 +67,8 @@
 ── no-color · 60 ──
 ┌  [7m Tidewater Studio [0m · status
 │
-▲  [1mOffline · reconnect today to keep using Tidewater Studio[0m
-│  Reconnect by Oct 3
+▲  [1mOffline · last day to use Tidewater Studio[0m
+│  Works offline until Oct 3
 │
 ✓  License   [1mPro[0m · Lifetime · mara@fennick.studio
 ✓  Offline   [1muntil Oct 3[0m
@@ -78,8 +78,8 @@
 ── ascii · 60 ──
 [2m+[0m  [1;7;36m Tidewater Studio [0m[2m - status[0m
 [2m|[0m
-[33m![0m  [1mOffline - reconnect today to keep using Tidewater Studio[0m
-[2m|[0m  [2mReconnect by Oct 3[0m
+[33m![0m  [1mOffline - last day to use Tidewater Studio[0m
+[2m|[0m  [2mWorks offline until Oct 3[0m
 [2m|[0m
 [32m+[0m  License   [1mPro[0m[2m - Lifetime - mara@fennick.studio[0m
 [32m+[0m  Offline   [1muntil Oct 3[0m
@@ -88,8 +88,8 @@
 [2m`[0m  [1mtidewater status[0m   [2mReconnect[0m
 ── pipe · 80 ──
 Tidewater Studio · status
-Offline · reconnect today to keep using Tidewater Studio
-Reconnect by Oct 3
+Offline · last day to use Tidewater Studio
+Works offline until Oct 3
 
 License   Pro · Lifetime · mara@fennick.studio
 Offline   until Oct 3

@@ -7,6 +7,7 @@ import { LitElement, nothing, type PropertyValues } from "lit";
 import { styleMap } from "lit/directives/style-map.js";
 import { html } from "lit";
 import {
+  focusOnMount,
   ViewModel,
   type ComponentName,
   type UiInput,
@@ -23,11 +24,13 @@ import {
   decodeIcon,
   findProvider,
   getTheme,
+  groundPrefersDark,
   inputWithIdentity,
   mergeThemes,
   onThemeChange,
   resolveFor,
   themeVars,
+  watchGround,
   watchProductIdentity,
   type ElementsTheme,
   type Resolved,
@@ -143,6 +146,17 @@ export abstract class PkElement extends LitElement {
     this.unsubs.push(onThemeChange(refresh));
     if (this.provider) this.unsubs.push(this.provider.subscribeTheme(refresh));
     this.unsubs.push(onCopyLoaded(() => this.requestUpdate()));
+    // Under the native preset the "system" scheme follows the host page's own ground: a theme
+    // toggle on the root or body, not only the OS preference.
+    this.unsubs.push(
+      watchGround(() => {
+        if (this.options.preset !== "native") return;
+        const dark = groundPrefersDark(this);
+        if (dark === this.groundDark) return;
+        this.groundDark = dark;
+        this.requestUpdate();
+      }),
+    );
     for (const q of [
       "(prefers-color-scheme: light)",
       "(prefers-reduced-motion: reduce)",
@@ -216,6 +230,8 @@ export abstract class PkElement extends LitElement {
         this.requestUpdate();
       });
   }
+
+  private groundDark: boolean | undefined;
 
   /** The theme layers merged: global, the nearest provider, this element. */
   protected get options(): ElementsTheme {
@@ -591,18 +607,31 @@ export abstract class PkElement extends LitElement {
     this.moveFocus(view);
   }
 
-  /** DL9: focus what the view says, but only when the kit already holds focus or was asked to. */
+  /** DL9: focus what the view says, by ui-core's one focus-on-mount rule. */
   private moveFocus(view: View): void {
     const target = view.decisions.focus;
     if (target === null) return;
-    // Only screens and dialogs take focus on mount; a pane, strip or toast sits in a host page.
-    if (LAYOUTS[view.component].kind !== "screen") return;
-    const holds =
-      this.autofocus ||
-      this.matches(":focus-within") ||
-      document.activeElement === document.body;
-    if (!holds) return;
     const root = this.renderRoot as ShadowRoot;
+    const heading = () => root.querySelector<HTMLElement>("h1");
+    const field =
+      target === "heading"
+        ? null
+        : root.querySelector<HTMLElement>(
+            `[data-key="${target.replace(/["\\]/g, "")}"]`,
+          );
+    const where = focusOnMount(target, {
+      owns: LAYOUTS[view.component].kind === "screen",
+      asked: this.autofocus,
+      within: this.matches(":focus-within"),
+      coldStart:
+        this.fillsWindow(view.state) &&
+        document.activeElement === document.body,
+      coarse:
+        typeof matchMedia === "function" &&
+        matchMedia("(pointer: coarse)").matches,
+      targetIsField: field instanceof HTMLInputElement,
+    });
+    if (where === "none") return;
     // The license list: the checked row takes focus, then Tab reaches Continue (DL9).
     const checked = root.querySelector<HTMLElement>(
       '[data-part="license-list"] [role="radio"][aria-checked="true"]',
@@ -611,12 +640,8 @@ export abstract class PkElement extends LitElement {
       checked.focus({ preventScroll: true });
       return;
     }
-    const el =
-      target === "heading"
-        ? root.querySelector<HTMLElement>("h1")
-        : (root.querySelector<HTMLElement>(
-            `[data-key="${target.replace(/["\\]/g, "")}"]`,
-          ) ?? root.querySelector<HTMLElement>("h1"));
-    el?.focus({ preventScroll: true });
+    (where === "heading" ? heading() : (field ?? heading()))?.focus({
+      preventScroll: true,
+    });
   }
 }

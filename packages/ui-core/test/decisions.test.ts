@@ -114,7 +114,10 @@ const EXPECT: Record<string, (input: UiInput) => Expect> = {
   "Activate.busy": () => ({ ...none, primary: SUBMIT }),
   "Activate.rejected": (i) => ({
     primary: SUBMIT,
-    tone: i.activation ? "neutral" : "danger",
+    tone:
+      !i.activation || ["unauthorized", "error"].includes(i.activation.result)
+        ? "danger"
+        : "neutral",
     errorSlot: KEY,
     focus: KEY,
   }),

@@ -843,7 +843,7 @@
           <div class="frow"><span class="mradio"></span>${sym("monitor", 16)}<div class="t"><span class="nm"><b>Living room PC</b></span><small>Windows 11 · last used yesterday</small></div></div>
           <div class="frow"><span class="mradio"></span>${sym("laptop", 16)}<div class="t"><span class="nm"><b>Studio Mac mini</b></span><small>macOS 26 · last used today</small></div></div>
         </div>
-        <div class="callout">${sym("info", 16)}<span>Work laptop signs out of Tidewater Studio and this Mac takes its seat. Work laptop can sign in again later if a seat is free. We'll email you about it.</span></div>`;
+        <div class="callout">${sym("info", 16)}<span>Work laptop signs out of Tidewater Studio and this Mac takes its seat. We'll email you about it.</span></div>`;
       const btns = (a, b) =>
         `<div class="btnrow"><span class="mb">${a}</span><span class="mb default">${b}</span></div>`;
       const stepEnd = (body, row) =>
@@ -1121,7 +1121,7 @@
           "<b>Boot, license expired, signed out and offline</b> · polaris-key",
           `<div class="quad">
             ${swin(`<div class="k-shimmer"></div>${appIcon(80, 18)}<span class="mhelp" style="margin-top: 16px">Checking your license…</span>`, true)}
-            ${swin(`${appIcon(56, 13)}<h1 class="mtitle" style="margin-top: 8px">License expired</h1><p class="lede">Your license has expired. Connect to the internet or renew it to continue.</p><div class="btnrow" style="width: 100%; margin-top: 18px"><span class="mb">Use Another License</span><span class="mb default">Renew${ext}</span></div>`)}
+            ${swin(`${appIcon(56, 13)}<h1 class="mtitle" style="margin-top: 8px">License expired</h1><p class="lede">Connect to the internet or renew your license to continue.</p><div class="btnrow" style="width: 100%; margin-top: 18px"><span class="mb">Use Another License</span><span class="mb default">Renew${ext}</span></div>`)}
             ${swin(`${appIcon(56, 13)}<h1 class="mtitle" style="margin-top: 8px">Signed out</h1><p class="lede">This device was signed out. Sign in or activate again to continue.</p><div class="btnrow" style="width: 100%; margin-top: 18px"><span class="mb">Use a License Key</span><span class="mb default">${SIGN_IN}</span></div>`)}
             ${swin(`<div class="sglyph" data-icon="wifiOff" data-size="22"></div><h1 class="mtitle" style="margin-top: 8px">Can't connect</h1><p class="lede">Can't reach Polaris Locker. Check your connection and try again.</p><div class="btnrow" style="width: 100%; margin-top: 18px"><span class="mb">Continue Offline</span><span class="mb default">Try Again</span></div>`)}
           </div>`,
@@ -1133,7 +1133,7 @@
           `<div class="win" style="width: 760px; height: 460px">
             <div class="titlebar">${lights()}<span class="name">Tidewater Studio</span></div>
             <div class="hostrows"><i></i><i></i><i></i><i></i></div>
-            <div class="banner">${sym("wifiOff", 16)}<span class="grow">Offline · 3 days left to reconnect</span><span class="mb default">Try Again</span></div>
+            <div class="banner">${sym("wifiOff", 16)}<span class="grow">Offline · 3 days left</span><span class="mb default">Try Again</span></div>
           </div>`,
           false,
         ),

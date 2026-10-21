@@ -46,7 +46,7 @@
     <string name="pkey_ui_version_too_new_title">Version not yet allowed</string>
     <string name="pkey_ui_version_too_new_body">This build is newer than your license allows.</string>
     <string name="pkey_ui_channel_not_entitled_title">Channel not included</string>
-    <string name="pkey_ui_channel_not_entitled_body">Your license doesn\'t include this release channel.</string>
+    <string name="pkey_ui_channel_not_entitled_body">Your license doesn\'t include this channel.</string>
     <string name="pkey_ui_version_allowed">Allowed versions: %1$s</string>
     <string name="pkey_ui_version_min">%1$s or later</string>
     <string name="pkey_ui_version_max">up to %1$s</string>

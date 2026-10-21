@@ -21,6 +21,7 @@ import {
   type ReactNode,
 } from "react";
 import {
+  focusOnMount,
   ViewModel,
   viewOf,
   type ComponentName,
@@ -39,12 +40,14 @@ import {
   copyFor,
   LAYOUTS,
   decodeIcon,
+  groundPrefersDark,
   inputWithIdentity,
   mergeThemes,
   onCopyLoaded,
   preloadCopy,
   resolveFor,
   themeVars,
+  watchGround,
   watchProductIdentity,
 } from "./contract.js";
 
@@ -53,7 +56,6 @@ import { text, type Chrome, type KitCtx } from "./parts.js";
 import { useSdkGate, type GateStep } from "./sdk.js";
 import { adoptKitStyles } from "./styles.js";
 import {
-  adaptActivate,
   adaptHandoff,
   adaptPane,
   adaptUpdate,
@@ -292,6 +294,19 @@ export function useKit(
 
   // Copy packs load on demand; a component showing one redraws when it arrives.
   useEffect(() => onCopyLoaded(force), []);
+  // Under the native preset the "system" scheme also follows the host page's own ground (a theme
+  // toggle on the root or body), which the media queries below never see.
+  const followsGround = options.preset === "native";
+  useEffect(() => {
+    if (!followsGround) return;
+    let last: boolean | undefined;
+    return watchGround(() => {
+      const dark = groundPrefersDark(rootRef.current ?? document.body);
+      if (dark === last) return;
+      last = dark;
+      force();
+    });
+  }, [followsGround]);
   // The scheme and motion follow the OS live.
   useEffect(() => {
     if (typeof matchMedia !== "function") return;
@@ -484,31 +499,30 @@ export function useKit(
     const target = focusView.decisions.focus;
     const root = rootRef.current;
     if (target === null || !root) return;
-    // An embedded part never pulls focus from the page on mount (the last pane would win): only
-    // a screen that owns the window does, or one the person is already in, or one asked to.
-    const holds =
-      props.autoFocus === true ||
-      root.contains(document.activeElement) ||
-      (props.fill === true && document.activeElement === document.body);
-    if (!holds) return;
     const heading = () =>
       root.querySelector<HTMLElement>('[data-part="title"]') ??
       root.querySelector<HTMLElement>("h1");
-    // DL9: a text field is never focused on appear under a coarse pointer (the keyboard would
-    // cover the screen): the heading takes it.
-    const coarse =
-      typeof matchMedia === "function" &&
-      matchMedia("(pointer: coarse)").matches;
     const field =
       target === "heading"
         ? null
         : root.querySelector<HTMLElement>(
             `[data-key="${target.replace(/["\\]/g, "")}"]`,
           );
-    const el =
-      target === "heading" || (coarse && field instanceof HTMLInputElement)
-        ? heading()
-        : (field ?? heading());
+    // The one focus-on-mount rule (ui-core): screens and dialogs only, when asked, already
+    // inside, or on a cold start of a window-filling kit; the heading under a coarse pointer.
+    const where = focusOnMount(target, {
+      owns: LAYOUTS[focusView.component].kind === "screen",
+      asked: props.autoFocus === true,
+      within: root.contains(document.activeElement),
+      coldStart:
+        props.fill === true && document.activeElement === document.body,
+      coarse:
+        typeof matchMedia === "function" &&
+        matchMedia("(pointer: coarse)").matches,
+      targetIsField: field instanceof HTMLInputElement,
+    });
+    if (where === "none") return;
+    const el = where === "heading" ? heading() : (field ?? heading());
     el?.focus({ preventScroll: true });
   });
 
@@ -724,7 +738,7 @@ export function PolarisKeyGate(props: PolarisKeyGateProps): ReactNode {
   const sub = (component: ComponentName) => {
     const raw = viewOf(component, input);
     // The drop-in keeps each step's context and offers the way back (never in a fixture state).
-    const v = driven ? adaptActivate(adaptHandoff(raw)) : raw;
+    const v = driven ? adaptHandoff(raw) : raw;
     const chrome: Chrome = {};
     if (driven && step !== "home" && !v.copy.includes("common.back"))
       chrome.back = true;

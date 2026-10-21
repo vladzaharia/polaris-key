@@ -207,6 +207,11 @@ covers device limit, revoked, expired, version too old or too new, and channel n
 - Every blocking state has an action that can change its outcome: revoked shows the sign-in
   methods, expired offers another license. A fix the kit cannot reach is named in words, and Try
   again stays.
+- Activate follows the same split: a refusal of a well-formed key (license disabled, expired,
+  key-entry limit, owned by another account) is this neutral callout, linked to the field with no
+  `aria-invalid`. A key the service does not know, a key's own shape (empty, cut short, not a key)
+  and a failed check (`error`) are the input being wrong (DL7), in danger. ui-core decides it; no
+  kit overrides the tone.
 - In a terminal a refusal is ▲ with its fix, never ✗. A refused gate in a host CLI exits 4 and
   `status` exits 1 (UK-51).
 
@@ -252,6 +257,9 @@ screen). _Evidence:_ `react.license-gate.expired`, `compose.gate-expired`,
   pointer a text field is never focused on appear. After pointer input a game focuses nothing, and
   the first D-pad or arrow press focuses the initial control. On TV and pad-only devices the first
   focus is never a control that opens a browser.
+- **On mount:** ui-core's `focusOnMount` is the one rule for the web kits. Only a screen or dialog
+  takes focus, and only when the host asked, focus is already inside, or a window-filling kit starts
+  cold. Under a coarse pointer a text field gives way to the heading.
 - **Never lost across async work:** a busy control keeps focus (`aria-disabled`, not `disabled`).
   After a result, focus goes to the error's field or to the next screen's initial control; after a
   removal, to the next row or the heading. A closing dialog returns focus to its opener, and

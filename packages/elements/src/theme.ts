@@ -139,6 +139,35 @@ export function groundPrefersDark(el: Element): boolean {
   return osPrefersDark();
 }
 
+/**
+ * Call `onChange` when the host page changes its own ground, which `groundPrefersDark` reads on
+ * render only: a class or style change on the root or the body (a theme toggle), and the end of a
+ * background transition (the colour only settles then). Returns the stop function.
+ */
+export function watchGround(onChange: () => void): () => void {
+  if (typeof document === "undefined") return () => {};
+  const stops: Array<() => void> = [];
+  if (typeof MutationObserver === "function") {
+    const mo = new MutationObserver(onChange);
+    for (const n of [document.documentElement, document.body])
+      if (n)
+        mo.observe(n, {
+          attributes: true,
+          attributeFilter: ["class", "style"],
+        });
+    stops.push(() => mo.disconnect());
+  }
+  const ended = (e: Event) => {
+    if ((e as TransitionEvent).propertyName?.startsWith("background"))
+      onChange();
+  };
+  document.addEventListener("transitionend", ended, true);
+  stops.push(() => document.removeEventListener("transitionend", ended, true));
+  return () => {
+    for (const s of stops) s();
+  };
+}
+
 function parseRgb(v: string): [number, number, number, number] | null {
   const m = /rgba?\(([^)]+)\)/.exec(v);
   if (!m) return null;

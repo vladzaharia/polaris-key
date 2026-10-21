@@ -39,7 +39,7 @@ const COPY_CODES := {
 	"license_expired": {"title": "License expired", "message": "This license has expired. Renew it to continue."},
 	"not_entitled": {"title": "Not included", "message": "Your license doesn't include this."},
 	"version_blocked": {"title": "Update required", "message": "This version can't be used with your license. Update the app to continue."},
-	"channel_not_allowed": {"title": "Channel not included", "message": "Your license doesn't include this release channel."},
+	"channel_not_allowed": {"title": "Channel not included", "message": "Your license doesn't include this channel."},
 	"hardware_mismatch": {"title": "Device changed", "message": "This device's hardware changed. Activate again to use your license here."},
 	"fingerprint_required": {"title": "Device check failed", "message": "This license needs a hardware fingerprint, which couldn't be read on this device."},
 	"enroll_disabled": {"title": "No free license", "message": "This app doesn't offer a free license. Enter a license key or sign in."},
@@ -118,7 +118,7 @@ const COPY_CODES := {
 	"bad_response": {"title": "Unexpected answer", "message": "The service sent an answer the app couldn't use. Try again."},
 	"network-error": {"title": "Can't connect", "message": "Can't reach Polaris Locker. Check your connection and try again."},
 	"server-error": {"title": "Service problem", "message": "The service had a problem. Try again in a few minutes."},
-	"cancelled": {"title": "Sign-in cancelled", "message": "Sign-in was cancelled."},
+	"cancelled": {"title": "Sign-in canceled", "message": "Sign-in was canceled."},
 	"sign-in-expired": {"title": "Code expired", "message": "The code expired before sign-in finished. Start again."},
 	"sign-in-denied": {"title": "Sign-in declined", "message": "Sign-in was declined. Start again."},
 	"sign-in-unavailable": {"title": "Sign-in unavailable", "message": "Sign-in isn't available right now. Try again in a few minutes."},
@@ -199,12 +199,12 @@ const COPY_CODES := {
 const COPY_GATE := {
 	"ok": {"title": "License active", "message": "Your license is active."},
 	"grace": {"title": "Offline grace", "message": "The licensing service can't be reached. You can keep using the app until the grace period ends."},
-	"expired": {"title": "License expired", "message": "Your license has expired. Connect to the internet or renew it to continue."},
+	"expired": {"title": "License expired", "message": "Connect to the internet or renew your license to continue."},
 	"revoked": {"title": "Signed out", "message": "This device was signed out. Sign in or activate again to continue."},
 	"needs-activation": {"title": "Activate", "message": "Enter a license key or sign in to continue."},
 	"version-too-old": {"title": "Update required", "message": "This version is no longer supported. Update the app to continue."},
 	"version-too-new": {"title": "Not available on this license", "message": "This build is newer than your license allows."},
-	"channel-not-entitled": {"title": "Channel not included", "message": "Your license doesn't include this release channel."},
+	"channel-not-entitled": {"title": "Channel not included", "message": "Your license doesn't include this channel."},
 	"not-applicable": {"title": "No license needed", "message": "This app doesn't need a license."},
 }
 

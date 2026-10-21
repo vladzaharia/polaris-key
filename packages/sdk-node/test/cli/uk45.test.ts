@@ -85,7 +85,7 @@ describe("what a real client reports", () => {
     const t = plain(text);
     expect(t).toContain("macOS arm64 · dev_a");
     expect(t).not.toContain("2 days ago");
-    expect(t).toContain("iOS · last seen 5 days ago");
+    expect(t).toContain("iOS · last used 5 days ago");
     expect(t).not.toMatch(/\d{3},\d{3}/);
     expect(t).not.toContain("macos");
   });
@@ -146,8 +146,8 @@ describe("what a real client reports", () => {
     expect(t).toMatch(/Linux · dev_a · This computer/);
     expect(t).not.toMatch(/20,\d{3}|days ago.*Zero/);
     expect(t).toMatch(/macOS · dev_z\b/);
-    expect(t).toContain("macOS · last seen today · dev_f");
-    expect(t).toMatch(/macOS · last seen Aug 2025 · dev_o/);
+    expect(t).toContain("macOS · last used today · dev_f");
+    expect(t).toMatch(/macOS · last used Aug 2025 · dev_o/);
     // Not a raw id: the architecture alone.
     expect(t).toMatch(/\n.*x64 · dev_b/);
     expect(t).not.toContain("freebsd");
@@ -283,7 +283,7 @@ describe("login on a device that holds a key license", () => {
   it("Esc at the question ends as a cancelled sign-in", async () => {
     const asked = await login((s) => s.press("escape"));
     expect(asked.attached).toBe(false);
-    expect(plain(asked.text)).toContain("Sign-in cancelled");
+    expect(plain(asked.text)).toContain("Sign-in canceled");
     expect(plain(asked.text)).not.toContain("✓  Signed in");
   });
 

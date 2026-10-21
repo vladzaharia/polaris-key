@@ -297,15 +297,19 @@ static func cloud_sync_status_view(ctx: RefCounted) -> Dictionary:
 	var sync := _dict(raw)
 	var state = sync.get("state")
 	var error := _eq(state, "error")
-	var sign_in := error and _eq(sync.get("signedIn"), false)
+	# A sync that failed because nobody is signed in is not a fault: it says so and offers Sign in
+	# to sync, in a neutral tone (DL6). Review shows only when the host handles it.
+	var signed_out := error and _eq(sync.get("signedIn"), false)
+	var review := _eq(state, "conflict") and _eq(sync.get("canReview"), true)
+	var copy: Array = ["cloudSync.signedOut", "cloudSync.signIn"] if signed_out else [
+		"cloudSync.%s" % [state],
+		_when(review, "common.review"),
+	]
 	return View.make(ctx, "CloudSyncStatus", {
 		"state": state,
-		"copy": [
-			"cloudSync.%s" % [state],
-			_when(sign_in, "cloudSync.signIn"),
-		],
-		"primary": "cloudSync.signIn" if sign_in else null,
-		"tone": "danger" if error else null,
+		"copy": copy,
+		"primary": "cloudSync.signIn" if signed_out else ("common.review" if review else null),
+		"tone": "neutral" if signed_out else ("danger" if error else null),
 		"focus": null,
 	})
 

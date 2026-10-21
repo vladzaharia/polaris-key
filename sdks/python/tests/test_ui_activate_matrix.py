@@ -46,3 +46,29 @@ def test_activate_family_rows(row: Mapping[str, Any]) -> None:
         assert forbidden not in view.copy
     for forbidden in row.get("mustNot", {}).get("actions", []):
         assert forbidden not in view.actions
+
+
+@pytest.mark.parametrize(
+    "result,tone",
+    [
+        ("unauthorized", "danger"),
+        ("error", "danger"),
+        ("license-disabled", "neutral"),
+        ("license-expired", "neutral"),
+        ("key-entry-limit", "neutral"),
+    ],
+)
+def test_a_refused_key_is_danger_only_when_the_key_itself_is_wrong(result: str, tone: str) -> None:
+    """UI-KITS DL6/DL7: a refusal of a well-formed key is a neutral callout (bug package H2)."""
+    view = activate_view(
+        context_of(
+            _with_defaults(
+                {
+                    "keyField": {"text": "pkey_tidewater_AbCdEfGhIjKlMnOpQrStUv", "submitted": True},
+                    "activation": {"result": result},
+                }
+            )
+        )
+    )
+    assert view.state == "rejected"
+    assert view.decisions.tone == tone

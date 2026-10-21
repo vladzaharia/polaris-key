@@ -133,10 +133,13 @@ public struct KeyField: View {
         return prefix + "…" + rest.suffix(6)
     }
 
+    /// Only an input that is itself wrong takes the stroke (DL7): the key's own shape, or a key
+    /// the service does not know. A refusal of a well-formed key is the neutral callout (DL6).
     private var invalid: Bool {
         screen.state == .rejected
             && (screen.shows("part.keyField.malformed")
-                || screen.shows("part.keyField.empty"))
+                || screen.shows("part.keyField.empty")
+                || screen.shows("core.activation.unauthorized.message"))
             || screen.state == .cutShort
     }
 

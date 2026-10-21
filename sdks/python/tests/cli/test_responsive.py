@@ -643,7 +643,7 @@ def test_an_update_cancelled_with_esc_says_so_in_a_title_and_a_body_line() -> No
     t = terminal(term, SHORT, verb="update", keys=[])
     t.finish(flows.update(client, t, ["apply"]))
     rows = [r for r, _ in term.all()]
-    assert rows[-2] == "✗  Update cancelled." and rows[-1] == "└  Nothing was installed.", rows
+    assert rows[-2] == "✗  Update canceled." and rows[-1] == "└  Nothing was installed.", rows
 
 
 def test_a_long_url_keeps_its_first_piece_at_32_by_8() -> None:
@@ -660,7 +660,7 @@ def test_escape_cancels_with_the_result_and_the_verb_that_was_run() -> None:
     out = flows.sign_in(_client(SHORT), t)
     t.finish(out)
     text = "\n".join(r for r, _ in term.all())
-    assert out.code == 1 and "Sign-in cancelled" in text
+    assert out.code == 1 and "Sign-in canceled" in text
     assert "tidewater login" in text and "Sign in again" in text and "WDJB-MJHT" not in text
 
 
@@ -673,7 +673,7 @@ def test_ctrl_c_cancels_with_a_result_and_exit_130_never_a_blank_screen() -> Non
     out = flows.sign_in(_client(SHORT), t)
     t.finish(out)
     text = "\n".join(r for r, _ in term.all())
-    assert out.code == 130 and "Sign-in cancelled" in text and "┌" in text
+    assert out.code == 130 and "Sign-in canceled" in text and "┌" in text
 
 
 # ── Both kits draw the same text (UI-KITS §1.4) ───────────────────────────────────────────────

@@ -82,6 +82,11 @@ msgstr "Copiar"
 msgid "common.copied"
 msgstr "Copiado"
 
+#. Review
+#. Shared verb used across the kit's screens. Opens the changes that need a decision, like a sync conflict. Shown only when the host handles it.
+msgid "common.review"
+msgstr "Revisar"
+
 #. Paste
 #. Shared verb used across the kit's screens. Pastes from the clipboard into a field.
 msgid "common.paste"
@@ -700,10 +705,10 @@ msgstr "Inicia sesión en {product}"
 msgid "signIn.noMethods"
 msgstr "No hay ningún método de inicio de sesión disponible para {product}. Usa una clave de licencia."
 
-#. {method} sign-in didn't finish. Try another way.
+#. {method} sign-in didn't finish. Try again.
 #. SignIn: inline error under the method that failed. Arguments: {method} = a sign-in method's name (Apple, Google, passkey…).
 msgid "signIn.methodError"
-msgstr "El inicio de sesión con {method} no terminó. Prueba de otra forma."
+msgstr "El inicio de sesión con {method} no terminó. Inténtalo de nuevo."
 
 #. Getting a sign-in code…
 #. SignInHandoff: sign-in continues on another device or in the browser.
@@ -715,10 +720,10 @@ msgstr "Obteniendo un código de inicio de sesión…"
 msgid "signInHandoff.scan"
 msgstr "Escanea el código con tu teléfono, o ve a {url} y escribe este código."
 
-#. Scan the QR code with your phone, or enter this code at the address below.
+#. Scan the QR code with your phone, or go to this address and enter the code below.
 #. SignInHandoff on a TV: the QR code sits beside it and the web address follows on its own line, so the sentence does not repeat it.
 msgid "signInHandoff.scanTv"
-msgstr "Escanea el código QR con tu teléfono o introduce este código en la dirección de abajo."
+msgstr "Escanea el código QR con tu teléfono o ve a esta dirección e introduce el código de abajo."
 
 #. Link copied
 #. SignInHandoff: sign-in continues on another device or in the browser. Confirmation after Copy link.
@@ -914,10 +919,10 @@ msgstr "Para usarla en este televisor, reemplaza uno. Puedes volver a añadirlo 
 msgid "deviceLimit.confirmTitle"
 msgstr "¿Reemplazar {device}?"
 
-#. {device} signs out of {product} and {thisDevice} takes its seat. {device} can sign in again later if a seat is free. We'll email you about it.
+#. {device} signs out of {product} and {thisDevice} takes its seat. We'll email you about it.
 #. DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Confirm block body. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”).
 msgid "deviceLimit.consequence"
-msgstr "Se cerrará la sesión de {product} en {device} y {thisDevice} ocupará su plaza. {device} podrá volver a iniciar sesión más tarde si hay una plaza libre. Te lo notificaremos por correo."
+msgstr "Se cerrará la sesión de {product} en {device} y {thisDevice} ocupará su plaza. Te lo notificaremos por correo."
 
 #. Replace and continue
 #. DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Primary button.
@@ -974,10 +979,10 @@ msgstr "Tus dispositivos"
 msgid "devices.lede"
 msgstr "Dispositivos que usan esta licencia."
 
-#. {platform} · last seen {when}
+#. {platform} · last used {when}
 #. Devices: the list of devices using the license. Second line of a device row. Arguments: {platform} = the device's platform name (macOS, Windows, iPhone…); {when} = a relative time already formatted by the platform (“2 days ago”).
 msgid "devices.meta"
-msgstr "{platform} · visto por última vez {when}"
+msgstr "{platform} · usado por última vez {when}"
 
 #. {count, plural, one {# device} other {# devices}}
 #. Devices: the list of devices using the license. Arguments: {count} = a number of items.
@@ -1393,24 +1398,24 @@ msgstr "Versiones permitidas: hasta {max}"
 msgid "status.contact"
 msgstr "Contactar con {developer}"
 
-#. Offline · {days, plural, one {# day} other {# days}} left to reconnect
+#. Offline · {days, plural, one {# day} other {# days}} left
 #. GraceBanner: the product works offline for a limited time. Arguments: {days} = a number of days.
 #. Plural on {days}.
 msgid "grace.daysLeft"
 msgid_plural "grace.daysLeft"
-msgstr[0] "Sin conexión · queda {days} día para reconectar"
-msgstr[1] "Sin conexión · quedan {days} de días para reconectar"
-msgstr[2] "Sin conexión · quedan {days} días para reconectar"
+msgstr[0] "Sin conexión · queda {days} día"
+msgstr[1] "Sin conexión · quedan {days} de días"
+msgstr[2] "Sin conexión · quedan {days} días"
 
-#. Offline · reconnect today to keep using {product}
+#. Offline · last day to use {product}
 #. GraceBanner: the product works offline for a limited time. Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "grace.lastDay"
-msgstr "Sin conexión · reconecta hoy para seguir usando {product}"
+msgstr "Sin conexión · último día para usar {product}"
 
-#. Reconnect by {date}
+#. Works offline until {date}
 #. GraceBanner: the product works offline for a limited time. Arguments: {date} = a date already formatted by the platform.
 msgid "grace.deadline"
-msgstr "Reconecta antes del {date}"
+msgstr "Funciona sin conexión hasta el {date}"
 
 #. Account and license
 #. AccountAndLicense: the settings pane for the license and account.
@@ -1662,15 +1667,20 @@ msgstr "Sincronizando…"
 msgid "cloudSync.offline"
 msgstr "Sin conexión · los cambios se sincronizan al reconectar"
 
-#. Some changes conflict. Review them.
+#. Some changes conflict.
 #. CloudSyncStatus: a small sync status.
 msgid "cloudSync.conflict"
-msgstr "Algunos cambios entran en conflicto. Revísalos."
+msgstr "Algunos cambios entran en conflicto."
 
 #. Couldn't sync. Try again later.
 #. CloudSyncStatus: a small sync status.
 msgid "cloudSync.error"
 msgstr "No se pudo sincronizar. Vuelve a intentarlo más tarde."
+
+#. You're signed out.
+#. CloudSyncStatus: a small sync status. Shown instead of the error line when nobody is signed in, with Sign in to sync beside it.
+msgid "cloudSync.signedOut"
+msgstr "Has cerrado sesión."
 
 #. Sign in to sync
 #. CloudSyncStatus: a small sync status. Cloud Sync needs an account.
@@ -1722,10 +1732,10 @@ msgstr "Diagnóstico copiado"
 msgid "channel.title"
 msgstr "Canal de versiones"
 
-#. {store} sets the release channel.
+#. {store} sets the channel.
 #. ChannelPicker: the store fixes the channel. Arguments: {store} = a store's name (App Store, Google Play, Steam).
 msgid "channel.locked"
-msgstr "{store} establece el canal de versiones."
+msgstr "{store} establece el canal."
 
 #. Undo
 #. Toast action.
@@ -2415,10 +2425,10 @@ msgstr "Este navegador"
 msgid "signin.replace.title"
 msgstr "¿Reemplazar {device}?"
 
-#. {device} signs out of {product} and {thisDevice} takes its seat. {device} can sign in again later if a seat is free. We'll email you about it.
+#. {device} signs out of {product} and {thisDevice} takes its seat. We'll email you about it.
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”).
 msgid "signin.replace.consequence"
-msgstr "Se cerrará la sesión de {product} en {device} y {thisDevice} ocupará su plaza. {device} podrá volver a iniciar sesión más tarde si hay una plaza libre. Te lo notificaremos por correo."
+msgstr "Se cerrará la sesión de {product} en {device} y {thisDevice} ocupará su plaza. Te lo notificaremos por correo."
 
 #. {device} is in use right now.
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
@@ -2718,7 +2728,7 @@ msgctxt "macos"
 msgid "signin.handoff.again"
 msgstr "Volver a abrir el navegador"
 
-#. Sign-in was cancelled. Get a new code
+#. Sign-in was canceled. Get a new code
 #. App waiting while sign-in runs in the browser (SIGN-IN.md §3.17).
 msgid "signin.handoff.cancelled"
 msgstr "Se canceló el inicio de sesión. Obtén un código nuevo"
@@ -2858,7 +2868,7 @@ msgstr "Vuelve a {app} para elegir una licencia. Puedes cerrar esta pestaña."
 msgid "signin.return.signedInShort"
 msgstr "Has iniciado sesión"
 
-#. Sign-in was cancelled in {app}. Start again from {app}.
+#. Sign-in was canceled in {app}. Start again from {app}.
 #. Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated).
 msgid "signin.return.cancelled"
 msgstr "Se canceló el inicio de sesión en {app}. Vuelve a empezar desde {app}."
@@ -3492,7 +3502,7 @@ msgstr "{device} ya no tiene nombre."
 msgid "cli.devices.removed"
 msgstr "Se quitó {device}. Su plaza quedó libre."
 
-#. Update cancelled.
+#. Update canceled.
 #. Terminal: the person stopped an update download. The title; 'Nothing was installed.' is the body line under it.
 msgid "cli.update.cancelled"
 msgstr "Actualización cancelada."
@@ -5014,10 +5024,10 @@ msgstr "Esta versión no se puede usar con tu licencia. Actualiza la app para co
 msgid "core.codes.channel_not_allowed.title"
 msgstr "Canal no incluido"
 
-#. Your license doesn't include this release channel.
+#. Your license doesn't include this channel.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.channel_not_allowed.message"
-msgstr "Tu licencia no incluye este canal de versiones."
+msgstr "Tu licencia no incluye este canal."
 
 #. Device changed
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5172,12 +5182,12 @@ msgstr "La app envió una solicitud que no podemos leer. Inténtalo de nuevo."
 #. Sign-in can't finish
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_client.title"
-msgstr "App no reconocida"
+msgstr "No se puede completar el inicio de sesión"
 
 #. This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_client.message"
-msgstr "Esta app no está configurada para iniciar sesión. Contacta con su desarrollador."
+msgstr "El inicio de sesión de esta app no está bien configurado, así que se detuvo aquí para proteger tu cuenta. Avisa a su desarrollador."
 
 #. Sign-in no longer valid
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5212,12 +5222,12 @@ msgstr "La app pidió un acceso que este inicio de sesión no ofrece. Contacta c
 #. Sign-in can't return to the app
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.redirect_uri_mismatch.title"
-msgstr "Dirección de retorno no permitida"
+msgstr "El inicio de sesión no puede volver a la app"
 
 #. This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.redirect_uri_mismatch.message"
-msgstr "La dirección de retorno de esta app no está registrada, así que no te devolvimos a ella. Contacta con su desarrollador."
+msgstr "El inicio de sesión de esta app no está bien configurado, así que se detuvo aquí para proteger tu cuenta. Avisa a su desarrollador."
 
 #. Choose a license
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5799,12 +5809,12 @@ msgstr "Problema del servicio"
 msgid "core.codes.server-error.message"
 msgstr "El servicio tuvo un problema. Inténtalo de nuevo en unos minutos."
 
-#. Sign-in cancelled
+#. Sign-in canceled
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.cancelled.title"
 msgstr "Inicio de sesión cancelado"
 
-#. Sign-in was cancelled.
+#. Sign-in was canceled.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.cancelled.message"
 msgstr "Se canceló el inicio de sesión."
@@ -6574,10 +6584,10 @@ msgstr "No se puede conectar con el servicio de licencias. Puedes seguir usando 
 msgid "core.gate.expired.title"
 msgstr "Licencia vencida"
 
-#. Your license has expired. Connect to the internet or renew it to continue.
+#. Connect to the internet or renew your license to continue.
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.expired.message"
-msgstr "Tu licencia venció. Conéctate a internet o renuévala para continuar."
+msgstr "Conéctate a internet o renueva la licencia para continuar."
 
 #. Signed out
 #. Core copy (conformance/parity/copy.en.json, gate).
@@ -6624,10 +6634,10 @@ msgstr "Esta compilación es más reciente de lo que permite tu licencia."
 msgid "core.gate.channel-not-entitled.title"
 msgstr "Canal no incluido"
 
-#. Your license doesn't include this release channel.
+#. Your license doesn't include this channel.
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.channel-not-entitled.message"
-msgstr "Tu licencia no incluye este canal de versiones."
+msgstr "Tu licencia no incluye este canal."
 
 #. No license needed
 #. Core copy (conformance/parity/copy.en.json, gate).

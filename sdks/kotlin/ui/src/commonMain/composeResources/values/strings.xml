@@ -36,6 +36,8 @@
     <string name="common_copy">Copy</string>
     <!-- Confirmation shown briefly after something is copied to the clipboard. -->
     <string name="common_copied">Copied</string>
+    <!-- Shared verb used across the kit's screens. Opens the changes that need a decision, like a sync conflict. Shown only when the host handles it. -->
+    <string name="common_review">Review</string>
     <!-- Shared verb used across the kit's screens. Pastes from the clipboard into a field. -->
     <string name="common_paste">Paste</string>
     <!-- Busy label on a button or screen while an action runs. -->
@@ -255,13 +257,13 @@
     <!-- SignIn: shown when the build enables no sign-in method. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signIn_noMethods">No sign-in method is available for %1$s. Use a license key instead.</string>
     <!-- SignIn: inline error under the method that failed. Arguments: {method} = a sign-in method's name (Apple, Google, passkey…). Arguments: 1=method. -->
-    <string name="signIn_methodError">%1$s sign-in didn't finish. Try another way.</string>
+    <string name="signIn_methodError">%1$s sign-in didn't finish. Try again.</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. -->
     <string name="signInHandoff_starting">Getting a sign-in code…</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. TV and console layout. Arguments: {url} = a web address, shown as is. Arguments: 1=url. -->
     <string name="signInHandoff_scan">Scan the code with your phone, or go to %1$s and enter this code.</string>
     <!-- SignInHandoff on a TV: the QR code sits beside it and the web address follows on its own line, so the sentence does not repeat it. -->
-    <string name="signInHandoff_scanTv">Scan the QR code with your phone, or enter this code at the address below.</string>
+    <string name="signInHandoff_scanTv">Scan the QR code with your phone, or go to this address and enter the code below.</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. Confirmation after Copy link. -->
     <string name="signInHandoff_linkCopied">Link copied</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. The hosted approval page ends with a “Sign in on {device}” button, next to Deny; the label stays in English. Arguments: {device} = this device's friendly name. Arguments: 1=device. -->
@@ -329,7 +331,7 @@
     <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Confirm block under the selected device. On macOS the kit wraps {device} in curly quotes. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
     <string name="deviceLimit_confirmTitle">Replace %1$s?</string>
     <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Confirm block body. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”). Arguments: 1=device, 2=product, 3=thisDevice. -->
-    <string name="deviceLimit_consequence">%1$s signs out of %2$s and %3$s takes its seat. %1$s can sign in again later if a seat is free. We'll email you about it.</string>
+    <string name="deviceLimit_consequence">%1$s signs out of %2$s and %3$s takes its seat. We'll email you about it.</string>
     <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Primary button. -->
     <string name="deviceLimit_primary">Replace and continue</string>
     <string name="deviceLimit_primary__macos">Replace and Continue</string>
@@ -351,7 +353,7 @@
     <!-- Devices: the list of devices using the license. -->
     <string name="devices_lede">Devices using this license.</string>
     <!-- Devices: the list of devices using the license. Second line of a device row. Arguments: {platform} = the device's platform name (macOS, Windows, iPhone…); {when} = a relative time already formatted by the platform (“2 days ago”). Arguments: 1=platform, 2=when. -->
-    <string name="devices_meta">%1$s · last seen %2$s</string>
+    <string name="devices_meta">%1$s · last used %2$s</string>
     <!-- Devices: the list of devices using the license. Arguments: {count} = a number of items. Arguments: 1=count. -->
     <plurals name="devices_count">
         <item quantity="one">%1$d device</item>
@@ -509,13 +511,13 @@
     <string name="status_contact">Contact %1$s</string>
     <!-- GraceBanner: the product works offline for a limited time. Arguments: {days} = a number of days. Arguments: 1=days. -->
     <plurals name="grace_daysLeft">
-        <item quantity="one">Offline · %1$d day left to reconnect</item>
-        <item quantity="other">Offline · %1$d days left to reconnect</item>
+        <item quantity="one">Offline · %1$d day left</item>
+        <item quantity="other">Offline · %1$d days left</item>
     </plurals>
     <!-- GraceBanner: the product works offline for a limited time. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="grace_lastDay">Offline · reconnect today to keep using %1$s</string>
+    <string name="grace_lastDay">Offline · last day to use %1$s</string>
     <!-- GraceBanner: the product works offline for a limited time. Arguments: {date} = a date already formatted by the platform. Arguments: 1=date. -->
-    <string name="grace_deadline">Reconnect by %1$s</string>
+    <string name="grace_deadline">Works offline until %1$s</string>
     <!-- AccountAndLicense: the settings pane for the license and account. -->
     <string name="account_title">Account and license</string>
     <!-- AccountAndLicense: the settings pane for the license and account. Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
@@ -612,9 +614,11 @@
     <!-- CloudSyncStatus: a small sync status. -->
     <string name="cloudSync_offline">Offline · changes sync when you reconnect</string>
     <!-- CloudSyncStatus: a small sync status. -->
-    <string name="cloudSync_conflict">Some changes conflict. Review them.</string>
+    <string name="cloudSync_conflict">Some changes conflict.</string>
     <!-- CloudSyncStatus: a small sync status. -->
     <string name="cloudSync_error">Couldn't sync. Try again later.</string>
+    <!-- CloudSyncStatus: a small sync status. Shown instead of the error line when nobody is signed in, with Sign in to sync beside it. -->
+    <string name="cloudSync_signedOut">You're signed out.</string>
     <!-- CloudSyncStatus: a small sync status. Cloud Sync needs an account. -->
     <string name="cloudSync_signIn">Sign in to sync</string>
     <string name="cloudSync_signIn__macos">Sign In to Sync</string>
@@ -633,7 +637,7 @@
     <!-- ChannelPicker: the release channel choice. -->
     <string name="channel_title">Release channel</string>
     <!-- ChannelPicker: the store fixes the channel. Arguments: {store} = a store's name (App Store, Google Play, Steam). Arguments: 1=store. -->
-    <string name="channel_locked">%1$s sets the release channel.</string>
+    <string name="channel_locked">%1$s sets the channel.</string>
     <!-- Toast action. -->
     <string name="toast_undo">Undo</string>
     <!-- Toast: an update is available. Arguments: {product} = the product's name from ProductIdentity (never translated); {version} = a version string such as 2.4.1. Arguments: 1=product, 2=version. -->
@@ -890,7 +894,7 @@
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
     <string name="signin_replace_title">Replace %1$s?</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”). Arguments: 1=device, 2=product, 3=thisDevice. -->
-    <string name="signin_replace_consequence">%1$s signs out of %2$s and %3$s takes its seat. %1$s can sign in again later if a seat is free. We'll email you about it.</string>
+    <string name="signin_replace_consequence">%1$s signs out of %2$s and %3$s takes its seat. We'll email you about it.</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
     <string name="signin_replace_inUse">%1$s is in use right now.</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
@@ -1002,7 +1006,7 @@
     <string name="signin_handoff_again">Open browser again</string>
     <string name="signin_handoff_again__macos">Open Browser Again</string>
     <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). -->
-    <string name="signin_handoff_cancelled">Sign-in was cancelled. Get a new code</string>
+    <string name="signin_handoff_cancelled">Sign-in was canceled. Get a new code</string>
     <!-- Desktop app after sign-in (SIGN-IN.md §3.17). -->
     <string name="signin_desktop_continue">Continue in browser</string>
     <string name="signin_desktop_continue__macos">Continue in Browser</string>
@@ -1052,7 +1056,7 @@
     <!-- Return step, short form (SIGN-IN.md §3.10). -->
     <string name="signin_return_signedInShort">You're signed in</string>
     <!-- Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
-    <string name="signin_return_cancelled">Sign-in was cancelled in %1$s. Start again from %1$s.</string>
+    <string name="signin_return_cancelled">Sign-in was canceled in %1$s. Start again from %1$s.</string>
     <!-- Return step (SIGN-IN.md §3.10). -->
     <string name="signin_return_library">Open your library</string>
     <string name="signin_return_library__macos">Open Your Library</string>
@@ -1301,7 +1305,7 @@
     <!-- Terminal: a device was removed from the license. Arguments: 1=device. -->
     <string name="cli_devices_removed">%1$s was removed. Its seat is free.</string>
     <!-- Terminal: the person stopped an update download. The title; 'Nothing was installed.' is the body line under it. -->
-    <string name="cli_update_cancelled">Update cancelled.</string>
+    <string name="cli_update_cancelled">Update canceled.</string>
     <!-- Terminal: there are no downloadable content packs on this device. -->
     <string name="cli_packs_none">No content is installed.</string>
     <!-- Terminal: a content pack is installed and takes effect after the app restarts. Shown after the pack's version. -->
@@ -1892,7 +1896,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_channel_not_allowed_title">Channel not included</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_channel_not_allowed_message">Your license doesn't include this release channel.</string>
+    <string name="core_codes_channel_not_allowed_message">Your license doesn't include this channel.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_hardware_mismatch_title">Device changed</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2206,9 +2210,9 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_server_error_message">The service had a problem. Try again in a few minutes.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_cancelled_title">Sign-in cancelled</string>
+    <string name="core_codes_cancelled_title">Sign-in canceled</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_cancelled_message">Sign-in was cancelled.</string>
+    <string name="core_codes_cancelled_message">Sign-in was canceled.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sign_in_expired_title">Code expired</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2516,7 +2520,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
     <string name="core_gate_expired_title">License expired</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
-    <string name="core_gate_expired_message">Your license has expired. Connect to the internet or renew it to continue.</string>
+    <string name="core_gate_expired_message">Connect to the internet or renew your license to continue.</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
     <string name="core_gate_revoked_title">Signed out</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
@@ -2536,7 +2540,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
     <string name="core_gate_channel_not_entitled_title">Channel not included</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
-    <string name="core_gate_channel_not_entitled_message">Your license doesn't include this release channel.</string>
+    <string name="core_gate_channel_not_entitled_message">Your license doesn't include this channel.</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
     <string name="core_gate_not_applicable_title">No license needed</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->

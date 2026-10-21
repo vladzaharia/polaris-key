@@ -400,7 +400,7 @@ export function lintStrings(
   for (const b of boards) {
     for (const s of b.strings) {
       const state = stateOf(s.scope);
-      // The terminal prefixes a status mark and a space ("✗ Sign-in cancelled"): the mark is a
+      // The terminal prefixes a status mark and a space ("✗ Sign-in canceled"): the mark is a
       // glyph (strings.allow.json), the rest is the catalog string.
       const text =
         b.board === "terminal"
