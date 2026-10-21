@@ -9,7 +9,7 @@
 import { SELF } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import { inertDocumentPolicy } from "../src/core/assets/bytesHost.js";
-import { landingCsp } from "../src/core/assets/bytesLanding.js";
+import { registryLandingCsp } from "../src/core/registry/registryLanding.js";
 import { REGISTRY_CSP } from "../src/core/registry/registryHost.js";
 
 function hex(buf: ArrayBuffer): string {
@@ -119,10 +119,11 @@ describe("registry host isolation on workerd", () => {
     const res = await SELF.fetch("https://pkg.workerd.test/");
     expect(res.status).toBe(200);
     const csp = res.headers.get("content-security-policy")!;
-    expect(csp).toBe(await landingCsp());
+    expect(csp).toBe(await registryLandingCsp());
     expect(inertDocumentPolicy(csp)).toBe(true);
     const html = await res.text();
-    expect(html).toContain('aria-label="Polaris Locker"');
+    // pkg.plrs.im is developer-facing: Polaris Key (FP-brand).
+    expect(html).toContain('aria-label="Polaris Key"');
     expect(html).toContain("The package registry for libraries and tools");
     expect(html).not.toMatch(/<script/i);
   });
