@@ -195,6 +195,11 @@
       "pattern": "2 sessions need a choice|3 devices · all updates|Expired Sep 30|Export every track as its own file, loudness-matched\\.|Stem export is in Pro|Syncing 3 sessions…|Tidewater Studio is now on this Mac\\.",
       "boards": ["web"],
       "reason": "Component gallery sample content: the host's own banner, toast and row text the kit components display."
+    },
+    {
+      "pattern": "polaris\\.locker/#/p/tidewater/devices",
+      "boards": ["terminal"],
+      "reason": "Fixture device-management link: the terminal kits show the Locker URL for the fixture product (tidewater), as the Node and Python goldens do."
     }
   ]
 }

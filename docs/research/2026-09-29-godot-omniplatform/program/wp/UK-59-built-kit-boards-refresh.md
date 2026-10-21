@@ -178,26 +178,30 @@ Left: apple.html iPad from built SwiftUI renders (needs a simulator or Xcode; th
 
 ## Kit gaps for UK-11
 
-"Fix in flight: KF-native" marks a gap the parallel KF-native package fixes in code; the lead
-updates those lines after it lands.
+Updated after KF-native and KF-web landed (UK-59 close, 2026-10-21): every former "Fix in flight"
+line is resolved below, fixed (with its commit) or still a gap (with what remains).
 
 - Godot: the boot bar is part-filled; DL7 wants the 2 px shimmer (owner: Godot kit).
 - Godot: status shows the gate's Signed out form with no Renew action; the target has a status screen (owner: Godot kit).
 - Godot: the error and device-limit frames have no copy for the cached license ("play continues on the cached license") (owner: Godot kit).
 - Godot: sign-in title is "Sign in", the target says "Sign in with a code" (the URL is already polaris.locker/device) (owner: Godot kit).
 - Godot: no activate dialog (the key form sits on the gate) and no 1280 x 800 render in tools/ui_screenshots.gd (owner: Godot kit).
-- Godot and Compose: no product icon and name (DL5) on most screens; on Godot every built frame, the gate included. Fix in flight: KF-native.
-- Kotlin: the welcome lede is hard-coded rather than the catalog's (owner: Compose kit). Fix in flight: KF-native.
+- Godot: no product icon and name (DL5) on every built frame, the gate included; KF-native changed only a focus-ring comment there, so it stands (owner: Godot kit).
+- Compose: the product header (icon and name) now leads the sign-in form (6e6866800); the other Compose screens (expired, boot, error, device limit) still carry no product header (DL5) (owner: Compose kit).
+- Kotlin: the welcome lede is the catalog's `welcome.lede` (PolarisCopy.kt reads it, 050f40049); no longer a gap.
 - Kotlin: no Compose snapshots for tablet portrait, nor a product icon on expired (DL3) (owner: Compose kit).
-- Kotlin: the sign-in code view prints `key.plrs.im/activate`; it must be `polaris.locker/device` (android-compose-sign-in). Fix in flight: KF-native.
-- Kotlin: boot draws a stock spinner, not the DL7 shimmer (owner: Compose kit). Fix in flight: KF-native.
-- Kotlin: the error screen shows the raw code "(sync-failed)" to the user (owner: Compose kit). Fix in flight: KF-native.
-- Swift: boot draws a spinner, not the DL7 shimmer (owner: SwiftUI kit). Fix in flight: KF-native.
-- Swift on iPad: the primary button sits about 600 pt below the content on a 13-inch portrait (owner: SwiftUI kit). Fix in flight: KF-native.
+- Kotlin: the sign-in code view still prints `key.plrs.im/activate` (android-compose-sign-in re-rendered 2026-10-21); it must be `polaris.locker/device`. KF-native (6e6866800) fixed the code view's sentence, header and buttons, not the address, which comes from the verification URI the preview supplies (owner: Compose kit).
+- Kotlin: boot still draws a stock spinner, not the DL7 shimmer (boot-progress snapshot; KF-native did not touch it) (owner: Compose kit).
+- Kotlin: fixed in 6e6866800: the error screen reads the catalog's "Couldn't check your license" copy for `sync-failed`; the raw code appears only for an unknown code.
+- Swift: boot still draws a spinner, not the DL7 shimmer; KF-native did not touch it (owner: SwiftUI kit).
+- Swift on iPad: fixed in 09df6e2d1 (the actions stay with the content); the iPad frames on the boards are re-rendered from it.
 - Swift: no landscape split Welcome render on iPad (the headless simulator cannot rotate), and no ActivityKit surface or StoreKit paywall in the kit (owner: SwiftUI kit).
-- Terminals (Node and Python): the device-management link is `key.plrs.im/portal/...`, but `CUSTOMER_ORIGIN_DEFAULT` is `polaris.locker` (owner: terminal kits).
-- Terminals: Node and Python word the device-limit sentence differently ("then try again here" versus "continues when you're done"); the board frame matches Python only (owner: terminal kits).
+- Terminals: fixed in a8d1f65ac: the fixture device-management link is `polaris.locker/#/p/tidewater/devices` in both kits and the goldens; the boards print it.
 - Apple and desktop: no built renders of visionOS, tvOS, watchOS or macOS (owner: SwiftUI kit).
+
+Removed: "Node and Python word the device-limit sentence differently". They did not: both goldens
+say "Replace a device in your browser, then try again here."; the board frame was the stale part
+(it carried an older sentence) and now matches both.
 
 Removed: "the Node terminal prints key.plrs.im/device". The Node golden `sign-in-handoff-code` prints
 `polaris.locker/device`.
@@ -212,3 +216,10 @@ docs/design/ui-kits are hand-authored HTML with no `_src`, so they were edited i
 - Device-code address is polaris.locker/device on web and Android; the Android hand-off has Open browser as the primary and no QR.
 - Copy: Android, Godot and iOS drift fixed to catalog (lede, Replace, license expired, can't connect, dates); fixtures went to strings.allow.json with reasons. Debt 177 entries to 45 (169 on the six boards to 45: web 13, terminal 31, apple 1).
 - Boards: title and section headings, frames wider than the window scroll inside their figure (no page sideways scroll at 1600 px), terminal fallbacks 3 + 2 centred, terminal device-limit captions say Python golden.
+
+## UK-59 close (2026-10-21, fix/uk59-close)
+
+- terminal.html: the device-limit frame (80 and 60 columns) matches the Node and Python goldens (one sentence, `polaris.locker/#/p/tidewater/devices`); both captions say Node and Python goldens.
+- apple.html: the seven iPad states under shots/ipad-built (14 JPEGs) re-rendered from the current kit on the iPad Pro 13-inch simulator (examples/ui/swiftui run.sh, 960 px JPEGs): the actions sit with the content.
+- Compose frames reference the Roborazzi snapshots in place, so the re-render picks up KF-native's PNGs (sign-in header and buttons, error copy). Web frames already carry polaris.locker/device; the React baselines changed in ways the hand-drawn web frames never showed.
+- strings.debt.json 45 to 39: the six terminal device-limit and narrow entries (old sentence and `key.plrs.im/portal`) are gone; the fixture link went to strings.allow.json.

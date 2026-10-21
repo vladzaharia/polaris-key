@@ -8,21 +8,6 @@
     },
     {
       "board": "terminal",
-      "state": "device-limit",
-      "text": "key.plrs.im/portal/tidewater/devices"
-    },
-    {
-      "board": "terminal",
-      "state": "device-limit",
-      "text": "Replace a device in your browser. Tidewater Studio continues when"
-    },
-    {
-      "board": "terminal",
-      "state": "device-limit",
-      "text": "you're done."
-    },
-    {
-      "board": "terminal",
       "state": "ended",
       "text": "tidewater login Sign in again"
     },
@@ -64,27 +49,12 @@
     {
       "board": "terminal",
       "state": "narrow",
-      "text": "continues when you're done."
-    },
-    {
-      "board": "terminal",
-      "state": "narrow",
       "text": "enter this code."
     },
     {
       "board": "terminal",
       "state": "narrow",
-      "text": "key.plrs.im/portal/tidewater/devices"
-    },
-    {
-      "board": "terminal",
-      "state": "narrow",
       "text": "On any phone or computer, go"
-    },
-    {
-      "board": "terminal",
-      "state": "narrow",
-      "text": "Replace a device in your browser. Tidewater Studio"
     },
     {
       "board": "terminal",
