@@ -77,17 +77,29 @@ export function lockerFaviconHref(): string {
   return `data:image/svg+xml,${encodeURIComponent(lockerFaviconSvg())}`;
 }
 
-function inks(theme: "dark" | "light"): string {
+function lockupInks(theme: "dark" | "light"): string {
   const ink = LOCKER_LOCKUP_PALETTES[theme];
+  return [`--lb:${ink.body}`, `--ls:${ink.star}`, `--lt:${ink.text}`].join(";");
+}
+
+function inks(theme: "dark" | "light"): string {
   const accent = SERVICE_ACCENTS[theme].distribution;
   return [
-    `--lb:${ink.body}`,
-    `--ls:${ink.star}`,
-    `--lt:${ink.text}`,
+    lockupInks(theme),
     `--sb:${accent.fg}`,
     `--ss:${THEME_TOKENS[theme].text.strong}`,
   ].join(";");
 }
+
+/**
+ * The lockup's inks alone, for a customer page that draws no Delivery service symbol (the
+ * download page): no Distribution green is carried into its stylesheet.
+ */
+export const LOCKER_LOCKUP_CSS = [
+  `:root{${lockupInks("dark")}}`,
+  `@media (prefers-color-scheme: light){:root{${lockupInks("light")}}}`,
+  `.lb{fill:var(--lb)}.ls{fill:var(--ls)}.lt{fill:var(--lt)}`,
+].join("");
 
 /**
  * What a Locker shell adds to a Delivery page's stylesheet (a build constant, so its hash is

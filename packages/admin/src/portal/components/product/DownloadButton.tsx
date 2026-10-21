@@ -36,11 +36,15 @@ export function DownloadButton({
   const start = useStartDownload();
   const alertId = React.useId();
   return (
-    <div className="flex min-w-0 flex-col items-start gap-2">
+    <div className="flex min-w-0 flex-col items-stretch gap-2 sm:items-start">
       <Button
         variant={lead ? "primary" : "quiet"}
         size={lead ? "lg" : "md"}
-        className={lead ? "h-12 px-6" : "h-10"}
+        className={
+          lead
+            ? "h-auto min-h-12 whitespace-normal px-6"
+            : "h-auto min-h-10 whitespace-normal"
+        }
         loading={start.isPending}
         busyFocusable
         aria-describedby={start.isError ? alertId : undefined}

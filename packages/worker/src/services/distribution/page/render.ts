@@ -26,7 +26,7 @@
 import { FONT, THEME_TOKENS } from "@polaris-key/brand";
 import { buildLabel, type BuildLabel } from "@polaris-key/manifest";
 import {
-  LOCKER_SHELL_CSS,
+  LOCKER_LOCKUP_CSS,
   lockerFaviconHref,
   lockerLockup,
 } from "../../../core/assets/lockerShell.js";
@@ -111,7 +111,7 @@ export const PAGE_CSS = [
   `.top,main,header,footer{max-width:46rem;margin:0 auto;padding-left:1rem;padding-right:1rem}`,
   `.topbar{border-bottom:1px solid var(--line)}`,
   `.top{display:flex;align-items:center;min-height:4.5rem;padding-top:.5rem;padding-bottom:.5rem}`,
-  `.cover{display:block;width:100%;height:7.5rem;margin:0 0 1rem;border-radius:10px;object-fit:cover;background:var(--sunken)}`,
+  `.cover{display:block;width:100%;height:120px;margin:0 0 1rem;border-radius:10px;object-fit:cover;background:var(--sunken)}`,
   `.top svg{display:block;max-width:100%;height:auto}`,
   `header{padding-top:1.5rem}`,
   `.crumbs{margin:0 0 1rem;color:var(--muted);font-size:.75rem;line-height:1rem}`,
@@ -140,6 +140,8 @@ export const PAGE_CSS = [
   `.rows{list-style:none;margin:0;padding:0}`,
   `.row{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem 1rem;padding:.75rem 1rem;border-top:1px solid var(--line)}`,
   `.row:first-child{border-top:0}`,
+  `.row-extra{flex:1 1 100%;min-width:0;display:flex;flex-direction:column;gap:.5rem}`,
+  `.row-lead .row-title{color:var(--muted);font-weight:400;font-size:.875rem}`,
   `.row-text{flex:1 1 14rem;min-width:0;display:flex;flex-direction:column;gap:.25rem}`,
   `.row-title{color:var(--strong);font-weight:500}`,
   `.row-meta{display:flex;flex-wrap:wrap;gap:.25rem .75rem;color:var(--muted);font-size:.875rem}`,
@@ -169,7 +171,7 @@ export const PAGE_CSS = [
   `.summary{white-space:pre-line}`,
   `footer{padding:2.5rem 1rem 3rem;font-size:.875rem}`,
   `footer p{margin:0 0 1rem}`,
-  LOCKER_SHELL_CSS,
+  LOCKER_LOCKUP_CSS,
 ].join("\n");
 
 const KEY_LABELS: Readonly<Record<string, string>> = {
@@ -350,9 +352,11 @@ function row(
     ? `<span class="row-meta">${meta.join("")}</span>`
     : "";
   const act = actions.filter((x) => x !== "");
-  return `<li class="row" data-action="${esc(kind)}"><div class="row-text"><span class="row-title">${esc(title)}</span>${metaHtml}${extra.join("")}</div>${
+  return `<li class="row" data-action="${esc(kind)}"><div class="row-text"><span class="row-title">${esc(title)}</span>${metaHtml}</div>${
     qr ? `<div class="row-qr">${qr}</div>` : ""
-  }${act.length ? `<div class="row-act">${act.join("")}</div>` : ""}</li>`;
+  }${act.length ? `<div class="row-act">${act.join("")}</div>` : ""}${
+    extra.length ? `<div class="row-extra">${extra.join("")}</div>` : ""
+  }</li>`;
 }
 
 /** The rows of one platform action: a row per build for a download, else one row. */
@@ -360,21 +364,26 @@ function way(a: PageAction, group: PagePlatformGroup): string {
   if (a.kind === "download") {
     // The `direct` outlet is presented as Polaris Locker (S-21 §6.8, LK-07); its id stays `direct`.
     const same = group.builds.filter((x) => x.releaseId === a.build?.releaseId);
-    return (same.length ? same : a.build ? [a.build] : [])
-      .map((b) =>
-        row(
-          a.kind,
-          "Download from Polaris Locker",
-          [
-            `<span>${buildMeta(b)}</span>`,
-            `<span class="mono"><code>${esc(b.name)}</code></span>`,
-          ],
-          [],
-          "",
-          [link(b.url, "Download", "obtn", `${b.name}, ${labelOf(b).long}`)],
-        ),
-      )
-      .join("");
+    const rows = (same.length ? same : a.build ? [a.build] : []).map((b) =>
+      row(
+        a.kind,
+        labelOf(b).long,
+        [
+          `<span>Version ${esc(b.version)}</span>`,
+          ...(formatSize(b.size)
+            ? [`<span>${esc(formatSize(b.size)!)}</span>`]
+            : []),
+          `<span class="mono"><code>${esc(b.name)}</code></span>`,
+        ],
+        [],
+        "",
+        [link(b.url, "Download", "obtn", `${b.name}, ${labelOf(b).long}`)],
+      ),
+    );
+    // Said once per card, not on every build row.
+    return rows.length
+      ? `<li class="row row-lead" data-action="download"><span class="row-title">Download from Polaris Locker</span></li>${rows.join("")}`
+      : "";
   }
   const meta = a.version ? [`<span>Version ${esc(a.version)}</span>`] : [];
   const actions: string[] = [];
@@ -507,7 +516,13 @@ export function renderDownloadPage(
       }</section>`
     : "";
 
-  const ways = model.platforms
+  // The visitor's own platform's card leads.
+  const ordered = [...model.platforms].sort(
+    (x, y) =>
+      Number(y.platform === detected.platform) -
+      Number(x.platform === detected.platform),
+  );
+  const ways = ordered
     .map((g) => {
       const items = g.actions
         .map((id) => model.actions.find((a) => a.id === id))

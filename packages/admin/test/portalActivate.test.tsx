@@ -444,7 +444,7 @@ describe("Activate license modal (PX-06)", () => {
     expect(confirm.textContent).toContain("Key recognized");
     expect(confirm.textContent).toContain("Little Fern");
     expect(confirm.textContent).toContain("Lifetime · up to 5 devices");
-    expect(confirm.textContent).toContain("pkey_mossgarden_Q7xZ…cY4w");
+    expect(confirm.textContent).toContain("pkey_mossgarden_Q7x…Y4w");
     // Nothing is added until the person says so.
     expect(fetchedRequests()).not.toContain("POST /api/claim/license-key");
     expect(await axeViolations()).toEqual([]);

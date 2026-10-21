@@ -353,7 +353,11 @@ export function ActivateDialog({
   return (
     <Dialog
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={(next) => {
+        // Escape on Done leaves for the product: focus follows to its page heading.
+        if (!next && done) requestHeadingFocus(done.slug);
+        onOpenChange(next);
+      }}
       title={
         done
           ? done.already
@@ -608,7 +612,7 @@ function AccountRow({
       <form method="post" action="/logout" className="shrink-0">
         <button
           type="submit"
-          className="rounded-sm text-sm font-medium text-fg-strong underline underline-offset-2"
+          className="inline-flex min-h-11 items-center rounded-sm text-sm font-medium text-fg-strong underline underline-offset-2"
         >
           Not you?
         </button>
@@ -1005,7 +1009,7 @@ export function ConfirmStep({
 
 /** A key's secret part with its middle cut out, so the row stays one line. */
 function middleTruncate(rest: string): string {
-  return rest.length > 10 ? `${rest.slice(0, 4)}…${rest.slice(-4)}` : rest;
+  return rest.length > 8 ? `${rest.slice(0, 3)}…${rest.slice(-3)}` : rest;
 }
 
 /**

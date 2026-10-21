@@ -52,7 +52,7 @@ export function FocusedFlow({
         Skip to content
       </a>
       <header className="border-b border-border bg-surface-page">
-        <div className="mx-auto flex h-14 w-full max-w-[82rem] items-center justify-between gap-4 px-4 desk:h-16 desk:px-8">
+        <div className="mx-auto flex min-h-14 w-full max-w-[82rem] items-center justify-between gap-4 px-4 desk:min-h-16 desk:px-8">
           <a
             href={href.library()}
             aria-label="Polaris Locker: your library"
@@ -63,14 +63,18 @@ export function FocusedFlow({
           </a>
           <a
             href={back.href}
+            aria-label={`${back.label}${back.tail ? ` ${back.tail}` : ""}`}
             className="inline-flex min-h-11 min-w-0 items-center gap-2 rounded-md px-2 text-sm text-fg hover:text-fg-strong"
           >
             <ArrowLeft aria-hidden className="size-4 shrink-0" />
-            <span className="min-w-0 [overflow-wrap:anywhere]">
+            <span className="min-w-0 break-words max-[23.99rem]:hidden">
               {back.label}
               {back.tail ? (
                 <span className="hidden sm:inline"> {back.tail}</span>
               ) : null}
+            </span>
+            <span aria-hidden className="min-[24rem]:hidden">
+              Back
             </span>
           </a>
         </div>
@@ -161,13 +165,13 @@ export function TaskFrame({
             {titleIcon}
           </span>
         ) : null}
-        <span className="min-w-0 [overflow-wrap:anywhere]">{title}</span>
+        <span className="min-w-0 break-words">{title}</span>
       </h1>
       <div className="mt-6 grid gap-6 twocol:grid-cols-[20rem_minmax(0,1fr)] twocol:items-start twocol:gap-8">
         <div className="space-y-3">
           <div
             data-identity=""
-            className="flex min-w-0 items-center gap-3 rounded-xl border border-border bg-surface-raised px-4 py-3 max-[22rem]:flex-col max-[22rem]:items-start"
+            className="flex min-w-0 items-center gap-3 rounded-xl border border-border bg-surface-raised px-4 py-3 flex-wrap [&>:last-child]:min-w-[10rem] [&>:last-child]:flex-1"
           >
             <ProductIcon
               slug={slug}
