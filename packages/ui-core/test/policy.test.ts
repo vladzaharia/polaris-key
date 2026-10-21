@@ -33,11 +33,11 @@ const CONSOLE: Platform = { os: "linux", formFactor: "tv" };
 
 describe("DL14: links fail closed", () => {
   it.each([
-    ["https://key.plrs.im/device", "https://key.plrs.im/device"],
+    ["https://polaris.locker/device", "https://polaris.locker/device"],
     ["http://localhost:8787/signin", "http://localhost:8787/signin"],
     ["http://127.0.0.1/x", "http://127.0.0.1/x"],
     ["driftkart.gg/tv", "https://driftkart.gg/tv"],
-    ["http://key.plrs.im/device", null],
+    ["http://polaris.locker/device", null],
     ["javascript:alert(1)", null],
     ["https://user:pass@key.plrs.im/", null],
     ["https://key.plrs.im/ device", null],
@@ -54,8 +54,8 @@ describe("DL14: links fail closed", () => {
     expect(displayLink("https://polaris.locker/activate")).toBe(
       "polaris.locker/activate",
     );
-    expect(displayLink("https://key.plrs.im/device/")).toBe(
-      "key.plrs.im/device",
+    expect(displayLink("https://polaris.locker/device/")).toBe(
+      "polaris.locker/device",
     );
   });
 
@@ -84,7 +84,7 @@ describe("DL14: links fail closed", () => {
       open: false,
       qr: true,
     });
-    expect(linkVerdict("https://key.plrs.im/device", MAC, "sign-in").open).toBe(
+    expect(linkVerdict("https://polaris.locker/device", MAC, "sign-in").open).toBe(
       true,
     );
     expect(linkVerdict("http://evil.example/", MAC, "sign-in")).toEqual({
@@ -149,10 +149,10 @@ describe("DL14: links fail closed", () => {
       deviceCode: {
         phase: "waiting",
         secondsLeft: 200,
-        verificationUri: "https://key.plrs.im/device",
+        verificationUri: "https://polaris.locker/device",
       },
     });
-    expect(view.decisions.link?.url).toBe("https://key.plrs.im/device");
+    expect(view.decisions.link?.url).toBe("https://polaris.locker/device");
   });
 
   it("the fallback page carries the code; the shown address stays bare", () => {

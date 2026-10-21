@@ -53,7 +53,7 @@ const LONG = {
 const SHORT = {
   name: "Tidewater Studio",
   code: "WDJB-MJHT",
-  url: "https://key.plrs.im/device",
+  url: "https://polaris.locker/device",
   device: "Work laptop",
 };
 type Values = typeof LONG;
@@ -239,8 +239,9 @@ describe("URLs and codes wrap and are never cut", () => {
       expect(pieces.join("")).toBe(url);
       for (const p of pieces) expect([...p].length).toBeLessThanOrEqual(w);
     }
-    expect(breakPieces("key.plrs.im/device?a=1&b=2", "url", 12)).toEqual([
-      "key.plrs.im/",
+    expect(breakPieces("polaris.locker/device?a=1&b=2", "url", 12)).toEqual([
+      "polaris",
+      ".locker/",
       "device",
       "?a=1",
       "&b=2",

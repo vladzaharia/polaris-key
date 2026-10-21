@@ -341,7 +341,7 @@ def test_activation_view() -> None:
 def test_sign_in_model_walks_its_states() -> None:
     class P:
         userCode = "WDJB-MJHT"
-        verificationUri = "https://key.plrs.im/device"
+        verificationUri = "https://polaris.locker/device"
         verificationUriComplete = "https://polaris.locker/device?user_code=WDJB-MJHT"
         expiresAt = 600
 

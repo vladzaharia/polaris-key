@@ -211,8 +211,8 @@ export function tidewaterBridge(): PolarisBridge {
       flows.set(flowId, Date.now());
       return {
         flowId,
-        verificationUrl: "https://key.plrs.im/device?code=TDWR-4821",
-        verificationUri: "https://key.plrs.im/device",
+        verificationUrl: "https://polaris.locker/device?code=TDWR-4821",
+        verificationUri: "https://polaris.locker/device",
         userCode: "TDWR-4821",
         expiresAt: nowSec() + 600,
         interval: 1,

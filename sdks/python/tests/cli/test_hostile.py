@@ -45,7 +45,7 @@ ESC_NAME = "Tide\x1b]0;pwned\x07water\x9b31m [link=https://evil]x[/link]"
 ESC_SUMMARY = "Fixes\x1b[2J a crash\x9d0;title\x9c"
 ESC_URL = "https://evil.example/\x1b]8;;javascript:alert(1)\x1b\\"
 NOT_HTTPS = "javascript:alert(1)"
-ESC_VURI = "https://key.plrs.im/device\x1b[2J"
+ESC_VURI = "https://polaris.locker/device\x1b[2J"
 
 #: The escapes the kit itself writes: SGR, and OSC 8 around an https (or loopback http) target.
 _KIT = re.compile(r"\x1b\[[0-9;]*m|\x1b\]8;(?:id=[^;]*)?;(?:https://|http://(?:127\.0\.0\.1|localhost|\[::1\]))[\x21-\x7e]*\x1b\\|\x1b\]8;;\x1b\\")
@@ -126,7 +126,7 @@ def test_the_browser_opens_only_safe_urls(monkeypatch) -> None:
     opened: list = []
     monkeypatch.setattr("webbrowser.open", lambda url: opened.append(url) or True)
     assert Device.open_url(ESC_URL) is False and Device.open_url(NOT_HTTPS) is False
-    assert Device.open_url("https://key.plrs.im/device") is True and opened == ["https://key.plrs.im/device"]
+    assert Device.open_url("https://polaris.locker/device") is True and opened == ["https://polaris.locker/device"]
 
 
 def test_json_is_ascii_with_every_control_escaped() -> None:

@@ -44,7 +44,7 @@ LONG = dict(
     url="https://licensing.tidewater-studio-professional.example.com/activate/device?region=eu-west-2&channel=stable-26",
     device="Mara Fennick's 16-inch MacBook Pro (Studio B2, second floor)",
 )
-SHORT = dict(name="Tidewater Studio", code="WDJB-MJHT", url="https://key.plrs.im/device", device="Work laptop")
+SHORT = dict(name="Tidewater Studio", code="WDJB-MJHT", url="https://polaris.locker/device", device="Work laptop")
 COLUMNS = (24, 28, 32, 40, 60, 80, 120)
 ROWS = (8, 10, 12, 16, 17, 24)
 
@@ -184,7 +184,7 @@ def test_a_url_breaks_after_slash_and_before_query_marks_and_keeps_every_charact
     for w in (8, 20, 37, 57):
         pieces = break_pieces(url, "url", w)
         assert "".join(pieces) == url and all(len(p) <= w for p in pieces)
-    assert break_pieces("key.plrs.im/device?a=1&b=2", "url", 12) == ["key.plrs.im/", "device", "?a=1", "&b=2"]
+    assert break_pieces("polaris.locker/device?a=1&b=2", "url", 12) == ["polaris", ".locker/", "device", "?a=1", "&b=2"]
 
 
 def test_a_url_that_does_not_fit_starts_its_own_line_with_its_lead_in_and_keeps_the_link() -> None:
