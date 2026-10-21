@@ -481,6 +481,7 @@
   "signin.console.notConfigured": "管理员登录尚未设置",
   "signin.expired.title": "该验证码或链接已过期",
   "signin.expired.body": "验证码和链接仅可使用一次，10分钟内有效。",
+  "signin.expired.sendTo": "新验证码将发送到 {email}。",
   "signin.again": "重新登录",
   "signin.identityOff.notice": "{product}不使用Polaris Locker登录。请打开{product}并在其中输入你的许可证密钥。",
   "signin.identityOff.lede": "在此登录即可在你的资料库中看到{product}。",

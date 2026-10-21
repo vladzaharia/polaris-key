@@ -481,6 +481,7 @@
   "signin.console.notConfigured": "El inicio de sesión de administración no está configurado",
   "signin.expired.title": "Ese código o enlace venció",
   "signin.expired.body": "Los códigos y enlaces funcionan una sola vez, durante 10 minutos.",
+  "signin.expired.sendTo": "Enviaremos un código nuevo a {email}.",
   "signin.again": "Vuelve a iniciar sesión",
   "signin.identityOff.notice": "{product} no usa el inicio de sesión de Polaris Locker. Abre {product} y escribe allí tu clave de licencia.",
   "signin.identityOff.lede": "Inicia sesión aquí para ver {product} en tu biblioteca.",

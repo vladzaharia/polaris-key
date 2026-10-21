@@ -31,12 +31,13 @@ export function cardJson(
 export function cardRedirect(
   location: string,
   cookies: readonly string[] = [],
+  status: 302 | 303 = 302,
 ): Response {
   const headers = portalSecurityHeaders(
     new Headers({ location, "cache-control": "no-store" }),
   );
   for (const c of cookies) headers.append("set-cookie", c);
-  return new Response(null, { status: 302, headers });
+  return new Response(null, { status, headers });
 }
 
 /**

@@ -657,6 +657,29 @@ export const SHIPPED: ShippedState[] = [
   },
   {
     section: "4.1",
+    id: "signin-resumed",
+    title:
+      "Login card, the code step after the expired-link page's Send a new code (masked address)",
+    scenario: "signedOut",
+    path: "/?signin=code",
+    routes: {
+      "GET /api/signin/flow": {
+        body: {
+          email: "m•••@fennick.studio",
+          expiresIn: 600,
+          codeLength: 6,
+          resendIn: 45,
+        },
+      },
+    },
+    ready: async (p) => {
+      await h1(p, "Check your email");
+      await p.getByText("m•••@fennick.studio").waitFor();
+      await p.getByRole("textbox", { name: "6-digit code" }).waitFor();
+    },
+  },
+  {
+    section: "4.1",
     id: "signin-key",
     title: "Login card, Have a license key? (the on-ramp)",
     scenario: "signedOut",

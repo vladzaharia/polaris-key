@@ -1115,6 +1115,8 @@
     <string name="signin_expired_title">Dieser Code oder Link ist abgelaufen</string>
     <!-- Expired code or link page (SIGN-IN.md §4.12). -->
     <string name="signin_expired_body">Codes und Links sind einmal und 10 Minuten lang gültig.</string>
+    <!-- Expired code or link page (SIGN-IN.md §4.12). Arguments: {email} = an email address, masked by the Worker. The button is signin.code.resend; the way back is signin.code.differentEmail. Arguments: 1=email. -->
+    <string name="signin_expired_sendTo">Ein neuer Code geht an %1$s.</string>
     <!-- Expired code or link page (SIGN-IN.md §4.12). -->
     <string name="signin_again">Erneut anmelden</string>
     <string name="signin_again__macos">Erneut anmelden</string>

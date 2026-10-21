@@ -3005,6 +3005,11 @@ msgstr "코드 또는 링크가 만료됐어요"
 msgid "signin.expired.body"
 msgstr "코드와 링크는 10분 동안 한 번만 사용할 수 있어요."
 
+#. A new code goes to {email}.
+#. Expired code or link page (SIGN-IN.md §4.12). Arguments: {email} = an email address, masked by the Worker. The button is signin.code.resend; the way back is signin.code.differentEmail.
+msgid "signin.expired.sendTo"
+msgstr "새 코드를 {email}(으)로 보냅니다."
+
 #. Sign in again
 #. Expired code or link page (SIGN-IN.md §4.12).
 msgid "signin.again"

@@ -233,6 +233,7 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | POST | `/api/signin/email/resend` | portal | A new code and magic link for this browser's email sign-in |
 | POST | `/api/signin/email/start` | portal | Identifier-first email start (a code and a magic link) |
 | POST | `/api/signin/email/verify` | portal | Redeem the emailed code in the browser that asked |
+| GET | `/api/signin/flow` | portal | This browser's email sign-in flow, for the code step after a plain form POST |
 | POST | `/api/signin/flow` | portal | The asking browser's poll after the link was confirmed elsewhere |
 | POST | `/api/signin/passkey/options` | portal | A passkey sign-in challenge for this browser |
 | POST | `/api/signin/passkey/verify` | portal | Sign in with the passkey's assertion |

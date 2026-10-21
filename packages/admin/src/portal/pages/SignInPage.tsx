@@ -20,6 +20,7 @@ import {
   type PortalCapabilities,
   type PortalConnection,
   type PortalEmailSent,
+  type PortalSignInFlow,
   type PortalSsoNext,
 } from "../api.js";
 import {
@@ -106,7 +107,16 @@ type Step =
       /** Change on a routed step: the typed address stays and the field takes focus. */
       focusEmail?: boolean;
     }
-  | { kind: "code"; email: string; resendIn: number }
+  | {
+      kind: "code";
+      email: string;
+      resendIn: number;
+      /** The address is the Worker's mask (a resumed flow): it names the inbox, so it is never
+       *  put back in the email field. */
+      masked?: boolean;
+    }
+  /** The expired-link page's "Send a new code" landed here (`?signin=code`): the flow is read. */
+  | { kind: "resume" }
   /** The code was right but its account can't sign in (§3.13, Account disabled): a dead end
    *  for that address, so the step ends here (PS-05 review M3). */
   | { kind: "refused"; email: string }
@@ -126,7 +136,7 @@ type Step =
 const RESEND_FALLBACK_S = 60;
 
 /** Seconds until "Send a new code", from the start's or the resend's answer. */
-function resendDelay(out: PortalEmailSent | undefined): number {
+function resendDelay(out: { resendIn?: number } | undefined): number {
   const n = out?.resendIn;
   return typeof n === "number" && Number.isFinite(n) && n >= 0
     ? Math.ceil(n)
@@ -191,13 +201,16 @@ export function SignInPage({
   const identityOff =
     new URLSearchParams(window.location.search).get("error") ===
     "identity_disabled";
-  const [step, setStep] = React.useState<Step>(() =>
-    // A front door's redirect (`/?signin=confirm-email`) opens the finish step.
-    new URLSearchParams(window.location.search).get("signin") ===
-    "confirm-email"
+  const [step, setStep] = React.useState<Step>(() => {
+    const signin = new URLSearchParams(window.location.search).get("signin");
+    // A front door's redirect (`/?signin=confirm-email`) opens the finish step; the Worker's
+    // expired-link page (`?signin=code`) lands on the code step it just sent.
+    return signin === "confirm-email"
       ? { kind: "finish" }
-      : { kind: "methods", email: other?.email },
-  );
+      : signin === "code" && !other
+        ? { kind: "resume" }
+        : { kind: "methods", email: other?.email };
+  });
   const [direction, setDirection] = React.useState<"forward" | "back">(
     "forward",
   );
@@ -220,7 +233,12 @@ export function SignInPage({
       if (e.key !== "Escape" || e.defaultPrevented) return;
       go(
         step.kind === "code" || step.kind === "hint"
-          ? { kind: "methods", email: step.email, focusEmail: true }
+          ? {
+              kind: "methods",
+              email:
+                step.kind === "code" && step.masked ? undefined : step.email,
+              focusEmail: true,
+            }
           : step.kind === "upgrade"
             ? { kind: "key" }
             : { kind: "methods" },
@@ -356,12 +374,35 @@ export function SignInPage({
             void request.refetch();
           }}
         />
+      ) : step.kind === "resume" ? (
+        <ResumeStep
+          onFlow={(flow) =>
+            go(
+              flow.next
+                ? { kind: "sso", email: flow.email, next: flow.next }
+                : {
+                    kind: "code",
+                    email: flow.email,
+                    resendIn: resendDelay(flow),
+                    masked: true,
+                  },
+            )
+          }
+          onGone={(notice) => go({ kind: "methods", notice }, "back")}
+        />
       ) : step.kind === "code" ? (
         <CodeStep
           email={step.email}
           resendIn={step.resendIn}
           onChangeEmail={() =>
-            go({ kind: "methods", email: step.email, focusEmail: true }, "back")
+            go(
+              {
+                kind: "methods",
+                email: step.masked ? undefined : step.email,
+                focusEmail: true,
+              },
+              "back",
+            )
           }
           onRefused={() => go({ kind: "refused", email: step.email })}
           onRouted={(next) => go({ kind: "sso", email: step.email, next })}
@@ -370,7 +411,7 @@ export function SignInPage({
             go(
               {
                 kind: "methods",
-                email: step.email,
+                email: step.masked ? undefined : step.email,
                 notice: t("signin.code.expiredRestart"),
               },
               "back",
@@ -492,6 +533,58 @@ export function SignInPage({
       )}
     </AuthCard>
   );
+}
+
+/**
+ * The expired-link page's "Send a new code" is a plain form POST; its answer lands here with
+ * `?signin=code`. The flow is read (`GET /api/signin/flow`), the marker leaves the URL (so no
+ * later return URL carries it), and the card moves to the code step with the masked address and
+ * the Worker's `resendIn`. `returnTo` and the request handle are the page's own URL and the
+ * flow's record. No live flow: the email step, with the reason.
+ */
+function ResumeStep({
+  onFlow,
+  onGone,
+}: {
+  onFlow: (flow: PortalSignInFlow) => void;
+  onGone: (notice: string) => void;
+}): React.ReactElement {
+  const done = React.useRef(false);
+  React.useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.has("signin")) {
+      url.searchParams.delete("signin");
+      window.history.replaceState(
+        window.history.state,
+        "",
+        `${url.pathname}${url.search}${url.hash}`,
+      );
+    }
+    let live = true;
+    portalApi
+      .readSignInFlow()
+      .then((flow) => {
+        if (live && !done.current) {
+          done.current = true;
+          onFlow(flow);
+        }
+      })
+      .catch((err: unknown) => {
+        if (!live || done.current) return;
+        done.current = true;
+        onGone(
+          err instanceof PortalApiError && err.code === "signin_expired"
+            ? t("signin.code.expiredRestart")
+            : startErrorText(err),
+        );
+      });
+    return () => {
+      live = false;
+    };
+    // The read runs once, on landing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return <MethodsSkeleton />;
 }
 
 /** The card's loading state (§3.3): a skeleton at the final size, never a "Getting…" line. */

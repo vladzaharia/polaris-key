@@ -1106,6 +1106,8 @@
     <string name="signin_expired_title">코드 또는 링크가 만료됐어요</string>
     <!-- Expired code or link page (SIGN-IN.md §4.12). -->
     <string name="signin_expired_body">코드와 링크는 10분 동안 한 번만 사용할 수 있어요.</string>
+    <!-- Expired code or link page (SIGN-IN.md §4.12). Arguments: {email} = an email address, masked by the Worker. The button is signin.code.resend; the way back is signin.code.differentEmail. Arguments: 1=email. -->
+    <string name="signin_expired_sendTo">새 코드를 %1$s(으)로 보냅니다.</string>
     <!-- Expired code or link page (SIGN-IN.md §4.12). -->
     <string name="signin_again">다시 로그인</string>
     <string name="signin_again__macos">다시 로그인</string>

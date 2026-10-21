@@ -481,6 +481,7 @@
   "signin.console.notConfigured": "L'accesso amministratore non è configurato",
   "signin.expired.title": "Il codice o il link è scaduto",
   "signin.expired.body": "Codici e link funzionano una sola volta, per 10 minuti.",
+  "signin.expired.sendTo": "Un nuovo codice viene inviato a {email}.",
   "signin.again": "Accedi di nuovo",
   "signin.identityOff.notice": "{product} non usa l'accesso Polaris Locker. Apri {product} e inserisci lì la tua chiave di licenza.",
   "signin.identityOff.lede": "Accedi qui per vedere {product} nella tua libreria.",

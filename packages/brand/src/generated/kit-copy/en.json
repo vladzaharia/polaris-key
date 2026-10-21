@@ -481,6 +481,7 @@
   "signin.console.notConfigured": "Admin sign-in isn't set up",
   "signin.expired.title": "That code or link has expired",
   "signin.expired.body": "Codes and links work once, for 10 minutes.",
+  "signin.expired.sendTo": "A new code goes to {email}.",
   "signin.again": "Sign in again",
   "signin.identityOff.notice": "{product} doesn't use Polaris Locker sign-in. Open {product} and enter your license key there.",
   "signin.identityOff.lede": "Sign in here to see {product} in your library.",

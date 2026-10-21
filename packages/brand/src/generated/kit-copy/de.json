@@ -481,6 +481,7 @@
   "signin.console.notConfigured": "Die Admin-Anmeldung ist nicht eingerichtet",
   "signin.expired.title": "Dieser Code oder Link ist abgelaufen",
   "signin.expired.body": "Codes und Links sind einmal und 10 Minuten lang gültig.",
+  "signin.expired.sendTo": "Ein neuer Code geht an {email}.",
   "signin.again": "Erneut anmelden",
   "signin.identityOff.notice": "{product} verwendet keine Anmeldung über Polaris Locker. Öffnen Sie {product} und geben Sie dort Ihren Lizenzschlüssel ein.",
   "signin.identityOff.lede": "Melden Sie sich hier an, um {product} in Ihrer Bibliothek zu sehen.",
