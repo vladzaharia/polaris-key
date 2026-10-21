@@ -73,7 +73,7 @@ export function ProductPage({
       : lib.isPending
         ? null
         : lib.error
-          ? slug
+          ? t("locker.error.productFallback")
           : t("locker.notFound.title"),
   );
   if (lib.isPending) return <ProductSkeleton />;
@@ -83,8 +83,10 @@ export function ProductPage({
         error={lib.error}
         onRetry={lib.retry}
         asPage
-        page={product?.name ?? slug}
-        message={t("locker.error.loadFailed", { name: product?.name ?? slug })}
+        page={product?.name ?? t("locker.error.productFallback")}
+        message={t("locker.error.loadFailed", {
+          name: product?.name ?? t("locker.error.thisProduct"),
+        })}
         backToLibrary
       />
     );

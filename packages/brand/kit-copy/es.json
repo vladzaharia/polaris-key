@@ -1002,6 +1002,8 @@
     "locker.error.licenseInactive.body": "Renueva o reactiva tu licencia y vuelve a intentar la descarga.",
     "locker.error.signInAgain": "Inicia sesión de nuevo para continuar.",
     "locker.error.loadFailed": "No se pudo cargar {name}. Revisa tu conexión.",
+    "locker.error.thisProduct": "este producto",
+    "locker.error.productFallback": "Producto",
     "locker.error.loadFailedLibrary": "No se pudo cargar tu biblioteca. Revisa tu conexión.",
     "locker.library.title": "Biblioteca",
     "locker.library.heading": "Tu biblioteca",

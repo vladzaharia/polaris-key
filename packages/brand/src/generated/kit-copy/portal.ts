@@ -203,6 +203,8 @@ export type PortalCopyKey =
   | "locker.error.licenseInactive.body"
   | "locker.error.signInAgain"
   | "locker.error.loadFailed"
+  | "locker.error.thisProduct"
+  | "locker.error.productFallback"
   | "locker.error.loadFailedLibrary"
   | "locker.library.title"
   | "locker.library.heading"
