@@ -238,6 +238,7 @@ const AUTH_CARD_RULES = [
   `main.ac{display:block;width:100%;max-width:28.5rem;min-width:0;margin:0 auto;overflow:hidden;border:1px solid var(--rule);border-radius:1.375rem;background:var(--raised);box-shadow:0 8px 24px rgb(0 0 0 / .18)}`,
   `.ac-head{display:flex;gap:1rem;align-items:center;min-width:0;padding:1rem 1.75rem;border-bottom:1px solid var(--rule)}`,
   `.ac-head img,.ac-mono{display:block;flex:none;width:48px;height:48px;border-radius:11px;object-fit:cover}`,
+  `.ac-head-title strong{font-weight:600}`,
   `.ac-mono{display:grid;place-items:center;background:var(--sunken);border:1px solid var(--rule);color:var(--strong);font-weight:600}`,
   `.ac-head-text{display:grid;min-width:0;overflow-wrap:anywhere}`,
   `.ac-head-text p{margin:0}`,
@@ -474,12 +475,24 @@ const ICON_PATHS = {
   "check-circle": '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
   monitor:
     '<rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/>',
+  smartphone:
+    '<rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/>',
   at: '<circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/>',
   devices:
     '<path d="M18 8V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h8"/><path d="M10 19v-3.96 3.15"/><path d="M7 19h5"/><rect width="6" height="10" x="16" y="12" rx="2"/>',
   "arrow-right": '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
 } as const;
 export type IconName = keyof typeof ICON_PATHS;
+
+/** The glyph for a device the app named: a phone when its label says phone, else a monitor. */
+function deviceIcon(label: string): string {
+  return icon(
+    /\b(?:iphone|pixel|galaxy|android|phone|ipod)\b/i.test(label)
+      ? "smartphone"
+      : "monitor",
+    true,
+  );
+}
 
 /** A decorative inline icon (stroke follows the text colour). */
 export function icon(name: IconName, small = false): string {
@@ -537,7 +550,7 @@ function appLines(opts: {
     `<p class="ac-head-title"><strong><bdi>${escapeHtml(opts.name)}</bdi></strong>${opts.action ? ` ${escapeHtml(opts.action)}` : ""}</p>` +
     (opts.sub ? `<p class="ac-head-sub">${escapeHtml(opts.sub)}</p>` : "") +
     (opts.device
-      ? `<p class="ac-head-sub ac-dev">${icon("monitor", true)}<span>on <bdi>${escapeHtml(opts.device)}</bdi></span></p>`
+      ? `<p class="ac-head-sub ac-dev">${deviceIcon(opts.device)}<span>on <bdi>${escapeHtml(opts.device)}</bdi></span></p>`
       : "")
   );
 }
@@ -548,7 +561,7 @@ function passportPane(f: AppFacts): string {
     ? `<img class="ac-art" src="${escapeHtml(f.artUrl)}" alt="" loading="lazy">`
     : "";
   const where = f.device
-    ? `<p class="ac-head-sub ac-dev ac-pass-where">${icon("monitor", true)}<span>on <bdi>${escapeHtml(f.device)}</bdi></span></p>`
+    ? `<p class="ac-head-sub ac-dev ac-pass-where">${deviceIcon(f.device)}<span>on <bdi>${escapeHtml(f.device)}</bdi></span></p>`
     : "";
   return `<aside class="ac-passport">${art}${appArt(f.name, f.iconUrl)}<div class="ac-pass-text">${appLines({ name: f.name, ...(f.action ? { action: f.action } : {}), ...(f.developer ? { sub: f.developer } : {}) })}</div>${where}</aside>`;
 }

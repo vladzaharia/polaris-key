@@ -77,6 +77,7 @@ import {
   customerHostOwnResponse,
   docsElsewhere,
   helpAliasResponse,
+  isCustomerFeedRoute,
   isCustomerHostOwnPath,
   oldCustomerUrlRedirect,
 } from "./core/customerHost.js";
@@ -203,7 +204,11 @@ async function routeRequest(
   if (onCustomerHost && isCustomerHostOwnPath(url.pathname))
     return customerHostOwnResponse(req, env, url.pathname);
   const route = matchRoute(url.pathname);
-  if (onCustomerHost && !CUSTOMER_ROUTE_KINDS.has(route.kind))
+  if (
+    onCustomerHost &&
+    !CUSTOMER_ROUTE_KINDS.has(route.kind) &&
+    !isCustomerFeedRoute(route, req.method)
+  )
     return notFound();
   // Help is the customer host's only `/docs`; the rest of the site lives on the console host.
   if (

@@ -935,7 +935,7 @@ export async function handleMagicLanding(
       body: `<p>Continue as ${escapeHtml(record.email)}.</p>${form("Sign in")}`,
     });
   }
-  // B-106: a short heading; when and where ride in the first line, as "4 Oct 2026, 14:34 UTC"
+  // B-106: a short heading; when and where ride in the first line, as "Oct 4, 2026, 2:34 PM UTC"
   // (this page has no script, so it cannot show the reader's own time zone).
   const when =
     typeof record.requestedAt === "number"
@@ -946,7 +946,7 @@ export async function handleMagicLanding(
     heading: "Confirm sign-in",
     body:
       `<p>Requested ${escapeHtml(when)} from ${escapeHtml(record.place ?? "an unknown location")}.</p>` +
-      `<p>Polaris Locker account ${escapeHtml(record.email)}. Confirm only if you started it.</p>` +
+      `<p>For your Polaris Locker account, ${escapeHtml(record.email)}. Confirm only if you started it.</p>` +
       `<p>The device that asked signs in, not this one.</p>` + // signin.confirmLink.note
       form("Confirm"),
   });
@@ -967,11 +967,12 @@ const MONTHS = [
   "Dec",
 ];
 
-/** A unix time as "4 Oct 2026, 14:34 UTC". */
+/** A unix time as "Oct 4, 2026, 2:34 PM UTC". */
 function readableUtc(at: number): string {
   const d = new Date(at * 1000);
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}, ${p(d.getUTCHours())}:${p(d.getUTCMinutes())} UTC`;
+  const h = d.getUTCHours();
+  const minutes = String(d.getUTCMinutes()).padStart(2, "0");
+  return `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}, ${h % 12 || 12}:${minutes} ${h < 12 ? "AM" : "PM"} UTC`;
 }
 
 /** `POST /magic/verify` (form `token=`): completes here, or confirms the asking browser's flow. */

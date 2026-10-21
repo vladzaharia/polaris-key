@@ -1974,3 +1974,120 @@ describe("storefront feeds: the AltStore sources name hosted copies (HA-07)", ()
     expect(await hostedArtStamp(w.env, w.db, SLUG)).toBe("-");
   });
 });
+
+// ── The customer host (LF2) ──────────────────────────────────────────────────────────────────
+//
+// The download page prints the feed sources on `polaris.locker`, so the customer host serves the
+// public feed reads (`isCustomerFeedRoute`) and nothing else of Distribution; the console host keeps
+// answering the same paths for existing subscribers.
+
+describe("storefront feeds: the customer host", () => {
+  const CUSTOMER = "https://polaris.locker";
+  const FEEDS = [
+    "altstore/stable/source.json",
+    "altstore-pal/stable/source.json",
+    "obtainium/stable.json",
+    "scoop/stable.json",
+    "flathub/stable.json",
+  ];
+
+  async function on(
+    w: World,
+    origin: string,
+    path: string,
+    init: RequestInit = {},
+  ): Promise<Response> {
+    w.env.CONSOLE_ORIGIN = CONSOLE;
+    w.env.CUSTOMER_ORIGIN = CUSTOMER;
+    return dispatch(
+      new Request(`${origin}/${SLUG}/distribution/${path}`, init),
+      w.env,
+      w.db,
+    );
+  }
+
+  for (const path of FEEDS)
+    it(`${path} answers on both hosts with the same headers`, async () => {
+      const w = await setup({ blobOrigin: BYTES });
+      const key = await on(w, CONSOLE, path);
+      const locker = await on(w, CUSTOMER, path);
+      expect(key.status).toBe(200);
+      expect(locker.status).toBe(200);
+      for (const h of [
+        "cache-control",
+        "content-type",
+        "x-content-type-options",
+        "access-control-allow-origin",
+      ])
+        expect(locker.headers.get(h), h).toBe(key.headers.get(h));
+      expect(locker.headers.get("cache-control")).toBe("public, max-age=300");
+      expect(locker.headers.get("set-cookie")).toBeNull();
+      // The feed names itself on the host it was fetched from.
+      if (path.startsWith("scoop"))
+        expect(
+          ((await locker.json()) as { checkver: { url: string } }).checkver.url,
+        ).toBe(`${CUSTOMER}/${SLUG}/distribution/scoop/stable.json`);
+      expect((await key.text()).includes(CUSTOMER)).toBe(false);
+    });
+
+  it("the F-Droid relay is a feed read too, and HEAD works", async () => {
+    const w = await setup({ blobOrigin: BYTES });
+    const head = await on(w, CUSTOMER, "scoop/stable.json", {
+      method: "HEAD",
+    });
+    expect(head.status).toBe(200);
+    const relay = await on(w, CUSTOMER, "fdroid/stable/repo/index-v1.jar");
+    const keyRelay = await on(w, CONSOLE, "fdroid/stable/repo/index-v1.jar");
+    expect(relay.status).toBe(keyRelay.status);
+  });
+
+  it("every other Distribution route stays the not-found on the customer host", async () => {
+    const w = await setup({ blobOrigin: BYTES });
+    for (const [path, init] of [
+      [
+        "feeds/fdroid/stable",
+        { headers: { authorization: `Bearer ${FEEDER}` } },
+      ],
+      ["download.json", {}],
+      ["install.sh", {}],
+      ["builds/stable/win-x64", {}],
+      ["report", { method: "POST", body: "{}" }],
+      ["rollouts/altstore/stable", { method: "POST", body: "{}" }],
+      ["hooks/asc", { method: "POST", body: "{}" }],
+      ["scoop/stable.json", { method: "POST", body: "{}" }],
+      ["scoop/stable.json/extra", {}],
+      ["altstore/stable/other.json", {}],
+    ] as Array<[string, RequestInit]>) {
+      const res = await on(w, CUSTOMER, path, init);
+      expect(res.status, path).toBe(404);
+    }
+    // Other services' product routes were never reachable there.
+    const other = await dispatch(
+      new Request(`${CUSTOMER}/${SLUG}/license/activate`, { method: "POST" }),
+      w.env,
+      w.db,
+    );
+    expect(other.status).toBe(404);
+  });
+
+  it("the download page prints polaris.locker sources, not key.plrs.im ones", async () => {
+    const w = await setup({ blobOrigin: BYTES });
+    w.env.CONSOLE_ORIGIN = CONSOLE;
+    w.env.CUSTOMER_ORIGIN = CUSTOMER;
+    for (const ua of [
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
+      "Mozilla/5.0 (Linux; Android 14)",
+    ]) {
+      const res = await dispatch(
+        new Request(`${BYTES}/${SLUG}`, { headers: { "user-agent": ua } }),
+        w.env,
+        w.db,
+      );
+      const html = await res.text();
+      expect(res.status).toBe(200);
+      expect(html).toContain(`${CUSTOMER}/${SLUG}/distribution/`);
+      expect(html).not.toContain(`${CONSOLE}/${SLUG}/distribution/`);
+    }
+  });
+});

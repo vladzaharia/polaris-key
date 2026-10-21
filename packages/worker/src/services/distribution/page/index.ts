@@ -54,7 +54,7 @@ import type {
   ByteRouteContext,
 } from "../../../core/assets/bytesHost.js";
 import { bytesHostname } from "../../../core/assets/bytesHost.js";
-import { normalizeHostname } from "../../../core/hosts.js";
+import { customerSiteOrigin, normalizeHostname } from "../../../core/hosts.js";
 import { cspImageOrigin } from "../../../core/securityHeaders.js";
 import { sha256Base64 } from "../../../platform/hash.js";
 import type { Db } from "../../../db/types.js";
@@ -172,6 +172,22 @@ export function consoleOriginOf(env: Env): string | null {
   }
 }
 
+/**
+ * The origin the page's storefront feed sources are printed on: the customer host (Polaris Locker,
+ * `polaris.locker`) once it is usable, else the console host. The customer host serves the same
+ * public feed routes (`core/customerHost.ts` `isCustomerFeedRoute`), and the console host keeps
+ * answering them for existing subscribers. Never the bytes host (it serves no feeds).
+ */
+export function feedOriginOf(env: Env): string | null {
+  const customer = customerSiteOrigin(env);
+  if (
+    customer !== null &&
+    normalizeHostname(new URL(customer).hostname) !== bytesHostname(env)
+  )
+    return customer;
+  return consoleOriginOf(env);
+}
+
 function bytesOriginOf(env: Env): string | null {
   return bytesHostname(env) && env.BLOB_ORIGIN
     ? new URL(env.BLOB_ORIGIN).origin
@@ -287,7 +303,7 @@ async function handlePage(
     env,
     product: { slug: product.slug, name: product.name },
     hooks,
-    consoleOrigin: consoleOriginOf(env),
+    consoleOrigin: feedOriginOf(env),
     cacheOrigin: new URL(req.url).origin,
   });
   if (text === null) return notFound();
