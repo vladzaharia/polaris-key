@@ -462,8 +462,7 @@ def sign_in(k: Kit, v: SignInView, verb: str = "sign-in", *, frame: int = 0) -> 
             body += k.step("fail", [title])
             if code == "network":
                 body += k.body([message])
-            if v.state in ("expired", "denied", "cancelled") or code == "network":
-                body += _again(k, verb)
+            body += _again(k, verb)  # every ending keeps the action that starts again (DL7)
     return _frame(k, verb, body, end, hints)
 
 
@@ -681,7 +680,7 @@ def update(k: Kit, v: UpdateView, verb: str = "update") -> Lines:
         body += k.step("warn", [k.t("cli.update.notConfiguredTitle", "strong")])
         body += _download_rows(k, v)
     elif v.state == "revoked-required-content":
-        body += k.step("fail", [k.t("core.codes.pack-revoked.title", "strong")])
+        body += k.step("warn", [k.t("core.codes.pack-revoked.title", "strong")])  # a refusal with its fix: ▲ (DL6)
         body += k.body([k.t("update.revokedContent", product=k.inline_product)])
         body += _gap(k)
         body += _fixes(k, [("update apply", "update.install")])
@@ -821,7 +820,7 @@ def boot(k: Kit, v: BootView, verb: str = "boot") -> Lines:
         body += _fixes(k, [("boot", "common.tryAgain")])
     elif v.state == "blocked":
         status = v.status if v.status in ("version-too-old", "version-too-new", "channel-not-entitled", "expired", "revoked") else "version-too-old"
-        body += k.step("fail", [k.t(f"core.gate.{status}.title", "strong")])
+        body += k.step("warn", [k.t(f"core.gate.{status}.title", "strong")])  # a refusal, never ✗ (DL6)
         body += k.body([k.t(f"core.gate.{status}.message")])
         if status == "version-too-old":
             body += _gap(k)

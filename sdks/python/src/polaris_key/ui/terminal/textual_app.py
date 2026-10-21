@@ -219,9 +219,33 @@ class PolarisKeyApp(App):
         if section == "updates":
             u = self.update_state()
             if u is None:
-                return [_text(t("update.checkNow"), classes="pk-muted")]
+                # The check could not run: the one action is to run it again (DL7), never a bare label.
+                return [Horizontal(Button(t("update.checkNow"), classes="pk-primary", id="pk-check"), classes="pk-actions")]
             if u.state == "up-to-date":
                 return [_text(t("update.upToDate"), classes="pk-title"), _text(t("account.version", version=u.current or ""), classes="pk-muted")]
+            name = self.identity.name
+            if u.state == "blocked":
+                # No update exists here: the refusal, in words, and nothing to press (DL6).
+                return [_text(t("update.blockedTitle"), classes="pk-title"), _text(t("update.blockedBody", product=name), classes="pk-muted")]
+            if u.state == "revoked-required-content":
+                return [
+                    _text(t("core.codes.pack-revoked.title"), classes="pk-title"),
+                    _text(t("update.revokedContent", product=name), classes="pk-muted"),
+                    Horizontal(Button(t("update.install"), classes="pk-primary", id="pk-install"), classes="pk-actions"),
+                ]
+            if u.state in ("store", "platform"):
+                # The store or platform installs it: the kit offers no install of its own.
+                return [
+                    _text(t("update.title", product=name, version=u.version or ""), classes="pk-title"),
+                    _text(t("update.platform.generic", product=name), classes="pk-muted"),
+                ]
+            if u.state == "mandatory":
+                # Nothing to put off: the one action is the update (DL4, no Later).
+                return [
+                    _text(t("update.mandatoryTitle", product=name), classes="pk-title"),
+                    _text(t("update.mandatoryBody", product=name), classes="pk-muted"),
+                    Horizontal(Button(t("update.install"), classes="pk-primary", id="pk-install"), classes="pk-actions"),
+                ]
             return [
                 _text(t("cli.update.availableNoSize", version=u.version or ""), classes="pk-title"),
                 _text(t("account.version", version=u.current or ""), classes="pk-muted"),
@@ -267,6 +291,8 @@ class PolarisKeyApp(App):
             self.exit("update")
         elif event.button.id == "pk-later":
             self.show("account")
+        elif event.button.id == "pk-check":
+            self.show("updates")
 
 
 def _text(text: str, **kw: Any) -> Static:
