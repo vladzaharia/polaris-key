@@ -168,15 +168,48 @@ SPA offline card is neutral ink, busy while retrying, focused and announced; ste
 session's email; the not-configured card says who sets it up; viewing the card no longer counts
 toward the sign-in limit.
 
-### Remaining for slice 2 (ST-30 not finished)
+### Slice 2a (2026-10-20, wp/ST-30-slice2; local, security-relevant)
 
-Cookie v2 with account and session ids and the 30-second per-request check; console membership as
-a binding (ST-31); `consoleSubject` and `operatorIssuerAllowed`; ST-28's strong-method rule and the
-email-code-only refusal; the computed root rule; break-glass as an explicit link with its audit row
-and exit facts; the audit actor as the account id with a sub mapping; account merge, deletion and
-disable ending membership; 'My library' and 'Open console' cross-links; the passkey button, the
-known-operator chip and the in-place session-ended overlay; threat-model rows and the security
-review; the docs pages (operate/console/members, reference/roles) and the rule 11 text; deleting
-the 'full platform authority' comment once ST-29's `docs.ts` is on `can()`. Also open: the card's
-form is GET (the typed address shows in the URL; SIGN-IN.md §3.13 wants POST) and the Help,
-Privacy, Terms footer and a larger lockup are not on the console card.
+Built: cookie v2, `consoleSubject` and `operatorIssuerAllowed`, the login form as a POST, the card's
+Help and Privacy links, the in-place session-ended overlay, and the 'My library' / 'Open console'
+cross-links. THREAT-MODEL has the rows (slice 1's GET residual is closed).
+
+- **Cookie v2** (`core/console/session.ts`): signed `pkey.admin.v2|`, body `{aid, sid, name, email,
+csrf, exp, authAt, stepUpAt?}`, no `groups` and no `sub`. The callback now runs I-05 `signIn` for
+  the console IdP (`services/identity/consoleAccount.ts`, `consoleSignIn`): one account per person
+  (the portal's issuer key), an operator whose verified address another account uses joins it, and a
+  session row is opened in `account_sessions` (8 h). Per request, `console/consoleSession.ts` asks
+  `consoleSubject` at most every `LIVE_CHECK_SECONDS` (30 s, in the limits inventory); a revoked
+  session, a disabled, deleted or merged account, or a sign-out ends access within that. v1 cookies
+  are still read until they expire (`issueSession` stays as the v1 minter for tests; delete both
+  readers with the first release after 8 h). The audit actor is still the IdP `sub`.
+- **`operatorIssuerAllowed`** (`core/rbac/operatorIssuer.ts`) fails closed: only `console-idp`
+  unless `OIDC_ISSUER_ALLOWLIST` lists the host.
+- **Login POST** (`POST /manage/login`, 303; `go=1` GET kept for error actions); the 502 retry is a
+  POST form with the IdP in its `form-action`. e2e proves it in Chromium.
+- **Card links**: Help (`/docs/help/`) and Privacy (`/docs/help/your-data/`). No Terms link: no
+  public Terms page exists yet (the Locker menu says the same).
+- **Overlay**: `console/shell/SessionEnded.tsx` is a modal `Dialog`; "Sign in again" opens the card
+  in a second tab (a link) that returns to `#/signed-in` and tells the first over a
+  `BroadcastChannel`. This keeps unsaved input, which a same-tab round trip cannot. Only a page
+  that loaded `/me` in this tab gets the overlay; a first load with a lapsed cookie still shows the
+  card.
+- **Cross-links**: the console user menu has 'My library' (`/me.customerOrigin`); `GET /api/me` on
+  the portal answers `account.console` (the console address, else null) for an operator's account
+  and the Locker account menu shows 'Open console' from it.
+
+Verified against the code: the brief said the callback "goes through I-05 signIn"; it did not
+(slice 1 minted from the IdP claims). `strong_at` and `asserted_at` do not exist yet, so groups are
+read from the console link as last written by the sign-in, bounded by the 8 h session row.
+
+### Remaining after slice 2a (ST-30 not finished)
+
+Console membership as a binding (ST-31); the strong-method rule and the email-code-only refusal
+(`strong_at`, `asserted_at`, SM-1 to SM-5 with a migration); the computed root rule on
+`asserted_at`; break-glass as an explicit link with its audit row and exit facts; the audit actor as
+the account id (`mbr_`) with a sub mapping; account merge, deletion and disable ending membership
+as bindings (the 30 s check already ends a session on them); the passkey button, the known-operator
+chip; the security review; the docs pages (operate/console/members, reference/roles), the RUNBOOK
+lockout recovery and the rule 11 text; deleting the 'full platform authority' comment once ST-29's
+`docs.ts` is on `can()`; removing the v1 cookie reader after the deploy. A larger lockup on the
+console card is not done.

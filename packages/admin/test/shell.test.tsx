@@ -1111,6 +1111,28 @@ describe("the top bar", () => {
     ).toBeTruthy();
   });
 
+  it("My library goes to the person's Polaris Locker library, on the customer host when there is one", async () => {
+    boot("#/", { me: { customerOrigin: "https://polaris.locker" } });
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Account menu" }),
+    );
+    const item = within(await screen.findByRole("menu")).getByRole("menuitem", {
+      name: "My library",
+    });
+    expect(item.getAttribute("href")).toBe("https://polaris.locker/");
+    expect(item.getAttribute("target")).toBe("_blank");
+    cleanup();
+    boot("#/");
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Account menu" }),
+    );
+    expect(
+      within(await screen.findByRole("menu"))
+        .getByRole("menuitem", { name: "My library" })
+        .getAttribute("href"),
+    ).toBe("/");
+  });
+
   it("omits the session end when the worker does not send it", async () => {
     boot("#/");
     await userEvent.click(

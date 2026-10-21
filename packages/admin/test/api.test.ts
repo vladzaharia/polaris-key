@@ -9,6 +9,10 @@ import {
   setLoginRedirectForTests,
   setStepUpRedirectForTests,
 } from "../src/api.js";
+import {
+  clearSessionEnded,
+  isSessionEnded,
+} from "../src/console/shell/endedState.js";
 
 // The api module is the same-origin client for /manage/api/*. These exercise the transport:
 // CSRF echo on mutations, Content-Type only with a body, 401 → login redirect, and the typed
@@ -194,6 +198,8 @@ describe("api — step-up refusals", () => {
   it("a 401 says the session ended only when the Worker marks an expired session", async () => {
     const redirect = vi.fn();
     setLoginRedirectForTests(redirect);
+    // Before the session loaded in this tab (no CSRF token yet) nothing is open to keep.
+    setCsrf("");
     stubFetch(() => new Response(null, { status: 401 }));
     await expect(api.me()).rejects.toMatchObject({ status: 401 });
     expect(redirect).toHaveBeenLastCalledWith(false);
@@ -206,6 +212,29 @@ describe("api — step-up refusals", () => {
     );
     await expect(api.me()).rejects.toMatchObject({ status: 401 });
     expect(redirect).toHaveBeenLastCalledWith(true);
+  });
+
+  it("with a page open, an expired session shows the overlay and does not leave the tab", async () => {
+    const redirect = vi.fn();
+    setLoginRedirectForTests(redirect);
+    setCsrf("token");
+    clearSessionEnded();
+    stubFetch(
+      () =>
+        new Response(null, {
+          status: 401,
+          headers: { "X-PKey-Session": "expired" },
+        }),
+    );
+    await expect(api.me()).rejects.toMatchObject({ status: 401 });
+    expect(redirect).not.toHaveBeenCalled();
+    expect(isSessionEnded()).toBe(true);
+    // An unmarked 401 (no cookie ever) is still the plain sign-in, page open or not.
+    clearSessionEnded();
+    stubFetch(() => new Response(null, { status: 401 }));
+    await expect(api.me()).rejects.toMatchObject({ status: 401 });
+    expect(redirect).toHaveBeenLastCalledWith(false);
+    expect(isSessionEnded()).toBe(false);
   });
 
   it("an action with its own step-up callout is not redirected", async () => {

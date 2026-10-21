@@ -7,6 +7,8 @@ import { AppShell } from "./console/shell/AppShell.js";
 import { BootScreen } from "./console/shell/StatePages.js";
 import { ConsoleOffline } from "./console/shell/ConsoleSignIn.js";
 import { AppToaster } from "./ui/toast.js";
+import { SessionEnded, SignedInAgain } from "./console/shell/SessionEnded.js";
+import { SIGNED_IN_HASH } from "./console/shell/endedState.js";
 
 /**
  * The operator console (docs/design/ADMIN.md §2). Loads the session (`/me`, a query like any
@@ -23,6 +25,7 @@ export function App({
     <ConsoleQueryProvider client={queryClient}>
       <ThemeProvider>
         {KIT_ENABLED ? <DevKitOr /> : <Boot />}
+        <SessionEnded />
         <AppToaster />
       </ThemeProvider>
     </ConsoleQueryProvider>
@@ -59,6 +62,9 @@ function DevKitOr(): React.ReactElement {
 
 function Boot(): React.ReactElement {
   const me = useMe();
+  // The second tab of "Your session ended" ends here: it tells the first and offers to close.
+  if (me.data && window.location.hash === SIGNED_IN_HASH)
+    return <SignedInAgain />;
   if (me.data) return <AppShell me={me.data} />;
   if (me.isError) {
     return <ConsoleOffline onRetry={() => me.refetch()} />;

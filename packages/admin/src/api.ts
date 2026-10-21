@@ -36,6 +36,7 @@
  * from `./api.js` — this file is still the console's single import surface, it just no longer
  * owns the shapes.
  */
+import { markSessionEnded } from "./console/shell/endedState.js";
 export type {
   ConfigEntry,
   ConfigKind,
@@ -4835,8 +4836,12 @@ export function setStepUpRedirectForTests(fn?: () => void): void {
 
 /**
  * The 401 sign-in. The Worker marks a session that existed and no longer holds
- * (`X-PKey-Session: expired`); the card then says "Your session ended". Without a session (a first
- * visit) it is the plain sign-in card. `returnTo` brings the person back to the page either way.
+ * (`X-PKey-Session: expired`). With a page open (the session loaded in this tab) the page is NOT
+ * left: the "Your session ended" overlay covers it (`console/shell/endedState.ts`) and unsaved
+ * input survives. Before the session ever loaded in this tab (a bookmark opened after the session
+ * lapsed) there is nothing to keep, and the card says "Your session ended" and brings the person
+ * back. Without the marker (a first visit) it is the plain sign-in card. `returnTo` brings the
+ * person back to the page either way.
  */
 function loginHref(expired: boolean): string {
   const back = `/manage/${window.location.hash}`;
@@ -4917,7 +4922,10 @@ async function send(
     credentials: "same-origin",
   });
   if (res.status === 401) {
-    redirectToLogin(res.headers.get("X-PKey-Session") === "expired");
+    const expired = res.headers.get("X-PKey-Session") === "expired";
+    // A page that had a session stays where it is under the overlay; `csrf` is set once `/me` loaded.
+    if (expired && csrf !== "") markSessionEnded();
+    else redirectToLogin(expired);
     throw new ApiError(401);
   }
   if (!res.ok) {

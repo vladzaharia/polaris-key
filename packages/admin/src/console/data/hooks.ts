@@ -19,12 +19,15 @@ import {
   type ProductDetail,
 } from "../../api.js";
 import type { ServiceState } from "../nav.js";
+import { clearSessionEnded } from "../shell/endedState.js";
 import { qk } from "./queries.js";
 
 /** Fetch the session and arm the CSRF token every write echoes. */
 export async function fetchMe(): Promise<Me> {
   const me = await api.me();
   setCsrf(me.csrf);
+  // A session that loads again ends "Your session ended" (a sign-in in another tab, or a blip).
+  clearSessionEnded();
   return me;
 }
 

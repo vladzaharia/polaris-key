@@ -1,5 +1,5 @@
 import * as React from "react";
-import { BookOpen, CloudUpload, Keyboard, LogOut } from "lucide-react";
+import { BookOpen, CloudUpload, Keyboard, Library, LogOut } from "lucide-react";
 import type { Me, PlatformIdentity } from "../../api.js";
 import { Button } from "../../ui/Button.js";
 import {
@@ -110,6 +110,17 @@ export function UserMenu({
           <a href="/docs/" target="_blank" rel="noreferrer">
             <BookOpen aria-hidden />
             Docs home
+          </a>
+        </DropdownMenuItem>
+        {/* The person's own Polaris Locker library, on the customer host when there is one. */}
+        <DropdownMenuItem asChild>
+          <a
+            href={`${me.customerOrigin ?? ""}/`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <Library aria-hidden />
+            My library
           </a>
         </DropdownMenuItem>
         {narrow ? (

@@ -6696,16 +6696,106 @@ about sessions, and an address typed into a URL.
 - **The step-up email comes from the verified session.** The card shows and forwards an address
   only from `sessionFromRequest` (signature, expiry and revocation checked), never from the query.
   Without a valid session the step-up card shows the ordinary field.
-- **Residual: the address is in the GET URL.** The Continue form is a GET, so the typed address
-  appears in `/manage/login?go=1&login_hint=...` in the browser's history and in access logs on
-  the way. `referrer-policy: no-referrer` stops it leaving in a Referer header, and the 302 to the
-  IdP carries it as the IdP's own `login_hint`. SIGN-IN.md §3.13 prefers a POST with a 303; that is
-  slice 2.
+- **The address is in the body, not the URL (slice 2a).** The card's Continue is a `POST
+/manage/login` answered with a 303 to the IdP (SIGN-IN.md §3.13), so the typed address never
+  appears in a URL the browser visits on this origin (history, access logs). The POST is accepted
+  only from this origin (`Sec-Fetch-Site: same-origin`, else a same-origin `Origin`), as
+  `application/x-www-form-urlencoded`, under 4 KB; anything else is a 403 or 413 card. The start
+  is counted against the same `adminLogin` limit as the `go=1` link. A cross-site page that POSTs
+  here can start a flow only for the browser it posts from, which then has to complete it itself
+  (the flow is bound to that browser's `__Host-pkey_admin_flow` cookie), so it gains nothing; the
+  same-origin rule keeps the limit ours. The error pages whose retry is a POST (`502`) carry the
+  same `form-action` as the card, because the browser applies THIS page's policy to the redirect
+  their form follows. The `go=1` GET link remains for "Use another account" and the error
+  actions, which carry no typed address; it still forwards a `login_hint` that is in its query.
+  Residual: that link, if someone hand-builds it with a `login_hint`, shows the address in a URL
+  they wrote themselves.
+- **Help and Privacy under the card** are fixed same-host paths (`/docs/help/`,
+  `/docs/help/your-data/`) written by the page, never taken from a request, on docs pages that
+  need no session (`DOCS_TIERS` `public`). There is no Terms link: no Terms page exists yet.
 
 Tests: `test/brandPages.test.ts` (the card, its `form-action`, the error cards, no limit on
 views), `test/identityBinders.test.ts` (`login_hint`), `test/admin.test.ts` (the 401 marker),
 `packages/admin/e2e/consoleSignin.e2e.test.ts` (Continue reaches the IdP in Chromium under the real
 policy).
+
+### Console cookie v2 and account sessions (ST-30, slice 2a)
+
+**What arrived.** The console cookie carried the IdP's `sub` and `groups` for 8 h and could be
+ended only by a per-operator mark or by rotating the secret. Nothing tied it to a Polaris Key
+account, a disabled or deleted account kept its console session, and "which issuer may sign an
+operator in" was implicit in one environment variable.
+
+**Control.**
+
+- **Cookie v2** (`core/console/session.ts`): signed under the tag `pkey.admin.v2|`, body `{aid, sid,
+name, email, csrf, exp, authAt, stepUpAt?}` and no `groups` or `sub`. `aid` and `sid` only point;
+  nothing in the cookie grants. A v1 body signed under the v1 tag cannot verify as v2 and the
+  reverse (different signed message), so neither can be replayed as the other, and a cookie with
+  edited fields fails its MAC. `test/consoleSessionV2.test.ts` pins both.
+- **The live check** (`console/consoleSession.ts`, `consoleSubject` in Identity): each request
+  resolves `aid` + `sid` to a live `account_sessions` row (present, unrevoked, unexpired, held by
+  `aid`), an active account that is still that account (a merge or deletion removed the row the
+  cookie names), not on the erasure ledger, holding a link through the console IdP, and a sign-out
+  mark that does not cover the session. The answer is remembered per session per isolate for
+  `LIVE_CHECK_SECONDS` (30 s, `core/console/session.ts`, in the limits inventory), positive or
+  negative. So "Sign out everywhere", a disabled or deleted account, a merge and a sign-out end
+  console access within 30 s; sign-out also drops the row and this isolate's memory at once. A
+  read that throws (database down) is neither remembered nor swallowed: the request fails, it does
+  not grant. A v2 cookie presented where no database is passed (the docs gate before this change)
+  is refused, never trusted.
+- **v1 cookies keep working until they expire** (`sessionFromRequest`): the reader still accepts a
+  v1 token (8 h at most) and checks the sign-out mark, so a deploy does not sign anyone out. The
+  sign-in no longer mints v1 (`issueSession` stays as the v1 minter for tests). Delete the v1
+  reader and `issueSession` once the last v1 cookie has expired.
+- **One account per operator** (`consoleSignIn`, I-05 `signIn` through the portal's issuer key):
+  the callback gates on the principal first, so an identity outside the platform-admin group gets
+  no account and no cookie. An operator whose verified address another account already uses (a
+  Polaris Locker account made with an email code) is joined to that account when exactly one
+  account uses it and the IdP vouched for the address (ST-28 SM-3(b)); anyone else, an unverified
+  address, or an ambiguous address is refused with a card and writes nothing. The join writes an
+  `account.link` row in the account's own history. Residual: the join trusts the console IdP's
+  `email_verified`, the same trust the root rule already places in its `groups`.
+- **`operatorIssuerAllowed`** (`core/rbac/operatorIssuer.ts`) is the one place that decides which
+  issuer may sign an operator in. The console IdP always qualifies; any other issuer only when its
+  `https` host is on `OIDC_ISSUER_ALLOWLIST`, and it **fails closed**: unset or empty admits
+  nothing else, in every environment (unlike `issuerHostAllowed`, which is fail-open outside
+  prod because it guards a different sink). Both the sign-in and `consoleSubject` ask it, so a
+  link through an issuer that stops qualifying stops yielding a subject within 30 s.
+- **Groups are read from the console link**, rewritten at each sign-in (`recordLinkGroups`), not
+  carried in the cookie. A group removed at the IdP therefore ends root at that person's next
+  sign-in attempt that the IdP refuses, but a session already open keeps the groups of the last
+  sign-in that succeeded until its 8 h row ends. This is today's bound (the cookie used to carry
+  them for 8 h). `asserted_at` and `strong_at` (ST-28 §2.4-§2.5) will tighten it; they are not in
+  this slice. The audit actor is still the IdP `sub` (the `mbr_` mapping is a later slice).
+- **The account id stays off console bodies**: `/me` and the activity answer the IdP `sub` as
+  before (`test/consoleSessionV2.test.ts` asserts `/me` omits the account id).
+- **"Open console" and "My library"** are pointers. The Locker account menu shows "Open console"
+  only when `GET /api/me` answers a `console` address, which it does for an account whose console
+  link's last-asserted groups carry the platform-admin group through an allowed issuer; the console
+  decides on arrival. The console's "My library" link is the customer origin the console already
+  knows (`/me.customerOrigin`).
+- **"Your session ended" in place** (admin SPA): a 401 marked `X-PKey-Session: expired` with a page
+  open shows a dialog and does not navigate. "Sign in again" is a plain link that opens the card in
+  a second tab (`rel=noopener`), which lands on `/manage/#/signed-in` (a `returnTo` the existing
+  allowlist already admits) and tells the first tab over a same-origin `BroadcastChannel`; the
+  first tab then re-reads `/me`, which re-arms its CSRF token. The channel carries no secret and
+  grants nothing: a page on another origin cannot join it, a script on this origin could already
+  call the API.
+
+**Residual.** The 30 s window is a deliberate cost: a revoked session can serve requests for up to
+30 s in an isolate that cached it as live. The cache is per isolate, so a different isolate asks
+D1 again. The v1 reader exists until its last cookie expires. The stale group bound above and the
+strong-method rule (ST-28 SM-1: an email-code-only session is refused console access) are not in
+this slice; they and membership as bindings follow in the ST-30 and ST-31 slices.
+
+Tests: `test/consoleSessionV2.test.ts` (sign-in lands on one account, cookie shape, the 30 s
+check with a fake clock, disabled / deleted / merged / foreign-row / expired-row refusals, sign-out,
+v1 compatibility, forged and cross-tagged tokens, `consoleSubject`, `operatorIssuerAllowed`'s unset /
+empty / listed / unlisted / http cases, the Locker pointer), `test/adminSessions.test.ts`,
+`test/brandPages.test.ts` (the POST, its refusals, the retry form), `packages/admin/test/sessionEnded.test.tsx`
+(the overlay, axe), `packages/admin/e2e/consoleSignin.e2e.test.ts` and `consoleSessionEnded.e2e.test.ts`
+(Chromium under the Worker's CSP).
 
 ### Identity as a per-product service (PX-W17)
 
