@@ -790,28 +790,28 @@ function KeysSection({
     { label: "Remove…", tone: "danger", onSelect: () => setRemoving(k) },
   ];
 
+  const addKey = (): void =>
+    setDraft({
+      purpose: purposes[0] ?? "release",
+      sha256: "",
+      outlet: null,
+      notes: "",
+      registered: false,
+      existing: false,
+    });
+  // The one add action lives in the table's toolbar (the head band's end would be a second row
+  // ending at another x, 17 px past the toolbar's); the empty state offers it where the toolbar
+  // is not drawn.
+  const addButton = (
+    <Button size="sm" iconStart={<Plus aria-hidden />} onClick={addKey}>
+      Add key…
+    </Button>
+  );
+
   return (
     <Panel
       title="Distribution keys"
       description="CI flags any key it sees that matches no entry here."
-      action={
-        <Button
-          size="sm"
-          iconStart={<Plus aria-hidden />}
-          onClick={() =>
-            setDraft({
-              purpose: purposes[0] ?? "release",
-              sha256: "",
-              outlet: null,
-              notes: "",
-              registered: false,
-              existing: false,
-            })
-          }
-        >
-          Add key…
-        </Button>
-      }
     >
       <div className="space-y-4">
         {observations.length ? (
@@ -884,11 +884,13 @@ function KeysSection({
           error={keys.isError && !keys.data ? keys.error : undefined}
           onRetry={() => void keys.refetch()}
           exportCsv={false}
+          toolbarActions={addButton}
           empty={
             <EmptyState
               kind="first-run"
               title="No keys in the inventory"
               description="List the fingerprints of the keys that sign your Android, F-Droid, Sparkle and MSIX builds, so a build signed by anything else is flagged."
+              primaryAction={addButton}
             />
           }
         />
