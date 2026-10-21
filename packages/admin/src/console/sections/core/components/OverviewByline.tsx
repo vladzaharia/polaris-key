@@ -23,7 +23,7 @@ export function OverviewByline({
     <>
       Runs {features} {features === 1 ? "feature" : "features"}
       {linked || resyncedAt ? (
-        <span className="hidden @xl:inline">
+        <span className="hidden @2xl:inline">
           {linked ? " · linked to GitHub" : ""}
           {resyncedAt
             ? ` · last resync ${formatDate(fromSeconds(resyncedAt))}`
