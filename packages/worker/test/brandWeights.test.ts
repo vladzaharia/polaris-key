@@ -26,6 +26,25 @@ describe("Worker-rendered CSS weights", () => {
     expect(hits).toEqual([]);
   });
 
+  it("every <strong>/<b> carries a weight of 600 or less (B-099)", () => {
+    // A bare <strong> renders at the mail client's bold 700. The one exception is the consent
+    // header's title, whose .ac-head-title strong rule in brandHtml.ts sets 600.
+    const hits = walk(SRC).flatMap((f) =>
+      readFileSync(f, "utf8")
+        .split("\n")
+        .map((l, i) => [f, i + 1, l] as const)
+        .filter(([, , l]) => /<(strong|b)(\s[^>]*)?>/i.test(l))
+        .filter(([, , l]) => !l.includes("ac-head-title"))
+        .filter(([, , l]) =>
+          [...l.matchAll(/<(?:strong|b)(\s[^>]*)?>/gi)].some(
+            (m) => !/font-weight\s*:\s*[1-6]00\b/i.test(m[1] ?? ""),
+          ),
+        )
+        .map(([file, n]) => `${file.slice(SRC.length)}:${n}`),
+    );
+    expect(hits).toEqual([]);
+  });
+
   it("the forced-colours approval button paints ButtonFace on ButtonText (B-098)", () => {
     const css = readFileSync(join(SRC, "core", "brandHtml.ts"), "utf8");
     expect(css).toMatch(

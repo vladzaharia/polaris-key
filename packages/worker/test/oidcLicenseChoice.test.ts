@@ -701,7 +701,7 @@ describe("I-26 rows", () => {
       '<div role="group" aria-labelledby="lic-lic_start" aria-describedby="lic-note-lic_start">',
     );
     expect(page.html).toContain(
-      '<span class="tag" id="lic-note-lic_start">No free devices</span>',
+      '<span class="tag" id="lic-note-lic_start">All devices in use</span>',
     );
     expect(page.html).not.toContain("aria-disabled");
     expect(page.html).not.toContain('value="lic_start"');
@@ -1214,7 +1214,7 @@ describe("I-26 chooser copy", () => {
     expect(
       new RegExp(`<span id="${m[1]}">Tidewater Studio</span>`).test(html),
     ).toBe(true);
-    expect(html).toContain(`id="${m[2]}">No free devices</span>`);
+    expect(html).toContain(`id="${m[2]}">All devices in use</span>`);
     expect(html).not.toContain("aria-disabled");
   });
 });
