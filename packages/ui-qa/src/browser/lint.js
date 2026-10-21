@@ -114,20 +114,15 @@
         const textual = hasOwnText(el) && !iconFont(cs);
         const native = !!el.closest('[data-ui-preset="native"]');
 
-        // Borders: hairlines only. A heavy border on ONE side is an indicator edge (an underline
-        // tab, a rail's start edge, a section's top rule: UI-KITS.md §1.5 rule 2, "a tint plus
-        // one indicator"), not a box; two or more heavy sides are the heavy border the rule bans.
-        const heavy = ["top", "right", "bottom", "left"].filter(
-          (side) =>
-            cs[`border-${side}-style`] !== "none" &&
-            parseFloat(cs[`border-${side}-width`]) > 1,
-        );
-        if (heavy.length > 1)
-          report(
-            "border-width",
-            el,
-            `border-${heavy[0]} is ${parseFloat(cs[`border-${heavy[0]}-width`])}px on ${heavy.length} sides (max 1px)`,
-          );
+        // Borders: hairlines only. A spec'd heavy edge (the canvas rule, a tab underline) is
+        // allowed by name where it is drawn (`data-ui-allow="border-width"` with its reason).
+        for (const side of ["top", "right", "bottom", "left"]) {
+          const w = parseFloat(cs[`border-${side}-width`]);
+          if (cs[`border-${side}-style`] !== "none" && w > 1) {
+            report("border-width", el, `border-${side} is ${w}px (max 1px)`);
+            break;
+          }
+        }
 
         if (el.matches(BUTTONISH)) {
           if (cs.textTransform === "uppercase")
@@ -391,14 +386,15 @@
       }
     }
 
-    // Authored CSS: every style rule that applies to a linted element. A vendor stylesheet bundled
-    // whole (sonner's toast layout) is not authored here: the app re-themes it in its own rules.
+    // Authored CSS: every style rule that applies to a linted element. Sonner injects its toast
+    // layout as a stylesheet of its own (no href, marked by its data-attribute selectors): that
+    // sheet is not authored here, though the app's own rules about the same elements are.
     const linted = new Set();
     for (const scope of scopes)
       for (const el of [scope, ...scope.querySelectorAll("*")])
         if (!el.closest("[data-ui-chrome]")) linted.add(el);
     for (const { rule, sheet } of styleRules()) {
-      if (/^\[data-sonner-/.test(rule.selectorText)) continue;
+      if (vendorSheet(sheet)) continue;
       let hit = o.allRules ? document.body : null;
       if (!hit)
         try {
@@ -585,6 +581,9 @@
     for (const { rule } of styleRules()) {
       const sel = rule.selectorText;
       if (!pats[state].test(sel)) continue;
+      // A cursor is not a visible state (UI-KITS §1.5 rule 7: hover, pressed 0.98, disabled 42 %):
+      // a rule that sets only `cursor` does not count.
+      if (!rule.style || [...rule.style].every((p) => p === "cursor")) continue;
       for (const part of splitSelector(sel)) {
         if (!pats[state].test(part)) continue;
         const base = stripPseudo(part)
@@ -781,12 +780,7 @@
       // A relative colour taken from a token (`oklch(from var(--x) l c h)`) is not a literal.
       .replace(/\b(rgba?|hsla?|hwb|lab|lch|oklab|oklch)\(\s*from\b/gi, "(")
       // `transparent` serialises as rgba(0, 0, 0, 0): no colour at all.
-      .replace(/\brgba?\(\s*0[\s,]+0[\s,]+0\s*[,/]\s*0\s*\)/gi, "")
-      // Black or white at an alpha: a scrim or a shadow, which no token covers.
-      .replace(
-        /\brgba?\(\s*(?:0[\s,]+0[\s,]+0|255[\s,]+255[\s,]+255)\s*[,/]\s*(?:0?\.\d+|0)%?\s*\)/gi,
-        "",
-      );
+      .replace(/\brgba?\(\s*0[\s,]+0[\s,]+0\s*[,/]\s*0\s*\)/gi, "");
     if (/#[0-9a-f]{3,8}\b/i.test(s)) return true;
     if (/\b(rgba?|hsla?|hwb|lab|lch|oklab|oklch)\(/i.test(s)) return true;
     return /(^|[\s,(])(white|black|red|blue|green|gray|grey|orange|purple|yellow|pink)(?=$|[\s,)])/i.test(
@@ -902,14 +896,23 @@
     if (cs.maskImage && cs.maskImage !== "none") return false;
     return true;
   }
-  // A scroll region or group that takes a tab stop for the keyboard (WCAG 2.1.1) is not a pointer
-  // target: only the controls inside it are.
+  // A scroll region or a landmark that takes a tab stop for the keyboard (WCAG 2.1.1) is not a
+  // pointer target: only the controls inside it are. A link, option or clickable div is.
   function tabStopOnly(el) {
-    return (
-      el.matches('[tabindex]:not([tabindex="-1"])') &&
-      !el.matches(
+    if (
+      !el.matches('[tabindex]:not([tabindex="-1"])') ||
+      el.matches(
         INTERACTIVE.replace(/, \[tabindex\]:not\(\[tabindex="-1"\]\)/, ""),
       )
+    )
+      return false;
+    const role = el.getAttribute("role");
+    if (role === "region" || role === "group" || role === "tabpanel")
+      return true;
+    const cs = getComputedStyle(el);
+    return (
+      (/auto|scroll/.test(cs.overflowY) && el.scrollHeight > el.clientHeight) ||
+      (/auto|scroll/.test(cs.overflowX) && el.scrollWidth > el.clientWidth)
     );
   }
   // Clipped to nothing until focused (a skip link, a visually hidden native input behind a
@@ -938,7 +941,12 @@
     let bottom = base.bottom;
     for (const pseudo of ["::before", "::after"]) {
       const ps = getComputedStyle(el, pseudo);
-      if (ps.content === "none" || ps.position !== "absolute") continue;
+      if (
+        ps.content === "none" ||
+        ps.position !== "absolute" ||
+        ps.pointerEvents === "none"
+      )
+        continue;
       let cb = el;
       while (cb && getComputedStyle(cb).position === "static")
         cb = cb.parentElement;
@@ -950,17 +958,50 @@
       const w = parseFloat(ps.width);
       const h = parseFloat(ps.height);
       if ([x, y, w, h].some(Number.isNaN)) continue;
-      left = Math.min(left, x);
-      top = Math.min(top, y);
-      right = Math.max(right, x + w);
-      bottom = Math.max(bottom, y + h);
+      // What an ancestor clips away cannot be pressed: cut the area to the nearest clipping box.
+      let x0 = x;
+      let y0 = y;
+      let x1 = x + w;
+      let y1 = y + h;
+      for (let a = el; a && a !== document.body; a = a.parentElement) {
+        const as = getComputedStyle(a);
+        if (as.overflowX === "visible" && as.overflowY === "visible") continue;
+        const ar = a.getBoundingClientRect();
+        if (as.overflowX !== "visible") {
+          x0 = Math.max(x0, ar.left);
+          x1 = Math.min(x1, ar.right);
+        }
+        if (as.overflowY !== "visible") {
+          y0 = Math.max(y0, ar.top);
+          y1 = Math.min(y1, ar.bottom);
+        }
+      }
+      if (x1 <= x0 || y1 <= y0) continue;
+      left = Math.min(left, x0);
+      top = Math.min(top, y0);
+      right = Math.max(right, x1);
+      bottom = Math.max(bottom, y1);
     }
     return { width: right - left, height: bottom - top };
   }
+  // Sonner's own injected stylesheet: a <style> with no href that lays out its toaster. The
+  // app's rules about the same elements live in its own linked sheet and stay linted.
+  function vendorSheet(sheet) {
+    if (sheet.href || !sheet.ownerNode) return false;
+    return (
+      sheet.ownerNode.tagName === "STYLE" &&
+      /\[data-sonner-toaster\]/.test(sheet.ownerNode.textContent || "")
+    );
+  }
   function inlineLink(el, cs) {
-    // An inline link is as tall as its line (WCAG 2.5.8's inline exception), alone in its
-    // paragraph or not.
-    return el.tagName === "A" && cs.display === "inline";
+    // WCAG 2.5.8's inline exception: the link sits in a sentence, with text around it that is not
+    // itself a target. A lone nav link is a target.
+    if (el.tagName !== "A" || cs.display !== "inline") return false;
+    const p = el.parentElement;
+    return (
+      !!p &&
+      (p.textContent || "").replace(el.textContent || "", "").trim().length > 0
+    );
   }
   // The service accents as the page computes them, normalised to rgb(): one probe per token.
   function serviceAccents() {

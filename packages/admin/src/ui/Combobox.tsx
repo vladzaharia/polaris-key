@@ -197,7 +197,7 @@ export function Combobox(props: ComboboxProps): React.ReactElement {
             autoFocus
             placeholder={searchPlaceholder}
             aria-label={searchPlaceholder}
-            className="h-9 border-b border-border bg-transparent px-3 text-sm text-fg outline-hidden"
+            className="h-9 border-b border-border bg-transparent px-3 text-sm text-fg outline-hidden focus-visible:outline-2 focus-visible:outline-solid focus-visible:-outline-offset-2 focus-visible:outline-focus"
           />
           <Command.List
             aria-multiselectable={props.multiple || undefined}

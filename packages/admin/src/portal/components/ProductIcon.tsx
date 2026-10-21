@@ -111,7 +111,7 @@ export function ProductIcon({
         "inline-flex shrink-0 items-center justify-center font-medium",
         neutral
           ? "border border-border bg-surface-sunken text-fg-strong"
-          : "bg-(--pk-art) text-white",
+          : "bg-(--pk-art) text-(--pk-brand-text)",
         SIZE[size],
         TILE[size],
         RADIUS[size],

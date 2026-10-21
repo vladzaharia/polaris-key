@@ -59,7 +59,8 @@ export function Input({
       className={cn(
         CONTROL_INPUT,
         mono && "font-mono text-xs",
-        framed && "border-0 bg-transparent px-0",
+        // The frame carries the one focus indicator.
+        framed && "border-0 bg-transparent px-0 focus-visible:outline-none",
         !framed && className,
       )}
       {...props}
@@ -71,7 +72,7 @@ export function Input({
     <div
       className={cn(
         "flex h-9 w-full items-center gap-2 rounded-md border border-border-strong bg-surface-sunken px-3",
-        "focus-within:ring-2 focus-within:ring-focus focus-within:ring-offset-2 focus-within:ring-offset-surface-page",
+        "focus-within:outline-2 focus-within:outline-solid focus-within:outline-offset-2 focus-within:outline-focus",
         "has-[[aria-invalid=true]]:border-danger has-[:disabled]:opacity-50 pointer-coarse:h-11",
         className,
       )}

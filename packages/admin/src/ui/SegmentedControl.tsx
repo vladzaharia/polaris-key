@@ -80,9 +80,13 @@ function useThumb(
     if (!start.width || !end.width) return stop();
     running.current?.cancel();
 
+    // The thumb is placed by its inline-start inset, so the offset is measured from the start edge:
+    // the left in left-to-right text, the right in right-to-left. The slide itself (a transform)
+    // is a physical shift of where it paints, so it stays in left/right terms.
+    const rtl = getComputedStyle(box).direction === "rtl";
     el.style.setProperty(
       "--pk-thumb-x",
-      `${end.left - r.left - box.clientLeft}px`,
+      `${rtl ? r.right - end.right - box.clientLeft : end.left - r.left - box.clientLeft}px`,
     );
     el.style.setProperty(
       "--pk-thumb-y",
@@ -185,7 +189,7 @@ export function SegmentedControl<V extends string = string>({
         ref={thumb}
         aria-hidden
         data-segmented-thumb=""
-        className="pointer-events-none absolute start-(--pk-thumb-x) top-(--pk-thumb-y) hidden h-(--pk-thumb-h) w-(--pk-thumb-w) origin-left rounded-sm bg-surface-raised shadow-elevation-1 group-data-[moving]/seg:block"
+        className="pointer-events-none absolute start-(--pk-thumb-x) top-(--pk-thumb-y) hidden h-(--pk-thumb-h) w-(--pk-thumb-w) ltr:origin-left rtl:origin-right rounded-sm bg-surface-raised shadow-elevation-1 group-data-[moving]/seg:block"
       />
       {options.map((o) => (
         <RadioGroup.Item

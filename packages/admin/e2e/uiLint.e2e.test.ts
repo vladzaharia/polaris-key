@@ -50,11 +50,12 @@ describe.concurrent(
               });
               try {
                 await state.ready(o.page);
-                // Below the `desk` breakpoint (760 px) the layout is the touch one: 44 px targets.
+                // Below the `desk` breakpoint (760 px) the layout is the touch one: 44 px targets; above it 24 px.
                 expect(
                   await lintFindings(
                     o.page,
-                    size.width < 760 ? { minTouch: 44 } : undefined,
+                    // 24 px from the desk breakpoint up (WCAG 2.5.8), as the console.
+                    { minTouch: size.width < 760 ? 44 : 24 },
                   ),
                 ).toEqual([]);
               } finally {

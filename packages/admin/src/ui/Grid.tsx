@@ -192,7 +192,7 @@ export function Grid<R, C>({
                       "px-3 py-2 align-middle text-fg outline-hidden",
                       onCellActivate &&
                         "cursor-pointer hover:bg-surface-overlay",
-                      "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus",
+                      "focus-visible:outline-2 focus-visible:outline-solid focus-visible:-outline-offset-2 focus-visible:outline-focus",
                     )}
                   >
                     <span aria-hidden>{cell(row, col)}</span>

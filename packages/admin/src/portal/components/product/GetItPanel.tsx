@@ -310,11 +310,9 @@ function FileRow({
 }): React.ReactElement {
   return (
     <tr className={mine ? "bg-surface-sunken" : undefined}>
-      {/* The device's own build: tinted, with a strong edge, so it reads in dark too. */}
-      <th
-        scope="row"
-        className={`border-s-4 px-4 py-3 text-start font-normal desk:px-5 ${mine ? "border-fg-strong" : "border-transparent"}`}
-      >
+      {/* The device's own build: tinted, and named "for your device" below (a tint plus one
+          indicator, UI-KITS §1.5 rule 2; no heavy edge). */}
+      <th scope="row" className="px-4 py-3 text-start font-normal desk:px-5">
         <span className="flex items-center gap-3">
           <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-md bg-surface-page text-fg-muted">
             {r.platform ? (

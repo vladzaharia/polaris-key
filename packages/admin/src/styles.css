@@ -195,7 +195,7 @@ html[data-shell="console"] [data-pk-backdrop] {
 @media (prefers-reduced-transparency: reduce) {
   html[data-shell="console"] [data-pk-backdrop] {
     backdrop-filter: none;
-    background-color: rgb(0 0 0 / 0.8);
+    background-color: color-mix(in oklab, var(--color-black) 80%, transparent);
   }
 }
 
@@ -221,9 +221,10 @@ html[data-shell="console"] [data-pk-backdrop] {
     cursor: pointer;
   }
 
-  /* The baseline every control answers (UI-KITS.md §1.5 rule 1: hover, press, disabled and
-     focus-visible are all defined; the lint's `interactive-states`): the cursor says what the
-     control does, in the three states. A component styles its own look on top (the zero
+  /* The cursor baseline every control answers (UI-KITS.md §1.5 rule 7): the cursor says what the
+     control does, in the three states. It is no visible state (the lint's `interactive-states`
+     ignores a rule that sets only a cursor): each component draws its own hover, pressed and
+     disabled look. A component styles its own look on top (the zero
      specificity of :where, and this layer, lose to any utility); the focus ring is the
      :focus-visible rule below. A scroll region that takes focus for the keyboard (WCAG 2.1.1)
      is no control: it keeps the default cursor. */
@@ -581,7 +582,7 @@ html[data-shell="console"]
  * smaller `h-9` or `min-h-9` cannot undo it. A checkbox or radio is hit through its label; a
  * visually hidden control and a link inside a line of text have no box of their own to grow.
  */
-@media (max-width: 47.5625rem) {
+@media (width < 47.5625rem) {
   html:not([data-shell="console"])
     :is(
       button,
@@ -599,7 +600,14 @@ html[data-shell="console"]
       [role="tab"],
       [role="menuitem"]
     ):not(.sr-only, [role="checkbox"], [role="radio"], [role="switch"]),
-  html:not([data-shell="console"]) label:not(.sr-only) {
+  html:not([data-shell="console"])
+    label:not(.sr-only):has(input:is([type="checkbox"], [type="radio"])),
+  html:not([data-shell="console"])
+    label:not(.sr-only):has(
+      [role="switch"],
+      [role="checkbox"],
+      [role="radio"]
+    ) {
     min-block-size: 2.75rem;
     min-inline-size: 2.75rem;
   }

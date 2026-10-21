@@ -193,7 +193,7 @@ export function ProductArt({
         <span
           aria-hidden
           className={cn(
-            "absolute start-1/2 top-1/2 inline-flex -translate-x-1/2 rtl:translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-[22%] bg-black/25 font-medium text-white",
+            "absolute start-1/2 top-1/2 inline-flex -translate-x-1/2 rtl:translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-[22%] bg-black/25 font-medium text-(--pk-brand-text)",
             variant === "banner" && "size-28 text-6xl",
             variant === "tile" && "size-16 text-3xl",
             variant === "thumb" && "size-9 text-lg",

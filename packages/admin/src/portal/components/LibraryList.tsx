@@ -103,7 +103,8 @@ function LibraryRow({
   return (
     <tr
       ref={cue.ref}
-      className="relative border-b border-border last:border-0 hover:bg-hover bigtext:max-desk:block bigtext:max-desk:px-3 bigtext:max-desk:py-3"
+      // The name link stretches over the row; its focus ring is the row's, drawn inside the frame.
+      className="relative border-b border-border last:border-0 hover:bg-hover has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-solid has-[a:focus-visible]:-outline-offset-2 has-[a:focus-visible]:outline-focus bigtext:max-desk:block bigtext:max-desk:px-3 bigtext:max-desk:py-3"
     >
       <td className="w-0 py-3 ps-4 pe-2 desk:ps-5 bigtext:max-desk:block bigtext:max-desk:w-auto bigtext:max-desk:p-0">
         <ProductIcon

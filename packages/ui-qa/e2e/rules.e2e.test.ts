@@ -120,23 +120,48 @@ describe("the modernity lint (UI-KITS §7.3)", () => {
   });
 
   // The patterns the built console and portal rely on, narrowed from false positives (B-233).
-  it("spares an indicator edge, a transparent or neutral-alpha colour, a relative colour, an image in flight, tinted art and a vendor sheet", async () => {
+  it("spares a transparent colour, a relative colour, an image in flight, tinted art and a lone dash", async () => {
     const ok = await lint(
       `<style>
-        .tab { border-bottom: 2px solid var(--c); }
-        .rail { border-inline-start: 3px solid var(--c); }
-        .dim { background-color: rgba(0, 0, 0, 0.6); }
-        .glass { box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1); }
         .clear { background-color: transparent; color: currentColor; }
         .rel { background-color: color-mix(in oklab, var(--c), oklch(from var(--c) l c h / 0.5)); }
-        [data-sonner-toast]:focus-visible { box-shadow: 0 4px 12px rgba(255, 0, 0, 0.1), 0 0 0 2px rgba(0, 0, 0, 0.2); margin-left: 4px; }
       </style>
-      <p class="tab">Tab</p><p class="rail">Rail</p><p class="dim">Dim</p><p class="glass">Glass</p>
       <p class="clear">Clear</p><p class="rel">Relative</p>
       <div style="display: flex"><span>—</span></div>
       <div data-art="fallback" style="inline-size: 40px; block-size: 40px; background-color: var(--c)"></div>`,
     );
     expect(ok.violations).toEqual([]);
+  });
+
+  it("fails a heavy edge, a black or white alpha colour and a cursor-only state", async () => {
+    const r = await lint(
+      `<style>
+        .tab { border-bottom: 2px solid var(--c); }
+        .rail { border-inline-start: 3px solid var(--c); }
+        .dim { background-color: rgba(0, 0, 0, 0.6); }
+        .ink { color: rgba(255, 255, 255, 0.7); }
+        .c:hover:not(:disabled), .c:active:not(:disabled) { cursor: pointer; }
+        .c:disabled { cursor: not-allowed; }
+        .c:focus-visible { outline: 2px solid var(--c); }
+      </style>
+      <p class="tab">Tab</p><p class="rail">Rail</p><p class="dim">Dim</p><p class="ink">Ink</p>
+      <button class="c">Cursor only</button>`,
+    );
+    const rules = r.violations.map((v) => v.rule);
+    expect(
+      rules.filter((x) => x === "border-width").length,
+    ).toBeGreaterThanOrEqual(2);
+    expect(
+      rules.filter((x) => x === "colour-literal").length,
+    ).toBeGreaterThanOrEqual(2);
+    expect(rules).toContain("interactive-states");
+  });
+
+  it("lets a named allowance through for a spec'd heavy edge", async () => {
+    const r = await lint(
+      `<style>.tab { border-bottom: 2px solid var(--c); }</style><p class="tab" data-ui-allow="border-width">Tab (the selected tab's underline)</p>`,
+    );
+    expect(r.violations.map((v) => v.rule)).not.toContain("border-width");
   });
 
   it("reads a state rule written with :not() guards (Tailwind's hover:not-disabled)", async () => {
@@ -154,8 +179,8 @@ describe("the modernity lint (UI-KITS §7.3)", () => {
   it("reads a state rule written with :is(:hover, :active) and :where()", async () => {
     const r = await lint(
       `<style>
-        :where(.u):is(:hover, :active):not(:disabled, [aria-disabled="true"]) { cursor: pointer; }
-        :where(.u):is(:disabled, [aria-disabled="true"]) { cursor: not-allowed; }
+        :where(.u):is(:hover, :active):not(:disabled, [aria-disabled="true"]) { opacity: 0.9; }
+        :where(.u):is(:disabled, [aria-disabled="true"]) { opacity: 0.42; }
         .u:focus-visible { outline: 2px solid var(--c); }
       </style><a class="u" href="#x">Go</a>`,
     );
@@ -169,20 +194,31 @@ describe("the modernity lint (UI-KITS §7.3)", () => {
           <a href="#x" class="stretch" style="display: block; block-size: 20px">Open</a>
         </article>
         <label style="display: flex; align-items: center; block-size: 48px; min-inline-size: 120px"><input type="checkbox" style="inline-size: 16px; block-size: 16px"> Remember</label>
-        <div tabindex="0" style="block-size: 16px; overflow: auto">Scroll region</div>
+        <div role="region" aria-label="Scroll" tabindex="0" style="block-size: 16px; overflow: auto">Scroll region</div>
         <a href="#y" style="position: absolute; clip: rect(0, 0, 0, 0); inline-size: 1px; block-size: 1px; overflow: hidden">Skip</a>
         <span aria-hidden="true"><input type="checkbox" tabindex="-1" style="inline-size: 16px; block-size: 16px"></span>
-        <p style="font-size: 14px"><a href="#w">Alone in its paragraph</a></p>
+        <p style="font-size: 14px">Read the <a href="#w">terms</a> first.</p>
         <button role="switch" aria-checked="false" class="sw" style="position: relative; inline-size: 36px; block-size: 20px; padding: 0; border: 0"></button>
         <style>.sw::after { content: ""; position: absolute; inset: -12px -4px; }</style>
         <style>.stretch::after { content: ""; position: absolute; inset: 0; }</style>
       </div>`,
     );
     expect(r.violations.filter((v) => v.rule === "touch-target")).toEqual([]);
-    const small = await lint(
-      `<div data-ui-touch><a href="#z" style="display: block; block-size: 20px; inline-size: 80px">Small</a></div>`,
-    );
-    expect(small.violations.map((v) => v.rule)).toContain("touch-target");
+    for (const bad of [
+      `<a href="#z" style="display: block; block-size: 20px; inline-size: 80px">Small</a>`,
+      // a lone link is a target, not a word in a sentence
+      `<ul><li><a href="#out">Sign out</a></li></ul>`,
+      // a decorative overlay that takes no press does not enlarge the target
+      `<button class="d" style="position: relative; block-size: 20px; inline-size: 60px">Go</button><style>.d::after { content: ""; position: absolute; inset: -20px; pointer-events: none; }</style>`,
+      // an overlay its own clipping box cuts away does not either
+      `<button class="e" style="position: relative; overflow: hidden; block-size: 20px; inline-size: 60px">Go</button><style>.e::after { content: ""; position: absolute; inset: -20px; }</style>`,
+      // a role=link tab stop and a clickable div are targets
+      `<span role="link" tabindex="0" style="display: inline-block; block-size: 16px">Open</span>`,
+      `<div role="option" tabindex="0" style="block-size: 16px">Pick</div>`,
+    ]) {
+      const small = await lint(`<div data-ui-touch>${bad}</div>`);
+      expect(small.violations.map((v) => v.rule)).toContain("touch-target");
+    }
   });
 
   it("spares an image still loading but not a broken one", async () => {
