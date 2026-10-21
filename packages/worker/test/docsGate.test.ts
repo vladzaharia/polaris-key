@@ -509,7 +509,7 @@ const stubVerifier: IdTokenVerifier = {
 
 /** Drive /manage/login and pull the `state` the flow was stored under. */
 async function startLogin(env: Env, returnTo?: string): Promise<string> {
-  const query = returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : "";
+  const query = `?go=1${returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : ""}`;
   const res = await handleAdminLogin(get(`/manage/login${query}`), env);
   expect(res.status).toBe(302);
   const authorize = new URL(res.headers.get("location")!);

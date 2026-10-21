@@ -10,7 +10,6 @@
  */
 
 import * as React from "react";
-import { AlertTriangle } from "lucide-react";
 import type { ProductRef } from "../../api.js";
 import { Logo } from "../../components/brand/Logo.js";
 import { Button } from "../../ui/Button.js";
@@ -328,59 +327,22 @@ export function ServiceOffPage({
 }
 
 /**
- * Before the session loads, and the console's own sign-in moment: the Polaris Key lockup (the
- * Pinned K, no bit, BRAND.md §6) above a live "Loading console…", or, when the session cannot
- * load, one card with Retry and Sign in. It shares the customer portal's sign-in look (the
- * centred lockup over a 28 rem card, brand type and spacing, both themes) without any of the
- * portal's customer parts, and matches the Worker's sign-in error pages (`core/brandHtml.ts`).
+ * Before the session loads: the Polaris Key lockup (the Pinned K, no bit, BRAND.md §6) above a
+ * live "Loading console…". When the session cannot load, `ConsoleOffline` (the shared AuthCard)
+ * takes over, and the Worker's sign-in card (`console/signinPage.ts`) covers the rest.
  */
-export function BootScreen({
-  error,
-  onRetry,
-}: {
-  error?: boolean;
-  onRetry?: () => void;
-}): React.ReactElement {
+export function BootScreen(): React.ReactElement {
   return (
     // A div, not <main>: the console's one main landmark is the shell's, and tests (and assistive
     // tech) waiting for it must not find this screen's instead.
     <div className="flex min-h-dvh flex-col items-center justify-center bg-surface-page px-4 py-12 text-fg">
       <div className="flex w-full max-w-md flex-col items-center gap-8">
         <Logo subtitle="console" />
-        {error ? (
-          <section
-            aria-labelledby="boot-error-title"
-            className="w-full rounded-lg border border-border bg-surface-raised p-6 shadow-elevation-1 animate-pk-enter sm:p-8"
-          >
-            <div className="mb-4 flex size-10 items-center justify-center rounded-full bg-danger-subtle text-danger">
-              <AlertTriangle aria-hidden className="size-5" />
-            </div>
-            <h1
-              id="boot-error-title"
-              className="text-xl font-semibold tracking-tight text-fg-strong"
-            >
-              Can’t load the console
-            </h1>
-            <p className="mt-2 text-sm text-fg-muted">
-              The admin session could not be loaded. Retry, or sign in again if
-              your session ended.
-            </p>
-            <div className="mt-6 flex flex-col gap-2">
-              <Button className="w-full" onClick={onRetry}>
-                Retry
-              </Button>
-              <Button asChild variant="outline" className="w-full">
-                <a href="/manage/login">Sign in</a>
-              </Button>
-            </div>
-          </section>
-        ) : (
-          <div className="pk-skeleton-group flex items-center gap-3 text-sm text-fg-muted">
-            <Spinner className="size-5 text-fg-subtle" />
-            <LiveRegion message="Loading console…" />
-            <span aria-hidden>Loading console…</span>
-          </div>
-        )}
+        <div className="pk-skeleton-group flex items-center gap-3 text-sm text-fg-muted">
+          <Spinner className="size-5 text-fg-subtle" />
+          <LiveRegion message="Loading console…" />
+          <span aria-hidden>Loading console…</span>
+        </div>
       </div>
     </div>
   );

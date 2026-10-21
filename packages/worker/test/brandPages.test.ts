@@ -19,7 +19,11 @@ import {
   brandedHtmlSecurityHeaders,
   secureResponse,
 } from "../src/core/securityHeaders.js";
-import { handleAdminCallback } from "../src/console/auth.js";
+import {
+  handleAdminCallback,
+  handleAdminLogin,
+  resetConsoleDiscoveryFailures,
+} from "../src/console/auth.js";
 import {
   handleMagicVerify,
   signInRefusal,
@@ -51,7 +55,7 @@ function sha256(text: string): string {
 /** The checks every branded page must pass, as served (after the dispatcher's backstop). */
 async function expectBrandedPage(
   res: Response,
-  brand: "key" | "locker" = "locker",
+  brand: "key" | "locker" | "console" = "locker",
 ): Promise<string> {
   const served = secureResponse(res);
   const csp = served.headers.get("content-security-policy")!;
@@ -66,7 +70,17 @@ async function expectBrandedPage(
   expect(styles).toHaveLength(1);
   expect(csp).toContain(`'sha256-${sha256(styles[0]![1]!)}'`);
   expect(html).not.toMatch(/\sstyle=|<script|\son\w+=/i);
-  if (brand === "key") {
+  if (brand === "console") {
+    // The console card: the compact Key lockup and "Console", never Polaris Locker.
+    expect(html).toContain('data-brand="console"');
+    expect(html).toMatch(
+      /<header class="ac-brand"><div role="img" aria-label="Polaris Key Console">/,
+    );
+    expect(html).toContain(
+      '<span class="ac-surface" aria-hidden="true">Console</span>',
+    );
+    expect(html).not.toContain("Locker");
+  } else if (brand === "key") {
     // The console Logo's brand block: the Pinned K at 48 px (display cut) beside the wordmark
     // text, without the gold bit, and no lockup drawn at twice the console's size.
     expect(html).toMatch(
@@ -227,9 +241,9 @@ describe("every server-rendered page on the console host uses the shell", () => 
       1_800_000_000,
     );
     expect(res.status).toBe(400);
-    const html = await expectBrandedPage(res, "key");
-    expect(html).toContain("Missing authorization code.");
-    expect(html).toContain('<span class="surface">console</span>');
+    const html = await expectBrandedPage(res, "console");
+    expect(html).toContain("We couldn’t confirm that sign-in");
+    expect(html).not.toContain("authorization code");
     expect(html).not.toContain('class="eyebrow"');
     expect(html).toContain('href="/manage/login"');
   });
@@ -262,7 +276,7 @@ describe("every server-rendered page on the console host uses the shell", () => 
       )!;
       expect(res.status).toBe(403);
       const html = await expectBrandedPage(res);
-      expect(html).toMatch(/This account can(&#39;|&#x27;|')t sign in/);
+      expect(html).toMatch(/This account can(&#x27;|&#x27;|')t sign in/);
       expect(html).toContain(
         `<p class="actions stack"><a class="button" href="${href}">Sign in with another account</a></p>`,
       );
@@ -407,5 +421,146 @@ describe("the portal email", () => {
         origin: null,
       }),
     ).not.toContain("<img");
+  });
+});
+
+describe("the console sign-in card (GET /manage/login)", () => {
+  const env = () => {
+    const e = makeEnv(new KvMock(), []);
+    e.PLATFORM_OIDC_ISSUER = "https://id.example";
+    e.PLATFORM_OIDC_CLIENT_ID = "polaris-admin";
+    return e;
+  };
+  const get = (query: string) =>
+    handleAdminLogin(
+      new Request(`${ORIGIN}/manage/login${query}`, {
+        headers: { "cf-connecting-ip": "203.0.113.9" },
+      }) as unknown as Request,
+      env(),
+    );
+
+  it("serves the card, starts no flow, and keeps returnTo", async () => {
+    const res = await get("?returnTo=/manage/%23/p/alpha");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("location")).toBeNull();
+    expect(res.headers.get("set-cookie")).toBeNull();
+    const html = await expectBrandedPage(res, "console");
+    expect(html).toContain("<h1");
+    expect(html).toContain("Sign in to the console");
+    expect(html).toContain('name="go" value="1"');
+    expect(html).toContain('name="returnTo" value="/manage/#/p/alpha"');
+    expect(html).toContain("Next: sign in at id.example");
+  });
+
+  it("an unsafe returnTo is dropped", async () => {
+    const html = await (await get("?returnTo=https://evil.example/")).text();
+    expect(html).not.toContain("evil.example");
+    expect(html).not.toContain('name="returnTo"');
+  });
+
+  it.each([
+    ["?signedOut=1", "You’re signed out", "Continue"],
+    ["?ended=1", "Your session ended", "Continue"],
+    ["?stepUp=1", "Confirm it’s you", "Sign in again"],
+  ])("%s", async (query, heading, cta) => {
+    const html = await expectBrandedPage(await get(query), "console");
+    expect(html).toContain(heading);
+    expect(html).toContain(`>${cta}<`);
+  });
+
+  it("the card's form-action names the IdP, so Continue's redirect is allowed", async () => {
+    const res = await get("");
+    const csp = res.headers.get("content-security-policy")!;
+    expect(csp).toContain("form-action 'self' https://id.example");
+  });
+
+  it("a step-up card carries the step-up flag", async () => {
+    const e = env();
+    const res = await handleAdminLogin(
+      new Request(`${ORIGIN}/manage/login?stepUp=1`) as unknown as Request,
+      e,
+    );
+    const html = await res.text();
+    expect(html).toContain('name="stepUp" value="1"');
+  });
+
+  it("the typed address survives an error and back", async () => {
+    const html = await (await get("?login_hint=ada%40x.io")).text();
+    expect(html).toContain('value="ada@x.io"');
+  });
+
+  it("a failed discovery is not dialled again for every card view", async () => {
+    resetConsoleDiscoveryFailures();
+    const real = globalThis.fetch;
+    let dials = 0;
+    globalThis.fetch = (async () => {
+      dials++;
+      throw new TypeError("fetch failed");
+    }) as typeof fetch;
+    try {
+      const e = env();
+      e.PLATFORM_OIDC_ISSUER = "https://down.example";
+      for (let i = 0; i < 5; i++) {
+        const res = await handleAdminLogin(
+          new Request(`${ORIGIN}/manage/login`) as unknown as Request,
+          e,
+        );
+        expect(res.status).toBe(200);
+      }
+      expect(dials).toBeLessThanOrEqual(1);
+    } finally {
+      globalThis.fetch = real;
+      resetConsoleDiscoveryFailures();
+    }
+  });
+
+  it("viewing the card is not counted against the sign-in limit", async () => {
+    for (let i = 0; i < 30; i++) expect((await get("")).status).toBe(200);
+  });
+
+  it("an unconfigured console says so on the card", async () => {
+    const res = await handleAdminLogin(
+      new Request(`${ORIGIN}/manage/login`, {
+        headers: { "cf-connecting-ip": "203.0.113.11" },
+      }) as unknown as Request,
+      makeEnv(new KvMock(), []),
+    );
+    expect(res.status).toBe(500);
+    expect(await res.text()).toContain("Admin sign-in isn’t set up");
+  });
+});
+
+describe("the console sign-in error cards", () => {
+  const callback = (q: string, e = makeEnv(new KvMock(), [])) => {
+    e.PLATFORM_OIDC_ISSUER = "https://id.example";
+    e.PLATFORM_OIDC_CLIENT_ID = "polaris-admin";
+    return handleAdminCallback(
+      new Request(`${ORIGIN}/manage/callback${q}`, {
+        headers: { "cf-connecting-ip": "203.0.113.20" },
+      }) as unknown as Request,
+      e,
+      makeTestDb(),
+      1_800_000_000,
+    );
+  };
+
+  it("an unknown or expired flow says it took too long and offers Sign in again", async () => {
+    const res = await callback("?code=c&state=s");
+    expect(res.status).toBe(400);
+    const html = await res.text();
+    expect(html).toContain("This sign-in took too long");
+    expect(html).toContain(">Sign in again<");
+    expect(html).not.toContain("Try again");
+  });
+
+  it("the rate-limit card says when to retry and links nowhere", async () => {
+    const e = makeEnv(new KvMock(), []);
+    let res!: Response;
+    for (let i = 0; i < 25; i++) res = await callback("", e);
+    expect(res.status).toBe(429);
+    expect(res.headers.get("retry-after")).toBe("60");
+    const html = await res.text();
+    expect(html).toContain("Wait a minute, then try again.");
+    expect(html).not.toContain('class="button"');
   });
 });

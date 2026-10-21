@@ -4787,15 +4787,26 @@ export function setStepUpRedirectForTests(fn?: () => void): void {
     });
 }
 
-let redirectToLogin = (): void => {
-  window.location.href = "/manage/login";
+/**
+ * The 401 sign-in. The Worker marks a session that existed and no longer holds
+ * (`X-PKey-Session: expired`); the card then says "Your session ended". Without a session (a first
+ * visit) it is the plain sign-in card. `returnTo` brings the person back to the page either way.
+ */
+function loginHref(expired: boolean): string {
+  const back = `/manage/${window.location.hash}`;
+  return `/manage/login?${expired ? "ended=1&" : ""}returnTo=${encodeURIComponent(back)}`;
+}
+let redirectToLogin = (expired = false): void => {
+  window.location.href = loginHref(expired);
 };
 /** Override the 401 redirect (tests pass a spy; call with no arg to restore the default). */
-export function setLoginRedirectForTests(fn?: () => void): void {
+export function setLoginRedirectForTests(
+  fn?: (expired?: boolean) => void,
+): void {
   redirectToLogin =
     fn ??
-    (() => {
-      window.location.href = "/manage/login";
+    ((expired = false) => {
+      window.location.href = loginHref(expired);
     });
 }
 
@@ -4860,7 +4871,7 @@ async function send(
     credentials: "same-origin",
   });
   if (res.status === 401) {
-    redirectToLogin();
+    redirectToLogin(res.headers.get("X-PKey-Session") === "expired");
     throw new ApiError(401);
   }
   if (!res.ok) {

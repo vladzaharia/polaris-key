@@ -104,13 +104,14 @@ describe("the dispatcher", () => {
     );
   });
 
-  it("the console's own sign-in page stays Polaris Key under the Key hash", async () => {
+  it("the console's own sign-in page is the Polaris Key Console card under the console hash", async () => {
     const res = await get("/manage/callback");
     const html = await res.text();
-    expect(html).toContain("Polaris&nbsp;Key");
-    expect(html).not.toContain("data-brand");
+    expect(html).toContain('data-brand="console"');
+    expect(html).toContain("Polaris Key Console");
+    expect(html).not.toContain("Locker");
     expect(res.headers.get("content-security-policy")).toContain(
-      brandPageStyleSource("key"),
+      brandPageStyleSource("console"),
     );
   });
 });

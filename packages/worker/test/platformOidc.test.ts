@@ -117,7 +117,9 @@ async function authorizeOf(res: Response): Promise<URL> {
 async function adminLogin(env: Env): Promise<URL> {
   return authorizeOf(
     await handleAdminLogin(
-      new Request("https://key.plrs.im/manage/login") as unknown as Request,
+      new Request(
+        "https://key.plrs.im/manage/login?go=1",
+      ) as unknown as Request,
       env,
     ),
   );

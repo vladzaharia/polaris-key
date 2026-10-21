@@ -9795,7 +9795,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/rbac-admin.md"
       ],
       "brief": "wp/ST-30-console-sign-in-on-polaris-key-accounts.md",
-      "status": "todo"
+      "status": "in-progress"
     },
     {
       "id": "ST-31",

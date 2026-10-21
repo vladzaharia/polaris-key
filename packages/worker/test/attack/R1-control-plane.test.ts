@@ -109,7 +109,7 @@ describe("R1-01 login CSRF / session fixation (admin OIDC)", () => {
     const kv = new KvMock();
     const env = adminEnv(kv);
     const res = await handleAdmin(
-      req("GET", "https://key.plrs.im/manage/login"),
+      req("GET", "https://key.plrs.im/manage/login?go=1"),
       env,
       db,
       "/login",
@@ -151,7 +151,7 @@ describe("R1-01 login CSRF / session fixation (admin OIDC)", () => {
 
     // ── Step 1: the ATTACKER starts a flow from their own machine.
     const start = await handleAdmin(
-      req("GET", "https://key.plrs.im/manage/login", {
+      req("GET", "https://key.plrs.im/manage/login?go=1", {
         "cf-connecting-ip": "203.0.113.7",
         "user-agent": "attacker-browser",
       }),
@@ -217,7 +217,7 @@ describe("R1-01 login CSRF / session fixation (admin OIDC)", () => {
     const db = makeTestDb();
     const env = adminEnv(new KvMock());
     const start = await handleAdmin(
-      req("GET", "https://key.plrs.im/manage/login"),
+      req("GET", "https://key.plrs.im/manage/login?go=1"),
       env,
       db,
       "/login",
@@ -962,7 +962,7 @@ describe("REFUTED hypotheses", () => {
     const env = adminEnv(new KvMock());
     await seedProduct(db, "djdl");
     const start = await handleAdmin(
-      req("GET", "https://key.plrs.im/manage/login"),
+      req("GET", "https://key.plrs.im/manage/login?go=1"),
       env,
       db,
       "/login",

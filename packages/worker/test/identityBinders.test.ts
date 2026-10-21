@@ -247,11 +247,30 @@ describe("admin sign-in origin and timeouts", () => {
     env.PLATFORM_ADMIN_GROUP = "admins";
     return env;
   };
+  it("Continue passes the typed email to the IdP as login_hint, and drops a malformed one", async () => {
+    const env = adminEnvFor();
+    const hinted = async (hint: string) => {
+      const res = await handleAdminLogin(
+        new Request(
+          `${ORIGIN}/manage/login?go=1&login_hint=${encodeURIComponent(hint)}`,
+        ) as unknown as Request,
+        env,
+      );
+      return new URL(res.headers.get("location")!).searchParams.get(
+        "login_hint",
+      );
+    };
+    expect(await hinted("vlad@zaharia.dev")).toBe("vlad@zaharia.dev");
+    expect(await hinted("not an email")).toBeNull();
+  });
+
   it("the redirect_uri comes from CONSOLE_ORIGIN, not the request's Host", async () => {
     const env = adminEnvFor();
     env.CONSOLE_ORIGIN = "https://key.plrs.im";
     const res = await handleAdminLogin(
-      new Request("https://evil.example/manage/login") as unknown as Request,
+      new Request(
+        "https://evil.example/manage/login?go=1",
+      ) as unknown as Request,
       env,
     );
     expect(
@@ -273,7 +292,7 @@ describe("admin sign-in origin and timeouts", () => {
       }),
     );
     const login = await handleAdminLogin(
-      new Request(`${ORIGIN}/manage/login`) as unknown as Request,
+      new Request(`${ORIGIN}/manage/login?go=1`) as unknown as Request,
       env,
     );
     const state = new URL(login.headers.get("location")!).searchParams.get(
