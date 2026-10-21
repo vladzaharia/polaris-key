@@ -25,6 +25,7 @@ import copyEs from "../../parity/copy.es.json";
 import copyIt from "../../parity/copy.it.json";
 import copyJa from "../../parity/copy.ja.json";
 import copyKo from "../../parity/copy.ko.json";
+import copyFr from "../../parity/copy.fr.json";
 import copyPtBr from "../../parity/copy.pt-BR.json";
 import copyZhHans from "../../parity/copy.zh-Hans.json";
 import { commands } from "vitest/browser";
@@ -60,6 +61,7 @@ defineBackendSuites({
   copy: {
     en: copyEn.codes,
     de: copyDe.codes,
+    fr: copyFr.codes,
     es: copyEs.codes,
     it: copyIt.codes,
     ja: copyJa.codes,

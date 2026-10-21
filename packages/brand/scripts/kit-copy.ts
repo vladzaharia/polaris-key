@@ -57,9 +57,7 @@ export type KitLocale = (typeof KIT_LOCALES)[number];
  * English core copy for these locales until the pack exists (plans/UK-02.md D4: copy.fr.json is
  * SP-03's). Any other missing core pack fails the generator.
  */
-export const CORE_PACK_PENDING: Readonly<Record<string, string>> = {
-  fr: "SP-03",
-};
+export const CORE_PACK_PENDING: Readonly<Record<string, string>> = {};
 
 export const ROLES = [
   "title",

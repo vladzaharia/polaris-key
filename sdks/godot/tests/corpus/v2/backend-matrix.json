@@ -12,7 +12,7 @@
     "typeBase": "https://key.plrs.im/docs/reference/error-codes/#",
     "contentType": "application/problem+json",
     "cacheControl": "no-store",
-    "locales": ["en", "de", "es", "it", "ja", "ko", "pt-BR", "zh-Hans"],
+    "locales": ["en", "de", "fr", "es", "it", "ja", "ko", "pt-BR", "zh-Hans"],
     "statuses": {
       "license_required": 401,
       "license_invalid": 401,
@@ -2074,6 +2074,22 @@
       }
     },
     {
+      "id": "license_required-fr",
+      "input": {
+        "code": "license_required",
+        "acceptLanguage": "fr",
+        "realm": "djdl"
+      },
+      "expect": {
+        "status": 401,
+        "locale": "fr",
+        "challenge": "PKey-License realm=\"djdl\", error=\"license_required\"",
+        "type": "https://key.plrs.im/docs/reference/error-codes/#license_required",
+        "title": "Licence requise",
+        "detail": "Activez l\u2019app, puis r\u00e9essayez."
+      }
+    },
+    {
       "id": "license_required-es",
       "input": {
         "code": "license_required",
@@ -2199,6 +2215,22 @@
         "type": "https://key.plrs.im/docs/reference/error-codes/#license_invalid",
         "title": "Lizenz nicht akzeptiert",
         "detail": "Ihre Lizenz konnte nicht verifiziert werden. Stellen Sie die Verbindung der App wieder her und versuchen Sie es dann erneut."
+      }
+    },
+    {
+      "id": "license_invalid-fr",
+      "input": {
+        "code": "license_invalid",
+        "acceptLanguage": "fr",
+        "realm": "djdl"
+      },
+      "expect": {
+        "status": 401,
+        "locale": "fr",
+        "challenge": "PKey-License realm=\"djdl\", error=\"license_invalid\"",
+        "type": "https://key.plrs.im/docs/reference/error-codes/#license_invalid",
+        "title": "Licence non accept\u00e9e",
+        "detail": "Votre licence n\u2019a pas pu \u00eatre v\u00e9rifi\u00e9e. Reconnectez l\u2019app, puis r\u00e9essayez."
       }
     },
     {
@@ -2330,6 +2362,22 @@
       }
     },
     {
+      "id": "license_stale-fr",
+      "input": {
+        "code": "license_stale",
+        "acceptLanguage": "fr",
+        "realm": "djdl"
+      },
+      "expect": {
+        "status": 401,
+        "locale": "fr",
+        "challenge": "PKey-License realm=\"djdl\", error=\"license_stale\"",
+        "type": "https://key.plrs.im/docs/reference/error-codes/#license_stale",
+        "title": "Licence \u00e0 actualiser",
+        "detail": "Connectez-vous \u00e0 Internet pour que l\u2019app puisse actualiser votre licence, puis r\u00e9essayez."
+      }
+    },
+    {
       "id": "license_stale-es",
       "input": {
         "code": "license_stale",
@@ -2458,6 +2506,22 @@
       }
     },
     {
+      "id": "not_entitled-fr",
+      "input": {
+        "code": "not_entitled",
+        "acceptLanguage": "fr",
+        "realm": "djdl"
+      },
+      "expect": {
+        "status": 403,
+        "locale": "fr",
+        "challenge": null,
+        "type": "https://key.plrs.im/docs/reference/error-codes/#not_entitled",
+        "title": "Non inclus",
+        "detail": "Votre licence n\u2019inclut pas cet \u00e9l\u00e9ment."
+      }
+    },
+    {
       "id": "not_entitled-es",
       "input": {
         "code": "not_entitled",
@@ -2583,6 +2647,22 @@
         "type": "https://key.plrs.im/docs/reference/error-codes/#sign_in_required",
         "title": "Anmeldung erforderlich",
         "detail": "Melden Sie sich in der App bei Ihrem Polaris Locker-Konto an und versuchen Sie es dann erneut."
+      }
+    },
+    {
+      "id": "sign_in_required-fr",
+      "input": {
+        "code": "sign_in_required",
+        "acceptLanguage": "fr",
+        "realm": "djdl"
+      },
+      "expect": {
+        "status": 403,
+        "locale": "fr",
+        "challenge": null,
+        "type": "https://key.plrs.im/docs/reference/error-codes/#sign_in_required",
+        "title": "Connexion n\u00e9cessaire",
+        "detail": "Connectez-vous \u00e0 votre compte Polaris Locker dans l\u2019app, puis r\u00e9essayez."
       }
     },
     {
@@ -2733,7 +2813,7 @@
       "id": "locale-without-pack",
       "input": {
         "code": "license_stale",
-        "acceptLanguage": "fr",
+        "acceptLanguage": "nl",
         "realm": "djdl"
       },
       "expect": {
@@ -2861,7 +2941,7 @@
       "id": "locale-next-range-when-no-pack",
       "input": {
         "code": "license_stale",
-        "acceptLanguage": "fr-CA, fr;q=0.9, de;q=0.8",
+        "acceptLanguage": "nl-BE, nl;q=0.9, de;q=0.8",
         "realm": "djdl"
       },
       "expect": {
@@ -2973,7 +3053,7 @@
       "id": "locale-star-after-unmatched",
       "input": {
         "code": "license_stale",
-        "acceptLanguage": "fr, *;q=0.5, de;q=0.1",
+        "acceptLanguage": "nl, *;q=0.5, de;q=0.1",
         "realm": "djdl"
       },
       "expect": {

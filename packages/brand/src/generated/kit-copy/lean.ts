@@ -157,7 +157,7 @@ export const KIT_COPY_VARIANTS: Readonly<
 };
 
 /** Locales whose core.* strings are English until their core pack lands. */
-export const KIT_COPY_CORE_FALLBACK: readonly string[] = ["fr"];
+export const KIT_COPY_CORE_FALLBACK: readonly string[] = [];
 
 /** Load one locale's table (code-split per locale). */
 export async function loadKitCopy(

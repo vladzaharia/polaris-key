@@ -797,7 +797,7 @@ describe("gen constants --check", () => {
     const abs = join(root, target!.path);
     const original = readFileSync(abs, "utf8");
     // Five codes in every locale, English first (WIRE-CONTRACT-V4 §14.3).
-    expect(original.match(/license_required: \{/g)).toHaveLength(8);
+    expect(original.match(/license_required: \{/g)).toHaveLength(9);
     expect(original.indexOf("  en: {")).toBeLessThan(
       original.indexOf("  de: {"),
     );

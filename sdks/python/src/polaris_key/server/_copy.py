@@ -24,6 +24,13 @@ COPY: Mapping[str, Mapping[str, tuple]] = {
         'not_entitled': ('Nicht enthalten', 'Ihre Lizenz umfasst dies nicht.'),
         'sign_in_required': ('Anmeldung erforderlich', 'Melden Sie sich in der App bei Ihrem Polaris Locker-Konto an und versuchen Sie es dann erneut.'),
     },
+    'fr': {
+        'license_required': ('Licence requise', 'Activez l’app, puis réessayez.'),
+        'license_invalid': ('Licence non acceptée', 'Votre licence n’a pas pu être vérifiée. Reconnectez l’app, puis réessayez.'),
+        'license_stale': ('Licence à actualiser', 'Connectez-vous à Internet pour que l’app puisse actualiser votre licence, puis réessayez.'),
+        'not_entitled': ('Non inclus', 'Votre licence n’inclut pas cet élément.'),
+        'sign_in_required': ('Connexion nécessaire', 'Connectez-vous à votre compte Polaris Locker dans l’app, puis réessayez.'),
+    },
     'es': {
         'license_required': ('Se necesita una licencia', 'Activa la app y vuelve a intentarlo.'),
         'license_invalid': ('Licencia no aceptada', 'No se pudo verificar tu licencia. Reconecta la app y vuelve a intentarlo.'),

@@ -135,7 +135,7 @@ export interface UiMatrixSources {
   components: Record<string, ComponentDoc>;
   /** Kit messages per locale: en.json's values and each pack's (ICU subset). */
   kit: Record<string, Record<string, string>>;
-  /** core.* strings per locale, from conformance/parity/copy.<locale>.json (absent: pending). */
+  /** core.* strings per locale, from conformance/parity/copy.<locale>.json (absent: falls back to English). */
   core: Record<string, Record<string, string>>;
   /** conformance/parity/enums.json, by name. */
   enums: Record<string, string[]>;
@@ -194,7 +194,7 @@ export function loadUiMatrixSources(root = REPO_ROOT): UiMatrixSources {
     try {
       doc = readJson(join(parity, `copy.${locale}.json`)) as Obj;
     } catch {
-      continue; // a pending pack (copy.fr.json is SP-03's): the tables fall back to English
+      continue; // a pack that does not exist yet: the tables fall back to English
     }
     core[locale] = coreKeys(doc);
   }

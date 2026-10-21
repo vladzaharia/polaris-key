@@ -301,6 +301,7 @@ export async function backendVerdict(
 export const BACKEND_LOCALES = [
   "en",
   "de",
+  "fr",
   "es",
   "it",
   "ja",

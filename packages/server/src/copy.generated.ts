@@ -87,6 +87,31 @@ export const BACKEND_COPY: Readonly<Record<BackendLocale, BackendCopyTable>> = {
         "Inicia sesión en tu cuenta de Polaris Locker en la app y vuelve a intentarlo.",
     },
   },
+  fr: {
+    license_required: {
+      title: "Licence requise",
+      message: "Activez l’app, puis réessayez.",
+    },
+    license_invalid: {
+      title: "Licence non acceptée",
+      message:
+        "Votre licence n’a pas pu être vérifiée. Reconnectez l’app, puis réessayez.",
+    },
+    license_stale: {
+      title: "Licence à actualiser",
+      message:
+        "Connectez-vous à Internet pour que l’app puisse actualiser votre licence, puis réessayez.",
+    },
+    not_entitled: {
+      title: "Non inclus",
+      message: "Votre licence n’inclut pas cet élément.",
+    },
+    sign_in_required: {
+      title: "Connexion nécessaire",
+      message:
+        "Connectez-vous à votre compte Polaris Locker dans l’app, puis réessayez.",
+    },
+  },
   it: {
     license_required: {
       title: "Licenza necessaria",

@@ -15,7 +15,7 @@ from ._verdict import AUTH_SCHEME, REFUSAL_STATUS
 
 __all__ = ["Problem", "backend_locale", "backend_problem", "PROBLEM_TYPE_BASE", "LOCALES"]
 
-LOCALES = ("en", "de", "es", "it", "ja", "ko", "pt-BR", "zh-Hans")
+LOCALES = ("en", "de", "fr", "es", "it", "ja", "ko", "pt-BR", "zh-Hans")
 PROBLEM_TYPE_BASE = "https://key.plrs.im/docs/reference/error-codes/#"
 CONTENT_TYPE = "application/problem+json"
 

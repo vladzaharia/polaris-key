@@ -155,15 +155,15 @@
     },
     "invalid_request": {
       "title": "Anmeldeanfrage ungültig",
-      "message": "Die App hat eine Anmeldeanfrage gesendet, die wir nicht lesen können. Versuche es erneut."
+      "message": "Die App hat eine Anmeldeanfrage gesendet, die wir nicht lesen können. Versuchen Sie es erneut."
     },
     "invalid_client": {
       "title": "Anmeldung kann nicht abgeschlossen werden",
-      "message": "Die Anmeldung dieser App ist nicht richtig eingerichtet, deshalb wurde sie hier zum Schutz deines Kontos angehalten. Sag dem Entwickler Bescheid."
+      "message": "Die Anmeldung dieser App ist nicht richtig eingerichtet, deshalb wurde sie hier zum Schutz Ihres Kontos angehalten. Informieren Sie den Entwickler."
     },
     "invalid_grant": {
       "title": "Anmeldung nicht mehr gültig",
-      "message": "Diese Anmeldung ist abgelaufen oder wurde bereits verwendet. Melde dich erneut an."
+      "message": "Diese Anmeldung ist abgelaufen oder wurde bereits verwendet. Melden Sie sich erneut an."
     },
     "unsupported_grant_type": {
       "title": "Anmeldeanfrage ungültig",
@@ -175,7 +175,7 @@
     },
     "redirect_uri_mismatch": {
       "title": "Anmeldung kann nicht zur App zurückkehren",
-      "message": "Die Anmeldung dieser App ist nicht richtig eingerichtet, deshalb wurde sie hier zum Schutz deines Kontos angehalten. Sag dem Entwickler Bescheid."
+      "message": "Die Anmeldung dieser App ist nicht richtig eingerichtet, deshalb wurde sie hier zum Schutz Ihres Kontos angehalten. Informieren Sie den Entwickler."
     },
     "license_choice_required": {
       "title": "Lizenz wählen",
