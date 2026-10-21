@@ -73,3 +73,57 @@ export const SUPPORT_CODE_BAD_CHECK =
 /** The one line for a code with a lookalike character. */
 export const SUPPORT_CODE_LOOKALIKE =
   "Support codes never contain 0, 1, I, L, O or U.";
+
+/** One spoken word per alphabet symbol: NATO letters, digits by name. No lookalikes, so no clashes. */
+export const SUPPORT_CODE_WORDS: Readonly<Record<string, string>> = {
+  "2": "Two",
+  "3": "Three",
+  "4": "Four",
+  "5": "Five",
+  "6": "Six",
+  "7": "Seven",
+  "8": "Eight",
+  "9": "Nine",
+  A: "Alpha",
+  B: "Bravo",
+  C: "Charlie",
+  D: "Delta",
+  E: "Echo",
+  F: "Foxtrot",
+  G: "Golf",
+  H: "Hotel",
+  J: "Juliet",
+  K: "Kilo",
+  M: "Mike",
+  N: "November",
+  P: "Papa",
+  Q: "Quebec",
+  R: "Romeo",
+  S: "Sierra",
+  T: "Tango",
+  V: "Victor",
+  W: "Whiskey",
+  X: "X-ray",
+  Y: "Yankee",
+  Z: "Zulu",
+};
+
+export interface SpelledSymbol {
+  symbol: string;
+  word: string;
+}
+
+/**
+ * A valid code, spelled out for reading over the phone: three groups of three `{ symbol, word }`.
+ * Anything that is not a valid code (a typo, a lookalike, not a code) spells nothing: `[]`.
+ */
+export function spellOut(input: string): SpelledSymbol[][] {
+  const code = normalizeSupportCode(input);
+  if (!code) return [];
+  return [0, 3, 6].map((i) =>
+    [...code.slice(i, i + 3)].map((symbol) => ({
+      symbol,
+      word: SUPPORT_CODE_WORDS[symbol]!,
+    })),
+  );
+}

@@ -997,4 +997,42 @@ describe("A stale sign-in and the support code (I-11)", () => {
       within(card).queryByRole("button", { name: "Get a support code" }),
     ).toBeNull();
   });
+
+  it("spells the code out on request: three groups, each symbol read as 'K as in Kilo' (I-41s)", async () => {
+    const { routes } = worker();
+    const card = await open({
+      ...routes,
+      "/api/products/mossgarden": () => ({
+        ...productView("mossgarden", [mine()]),
+        supportCode: "K7M-4QX-9TZ",
+      }),
+    });
+    const toggle = await within(card).findByRole("button", {
+      name: "Spell it out",
+    });
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(within(card).queryAllByRole("list")).toEqual([]);
+    expect(toggle.className).toContain("min-h-11");
+    toggle.focus();
+    await userEvent.keyboard("{Enter}");
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    const lists = within(card).getAllByRole("list");
+    expect(lists.map((l) => l.getAttribute("aria-label"))).toEqual([
+      "Part 1 of 3",
+      "Part 2 of 3",
+      "Part 3 of 3",
+    ]);
+    expect(lists.map((l) => within(l).getAllByRole("listitem").length)).toEqual(
+      [3, 3, 3],
+    );
+    expect(within(lists[0]!).getByText("K as in Kilo")).toBeTruthy();
+    expect(within(lists[2]!).getByText("Z as in Zulu")).toBeTruthy();
+    // The code and its Copy button are untouched.
+    expect(
+      within(card).getByRole("button", { name: "Copy support code" }),
+    ).toBeTruthy();
+    expect(await axeViolations()).toEqual([]);
+    await userEvent.keyboard(" ");
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+  });
 });

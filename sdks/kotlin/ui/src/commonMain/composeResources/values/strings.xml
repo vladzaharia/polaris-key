@@ -1774,6 +1774,13 @@
     <string name="yourData_product_support_title">Support code</string>
     <!-- Your data (Account and each product page); moved from the portal's copy tables (P0-36). -->
     <string name="yourData_product_support_body">Read it to the app's support team.</string>
+    <!-- Support code readout (I-41s): read aloud to support. -->
+    <string name="yourData_product_support_spell">Spell it out</string>
+    <string name="yourData_product_support_spell__macos">Spell It Out</string>
+    <!-- Support code readout (I-41s): read aloud to support. Arguments: 1=s, 2=name. -->
+    <string name="yourData_product_support_spellSymbol">%1$s as in %2$s</string>
+    <!-- Support code readout (I-41s): read aloud to support. Arguments: 1=n. -->
+    <string name="yourData_product_support_spellGroup">Part %1$s of 3</string>
     <!-- Your data (Account and each product page); moved from the portal's copy tables (P0-36). -->
     <string name="yourData_remove_keep">Keep my data</string>
     <string name="yourData_remove_keep__macos">Keep My Data</string>

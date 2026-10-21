@@ -3,7 +3,9 @@ import {
   SUPPORT_CODE_ALPHABET,
   formatSupportCode,
   normalizeSupportCode,
+  SUPPORT_CODE_WORDS,
   parseSupportCode,
+  spellOut,
   supportCodeCheck,
 } from "../src/lib/supportCode.js";
 
@@ -61,5 +63,53 @@ describe("support codes in the console", () => {
     // The check is the Worker's: these pairs are pinned on both sides.
     expect(supportCodeCheck("23456789")).toBe("J");
     expect(supportCodeCheck("K7M4QX9T")).toBe("Z");
+  });
+});
+
+describe("spelling a support code out (I-41s)", () => {
+  it("gives every alphabet symbol exactly one word, and no two symbols share one", () => {
+    const words = [...SUPPORT_CODE_ALPHABET].map((c) => SUPPORT_CODE_WORDS[c]);
+    expect(words.every((w) => typeof w === "string" && w.length > 0)).toBe(
+      true,
+    );
+    expect(new Set(words).size).toBe(SUPPORT_CODE_ALPHABET.length);
+    expect(Object.keys(SUPPORT_CODE_WORDS).sort()).toEqual(
+      [...SUPPORT_CODE_ALPHABET].sort(),
+    );
+  });
+
+  it("spells each symbol of the alphabet as its own word", () => {
+    for (const symbol of SUPPORT_CODE_ALPHABET) {
+      const payload = (symbol + "2345678").slice(0, 8);
+      const code = payload + supportCodeCheck(payload);
+      const flat = spellOut(code).flat();
+      expect(flat[0], symbol).toEqual({
+        symbol,
+        word: SUPPORT_CODE_WORDS[symbol],
+      });
+    }
+    expect(SUPPORT_CODE_WORDS.K).toBe("Kilo");
+    expect(SUPPORT_CODE_WORDS["7"]).toBe("Seven");
+  });
+
+  it("returns three groups of three, however the code was typed", () => {
+    const groups = spellOut("k7m 4qx 9tz");
+    expect(groups.map((g) => g.map((s) => s.symbol).join(""))).toEqual([
+      "K7M",
+      "4QX",
+      "9TZ",
+    ]);
+    expect(groups[0]![0]).toEqual({ symbol: "K", word: "Kilo" });
+  });
+
+  it("returns nothing for anything that is not a valid code", () => {
+    for (const bad of [
+      "",
+      "K7M-4QX",
+      "K7M-4QX-9TB",
+      "K7M-4QX-9T0",
+      "teammates",
+    ])
+      expect(spellOut(bad), bad).toEqual([]);
   });
 });

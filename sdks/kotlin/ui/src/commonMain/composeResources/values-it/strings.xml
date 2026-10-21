@@ -1785,6 +1785,13 @@
     <string name="yourData_product_support_title">Codice di supporto</string>
     <!-- Your data (Account and each product page); moved from the portal's copy tables (P0-36). -->
     <string name="yourData_product_support_body">Comunicalo al team di supporto dell'app.</string>
+    <!-- Support code readout (I-41s): read aloud to support. -->
+    <string name="yourData_product_support_spell">Sillabare</string>
+    <string name="yourData_product_support_spell__macos">Sillabare</string>
+    <!-- Support code readout (I-41s): read aloud to support. Arguments: 1=s, 2=name. -->
+    <string name="yourData_product_support_spellSymbol">%1$s come %2$s</string>
+    <!-- Support code readout (I-41s): read aloud to support. Arguments: 1=n. -->
+    <string name="yourData_product_support_spellGroup">Parte %1$s di 3</string>
     <!-- Your data (Account and each product page); moved from the portal's copy tables (P0-36). -->
     <string name="yourData_remove_keep">Mantieni i miei dati</string>
     <string name="yourData_remove_keep__macos">Mantieni i miei dati</string>
