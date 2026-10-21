@@ -30,7 +30,20 @@ export function preEncoded(res: Response): Response {
   });
 }
 
-import { configProblems } from "./core/configGuard.js";
+import { configProblems, isDeployedEnvironment } from "./core/configGuard.js";
+
+/** A 308 to the https form of a plain-http URL on a deployed environment, else `null`. */
+export function httpsRedirect(req: Request, env: Env): Response | null {
+  if (!isDeployedEnvironment(env)) return null;
+  const url = new URL(req.url);
+  if (url.protocol !== "http:") return null;
+  url.protocol = "https:";
+  url.port = "";
+  return new Response(null, {
+    status: 308,
+    headers: { location: url.toString(), "cache-control": "no-store" },
+  });
+}
 
 export default {
   async fetch(
@@ -49,6 +62,11 @@ export default {
     // follow-up API read), through `ServiceContext.waitUntil`.
     // A missing or weak required secret, or a malformed origin, refuses every request
     // on a deployed environment. Names are not logged (no console in src).
+    // Plain http is never served on a deployed environment: a 308 to the same URL over https,
+    // before anything is read from the request (both hosts; the method and body are not replayed
+    // by this response). Off a deployed environment (tests, `wrangler dev`) nothing changes.
+    const insecure = httpsRedirect(req, env);
+    if (insecure) return secureResponse(insecure);
     const bad = configProblems(env);
     if (bad.length > 0) {
       return secureResponse(
