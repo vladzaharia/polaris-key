@@ -298,6 +298,17 @@ Static design mockups built from their _src directories.
 - Reads: `docs/design/console-product-card/_src/**`, `docs/design/sign-in/prototype/**`.
 - Writes: `docs/design/console-product-card/*.html`, `docs/design/console-product-card/_src/accents.generated.css`, `docs/design/sign-in/prototype/standalone.html`.
 
+### mockup-kit
+
+The mockup kit stylesheet's generated blocks (fonts, icons, brand tokens, lockups).
+
+- Run: default.
+- Regenerate: `pnpm gen mockup-kit`.
+- Check: `pnpm gen mockup-kit --check`.
+- Underlying: `node tools/mockups/build-kit.mjs`.
+- Reads: `tools/mockups/build-kit.mjs`, `tools/mockups/assets/**`, `packages/brand/fonts/**`, `packages/brand/css/tokens.css`, `packages/brand/css/kit.css`, `packages/brand/src/svg.ts`, `packages/admin/src/portal/components/Glyphs.tsx`, `pnpm-lock.yaml`.
+- Writes: `docs/design/mockups/kit/mockup.css`.
+
 ### ux-coverage
 
 UX coverage and wave pages from ux-coverage.json.

@@ -17,11 +17,19 @@
 // contrast of every resolved accent role against the brand surfaces (the README's a11y table).
 
 import { createRequire } from "node:module";
-import { writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
+// `--check` compares every output with what is on disk, writes nothing and exits 1 on any difference.
+const check = process.argv.includes("--check");
+const stale = [];
+function emit(file, content) {
+  if (!check) return writeFileSync(file, content);
+  if (!existsSync(file) || readFileSync(file, "utf8") !== content)
+    stale.push(file);
+}
 const outDir = join(here, "..");
 const repo = join(here, "../../../..");
 const req = createRequire(join(repo, "packages/admin/package.json"));
@@ -594,7 +602,7 @@ const STATES = (d) => [
 let uid = 0;
 for (const d of DIRECTIONS) {
   const cards = PRODUCTS.map((p) => d.card(p, { uid: `${d.id}-${uid++}` }));
-  writeFileSync(
+  emit(
     join(outDir, `${d.id}.html`),
     page(`Home · ${d.name}`, "home", home(cards)),
   );
@@ -608,7 +616,7 @@ for (const d of DIRECTIONS) {
       return `<div class="cell"><p class="cap"><b>${esc(cap)}</b>${esc(note)}</p><div class="frame">${html}</div></div>`;
     })
     .join("\n");
-  writeFileSync(
+  emit(
     join(outDir, `${d.id}-states.html`),
     page(
       `States · ${d.name}`,
@@ -641,7 +649,7 @@ const block = (sel, t) =>
     })
     .join("\n");
 css += `${block(":root", "dark")}\n@media (prefers-color-scheme: light) {\n${block(':root:not([data-theme="dark"])', "light")}\n}\n${block('[data-theme="dark"]', "dark")}\n${block('[data-theme="light"]', "light")}\n`;
-writeFileSync(join(here, "accents.generated.css"), css);
+emit(join(here, "accents.generated.css"), css);
 
 // ── the a11y table: the worst contrast of each role, per product and theme ──
 const rows = [];
@@ -673,5 +681,15 @@ for (const [name, hex] of PROBES)
       ).toFixed(2),
     });
   }
+if (check) {
+  if (stale.length) {
+    console.error(
+      `stale: ${stale.map((f) => f.slice(repo.length + 1)).join(", ")}\nrun: node docs/design/console-product-card/_src/build.mjs`,
+    );
+    process.exit(1);
+  }
+  console.log("console product card mockups are current");
+  process.exit(0);
+}
 console.table(rows);
 console.log(`wrote ${DIRECTIONS.length * 2} boards and accents.generated.css`);

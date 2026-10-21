@@ -65,6 +65,7 @@ Generator families that read or write files here (a family regenerates with `pnp
 | `readme-work`    | reads and writes | `pnpm gen readme-work`    |
 | `parity`         | reads            | `pnpm gen parity`         |
 | `route-ledger`   | reads            | `pnpm gen route-ledger`   |
+| `mockup-kit`     | reads            | `pnpm gen mockup-kit`     |
 
 <!-- work-on-it:end -->
 
