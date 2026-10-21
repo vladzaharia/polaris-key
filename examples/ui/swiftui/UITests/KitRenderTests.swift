@@ -63,7 +63,10 @@ final class KitRenderTests: XCTestCase {
             ),
             (
                 "Contrast failed", "-", "",
-                ["Welcome.default.extras", "GraceBanner.days-left", "GraceBanner.last-day"],
+                [
+                    "Welcome.default.extras", "GraceBanner.days-left", "GraceBanner.last-day",
+                    "UpdatePrompt.store",
+                ],
                 "The audit names no element, so there is nothing to measure; every named element in these states is measured on its own render and passes, and the renders were checked by eye in both schemes (L, AX3, AX5, landscape)."
             ),
             (
