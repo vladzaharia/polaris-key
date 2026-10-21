@@ -364,6 +364,11 @@
       "verdict": "pass",
       "date": "2026-10-21",
       "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/PX-29/recheck/ (re-check PASS-WITH-NOTES after one fix round; lead polish 930ecc66c)"
+    },
+    "PX-35": {
+      "verdict": "pass",
+      "date": "2026-10-21",
+      "evidence": "UX review then one lead fix list; lead verified the built Library at desktop and phone (portal linux baselines library-12-*), e2e portalLibraryTrim 18/18, storefront 30/30"
     }
   }
 }
