@@ -124,11 +124,14 @@ internal fun statusScreen(inputs: KitInputs): KitScreen {
         }
     }
     return when (status) {
-        "revoked" -> screen(
-            KitComponent.statusScreen,
-            "revoked",
-            listOf(context.line("core.gate.revoked.title"), context.line("core.gate.revoked.message", context.productArgs), context.line("signin.key.differentKey"), context.line("common.signOut")),
-        )
+        "revoked" -> {
+            // Sign in first when the build offers it (Welcome's rule), then Use a different key when
+            // key entry is on; a device already signed out is never offered Sign out.
+            val lines = mutableListOf(context.line("core.gate.revoked.title"), context.line("core.gate.revoked.message", context.productArgs))
+            if (inputs.isOn("identity") && inputs.capability("signIn")) lines += context.line("welcome.signIn")
+            if (inputs.capability("keyEntry")) lines += context.line("signin.key.differentKey")
+            screen(KitComponent.statusScreen, "revoked", lines)
+        }
         "expired" -> screen(
             KitComponent.statusScreen,
             "expired",

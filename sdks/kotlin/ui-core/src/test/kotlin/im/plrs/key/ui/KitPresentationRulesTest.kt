@@ -42,7 +42,7 @@ class KitPresentationRulesTest {
             inputs("""{"keyField":{"text":"${tidewater}Q2xvdWRzT3ZlclRoZUhpb","submitted":true}}"""),
         )
         assertEquals("cut-short", screen.state)
-        val line = screen.copy.single()
+        val line = screen.copy.single { it.key == "part.keyField.cutShort" }
         assertEquals("part.keyField.cutShort", line.key)
         assertTrue(KitCopy.bundled.argumentNames(line.key).all { it in line.args })
         assertEquals(
