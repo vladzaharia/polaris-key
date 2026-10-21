@@ -1925,7 +1925,7 @@ export const NOT_A_SETTING_INDEX: readonly NotASettingEntry[] = [
     thing: "Refund, void and chargeback handling",
     reason:
       "Always revokes that one purchase (S-19 decision 5). licensing.refundGraceHours can only delay the revocation, by at most 168 hours, never prevent it; a keep-access-after-refund switch would override a store's revocation.",
-    shows: "Distribution → Commerce",
+    shows: "Commerce → In-app purchases",
   },
   {
     thing: "Relink undo window (72 hours)",
@@ -2025,7 +2025,7 @@ export const NOT_A_SETTING_INDEX: readonly NotASettingEntry[] = [
     thing:
       "Release yanks, deprecations, rollouts, readiness overrides and submissions",
     reason: "Operational actions on records, not configuration.",
-    shows: "Release → Releases; Distribution → Rollouts and Matrix",
+    shows: "Ship builds → Releases, Rollouts and Matrix",
   },
   {
     thing: "Sync and link records (how a product was linked and last synced)",
@@ -2067,7 +2067,7 @@ export const NOT_A_SETTING_INDEX: readonly NotASettingEntry[] = [
     thing: "Channel signing-key fingerprints",
     reason:
       "Key-material records, registered by an operator or observed at a channel; they describe keys, not behaviour.",
-    shows: "Distribution → Channel setup",
+    shows: "Ship builds → Channel setup",
   },
   {
     thing: "The Cloud Sync data shape (.pkey/schema's cloudSync block)",

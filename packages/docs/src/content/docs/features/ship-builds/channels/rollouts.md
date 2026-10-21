@@ -106,7 +106,7 @@ No CORS: these are CI routes.
 /manage/api/products/<slug>/distribution/rollouts/<outlet>/<channel> (POST)[/<verb>]
 ```
 
-**Distribution → Rollouts** in the console lists every rollout, halted ones first, with the same
+**Ship builds → Rollouts** in the console lists every rollout, halted ones first, with the same
 moves in each row's menu; the [matrix](/docs/features/ship-builds/channels/) cell drawer carries them
 too, with **Set percentage…** and **Start rollout…**.
 

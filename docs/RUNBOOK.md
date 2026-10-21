@@ -1166,7 +1166,7 @@ rebuilds, the Swift signing-certificate rotation and the forward-only migration 
 ### Registry tokens
 
 Clients of a non-public feed present a registry token (`pkeyr_…`): minted in the console
-(**Distribution → Package feeds → Tokens**, or a license's **Keys** tab) or by a licensee in the
+(**Ship builds → Package feeds → Tokens**, or a license's **Keys** tab) or by a licensee in the
 portal. Every token expires (at most 365 days). The store is `registry_tokens` (Core's).
 
 **Switching a feed's mode.** In the feed's **Settings → Access**. Leaving `public` answers every

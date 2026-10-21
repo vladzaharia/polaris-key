@@ -232,7 +232,7 @@ deliverables:
   `stable` and `beta` (`invalid_channel`).
 - **`entitlement`** asserts the license flag that gates the pack; it must name a `flag` entry of
   `.pkey/schema` (`unknown_entitlement_ref`). It is **not** the gate: an operator gates a pack
-  under Distribution → Access, and a publish whose gate differs from the assertion is refused.
+  under Ship builds → Access, and a publish whose gate differs from the assertion is refused.
   No push can gate, un-gate or re-flag a pack.
 - **`patch`**: `strategies`, a non-empty subset of `delta`, `file` and `chunk` (default: all
   three; `chunk` gives every container variant of 4 MiB or more a chunk index and shared chunk

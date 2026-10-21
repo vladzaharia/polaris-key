@@ -1,6 +1,6 @@
 ---
 title: "Polaris Locker: the built-in storefront"
-description: "Distribution → Storefronts → Polaris Locker: readiness, how Polaris Locker lists the product, who it is shown to, the ways to add it, group labels, a persona preview and 28 days of analytics."
+description: "Ship builds → Storefronts → Polaris Locker: readiness, how Polaris Locker lists the product, who it is shown to, the ways to add it, group labels, a persona preview and 28 days of analytics."
 type: "reference"
 lastReviewed: "2026-10-16"
 sidebar:
@@ -10,7 +10,7 @@ sidebar:
 **Polaris Locker** is the storefront built into the platform: its
 **Discover** and **Library**. A product listed there is shown to the signed-in people who can add
 it, and **Add to library** puts it in their library. Its page in the console is
-**Distribution → Storefronts → Locker** (`#/p/<slug>/distribution/storefronts/polaris-key`),
+**Ship builds → Storefronts → Locker** (`#/p/<slug>/distribution/storefronts/polaris-key`),
 for platform admins.
 
 On the [Storefronts](/docs/features/ship-builds/channels/storefronts/) page its tile reads **Built in: always connected**.
@@ -124,7 +124,7 @@ changes the shared listing. Nothing in it is signed or sent to devices.
 
 ## In the console
 
-**Distribution → Listing** edits the model, with five tabs:
+**Ship builds → Listing** edits the model, with five tabs:
 
 - **Text**: the app's fields and each locale's (switch locale, or add one), saved together, and the
   import with its field-by-field diff;

@@ -20854,7 +20854,7 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
         "release",
         `${at}/entitlement`,
         "unknown_entitlement_ref",
-        `entitlement ${entitlement} is not a flag entry of the product's .pkey/schema. It only asserts the pack's delivery gate, which an operator sets under Distribution → Access.`
+        `entitlement ${entitlement} is not a flag entry of the product's .pkey/schema. It only asserts the pack's delivery gate, which an operator sets under Ship builds → Access.`
       );
   }
   const patch = def.patch;

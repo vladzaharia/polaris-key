@@ -217,7 +217,7 @@ _offered_ in the first place.
 
 ## The console: Feed
 
-**Update → Feed** edits `GET|PATCH /manage/api/products/<product>/update/settings` in three
+**Ship builds → Feed** edits `GET|PATCH /manage/api/products/<product>/update/settings` in three
 sections, each saved on its own with only its own fields:
 
 - **Metadata access** — governs the version check (and, on Release's side, the changelog
@@ -240,7 +240,7 @@ platform, every updater feed is listed.
 
 **Artifact access** — who may read the appcast, the downloads and Polaris Locker's download
 mint — is Distribution's [delivery access](/docs/features/ship-builds/channels/delivery/#delivery-access).
-The Feed page shows it read-only and links to **Distribution → Access**, where it is set, saved to
+The Feed page shows it read-only and links to **Ship builds → Access**, where it is set, saved to
 the `/manage/api/products/<product>/distribution/access` route (`PUT`) with its own owner and revert;
 `update/settings` refuses `artifactsAccess` by name.
 

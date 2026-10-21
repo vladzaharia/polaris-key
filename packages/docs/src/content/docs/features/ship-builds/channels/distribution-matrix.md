@@ -9,7 +9,7 @@ sidebar:
 
 ## The matrix
 
-**Distribution → Rollouts** has three views, as tabs: **List** (every rollout), **Matrix** and
+**Ship builds → Rollouts** has three views, as tabs: **List** (every rollout), **Matrix** and
 **Readiness**. The last two show a deliverable's most recent releases (twenty by default, fifty at
 most) against every channel the product declares in `.pkey/distribution`. They differ only in what
 each cell summarizes. The matrix is not a sidebar item of its own: its old address and the `g m`

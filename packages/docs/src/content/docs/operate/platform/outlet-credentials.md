@@ -9,7 +9,7 @@ sidebar:
 
 **Role required:** Platform admin.
 
-**Distribution → Channel credentials** holds the keys the Distribution service uses to reach a store
+**Ship builds → Channel credentials** holds the keys the Distribution service uses to reach a store
 on the product's behalf, and the Sentry integration secret. They are **not** product
 secrets, and the difference is the point. Edge-mint can sign with any product secret an operator
 marks _edge-mint_, for any device of the product — and under open registration anyone can be a
