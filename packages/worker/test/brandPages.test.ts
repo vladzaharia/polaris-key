@@ -79,21 +79,22 @@ async function expectBrandedPage(
     expect(html).toContain(
       '<span class="ac-surface" aria-hidden="true">Console</span>',
     );
+    // plrs.im's lockup and size: the kit's compact Key lockup as supplied, 52 px tall.
+    expect(html).toMatch(/height="52" viewBox="0 0 222 64"/);
     expect(html).not.toContain("Locker");
   } else if (brand === "key") {
-    // The console Logo's brand block: the Pinned K at 48 px (display cut) beside the wordmark
-    // text, without the gold bit, and no lockup drawn at twice the console's size.
+    // The trimmed outlined Key lockup (BRAND.md §1.4): the kit's compact lockup as supplied, 52 px tall (plrs.im's size; Key guide p.2),
+    // the name is drawn, never live text, and no kit-canvas lockup is used.
     expect(html).toMatch(
       /<div class="brand" role="img" aria-label="Polaris Key[^"]*">/,
     );
-    expect(html).toContain(
-      '<svg class="mark" xmlns="http://www.w3.org/2000/svg" width="48" height="48"',
+    expect(html).toMatch(
+      /<svg class="mark" xmlns="http:\/\/www.w3.org\/2000\/svg" width="180(\.\d+)?" height="52" viewBox="0 0 222 64"/,
     );
-    expect(html).toContain(
-      '<span class="wordmark" aria-hidden="true">Polaris&nbsp;Key',
-    );
+    expect(html).not.toContain("Polaris&nbsp;Key");
+    expect(html).not.toContain('class="wordmark"');
   } else {
-    // Every page a customer sees: the Polaris Locker lockup at 48 px tall, never Polaris Key.
+    // Every page a customer sees: the trimmed Polaris Locker lockup (48 px tall, 262 wide), never Polaris Key.
     expect(html).toContain('data-brand="locker"');
     expect(html).toMatch(
       /<header class="ac-brand( quiet)?"><div role="img" aria-label="Polaris Locker">/,
@@ -140,15 +141,14 @@ describe("the branded page shell", () => {
 
   it("shares the console sign-in look: the Logo's brand block over one card, its md button", () => {
     expect(BRAND_PAGE_CSS).toContain(
-      ".brand{display:flex;justify-content:center;align-items:center;gap:.75rem",
+      ".brand{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:.5rem .75rem",
     );
     // The surface label is the Logo subtitle: small, regular weight, uppercase, muted.
     expect(BRAND_PAGE_CSS).toMatch(
       /\.surface\{color:var\(--muted\);font-size:\.75rem;[^}]*font-weight:400;[^}]*text-transform:uppercase/,
     );
-    expect(BRAND_PAGE_CSS).toMatch(
-      /\.wordmark\{[^}]*font-size:1\.25rem;[^}]*font-weight:700/,
-    );
+    // No live-text wordmark style: the name comes from the outlined lockup (BRAND.md Don'ts).
+    expect(BRAND_PAGE_CSS).not.toContain(".wordmark");
     // The console's md Button: 36 px tall, 14 px, regular weight, full width.
     const button = /\.button\{([^}]*)\}/.exec(BRAND_PAGE_CSS)![1]!;
     expect(button).toContain("display:flex;width:100%");
@@ -167,9 +167,7 @@ describe("the branded page shell", () => {
     expect(html).toContain(
       '<div class="brand" role="img" aria-label="Polaris Key console">',
     );
-    expect(html).toContain(
-      'Polaris&nbsp;Key<span class="surface">console</span></span>',
-    );
+    expect(html).toMatch(/<\/svg><span class="surface">console<\/span><\/div>/);
     // Locker: the lockup is its own wordmark, so no surface label sits beside it.
     expect(
       renderBrandPage({ title: "t", heading: "h", surface: "device" }),

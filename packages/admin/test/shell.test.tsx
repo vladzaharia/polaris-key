@@ -491,7 +491,10 @@ describe("accents and the section bit (BRAND.md §6)", () => {
     const brand = await screen.findByRole("link", {
       name: "Polaris Key Console home",
     });
-    expect(brand.querySelector("svg")!.getAttribute("width")).toBe("48");
+    // The kit's compact Key lockup is 52 px tall (as on plrs.im); the mark alone shows under 640 px.
+    expect(brand.querySelector("svg")!.getAttribute("height")).toBe("52");
+    // Guard (BR-lockups): the name is drawn by the lockup, never live text beside the mark.
+    expect(brand.textContent).toBe("");
     const theme = (): "dark" | "light" =>
       document.documentElement.classList.contains("light") ? "light" : "dark";
     const bit = (): Element | null => brand.querySelector(`path[d="${BIT_D}"]`);

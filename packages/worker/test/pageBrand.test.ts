@@ -42,7 +42,8 @@ describe("the shell", () => {
     const html = renderBrandPage({ ...opts, brand: "key" });
     expect(html).toContain('<html lang="en">');
     expect(html).toContain("· Polaris Key</title>");
-    expect(html).toContain("Polaris&nbsp;Key");
+    expect(html).toContain('aria-label="Polaris Key');
+    expect(html).not.toContain("Polaris&nbsp;Key");
     expect(html).toContain(`<style>${BRAND_PAGE_CSS}</style>`);
     expect(html).not.toContain("Locker");
   });
@@ -110,6 +111,7 @@ describe("the dispatcher", () => {
     expect(html).toContain('data-brand="console"');
     expect(html).toContain("Polaris Key Console");
     expect(html).not.toContain("Locker");
+    expect(html).not.toContain("Polaris&nbsp;Key");
     expect(res.headers.get("content-security-policy")).toContain(
       brandPageStyleSource("console"),
     );

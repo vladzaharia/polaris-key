@@ -16,7 +16,7 @@ import { badgeSvg, lockupSvg, markSvg } from "../src/svg.js";
 import { LOCKER_BADGE_LABELS } from "../src/generated/locker.js";
 import { LOCKER_BADGE_KINDS } from "../src/marks/locker.js";
 import { opticalCut } from "../src/marks/core.js";
-import { BRAND, LOCKER } from "../src/tokens/primitives.js";
+import { BRAND, LOCKER, LOCKER_TRIM } from "../src/tokens/primitives.js";
 import { resolveLocker } from "../src/tokens/resolve.js";
 import { SERVICE_IDS, THEMES } from "../src/tokens/source.js";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -296,9 +296,11 @@ describe("the API", () => {
         ).toBe(svg);
       }
   });
-  it("the coral ink is Locker's alone, and trim does not apply", () => {
+  it("the coral ink is Locker's alone, and trim is horizontal-only", () => {
     expect(() => lockupSvg({ theme: "coral" })).toThrow();
-    expect(() => lockupSvg({ kind: "locker", trim: true })).toThrow();
+    expect(() =>
+      lockupSvg({ kind: "locker", layout: "compact", trim: true }),
+    ).toThrow();
   });
   it("the React mark equals the string mark", () => {
     for (const size of [16, 32, 64])
@@ -402,5 +404,50 @@ describe("exports", () => {
       "locker-kit/logos/svg/locker-mark-dark-micro.svg",
     ])
       expect(sums).toContain(`  ${f}\n`);
+  });
+});
+
+describe("the trimmed Locker horizontal lockup", () => {
+  const kit = lockupSvg({
+    kind: "locker",
+    layout: "horizontal",
+    theme: "dark",
+  });
+  const trim = lockupSvg({
+    kind: "locker",
+    layout: "horizontal",
+    theme: "dark",
+    trim: true,
+    height: 40,
+  });
+  const inner = (s: string) => s.slice(s.indexOf(">") + 1);
+
+  it("is the kit's artwork under a cropped viewBox, nothing redrawn", () => {
+    expect(inner(trim)).toBe(inner(kit));
+    expect(trim).toContain(
+      `viewBox="${LOCKER_TRIM.x} ${LOCKER_TRIM.y} ${LOCKER_TRIM.width} ${LOCKER_TRIM.height}"`,
+    );
+  });
+
+  it("keeps the mark art and the wordmark inside the crop (Chromium-measured: x 8..443)", () => {
+    expect(LOCKER_TRIM.x).toBeLessThanOrEqual(8);
+    expect(LOCKER_TRIM.x + LOCKER_TRIM.width).toBeGreaterThanOrEqual(443);
+    expect(LOCKER_TRIM.y).toBeLessThanOrEqual(23.67);
+    expect(LOCKER_TRIM.y + LOCKER_TRIM.height).toBeGreaterThanOrEqual(102);
+    expect(LOCKER_TRIM.x + LOCKER_TRIM.width).toBeLessThanOrEqual(460);
+  });
+
+  it("meets the guide's 180 px minimum from 33 px tall up; stacked refuses trim", () => {
+    const w = (h: number) =>
+      Number(
+        /width="([\d.]+)"/.exec(
+          lockupSvg({ kind: "locker", trim: true, height: h }),
+        )![1],
+      );
+    expect(w(32)).toBeLessThan(180);
+    expect(w(33)).toBeGreaterThanOrEqual(180);
+    expect(() =>
+      lockupSvg({ kind: "locker", layout: "stacked", trim: true }),
+    ).toThrow(RangeError);
   });
 });

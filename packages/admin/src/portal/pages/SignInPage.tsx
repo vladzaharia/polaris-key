@@ -151,7 +151,7 @@ function resendDelay(out: { resendIn?: number } | undefined): number {
 function AuthBrand({ muted }: { muted: boolean }): React.ReactElement {
   return (
     <span className={muted ? "text-fg-muted opacity-80" : undefined}>
-      <Lockup height={40} />
+      <Lockup height={48} />
     </span>
   );
 }
