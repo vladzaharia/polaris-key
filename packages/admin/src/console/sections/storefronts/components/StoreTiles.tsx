@@ -28,7 +28,7 @@ export function StoreTile({
     <section
       aria-label={store.label}
       data-store={store.id}
-      className="flex h-full min-w-0 flex-col rounded-lg border border-border bg-surface-raised"
+      className="flex min-w-0 flex-col rounded-lg border border-border bg-surface-raised"
     >
       <div className="flex min-h-14 items-start justify-between gap-3 border-b border-border px-4 py-3">
         <div className="min-w-0">
@@ -94,7 +94,7 @@ function BuiltInTile({
       aria-label={store.label}
       data-store={store.id}
       data-built-in=""
-      className="flex h-full min-w-0 flex-col rounded-lg border border-border bg-surface-raised"
+      className="flex min-w-0 flex-col rounded-lg border border-border bg-surface-raised"
     >
       <div className="flex min-h-14 items-start justify-between gap-3 border-b border-border px-4 py-3">
         <div className="min-w-0">

@@ -95,6 +95,9 @@ export function Stepper({
   const reached = (id: string) =>
     done.has(id) || skipped.has(id) || unmet.has(id) || visited.has(id);
 
+  // What a step decided ("Google Play Console") is drawn under its label only where there is
+  // room for the whole row (a 64 rem container); below that it is read, not drawn, so no label
+  // is cut and the row stays on one line.
   // The collapse follows the room the stepper has, in rem: at 200 % text the list gives way to
   // "Step n of m" instead of squeezing every label to a glyph.
   return (
@@ -203,7 +206,7 @@ export function Stepper({
               {isDone && step.decided ? (
                 <small
                   title={step.decided}
-                  className="max-w-[10rem] truncate text-xs font-normal text-fg-muted"
+                  className="max-w-[16rem] truncate @max-5xl:sr-only text-xs font-normal text-fg-muted"
                 >
                   {step.decided}
                 </small>
@@ -214,7 +217,7 @@ export function Stepper({
               ) : isUnmet && step.decided ? (
                 <small
                   title={step.decided}
-                  className="max-w-[10rem] truncate text-xs font-normal text-warning"
+                  className="max-w-[16rem] truncate @max-5xl:sr-only text-xs font-normal text-warning"
                 >
                   {step.decided}
                 </small>
@@ -258,17 +261,6 @@ export function Stepper({
               key={step.id}
               className={cn("flex items-center gap-2", "shrink-0")}
             >
-              {i > 0 ? (
-                <span className="hidden min-w-2 shrink @3xl:inline-flex">
-                  <Connector
-                    filled={
-                      i <= currentIndex ||
-                      (reached(steps[i - 1]!.id) &&
-                        steps[i - 1]!.id !== current)
-                    }
-                  />
-                </span>
-              ) : null}
               {isCurrent ? (
                 <span
                   aria-current="step"
@@ -322,6 +314,17 @@ export function Stepper({
                   Undo
                   <span className="sr-only">{` skipping ${step.label}`}</span>
                 </button>
+              ) : null}
+              {/* The line to the next step trails its step, so a row that wraps never starts with one. */}
+              {i < steps.length - 1 ? (
+                <span className="hidden min-w-2 shrink @3xl:inline-flex">
+                  <Connector
+                    filled={
+                      i + 1 <= currentIndex ||
+                      (reached(step.id) && step.id !== current)
+                    }
+                  />
+                </span>
               ) : null}
             </li>
           );
