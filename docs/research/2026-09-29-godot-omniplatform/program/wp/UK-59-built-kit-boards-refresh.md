@@ -163,3 +163,9 @@ Done (Built today unless noted; renders in docs/design/ui-kits/shots):
 - ios.html: inline one-form activation (the sheet is the labelled alternative); neutral boot shimmer; lede from the catalog (string debt shrank).
 
 Left: apple.html iPad from built SwiftUI renders (needs a simulator or Xcode; the committed Swift snapshots are phone-size only); Android states/settings and tablet portrait, compose mockups sdk.compose-activate and sdk.compose-sign-in; Godot built tier for the other nine frames (tools/ui_screenshots.gd stalled after gate and settings under load); iOS and Android frames drawn before this slice still lack a tier caption; the MOCKUP-mode UX review; ui:report.
+
+## Progress and continuation (2026-10-21, terminal + Godot slice)
+
+- terminal.html: every frame captioned Built today; a new `--json` frame captured by running the Node gate and status verbs (exit 4 and 1). NO_COLOR, ascii and the pipe quadrant were already drawn.
+- godot.html: nine frames re-tiered against real renders of the built kit (tools/ui_screenshots.gd, brand look, dark and light; raw captures in shots/godot-built/): gate, settings, sign-in, device limit, update toast, update, boot, status, error each show a Built today render beside the UK-11 target. Activate and the 1280 x 800 gate stay target only.
+- The built kit disagrees with the targets: sign-in title is "Sign in" at polaris.locker/device (the Node terminal prints key.plrs.im/device); boot draws a part-filled bar, not the DL7 shimmer; status is the gate's Signed out form; the device-limit and error frames have no copy for the cached license.

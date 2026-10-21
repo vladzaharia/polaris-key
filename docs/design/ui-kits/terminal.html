@@ -269,7 +269,8 @@
     <main class="board">
       <figure>
         <figcaption>
-          terminal · sign-in with --device-code (no QR, 80 × 24)
+          terminal · sign-in with --device-code (no QR, 80 × 24). Built today
+          (Node and Python goldens)
         </figcaption>
         <div class="shot cols80" data-shot="sign-in">
           <div class="tbar"><i></i><i></i><i></i>tidewater — 80 × 24</div>
@@ -279,7 +280,7 @@
       <figure>
         <figcaption>
           terminal · activate (masked key entry: the public prefix, then
-          bullets)
+          bullets). Built today (Node and Python goldens)
         </figcaption>
         <div class="shot cols80" data-shot="activate">
           <div class="tbar"><i></i><i></i><i></i>tidewater — 80 × 24</div>
@@ -289,7 +290,7 @@
       <figure>
         <figcaption>
           terminal · device limit on the key path (replace a device in the
-          browser)
+          browser). Built today (Node and Python goldens)
         </figcaption>
         <div class="shot cols80" data-shot="device-limit">
           <div class="tbar"><i></i><i></i><i></i>tidewater — 80 × 24</div>
@@ -298,7 +299,8 @@
       </figure>
       <figure>
         <figcaption>
-          terminal · status, update progress and the finished block
+          terminal · status, update progress and the finished block. Built today
+          (Node and Python goldens)
         </figcaption>
         <div class="shot cols80" data-shot="update">
           <div class="tbar"><i></i><i></i><i></i>tidewater — 80 × 24</div>
@@ -307,7 +309,8 @@
       </figure>
       <figure>
         <figcaption>
-          terminal · a revoked license: ▲ with the fix as commands, exit 1
+          terminal · a revoked license: ▲ with the fix as commands, exit 1.
+          Built today (Node and Python goldens)
         </figcaption>
         <div class="shot cols80" data-shot="status-error">
           <div class="tbar"><i></i><i></i><i></i>tidewater — 80 × 24</div>
@@ -317,7 +320,7 @@
       <figure>
         <figcaption>
           terminal · boot (spinner, then the result), healthy status and a
-          network failure (✗, exit 1)
+          network failure (✗, exit 1). Built today (Node and Python goldens)
         </figcaption>
         <div class="shot cols80" data-shot="states">
           <div class="tbar"><i></i><i></i><i></i>tidewater — 80 × 24</div>
@@ -327,7 +330,7 @@
       <figure>
         <figcaption>
           terminal · grouped help (cut to 24 rows: Devices, Settings, Updates,
-          Content and Support left out)
+          Content and Support left out). Built today (Node and Python goldens)
         </figcaption>
         <div class="shot cols80" data-shot="help">
           <div class="tbar"><i></i><i></i><i></i>tidewater — 80 × 24</div>
@@ -376,7 +379,7 @@
       <figure>
         <figcaption>
           terminal · 60 columns (the device limit's browser hand-off; the text
-          wraps at the column)
+          wraps at the column). Built today (Node and Python goldens)
         </figcaption>
         <div class="shot cols60" data-shot="narrow">
           <div class="tbar"><i></i><i></i><i></i>tidewater — 60 × 24</div>
@@ -386,7 +389,8 @@
       <figure>
         <figcaption>
           terminal · a short window (40 × 12): blank rows go, the hints join the
-          waiting line's rail, the URL, code and keys stay
+          waiting line's rail, the URL, code and keys stay. Built today (Node
+          and Python goldens)
         </figcaption>
         <div class="shot cols40" data-shot="short">
           <div class="tbar"><i></i><i></i><i></i>tidewater — 40 × 12</div>
@@ -396,7 +400,7 @@
       <figure>
         <figcaption>
           terminal · a narrow window (32 × 24): the same screen, wrapped at the
-          column
+          column. Built today (Node and Python goldens)
         </figcaption>
         <div class="shot cols32" data-shot="narrow-32">
           <div class="tbar"><i></i><i></i><i></i>tidewater — 32 × 24</div>
@@ -446,7 +450,7 @@
       <figure>
         <figcaption>
           terminal · an ending is one result block: Esc replaces the code view,
-          nothing is left above it
+          nothing is left above it. Built today (Node and Python goldens)
         </figcaption>
         <div class="shot cols80" data-shot="ended">
           <div class="tbar"><i></i><i></i><i></i>tidewater — 80 × 24</div>
@@ -456,7 +460,7 @@
       <figure>
         <figcaption>
           terminal · offline request (80 × 24): the QR under the code, the one
-          QR a terminal draws
+          QR a terminal draws. Built today (Node and Python goldens)
         </figcaption>
         <div class="shot cols80" data-shot="offline-landscape">
           <div class="tbar"><i></i><i></i><i></i>tidewater — 80 × 24</div>
@@ -487,6 +491,18 @@
       </figure>
       <figure>
         <figcaption>
+          terminal · --json: one JSON line on stdout, no prompt and no escape;
+          the exit codes are the same (4 for a refused gate, 1 for status).
+          Built today (Node kit, captured by running the gate and status verbs;
+          the long line folded at 116 columns for the board)
+        </figcaption>
+        <div class="shot cols120" data-shot="json">
+          <div class="tbar"><i></i><i></i><i></i>tidewater — 120 columns</div>
+          <pre id="jsonq"></pre>
+        </div>
+      </figure>
+      <figure>
+        <figcaption>
           terminal · the same command at a terminal: the activate flow runs
           inline, then the host's command. Built today (Node goldens
           activate-parsed, activate-done)
@@ -497,7 +513,10 @@
         </div>
       </figure>
       <figure>
-        <figcaption>terminal · Textual app (optional, Python)</figcaption>
+        <figcaption>
+          terminal · Textual app (optional, Python). Built today (drawn from the
+          Python textual_app source, not a fresh capture)
+        </figcaption>
         <div class="shot cols80" data-shot="textual">
           <div class="tx" id="tx">
             <div class="hd">
@@ -1087,6 +1106,21 @@
         L(["m", "$ "], ["", "cat refusal.txt"]),
         ...draw(refusal),
       ]);
+      // --json, captured from the Node kit: export refused by the gate, then status on a revoked
+      // license (the long line is folded as `fold -w 116` would).
+      {
+        const g =
+          '{"v":1,"command":"export","event":"result","ok":false,"exit":4,"error":"license_required"}';
+        const st =
+          '{"v":1,"command":"status","event":"result","ok":false,"exit":1,"status":"revoked","usable":false,"component":"StatusScreen","state":"revoked","graceUntil":null,"allowedRange":null,"profile":{"name":"Mara Fennick","email":"mara@fennick.studio"},"version":"2.4.1","channel":"stable","tier":"Pro","tokenStore":{"backend":"keyring","degraded":null}}';
+        put("jsonq", [
+          L(["m", "$ "], ["", "tidewater export --json; echo $?"]),
+          L(["", g]),
+          L(["", "4"]),
+          L(["m", "$ "], ["", "tidewater status --json | fold -w 116"]),
+          ...st.match(/.{1,116}/g).map((x) => L(["", x])),
+        ]);
+      }
       // The gate at a terminal: the kit's activate flow, then the host's command.
       put("gateinline", [
         L(["m", "$ "], ["", "tidewater export"]),
