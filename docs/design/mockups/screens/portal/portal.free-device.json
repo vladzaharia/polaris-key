@@ -3,17 +3,19 @@
   "title": "Free a device",
   "area": "portal",
   "surface": "portal",
-  "packages": ["PX-29", "LX-15", "P0-36"],
+  "packages": ["PX-29", "LX-15", "P0-36", "PX-35", "BR-lockups"],
   "uxRows": [],
-  "summary": "Kenji's focused task to free a device on his DJDL Studio license, opened from the app's device-limit hand-off: breadcrumb back to the Library and DJDL, the identity row instead of a cropped art band, the two devices as radio cards with the least recent preselected, one Remove, and Go back to DJDL. On a short desktop the identity and consequences sit beside the task.",
+  "summary": "Kenji's focused task to free a device on his DJDL license, opened from DJDL's device-limit hand-off: the focused flow's chrome (the lockup and 'Back to DJDL'), the crumb 'DJDL / Device access', 'Free a device', the identity row with '2 of 2 devices in use' over the neutral seat meter, why ('To use DJDL on Studio Mac mini, remove one of these.'), the two devices as radio cards with the least recent preselected, the consequence, Cancel and Remove Booth PC, and 'Need more devices? Ask Example Audio'. On a desktop up to 900 px tall the identity sits beside the task; on a phone the action row is sticky.",
   "compare": [
-    "Breadcrumb 'Library › DJDL' (the task's label is the h1), the identity row (icon, name and tier, developer, what it keeps) instead of a cropped art band (PX-29, portal-06).",
-    "Radio cards with the least recent device preselected and tagged 'Least recent'; the selection is neutral ink with the 3 px coral marker (D9a), the tag neutral.",
-    "One primary that names the device ('Remove Booth PC'); the consequence is said once (in the aside); Go back to DJDL returns to the app's hand-off.",
-    "Short desktop (≥1024 wide, ≤820 tall, the 1024×768 render): two columns, so Remove is in the first viewport; otherwise one 640px column.",
-    "Phone: one column, the buttons full width; the bottom bar stays (B12).",
-    "Round 2 (UX review): The title leads (above the frame), then the identity row, then the choice; the consequence ('Booth PC signs out of DJDL.') sits beside Remove; two columns on a desktop up to 900px tall (M6).",
-    "Round 2 (UX review): Phone bar: the selected tab is a neutral fill with a 3:1 edge; Activate is a plain tab (M5)."
+    "2026-10-20 shell (PX-35, BR-lockups): drawn as the build's focused flow (FocusedFlow; PORTAL.md §4.4, 'minimal chrome'): the trimmed lockup and 'Back to DJDL' (DJDL's declared return=; 'Back' under 384 px), no nav, no account chip, no phone bar, no footer. This supersedes the old 'the bottom bar stays (B12)' and the round-2 phone-bar note: the build and PORTAL.md give a focused flow no bar.",
+    "Build follow-up: FocusedFlow's lockup is 52 px on a computer and 40 px below 761 px; BRAND.md §15 says 40 px in a 64 px header and 36 px on a phone, as drawn.",
+    "Follows the build (TaskFrame): the crumb 'DJDL / Device access' in words, not links; the identity row says the seats once, 'From Example Audio · 2 of 2 devices in use', with the seat meter under it in neutral ink (a limit, not an error; UI-KITS §1.5 rule 9). The tier is not repeated.",
+    "Follows the build: a lede says why, naming the device the app sent: 'To use DJDL on Studio Mac mini, remove one of these. You can add it back later.'",
+    "Radio cards, the least recent preselected and tagged 'Least recent'; one meta line each in the build's relative words, 'Windows · 4.1.3 · last seen 18 days ago', 'macOS · 4.1.3 · active today' (§6.1 rule 9); the selection is neutral ink with the 3 px coral marker (D9a), the tag neutral.",
+    "Follows the build: the consequence is one line with an info glyph just above the actions, and Remove's description: 'Booth PC signs out of DJDL. We'll email kenji@example.com to confirm.' (the second sentence only when email sign-in is on).",
+    "Follows the build: Cancel (outlined; back to the app's return= or the product page) beside the one primary that names the device, 'Remove Booth PC'. The old 'Go back to DJDL' button is gone: the header holds the way back. 'Need more devices? Ask Example Audio' follows when the developer has a support link.",
+    "Two columns, the identity beside the task, on a desktop up to 900 px tall (the 1440×900 and 1024×768 renders); one centred 640 px column otherwise. Phone: one column; the action row sticks to the bottom with a top edge, Cancel over Remove, full width (StickyActions).",
+    "After Remove (not drawn): 'Booth PC was removed' with the success check, 'DJDL now has a free device. Go back to DJDL and press Try again.' and Back to DJDL."
   ],
   "status": "mockup",
   "designReview": null

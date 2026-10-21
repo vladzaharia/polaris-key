@@ -2,26 +2,26 @@
   <header class="portal-top">
     <a class="portal-brand" href="#"><i class="lk-lockup" role="img" aria-label="Polaris Locker"></i></a>
     <nav class="portal-nav" aria-label="Polaris Locker">
-      <a class="active" href="#">Library <span class="count">3</span></a>
+      <a href="#">Library <span class="count">3</span></a>
       <a href="#">Discover</a>
     </nav>
     <div class="portal-actions">
-      <button class="btn outline sm"><i class="ic ic-key-round accent"></i>Activate license</button>
-      <span class="account"><span class="avatar sm">MF</span><span>Mara Fennick</span><i class="ic ic-chevron-down"></i></span>
+      <span class="account" role="button" aria-haspopup="menu" aria-expanded="false" aria-label="Account: Mara Fennick"><span class="avatar sm">MF</span><span>Mara Fennick</span><i class="ic ic-chevron-down"></i></span>
     </div>
   </header>
 
   <main class="portal-page">
-    <div class="mk-split cap-880">
+    <!-- PX-31a: the h1 and Sign out, no line under the title (the email is Profile's). -->
+    <div class="mk-split">
       <h1>Account</h1>
-      <div><button class="btn outline sm row-act"><i class="ic ic-log-out"></i>Sign out</button></div>
+      <div><button class="btn outline"><i class="ic ic-log-out"></i>Sign out</button></div>
     </div>
 
-    <!-- PX-31: the canonical sections (B12): Profile · Sign-in methods · Connected apps · Packages ·
-         Where you're signed in · Appearance · Your data. Risky actions live in their own sections. -->
-    <div class="with-toc cap-880">
+    <!-- The canonical sections (B12): Profile · Sign-in methods · Connected apps · Packages · Where
+         you're signed in · Appearance · Your data. A section with nothing to show leaves the list. -->
+    <div class="with-toc">
       <nav class="jump-nav fade-end" aria-label="Account sections">
-        <a class="on" aria-current="true" href="#">Profile</a>
+        <a class="on" aria-current="location" href="#">Profile</a>
         <a href="#">Sign-in methods</a>
         <a href="#">Connected apps</a>
         <a href="#">Packages</a>
@@ -29,8 +29,8 @@
         <a href="#">Appearance</a>
         <a href="#">Your data</a>
       </nav>
-      <nav class="toc-nav" aria-label="Account sections">
-        <a class="on" aria-current="true" href="#">Profile</a>
+      <nav class="toc-nav" aria-label="On this page">
+        <a class="on" aria-current="location" href="#">Profile</a>
         <a href="#">Sign-in methods</a>
         <a href="#">Connected apps</a>
         <a href="#">Packages</a>
@@ -40,65 +40,170 @@
       </nav>
 
       <div class="toc-body">
-        <section class="card" aria-labelledby="h-profile">
+        <section class="card account-card" aria-labelledby="h-profile">
           <div class="card-head"><div class="title"><h2 id="h-profile">Profile</h2></div></div>
           <div class="card-rows">
             <div class="item-row profile">
-              <span class="photo lg" role="img" aria-label="Mara’s picture"></span>
-              <div class="item-text"><div class="item-title">Mara Fennick</div><div class="item-desc">mara.fennick@example.com</div></div>
-              <div class="item-end"><button class="btn outline sm">Edit</button></div>
+              <span class="photo lg badged" role="img" aria-label="Mara’s picture, from Google"><i class="gmark sm"></i></span>
+              <div class="item-text">
+                <div class="item-title">Mara Fennick</div>
+                <div class="item-desc">mara.fennick@example.com</div>
+                <div class="item-desc">Name typed by you · picture from Google</div>
+              </div>
+              <div class="item-end"><button class="btn outline sm row-act" aria-label="Edit profile">Edit</button></div>
             </div>
           </div>
         </section>
-        <section class="card" aria-labelledby="h-methods">
-          <div class="card-head"><div class="title"><h2 id="h-methods">Sign-in methods</h2></div><button class="btn outline sm"><i class="ic ic-plus"></i>Add</button></div>
+
+        <section class="card account-card" aria-labelledby="h-methods">
+          <div class="card-head">
+            <div class="title"><h2 id="h-methods">Sign-in methods</h2></div>
+            <button class="btn outline sm" aria-haspopup="menu"><i class="ic ic-plus"></i>Add</button>
+          </div>
+          <p class="card-intro">Each one is a key to this account. Connect or disconnect them any time; you need at least one.</p>
           <div class="card-rows">
-            <div class="item-row"><span class="icon-tile muted"><i class="ic ic-fingerprint"></i></span><div class="item-text"><div class="item-title">Passkey <small>Pixel 8</small></div><div class="item-desc">Last used today</div></div></div>
-            <div class="item-row"><span class="icon-tile muted"><i class="gmark"></i></span><div class="item-text"><div class="item-title">Google</div><div class="item-desc">mara.fennick@example.com</div></div></div>
-            <div class="item-row"><span class="icon-tile muted"><i class="ic ic-mail"></i></span><div class="item-text"><div class="item-title">Email code</div><div class="item-desc">mara@studio.example.com</div><div class="item-desc">Finds licenses sent there</div></div></div>
+            <h3 class="rows-label">Accounts</h3>
+            <div class="item-row">
+              <span class="icon-tile muted"><i class="gmark"></i></span>
+              <div class="item-text"><div class="item-title">Google</div><div class="item-desc">mara.fennick@example.com</div><div class="item-desc">Connected Mar 4, 2026 · last used yesterday</div></div>
+              <div class="item-end"><button class="btn outline sm row-act">Disconnect</button></div>
+            </div>
+            <div class="item-row">
+              <span class="icon-tile muted"><i class="ic ic-steam"></i></span>
+              <div class="item-text"><div class="item-title">Steam</div><div class="item-desc">Not connected</div></div>
+              <div class="item-end"><button class="btn outline sm row-act">Connect</button></div>
+            </div>
+            <h3 class="rows-label">Email <span>· sign in with a code</span></h3>
+            <div class="item-row">
+              <span class="icon-tile muted"><i class="ic ic-mail"></i></span>
+              <div class="item-text"><div class="item-title">mara.fennick@example.com <span class="pill sm outline">Primary</span></div><div class="item-desc">Added Mar 4, 2026 · last used 2 wk. ago</div></div>
+              <div class="item-end"><button class="btn outline sm row-act">Remove</button></div>
+            </div>
+            <div class="item-row">
+              <span class="icon-tile muted"><i class="ic ic-mail"></i></span>
+              <div class="item-text"><div class="item-title">mara@studio.example.com</div><div class="item-desc">Found 2 products · added Jun 9, 2026 · never used to sign in</div></div>
+              <div class="item-end"><button class="btn ghost sm">Make primary</button><button class="btn outline sm row-act">Remove</button></div>
+            </div>
+            <div class="item-row add-row"><span aria-hidden="true"></span><button class="btn link"><i class="ic ic-plus"></i>Add an email</button></div>
+            <h3 class="rows-label">Passkeys</h3>
+            <div class="item-row">
+              <span class="icon-tile muted"><i class="ic ic-fingerprint"></i></span>
+              <div class="item-text"><div class="item-title">Pixel 8</div><div class="item-desc">Added Sep 19, 2026 · last used today · added on Chrome on Android</div></div>
+              <div class="item-end"><button class="btn outline sm row-act">Remove</button></div>
+            </div>
+            <div class="item-row add-row"><span aria-hidden="true"></span><button class="btn link"><i class="ic ic-key-round"></i>Add a passkey</button></div>
+          </div>
+          <div class="card-foot-note">
+            <p class="icon-line"><i class="ic ic-info"></i><span>Changing a method asks you to confirm it’s you. Every change is recorded and emailed to mara.fennick@example.com.</span></p>
+            <div><button class="btn outline sm">Link an existing account</button></div>
           </div>
         </section>
-        <section class="card" aria-labelledby="h-apps">
+
+        <!-- Connected apps (I-34, PX-31b): mockup only until its API exists (PORTAL.md §7). The rows
+             are identity.connected-apps'. -->
+        <section class="card account-card" aria-labelledby="h-apps">
           <div class="card-head"><div class="title"><h2 id="h-apps">Connected apps</h2></div></div>
           <div class="card-rows">
-            <div class="item-row"><span class="logo sm" data-product="diceroll"></span><div class="item-text"><div class="item-title">Diceroll <small>Example Games</small></div><div class="item-desc">Gets your screen name and Cloud Sync</div><div class="item-desc">Last used today</div></div><div class="item-end"><button class="btn outline sm">Change</button></div></div>
-            <div class="item-row"><span class="logo sm" data-product="djdl"></span><div class="item-text"><div class="item-title">DJDL <small>Example Audio</small></div><div class="item-desc">Gets your screen name and email</div><div class="item-desc">Last used 2 h ago</div></div><div class="item-end"><button class="btn outline sm">Change</button></div></div>
+            <div class="item-row top">
+              <span class="logo" data-product="djdl"></span>
+              <div class="item-text">
+                <div class="item-title">DJDL <small>Example Audio</small></div>
+                <div class="item-desc">Passkey · last used 2 h ago on Studio Mac mini</div>
+              </div>
+              <div class="item-more">
+                <div role="group" class="mk-cluster" aria-label="What DJDL gets">
+                  <span class="grant"><i class="ic ic-check"></i>Screen name</span>
+                  <span class="grant"><i class="ic ic-check"></i>Picture</span>
+                  <span class="grant"><i class="ic ic-check"></i>Email</span>
+                  <span class="grant"><i class="ic ic-check"></i>Cloud Sync</span>
+                </div>
+              </div>
+              <div class="item-end fill">
+                <button class="btn outline sm row-act wide">Change what DJDL gets</button>
+                <button class="btn ghost sm row-act danger-text">Disconnect</button>
+              </div>
+            </div>
+            <div class="item-row top">
+              <span class="logo" data-product="diceroll"></span>
+              <div class="item-text">
+                <div class="item-title">Diceroll <small>Example Games</small></div>
+                <div class="item-desc">Google · last used yesterday on Mara’s Pixel 8</div>
+              </div>
+              <div class="item-more">
+                <div role="group" class="mk-cluster" aria-label="What Diceroll gets">
+                  <span class="grant"><i class="ic ic-check"></i>Screen name</span>
+                  <span class="grant"><i class="ic ic-check"></i>Cloud Sync</span>
+                  <span class="grant no"><i class="ic ic-eye-off"></i>Not your picture</span>
+                  <span class="grant no"><i class="ic ic-eye-off"></i>Not your email</span>
+                </div>
+              </div>
+              <div class="item-end fill">
+                <button class="btn outline sm row-act wide">Change what Diceroll gets</button>
+                <button class="btn ghost sm row-act danger-text">Disconnect</button>
+              </div>
+            </div>
           </div>
         </section>
-        <section class="card" aria-labelledby="h-pkg">
-          <div class="card-head"><div class="title"><h2 id="h-pkg">Packages</h2></div><button class="btn outline sm">New token</button></div>
+
+        <!-- Packages (F-33, as built in PackagesCard): one personal token for every feed; the setup
+             under the list is drawn in packages.portal-packages. -->
+        <section class="card account-card" aria-labelledby="h-pkg">
+          <div class="card-head"><div class="title"><h2 id="h-pkg">Packages</h2></div></div>
+          <p class="card-intro">A personal token is one read-only credential that installs every package your licenses include.</p>
           <div class="card-rows">
-            <div class="item-row"><span class="icon-tile muted"><i class="ic ic-key-round"></i></span><div class="item-text"><div class="item-title mono">pkey_pat_…4QXL</div><div class="item-desc">npm and PyPI · used 2 days ago</div></div><div class="item-end"><button class="btn danger-outline sm">Revoke</button></div></div>
+            <div class="rows-head">
+              <h3>Your personal tokens</h3>
+              <button class="btn primary sm"><i class="ic ic-plus"></i>Create personal token</button>
+            </div>
+            <div class="item-row">
+              <span class="icon-tile muted"><i class="ic ic-key-round"></i></span>
+              <div class="item-text"><div class="item-title">Studio Mac mini</div><div class="item-desc"><span class="mono">pkeyp_…4QXL</span></div><div class="item-desc">Last used 2 days ago · Expires Jan 18, 2027</div></div>
+              <div class="item-end"><button class="btn outline sm row-act" aria-label="Revoke Studio Mac mini">Revoke</button></div>
+            </div>
           </div>
         </section>
-        <section class="card" aria-labelledby="h-where">
-          <div class="card-head"><div class="title"><h2 id="h-where">Where you’re signed in</h2></div><button class="btn outline sm">Sign out everywhere else</button></div>
+
+        <section class="card account-card" aria-labelledby="h-where">
+          <div class="card-head">
+            <div class="title"><h2 id="h-where">Where you’re signed in</h2></div>
+            <button class="btn outline sm"><i class="ic ic-log-out"></i>Sign out everywhere</button>
+          </div>
+          <p class="card-intro">Browsers signed in to this account. Devices that use a license are on each product’s page.</p>
           <div class="card-rows">
-            <div class="item-row"><span class="icon-tile muted"><i class="ic ic-smartphone"></i></span><div class="item-text"><div class="item-title">Pixel 8 <small>This device</small></div><div class="item-desc">Chrome · now</div></div></div>
-            <div class="item-row"><span class="icon-tile muted"><i class="ic ic-laptop"></i></span><div class="item-text"><div class="item-title">MacBook Air</div><div class="item-desc">Safari · yesterday</div></div><div class="item-end"><button class="btn outline sm">Sign out</button></div></div>
+            <div class="item-row">
+              <span class="icon-tile muted"><i class="ic ic-smartphone"></i></span>
+              <div class="item-text"><div class="item-title">Chrome on Android <span class="pill sm outline">This browser</span></div><div class="item-desc">Signed in with a passkey · now</div></div>
+            </div>
+            <div class="item-row">
+              <span class="icon-tile muted"><i class="ic ic-monitor"></i></span>
+              <div class="item-text"><div class="item-title">Safari on macOS</div><div class="item-desc">Signed in with Google · last active yesterday</div></div>
+              <div class="item-end"><button class="btn ghost sm" aria-label="Sign out Safari on macOS">Sign out</button></div>
+            </div>
+            <div class="item-row add-row"><span aria-hidden="true"></span><button class="btn link"><i class="ic ic-qr-code"></i>Approve a new device</button></div>
           </div>
         </section>
-        <section class="card" aria-labelledby="h-look">
+
+        <section class="card account-card" aria-labelledby="h-look">
           <div class="card-head"><div class="title"><h2 id="h-look">Appearance</h2></div></div>
           <div class="card-rows">
-            <div class="setting-row"><div><div class="setting-title">Theme</div></div><div class="segmented sm" role="radiogroup" aria-label="Theme"><span class="on" role="radio" aria-checked="true">Match device</span><span role="radio" aria-checked="false">Dark</span><span role="radio" aria-checked="false">Light</span></div></div>
+            <div class="setting-row"><div><div class="setting-title" id="l-theme">Theme</div></div><div class="segmented sm" role="radiogroup" aria-labelledby="l-theme"><span class="on" role="radio" aria-checked="true">Match device</span><span role="radio" aria-checked="false">Dark</span><span role="radio" aria-checked="false">Light</span></div></div>
+            <div class="setting-row"><div><div class="setting-title" id="l-motion">Motion</div><div class="setting-desc">Animates unless your device asks for reduced motion.</div></div><div class="segmented sm" role="radiogroup" aria-labelledby="l-motion"><span class="on" role="radio" aria-checked="true">Match device</span><span role="radio" aria-checked="false">Reduced</span></div></div>
           </div>
         </section>
-        <section class="card" aria-labelledby="h-data">
+
+        <section class="card account-card" aria-labelledby="h-data">
           <div class="card-head"><div class="title"><h2 id="h-data">Your data</h2></div></div>
           <div class="card-rows">
-            <div class="item-row"><span class="icon-tile muted"><i class="ic ic-download"></i></span><div class="item-text"><div class="item-title">Download your data</div><div class="item-desc">A file with your account, licenses and devices</div></div><div class="item-end"><button class="btn outline sm">Download</button></div></div>
-            <div class="item-row"><span class="icon-tile muted"><i class="ic ic-trash-2"></i></span><div class="item-text"><div class="item-title">Delete your account</div></div><div class="item-end"><button class="btn danger-outline sm">Delete account…</button></div></div>
+            <div class="item-row"><span class="icon-tile muted"><i class="ic ic-file-json"></i></span><div class="item-text"><div class="item-title">Download my data</div><div class="item-desc">Account, sign-in methods, licenses, devices and each app’s data. No keys or tokens.</div></div><div class="item-end"><button class="btn outline sm row-act"><i class="ic ic-download"></i>Download</button></div></div>
+            <div class="item-row"><span class="icon-tile danger"><i class="ic ic-trash-2"></i></span><div class="item-text"><div class="item-title">Delete account</div><div class="item-desc">Erased 14 days after you confirm. Licenses stay with each developer.</div></div><div class="item-end"><button class="btn danger-outline sm row-act">Delete account…</button></div></div>
           </div>
         </section>
       </div>
     </div>
   </main>
 
-  <footer class="portal-foot">Polaris Locker · Help · Privacy · Terms</footer>
-  <nav class="portal-tabbar" aria-label="Polaris Locker tabs">
-    <a class="active" href="#"><i class="ic ic-layout-grid"></i>Library</a>
-    <a class="act" href="#"><i class="ic ic-key-round"></i>Activate</a>
+  <nav class="portal-tabbar docked" aria-label="Polaris Locker tabs">
+    <a href="#"><i class="ic ic-layout-grid"></i>Library</a>
     <a href="#"><i class="ic ic-sparkles"></i>Discover</a>
   </nav>
 </div>

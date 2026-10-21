@@ -3,15 +3,18 @@
   "title": "Activate a license",
   "area": "portal",
   "surface": "dialog",
-  "packages": ["PX-29", "LX-38", "PX-W19"],
+  "packages": ["PX-29", "LX-38", "PX-W19", "PX-35", "BR-lockups"],
   "uxRows": [],
-  "summary": "The Activate a license dialog over Priya's Library at its Enter step: the account the key will join first (avatar, name, email, Not you?), the key field (visible, mono, Paste), and under it the product the key is for before anything activates; Continue leads to the confirm step.",
+  "summary": "The Activate a license dialog at its Enter step, over Priya's Library as portal.library draws it: the title and 'The product stays in your library even if you lose the key.', the account the key joins (avatar, name, email, Not you?), the whole key in mono with the success edge and a check, then 'Key format is valid', 'Key for DJDL' and the help line; Cancel and Continue. Continue leads to portal.activate-confirm.",
   "compare": [
-    "The account row comes first (portal-26, B12): who the key joins, with Not you?",
-    "The key is visible and mono (never masked), middle-truncated at rest, with Paste; once it parses, 'Key for DJDL · Studio' previews under it with the product's icon (PORTAL §4.17).",
-    "Inline errors at the field (§4.19): not a key, a key for another product, already in this library, used up; each says what to do.",
-    "Continue (ink) goes to portal.activate-confirm; Cancel is a ghost; the dialog head has the neutral rule and no glyph.",
-    "Phone: a bottom sheet with Continue pinned; the bottom bar's Activate opens it."
+    "2026-10-20 shell (PX-35, BR-lockups): the page under the dialog is the current Library (portal.library: the trimmed lockup, no header Activate, dense tiles, the key tile, the sticky 'Missing a license?' strip without Activate a license, the docked Library · Discover phone bar, no footer). Activate opens from the account menu's first item, the key tile or the palette; the phone bar has no Activate. The dialog was reconciled with the build (ActivateDialog, KeyField): the subtitle, the whole key, the format line and the help line follow it.",
+    "Head: 'Activate a license' and one muted line, 'The product stays in your library even if you lose the key.' (EXPERIENCE.md's copy table, as built). A portal dialog has no head band, no rule under the head and no 3 px top edge: ui/Dialog keeps those for the console (kit .dialog.plain). The scrim is ui/Dialog's too: black at 60 %, no blur, in both themes (the kit's blurred scrim stays the console's).",
+    "The account row comes first (portal-26, B12): who the key joins, with Not you? (signs out; a form POST).",
+    "Follows the build (KeyField): the key is shown whole, as typed, in mono, wrapping at any character, never masked, regrouped or middle-cut; pkey_ and the separator subtle, the slug at 500 in ink (D9a: no coral text). Paste shows only while the field is empty. A valid key gets the success edge, a check at its end and 'Key format is valid', so the words carry it, not the colour.",
+    "Follows the build: 'Key for DJDL' names the product from the key's own prefix (nothing is sent before Continue), so it never names the tier; the tier and terms come on the confirm step. 'Starts with pkey_. Case-sensitive.' stays until a verdict replaces it.",
+    "Inline verdicts at the field (§4.19), one at a time, in place of the help line: not a key, a key for another product, already in your library (Use a different key; Link an existing account), another email (Add and verify that email); each says what to do.",
+    "Cancel is outlined, Continue the ink primary.",
+    "Phone: a bottom sheet with a grab handle; Continue on top, Cancel under it, both full width."
   ],
   "status": "mockup",
   "designReview": null

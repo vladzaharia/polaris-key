@@ -3,15 +3,17 @@
   "title": "Activate a license: confirm",
   "area": "portal",
   "surface": "dialog",
-  "packages": ["PX-29", "LX-38"],
+  "packages": ["PX-29", "LX-38", "PX-23", "PX-35", "BR-lockups"],
   "uxRows": [],
-  "summary": "The confirm step of Activate a license: DJDL's art header, the tier and its developer, the term in the duration's words, the key echoed, and the devices in use ('2 of 5 in use'), with Add to my library as the one primary. After it, the Library shows DJDL with 'Added just now' and focus moves to Open.",
+  "summary": "Activate a license's Confirm step over Priya's Library: 'Add DJDL to your library?', the cover as a band with the icon over its edge, 'Key recognized · DJDL · Example Audio', the Studio tag with 'Updates until Sep 30, 2027 · up to 5 devices' and the platforms, the key echoed with Change key, and 'It's on 2 devices already. They keep working and come with it.'; Back and Add to my library.",
   "compare": [
-    "The art header is the product's hosted art (flat tint without it), never text painted over art; the icon and the question lead the head.",
-    "Tier, term (LX-15's duration words), the key echoed (mono, middle-truncated) and the device count say what the person is adding.",
-    "'2 of 5 in use' is a neutral fact; when the key is full the row offers Replace a device instead of a dead end (DL6).",
-    "Add to my library is the one primary; Back returns to Enter with the key kept.",
-    "Done: the dialog closes, the tile shows 'Added just now' (the one solid tile action allowed, B12) and focus moves to Open."
+    "2026-10-20 shell (PX-35, BR-lockups): the page under the dialog is the current Library, as in portal.activate. The step was reconciled with the build's ConfirmStep: its composition follows the build; the term keeps LX-15's words (Build follow-up below).",
+    "Follows the build: the title names the product, 'Add DJDL to your library?' (the tier is a tag, not part of the name); the cover is a 144 px band inside the body with the 64 px icon over its lower-left edge, never text over art (a short screen drops the band); then 'Key recognized · DJDL · Example Audio' with the success check.",
+    "Follows the build: the tier as a neutral tag ('Studio'), its terms on the same line and the platform glyphs at its end; the key echoed in a sunken mono row, middle-cut ('pkey_djdl_7HJ…2KD'), with Change key (back to Enter, the key kept). The old Tier, Term, Key and Devices rows are gone.",
+    "Build follow-up: the build words the term 'Until Sep 30, 2027' (signin.term.until), which reads as the license ending; it should use LX-15's duration words, 'Updates until Sep 30, 2027' (and 'Lifetime', 'Renews <date>'), as drawn.",
+    "Follows the build (PX-23, S-24 §10): a key already on devices says so in a neutral callout, 'It's on 2 devices already. They keep working and come with it.' The old '2 of 5 in use' row and its Replace a device are gone: a key at its limit is added, then goes on to portal.free-device (next=free-device).",
+    "Back is outlined, Add to my library the ink primary; on a phone a bottom sheet with the primary on top. The dialog is portal.activate's: no head band or 3 px top edge, the scrim black at 60 % with no blur (ui/Dialog outside the console).",
+    "Done (not drawn) is the dialog's third step, as built: the band with an 'In your library' pill, 'Download it, see your license and manage devices on its page. You won't need the key again.', Activate another and Open DJDL, focus on Open ('Back to <app>' when an app's declared return= sent the person). The Library's tile then says 'Added just now' (PX-24)."
   ],
   "status": "mockup",
   "designReview": null

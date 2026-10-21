@@ -1,20 +1,22 @@
 {
   "id": "packages.portal-token-create",
-  "title": "Portal: name a packages token",
+  "title": "Portal: create a personal token",
   "area": "packages",
   "surface": "dialog",
   "order": 15,
-  "packages": ["F-33"],
+  "packages": ["F-33", "PX-35", "BR-lockups"],
   "uxRows": [],
-  "summary": "The step after Create token on Account → Packages and before the token exists: a Label field prefilled from the browser and renamed for the machine, what the token can do and when it expires, and that other tokens keep working.",
+  "summary": "The step after Create personal token on Account → Packages: a Name ('Work laptop'), Expires after (90 days by default) and the date it gives, then Cancel and Create.",
   "compare": [
-    "Opens over Account → Packages (the page stays dimmed); a small dialog with the title 'New packages token'.",
-    "Label is the one field, focused, here typed as 'Work laptop'; its hint says only 'Name the machine'.",
-    "Four fixed facts, one per line, each led by its glyph: 'Packages only', 'Expires Jan 5, 2027 (90 days)', 'Reaches DJDL and Diceroll', 'Also reaches products you license later'. No scope, product or expiry picker.",
-    "'Your other tokens keep working.' under it; Cancel (outline) and the primary 'Create token', which leads to packages.portal-token.",
-    "Phone: the kit's bottom sheet with the buttons pinned full width, the primary on top.",
-    "Dialog and drawer head (B4): a 3px rule in the origin's accent along the top (none on a destructive or cautious confirmation), a head band with a hairline, one leading glyph or none (severity on a confirmation, the subject's mark on a record, never a service tile), title at or under 20/28; blurred backdrop with a flat fallback under reduced transparency.",
-    "Portal v2 (B2, B12): the docked header, the one filled primary is ink, tile actions outlined, the page h1 at the display step (48/52, 32/36 on a phone) with no full stop or eyebrow, no glow or wash, no chartreuse; text never painted over art; weights 400/500/600."
+    "2026-10-20 shell (PX-35, BR-lockups): Polaris Locker, not Polaris Key (data-brand=\"locker\", the trimmed outlined Locker lockup, no Key mark, no key.plrs.im footer); no header Activate (the account menu's first item); no footer (Help and Privacy are in the account menu); the docked Library · Discover phone bar, neither tab current on Account; US dates. Reconciled with the build's create dialog (PackagesCard.tsx CreateDialog, F-33).",
+    "Title 'Create a personal token', then the build's line 'Reads every package your licenses include, now and for apps you license later. Read-only.' It replaces the four glyph facts and the 'New packages token' title.",
+    "Name is the first field, focused, here 'Work laptop' (placeholder 'Laptop, CI build server…'); an empty Create says 'Give it a name.'",
+    "Expires after (build, F-33's 'mockups to adopt'): 30, 90 or 180 days or 1 year, 90 by default, then 'Expires Jan 5, 2027.' under it.",
+    "A sign-in older than 5 minutes asks for a fresh one inside the dialog (StepUpInline) and keeps the name; at the token limit the refusal says how many and to revoke one first.",
+    "Cancel (outline) and the ink primary 'Create', which leads to packages.portal-token.",
+    "Phone: the kit's bottom sheet with the buttons full width, the primary on top.",
+    "Dialog (ui/Dialog outside the console, kit .dialog.plain): no head band, no rule under the head, no 3 px top edge; the title and its one muted line in the head; the scrim black at 60 %, no blur (build; the B4 head band and the blurred scrim are the console's).",
+    "Portal v2 (B2, B12): the one filled primary is ink; weights 400/500/600."
   ],
   "status": "mockup",
   "designReview": {
