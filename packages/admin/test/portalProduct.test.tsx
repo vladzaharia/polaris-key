@@ -164,6 +164,21 @@ describe("product page on today's data (PX-04)", () => {
     expect(await axeViolations()).toEqual([]);
   });
 
+  it("the title and the developer follow their own direction (B-078)", async () => {
+    mockFetch(
+      routes({
+        "/api/library": libraryFor([nightfall], undefined, {
+          developerName: "Kiln Games",
+        }),
+      }),
+    );
+    renderPortal();
+    await page();
+    const h1 = screen.getByRole("heading", { level: 1, name: "Nightfall" });
+    expect(h1.getAttribute("dir")).toBe("auto");
+    expect(screen.getByText("Kiln Games").getAttribute("dir")).toBe("auto");
+  });
+
   it("puts the icon in front of the cover, and stands it alone without one (§4.20)", async () => {
     const item = (over: Record<string, unknown>) =>
       routes({

@@ -123,7 +123,9 @@ function SkeletonTile({
   return (
     <div aria-hidden className={cn("space-y-2 rounded-xl", className)}>
       <Skeleton className="aspect-[5/2] w-full rounded-xl" />
-      <Skeleton className="h-28 w-full rounded-xl" />
+      {/* The text block of a loaded tile, measured at 390, 768, 1024 and 1440: about 144 px from
+          1024 px, 176 from 761 and 192 on phones, where the text wraps more (B-084). */}
+      <Skeleton className="h-48 w-full rounded-xl min-[761px]:h-44 min-[1024px]:h-36" />
     </div>
   );
 }

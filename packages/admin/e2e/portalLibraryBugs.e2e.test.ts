@@ -304,3 +304,51 @@ describe.concurrent("a right-to-left name starts at the icon (B-078)", () => {
     });
   }
 });
+
+describe.concurrent("the Library skeleton is a tile's size (B-084)", () => {
+  for (const [width, height] of [
+    [390, 844],
+    [768, 1024],
+    [1024, 768],
+    [1440, 900],
+  ] as const) {
+    it(`the skeleton tile and the loaded tile are as tall at ${width}`, async ({
+      expect,
+    }) => {
+      let release: () => void = () => undefined;
+      const gate = new Promise<void>((r) => (release = r));
+      const base = portalRoutes("three")["/api/library"] as () => {
+        body: unknown;
+      };
+      const routes: Record<string, Handler> = {
+        "/api/library": async () => {
+          await gate;
+          return base();
+        },
+      };
+      const o = await portal.open("three", "/", { width, height, routes });
+      try {
+        await o.page.waitForSelector("[aria-busy] > div");
+        const skeleton = await o.page.evaluate(
+          () =>
+            document.querySelector("[aria-busy] > div")!.getBoundingClientRect()
+              .height,
+        );
+        release();
+        await o.page.waitForSelector("article h3");
+        const tile = await o.page.evaluate(
+          () =>
+            document
+              .querySelector("article")!
+              .closest("li")!
+              .getBoundingClientRect().height,
+        );
+        console.log(`E2 skeleton ${skeleton} tile ${tile} at ${width}`);
+        expect(Math.abs(skeleton - tile)).toBeLessThanOrEqual(4);
+      } finally {
+        release();
+        await o.close();
+      }
+    });
+  }
+});
