@@ -5,7 +5,7 @@ type: "reference"
 lastReviewed: "2026-10-16"
 ---
 
-A Godot game on a direct desktop outlet updates its whole app through the platform's own updater.
+A Godot game on a direct desktop channel updates its whole app through the platform's own updater.
 Official Godot 4.6+ templates ignore `--main-pack`, so a full-app updater with deltas is the first
 choice. The Godot SDK drives four of them through optional native plugins (GDExtensions) in
 `sdks/godot/native/`. Each plugin sits behind a GDScript facade under
@@ -71,7 +71,7 @@ With Sparkle on, the export plugin does four things:
    which Godot's `[dependencies]` copy drops.
 
 **Mac App Store builds must not ship Sparkle**, since App Review rejects a self-updater. On a
-macOS preset whose outlet is `app-store`, the Sparkle switches stay off. While
+macOS preset whose channel is `app-store`, the Sparkle switches stay off. While
 `pkey_sparkle.gdextension` is installed, the export logs an error, because Godot exports every
 installed GDExtension. Remove the bridge from that build's project.
 
@@ -111,7 +111,7 @@ with a Developer ID, notarizes, staples and writes the zip that `sign_update` si
 - **StoreContext.** The plugin calls IInitializeWithWindow with the game window, so the consent
   dialog belongs to the game. Every blocking call runs on an MTA thread. The Microsoft Store
   adapter uses it for a `store` answer in a Store MSIX and falls back to the listing.
-- **A Microsoft Store export** (outlet `ms-store`) ships `pkey_win.dll` alone. After the export,
+- **A Microsoft Store export** (channel `ms-store`) ships `pkey_win.dll` alone. After the export,
   the SDK's export plugin removes both updater DLLs and the shim:
   - an `.exe` export loses the files that export wrote beside it, so give a Store export its own
     folder;

@@ -230,20 +230,6 @@
       "package": "DOC-08b"
     },
     {
-      "from": "build/ui/components/channel-picker",
-      "action": "delete",
-      "to": ["build/ui/components/index"],
-      "pri": "P1",
-      "package": "DOC-08b"
-    },
-    {
-      "from": "build/ui/components/cloud-sync-status",
-      "action": "delete",
-      "to": ["build/ui/components/index"],
-      "pri": "P1",
-      "package": "DOC-08b"
-    },
-    {
       "from": "build/wire/index",
       "action": "move",
       "to": ["reference/protocol/index"],
@@ -1234,7 +1220,7 @@
     {
       "path": "help/code-didnt-arrive",
       "type": "help",
-      "title": "Your sign-in code didn't arrive",
+      "title": "Your sign-in code didn’t arrive",
       "description": "What to check when the email with your sign-in code is missing.",
       "nearest": "/docs/help/sign-in/",
       "package": "DOC-04b",

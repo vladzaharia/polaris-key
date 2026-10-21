@@ -338,8 +338,14 @@ function skeletonHits(
           );
       break;
     case "help":
-      if (fences.length > 0)
-        hit("type-skeleton", fences[0]!.n, "help: no code blocks");
+      // A value to copy, such as a checksum command, is allowed (README §3.1, Help article): a
+      // fence with a `title` is one. The fences alternate open, close.
+      {
+        const stray = fences.find(
+          (l, i) => i % 2 === 0 && !/\btitle=/.test(l.text),
+        );
+        if (stray) hit("type-skeleton", stray.n, "help: no code blocks");
+      }
       break;
     case "runbook":
       if (!/\bVerify\b/.test(page.body))

@@ -79,7 +79,7 @@ the only way to change it.
 | `channelWorkflow` | A workflow file name or numeric id. `beta` is the newest tag a successful run of it built from `betaBranch`, and `pr-<n>` the newest tag it built from that pull request's head.    | `beta` and `pr-<n>` fall back to prerelease tags |
 | `betaBranch`      | The branch whose `channelWorkflow` runs make `beta`.                                                                                                                                | `main`                                           |
 | `summaryMarker`   | The marker that fences a release's summary in its notes, `<!-- pkey:summary -->` … `<!-- /pkey:summary -->`. The changelog route and the appcast show the fenced text.              | `pkey:summary`                                   |
-| `manualChannels`  | Named channels beyond `stable` and `beta`, each `{ name, regex }`, matched anchored against release tags. See [Channels and policy](/docs/features/ship-builds/releases/channels/). | none                                             |
+| `manualChannels`  | Named channels beyond `stable` and `beta`, each `{ name, regex }`, matched anchored against release tags. See [Release tracks and policy](/docs/features/ship-builds/releases/channels/). | none                                             |
 
 The rest of the block is covered elsewhere: `deliverables`, with each channel's `includes`, under
 [Release deliverables](/docs/build/manifest/release/#release-deliverables-deliverablesapp-and-the-artifact-map);

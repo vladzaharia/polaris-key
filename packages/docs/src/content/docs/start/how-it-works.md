@@ -18,13 +18,14 @@ Core is always on. It holds the product registry, devices, signing keys, discove
 
 Everything else is an opt-in service. The console groups the services into features:
 
-| Feature        | Services                            | What your app gets                                                    |
-| -------------- | ----------------------------------- | --------------------------------------------------------------------- |
-| Licensing      | `license`                           | Activation, licenses and keys, tiers, entitlements and device limits  |
-| Managed config | `config`                            | The config catalog, profiles, overrides and secret delivery           |
-| Ship builds    | `release`, `distribution`, `update` | Releases, where they reach devices, and the update feed               |
-| Sign-in        | `identity`                          | OIDC sign-in and browser sessions for the product                     |
-| Cloud Sync     | `sync`                              | A signed-in person's settings, saves and records across their devices |
+| Feature        | Services                            | What your app gets                                                     |
+| -------------- | ----------------------------------- | ---------------------------------------------------------------------- |
+| Licensing      | `license`                           | Activation, licenses and keys, tiers, entitlements and device limits   |
+| Managed config | `config`                            | The config catalog, profiles, overrides and secret delivery            |
+| Ship builds    | `release`, `distribution`, `update` | Releases, where they reach devices, and the update feed                |
+| Sign-in        | `identity`                          | OIDC sign-in and browser sessions for the product                      |
+| Cloud Sync     | `sync`                              | A signed-in person's settings, saves and records across their devices  |
+| Commerce       | `commerce`                          | Storefronts, offers and store purchases that give licenses and add-ons |
 
 A service a product hasn't enabled doesn't exist for it. A disabled service, an unknown service and an unknown route all return the same `404`, so a caller can't tell which services a product runs.
 
@@ -54,7 +55,7 @@ A record Polaris Key can't read in full falls back to License and Config on. It 
 
 ## Coherence rules
 
-Services depend on each other. Distribution needs Release, Update needs Distribution, and Cloud Sync needs Config and Identity. Polaris Key checks an enablement set as a whole. Each fault has one stable code, so every surface reports the same fault.
+Services depend on each other. Distribution needs Release, Update needs Distribution, Cloud Sync needs Config and Identity, and Commerce needs License. Polaris Key checks an enablement set as a whole. Each fault has one stable code, so every surface reports the same fault.
 
 | Code                            | The fault                    | `pkey validate` and ingest | Enablement API |
 | ------------------------------- | ---------------------------- | -------------------------- | -------------- |
@@ -62,6 +63,7 @@ Services depend on each other. Distribution needs Release, Update needs Distribu
 | `update_requires_distribution`  | Update on, Distribution off  | Error                      | Error          |
 | `sync_requires_config`          | Cloud Sync on, Config off    | Error                      | Error          |
 | `sync_requires_identity`        | Cloud Sync on, Identity off  | Error                      | Error          |
+| `commerce_requires_license`     | Commerce on, License off     | Error                      | Error          |
 
 `pkey validate` also warns with `config_without_activation` when Config is on and License and Identity are both off. It is a warning only: a config-only product is valid on purpose, issuing config documents to registered devices with no license anywhere.
 

@@ -1,5 +1,5 @@
 ---
-title: "Management states"
+title: "In the app: Editable, Read-only, Hidden"
 description: "How Editable, Read-only and Hidden are seeded, merged across layers and resolved on the client."
 type: "concept"
 lastReviewed: "2026-10-16"

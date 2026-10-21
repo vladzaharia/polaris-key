@@ -18,7 +18,10 @@ describe("markdown pages", () => {
         .split("\n")
         .forEach((line, i) => {
           if (/^\s*(```|~~~)/.test(line)) fence = !fence;
-          else if (!fence && /^(import\s.+from\s|<[A-Z][A-Za-z]*[\s/>])/.test(line))
+          else if (
+            !fence &&
+            /^(import\s.+from\s|<[A-Z][A-Za-z]*[\s/>])/.test(line)
+          )
             bad.push(`${id}:${i + 1}`);
         });
     }

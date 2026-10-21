@@ -20,6 +20,9 @@ function sourceFiles(dir: string): string[] {
     return /\.(tsx?|json)$/.test(name) ? [path] : [];
   });
 }
+/** A comment is not a label: B-165 passed on "Match my device" in a doc comment. */
+const withoutComments = (src: string): string =>
+  src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 // The portal's words live in the kit copy catalog (P0-36), so its English values count as portal
 // source with the component files.
 const catalog = JSON.parse(
@@ -29,7 +32,9 @@ const catalog = JSON.parse(
   ),
 ) as { messages: Record<string, { value: string }> };
 const portalSource = [
-  ...sourceFiles(portalRoot).map((f) => readFileSync(f, "utf8")),
+  ...sourceFiles(portalRoot).map((f) =>
+    withoutComments(readFileSync(f, "utf8")),
+  ),
   ...Object.entries(catalog.messages)
     .filter(([key]) =>
       /^(locker|profile|yourData|license|getIt|signin|common)\./.test(key),
@@ -39,6 +44,7 @@ const portalSource = [
 
 /** Help page (file name) → the portal labels it quotes in bold. */
 const QUOTED: Record<string, string[]> = {
+  "account.md": ["Match device", "Dark", "Light", "Reduced"],
   "delete-account.mdx": [
     "Delete account…",
     "Schedule your Polaris Locker account for deletion?",

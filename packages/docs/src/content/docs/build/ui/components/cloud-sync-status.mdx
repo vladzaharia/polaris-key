@@ -1,0 +1,48 @@
+---
+title: "CloudSyncStatus"
+description: "A small Cloud Sync status: synced, syncing, offline, in conflict or failed. It never implies universal backup."
+sidebar:
+  order: 24
+type: "reference"
+lastReviewed: "2026-10-21"
+lanes: ["kit"]
+---
+
+import { Tabs, TabItem } from "@astrojs/starlight/components";
+import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
+import GodotKitTab from "../../../../../components/ui/GodotKitTab.astro";
+import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
+import KitStatus from "../../../../../components/ui/KitStatus.astro";
+
+A small Cloud Sync status. It shows only while Cloud Sync is on and never implies that everything is backed up. After a failed sync with nobody signed in, it offers sign-in.
+
+## States and copy
+
+<ComponentStates component="CloudSyncStatus" />
+
+## Baselines
+
+<KitBaselines component="CloudSyncStatus" />
+
+## In each kit
+
+<Tabs syncKey="ui-kit">
+  <TabItem label="React">
+    <KitStatus kit="react" />
+
+    **Drop-in.** `<CloudSyncStatus />` from `@polaris-key/react/kit`, inside `<PolarisKeyProvider config={polarisKey}>`.
+
+    **Styled part.** The same component given an `input`; restyle through `data-part` and the `--pk-*` hooks.
+
+    **Headless.** `viewOf("CloudSyncStatus", input)` returns the view: its state and the copy keys it shows.
+
+    [React](/docs/build/ui/frameworks/react/) has the theme, the restyle hooks and the sample.
+
+  </TabItem>
+  <TabItem label="Godot">
+    <KitStatus kit="godot" />
+
+    <GodotKitTab component="CloudSyncStatus" />
+
+  </TabItem>
+</Tabs>

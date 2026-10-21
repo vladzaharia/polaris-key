@@ -41,7 +41,7 @@ license are on each app's page in your library.
 
 ## Appearance
 
-Choose a **Theme**: **Match my device**, **Dark** or **Light**. Choose **Motion**: **Match my
+Choose a **Theme**: **Match device**, **Dark** or **Light**. Choose **Motion**: **Match
 device** or **Reduced**, which turns animation off. Your choices apply in this browser only.
 
 ## Your data

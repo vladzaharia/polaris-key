@@ -1,0 +1,48 @@
+---
+title: "ChannelPicker"
+description: "The release channel choice. It is locked, with the reason, when the build's channel is owned by a store."
+sidebar:
+  order: 26
+type: "reference"
+lastReviewed: "2026-10-21"
+lanes: ["kit"]
+---
+
+import { Tabs, TabItem } from "@astrojs/starlight/components";
+import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
+import GodotKitTab from "../../../../../components/ui/GodotKitTab.astro";
+import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
+import KitStatus from "../../../../../components/ui/KitStatus.astro";
+
+The release channel choice. It shows only while Release is on. A build whose store owns the channel shows the picker locked, with the reason.
+
+## States and copy
+
+<ComponentStates component="ChannelPicker" />
+
+## Baselines
+
+<KitBaselines component="ChannelPicker" />
+
+## In each kit
+
+<Tabs syncKey="ui-kit">
+  <TabItem label="React">
+    <KitStatus kit="react" />
+
+    **Drop-in.** `<ChannelPicker />` from `@polaris-key/react/kit`, inside `<PolarisKeyProvider config={polarisKey}>`.
+
+    **Styled part.** The same component given an `input`; restyle through `data-part` and the `--pk-*` hooks.
+
+    **Headless.** `viewOf("ChannelPicker", input)` returns the view: its state and the copy keys it shows.
+
+    [React](/docs/build/ui/frameworks/react/) has the theme, the restyle hooks and the sample.
+
+  </TabItem>
+  <TabItem label="Godot">
+    <KitStatus kit="godot" />
+
+    <GodotKitTab component="ChannelPicker" />
+
+  </TabItem>
+</Tabs>

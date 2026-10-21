@@ -1,7 +1,7 @@
 ---
 /**
  * The component catalog (packages/brand/kit-copy/components.json) as a table: each component's
- * page, with the page's own description, its priority, its state count and the kits that record
+ * page, with the page's own description, its state count and the kits that record
  * baselines for it. A catalog component without a page fails the build (and test/ui.test.ts).
  */
 import { getCollection } from "astro:content";
@@ -21,7 +21,7 @@ const components = (
   catalog as {
     components: Record<
       string,
-      { priority: string; states: Record<string, unknown> }
+      { states: Record<string, unknown> }
     >;
   }
 ).components;
@@ -39,7 +39,6 @@ const rows = Object.entries(components).map(([name, c]) => {
       name,
       href: null,
       description: "—",
-      priority: c.priority,
       states: Object.keys(c.states).length,
       kits: [] as string[],
     };
@@ -56,7 +55,6 @@ const rows = Object.entries(components).map(([name, c]) => {
     name,
     href: `/docs/${id}/`,
     description: page.description ?? "",
-    priority: c.priority,
     states: Object.keys(c.states).length,
     kits,
   };
@@ -68,7 +66,6 @@ const rows = Object.entries(components).map(([name, c]) => {
     <tr>
       <th scope="col">Component</th>
       <th scope="col">What it is</th>
-      <th scope="col">Priority</th>
       <th scope="col">States</th>
       <th scope="col">Baselines from</th>
     </tr>
@@ -81,7 +78,6 @@ const rows = Object.entries(components).map(([name, c]) => {
             {row.href === null ? row.name : <a href={row.href}>{row.name}</a>}
           </td>
           <td>{row.description}</td>
-          <td>{row.priority}</td>
           <td>{row.states}</td>
           <td>
             {row.kits.length === 0 ? (
