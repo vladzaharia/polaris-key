@@ -1307,17 +1307,16 @@ yellow, `c-err` red, `c-info` magenta, `c-dim`, `c-b` bold, `c-u` link, `c-chip`
 ## Customer portal
 
 ```html
-<div class="portal" data-service="core">
+<div class="portal" data-brand="locker">
   <header class="portal-top">
-    <a class="portal-brand" href="#"><i class="pk-mark sm"></i>Polaris Key</a>
+    <a class="portal-brand" href="#"
+      ><i class="lk-lockup" role="img" aria-label="Polaris Locker"></i
+    ></a>
     <nav class="portal-nav">
       <a class="active" href="#">Library <span class="count">3</span></a
       ><a href="#">Discover</a>
     </nav>
     <div class="portal-actions">
-      <button class="btn outline sm">
-        <i class="ic ic-key-round"></i>Activate license
-      </button>
       <span class="account"
         ><span class="avatar sm">MF</span>Mara Fennick<i
           class="ic ic-chevron-down"
@@ -1383,10 +1382,10 @@ yellow, `c-err` red, `c-info` magenta, `c-dim`, `c-b` bold, `c-u` link, `c-chip`
       </aside>
     </div>
   </main>
-  <footer class="portal-foot">Polaris Key · <a href="#">key.plrs.im</a></footer>
-  <nav class="portal-tabbar">
+  <!-- the Library only: "Missing a license?" (2026-10-20 shell, below) -->
+  <section class="portal-strip" aria-label="Missing a license?">…</section>
+  <nav class="portal-tabbar docked">
     <a class="active" href="#"><i class="ic ic-layout-grid"></i>Library</a>
-    <a class="act" href="#"><i class="ic ic-key-round"></i>Activate</a>
     <a href="#" aria-label="Discover, 1 to add"
       ><i class="ic ic-sparkles"></i>Discover<span
         class="dot"
@@ -1398,10 +1397,11 @@ yellow, `c-err` red, `c-info` magenta, `c-dim`, `c-b` bold, `c-u` link, `c-chip`
 ```
 
 The portal's real screens are in `packages/admin/e2e/__baselines__/portal/linux/`; match them.
-`.portal-tabbar` shows only on phone, where the top nav hides: Library · Activate (`.act`, the
-outlined pill, never a tab) · Discover (a `.dot` while there is something to add). In phone shots
-the renderer draws the bar and any `.toasts` at the end of the page, the footer keeps clear of the
-bar, and a toast sits above it.
+`.portal-tabbar` shows only on phone, where the top nav hides. Since the 2026-10-20 shell it is
+`.portal-tabbar.docked`: Library · Discover (a `.dot` while there is something to add); the older
+floating bar with Activate (`.act`) is what the portal screens not yet redrawn still show. In phone
+shots the renderer draws the bar and any `.toasts` at the end of the page, and a toast sits above
+the bar.
 
 **Page.** The portal's content is 1248px wide from a 1296px screen up (`--portal-max`), so wide
 and desktop draw the same centred column: the portal's sensible max width, with no stretched line.
@@ -1514,6 +1514,65 @@ count the nav already shows.
   pill; a lapse has one pill in the hero and explains itself in a neutral callout.
 - `.license-card` and `.key-field` (`<div class="key-field"><span>pkey_djdl_7HJM…Q2KD</span></div>`,
   a key in a mono field on the accent tint) stay for a license that has a key.
+
+### Customer portal: the 2026-10-20 shell (PX-35, BR-lockups)
+
+The owner's Library trim (2026-10-20, PX-35) and the trimmed lockup (BR-lockups), as built. Block
+`portal-shell-2026-10-20` at the end of `mockup.css`; screens `portal.library`,
+`portal.library-12`, `portal.library-empty`, `portal.library-menu`, `portal.discover` and
+`portal.discover-detail` use it, and are where to copy it from (it needs a whole `.portal` page, so
+the gallery does not draw it). The other portal screens still draw the older shell (header
+Activate, footer, floating bar) until they are redrawn.
+
+- **Brand.** `.portal-brand > .lk-lockup` in a `[data-brand="locker"]` page is the trimmed,
+  outlined Locker lockup (`LOCKER_TRIM`, the kit's 460 × 128 canvas cropped to 437 × 80): 40 px
+  tall (218 px wide) in the 64 px header, 36 px under 761 px, the mark alone (32 px, still named
+  by the `<i>`'s `aria-label`) under 384 px. Never the mark beside live text.
+- **Header.** No Activate button. The account chip shows the avatar, name and chevron from 1180
+  px and the avatar alone in its 40 px ring below. `.account.open` is the chip with its menu open.
+- **Account menu** (`.menu.account-menu` in a `.popover.right`, 256 px): `.menu-head` (a 40 px
+  `.avatar` and `.menu-who` with the name and email), then Activate a license, Account, Sign-in
+  methods, Appearance; Help, Privacy; Sign out (a `button.menu-item`).
+- **No footer.** Help and Privacy are in the account menu.
+- **Dense tiles** (`.portal-grid.dense`): two columns on a phone, three from 761 px, four from 1180
+  px, five from 1700 px, 12 apart (16 from 761 px). In it a `.ptile` has 5:2 art, the 40 px icon 16
+  over the art with the name (16/22, two lines) beside it, 12 px inside, a state `.on-art` on the
+  art's top-right corner. Under 208 px of tile (`@container ptile`) the icon stacks above the name
+  with More level with it, pills and glyphs take a line each, and the action drops its icon. The
+  key tile (`.end-tile.entry-tile`) fills the rest of the last row; in a cell it is the 40 px key
+  beside its title with the action at the foot, with 640 px of its own one line.
+  `.portal-grid.dense.pair` (Discover with one or two products): centred, at most 768 px, one
+  column under 400 px.
+- **Strip** (`.portal-strip`, the Library only): sticky to the window's bottom, full bleed, raised,
+  a hairline on top. `.strip-row` holds `.strip-title` (from 1180 px), `.strip-toggle` (the closed
+  disclosure below 1180 px) and `.strip-ways` (`li` items, `.strip-link` 44 px links or a button in
+  ink with the coral underline). `shoot.mjs` draws it where it rests, at the page's end.
+- **Phone bar** (`.portal-tabbar.docked`): full width on the bottom edge, 52 px and a hairline,
+  the icon over the label, the current tab strong at 500 with the 3 px coral marker on its top
+  edge (D9a). The page keeps the bar's height clear,
+  the strip sits on top of the bar and a toast 12 px above it.
+
+```html
+<section class="portal-strip" aria-label="Missing a license?">
+  <div class="strip-row">
+    <p class="strip-title" aria-hidden="true">Missing a license?</p>
+    <button class="strip-toggle" type="button" aria-expanded="false">
+      Missing a license?<i class="ic ic-chevron-up"></i>
+    </button>
+    <ul class="strip-ways">
+      <li>
+        <button class="strip-link" type="button">Activate a license</button>
+      </li>
+      <li>
+        Another email?
+        <a class="strip-link" href="#">Add it in Sign-in methods</a>
+      </li>
+      <li>Bought on Steam? <a class="strip-link" href="#">Connect Steam</a></li>
+      <li>Bought in a store? Sign in from the app</li>
+    </ul>
+  </div>
+</section>
+```
 
 ## Frames and boards (surfaces kit, code, dialog)
 

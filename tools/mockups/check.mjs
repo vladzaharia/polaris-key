@@ -94,8 +94,12 @@ for (const s of screens) {
 
 const kitCss = readFileSync(join(ROOT, "kit/mockup.css"), "utf8");
 const FREEZE = `*,*::before,*::after{animation:none!important;transition:none!important}`;
+/** The Library's sticky "Missing a license?" strip is checked where it rests, at the page's end (as
+ *  shoot.mjs draws it, and as the portal's own axe harness runs: axe's target-size rule reads what a
+ *  sticky element covers at scroll top as obscured). */
+const REST = `.portal-strip{position:static!important}`;
 const doc = (s, theme) =>
-  `<!doctype html><html lang="en" data-theme="${theme}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${s.id}</title><style>${kitCss}</style><style>${FREEZE}</style></head><body data-screen="${s.id}">${s.html}</body></html>`;
+  `<!doctype html><html lang="en" data-theme="${theme}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${s.id}</title><style>${kitCss}</style><style>${FREEZE}${REST}</style></head><body data-screen="${s.id}">${s.html}</body></html>`;
 
 // ── B17: interaction and context colour follow the service (owner rule, 2026-10-09) ────────────
 // Runs in the page. Returns { out: [failure lines], ratios: [{ svc, kind, ratio }] }.

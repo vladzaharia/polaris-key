@@ -34,6 +34,8 @@
 </style>
 
 <div class="portal" data-brand="locker">
+  <!-- 2026-10-20 shell (PX-35, BR-lockups): the trimmed lockup, the nav, the account chip. Activate a
+       license is the account menu's first item (portal.library-menu); Help and Privacy are in it too. -->
   <header class="portal-top">
     <a class="portal-brand" href="#"><i class="lk-lockup" role="img" aria-label="Polaris Locker"></i></a>
     <nav class="portal-nav" aria-label="Polaris Locker">
@@ -41,25 +43,25 @@
       <a href="#">Discover</a>
     </nav>
     <div class="portal-actions">
-      <button class="btn outline sm"><i class="ic ic-key-round accent"></i>Activate license</button>
       <span class="account"><span class="avatar sm">PR</span><span>Priya Raman</span><i class="ic ic-chevron-down"></i></span>
     </div>
   </header>
 
   <main class="portal-page">
-    <!-- The count is the nav's; the line counts the emails the library covers. -->
+    <!-- The count is the nav's; the line says who is signed in. -->
     <div class="mk-stack-2">
       <h1>Your library</h1>
       <p class="muted">Signed in as priya@example.edu</p>
     </div>
 
-    <div class="portal-grid">
-      <!-- DJDL: Education from DJDL's access policy (verified email domain example.edu), no key,
-           a fixed year that keeps the last version (LX-41), three add-ons (licenses.detail). -->
+    <div class="portal-grid dense">
+      <!-- DJDL: Education from DJDL's access policy (verified email domain example.edu), no key, a
+           fixed year that keeps the last version (LX-41). One line of facts (PX-35): the duration;
+           the source and the add-ons are on the license page (portal.license). -->
       <article class="ptile" aria-labelledby="tile-djdl">
         <div class="art" data-product="djdl"></div>
         <div class="ptile-head">
-          <span class="logo lg" data-product="djdl"></span>
+          <span class="logo" data-product="djdl"></span>
           <div class="ptile-title"><h2 id="tile-djdl"><a href="#">DJDL</a></h2></div>
         </div>
         <div class="ptile-body">
@@ -73,9 +75,6 @@
             </div>
             <ul class="icon-lines">
               <li><i class="ic ic-calendar-clock"></i><span>Updates until Sep 14, 2027</span></li>
-              <li><i class="ic ic-package-check"></i><span>Then keeps the last version</span></li>
-              <li><i class="ic ic-user-check"></i><span>Automatic grant</span></li>
-              <li><i class="ic ic-puzzle"></i><span>3 add-ons</span></li>
             </ul>
           </div>
         </div>
@@ -87,12 +86,11 @@
         </div>
       </article>
 
-      <!-- Diceroll: Standard (the Full game SKU) bought on the App Store, lifetime, every device in use,
-           the Dice skins add-on bought today (commerce.sales). -->
+      <!-- Diceroll: Standard (the Full game SKU) bought on the App Store, lifetime, every device in use. -->
       <article class="ptile" aria-labelledby="tile-diceroll">
         <div class="art" data-product="diceroll"></div>
         <div class="ptile-head">
-          <span class="logo lg" data-product="diceroll"></span>
+          <span class="logo" data-product="diceroll"></span>
           <div class="ptile-title"><h2 id="tile-diceroll"><a href="#">Diceroll</a></h2></div>
         </div>
         <div class="ptile-body">
@@ -100,14 +98,12 @@
             <div class="pill-row">
               <div class="mk-cluster">
                 <span class="pill sm tier"><i class="ic ic-key-round"></i>Standard</span>
-                <span class="pill sm"><i class="ic ic-monitor-smartphone"></i>3/3 devices</span>
+                <span class="pill sm warning"><i class="ic ic-triangle-alert"></i>3/3 devices</span>
               </div>
               <span class="platforms" role="img" aria-label="iOS, Android, Windows and Linux"><i class="ic ic-smartphone"></i><i class="ic ic-android"></i><i class="ic ic-windows"></i><i class="ic ic-linux"></i></span>
             </div>
             <ul class="icon-lines">
               <li><i class="ic ic-calendar-clock"></i><span>Lifetime</span></li>
-              <li><i class="ic ic-store"></i><span>Bought on the App Store</span></li>
-              <li><i class="ic ic-puzzle"></i><span>1 add-on</span></li>
             </ul>
           </div>
         </div>
@@ -117,8 +113,8 @@
         </div>
       </article>
 
-      <!-- The Library's own entry for a key (owner, 2026-10-08: better styling for "Have a license"):
-           the grid's last tile, dashed and quiet beside the products; its one action is level with theirs. -->
+      <!-- The Library's own entry for a key (2-7 products): the last tile, dashed, filling the rest of
+           the last row (two cells at 1440, one at 1024, the whole row on a phone). -->
       <aside class="ptile end-tile entry-tile" aria-labelledby="key-title">
         <div class="entry-inner">
           <div class="entry-art"><span class="entry-mark"><i class="ic ic-key-round"></i></span></div>
@@ -126,32 +122,30 @@
             <h2 id="key-title">Have a license key?</h2>
           </div>
           <div class="ptile-foot">
-            <button class="btn outline"><i class="ic ic-key-round"></i>Activate license</button>
+            <button class="btn outline"><i class="ic ic-key-round"></i>Activate a license</button>
           </div>
         </div>
       </aside>
     </div>
-
-    <!-- The other ways a license joins the account: a license sent to another email, a store purchase
-         (Steam through a sign-in method; App Store and Google Play through the game's sign-in). -->
-    <section class="mk-stack-4" aria-labelledby="add-title">
-      <h2 id="add-title" class="type-card">Missing a license?</h2>
-      <ul class="media-list">
-        <li><span class="icon-tile muted"><i class="ic ic-mail"></i></span>
-          <span><strong>Sent to another email?</strong>Add that email under <a href="#">Sign-in methods</a>.</span></li>
-        <li><span class="icon-tile muted"><i class="ic ic-steam"></i></span>
-          <span><strong>Bought on Steam?</strong>Add Steam under Sign-in methods.</span></li>
-        <li><span class="icon-tile muted"><i class="ic ic-store"></i></span>
-          <span><strong>Bought on the App Store or Google Play?</strong>Sign in to the game once.</span></li>
-      </ul>
-    </section>
   </main>
 
-  <footer class="portal-foot">Polaris Locker · Help · Privacy · Terms</footer>
+  <!-- The other ways a license joins the account, as the Library's sticky strip (PX-35). The key tile
+       is on screen, so the strip leaves out Activate a license. One line from 1180 px; a closed
+       disclosure below that, on the bottom bar on a phone. -->
+  <section class="portal-strip" aria-label="Missing a license?">
+    <div class="strip-row">
+      <p class="strip-title" aria-hidden="true">Missing a license?</p>
+      <button class="strip-toggle" type="button" aria-expanded="false" aria-controls="missing-ways">Missing a license?<i class="ic ic-chevron-up"></i></button>
+      <ul class="strip-ways" id="missing-ways">
+        <li>Another email? <a class="strip-link" href="#">Add it in Sign-in methods</a></li>
+        <li>Bought on Steam? <a class="strip-link" href="#">Connect Steam</a></li>
+        <li>Bought in a store? Sign in from the app</li>
+      </ul>
+    </div>
+  </section>
 
-  <nav class="portal-tabbar" aria-label="Polaris Locker tabs">
-    <a class="active" href="#"><i class="ic ic-layout-grid"></i>Library</a>
-    <a class="act" href="#"><i class="ic ic-key-round"></i>Activate</a>
+  <nav class="portal-tabbar docked" aria-label="Polaris Locker tabs">
+    <a class="active" href="#" aria-current="page"><i class="ic ic-layout-grid"></i>Library</a>
     <a href="#"><i class="ic ic-sparkles"></i>Discover</a>
   </nav>
 </div>
