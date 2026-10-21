@@ -73,6 +73,7 @@ public let COPY_CODES: [String: CopyEntry] = [
     "turnstile_failed": CopyEntry(title: "Check didn't pass", message: "The security check didn't pass. Reload the page and try again."),
     "signin_expired": CopyEntry(title: "Sign-in expired", message: "This sign-in has expired. Start again."),
     "invalid_code": CopyEntry(title: "Wrong code", message: "That code isn't right. Check the email and try again."),
+    "code_expired": CopyEntry(title: "Code expired", message: "That code is no longer valid. Ask for a new one."),
     "email_in_use": CopyEntry(title: "Email already in use", message: "Another Polaris Locker account already uses this email. Join this sign-in to that account, or use a different email."),
     "terms_required": CopyEntry(title: "Terms not accepted", message: "Agree to the terms to continue."),
     "license_owned": CopyEntry(title: "License in another account", message: "This {product} license is already in another Polaris Locker account. A license never moves by its key."),

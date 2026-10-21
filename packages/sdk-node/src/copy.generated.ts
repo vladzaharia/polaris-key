@@ -239,6 +239,10 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
     title: "Wrong code",
     message: "That code isn't right. Check the email and try again.",
   },
+  code_expired: {
+    title: "Code expired",
+    message: "That code is no longer valid. Ask for a new one.",
+  },
   email_in_use: {
     title: "Email already in use",
     message:

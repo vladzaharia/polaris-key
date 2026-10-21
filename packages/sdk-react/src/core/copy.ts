@@ -205,6 +205,7 @@ const FR: CopyBundle = {
     turnstile_failed:
       "La vérification de sécurité a échoué. Rechargez la page et réessayez.",
     signin_expired: "Cette connexion a expiré. Recommencez.",
+    code_expired: "Ce code a expiré. Demandez-en un nouveau.",
     invalid_code:
       "Ce code n'a pas fonctionné. Vérifiez l'e-mail et saisissez-le à nouveau.",
     email_in_use:

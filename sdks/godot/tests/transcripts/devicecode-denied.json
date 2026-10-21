@@ -1,0 +1,231 @@
+{
+  "transcriptVersion": 1,
+  "id": "devicecode-denied",
+  "description": "A device-code flow the person refuses (I-37). beginSignIn() posts the device id alone; one poll is pending. The player confirms the code, signs in at the (mocked) IdP and presses Deny on the approval page, server-side and unrecorded. The next poll answers the generic error (the same shape as a provider failure, so the poller learns nothing about the cause), which the client reports as an error with the sign-in-denied code, holding no token. The flow stays denied on the next poll.",
+  "features": ["identity.devicecode"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "version": "1.0.0",
+    "services": ["license", "config", "identity"]
+  },
+  "steps": [
+    {
+      "action": "beginSignIn",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/auth/device/start",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": { "deviceId": "TRANSCRIPTDEVICE0000000000000001" },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "status": "pending",
+                "deviceCode": "zE2-0XErzDGlZjT0-V5MJw",
+                "userCode": "PCKQ-LFXF",
+                "verificationUri": "https://key.plrs.im/djdl/identity/auth/device",
+                "verificationUriComplete": "https://key.plrs.im/djdl/identity/auth/device?user_code=PCKQ-LFXF",
+                "expiresIn": 600,
+                "interval": 2,
+                "pollUrl": "https://key.plrs.im/djdl/identity/auth/device/poll",
+                "deviceName": null
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "prompt": {
+          "userCode": "PCKQ-LFXF",
+          "verificationUri": "https://key.plrs.im/djdl/identity/auth/device",
+          "verificationUriComplete": "https://key.plrs.im/djdl/identity/auth/device?user_code=PCKQ-LFXF",
+          "expiresIn": 600,
+          "interval": 2,
+          "deviceName": null
+        },
+        "tokenHeld": false
+      }
+    },
+    {
+      "action": "pollSignIn",
+      "note": "Pending.",
+      "args": {},
+      "now": 1700000002,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/auth/device/poll",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "deviceCode": "zE2-0XErzDGlZjT0-V5MJw",
+                  "deviceId": "TRANSCRIPTDEVICE0000000000000001"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "status": "pending" }
+            }
+          }
+        ]
+      },
+      "expect": { "result": "pending", "tokenHeld": false }
+    },
+    {
+      "action": "pollSignIn",
+      "note": "The person pressed Deny: the generic error, no token.",
+      "args": {},
+      "now": 1700000005,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/auth/device/poll",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "deviceCode": "zE2-0XErzDGlZjT0-V5MJw",
+                  "deviceId": "TRANSCRIPTDEVICE0000000000000001"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "status": "error" }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "error",
+        "code": "sign-in-denied",
+        "tokenHeld": false
+      }
+    },
+    {
+      "action": "pollSignIn",
+      "note": "Denied stays denied until the flow lapses.",
+      "args": {},
+      "now": 1700000008,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/auth/device/poll",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "deviceCode": "zE2-0XErzDGlZjT0-V5MJw",
+                  "deviceId": "TRANSCRIPTDEVICE0000000000000001"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "status": "error" }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "error",
+        "code": "sign-in-denied",
+        "tokenHeld": false
+      }
+    }
+  ]
+}

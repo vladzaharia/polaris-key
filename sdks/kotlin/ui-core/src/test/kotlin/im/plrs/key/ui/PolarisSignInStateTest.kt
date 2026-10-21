@@ -1,5 +1,6 @@
 package im.plrs.key.ui
 
+import im.plrs.key.core.ErrorCode
 import im.plrs.key.identity.SignInPrompt
 import im.plrs.key.identity.SignInResult
 import kotlinx.coroutines.CompletableDeferred
@@ -79,6 +80,11 @@ class PolarisSignInStateTest {
         state.restart()
         runCurrent()
         assertEquals(PolarisSignInUi.Failed, state.ui.value)
+
+        result = SignInResult.Error("device sign-in failed.", ErrorCode.signInDenied)
+        state.restart()
+        runCurrent()
+        assertEquals(PolarisSignInUi.Denied, state.ui.value)
 
         val failing = PolarisSignInState(
             object : PolarisSignInActions {

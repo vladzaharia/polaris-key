@@ -197,6 +197,10 @@
       "title": "Codice errato",
       "message": "Quel codice non ha funzionato. Controlla l'email e digitalo di nuovo."
     },
+    "code_expired": {
+      "title": "Codice scaduto",
+      "message": "Quel codice è scaduto. Invia un nuovo codice."
+    },
     "email_in_use": {
       "title": "Email già in uso",
       "message": "Un altro account Polaris Locker usa già questa email. Unisci questo accesso a quell'account oppure usa un'altra email."

@@ -721,10 +721,10 @@ msgstr "휴대전화로 QR 코드를 스캔하거나 아래 주소에서 이 코
 msgid "signInHandoff.linkCopied"
 msgstr "링크 복사됨"
 
-#. Choose Continue to {product} on the sign-in page to finish.
-#. SignInHandoff: sign-in continues on another device or in the browser. The hosted page ends with a “Continue to {product}” button. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. Choose Sign in on {device} on the sign-in page to finish.
+#. SignInHandoff: sign-in continues on another device or in the browser. The hosted approval page ends with a “Sign in on {device}” button, next to Deny; the label stays in English. Arguments: {device} = this device's friendly name.
 msgid "signInHandoff.confirm"
-msgstr "로그인 페이지에서 “{product}에서 계속”을 선택해 완료하세요."
+msgstr "로그인 페이지에서 “Sign in on {device}”를 선택해 완료하세요."
 
 #. Signed in
 #. SignInHandoff: sign-in continues on another device or in the browser. Shown for a moment before the product continues.
@@ -5978,6 +5978,16 @@ msgstr "잘못된 코드"
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_code.message"
 msgstr "그 코드는 작동하지 않았어요. 이메일을 확인하고 다시 입력하세요."
+
+#. Code expired
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.code_expired.title"
+msgstr "코드 만료됨"
+
+#. That code is no longer valid. Ask for a new one.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.code_expired.message"
+msgstr "그 코드는 만료됐어요. 새 코드를 보내세요."
 
 #. Email already in use
 #. Core copy (conformance/parity/copy.en.json, codes).

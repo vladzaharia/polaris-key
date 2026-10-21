@@ -235,13 +235,15 @@ async function act(
       const poll = await client.identity.pollSignIn(session.prompt!);
       out.result = poll.status;
       if (poll.status === "slow-down") out.interval = poll.interval;
+      if (poll.status === "error" && poll.code) out.code = poll.code;
       break;
     }
-    case "waitForSignIn":
-      out.result = (
-        await client.identity.waitForSignIn(session.prompt!)
-      ).status;
+    case "waitForSignIn": {
+      const done = await client.identity.waitForSignIn(session.prompt!);
+      out.result = done.status;
+      if (done.status === "error" && done.code) out.code = done.code;
       break;
+    }
     case "mintToken":
       try {
         const minted = await client.config.mintToken(

@@ -145,8 +145,13 @@ def _act(
         out["result"] = poll.status
         if poll.status == "slow-down":
             out["interval"] = poll.interval
+        if poll.status == "error" and poll.code:
+            out["code"] = poll.code
     elif action == "waitForSignIn":
-        out["result"] = client.identity.wait_for_sign_in(session["prompt"]).status
+        done = client.identity.wait_for_sign_in(session["prompt"])
+        out["result"] = done.status
+        if done.status == "error" and done.code:
+            out["code"] = done.code
     elif action == "mintToken":
         try:
             minted = client.config.mint_token(args["recipeId"])

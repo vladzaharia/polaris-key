@@ -11,7 +11,7 @@ shape for "no such product", "service not enabled", and "no such route" (hide-do
 16 protocol codes; the worker enum maps each to its response site.
 
 Every code, wire, client and backend, is registered in `conformance/parity/errors.json`
-(170 codes), and `pnpm gen constants` generates each SDK's `ErrorCode` constants
+(171 codes), and `pnpm gen constants` generates each SDK's `ErrorCode` constants
 from it. A new code needs an entry there first.
 
 ## Protocol codes (`@polaris-key/protocol/core`)
@@ -104,7 +104,7 @@ Raised by an SDK, never sent by the Worker. Hosts match on the exact string.
 | `server-error` | `core` | The server answered 5xx. Node: every network call, with `status` and the server's own code as `wireCode`; Python, Swift, Godot: a device-code sign-in poll. Transient: a sign-in wait polls again at the same interval. |
 | `cancelled` | `identity` | Python, Godot: a device-code sign-in wait was cancelled by the host. |
 | `sign-in-expired` | `identity` | Godot: a device-code sign-in ended because its code expired: the client's expires_at passed (no poll is sent after it) or the server answered `timeout`. Begin again. |
-| `sign-in-denied` | `identity` | Godot: a device-code sign-in poll answered the generic `error` state: the sign-in failed or was refused, and the server never says why. Begin again. |
+| `sign-in-denied` | `identity` | A device-code sign-in poll answered the generic `error` state: the sign-in failed, or the person pressed Deny (or Not you?) on the Polaris Locker approval page. The server never says which. Begin again (I-37, I-37b). Every SDK raises it. |
 | `sign-in-unavailable` | `identity` | Node, Python, Swift: starting a device-code sign-in was refused and the response carried no code of its own. |
 | `invalid-options` | `core` | The client's options failed validation when it was constructed or configured (Godot: at configure): a bad product slug, version, base URL or pin, an invalid outlet, or a pinned release key that is also a trust pin. Godot's `config.set_value` also answers it for a value its catalog schema refuses and for a secret key, the refusal the other SDKs and `sync-scenarios.json` name with the canonical `bad_request`; Godot's runners map that canonical code to this one. |
 | `not-configured` | `core` | A call needs configuration it does not have: in Godot, a call that ran before configure(); in every SDK, update.decide() with no pinned release keys. |

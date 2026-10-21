@@ -112,7 +112,7 @@
     "signInHandoff.scan": "Escanea el código con tu teléfono, o ve a {url} y escribe este código.",
     "signInHandoff.scanTv": "Escanea el código QR con tu teléfono o introduce este código en la dirección de abajo.",
     "signInHandoff.linkCopied": "Enlace copiado",
-    "signInHandoff.confirm": "Elige Continuar a {product} en la página de inicio de sesión para terminar.",
+    "signInHandoff.confirm": "Elige Sign in on {device} en la página de inicio de sesión para terminar.",
     "signInHandoff.ok": "Sesión iniciada",
     "signInHandoff.newCode": "Obtener un código nuevo",
     "activate.title": "Escribe tu clave de licencia",

@@ -723,10 +723,10 @@ msgstr "Scan the QR code with your phone, or enter this code at the address belo
 msgid "signInHandoff.linkCopied"
 msgstr "Link copied"
 
-#. Choose Continue to {product} on the sign-in page to finish.
-#. SignInHandoff: sign-in continues on another device or in the browser. The hosted page ends with a “Continue to {product}” button. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. Choose Sign in on {device} on the sign-in page to finish.
+#. SignInHandoff: sign-in continues on another device or in the browser. The hosted approval page ends with a “Sign in on {device}” button, next to Deny; the label stays in English. Arguments: {device} = this device's friendly name.
 msgid "signInHandoff.confirm"
-msgstr "Choose Continue to {product} on the sign-in page to finish."
+msgstr "Choose Sign in on {device} on the sign-in page to finish."
 
 #. Signed in
 #. SignInHandoff: sign-in continues on another device or in the browser. Shown for a moment before the product continues.
@@ -5994,6 +5994,16 @@ msgstr "Wrong code"
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_code.message"
 msgstr "That code isn't right. Check the email and try again."
+
+#. Code expired
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.code_expired.title"
+msgstr "Code expired"
+
+#. That code is no longer valid. Ask for a new one.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.code_expired.message"
+msgstr "That code is no longer valid. Ask for a new one."
 
 #. Email already in use
 #. Core copy (conformance/parity/copy.en.json, codes).

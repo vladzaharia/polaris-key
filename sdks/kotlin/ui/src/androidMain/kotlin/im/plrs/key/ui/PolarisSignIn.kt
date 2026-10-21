@@ -221,6 +221,10 @@ public fun PolarisSignInScreen(
             PolarisPrimaryButton(copy.signInNewCode, onRestart, initialFocus = true)
             PolarisTextButton(copy.cancel, onCancel)
         }
+        PolarisSignInUi.Denied -> PolarisMessageScreen(copy.coreMessage(SIGN_IN_DENIED, PolarisMessageKind.Danger), modifier) {
+            PolarisPrimaryButton(copy.signInNewCode, onRestart, initialFocus = true)
+            PolarisTextButton(copy.cancel, onCancel)
+        }
         PolarisSignInUi.Failed -> PolarisMessageScreen(copy.coreMessage(SIGN_IN_FAILED, PolarisMessageKind.Danger), modifier) {
             PolarisPrimaryButton(copy.retry, onRestart, initialFocus = true)
             PolarisTextButton(copy.cancel, onCancel)
@@ -231,6 +235,7 @@ public fun PolarisSignInScreen(
 /** core.copy's codes for the sign-in stops. */
 internal const val SIGN_IN_EXPIRED: String = "sign-in-expired"
 internal const val SIGN_IN_FAILED: String = "sign-in-failed"
+internal const val SIGN_IN_DENIED: String = "sign-in-denied"
 
 /** The code view: content (and on TV the code) on the start side, the code or QR and the controls after. */
 @Composable

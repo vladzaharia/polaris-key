@@ -286,6 +286,12 @@
       "description": "400 from the login card: the emailed 6-digit code is wrong. `triesLeft` says how many attempts the code has left; it dies after 5 (I-07)."
     },
     {
+      "code": "code_expired",
+      "kind": "wire",
+      "service": "identity",
+      "description": "400 from the login card: no emailed code is outstanding for this address (it expired or was already used). Nothing was guessed, so no try is burned; send a new code (PX-21)."
+    },
+    {
       "code": "email_in_use",
       "kind": "wire",
       "service": "identity",
@@ -607,7 +613,7 @@
       "code": "sign-in-denied",
       "kind": "client",
       "service": "identity",
-      "description": "Godot: a device-code sign-in poll answered the generic `error` state: the sign-in failed or was refused, and the server never says why. Begin again."
+      "description": "A device-code sign-in poll answered the generic `error` state: the sign-in failed, or the person pressed Deny (or Not you?) on the Polaris Locker approval page. The server never says which. Begin again (I-37, I-37b). Every SDK raises it."
     },
     {
       "code": "sign-in-unavailable",

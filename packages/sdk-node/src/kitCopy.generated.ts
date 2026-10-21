@@ -149,7 +149,7 @@ export const KIT_COPY: Readonly<
       "Scan the QR code with your phone, or enter this code at the address below.",
     "signInHandoff.linkCopied": "Link copied",
     "signInHandoff.confirm":
-      "Choose Continue to {product} on the sign-in page to finish.",
+      "Choose Sign in on {device} on the sign-in page to finish.",
     "signInHandoff.ok": "Signed in",
     "signInHandoff.newCode": "Get a new code",
     "activate.title": "Enter your license key",
@@ -1268,6 +1268,9 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid_code.title": "Wrong code",
     "core.codes.invalid_code.message":
       "That code isn't right. Check the email and try again.",
+    "core.codes.code_expired.title": "Code expired",
+    "core.codes.code_expired.message":
+      "That code is no longer valid. Ask for a new one.",
     "core.codes.email_in_use.title": "Email already in use",
     "core.codes.email_in_use.message":
       "Another Polaris Locker account already uses this email. Join this sign-in to that account, or use a different email.",
@@ -1817,7 +1820,7 @@ export const KIT_COPY: Readonly<
       "Scannen Sie den QR-Code mit Ihrem Telefon oder geben Sie diesen Code unter der Adresse unten ein.",
     "signInHandoff.linkCopied": "Link kopiert",
     "signInHandoff.confirm":
-      "Wählen Sie auf der Anmeldeseite „Weiter zu {product}“, um den Vorgang abzuschließen.",
+      "Wählen Sie auf der Anmeldeseite „Sign in on {device}“, um den Vorgang abzuschließen.",
     "signInHandoff.ok": "Angemeldet",
     "signInHandoff.newCode": "Neuen Code anfordern",
     "activate.title": "Lizenzschlüssel eingeben",
@@ -3034,6 +3037,9 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid_code.title": "Falscher Code",
     "core.codes.invalid_code.message":
       "Dieser Code hat nicht funktioniert. Prüfen Sie die E-Mail und geben Sie ihn erneut ein.",
+    "core.codes.code_expired.title": "Code abgelaufen",
+    "core.codes.code_expired.message":
+      "Dieser Code ist abgelaufen. Fordern Sie einen neuen an.",
     "core.codes.email_in_use.title": "E-Mail-Adresse bereits verwendet",
     "core.codes.email_in_use.message":
       "Ein anderes Polaris Locker-Konto verwendet diese E-Mail-Adresse bereits. Verbinden Sie diese Anmeldung mit jenem Konto, oder verwenden Sie eine andere E-Mail-Adresse.",
@@ -3597,7 +3603,7 @@ export const KIT_COPY: Readonly<
       "Scannez le code QR avec votre téléphone, ou saisissez ce code à l’adresse ci-dessous.",
     "signInHandoff.linkCopied": "Lien copié",
     "signInHandoff.confirm":
-      "Choisissez Continuer vers {product} sur la page de connexion pour terminer.",
+      "Choisissez Sign in on {device} sur la page de connexion pour terminer.",
     "signInHandoff.ok": "Connecté",
     "signInHandoff.newCode": "Obtenir un nouveau code",
     "activate.title": "Saisissez votre clé de licence",
@@ -4784,6 +4790,9 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid_code.title": "Wrong code",
     "core.codes.invalid_code.message":
       "That code isn't right. Check the email and try again.",
+    "core.codes.code_expired.title": "Code expired",
+    "core.codes.code_expired.message":
+      "That code is no longer valid. Ask for a new one.",
     "core.codes.email_in_use.title": "Email already in use",
     "core.codes.email_in_use.message":
       "Another Polaris Locker account already uses this email. Join this sign-in to that account, or use a different email.",
@@ -5329,7 +5338,7 @@ export const KIT_COPY: Readonly<
       "Escanea el código QR con tu teléfono o introduce este código en la dirección de abajo.",
     "signInHandoff.linkCopied": "Enlace copiado",
     "signInHandoff.confirm":
-      "Elige Continuar a {product} en la página de inicio de sesión para terminar.",
+      "Elige Sign in on {device} en la página de inicio de sesión para terminar.",
     "signInHandoff.ok": "Sesión iniciada",
     "signInHandoff.newCode": "Obtener un código nuevo",
     "activate.title": "Escribe tu clave de licencia",
@@ -6515,6 +6524,9 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid_code.title": "Código incorrecto",
     "core.codes.invalid_code.message":
       "Ese código no funcionó. Revisa el correo y vuelve a escribirlo.",
+    "core.codes.code_expired.title": "Código caducado",
+    "core.codes.code_expired.message":
+      "Ese código ha caducado. Envía uno nuevo.",
     "core.codes.email_in_use.title": "Correo ya en uso",
     "core.codes.email_in_use.message":
       "Otra cuenta de Polaris Locker ya usa este correo. Une este inicio de sesión a esa cuenta o usa otro correo.",
@@ -7075,7 +7087,7 @@ export const KIT_COPY: Readonly<
       "Escaneie o QR code com o celular ou digite este código no endereço abaixo.",
     "signInHandoff.linkCopied": "Link copiado",
     "signInHandoff.confirm":
-      "Escolha Continuar para {product} na página de acesso para concluir.",
+      "Escolha Sign in on {device} na página de acesso para concluir.",
     "signInHandoff.ok": "Você entrou",
     "signInHandoff.newCode": "Obter novo código",
     "activate.title": "Digite sua chave de licença",
@@ -8240,6 +8252,8 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid_code.title": "Código incorreto",
     "core.codes.invalid_code.message":
       "Esse código não funcionou. Confira o e-mail e digite de novo.",
+    "core.codes.code_expired.title": "Código expirado",
+    "core.codes.code_expired.message": "Esse código expirou. Envie um novo.",
     "core.codes.email_in_use.title": "E-mail já em uso",
     "core.codes.email_in_use.message":
       "Outra conta do Polaris Locker já usa este e-mail. Junte este acesso a essa conta ou use outro e-mail.",
@@ -8794,7 +8808,7 @@ export const KIT_COPY: Readonly<
       "Inquadra il codice QR con il telefono, oppure inserisci questo codice all'indirizzo qui sotto.",
     "signInHandoff.linkCopied": "Link copiato",
     "signInHandoff.confirm":
-      "Per finire, scegli Continua su {product} nella pagina di accesso.",
+      "Per finire, scegli Sign in on {device} nella pagina di accesso.",
     "signInHandoff.ok": "Accesso effettuato",
     "signInHandoff.newCode": "Ottieni un nuovo codice",
     "activate.title": "Inserisci la tua chiave di licenza",
@@ -9963,6 +9977,9 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid_code.title": "Codice errato",
     "core.codes.invalid_code.message":
       "Quel codice non ha funzionato. Controlla l'email e digitalo di nuovo.",
+    "core.codes.code_expired.title": "Codice scaduto",
+    "core.codes.code_expired.message":
+      "Quel codice è scaduto. Invia un nuovo codice.",
     "core.codes.email_in_use.title": "Email già in uso",
     "core.codes.email_in_use.message":
       "Un altro account Polaris Locker usa già questa email. Unisci questo accesso a quell'account oppure usa un'altra email.",
@@ -10521,7 +10538,7 @@ export const KIT_COPY: Readonly<
       "スマートフォンでQRコードを読み取るか、下のアドレスでこのコードを入力してください。",
     "signInHandoff.linkCopied": "リンクをコピーしました",
     "signInHandoff.confirm":
-      "完了するには、サインインページで「{product}に進む」を選択してください。",
+      "完了するには、サインインページで「Sign in on {device}」を選択してください。",
     "signInHandoff.ok": "サインインしました",
     "signInHandoff.newCode": "新しいコードを取得",
     "activate.title": "ライセンスキーを入力",
@@ -11705,6 +11722,9 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid_code.title": "コードが正しくありません",
     "core.codes.invalid_code.message":
       "そのコードは使用できませんでした。メールを確認して、もう一度入力してください。",
+    "core.codes.code_expired.title": "コードの有効期限が切れています",
+    "core.codes.code_expired.message":
+      "そのコードは期限切れです。新しいコードを送信してください。",
     "core.codes.email_in_use.title": "メールアドレスは使用中です",
     "core.codes.email_in_use.message":
       "別のPolaris Lockerアカウントがすでにこのメールアドレスを使用しています。このサインインをそのアカウントに統合するか、別のメールアドレスを使用してください。",
@@ -12270,7 +12290,7 @@ export const KIT_COPY: Readonly<
       "휴대전화로 QR 코드를 스캔하거나 아래 주소에서 이 코드를 입력하세요.",
     "signInHandoff.linkCopied": "링크 복사됨",
     "signInHandoff.confirm":
-      "로그인 페이지에서 “{product}에서 계속”을 선택해 완료하세요.",
+      "로그인 페이지에서 “Sign in on {device}”를 선택해 완료하세요.",
     "signInHandoff.ok": "로그인됨",
     "signInHandoff.newCode": "새 코드 받기",
     "activate.title": "라이선스 키를 입력하세요",
@@ -13395,6 +13415,9 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid_code.title": "잘못된 코드",
     "core.codes.invalid_code.message":
       "그 코드는 작동하지 않았어요. 이메일을 확인하고 다시 입력하세요.",
+    "core.codes.code_expired.title": "코드 만료됨",
+    "core.codes.code_expired.message":
+      "그 코드는 만료됐어요. 새 코드를 보내세요.",
     "core.codes.email_in_use.title": "이미 사용 중인 이메일",
     "core.codes.email_in_use.message":
       "다른 Polaris Locker 계정이 이미 이 이메일을 사용하고 있어요. 이 로그인을 그 계정에 연결하거나 다른 이메일을 사용하세요.",
@@ -13935,7 +13958,8 @@ export const KIT_COPY: Readonly<
     "signInHandoff.scan": "用手机扫描二维码，或前往{url}并输入此代码。",
     "signInHandoff.scanTv": "用手机扫描二维码，或在下方地址输入此代码。",
     "signInHandoff.linkCopied": "链接已复制",
-    "signInHandoff.confirm": "在登录页面上选择“继续使用{product}”以完成登录。",
+    "signInHandoff.confirm":
+      "在登录页面上选择“Sign in on {device}”以完成登录。",
     "signInHandoff.ok": "已登录",
     "signInHandoff.newCode": "获取新代码",
     "activate.title": "输入你的许可证密钥",
@@ -14970,6 +14994,8 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid_code.title": "验证码错误",
     "core.codes.invalid_code.message":
       "该验证码无效。请检查电子邮件后重新输入。",
+    "core.codes.code_expired.title": "验证码已过期",
+    "core.codes.code_expired.message": "该验证码已过期。请重新发送。",
     "core.codes.email_in_use.title": "电子邮件已被使用",
     "core.codes.email_in_use.message":
       "另一个Polaris Locker账户已在使用此电子邮件。请将此次登录合并到该账户，或使用其他电子邮件。",

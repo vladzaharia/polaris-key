@@ -721,10 +721,10 @@ msgstr "スマートフォンでQRコードを読み取るか、下のアドレ�
 msgid "signInHandoff.linkCopied"
 msgstr "リンクをコピーしました"
 
-#. Choose Continue to {product} on the sign-in page to finish.
-#. SignInHandoff: sign-in continues on another device or in the browser. The hosted page ends with a “Continue to {product}” button. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. Choose Sign in on {device} on the sign-in page to finish.
+#. SignInHandoff: sign-in continues on another device or in the browser. The hosted approval page ends with a “Sign in on {device}” button, next to Deny; the label stays in English. Arguments: {device} = this device's friendly name.
 msgid "signInHandoff.confirm"
-msgstr "完了するには、サインインページで「{product}に進む」を選択してください。"
+msgstr "完了するには、サインインページで「Sign in on {device}」を選択してください。"
 
 #. Signed in
 #. SignInHandoff: sign-in continues on another device or in the browser. Shown for a moment before the product continues.
@@ -5978,6 +5978,16 @@ msgstr "コードが正しくありません"
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_code.message"
 msgstr "そのコードは使用できませんでした。メールを確認して、もう一度入力してください。"
+
+#. Code expired
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.code_expired.title"
+msgstr "コードの有効期限が切れています"
+
+#. That code is no longer valid. Ask for a new one.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.code_expired.message"
+msgstr "そのコードは期限切れです。新しいコードを送信してください。"
 
 #. Email already in use
 #. Core copy (conformance/parity/copy.en.json, codes).

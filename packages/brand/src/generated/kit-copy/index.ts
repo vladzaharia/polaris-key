@@ -1055,6 +1055,8 @@ export type KitCopyKey =
   | "core.codes.signin_expired.message"
   | "core.codes.invalid_code.title"
   | "core.codes.invalid_code.message"
+  | "core.codes.code_expired.title"
+  | "core.codes.code_expired.message"
   | "core.codes.email_in_use.title"
   | "core.codes.email_in_use.message"
   | "core.codes.terms_required.title"

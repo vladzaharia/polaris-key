@@ -197,6 +197,10 @@
       "title": "Falscher Code",
       "message": "Dieser Code hat nicht funktioniert. Prüfen Sie die E-Mail und geben Sie ihn erneut ein."
     },
+    "code_expired": {
+      "title": "Code abgelaufen",
+      "message": "Dieser Code ist abgelaufen. Fordern Sie einen neuen an."
+    },
     "email_in_use": {
       "title": "E-Mail-Adresse bereits verwendet",
       "message": "Ein anderes Polaris Locker-Konto verwendet diese E-Mail-Adresse bereits. Verbinden Sie diese Anmeldung mit jenem Konto, oder verwenden Sie eine andere E-Mail-Adresse."
