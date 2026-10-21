@@ -18,7 +18,7 @@
 //             the glyph the built console will; the platform glyphs from the portal
 //             (packages/admin/src/portal/components/Glyphs.tsx); the Pinned K and the Star Cut from
 //             @polaris-key/brand (packages/brand/src/svg.ts).
-import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, readdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -130,18 +130,80 @@ const FILLED = {
     '<path fill-rule="evenodd" d="M8 4.5V3a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v1.5h5a1 1 0 0 1 1 1V19a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3V5.5a1 1 0 0 1 1-1zm2 0h4V3h-4zM7 9v4h4.5V9zm5.5 0v4H17V9zM7 14v4h4.5v-4zm5.5 0v4H17v-4z"/>',
 };
 
-function lucideSvg(name) {
-  const file = join(LUCIDE, `${name}.js`);
-  if (!existsSync(file)) throw new Error(`lucide-react has no icon "${name}"`);
-  const src = readFileSync(file, "utf8");
+/** Icons lucide 1.x dropped (it removed its brand icons) that the committed kit still draws, as the
+ *  0.x node lists, so the kit's output does not change with the lucide major. */
+const DROPPED_IN_1X = {
+  github: [
+    [
+      "path",
+      {
+        d: "M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4",
+      },
+    ],
+    ["path", { d: "M9 18c-4.51 2-5-2-7-2" }],
+  ],
+};
+
+/** The icon's node list: lucide-react 1.x ships `<name>.mjs` (an `__iconData` object), 0.x `<name>.js`. */
+let aliasIndex;
+/** Icon name -> file name for the icons lucide 1.x renamed; each file lists its old names. */
+function lucideFileFor(name) {
+  if (
+    existsSync(join(LUCIDE, `${name}.mjs`)) ||
+    existsSync(join(LUCIDE, `${name}.js`))
+  )
+    return name;
+  aliasIndex ??= new Map(
+    readdirSync(LUCIDE)
+      .filter((f) => f.endsWith(".mjs"))
+      .flatMap((f) => {
+        const list = readFileSync(join(LUCIDE, f), "utf8").match(
+          /aliases: \[([^\]]*)\]/,
+        );
+        return list
+          ? [...list[1].matchAll(/"([^"]+)"/g)].map((m) => [
+              m[1],
+              f.slice(0, -4),
+            ])
+          : [];
+      }),
+  );
+  return aliasIndex.get(name) ?? name;
+}
+
+function lucideNodes(requested) {
+  const name = lucideFileFor(requested);
+  const mjs = join(LUCIDE, `${name}.mjs`);
+  const js = join(LUCIDE, `${name}.js`);
+  if (!existsSync(mjs) && !existsSync(js) && DROPPED_IN_1X[name])
+    return DROPPED_IN_1X[name];
+  if (!existsSync(mjs) && !existsSync(js))
+    throw new Error(`lucide-react has no icon "${name}"`);
+  const src = readFileSync(existsSync(mjs) ? mjs : js, "utf8");
+  if (existsSync(mjs)) {
+    // An alias file only re-exports the icon it renames: `export { default } from './trash.mjs';`
+    const alias = src.match(/export \{ default \} from '\.\/([^']+)\.mjs'/);
+    if (alias) return lucideNodes(alias[1]);
+    // 1.x: `const __iconData = { name, size, node: [...], aliases?: [...] };`
+    const data = (src.match(/const __iconData = (\{[\s\S]*?\n\});/) ?? [])[1];
+    if (!data) throw new Error(`lucide-react icon "${name}" has no __iconData`);
+    return Function(`"use strict"; return (${data}).node;`)();
+  }
+  // 0.x: the node list is the createLucideIcon argument, a JS literal.
   const body = src.slice(src.indexOf("["), src.lastIndexOf("]") + 1);
-  // The node list is a JS literal: [["path", { d: "…", key: "…" }], …]
-  const nodes = Function(`"use strict"; return (${body});`)();
+  return Function(`"use strict"; return (${body});`)();
+}
+
+function lucideSvg(name) {
+  const nodes = lucideNodes(name);
   const inner = nodes
     .map(([tag, attrs]) => {
       const a = Object.entries(attrs)
         .filter(([k]) => k !== "key")
-        .map(([k, v]) => `${k.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}="${v}"`)
+        .map(
+          ([k, v]) =>
+            `${k.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}="${v}"`,
+        )
         .join(" ");
       return `<${tag} ${a}/>`;
     })
@@ -164,8 +226,14 @@ const dataUri = (svg) =>
 
 async function brandMarks() {
   const { tsImport } = await import("tsx/esm/api");
-  const m = await tsImport(join(repo, "packages/brand/src/svg.ts"), import.meta.url);
-  const plain = (s) => s.replace(/ aria-hidden="true"/, "").replace(/ width="\d+" height="\d+"/, "");
+  const m = await tsImport(
+    join(repo, "packages/brand/src/svg.ts"),
+    import.meta.url,
+  );
+  const plain = (s) =>
+    s
+      .replace(/ aria-hidden="true"/, "")
+      .replace(/ width="\d+" height="\d+"/, "");
   return {
     keyDark: plain(m.markSvg({ size: 28, theme: "dark" })),
     keyLight: plain(m.markSvg({ size: 28, theme: "light" })),
@@ -176,11 +244,13 @@ async function brandMarks() {
     lockupLight: plain(
       m.lockupSvg({ layout: "compact", theme: "light", height: 52, title: "" }),
     ).replace(/ width="[\d.]+" height="[\d.]+"/, ""),
-    keyMono: plain(m.markSvg({ size: 28, theme: "mono" })).replaceAll("currentColor", "black"),
-    starCut: plain(m.markSvg({ kind: "update", size: 16, theme: "mono" })).replaceAll(
+    keyMono: plain(m.markSvg({ size: 28, theme: "mono" })).replaceAll(
       "currentColor",
       "black",
     ),
+    starCut: plain(
+      m.markSvg({ kind: "update", size: 16, theme: "mono" }),
+    ).replaceAll("currentColor", "black"),
   };
 }
 
@@ -252,7 +322,7 @@ function tokensBlock() {
   return [
     "/* packages/brand/css/tokens.css */",
     brandCss("tokens.css"),
-    "/* packages/brand/css/kit.css (the in-app UI-kit measures, for surface \"kit\" screens) */",
+    '/* packages/brand/css/kit.css (the in-app UI-kit measures, for surface "kit" screens) */',
     brandCss("kit.css"),
   ].join("\n");
 }
@@ -264,7 +334,8 @@ function splice(css, name, body) {
   const end = `/* @generated ${name}:end */`;
   const a = css.indexOf(start);
   const b = css.indexOf(end);
-  if (a < 0 || b < 0) throw new Error(`mockup.css has no @generated ${name} markers`);
+  if (a < 0 || b < 0)
+    throw new Error(`mockup.css has no @generated ${name} markers`);
   const headEnd = css.indexOf("*/", a) + 2;
   return `${css.slice(0, headEnd)}\n${body}\n${css.slice(b)}`;
 }
@@ -272,7 +343,9 @@ function splice(css, name, body) {
 const before = readFileSync(KIT, "utf8");
 // `--only <block>` rewrites one block (the icon set needs the lucide-react the generator was
 // written for, 0.x; `--only lockups` runs without it).
-const only = process.argv.includes("--only") ? process.argv[process.argv.indexOf("--only") + 1] : null;
+const only = process.argv.includes("--only")
+  ? process.argv[process.argv.indexOf("--only") + 1]
+  : null;
 const want = (name) => only === null || only === name;
 let after = before;
 if (want("tokens")) after = splice(after, "tokens", tokensBlock());
