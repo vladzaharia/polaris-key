@@ -41,6 +41,81 @@ function asset(slot: string, over: Record<string, unknown> = {}) {
 }
 
 export const SETTINGS_ROUTES: Record<string, unknown> = {
+  // Settings → Differs from the manifest (ST-17): one claim that differs, one kept as the manifest has it.
+  [`${P}/settings/drift`]: {
+    snapshot: {
+      origin: "resync",
+      appliedAt: NOW - 3600,
+      appliedSha: "abcdef0123",
+    },
+    items: [
+      {
+        key: "core.name",
+        label: "Display name",
+        area: "core",
+        claimedBy: "ada@example.com",
+        claimedAt: NOW - 1800,
+        version: 1,
+        revert: "claim",
+        manifestKnown: true,
+        differs: true,
+        console: "DJDL Pro",
+        manifest: "DJDL",
+      },
+      {
+        key: "license.defaults.deviceLimit",
+        label: "Default device limit",
+        area: "license",
+        claimedBy: "ada@example.com",
+        claimedAt: NOW - 1800,
+        version: 1,
+        revert: "claim",
+        manifestKnown: true,
+        differs: false,
+        console: 5,
+        manifest: 5,
+      },
+    ],
+    lastPlan: null,
+  },
+  // Alerts (ST-27): the product's destinations and the alert kinds.
+  [`${P}/alerts`]: {
+    destinations: [
+      {
+        id: "dst_mail000001",
+        scope: "djdl",
+        kind: "email",
+        target: "team@example.com",
+        label: null,
+        alerts: ["auto_halt"],
+        enabled: true,
+        version: 1,
+        lastStatus: null,
+        lastAt: null,
+        lastError: null,
+        failures: 0,
+      },
+    ],
+    kinds: [
+      { id: "auto_halt", label: "Auto-halt tripped", sent: true },
+      {
+        id: "store_connection",
+        label: "Store connection failing",
+        sent: false,
+      },
+      { id: "commerce", label: "Commerce problem", sent: false },
+      { id: "access_changed", label: "Access changed", sent: false },
+      {
+        id: "notifications_failing",
+        label: "A destination is failing",
+        sent: true,
+      },
+    ],
+    inherited: 0,
+    inheritedByKind: {},
+    max: 5,
+    emailAvailable: true,
+  },
   [`${P}/assets`]: {
     assets: [
       asset("presentation.icon"),

@@ -131,7 +131,7 @@ async function geometry(page: Page) {
   });
 }
 
-/** The header lockup's wordmark, in px: the Locker horizontal lockup at 44 px draws it about 102 px wide (BRAND §15). */
+/** The header lockup's wordmark, in px: the trimmed Locker horizontal lockup (BR-lockups) draws it about 133 px wide at 390 and 148 px at 1440. */
 async function wordmarkWidth(page: Page): Promise<number> {
   return page.evaluate(() => {
     const svg = [
@@ -225,10 +225,15 @@ describe.concurrent("library 2-7 grid presence", () => {
               expect
                 .soft(await horizontalOverflow(o.page), "horizontal scroll")
                 .toBeLessThanOrEqual(0);
-              if (size.label === "1440" || size.label === "390")
+              if (size.label === "1440" || size.label === "390") {
+                const wordmark = await wordmarkWidth(o.page);
                 expect
-                  .soft(await wordmarkWidth(o.page), "header wordmark width")
-                  .toBeCloseTo(102, -1);
+                  .soft(wordmark, "header wordmark width")
+                  .toBeGreaterThanOrEqual(125);
+                expect
+                  .soft(wordmark, "header wordmark width")
+                  .toBeLessThanOrEqual(155);
+              }
             } finally {
               await o.close();
             }
