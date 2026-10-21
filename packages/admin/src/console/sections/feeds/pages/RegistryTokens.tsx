@@ -784,7 +784,6 @@ export function RegistryTokensPage({
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow={<FeedNav scope={scope} current="tokens" />}
         title="Registry tokens"
         description={
           query.data?.registryOrigin
@@ -808,6 +807,7 @@ export function RegistryTokensPage({
             ...(anyLive ? {} : { disabledReason: "No active token" }),
           },
         ]}
+        tabs={<FeedNav scope={scope} current="tokens" />}
         refetching={query.isFetching && !query.isPending}
       />
       {query.isError && !query.data ? (

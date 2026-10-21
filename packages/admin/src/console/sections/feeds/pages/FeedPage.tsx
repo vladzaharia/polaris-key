@@ -89,7 +89,6 @@ export function FeedPage({
 
   const header = (
     <PageHeader
-      eyebrow={<FeedNav scope={scope} current={eco} />}
       title={
         <span className="inline-flex items-center gap-2">
           <Icon aria-hidden className="size-6 text-accent" />
@@ -130,16 +129,23 @@ export function FeedPage({
           : []
       }
       tabs={
-        <PageTabs
-          label={`${ECOSYSTEM_LABELS[eco]} feed`}
-          value={current}
-          items={FEED_TABS.map((t) => ({
-            value: t,
-            label: TAB_LABELS[t],
-            to: feedHref(scope, eco, t),
-            ...(t === "packages" && data ? { count: data.feed.packages } : {}),
-          }))}
-        />
+        // The feed switcher and the feed's own sections: both are tab strips, so both sit under
+        // the title and outside the masthead's height budget (F-38).
+        <>
+          <FeedNav scope={scope} current={eco} />
+          <PageTabs
+            label={`${ECOSYSTEM_LABELS[eco]} feed`}
+            value={current}
+            items={FEED_TABS.map((t) => ({
+              value: t,
+              label: TAB_LABELS[t],
+              to: feedHref(scope, eco, t),
+              ...(t === "packages" && data
+                ? { count: data.feed.packages }
+                : {}),
+            }))}
+          />
+        </>
       }
       refetching={detail.isFetching && !detail.isPending}
       sticky
