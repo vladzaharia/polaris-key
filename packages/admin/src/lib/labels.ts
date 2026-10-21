@@ -79,11 +79,11 @@ export const IN_APP_LABELS: Record<string, string> = {
 export const MANAGEMENT_LABELS: Record<string, string> = IN_APP_LABELS;
 
 /**
- * Outlet kinds (Distribution). The `direct` kind reads "Polaris Key" (S-21 §6.8): the id stays
+ * Outlet kinds (Distribution). The `direct` kind reads "Polaris Locker" (S-21 §6.8): the id stays
  * `direct` on the wire, in the corpus and in every SDK; only the label changes.
  */
 export const OUTLET_KIND_LABELS: Record<string, string> = {
-  direct: "Polaris Key",
+  direct: "Polaris Locker",
   appstore: "App Store",
   "app-store": "App Store",
   testflight: "TestFlight",
@@ -111,7 +111,7 @@ export const OUTLET_SUBKIND_LABELS: Record<string, string> = {
   appimage: "AppImage",
 };
 
-/** An outlet kind's label, with its subkind when there is one: "Polaris Key · via Homebrew". */
+/** An outlet kind's label, with its subkind when there is one: "Polaris Locker · via Homebrew". */
 export function outletLabel(kind: string, subkind?: string | null): string {
   const head = label(OUTLET_KIND_LABELS, kind);
   return subkind

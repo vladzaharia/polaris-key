@@ -34,10 +34,10 @@ const OPS: Readonly<Record<StorefrontOp, Support>> = {
   writeListingAssets: firstParty("writeListingAssets"),
   category: firstParty("category"),
   contentRating: unsupported(
-    "The Polaris Key storefront shows the developer's own policy link",
+    "The Polaris Locker storefront shows the developer's own policy link",
   ),
   privacyDeclarations: unsupported(
-    "The Polaris Key storefront shows the developer's own policy link",
+    "The Polaris Locker storefront shows the developer's own policy link",
   ),
   pricing: unsupported("Listed products are obtained without payment"),
   iap: unsupported("Listed products are obtained without payment"),

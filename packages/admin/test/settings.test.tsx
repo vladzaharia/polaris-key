@@ -150,10 +150,10 @@ describe("Core → Settings", () => {
     expect(fns.updateProduct).not.toHaveBeenCalled();
   });
 
-  it("hides license defaults when License is off, and links the compatibility window to Update → Feed (SET-3)", async () => {
+  it("hides license defaults when License is off, and links the compatibility window to In-app updates → Feed (SET-3)", async () => {
     mount();
     const link = await screen.findByRole("link", {
-      name: /Open Update → Feed/,
+      name: /Open In-app updates → Feed/,
     });
     expect(link.getAttribute("href")).toBe("#/p/djdl/update/feed");
     cleanup();

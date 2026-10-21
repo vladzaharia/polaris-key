@@ -686,7 +686,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "commerce",
     label: "Listing",
     description:
-      "Whether the Polaris Key library lists this product. Auto lists it where auto-issue or a mapped group would give it to the person (today's Discover); Listed adds every other way to obtain it; Unlisted hides it in Polaris Locker while every policy keeps working.",
+      "Whether the Polaris Locker library lists this product. Auto lists it where auto-issue or a mapped group would give it to the person (today's Discover); Listed adds every other way to obtain it; Unlisted hides it in Polaris Locker while every policy keeps working.",
     keywords: ["discover", "library", "storefront", "unlisted", "visibility"],
     docs: "/docs/features/sign-in/customer-portal/",
     ownership: "operator",

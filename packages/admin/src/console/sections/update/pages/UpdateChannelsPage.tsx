@@ -256,7 +256,7 @@ function AccessSection({
                 to={r.access(slug)}
                 className="text-accent-fg underline-offset-4 hover:underline"
               >
-                Change in Distribution → Access
+                Change in Rollouts → Access
               </Link>
             </span>
           ) : (
@@ -266,7 +266,7 @@ function AccessSection({
                 to={r.access(slug)}
                 className="text-accent-fg underline-offset-4 hover:underline"
               >
-                Open Distribution → Access
+                Open Rollouts → Access
               </Link>
             </span>
           )}

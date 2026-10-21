@@ -18,7 +18,6 @@ import { Input } from "../../../../ui/Input.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
 import { ScrollTable } from "../../../../ui/ScrollTable.js";
 import { Select } from "../../../../ui/Select.js";
-import { serviceLabel } from "../../../../ui/ServiceBadge.js";
 import { Skeleton } from "../../../../ui/Skeleton.js";
 import { SourceBadge, type Source } from "../../../../ui/SourceBadge.js";
 import { formatSettingValue } from "../../../../ui/settings/model.js";
@@ -35,7 +34,12 @@ import {
   type SettingsIndexEntry,
 } from "../../../settings.generated.js";
 import { SettingsSection } from "../../../templates/Settings.js";
-import { SETTING_HOMES, type SettingHome } from "../model/settingHomes.js";
+import { tileTitle } from "../components/TileFrame.js";
+import {
+  HIDDEN_SETTINGS,
+  SETTING_HOMES,
+  type SettingHome,
+} from "../model/settingHomes.js";
 import { SETTINGS_AREAS } from "./SettingsHub.js";
 
 /** A page as the console words it elsewhere: `Settings → Features`, `License → Enrollment`. */
@@ -47,7 +51,7 @@ function destination(page: ProductPageId): string {
   if (area) return `Settings → ${area.label}`;
   const section = sectionOf(page);
   return section
-    ? `${section.label} → ${pageOf(page).label}`
+    ? `${section.key === "core" ? section.label : tileTitle(section.key)} → ${pageOf(page).label}`
     : pageOf(page).label;
 }
 
@@ -153,6 +157,7 @@ export function SettingsAllPage({
           e.scope === "product" &&
           e.pending === null &&
           e.deprecated === null &&
+          !HIDDEN_SETTINGS.has(e.key) &&
           canIn(me, e.rbacArea as AreaId, slug) &&
           (e.service === "core" ||
             (
@@ -207,7 +212,7 @@ export function SettingsAllPage({
                 { value: ALL, label: "All features" },
                 ...services.map((s) => ({
                   value: s,
-                  label: serviceLabel(s as never),
+                  label: s === "core" ? "Core" : tileTitle(s as never),
                 })),
               ]}
             />
@@ -235,7 +240,11 @@ export function SettingsAllPage({
             title="No settings match"
             filters={[
               needle,
-              service === ALL ? "" : serviceLabel(service as never),
+              service === ALL
+                ? ""
+                : service === "core"
+                  ? "Core"
+                  : tileTitle(service as never),
             ]
               .filter(Boolean)
               .join(", ")}

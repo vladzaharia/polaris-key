@@ -4,7 +4,10 @@ import type { ServiceSlug } from "../../../services.generated.js";
 import { FEATURES, SERVICE_TABLE } from "../../../services.generated.js";
 import { pageOf } from "../../nav.js";
 import type { ServiceState } from "../../nav.js";
-import { SETTING_HOMES } from "../../sections/core/model/settingHomes.js";
+import {
+  HIDDEN_SETTINGS,
+  SETTING_HOMES,
+} from "../../sections/core/model/settingHomes.js";
 import { AREA_NAMES, canIn } from "../../access/can.js";
 import { globalPage, productPage } from "../../routes.js";
 import {
@@ -57,7 +60,12 @@ export function settingsItems(
       }));
   const namedWords = new Map<string, string>();
   for (const e of SETTINGS_INDEX) {
-    if (e.pending !== null || e.deprecated !== null) continue;
+    if (
+      e.pending !== null ||
+      e.deprecated !== null ||
+      HIDDEN_SETTINGS.has(e.key)
+    )
+      continue;
     const forEntry = e.scope === "product" ? scopes : [null];
     for (const scope of forEntry) {
       const row = settingRow(ctx, e, icon, scope);

@@ -126,12 +126,8 @@ const toggleRows = (name: string) =>
       label: `Show ${name} in Polaris Locker`,
       help: "Turn off to hide this product's licenses, page and downloads in every library. Licenses and sign-in keep working.",
     },
-    {
-      key: "keyReissueEnabled",
-      id: "portal.keyReissue",
-      label: "Let customers replace a lost key",
-      help: "Polaris Locker issues a new key. The old key stops working at once.",
-    },
+    // "Let customers replace a lost key" (`portal.keyReissue`) is hidden until the Locker has
+    // the reissue action (G7); the setting and its server handling stay.
     {
       key: "claimByKey",
       id: "identity.keyEntry.claimByKey",

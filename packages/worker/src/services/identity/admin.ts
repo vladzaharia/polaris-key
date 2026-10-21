@@ -307,7 +307,7 @@ async function handlePortalSettings(
     audit: {
       action: "storefront.polarisKey.update",
       target,
-      summary: `Changed the Polaris Key listing for ${slug}: ${describeListingChange(before, w.key, w.value)}`,
+      summary: `Changed the Polaris Locker listing for ${slug}: ${describeListingChange(before, w.key, w.value)}`,
     },
   }));
   // ST-14: the two switches are settings rows (`portal.enabled`, `portal.keyReissue`).

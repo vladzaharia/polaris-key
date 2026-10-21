@@ -219,3 +219,12 @@ export const SETTING_HOMES: Readonly<Record<string, SettingHome>> = {
   "identity.provisioning": manifest("product"),
   "identity.oidc.syncTierOnSignIn": at("app-sign-in", "Tier sync"),
 };
+
+/**
+ * Settings the console does not offer yet: not in All settings, search or the palette. The key and
+ * its server handling stay. `portal.keyReissue` waits for G7: the Locker never reads
+ * `canGetNewKey` or calls the reissue endpoint, so the switch would promise what it cannot do.
+ */
+export const HIDDEN_SETTINGS: ReadonlySet<string> = new Set([
+  "portal.keyReissue",
+]);

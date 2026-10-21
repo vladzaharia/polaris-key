@@ -102,7 +102,7 @@ describe("Update → Feed", () => {
     );
   });
 
-  it("shows artifact access read-only, linking to Distribution → Access", async () => {
+  it("shows artifact access read-only, linking to Rollouts → Access", async () => {
     bootWith(HASH);
     const access = await section("Metadata access");
     const row = within(access)
@@ -111,7 +111,7 @@ describe("Update → Feed", () => {
     await waitFor(() => expect(row.textContent).toContain("Licensed"));
     expect(
       within(access)
-        .getByRole("link", { name: "Change in Distribution → Access" })
+        .getByRole("link", { name: "Change in Rollouts → Access" })
         .getAttribute("href"),
     ).toBe("#/p/djdl/distribution/access");
   });
@@ -123,7 +123,7 @@ describe("Update → Feed", () => {
     const access = await section("Metadata access");
     expect(
       await within(access).findByRole("link", {
-        name: "Open Distribution → Access",
+        name: "Open Rollouts → Access",
       }),
     ).toBeTruthy();
     const row = within(access).getByText("Artifact access").closest(".px-5")!;

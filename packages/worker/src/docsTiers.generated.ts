@@ -5,10 +5,10 @@
 
 /** Files under `/docs/_astro/` that no public page loads, with the lowest tier that loads them. */
 export const DOCS_ASSET_TIERS: Readonly<Record<string, "member" | "admin">> = {
-  "/docs/_astro/activate-enter-desktop-dark.CGS_eRvQ.png": "admin",
-  "/docs/_astro/activate-enter-desktop-light.C0Cni_XA.png": "admin",
-  "/docs/_astro/activate-enter-mobile-dark.CKrxO-21.png": "admin",
-  "/docs/_astro/activate-enter-mobile-light.CZRzNGP9.png": "admin",
+  "/docs/_astro/activate-enter-desktop-dark.DUyiReFg.png": "admin",
+  "/docs/_astro/activate-enter-desktop-light.BtsE4pPV.png": "admin",
+  "/docs/_astro/activate-enter-mobile-dark.D2YY1THo.png": "admin",
+  "/docs/_astro/activate-enter-mobile-light.k_IpD6qz.png": "admin",
 };
 
 /** Moved-page redirect pages (resolved path), at their target's tier. */
