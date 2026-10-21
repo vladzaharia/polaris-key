@@ -70,6 +70,31 @@ final class PreviewStateTests: XCTestCase {
         XCTAssertEqual(KitCopy.bundled.format("no.such.key", locale: "en"), "no.such.key")
     }
 
+    func testAWelcomeWithNoProductNameIsTitledWelcomeNotWelcomeTo() {
+        func nameless(_ edit: (inout KitInputs) -> Void = { _ in }) -> KitInputs {
+            PolarisKeyPreviewState.base {
+                $0.presentation = nil
+                $0.bundle = KitBundle(slug: "")
+                edit(&$0)
+            }
+        }
+        for inputs in [
+            nameless(), nameless { $0.pending = .signIn },
+            nameless { $0.capabilities.signIn = false },
+        ] {
+            let screen = KitStates.welcome(inputs)
+            XCTAssertTrue(screen.shows("common.welcomeNoProductTitle"))
+            XCTAssertFalse(screen.shows("welcome.title"))
+        }
+        let signInOnly = KitStates.welcome(nameless { $0.capabilities.keyEntry = false })
+        XCTAssertTrue(signInOnly.shows("common.signInToContinue"))
+        XCTAssertFalse(signInOnly.shows("welcome.ledeSignInOnly"))
+        XCTAssertEqual(
+            KitCopy.bundled.format("common.welcomeNoProductTitle", locale: "en"), "Welcome")
+        // A named product keeps the usual title.
+        XCTAssertTrue(KitStates.welcome(PolarisKeyPreviewState.base()).shows("welcome.title"))
+    }
+
     func testALineIsCompleteOnlyWithEveryArgumentItsMessageNames() {
         XCTAssertFalse(CopyLine("updateProgress.downloading", ["size": "24 MB"]).isComplete())
         XCTAssertTrue(
