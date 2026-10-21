@@ -177,7 +177,7 @@ function DriftRow({
           <Button
             variant="outline"
             size="sm"
-            className="h-auto min-h-8 max-w-full whitespace-normal py-1 text-left"
+            className="h-auto min-h-8 max-w-full whitespace-normal py-1 text-start"
             aria-label={
               matches
                 ? `Hand ${item.label} back to the manifest`
