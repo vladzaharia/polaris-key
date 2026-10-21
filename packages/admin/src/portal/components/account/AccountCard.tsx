@@ -44,7 +44,7 @@ export function AccountCard({
           {title}
         </h2>
         {aside ? (
-          <div className="max-w-full shrink-0 [&_button]:h-auto [&_button]:min-h-9 [&_button]:whitespace-normal">
+          <div className="max-w-full shrink-0 [&_button]:h-auto [&_button]:min-h-9 [&_button]:max-w-full [&_button]:whitespace-normal [&_button]:[overflow-wrap:anywhere]">
             {aside}
           </div>
         ) : null}

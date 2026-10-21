@@ -136,8 +136,8 @@ function columns(withBinding: boolean): DataColumn<RegistryTokenDto>[] {
           <span className="inline-flex min-w-0 items-center gap-2">
             <Icon aria-hidden className="size-4 shrink-0 text-fg-muted" />
             <span className="inline-flex min-w-0 flex-col">
-              <span className="truncate">{t.label}</span>
-              <span className="font-mono text-xs text-fg-muted">
+              <span className="[overflow-wrap:anywhere]">{t.label}</span>
+              <span className="break-all font-mono text-xs text-fg-muted">
                 {t.tokenId} · …{t.hint}
                 {t.scopes.includes("publish") ? " · read and publish" : ""}
               </span>

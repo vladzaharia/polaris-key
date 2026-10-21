@@ -203,7 +203,7 @@ function SignInEmailOnly({
           <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-surface-sunken text-fg-strong">
             <Mail aria-hidden className="size-5" />
           </span>
-          <p className="min-w-0 flex-1 truncate font-medium text-fg-strong">
+          <p className="min-w-0 flex-1 break-words font-medium [overflow-wrap:anywhere] text-fg-strong">
             {account.email}
           </p>
         </li>
@@ -845,7 +845,7 @@ function ConnectRow({
           )}
         </span>
         <div className="min-w-0 flex-1 basis-40">
-          <p className="font-medium text-fg-strong">{name}</p>
+          <p className="break-words font-medium text-fg-strong">{name}</p>
           <p className="text-sm text-fg-muted">
             {t("locker.methods.notConnectedRow")}
           </p>

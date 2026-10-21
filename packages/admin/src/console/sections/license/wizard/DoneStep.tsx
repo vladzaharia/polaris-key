@@ -148,7 +148,7 @@ export function DoneBody({
         <div className="flex items-center gap-3 rounded-lg border border-border px-3 py-2">
           <FileText aria-hidden className="size-5 shrink-0 text-fg-muted" />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-fg-strong">
+            <p className="break-words text-sm font-medium [overflow-wrap:anywhere] text-fg-strong">
               {name}
             </p>
             <p className="text-xs text-fg-muted">

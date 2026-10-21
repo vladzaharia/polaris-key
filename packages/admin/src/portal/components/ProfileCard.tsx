@@ -111,7 +111,7 @@ export function ProfileCard({
                     variant="ghost"
                     iconStart={<Upload aria-hidden />}
                     onClick={() => setEditing("picture")}
-                    className="max-sm:min-h-11"
+                    className="h-auto min-h-9 max-w-full whitespace-normal py-1.5 text-left max-sm:min-h-11"
                   >
                     {C["profile.addPicture"]}
                   </Button>
