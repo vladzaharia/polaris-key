@@ -284,6 +284,23 @@ describe("Core → Overview", () => {
     expect(await screen.findByText("7 devices")).toBeTruthy();
   });
 
+  it("M7: Ship builds is one tile with its lines inside and no accent top rule", async () => {
+    fns.product.mockResolvedValue({
+      product: product({
+        services: enablement(["release", "distribution", "update"]),
+      }),
+    });
+    mount();
+    const ship = (
+      await screen.findByRole("heading", { level: 2, name: "Ship builds" })
+    ).closest("section")!;
+    for (const name of ["Releases", "Rollouts", "In-app updates"])
+      expect(screen.queryByRole("heading", { level: 2, name })).toBeNull();
+    expect(ship.className).not.toContain("border-t-accent");
+    expect(await within(ship).findByText(/rollouts live/)).toBeTruthy();
+    expect(await within(ship).findByText(/In-app updates:/)).toBeTruthy();
+  });
+
   it("B-051/B-052: Ship builds' three tiles share the Releases accent and their link is a 24 px target", async () => {
     const { tileAccent, TileFrame } =
       await import("../src/console/sections/core/components/TileFrame.js");

@@ -30,7 +30,6 @@ import {
   type ServiceSlug,
 } from "../../../../api.js";
 import { formatCount, fromSeconds } from "../../../../lib/format.js";
-import { ACCESS_LABELS } from "../../../../lib/labels.js";
 import { Button } from "../../../../ui/Button.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
@@ -54,6 +53,10 @@ import { OverviewAttention } from "../components/OverviewAttention.js";
 import { OverviewByline } from "../components/OverviewByline.js";
 import { Link, navigate } from "../../../router.js";
 import { Big, Line, TileFrame } from "../components/TileFrame.js";
+import {
+  ShipBuildsTile,
+  latestAppRelease,
+} from "../components/ShipBuildsTile.js";
 import { CommerceTile } from "../../commerce/CommerceTile.js";
 import { pendingRecipesOf, reviewHref } from "../../config/model/pending.js";
 import { r } from "../../../routes.js";
@@ -142,6 +145,8 @@ function OverviewBody({
   placeholder?: boolean;
 }): React.ReactElement {
   const enabled = SERVICE_ORDER.filter((s) => on(p, s));
+  // Ship builds is one tile: Release's stands for it and carries Distribution and Update.
+  const tiles = enabled.filter((s) => s !== "distribution" && s !== "update");
   const features = runningFeatures(p);
   const licenses = useQuery({
     queryKey: qk.licenses(slug),
@@ -260,6 +265,7 @@ function OverviewBody({
             read={serverAttention}
             items={attention}
             stagger={firstLoad}
+            primaryFirst
           />
         </>
       }
@@ -285,13 +291,15 @@ function OverviewBody({
               query={integration}
               next={next}
               focusHeading={justShown}
+              demoted={attention.length > 0}
             />
           ) : null}
           <div className="col-span-full grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {enabled.map((s) => (
+            {tiles.map((s) => (
               <ServiceTile
                 key={s}
                 slug={slug}
+                product={p}
                 service={s}
                 licenses={s === "license" ? licenses : undefined}
               />
@@ -544,10 +552,12 @@ function OverviewMoments({
 // ── Service tiles ──────────────────────────────────────────────────────────────────────────────
 function ServiceTile({
   slug,
+  product,
   service,
   licenses,
 }: {
   slug: string;
+  product: ProductDetail;
   service: ServiceSlug;
   licenses?: LicensesQuery;
 }): React.ReactElement {
@@ -557,11 +567,16 @@ function ServiceTile({
     case "config":
       return <ConfigTile slug={slug} />;
     case "release":
-      return <ReleaseTile slug={slug} />;
+      return (
+        <ShipBuildsTile
+          slug={slug}
+          distribution={on(product, "distribution")}
+          update={on(product, "update")}
+        />
+      );
     case "distribution":
-      return <DistributionTile slug={slug} />;
     case "update":
-      return <UpdateTile slug={slug} />;
+      return <></>;
     case "identity":
       return <IdentityTile slug={slug} />;
     case "sync":
@@ -655,125 +670,6 @@ function ConfigTile({ slug }: { slug: string }): React.ReactElement {
           {formatCount(profiles.data.profiles.length)}{" "}
           {profiles.data.profiles.length === 1 ? "profile" : "profiles"}
         </Line>
-      ) : null}
-    </TileFrame>
-  );
-}
-
-function ReleaseTile({ slug }: { slug: string }): React.ReactElement {
-  const store = useQuery({
-    queryKey: qk.releases(slug),
-    queryFn: () => api.releases(slug),
-  });
-  const health = useQuery({
-    queryKey: qk.releaseHealth(slug),
-    queryFn: () => api.releaseHealth(slug).then((r) => r.health),
-  });
-  const latest = latestAppRelease(store.data?.releases);
-  const stable = store.data?.channels.find((c) => c.channel === "stable");
-  const stableVersion = stable
-    ? store.data?.releases.find((x) => x.releaseId === stable.releaseId)
-        ?.version
-    : undefined;
-  return (
-    <TileFrame
-      service="release"
-      badge={
-        health.data && !health.data.healthy ? (
-          <StatusPill tone="warning" size="sm">
-            Needs setup
-          </StatusPill>
-        ) : undefined
-      }
-      href={r.releases(slug)}
-      linkLabel="Releases"
-      loading={store.isPending}
-      error={store.isError ? store.error : undefined}
-      onRetry={() => void store.refetch()}
-    >
-      <Big>
-        {latest ? (
-          <span className="font-mono">{latest.version}</span>
-        ) : (
-          "No releases"
-        )}
-      </Big>
-      {stableVersion && stableVersion !== latest?.version ? (
-        <Line>
-          stable → <span className="font-mono">{stableVersion}</span>
-        </Line>
-      ) : null}
-    </TileFrame>
-  );
-}
-
-function latestAppRelease<
-  T extends {
-    deliverable: string;
-    version: string;
-    publishedAt: number | null;
-    yank: unknown;
-  },
->(releases: T[] | undefined): T | undefined {
-  return (releases ?? [])
-    .filter((x) => x.deliverable === "app" && !x.yank)
-    .sort((a, b) => (b.publishedAt ?? 0) - (a.publishedAt ?? 0))[0];
-}
-
-function DistributionTile({ slug }: { slug: string }): React.ReactElement {
-  const rollouts = useQuery({
-    queryKey: qk.rollouts(slug),
-    queryFn: () => api.rollouts(slug),
-  });
-  const list = rollouts.data?.rollouts ?? [];
-  const count = (s: string) => list.filter((x) => x.state === s).length;
-  const active = list.filter((x) => x.state === "active");
-  return (
-    <TileFrame
-      service="distribution"
-      href={r.matrix(slug)}
-      linkLabel="Matrix"
-      loading={rollouts.isPending}
-      error={rollouts.isError ? rollouts.error : undefined}
-      onRetry={() => void rollouts.refetch()}
-    >
-      <Big>
-        {formatCount(active.length)}{" "}
-        {active.length === 1 ? "rollout" : "rollouts"} live
-      </Big>
-      <Line>
-        {formatCount(count("paused"))} paused · {formatCount(count("halted"))}{" "}
-        halted
-      </Line>
-    </TileFrame>
-  );
-}
-
-function UpdateTile({ slug }: { slug: string }): React.ReactElement {
-  const feed = useQuery({
-    queryKey: qk.feed(slug),
-    queryFn: () => api.updateSettings(slug),
-  });
-  return (
-    <TileFrame
-      service="update"
-      href={r.feed(slug)}
-      linkLabel="Feed"
-      loading={feed.isPending}
-      error={feed.isError ? feed.error : undefined}
-      onRetry={() => void feed.refetch()}
-    >
-      {feed.data ? (
-        <>
-          <Big>
-            {ACCESS_LABELS[feed.data.metadataAccess] ??
-              feed.data.metadataAccess}
-          </Big>
-          <Line>
-            Supports <span className="font-mono">{feed.data.compatMin}</span> to{" "}
-            <span className="font-mono">{feed.data.compatMax}</span>
-          </Line>
-        </>
       ) : null}
     </TileFrame>
   );

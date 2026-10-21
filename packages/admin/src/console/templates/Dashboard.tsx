@@ -299,10 +299,13 @@ export function AttentionList({
   max = 5,
   title = "Needs attention",
   stagger,
+  primaryFirst = false,
 }: {
   items: AttentionItem[];
   max?: number;
   title?: string;
+  /** The first row's action is the page's one filled primary (Overview). */
+  primaryFirst?: boolean;
   /** The page's first-load key (`useFirstLoad`): the items stagger in on that load only. */
   stagger?: string;
 }): React.ReactElement | null {
@@ -357,7 +360,7 @@ export function AttentionList({
           motion.className,
         )}
       >
-        {shown.map((item) => (
+        {shown.map((item, row) => (
           <li
             key={item.id}
             data-service={item.service}
@@ -387,7 +390,14 @@ export function AttentionList({
               ))}
             </span>
             {item.action ? (
-              item.action.href ? (
+              item.action.href && primaryFirst && row === 0 ? (
+                <Button asChild size="sm" className="@xl:justify-self-start">
+                  <Link to={item.action.href}>
+                    {item.action.label}
+                    <ArrowRight aria-hidden className="size-3.5" />
+                  </Link>
+                </Button>
+              ) : item.action.href ? (
                 <Link
                   to={item.action.href}
                   className="flex min-h-6 min-w-0 max-w-full items-center gap-1 text-sm leading-6 text-fg-strong underline-offset-4 hover:underline @xl:justify-self-start"
@@ -397,7 +407,7 @@ export function AttentionList({
                 </Link>
               ) : (
                 <Button
-                  variant="outline"
+                  variant={primaryFirst && row === 0 ? "primary" : "outline"}
                   size="sm"
                   className="shrink-0 @xl:justify-self-start"
                   onClick={item.action.onSelect}

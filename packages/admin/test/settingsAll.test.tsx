@@ -121,19 +121,19 @@ describe("All settings → Edit in", () => {
     ],
     [
       "release.compatWindow",
-      "In-app updates → Feed",
+      "Ship builds → Feed",
       "Compatibility window",
       "#/p/djdl/update/feed",
     ],
     [
       "update.operatorPolicy",
-      "In-app updates → Feed",
+      "Ship builds → Feed",
       "Artifact policy",
       "#/p/djdl/update/feed",
     ],
     [
       "storefront.polarisKey.listed",
-      "Rollouts → Storefronts",
+      "Ship builds → Storefronts",
       "Polaris Locker → Listing",
       "#/p/djdl/distribution/storefronts/polaris-key",
     ],

@@ -9,29 +9,20 @@ import { Link } from "../../../router.js";
 
 /** The Overview's per-service tile frame and its two text styles (moved out of `Overview.tsx`). */
 
-/**
- * A tile's title is the feature's name, the one Home and the sidebar use. Ship builds runs three
- * services, each with its own tile, so those are titled by what the tile shows.
- */
-const SHIP_BUILDS_TITLES: Partial<Record<ServiceSlug, string>> = {
-  release: "Releases",
-  distribution: "Rollouts",
-  update: "In-app updates",
-};
-
-/** Ship builds is one feature: its three tiles wear the Releases accent, not one each. */
-const SHIP_BUILDS_ACCENT: ServiceSlug = "release";
+/** Ship builds is one feature: its services share the Releases accent (and one tile). */
+const SHIP_BUILDS: readonly ServiceSlug[] = [
+  "release",
+  "distribution",
+  "update",
+];
 
 export function tileAccent(service: ServiceSlug): ServiceSlug {
-  return service in SHIP_BUILDS_TITLES ? SHIP_BUILDS_ACCENT : service;
+  return SHIP_BUILDS.includes(service) ? "release" : service;
 }
 
+/** A tile's title is the feature's name, the one Home and the sidebar use. */
 export function tileTitle(service: ServiceSlug): string {
-  return (
-    SHIP_BUILDS_TITLES[service] ??
-    FEATURES.find((f) => f.services.includes(service))?.label ??
-    service
-  );
+  return FEATURES.find((f) => f.services.includes(service))?.label ?? service;
 }
 
 export function TileFrame({
@@ -62,7 +53,7 @@ export function TileFrame({
     <section
       data-service={tileAccent(service)}
       aria-labelledby={id}
-      className="flex flex-col gap-3 rounded-lg border border-border border-t-2 border-t-accent bg-surface-raised p-4"
+      className="flex flex-col gap-3 rounded-lg border border-border bg-surface-raised p-4"
     >
       <div data-card-header="" className="flex items-center gap-2">
         <h2

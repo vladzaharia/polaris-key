@@ -11,10 +11,13 @@ export function OverviewAttention({
   read,
   items,
   stagger,
+  primaryFirst,
 }: {
   read: UseQueryResult<unknown>;
   items: AttentionItem[];
   stagger: string | undefined;
+  /** The first row's action is the page's one filled primary. */
+  primaryFirst?: boolean;
 }): React.ReactElement | null {
   if (read.isError)
     return (
@@ -25,6 +28,10 @@ export function OverviewAttention({
       />
     );
   return read.isPending ? null : (
-    <AttentionList items={items} stagger={stagger} />
+    <AttentionList
+      items={items}
+      stagger={stagger}
+      primaryFirst={primaryFirst}
+    />
   );
 }
