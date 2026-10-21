@@ -13,10 +13,16 @@
  * suites' and the transcripts'.
  *
  * Regenerating the fixture is a deliberate act (`PKEY_RECORD_ORACLE=1`) and a reviewer reads the
- * diff: a changed row is a changed route.
+ * diff: a changed row is a changed route. The recorders write prettier-shaped JSON.
+ *
+ * Three fixtures, one per request group: `=1` records the first, `=2` I-08's routes, hostile
+ * spellings and browser origins, `=3` Commerce's routes and identity/authorize. A row belongs to
+ * exactly one group (`G3` paths are group 3's), so mode 2 writes no group-3 row; `compare` also
+ * ignores any group-3 row a group-1 or -2 fixture still carries.
  */
 
 import { createHash } from "node:crypto";
+import { format, resolveConfig } from "prettier";
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -38,6 +44,18 @@ const here = dirname(fileURLToPath(import.meta.url));
 const FIXTURE = join(here, "fixtures", "service-route-oracle.json");
 const FIXTURE3 = join(here, "fixtures", "service-route-oracle-3.json");
 const FIXTURE2 = join(here, "fixtures", "service-route-oracle-2.json");
+/** Writes a fixture the way `pnpm format` wants it, so a re-record leaves the check green. The
+ *  indented input keeps every object expanded, as the committed fixtures are. */
+async function record(
+  file: string,
+  rows: Record<string, unknown>,
+): Promise<void> {
+  const config = (await resolveConfig(file)) ?? {};
+  writeFileSync(
+    file,
+    await format(JSON.stringify(rows, null, 1), { ...config, filepath: file }),
+  );
+}
 const SLUG = "djdl";
 const BASE = "https://key.plrs.im";
 const METHODS = ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"];
@@ -546,7 +564,7 @@ describe("service route tables replay the hand dispatch", () => {
   it("answers every request as the recorded dispatch did", async () => {
     const observed = await replay(paths());
     if (process.env.PKEY_RECORD_ORACLE === "1") {
-      writeFileSync(FIXTURE, JSON.stringify(observed, null, 1) + "\n");
+      await record(FIXTURE, observed);
       return;
     }
     expect(compare(FIXTURE, observed)).toEqual([]);
@@ -564,7 +582,7 @@ describe("service route tables replay the hand dispatch", () => {
       CORS_PATHS,
     );
     if (process.env.PKEY_RECORD_ORACLE === "2") {
-      writeFileSync(FIXTURE2, JSON.stringify(observed, null, 1) + "\n");
+      await record(FIXTURE2, observed);
       return;
     }
     expect(compare(FIXTURE2, observed)).toEqual([]);
@@ -583,7 +601,7 @@ describe("service route tables replay the hand dispatch", () => {
         await replay(GROUP3, state === "on" ? COMMERCE_CORS : [], state),
       );
     if (process.env.PKEY_RECORD_ORACLE === "3") {
-      writeFileSync(FIXTURE3, JSON.stringify(observed, null, 1) + "\n");
+      await record(FIXTURE3, observed);
       return;
     }
     expect(compare(FIXTURE3, observed, true)).toEqual([]);
