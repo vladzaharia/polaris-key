@@ -17,7 +17,7 @@ const long = process.argv[3] === "long";
 const code = long ? "WDJB-MJHT-QXRP-LMNV" : "WDJB-MJHT";
 const url = long
   ? "https://licensing.tidewater-studio-professional.example.com/activate/device?region=eu-west-2&channel=stable-26"
-  : "https://key.plrs.im/device";
+  : "https://polaris.locker/device";
 const expireAfterMs = Number(process.env.PTY_EXPIRE_MS ?? 4000);
 
 const ctx = await createKitContext({

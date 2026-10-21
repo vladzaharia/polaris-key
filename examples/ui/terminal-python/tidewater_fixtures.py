@@ -124,8 +124,8 @@ class _License:
 class _Prompt:
     deviceCode: str = field(default="dc-demo", repr=False)
     userCode: str = "WDJB-MJHT"
-    verificationUri: str = "https://key.plrs.im/device"
-    verificationUriComplete: str = "https://key.plrs.im/device?user_code=WDJB-MJHT"
+    verificationUri: str = "https://polaris.locker/device"
+    verificationUriComplete: str = "https://polaris.locker/device?user_code=WDJB-MJHT"
     expiresIn: int = 600
     interval: int = 1
     expiresAt: int = 0

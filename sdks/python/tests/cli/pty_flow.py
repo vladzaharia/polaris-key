@@ -27,7 +27,7 @@ CODE = "WDJB-MJHT-QXRP-LMNV" if long else "WDJB-MJHT"
 URL = (
     "https://licensing.tidewater-studio-professional.example.com/activate/device?region=eu-west-2&channel=stable-26"
     if long
-    else "https://key.plrs.im/device"
+    else "https://polaris.locker/device"
 )
 EXPIRE = float(os.environ.get("PTY_EXPIRE", "4"))
 

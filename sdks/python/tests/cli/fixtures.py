@@ -77,8 +77,8 @@ def kit(env: TermEnv, theme: Optional[Theme] = None) -> Kit:
 
 class _Prompt:
     userCode = "WDJB-MJHT"
-    verificationUri = "https://key.plrs.im/device"
-    verificationUriComplete = "https://key.plrs.im/device?user_code=WDJB-MJHT"
+    verificationUri = "https://polaris.locker/device"
+    verificationUriComplete = "https://polaris.locker/device?user_code=WDJB-MJHT"
     expiresAt = NOW + 252
 
 

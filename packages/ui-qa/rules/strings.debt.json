@@ -589,12 +589,12 @@
     {
       "board": "terminal",
       "state": "narrow",
-      "text": "to key.plrs.im/device and"
+      "text": "to polaris.locker/device and"
     },
     {
       "board": "terminal",
       "state": "short",
-      "text": "go to key.plrs.im/device and enter"
+      "text": "go to polaris.locker/device and enter"
     },
     {
       "board": "terminal",

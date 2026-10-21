@@ -271,8 +271,8 @@ export function createFixtureClient(o: FixtureOptions = {}): PolarisKeyClient {
         return {
           deviceCode: "fixture-device-code",
           userCode: "WDJB-MJHT",
-          verificationUri: "https://key.plrs.im/device",
-          verificationUriComplete: "https://key.plrs.im/device?code=WDJB-MJHT",
+          verificationUri: "https://polaris.locker/device",
+          verificationUriComplete: "https://polaris.locker/device?code=WDJB-MJHT",
           expiresIn: 600,
           interval: 5,
           expiresAt: now() + 600,

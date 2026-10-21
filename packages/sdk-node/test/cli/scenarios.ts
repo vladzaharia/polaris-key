@@ -449,7 +449,7 @@ export const SCENARIOS: Scenario[] = [
   {
     name: "sign-in-handoff-waiting",
     opts: { interactive: true },
-    data: [...COMMON, "login", "key.plrs.im/device?code=WDJB-MJHT"],
+    data: [...COMMON, "login", "polaris.locker/device?code=WDJB-MJHT"],
     run: async (h) => {
       const gate = deferred<unknown>();
       const done = loginFlow(
@@ -505,7 +505,7 @@ export const SCENARIOS: Scenario[] = [
   {
     name: "sign-in-handoff-no-browser",
     opts: { interactive: true, openUrl: false },
-    data: [...COMMON, "login", "key.plrs.im/device", "WDJB-MJHT", "4:12"],
+    data: [...COMMON, "login", "polaris.locker/device", "WDJB-MJHT", "4:12"],
     run: async (h) => {
       const gate = deferred<unknown>();
       const done = loginFlow(
@@ -521,7 +521,7 @@ export const SCENARIOS: Scenario[] = [
   {
     name: "sign-in-handoff-code",
     opts: { interactive: true, headless: true },
-    data: [...COMMON, "login", "key.plrs.im/device", "WDJB-MJHT", "4:12"],
+    data: [...COMMON, "login", "polaris.locker/device", "WDJB-MJHT", "4:12"],
     run: async (h) => {
       const gate = deferred<unknown>();
       const done = loginFlow(
@@ -537,7 +537,7 @@ export const SCENARIOS: Scenario[] = [
   {
     name: "sign-in-handoff-link-copied",
     opts: { interactive: true, headless: true },
-    data: [...COMMON, "login", "key.plrs.im/device", "WDJB-MJHT", "4:12"],
+    data: [...COMMON, "login", "polaris.locker/device", "WDJB-MJHT", "4:12"],
     run: async (h) => {
       const gate = deferred<unknown>();
       const done = loginFlow(
@@ -558,7 +558,7 @@ export const SCENARIOS: Scenario[] = [
     data: [
       ...COMMON,
       "login",
-      "key.plrs.im/device",
+      "polaris.locker/device",
       "WDJB-MJHT",
       "4:12",
       "tidewater login",
@@ -577,7 +577,7 @@ export const SCENARIOS: Scenario[] = [
     data: [
       ...COMMON,
       "login",
-      "key.plrs.im/device",
+      "polaris.locker/device",
       "WDJB-MJHT",
       "4:12",
       "tidewater login",
@@ -598,7 +598,7 @@ export const SCENARIOS: Scenario[] = [
     data: [
       ...COMMON,
       "login",
-      "key.plrs.im/device?code=WDJB-MJHT",
+      "polaris.locker/device?code=WDJB-MJHT",
       "tidewater login",
     ],
     run: async (h) => {
@@ -625,7 +625,7 @@ export const SCENARIOS: Scenario[] = [
     data: [
       ...COMMON,
       "login",
-      "key.plrs.im/device?code=WDJB-MJHT",
+      "polaris.locker/device?code=WDJB-MJHT",
       "Mara Fennick",
       "mara@fennick.studio",
     ],

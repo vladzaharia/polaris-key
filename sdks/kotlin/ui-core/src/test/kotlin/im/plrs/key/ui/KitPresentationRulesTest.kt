@@ -131,7 +131,7 @@ class KitPresentationRulesTest {
 
     @Test
     fun onlyHttpsAndLoopbackLinksAreUsable() {
-        assertEquals("https://key.plrs.im/device", KitLinks.valid("https://key.plrs.im/device"))
+        assertEquals("https://polaris.locker/device", KitLinks.valid("https://polaris.locker/device"))
         assertEquals("http://localhost:8080/cb", KitLinks.valid("http://localhost:8080/cb"))
         assertEquals("http://127.0.0.1:9/cb", KitLinks.valid("http://127.0.0.1:9/cb"))
         assertNull(KitLinks.valid("http://example.com/"))

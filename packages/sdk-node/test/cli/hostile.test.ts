@@ -83,8 +83,8 @@ const hostile = stubClient({
     beginSignIn: async () => ({
       deviceCode: "dc_secret",
       userCode: `WDJB${EVIL}-MJHT`,
-      verificationUri: `https://key.plrs.im/device${EVIL}`,
-      verificationUriComplete: `https://key.plrs.im/device?code=X${EVIL}`,
+      verificationUri: `https://polaris.locker/device${EVIL}`,
+      verificationUriComplete: `https://polaris.locker/device?code=X${EVIL}`,
       expiresIn: 600,
       interval: 5,
       expiresAt: NOW / 1000 + 300,
@@ -241,7 +241,7 @@ describe("TERM=dumb: plain lines, no cursor control (SIGN-IN.md D-77)", () => {
       loginFlow(ctx, stubClient(), { deviceCode: true }),
     );
     expect(raw).toContain("WDJB-MJHT");
-    expect(raw).toContain("key.plrs.im/device");
+    expect(raw).toContain("polaris.locker/device");
     expect(raw).not.toMatch(/\x1b/);
   });
 
@@ -421,7 +421,7 @@ describe("opening the browser", () => {
         unref: () => undefined,
       };
     };
-    const url = "https://key.plrs.im/device?code=WDJB-MJHT&next=a|b^c";
+    const url = "https://polaris.locker/device?code=WDJB-MJHT&next=a|b^c";
     expect(await openInBrowser(url, "win32", fake)).toBe(true);
     expect(calls).toEqual([
       { cmd: "rundll32", args: ["url.dll,FileProtocolHandler", url] },
@@ -455,10 +455,10 @@ describe("opening the browser", () => {
       },
       bundle: {},
     });
-    expect(await ctx.openUrl("https://key.plrs.im/device?code=X")).toBe(true);
+    expect(await ctx.openUrl("https://polaris.locker/device?code=X")).toBe(true);
     expect(await ctx.openUrl("http://evil.example/")).toBe(false);
     expect(await ctx.openUrl("https://key.plrs.im/\x07")).toBe(false);
-    expect(opened).toEqual(["https://key.plrs.im/device?code=X"]);
+    expect(opened).toEqual(["https://polaris.locker/device?code=X"]);
   });
 });
 

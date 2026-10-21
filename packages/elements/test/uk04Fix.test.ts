@@ -101,7 +101,7 @@ describe("UK-04 fix", () => {
         phase: "waiting",
         userCode: "WDJB-MJHT",
         secondsLeft: 598,
-        verificationUri: "https://key.plrs.im/device",
+        verificationUri: "https://polaris.locker/device",
       },
     });
     const root = el.shadowRoot!;

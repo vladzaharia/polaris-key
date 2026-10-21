@@ -180,7 +180,7 @@ public struct PolarisSignIn: View {
 /// The sign-in screen for one phase, without a live client (previews and render tests).
 ///
 /// The code view (SIGN-IN.md §3.17, D-67; UI-KITS §4.3) leads with the product, says where to go
-/// ("On any phone or computer, go to key.plrs.im/device and enter this code."), shows the user code
+/// ("On any phone or computer, go to polaris.locker/device and enter this code."), shows the user code
 /// at hero size with Copy, the countdown and Copy link, then Open browser and Cancel. It lays out
 /// for the space it gets (`PolarisAdaptivePage`): one column on a phone in portrait, the code and
 /// actions beside the instructions in landscape and short windows, and the split Welcome on iPad

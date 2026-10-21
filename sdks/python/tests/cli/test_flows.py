@@ -125,8 +125,8 @@ def test_device_limit_without_a_terminal_reports_and_stops() -> None:
 class _Prompt:
     deviceCode = "dc"
     userCode = "WDJB-MJHT"
-    verificationUri = "https://key.plrs.im/device"
-    verificationUriComplete = "https://key.plrs.im/device?user_code=WDJB-MJHT"
+    verificationUri = "https://polaris.locker/device"
+    verificationUriComplete = "https://polaris.locker/device?user_code=WDJB-MJHT"
     expiresIn = 600
     interval = 1
 
