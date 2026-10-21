@@ -19,6 +19,7 @@ export {
   mergeThemes,
   monogramOf,
   onCopyLoaded,
+  preloadCopy,
   OPENS,
   placeKeys,
   provideTable,

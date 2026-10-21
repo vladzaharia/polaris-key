@@ -34,6 +34,12 @@ const KB = 1000;
  * "Powered by" badge (LK-01/LK-16: the badge templates and the label's outlined prefix, about
  * 9 KB) and P0-38's sign-in model and copy (about 3 KB). The first version of that art also pulled
  * the other fifteen badge labels' prefixes in (+12 KB); `LOCKER_POWERED_BY_PREFIX` keeps them out.
+ *
+ * polaris-key-gate 84.3 -> 70.8 KB (v0.9.13 growth taken back out): the badge artwork loads when an
+ * About screen first shows it (`@polaris-key/brand/badge`, generated/locker-badge.ts: -6.6 KB),
+ * and the English copy table the web kits bundle leaves out `core.codes.*` and the terminal's
+ * `cli.*` (`kit-copy/lean`; they arrive as one lazy table, -6.9 KB). Left to reach 68.5: the
+ * steps the gate does not show first (offline, paywall, settings) are still in the entry.
  */
 export const BUDGETS = JSON.parse(
   readFileSync(join(here, "size-budget.json"), "utf8"),

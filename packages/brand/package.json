@@ -35,6 +35,10 @@
       "types": "./dist/react.d.ts",
       "default": "./dist/react.js"
     },
+    "./badge": {
+      "types": "./dist/marks/badge.d.ts",
+      "default": "./dist/marks/badge.js"
+    },
     "./svg": {
       "types": "./dist/svg.d.ts",
       "default": "./dist/svg.js"
@@ -46,6 +50,10 @@
     "./kit-copy": {
       "types": "./dist/generated/kit-copy/index.d.ts",
       "default": "./dist/generated/kit-copy/index.js"
+    },
+    "./kit-copy/lean": {
+      "types": "./dist/generated/kit-copy/lean.d.ts",
+      "default": "./dist/generated/kit-copy/lean.js"
     },
     "./kit-copy/portal": {
       "types": "./dist/generated/kit-copy/portal.d.ts",
