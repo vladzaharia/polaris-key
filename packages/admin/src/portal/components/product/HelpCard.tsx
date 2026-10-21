@@ -5,6 +5,10 @@ import type { LibraryProduct } from "../../model/library.js";
 import { SectionCard } from "./Card.js";
 import { t } from "../../../lib/copy.js";
 
+/** A long developer name or address wraps inside the button, never past the window (WCAG 1.4.10). */
+const WRAPS =
+  "h-auto min-h-9 max-w-full whitespace-normal py-1.5 text-left [overflow-wrap:anywhere]";
+
 /** Help (§4.20): who handles licenses and downloads, and how to reach them (G16). */
 export function HelpCard({
   product,
@@ -16,13 +20,13 @@ export function HelpCard({
   return (
     <SectionCard id="help" title={t("locker.help.title")}>
       <div className="space-y-4">
-        <p className="flex gap-3 text-sm text-fg-muted">
+        <p className="flex gap-3 text-sm text-fg-muted [overflow-wrap:anywhere]">
           <LifeBuoy aria-hidden className="mt-0.5 size-4 shrink-0" />
           {t("locker.help.body", { developer: who, product: product.name })}
         </p>
         <div className="flex flex-wrap gap-2">
           {supportUrl ? (
-            <Button asChild variant="quiet">
+            <Button asChild variant="quiet" className={WRAPS}>
               <a href={supportUrl} target="_blank" rel="noreferrer">
                 <ExternalLink aria-hidden />
                 {t("locker.help.contact", {
@@ -31,7 +35,7 @@ export function HelpCard({
               </a>
             </Button>
           ) : supportEmail ? (
-            <Button asChild variant="quiet">
+            <Button asChild variant="quiet" className={WRAPS}>
               <a href={`mailto:${supportEmail}`}>
                 <Mail aria-hidden />
                 {t("signin.email.label")} {supportEmail}
@@ -43,7 +47,7 @@ export function HelpCard({
               href={website}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-2 text-sm text-fg-strong hover:underline"
+              className="inline-flex max-w-full items-center gap-2 text-sm text-fg-strong [overflow-wrap:anywhere] hover:underline"
             >
               <ExternalLink aria-hidden className="size-4" />
               {new URL(website).host}

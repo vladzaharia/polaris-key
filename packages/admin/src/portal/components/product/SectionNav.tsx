@@ -28,8 +28,22 @@ export function SectionNav({
   hrefFor: (s: ProductSection) => string;
   variant: "toc" | "pills";
 }): React.ReactElement {
+  const navRef = React.useRef<HTMLElement>(null);
+  // The tab strip scrolls inside itself (WCAG 1.4.10): the section being read is brought into its
+  // view by moving the strip alone, never the page.
+  React.useEffect(() => {
+    const nav = navRef.current;
+    const on = nav?.querySelector<HTMLElement>('[aria-current="location"]');
+    if (!nav || !on || nav.scrollWidth <= nav.clientWidth) return;
+    // The nav is the link's offset parent (sticky), so `offsetLeft` is already the nav's own.
+    nav.scrollTo({
+      left: Math.max(0, on.offsetLeft - (nav.clientWidth - on.offsetWidth) / 2),
+      behavior: "auto",
+    });
+  }, [current, variant]);
   return (
     <nav
+      ref={navRef}
       aria-label={
         variant === "toc"
           ? t("locker.account.onThisPage")
@@ -43,7 +57,7 @@ export function SectionNav({
         "pk-vt-chrome",
         variant === "toc"
           ? "sticky top-24 hidden w-[9.25rem] shrink-0 self-start wide:block short:top-6"
-          : "sticky top-14 z-20 -mx-4 overflow-x-auto border-b border-border bg-surface-page px-4 py-2 desk:top-16 desk:-mx-8 desk:px-8 wide:hidden short:top-0",
+          : "sticky top-14 z-20 -mx-4 min-w-0 overflow-x-auto overscroll-x-contain border-b border-border bg-surface-page px-4 py-2 desk:top-16 desk:-mx-8 desk:px-8 wide:hidden short:top-0",
       )}
     >
       <ul

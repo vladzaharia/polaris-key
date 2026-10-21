@@ -101,13 +101,13 @@ export function ProductHeader({
           <h1
             ref={headingRef}
             tabIndex={-1}
-            className="pk-vt-hero-title w-fit text-headline font-semibold leading-tight text-fg-strong outline-none desk:text-4xl"
+            className="pk-vt-hero-title w-fit max-w-full text-headline font-semibold leading-tight text-fg-strong outline-none [overflow-wrap:anywhere] desk:text-4xl"
           >
             {product.name}
           </h1>
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-fg-muted">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-fg-muted">
             {pres.developer ? (
-              <span>
+              <span className="min-w-0 max-w-full [overflow-wrap:anywhere]">
                 by{" "}
                 <span className="font-medium text-accent-fg">
                   {pres.developer}

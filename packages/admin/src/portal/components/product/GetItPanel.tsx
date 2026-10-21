@@ -218,12 +218,14 @@ export function GetItPanel({
         </p>
       ) : null}
       {rows.length ? (
-        // The table scrolls inside its own labelled, focusable region, never the page.
+        // The table scrolls inside its own labelled, focusable region, never the page. `relative`
+        // makes the region the containing block of the table's sr-only cells (`position: absolute`):
+        // otherwise they sit past the region's clip and widen the page (WCAG 1.4.10).
         <div
           role="region"
           aria-label={t("getIt.table")}
           tabIndex={0}
-          className="-mx-5 overflow-x-auto border-y border-border desk:-mx-6"
+          className="relative -mx-5 overflow-x-auto border-y border-border desk:-mx-6"
         >
           <table className="w-full min-w-[17rem] border-collapse text-left text-sm">
             <caption className="sr-only">{t("getIt.table")}</caption>
