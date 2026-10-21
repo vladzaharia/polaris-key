@@ -118,19 +118,21 @@ describe("the session-ended overlay in the built console", () => {
     });
     const { page } = s;
     // A field the person is typing in: the licence list's search.
-    const search = page.getByRole("searchbox").first();
+    const search = page.locator('input[type="search"]').first();
     await search.fill("ada lovelace");
     s.expire();
     // The next thing they do asks the server (another tab of the list); the answer is a 401
     // marked expired.
-    await page.getByRole("tab", { name: /^Expired/ }).click();
+    await page.getByRole("button", { name: /^Disabled/ }).click();
     const dialog = page.getByRole("alertdialog", {
       name: "Your session ended",
     });
     await dialog.waitFor({ timeout: 10_000 });
     // Still on the same page, same hash, same text.
-    expect(new URL(page.url()).hash).toBe("#/p/djdl/license/licenses");
-    await expect(search).toHaveValue("ada lovelace");
+    expect(new URL(page.url()).hash.split("?")[0]).toBe(
+      "#/p/djdl/license/licenses",
+    );
+    expect(await search.inputValue()).toBe("ada lovelace");
     // Focus is inside the dialog.
     expect(
       await page.evaluate(
@@ -153,7 +155,11 @@ describe("the session-ended overlay in the built console", () => {
       c.close();
     });
     await dialog.waitFor({ state: "detached", timeout: 10_000 });
-    await expect(search).toHaveValue("ada lovelace");
+    expect(await search.inputValue()).toBe("ada lovelace");
+    // The request that waited went again with the new session: the page shows the filter it asked for.
+    expect(await page.getByRole("button", { name: /^Disabled/ }).count()).toBe(
+      1,
+    );
     expect(await violations(page)).toEqual([]);
     await page.context().close();
   });
@@ -164,11 +170,10 @@ describe("the session-ended overlay in the built console", () => {
       scheme: "light",
     });
     const { page } = s;
-    const search = page.getByRole("searchbox").first();
+    const search = page.locator('input[type="search"]').first();
     await search.focus();
     s.expire();
-    const tab = page.getByRole("tab", { name: /^Expired/ });
-    await tab.click();
+    await page.getByRole("button", { name: /^Disabled/ }).click();
     const dialog = page.getByRole("alertdialog", {
       name: "Your session ended",
     });
@@ -177,7 +182,14 @@ describe("the session-ended overlay in the built console", () => {
       await page.screenshot({ path: `${SHOTS}/overlay-1440-light.png` });
     await page.keyboard.press("Escape");
     await dialog.waitFor({ state: "detached", timeout: 10_000 });
-    await expect(tab).toBeFocused();
+    // Focus went back to where it was or, if that is gone, to the page heading; never <body>.
+    await page.waitForFunction(
+      () =>
+        document.activeElement !== null &&
+        document.activeElement !== document.body,
+      undefined,
+      { timeout: 5_000 },
+    );
     expect(await violations(page)).toEqual([]);
     await page.context().close();
   });
@@ -191,11 +203,13 @@ describe("the session-ended overlay in the built console", () => {
       });
       const { page } = s;
       s.expire();
-      await page.getByRole("tab", { name: /^Expired/ }).click();
+      await page.getByRole("button", { name: /^Disabled/ }).click();
       const dialog = page.getByRole("alertdialog", {
         name: "Your session ended",
       });
       await dialog.waitFor({ timeout: 10_000 });
+      // Measure the sheet at rest, not mid-slide.
+      await page.waitForTimeout(900);
       const box = (await dialog.boundingBox())!;
       expect(box.x).toBeGreaterThanOrEqual(0);
       expect(box.x + box.width).toBeLessThanOrEqual(390);

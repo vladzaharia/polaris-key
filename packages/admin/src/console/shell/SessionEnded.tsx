@@ -5,8 +5,9 @@
  * where it was), not a navigation, so a form half-filled when the session ended is still there when
  * the person comes back. "Sign in again" opens the Worker's sign-in card in a second tab (a link,
  * so a popup blocker cannot stop it); that tab ends on `SignedInAgain`, which tells this one.
- * "Not now" (and Escape) leaves the page as it is, to copy something out; the next request that
- * fails brings the overlay back.
+ * "Not now" (and Escape) leaves the page as it is, to copy something out: the requests that were
+ * waiting fail as they would have, and the next one that meets the 401 brings the overlay back.
+ * When the session comes back the waiting requests are sent again (`endedState.ts`).
  */
 import * as React from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -57,11 +58,32 @@ export function SessionEnded(): React.ReactElement | null {
     if (!ended) setOpened(false);
   }, [ended]);
 
+  // The dialog gives focus back to where it was. When that element is gone (the page changed under
+  // it while the request waited), the page heading takes it, never <body>.
+  const wasEnded = React.useRef(false);
+  React.useEffect(() => {
+    if (wasEnded.current && !ended) {
+      let frames = 0;
+      // The dialog's own return runs first. If its target goes (a held request just failed and
+      // the page is rebuilding), the heading takes focus instead; watched for about 0.6 s.
+      const settle = (): void => {
+        const active = document.activeElement;
+        if (!active || active === document.body) {
+          const h1 = document.querySelector<HTMLElement>("h1[data-page-title]");
+          if (h1 && frames >= 2) return h1.focus({ preventScroll: true });
+        }
+        if (++frames < 40) requestAnimationFrame(settle);
+      };
+      requestAnimationFrame(settle);
+    }
+    wasEnded.current = ended;
+  }, [ended]);
+
   return (
     <Dialog
       open={ended}
       onOpenChange={(open) => {
-        if (!open) clearSessionEnded();
+        if (!open) clearSessionEnded("dismissed");
       }}
       size="sm"
       role="alertdialog"
@@ -77,7 +99,10 @@ export function SessionEnded(): React.ReactElement | null {
           : ""}
       </div>
       <DialogFooter>
-        <Button variant="outline" onClick={clearSessionEnded}>
+        <Button
+          variant="outline"
+          onClick={() => clearSessionEnded("dismissed")}
+        >
           Not now
         </Button>
         <Button asChild variant="neutral">

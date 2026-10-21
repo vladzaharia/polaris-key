@@ -64,6 +64,7 @@ import {
 import { escapeHtml } from "../platform/html.js";
 import { randomToken } from "../platform/random.js";
 import { can, PLATFORM, resolvePrincipal } from "./authz.js";
+import { holdsRoot } from "../core/rbac/principal.js";
 import {
   STEP_UP_MAX_AGE_SECONDS,
   buildSessionCookie,
@@ -684,7 +685,7 @@ export async function handleAdminCallback(
       displayName: identity.name ?? null,
       groups: identity.groups,
     },
-    { operator: true, req },
+    { operator: holdsRoot(env, identity.groups), req },
     now,
   );
   if (signedIn.status !== "ok") {

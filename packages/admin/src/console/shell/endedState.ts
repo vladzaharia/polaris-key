@@ -5,6 +5,12 @@
  * again happens in a second tab that tells this one when it is done.
  *
  * One module-level flag with subscribers, because the 401 is seen by `api.ts`, which knows no tree.
+ *
+ * The request that met the 401 is HELD, not failed: `api.ts` waits here, and when the session is
+ * back it sends the same request again with the fresh CSRF token (the 401 means the server refused
+ * it before doing anything, so replaying it cannot double an effect). The page that asked never
+ * sees an error, so it keeps its form state and its place. If the person chooses "Not now", the
+ * held requests fail with the 401 as they would have, and the page shows what it shows for that.
  */
 import * as React from "react";
 
@@ -15,6 +21,7 @@ export const SIGNED_IN_HASH = "#/signed-in";
 
 let ended = false;
 const listeners = new Set<() => void>();
+const waiters = new Set<(back: boolean) => void>();
 const emit = (): void => listeners.forEach((l) => l());
 
 /** The session ended under an open page. */
@@ -24,11 +31,27 @@ export function markSessionEnded(): void {
   emit();
 }
 
-/** The session is back (a `/me` read succeeded again), or the person chose to stay. */
-export function clearSessionEnded(): void {
+/**
+ * The overlay is over: `back` when a `/me` read succeeded again (held requests are sent again),
+ * `dismissed` when the person chose "Not now" (held requests fail with their 401).
+ */
+export function clearSessionEnded(
+  outcome: "back" | "dismissed" = "back",
+): void {
   if (!ended) return;
   ended = false;
+  const held = [...waiters];
+  waiters.clear();
   emit();
+  for (const release of held) release(outcome === "back");
+}
+
+/** Held until the overlay is over: `true` when the session is back, `false` when dismissed. */
+export function waitForSessionBack(): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (!ended) return resolve(true);
+    waiters.add(resolve);
+  });
 }
 
 export function isSessionEnded(): boolean {

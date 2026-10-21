@@ -29,13 +29,25 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-async function endSession(): Promise<void> {
+/**
+ * The next request meets a marked 401. It is held, not failed: returns the promise of its eventual
+ * outcome, and the real `fetch` to put back when the "sign-in" happens.
+ */
+async function endSession(): Promise<{
+  held: Promise<unknown>;
+  restore: () => void;
+}> {
   const real = globalThis.fetch;
   vi.stubGlobal("fetch", async () => EXPIRED());
+  let held!: Promise<unknown>;
   await act(async () => {
-    await api.attention().catch(() => undefined);
+    held = api.attention().then(
+      (v) => ({ ok: v }),
+      (e: unknown) => ({ err: e }),
+    );
+    await screen.findByRole("alertdialog", { name: "Your session ended" });
   });
-  vi.stubGlobal("fetch", real);
+  return { held, restore: () => vi.stubGlobal("fetch", real) };
 }
 
 async function openPage(): Promise<HTMLInputElement> {
@@ -83,11 +95,11 @@ describe("the session-ended overlay", () => {
     ).toBeTruthy();
   });
 
-  it("moves focus into the dialog; Escape and Not now leave the page as it is and return focus", async () => {
+  it("moves focus into the dialog; Escape leaves the page as it is, returns focus and fails the held request", async () => {
     await openPage();
     const trigger = await screen.findByRole("button", { name: "Account menu" });
     trigger.focus();
-    await endSession();
+    const { held, restore } = await endSession();
     const dialog = await screen.findByRole("alertdialog");
     await waitFor(() =>
       expect(dialog.contains(document.activeElement)).toBe(true),
@@ -95,29 +107,88 @@ describe("the session-ended overlay", () => {
     await userEvent.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
     await waitFor(() => expect(document.activeElement).toBe(trigger));
-    // The next request that fails brings it back.
-    await endSession();
-    expect(await screen.findByRole("alertdialog")).toBeTruthy();
+    // "Not now": the request that was waiting fails with its 401, as it would have.
+    expect(await held).toMatchObject({ err: { status: 401 } });
+    // The next request that meets the 401 brings the overlay back; Not now is the same.
+    const again = await endSession();
     await userEvent.click(screen.getByRole("button", { name: "Not now" }));
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(await again.held).toMatchObject({ err: { status: 401 } });
+    restore();
+    again.restore();
   });
 
   it("has no axe violations", async () => {
     await openPage();
-    await endSession();
+    const { held } = await endSession();
     const dialog = await screen.findByRole("alertdialog");
     await expectNoAxeViolations(dialog);
+    await userEvent.keyboard("{Escape}");
+    await held;
   });
 
-  it("carries on when /me loads again (a sign-in elsewhere)", async () => {
+  it("carries on when /me loads again: the held request is sent again and succeeds", async () => {
     await openPage();
-    await endSession();
-    await screen.findByRole("alertdialog");
-    // Back on the tab: the shell reads /me, which works now.
+    const { held, restore } = await endSession();
+    // The person signed in in the other tab. Back on this one the shell reads /me, which works now.
+    restore();
     await act(async () => {
       document.dispatchEvent(new Event("visibilitychange"));
     });
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(await held).toHaveProperty("ok");
+  });
+
+  it("the replay carries the fresh CSRF token", async () => {
+    await openPage();
+    const real = globalThis.fetch;
+    const seen: (string | null)[] = [];
+    let first = true;
+    vi.stubGlobal(
+      "fetch",
+      async (url: RequestInfo | URL, init?: RequestInit) => {
+        if (
+          String(url).includes("/manage/api/products/djdl/license/licenses")
+        ) {
+          seen.push(new Headers(init?.headers).get("X-PKey-CSRF"));
+          if (first) {
+            first = false;
+            return EXPIRED();
+          }
+          return new Response("{}", { status: 200 });
+        }
+        return real(url, init);
+      },
+    );
+    let held!: Promise<unknown>;
+    await act(async () => {
+      held = api
+        .createLicense("djdl", { name: "x", email: "x@x.io" })
+        .catch((e: unknown) => e);
+      await screen.findByRole("alertdialog");
+    });
+    // The other tab signed in, so /me answers with a new session's token.
+    const me = await (await real("/manage/api/me")).json();
+    vi.stubGlobal(
+      "fetch",
+      async (url: RequestInfo | URL, init?: RequestInit) => {
+        if (String(url).includes("/manage/api/me"))
+          return new Response(JSON.stringify({ ...me, csrf: "fresh-token" }), {
+            status: 200,
+          });
+        if (String(url).includes("/license/licenses")) {
+          seen.push(new Headers(init?.headers).get("X-PKey-CSRF"));
+          return new Response("{}", { status: 200 });
+        }
+        return real(url, init);
+      },
+    );
+    await act(async () => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    await held;
+    expect(seen).toEqual(["csrf-token", "fresh-token"]);
   });
 
   it("the sign-in tab's message makes this page read the session again", async () => {
@@ -137,10 +208,11 @@ describe("the session-ended overlay", () => {
       },
     );
     await openPage();
-    await endSession();
-    await screen.findByRole("alertdialog");
+    const { held, restore } = await endSession();
     await waitFor(() => expect(channels.length).toBe(1));
+    restore();
     await act(async () => channels[0]!.onmessage?.());
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(await held).toHaveProperty("ok");
   });
 });

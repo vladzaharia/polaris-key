@@ -214,7 +214,7 @@ describe("api — step-up refusals", () => {
     expect(redirect).toHaveBeenLastCalledWith(true);
   });
 
-  it("with a page open, an expired session shows the overlay and does not leave the tab", async () => {
+  it("with a page open, an expired session shows the overlay, holds the request and does not leave the tab", async () => {
     const redirect = vi.fn();
     setLoginRedirectForTests(redirect);
     setCsrf("token");
@@ -226,13 +226,22 @@ describe("api — step-up refusals", () => {
           headers: { "X-PKey-Session": "expired" },
         }),
     );
-    await expect(api.me()).rejects.toMatchObject({ status: 401 });
+    let settled = false;
+    const held = api.attention().then(
+      () => ((settled = true), "ok"),
+      () => ((settled = true), "401"),
+    );
+    await vi.waitFor(() => expect(isSessionEnded()).toBe(true));
+    expect(settled).toBe(false);
     expect(redirect).not.toHaveBeenCalled();
-    expect(isSessionEnded()).toBe(true);
-    // An unmarked 401 (no cookie ever) is still the plain sign-in, page open or not.
-    clearSessionEnded();
-    stubFetch(() => new Response(null, { status: 401 }));
+    // The probe that learns the session is back never waits on itself.
     await expect(api.me()).rejects.toMatchObject({ status: 401 });
+    // "Not now": the held request fails with its 401.
+    clearSessionEnded("dismissed");
+    expect(await held).toBe("401");
+    // An unmarked 401 (no cookie ever) is still the plain sign-in, page open or not.
+    stubFetch(() => new Response(null, { status: 401 }));
+    await expect(api.attention()).rejects.toMatchObject({ status: 401 });
     expect(redirect).toHaveBeenLastCalledWith(false);
     expect(isSessionEnded()).toBe(false);
   });

@@ -36,7 +36,10 @@
  * from `./api.js` — this file is still the console's single import surface, it just no longer
  * owns the shapes.
  */
-import { markSessionEnded } from "./console/shell/endedState.js";
+import {
+  markSessionEnded,
+  waitForSessionBack,
+} from "./console/shell/endedState.js";
 export type {
   ConfigEntry,
   ConfigKind,
@@ -4889,7 +4892,7 @@ export class ApiError extends Error {
 async function call<T>(
   path: string,
   init: RequestInit = {},
-  opts: { stepUpRedirect?: boolean } = {},
+  opts: { stepUpRedirect?: boolean; hold?: boolean } = {},
 ): Promise<T> {
   const res = await send(path, init, opts);
   // 204/empty bodies are tolerated (returns undefined cast to T).
@@ -4906,7 +4909,7 @@ async function callText(path: string): Promise<string> {
 async function send(
   path: string,
   init: RequestInit = {},
-  opts: { stepUpRedirect?: boolean } = {},
+  opts: { stepUpRedirect?: boolean; hold?: boolean } = {},
 ): Promise<Response> {
   const headers = new Headers(init.headers);
   const mutating = init.method != null && init.method !== "GET";
@@ -4923,9 +4926,16 @@ async function send(
   });
   if (res.status === 401) {
     const expired = res.headers.get("X-PKey-Session") === "expired";
-    // A page that had a session stays where it is under the overlay; `csrf` is set once `/me` loaded.
-    if (expired && csrf !== "") markSessionEnded();
-    else redirectToLogin(expired);
+    // A page that had a session stays where it is under the overlay (`csrf` is set once `/me`
+    // loaded), and the request waits for the sign-in and goes again. `/me` itself is the probe
+    // that learns the session is back, so it never waits on itself.
+    if (expired && csrf !== "") {
+      markSessionEnded();
+      if (opts.hold !== false && (await waitForSessionBack()))
+        return send(path, init, { ...opts, hold: false });
+    } else {
+      redirectToLogin(expired);
+    }
     throw new ApiError(401);
   }
   if (!res.ok) {
@@ -5026,7 +5036,8 @@ const feedPackagePath = (
 
 const rawApi = {
   // ── identity ────────────────────────────────────────────────────────────────
-  me: () => call<Me>("/manage/api/me"),
+  // The probe that learns the session is back: it must not wait for the sign-in it would end.
+  me: () => call<Me>("/manage/api/me", {}, { hold: false }),
   /** Who can give the member access to `area` in `scope` (`platform` or `product:<slug>`). */
   accessAdmins: (scope: string, area: AreaId) =>
     call<AccessAdmins>(
