@@ -852,7 +852,8 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
           // The line under a row is its cells' (border-separate), so a row's View Transition
           // snapshot carries it and it moves with the row (S-23 §6.1 "list"; MO-09).
           "bg-surface-raised text-sm text-fg outline-hidden [&>td]:border-b [&>td]:border-border",
-          "hover:bg-surface-overlay focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus",
+          // B17: the hover tint is the nearest service's (`state-hover-tint`), not a neutral step.
+          "hover:bg-state-hover-tint focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus",
           "data-[selected]:bg-accent-subtle",
           // highlight(): a created or edited row's tint wins over the row's own surface.
           "[&.pk-row-highlight]:bg-accent-subtle",

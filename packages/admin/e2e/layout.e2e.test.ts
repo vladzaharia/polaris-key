@@ -25,6 +25,7 @@ import {
   emptyStateStarBreaches,
   lintFindings,
   forcedColourBreaches,
+  shellStateBreaches,
   unlabelledScrollers,
 } from "./pageChecks.js";
 import {
@@ -617,8 +618,9 @@ for (const vp of VIEWPORTS) {
             );
             const errorState =
               (await page.locator("#content [data-error-action]").count()) > 0;
+            const found = withoutDebt(c.name, violations);
             report[`${vp.label}/${theme} ${c.name} ${c.hash}`] = {
-              violations,
+              violations: found,
               scrollers,
               gaps: [...new Set(gaps)],
               errors,
@@ -655,6 +657,10 @@ for (const vp of VIEWPORTS) {
                 ],
                 "axe: masthead and workbench",
               ).toEqual([]);
+            expect(
+              await shellStateBreaches(page),
+              "shell state colours (B2, B4, B17)",
+            ).toEqual([]);
             expect(
               await emptyStateStarBreaches(page),
               "stationary star (BRAND.md §7.7)",
@@ -700,7 +706,7 @@ for (const vp of VIEWPORTS) {
               "content column",
             ).toEqual([]);
             expect(
-              withoutDebt(c.name, violations).map(
+              found.map(
                 (v) => `[${v.rule}/${v.kind}] ${v.detail} @ ${v.where}`,
               ),
             ).toEqual([]);
