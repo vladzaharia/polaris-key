@@ -235,6 +235,7 @@ Godot, and Kotlin for the features its parity manifest has implemented).
 | `mirrors`            | `pnpm gen mirrors`            | Typed config mirrors for a product catalog, in five languages                     |
 | `sdk-samples`        | `pnpm gen sdk-samples`        | `pkey sdk` configuration samples, one per SDK                                     |
 | `docs-csp`           | `pnpm gen docs-csp`           | Docs-site CSP hashes                                                              |
+| `docs-tiers`         | `pnpm gen docs-tiers`         | Docs-site per-file tiers                                                          |
 | `design-mockups`     | `pnpm gen design-mockups`     | Static design mockups built from their \_src directories                          |
 | `ux-coverage`        | `pnpm gen ux-coverage`        | UX coverage and wave pages from ux-coverage.json                                  |
 

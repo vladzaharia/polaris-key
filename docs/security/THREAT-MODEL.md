@@ -9649,11 +9649,23 @@ the bundle directories to the build's. The docs `check:links` adds the tier rule
 content links only to public pages (existing exceptions are held in `link-tier-debt.json`, which
 only shrinks).
 
-**Residual.** Until DOC-02b scopes the sidebar to the page's door, a public page's sidebar lists
-gated pages' titles and URLs; no gated page text leaks (the docs source is public anyway).
-Anything placed under `/assets/` in the admin build is public by design. The
-developer door and Help are public, and a file under `/docs/_astro/` that only a gated page uses
-(an imported image) is public with it; the repository that builds them is public too. The search
-UI still loads the public bundle for every reader until DOC-02c picks the bundle by tier, so a
-member searching sees public results only. `robots.txt` for the docs host is not served yet (it
-needs a route, with its OpenAPI row).
+**Per-file tiers.** A file under `/docs/_astro/` is public unless the build finds that only gated
+pages load it: `collect-docs-tiers.ts` writes those into `docsTiers.generated.ts`
+(`DOCS_ASSET_TIERS`, the lowest tier among the pages and files that name it), and `docsTierOf`
+serves them at that tier. A moved-page redirect page is served at its target's tier
+(`DOCS_REDIRECT_TIERS`), so an old Help link reaches Help. `test/docsTiersParity.test.ts` pins both
+tables to the built site. The access page carries the wanted page as `returnTo`, which the Worker
+puts on the Sign in link only after `sanitizeReturnTo` (a hand-made value falls back to the plain
+link); a signed-in reader without the admin area gets the access page's admin wording under a 403.
+
+**The customer host (LK-09).** Help is served at `polaris.locker/docs/help/*` through `handleDocs`,
+confined by `customerDocsPath` (Help, `/docs/_astro/`, `/docs/pagefind/`, `/docs/branding/`, the
+404 page); every other `/docs` path answers a 302 to the console host, and `key.plrs.im/docs/help/*`
+a 301 to the customer host. All served paths are public tier; the gate still runs on each.
+
+**Residual.** The docs sidebar is scoped per door in the page (`routeData.ts`), but a public
+page's HTML still names only its own door's pages. Anything placed under `/assets/` in the admin
+build is public by design. The developer door and Help are public. The search UI still loads the
+public bundle for every reader until DOC-02c picks the bundle by tier, so a member searching sees
+public results only (DOC-02c). `robots.txt` for the docs host is not served yet, and public HTML is
+`no-store`, not cacheable (LK-09).

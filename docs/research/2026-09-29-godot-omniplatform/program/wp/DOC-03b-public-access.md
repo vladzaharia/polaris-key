@@ -70,10 +70,29 @@ shrink-only); rule 11 and THREAT-MODEL text.
 
 Round 2: `help` reserved as a product slug (productSlug.ts, schema, test), `/help` -> `/docs/help/` alias (router kind `helpAlias`, OpenAPI, routeCoverage); sitemap filter parses `<url>` blocks; redirect-tier test (3 known public-to-gated moves listed in searchBundles.test.ts).
 
-Not done: the search UI still loads the public bundle for every reader (DOC-02c); `robots.txt`
-for the docs host needs a route and an OpenAPI row (follow-up); `/docs/help/code/<id>/` is a follow-up; DOC-02b's per-door
-sidebar lets the tier rule cover the chrome; the host move to polaris.locker is LK-09; the C-51
-text is not in this repo's docs.
+Review round (2026-10-20): C-51 amended (`docs/research/2026-10-07-dx-consolidation/integration.md`);
+per-file tiers built (`packages/docs/scripts/collect-docs-tiers.ts` writes
+`packages/worker/src/docsTiers.generated.ts`: a file under `/_astro/` that no public page loads
+takes the lowest tier among the pages that load it, and each moved-page redirect page is served at
+its target's tier); sitemap files public; the access page's Sign in link carries `returnTo`;
+`/help/*` aliases; a signed-in reader without the admin area gets the access page's admin wording
+under a 403 (`/docs/access/admin/`); the tier rule also refuses member to admin links (existing
+hits in `link-tier-debt.json`, shrink-only).
+
+Not done, with owners:
+
+- The search UI loads the public bundle for every reader. Owner: DOC-02c (acceptance line added).
+  The bundles are nested (public in member in admin), so it must pick one bundle per tier and not
+  merge them, and its "Help only" default needs a filter.
+- Separate per-door search bundles (the plan's `pagefind/help` and `pagefind/developers`): the
+  build has one public bundle. Owner: DOC-02c.
+- `/docs/help/code/<id>/` redirect pages (plan section 3.1, 7.4). Owner: LK-09 (acceptance line).
+- `robots.txt` for the docs host (a route and an OpenAPI row). Owner: LK-09 (acceptance line).
+- Cacheable public HTML (plan section 3.1, "Caching"): public HTML and `/_astro/` are still
+  `no-store` and `private`. Owner: LK-09 (acceptance line).
+- The per-door sidebar lets the tier rule cover the chrome: `routeData.ts` now scopes the sidebar
+  per door (LK-09); DOC-02b keeps the rest of the chrome.
+- The host move to polaris.locker is LK-09.
 
 ## Steps
 
@@ -83,10 +102,10 @@ text is not in this repo's docs.
 ## Acceptance criteria
 
 - [ ] The common definition of done in the docs plan §6.3 holds.
-- [ ] Worker tests: Help returns 200 with no session.
-- [ ] A member page sends a sessionless reader to `/docs/access/`.
-- [ ] Gated bundles and gated-only assets are refused.
-- [ ] The reserved-slug test row.
+- [x] Worker tests: Help returns 200 with no session.
+- [x] A member page sends a sessionless reader to `/docs/access/`.
+- [x] Gated bundles and gated-only assets are refused (`docsTiers.generated.ts`, `docsTiersParity.test.ts`).
+- [x] The reserved-slug test row.
 - [ ] `gen:check` for the schema copy.
 - [ ] The lead's check that no product uses `help`.
 - [ ] A security review before merge.
