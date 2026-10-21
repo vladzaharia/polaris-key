@@ -1,6 +1,5 @@
 /**
- * Distribution → Outlet credentials (ADMIN.md §6.4, T2 + drawer), moved from Keys & secrets.
- * Fixes OUT-1 to OUT-7.
+ * Distribution → Outlet credentials (ADMIN.md §6.4, T2 + drawer), moved from Keys & secrets. Fixes OUT-1 to OUT-7.
  *
  * The keys a store connector signs in with (App Store Connect, Google Play, the Microsoft Store,
  * the App Store In-App Purchase key, Steam) and the Sentry integration whose alerts open halt
@@ -29,6 +28,7 @@ import {
   type OutletCredentialsResponse,
   type PutOutletCredentialBody,
 } from "../../../../api.js";
+import { docsUrl } from "../../../../lib/docsLinks.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
 import { fromSeconds } from "../../../../lib/format.js";
 import { Button } from "../../../../ui/Button.js";
@@ -493,8 +493,8 @@ export function CredentialsPage({
             one; otherwise the platform's team key, for the one app assigned to
             this product.{" "}
             <a
-              className="text-accent-fg underline-offset-4 hover:underline"
-              href="/docs/admin/store-connections/"
+              className="text-accent-fg underline underline-offset-4"
+              href={docsUrl("storeConnections")}
               target="_blank"
               rel="noreferrer"
             >

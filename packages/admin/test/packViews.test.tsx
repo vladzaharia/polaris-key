@@ -420,7 +420,9 @@ describe("Deliverables (T2, DLV-1 to DLV-5)", () => {
       .mockRejectedValueOnce(new Error("boom"))
       .mockResolvedValueOnce({ gateKnown: true, deliverables: [] });
     mountList();
-    await userEvent.click(await screen.findByRole("button", { name: "Retry" }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Try again" }),
+    );
     expect(await screen.findByText("No deliverables yet")).toBeTruthy();
   });
 
@@ -582,7 +584,9 @@ describe("a pack's record (T3, PKD-1 to PKD-8)", () => {
       .mockRejectedValueOnce(new Error("nope"))
       .mockResolvedValueOnce(FILES);
     mountPack(CORE, "files");
-    await userEvent.click(await screen.findByRole("button", { name: "Retry" }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Try again" }),
+    );
     expect(await screen.findByText("readme.txt")).toBeTruthy();
   });
 
@@ -633,7 +637,9 @@ describe("a pack's record (T3, PKD-1 to PKD-8)", () => {
       .mockRejectedValueOnce(new Error("nope"))
       .mockResolvedValueOnce(RELEASES);
     mountPack(CORE);
-    await userEvent.click(await screen.findByRole("button", { name: "Retry" }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Try again" }),
+    );
     expect(await releaseRow("1.4.0")).toBeTruthy();
   });
 
@@ -830,7 +836,9 @@ describe("Content keys (P4-19, CKY-1 to CKY-3)", () => {
       .mockRejectedValueOnce(new Error("x"))
       .mockResolvedValueOnce(KEYS);
     mountKeys();
-    await userEvent.click(await screen.findByRole("button", { name: "Retry" }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Try again" }),
+    );
     expect(await screen.findByText("diceroll.events.*")).toBeTruthy();
   });
 

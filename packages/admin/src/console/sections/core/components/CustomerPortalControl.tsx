@@ -86,7 +86,7 @@ export function CustomerPortalControl({
                   void save(failedRequested).catch(() => undefined);
                 }}
               >
-                Retry
+                Try again
               </Button>
             </div>
           ) : undefined

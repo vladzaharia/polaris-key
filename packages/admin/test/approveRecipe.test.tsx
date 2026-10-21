@@ -496,7 +496,7 @@ describe("Approve a minted token's recipe", () => {
     expect(within(drawer).queryByText(/not found/i)).toBeNull();
     fail = false;
     await userEvent.click(
-      await within(drawer).findByRole("button", { name: /Retry/ }),
+      await within(drawer).findByRole("button", { name: /Try again/ }),
     );
     expect(
       await screen.findByRole("dialog", { name: /Approve applemusic/ }),
@@ -506,7 +506,7 @@ describe("Approve a minted token's recipe", () => {
   it("hides the fields and offers Retry on the entry when the load fails (M15, N19)", async () => {
     let fail = true;
     open(() => (fail ? apiError(500) : recipes([recipe()])));
-    const retry = await screen.findByRole("button", { name: /Retry/ });
+    const retry = await screen.findByRole("button", { name: /Try again/ });
     expect(
       screen.queryByRole("textbox", { name: /^Signing secret/ }),
     ).toBeNull();

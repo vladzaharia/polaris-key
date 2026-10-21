@@ -116,7 +116,7 @@ describe("ErrorState", () => {
     expect(screen.getByRole("alert")).toBeTruthy();
     expect(screen.getByText("Too many requests")).toBeTruthy();
     expect(screen.queryByText(/api 429/)).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(retry).toHaveBeenCalled();
   });
 

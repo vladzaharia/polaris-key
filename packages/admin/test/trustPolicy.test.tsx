@@ -265,7 +265,9 @@ describe("Keys & secrets → Device trust", () => {
   it("shows the error state with Retry when the policy cannot load", async () => {
     fns.trustPolicy.mockRejectedValue(new ApiError(500));
     mount();
-    expect(await screen.findByRole("button", { name: "Retry" })).toBeTruthy();
+    expect(
+      await screen.findByRole("button", { name: "Try again" }),
+    ).toBeTruthy();
   });
 
   it("passes axe: the section, the editor and the confirmation", async () => {

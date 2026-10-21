@@ -495,7 +495,7 @@ describe("Keys & secrets → Signing keys (A-4)", () => {
     fns.productKeys.mockRejectedValueOnce(new ApiError(500));
     mount();
     await user.click(
-      (await screen.findAllByRole("button", { name: "Retry" }))[0]!,
+      (await screen.findAllByRole("button", { name: "Try again" }))[0]!,
     );
     expect((await screen.findAllByText("djdl-a")).length).toBeGreaterThan(0);
   });
@@ -639,7 +639,9 @@ describe("Keys & secrets → the page", () => {
   it("shows an error state when the product cannot load", async () => {
     fns.product.mockRejectedValue(new ApiError(500));
     mount();
-    expect(await screen.findByRole("button", { name: "Retry" })).toBeTruthy();
+    expect(
+      await screen.findByRole("button", { name: "Try again" }),
+    ).toBeTruthy();
   });
 
   it("passes axe", async () => {

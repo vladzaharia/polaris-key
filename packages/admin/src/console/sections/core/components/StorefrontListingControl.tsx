@@ -124,7 +124,7 @@ export function StorefrontListingControl({
                 variant="outline"
                 onClick={() => void save(failure.to).catch(() => undefined)}
               >
-                Retry
+                Try again
               </Button>
             </div>
           ) : undefined

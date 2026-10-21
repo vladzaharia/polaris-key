@@ -126,7 +126,7 @@ describe("Catalog page", () => {
     const backend = bootConfig("#/p/djdl/config/catalog", {
       [`${P}/config/catalog`]: () => (fail ? apiError(500) : CATALOG),
     });
-    const retry = await screen.findByRole("button", { name: "Retry" });
+    const retry = await screen.findByRole("button", { name: "Try again" });
     fail = false;
     await userEvent.click(retry);
     await screen.findByText("network.timeout");
@@ -712,7 +712,9 @@ describe("Catalog editor", () => {
     bootConfig("#/p/djdl/config/catalog/edit", {
       [`${P}/config/catalog`]: apiError(500),
     });
-    expect(await screen.findByRole("button", { name: "Retry" })).toBeTruthy();
+    expect(
+      await screen.findByRole("button", { name: "Try again" }),
+    ).toBeTruthy();
     expect(screen.queryByText("No entries yet")).toBeNull();
     expect(window.sessionStorage.getItem("pk-catalog-draft:djdl")).toBeNull();
   });

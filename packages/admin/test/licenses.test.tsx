@@ -183,7 +183,7 @@ describe("Licenses list", () => {
     });
     await screen.findByText("Who can give you access");
     expect(screen.queryByRole("button", { name: /New license/ })).toBeNull();
-    expect(screen.queryByRole("button", { name: /Retry/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Try again/ })).toBeNull();
   });
 
   it("counts each state on a facet tile, and a tile filters the table through the URL", async () => {
@@ -251,7 +251,7 @@ describe("Licenses list", () => {
     const log = bootLicense("#/p/djdl/license/licenses", {
       routes: { [`${API}/license/licenses`]: failing(500) },
     });
-    const retry = await screen.findByRole("button", { name: /Retry/ });
+    const retry = await screen.findByRole("button", { name: /Try again/ });
     const reads = () =>
       log.calls.filter((c) => c.path === `${API}/license/licenses`).length;
     const before = reads();

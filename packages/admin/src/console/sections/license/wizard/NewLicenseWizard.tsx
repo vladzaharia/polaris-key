@@ -463,7 +463,7 @@ export function NewLicenseWizard({
       (tiersQ.isPending
         ? "Loading tiers…"
         : tiersError && !draft.noTier
-          ? "Retry the tiers, or choose No tier."
+          ? "Try the tiers again, or choose No tier."
           : undefined);
     footer = {
       later: cancel,
