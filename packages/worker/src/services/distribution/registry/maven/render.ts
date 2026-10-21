@@ -110,7 +110,7 @@ export function yankHides(feed: RenderContext["feed"]): boolean {
 export function listedVersions(
   pkg: RegistryPackage,
   hideYanked = true,
-): PackageVersion[] {
+): readonly PackageVersion[] {
   return hideYanked
     ? pkg.versions.filter((v) => v.state !== "yanked")
     : pkg.versions;
