@@ -147,13 +147,13 @@ export function Combobox(props: ComboboxProps): React.ReactElement {
             type="button"
             disabled={disabled || readOnly}
             className={cn(
-              "flex h-9 w-full items-center justify-between gap-2 rounded-md border border-border-strong bg-surface-sunken px-3 text-left text-sm text-fg",
-              "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page",
+              "flex h-9 w-full items-center justify-between gap-2 rounded-md border border-border-strong bg-surface-sunken px-3 text-start text-sm text-fg",
+              "focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2",
               "disabled:cursor-not-allowed disabled:opacity-50 aria-[invalid=true]:border-danger pointer-coarse:h-11",
               !props.multiple &&
                 props.clearable &&
                 selected.length > 0 &&
-                "pr-16",
+                "pe-16",
             )}
             {...aria}
             aria-describedby={
@@ -179,14 +179,14 @@ export function Combobox(props: ComboboxProps): React.ReactElement {
             type="button"
             aria-label="Clear selection"
             onClick={() => props.onChange?.(null)}
-            className="absolute right-8 top-1/2 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-sm text-fg-muted hover:text-fg-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+            className="absolute end-8 top-1/2 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-sm text-fg-muted hover:text-fg-strong focus-visible:outline-2 focus-visible:outline-focus"
           >
             <X aria-hidden className="size-3.5" />
           </button>
         ) : null}
       </div>
       <PopoverContent
-        className="w-[var(--radix-popover-trigger-width)] min-w-64 max-w-[min(32rem,92vw)] p-0"
+        className="w-[var(--radix-popover-trigger-width)] min-w-64 max-w-[min(32rem,var(--radix-popper-available-width))] p-0"
         onOpenAutoFocus={(e) => {
           // cmdk's input takes focus itself.
           e.preventDefault();

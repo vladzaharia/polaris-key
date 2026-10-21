@@ -151,7 +151,7 @@ export function AlertDestinations({
               key={d.id}
               data-dest={d.id}
               tabIndex={-1}
-              className="@container outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              className="@container outline-none focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-accent"
             >
               <DestinationRow
                 d={d}

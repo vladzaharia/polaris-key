@@ -822,18 +822,18 @@ function StoragePanel({ op }: { op: PlatformOperations }) {
         {r2 && r2.byKind.length > 0 ? (
           <div className="min-w-0">
             <table className="w-full text-sm">
-              <caption className="pb-2 text-left text-sm font-semibold text-fg-strong">
+              <caption className="pb-2 text-start text-sm font-semibold text-fg-strong">
                 Committed bytes by kind
               </caption>
               <thead>
-                <tr className="text-left text-xs text-fg-muted">
+                <tr className="text-start text-xs text-fg-muted">
                   <th scope="col" className="pb-1 font-normal">
                     Kind
                   </th>
-                  <th scope="col" className="pb-1 text-right font-normal">
+                  <th scope="col" className="pb-1 text-end font-normal">
                     Objects
                   </th>
-                  <th scope="col" className="pb-1 text-right font-normal">
+                  <th scope="col" className="pb-1 text-end font-normal">
                     Bytes
                   </th>
                 </tr>
@@ -841,16 +841,16 @@ function StoragePanel({ op }: { op: PlatformOperations }) {
               <tbody className="divide-y divide-border">
                 {r2.byKind.map((k) => (
                   <tr key={`${k.kind}:${k.gated}`}>
-                    <th scope="row" className="py-1.5 text-left font-normal">
+                    <th scope="row" className="py-1.5 text-start font-normal">
                       {KIND_LABEL[k.kind] ?? k.kind}
                       {k.gated ? (
                         <span className="text-fg-muted"> (gated)</span>
                       ) : null}
                     </th>
-                    <td className="py-1.5 text-right tabular-nums">
+                    <td className="py-1.5 text-end tabular-nums">
                       {formatCount(k.objects)}
                     </td>
-                    <td className="py-1.5 text-right tabular-nums">
+                    <td className="py-1.5 text-end tabular-nums">
                       {formatBytes(k.bytes)}
                     </td>
                   </tr>

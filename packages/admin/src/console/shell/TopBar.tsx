@@ -69,7 +69,7 @@ export function TopBar({
         className="max-[24rem]:hidden lg:min-w-[calc(var(--sidebar-w)-1.5rem)]"
       />
       <EnvironmentBadge environment={me.environment} />
-      <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-1.5">
+      <div className="ms-auto flex shrink-0 items-center gap-1 sm:gap-1.5">
         <button
           type="button"
           onClick={onOpenPalette}
@@ -77,7 +77,7 @@ export function TopBar({
           aria-keyshortcuts="Meta+K Control+K"
           className={cn(
             "flex items-center gap-2 rounded-md border border-border px-2 py-1.5 text-sm text-fg-muted sm:px-2.5",
-            "hover:bg-hover hover:text-fg-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus",
+            "hover:bg-hover hover:text-fg-strong focus-visible:outline-2 focus-visible:outline-focus",
           )}
         >
           <Search aria-hidden className="size-4" />

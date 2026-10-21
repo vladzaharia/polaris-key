@@ -91,7 +91,7 @@ export function Callout({
           ) : null}
         </div>
       </div>
-      {action ? <div className="shrink-0 sm:ml-auto">{action}</div> : null}
+      {action ? <div className="shrink-0 sm:ms-auto">{action}</div> : null}
     </div>
   );
 }

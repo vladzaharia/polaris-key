@@ -98,8 +98,10 @@ function Preview({
       {...(scrolls
         ? { role: "region", "aria-label": `${name} preview`, tabIndex: 0 }
         : {})}
-      className="flex justify-center overflow-x-auto rounded-md @[344px]:p-3"
-      style={{ background: ground }}
+      className="flex justify-center overflow-x-auto rounded-md bg-(--pk-ground) @[344px]:p-3"
+      // The badge's own ground, handed over as a custom property: it is the badge kit's colour,
+      // not a console token.
+      style={{ "--pk-ground": ground } as React.CSSProperties}
       // The kit's own paths: no script, no style, no external reference.
       dangerouslySetInnerHTML={{ __html: svg }}
     />

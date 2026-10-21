@@ -114,7 +114,7 @@ export function SettingsHub({
           >
             Settings
           </h1>
-          <div className="ml-auto flex items-center gap-1">
+          <div className="ms-auto flex items-center gap-1">
             <Button asChild variant="ghost" size="sm">
               <Link
                 to={productPage(slug, "settings-all")}

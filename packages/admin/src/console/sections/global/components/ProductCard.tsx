@@ -38,9 +38,10 @@ function Cover({ product: p }: { product: ProductDetail }): React.ReactElement {
       aria-hidden
       data-cover={header ? "art" : own ? "tint" : "slug"}
       // The tint is set through CSSOM, which the console's `style-src 'self'` allows.
-      style={color ? { backgroundColor: color } : undefined}
+      style={color ? ({ "--pk-art": color } as React.CSSProperties) : undefined}
       className={cn(
         "h-[72px] shrink-0 overflow-hidden rounded-t-lg max-sm:hidden",
+        color && "bg-(--pk-art)",
         header && "border-b border-border bg-hover",
       )}
     >
@@ -154,7 +155,7 @@ export function ProductCard({
               <Link
                 to={productPage(p.slug, landing(p.slug, p.services ?? null))}
                 data-card-link=""
-                className="underline-offset-4 outline-none after:absolute after:inset-0 after:rounded-lg after:content-[''] hover:underline focus-visible:ring-0 focus-visible:ring-offset-0"
+                className="underline-offset-4 outline-none after:absolute after:inset-0 after:rounded-lg after:content-[''] hover:underline"
               >
                 {name}
               </Link>
@@ -191,7 +192,7 @@ export function ProductCard({
             <StatusPill
               tone={worstTone(attention)}
               size="sm"
-              className={cn("ml-auto", WRAPPING_PILL)}
+              className={cn("ms-auto", WRAPPING_PILL)}
             >
               {pillLabel(attention)}
             </StatusPill>
@@ -200,7 +201,7 @@ export function ProductCard({
               tone="neutral"
               icon={null}
               size="sm"
-              className="ml-auto"
+              className="ms-auto"
             >
               System
             </StatusPill>
@@ -237,7 +238,7 @@ export function ProductCard({
                         aria-hidden
                         data-issue-dot={worstTone(f.issues)}
                         className={cn(
-                          "absolute right-0.5 top-0.5 size-2 rounded-full ring-2 ring-surface-raised",
+                          "absolute end-0.5 top-0.5 size-2 rounded-full ring-2 ring-surface-raised",
                           worstTone(f.issues) === "danger"
                             ? "bg-danger"
                             : "bg-warning",

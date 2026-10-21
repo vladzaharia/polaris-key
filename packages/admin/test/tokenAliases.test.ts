@@ -75,7 +75,7 @@ const NOT_COLOR: Record<string, RegExp> = {
 };
 
 const PREFIX_RE =
-  /^(ring-offset|border-[trblxy]|bg|text|border|ring|divide|outline|fill|stroke|accent|placeholder|from|to|via|decoration|caret|shadow)-([a-z][a-z0-9-]*)(\/\d+)?$/;
+  /^(ring-offset|border-[trblxyse]|bg|text|border|ring|divide|outline|fill|stroke|accent|placeholder|from|to|via|decoration|caret|shadow)-([a-z][a-z0-9-]*)(\/\d+)?$/;
 
 function* sourceFiles(dir: string): Generator<string> {
   for (const entry of readdirSync(dir)) {
@@ -104,7 +104,7 @@ function colorUtilityUses(): Use[] {
       let value = m[2]!;
       // border-t-0 / border-r-transparent: the side is part of the prefix.
       if (prefix === "border") {
-        const side = /^([trblxy])(?:-(.+))?$/.exec(value);
+        const side = /^([trblxyse])(?:-(.+))?$/.exec(value);
         if (side) {
           if (!side[2]) continue; // a bare side width: border-t
           prefix = `border-${side[1]}`;

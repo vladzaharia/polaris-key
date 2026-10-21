@@ -112,7 +112,7 @@ function FileLine({
         type="button"
         aria-expanded={open}
         onClick={() => onToggle(row.path)}
-        className="flex h-8 w-full items-center gap-1.5 rounded-sm px-2 text-left text-sm text-fg hover:bg-hover focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+        className="flex h-8 w-full items-center gap-1.5 rounded-sm px-2 text-start text-sm text-fg hover:bg-hover focus-visible:outline-2 focus-visible:outline-focus"
       >
         <span className="inline-flex items-center gap-1.5">
           {open ? (

@@ -303,7 +303,7 @@ export function SettingsTemplate({
             <p className="mb-2 text-xs font-medium text-fg-muted">
               On this page
             </p>
-            <ul className="sticky top-4 space-y-1 border-l border-border text-sm">
+            <ul className="sticky top-4 space-y-1 border-s border-border text-sm">
               {sections.map((s) => (
                 <li key={s.id}>
                   <a
@@ -314,7 +314,7 @@ export function SettingsTemplate({
                       go(s.id);
                     }}
                     className={cn(
-                      "-ml-px block border-l-2 py-0.5 pl-3 hover:border-border-strong hover:text-fg-strong",
+                      "-ms-px block border-s-2 py-0.5 ps-3 hover:border-border-strong hover:text-fg-strong",
                       s.id === current
                         ? "border-border-strong font-medium text-fg-strong"
                         : "border-transparent text-fg-muted",

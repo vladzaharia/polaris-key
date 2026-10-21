@@ -167,7 +167,7 @@ export function ReviewStep({
                   type="button"
                   onClick={() => onChange(row.step!)}
                   aria-label={`Change ${row.noun}`}
-                  className="min-h-6 shrink-0 rounded-md px-1 text-sm font-normal text-fg underline underline-offset-2 hover:text-fg-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+                  className="min-h-6 shrink-0 rounded-md px-1 text-sm font-normal text-fg underline underline-offset-2 hover:text-fg-strong focus-visible:outline-2 focus-visible:outline-focus"
                 >
                   Change
                 </button>

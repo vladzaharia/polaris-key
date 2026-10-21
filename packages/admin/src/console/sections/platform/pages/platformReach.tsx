@@ -219,11 +219,7 @@ function Lead({
     if (focus) ref.current?.focus();
   }, [focus]);
   return (
-    <p
-      ref={ref}
-      tabIndex={-1}
-      className="font-medium text-fg-strong focus-visible:outline-hidden"
-    >
+    <p ref={ref} tabIndex={-1} className="font-medium text-fg-strong">
       {children}
     </p>
   );

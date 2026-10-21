@@ -153,7 +153,7 @@ export function PlanList({
       >
         {title}
       </h3>
-      <ul className="list-disc space-y-1 pl-5 text-sm text-fg">
+      <ul className="list-disc space-y-1 ps-5 text-sm text-fg">
         {items.map((i) => (
           <li key={`${i.area}:${i.id ?? ""}:${i.summary}`}>{i.summary}</li>
         ))}
@@ -174,7 +174,7 @@ export function PlanWarnings({
       <h3 className="text-sm font-medium text-fg-strong">
         {plural(warnings.length, "warning", "warnings")}
       </h3>
-      <ul className="list-disc space-y-1 pl-5 text-sm text-fg">
+      <ul className="list-disc space-y-1 ps-5 text-sm text-fg">
         {warnings.map((w) => (
           <li key={`${w.file}:${w.path}:${w.code}`}>{w.message}</li>
         ))}
@@ -302,7 +302,7 @@ export function ResyncDialog({
           >
             <p>{refusal.description}</p>
             {refusal.problems.length ? (
-              <ul className="mt-2 list-disc space-y-0.5 pl-5">
+              <ul className="mt-2 list-disc space-y-0.5 ps-5">
                 {refusal.problems.map((p) => (
                   <li key={p} className="font-mono text-xs">
                     {p}
@@ -450,7 +450,7 @@ export function ResyncResultPanel({
       tabIndex={-1}
       data-testid="resync-result"
       aria-label={heading}
-      className="rounded-lg outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+      className="rounded-lg outline-hidden focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-focus"
     >
       <Callout
         tone={
@@ -472,7 +472,7 @@ export function ResyncResultPanel({
               : `Nothing changed: ${productName ?? "the product"} already matched its manifest.`}
           </p>
           {refused.length ? (
-            <ul className="list-disc space-y-1 pl-5" aria-label="Refused">
+            <ul className="list-disc space-y-1 ps-5" aria-label="Refused">
               {refused.map((x) => (
                 <li key={`${x.code}:${x.path}`}>
                   <span className="font-mono text-xs">{x.path}</span>:{" "}
@@ -482,7 +482,7 @@ export function ResyncResultPanel({
             </ul>
           ) : null}
           {conflicts.length ? (
-            <ul className="list-disc space-y-1 pl-5" aria-label="Conflicts">
+            <ul className="list-disc space-y-1 ps-5" aria-label="Conflicts">
               {conflicts.map((x) => (
                 <li key={x.path}>
                   <span className="font-mono text-xs">{x.path}</span>:{" "}
@@ -499,7 +499,7 @@ export function ResyncResultPanel({
           ) : null}
           {breakGlass.length ? (
             <ul
-              className="list-disc space-y-1 pl-5"
+              className="list-disc space-y-1 ps-5"
               aria-label="Break-glass claims"
             >
               {breakGlass.map((b) => (

@@ -93,7 +93,7 @@ export function LicensingSection({
                       {RESERVED_TYPE_WORDS[k.type] ?? k.type}
                     </span>
                   </span>
-                  <span className="text-right text-xs text-fg-muted">
+                  <span className="text-end text-xs text-fg-muted">
                     {k.rule}
                   </span>
                 </li>

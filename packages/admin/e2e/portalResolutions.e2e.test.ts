@@ -380,7 +380,8 @@ describe("the tablet and short-screen rules (PORTAL.md §8)", () => {
             .toBeCloseTo(shelf.width - 2, 0);
           expect
             .soft(r.actionHeight, `action ${i} height at ${width}`)
-            .toBeLessThanOrEqual(40);
+            // One line: a touch button is 44 px below the desk breakpoint, 40 px above.
+            .toBeLessThanOrEqual(width < 760 ? 44 : 40);
           expect.soft(r.title, `action ${i} title at ${width}`).toBe(true);
           expect.soft(r.fits, `action ${i} label at ${width}`).toBe(true);
           if (width >= 768)

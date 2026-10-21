@@ -125,7 +125,7 @@ const COLUMNS: DataColumn<AdminPersonalToken>[] = [
     // A revoked token's own expiry no longer matters: say when and by whom it ended.
     cell: ({ row }) =>
       row.original.status === "revoked" && row.original.revokedAt !== null ? (
-        <span className="inline-flex flex-col items-end text-right">
+        <span className="inline-flex flex-col items-end text-end">
           <span>
             Revoked <Timestamp at={fromSeconds(row.original.revokedAt)} />
           </span>

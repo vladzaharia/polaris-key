@@ -175,10 +175,10 @@ function decisionLine(d: SimulateResponse["decision"]): {
 function PackRow({ p }: { p: SimulatedPackDto }): React.ReactElement {
   return (
     <tr className="border-b border-border" data-pack={p.pack}>
-      <th scope="row" className="px-3 py-2 text-left font-normal">
+      <th scope="row" className="px-3 py-2 text-start font-normal">
         <span className="font-mono text-xs">{p.pack}</span>
         {p.declared?.required ? (
-          <span className="ml-1 text-xs text-fg-muted">required</span>
+          <span className="ms-1 text-xs text-fg-muted">required</span>
         ) : null}
       </th>
       <td className="px-3 py-2">
@@ -386,7 +386,7 @@ function Result({ r: res }: { r: SimulateResponse }): React.ReactElement {
       {res.packs.length ? (
         <div className="pk-scroll overflow-x-auto rounded-lg border border-border">
           <table className="w-full text-sm" aria-label="Packs">
-            <thead className="border-b border-border text-left text-xs text-fg-muted">
+            <thead className="border-b border-border text-start text-xs text-fg-muted">
               <tr>
                 <th scope="col" className="px-3 py-2 font-medium">
                   Pack
@@ -419,7 +419,7 @@ function Result({ r: res }: { r: SimulateResponse }): React.ReactElement {
       {res.notes.length || res.errors.length ? (
         <div className="space-y-1">
           <h3 className="text-sm font-semibold text-fg-strong">Notes</h3>
-          <ul className="list-disc space-y-1 pl-5 text-xs text-fg">
+          <ul className="list-disc space-y-1 ps-5 text-xs text-fg">
             {res.notes.map((n) => (
               <li key={n}>{n}</li>
             ))}

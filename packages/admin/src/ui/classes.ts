@@ -15,7 +15,7 @@ export const BUTTON_BASE = [
   // The press pattern (src/motion.css `.pk-pressable`, S-23 §6.1): 0.98 on :active, never when
   // disabled or busy, with the colours at `micro`. Scale is paint only, so neighbours never move.
   "pk-pressable",
-  "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page",
+  "focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2",
   "disabled:cursor-not-allowed disabled:opacity-50 aria-disabled:not-aria-busy:cursor-not-allowed aria-disabled:not-aria-busy:opacity-50",
   "[&_svg]:shrink-0",
 ].join(" ");
@@ -82,7 +82,7 @@ export const TABLE = {
     "h-9 px-3 align-middle text-xs leading-4 font-medium whitespace-nowrap text-fg-muted",
   rowCompact: "h-9",
   rowComfortable: "h-14",
-  row: "bg-surface-raised text-sm text-fg outline-hidden [&>td]:border-b [&>td]:border-border hover:bg-state-hover-tint focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus data-[selected]:bg-accent-subtle [&.pk-row-highlight]:bg-accent-subtle",
+  row: "bg-surface-raised text-sm text-fg outline-hidden [&>td]:border-b [&>td]:border-border hover:bg-state-hover-tint focus-visible:outline-2 focus-visible:outline-solid focus-visible:-outline-offset-2 focus-visible:outline-focus data-[selected]:bg-accent-subtle [&.pk-row-highlight]:bg-accent-subtle",
   cell: "px-3 align-middle",
   /** A column of running text (docs tables): wide enough to read, instead of squeezed by its neighbours. */
   proseCell: "min-w-72",

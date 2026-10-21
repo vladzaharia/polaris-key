@@ -240,7 +240,7 @@ export function JsonViewer({
                   [row.more]: (l[row.more] ?? PAGE) + PAGE,
                 }))
               }
-              className="cursor-pointer rounded-sm py-0.5 pl-6 text-accent-fg hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+              className="cursor-pointer rounded-sm py-0.5 ps-6 text-accent-fg hover:underline focus-visible:outline-2 focus-visible:outline-focus"
             >
               Show {Math.min(PAGE, row.remaining)} more ({row.remaining} hidden)
             </li>
@@ -264,10 +264,10 @@ export function JsonViewer({
             onFocus={(e) => {
               if (e.target === e.currentTarget) setFocused(node.id);
             }}
-            className="rounded-sm focus-visible:outline-hidden focus-visible:[&>div]:ring-2 focus-visible:[&>div]:ring-focus"
+            className="rounded-sm focus-visible:[&>div]:outline-2 focus-visible:[&>div]:outline-focus"
           >
             <div
-              className="group flex items-center gap-1 rounded-sm py-0.5 pr-1 hover:bg-hover"
+              className="group flex items-center gap-1 rounded-sm py-0.5 pe-1 hover:bg-hover"
               onClick={() => {
                 focusRow(node.id);
                 if (container) toggle(node.path);
@@ -298,7 +298,7 @@ export function JsonViewer({
                     : "{"
                   : summary(node.value)}
               </span>
-              <span className="ml-auto hidden gap-1 group-hover:flex">
+              <span className="ms-auto hidden gap-1 group-hover:flex">
                 <button
                   type="button"
                   tabIndex={-1}
@@ -326,7 +326,7 @@ export function JsonViewer({
               </span>
             </div>
             {container && open ? (
-              <ul role="group" className="ml-3 border-l border-border pl-2">
+              <ul role="group" className="ms-3 border-s border-border ps-2">
                 {renderRows(node.path)}
               </ul>
             ) : null}

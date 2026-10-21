@@ -86,7 +86,7 @@ function SlotRow({
           <p className="text-xs text-fg">{slot.spec}</p>
         ) : null}
       </div>
-      <div className="ml-auto flex shrink-0 items-center justify-end gap-2">
+      <div className="ms-auto flex shrink-0 items-center justify-end gap-2">
         {slot.state === "missing" && slot.kind === "human" ? (
           <StatusPill tone="danger" size="sm">
             Needed

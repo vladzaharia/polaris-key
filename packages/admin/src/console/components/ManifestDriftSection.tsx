@@ -301,7 +301,7 @@ export function ManifestDriftSection({
             tone="warning"
             title={`${formatCount(warnings.length)} ${warnings.length === 1 ? "warning" : "warnings"} in the last apply`}
           >
-            <ul className="list-disc space-y-0.5 pl-5">
+            <ul className="list-disc space-y-0.5 ps-5">
               {warnings.map((w) => (
                 <li key={`${w.file}:${w.path}:${w.code}`}>{w.message}</li>
               ))}

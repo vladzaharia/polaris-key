@@ -23,7 +23,7 @@ export function ConsoleBrand(): React.ReactElement {
       />
       <span
         aria-hidden
-        className="ml-3 border-l border-border-strong pl-3 text-base text-fg-muted forced-colors:text-[CanvasText]"
+        className="ms-3 border-s border-border-strong ps-3 text-base text-fg-muted forced-colors:text-[CanvasText]"
       >
         Console
       </span>

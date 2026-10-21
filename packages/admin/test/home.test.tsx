@@ -784,7 +784,9 @@ describe("Home", () => {
     const acme = card("Acme").querySelector("[data-cover=slug]")!;
     expect(acme.textContent).toBe("");
     expect(acme.children).toHaveLength(0);
-    expect((acme as HTMLElement).style.backgroundColor).not.toBe("");
+    expect((acme as HTMLElement).style.getPropertyValue("--pk-art")).not.toBe(
+      "",
+    );
     expect(acme.className).toContain("h-[72px]");
     fireEvent.click(within(main()).getByRole("radio", { name: /Table/ }));
     const table = await within(main()).findByRole("table");
@@ -940,12 +942,12 @@ describe("ProductCard", () => {
     };
     const tint = cover({ icon: null, header: null, accent: "#2f8378" });
     expect(tint.getAttribute("data-cover")).toBe("tint");
-    expect(tint.style.backgroundColor).not.toBe("");
+    expect(tint.style.getPropertyValue("--pk-art")).not.toBe("");
     const withIcon = cover({ icon, header: null });
     // An icon never repeats in the band: the header tile carries it.
     expect(withIcon.getAttribute("data-cover")).toBe("slug");
     expect(withIcon.querySelector("img, [data-logo]")).toBeNull();
-    expect(withIcon.style.backgroundColor).not.toBe("");
+    expect(withIcon.style.getPropertyValue("--pk-art")).not.toBe("");
     const bare = cover({ icon: null, header: null });
     expect(bare.getAttribute("data-cover")).toBe("slug");
     expect(bare.textContent).toBe("");

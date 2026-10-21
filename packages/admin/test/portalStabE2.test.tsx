@@ -80,10 +80,10 @@ describe("a Your data row's extra lines (B-088)", () => {
       </DataRow>,
     );
     expect(screen.getByText("below").parentElement!.className).toContain(
-      "ml-13",
+      "ms-13",
     );
     expect(screen.getByRole("button").parentElement!.className).toContain(
-      "ml-13",
+      "ms-13",
     );
   });
 });

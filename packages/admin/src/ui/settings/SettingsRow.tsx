@@ -6,7 +6,7 @@ import { cn } from "../../lib/cn.js";
  *
  * - `align="end"` (the default) is for compact controls and values: a switch, a pill, a short
  *   input, a select, a link or a button. The control sits flush right, beside the label on every
- *   width while it fits, and wraps under the label (still right-aligned) when it does not.
+ *   width while it fits, and wraps under the label (still end-aligned) when it does not.
  * - `align="stretch"` is for wide editors (code editors, paired inputs): label and help left,
  *   the editor filling the right 3/5 at ≥ 1024 px, stacked full width below.
  * - `align="block"` is for editors that need the card's full width (radio cards): the label
@@ -96,7 +96,7 @@ export function SettingsRow({
         "relative px-5",
         compact ? "py-2.5" : "py-4",
         // A row with an unsaved change: an ink bar at its leading edge and a wash.
-        "data-[state=changed]:bg-surface-sunken data-[state=changed]:before:absolute data-[state=changed]:before:inset-y-0 data-[state=changed]:before:left-0 data-[state=changed]:before:w-[3px] data-[state=changed]:before:bg-fg-strong data-[state=changed]:before:content-['']",
+        "data-[state=changed]:bg-surface-sunken data-[state=changed]:before:absolute data-[state=changed]:before:inset-y-0 data-[state=changed]:before:start-0 data-[state=changed]:before:w-[3px] data-[state=changed]:before:bg-fg-strong data-[state=changed]:before:content-['']",
       )}
       data-align={align}
       data-state={state}
@@ -106,7 +106,7 @@ export function SettingsRow({
           <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
             <div className="min-w-0 flex-[1_1_16rem]">{labelBlock}</div>
             {aside ? (
-              <div className="ml-auto flex flex-wrap items-center justify-end gap-2 text-sm text-fg">
+              <div className="ms-auto flex flex-wrap items-center justify-end gap-2 text-sm text-fg">
                 {aside}
               </div>
             ) : null}
@@ -139,10 +139,10 @@ export function SettingsRow({
           {/* Flush right, and so is every line of a value that wraps (a chain of pills). */}
           <div
             className={cn(
-              "ml-auto flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2 text-right text-sm text-fg [&>:not(button)]:justify-end",
+              "ms-auto flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2 text-end text-sm text-fg [&>:not(button)]:justify-end",
               control === "switch" && "max-sm:shrink-0",
               control === "field" &&
-                "max-sm:ml-0 max-sm:w-full max-sm:justify-start max-sm:text-left [&>*]:max-sm:max-w-full",
+                "max-sm:ms-0 max-sm:w-full max-sm:justify-start max-sm:text-start [&>*]:max-sm:max-w-full",
             )}
           >
             {aside}

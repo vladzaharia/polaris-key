@@ -34,7 +34,7 @@ export interface ConfirmDialogProps {
   /** Repeats the verb: "Yank 2.4.0". */
   confirmLabel?: string;
   cancelLabel?: string;
-  /** False leaves out the title bar's close X, for a flow whose Cancel is the one dismissal. */
+  /** The title bar's close X. Off by default: the Cancel button is the one dismissal (UI-KITS §1.5 rule 10). */
   closeButton?: boolean;
   /** `ignoreCase`: the match trims and ignores case (an email address). */
   typedConfirmation?: { value: string; label: string; ignoreCase?: boolean };
@@ -92,7 +92,7 @@ export function ConfirmDialog({
   lead,
   confirmLabel = "Confirm",
   cancelLabel = "Cancel",
-  closeButton,
+  closeButton = false,
   typedConfirmation,
   onConfirm,
   error: callerError = null,
@@ -179,7 +179,7 @@ export function ConfirmDialog({
               ))}
             </div>
           ) : consequences?.length ? (
-            <ul className="list-disc space-y-1 pl-5 text-fg">
+            <ul className="list-disc space-y-1 ps-5 text-fg">
               {consequences.map((c) => (
                 <li key={c}>{c}</li>
               ))}
@@ -228,7 +228,7 @@ export function ConfirmDialog({
                 }}
                 className={cn(
                   "h-9 pointer-coarse:h-11 w-full rounded-md border border-border-strong bg-surface-sunken px-3 font-mono text-sm text-fg",
-                  "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus",
+                  "focus-visible:outline-2 focus-visible:outline-focus",
                 )}
               />
             </div>

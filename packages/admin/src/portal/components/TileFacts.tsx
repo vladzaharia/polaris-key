@@ -100,7 +100,7 @@ export function TileFacts({
           </div>
           <PlatformGlyphs
             platforms={platforms}
-            className="ml-auto h-5 shrink-0 @max-[13rem]/tile:ml-0"
+            className="ms-auto h-5 shrink-0 @max-[13rem]/tile:ms-0"
           />
         </div>
       ) : null}

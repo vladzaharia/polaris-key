@@ -133,12 +133,12 @@ export function LibraryTile({
               src={pres.iconUrl}
               size={48}
               lift
-              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+              className="absolute start-1/2 top-1/2 -translate-x-1/2 rtl:translate-x-1/2 -translate-y-1/2"
             />
           ) : null}
           {/* The header's safe bottom-right corner, inset by the card's own padding; the top-right
               one on a narrow compact tile, where the bottom one meets the icon. */}
-          {tiny ? null : <span className="absolute right-2 top-2">{pill}</span>}
+          {tiny ? null : <span className="absolute end-2 top-2">{pill}</span>}
         </ProductArt>
         <div className="flex flex-1 flex-col px-3 pb-3 desk:px-3.5 desk:pb-3.5">
           <div
@@ -160,7 +160,7 @@ export function LibraryTile({
                   size={40}
                   lift
                   className="relative"
-                  tileClassName="border-[3px] border-surface-raised"
+                  tileClassName="outline-3 -outline-offset-3 outline-surface-raised"
                 />
                 {menu}
               </div>
@@ -173,7 +173,7 @@ export function LibraryTile({
                 size={40}
                 lift
                 className="relative"
-                tileClassName="border-[3px] border-surface-raised"
+                tileClassName="outline-3 -outline-offset-3 outline-surface-raised"
               />
             )}
             {/* Below the art, never over it: the icon overlaps the art by 1.75 rem. The

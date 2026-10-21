@@ -63,7 +63,7 @@ export function CodeCells({
         onChange={(e) =>
           onChange(e.target.value.replace(/\D/g, "").slice(0, CODE_LENGTH))
         }
-        className="absolute inset-0 size-full cursor-text bg-transparent text-transparent caret-transparent outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+        className="absolute inset-0 size-full cursor-text bg-transparent text-transparent caret-transparent outline-none"
       />
     </div>
   );

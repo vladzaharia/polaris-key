@@ -47,7 +47,7 @@ describe("ProductIcon", () => {
         size={64}
         lift
         className="relative"
-        tileClassName="border-[3px] border-surface-raised"
+        tileClassName="outline-3 -outline-offset-3 outline-surface-raised"
       />,
     );
     const img = document.querySelector("img[data-art='image']")!;
@@ -64,14 +64,16 @@ describe("ProductIcon", () => {
         name="DJDL"
         tint="#0e7490"
         size={64}
-        tileClassName="border-[3px] border-surface-raised"
+        tileClassName="outline-3 -outline-offset-3 outline-surface-raised"
       />,
     );
     const tile = document.querySelector("[data-art='fallback']")!;
     expect(tile.textContent).toBe("D");
     expect(tile.className).toMatch(/rounded-2xl/);
-    expect(tile.className).toMatch(/border-\[3px\]/);
-    expect((tile as HTMLElement).style.backgroundColor).not.toBe("");
+    expect(tile.className).toMatch(/outline-3/);
+    expect((tile as HTMLElement).style.getPropertyValue("--pk-art")).not.toBe(
+      "",
+    );
   });
 
   it("leaves the icon as drawn when its pixels can't be read", () => {

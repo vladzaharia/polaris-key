@@ -453,7 +453,7 @@ function DistributionTab({
                 to={r.matrix(slug, {
                   cell: `${release.releaseId}:${o.outletId}`,
                 })}
-                className="ml-auto text-xs text-accent-fg underline-offset-4 hover:underline"
+                className="ms-auto text-xs text-accent-fg underline-offset-4 hover:underline"
               >
                 Open in matrix
               </Link>

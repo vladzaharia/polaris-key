@@ -168,8 +168,8 @@ function FeatureCard({
         if (open) onToggle(id, !on);
       }}
       className={cn(
-        "pk-pressable flex min-w-0 flex-col items-start gap-1.5 rounded-lg border-2 p-3 text-left",
-        "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page",
+        "pk-pressable flex min-w-0 flex-col items-start gap-1.5 rounded-lg border-2 p-3 text-start",
+        "focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2",
         on
           ? "border-accent bg-accent-subtle"
           : "border-border bg-surface-raised hover:border-border-strong",
@@ -295,7 +295,7 @@ export function PurposeStep({
                   }
                   className={cn(
                     "pk-pressable inline-flex min-h-9 items-center gap-1.5 rounded-md border-2 px-3 text-sm",
-                    "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page",
+                    "focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2",
                     sel
                       ? "border-accent bg-accent-subtle text-fg-strong"
                       : "border-border bg-surface-raised text-fg hover:border-border-strong",
@@ -408,7 +408,7 @@ export function RefusalCallout({
     <Callout tone="danger" title={copy.title} live>
       <p>{copy.description}</p>
       {lines.length ? (
-        <ul className="mt-2 list-disc space-y-1 pl-5">
+        <ul className="mt-2 list-disc space-y-1 ps-5">
           {lines.map((l) => (
             <li key={l.key}>{l.text}</li>
           ))}

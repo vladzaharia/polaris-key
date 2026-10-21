@@ -46,7 +46,7 @@ export function IdChip({
   return (
     <span
       className={cn(
-        "inline-flex max-w-full items-center gap-0.5 rounded-sm bg-surface-sunken pl-1.5 font-mono text-xs text-fg",
+        "inline-flex max-w-full items-center gap-0.5 rounded-sm bg-surface-sunken ps-1.5 font-mono text-xs text-fg",
         className,
       )}
     >
@@ -56,7 +56,7 @@ export function IdChip({
           trigger={
             <button
               type="button"
-              className="rounded-xs text-left hover:text-fg-strong"
+              className="rounded-xs text-start hover:text-fg-strong"
               aria-label={`${value}, show full ${noun}`}
             >
               <span aria-hidden>{short}</span>

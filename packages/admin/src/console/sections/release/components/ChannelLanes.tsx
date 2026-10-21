@@ -82,7 +82,7 @@ function Row({
   return (
     <div className="grid gap-1 py-2 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-baseline sm:gap-6">
       <dt className="text-sm text-fg-muted">{term}</dt>
-      <dd className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-sm text-fg sm:justify-end sm:text-right">
+      <dd className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-sm text-fg sm:justify-end sm:text-end">
         {children}
       </dd>
     </div>

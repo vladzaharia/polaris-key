@@ -236,7 +236,7 @@ export function SettingRow(props: SettingRowProps): React.ReactElement {
     const max = toField(spec, spec.max);
     control = (
       <div
-        className="w-full text-left sm:w-48"
+        className="w-full text-start sm:w-48"
         onKeyDown={(e) => {
           if (e.key === "Enter" && w.dirty && !off) {
             e.preventDefault();

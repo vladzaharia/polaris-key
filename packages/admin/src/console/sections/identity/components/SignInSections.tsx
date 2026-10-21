@@ -303,7 +303,7 @@ export function MethodsSection({ slug }: { slug: string }): React.ReactElement {
         {known ? (
           <Link to={r.platformConnections()} className={linkClass}>
             Connections
-            <ArrowRight className="ml-1 inline size-4" aria-hidden />
+            <ArrowRight className="ms-1 inline size-4" aria-hidden />
           </Link>
         ) : null}
       </SettingsRow>
@@ -357,7 +357,7 @@ export function TermsSection({
             <>
               {name}’s terms
               {value?.version ? (
-                <span className="ml-2 text-xs font-normal text-fg-muted">
+                <span className="ms-2 text-xs font-normal text-fg-muted">
                   {value.version}
                 </span>
               ) : null}
@@ -385,7 +385,7 @@ export function TermsSection({
             ) : null}
             <Link to={r.listing(slug)} className={linkClass}>
               Edit listing
-              <ArrowRight className="ml-1 inline size-4" aria-hidden />
+              <ArrowRight className="ms-1 inline size-4" aria-hidden />
             </Link>
           </span>
         </SettingsRow>
@@ -411,7 +411,7 @@ export function PresentationSection({
       actions={
         <Link to={r.presentation(slug)} className={cn(linkClass, "text-sm")}>
           Edit in Settings
-          <ArrowRight className="ml-1 inline size-4" aria-hidden />
+          <ArrowRight className="ms-1 inline size-4" aria-hidden />
         </Link>
       }
     >
@@ -435,8 +435,8 @@ export function PresentationSection({
           <span className="inline-flex items-center gap-2 text-sm">
             <span
               aria-hidden
-              className="size-4 rounded-full border border-border"
-              style={{ background: accent }}
+              className="size-4 rounded-full border border-border bg-(--pk-swatch)"
+              style={{ "--pk-swatch": accent } as React.CSSProperties}
             />
             Accent
             <span className="font-mono text-xs">{accent}</span>

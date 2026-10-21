@@ -12,7 +12,7 @@ export const RULES: RuleInfo[] = [
     id: "border-width",
     group: "borders",
     spec: "§1.5 rule 2",
-    says: "No border wider than 1 px; depth comes from surface steps and elevation.",
+    says: "No box border wider than 1 px (two or more heavy sides); one heavy edge is an indicator. Depth comes from surface steps and elevation.",
   },
   {
     id: "focus-visible-only",

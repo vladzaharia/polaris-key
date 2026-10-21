@@ -46,7 +46,7 @@ export function ManagementStateControl({
           rel="noreferrer"
           aria-label="In the app (docs)"
           title={help}
-          className="rounded-sm text-fg-muted hover:text-fg-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+          className="rounded-sm text-fg-muted hover:text-fg-strong focus-visible:outline-2 focus-visible:outline-focus"
         >
           <CircleHelp aria-hidden className="size-3.5" />
         </a>

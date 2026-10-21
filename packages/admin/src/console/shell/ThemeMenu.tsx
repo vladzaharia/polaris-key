@@ -62,7 +62,7 @@ export function AppearanceMenuItems(): React.ReactElement {
             <ItemIcon aria-hidden />
             {label}
             {value === "system" ? (
-              <span className="ml-auto pl-3 text-xs text-fg-muted">
+              <span className="ms-auto ps-3 text-xs text-fg-muted">
                 {theme === "dark" ? "Dark now" : "Light now"}
               </span>
             ) : null}
@@ -81,7 +81,7 @@ export function AppearanceMenuItems(): React.ReactElement {
             <ItemIcon aria-hidden />
             {label}
             {value === "system" ? (
-              <span className="ml-auto pl-3 text-xs text-fg-muted">
+              <span className="ms-auto ps-3 text-xs text-fg-muted">
                 {osReduced ? "Reduced now" : "Full now"}
               </span>
             ) : null}

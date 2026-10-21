@@ -140,7 +140,7 @@ export function JumpPalette({
           }}
           className={cn(
             "fixed inset-0 z-50 flex flex-col overflow-hidden bg-surface-overlay text-fg shadow-elevation-3 animate-pk-in",
-            "desk:inset-auto desk:left-1/2 desk:top-[12vh] desk:w-[calc(100vw-2rem)] desk:max-w-[40rem] desk:-translate-x-1/2 desk:rounded-xl desk:border desk:border-border",
+            "desk:inset-auto desk:start-1/2 desk:top-[12vh] desk:w-[calc(100%-2rem)] desk:max-w-[40rem] desk:-translate-x-1/2 desk:rtl:translate-x-1/2 desk:rounded-xl desk:border desk:border-border",
           )}
         >
           <DialogPrimitive.Title className="sr-only">
@@ -161,7 +161,7 @@ export function JumpPalette({
                 placeholder={
                   narrow ? t("locker.jump.short") : t("locker.jump.placeholder")
                 }
-                className="h-14 w-full bg-transparent text-base outline-hidden placeholder:text-fg-subtle focus-visible:ring-0 focus-visible:ring-offset-0"
+                className="h-14 w-full bg-transparent text-base outline-hidden placeholder:text-fg-subtle"
               />
               <DialogPrimitive.Close className="shrink-0 rounded-md px-2 py-1 text-sm text-fg-muted hover:text-fg-strong desk:hidden">
                 {t("signin.cancel")}

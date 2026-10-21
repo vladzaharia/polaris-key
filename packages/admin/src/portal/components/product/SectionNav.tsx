@@ -61,7 +61,7 @@ export function SectionNav({
       )}
     >
       <ul
-        className={variant === "toc" ? "border-l border-border" : "flex gap-2"}
+        className={variant === "toc" ? "border-s border-border" : "flex gap-2"}
       >
         {sections.map((s) => {
           const on = s === current;
@@ -78,7 +78,7 @@ export function SectionNav({
                 }}
                 className={cn(
                   variant === "toc"
-                    ? "-ml-px block border-l-[3px] py-2 pl-4 text-sm"
+                    ? "-ms-px block border-s-[3px] py-2 ps-4 text-sm"
                     : "inline-flex h-9 items-center whitespace-nowrap rounded-full border px-4 text-sm pointer-coarse:h-11",
                   variant === "toc"
                     ? on
@@ -100,7 +100,7 @@ export function SectionNav({
                         tone="neutral"
                         icon={false}
                         size="sm"
-                        className="ml-0.5 align-middle font-normal tabular-nums"
+                        className="ms-0.5 align-middle font-normal tabular-nums"
                       >
                         {count}
                       </StatusPill>

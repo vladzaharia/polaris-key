@@ -856,7 +856,7 @@ function ConnectRow({
           <Button
             ref={buttonRef}
             variant="outline"
-            className="ml-auto h-11 font-medium"
+            className="ms-auto h-11 font-medium"
             loading={busy}
             aria-label={t("signin.provider.connect", { provider: name })}
             onClick={() => void connect()}
@@ -866,12 +866,12 @@ function ConnectRow({
         )}
       </div>
       {error ? (
-        <p role="alert" className="mt-2 text-sm text-danger sm:pl-13">
+        <p role="alert" className="mt-2 text-sm text-danger sm:ps-13">
           {error}
         </p>
       ) : null}
       {stepUp ? (
-        <div className="mt-3 space-y-3 rounded-lg border border-border bg-surface-sunken p-4 sm:ml-13">
+        <div className="mt-3 space-y-3 rounded-lg border border-border bg-surface-sunken p-4 sm:ms-13">
           <StepUp
             verb={t("locker.verb.connect", { name })}
             view={view}
@@ -1060,7 +1060,7 @@ function AddEmail({
         <Button
           ref={buttonRef}
           variant="link"
-          className="h-11 font-medium sm:ml-13"
+          className="h-11 font-medium sm:ms-13"
           iconStart={<Plus aria-hidden />}
           aria-expanded={false}
           onClick={() => setStep({ kind: "enter" })}
@@ -1078,7 +1078,7 @@ function AddEmail({
           })
         }
       >
-        <div className="space-y-3 rounded-lg border border-border bg-surface-sunken p-4 sm:ml-13">
+        <div className="space-y-3 rounded-lg border border-border bg-surface-sunken p-4 sm:ms-13">
           <h4 className="font-semibold text-fg-strong">
             {t("locker.methods.addEmail")}
           </h4>
@@ -1308,7 +1308,7 @@ function AddPasskey({
         <Button
           ref={buttonRef}
           variant="link"
-          className="h-11 font-medium sm:ml-13"
+          className="h-11 font-medium sm:ms-13"
           iconStart={<KeyRound aria-hidden />}
           loading={busy}
           aria-disabled={reason ? true : undefined}
@@ -1321,22 +1321,22 @@ function AddPasskey({
         </Button>
       )}
       {reason && prompt ? (
-        <p id={reasonId} className="text-sm text-fg-muted sm:pl-13">
+        <p id={reasonId} className="text-sm text-fg-muted sm:ps-13">
           {reason}
         </p>
       ) : null}
       {ready && !stepUp && !error ? (
-        <p role="status" className="text-sm text-fg sm:pl-13">
+        <p role="status" className="text-sm text-fg sm:ps-13">
           {t("locker.methods.passkeyReady")}
         </p>
       ) : null}
       {error ? (
-        <p role="alert" className="mt-1 text-sm text-danger sm:pl-13">
+        <p role="alert" className="mt-1 text-sm text-danger sm:ps-13">
           {error}
         </p>
       ) : null}
       {stepUp ? (
-        <div className="space-y-3 rounded-lg border border-border bg-surface-sunken p-4 sm:ml-13">
+        <div className="space-y-3 rounded-lg border border-border bg-surface-sunken p-4 sm:ms-13">
           <StepUp
             verb={t("locker.verb.addPasskey")}
             view={view}

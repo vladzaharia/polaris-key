@@ -11,7 +11,7 @@ import { ProductIcon } from "./ProductIcon.js";
  * person can act on, each with its action: only the single most urgent item is solid, the others
  * are outlined (B12). Hidden when empty.
  *
- * A row is the product's icon, its name and reason, and the action right-aligned (under the text
+ * A row is the product's icon, its name and reason, and the action end-aligned (under the text
  * on a phone, full width). The action is on one line (a long developer's name truncates; the
  * accessible name keeps it whole), and a truncated label shows in full on hover (`title`).
  */

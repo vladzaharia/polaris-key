@@ -61,7 +61,7 @@ export function SecretInput({
           onChange={(e) => onChange?.(e.target.value)}
           disabled={disabled}
           readOnly={readOnly || locked}
-          className={cn(CONTROL_INPUT, "pr-11 font-mono text-xs")}
+          className={cn(CONTROL_INPUT, "pe-11 font-mono text-xs")}
           {...props}
         />
         <button
@@ -71,7 +71,7 @@ export function SecretInput({
           aria-controls={inputId}
           disabled={disabled || locked}
           onClick={() => setRevealed((r) => !r)}
-          className="absolute right-1 top-1/2 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-sm text-fg-muted hover:text-fg-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50"
+          className="absolute end-1 top-1/2 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-sm text-fg-muted hover:text-fg-strong focus-visible:outline-2 focus-visible:outline-focus disabled:opacity-50"
         >
           {revealed ? (
             <EyeOff aria-hidden className="size-4" />

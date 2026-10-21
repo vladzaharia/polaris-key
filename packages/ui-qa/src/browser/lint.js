@@ -114,14 +114,20 @@
         const textual = hasOwnText(el) && !iconFont(cs);
         const native = !!el.closest('[data-ui-preset="native"]');
 
-        // Borders: hairlines only.
-        for (const side of ["top", "right", "bottom", "left"]) {
-          const w = parseFloat(cs[`border-${side}-width`]);
-          if (cs[`border-${side}-style`] !== "none" && w > 1) {
-            report("border-width", el, `border-${side} is ${w}px (max 1px)`);
-            break;
-          }
-        }
+        // Borders: hairlines only. A heavy border on ONE side is an indicator edge (an underline
+        // tab, a rail's start edge, a section's top rule: UI-KITS.md §1.5 rule 2, "a tint plus
+        // one indicator"), not a box; two or more heavy sides are the heavy border the rule bans.
+        const heavy = ["top", "right", "bottom", "left"].filter(
+          (side) =>
+            cs[`border-${side}-style`] !== "none" &&
+            parseFloat(cs[`border-${side}-width`]) > 1,
+        );
+        if (heavy.length > 1)
+          report(
+            "border-width",
+            el,
+            `border-${heavy[0]} is ${parseFloat(cs[`border-${heavy[0]}-width`])}px on ${heavy.length} sides (max 1px)`,
+          );
 
         if (el.matches(BUTTONISH)) {
           if (cs.textTransform === "uppercase")
@@ -153,7 +159,12 @@
           const size = parseFloat(cs.fontSize);
           if (size < o.minFont)
             report("text-size-floor", el, `font-size ${size}px (min 12px)`);
-          if (SEPARATORS.has(ownText(el).trim()) && el !== scope) {
+          // A lone dash standing in for "no value" separates nothing: it needs a neighbour.
+          if (
+            SEPARATORS.has(ownText(el).trim()) &&
+            el !== scope &&
+            el.parentElement.childNodes.length > 1
+          ) {
             const pd = getComputedStyle(el.parentElement).display;
             if (/flex|grid/.test(pd))
               report(
@@ -239,9 +250,11 @@
         if (
           el.closest("[data-ui-touch]") &&
           el.matches(INTERACTIVE) &&
-          !inlineLink(el, cs)
+          !inlineLink(el, cs) &&
+          !tabStopOnly(el) &&
+          !visuallyHidden(el, cs)
         ) {
-          const r = el.getBoundingClientRect();
+          const r = touchRect(el);
           if (r.width < o.minTouch - 0.5 || r.height < o.minTouch - 0.5)
             report(
               "touch-target",
@@ -378,12 +391,14 @@
       }
     }
 
-    // Authored CSS: every style rule that applies to a linted element.
+    // Authored CSS: every style rule that applies to a linted element. A vendor stylesheet bundled
+    // whole (sonner's toast layout) is not authored here: the app re-themes it in its own rules.
     const linted = new Set();
     for (const scope of scopes)
       for (const el of [scope, ...scope.querySelectorAll("*")])
         if (!el.closest("[data-ui-chrome]")) linted.add(el);
     for (const { rule, sheet } of styleRules()) {
+      if (/^\[data-sonner-/.test(rule.selectorText)) continue;
       let hit = o.allRules ? document.body : null;
       if (!hit)
         try {
@@ -574,6 +589,10 @@
         if (!pats[state].test(part)) continue;
         const base = stripPseudo(part)
           .replace(/\[aria-disabled[^\]]*\]|\[disabled\]/g, "")
+          // What the strips leave of `:not(:disabled)`, `:not([aria-disabled])` and
+          // `:is(:hover, :active)`: an empty `:not()` or `:is()` is an invalid selector or one that
+          // matches nothing, which would hide the whole state rule.
+          .replace(/:(?:not|is)\([\s,]*\)/g, "")
           .trim();
         try {
           if (!base || base === "*" || el.matches(base)) return true;
@@ -757,7 +776,17 @@
     return Math.max(r, g, b) - Math.min(r, g, b) > 40;
   }
   function colourLiteral(v) {
-    const s = v.replace(/var\([^)]*\)/g, "");
+    const s = v
+      .replace(/var\([^)]*\)/g, "")
+      // A relative colour taken from a token (`oklch(from var(--x) l c h)`) is not a literal.
+      .replace(/\b(rgba?|hsla?|hwb|lab|lch|oklab|oklch)\(\s*from\b/gi, "(")
+      // `transparent` serialises as rgba(0, 0, 0, 0): no colour at all.
+      .replace(/\brgba?\(\s*0[\s,]+0[\s,]+0\s*[,/]\s*0\s*\)/gi, "")
+      // Black or white at an alpha: a scrim or a shadow, which no token covers.
+      .replace(
+        /\brgba?\(\s*(?:0[\s,]+0[\s,]+0|255[\s,]+255[\s,]+255)\s*[,/]\s*(?:0?\.\d+|0)%?\s*\)/gi,
+        "",
+      );
     if (/#[0-9a-f]{3,8}\b/i.test(s)) return true;
     if (/\b(rgba?|hsla?|hwb|lab|lch|oklab|oklch)\(/i.test(s)) return true;
     return /(^|[\s,(])(white|black|red|blue|green|gray|grey|orange|purple|yellow|pink)(?=$|[\s,)])/i.test(
@@ -858,19 +887,80 @@
     }
   }
   function emptyBox(el, cs) {
-    if (el.tagName === "IMG") return !el.complete || el.naturalWidth === 0;
+    // An image still in flight (a lazy one below the fold) is not an empty placeholder; a broken
+    // one, or an <img> with no source, is.
+    if (el.tagName === "IMG") return el.complete && el.naturalWidth === 0;
     if (el.children.length) return false;
+    // A product's art with no image yet is its tint (data-art="fallback"): a filled block.
+    if (
+      el.matches('[data-art="fallback"]') &&
+      !/^rgba\(0, 0, 0, 0\)$|^transparent$/.test(cs.backgroundColor)
+    )
+      return false;
     if (el.textContent.trim()) return false;
     if (cs.backgroundImage && cs.backgroundImage !== "none") return false;
     if (cs.maskImage && cs.maskImage !== "none") return false;
     return true;
   }
-  function inlineLink(el, cs) {
+  // A scroll region or group that takes a tab stop for the keyboard (WCAG 2.1.1) is not a pointer
+  // target: only the controls inside it are.
+  function tabStopOnly(el) {
     return (
-      el.tagName === "A" &&
-      cs.display === "inline" &&
-      ownText(el.parentElement).trim().length > 0
+      el.matches('[tabindex]:not([tabindex="-1"])') &&
+      !el.matches(
+        INTERACTIVE.replace(/, \[tabindex\]:not\(\[tabindex="-1"\]\)/, ""),
+      )
     );
+  }
+  // Clipped to nothing until focused (a skip link, a visually hidden native input behind a
+  // styled control): there is nothing to hit.
+  function visuallyHidden(el, cs) {
+    return (
+      /^rect\(0(px)?,? ?0(px)?,? ?0(px)?,? ?0(px)?\)$/.test(cs.clip) ||
+      // Hidden from assistive tech too: a form shim behind a styled control (Radix's checkbox).
+      el.closest('[aria-hidden="true"]') !== null ||
+      /^inset\(50%\)$/.test(cs.clipPath)
+    );
+  }
+  // The area a press lands on: the element, or its label for a checkbox, radio or switch (a text
+  // field is its own box), united with any absolutely positioned ::before / ::after it carries (a
+  // stretched link's cover over its card, a switch's enlarged hit area).
+  function touchRect(el) {
+    const label = el.matches(
+      'input[type="checkbox"], input[type="radio"], [role="checkbox"], [role="radio"], [role="switch"]',
+    )
+      ? (el.labels && el.labels[0]) || el.closest("label")
+      : null;
+    const base = (label || el).getBoundingClientRect();
+    let left = base.left;
+    let top = base.top;
+    let right = base.right;
+    let bottom = base.bottom;
+    for (const pseudo of ["::before", "::after"]) {
+      const ps = getComputedStyle(el, pseudo);
+      if (ps.content === "none" || ps.position !== "absolute") continue;
+      let cb = el;
+      while (cb && getComputedStyle(cb).position === "static")
+        cb = cb.parentElement;
+      if (!cb) continue;
+      const cr = cb.getBoundingClientRect();
+      const cc = getComputedStyle(cb);
+      const x = cr.left + parseFloat(cc.borderLeftWidth) + parseFloat(ps.left);
+      const y = cr.top + parseFloat(cc.borderTopWidth) + parseFloat(ps.top);
+      const w = parseFloat(ps.width);
+      const h = parseFloat(ps.height);
+      if ([x, y, w, h].some(Number.isNaN)) continue;
+      left = Math.min(left, x);
+      top = Math.min(top, y);
+      right = Math.max(right, x + w);
+      bottom = Math.max(bottom, y + h);
+    }
+    return { width: right - left, height: bottom - top };
+  }
+  function inlineLink(el, cs) {
+    // An inline link is as tall as its line (WCAG 2.5.8's inline exception), alone in its
+    // paragraph or not.
+    return el.tagName === "A" && cs.display === "inline";
   }
   // The service accents as the page computes them, normalised to rgb(): one probe per token.
   function serviceAccents() {

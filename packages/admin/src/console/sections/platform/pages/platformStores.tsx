@@ -392,11 +392,11 @@ function StoreTiles({
             aria-pressed={active}
             onClick={() => onSelect(store)}
             className={cn(
-              "flex min-h-24 flex-col items-start gap-2 rounded-lg border bg-surface-raised p-4 text-left",
+              "flex min-h-24 flex-col items-start gap-2 rounded-lg border bg-surface-raised p-4 text-start",
               "transition-colors duration-(--pk-duration-fast) ease-standard",
-              "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus",
+              "focus-visible:outline-2 focus-visible:outline-focus",
               active
-                ? "border-accent ring-1 ring-accent"
+                ? "border-accent outline-1 -outline-offset-1 outline-accent"
                 : "border-border hover:border-border-strong hover:bg-hover",
             )}
           >
@@ -644,7 +644,7 @@ function CredentialRow({
         <h3 className="text-sm font-semibold text-fg-strong">
           {c.label}
           {primary ? (
-            <span className="ml-2 font-normal text-fg-muted">
+            <span className="ms-2 font-normal text-fg-muted">
               lists the apps
             </span>
           ) : null}
@@ -1714,7 +1714,7 @@ function OutcomePanel({
         action={dismiss}
         live
       >
-        <ul className="list-disc space-y-0.5 pl-5">
+        <ul className="list-disc space-y-0.5 ps-5">
           {res.cleared.map((c) => (
             <li key={c.credential}>
               Cleared the {labelOf(c.credential)} pin{" "}
@@ -1735,7 +1735,7 @@ function OutcomePanel({
       action={dismiss}
       live
     >
-      <ul className="list-disc space-y-0.5 pl-5">
+      <ul className="list-disc space-y-0.5 ps-5">
         {changed.length === 0 ? (
           <li>It was already assigned: nothing changed.</li>
         ) : null}

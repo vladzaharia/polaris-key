@@ -140,13 +140,13 @@ export function DiscoverTile({
               src={offer.iconUrl}
               size={48}
               lift
-              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+              className="absolute start-1/2 top-1/2 -translate-x-1/2 rtl:translate-x-1/2 -translate-y-1/2"
             />
           ) : null}
           {added ? (
             <span
               className={cn(
-                "absolute right-2 top-2 inline-flex items-center gap-1.5 rounded-full border border-success-border bg-surface-overlay px-2 py-0.5 text-xs font-medium text-success shadow-elevation-2",
+                "absolute end-2 top-2 inline-flex items-center gap-1.5 rounded-full border border-success-border bg-surface-overlay px-2 py-0.5 text-xs font-medium text-success shadow-elevation-2",
                 pop && "pk-pop-in",
               )}
             >
@@ -171,7 +171,7 @@ export function DiscoverTile({
                 tint={offer.tintColor}
                 src={offer.iconUrl}
                 size={40}
-                className="relative border-[3px] border-surface-raised shadow-elevation-2"
+                className="relative outline-3 -outline-offset-3 outline-surface-raised shadow-elevation-2"
               />
             )}
             <div className={cn("min-w-0 flex-1", !noArt && "pt-5")}>

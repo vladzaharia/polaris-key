@@ -30,7 +30,9 @@ export function DropdownMenuContent({
         ref={ref}
         sideOffset={sideOffset}
         className={cn(
-          "z-50 min-w-[10rem] overflow-hidden rounded-md border border-border bg-surface-overlay p-1 text-fg shadow-elevation-2 animate-pk-in",
+          // Scrolls inside the space the viewport leaves: a menu of 44 px items on a short, zoomed
+          // window is taller than it, and clipped items cannot be reached.
+          "z-50 max-h-(--radix-dropdown-menu-content-available-height) min-w-[10rem] overflow-y-auto overflow-x-hidden rounded-md border border-border bg-surface-overlay p-1 text-fg shadow-elevation-2 animate-pk-in",
           className,
         )}
         {...props}
@@ -58,7 +60,7 @@ export function DropdownMenuItem({
         "relative flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden transition-colors",
         "focus:bg-hover focus:text-fg-strong data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
         "[&_svg]:size-4 [&_svg]:shrink-0",
-        inset && "pl-8",
+        inset && "ps-8",
         destructive && "text-danger focus:bg-danger-subtle focus:text-danger",
         className,
       )}
@@ -83,13 +85,13 @@ export function DropdownMenuCheckboxItem({
       ref={ref}
       checked={checked}
       className={cn(
-        "relative flex cursor-pointer select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-hidden",
+        "relative flex cursor-pointer select-none items-center rounded-sm py-1.5 ps-8 pe-2 text-sm outline-hidden",
         "focus:bg-hover focus:text-fg-strong data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
         className,
       )}
       {...props}
     >
-      <span className="absolute left-2 flex size-3.5 items-center justify-center">
+      <span className="absolute start-2 flex size-3.5 items-center justify-center">
         <DropdownMenuPrimitive.ItemIndicator>
           <Check className="size-4" />
         </DropdownMenuPrimitive.ItemIndicator>
@@ -112,13 +114,13 @@ export function DropdownMenuRadioItem({
     <DropdownMenuPrimitive.RadioItem
       ref={ref}
       className={cn(
-        "relative flex cursor-pointer select-none items-center gap-2 rounded-sm py-1.5 pl-8 pr-2 text-sm outline-hidden [&_svg]:size-4 [&_svg]:shrink-0",
+        "relative flex cursor-pointer select-none items-center gap-2 rounded-sm py-1.5 ps-8 pe-2 text-sm outline-hidden [&_svg]:size-4 [&_svg]:shrink-0",
         "focus:bg-hover focus:text-fg-strong data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
         className,
       )}
       {...props}
     >
-      <span className="absolute left-2 flex size-3.5 items-center justify-center">
+      <span className="absolute start-2 flex size-3.5 items-center justify-center">
         <DropdownMenuPrimitive.ItemIndicator>
           <Check className="size-4" />
         </DropdownMenuPrimitive.ItemIndicator>
@@ -143,7 +145,7 @@ export function DropdownMenuLabel({
       ref={ref}
       className={cn(
         "px-2 py-1.5 text-xs font-medium text-fg-muted",
-        inset && "pl-8",
+        inset && "ps-8",
         className,
       )}
       {...props}
@@ -185,7 +187,7 @@ export function DropdownMenuSubTrigger({
       {...props}
     >
       {children}
-      <ChevronRight className="ml-auto size-4" />
+      <ChevronRight className="ms-auto size-4" />
     </DropdownMenuPrimitive.SubTrigger>
   );
 }
