@@ -124,10 +124,10 @@ commit of the PR:
   resync, link, the webhook and the deploy hook all record it); the validator's `warnings` ride in
   the plan (`ManifestPlan.warnings`, carried from `parseManifest` through `IngestInput.warnings`);
   `GET …/settings/drift`; and the console's "Differs from the manifest" section with Revert and
-  Keep. Migration `0126_product_sync_plan.sql` (the lead assigns the number).
+  Keep. Migration `0127_product_sync_plan.sql` (the lead assigns the number).
 - Keep is a visit-local choice: a claim already stays until reverted, so it calls nothing and the
   row only records "Kept" for the visit. Persisting an acknowledgement needs a schema and is a
   follow-up.
 - Cost: an apply now reads the plan, so every captured apply scenario in
-  `test/fixtures/ingest/golden.json` gained its round trips (about 12); the header of
+  `test/fixtures/ingest/golden.json` gained the reads only the plan makes (+5 to +7 on a resync, +1 for the deploy hook); the header of
   `test/ingest/golden.test.ts` lists the sanctioned edit.

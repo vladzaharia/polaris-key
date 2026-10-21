@@ -201,13 +201,18 @@ export async function handleProductSettings(
       (await getProductSyncState(db, product.slug))?.plan_json,
       now,
     );
-    // Only the keys whose area the caller holds, as `effective` does (ST-29).
+    // Only the keys whose area the caller holds, as `effective` does (ST-29). The last apply's
+    // plan summarises every area (tiers, catalog, sign-in, release), so it goes only to a caller
+    // who holds Settings, which owns the resync.
     return adminJson({
       ...view,
       items: view.items.filter((i) => {
         const d = SETTINGS.get(i.key, "product");
         return !d || can(session.principal, scope, d.rbacArea, "view");
       }),
+      lastPlan: can(session.principal, scope, "settings", "view")
+        ? view.lastPlan
+        : null,
     });
   }
 

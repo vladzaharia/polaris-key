@@ -2105,7 +2105,7 @@
         "releases"
       ]
     },
-    "trips": 38
+    "trips": 31
   },
   "4-resync-changed": {
     "writes": {
@@ -3248,7 +3248,7 @@
         "releases"
       ]
     },
-    "trips": 41
+    "trips": 34
   },
   "5-resync-claims": {
     "writes": {
@@ -4154,7 +4154,7 @@
         }
       ]
     },
-    "trips": 39
+    "trips": 32
   },
   "6a-resync-drop-unused": {
     "writes": {
@@ -4943,7 +4943,7 @@
         "releases"
       ]
     },
-    "trips": 41
+    "trips": 34
   },
   "6b-resync-drop-in-use": {
     "writes": {},
@@ -5828,7 +5828,7 @@
         }
       ]
     },
-    "trips": 40
+    "trips": 32
   },
   "9-resync-off-license": {
     "writes": {
@@ -6635,7 +6635,7 @@
         "releases"
       ]
     },
-    "trips": 40
+    "trips": 33
   },
   "9-resync-off-config": {
     "writes": {
@@ -7442,7 +7442,7 @@
         "releases"
       ]
     },
-    "trips": 40
+    "trips": 33
   },
   "9-resync-off-identity": {
     "writes": {
@@ -8249,7 +8249,7 @@
         "releases"
       ]
     },
-    "trips": 41
+    "trips": 34
   },
   "9-resync-off-distribution": {
     "writes": {
@@ -8907,7 +8907,7 @@
         "releases"
       ]
     },
-    "trips": 40
+    "trips": 33
   },
   "10a-link-existing": {
     "writes": {
@@ -9674,7 +9674,7 @@
       ],
       "remainingSecrets": []
     },
-    "trips": 58
+    "trips": 51
   },
   "10b-link-existing-refused": {
     "writes": {
@@ -10524,7 +10524,7 @@
           "params": [
             "polaris-key",
             1700000001,
-            "{\"v\":1,\"origin\":\"deploy-hook\",\"commit\":\"cccccccccccccccccccccccccccccccccccccccc\",\"plannedAt\":1700000001,\"plan\":{\"apply\":[{\"area\":\"product\",\"summary\":\"Sets admin group admin\"},{\"area\":\"catalog\",\"summary\":\"Publishes a new catalog version\"},{\"area\":\"release\",\"summary\":\"Release settings from .pkey/release\"},{\"area\":\"publisher\",\"summary\":\"Trusted publisher .github/workflows/publish-package.yml\"}],\"skipClaimed\":[{\"area\":\"services\",\"summary\":\"Services stay as set in the console (the manifest turns off license, config)\"}],\"delete\":[],\"conflicts\":[]}}"
+            "{\"v\":1,\"origin\":\"deploy-hook\",\"commit\":\"cccccccccccccccccccccccccccccccccccccccc\",\"plannedAt\":1700000001,\"plan\":{\"apply\":[{\"area\":\"product\",\"summary\":\"Sets admin group admin\"},{\"area\":\"catalog\",\"summary\":\"Publishes a new catalog version\"}],\"skipClaimed\":[{\"area\":\"services\",\"summary\":\"Services stay as set in the console (the manifest turns off license, config)\"}],\"delete\":[],\"conflicts\":[]}}"
           ]
         }
       ],
@@ -11285,7 +11285,7 @@
           "updated_json": null,
           "errors_json": null,
           "message": null,
-          "plan_json": "{\"v\":1,\"origin\":\"deploy-hook\",\"commit\":\"cccccccccccccccccccccccccccccccccccccccc\",\"plannedAt\":1700000001,\"plan\":{\"apply\":[{\"area\":\"product\",\"summary\":\"Sets admin group admin\"},{\"area\":\"catalog\",\"summary\":\"Publishes a new catalog version\"},{\"area\":\"release\",\"summary\":\"Release settings from .pkey/release\"},{\"area\":\"publisher\",\"summary\":\"Trusted publisher .github/workflows/publish-package.yml\"}],\"skipClaimed\":[{\"area\":\"services\",\"summary\":\"Services stay as set in the console (the manifest turns off license, config)\"}],\"delete\":[],\"conflicts\":[]}}"
+          "plan_json": "{\"v\":1,\"origin\":\"deploy-hook\",\"commit\":\"cccccccccccccccccccccccccccccccccccccccc\",\"plannedAt\":1700000001,\"plan\":{\"apply\":[{\"area\":\"product\",\"summary\":\"Sets admin group admin\"},{\"area\":\"catalog\",\"summary\":\"Publishes a new catalog version\"}],\"skipClaimed\":[{\"area\":\"services\",\"summary\":\"Services stay as set in the console (the manifest turns off license, config)\"}],\"delete\":[],\"conflicts\":[]}}"
         }
       ],
       "products": [
@@ -11868,7 +11868,7 @@
       "breakGlass": [],
       "breakGlassEnded": []
     },
-    "trips": 18
+    "trips": 7
   },
   "11b-deploy-relink": {
     "writes": {
@@ -12006,7 +12006,7 @@
           "params": [
             "polaris-key",
             1700000100,
-            "{\"v\":1,\"origin\":\"deploy-hook\",\"commit\":\"cccccccccccccccccccccccccccccccccccccccc\",\"plannedAt\":1700000100,\"plan\":{\"apply\":[{\"area\":\"product\",\"summary\":\"Ends the expired break-glass claim on core.web.origins\"},{\"area\":\"product\",\"summary\":\"Sets admin group admin\"},{\"area\":\"catalog\",\"summary\":\"Publishes a new catalog version\"},{\"area\":\"release\",\"summary\":\"Release settings from .pkey/release\"}],\"skipClaimed\":[{\"area\":\"services\",\"summary\":\"Services stay as set in the console (the manifest turns off license, config)\"},{\"area\":\"publisher\",\"summary\":\"Trusted publisher stays .github/workflows/other.yml in vladzaharia/polaris-key (set in the console)\"}],\"delete\":[],\"conflicts\":[]}}"
+            "{\"v\":1,\"origin\":\"deploy-hook\",\"commit\":\"cccccccccccccccccccccccccccccccccccccccc\",\"plannedAt\":1700000100,\"plan\":{\"apply\":[{\"area\":\"product\",\"summary\":\"Ends the expired break-glass claim on core.web.origins\"},{\"area\":\"product\",\"summary\":\"Sets admin group admin\"},{\"area\":\"catalog\",\"summary\":\"Publishes a new catalog version\"}],\"skipClaimed\":[{\"area\":\"services\",\"summary\":\"Services stay as set in the console (the manifest turns off license, config)\"}],\"delete\":[],\"conflicts\":[]}}"
           ]
         }
       ],
@@ -12813,7 +12813,7 @@
           "updated_json": null,
           "errors_json": null,
           "message": null,
-          "plan_json": "{\"v\":1,\"origin\":\"deploy-hook\",\"commit\":\"cccccccccccccccccccccccccccccccccccccccc\",\"plannedAt\":1700000100,\"plan\":{\"apply\":[{\"area\":\"product\",\"summary\":\"Ends the expired break-glass claim on core.web.origins\"},{\"area\":\"product\",\"summary\":\"Sets admin group admin\"},{\"area\":\"catalog\",\"summary\":\"Publishes a new catalog version\"},{\"area\":\"release\",\"summary\":\"Release settings from .pkey/release\"}],\"skipClaimed\":[{\"area\":\"services\",\"summary\":\"Services stay as set in the console (the manifest turns off license, config)\"},{\"area\":\"publisher\",\"summary\":\"Trusted publisher stays .github/workflows/other.yml in vladzaharia/polaris-key (set in the console)\"}],\"delete\":[],\"conflicts\":[]}}"
+          "plan_json": "{\"v\":1,\"origin\":\"deploy-hook\",\"commit\":\"cccccccccccccccccccccccccccccccccccccccc\",\"plannedAt\":1700000100,\"plan\":{\"apply\":[{\"area\":\"product\",\"summary\":\"Ends the expired break-glass claim on core.web.origins\"},{\"area\":\"product\",\"summary\":\"Sets admin group admin\"},{\"area\":\"catalog\",\"summary\":\"Publishes a new catalog version\"}],\"skipClaimed\":[{\"area\":\"services\",\"summary\":\"Services stay as set in the console (the manifest turns off license, config)\"}],\"delete\":[],\"conflicts\":[]}}"
         }
       ],
       "products": [
@@ -13408,7 +13408,7 @@
         }
       ]
     },
-    "trips": 20
+    "trips": 8
   },
   "14a-dry-create-reserved-name": {
     "writes": {},

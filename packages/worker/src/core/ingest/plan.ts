@@ -24,7 +24,24 @@ import type {
   ParsedManifest,
 } from "@polaris-key/manifest";
 import type { ManifestPlan, PlanWarning } from "./types.js";
+import type { ProductRow, ProfileRow, TierRow } from "../repo.js";
+import type { ApplyClaims } from "../settingsClaims.js";
 import { countLicensesListingProfile, snapshotRowIds } from "./shared.js";
+
+/**
+ * The reads `planManifest` shares with its caller (ST-17). The ingest pipeline already holds each
+ * of these in its lazy memo, so the apply's plan and the dry run's cost only the reads they alone
+ * need. Each defaults to the direct read, so a caller with no memo passes nothing.
+ */
+export interface PlanReads {
+  product?: () => Promise<ProductRow | null>;
+  claims?: () => Promise<ApplyClaims>;
+  activeSchema?: () => Promise<{ catalog_json: string } | null>;
+  previousSnapshot?: () => Promise<{ manifest_json: string } | null>;
+  rowClaimKeys?: () => Promise<readonly string[]>;
+  tiers?: () => Promise<TierRow[]>;
+  profiles?: () => Promise<ProfileRow[]>;
+}
 
 const claimed = (source: string | null | undefined): boolean =>
   source === "admin";
@@ -71,7 +88,7 @@ function presentationChanges(
   return out;
 }
 
-const list = (ids: string[]): string =>
+const list = (ids: readonly string[]): string =>
   ids.length <= 4
     ? ids.join(", ")
     : `${ids.slice(0, 4).join(", ")} and ${ids.length - 4} more`;
@@ -91,6 +108,9 @@ export async function planManifest(
   manifest: ParsedManifest,
   now: number,
   warnings: readonly PlanWarning[] = [],
+  reads: PlanReads = {},
+  /** `system`: the deploy hook's subset applies no tiers, profiles, sign-in or release rows. */
+  scope: "full" | "system" = "full",
 ): Promise<ManifestPlan> {
   const plan: ManifestPlan = {
     apply: [],
@@ -100,14 +120,16 @@ export async function planManifest(
     // ST-17: the validator's warnings travel with the plan and never block it.
     ...(warnings.length > 0 ? { warnings: [...warnings] } : {}),
   };
-  const product = await getProduct(db, slug);
+  const product = await (reads.product ?? (() => getProduct(db, slug)))();
   if (!product) return plan;
   const m = manifest.product;
 
   // ── the product row ────────────────────────────────────────────────────────
   // ST-20: the claims the resync honours; a break-glass claim it would end is not among them, so
   // its field is planned as applied, and the ending is planned too.
-  const applyClaims = await claimsForApply(db, slug, manifest, now);
+  const applyClaims = await (
+    reads.claims ?? (() => claimsForApply(db, slug, manifest, now))
+  )();
   const claims = applyClaims.claimed;
   for (const e of applyClaims.ended)
     plan.apply.push({
@@ -176,7 +198,9 @@ export async function planManifest(
       summary: `${kept.join(", ")} ${kept.length === 1 ? "stays" : "stay"} as set in the console`,
     });
   // LX-06: row-backed settings claimed in the console (`licensing.*`, the sign-in tier sync).
-  const rowClaims = await liveRowClaimKeys(db, slug, now);
+  const rowClaims = await (
+    reads.rowClaimKeys ?? (() => liveRowClaimKeys(db, slug, now))
+  )();
   if (rowClaims.length)
     plan.skipClaimed.push({
       area: "settings",
@@ -246,7 +270,9 @@ export async function planManifest(
     });
 
   // ── catalog: one unit, a new version when it changed ───────────────────────
-  const active = await getActiveSchema(db, slug);
+  const active = await (
+    reads.activeSchema ?? (() => getActiveSchema(db, slug))
+  )();
   const before = catalogKeys(parseJsonColumn(active?.catalog_json));
   const after = catalogKeys(manifest.catalog);
   if (
@@ -285,10 +311,13 @@ export async function planManifest(
   // A `manifest` row the manifest declares is replaced; a `console` row is never touched (a
   // manifest row with its id is not applied); a dropped `manifest` row is deleted, or blocks when
   // licences (or, for a profile, a surviving tier) still use it.
+  // The deploy hook's subset (scope `system`) writes none of the rows below: nothing to plan.
+  if (scope === "system") return plan;
   const previousIds = snapshotRowIds(
-    (await getManifestSnapshot(db, slug))?.manifest_json,
+    (await (reads.previousSnapshot ?? (() => getManifestSnapshot(db, slug)))())
+      ?.manifest_json,
   );
-  const tiers = await listTiers(db, slug);
+  const tiers = await (reads.tiers ?? (() => listTiers(db, slug)))();
   const consoleTiers = new Set(
     tiers.filter((t) => t.source === "console").map((t) => t.id),
   );
@@ -330,7 +359,7 @@ export async function planManifest(
     else plan.delete.push({ area: "tiers", id: t.id, summary: `Tier ${t.id}` });
   }
 
-  const profiles = await listProfiles(db, slug);
+  const profiles = await (reads.profiles ?? (() => listProfiles(db, slug)))();
   const consoleProfiles = new Set(
     profiles.filter((p) => p.source === "console").map((p) => p.id),
   );

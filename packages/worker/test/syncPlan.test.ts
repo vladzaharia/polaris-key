@@ -39,6 +39,7 @@ import {
   linkSystemProduct,
 } from "../src/console/systemProduct.js";
 import { getProductSyncState, getProduct } from "../src/core/products/store.js";
+import { handleProductSettings } from "../src/console/handlers/productSettings.js";
 import { planManifest } from "../src/core/ingest/plan.js";
 import { driftView } from "../src/core/settingsDrift.js";
 import type { StoredSyncPlan } from "../src/core/ingest/types.js";
@@ -418,5 +419,65 @@ describe("the drift read (ST-17)", () => {
       view.items.find((i) => i.key === "license.defaults.deviceLimit"),
     ).toMatchObject({ differs: false, manifestKnown: true });
     expect(view.lastPlan?.v).toBe(1);
+  });
+});
+
+describe("the drift route filters by area (ST-17)", () => {
+  async function drift(areas: readonly string[] | null) {
+    const { db, env } = await linkedProduct();
+    const at = (key: string, value: string) =>
+      db.run(
+        `INSERT INTO product_settings (product, key, value_json, source, version, updated_at, updated_by)
+         VALUES (?, ?, ?, 'console', 1, ?, 'u1')`,
+        SLUG,
+        key,
+        value,
+        NOW + 1,
+      );
+    await at("core.name", '"Console name"');
+    await at("licensing.anchorPolicy", '"owner"');
+    const res = await handleProductSettings(
+      new Request(
+        `https://key.plrs.im/manage/api/products/${SLUG}/settings/drift`,
+      ),
+      env,
+      db,
+      {
+        principal: {
+          memberId: "m",
+          grants: [
+            {
+              role: "product_admin",
+              scope: `product:${SLUG}`,
+              areas: areas as never,
+              source: "grant",
+            },
+          ],
+        },
+      } as never,
+      (await getProduct(db, SLUG))!,
+      ["drift"],
+      NOW + 2,
+    );
+    expect(res.status).toBe(200);
+    return (await res.json()) as {
+      items: { key: string }[];
+      lastPlan: unknown;
+    };
+  }
+
+  it("a member without an item's area does not see it, nor the plan without Settings", async () => {
+    const coreOnly = await drift(["core"]);
+    expect(coreOnly.items.map((i) => i.key)).toEqual(["core.name"]);
+    expect(coreOnly.lastPlan).toBeNull();
+  });
+
+  it("a member holding the areas sees both and the plan", async () => {
+    const all = await drift(null);
+    expect(all.items.map((i) => i.key)).toEqual([
+      "core.name",
+      "licensing.anchorPolicy",
+    ]);
+    expect(all.lastPlan).not.toBeNull();
   });
 });

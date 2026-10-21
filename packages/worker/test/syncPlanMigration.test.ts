@@ -1,5 +1,5 @@
 /**
- * ST-17's `0126_product_sync_plan.sql` (the file's number is the lead's to assign), rehearsed on a
+ * ST-17's `0127_product_sync_plan.sql` (the file's number is the lead's to assign), rehearsed on a
  * scratch SQLite: every migration before it, a populated `product_sync_state` row, then the file.
  * The row survives with `plan_json` NULL, the column takes a plan, and the file is the one bare
  * `ADD COLUMN` statement the migration discipline allows (R11-04).
@@ -41,7 +41,7 @@ function before(): Database.Database {
   return raw;
 }
 
-describe("0126_product_sync_plan.sql", () => {
+describe("0127_product_sync_plan.sql", () => {
   it("adds plan_json, NULL on the rows that exist, and nothing else changes", () => {
     const raw = before();
     const cols = (
