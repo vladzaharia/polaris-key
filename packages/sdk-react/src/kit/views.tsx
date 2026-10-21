@@ -1172,7 +1172,7 @@ function settingsRows(c: KitCtx): ReactNode {
   );
 }
 
-const warnedRows = new WeakMap<object, Set<string>>();
+const warnedRows = new Set<string>();
 
 function accountRows(c: KitCtx): ReactNode {
   const keys = [
@@ -1188,11 +1188,9 @@ function accountRows(c: KitCtx): ReactNode {
     if (!c.view.copy.includes(k)) return false;
     // A row whose label names a fact the input lacks ("{tier} license") is left out.
     if (!unfilled(c, k)) return true;
-    // Once per input, so a re-render with the same facts stays quiet.
-    const seen = warnedRows.get(c.input) ?? new Set<string>();
-    warnedRows.set(c.input, seen);
-    if (!seen.has(k)) {
-      seen.add(k);
+    // Once per key, so a re-render stays quiet (the elements warn the same way).
+    if (!warnedRows.has(k)) {
+      warnedRows.add(k);
       console.warn(`[pk] ${k} has no value; not drawn`);
     }
     return false;
