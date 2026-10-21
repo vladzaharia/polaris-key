@@ -463,14 +463,18 @@ public struct PaywallView: View {
                     VStack(alignment: .leading, spacing: style.space(.xs)) {
                         KitText(includes, .label, color: .strong)
                         ForEach(features, id: \.self) { feature in
-                            Label {
+                            // An HStack, not a Label: a Label's title truncates in a narrow
+                            // column ("Unlimited proj…" at AX5), this one wraps.
+                            HStack(alignment: .firstTextBaseline, spacing: style.space(.xs)) {
+                                Image(systemName: "checkmark")
+                                    .foregroundStyle(style.palette.accentFg)
+                                    .accessibilityHidden(true)
                                 Text(feature)
                                     .font(style.font(.body))
                                     .foregroundStyle(style.palette.textDefault)
-                            } icon: {
-                                Image(systemName: "checkmark")
-                                    .foregroundStyle(style.palette.accentFg)
+                                    .fixedSize(horizontal: false, vertical: true)
                             }
+                            .accessibilityElement(children: .combine)
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
