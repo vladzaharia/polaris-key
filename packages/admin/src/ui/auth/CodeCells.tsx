@@ -15,12 +15,15 @@ export function CodeCells({
   value,
   invalid,
   describedBy,
+  stepFocus = false,
   onChange,
 }: {
   id: string;
   value: string;
   invalid: boolean;
   describedBy?: string;
+  /** The step's focus target: `AuthCard` focuses this field, not the h1, when the step opens. */
+  stepFocus?: boolean;
   onChange: (value: string) => void;
 }): React.ReactElement {
   const [focused, setFocused] = React.useState(false);
@@ -50,6 +53,7 @@ export function CodeCells({
         aria-invalid={invalid || undefined}
         aria-describedby={describedBy}
         autoComplete="one-time-code"
+        data-step-focus={stepFocus ? "" : undefined}
         inputMode="numeric"
         pattern="[0-9]*"
         maxLength={CODE_LENGTH}

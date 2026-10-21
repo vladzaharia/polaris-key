@@ -993,6 +993,8 @@
     "locker.error.licenseInactive.title": "ライセンスが有効ではありません",
     "locker.error.licenseInactive.body": "ライセンスを更新または再有効化してから、もう一度ダウンロードしてください。",
     "locker.error.signInAgain": "続けるには、もう一度サインインしてください。",
+    "locker.error.loadFailed": "{name}を読み込めませんでした。接続を確認してください。",
+    "locker.error.loadFailedLibrary": "ライブラリを読み込めませんでした。接続を確認してください。",
     "locker.library.title": "ライブラリ",
     "locker.library.heading": "あなたのライブラリ",
     "locker.library.signedInAs": "{email}でサインイン中",

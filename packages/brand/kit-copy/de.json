@@ -993,6 +993,8 @@
     "locker.error.licenseInactive.title": "Ihre Lizenz ist nicht aktiv",
     "locker.error.licenseInactive.body": "Verlängern oder reaktivieren Sie Ihre Lizenz und versuchen Sie den Download erneut.",
     "locker.error.signInAgain": "Melden Sie sich erneut an, um fortzufahren.",
+    "locker.error.loadFailed": "{name} konnte nicht geladen werden. Prüfen Sie Ihre Verbindung.",
+    "locker.error.loadFailedLibrary": "Ihre Mediathek konnte nicht geladen werden. Prüfen Sie Ihre Verbindung.",
     "locker.library.title": "Mediathek",
     "locker.library.heading": "Ihre Mediathek",
     "locker.library.signedInAs": "Angemeldet als {email}",

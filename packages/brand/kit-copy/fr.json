@@ -993,6 +993,8 @@
     "locker.error.licenseInactive.title": "Votre licence n'est pas active",
     "locker.error.licenseInactive.body": "Renouvelez ou réactivez votre licence, puis réessayez le téléchargement.",
     "locker.error.signInAgain": "Connectez-vous de nouveau pour continuer.",
+    "locker.error.loadFailed": "Impossible de charger {name}. Vérifiez votre connexion.",
+    "locker.error.loadFailedLibrary": "Impossible de charger votre bibliothèque. Vérifiez votre connexion.",
     "locker.library.title": "Bibliothèque",
     "locker.library.heading": "Votre bibliothèque",
     "locker.library.signedInAs": "Connecté en tant que {email}",

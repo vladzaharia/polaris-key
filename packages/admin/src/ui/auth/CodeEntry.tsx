@@ -133,6 +133,7 @@ export function CodeEntry({
             value={code}
             invalid={Boolean(error)}
             describedBy={error ? errorId : undefined}
+            stepFocus
             onChange={(v) => {
               setCode(v);
               if (error) setError(null);

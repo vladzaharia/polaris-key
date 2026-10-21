@@ -61,10 +61,11 @@ export function ProductHeader({
           variant="banner"
           onError={() => setCoverFailed(true)}
           // The listing's 16:9 header (PORTAL.md Q-2): all of it on phones, full-bleed; on desktop
-          // a centred 3:1 band, capped at 26 rem so it never fills the first screen. pk-vt-hero:
+          // a centred 5:1 band, capped at 13.75 rem (and 26 vh) so License and Devices start in the first
+          // viewport (LK-polish M3); phones cap at 11 rem. pk-vt-hero:
           // the Library tile's art flies into it and back (motion.css; named only during a
           // forward or back transition, MO-05).
-          className="pk-vt-hero -mx-4 aspect-video desk:mx-0 desk:aspect-[3/1] desk:max-h-[26rem] desk:rounded-xl short:hidden"
+          className="pk-vt-hero -mx-4 aspect-video desk:mx-0 max-desk:max-h-44 desk:w-full desk:aspect-[5/1] desk:max-h-[min(13.75rem,26vh)] desk:rounded-xl short:hidden"
         />
       ) : null}
       <div

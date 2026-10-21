@@ -101,6 +101,14 @@ async function expectBrandedPage(
     );
     expect(html).toContain('<svg class="mark"');
     expect(html).not.toContain("Polaris&nbsp;Key");
+    // Help and Privacy sit under every Locker card (no Terms page exists), 24 px targets.
+    expect(html).toContain(
+      '<nav class="ac-links" aria-label="Help and privacy"><a href="/docs/help/">Help</a><a href="/docs/help/your-data/">Privacy</a></nav>',
+    );
+    expect(html).not.toContain("Terms");
+    expect(styles[0]![1]).toContain(
+      ".ac-links a{display:inline-flex;align-items:center;min-height:1.5rem",
+    );
   }
   expect(html).not.toContain('class="lockup"');
   expect(html.replace(styles[0]![0], "")).not.toContain("{");
