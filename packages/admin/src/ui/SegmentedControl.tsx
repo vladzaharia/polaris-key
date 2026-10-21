@@ -21,6 +21,8 @@ export interface SegmentedControlProps<V extends string = string> {
   id?: string;
   name?: string;
   disabled?: boolean;
+  /** Focusable but unchangeable (a locked or busy row): arrows move, nothing is selected. */
+  readOnly?: boolean;
   className?: string;
   ref?: React.Ref<HTMLDivElement>;
   "aria-label"?: string;
@@ -136,11 +138,14 @@ export function SegmentedControl<V extends string = string>({
   id,
   name,
   disabled,
+  readOnly,
   className,
   ref,
   ...aria
 }: SegmentedControlProps<V>): React.ReactElement {
   const { locked } = useWriteLock();
+  // A locked page keeps the control in the tab order: only the change is refused (B-031).
+  const frozen = readOnly || locked;
   const root = React.useRef<HTMLDivElement | null>(null);
   const thumb = React.useRef<HTMLSpanElement | null>(null);
   const items = React.useRef(new Map<string, HTMLButtonElement>());
@@ -161,10 +166,13 @@ export function SegmentedControl<V extends string = string>({
       id={id}
       name={name}
       value={value}
-      disabled={disabled || locked}
+      disabled={disabled}
+      aria-readonly={frozen || undefined}
       orientation="horizontal"
       loop
-      onValueChange={(v) => onChange?.(v as V)}
+      onValueChange={(v) => {
+        if (!frozen) onChange?.(v as V);
+      }}
       className={cn(
         "group/seg relative inline-flex items-center gap-0.5 rounded-md border border-border bg-surface-sunken p-0.5",
         wrap && "max-w-full flex-wrap",

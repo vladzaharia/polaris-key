@@ -73,8 +73,8 @@ describe("fields and drafts", () => {
     expect(fromField(days, 7)).toBe(7);
   });
   it("names the bound a draft breaks, and passes one inside", () => {
-    expect(draftError(bytes, 40 * 1_048_576)).toBe("Use 32 or less.");
-    expect(draftError(days, 0)).toBe("Use 1 or more.");
+    expect(draftError(bytes, 40 * 1_048_576)).toBe("Use 32 MiB or less.");
+    expect(draftError(days, 0)).toBe("Use 1 day or more.");
     expect(draftError(days, null)).toBe("Enter a value.");
     expect(draftError(days, 30)).toBeNull();
     expect(draftError(enumSpec, "a")).toBeNull();

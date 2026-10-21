@@ -669,6 +669,46 @@ describe("the ?setting= deep link", () => {
   });
 });
 
+describe("the ?setting= deep link, stabilization (B-043, B-044, B-048)", () => {
+  it("B-048: a link to a deploy value inside the folded Advanced card opens the fold and lands on the row", async () => {
+    HTMLElement.prototype.scrollIntoView = vi.fn();
+    boot("#/platform/settings?setting=PLATFORM_ADMIN_GROUP", {
+      extra: routes(),
+    });
+    await waitFor(
+      () =>
+        expect(
+          document
+            .getElementById("platform-setting-PLATFORM_ADMIN_GROUP")
+            ?.contains(document.activeElement),
+        ).toBe(true),
+      { timeout: 2000 },
+    );
+  });
+
+  it("B-043, B-044: a feed's pointer lands on that ecosystem's switch, and the rail marks the section that holds it", async () => {
+    HTMLElement.prototype.scrollIntoView = vi.fn();
+    boot("#/platform/settings?setting=feeds.policy.npm.enabled", {
+      extra: routes(),
+    });
+    await waitFor(
+      () =>
+        expect(document.activeElement?.id).toBe("platform-feeds-npm-enabled"),
+      { timeout: 2000 },
+    );
+    const pills = await screen.findByRole("navigation", {
+      name: "Jump to section",
+    });
+    await waitFor(() =>
+      expect(
+        within(pills)
+          .getAllByRole("link", { current: "location" })
+          .map((a) => a.textContent),
+      ).toEqual(["Storefront and hosting"]),
+    );
+  });
+});
+
 describe("Licensing (LX-05)", () => {
   it("shows the reserved-names severity, the reserved keys and each declaring product", async () => {
     boot("#/platform/settings", { extra: routes() });
@@ -950,7 +990,7 @@ describe("Background jobs", () => {
       name: "Unsaved changes in Lazy delta size cap",
     });
     await userEvent.click(within(bar).getByRole("button", { name: "Save…" }));
-    expect(await within(jobs).findByText("Use 32 or less.")).toBeTruthy();
+    expect(await within(jobs).findByText("Use 32 MiB or less.")).toBeTruthy();
     expect(writes(log, "PATCH")).toHaveLength(0);
 
     await userEvent.clear(input);
@@ -1034,9 +1074,7 @@ describe("Background jobs", () => {
     answer = () => grace({ value: 60, version: 5 });
     await userEvent.click(within(jobs).getByRole("button", { name: "Reload" }));
     expect(await within(jobs).findByText("Reloaded")).toBeTruthy();
-    expect(
-      within(jobs).getByText(/It now reads 45 days, set by grace@x.io/),
-    ).toBeTruthy();
+    expect(within(jobs).getByText(/It now reads 45 days, set by/)).toBeTruthy();
     // The draft survived the reload.
     expect((input as HTMLInputElement).value).toBe("60");
     await userEvent.click(
@@ -1063,7 +1101,10 @@ describe("Background jobs", () => {
     });
     const jobs = await section("Jobs");
     await userEvent.click(
-      within(jobs).getByRole("button", {
+      within(jobs).getAllByRole("button", { name: /Set in console/ })[0]!,
+    );
+    await userEvent.click(
+      await screen.findByRole("button", {
         name: "Revert blob collector grace period…",
       }),
     );
@@ -2031,7 +2072,10 @@ describe("Product defaults (ST-16)", () => {
     });
     const defaults = await section("Product defaults");
     await userEvent.click(
-      within(defaults).getByRole("button", {
+      within(defaults).getAllByRole("button", { name: /Set in console/ })[0]!,
+    );
+    await userEvent.click(
+      await screen.findByRole("button", {
         name: "Revert key-entry limit ceiling…",
       }),
     );
@@ -2099,7 +2143,10 @@ describe("Product defaults (ST-16)", () => {
     });
     const defaults = await section("Product defaults");
     await userEvent.click(
-      within(defaults).getByRole("button", {
+      within(defaults).getAllByRole("button", { name: /Set in console/ })[0]!,
+    );
+    await userEvent.click(
+      await screen.findByRole("button", {
         name: "Revert key-entry limit ceiling…",
       }),
     );

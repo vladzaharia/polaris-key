@@ -44,6 +44,7 @@ const { ApiError } = await import("../src/api.js");
 const { PresentationPage, slotLabel, statusOf } =
   await import("../src/console/sections/core/pages/Presentation.js");
 const { qk } = await import("../src/console/data/queries.js");
+const { WriteLock } = await import("../src/ui/WriteLock.js");
 
 const NOW = 1_800_000_000;
 const IMG = "https://img.example.test";
@@ -388,6 +389,21 @@ describe("Core → Presentation → Hosting and quotas (HA-10)", () => {
       screen.queryByText("Hosted assets are off on this deployment"),
     ).toBeNull();
     await expectNoAxeViolations(container);
+  });
+
+  it("B-033: a view-only member sees the quotas without Save or Reset", async () => {
+    renderAt(
+      "#/p/djdl/settings/presentation",
+      <WriteLock locked reason="You can't edit this.">
+        <PresentationPage slug="djdl" />
+      </WriteLock>,
+    );
+    const release = await settingRow("Release-file quota");
+    expect(
+      within(release).getByLabelText("Release-file quota in MiB"),
+    ).toBeTruthy();
+    expect(within(release).queryByRole("button", { name: "Save" })).toBeNull();
+    expect(within(release).queryByRole("button", { name: "Reset" })).toBeNull();
   });
 
   it("says when hosted assets are off on the deployment", async () => {

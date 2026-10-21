@@ -3,7 +3,8 @@ import { History } from "lucide-react";
 import { formatDateTime } from "../../lib/format.js";
 import { Button } from "../Button.js";
 import { Callout } from "../Callout.js";
-import { Drawer } from "../Drawer.js";
+import { Drawer, DrawerBody } from "../Drawer.js";
+import { IconButton } from "../IconButton.js";
 import type { ConflictState } from "./useSettingWrite.js";
 
 /**
@@ -23,7 +24,7 @@ export function ConflictNote({
   onReload: () => void;
   onDismiss: () => void;
   /** What the setting reads now, for the reloaded message ("45 days, set by ada@x.io"). */
-  now: string;
+  now: React.ReactNode;
   /** The unsaved value, kept across the reload. */
   draft?: string;
 }): React.ReactElement | null {
@@ -109,56 +110,57 @@ export function SettingHistory({
   }, [open, run]);
   return (
     <>
-      <Button
+      {/* An icon in a fixed slot, so no row's control shifts for it (B-040). */}
+      <IconButton
+        label={`History of ${label.toLowerCase()}`}
         size="sm"
         variant="ghost"
+        icon={<History aria-hidden />}
         onClick={() => setOpen(true)}
-        aria-label={`History of ${label.toLowerCase()}`}
-      >
-        <History aria-hidden />
-        History
-      </Button>
+      />
       <Drawer
         open={open}
         onOpenChange={setOpen}
         title={`${label} history`}
         description="Changes made in the console, newest first."
       >
-        {details ? (
-          <div className="mb-4 space-y-1 border-b border-border pb-4 text-sm text-fg-muted">
-            {details}
-          </div>
-        ) : null}
-        {state.phase === "loading" ? (
-          <p className="text-sm text-fg-muted" role="status">
-            Loading history
-          </p>
-        ) : state.phase === "error" ? (
-          <Callout
-            tone="danger"
-            title="History could not be loaded"
-            action={
-              <Button size="sm" variant="outline" onClick={run}>
-                Try again
-              </Button>
-            }
-          >
-            Nothing was changed.
-          </Callout>
-        ) : state.items.length === 0 ? (
-          <p className="text-sm text-fg-muted">No changes recorded yet.</p>
-        ) : (
-          <ol className="divide-y divide-border">
-            {state.items.map((e) => (
-              <li key={e.id} className="space-y-0.5 py-3 text-sm">
-                <p className="font-medium text-fg-strong">{e.change}</p>
-                <p className="text-fg-muted">
-                  {e.by} · {formatDateTime(e.at)}
-                </p>
-              </li>
-            ))}
-          </ol>
-        )}
+        <DrawerBody>
+          {details ? (
+            <div className="mb-4 space-y-1 border-b border-border pb-4 text-sm text-fg-muted">
+              {details}
+            </div>
+          ) : null}
+          {state.phase === "loading" ? (
+            <p className="text-sm text-fg-muted" role="status">
+              Loading history
+            </p>
+          ) : state.phase === "error" ? (
+            <Callout
+              tone="danger"
+              title="History could not be loaded"
+              action={
+                <Button size="sm" variant="outline" onClick={run}>
+                  Try again
+                </Button>
+              }
+            >
+              Nothing was changed.
+            </Callout>
+          ) : state.items.length === 0 ? (
+            <p className="text-sm text-fg-muted">No changes recorded yet.</p>
+          ) : (
+            <ol className="divide-y divide-border">
+              {state.items.map((e) => (
+                <li key={e.id} className="space-y-0.5 py-3 text-sm">
+                  <p className="font-medium text-fg-strong">{e.change}</p>
+                  <p className="text-fg-muted">
+                    {e.by} · {formatDateTime(e.at)}
+                  </p>
+                </li>
+              ))}
+            </ol>
+          )}
+        </DrawerBody>
       </Drawer>
     </>
   );

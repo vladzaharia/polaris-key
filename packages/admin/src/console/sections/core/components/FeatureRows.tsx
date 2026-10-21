@@ -1,5 +1,5 @@
 import * as React from "react";
-import { CircleCheck, Circle, Lock } from "lucide-react";
+import { CircleCheck, Lock } from "lucide-react";
 import type { ServiceFeatureFacts, ServiceSlug } from "../../../../api.js";
 import type {
   FeatureRow,
@@ -133,15 +133,10 @@ function Status({
   blocked: boolean;
   requirementId: string;
   missing: readonly ServiceSlug[];
-}): React.ReactElement {
+}): React.ReactElement | null {
   if (blocked) return <TurnOnFirst id={requirementId} missing={missing} />;
-  if (!on)
-    return (
-      <span className="inline-flex items-center gap-1.5 text-sm text-fg-muted">
-        <Circle aria-hidden className="size-4" />
-        Off
-      </span>
-    );
+  // The switch beside it already says Off (B-047).
+  if (!on) return null;
   return (
     <span className="inline-flex items-start gap-1.5 text-sm tabular-nums text-success">
       <CircleCheck aria-hidden className="mt-0.5 size-4 shrink-0" />
@@ -230,7 +225,8 @@ export function FeatureRowItem({
         </p>
         <Needs feature={feature} enabled={enabled} />
       </div>
-      <div className="max-sm:col-span-2 max-sm:col-start-2 max-sm:row-start-2 @max-[20rem]:col-span-1 @max-[20rem]:col-start-1 @max-[20rem]:row-start-2">
+      {/* The cell stays when empty: the grid's columns hold the switch at the end. */}
+      <div className="max-sm:col-span-2 max-sm:col-start-2 max-sm:row-start-2 @max-[20rem]:col-span-1 @max-[20rem]:col-start-1 @max-[20rem]:row-start-2 max-sm:empty:hidden">
         <Status
           on={on}
           text={factFor(feature, ctx.facts)}

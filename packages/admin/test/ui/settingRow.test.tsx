@@ -13,6 +13,7 @@ import {
   type SettingRowProps,
 } from "../../src/ui/settings/SettingRow.js";
 import { lastAnnouncement } from "../../src/ui/LiveRegion.js";
+import { SourceBadge } from "../../src/ui/SourceBadge.js";
 
 afterEach(cleanup);
 const axe = configureAxe({ rules: { "color-contrast": { enabled: false } } });
@@ -143,7 +144,7 @@ describe("SettingRow states", () => {
     await type("999");
     await userEvent.click(screen.getByRole("button", { name: /^Save/ }));
     expect((await screen.findByRole("alert")).textContent).toBe(
-      "Use 365 or less.",
+      "Use 365 days or less.",
     );
     expect(save).not.toHaveBeenCalled();
     expect(screen.getByRole("textbox").getAttribute("aria-invalid")).toBe(
@@ -248,6 +249,7 @@ describe("SettingRow states", () => {
   it("revert asks first, then runs with the version", async () => {
     const run = vi.fn(async () => ({}));
     row({
+      source: <SourceBadge source="admin" />,
       revertPlan: () => ({
         level: "L1",
         title: "Revert grace period?",
@@ -256,8 +258,12 @@ describe("SettingRow states", () => {
         run,
       }),
     });
+    // Revert lives in the owner badge's popover, not beside the control (B-040).
     await userEvent.click(
-      screen.getByRole("button", { name: "Revert grace period…" }),
+      screen.getByRole("button", { name: /Set in console/ }),
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Revert grace period…" }),
     );
     expect(run).not.toHaveBeenCalled();
     await userEvent.click(
@@ -300,5 +306,189 @@ describe("SettingRow states", () => {
       await screen.findByRole("button", { name: "Try again" }),
     );
     expect(await screen.findByText("No changes recorded yet.")).toBeTruthy();
+  });
+});
+
+describe("SettingRow stabilization (B-028…B-041)", () => {
+  it("B-028: Discard and a plain Save leave focus on the control, not <body>", async () => {
+    let view!: ReturnType<typeof render>;
+    const save = vi.fn(async () => {
+      // The server answers: the value in force is now 40, so the Save bar unmounts.
+      view.rerender(<SettingRow {...props} value={40} version={4} />);
+      return {};
+    });
+    const props: SettingRowProps = {
+      id: "s1",
+      settingKey: "grace.days",
+      label: "Grace period",
+      spec: { kind: "integer", unit: "days", min: 1, max: 365 },
+      confirm: { up: "L0", down: "L0" },
+      value: 21,
+      version: 3,
+      source: <span>Code default</span>,
+      save,
+      isConflict: () => false,
+    };
+    view = render(<SettingRow {...props} />);
+    const input = await type("30");
+    await userEvent.click(screen.getByRole("button", { name: "Discard" }));
+    expect(document.activeElement).toBe(input);
+    await type("40");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Save" })).toBeNull(),
+    );
+    await waitFor(() => expect(document.activeElement).toBe(input));
+  });
+
+  it("B-028: a segmented choice stays focusable (not disabled) while its write is in flight", async () => {
+    let finish!: () => void;
+    const save = vi.fn(
+      () =>
+        new Promise<unknown>((r) => {
+          finish = () => r({});
+        }),
+    );
+    row({
+      spec: { kind: "enum", values: ["a", "b"] },
+      confirm: { change: "L0" },
+      value: "a",
+      save,
+    });
+    const b = screen.getByRole("radio", { name: "b" });
+    await userEvent.click(b);
+    await waitFor(() => expect(save).toHaveBeenCalled());
+    expect((b as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.getByRole("radiogroup").getAttribute("aria-readonly")).toBe(
+      "true",
+    );
+    finish();
+  });
+
+  it("B-031: a locked segmented control stays in the tab order and refuses a change", async () => {
+    const { save } = row({
+      spec: { kind: "enum", values: ["a", "b"] },
+      confirm: { change: "L0" },
+      value: "a",
+      locked: "Locked by the platform.",
+    });
+    const a = screen.getByRole("radio", { name: "a" });
+    expect((a as HTMLButtonElement).disabled).toBe(false);
+    await userEvent.tab();
+    expect(document.activeElement).toBe(a);
+    await userEvent.click(screen.getByRole("radio", { name: "b" }));
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it("B-035: an empty field names the value it follows", () => {
+    row({ value: null, inherited: 200 });
+    expect(screen.getByRole("textbox").getAttribute("placeholder")).toBe(
+      "Platform default: 200 days",
+    );
+  });
+
+  it("B-037: a bounds error sits under the input, in place of the hint, with the unit", async () => {
+    row();
+    await type("999");
+    await userEvent.click(screen.getByRole("button", { name: /^Save/ }));
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toBe("Use 365 days or less.");
+    const field = screen.getByRole("textbox").closest("div.sm\\:w-48")!;
+    expect(field.contains(alert)).toBe(true);
+    expect(field.textContent).not.toContain("1 to 365 days.");
+  });
+
+  it("B-038: Not saved carries no pencil glyph", async () => {
+    row();
+    await type("30");
+    const pill = screen.getByText("Not saved").closest("span")!;
+    expect(pill.querySelector("svg")).toBeNull();
+  });
+
+  it("B-039: the typed confirmation is labelled 'Type to confirm' and the chip carries the key", async () => {
+    row({ confirm: { up: "L3", down: "L3" } });
+    await type("30");
+    await userEvent.click(screen.getByRole("button", { name: "Save…" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(within(dialog).getByText("Type to confirm")).toBeTruthy();
+    expect(within(dialog).getByText("grace.days")).toBeTruthy();
+  });
+
+  it("B-040: History is an icon button after the control; Revert is not a row button", () => {
+    row({
+      history: async () => [],
+      revertPlan: () => ({
+        level: "L1",
+        title: "t",
+        confirmLabel: "c",
+        consequences: [],
+        run: async () => ({}),
+      }),
+    });
+    const history = screen.getByRole("button", {
+      name: "History of grace period",
+    });
+    expect(history.textContent).toBe("");
+    const input = screen.getByRole("textbox");
+    expect(
+      input.compareDocumentPosition(history) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /^Revert/ })).toBeNull();
+  });
+
+  it("B-030: the history drawer's content scrolls inside the drawer body", async () => {
+    row({
+      history: async () => [
+        { id: "1", by: "ada@x.io", at: 1_790_000_000_000, change: "21 → 30" },
+      ],
+    });
+    await userEvent.click(
+      screen.getByRole("button", { name: "History of grace period" }),
+    );
+    const item = await screen.findByText("21 → 30");
+    expect(item.closest(".pk-scroll")).not.toBeNull();
+  });
+
+  it("B-041: a set-by name is isolated for right-to-left text", async () => {
+    const reload = vi.fn(async () => {});
+    const save = vi.fn().mockRejectedValue(conflict);
+    row({
+      save,
+      reload,
+      confirm: { up: "L0", down: "L0" },
+      isConflict: (e) => e === conflict,
+      reloadedBy: (
+        <>
+          set by <bdi>ada@x.io</bdi>
+        </>
+      ),
+    });
+    await type("30");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Reload" }),
+    );
+    const note = await screen.findByText(/It now reads/);
+    expect(note.querySelector("bdi")?.textContent).toBe("ada@x.io");
+  });
+});
+
+describe("SettingRow on phones (B-034)", () => {
+  it("a field takes the full width under the help; a switch stays on the label row", () => {
+    const field = row();
+    const fieldRow = field.container.querySelector("[data-align='end'] > div")!;
+    expect(fieldRow.className).toContain("max-sm:flex-col");
+    expect(
+      screen.getByRole("textbox").closest("div.sm\\:w-48")!.className,
+    ).toContain("w-full");
+    cleanup();
+    const sw = row({
+      spec: { kind: "switch" },
+      confirm: { on: "L0", off: "L0" },
+      value: "off",
+    });
+    const switchRow = sw.container.querySelector("[data-align='end'] > div")!;
+    expect(switchRow.className).toContain("max-sm:flex-nowrap");
+    expect(switchRow.className).not.toContain("max-sm:flex-col");
   });
 });

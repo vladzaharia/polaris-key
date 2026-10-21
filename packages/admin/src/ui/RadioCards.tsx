@@ -1,6 +1,7 @@
 import * as React from "react";
 import { RadioGroup } from "radix-ui";
 import { cn } from "../lib/cn.js";
+import { useWriteLock } from "./WriteLock.js";
 
 export interface RadioCardOption<V extends string = string> {
   value: V;
@@ -49,6 +50,7 @@ export function RadioCards<V extends string = string>({
   ref,
   ...aria
 }: RadioCardsProps<V>): React.ReactElement {
+  const frozen = readOnly || useWriteLock().locked;
   const cols = {
     1: "",
     2: "sm:grid-cols-2",
@@ -62,8 +64,9 @@ export function RadioCards<V extends string = string>({
       name={name}
       value={value ?? ""}
       disabled={disabled}
+      aria-readonly={frozen || undefined}
       onValueChange={(v) => {
-        if (!readOnly) onChange?.(v as V);
+        if (!frozen) onChange?.(v as V);
       }}
       onBlur={onBlur}
       className={cn("grid gap-2", cols, className)}

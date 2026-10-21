@@ -30,6 +30,7 @@ export function SettingsRow({
   children,
   footer,
   state,
+  control,
 }: {
   /** The row's own element id: a `?setting=<key>` deep link lands on `setting-<key>`. */
   id?: string;
@@ -47,6 +48,12 @@ export function SettingsRow({
   children: React.ReactNode;
   /** A per-row `SaveBar` when the row saves on its own. */
   footer?: React.ReactNode;
+  /**
+   * What the end-aligned control is, for phones (below `sm`): `switch` stays on the label row
+   * and never wraps under the text; `field` (an input, a choice) takes the full width under the
+   * help instead of floating mid-row.
+   */
+  control?: "switch" | "field";
   /** The engine row's state, for the stylesheet and the tests (`data-state`). */
   state?: "default" | "changed" | "locked" | "error" | "conflict";
 }): React.ReactElement {
@@ -119,10 +126,25 @@ export function SettingsRow({
           <div className="min-w-0 text-sm text-fg">{children}</div>
         </div>
       ) : (
-        <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
+        <div
+          className={cn(
+            "flex items-start justify-between gap-x-6 gap-y-2",
+            control === "switch"
+              ? "max-sm:flex-nowrap sm:flex-wrap"
+              : "flex-wrap",
+            control === "field" && "max-sm:flex-col max-sm:items-stretch",
+          )}
+        >
           <div className="min-w-0 flex-[1_1_16rem]">{labelBlock}</div>
           {/* Flush right, and so is every line of a value that wraps (a chain of pills). */}
-          <div className="ml-auto flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2 text-right text-sm text-fg [&>:not(button)]:justify-end">
+          <div
+            className={cn(
+              "ml-auto flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2 text-right text-sm text-fg [&>:not(button)]:justify-end",
+              control === "switch" && "max-sm:shrink-0",
+              control === "field" &&
+                "max-sm:ml-0 max-sm:w-full max-sm:justify-start max-sm:text-left [&>*]:max-sm:max-w-full",
+            )}
+          >
             {aside}
             {children}
           </div>

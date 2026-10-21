@@ -13,6 +13,7 @@ import { Switch } from "../../../../ui/Switch.js";
 import { Button } from "../../../../ui/Button.js";
 import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
 import { toast } from "../../../../ui/toast.js";
+import { useWriteLock } from "../../../../ui/WriteLock.js";
 import { mutate } from "../../../data/mutations.js";
 import { binaryBytes } from "../model/presentationSlots.js";
 import { SettingsRow } from "../../../templates/Settings.js";
@@ -119,6 +120,8 @@ function QuotaRow({
   slug: string;
   setting: AssetSettingDto;
 }): React.ReactElement {
+  // A view-only member reads the value; Save and Reset are not offered (B-033).
+  const { locked } = useWriteLock();
   const current = typeof setting.value === "number" ? setting.value : 0;
   const [mib, setMib] = React.useState<number | null>(
     Math.round(current / QUOTA_MIB),
@@ -179,15 +182,17 @@ function QuotaRow({
           unit="MiB"
           aria-label={`${setting.label} in MiB`}
         />
-        <Button
-          ref={saveRef}
-          size="sm"
-          disabled={!changed}
-          onClick={() => setConfirm("save")}
-        >
-          Save
-        </Button>
-        {setting.own ? (
+        {locked ? null : (
+          <Button
+            ref={saveRef}
+            size="sm"
+            disabled={!changed}
+            onClick={() => setConfirm("save")}
+          >
+            Save
+          </Button>
+        )}
+        {setting.own && !locked ? (
           <Button size="sm" variant="ghost" onClick={() => setConfirm("reset")}>
             Reset
           </Button>

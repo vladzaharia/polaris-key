@@ -1,7 +1,8 @@
 import * as React from "react";
 import { formatCount } from "../../lib/format.js";
-import { Lock, PencilLine, RotateCcw } from "lucide-react";
+import { Lock } from "lucide-react";
 import { Button } from "../Button.js";
+import { RowRevertContext } from "../SourceBadge.js";
 import { NumberInput } from "../NumberInput.js";
 import { SegmentedControl } from "../SegmentedControl.js";
 import { Select } from "../Select.js";
@@ -53,8 +54,10 @@ export interface SettingRowProps extends Omit<SettingWriteOptions, "commit"> {
   unitLabel?: string;
   /** The bounds sentence under a number field (default: "1 to 365 days."). */
   bounds?: React.ReactNode;
+  /** What an empty field follows (the platform's value): "Platform default: 200". */
+  inherited?: unknown;
   /** The reloaded message's tail ("set by ada@x.io"). */
-  reloadedBy?: string;
+  reloadedBy?: React.ReactNode;
   /** Loads this setting's past changes; adds a History button. */
   history?: () => Promise<SettingHistoryEntry[]>;
   /** What the History drawer says about the setting before its changes (deploy var, default). */
@@ -126,10 +129,30 @@ export function SettingRow(props: SettingRowProps): React.ReactElement {
     wasConfirming.current = w.confirming;
     return undefined;
   }, [w.confirming, id]);
+  // The Save bar unmounts when a save lands, and Discard unmounts it too: focus falls to <body>,
+  // so it returns to the control (B-028).
+  const wasBusy = React.useRef(false);
+  React.useEffect(() => {
+    if (wasBusy.current && !w.busy) {
+      const a = document.activeElement;
+      if (!a || a === document.body || !a.isConnected)
+        document.getElementById(id)?.focus();
+    }
+    wasBusy.current = w.busy;
+  }, [w.busy, id]);
+  const discard = (): void => {
+    w.discard();
+    document.getElementById(id)?.focus();
+  };
   const fmt = (v: unknown) => formatSettingValue(spec, v, labels);
   const viewOnly = readOnly !== undefined;
-  const off = disabled || locked !== undefined || viewOnly || w.busy;
+  // Busy is not off: a disabled control drops focus, and the write keeps it. Input is ignored.
+  const off = disabled || locked !== undefined || viewOnly;
+  const frozen = w.busy;
   const errId = `${id}-error`;
+  // A bounds failure sits under the input, in place of the hint, with the unit (B-037).
+  const fieldError =
+    w.error?.field === true && !w.conflict && spec.kind === "integer";
   const hintId = `${id}-hint`;
   // A custom unit is long ("per license"): it goes under the field with the bounds, never inside.
   const unit = props.unitLabel ?? fieldUnit(spec);
@@ -187,8 +210,11 @@ export function SettingRow(props: SettingRowProps): React.ReactElement {
           label: labels?.[v] ?? v,
         }))}
         value={String(w.draft)}
-        disabled={off}
-        onChange={(v) => w.propose(v)}
+        disabled={disabled}
+        readOnly={locked !== undefined || frozen}
+        onChange={(v) => {
+          if (!frozen) w.propose(v);
+        }}
       />
     );
   } else if (spec.kind === "enum") {
@@ -197,7 +223,7 @@ export function SettingRow(props: SettingRowProps): React.ReactElement {
         id={id}
         value={String(w.draft)}
         disabled={off}
-        onChange={(v) => v !== null && w.propose(v)}
+        onChange={(v) => v !== null && !frozen && w.propose(v)}
         options={spec.values.map((v) => ({
           value: v,
           label: labels?.[v] ?? v,
@@ -210,7 +236,7 @@ export function SettingRow(props: SettingRowProps): React.ReactElement {
     const max = toField(spec, spec.max);
     control = (
       <div
-        className="w-48 text-left"
+        className="w-full text-left sm:w-48"
         onKeyDown={(e) => {
           if (e.key === "Enter" && w.dirty && !off) {
             e.preventDefault();
@@ -225,9 +251,7 @@ export function SettingRow(props: SettingRowProps): React.ReactElement {
           id={id}
           aria-label={unit ? `${label} (${unit})` : label}
           aria-invalid={w.error && !w.conflict ? true : undefined}
-          aria-describedby={[hintId, w.error ? errId : null]
-            .filter(Boolean)
-            .join(" ")}
+          aria-describedby={fieldError ? errId : hintId}
           value={typeof w.draft === "number" ? toField(spec, w.draft) : null}
           onChange={(v) => w.setDraft(v === null ? null : fromField(spec, v))}
           unit={fieldSuffix}
@@ -236,23 +260,54 @@ export function SettingRow(props: SettingRowProps): React.ReactElement {
           step={spec.unit === "bytes" ? "any" : 1}
           integer={spec.unit !== "bytes"}
           disabled={off}
-          placeholder={w.draft === null ? "Platform default" : undefined}
+          readOnly={frozen}
+          placeholder={
+            w.draft === null
+              ? props.inherited !== undefined && props.inherited !== null
+                ? `Platform default: ${fmt(props.inherited)}`
+                : "Platform default"
+              : undefined
+          }
         />
-        <p id={hintId} className="mt-1 text-xs text-fg-muted">
-          {bounds ??
-            `${formatCount(min)} to ${formatCount(max)}${unit ? ` ${unit}` : ""}.`}
-        </p>
+        {fieldError ? (
+          <p
+            id={errId}
+            role="alert"
+            className="mt-1 text-xs font-medium text-danger"
+          >
+            {w.error!.title}
+          </p>
+        ) : (
+          <p id={hintId} className="mt-1 text-xs text-fg-muted">
+            {bounds ??
+              `${formatCount(min)} to ${formatCount(max)}${unit ? ` ${unit}` : ""}.`}
+          </p>
+        )}
       </div>
     );
   } else control = <code className="font-mono text-xs">{fmt(value)}</code>;
 
   const changed = w.dirty && commit === "explicit" && display === "control";
+  const canRevertNow = !viewOnly && props.revertPlan?.() != null;
+  const revertRef = React.useRef(w.revert);
+  revertRef.current = w.revert;
+  const revertOffer = React.useMemo(
+    () => ({
+      label: `Revert ${label.toLowerCase()}…`,
+      run: () => {
+        if (!disabled && !frozen) revertRef.current();
+      },
+    }),
+    [label, disabled, frozen],
+  );
   const sourceSlot = (
     <>
-      {source}
+      <RowRevertContext.Provider value={canRevertNow ? revertOffer : null}>
+        {source}
+      </RowRevertContext.Provider>
       {changed ? (
         <span className="inline-flex items-center gap-1.5 text-xs text-fg-muted">
-          <StatusPill tone="neutral" icon={PencilLine}>
+          <StatusPill tone="neutral" icon={false}>
             Not saved
           </StatusPill>
           <span>was {fmt(value)}</span>
@@ -261,7 +316,6 @@ export function SettingRow(props: SettingRowProps): React.ReactElement {
     </>
   );
 
-  const canRevert = !viewOnly && props.revertPlan?.() != null;
   const draftText = changed && w.draft !== null ? fmt(w.draft) : undefined;
 
   const footer = (
@@ -286,12 +340,7 @@ export function SettingRow(props: SettingRowProps): React.ReactElement {
           aria-label={`Unsaved changes in ${label}`}
           className="mt-3 flex flex-wrap items-center justify-end gap-2"
         >
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={w.discard}
-            disabled={w.busy}
-          >
+          <Button size="sm" variant="ghost" onClick={discard} disabled={w.busy}>
             Discard
           </Button>
           {w.conflict === "refused" ? null : (
@@ -306,7 +355,7 @@ export function SettingRow(props: SettingRowProps): React.ReactElement {
           )}
         </div>
       ) : null}
-      {w.error ? (
+      {w.error && !fieldError ? (
         <p
           id={errId}
           role="alert"
@@ -328,7 +377,12 @@ export function SettingRow(props: SettingRowProps): React.ReactElement {
           void w.reload().then(() => document.getElementById(id)?.focus())
         }
         onDismiss={w.clearConflict}
-        now={`${fmt(value)}${reloadedBy ? `, ${reloadedBy}` : ""}`}
+        now={
+          <>
+            {fmt(value)}
+            {reloadedBy ? <>, {reloadedBy}</> : null}
+          </>
+        }
         draft={draftText}
       />
       {notes ? <div className="mt-3 space-y-2">{notes}</div> : null}
@@ -346,28 +400,23 @@ export function SettingRow(props: SettingRowProps): React.ReactElement {
       align={align}
       state={state}
       footer={footer}
+      control={
+        display !== "control" || asText
+          ? undefined
+          : spec.kind === "switch" || spec.kind === "boolean"
+            ? "switch"
+            : "field"
+      }
     >
-      {canRevert ? (
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={w.revert}
-          disabled={disabled || w.busy}
-          aria-label={`Revert ${label.toLowerCase()}…`}
-        >
-          <RotateCcw aria-hidden />
-          Revert…
-        </Button>
-      ) : null}
-      {history ? (
-        <SettingHistory label={label} load={history} details={details} />
-      ) : null}
       {viewOnly ? (
         <span id={reasonId} className="sr-only">
           Read-only. {readOnly}
         </span>
       ) : null}
       {control}
+      {history ? (
+        <SettingHistory label={label} load={history} details={details} />
+      ) : null}
     </SettingsRow>
   );
 }

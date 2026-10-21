@@ -755,7 +755,7 @@ function PolicyPointer({
         : `The platform's ${ECOSYSTEM_LABELS[eco]} switch and ceiling apply to every product. `}
       Change them in{" "}
       <Link
-        to="#/platform/settings?section=platform-hosting"
+        to={`#/platform/settings?setting=feeds.policy.${eco}.enabled`}
         className="underline underline-offset-4"
       >
         Platform settings

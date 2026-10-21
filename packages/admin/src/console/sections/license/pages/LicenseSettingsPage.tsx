@@ -114,19 +114,20 @@ export function LicenseSettingsPage({
               How licenses and their entitlements combine for this product.
               Declared in{" "}
               <code className="font-mono text-xs">.pkey/product</code> under{" "}
-              <code className="font-mono text-xs">licensing</code>; a change
-              here claims the setting until you revert it.
+              <code className="font-mono text-xs">licensing</code>.
             </>
           }
         />
       }
       sections={[{ id: SECTION, title: "Licensing model" }]}
     >
-      <Callout tone="info">
-        Only clamping offline grace to expiry is in effect. Devices pick up a
-        change to it at their next license refresh.
-      </Callout>
       <ProductSettingsSection
+        note={
+          <Callout tone="info">
+            Only clamping offline grace to expiry is in effect. Devices pick up
+            a change to it at their next license refresh.
+          </Callout>
+        }
         slug={slug}
         area="license.licensing"
         id={SECTION}

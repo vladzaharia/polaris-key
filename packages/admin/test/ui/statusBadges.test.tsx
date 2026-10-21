@@ -137,7 +137,9 @@ describe("SourceBadge", () => {
       />,
     );
     fireEvent.click(screen.getByRole("button", { name: /Set in console/ }));
-    expect(screen.getByText(/Set by Ada/)).toBeTruthy();
+    expect(screen.getByText("Ada").closest("p")!.textContent).toMatch(
+      /Set by Ada/,
+    );
     fireEvent.click(screen.getByRole("button", { name: "Revert…" }));
     expect(revert).toHaveBeenCalled();
   });

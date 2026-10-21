@@ -22,7 +22,7 @@ import {
   fromSeconds,
 } from "../../../../lib/format.js";
 import { Callout } from "../../../../ui/Callout.js";
-import { SourceBadge } from "../../../../ui/SourceBadge.js";
+import { RowRevertButton, SourceBadge } from "../../../../ui/SourceBadge.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
 import { toast } from "../../../../ui/toast.js";
 import { SettingRow } from "../../../../ui/settings/SettingRow.js";
@@ -262,13 +262,21 @@ function SettingSource({
 }): React.ReactElement {
   if (setting.forcedOff) {
     return (
-      <StatusPill tone="warning" icon={Lock}>
-        Locked off by deploy var
-      </StatusPill>
+      <>
+        <StatusPill tone="warning" icon={Lock}>
+          Locked off by deploy var
+        </StatusPill>
+        <RowRevertButton />
+      </>
     );
   }
   if (setting.source === "failsafe") {
-    return <StatusPill tone="danger">Off: store unreadable</StatusPill>;
+    return (
+      <>
+        <StatusPill tone="danger">Off: store unreadable</StatusPill>
+        <RowRevertButton />
+      </>
+    );
   }
   if (setting.source === "runtime") {
     return (
@@ -445,7 +453,11 @@ export function EditableRow({
           : undefined
       }
       reloadedBy={
-        stored ? `set by ${stored.updatedBy || "an operator"}` : undefined
+        stored ? (
+          <>
+            set by <bdi>{stored.updatedBy || "an operator"}</bdi>
+          </>
+        ) : undefined
       }
       history={() => loadHistory(setting)}
       isConflict={isConflict}

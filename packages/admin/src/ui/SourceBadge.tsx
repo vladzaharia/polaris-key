@@ -5,13 +5,14 @@ import {
   Layers,
   Link2,
   PencilLine,
+  RotateCcw,
   Server,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "../lib/cn.js";
 import { formatDate } from "../lib/format.js";
 import { Button } from "./Button.js";
-import { Popover } from "./Popover.js";
+import { Popover, PopoverClose } from "./Popover.js";
 import { StatusPill } from "./StatusPill.js";
 import type { Tone } from "../lib/status.js";
 
@@ -70,8 +71,32 @@ const TONE: Record<Source, Tone> = {
   derived: "neutral",
 };
 
+/**
+ * The row's Revert, offered by the setting row around its badge: the popover carries it, so the
+ * row has no text button that shifts from row to row (B-040).
+ */
+export interface RowRevert {
+  label: string;
+  run: () => void;
+}
+export const RowRevertContext = React.createContext<RowRevert | null>(null);
+
+/** The row's Revert as a button, for a row whose owner shows as a pill, not a badge. */
+export function RowRevertButton(): React.ReactElement | null {
+  const row = React.useContext(RowRevertContext);
+  if (!row) return null;
+  return (
+    <Button size="sm" variant="ghost" onClick={row.run} aria-label={row.label}>
+      <RotateCcw aria-hidden />
+      Revert…
+    </Button>
+  );
+}
+
 export interface SourceBadgeProps {
   source: Source;
+  /** Replaces the badge's word ("Default" where "Code default" would mean the code). */
+  label?: string;
   /** The manifest file that owns it, e.g. `.pkey/schema` (manifest only). */
   path?: string;
   /** Who set a runtime value. */
@@ -116,25 +141,32 @@ function explanation(source: Source, path?: string): React.ReactNode {
 
 export function SourceBadge({
   source,
+  label,
   path,
   by,
   at,
-  onRevert,
+  onRevert: onRevertProp,
   className,
 }: SourceBadgeProps): React.ReactElement {
+  const row = React.useContext(RowRevertContext);
+  const onRevert = onRevertProp ?? row?.run;
+  const text = label ?? LABEL[source];
   const setBy =
-    source === "runtime" && (by || at !== undefined)
-      ? [
-          "Set",
-          by ? `by ${by}` : null,
-          at !== undefined ? `· ${formatDate(at)}` : null,
-        ]
-          .filter(Boolean)
-          .join(" ")
-      : null;
+    source === "runtime" && (by || at !== undefined) ? (
+      <>
+        Set
+        {by ? (
+          <>
+            {" "}
+            by <bdi>{by}</bdi>
+          </>
+        ) : null}
+        {at !== undefined ? <> · {formatDate(at)}</> : null}
+      </>
+    ) : null;
   return (
     <Popover
-      label={LABEL[source]}
+      label={text}
       trigger={
         <button
           type="button"
@@ -145,7 +177,7 @@ export function SourceBadge({
           )}
         >
           <StatusPill tone={TONE[source]} icon={ICON[source]}>
-            {LABEL[source]}
+            {text}
             <span className="sr-only">: what this means</span>
           </StatusPill>
         </button>
@@ -155,9 +187,16 @@ export function SourceBadge({
         <p className="text-sm text-fg">{explanation(source, path)}</p>
         {setBy ? <p className="text-xs text-fg-muted">{setBy}</p> : null}
         {onRevert ? (
-          <Button size="sm" variant="outline" onClick={onRevert}>
-            Revert…
-          </Button>
+          <PopoverClose asChild>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onRevert}
+              aria-label={row && !onRevertProp ? row.label : undefined}
+            >
+              Revert…
+            </Button>
+          </PopoverClose>
         ) : null}
       </div>
     </Popover>
