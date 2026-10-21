@@ -544,7 +544,19 @@ export async function authorizeDevice(
       departing.last_seen > seatActiveSince(now)
         ? 1
         : 0;
-    if (limit <= 0 || count - leaves >= limit) {
+    // A legacy row (authorized before seats had ordinals) holds no seat_no yet is in the count:
+    // the device presenting it is not another occupant of the licence.
+    const ex = reconciled.existing;
+    const self =
+      ex !== null &&
+      ex !== undefined &&
+      ex.license_id === license.id &&
+      ex.status === "authorized" &&
+      (ex.seat_no ?? null) === null &&
+      ex.last_seen > seatActiveSince(now)
+        ? 1
+        : 0;
+    if (limit <= 0 || count - leaves - self >= limit) {
       return refuse("device_limit", {
         error: "device_limit",
         limit,

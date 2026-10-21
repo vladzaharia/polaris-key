@@ -398,7 +398,14 @@ export function wideNetworkOf(ip: string): string {
     return ip;
   }
   const hextets = expandIpv6(ip);
-  return hextets ? `${hextets.slice(0, 3).join(":")}::/48` : ip;
+  if (!hextets) return ip;
+  // An IPv4-mapped address is its IPv4 /24, as `clientNetwork` unwraps it.
+  if (hextets.slice(0, 5).every((h) => h === "0") && hextets[5] === "ffff") {
+    const hi = parseInt(hextets[6]!, 16);
+    const lo = parseInt(hextets[7]!, 16);
+    return `${hi >> 8}.${hi & 255}.${lo >> 8}.0/24`;
+  }
+  return `${hextets.slice(0, 3).join(":")}::/48`;
 }
 
 /** The caller's wider network (`wideNetworkOf` of its address): a coarse ceiling beside `clientNetwork`. */

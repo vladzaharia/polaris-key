@@ -37,6 +37,8 @@ export function httpsRedirect(req: Request, env: Env): Response | null {
   if (!isDeployedEnvironment(env)) return null;
   const url = new URL(req.url);
   if (url.protocol !== "http:") return null;
+  // Local development over http (`wrangler dev --env dev`) stays reachable.
+  if (["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)) return null;
   url.protocol = "https:";
   url.port = "";
   return new Response(null, {

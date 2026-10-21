@@ -37,6 +37,13 @@ describe("plain http on a deployed environment (B-157)", () => {
     expect(res?.headers.get("location")).toBe("https://key.plrs.im/x");
   });
 
+  it("leaves loopback hosts alone on a deployed environment", () => {
+    for (const host of ["localhost:8787", "127.0.0.1:8787", "[::1]:8787"])
+      expect(
+        httpsRedirect(new Request(`http://${host}/x`), deployed()),
+      ).toBeNull();
+  });
+
   it("leaves https alone, and leaves a non-deployed environment alone", () => {
     expect(
       httpsRedirect(new Request("https://key.plrs.im/x"), deployed()),

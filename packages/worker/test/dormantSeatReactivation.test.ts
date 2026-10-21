@@ -87,4 +87,16 @@ describe("dormant device re-activation (B-158)", () => {
     );
     expect(row?.seat_no).not.toBeNull();
   });
+
+  it("a legacy row with no ordinal is not counted against itself at the limit", async () => {
+    expect((await activate("old-1", NOW)).status).toBe(200);
+    expect((await activate("old-2", NOW)).status).toBe(200);
+    // old-1 predates seat ordinals: authorized, recently seen, no seat_no.
+    await db.run(
+      "UPDATE devices SET seat_no = NULL WHERE product='djdl' AND device_id='old-1'",
+    );
+    expect((await activate("old-1", NOW + 60)).status).toBe(200);
+    // A third device is still refused: the licence is full.
+    expect((await activate("new-1", NOW + 120)).status).not.toBe(200);
+  });
 });
