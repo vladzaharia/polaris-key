@@ -11,8 +11,8 @@ import { r } from "../../../routes.js";
 const TARGETS: Record<string, (store?: string) => string> = {
   settings: r.platformSettings,
   status: r.platformOperations,
-  // Store accounts are the Store connections page's (not the sign-in providers'); one missing
-  // store opens it on that store.
+  // The Store connections page (not the sign-in providers'); one missing store opens it on that
+  // store.
   connections: (store) =>
     store
       ? `${r.platformStores()}?store=${encodeURIComponent(store)}`
@@ -28,7 +28,7 @@ function Dismiss({ onDismiss }: { onDismiss: () => void }): React.ReactElement {
       icon={<X />}
       size="xs"
       data-dismiss-guide=""
-      className="shrink-0 text-fg-muted pointer-coarse:size-11"
+      className="shrink-0 text-fg-muted pointer-coarse:-my-2 pointer-coarse:size-11"
       onClick={onDismiss}
     />
   );
@@ -59,7 +59,9 @@ export function PlatformReady({
         aria-labelledby={titleId}
         data-platform-ready="done"
         className={cn(
-          "rounded-xl border border-border bg-surface-raised px-5 py-2 light:shadow-elevation-1",
+          // A chip, not a bar: it is as wide as its three words, and a pill until its steps open.
+          "w-fit max-w-full border border-border bg-surface-raised px-4 py-1 light:shadow-elevation-1",
+          showDone ? "rounded-xl" : "rounded-full",
           className,
         )}
       >
@@ -89,7 +91,7 @@ export function PlatformReady({
             {showDone ? "Hide steps" : "Show steps"}
           </button>
           {onDismiss ? (
-            <span className="ml-auto">
+            <span className="ml-2">
               <Dismiss onDismiss={onDismiss} />
             </span>
           ) : null}

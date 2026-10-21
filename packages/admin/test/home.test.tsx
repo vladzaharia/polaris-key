@@ -244,6 +244,8 @@ describe("Home", () => {
     // The worst first, with the word.
     expect(within(rows[0]!).getByText("Error")).toBeTruthy();
     expect(within(rows[0]!).getByText("Resync failed.")).toBeTruthy();
+    // B-054: the message stops at 72ch and the action follows it.
+    expect(rows[0]!.parentElement!.className).toContain("fit-content(72ch)");
     expect(within(rows[0]!).getByText("line 14 names switch.")).toBeTruthy();
     expect(
       within(rows[0]!)
@@ -557,6 +559,8 @@ describe("Home", () => {
       name: "Platform ready",
     });
     expect(line.getAttribute("data-platform-ready")).toBe("done");
+    // B-055: a chip as wide as its words, not a bar across the page.
+    expect(line.className).toContain("w-fit");
     expect(within(line).queryByRole("progressbar")).toBeNull();
     const steps = within(line).getByRole("button", { name: "Show steps" });
     expect(steps.getAttribute("aria-expanded")).toBe("false");
@@ -665,6 +669,39 @@ describe("Home", () => {
       );
       expect(
         within(main()).queryByRole("button", { name: "More actions" }),
+      ).toBeNull();
+    });
+
+    it("B-053: a hidden guide with steps left shows a chip that says how many and restores it", async () => {
+      window.localStorage.setItem(KEY, "true");
+      boot("#/", { extra: { ...registry(), ...ready } });
+      await home();
+      await waitFor(() => expect(cards()).toHaveLength(2));
+      const chip = await within(main()).findByRole("button", {
+        name: "2 setup steps open",
+      });
+      fireEvent.click(chip);
+      expect(
+        await within(main()).findByRole("region", { name: "Platform ready" }),
+      ).toBeTruthy();
+      expect(window.localStorage.getItem(KEY)).toBe("false");
+    });
+
+    it("B-053: a hidden guide with every step done leaves no chip", async () => {
+      window.localStorage.setItem(KEY, "true");
+      const done = {
+        done: 3,
+        total: 3,
+        rows: READY.rows.map((r) => ({ id: r.id, title: r.title, done: true })),
+      };
+      boot("#/", {
+        extra: { ...registry(), "/manage/api/platform/ready": done },
+      });
+      await home();
+      await waitFor(() => expect(cards()).toHaveLength(2));
+      await within(main()).findByRole("button", { name: "More actions" });
+      expect(
+        within(main()).queryByRole("button", { name: /setup steps? open/ }),
       ).toBeNull();
     });
 
@@ -949,5 +986,70 @@ describe("ProductCard", () => {
       .querySelector("[data-feature-pips]")!
       .getAttribute("aria-label")!;
     expect(label).toContain("Managed config: 1 needs attention");
+  });
+});
+
+describe("a member with narrow access (ST-29)", () => {
+  /** DJDL's Ship builds only, with Settings visible but not editable. */
+  const NARROW = {
+    platformAdmin: false,
+    products: [{ slug: "djdl", name: "DJDL", schemaVersion: 1 }],
+    permissions: {
+      roles: [
+        {
+          role: "product_admin",
+          scope: "product:djdl",
+          areas: ["ship", "settings"],
+          source: "grant",
+        },
+      ],
+      platform: { view: ["console"], edit: ["console"] },
+      products: {
+        djdl: { view: ["ship", "settings"], edit: ["ship"] },
+      },
+    },
+  };
+
+  it("B-056: the product card counts only the attention the member can open", async () => {
+    const extra = registry();
+    extra["/manage/api/attention"] = {
+      items: [
+        // Keys & secrets is not theirs; Releases is.
+        item({ id: "djdl:secret.missing:K" }),
+        item({
+          id: "djdl:sync.failed",
+          kind: "sync.failed",
+          tone: "danger",
+          service: "release",
+          short: "Resync failed",
+          lines: ["Resync failed."],
+          action: { label: "Open error", page: "releases" },
+          area: "ship",
+        }),
+      ],
+    };
+    boot("#/", { me: NARROW as never, extra });
+    await home();
+    await waitFor(() => expect(cards()).toHaveLength(2));
+    const djdl = card("DJDL");
+    expect(within(djdl).getByText("Resync failed")).toBeTruthy();
+    expect(within(djdl).queryByText("Missing secret")).toBeNull();
+    expect(within(djdl).queryByText("2 need attention")).toBeNull();
+  });
+
+  it("B-057: Delete product is disabled in the row menu without Settings edit access", async () => {
+    boot("#/", { me: NARROW as never, extra: registry() });
+    await home();
+    await waitFor(() => expect(cards()).toHaveLength(2));
+    fireEvent.click(within(main()).getByRole("radio", { name: /Table/ }));
+    const table = await within(main()).findByRole("table");
+    await userEvent.click(
+      within(table).getByRole("button", { name: /Actions for DJDL/ }),
+    );
+    const del = await screen.findByRole("menuitem", {
+      name: /^Delete product…/,
+    });
+    expect(del.getAttribute("aria-disabled")).toBe("true");
+    expect(del.textContent).toContain("Settings edit access");
   });
 });

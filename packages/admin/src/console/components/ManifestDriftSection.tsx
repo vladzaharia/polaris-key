@@ -66,6 +66,12 @@ function isClaimKey(item: SettingsDriftItem): boolean {
   return item.revert === "claim";
 }
 
+/** "Console: X → Manifest: Y": what a revert changes, for the dialog; none for a catalog diff. */
+function driftChange(item: SettingsDriftItem): string | undefined {
+  if (item.changes || !item.manifestKnown || !item.differs) return undefined;
+  return `Console: ${driftValue(item.console)} → Manifest: ${driftValue(item.manifest)}`;
+}
+
 /** Revert for a row-backed key: the same confirm as the claim's, calling the row route. */
 function RevertSettingDialog({
   slug,
@@ -83,6 +89,7 @@ function RevertSettingDialog({
       intent={intentOf("manifest.revert")}
       title={`Return ${item.label.toLowerCase()} to the manifest?`}
       consequences={[
+        ...(driftChange(item) ? [driftChange(item)!] : []),
         "The value from the last applied .pkey/product replaces the console value now.",
         "Later resyncs keep it in line with the manifest.",
       ]}
@@ -125,6 +132,8 @@ function DriftRow({
   const catalog = item.changes;
   // A claim this console doesn't know (a newer Worker added it) can't be worded or reverted here.
   const unknownClaim = isClaimKey(item) && !(item.key in CLAIM_LABELS);
+  // A row that already matches has nothing to revert or keep: it can only be handed back.
+  const matches = item.manifestKnown && !item.differs;
   return (
     <li
       className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-start sm:justify-between"
@@ -168,21 +177,27 @@ function DriftRow({
           <Button
             variant="outline"
             size="sm"
-            aria-label={`Revert ${item.label} to the manifest`}
+            aria-label={
+              matches
+                ? `Hand ${item.label} back to the manifest`
+                : `Revert ${item.label} to the manifest`
+            }
             onClick={onRevert}
           >
-            Revert
+            {matches ? "Hand back to manifest" : "Revert"}
           </Button>
         )}
-        <Button
-          variant="ghost"
-          size="sm"
-          aria-label={`Keep ${item.label} as set in the console`}
-          aria-pressed={kept}
-          onClick={onKeep}
-        >
-          Keep
-        </Button>
+        {matches ? null : (
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label={`Keep ${item.label} as set in the console`}
+            aria-pressed={kept}
+            onClick={onKeep}
+          >
+            Keep
+          </Button>
+        )}
       </div>
     </li>
   );
@@ -298,6 +313,7 @@ export function ManifestDriftSection({
           <RevertClaimDialog
             slug={slug}
             claim={reverting.key as ClaimKey}
+            change={driftChange(reverting)}
             onOpenChange={(open) => {
               if (!open) setReverting(null);
             }}

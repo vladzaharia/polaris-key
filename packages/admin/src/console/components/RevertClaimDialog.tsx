@@ -32,10 +32,13 @@ const MANIFEST_FILE: Record<ClaimKey, string> = {
 export function RevertClaimDialog({
   slug,
   claim,
+  change,
   onOpenChange,
 }: {
   slug: string;
   claim: ClaimKey;
+  /** "Console: X → Manifest: Y", when the caller knows both values. */
+  change?: string;
   onOpenChange: (open: boolean) => void;
 }): React.ReactElement {
   // A key this console predates still opens, in the key's own words.
@@ -47,6 +50,7 @@ export function RevertClaimDialog({
       intent={intentOf("manifest.revert")}
       title={`Return ${label.toLowerCase()} to the manifest?`}
       consequences={[
+        ...(change ? [change] : []),
         `The value from the last applied ${MANIFEST_FILE[claim] ?? ".pkey/"} replaces the console value now. A product not resynced since claims arrived gets it at the next resync.`,
         "Later resyncs keep it in line with the manifest.",
       ]}
