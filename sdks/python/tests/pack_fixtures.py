@@ -504,6 +504,8 @@ class ChunkServer:
     ranged: int = 0
     #: The ``ETag`` sent with every ``206`` instead of the object's own (a changed bundle).
     range_etag: Optional[str] = None
+    #: B-150: answer every object or range fetch with this status (0: raise, no response at all).
+    blob_status: Optional[int] = None
 
     @classmethod
     def of(cls, *packs: Any) -> "ChunkServer":
@@ -527,6 +529,10 @@ class ChunkServer:
         self, sha256: str, offset: int, if_range: Optional[str], length: Optional[int] = None
     ) -> ObjectResponse:
         self.calls.append({"sha256": sha256, "offset": offset, "ifRange": if_range, "length": length})
+        if self.blob_status == 0:
+            raise ConnectionError("connection refused")
+        if self.blob_status is not None:
+            return ObjectResponse(status=self.blob_status, content_range=None, chunks=iter(()))
         b = self.objects.get(sha256)
         if b is None:
             return ObjectResponse(status=404, content_range=None, chunks=iter(()))
