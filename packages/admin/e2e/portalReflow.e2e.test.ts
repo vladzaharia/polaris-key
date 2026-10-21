@@ -232,6 +232,33 @@ function clippedText(page: Page): Promise<string[]> {
       if (cs.overflowY !== "visible" && e.scrollHeight > e.clientHeight + 1)
         out.push(`${label(e)} tall ${e.scrollHeight}>${e.clientHeight}`);
     }
+    // A text box whose right edge is past what its clipping or scrolling ancestor shows: the
+    // reader would have to scroll inside a region to read it, or never could.
+    const tw = document.createTreeWalker(
+      document.querySelector("main") ?? document.body,
+      NodeFilter.SHOW_TEXT,
+    );
+    for (let n = tw.nextNode(); n; n = tw.nextNode()) {
+      const el = n.parentElement;
+      if (!el || !el.checkVisibility() || !(n.textContent ?? "").trim())
+        continue;
+      if (el.closest("[data-section-pills], .sr-only")) continue;
+      const r = document.createRange();
+      r.selectNodeContents(n);
+      const box = r.getBoundingClientRect();
+      if (box.width === 0) continue;
+      for (let a = el; a; a = a.parentElement) {
+        if (a === document.documentElement) break;
+        const cs = getComputedStyle(a);
+        if (cs.overflowX === "visible") continue;
+        if (box.right > a.getBoundingClientRect().right + 1) {
+          out.push(
+            `${label(el)} past ${a.tagName.toLowerCase()} edge ${Math.round(box.right)}>${Math.round(a.getBoundingClientRect().right)}`,
+          );
+          break;
+        }
+      }
+    }
     const walker = document.createTreeWalker(
       document.querySelector("main") ?? document.body,
       NodeFilter.SHOW_TEXT,
