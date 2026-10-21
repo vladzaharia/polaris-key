@@ -462,14 +462,16 @@ describe("portal flow conformance (UX-79)", () => {
         );
         await h1(o.page, "Free a device");
         const work = o.page.getByRole("radio", { name: /Work laptop/ });
-        expect(await work.innerText()).toMatch(/· least\srecent/);
+        // PX-29: "Least recent" is a neutral tag beside the name (test/portalFocused.test.tsx).
+        expect(await work.innerText()).toMatch(/Least recent/);
         await o.page
           .getByRole("button", { name: "Remove Work laptop", exact: true })
           .waitFor();
         const back = o.page
           .getByRole("banner")
           .getByRole("link", { name: /See Orbit Survey/ });
-        const label = back.locator("span.truncate");
+        // PX-29 polish: the label wraps (break-words) instead of truncating.
+        const label = back.locator("span.break-words");
         const clipped = await label.evaluate(
           (el) => el.scrollWidth > el.clientWidth,
         );
@@ -582,11 +584,10 @@ describe("Account → Profile (PX-22, §4.30)", () => {
         [...document.images].every((i) => i.complete),
       );
       const shown = await pictures(o.page);
-      // The chip's 96 px picture and the card's 256 px one, both same-origin and decoded.
+      // The chip and the card's compact 40 px Profile row (PX-31a) both take the 96 px rendition,
+      // same-origin and decoded.
       const google = `/media/avatar/${"6a".repeat(32)}`;
-      expect(shown.map((p) => p.src)).toEqual(
-        expect.arrayContaining([`${google}-96`, google]),
-      );
+      expect(shown.map((p) => p.src)).toEqual([`${google}-96`, `${google}-96`]);
       expect(shown.every((p) => p.decoded)).toBe(true);
       expect(await o.violations()).toEqual([]);
     } finally {
@@ -1068,7 +1069,8 @@ describe("main flows", () => {
   it("with a Steam key and a sign-in licence, the key licence hides its counter", async () => {
     const o = await open("signIn", "/#/p/drift-kart");
     await h1(o.page, "Drift Kart");
-    const card = o.page.getByRole("region", { name: "Drift Kart license" });
+    // PX-28a: the card's region is named "License" (the h1 already names the product).
+    const card = o.page.getByRole("region", { name: "License", exact: true });
     await card.getByText("Activated").waitFor();
     const picker = card.getByRole("combobox");
     expect((await picker.locator("option").allTextContents()).sort()).toEqual([
@@ -1133,9 +1135,7 @@ describe("main flows", () => {
     const o = await open("origins", "/#/p/tidewater");
     await h1(o.page, "Tidewater Studio");
     await licenseSourceIs(o.page, "Added with a key");
-    const card = o.page.getByRole("region", {
-      name: "Tidewater Studio license",
-    });
+    const card = o.page.getByRole("region", { name: "License", exact: true });
     const picker = card.getByRole("combobox");
     expect((await picker.locator("option").allTextContents()).sort()).toEqual([
       "Free · From Harbor Audio",
@@ -1400,7 +1400,9 @@ describe("product page, owner polish 2026-10-07", () => {
       ).toBe("2");
       const seen: string[] = [];
       await o.page.mouse.move(width / 2, 400);
-      for (let i = 0; i < 80; i++) {
+      // Small steps: the reading line slides faster than the scroll over the last screen, and since
+      // PX-28a/PX-35 the page is short enough that a 120 px step jumps past the Devices card's turn.
+      for (let i = 0; i < 300; i++) {
         const m = await marked(o.page, nav);
         if (m && seen.at(-1) !== m) seen.push(m);
         const atEnd = await o.page.evaluate(
@@ -1409,7 +1411,7 @@ describe("product page, owner polish 2026-10-07", () => {
             document.documentElement.scrollHeight - 2,
         );
         if (atEnd) break;
-        await o.page.mouse.wheel(0, 120);
+        await o.page.mouse.wheel(0, 30);
         await o.page.waitForTimeout(60);
       }
       // Every section, once each, in the nav's order: the mark never skips or jumps back.
