@@ -517,6 +517,49 @@
 }
 
 /*
+ * Console shell v2 (ST-48; BRAND-TRANSITION B2, B4, B17). Scoped to `html[data-shell="console"]`
+ * (AppShell sets it), so the customer portal that shares this sheet keeps its own look until its
+ * packages adopt these. Every colour is a brand token and every accent comes from a `data-service`
+ * rule, never an inline style (console-csp-parity).
+ */
+
+/*
+ * B17: the focus ring takes the accent of the service the element references: the nearest
+ * `data-service` (core violet on platform and core pages). `--pk-state-ring` is re-pointed by
+ * each `data-service` block in tokens.css; re-declaring `--pk-focus` on the same elements makes
+ * `ring-focus` follow it. The doubled attribute out-ranks tokens.css's light-theme `:root` block.
+ */
+html[data-shell="console"][data-shell],
+html[data-shell="console"] [data-service] {
+  --pk-focus: var(--pk-state-ring);
+}
+
+/*
+ * B2: the one filled primary is neutral action ink (dark: near-white with a near-black label;
+ * light: the reverse). Danger stays red; the accent marks context only. Disabled is the role's
+ * own pair, never a dimmed ink.
+ */
+html[data-shell="console"] [data-variant="primary"] {
+  background-color: var(--pk-action);
+  color: var(--pk-action-on);
+  box-shadow: none;
+  font-weight: var(--font-weight-medium);
+}
+html[data-shell="console"]
+  [data-variant="primary"]:hover:not(:disabled):not([aria-disabled="true"]) {
+  background-color: var(--pk-action-hover);
+}
+html[data-shell="console"]
+  [data-variant="primary"]:active:not(:disabled):not([aria-disabled="true"]) {
+  background-color: var(--pk-action-pressed);
+}
+html[data-shell="console"] [data-variant="primary"]:is(:disabled, [aria-disabled="true"]) {
+  background-color: var(--pk-action-disabled);
+  color: var(--pk-action-disabled-on);
+  opacity: 1;
+}
+
+/*
  * Forced colours (Windows contrast themes; WCAG 1.4.11, UI-KITS.md §7.1): the browser swaps every
  * colour for the system palette and drops box-shadow, so every boundary and state the design
  * draws with a fill or a ring must survive as a border or an outline in a system colour.

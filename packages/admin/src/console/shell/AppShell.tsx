@@ -54,6 +54,8 @@ import {
   UnknownProductPage,
 } from "./StatePages.js";
 import { TopBar } from "./TopBar.js";
+import { mastheadValue } from "./Masthead.js";
+import { MastheadContext } from "../../ui/Masthead.js";
 import { mutate } from "../../console/data/mutations.js";
 import { areaOfPage, canIn, canOpenHref, canOpenPage } from "../access/can.js";
 import { NoAccessPage } from "../access/NoAccessPage.js";
@@ -240,6 +242,18 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
     root.setAttribute("data-service", accent);
     return () => root.removeAttribute("data-service");
   }, [accent]);
+  // The console's chrome rules (neutral-ink primary B2, the focus ring in the service's accent
+  // B17) are scoped to this attribute in styles.css, so the portal that shares the sheet keeps
+  // its own until its packages (PX-27..32) adopt them.
+  React.useEffect(() => {
+    const root = document.documentElement;
+    root.setAttribute("data-shell", "console");
+    return () => root.removeAttribute("data-shell");
+  }, []);
+  const masthead = React.useMemo(
+    () => mastheadValue({ route, page, accent, product }),
+    [route, page, accent, product],
+  );
 
   // A page the member's role does not include renders NoAccessPage, so its title says so.
   const refused =
@@ -418,7 +432,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
               onSignOut={signOut}
               version={version.data ?? null}
             />
-            <aside className="hidden min-h-0 flex-col border-r border-border bg-surface-page lg:flex">
+            <aside className="hidden min-h-0 flex-col bg-surface-page lg:flex">
               <Sidebar
                 {...sidebarProps}
                 switcher={{
@@ -436,21 +450,28 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
               tabIndex={-1}
               // The phone drawer is modal: the page behind it is inert while it is open.
               inert={navOpen || undefined}
-              className="relative min-h-0 overflow-y-auto outline-hidden pk-scroll"
+              data-canvas=""
+              data-service={accent}
+              // The canvas (B4): raised, with a 3 px rule in the page's accent along its top edge.
+              // From 1024 px it is inset 16 px from the window's end and bottom and rounded 18 px;
+              // below that it runs edge to edge. Flat: no glow, wash or gradient.
+              className="relative min-h-0 overflow-y-auto border-t-[3px] border-accent bg-surface-raised outline-hidden pk-scroll lg:mb-4 lg:mr-4 lg:rounded-[18px] lg:border lg:border-t-[3px] lg:border-border lg:border-t-accent"
             >
               <div
                 data-service={accent}
-                className="mx-auto w-full max-w-[110rem] px-4 py-6 sm:px-6 lg:px-8"
+                className="mx-auto w-full max-w-[110rem] px-4 py-5 sm:px-6 lg:px-8"
               >
-                <PageContent
-                  key={key}
-                  route={route}
-                  me={me}
-                  knownProduct={knownProduct}
-                  services={services}
-                  productName={productName ?? routeSlug ?? ""}
-                  onOpenPalette={openPalette}
-                />
+                <MastheadContext.Provider value={masthead}>
+                  <PageContent
+                    key={key}
+                    route={route}
+                    me={me}
+                    knownProduct={knownProduct}
+                    services={services}
+                    productName={productName ?? routeSlug ?? ""}
+                    onOpenPalette={openPalette}
+                  />
+                </MastheadContext.Provider>
               </div>
             </main>
           </div>

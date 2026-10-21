@@ -30,7 +30,6 @@ import {
   Box,
   Boxes,
   Cable,
-  CircleArrowUp,
   Cloud,
   CloudUpload,
   Database,
@@ -75,7 +74,11 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { ServiceSlug } from "../api.js";
-import type { ServiceAccentToken } from "../services.generated.js";
+import {
+  FEATURES,
+  type FeatureRow,
+  type ServiceAccentToken,
+} from "../services.generated.js";
 
 /** The `data-service` value of a section: a service slug, or `core` (BRAND.md §5). */
 export type ServiceAccent = "core" | ServiceAccentToken;
@@ -217,6 +220,18 @@ export interface NavPage {
   group?: "platform";
   /** Shown only while the product has this on (the page still answers a deep link). */
   requires?: NavRequirement;
+  /**
+   * The page's own `data-service`, when it is not its section's (B5, B17): Ship builds is one
+   * Release identity, but Storefronts, Listing, App Store and Outlet credentials are sales
+   * surfaces and keep Distribution green. Absent, the section's accent.
+   */
+  accent?: ServiceAccent;
+  /**
+   * The masthead's 48 px tile at 1024 px and wider (B4): the product's icon on a product Core
+   * page, the feature's glyph on its accent on a feature landing page. Absent on a dense data
+   * page (a table, a record, a form), which has the orientation chip only.
+   */
+  tile?: "product" | "service";
 }
 
 export interface NavSection {
@@ -228,7 +243,7 @@ export interface NavSection {
   accent: ServiceAccent;
   /**
    * The section glyph (ADMIN.md §2.4): a lucide icon, or the Star Cut for Distribution, drawn
-   * by the brand package. Update uses lucide `CircleArrowUp`.
+   * by the brand package.
    */
   glyph: LucideIcon | "star-cut";
   /** Section-level docs, the fallback for anything in the section. */
@@ -265,6 +280,7 @@ export const SECTIONS: NavSection[] = [
     items: [
       {
         page: "overview",
+        tile: "product",
         label: "Overview",
         path: "",
         icon: LayoutDashboard,
@@ -275,6 +291,7 @@ export const SECTIONS: NavSection[] = [
       {
         // ST-41: per feature, what the app needs and where it was seen working.
         page: "integration",
+        tile: "product",
         label: "Integration",
         path: "integration",
         icon: Cable,
@@ -283,6 +300,7 @@ export const SECTIONS: NavSection[] = [
       },
       {
         page: "services",
+        tile: "product",
         label: "Features",
         path: "settings/features",
         icon: Blocks,
@@ -318,6 +336,7 @@ export const SECTIONS: NavSection[] = [
       {
         // HA-06: the images Polaris Key hosts for the product (icon, listing art, store slots).
         page: "presentation",
+        tile: "product",
         label: "Presentation",
         path: "settings/presentation",
         icon: Image,
@@ -326,6 +345,7 @@ export const SECTIONS: NavSection[] = [
       },
       {
         page: "keys",
+        tile: "product",
         label: "Keys & secrets",
         path: "settings/keys",
         icon: LockKeyhole,
@@ -343,6 +363,7 @@ export const SECTIONS: NavSection[] = [
       },
       {
         page: "settings",
+        tile: "product",
         label: "Settings",
         path: "settings",
         icon: Settings,
@@ -542,8 +563,10 @@ export const SECTIONS: NavSection[] = [
     key: "distribution",
     label: "Distribution",
     service: "distribution",
-    accent: "distribution",
-    glyph: "star-cut",
+    // Ship builds is ONE identity (B5): Release cyan chrome and the Package glyph on Rollouts,
+    // Outlets, Access, Packages and Health. The sales surfaces below set `accent: "distribution"`.
+    accent: "release",
+    glyph: Package,
     docs: "/docs/features/ship-builds/channels/",
     items: [
       {
@@ -580,6 +603,7 @@ export const SECTIONS: NavSection[] = [
         // A-18j: every storefront's tile, and "Add to storefronts" (T6, resumable from the
         // ledger) that provisions the product onto them.
         page: "storefronts",
+        accent: "distribution",
         label: "Storefronts",
         path: "distribution/storefronts",
         icon: Globe,
@@ -593,6 +617,7 @@ export const SECTIONS: NavSection[] = [
         // A-18j: the shared listing model (T3): locales, fit report, slot board, release notes,
         // and "Push listing" per store.
         page: "listing",
+        accent: "distribution",
         label: "Listing",
         path: "distribution/listing",
         icon: SquarePen,
@@ -602,6 +627,7 @@ export const SECTIONS: NavSection[] = [
       {
         // A-17g: the App Store Distribute flow (T6) for the product's pinned app.
         page: "app-store",
+        accent: "distribution",
         label: "App Store",
         path: "distribution/app-store",
         icon: Send,
@@ -647,6 +673,7 @@ export const SECTIONS: NavSection[] = [
       },
       {
         page: "credentials",
+        accent: "distribution",
         label: "Outlet credentials",
         path: "distribution/credentials",
         icon: Plug,
@@ -659,12 +686,14 @@ export const SECTIONS: NavSection[] = [
     key: "update",
     label: "Update",
     service: "update",
-    accent: "update",
-    glyph: CircleArrowUp,
+    // Update is a docs and marketing identity, not a console one (B5): its page is Ship builds'.
+    accent: "release",
+    glyph: Package,
     docs: "/docs/features/ship-builds/updates/",
     items: [
       {
         page: "feed",
+        tile: "service",
         label: "Feed",
         path: "update/feed",
         icon: Rss,
@@ -683,6 +712,7 @@ export const SECTIONS: NavSection[] = [
     items: [
       {
         page: "app-sign-in",
+        tile: "service",
         label: "App sign-in",
         path: "identity/app-sign-in",
         icon: LogIn,
@@ -701,6 +731,7 @@ export const SECTIONS: NavSection[] = [
     items: [
       {
         page: "sync-data",
+        tile: "service",
         label: "Data",
         path: "sync/data",
         icon: Database,
@@ -719,6 +750,7 @@ export const SECTIONS: NavSection[] = [
     items: [
       {
         page: "commerce-overview",
+        tile: "service",
         label: "Overview",
         path: "commerce",
         icon: LayoutDashboard,
@@ -921,7 +953,16 @@ export function sectionOf(id: PageId): NavSection | null {
 
 /** The accent a page carries: its section's, or `core` for the global pages (ADMIN.md §2.4). */
 export function accentOf(id: PageId): ServiceAccent {
-  return sectionOf(id)?.accent ?? "core";
+  return BY_ID.get(id)?.accent ?? sectionOf(id)?.accent ?? "core";
+}
+
+/**
+ * The feature a section belongs to (ST-38 `FEATURES`): Release, Distribution and Update are
+ * "Ship builds" (B5). `null` for Core. The masthead's crumb names the feature, not the service.
+ */
+export function featureOfSection(key: SectionKey): FeatureRow | null {
+  if (key === "core") return null;
+  return FEATURES.find((f) => f.services.includes(key)) ?? null;
 }
 
 /** The docs page for a page. Every page declares one; the section's is the fallback. */
