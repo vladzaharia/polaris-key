@@ -92,7 +92,7 @@ const stripClass = (edges: string) =>
       "[mask-image:linear-gradient(to_right,transparent,#000_2rem,#000_calc(100%-2rem),transparent)]",
   );
 
-// The tabs and the indicator carry `data-ui-allow="border-width"`: the 3 px underline is the
+// The tabs and the indicator carry `data-edge="tab"`: the 3 px underline is the
 // spec'd selected-tab marker (BRAND.md B4, B17), not a heavy border on a box.
 // B4: an underline tablist with a 3 px indicator in the service's accent (B17), never a segmented
 // control or a boxed tray. The hover tint and the ring take the same accent.
@@ -116,7 +116,7 @@ function Indicator(): React.ReactElement {
     <span
       aria-hidden
       data-tab-indicator=""
-      data-ui-allow="border-width"
+      data-edge="tab"
       className="pk-vt-indicator pointer-events-none absolute inset-x-0 -bottom-[3px] border-b-[3px] border-accent"
     />
   );
@@ -196,7 +196,7 @@ export function PageTabs({
                 to={t.to!}
                 transition="tab"
                 aria-current={t.value === value ? "page" : undefined}
-                data-ui-allow="border-width"
+                data-edge="tab"
                 className={tabClass(t.value === value)}
               >
                 <TabLabel tab={t} active={t.value === value} />
@@ -269,7 +269,7 @@ export function PageTabs({
               else return;
               e.preventDefault();
             }}
-            data-ui-allow="border-width"
+            data-edge="tab"
             className={tabClass(active)}
           >
             <TabLabel tab={t} active={active} />

@@ -148,6 +148,10 @@ export async function lintFindings(
     // are the vendor's (the app re-themes the toast in motion.css, which stays linted for every
     // other rule); these four rules are allowed on the toaster and nothing else.
     allow: {
+      // The 3 px edges the design spells out (BRAND.md §5.4 C3 and B4, B17): the selected nav
+      // item's marker, the selected tab's underline, and the section rule on the console canvas,
+      // dialog and drawer. Each carries `data-edge` in its markup; nothing else may be heavy.
+      "border-width": ["[data-edge]"],
       "rtl-physical": ["[data-sonner-toaster]"],
       "colour-literal": ["[data-sonner-toaster]"],
       "focus-ring-spread": ["[data-sonner-toaster]"],

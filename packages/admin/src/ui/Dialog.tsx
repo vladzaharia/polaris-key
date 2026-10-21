@@ -341,7 +341,7 @@ export function DialogOverlay({
     <DialogPrimitive.Overlay
       ref={ref}
       className={cn(
-        "fixed inset-0 z-50 bg-scrim/60 animate-pk-overlay-in",
+        "fixed inset-0 z-50 bg-(--polaris-key-page-dark)/60 animate-pk-overlay-in",
         className,
       )}
       // Blurred (B4); a flat dark ground under reduced transparency (styles.css).
@@ -470,7 +470,7 @@ export function Dialog({
           }}
           data-tone={tone}
           // The console dialog's 3 px top rule in the opener's accent is the spec'd one (B4, B17).
-          data-ui-allow="border-width"
+          data-edge="canvas"
           className={cn(
             "fixed z-50 flex flex-col overflow-hidden border border-border bg-surface-overlay text-fg shadow-elevation-3 outline-hidden animate-pk-in",
             // The 3 px rule in the accent of where the dialog was opened from (B4, B17); a

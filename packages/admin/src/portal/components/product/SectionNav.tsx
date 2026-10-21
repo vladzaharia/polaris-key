@@ -77,7 +77,7 @@ export function SectionNav({
                   onPick(s);
                 }}
                 // The selected nav item's 3 px marker on the inline-start edge (BRAND.md §5.4, C3).
-                data-ui-allow={variant === "toc" ? "border-width" : undefined}
+                data-edge={variant === "toc" ? "marker" : undefined}
                 className={cn(
                   variant === "toc"
                     ? "-ms-px block border-s-[3px] py-2 ps-4 text-sm"

@@ -31,8 +31,6 @@
    active row, secondary fills). The brand's `accent` is the section colour, so this is `hover`. */
 @theme inline {
   --color-hover: var(--pk-admin-fill);
-  /* The overlay scrim: the brand's page ink in both themes (`bg-scrim/60`), never a black literal. */
-  --color-scrim: var(--polaris-key-page-dark);
 }
 
 /* Motion through the brand's duration and easing tokens, which collapse to 0 ms under

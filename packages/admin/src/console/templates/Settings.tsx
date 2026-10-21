@@ -314,7 +314,7 @@ export function SettingsTemplate({
                       go(s.id);
                     }}
                     // The current section's marker on the inline-start edge (BRAND.md §5.4, C3).
-                    data-ui-allow="border-width"
+                    data-edge="marker"
                     className={cn(
                       "-ms-px block border-s-2 py-0.5 ps-3 hover:border-border-strong hover:text-fg-strong",
                       s.id === current

@@ -124,7 +124,7 @@ export function JumpPalette({
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-scrim/60 animate-pk-overlay-in" />
+        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-(--polaris-key-page-dark)/60 animate-pk-overlay-in" />
         <DialogPrimitive.Content
           aria-describedby={undefined}
           onCloseAutoFocus={(e) => {

@@ -498,7 +498,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
                 inert={navOpen || undefined}
                 data-canvas=""
                 data-service={accent}
-                data-ui-allow="border-width"
+                data-edge="canvas"
                 // The canvas (B4): raised, with a 3 px rule in the page's accent along its top edge.
                 // From 1024 px it is inset 16 px from the window's end and bottom and rounded 18 px;
                 // below that it runs edge to edge. Flat: no glow, wash or gradient.
@@ -525,7 +525,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
 
             <DialogPrimitive.Root open={navOpen} onOpenChange={setNavOpen}>
               <DialogPrimitive.Portal>
-                <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-scrim/50 animate-pk-overlay-in lg:hidden" />
+                <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-(--polaris-key-page-dark)/50 animate-pk-overlay-in lg:hidden" />
                 <DialogPrimitive.Content
                   ref={drawerRef}
                   aria-describedby={undefined}
