@@ -10,6 +10,7 @@
  *   the table view drops columns by priority on narrow screens (ACT-6).
  */
 
+import { docsUrl } from "../../../../lib/docsLinks.js";
 import * as React from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Download, List, Rows3 } from "lucide-react";
@@ -337,7 +338,7 @@ export function ActivityPage({ slug }: { slug: string }): React.ReactElement {
             kind="first-run"
             title="No activity yet"
             description="Each change made in the console, and each security event the runtime records, appears here with who made it."
-            docs="/docs/admin/activity/"
+            docs={docsUrl("activityPage")}
           />
         )
       ) : view === "timeline" ? (

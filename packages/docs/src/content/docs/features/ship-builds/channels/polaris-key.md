@@ -70,7 +70,7 @@ whose only way it was no longer sees the product. Licenses already added keep wo
 ## Group labels
 
 One row per mapped group. A label (at most 40 characters) is what Discover shows: "Included with
-Aperture Seven". Without one, Discover says "For members of `<group>`". A label whose group is no
+Aperture Seven". Without one, Discover says "For `<group>`". A label whose group is no
 longer mapped is listed so you can clear it. Labels save together, with no confirmation.
 
 ## Who can see this?

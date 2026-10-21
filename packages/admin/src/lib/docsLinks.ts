@@ -82,6 +82,17 @@ export const DOCS_LINKS = {
   kotlinComposeDesktop: "/docs/build/sdks/kotlin/your-own-ui/#compose-desktop",
   godotCustomise: "/docs/build/ui/frameworks/godot/#scenes",
   godotOwnUi: "/docs/build/sdks/godot/your-own-ui/",
+  // Console pages that link their own docs page inline (B-fix: formerly legacy admin-path literals).
+  activityPage: "/docs/operate/console/activity/",
+  devicesPage: "/docs/features/licensing/manage-licenses/",
+  usersPage: "/docs/operate/console/users/",
+  appStorePage: "/docs/features/ship-builds/channels/app-store/",
+  credentialsPage: "/docs/operate/console/keys-and-secrets/",
+  productsPage: "/docs/operate/console/products/",
+  deployPage: "/docs/operate/platform/deploy/",
+  keyringRunbook: "/docs/operate/platform/runbook/",
+  storeConnectionsPage: "/docs/operate/platform/connections/",
+  consoleDocsHome: "/docs/operate/",
   // Landing
   docsHome: "/docs/",
 } as const;

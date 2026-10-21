@@ -1,4 +1,5 @@
 import * as React from "react";
+import { docsUrl } from "../../lib/docsLinks.js";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { X } from "lucide-react";
 import { type Me } from "../../api.js";
@@ -471,7 +472,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
                 me={me}
                 section={accent}
                 navOpen={navOpen}
-                docsHref={page ? docsFor(page) : "/docs/admin/"}
+                docsHref={page ? docsFor(page) : docsUrl("consoleDocsHome")}
                 onOpenPalette={() => openPalette()}
                 onOpenNav={() => setNavOpen(true)}
                 onShortcuts={() => setSheetOpen(true)}

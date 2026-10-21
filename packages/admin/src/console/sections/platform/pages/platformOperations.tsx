@@ -9,6 +9,7 @@
  * section the Worker could not read reads as degraded rather than as healthy.
  */
 
+import { docsUrl } from "../../../../lib/docsLinks.js";
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -968,7 +969,7 @@ function ConnectorsPanel({
                 variant="inline"
                 title="No connectors in use"
                 description="A connector appears here once a product configures it in Distribution."
-                docs="/docs/admin/store-connections/"
+                docs={docsUrl("storeConnectionsPage")}
               />
             }
             mobile="cards"

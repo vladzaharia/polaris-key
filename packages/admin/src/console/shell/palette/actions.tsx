@@ -1,4 +1,5 @@
 import * as React from "react";
+import { docsUrl } from "../../../lib/docsLinks.js";
 import {
   BookOpen,
   Code2,
@@ -259,7 +260,7 @@ function useChromeActions(ctx: PaletteContext): PaletteItem[] {
       perform: () => setPreference(o.value),
     };
   });
-  const docs = ctx.page ? docsFor(ctx.page) : "/docs/admin/";
+  const docs = ctx.page ? docsFor(ctx.page) : docsUrl("consoleDocsHome");
   items.push({
     id: "action:docs",
     group: "Actions",

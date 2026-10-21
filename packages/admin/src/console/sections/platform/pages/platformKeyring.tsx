@@ -2,6 +2,7 @@
  * Platform → Settings → Keyring and Secrets (split from platformSettings.tsx by ST-09).
  */
 
+import { docsUrl } from "../../../../lib/docsLinks.js";
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLink } from "lucide-react";
@@ -68,7 +69,7 @@ export function KeyringSection({
       description="Read-only here: rotation is a deploy-time change; the runbook walks through it."
       actions={
         <a
-          href="/docs/admin/kek/"
+          href={docsUrl("keyringRunbook")}
           target="_blank"
           rel="noreferrer"
           className="inline-flex items-center gap-1 text-sm text-accent-fg underline-offset-4 hover:underline"

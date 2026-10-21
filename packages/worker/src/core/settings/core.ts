@@ -379,7 +379,7 @@ export const CORE_SLICE: readonly SettingDef[] = [
     area: "storefront",
     label: "Group labels",
     description:
-      'How an identity-provider group is named on the listing ("Included with Aperture Seven"), at most 40 characters. A group without a label shows as "For members of <group>".',
+      'How an identity-provider group is named on the listing ("Included with Aperture Seven"), at most 40 characters. A group without a label shows as "For <group>".',
     keywords: ["groups", "copy", "discover"],
     docs: STOREFRONT_DOCS,
     value: {

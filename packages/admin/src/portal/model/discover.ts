@@ -69,7 +69,7 @@ export function reasonCopy(reason: string): ReasonCopy {
  *
  * - `auto_issue`: "Free with a Polaris Key account", or "Free trial · 14 days" when the tier
  *   expires;
- * - `group`: "Included with <label>" when the operator labelled the group, else "For members of
+ * - `group`: "Included with <label>" when the operator labelled the group, else "For
  *   <group>";
  * - `product_idp`: "Included with your <IdP> account"; `email_domain`: "For everyone with a
  *   <domain> email"; `store_owned`: "You own it on Steam";

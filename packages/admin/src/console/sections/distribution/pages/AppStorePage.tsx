@@ -17,6 +17,7 @@
  * read-only with the reason when the product has no usable App Store Connect connector.
  */
 
+import { docsUrl } from "../../../../lib/docsLinks.js";
 import * as React from "react";
 import { ArrowLeft, ArrowRight, Plus, RefreshCw, Trash2 } from "lucide-react";
 import type {
@@ -217,7 +218,7 @@ export function AppStorePage({ slug }: { slug: string }): React.ReactElement {
               <Link to={r.credentials(slug)}>Open Channel credentials</Link>
             </Button>
           }
-          docs="/docs/admin/app-store/"
+          docs={docsUrl("appStorePage")}
         />
       ) : (
         <DistributeFlow slug={slug} asc={asc} appleId={appleId} />

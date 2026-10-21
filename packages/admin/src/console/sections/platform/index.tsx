@@ -4,6 +4,7 @@
  * feeds and Override migration live in `pages/` and `../feeds/`.
  */
 
+import { docsUrl } from "../../../lib/docsLinks.js";
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLink } from "lucide-react";
@@ -515,7 +516,7 @@ export function Deployment(): React.ReactElement {
               variant="inline"
               title="No deploys recorded"
               description="The deploy workflow records each production deploy. A hand deploy or wrangler dev records none."
-              docs="/docs/admin/deploy/"
+              docs={docsUrl("deployPage")}
             />
           }
           mobile="cards"
