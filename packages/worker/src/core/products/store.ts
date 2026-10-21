@@ -66,9 +66,9 @@ export async function insertProduct(db: Db, row: ProductRow): Promise<void> {
   const presentation = presentationInsert(row);
   await db.run(
     `INSERT INTO products (slug, name, signing_kid, signing_pub, compat_min, compat_max,
-       default_max_offline_days, default_device_limit, admin_group, branding_json, release_source${presentation.column},
+       default_max_offline_days, default_device_limit, admin_group, release_source${presentation.column},
        created_at, modified_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?${presentation.values.map(() => ", ?").join("")}, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?${presentation.values.map(() => ", ?").join("")}, ?, ?)`,
     row.slug,
     row.name,
     row.signing_kid,
@@ -78,7 +78,6 @@ export async function insertProduct(db: Db, row: ProductRow): Promise<void> {
     row.default_max_offline_days,
     row.default_device_limit,
     row.admin_group,
-    row.branding_json,
     row.release_source,
     ...presentation.values,
     row.created_at,
@@ -280,10 +279,10 @@ export function stmtInsertProduct(row: ProductRow): DbStatement {
   const presentation = presentationInsert(row);
   return {
     sql: `INSERT INTO products (slug, name, signing_kid, signing_pub, compat_min, compat_max,
-            default_max_offline_days, default_device_limit, admin_group, branding_json, release_source,
+            default_max_offline_days, default_device_limit, admin_group, release_source,
             services_json, services_source, compat_source, web_origins_json${presentation.column},
             created_at, modified_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?${presentation.values.map(() => ", ?").join("")}, ?, ?)`,
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?${presentation.values.map(() => ", ?").join("")}, ?, ?)`,
     params: [
       row.slug,
       row.name,
@@ -294,7 +293,6 @@ export function stmtInsertProduct(row: ProductRow): DbStatement {
       row.default_max_offline_days,
       row.default_device_limit,
       row.admin_group,
-      row.branding_json,
       row.release_source,
       row.services_json ?? null,
       row.services_source ?? null,
@@ -487,7 +485,6 @@ export type ProductUpdateFields = Partial<
     | "default_max_offline_days"
     | "default_device_limit"
     | "admin_group"
-    | "branding_json"
   >
 >;
 

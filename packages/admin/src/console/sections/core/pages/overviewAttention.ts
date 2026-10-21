@@ -1,76 +1,55 @@
 /**
- * Overview's Needs attention items (OVR-2): operational problems only, from the product's setup
- * state and its licenses (pending edge-mint recipes included, U-31). Split out of `Overview.tsx` for the page budget.
+ * Overview's Needs attention items (OVR-2): the server's attention read for this product (missing
+ * secrets, a failed resync, a pending edge-mint recipe, an expiring store credential; the same
+ * items Home lists) plus the licences about to expire. Split out of `Overview.tsx` for the page
+ * budget.
  */
 
+import * as React from "react";
+import { useAttention } from "../../../data/hooks.js";
 import { formatCount } from "../../../../lib/format.js";
-import type { ProductDetail } from "../../../../api.js";
+import type { AttentionItemDto } from "../../../../api.js";
 import type { AttentionItem } from "../../../templates/Dashboard.js";
+import { attentionHref } from "../../global/model/home.js";
 import { r } from "../../../routes.js";
-import { pendingRecipes } from "../../config/model/pending.js";
 
 const DAY = 86_400;
+
+/**
+ * True until the attention read first answers. Only that first answer holds the page skeleton: a
+ * failed read refetches when the page remounts, and would otherwise flip it back in a loop.
+ */
+export function useAttentionPending(): boolean {
+  const attention = useAttention();
+  const seen = React.useRef(false);
+  if (!attention.isPending) seen.current = true;
+  return !seen.current && attention.isPending;
+}
 
 /**
  * `skip` drops the signing-key and recipe items the Integration card's next step already says.
  * The caller also skips them while that read is pending, so the first-load stagger never lifts
  * an item the next step then takes back.
  */
-export function useAttention(
+export function productAttentionItems(
   slug: string,
-  p: ProductDetail,
+  server: readonly AttentionItemDto[] | undefined,
   licenses: { status: string; expiresAt: number | null }[] | undefined,
   skip: { signing?: boolean; recipes?: boolean } = {},
 ): AttentionItem[] {
   const items: AttentionItem[] = [];
-  const setup = p.setup;
-  if (!p.signing?.publicKey && !skip.signing) {
+  for (const a of server ?? []) {
+    if (a.product.slug !== slug) continue;
+    if (skip.signing && a.kind === "signing.missing") continue;
+    if (skip.recipes && a.kind === "mint.pending") continue;
     items.push({
-      id: "signing",
-      tone: "warning",
-      object: "Signing key",
-      reason: "Nothing can be signed until one is activated.",
-      action: { label: "Keys & secrets", href: r.keys(slug) },
-    });
-  }
-  for (const sec of setup?.secrets ?? []) {
-    if (sec.configured) continue;
-    items.push({
-      id: `secret-${sec.name}`,
-      tone: "warning",
-      object: `Secret ${sec.name}`,
-      reason: "Not set.",
-      action: { label: "Set", href: r.keys(slug) },
-    });
-  }
-  if (setup?.sync?.status === "error") {
-    items.push({
-      id: "sync",
-      tone: "danger",
-      object: "Manifest sync",
-      reason:
-        setup.sync.message ?? "The last resync from the repository failed.",
-      action: { label: "Repository", href: `${r.settings(slug)}` },
-    });
-  }
-  for (const id of skip.recipes ? [] : pendingRecipes(p)) {
-    items.push({
-      id: `edge-${id}`,
-      tone: "warning",
-      object: `Edge-mint recipe ${id}`,
-      reason: "Mints nothing until it is approved as it stands.",
-      action: { label: "Review", href: r.catalogEntry(slug, id, true) },
-    });
-  }
-  for (const w of setup?.warnings ?? []) {
-    items.push({
-      id: `warn-${w}`,
-      tone: "warning",
-      object: w.startsWith("release:") ? "Release" : "Setup",
-      reason: w.replace(/^release:\s*/, ""),
-      action: w.startsWith("release:")
-        ? { label: "Releases", href: r.releases(slug) }
-        : undefined,
+      id: a.id,
+      tone: a.tone,
+      object: a.short,
+      reason: a.lines.join(" "),
+      lines: a.lines,
+      service: a.service ?? undefined,
+      action: { label: a.action.label, href: attentionHref(a) },
     });
   }
   if (licenses) {

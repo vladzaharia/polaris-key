@@ -616,6 +616,7 @@ export const MUTATIONS: MutationTable = {
     // An edge-mint recipe's status depends on whether its signing secret is set.
     invalidates: (slug) => [
       exact(qk.product(slug)),
+      attention(),
       prefix(qk.secrets(slug)),
       prefix(qk.mint(slug)),
     ],
@@ -636,12 +637,20 @@ export const MUTATIONS: MutationTable = {
   },
   rotateProductKey: {
     label: "signing key prepare",
-    invalidates: (slug) => [exact(qk.product(slug)), prefix(qk.keys(slug))],
+    invalidates: (slug) => [
+      exact(qk.product(slug)),
+      prefix(qk.keys(slug)),
+      attention(),
+    ],
   },
   activateProductKey: {
     label: "signing key activate",
     // The product row carries the active key (the Integration page's pins, the JWKS link).
-    invalidates: (slug) => [exact(qk.product(slug)), prefix(qk.keys(slug))],
+    invalidates: (slug) => [
+      exact(qk.product(slug)),
+      prefix(qk.keys(slug)),
+      attention(),
+    ],
   },
   retireProductKey: {
     label: "signing key retire",
@@ -786,11 +795,19 @@ export const MUTATIONS: MutationTable = {
   },
   approveEdgeMintRecipe: {
     label: "edge-mint approve",
-    invalidates: (slug) => [prefix(qk.mint(slug)), exact(qk.product(slug))],
+    invalidates: (slug) => [
+      prefix(qk.mint(slug)),
+      exact(qk.product(slug)),
+      attention(),
+    ],
   },
   revokeEdgeMintRecipe: {
     label: "edge-mint revoke",
-    invalidates: (slug) => [prefix(qk.mint(slug)), exact(qk.product(slug))],
+    invalidates: (slug) => [
+      prefix(qk.mint(slug)),
+      exact(qk.product(slug)),
+      attention(),
+    ],
   },
   createLicense: {
     label: "license create",

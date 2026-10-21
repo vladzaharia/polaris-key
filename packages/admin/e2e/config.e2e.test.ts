@@ -36,7 +36,6 @@ const product = {
   effectiveRegistration: "requires-license",
   servicesSource: "manifest",
   releaseSource: "github",
-  setup: { status: "ok", healthy: true, nextActions: [] },
 };
 const entries = [
   {

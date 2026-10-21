@@ -95,7 +95,6 @@ const PRODUCTS = [
     presentation: { icon: iconOf("djdl"), header: iconOf("djdl", "header") },
   }),
   product("acme", "Acme", {
-    setup: { status: "ok", healthy: true, nextActions: [] },
     presentation: { icon: iconOf("acme") },
     services: {
       ...services,
@@ -108,14 +107,12 @@ const PRODUCTS = [
   product(LONG_SLUG, LONG_NAME, { presentation: { icon: null } }),
   // One service beside six: the worst pairing for equal-height card rows on Home.
   product("diceroll", "Diceroll", {
-    setup: { status: "ok", healthy: true, nextActions: [] },
     presentation: { icon: iconOf("diceroll") },
     services: Object.fromEntries(
       Object.keys(services).map((s) => [s, { enabled: s === "license" }]),
     ),
   }),
   product("empty", "Empty product", {
-    setup: { status: "ok", healthy: true, nextActions: [] },
     packageFeeds: true,
     presentation: { icon: null },
   }),

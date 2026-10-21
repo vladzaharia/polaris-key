@@ -38,7 +38,6 @@ const row = (slug: string, name: string) => ({
   services,
   effectiveRegistration: "requires-license",
   servicesSource: "manifest",
-  setup: { status: "ok", healthy: true, nextActions: [] },
   // F-11: Distribution → Package feeds is listed while the product has package feeds on.
   packageFeeds: true,
 });

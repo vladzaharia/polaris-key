@@ -13,11 +13,7 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
-import {
-  api,
-  type ProductDetail,
-  type ProductSecretDto,
-} from "../../../../api.js";
+import { api, type ProductSecretDto } from "../../../../api.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
 import { fromSeconds } from "../../../../lib/format.js";
 import {
@@ -55,13 +51,7 @@ export function fetchSecrets(slug: string): Promise<ProductSecretDto[]> {
   return api.productSecrets(slug).then((r) => r.secrets);
 }
 
-export function SecretsSection({
-  slug,
-  product,
-}: {
-  slug: string;
-  product: ProductDetail;
-}): React.ReactElement {
+export function SecretsSection({ slug }: { slug: string }): React.ReactElement {
   const secrets = useQuery({
     queryKey: qk.secrets(slug),
     queryFn: () => fetchSecrets(slug),
@@ -76,22 +66,12 @@ export function SecretsSection({
     setEditing(null);
     if (linked) setLinked("");
   };
-  // The setup projection names required secrets too: a stale inventory still shows them.
-  const rows = React.useMemo(() => {
-    const out = new Map<string, ProductSecretDto>();
-    for (const s of product.setup?.secrets ?? []) {
-      out.set(s.name, {
-        name: s.name,
-        configured: s.configured,
-        usage: null,
-        createdAt: null,
-        updatedAt: null,
-        requiredBy: s.sources ?? [],
-      });
-    }
-    for (const s of secrets.data ?? []) out.set(s.name, s);
-    return [...out.values()].sort((a, b) => a.name.localeCompare(b.name));
-  }, [secrets.data, product.setup?.secrets]);
+  // The inventory lists the required secrets too, set or not.
+  const rows = React.useMemo(
+    () =>
+      [...(secrets.data ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
+    [secrets.data],
+  );
   const configured = new Set(
     rows.filter((r) => r.configured).map((r) => r.name),
   );

@@ -13,13 +13,12 @@
  */
 
 import type { Db } from "../../db/types.js";
-import type { Env } from "../../platform/env.js";
 import { getProductSyncState } from "../../core/products/store.js";
 import type { ProductRow } from "../../core/repo.js";
 import type { AreaId, Principal } from "../authz.js";
 import { can, productScope } from "../authz.js";
 import { expiringCredentials } from "../../services/distribution/public.js";
-import { productSetupFor } from "./shape.js";
+import { attentionFactsFor } from "./shape.js";
 
 export type AttentionTone = "danger" | "warning";
 
@@ -81,13 +80,6 @@ function secretService(
   return null;
 }
 
-interface SetupShape {
-  missingSecrets?: string[];
-  secrets?: { name: string; configured: boolean; sources: string[] }[];
-  nextActions?: { id: string }[];
-  modules?: { id: string; pendingApproval?: string[] }[];
-}
-
 /**
  * A failed resync's stored message can carry whatever the upstream answered (an error body, a
  * header, a token echoed back). Home never repeats it: the message is only classified, and one of
@@ -113,7 +105,6 @@ export function syncReason(message: string | null): string {
 
 /** One product's items, unfiltered by who is asking. */
 export async function productAttention(
-  env: Env,
   db: Db,
   p: ProductRow,
   now: number,
@@ -137,28 +128,24 @@ export async function productAttention(
       area: "ship",
     });
 
-  const setup = (await productSetupFor(env, db, p)) as SetupShape;
-  const secrets = new Map((setup.secrets ?? []).map((s) => [s.name, s]));
-  const missing = new Set([
-    ...(setup.missingSecrets ?? []),
-    ...(setup.secrets ?? []).filter((s) => !s.configured).map((s) => s.name),
-  ]);
-  for (const name of missing)
+  const facts = await attentionFactsFor(db, p);
+  for (const s of facts.secrets) {
+    if (s.configured) continue;
     items.push({
-      id: id("secret.missing", name),
+      id: id("secret.missing", s.name),
       product,
       kind: "secret.missing",
       tone: "warning",
-      service: secretService(secrets.get(name)?.sources ?? []) ?? "config",
+      service: secretService(s.sources) ?? "config",
       short: "Missing secret",
       lines: [
-        `Required secret \`${name}\` has no value in the Default profile.`,
+        `Required secret \`${s.name}\` has no value in the Default profile.`,
       ],
       action: { label: "Set secret", page: "keys" },
       area: "keys",
     });
-  const ids = new Set((setup.nextActions ?? []).map((a) => a.id));
-  if (ids.has("signing-key"))
+  }
+  if (!facts.signingConfigured)
     items.push({
       id: id("signing.missing"),
       product,
@@ -170,9 +157,7 @@ export async function productAttention(
       action: { label: "Open keys", page: "keys" },
       area: "keys",
     });
-  for (const a of setup.nextActions ?? []) {
-    if (!a.id.startsWith("secret-usage:")) continue;
-    const name = a.id.slice("secret-usage:".length);
+  for (const name of facts.wrongUsage)
     items.push({
       id: id("secret.usage", name),
       product,
@@ -184,26 +169,22 @@ export async function productAttention(
       action: { label: "Open keys", page: "keys" },
       area: "keys",
     });
-  }
-  for (const m of setup.modules ?? []) {
-    if (m.id !== "edgeMint") continue;
-    for (const recipe of m.pendingApproval ?? [])
-      items.push({
-        id: id("mint.pending", recipe),
-        product,
-        kind: "mint.pending",
-        tone: "warning",
-        service: "config",
-        short: "Needs approval",
-        lines: [`Edge-mint recipe \`${recipe}\` awaits approval.`],
-        action: {
-          label: "Review recipe",
-          page: "catalog-edit",
-          query: { entry: recipe, recipe },
-        },
-        area: "config",
-      });
-  }
+  for (const recipe of facts.unapprovedRecipes)
+    items.push({
+      id: id("mint.pending", recipe),
+      product,
+      kind: "mint.pending",
+      tone: "warning",
+      service: "config",
+      short: "Needs approval",
+      lines: [`Edge-mint recipe \`${recipe}\` awaits approval.`],
+      action: {
+        label: "Review recipe",
+        page: "catalog-edit",
+        query: { entry: recipe, recipe },
+      },
+      area: "config",
+    });
 
   const creds = await expiringCredentials(
     db,
@@ -233,7 +214,6 @@ const RANK: Record<AttentionTone, number> = { danger: 0, warning: 1 };
 
 /** Every visible product's items the principal may act on, the worst first. */
 export async function attentionAcross(
-  env: Env,
   db: Db,
   products: ProductRow[],
   principal: Principal | null | undefined,
@@ -242,7 +222,7 @@ export async function attentionAcross(
   const per = await Promise.all(
     products.map(async (p) => {
       const scope = productScope(p);
-      const items = await productAttention(env, db, p, now);
+      const items = await productAttention(db, p, now);
       return items.filter((i) => can(principal, scope, i.area, "view"));
     }),
   );

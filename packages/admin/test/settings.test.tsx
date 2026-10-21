@@ -59,7 +59,7 @@ function product(over: Partial<ProductDetail> = {}): ProductDetail {
       sync: { enabled: false },
       commerce: { enabled: false },
     },
-    setup: { sync: { status: "ok", lastSyncedAt: 1_700_000_000 } },
+    sync: { status: "ok", lastSyncedAt: 1_700_000_000 },
     ...over,
   };
 }
@@ -653,7 +653,7 @@ describe("Core → Settings", () => {
 
     beforeEach(() => {
       fns.product.mockResolvedValue({
-        product: product({ releaseSource: "manual", setup: undefined }),
+        product: product({ releaseSource: "manual", sync: undefined }),
       });
     });
 

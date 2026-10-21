@@ -22,8 +22,7 @@ import {
   type ServiceAccent,
   type ServiceState,
 } from "../nav.js";
-import { useProduct } from "../data/hooks.js";
-import { pendingRecipes } from "../sections/config/model/pending.js";
+import { usePendingRecipes } from "../sections/config/model/pending.js";
 import { Link } from "../router.js";
 import { globalPage, productPage } from "../routes.js";
 import {
@@ -175,7 +174,7 @@ export function Sidebar({
 }: SidebarProps): React.ReactElement {
   const sections = slug ? visibleSections(services) : [];
   // Recipes awaiting approval ride the Catalog item, where their entries live.
-  const pending = pendingRecipes(useProduct(slug).data).length;
+  const pending = usePendingRecipes(slug ?? "").recipes.length;
   // ST-29: what the member cannot open is absent, not disabled (ADMIN.md §5.10, hidden vs
   // disabled). A group with nothing left to show goes too.
   const links = platformLinks().filter((p) => canOpen(p.page));

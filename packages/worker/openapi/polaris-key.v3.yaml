@@ -15661,7 +15661,7 @@ paths:
         the 64 and 128 px WebP variants (HA-03) for a `srcset`. Every product's icon is read in
         one statement. `icon` is `null` when there is no copy the image host serves (nothing
         declared, the first pull still pending or refused) or the environment has no image host;
-        a refused re-pull keeps its last good copy, which keeps showing. The list is the slim projection: setup, signing, claims and portal settings are on the
+        a refused re-pull keeps its last good copy, which keeps showing. The list is the slim projection: the last resync, signing, claims and portal settings are on the
         detail row, and what needs attention is `GET /manage/api/attention`. `presentation.header`
         is the hosted `listing.header` copy, read in one statement as the icons are.
         Platform admins only; admin session cookie.
@@ -21385,9 +21385,9 @@ components:
     AdminProduct:
       type: object
       description: >
-        One registry row. The list answers the slim projection (`productListView`: no setup state,
+        One registry row. The list answers the slim projection (`productListView`: no resync state,
         signing block or claims); `GET /manage/api/products/{slug}` answers the full row
-        (`productView`), including `setup`.
+        (`productView`), including `sync`.
       required: [slug, name, services, presentation, createdAt, modifiedAt]
       additionalProperties: true
       properties:
@@ -21409,9 +21409,11 @@ components:
             type: object
             required: [enabled]
             properties: { enabled: { type: boolean } }
-        setup:
-          type: object
-          description: The server-computed setup state; on the detail row only.
+        sync:
+          type: [object, "null"]
+          description: >
+            The last manifest resync (source, status, times, commit, changed paths, errors,
+            message), `null` before the first; on the detail row only.
           additionalProperties: true
         presentation: { $ref: "#/components/schemas/AdminProductPresentation" }
         createdAt: { type: integer }

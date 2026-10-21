@@ -3,9 +3,8 @@ import type { ConfigEntry } from "../../../../api.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
 import { codecs, Link, navigate, useSearchParam } from "../../../router.js";
 import { r } from "../../../routes.js";
-import { useProduct } from "../../../data/hooks.js";
 import { useEdgeMint } from "../data.js";
-import { pendingRecipes, reviewHref } from "../model/pending.js";
+import { reviewHref, usePendingRecipes } from "../model/pending.js";
 
 /** True for a minted-token entry: the only kind that carries a recipe. */
 export const isMinted = (e: ConfigEntry): boolean => e.delivery === "edgeMint";
@@ -57,7 +56,7 @@ export function ReviewRecipeLink({
 }: {
   slug: string;
 }): React.ReactElement {
-  const pending = pendingRecipes(useProduct(slug).data);
+  const pending = usePendingRecipes(slug).recipes;
   return (
     <Link
       to={reviewHref(slug, pending)}
@@ -74,13 +73,10 @@ export function ReviewRecipeLink({
  */
 export function ReviewJump({ slug }: { slug: string }): null {
   const [review] = useSearchParam("review", codecs.string());
-  const product = useProduct(slug);
-  const ready = product.data !== undefined && !product.isPlaceholderData;
+  const { recipes, ready } = usePendingRecipes(slug);
   React.useEffect(() => {
     if (!review || !ready) return;
-    navigate(reviewHref(slug, pendingRecipes(product.data)), {
-      replace: true,
-    });
-  }, [review, ready, slug, product.data]);
+    navigate(reviewHref(slug, recipes), { replace: true });
+  }, [review, ready, slug, recipes]);
   return null;
 }

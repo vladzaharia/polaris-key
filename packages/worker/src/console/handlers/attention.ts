@@ -28,6 +28,6 @@ export async function handleAttention(
     (p) => !p.system && canSeeProduct(session.principal, p),
   );
   return adminJson({
-    items: await attentionAcross(env, db, products, session.principal, now),
+    items: await attentionAcross(db, products, session.principal, now),
   });
 }

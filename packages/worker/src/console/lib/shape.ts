@@ -15,16 +15,11 @@ import {
   getPortalProductSettings,
   portalProductSettingsView,
 } from "../../services/identity/public.js";
-import { shipsDmgs } from "../../services/release/public.js";
 import { packageFeedsOf } from "../../services/distribution/public.js";
-import { latestReleaseHasDmg } from "../../services/release/public.js";
-import { readAppDeliverable } from "../../services/release/public.js";
-import { hasArtifactMap } from "../../services/release/public.js";
 import {
   approvalMismatch,
   listEdgeMintRecipesWithApprovals,
   mintApprovalBasis,
-  type MintPolicyProduct,
 } from "../../services/config/public.js";
 import { parseAutoIssue } from "../../core/fingerprint.js";
 import {
@@ -53,15 +48,6 @@ interface EdgeMintSetupRow {
   signing_key_secret: string | null;
   /** P0-12: whether an operator approved this recipe as it currently stands. */
   approval: "approved" | "pending" | "changed";
-}
-
-interface ReleaseSetupRow {
-  gh_owner: string | null;
-  gh_repo: string | null;
-  gh_installation_id: number | null;
-  binary_name: string | null;
-  sparkle_ed25519_pub: string | null;
-  artifact_policy_json: string | null;
 }
 
 function syncStateView(
@@ -110,19 +96,6 @@ export async function productView(
   // already loads is what keeps the nav from popping in after its own content; a second
   // round-trip to `…/services` would be a strictly slower way to render the same tree.
   const services = serviceStateOf(p);
-  const setup = await productSetupView(
-    env,
-    db,
-    p.slug,
-    Boolean(signingPublicKey),
-    services.services.update.enabled,
-    {
-      slug: p.slug,
-      registration: services.effectiveRegistration,
-      autoIssue: parseAutoIssue(p.auto_issue_json),
-      services: services.services,
-    },
-  );
   const portalSettings = await getPortalProductSettings(db, p.slug);
   const icon =
     (icons ?? (await productIcons(env, db, p.slug))).get(p.slug) ?? null;
@@ -142,25 +115,12 @@ export async function productView(
     signingKid,
     jwksUrl,
     signing,
-    modules: setup.modules,
     portalSettings: portalProductSettingsView(portalSettings),
     services: services.services,
     effectiveRegistration: services.effectiveRegistration,
     servicesSource: services.source,
-    setup,
-    onboarding: {
-      setup,
-      modules: setup.modules,
-      baseUrl: `/${p.slug}`,
-      // Wire v3 route names. `/<p>/config` and `/<p>/activate` are GONE — the fused document
-      // split in two and activation moved under the license namespace — so emitting the old
-      // spellings here handed an operator two 404s from the one panel that exists to tell them
-      // where to point a client.
-      configUrl: `/${p.slug}/config/document`,
-      activateUrl: `/${p.slug}/license/activate`,
-      jwksUrl,
-      nextActions: setup.nextActions,
-    },
+    // The last manifest resync (`null` before the first): Settings, Overview and Releases.
+    sync: syncStateView(await getProductSyncState(db, p.slug)),
     compatMin: p.compat_min,
     compatMax: p.compat_max,
     defaultMaxOfflineDays: p.default_max_offline_days,
@@ -180,7 +140,7 @@ export async function productView(
 
 /**
  * The slim row `GET /products` answers (ST-44): what the shell, the switcher and Home's cards
- * draw, and nothing that costs a query per product beyond enablement. The setup state, the signing
+ * draw, and nothing that costs a query per product beyond enablement. The last resync, the signing
  * block, the claims and the portal settings ride `GET /products/:slug` (`productView`); what
  * needs the operator is the attention read's (`GET /attention`, `./attention.ts`).
  */
@@ -232,32 +192,9 @@ export async function verifiedProducts(db: Db): Promise<Set<string>> {
   return new Set(rows.map((r) => r.product));
 }
 
-/** One product's server-computed setup state: the source of its attention items. */
-export async function productSetupFor(
-  env: Env,
-  db: Db,
-  p: ProductRow,
-): Promise<Record<string, unknown>> {
-  const activeKey = await loadPublicSigningKey(db, p.slug);
-  const services = serviceStateOf(p);
-  return productSetupView(
-    env,
-    db,
-    p.slug,
-    Boolean(activeKey?.publicKey ?? p.signing_pub),
-    services.services.update.enabled,
-    {
-      slug: p.slug,
-      registration: services.effectiveRegistration,
-      autoIssue: parseAutoIssue(p.auto_issue_json),
-      services: services.services,
-    },
-  );
-}
-
 /**
  * Which product secrets the product's configuration names, and what names each (a custom OIDC
- * provider's client secret, each edge-mint recipe's signing key). Shared by the setup projection
+ * provider's client secret, each edge-mint recipe's signing key). Shared by the attention facts
  * and the secrets inventory (A-5), so both say the same thing.
  */
 function collectRequiredSecrets(
@@ -345,21 +282,36 @@ export async function listProductSecretsView(
   return out.sort((a, b) => a.name.localeCompare(b.name));
 }
 
-async function productSetupView(
-  env: Env,
+/**
+ * The facts the attention read (`./attention.ts`) turns into items: whether the product has a
+ * usable signing key, which required secrets are unset, which edge-mint secrets are not marked
+ * for edge minting, and which recipes await approval. This replaces the six-module setup model
+ * (ST-47): nothing else reads it, and no console payload carries it.
+ */
+export interface AttentionFacts {
+  signingConfigured: boolean;
+  secrets: RequiredSecretStatus[];
+  wrongUsage: string[];
+  unapprovedRecipes: string[];
+}
+
+export async function attentionFactsFor(
   db: Db,
-  product: string,
-  signingConfigured: boolean,
-  updateEnabled: boolean,
-  /** The product policy an edge-mint approval is checked against (`approvalMismatch`): an
-   *  approval that no longer applies does not count as approved here either. */
-  mintPolicy: MintPolicyProduct,
-): Promise<Record<string, unknown>> {
+  p: ProductRow,
+): Promise<AttentionFacts> {
+  const activeKey = await loadPublicSigningKey(db, p.slug);
+  const services = serviceStateOf(p);
+  const product = p.slug;
   const oidc = await db.first<OidcSetupRow>(
     "SELECT provider, issuer, client_id, client_secret_secret FROM oidc_config WHERE product = ?",
     product,
   );
-  const mintBasis = await mintApprovalBasis(db, mintPolicy);
+  const mintBasis = await mintApprovalBasis(db, {
+    slug: p.slug,
+    registration: services.effectiveRegistration,
+    autoIssue: parseAutoIssue(p.auto_issue_json),
+    services: services.services,
+  });
   const edgeMint: EdgeMintSetupRow[] = (
     await listEdgeMintRecipesWithApprovals(db, product)
   ).map(({ recipe, approval }) => ({
@@ -371,15 +323,6 @@ async function productSetupView(
         ? "approved"
         : "changed",
   }));
-  const release = await db.first<ReleaseSetupRow>(
-    `SELECT gh_owner, gh_repo, gh_installation_id, binary_name, sparkle_ed25519_pub,
-            artifact_policy_json
-      FROM release_config WHERE product = ?`,
-    product,
-  );
-  const portalSettings = await getPortalProductSettings(db, product);
-  const syncState = await getProductSyncState(db, product);
-  const sync = syncStateView(syncState);
   const secretRows = await db.all<{ name: string; usage: string | null }>(
     "SELECT name, usage FROM product_secrets WHERE product = ?",
     product,
@@ -390,55 +333,18 @@ async function productSetupView(
       .filter((row) => row.usage === "edge-mint")
       .map((row) => row.name),
   );
-
-  const secretSources = collectRequiredSecrets(oidc, edgeMint);
-
-  const secrets: RequiredSecretStatus[] = [...secretSources.entries()]
+  const secrets: RequiredSecretStatus[] = [
+    ...collectRequiredSecrets(oidc, edgeMint).entries(),
+  ]
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([name, sources]) => ({
       name,
       configured: configuredSecrets.has(name),
       sources: [...sources],
     }));
-  const missingSecrets = secrets
-    .filter((secret) => !secret.configured)
-    .map((secret) => secret.name);
-
-  // The platform client only (I-03): `ADMIN_OIDC_*` is the console's own client and never
-  // serves a `provider: platform` product.
-  // Per field, so the readiness row names exactly the variable that is missing.
-  const platformOidcIssuer =
-    typeof env.PLATFORM_OIDC_ISSUER === "string" && env.PLATFORM_OIDC_ISSUER;
-  const platformOidcClientId =
-    typeof env.PLATFORM_OIDC_CLIENT_ID === "string" &&
-    env.PLATFORM_OIDC_CLIENT_ID;
-  const oidcProvider = oidc?.provider === "custom" ? "custom" : "platform";
-  const oidcMissing = oidc
-    ? oidcProvider === "custom"
-      ? [
-          ...(oidc.issuer ? [] : ["issuer"]),
-          ...(oidc.client_id ? [] : ["client id"]),
-          ...(oidc.client_secret_secret &&
-          !configuredSecrets.has(oidc.client_secret_secret)
-            ? [oidc.client_secret_secret]
-            : []),
-        ]
-      : [
-          ...(platformOidcIssuer ? [] : ["PLATFORM_OIDC_ISSUER"]),
-          ...(platformOidcClientId ? [] : ["PLATFORM_OIDC_CLIENT_ID"]),
-        ]
-    : [];
-  const edgeMissing = edgeMint
-    .filter(
-      (row) =>
-        row.signing_key_secret &&
-        !configuredSecrets.has(row.signing_key_secret),
-    )
-    .map((row) => row.signing_key_secret as string);
-  // P0-12: the two operator-held conditions a recipe needs beyond its manifest row. A secret
-  // that is configured but not marked `edge-mint` signs nothing (500 misconfigured); a recipe
-  // that is pending or changed answers 404 until someone approves it.
-  const edgeWrongUsage = [
+  // P0-12: a secret that is configured but not marked `edge-mint` signs nothing (500
+  // misconfigured); a recipe that is pending or changed answers 404 until someone approves it.
+  const wrongUsage = [
     ...new Set(
       edgeMint
         .filter(
@@ -450,172 +356,12 @@ async function productSetupView(
         .map((row) => row.signing_key_secret as string),
     ),
   ];
-  const edgeUnapproved = edgeMint
-    .filter((row) => row.approval !== "approved")
-    .map((row) => row.id);
-  const edgeProblems = [
-    ...edgeMissing,
-    ...edgeWrongUsage.map((name) => `${name} is not marked edge-mint`),
-    ...edgeUnapproved.map((id) => `recipe ${id} awaits approval`),
-  ];
-  const releaseMissing = release
-    ? [
-        ...(release.gh_owner && release.gh_repo ? [] : ["GitHub repo"]),
-        ...(release.gh_installation_id ? [] : ["GitHub installation"]),
-        ...(release.binary_name ? [] : ["binary name"]),
-      ]
-    : [];
-  // The Sparkle warning is only meaningful when Update renders appcasts for DMGs: the product
-  // has Update enabled AND ships DMGs — the same evidence-based predicate release health uses.
-  // The setup state has no GitHub listing, so "the latest release carries a .dmg" is read from
-  // the truth store, and only for a product that declares no map (a map is its own evidence).
-  const app =
-    release && updateEnabled ? await readAppDeliverable(db, product) : null;
-  const latestHasDmg =
-    release && updateEnabled && !hasArtifactMap(app)
-      ? await latestReleaseHasDmg(db, product)
-      : false;
-  const warnings =
-    release &&
-    updateEnabled &&
-    shipsDmgs({
-      policyJson: release.artifact_policy_json,
-      app,
-      latestReleaseHasDmg: latestHasDmg,
-    }) &&
-    !release.sparkle_ed25519_pub
-      ? ["release: Sparkle public key not configured; appcasts may be unsigned"]
-      : [];
-  const syncMissing =
-    syncState && syncState.status === "error"
-      ? [`manifest sync: ${syncState.message ?? "failed"}`]
-      : [];
-
-  const modules = [
-    {
-      id: "signing",
-      label: "Signing key",
-      status: signingConfigured ? "configured" : "missing",
-      configured: signingConfigured,
-      missing: signingConfigured ? [] : ["product signing key"],
-    },
-    {
-      id: "oidc",
-      label: oidc
-        ? oidcProvider === "custom"
-          ? "Custom OIDC"
-          : "Platform OIDC"
-        : "OIDC",
-      status: oidc
-        ? oidcMissing.length
-          ? oidcProvider === "custom"
-            ? "needs-secret"
-            : "needs-setup"
-          : "configured"
-        : "not-configured",
-      configured: oidc ? oidcMissing.length === 0 : null,
-      provider: oidc ? oidcProvider : null,
-      missing: oidcMissing,
-    },
-    {
-      id: "release",
-      label: "Release",
-      status: release
-        ? releaseMissing.length
-          ? "needs-setup"
-          : "configured"
-        : "not-configured",
-      configured: release ? releaseMissing.length === 0 : null,
-      missing: release ? releaseMissing : [],
-    },
-    {
-      id: "portal",
-      label: "Customer portal",
-      status: portalSettings.portal_enabled === 1 ? "enabled" : "disabled",
-      configured: true,
-      enabled: portalSettings.portal_enabled === 1,
-      missing: [],
-    },
-    {
-      id: "manifestSync",
-      label: "Manifest sync",
-      status: syncState ? syncState.status : "not-run",
-      configured: syncState ? syncState.status === "ok" : null,
-      missing: syncMissing,
-    },
-    {
-      id: "edgeMint",
-      label: "Edge mint",
-      status: edgeMint.length
-        ? edgeMissing.length || edgeWrongUsage.length
-          ? "needs-secret"
-          : edgeUnapproved.length
-            ? "needs-approval"
-            : "configured"
-        : "not-configured",
-      configured: edgeMint.length ? edgeProblems.length === 0 : null,
-      missing: edgeProblems,
-      pendingApproval: edgeUnapproved,
-    },
-  ];
-
-  const missing = [
-    ...(signingConfigured ? [] : ["product signing key"]),
-    ...missingSecrets,
-    ...releaseMissing.map((item) => `release: ${item}`),
-    ...syncMissing,
-    ...edgeWrongUsage.map(
-      (name) => `edge mint: ${name} is not marked edge-mint`,
-    ),
-    ...edgeUnapproved.map((id) => `edge mint: recipe ${id} awaits approval`),
-  ];
-  const nextActions = [
-    ...missingSecrets.map((name) => ({
-      id: `secret:${name}`,
-      label: `Set required secret ${name}`,
-      route: `#/p/${product}/keys`,
-    })),
-    ...(signingConfigured
-      ? []
-      : [
-          {
-            id: "signing-key",
-            label: "Rotate or recreate the product signing key",
-            route: `#/p/${product}/keys`,
-          },
-        ]),
-    ...edgeWrongUsage.map((name) => ({
-      id: `secret-usage:${name}`,
-      label: `Mark secret ${name} for edge-minting`,
-      route: `#/p/${product}/keys`,
-    })),
-    ...edgeUnapproved.map((id) => ({
-      id: `edge-mint:${id}`,
-      label: `Review and approve edge-mint recipe ${id}`,
-      route: `#/p/${product}/config/edge-mint`,
-    })),
-    ...(release && releaseMissing.length > 0
-      ? [
-          {
-            id: "release",
-            label: "Review release setup",
-            route: `#/p/${product}/release/releases`,
-          },
-        ]
-      : []),
-  ];
-
   return {
-    status: missing.length ? "needs-attention" : "healthy",
-    healthy: missing.length === 0,
-    complete: missing.length === 0,
-    missing,
-    warnings,
-    requiredSecrets: secrets.map((secret) => secret.name),
-    missingSecrets,
+    signingConfigured: Boolean(activeKey?.publicKey ?? p.signing_pub),
     secrets,
-    modules,
-    sync,
-    nextActions,
+    wrongUsage,
+    unapprovedRecipes: edgeMint
+      .filter((row) => row.approval !== "approved")
+      .map((row) => row.id),
   };
 }

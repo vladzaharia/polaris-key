@@ -38,61 +38,11 @@ const product = {
   services,
   effectiveRegistration: "requires-license",
   servicesSource: "manifest",
-  setup: {
-    status: "needs-attention",
-    healthy: false,
-    missing: ["OIDC_CLIENT_SECRET"],
-    warnings: [],
-    requiredSecrets: ["OIDC_CLIENT_SECRET", "EDGE_MINT__DJDL__STUDIO"],
-    missingSecrets: ["OIDC_CLIENT_SECRET"],
-    secrets: [
-      {
-        name: "EDGE_MINT__DJDL__STUDIO",
-        configured: true,
-        sources: ["Edge mint studio"],
-      },
-      {
-        name: "OIDC_CLIENT_SECRET",
-        configured: false,
-        sources: ["OIDC client secret"],
-      },
-    ],
-    modules: [
-      {
-        id: "signing",
-        label: "Signing key",
-        status: "configured",
-        configured: true,
-        missing: [],
-      },
-      {
-        id: "release",
-        label: "Release",
-        status: "configured",
-        configured: true,
-        missing: [],
-      },
-      {
-        id: "edgeMint",
-        label: "Edge mint",
-        status: "needs-approval",
-        configured: false,
-        missing: ["recipe studio awaits approval"],
-        pendingApproval: ["studio"],
-      },
-    ],
-    sync: {
-      source: "manual",
-      status: "ok",
-      lastSyncedAt: NOW - 2 * 3600,
-      message: null,
-    },
-    nextActions: [],
-  },
-  onboarding: {
-    baseUrl: "/djdl",
-    configUrl: "/djdl/config/document",
-    activateUrl: "/djdl/license/activate",
+  sync: {
+    source: "manual",
+    status: "ok",
+    lastSyncedAt: NOW - 2 * 3600,
+    message: null,
   },
 };
 
@@ -266,6 +216,39 @@ const INTEGRATION = {
 export const CORE_ROUTES: Record<string, unknown> = {
   "/manage/api/products/djdl/integration": INTEGRATION,
   "/manage/api/products/djdl/settings/effective": { settings: [] },
+  // What the removed setup state said: an unset secret and a recipe awaiting approval.
+  "/manage/api/attention": {
+    items: [
+      {
+        id: "djdl:secret.missing:OIDC_CLIENT_SECRET",
+        product: { slug: "djdl", name: "DJDL" },
+        kind: "secret.missing",
+        tone: "warning",
+        service: "identity",
+        short: "Missing secret",
+        lines: [
+          "Required secret `OIDC_CLIENT_SECRET` has no value in the Default profile.",
+        ],
+        action: { label: "Set secret", page: "keys" },
+        area: "keys",
+      },
+      {
+        id: "djdl:mint.pending:studio",
+        product: { slug: "djdl", name: "DJDL" },
+        kind: "mint.pending",
+        tone: "warning",
+        service: "config",
+        short: "Needs approval",
+        lines: ["Edge-mint recipe `studio` awaits approval."],
+        action: {
+          label: "Review recipe",
+          page: "catalog-edit",
+          query: { entry: "studio", recipe: "studio" },
+        },
+        area: "config",
+      },
+    ],
+  },
   "/manage/api/me": {
     sub: "u1",
     name: "Ada Lovelace",
