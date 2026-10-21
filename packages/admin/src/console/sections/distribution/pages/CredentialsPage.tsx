@@ -425,7 +425,7 @@ export function CredentialsPage({
               </span>
             ) : undefined
           }
-          description="Store keys and the Sentry secret. Values are never shown again."
+          description="Store keys and the Sentry secret."
           primaryAction={
             <Button
               iconStart={<Plus aria-hidden />}
