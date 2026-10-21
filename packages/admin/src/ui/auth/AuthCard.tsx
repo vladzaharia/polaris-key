@@ -4,6 +4,26 @@ import { Globe, Monitor, Tv } from "lucide-react";
 import { t, tParts } from "../../lib/copy.js";
 
 /**
+ * Moves focus to a step's h1, except where the step marks the field its next action is typing in
+ * (`data-step-focus`, the code step: SIGN-IN.md §3.14). That field takes focus, so the OS
+ * one-time-code suggestion shows at once, and is described by the h1, which names the step.
+ */
+function focusStep(body: HTMLElement, h1: HTMLElement | null): void {
+  const field = body.querySelector<HTMLElement>("[data-step-focus]");
+  if (field && h1) {
+    h1.id ||= "ac-step-title";
+    const ids = (field.getAttribute("aria-describedby") ?? "")
+      .split(" ")
+      .filter(Boolean);
+    if (!ids.includes(h1.id))
+      field.setAttribute("aria-describedby", [h1.id, ...ids].join(" "));
+    field.focus({ preventScroll: true });
+    return;
+  }
+  h1?.focus({ preventScroll: true });
+}
+
+/**
  * The one sign-in frame (SIGN-IN.md §3.1, PORTAL.md §5.2 `AuthCard`; UX-40 promoted the portal's
  * `LoginCard` here). It knows no app: the brand row (`brand`), the product icon of a context
  * header and every string arrive from the host, so the portal and the Worker's pages share it.
@@ -17,7 +37,7 @@ import { t, tParts } from "../../lib/copy.js";
  * Steps replace each other in place (§3.18, S-23 tokens): when `stepKey` changes the body's
  * height morphs from the old size to the new one at `moderate` (the Web Animations API, which the
  * strict CSP allows), the new step enters `lg` (12 px) from the side of travel (`direction`) at
- * `base`, focus moves to its h1 and the polite live region announces it once. The header and
+ * `base`, focus moves to its h1 (the code step: its code field, `data-step-focus`) and the polite live region announces it once. The header and
  * footer stay still. Under reduced motion (the OS setting or `data-motion="reduce"`) the brand's
  * durations are 0 ms, so every step swaps instantly with no fade (S-23 D3).
  */
@@ -98,7 +118,7 @@ export function AuthCard({
       });
     }
     const h1 = el.querySelector<HTMLElement>("h1");
-    h1?.focus({ preventScroll: true });
+    focusStep(el, h1);
     setAnnounce(h1?.textContent ?? "");
   }, [stepKey]);
 
@@ -106,7 +126,7 @@ export function AuthCard({
     if (!focusKey) return;
     const h1 = bodyRef.current?.querySelector<HTMLElement>("h1");
     if (!h1) return;
-    h1.focus({ preventScroll: true });
+    focusStep(bodyRef.current!, h1);
     setAnnounce(h1.textContent ?? "");
   }, [focusKey, stepKey]);
 

@@ -52,7 +52,12 @@ describe("the code step after the expired-link page (PX-12)", () => {
       level: 1,
       name: "Check your email",
     });
-    await waitFor(() => expect(document.activeElement).toBe(h1));
+    // SIGN-IN.md §3.14 exception: the code field takes focus (the next action is typing; the OS
+    // one-time-code suggestion needs it) and the h1 names the step as its description.
+    const code = screen.getByRole("textbox", { name: "6-digit code" });
+    await waitFor(() => expect(document.activeElement).toBe(code));
+    expect(code.getAttribute("autocomplete")).toBe("one-time-code");
+    expect(code.getAttribute("aria-describedby")).toContain(h1.id);
     expect(document.body.textContent).toContain("m•••@fennick.studio");
     expect(screen.getByText(/^Send a new code in 0:(45|44|43)$/)).toBeTruthy();
     expect(fetchedRequests()).toContain("GET /api/signin/flow");
