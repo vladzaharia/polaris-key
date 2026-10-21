@@ -514,6 +514,7 @@
   "cli.help.group": "Lizenz",
   "cli.help.namespace": "Aktivieren, anmelden, Geräte und Updates",
   "cli.gate.needs": "{command} erfordert eine Lizenz",
+  "cli.gate.notIncluded": "Ihre Lizenz enthält {command} nicht",
   "cli.verb.activate": "Lizenzschlüssel hinzufügen (Eingabe oder über stdin)",
   "cli.verb.enroll": "Kostenlose Lizenz erhalten, falls {product} eine anbietet",
   "cli.verb.deactivate": "Lizenz auf diesem Gerät nicht mehr nutzen, Platz freigeben",

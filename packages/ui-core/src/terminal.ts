@@ -402,7 +402,12 @@ export type StatusView =
       | "version-too-old"
       | "version-too-new"
       | "channel-not-entitled"
-    > & { fixes: StatusFix[] })
+    > & {
+      fixes: StatusFix[];
+      /** The product page, drawn when no verb fixes the state: a version above the allowed
+       *  range and a channel the license lacks are fixed there, not by any command. */
+      link?: "portal";
+    })
   | (View<"PolarisKeyGate", "needs-activation"> & { fixes: StatusFix[] })
   | (View<"PolarisKeyGate", "licensed"> & { notApplicable: true });
 
@@ -534,8 +539,8 @@ export function statusView(i: StatusInput): StatusView {
         "version-too-old": can.update
           ? [{ verb: "update apply", key: "status.update" }]
           : [],
-        "version-too-new": [{ verb: null, key: "status.switchChannel" }],
-        "channel-not-entitled": [{ verb: null, key: "status.switchChannel" }],
+        "version-too-new": [],
+        "channel-not-entitled": [],
       };
       return {
         component: "StatusScreen",
@@ -546,6 +551,10 @@ export function statusView(i: StatusInput): StatusView {
           "cli.status.fixes",
         ],
         fixes: fixes[i.status]!,
+        ...(i.status === "version-too-new" ||
+        i.status === "channel-not-entitled"
+          ? { link: "portal" as const }
+          : {}),
       };
     }
     default:

@@ -735,6 +735,14 @@ a network one included, as ✗. The exit codes are the `cli` family's table in `
 (`--json` prints `"error": "license_required"` or `"not_entitled"`); `status` and a network failure
 still exit 1.
 
+**Changed in the terminal kit (H1a).** A gate whose license check throws, or answers a status the
+kit does not know, used to crash with a stack trace and exit 1 (or read as "Signed out"). It now
+refuses the command with ✗ "Couldn't check your license", no fix row and exit 4, and `--json` prints
+`license_required`. A refusal is its title and the fix, without the message line: a license that
+lacks the entitlement reads "Your license doesn't include {command}", and that, a channel it lacks
+and a version above its range lead with the product page. `update apply` is offered only for a
+version below the range.
+
 ## Samples and recipes
 
 Runnable samples live in the repository's `examples/` directory:

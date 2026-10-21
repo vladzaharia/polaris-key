@@ -84,6 +84,7 @@ interface Cli {
       code?: string;
       stdout?: "empty" | "screen" | "result";
       fix?: string[];
+      link?: "portal";
     }
   >[];
 }
@@ -372,6 +373,11 @@ const SITUATIONS: Record<string, () => Setup> = {
   "status-version-too-new": () => ({
     client: stubClient({ status: () => ({ status: "version-too-new" }) }),
   }),
+  "status-channel-not-entitled": () => ({
+    client: stubClient({
+      status: () => ({ status: "channel-not-entitled" }),
+    }),
+  }),
   network: () => ({
     client: stubClient({
       listDevices: async () => {
@@ -509,6 +515,11 @@ describe("ui-matrix.json cli: outcomes", () => {
         });
       }
       if (e.fix) expect(fixVerbs(plain(stdout))).toEqual([...e.fix].sort());
+      // Nothing here is fixed by a command: the product page is the way out.
+      if (e.link === "portal")
+        expect(plain(stdout)).toContain(
+          "polaris.locker/activate?product=tidewater",
+        );
     },
   );
 });

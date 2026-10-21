@@ -551,7 +551,10 @@ export async function statusFlow(
               t(`core.gate.${view.state}.message`),
             )),
       );
-      if (keyOnly) rows.push(linkRow(portalUrl(client)));
+      // A version above the range and a missing channel are fixed on the product's page, not by
+      // any command: the link is the way out (never a row that sends the person back here).
+      if (keyOnly || view.link === "portal")
+        rows.push(linkRow(portalUrl(client)));
       if (shown.length)
         rows.push(
           ...gap(ctx),
@@ -651,7 +654,7 @@ export function portalUrl(
 }
 
 /** A link on a row of its own, kept whole (the device limit's way). */
-const linkRow = (url: string): RailRow => ({
+export const linkRow = (url: string): RailRow => ({
   ...textRow([linkSpan(url)]),
   keep: true,
 });

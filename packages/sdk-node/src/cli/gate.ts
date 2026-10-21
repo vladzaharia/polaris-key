@@ -11,9 +11,16 @@ import {
   type KitContext,
   type TerminalIO,
 } from "./context.js";
-import { activateFlow, busyAfter, ensureDiscovery } from "./flows.js";
+import {
+  activateFlow,
+  busyAfter,
+  ensureDiscovery,
+  linkRow,
+  portalUrl,
+} from "./flows.js";
 import { envelope, EXIT, jsonLine } from "./json.js";
-import { endRow, fixRows, gap, problemRows } from "./parts.js";
+import { endRow, fixRows, gap, problemRows, textRow } from "./parts.js";
+import type { RailRow } from "./term/layout.js";
 import {
   presentationSourceOf,
   type PolarisKeyTerminalTheme,
@@ -53,9 +60,11 @@ interface Refusal {
   error: "license_required" | "not_entitled";
   title: string;
   message: string;
-  fixes: StatusFixRow[];
+  /** The product page, or the developer's name where the kit knows no page. */
+  link: "portal" | "contact" | null;
+  fixes: StatusFix[];
 }
-interface StatusFixRow {
+interface StatusFix {
   verb: string;
   key: string;
 }
@@ -67,40 +76,70 @@ const FIX_COPY: Record<string, string> = {
   status: "cli.verb.status",
 };
 
+/** Every status the gate decides on; anything else is a check that failed (fail closed). */
+const KNOWN: readonly string[] = [
+  ...USABLE,
+  ...INLINE_FLOW,
+  "version-too-old",
+  "version-too-new",
+  "channel-not-entitled",
+];
+
+/**
+ * The refusal for a status the command cannot run on (the `gate` rows of the `cli` family): the
+ * title alone, because the rows that fix it follow. Not-entitled, channel and version-too-new lead
+ * with the product page (nothing a command does fixes them); a refusal whose fix verbs the mount
+ * does not offer is led by it too, so it never has zero rows.
+ */
 function refusalFor(
   status: string,
   usable: boolean,
   ctx: KitContext,
-  mounted: readonly string[] | undefined,
+  r: Pick<GateRun, "command" | "mounted">,
+  hasPage: boolean,
 ): Refusal {
   const t = ctx.copy.t.bind(ctx.copy);
   const notEntitled = usable || status === "channel-not-entitled";
-  const known = [
-    "expired",
-    "revoked",
-    "needs-activation",
-    "version-too-old",
-    "version-too-new",
-    "channel-not-entitled",
-  ];
-  const state = usable ? null : known.includes(status) ? status : "revoked";
   const verbs = notEntitled
     ? ["status"]
-    : state?.startsWith("version-")
-      ? ["update apply"]
-      : ["activate", "login"];
+    : status === "version-too-new"
+      ? ["status"]
+      : status === "version-too-old"
+        ? ["update apply"]
+        : ["activate", "login"];
+  const fixes = verbs
+    .filter((v) => r.mounted === undefined || r.mounted.includes(v))
+    .map((verb) => ({ verb, key: FIX_COPY[verb]! }));
+  const leads = notEntitled || status === "version-too-new";
   return {
     error: notEntitled ? "not_entitled" : "license_required",
     title: usable
-      ? t("core.codes.not_entitled.title")
-      : t(`core.gate.${state}.title`),
+      ? t("cli.gate.notIncluded", { command: r.command })
+      : status === "needs-activation"
+        ? t("cli.gate.needs", { command: r.command })
+        : t(`core.gate.${status}.title`),
     message: usable
       ? t("core.codes.not_entitled.message")
-      : t(`core.gate.${state}.message`),
-    fixes: verbs
-      .filter((v) => mounted === undefined || mounted.includes(v))
-      .map((verb) => ({ verb, key: FIX_COPY[verb]! })),
+      : t(`core.gate.${status}.message`),
+    link: leads || fixes.length === 0 ? (hasPage ? "portal" : "contact") : null,
+    fixes,
   };
+}
+
+/** The link row of a refusal: the product page, or "Contact {developer}". */
+function linkRows(
+  ctx: KitContext,
+  client: PolarisKeyClient | undefined,
+  link: "portal" | "contact",
+): RailRow[] {
+  if (link === "portal" && client) return [linkRow(portalUrl(client))];
+  return [
+    textRow(
+      ctx.copy.t("status.contact", {
+        developer: ctx.product.developer ?? ctx.product.name,
+      }),
+    ),
+  ];
 }
 
 /**
@@ -109,6 +148,61 @@ function refusalFor(
  * cancelled). Never throws for a license problem.
  */
 export async function runGate(r: GateRun): Promise<number | null> {
+  try {
+    return await decide(r);
+  } catch {
+    // The check could not be made (it threw, or answered a status this kit does not know): the
+    // command does not run, whatever the license is (fail closed).
+    return failClosed(r);
+  }
+}
+
+/**
+ * Say the license could not be checked: a cross, what happened and no fix, exit 4 (`--json`: the
+ * `license_required` result line). The exit code is 4 whatever fails while saying it.
+ */
+export async function failClosed(
+  r: Omit<GateRun, "client"> & { client?: PolarisKeyClient },
+): Promise<number> {
+  try {
+    const flags = {
+      ...(r.flags?.json ? { json: true } : {}),
+      ...(r.flags?.color === false ? { color: false } : {}),
+      ...(r.flags?.ascii ? { ascii: true } : {}),
+    };
+    const errCtx = await createKitContext({
+      slug: r.slug,
+      bin: r.bin,
+      ...(r.theme ? { theme: r.theme } : {}),
+      presentation: r.presentation ?? presentationSourceOf(r.client),
+      flags,
+      io: { ...r.io, stdout: r.io?.stderr ?? process.stderr },
+      queryScheme: false,
+    });
+    try {
+      const t = errCtx.copy.t.bind(errCtx.copy);
+      const title = t("core.codes.sync-failed.title");
+      const message = t("core.codes.sync-failed.message");
+      if (errCtx.caps.json) {
+        (r.io?.stdout ?? process.stdout).write(
+          `${jsonLine(
+            envelope(r.command, {
+              exitCode: EXIT.licenseRequired,
+              error: { code: "license_required", title, message },
+            }),
+          )}\n`,
+        );
+      } else errCtx.rows([...problemRows("fail", title, message), endRow()]);
+    } finally {
+      errCtx.close();
+    }
+  } catch {
+    // Nothing more can be said; the refusal below still stands.
+  }
+  return EXIT.licenseRequired;
+}
+
+async function decide(r: GateRun): Promise<number | null> {
   const { client } = r;
   const base = {
     slug: r.slug,
@@ -141,6 +235,7 @@ export async function runGate(r: GateRun): Promise<number | null> {
   });
   const check = () => {
     const status = client.status().status as string;
+    if (!KNOWN.includes(status)) throw new Error(`unknown status ${status}`);
     const usable = USABLE.includes(status);
     const entitled =
       r.entitlement === undefined || client.license.isEntitled(r.entitlement);
@@ -177,7 +272,13 @@ export async function runGate(r: GateRun): Promise<number | null> {
         if (s.usable && s.entitled) return null;
       }
     }
-    const refusal = refusalFor(s.status, s.usable, ctx, r.mounted);
+    const refusal = refusalFor(
+      s.status,
+      s.usable,
+      ctx,
+      r,
+      typeof client.product === "string" && client.product !== "",
+    );
     if (ctx.caps.json) {
       ctx.stdout.write(
         `${jsonLine(
@@ -194,7 +295,8 @@ export async function runGate(r: GateRun): Promise<number | null> {
       return EXIT.licenseRequired;
     }
     errCtx.rows([
-      ...problemRows("warn", refusal.title, refusal.message),
+      ...problemRows("warn", refusal.title),
+      ...(refusal.link ? linkRows(errCtx, client, refusal.link) : []),
       ...(refusal.fixes.length
         ? [...gap(errCtx), ...fixRows(errCtx, refusal.fixes)]
         : []),
@@ -290,12 +392,35 @@ async function gateCall(
   target: GateTarget | null,
 ): Promise<number | null> {
   const given = options.client;
-  const client = given
-    ? typeof given === "function"
-      ? await given()
-      : given
-    : await target!.client(context);
-  const slug = options.slug ?? client.product ?? target?.slug ?? "app";
+  let client: PolarisKeyClient;
+  try {
+    client = given
+      ? typeof given === "function"
+        ? await given()
+        : given
+      : await target!.client(context);
+  } catch {
+    // No client, no verdict: the command does not run.
+    const slug = options.slug ?? target?.slug ?? "app";
+    return failClosed({
+      command,
+      flags: {
+        json: flags.json === true,
+        color: flags.color !== false,
+        ascii: flags.ascii === true,
+      },
+      slug,
+      bin: options.bin ?? target?.bin ?? slug,
+      ...((options.io ?? target?.io)
+        ? { io: (options.io ?? target?.io)! }
+        : {}),
+      ...((options.theme ?? target?.theme)
+        ? { theme: (options.theme ?? target?.theme)! }
+        : {}),
+      ...(target?.presentation ? { presentation: target.presentation } : {}),
+    });
+  }
+  const slug = options.slug || client.product || target?.slug || "app";
   return runGate({
     client,
     command,

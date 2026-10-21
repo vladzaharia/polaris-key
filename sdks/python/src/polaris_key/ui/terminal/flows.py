@@ -254,7 +254,7 @@ def status(client: Any, t: Terminal) -> Outcome:
         developer=t.kit.identity.developer,
     )
     usable = bool(client.is_licensed())
-    lines = screens.gate(t.kit, view, t.verb or "status")
+    lines = screens.gate(t.kit, view, t.verb or "status", screens.portal_url(client))
     data: Dict[str, Any] = {
         "status": st.status,
         "usable": usable,

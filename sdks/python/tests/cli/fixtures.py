@@ -102,7 +102,9 @@ def _sign_in(headless: bool, *steps: Tuple[str, object]) -> Callable[[Kit], List
 
 def _gate(status: str, **kw: object) -> Callable[[Kit], List[Line]]:
     def draw(k: Kit) -> List[Line]:
-        return screens.gate(k, gate_view(status, now=NOW, developer=k.identity.developer, **kw), "status")  # type: ignore[arg-type]
+        # The product page the real `status` verb links to for a state no command fixes.
+        portal = "https://polaris.locker/activate?product=tidewater"
+        return screens.gate(k, gate_view(status, now=NOW, developer=k.identity.developer, **kw), "status", portal)  # type: ignore[arg-type]
 
     return draw
 

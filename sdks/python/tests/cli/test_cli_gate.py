@@ -27,7 +27,7 @@ GLYPH = ansi.SYMBOLS["unicode"]
 USABLE = ("ok", "grace", "not-applicable")
 
 
-def _client(status: str, entitled: bool) -> Any:
+def _client(status: str, entitled: bool, *, product: str = "tidewater", throws: bool = False) -> Any:
     state = {"status": status}
 
     def activate(key: str) -> Any:
@@ -35,23 +35,26 @@ def _client(status: str, entitled: bool) -> Any:
         return ActivationOk(token="pkeyt_secret")
 
     class Client:
-        product = "tidewater"
         license = SimpleNamespace(
             is_entitled=lambda name: entitled and state["status"] in USABLE,
             activate_with_key=activate,
         )
 
         def status(self) -> Any:
+            if throws:
+                raise RuntimeError("the check failed")
             return SimpleNamespace(status=state["status"])
 
         def sync(self) -> None:
             return None
 
+    Client.product = product  # type: ignore[attr-defined]
     return Client()
 
 
 def _run(inp: Dict[str, Any]) -> Dict[str, Any]:
-    client = _client(inp["status"], inp["entitled"])
+    # No product page: the client names no product, so the kit has nothing to link to.
+    client = _client(inp["status"], inp["entitled"], product="" if inp.get("portal") is False else "tidewater", throws=inp.get("check") == "throws")
     flow = inp["tty"] and not inp["json"] and inp["status"] in ("expired", "revoked", "needs-activation")
     keys = _Keys([*KEY, "enter"]) if flow else None
     t = _terminal(inp["command"], json_mode=inp["json"], interactive=bool(inp["tty"]) and not inp["json"], keys=keys)
@@ -61,7 +64,7 @@ def _run(inp: Dict[str, Any]) -> Dict[str, Any]:
     # The terminal is the test's (scripted keys, captured streams), so run the gate itself; the
     # decorator around it is covered below.
     code = gate.run_gate(
-        client, command=inp["command"], entitlement="export.pdf", prog="tidewater", mounted=None, terminal=t, json=inp["json"]
+        client, command=inp["command"], entitlement="export.pdf", prog="tidewater", mounted=inp.get("mounted"), terminal=t, json=inp["json"]
     )
     if code is None:
         ran.append(1)
@@ -90,15 +93,31 @@ def test_gate(row: Dict[str, Any]) -> None:
         assert len(lines) == 1 and json.loads(lines[0]) == e["result"]
         assert r["stderr"] == ""
         return
-    # Text: once, on stderr, a triangle and never a cross; stdout stays empty.
+    # Text: once, on stderr; a triangle for a refusal and a cross for a check that failed; stdout
+    # stays empty.
     assert r["stdout"] == ""
     text = plain(r["stderr"])
-    assert GLYPH["warn"] in text and GLYPH["fail"] not in text
-    for key in e["copy"]:
-        assert C(key) in " ".join(text.split()) or C(key).split(". ")[0] in text
-    for verb in e["fix"]:
-        assert f"tidewater {verb}" in text
-    assert text.count(C(e["copy"][1])) == 1
+    flat = " ".join(text.replace("\u2502", " ").replace("\u2514", " ").split())
+    mark, other = ("fail", "warn") if e["outcome"] == "fail" else ("warn", "fail")
+    assert GLYPH[mark] in text and GLYPH[other] not in text
+    shown = [C(key, command=row["input"]["command"]) for key in e["copy"]]
+    for line in shown:
+        assert line in flat
+    assert flat.count(shown[-1]) == 1
+    # A refusal is its title: the rows that fix it follow, so no message line.
+    if e["outcome"] == "refuse":
+        assert len(e["copy"]) == 1
+        if e["copy"][0].startswith("core.gate."):
+            assert C(e["copy"][0].replace(".title", ".message")) not in flat
+    # The link leads the fix rows: the product page, or the developer's name.
+    if e.get("link") == "portal":
+        assert "polaris.locker/activate?product=tidewater" in "".join(text.split())
+    elif e.get("link") == "contact":
+        assert "Contact " in text
+    else:
+        assert "polaris.locker/activate" not in text and "Contact " not in text
+    for verb in ("activate", "login", "update apply", "status"):
+        assert (f"tidewater {verb}" in text) == (verb in e["fix"])
     assert "\x1b" not in r["stderr"]
 
 
@@ -168,7 +187,8 @@ def test_a_gate_that_cannot_decide_refuses_with_4_and_never_runs_the_command(cap
             line = json.loads(cap.out.strip().splitlines()[-1])
             assert line["error"] == "license_required" and line["exit"] == 4
         else:
-            assert cap.out == "" and "tidewater" in plain(cap.err)
+            text = plain(cap.err)
+            assert cap.out == "" and "Couldn't check your license" in text and "tidewater " not in text
 
 
 def test_a_failing_refusal_still_exits_4(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
@@ -189,3 +209,18 @@ def test_ctrl_c_passes_through_the_gate() -> None:
 
     with pytest.raises(KeyboardInterrupt):
         gate.run_gate(Interrupted(), command="export")
+
+
+def test_a_status_this_kit_does_not_know_is_never_read_as_signed_out() -> None:
+    err = io.StringIO()
+    code = gate.run_gate(_client("from-the-future", True), command="export", prog="tidewater", stderr=err, env={"TERM": "xterm"})
+    text = plain(err.getvalue())
+    assert code == 4 and "Couldn't check your license" in text and "Signed out" not in text
+
+
+def test_the_command_does_not_butt_against_the_flows_closing_row() -> None:
+    # B-121: an inline flow that lets the command run leaves a blank line after its last row.
+    t = _terminal("export", interactive=True, keys=_Keys([*KEY, "enter"]))
+    t.err = io.StringIO()
+    assert gate.run_gate(_client("needs-activation", True), command="export", entitlement="export.pdf", prog="tidewater", terminal=t) is None
+    assert t.device.out.getvalue().endswith("\n\n")

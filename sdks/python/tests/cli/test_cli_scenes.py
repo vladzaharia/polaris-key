@@ -32,8 +32,11 @@ def _terminal(e: Any, verb: str) -> Terminal:
     return Terminal(k, Device(e, k.palette(), stdout=io.StringIO(), use_rich=False), verb)
 
 
+_PORTAL = "https://polaris.locker/activate?product=tidewater"
+
+
 def _gate(status: str, usable: bool = False, command: str = "export") -> Callable[[Any], List[Line]]:
-    return lambda e: gate.refusal_outcome(_terminal(e, command), command, status, usable, None).lines
+    return lambda e: gate.refusal_outcome(_terminal(e, command), command, status, usable, None, _PORTAL).lines
 
 
 def _outcome(fn: Callable[[Terminal], Any], verb: str) -> Callable[[Any], List[Line]]:
@@ -91,6 +94,10 @@ SCENES: Tuple[Tuple[str, Callable[[Any], List[Line]]], ...] = (
     ("gate-expired", _gate("expired")),
     ("gate-version-too-old", _gate("version-too-old")),
     ("gate-not-entitled", _gate("ok", usable=True)),
+    ("gate-version-too-new", _gate("version-too-new")),
+    ("gate-channel-not-entitled", _gate("channel-not-entitled")),
+    # No product page to link to: the developer's name stands in.
+    ("gate-not-entitled-contact", lambda e: gate.refusal_outcome(_terminal(e, "export"), "export", "ok", True, None, None).lines),
     ("activate-no-key", _outcome(lambda t: flows.no_key(t, piped=False), "activate")),
     ("activate-no-key-piped", _outcome(lambda t: flows.no_key(t, piped=True), "activate")),
     ("secret-hidden", _outcome(lambda t: flows.secret(_CLIENT, t, ["api_key"]), "secret")),
@@ -104,7 +111,7 @@ SCENES: Tuple[Tuple[str, Callable[[Any], List[Line]]], ...] = (
     ("deactivate-offline", _outcome(lambda t: flows.deactivate(_OFFLINE, t), "deactivate")),
     ("update-check-offline", _outcome(lambda t: flows.update(_OFFLINE, t, ["check"]), "update")),
     ("update-apply-offline", _outcome(lambda t: flows.update(_OFFLINE, t, ["apply"]), "update")),
-    ("gate-cannot-check", lambda e: gate.refusal_outcome(_terminal(e, "export"), "export", "error", False, None).lines),
+    ("gate-cannot-check", lambda e: gate.fail_outcome(_terminal(e, "export"), "export").lines),
     ("activate-empty-key-file", _outcome(lambda t: flows.key_file_problem(t, "~/.config/tidewater/license.key", True), "activate")),
 )
 

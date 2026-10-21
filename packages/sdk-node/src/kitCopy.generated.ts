@@ -623,6 +623,7 @@ export const KIT_COPY: Readonly<
     "cli.help.group": "License",
     "cli.help.namespace": "Activate, sign in, devices and updates",
     "cli.gate.needs": "{command} needs a license",
+    "cli.gate.notIncluded": "Your license doesn't include {command}",
     "cli.verb.activate": "Add a license key (prompted, or piped on stdin)",
     "cli.verb.enroll": "Get the free license, when {product} offers one",
     "cli.verb.deactivate":
@@ -2179,6 +2180,7 @@ export const KIT_COPY: Readonly<
     "cli.help.group": "Lizenz",
     "cli.help.namespace": "Aktivieren, anmelden, Geräte und Updates",
     "cli.gate.needs": "{command} erfordert eine Lizenz",
+    "cli.gate.notIncluded": "Ihre Lizenz enthält {command} nicht",
     "cli.verb.activate": "Lizenzschlüssel hinzufügen (Eingabe oder über stdin)",
     "cli.verb.enroll":
       "Kostenlose Lizenz erhalten, falls {product} eine anbietet",
@@ -3782,6 +3784,7 @@ export const KIT_COPY: Readonly<
     "cli.help.group": "Licence",
     "cli.help.namespace": "Activation, connexion, appareils et mises à jour",
     "cli.gate.needs": "{command} nécessite une licence",
+    "cli.gate.notIncluded": "Votre licence n’inclut pas {command}",
     "cli.verb.activate": "Ajouter une clé de licence (saisie, ou via stdin)",
     "cli.verb.enroll":
       "Obtenir la licence gratuite, si {product} en propose une",
@@ -5341,6 +5344,7 @@ export const KIT_COPY: Readonly<
     "cli.help.namespace":
       "Activar, iniciar sesión, dispositivos y actualizaciones",
     "cli.gate.needs": "{command} requiere una licencia",
+    "cli.gate.notIncluded": "Tu licencia no incluye {command}",
     "cli.verb.activate": "Añadir una clave de licencia (se pide, o por stdin)",
     "cli.verb.enroll": "Obtener la licencia gratuita, si {product} ofrece una",
     "cli.verb.deactivate":
@@ -6923,6 +6927,7 @@ export const KIT_COPY: Readonly<
     "cli.help.group": "Licença",
     "cli.help.namespace": "Ativar, entrar, dispositivos e atualizações",
     "cli.gate.needs": "{command} requer uma licença",
+    "cli.gate.notIncluded": "Sua licença não inclui {command}",
     "cli.verb.activate":
       "Adicionar uma chave de licença (digitada ou via stdin)",
     "cli.verb.enroll": "Obter a licença gratuita, se {product} oferecer uma",
@@ -8487,6 +8492,7 @@ export const KIT_COPY: Readonly<
     "cli.help.group": "Licenza",
     "cli.help.namespace": "Attivazione, accesso, dispositivi e aggiornamenti",
     "cli.gate.needs": "{command} richiede una licenza",
+    "cli.gate.notIncluded": "La tua licenza non include {command}",
     "cli.verb.activate":
       "Aggiungi una chiave di licenza (richiesta, o da stdin)",
     "cli.verb.enroll": "Ottieni la licenza gratuita, se {product} ne offre una",
@@ -10063,6 +10069,7 @@ export const KIT_COPY: Readonly<
     "cli.help.group": "ライセンス",
     "cli.help.namespace": "有効化、サインイン、デバイス、アップデート",
     "cli.gate.needs": "{command}にはライセンスが必要です",
+    "cli.gate.notIncluded": "お使いのライセンスには{command}が含まれていません",
     "cli.verb.activate": "ライセンスキーを追加（入力、または stdin から）",
     "cli.verb.enroll": "無料ライセンスを取得（{product}が提供している場合）",
     "cli.verb.deactivate": "このデバイスでのライセンス使用を停止し、枠を解放",
@@ -11630,6 +11637,7 @@ export const KIT_COPY: Readonly<
     "cli.help.group": "라이선스",
     "cli.help.namespace": "활성화, 로그인, 기기 및 업데이트",
     "cli.gate.needs": "{command}에는 라이선스가 필요합니다",
+    "cli.gate.notIncluded": "라이선스에 {command}이(가) 포함되어 있지 않습니다",
     "cli.verb.activate": "라이선스 키 추가 (입력하거나 stdin으로)",
     "cli.verb.enroll": "무료 라이선스 받기 ({product}에서 제공하는 경우)",
     "cli.verb.deactivate": "이 기기에서 라이선스 사용을 중지하고 자리 비우기",
@@ -13107,6 +13115,7 @@ export const KIT_COPY: Readonly<
     "cli.help.group": "许可证",
     "cli.help.namespace": "激活、登录、设备和更新",
     "cli.gate.needs": "{command}需要许可证",
+    "cli.gate.notIncluded": "您的许可证不包含{command}",
     "cli.verb.activate": "添加许可证密钥（提示输入，或通过 stdin）",
     "cli.verb.enroll": "获取免费许可证（如果{product}提供）",
     "cli.verb.deactivate": "停止在此设备上使用你的许可证并释放席位",

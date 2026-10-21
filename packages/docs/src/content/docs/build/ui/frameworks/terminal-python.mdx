@@ -78,7 +78,9 @@ from the parsed options.
   terminal it first takes the person through activation; anything else prints a warning with the
   command that fixes it on stderr and exits 4 (`--json`: the result line on stdout with
   `license_required` or `not_entitled`). `require_entitlement("export.pdf")` is the same with the
-  entitlement first.
+  entitlement first. A license that lacks the entitlement, a missing channel and a version above
+  the range lead with the product page (the developer's name where there is none); a check that
+  fails draws ✗ "Couldn't check your license" with no fix, and exits 4 as well.
 - `secret` and `mint` print their value only with `--reveal`; without it they print nothing on
   stdout and exit 2. In a CI log that would run a line of it as a command (GitHub Actions, Azure
   Pipelines, TeamCity) the value is withheld unless `--allow-workflow-commands`.

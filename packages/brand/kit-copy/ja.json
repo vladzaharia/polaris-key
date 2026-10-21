@@ -521,6 +521,7 @@
     "cli.help.group": "ライセンス",
     "cli.help.namespace": "有効化、サインイン、デバイス、アップデート",
     "cli.gate.needs": "{command}にはライセンスが必要です",
+    "cli.gate.notIncluded": "お使いのライセンスには{command}が含まれていません",
     "cli.verb.activate": "ライセンスキーを追加（入力、または stdin から）",
     "cli.verb.enroll": "無料ライセンスを取得（{product}が提供している場合）",
     "cli.verb.deactivate": "このデバイスでのライセンス使用を停止し、枠を解放",

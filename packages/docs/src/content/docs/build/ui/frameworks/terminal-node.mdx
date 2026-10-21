@@ -109,6 +109,12 @@ command runs. Anything else prints the command that fixes it on stderr and exits
 `--json`, stdout carries the result line with `error` set to `license_required` or `not_entitled`.
 A gated command needs its own `--json` option for that line; without it the parser rejects the flag.
 
+A refusal is one title and then what fixes it. A license that lacks the entitlement, a channel it
+doesn't include and a version above its range lead with the product page (the developer's name
+where there is none), then `status`; a version below the range offers `update apply`. A check that
+fails (it throws, or answers a status the kit doesn't know) draws ✗ "Couldn't check your license"
+with no fix, and the command still doesn't run: exit 4.
+
 ```ts
 import { Command } from "commander";
 import { registerPolarisCommands, requireLicense } from "@polaris-key/node/cli";

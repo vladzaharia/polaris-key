@@ -330,6 +330,7 @@ SITUATIONS: Dict[str, Callable[[Terminal], Any]] = {
     "status-expired": lambda t: flows.status(_StatusClient("expired"), t),
     "status-version-too-old": lambda t: flows.status(_StatusClient("version-too-old"), t),
     "status-version-too-new": lambda t: flows.status(_StatusClient("version-too-new"), t),
+    "status-channel-not-entitled": lambda t: flows.status(_StatusClient("channel-not-entitled"), t),
     "network": lambda t: flows.devices(SimpleNamespace(product="tidewater", list_devices=_offline), t, ["list"]),
     "key-refused": lambda t: flows.activate(_ActivateClient(ActivationUnauthorized()), t, KEY),
     "device-limit": lambda t: flows.activate(
@@ -400,6 +401,9 @@ def test_outcomes(row: Dict[str, Any]) -> None:
         assert fields["event"] == "result" and fields["exit"] == e["exit"] and fields["ok"] is (e["exit"] == 0)
     if "fix" in e:
         assert _fix_verbs(shown) == sorted(e["fix"])
+    # Nothing here is fixed by a command: the product page is the way out.
+    if e.get("link") == "portal":
+        assert "polaris.locker/activate?product=tidewater" in "".join(shown.split())
 
 
 def test_no_osc11_query_under_no_color() -> None:

@@ -12,7 +12,8 @@ from dataclasses import replace
 from typing import Any, List, Optional, Sequence, Tuple
 from urllib.parse import quote
 
-from ...constants_generated import DEVICE_CODE_PAGE
+from ...constants_generated import CUSTOMER_ORIGIN_DEFAULT, DEVICE_CODE_PAGE
+from ...core.context import DEFAULT_BASE
 from ..core.models import (
     BOOT_STAGE_COPY,
     ActivateView,
@@ -151,9 +152,32 @@ def _account_rows(k: Kit, v: GateView) -> Lines:
     return k.table(rows)
 
 
-def gate(k: Kit, v: GateView, verb: str = "status") -> Lines:
+def portal_url(client: Any) -> Optional[str]:
+    """The product's page where a license is checked, renewed or replaced, or ``None`` where the
+    client names no product. A customer sees Polaris Locker, never the console host: the platform
+    default base maps to the customer origin, and a self-hosted base keeps its own host."""
+    product = getattr(client, "product", None)
+    if not product:
+        return None
+    base = str(getattr(getattr(client, "core", None), "base_url", None) or DEFAULT_BASE).rstrip("/")
+    origin = CUSTOMER_ORIGIN_DEFAULT if base == DEFAULT_BASE else base
+    return f"{origin}/activate?product={quote(str(product), safe='')}"
+
+
+def link_row(k: Kit, url: str) -> Lines:
+    """A link on a row of its own, kept whole (the device limit's way)."""
+    return [replace(ln, keep=True) for ln in k.body([k.link(url)])]
+
+
+def contact_row(k: Kit) -> Lines:
+    """``Contact {developer}``: where the kit knows no product page to link to."""
+    return k.body([k.t("status.contact", developer=k.identity.developer or k.product)])
+
+
+def gate(k: Kit, v: GateView, verb: str = "status", portal: Optional[str] = None) -> Lines:
     """The ``status`` verb: the account summary when licensed, the grace line offline, the
-    blocked state with its fix as a command, or the activation prompt."""
+    blocked state with its fix as a command, or the activation prompt. ``portal`` is the product
+    page, the way out of a state no command fixes (a version above the range, a missing channel)."""
     body: Lines = []
     end: List[Span] = []
     if v.component == "AccountAndLicense":
@@ -187,15 +211,16 @@ def gate(k: Kit, v: GateView, verb: str = "status") -> Lines:
             "revoked": [("activate", "signin.key.differentKey"), ("login", "cli.fix.signIn")],
             "expired": [("activate", "signin.key.differentKey"), ("login", "cli.fix.signIn")],
             "version-too-old": [("update apply", "status.update")],
+            # Nothing a command does fixes these two: the product page is the way out.
             "version-too-new": [],
-            "channel-not-entitled": [("update --channel <name>", "status.switchChannel")],
+            "channel-not-entitled": [],
         }[v.state]
+        if v.state in ("version-too-new", "channel-not-entitled"):
+            body += link_row(k, portal) if portal else contact_row(k)
         if fixes:
             body += _gap(k)
             body += k.body([k.t("cli.status.fixes", product=k.product)])
             body += _fixes(k, fixes)
-        if v.state == "channel-not-entitled" and v.developer:
-            body += k.body([k.t("status.contact", "muted", developer=v.developer)])
     elif v.state == "licensed":
         body += k.step("ok", [k.t("core.gate.not-applicable.title", "strong")])
         body += k.body([k.t("core.gate.not-applicable.message", "muted")])

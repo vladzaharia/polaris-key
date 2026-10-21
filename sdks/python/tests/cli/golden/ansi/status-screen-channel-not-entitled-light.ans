@@ -3,78 +3,51 @@
 [2m│[0m
 [33m▲[0m  [1mChannel not included[0m
 [2m│[0m  Your license doesn't include this release channel.
-[2m│[0m
-[2m│[0m  To keep using Tidewater Studio:
-[2m│[0m  [1mtidewater update --channel <name>[0m   [2mSwitch channel[0m
-[2m└[0m  [2mContact Harbor Audio[0m
+[2m└[0m  ]8;;https://polaris.locker/activate?product=tidewater\[4mpolaris.locker/activate?product=tidewater[0m]8;;\
 ── ansi16 · 80 ──
 [2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · status[0m
 [2m│[0m
 [33m▲[0m  [1mChannel not included[0m
 [2m│[0m  Your license doesn't include this release channel.
-[2m│[0m
-[2m│[0m  To keep using Tidewater Studio:
-[2m│[0m  [1mtidewater update --channel <name>[0m   [2mSwitch channel[0m
-[2m└[0m  [2mContact Harbor Audio[0m
+[2m└[0m  ]8;;https://polaris.locker/activate?product=tidewater\[4mpolaris.locker/activate?product=tidewater[0m]8;;\
 ── no-color · 80 ──
 ┌  [7m Tidewater Studio [0m · status
 │
 ▲  [1mChannel not included[0m
 │  Your license doesn't include this release channel.
-│
-│  To keep using Tidewater Studio:
-│  [1mtidewater update --channel <name>[0m   Switch channel
-└  Contact Harbor Audio
+└  polaris.locker/activate?product=tidewater
 ── ascii · 80 ──
 [2m+[0m  [1;7;36m Tidewater Studio [0m[2m - status[0m
 [2m|[0m
 [33m![0m  [1mChannel not included[0m
 [2m|[0m  Your license doesn't include this release channel.
-[2m|[0m
-[2m|[0m  To keep using Tidewater Studio:
-[2m|[0m  [1mtidewater update --channel <name>[0m   [2mSwitch channel[0m
-[2m`[0m  [2mContact Harbor Audio[0m
+[2m`[0m  ]8;;https://polaris.locker/activate?product=tidewater\[4mpolaris.locker/activate?product=tidewater[0m]8;;\
 ── truecolor · 60 ──
 [2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · status[0m
 [2m│[0m
 [33m▲[0m  [1mChannel not included[0m
 [2m│[0m  Your license doesn't include this release channel.
-[2m│[0m
-[2m│[0m  To keep using Tidewater Studio:
-[2m│[0m  [1mtidewater update --channel <name>[0m   [2mSwitch channel[0m
-[2m└[0m  [2mContact Harbor Audio[0m
+[2m└[0m  ]8;;https://polaris.locker/activate?product=tidewater\[4mpolaris.locker/activate?product=tidewater[0m]8;;\
 ── ansi16 · 60 ──
 [2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · status[0m
 [2m│[0m
 [33m▲[0m  [1mChannel not included[0m
 [2m│[0m  Your license doesn't include this release channel.
-[2m│[0m
-[2m│[0m  To keep using Tidewater Studio:
-[2m│[0m  [1mtidewater update --channel <name>[0m   [2mSwitch channel[0m
-[2m└[0m  [2mContact Harbor Audio[0m
+[2m└[0m  ]8;;https://polaris.locker/activate?product=tidewater\[4mpolaris.locker/activate?product=tidewater[0m]8;;\
 ── no-color · 60 ──
 ┌  [7m Tidewater Studio [0m · status
 │
 ▲  [1mChannel not included[0m
 │  Your license doesn't include this release channel.
-│
-│  To keep using Tidewater Studio:
-│  [1mtidewater update --channel <name>[0m   Switch channel
-└  Contact Harbor Audio
+└  polaris.locker/activate?product=tidewater
 ── ascii · 60 ──
 [2m+[0m  [1;7;36m Tidewater Studio [0m[2m - status[0m
 [2m|[0m
 [33m![0m  [1mChannel not included[0m
 [2m|[0m  Your license doesn't include this release channel.
-[2m|[0m
-[2m|[0m  To keep using Tidewater Studio:
-[2m|[0m  [1mtidewater update --channel <name>[0m   [2mSwitch channel[0m
-[2m`[0m  [2mContact Harbor Audio[0m
+[2m`[0m  ]8;;https://polaris.locker/activate?product=tidewater\[4mpolaris.locker/activate?product=tidewater[0m]8;;\
 ── pipe · 80 ──
 Tidewater Studio · status
 Channel not included
 Your license doesn't include this release channel.
-
-To keep using Tidewater Studio:
-tidewater update --channel <name>   Switch channel
-Contact Harbor Audio
+polaris.locker/activate?product=tidewater

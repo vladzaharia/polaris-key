@@ -59,11 +59,14 @@ const statusScenario = (
     info: unknown;
     /** `identity.current()`; null is a key only device. */
     identity: unknown;
+    /** The product page is drawn (a state no command fixes). */
+    link: boolean;
   }> = {},
 ): Scenario => ({
   name,
   data: [
     ...COMMON,
+    ...(extra.link ? ["polaris.locker/activate?product=tidewater"] : []),
     "status",
     "2.4.1",
     "stable",
@@ -179,7 +182,7 @@ const hostHelp = (
 /** A gated host command that refuses: the golden is the refusal on stderr. */
 const gateRefusal = (
   name: string,
-  status: string,
+  status: string | (() => never),
   entitled: boolean,
   data: string[],
 ): Scenario => ({
@@ -190,7 +193,7 @@ const gateRefusal = (
   run: async (h) => {
     await runGate({
       client: stubClient({
-        status: () => ({ status }),
+        status: typeof status === "function" ? status : () => ({ status }),
         license: { isEntitled: () => entitled },
       }),
       command: "export",
@@ -222,7 +225,23 @@ export const SCENARIOS: Scenario[] = [
   gateRefusal("gate-refused-version-too-old", "version-too-old", true, [
     "tidewater update apply",
   ]),
-  gateRefusal("gate-refused-not-entitled", "ok", false, ["tidewater status"]),
+  gateRefusal("gate-refused-not-entitled", "ok", false, [
+    "tidewater status",
+    "polaris.locker/activate?product=tidewater",
+  ]),
+  gateRefusal("gate-refused-version-too-new", "version-too-new", true, [
+    "tidewater status",
+    "polaris.locker/activate?product=tidewater",
+  ]),
+  // The check itself fails (it throws): a cross, what happened, no fix (fail closed).
+  gateRefusal(
+    "gate-refused-cannot-check",
+    () => {
+      throw new Error("the check failed");
+    },
+    true,
+    [],
+  ),
   // ── Activate ──────────────────────────────────────────────────────────────────────────
   {
     name: "activate-empty",
@@ -685,8 +704,12 @@ export const SCENARIOS: Scenario[] = [
   statusScenario("status-screen-revoked", "revoked"),
   statusScenario("status-screen-expired", "expired"),
   statusScenario("status-screen-version-too-old", "version-too-old"),
-  statusScenario("status-screen-version-too-new", "version-too-new"),
-  statusScenario("status-screen-channel-not-entitled", "channel-not-entitled"),
+  statusScenario("status-screen-version-too-new", "version-too-new", {
+    link: true,
+  }),
+  statusScenario("status-screen-channel-not-entitled", "channel-not-entitled", {
+    link: true,
+  }),
   statusScenario("polaris-key-gate-needs-activation", "needs-activation"),
   statusScenario("polaris-key-gate-licensed", "not-applicable"),
   {
