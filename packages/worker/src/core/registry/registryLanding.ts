@@ -15,25 +15,55 @@
  *     The marks are inline SVG and the favicon a `data:` URI.
  *   - The host's own headers still apply (`hardenRegistryHostResponse`).
  *
- * The lockup is the Polaris Locker one with the Star Cut as Delivery's symbol under it (LK-07):
- * the registry host is Distribution's, as the bytes host is, so it shares that host's shell and
- * green accent.
+ * The registry host is developer-facing (package managers, the console's setup lines), so the page
+ * is Polaris Key, not Polaris Locker (lead decision 2026-10-21; BRAND §8): the compact Key lockup,
+ * the Key favicon on its white tile, and a violet link. It has its own stylesheet and policy.
  */
 
-import { THEME_TOKENS } from "@polaris-key/brand";
+import { BRAND, THEME_TOKENS } from "@polaris-key/brand";
 import type { Env } from "../../platform/env.js";
 import { normalizeHostname } from "../hosts.js";
 import {
   LANDING_CACHE,
-  LANDING_CSS,
+  landingCss,
   landingCsp,
-  landingShell,
 } from "../assets/bytesLanding.js";
+import { keyFaviconHref } from "../assets/lockerShell.js";
+import { BRAND_LOCKUP_HEIGHT, themedLockup } from "../brandHtml.js";
 import { registryHostname } from "../hosts.js";
 import { escapeHtml } from "../../platform/html.js";
 
 /** The console origin to link when `CONSOLE_ORIGIN` is unset or unusable: the platform's own. */
 const DEFAULT_CONSOLE_ORIGIN = "https://key.plrs.im";
+
+function palette(theme: "dark" | "light"): string {
+  const t = THEME_TOKENS[theme];
+  const accent = t.accent.violet;
+  return [
+    `color-scheme:${theme}`,
+    `--page:${t.surface.page}`,
+    `--strong:${t.text.strong}`,
+    `--text:${t.text.default}`,
+    `--muted:${t.text.muted}`,
+    `--rule:${t.border.subtle}`,
+    `--edge:${t.border.strong}`,
+    `--accent:${accent.fg}`,
+    `--accent-subtle:${accent.subtle}`,
+    `--focus:${t.focus}`,
+    `--mb:${BRAND.violet[theme]}`,
+    `--ms:${BRAND.star[theme]}`,
+    `--mt:${BRAND.text[theme]}`,
+  ].join(";");
+}
+
+/** The registry landing's one stylesheet: the shared body with the Key violet and lockup inks. */
+export const REGISTRY_LANDING_CSS = landingCss(
+  palette,
+  `.mb{fill:var(--mb)}.ms{fill:var(--ms)}.mt{fill:var(--mt)}`,
+);
+
+/** The registry landing's policy: the inert-document policy over its own stylesheet. */
+export const registryLandingCsp = () => landingCsp(REGISTRY_LANDING_CSS);
 
 /** Is `pathname` the landing page's path? Exactly `/`, nothing else. */
 export function isRegistryLandingPath(pathname: string): boolean {
@@ -88,11 +118,18 @@ export function registryLandingEnvironment(env: Env): string | null {
 export function renderRegistryLandingPage(env: Env): string {
   const consoleOrigin = registryLandingConsoleOrigin(env);
   const environment = registryLandingEnvironment(env);
-  const { title, lockups, service, faviconHref } = landingShell(environment);
+  const title = `Package registry${environment ? ` (${environment})` : ""} · Polaris Key`;
+  const lockups = themedLockup(
+    "key",
+    "compact",
+    BRAND_LOCKUP_HEIGHT.key,
+    "lockup",
+  );
+  const faviconHref = keyFaviconHref();
   const description = "The package registry for libraries and tools.";
   return [
     `<!doctype html>`,
-    `<html lang="en" data-brand="locker">`,
+    `<html lang="en" data-brand="key">`,
     `<head>`,
     `<meta charset="utf-8">`,
     `<meta name="viewport" content="width=device-width, initial-scale=1">`,
@@ -103,21 +140,20 @@ export function renderRegistryLandingPage(env: Env): string {
     `<meta name="theme-color" content="${THEME_TOKENS.light.surface.page}" media="(prefers-color-scheme: light)">`,
     environment ? `<meta name="robots" content="noindex, nofollow">` : "",
     `<link rel="icon" type="image/svg+xml" href="${escapeHtml(faviconHref)}">`,
-    `<style>${LANDING_CSS}</style>`,
+    `<style>${REGISTRY_LANDING_CSS}</style>`,
     `</head>`,
     `<body>`,
     `<main>`,
     `<h1>${lockups}</h1>`,
-    service,
     environment
       ? `<p class="env">${escapeHtml(environment)} environment</p>`
       : "",
     `<p class="lede">${escapeHtml(description)}</p>`,
     `<p class="about">Package managers fetch from here, each from its owner's feed. The console has the setup lines for every client. There is nothing to browse.</p>`,
-    `<nav aria-label="Polaris Locker">`,
+    `<nav aria-label="Polaris Key">`,
     `<ul>`,
     `<li><a href="${escapeHtml(`${consoleOrigin}/`)}">Open the console</a></li>`,
-    `<li><a href="${escapeHtml(`${consoleOrigin}/docs/`)}">Read the docs <small>(sign-in required)</small></a></li>`,
+    `<li><a href="${escapeHtml(`${consoleOrigin}/docs/`)}">Read the docs</a></li>`,
     `</ul>`,
     `</nav>`,
     `</main>`,
@@ -139,7 +175,7 @@ export async function registryLandingResponse(
     status: 200,
     headers: {
       "content-type": "text/html; charset=utf-8",
-      "content-security-policy": await landingCsp(),
+      "content-security-policy": await registryLandingCsp(),
       "cache-control": LANDING_CACHE,
       "x-frame-options": "DENY",
     },

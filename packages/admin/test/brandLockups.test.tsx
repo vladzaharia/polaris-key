@@ -73,6 +73,15 @@ describe("brand blocks never set the name in live text", () => {
     ).toHaveLength(1);
   });
 
+  it("the focused-flow header draws the same lockup as the Library header (one shared size)", () => {
+    const flow = src("src/portal/components/FocusedFlow.tsx");
+    expect(flow).toContain("<HeaderBrand />");
+    expect(flow).not.toMatch(/<Lockup\b/);
+    expect(src("src/portal/components/PortalShell.tsx")).toContain(
+      "<HeaderBrand />",
+    );
+  });
+
   it("Lockup is trimmed by default and reaches 180 px from 33 px tall", () => {
     const { container } = render(<Lockup height={33} />);
     expect(

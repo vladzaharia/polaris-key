@@ -373,24 +373,25 @@ describe("bytes host: the landing page at /", () => {
     expect(html).not.toMatch(
       /<script|\son[a-z]+=|\sstyle=|<form|<iframe|<object|<embed|<link rel="stylesheet"|@import|@font-face|url\(/i,
     );
-    // The only URLs are the console's two links, the SVG namespace and the data: favicon.
+    // A customer surface: with no customer site there is no link at all, only the SVG namespace
+    // and the data: favicon. Never the console, never the docs.
     const urls = [...html.matchAll(/(?:href|src)="([^"]+)"/g)].map(
       (m) => m[1]!,
     );
-    expect(urls.filter((u) => !u.startsWith("data:image/svg+xml,"))).toEqual([
-      `${CONSOLE}/`,
-      `${CONSOLE}/docs/`,
-    ]);
+    expect(urls.filter((u) => !u.startsWith("data:image/svg+xml,"))).toEqual(
+      [],
+    );
     expect(
       html
         .match(/https?:\/\/[^"\s)<]+/g)!
         .filter((u) => u !== "http://www.w3.org/2000/svg"),
-    ).toEqual([`${CONSOLE}/`, `${CONSOLE}/docs/`]);
-    // The Polaris Locker shell with the Star Cut as Delivery's symbol (LK-07), the one-line
-    // explanation, no environment label in prod.
+    ).toEqual([]);
+    expect(html).not.toContain("sign-in required");
+    // The Polaris Locker shell (LK-07; BRAND §8), the one-line explanation, no environment label
+    // in prod, no Delivery service row.
     expect(html).toContain('role="img" aria-label="Polaris Locker"');
-    expect(html).toContain("<title>Delivery · Polaris Locker</title>");
-    expect(html).toContain('<div class="svc">');
+    expect(html).toContain("<title>Downloads · Polaris Locker</title>");
+    expect(html).not.toContain('<div class="svc">');
     expect(html).not.toContain("Polaris Key");
     expect(html).toContain("The download host for games and apps.");
     expect(html).not.toContain("environment</p>");
@@ -514,10 +515,9 @@ describe("bytes host: the landing page at /", () => {
       const html = await res.text();
       expect(html, blob).toContain(`<p class="env">${label} environment</p>`);
       expect(html, blob).toContain(
-        `<title>Delivery (${label}) · Polaris Locker</title>`,
+        `<title>Downloads (${label}) · Polaris Locker</title>`,
       );
-      expect(html, blob).toContain(`href="${consoleOrigin}/"`);
-      expect(html, blob).toContain(`href="${consoleOrigin}/docs/"`);
+      expect(html, blob).not.toContain(consoleOrigin);
       expect(html, blob).toContain(
         '<meta name="robots" content="noindex, nofollow">',
       );
@@ -536,42 +536,30 @@ describe("bytes host: the landing page at /", () => {
     }
   });
 
-  it("production links key.plrs.im, and an unusable CONSOLE_ORIGIN falls back to it", async () => {
-    for (const consoleOrigin of [
-      "https://key.plrs.im",
-      undefined,
-      "",
-      "not a url",
-      "javascript:alert(1)",
-      "https://dl.plrs.im",
-      // plain http only when the bytes host is itself http (local development)
-      "http://key.plrs.im",
-      "http://localhost:8787",
-    ]) {
-      const res = await worker.fetch(
-        new Request("https://dl.plrs.im/"),
-        landingEnv("https://dl.plrs.im", consoleOrigin),
-      );
-      const html = await res.text();
-      expect(html, String(consoleOrigin)).toContain(
-        'href="https://key.plrs.im/"',
-      );
-      expect(html, String(consoleOrigin)).toContain(
-        'href="https://key.plrs.im/docs/"',
-      );
+  it("links Polaris Locker, and only when the deployment has a usable customer site", async () => {
+    for (const [customer, href] of [
+      ["https://polaris.locker", 'href="https://polaris.locker/"'],
+      ["http://localhost:8787", 'href="http://localhost:8787/"'],
+      [undefined, null],
+      ["", null],
+      ["not a url", null],
+      ["javascript:alert(1)", null],
+    ] as const) {
+      const e = landingEnv("https://dl.plrs.im", CONSOLE);
+      if (customer !== undefined) e.CUSTOMER_ORIGIN = customer;
+      const html = await (
+        await worker.fetch(new Request("https://dl.plrs.im/"), e)
+      ).text();
+      if (href) {
+        expect(html, String(customer)).toContain(href);
+        expect(html, String(customer)).toContain("Open Polaris Locker");
+      } else {
+        expect(html, String(customer)).not.toContain("<nav");
+      }
+      expect(html).not.toContain(CONSOLE);
+      expect(html).not.toContain("key.plrs.im");
       expect(html).not.toContain("javascript:");
-      expect(html).not.toContain("environment</p>");
     }
-  });
-
-  it("an http console origin is linked only when the bytes host is http too (local dev)", async () => {
-    const res = await worker.fetch(
-      new Request("http://dl.localhost:8787/"),
-      landingEnv("http://dl.localhost:8787", "http://localhost:8787"),
-    );
-    const html = await res.text();
-    expect(html).toContain('href="http://localhost:8787/"');
-    expect(html).toContain('href="http://localhost:8787/docs/"');
   });
 
   it("with BLOB_ORIGIN unset there is no bytes host, so no landing page anywhere", async () => {

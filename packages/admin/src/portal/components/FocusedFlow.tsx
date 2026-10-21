@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { cn } from "../../lib/cn.js";
 import { Skeleton } from "../../ui/Skeleton.js";
 import { focusPageHeading, href } from "../router.js";
-import { Lockup } from "./Lockup.js";
+import { HeaderBrand } from "./Lockup.js";
 import { ProductIcon } from "./ProductIcon.js";
 
 /**
@@ -59,8 +59,7 @@ export function FocusedFlow({
             aria-label="Polaris Locker: your library"
             className="flex shrink-0 items-center rounded-md"
           >
-            <Lockup height={52} className="hidden desk:block" />
-            <Lockup height={40} className="desk:hidden" />
+            <HeaderBrand />
           </a>
           <a
             href={back.href}
