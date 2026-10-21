@@ -455,7 +455,9 @@ describe("opening the browser", () => {
       },
       bundle: {},
     });
-    expect(await ctx.openUrl("https://polaris.locker/device?code=X")).toBe(true);
+    expect(await ctx.openUrl("https://polaris.locker/device?code=X")).toBe(
+      true,
+    );
     expect(await ctx.openUrl("http://evil.example/")).toBe(false);
     expect(await ctx.openUrl("https://key.plrs.im/\x07")).toBe(false);
     expect(opened).toEqual(["https://polaris.locker/device?code=X"]);

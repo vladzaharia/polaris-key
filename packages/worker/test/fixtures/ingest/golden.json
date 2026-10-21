@@ -93,12 +93,7 @@
         {
           "table": "dist_access",
           "sql": "INSERT INTO dist_access (product, deliverable_id, mode, entitlement, source, modified_at) VALUES (?, ?, ?, NULL, 'manifest', ?) ON CONFLICT (product, deliverable_id) DO UPDATE SET mode = excluded.mode, modified_at = excluded.modified_at WHERE dist_access.source = 'manifest' AND dist_access.mode IS NOT excluded.mode",
-          "params": [
-            "acme",
-            "app",
-            "public",
-            1700000000
-          ]
+          "params": ["acme", "app", "public", 1700000000]
         }
       ],
       "dist_keys": [
@@ -130,9 +125,7 @@
         {
           "table": "dist_listing",
           "sql": "DELETE FROM dist_listing WHERE product = ?",
-          "params": [
-            "acme"
-          ]
+          "params": ["acme"]
         }
       ],
       "dist_outlets": [
@@ -171,22 +164,14 @@
         {
           "table": "dist_outlets",
           "sql": "UPDATE dist_outlets SET removed_at = ?, modified_at = ? WHERE product = ? AND removed_at IS NULL AND outlet_id NOT IN (?, ?)",
-          "params": [
-            1700000000,
-            1700000000,
-            "acme",
-            "direct",
-            "web"
-          ]
+          "params": [1700000000, 1700000000, "acme", "direct", "web"]
         }
       ],
       "dist_transports": [
         {
           "table": "dist_transports",
           "sql": "DELETE FROM dist_transports WHERE product = ?",
-          "params": [
-            "acme"
-          ]
+          "params": ["acme"]
         },
         {
           "table": "dist_transports",
@@ -207,9 +192,7 @@
         {
           "table": "edge_mint_approvals",
           "sql": "DELETE FROM edge_mint_approvals WHERE product = ?",
-          "params": [
-            "acme"
-          ]
+          "params": ["acme"]
         }
       ],
       "edge_mint_config": [
@@ -372,78 +355,38 @@
         {
           "table": "provisioning_config",
           "sql": "INSERT INTO provisioning_config (product, claim, entitlement_key, entitlement_value_json, secret_key, secret_url_template, allowed_hosts_json) VALUES (?, ?, ?, ?, ?, ?, ?)",
-          "params": [
-            "acme",
-            "plan",
-            "pro",
-            "true",
-            null,
-            null,
-            null
-          ]
+          "params": ["acme", "plan", "pro", "true", null, null, null]
         }
       ],
       "release_builds": [
         {
           "table": "release_builds",
           "sql": "DELETE FROM release_builds WHERE product = ? AND release_id IN (SELECT value FROM json_each(?)) AND release_id NOT IN ( SELECT release_id FROM release_metadata WHERE product = ? AND json_extract(metadata_json, '$.descriptor.status') = 'ingested') AND release_id IN ( SELECT release_id FROM release_metadata WHERE product = ? AND deliverable_id = 'app') AND (release_id || char(0) || build_id) NOT IN (SELECT value FROM json_each(?))",
-          "params": [
-            "acme",
-            "[]",
-            "acme",
-            "acme",
-            "[]"
-          ]
+          "params": ["acme", "[]", "acme", "acme", "[]"]
         }
       ],
       "release_channel_policy": [
         {
           "table": "release_channel_policy",
           "sql": "UPDATE release_channel_policy SET includes_json = NULL, modified_at = ?, modified_by = 'manifest' WHERE product = ? AND deliverable_id = ? AND source = 'manifest' AND includes_json IS NOT NULL AND channel NOT IN (SELECT value FROM json_each(?))",
-          "params": [
-            1700000000,
-            "acme",
-            "app",
-            "[]"
-          ]
+          "params": [1700000000, "acme", "app", "[]"]
         }
       ],
       "release_channels": [
         {
           "table": "release_channels",
           "sql": "INSERT INTO release_channels (product, channel, release_id, policy_json, created_at, modified_at) VALUES (?,?,?,?,?,?) ON CONFLICT(product, channel) DO UPDATE SET release_id = excluded.release_id, policy_json = excluded.policy_json, modified_at = excluded.modified_at",
-          "params": [
-            "acme",
-            "stable",
-            null,
-            null,
-            1700000000,
-            1700000000
-          ]
+          "params": ["acme", "stable", null, null, 1700000000, 1700000000]
         },
         {
           "table": "release_channels",
           "sql": "INSERT INTO release_channels (product, channel, release_id, policy_json, created_at, modified_at) VALUES (?,?,?,?,?,?) ON CONFLICT(product, channel) DO UPDATE SET release_id = excluded.release_id, policy_json = excluded.policy_json, modified_at = excluded.modified_at",
-          "params": [
-            "acme",
-            "beta",
-            null,
-            null,
-            1700000000,
-            1700000000
-          ]
+          "params": ["acme", "beta", null, null, 1700000000, 1700000000]
         },
         {
           "table": "release_channels",
           "sql": "INSERT INTO release_channels (product, channel, release_id, policy_json, created_at, modified_at) VALUES (?,?,?,?,?,?) ON CONFLICT(product, channel) DO UPDATE SET release_id = excluded.release_id, policy_json = excluded.policy_json, modified_at = excluded.modified_at",
-          "params": [
-            "acme",
-            "dev",
-            null,
-            null,
-            1700000000,
-            1700000000
-          ]
+          "params": ["acme", "dev", null, null, 1700000000, 1700000000]
         }
       ],
       "release_config": [
@@ -492,66 +435,34 @@
         {
           "table": "release_deliverables",
           "sql": "DELETE FROM release_deliverables WHERE product = ? AND kind = 'pack' AND def_source = 'manifest' AND deliverable_id NOT IN (SELECT value FROM json_each(?)) AND NOT EXISTS (SELECT 1 FROM release_channel_policy c WHERE c.product = release_deliverables.product AND c.deliverable_id = release_deliverables.deliverable_id) AND NOT EXISTS (SELECT 1 FROM release_pack_floors f WHERE f.product = release_deliverables.product AND f.deliverable_id = release_deliverables.deliverable_id)",
-          "params": [
-            "acme",
-            "[]"
-          ]
+          "params": ["acme", "[]"]
         },
         {
           "table": "release_deliverables",
           "sql": "DELETE FROM release_deliverables WHERE product = ? AND kind = 'package' AND def_source = 'manifest' AND deliverable_id NOT IN (SELECT value FROM json_each(?)) AND NOT EXISTS (SELECT 1 FROM release_metadata m WHERE m.product = release_deliverables.product AND m.deliverable_id = release_deliverables.deliverable_id) AND NOT EXISTS (SELECT 1 FROM release_channel_policy c WHERE c.product = release_deliverables.product AND c.deliverable_id = release_deliverables.deliverable_id)",
-          "params": [
-            "acme",
-            "[]"
-          ]
+          "params": ["acme", "[]"]
         },
         {
           "table": "release_deliverables",
           "sql": "INSERT INTO release_deliverables (product, deliverable_id, kind, pack_type, def_json, def_source, created_at, modified_at) VALUES (?, ?, 'app', NULL, NULL, 'manifest', ?, ?) ON CONFLICT(product, deliverable_id) DO NOTHING",
-          "params": [
-            "acme",
-            "app",
-            1700000000,
-            1700000000
-          ]
+          "params": ["acme", "app", 1700000000, 1700000000]
         }
       ],
       "release_health": [
         {
           "table": "release_health",
           "sql": "INSERT INTO release_health (product, subject_kind, subject_id, status, checked_at, details_json) VALUES (?,?,?,?,?,?) ON CONFLICT(product, subject_kind, subject_id) DO UPDATE SET status = excluded.status, checked_at = excluded.checked_at, details_json = excluded.details_json",
-          "params": [
-            "acme",
-            "channel",
-            "stable",
-            "unknown",
-            1700000000,
-            null
-          ]
+          "params": ["acme", "channel", "stable", "unknown", 1700000000, null]
         },
         {
           "table": "release_health",
           "sql": "INSERT INTO release_health (product, subject_kind, subject_id, status, checked_at, details_json) VALUES (?,?,?,?,?,?) ON CONFLICT(product, subject_kind, subject_id) DO UPDATE SET status = excluded.status, checked_at = excluded.checked_at, details_json = excluded.details_json",
-          "params": [
-            "acme",
-            "channel",
-            "beta",
-            "unknown",
-            1700000000,
-            null
-          ]
+          "params": ["acme", "channel", "beta", "unknown", 1700000000, null]
         },
         {
           "table": "release_health",
           "sql": "INSERT INTO release_health (product, subject_kind, subject_id, status, checked_at, details_json) VALUES (?,?,?,?,?,?) ON CONFLICT(product, subject_kind, subject_id) DO UPDATE SET status = excluded.status, checked_at = excluded.checked_at, details_json = excluded.details_json",
-          "params": [
-            "acme",
-            "channel",
-            "dev",
-            "unknown",
-            1700000000,
-            null
-          ]
+          "params": ["acme", "channel", "dev", "unknown", 1700000000, null]
         }
       ],
       "tiers": [
@@ -953,10 +864,7 @@
         "acme-2023": "<blob>"
       },
       "install": "Linked acme-org/acme-app. Supply these secrets via PUT /api/products/acme/secrets/<name>: OIDC_SECRET__ACME, MINT_KEY__ACME.",
-      "remainingSecrets": [
-        "OIDC_SECRET__ACME",
-        "MINT_KEY__ACME"
-      ],
+      "remainingSecrets": ["OIDC_SECRET__ACME", "MINT_KEY__ACME"],
       "defaults": {
         "services": [
           "license",
@@ -967,9 +875,7 @@
         ],
         "profile": "default",
         "tier": null,
-        "intendedPlatforms": [
-          "macos"
-        ],
+        "intendedPlatforms": ["macos"],
         "trustedWorkflow": null
       }
     },
@@ -986,21 +892,14 @@
         {
           "table": "dist_access",
           "sql": "INSERT INTO dist_access (product, deliverable_id, mode, entitlement, source, modified_at) VALUES (?, ?, ?, NULL, 'manifest', ?) ON CONFLICT (product, deliverable_id) DO UPDATE SET mode = excluded.mode, modified_at = excluded.modified_at WHERE dist_access.source = 'manifest' AND dist_access.mode IS NOT excluded.mode",
-          "params": [
-            "acme",
-            "app",
-            "public",
-            1700000000
-          ]
+          "params": ["acme", "app", "public", 1700000000]
         }
       ],
       "edge_mint_approvals": [
         {
           "table": "edge_mint_approvals",
           "sql": "DELETE FROM edge_mint_approvals WHERE product = ?",
-          "params": [
-            "acme"
-          ]
+          "params": ["acme"]
         }
       ],
       "product_keys": [
@@ -1093,63 +992,31 @@
         {
           "table": "release_builds",
           "sql": "DELETE FROM release_builds WHERE product = ? AND release_id IN (SELECT value FROM json_each(?)) AND release_id NOT IN ( SELECT release_id FROM release_metadata WHERE product = ? AND json_extract(metadata_json, '$.descriptor.status') = 'ingested') AND release_id IN ( SELECT release_id FROM release_metadata WHERE product = ? AND deliverable_id = 'app') AND (release_id || char(0) || build_id) NOT IN (SELECT value FROM json_each(?))",
-          "params": [
-            "acme",
-            "[]",
-            "acme",
-            "acme",
-            "[]"
-          ]
+          "params": ["acme", "[]", "acme", "acme", "[]"]
         }
       ],
       "release_channel_policy": [
         {
           "table": "release_channel_policy",
           "sql": "UPDATE release_channel_policy SET includes_json = NULL, modified_at = ?, modified_by = 'manifest' WHERE product = ? AND deliverable_id = ? AND source = 'manifest' AND includes_json IS NOT NULL AND channel NOT IN (SELECT value FROM json_each(?))",
-          "params": [
-            1700000000,
-            "acme",
-            "app",
-            "[]"
-          ]
+          "params": [1700000000, "acme", "app", "[]"]
         }
       ],
       "release_channels": [
         {
           "table": "release_channels",
           "sql": "INSERT INTO release_channels (product, channel, release_id, policy_json, created_at, modified_at) VALUES (?,?,?,?,?,?) ON CONFLICT(product, channel) DO UPDATE SET release_id = excluded.release_id, policy_json = excluded.policy_json, modified_at = excluded.modified_at",
-          "params": [
-            "acme",
-            "stable",
-            null,
-            null,
-            1700000000,
-            1700000000
-          ]
+          "params": ["acme", "stable", null, null, 1700000000, 1700000000]
         },
         {
           "table": "release_channels",
           "sql": "INSERT INTO release_channels (product, channel, release_id, policy_json, created_at, modified_at) VALUES (?,?,?,?,?,?) ON CONFLICT(product, channel) DO UPDATE SET release_id = excluded.release_id, policy_json = excluded.policy_json, modified_at = excluded.modified_at",
-          "params": [
-            "acme",
-            "beta",
-            null,
-            null,
-            1700000000,
-            1700000000
-          ]
+          "params": ["acme", "beta", null, null, 1700000000, 1700000000]
         },
         {
           "table": "release_channels",
           "sql": "INSERT INTO release_channels (product, channel, release_id, policy_json, created_at, modified_at) VALUES (?,?,?,?,?,?) ON CONFLICT(product, channel) DO UPDATE SET release_id = excluded.release_id, policy_json = excluded.policy_json, modified_at = excluded.modified_at",
-          "params": [
-            "acme",
-            "dev",
-            null,
-            null,
-            1700000000,
-            1700000000
-          ]
+          "params": ["acme", "dev", null, null, 1700000000, 1700000000]
         }
       ],
       "release_config": [
@@ -1198,66 +1065,34 @@
         {
           "table": "release_deliverables",
           "sql": "DELETE FROM release_deliverables WHERE product = ? AND kind = 'pack' AND def_source = 'manifest' AND deliverable_id NOT IN (SELECT value FROM json_each(?)) AND NOT EXISTS (SELECT 1 FROM release_channel_policy c WHERE c.product = release_deliverables.product AND c.deliverable_id = release_deliverables.deliverable_id) AND NOT EXISTS (SELECT 1 FROM release_pack_floors f WHERE f.product = release_deliverables.product AND f.deliverable_id = release_deliverables.deliverable_id)",
-          "params": [
-            "acme",
-            "[]"
-          ]
+          "params": ["acme", "[]"]
         },
         {
           "table": "release_deliverables",
           "sql": "DELETE FROM release_deliverables WHERE product = ? AND kind = 'package' AND def_source = 'manifest' AND deliverable_id NOT IN (SELECT value FROM json_each(?)) AND NOT EXISTS (SELECT 1 FROM release_metadata m WHERE m.product = release_deliverables.product AND m.deliverable_id = release_deliverables.deliverable_id) AND NOT EXISTS (SELECT 1 FROM release_channel_policy c WHERE c.product = release_deliverables.product AND c.deliverable_id = release_deliverables.deliverable_id)",
-          "params": [
-            "acme",
-            "[]"
-          ]
+          "params": ["acme", "[]"]
         },
         {
           "table": "release_deliverables",
           "sql": "INSERT INTO release_deliverables (product, deliverable_id, kind, pack_type, def_json, def_source, created_at, modified_at) VALUES (?, ?, 'app', NULL, NULL, 'manifest', ?, ?) ON CONFLICT(product, deliverable_id) DO NOTHING",
-          "params": [
-            "acme",
-            "app",
-            1700000000,
-            1700000000
-          ]
+          "params": ["acme", "app", 1700000000, 1700000000]
         }
       ],
       "release_health": [
         {
           "table": "release_health",
           "sql": "INSERT INTO release_health (product, subject_kind, subject_id, status, checked_at, details_json) VALUES (?,?,?,?,?,?) ON CONFLICT(product, subject_kind, subject_id) DO UPDATE SET status = excluded.status, checked_at = excluded.checked_at, details_json = excluded.details_json",
-          "params": [
-            "acme",
-            "channel",
-            "stable",
-            "unknown",
-            1700000000,
-            null
-          ]
+          "params": ["acme", "channel", "stable", "unknown", 1700000000, null]
         },
         {
           "table": "release_health",
           "sql": "INSERT INTO release_health (product, subject_kind, subject_id, status, checked_at, details_json) VALUES (?,?,?,?,?,?) ON CONFLICT(product, subject_kind, subject_id) DO UPDATE SET status = excluded.status, checked_at = excluded.checked_at, details_json = excluded.details_json",
-          "params": [
-            "acme",
-            "channel",
-            "beta",
-            "unknown",
-            1700000000,
-            null
-          ]
+          "params": ["acme", "channel", "beta", "unknown", 1700000000, null]
         },
         {
           "table": "release_health",
           "sql": "INSERT INTO release_health (product, subject_kind, subject_id, status, checked_at, details_json) VALUES (?,?,?,?,?,?) ON CONFLICT(product, subject_kind, subject_id) DO UPDATE SET status = excluded.status, checked_at = excluded.checked_at, details_json = excluded.details_json",
-          "params": [
-            "acme",
-            "channel",
-            "dev",
-            "unknown",
-            1700000000,
-            null
-          ]
+          "params": ["acme", "channel", "dev", "unknown", 1700000000, null]
         }
       ],
       "tiers": [
@@ -1481,10 +1316,7 @@
       "install": "Linked acme-org/acme-app. No additional secrets required.",
       "remainingSecrets": [],
       "defaults": {
-        "services": [
-          "license",
-          "config"
-        ],
+        "services": ["license", "config"],
         "profile": null,
         "tier": null,
         "intendedPlatforms": [],
@@ -1521,12 +1353,7 @@
         {
           "table": "dist_access",
           "sql": "INSERT INTO dist_access (product, deliverable_id, mode, entitlement, source, modified_at) VALUES (?, ?, ?, NULL, 'manifest', ?) ON CONFLICT (product, deliverable_id) DO UPDATE SET mode = excluded.mode, modified_at = excluded.modified_at WHERE dist_access.source = 'manifest' AND dist_access.mode IS NOT excluded.mode",
-          "params": [
-            "acme",
-            "app",
-            "public",
-            1700000060
-          ]
+          "params": ["acme", "app", "public", 1700000060]
         }
       ],
       "dist_keys": [
@@ -1558,9 +1385,7 @@
         {
           "table": "dist_listing",
           "sql": "DELETE FROM dist_listing WHERE product = ?",
-          "params": [
-            "acme"
-          ]
+          "params": ["acme"]
         }
       ],
       "dist_outlets": [
@@ -1599,22 +1424,14 @@
         {
           "table": "dist_outlets",
           "sql": "UPDATE dist_outlets SET removed_at = ?, modified_at = ? WHERE product = ? AND removed_at IS NULL AND outlet_id NOT IN (?, ?)",
-          "params": [
-            1700000060,
-            1700000060,
-            "acme",
-            "direct",
-            "web"
-          ]
+          "params": [1700000060, 1700000060, "acme", "direct", "web"]
         }
       ],
       "dist_transports": [
         {
           "table": "dist_transports",
           "sql": "DELETE FROM dist_transports WHERE product = ?",
-          "params": [
-            "acme"
-          ]
+          "params": ["acme"]
         },
         {
           "table": "dist_transports",
@@ -1635,22 +1452,14 @@
         {
           "table": "edge_mint_approvals",
           "sql": "DELETE FROM edge_mint_approvals WHERE product = ? AND id NOT IN (SELECT id FROM edge_mint_config WHERE product = ?)",
-          "params": [
-            "acme",
-            "acme"
-          ]
+          "params": ["acme", "acme"]
         }
       ],
       "edge_mint_config": [
         {
           "table": "edge_mint_config",
           "sql": "DELETE FROM edge_mint_config WHERE product = ? AND NOT EXISTS (SELECT 1 FROM product_settings WHERE product = ? AND key = ? AND source = 'console' AND (expires_at IS NULL OR expires_at > ?))",
-          "params": [
-            "acme",
-            "acme",
-            "config.catalog",
-            1700000060
-          ]
+          "params": ["acme", "acme", "config.catalog", 1700000060]
         },
         {
           "table": "edge_mint_config",
@@ -1676,9 +1485,7 @@
         {
           "table": "oidc_config",
           "sql": "DELETE FROM oidc_config WHERE product = ?",
-          "params": [
-            "acme"
-          ]
+          "params": ["acme"]
         },
         {
           "table": "oidc_config",
@@ -1756,11 +1563,7 @@
         {
           "table": "products",
           "sql": "UPDATE products SET compat_min = ?, compat_max = ? WHERE slug = ? AND COALESCE(compat_source, 'manifest') = 'manifest'",
-          "params": [
-            "1.0.0",
-            "9.0.0",
-            "acme"
-          ]
+          "params": ["1.0.0", "9.0.0", "acme"]
         },
         {
           "table": "products",
@@ -1790,85 +1593,43 @@
         {
           "table": "provisioning_config",
           "sql": "DELETE FROM provisioning_config WHERE product = ?",
-          "params": [
-            "acme"
-          ]
+          "params": ["acme"]
         },
         {
           "table": "provisioning_config",
           "sql": "INSERT INTO provisioning_config (product, claim, entitlement_key, entitlement_value_json, secret_key, secret_url_template, allowed_hosts_json) VALUES (?, ?, ?, ?, ?, ?, ?)",
-          "params": [
-            "acme",
-            "plan",
-            "pro",
-            "true",
-            null,
-            null,
-            null
-          ]
+          "params": ["acme", "plan", "pro", "true", null, null, null]
         }
       ],
       "release_builds": [
         {
           "table": "release_builds",
           "sql": "DELETE FROM release_builds WHERE product = ? AND release_id IN (SELECT value FROM json_each(?)) AND release_id NOT IN ( SELECT release_id FROM release_metadata WHERE product = ? AND json_extract(metadata_json, '$.descriptor.status') = 'ingested') AND release_id IN ( SELECT release_id FROM release_metadata WHERE product = ? AND deliverable_id = 'app') AND (release_id || char(0) || build_id) NOT IN (SELECT value FROM json_each(?))",
-          "params": [
-            "acme",
-            "[]",
-            "acme",
-            "acme",
-            "[]"
-          ]
+          "params": ["acme", "[]", "acme", "acme", "[]"]
         }
       ],
       "release_channel_policy": [
         {
           "table": "release_channel_policy",
           "sql": "UPDATE release_channel_policy SET includes_json = NULL, modified_at = ?, modified_by = 'manifest' WHERE product = ? AND deliverable_id = ? AND source = 'manifest' AND includes_json IS NOT NULL AND channel NOT IN (SELECT value FROM json_each(?))",
-          "params": [
-            1700000060,
-            "acme",
-            "app",
-            "[]"
-          ]
+          "params": [1700000060, "acme", "app", "[]"]
         }
       ],
       "release_channels": [
         {
           "table": "release_channels",
           "sql": "INSERT INTO release_channels (product, channel, release_id, policy_json, created_at, modified_at) VALUES (?,?,?,?,?,?) ON CONFLICT(product, channel) DO UPDATE SET release_id = excluded.release_id, policy_json = excluded.policy_json, modified_at = excluded.modified_at",
-          "params": [
-            "acme",
-            "stable",
-            null,
-            null,
-            1700000060,
-            1700000060
-          ]
+          "params": ["acme", "stable", null, null, 1700000060, 1700000060]
         },
         {
           "table": "release_channels",
           "sql": "INSERT INTO release_channels (product, channel, release_id, policy_json, created_at, modified_at) VALUES (?,?,?,?,?,?) ON CONFLICT(product, channel) DO UPDATE SET release_id = excluded.release_id, policy_json = excluded.policy_json, modified_at = excluded.modified_at",
-          "params": [
-            "acme",
-            "beta",
-            null,
-            null,
-            1700000060,
-            1700000060
-          ]
+          "params": ["acme", "beta", null, null, 1700000060, 1700000060]
         },
         {
           "table": "release_channels",
           "sql": "INSERT INTO release_channels (product, channel, release_id, policy_json, created_at, modified_at) VALUES (?,?,?,?,?,?) ON CONFLICT(product, channel) DO UPDATE SET release_id = excluded.release_id, policy_json = excluded.policy_json, modified_at = excluded.modified_at",
-          "params": [
-            "acme",
-            "dev",
-            null,
-            null,
-            1700000060,
-            1700000060
-          ]
+          "params": ["acme", "dev", null, null, 1700000060, 1700000060]
         }
       ],
       "release_config": [
@@ -1899,11 +1660,7 @@
         {
           "table": "release_config",
           "sql": "UPDATE release_config SET metadata_access = ?, artifacts_access = ? WHERE product = ? AND COALESCE(access_source, 'manifest') = 'manifest'",
-          "params": [
-            "public",
-            "public",
-            "acme"
-          ]
+          "params": ["public", "public", "acme"]
         }
       ],
       "release_deliverables": [
@@ -1926,66 +1683,34 @@
         {
           "table": "release_deliverables",
           "sql": "DELETE FROM release_deliverables WHERE product = ? AND kind = 'pack' AND def_source = 'manifest' AND deliverable_id NOT IN (SELECT value FROM json_each(?)) AND NOT EXISTS (SELECT 1 FROM release_channel_policy c WHERE c.product = release_deliverables.product AND c.deliverable_id = release_deliverables.deliverable_id) AND NOT EXISTS (SELECT 1 FROM release_pack_floors f WHERE f.product = release_deliverables.product AND f.deliverable_id = release_deliverables.deliverable_id)",
-          "params": [
-            "acme",
-            "[]"
-          ]
+          "params": ["acme", "[]"]
         },
         {
           "table": "release_deliverables",
           "sql": "DELETE FROM release_deliverables WHERE product = ? AND kind = 'package' AND def_source = 'manifest' AND deliverable_id NOT IN (SELECT value FROM json_each(?)) AND NOT EXISTS (SELECT 1 FROM release_metadata m WHERE m.product = release_deliverables.product AND m.deliverable_id = release_deliverables.deliverable_id) AND NOT EXISTS (SELECT 1 FROM release_channel_policy c WHERE c.product = release_deliverables.product AND c.deliverable_id = release_deliverables.deliverable_id)",
-          "params": [
-            "acme",
-            "[]"
-          ]
+          "params": ["acme", "[]"]
         },
         {
           "table": "release_deliverables",
           "sql": "INSERT INTO release_deliverables (product, deliverable_id, kind, pack_type, def_json, def_source, created_at, modified_at) VALUES (?, ?, 'app', NULL, NULL, 'manifest', ?, ?) ON CONFLICT(product, deliverable_id) DO NOTHING",
-          "params": [
-            "acme",
-            "app",
-            1700000060,
-            1700000060
-          ]
+          "params": ["acme", "app", 1700000060, 1700000060]
         }
       ],
       "release_health": [
         {
           "table": "release_health",
           "sql": "INSERT INTO release_health (product, subject_kind, subject_id, status, checked_at, details_json) VALUES (?,?,?,?,?,?) ON CONFLICT(product, subject_kind, subject_id) DO UPDATE SET status = excluded.status, checked_at = excluded.checked_at, details_json = excluded.details_json",
-          "params": [
-            "acme",
-            "channel",
-            "stable",
-            "unknown",
-            1700000060,
-            null
-          ]
+          "params": ["acme", "channel", "stable", "unknown", 1700000060, null]
         },
         {
           "table": "release_health",
           "sql": "INSERT INTO release_health (product, subject_kind, subject_id, status, checked_at, details_json) VALUES (?,?,?,?,?,?) ON CONFLICT(product, subject_kind, subject_id) DO UPDATE SET status = excluded.status, checked_at = excluded.checked_at, details_json = excluded.details_json",
-          "params": [
-            "acme",
-            "channel",
-            "beta",
-            "unknown",
-            1700000060,
-            null
-          ]
+          "params": ["acme", "channel", "beta", "unknown", 1700000060, null]
         },
         {
           "table": "release_health",
           "sql": "INSERT INTO release_health (product, subject_kind, subject_id, status, checked_at, details_json) VALUES (?,?,?,?,?,?) ON CONFLICT(product, subject_kind, subject_id) DO UPDATE SET status = excluded.status, checked_at = excluded.checked_at, details_json = excluded.details_json",
-          "params": [
-            "acme",
-            "channel",
-            "dev",
-            "unknown",
-            1700000060,
-            null
-          ]
+          "params": ["acme", "channel", "dev", "unknown", 1700000060, null]
         }
       ],
       "tiers": [
@@ -2422,12 +2147,7 @@
         {
           "table": "dist_access",
           "sql": "INSERT INTO dist_access (product, deliverable_id, mode, entitlement, source, modified_at) VALUES (?, ?, ?, NULL, 'manifest', ?) ON CONFLICT (product, deliverable_id) DO UPDATE SET mode = excluded.mode, modified_at = excluded.modified_at WHERE dist_access.source = 'manifest' AND dist_access.mode IS NOT excluded.mode",
-          "params": [
-            "acme",
-            "app",
-            "licensed",
-            1700000060
-          ]
+          "params": ["acme", "app", "licensed", 1700000060]
         }
       ],
       "dist_keys": [
@@ -2482,9 +2202,7 @@
         {
           "table": "dist_listing",
           "sql": "DELETE FROM dist_listing WHERE product = ?",
-          "params": [
-            "acme"
-          ]
+          "params": ["acme"]
         }
       ],
       "dist_outlets": [
@@ -2523,22 +2241,14 @@
         {
           "table": "dist_outlets",
           "sql": "UPDATE dist_outlets SET removed_at = ?, modified_at = ? WHERE product = ? AND removed_at IS NULL AND outlet_id NOT IN (?, ?)",
-          "params": [
-            1700000060,
-            1700000060,
-            "acme",
-            "direct",
-            "web"
-          ]
+          "params": [1700000060, 1700000060, "acme", "direct", "web"]
         }
       ],
       "dist_transports": [
         {
           "table": "dist_transports",
           "sql": "DELETE FROM dist_transports WHERE product = ?",
-          "params": [
-            "acme"
-          ]
+          "params": ["acme"]
         },
         {
           "table": "dist_transports",
@@ -2559,22 +2269,14 @@
         {
           "table": "edge_mint_approvals",
           "sql": "DELETE FROM edge_mint_approvals WHERE product = ? AND id NOT IN (SELECT id FROM edge_mint_config WHERE product = ?)",
-          "params": [
-            "acme",
-            "acme"
-          ]
+          "params": ["acme", "acme"]
         }
       ],
       "edge_mint_config": [
         {
           "table": "edge_mint_config",
           "sql": "DELETE FROM edge_mint_config WHERE product = ? AND NOT EXISTS (SELECT 1 FROM product_settings WHERE product = ? AND key = ? AND source = 'console' AND (expires_at IS NULL OR expires_at > ?))",
-          "params": [
-            "acme",
-            "acme",
-            "config.catalog",
-            1700000060
-          ]
+          "params": ["acme", "acme", "config.catalog", 1700000060]
         },
         {
           "table": "edge_mint_config",
@@ -2600,9 +2302,7 @@
         {
           "table": "oidc_config",
           "sql": "DELETE FROM oidc_config WHERE product = ?",
-          "params": [
-            "acme"
-          ]
+          "params": ["acme"]
         },
         {
           "table": "oidc_config",
@@ -2636,12 +2336,7 @@
         {
           "table": "product_schema",
           "sql": "UPDATE product_schema SET active = 0 WHERE product = ? AND NOT EXISTS (SELECT 1 FROM product_settings WHERE product = ? AND key = ? AND source = 'console' AND (expires_at IS NULL OR expires_at > ?))",
-          "params": [
-            "acme",
-            "acme",
-            "config.catalog",
-            1700000060
-          ]
+          "params": ["acme", "acme", "config.catalog", 1700000060]
         },
         {
           "table": "product_schema",
@@ -2706,11 +2401,7 @@
         {
           "table": "products",
           "sql": "UPDATE products SET compat_min = ?, compat_max = ? WHERE slug = ? AND COALESCE(compat_source, 'manifest') = 'manifest'",
-          "params": [
-            "1.1.0",
-            "9.0.0",
-            "acme"
-          ]
+          "params": ["1.1.0", "9.0.0", "acme"]
         },
         {
           "table": "products",
@@ -2740,85 +2431,43 @@
         {
           "table": "provisioning_config",
           "sql": "DELETE FROM provisioning_config WHERE product = ?",
-          "params": [
-            "acme"
-          ]
+          "params": ["acme"]
         },
         {
           "table": "provisioning_config",
           "sql": "INSERT INTO provisioning_config (product, claim, entitlement_key, entitlement_value_json, secret_key, secret_url_template, allowed_hosts_json) VALUES (?, ?, ?, ?, ?, ?, ?)",
-          "params": [
-            "acme",
-            "plan",
-            "pro",
-            "false",
-            null,
-            null,
-            null
-          ]
+          "params": ["acme", "plan", "pro", "false", null, null, null]
         }
       ],
       "release_builds": [
         {
           "table": "release_builds",
           "sql": "DELETE FROM release_builds WHERE product = ? AND release_id IN (SELECT value FROM json_each(?)) AND release_id NOT IN ( SELECT release_id FROM release_metadata WHERE product = ? AND json_extract(metadata_json, '$.descriptor.status') = 'ingested') AND release_id IN ( SELECT release_id FROM release_metadata WHERE product = ? AND deliverable_id = 'app') AND (release_id || char(0) || build_id) NOT IN (SELECT value FROM json_each(?))",
-          "params": [
-            "acme",
-            "[]",
-            "acme",
-            "acme",
-            "[]"
-          ]
+          "params": ["acme", "[]", "acme", "acme", "[]"]
         }
       ],
       "release_channel_policy": [
         {
           "table": "release_channel_policy",
           "sql": "UPDATE release_channel_policy SET includes_json = NULL, modified_at = ?, modified_by = 'manifest' WHERE product = ? AND deliverable_id = ? AND source = 'manifest' AND includes_json IS NOT NULL AND channel NOT IN (SELECT value FROM json_each(?))",
-          "params": [
-            1700000060,
-            "acme",
-            "app",
-            "[]"
-          ]
+          "params": [1700000060, "acme", "app", "[]"]
         }
       ],
       "release_channels": [
         {
           "table": "release_channels",
           "sql": "INSERT INTO release_channels (product, channel, release_id, policy_json, created_at, modified_at) VALUES (?,?,?,?,?,?) ON CONFLICT(product, channel) DO UPDATE SET release_id = excluded.release_id, policy_json = excluded.policy_json, modified_at = excluded.modified_at",
-          "params": [
-            "acme",
-            "stable",
-            null,
-            null,
-            1700000060,
-            1700000060
-          ]
+          "params": ["acme", "stable", null, null, 1700000060, 1700000060]
         },
         {
           "table": "release_channels",
           "sql": "INSERT INTO release_channels (product, channel, release_id, policy_json, created_at, modified_at) VALUES (?,?,?,?,?,?) ON CONFLICT(product, channel) DO UPDATE SET release_id = excluded.release_id, policy_json = excluded.policy_json, modified_at = excluded.modified_at",
-          "params": [
-            "acme",
-            "beta",
-            null,
-            null,
-            1700000060,
-            1700000060
-          ]
+          "params": ["acme", "beta", null, null, 1700000060, 1700000060]
         },
         {
           "table": "release_channels",
           "sql": "INSERT INTO release_channels (product, channel, release_id, policy_json, created_at, modified_at) VALUES (?,?,?,?,?,?) ON CONFLICT(product, channel) DO UPDATE SET release_id = excluded.release_id, policy_json = excluded.policy_json, modified_at = excluded.modified_at",
-          "params": [
-            "acme",
-            "dev",
-            null,
-            null,
-            1700000060,
-            1700000060
-          ]
+          "params": ["acme", "dev", null, null, 1700000060, 1700000060]
         }
       ],
       "release_config": [
@@ -2849,11 +2498,7 @@
         {
           "table": "release_config",
           "sql": "UPDATE release_config SET metadata_access = ?, artifacts_access = ? WHERE product = ? AND COALESCE(access_source, 'manifest') = 'manifest'",
-          "params": [
-            "licensed",
-            "licensed",
-            "acme"
-          ]
+          "params": ["licensed", "licensed", "acme"]
         }
       ],
       "release_deliverables": [
@@ -2876,76 +2521,41 @@
         {
           "table": "release_deliverables",
           "sql": "DELETE FROM release_deliverables WHERE product = ? AND kind = 'pack' AND def_source = 'manifest' AND deliverable_id NOT IN (SELECT value FROM json_each(?)) AND NOT EXISTS (SELECT 1 FROM release_channel_policy c WHERE c.product = release_deliverables.product AND c.deliverable_id = release_deliverables.deliverable_id) AND NOT EXISTS (SELECT 1 FROM release_pack_floors f WHERE f.product = release_deliverables.product AND f.deliverable_id = release_deliverables.deliverable_id)",
-          "params": [
-            "acme",
-            "[]"
-          ]
+          "params": ["acme", "[]"]
         },
         {
           "table": "release_deliverables",
           "sql": "DELETE FROM release_deliverables WHERE product = ? AND kind = 'package' AND def_source = 'manifest' AND deliverable_id NOT IN (SELECT value FROM json_each(?)) AND NOT EXISTS (SELECT 1 FROM release_metadata m WHERE m.product = release_deliverables.product AND m.deliverable_id = release_deliverables.deliverable_id) AND NOT EXISTS (SELECT 1 FROM release_channel_policy c WHERE c.product = release_deliverables.product AND c.deliverable_id = release_deliverables.deliverable_id)",
-          "params": [
-            "acme",
-            "[]"
-          ]
+          "params": ["acme", "[]"]
         },
         {
           "table": "release_deliverables",
           "sql": "INSERT INTO release_deliverables (product, deliverable_id, kind, pack_type, def_json, def_source, created_at, modified_at) VALUES (?, ?, 'app', NULL, NULL, 'manifest', ?, ?) ON CONFLICT(product, deliverable_id) DO NOTHING",
-          "params": [
-            "acme",
-            "app",
-            1700000060,
-            1700000060
-          ]
+          "params": ["acme", "app", 1700000060, 1700000060]
         }
       ],
       "release_health": [
         {
           "table": "release_health",
           "sql": "INSERT INTO release_health (product, subject_kind, subject_id, status, checked_at, details_json) VALUES (?,?,?,?,?,?) ON CONFLICT(product, subject_kind, subject_id) DO UPDATE SET status = excluded.status, checked_at = excluded.checked_at, details_json = excluded.details_json",
-          "params": [
-            "acme",
-            "channel",
-            "stable",
-            "unknown",
-            1700000060,
-            null
-          ]
+          "params": ["acme", "channel", "stable", "unknown", 1700000060, null]
         },
         {
           "table": "release_health",
           "sql": "INSERT INTO release_health (product, subject_kind, subject_id, status, checked_at, details_json) VALUES (?,?,?,?,?,?) ON CONFLICT(product, subject_kind, subject_id) DO UPDATE SET status = excluded.status, checked_at = excluded.checked_at, details_json = excluded.details_json",
-          "params": [
-            "acme",
-            "channel",
-            "beta",
-            "unknown",
-            1700000060,
-            null
-          ]
+          "params": ["acme", "channel", "beta", "unknown", 1700000060, null]
         },
         {
           "table": "release_health",
           "sql": "INSERT INTO release_health (product, subject_kind, subject_id, status, checked_at, details_json) VALUES (?,?,?,?,?,?) ON CONFLICT(product, subject_kind, subject_id) DO UPDATE SET status = excluded.status, checked_at = excluded.checked_at, details_json = excluded.details_json",
-          "params": [
-            "acme",
-            "channel",
-            "dev",
-            "unknown",
-            1700000060,
-            null
-          ]
+          "params": ["acme", "channel", "dev", "unknown", 1700000060, null]
         }
       ],
       "tiers": [
         {
           "table": "tiers",
           "sql": "DELETE FROM tiers WHERE product = ? AND id = ? AND source = 'manifest'",
-          "params": [
-            "acme",
-            "free"
-          ]
+          "params": ["acme", "free"]
         },
         {
           "table": "tiers",
@@ -3655,12 +3265,7 @@
         {
           "table": "dist_access",
           "sql": "INSERT INTO dist_access (product, deliverable_id, mode, entitlement, source, modified_at) VALUES (?, ?, ?, NULL, 'manifest', ?) ON CONFLICT (product, deliverable_id) DO UPDATE SET mode = excluded.mode, modified_at = excluded.modified_at WHERE dist_access.source = 'manifest' AND dist_access.mode IS NOT excluded.mode",
-          "params": [
-            "acme",
-            "app",
-            "licensed",
-            1700000060
-          ]
+          "params": ["acme", "app", "licensed", 1700000060]
         }
       ],
       "dist_keys": [
@@ -3715,9 +3320,7 @@
         {
           "table": "dist_listing",
           "sql": "DELETE FROM dist_listing WHERE product = ?",
-          "params": [
-            "acme"
-          ]
+          "params": ["acme"]
         }
       ],
       "dist_outlets": [
@@ -3756,22 +3359,14 @@
         {
           "table": "dist_outlets",
           "sql": "UPDATE dist_outlets SET removed_at = ?, modified_at = ? WHERE product = ? AND removed_at IS NULL AND outlet_id NOT IN (?, ?)",
-          "params": [
-            1700000060,
-            1700000060,
-            "acme",
-            "direct",
-            "web"
-          ]
+          "params": [1700000060, 1700000060, "acme", "direct", "web"]
         }
       ],
       "dist_transports": [
         {
           "table": "dist_transports",
           "sql": "DELETE FROM dist_transports WHERE product = ?",
-          "params": [
-            "acme"
-          ]
+          "params": ["acme"]
         },
         {
           "table": "dist_transports",
@@ -3792,22 +3387,14 @@
         {
           "table": "edge_mint_approvals",
           "sql": "DELETE FROM edge_mint_approvals WHERE product = ? AND id NOT IN (SELECT id FROM edge_mint_config WHERE product = ?)",
-          "params": [
-            "acme",
-            "acme"
-          ]
+          "params": ["acme", "acme"]
         }
       ],
       "edge_mint_config": [
         {
           "table": "edge_mint_config",
           "sql": "DELETE FROM edge_mint_config WHERE product = ? AND NOT EXISTS (SELECT 1 FROM product_settings WHERE product = ? AND key = ? AND source = 'console' AND (expires_at IS NULL OR expires_at > ?))",
-          "params": [
-            "acme",
-            "acme",
-            "config.catalog",
-            1700000060
-          ]
+          "params": ["acme", "acme", "config.catalog", 1700000060]
         },
         {
           "table": "edge_mint_config",
@@ -3833,9 +3420,7 @@
         {
           "table": "oidc_config",
           "sql": "DELETE FROM oidc_config WHERE product = ?",
-          "params": [
-            "acme"
-          ]
+          "params": ["acme"]
         },
         {
           "table": "oidc_config",
@@ -3887,21 +3472,12 @@
         {
           "table": "products",
           "sql": "UPDATE products SET admin_group = ?, presentation_json = ?, modified_at = ? WHERE slug = ?",
-          "params": [
-            "acme-admins",
-            null,
-            1700000060,
-            "acme"
-          ]
+          "params": ["acme-admins", null, 1700000060, "acme"]
         },
         {
           "table": "products",
           "sql": "UPDATE products SET compat_min = ?, compat_max = ? WHERE slug = ? AND COALESCE(compat_source, 'manifest') = 'manifest'",
-          "params": [
-            "1.1.0",
-            "9.0.0",
-            "acme"
-          ]
+          "params": ["1.1.0", "9.0.0", "acme"]
         },
         {
           "table": "products",
@@ -3917,85 +3493,43 @@
         {
           "table": "provisioning_config",
           "sql": "DELETE FROM provisioning_config WHERE product = ?",
-          "params": [
-            "acme"
-          ]
+          "params": ["acme"]
         },
         {
           "table": "provisioning_config",
           "sql": "INSERT INTO provisioning_config (product, claim, entitlement_key, entitlement_value_json, secret_key, secret_url_template, allowed_hosts_json) VALUES (?, ?, ?, ?, ?, ?, ?)",
-          "params": [
-            "acme",
-            "plan",
-            "pro",
-            "false",
-            null,
-            null,
-            null
-          ]
+          "params": ["acme", "plan", "pro", "false", null, null, null]
         }
       ],
       "release_builds": [
         {
           "table": "release_builds",
           "sql": "DELETE FROM release_builds WHERE product = ? AND release_id IN (SELECT value FROM json_each(?)) AND release_id NOT IN ( SELECT release_id FROM release_metadata WHERE product = ? AND json_extract(metadata_json, '$.descriptor.status') = 'ingested') AND release_id IN ( SELECT release_id FROM release_metadata WHERE product = ? AND deliverable_id = 'app') AND (release_id || char(0) || build_id) NOT IN (SELECT value FROM json_each(?))",
-          "params": [
-            "acme",
-            "[]",
-            "acme",
-            "acme",
-            "[]"
-          ]
+          "params": ["acme", "[]", "acme", "acme", "[]"]
         }
       ],
       "release_channel_policy": [
         {
           "table": "release_channel_policy",
           "sql": "UPDATE release_channel_policy SET includes_json = NULL, modified_at = ?, modified_by = 'manifest' WHERE product = ? AND deliverable_id = ? AND source = 'manifest' AND includes_json IS NOT NULL AND channel NOT IN (SELECT value FROM json_each(?))",
-          "params": [
-            1700000060,
-            "acme",
-            "app",
-            "[]"
-          ]
+          "params": [1700000060, "acme", "app", "[]"]
         }
       ],
       "release_channels": [
         {
           "table": "release_channels",
           "sql": "INSERT INTO release_channels (product, channel, release_id, policy_json, created_at, modified_at) VALUES (?,?,?,?,?,?) ON CONFLICT(product, channel) DO UPDATE SET release_id = excluded.release_id, policy_json = excluded.policy_json, modified_at = excluded.modified_at",
-          "params": [
-            "acme",
-            "stable",
-            null,
-            null,
-            1700000060,
-            1700000060
-          ]
+          "params": ["acme", "stable", null, null, 1700000060, 1700000060]
         },
         {
           "table": "release_channels",
           "sql": "INSERT INTO release_channels (product, channel, release_id, policy_json, created_at, modified_at) VALUES (?,?,?,?,?,?) ON CONFLICT(product, channel) DO UPDATE SET release_id = excluded.release_id, policy_json = excluded.policy_json, modified_at = excluded.modified_at",
-          "params": [
-            "acme",
-            "beta",
-            null,
-            null,
-            1700000060,
-            1700000060
-          ]
+          "params": ["acme", "beta", null, null, 1700000060, 1700000060]
         },
         {
           "table": "release_channels",
           "sql": "INSERT INTO release_channels (product, channel, release_id, policy_json, created_at, modified_at) VALUES (?,?,?,?,?,?) ON CONFLICT(product, channel) DO UPDATE SET release_id = excluded.release_id, policy_json = excluded.policy_json, modified_at = excluded.modified_at",
-          "params": [
-            "acme",
-            "dev",
-            null,
-            null,
-            1700000060,
-            1700000060
-          ]
+          "params": ["acme", "dev", null, null, 1700000060, 1700000060]
         }
       ],
       "release_config": [
@@ -4026,11 +3560,7 @@
         {
           "table": "release_config",
           "sql": "UPDATE release_config SET metadata_access = ?, artifacts_access = ? WHERE product = ? AND COALESCE(access_source, 'manifest') = 'manifest'",
-          "params": [
-            "licensed",
-            "licensed",
-            "acme"
-          ]
+          "params": ["licensed", "licensed", "acme"]
         }
       ],
       "release_deliverables": [
@@ -4053,76 +3583,41 @@
         {
           "table": "release_deliverables",
           "sql": "DELETE FROM release_deliverables WHERE product = ? AND kind = 'pack' AND def_source = 'manifest' AND deliverable_id NOT IN (SELECT value FROM json_each(?)) AND NOT EXISTS (SELECT 1 FROM release_channel_policy c WHERE c.product = release_deliverables.product AND c.deliverable_id = release_deliverables.deliverable_id) AND NOT EXISTS (SELECT 1 FROM release_pack_floors f WHERE f.product = release_deliverables.product AND f.deliverable_id = release_deliverables.deliverable_id)",
-          "params": [
-            "acme",
-            "[]"
-          ]
+          "params": ["acme", "[]"]
         },
         {
           "table": "release_deliverables",
           "sql": "DELETE FROM release_deliverables WHERE product = ? AND kind = 'package' AND def_source = 'manifest' AND deliverable_id NOT IN (SELECT value FROM json_each(?)) AND NOT EXISTS (SELECT 1 FROM release_metadata m WHERE m.product = release_deliverables.product AND m.deliverable_id = release_deliverables.deliverable_id) AND NOT EXISTS (SELECT 1 FROM release_channel_policy c WHERE c.product = release_deliverables.product AND c.deliverable_id = release_deliverables.deliverable_id)",
-          "params": [
-            "acme",
-            "[]"
-          ]
+          "params": ["acme", "[]"]
         },
         {
           "table": "release_deliverables",
           "sql": "INSERT INTO release_deliverables (product, deliverable_id, kind, pack_type, def_json, def_source, created_at, modified_at) VALUES (?, ?, 'app', NULL, NULL, 'manifest', ?, ?) ON CONFLICT(product, deliverable_id) DO NOTHING",
-          "params": [
-            "acme",
-            "app",
-            1700000060,
-            1700000060
-          ]
+          "params": ["acme", "app", 1700000060, 1700000060]
         }
       ],
       "release_health": [
         {
           "table": "release_health",
           "sql": "INSERT INTO release_health (product, subject_kind, subject_id, status, checked_at, details_json) VALUES (?,?,?,?,?,?) ON CONFLICT(product, subject_kind, subject_id) DO UPDATE SET status = excluded.status, checked_at = excluded.checked_at, details_json = excluded.details_json",
-          "params": [
-            "acme",
-            "channel",
-            "stable",
-            "unknown",
-            1700000060,
-            null
-          ]
+          "params": ["acme", "channel", "stable", "unknown", 1700000060, null]
         },
         {
           "table": "release_health",
           "sql": "INSERT INTO release_health (product, subject_kind, subject_id, status, checked_at, details_json) VALUES (?,?,?,?,?,?) ON CONFLICT(product, subject_kind, subject_id) DO UPDATE SET status = excluded.status, checked_at = excluded.checked_at, details_json = excluded.details_json",
-          "params": [
-            "acme",
-            "channel",
-            "beta",
-            "unknown",
-            1700000060,
-            null
-          ]
+          "params": ["acme", "channel", "beta", "unknown", 1700000060, null]
         },
         {
           "table": "release_health",
           "sql": "INSERT INTO release_health (product, subject_kind, subject_id, status, checked_at, details_json) VALUES (?,?,?,?,?,?) ON CONFLICT(product, subject_kind, subject_id) DO UPDATE SET status = excluded.status, checked_at = excluded.checked_at, details_json = excluded.details_json",
-          "params": [
-            "acme",
-            "channel",
-            "dev",
-            "unknown",
-            1700000060,
-            null
-          ]
+          "params": ["acme", "channel", "dev", "unknown", 1700000060, null]
         }
       ],
       "tiers": [
         {
           "table": "tiers",
           "sql": "DELETE FROM tiers WHERE product = ? AND id = ? AND source = 'manifest'",
-          "params": [
-            "acme",
-            "free"
-          ]
+          "params": ["acme", "free"]
         }
       ],
       "product_sync_state": [
@@ -4690,12 +4185,7 @@
         {
           "table": "dist_access",
           "sql": "INSERT INTO dist_access (product, deliverable_id, mode, entitlement, source, modified_at) VALUES (?, ?, ?, NULL, 'manifest', ?) ON CONFLICT (product, deliverable_id) DO UPDATE SET mode = excluded.mode, modified_at = excluded.modified_at WHERE dist_access.source = 'manifest' AND dist_access.mode IS NOT excluded.mode",
-          "params": [
-            "acme",
-            "app",
-            "public",
-            1700000060
-          ]
+          "params": ["acme", "app", "public", 1700000060]
         }
       ],
       "dist_keys": [
@@ -4727,9 +4217,7 @@
         {
           "table": "dist_listing",
           "sql": "DELETE FROM dist_listing WHERE product = ?",
-          "params": [
-            "acme"
-          ]
+          "params": ["acme"]
         }
       ],
       "dist_outlets": [
@@ -4768,22 +4256,14 @@
         {
           "table": "dist_outlets",
           "sql": "UPDATE dist_outlets SET removed_at = ?, modified_at = ? WHERE product = ? AND removed_at IS NULL AND outlet_id NOT IN (?, ?)",
-          "params": [
-            1700000060,
-            1700000060,
-            "acme",
-            "direct",
-            "web"
-          ]
+          "params": [1700000060, 1700000060, "acme", "direct", "web"]
         }
       ],
       "dist_transports": [
         {
           "table": "dist_transports",
           "sql": "DELETE FROM dist_transports WHERE product = ?",
-          "params": [
-            "acme"
-          ]
+          "params": ["acme"]
         },
         {
           "table": "dist_transports",
@@ -4804,22 +4284,14 @@
         {
           "table": "edge_mint_approvals",
           "sql": "DELETE FROM edge_mint_approvals WHERE product = ? AND id NOT IN (SELECT id FROM edge_mint_config WHERE product = ?)",
-          "params": [
-            "acme",
-            "acme"
-          ]
+          "params": ["acme", "acme"]
         }
       ],
       "edge_mint_config": [
         {
           "table": "edge_mint_config",
           "sql": "DELETE FROM edge_mint_config WHERE product = ? AND NOT EXISTS (SELECT 1 FROM product_settings WHERE product = ? AND key = ? AND source = 'console' AND (expires_at IS NULL OR expires_at > ?))",
-          "params": [
-            "acme",
-            "acme",
-            "config.catalog",
-            1700000060
-          ]
+          "params": ["acme", "acme", "config.catalog", 1700000060]
         },
         {
           "table": "edge_mint_config",
@@ -4845,9 +4317,7 @@
         {
           "table": "oidc_config",
           "sql": "DELETE FROM oidc_config WHERE product = ?",
-          "params": [
-            "acme"
-          ]
+          "params": ["acme"]
         },
         {
           "table": "oidc_config",
@@ -4925,11 +4395,7 @@
         {
           "table": "products",
           "sql": "UPDATE products SET compat_min = ?, compat_max = ? WHERE slug = ? AND COALESCE(compat_source, 'manifest') = 'manifest'",
-          "params": [
-            "1.0.0",
-            "9.0.0",
-            "acme"
-          ]
+          "params": ["1.0.0", "9.0.0", "acme"]
         },
         {
           "table": "products",
@@ -4945,95 +4411,50 @@
         {
           "table": "profiles",
           "sql": "DELETE FROM profiles WHERE product = ? AND id = ? AND source = 'manifest'",
-          "params": [
-            "acme",
-            "standard"
-          ]
+          "params": ["acme", "standard"]
         }
       ],
       "provisioning_config": [
         {
           "table": "provisioning_config",
           "sql": "DELETE FROM provisioning_config WHERE product = ?",
-          "params": [
-            "acme"
-          ]
+          "params": ["acme"]
         },
         {
           "table": "provisioning_config",
           "sql": "INSERT INTO provisioning_config (product, claim, entitlement_key, entitlement_value_json, secret_key, secret_url_template, allowed_hosts_json) VALUES (?, ?, ?, ?, ?, ?, ?)",
-          "params": [
-            "acme",
-            "plan",
-            "pro",
-            "true",
-            null,
-            null,
-            null
-          ]
+          "params": ["acme", "plan", "pro", "true", null, null, null]
         }
       ],
       "release_builds": [
         {
           "table": "release_builds",
           "sql": "DELETE FROM release_builds WHERE product = ? AND release_id IN (SELECT value FROM json_each(?)) AND release_id NOT IN ( SELECT release_id FROM release_metadata WHERE product = ? AND json_extract(metadata_json, '$.descriptor.status') = 'ingested') AND release_id IN ( SELECT release_id FROM release_metadata WHERE product = ? AND deliverable_id = 'app') AND (release_id || char(0) || build_id) NOT IN (SELECT value FROM json_each(?))",
-          "params": [
-            "acme",
-            "[]",
-            "acme",
-            "acme",
-            "[]"
-          ]
+          "params": ["acme", "[]", "acme", "acme", "[]"]
         }
       ],
       "release_channel_policy": [
         {
           "table": "release_channel_policy",
           "sql": "UPDATE release_channel_policy SET includes_json = NULL, modified_at = ?, modified_by = 'manifest' WHERE product = ? AND deliverable_id = ? AND source = 'manifest' AND includes_json IS NOT NULL AND channel NOT IN (SELECT value FROM json_each(?))",
-          "params": [
-            1700000060,
-            "acme",
-            "app",
-            "[]"
-          ]
+          "params": [1700000060, "acme", "app", "[]"]
         }
       ],
       "release_channels": [
         {
           "table": "release_channels",
           "sql": "INSERT INTO release_channels (product, channel, release_id, policy_json, created_at, modified_at) VALUES (?,?,?,?,?,?) ON CONFLICT(product, channel) DO UPDATE SET release_id = excluded.release_id, policy_json = excluded.policy_json, modified_at = excluded.modified_at",
-          "params": [
-            "acme",
-            "stable",
-            null,
-            null,
-            1700000060,
-            1700000060
-          ]
+          "params": ["acme", "stable", null, null, 1700000060, 1700000060]
         },
         {
           "table": "release_channels",
           "sql": "INSERT INTO release_channels (product, channel, release_id, policy_json, created_at, modified_at) VALUES (?,?,?,?,?,?) ON CONFLICT(product, channel) DO UPDATE SET release_id = excluded.release_id, policy_json = excluded.policy_json, modified_at = excluded.modified_at",
-          "params": [
-            "acme",
-            "beta",
-            null,
-            null,
-            1700000060,
-            1700000060
-          ]
+          "params": ["acme", "beta", null, null, 1700000060, 1700000060]
         },
         {
           "table": "release_channels",
           "sql": "INSERT INTO release_channels (product, channel, release_id, policy_json, created_at, modified_at) VALUES (?,?,?,?,?,?) ON CONFLICT(product, channel) DO UPDATE SET release_id = excluded.release_id, policy_json = excluded.policy_json, modified_at = excluded.modified_at",
-          "params": [
-            "acme",
-            "dev",
-            null,
-            null,
-            1700000060,
-            1700000060
-          ]
+          "params": ["acme", "dev", null, null, 1700000060, 1700000060]
         }
       ],
       "release_config": [
@@ -5064,11 +4485,7 @@
         {
           "table": "release_config",
           "sql": "UPDATE release_config SET metadata_access = ?, artifacts_access = ? WHERE product = ? AND COALESCE(access_source, 'manifest') = 'manifest'",
-          "params": [
-            "public",
-            "public",
-            "acme"
-          ]
+          "params": ["public", "public", "acme"]
         }
       ],
       "release_deliverables": [
@@ -5091,76 +4508,41 @@
         {
           "table": "release_deliverables",
           "sql": "DELETE FROM release_deliverables WHERE product = ? AND kind = 'pack' AND def_source = 'manifest' AND deliverable_id NOT IN (SELECT value FROM json_each(?)) AND NOT EXISTS (SELECT 1 FROM release_channel_policy c WHERE c.product = release_deliverables.product AND c.deliverable_id = release_deliverables.deliverable_id) AND NOT EXISTS (SELECT 1 FROM release_pack_floors f WHERE f.product = release_deliverables.product AND f.deliverable_id = release_deliverables.deliverable_id)",
-          "params": [
-            "acme",
-            "[]"
-          ]
+          "params": ["acme", "[]"]
         },
         {
           "table": "release_deliverables",
           "sql": "DELETE FROM release_deliverables WHERE product = ? AND kind = 'package' AND def_source = 'manifest' AND deliverable_id NOT IN (SELECT value FROM json_each(?)) AND NOT EXISTS (SELECT 1 FROM release_metadata m WHERE m.product = release_deliverables.product AND m.deliverable_id = release_deliverables.deliverable_id) AND NOT EXISTS (SELECT 1 FROM release_channel_policy c WHERE c.product = release_deliverables.product AND c.deliverable_id = release_deliverables.deliverable_id)",
-          "params": [
-            "acme",
-            "[]"
-          ]
+          "params": ["acme", "[]"]
         },
         {
           "table": "release_deliverables",
           "sql": "INSERT INTO release_deliverables (product, deliverable_id, kind, pack_type, def_json, def_source, created_at, modified_at) VALUES (?, ?, 'app', NULL, NULL, 'manifest', ?, ?) ON CONFLICT(product, deliverable_id) DO NOTHING",
-          "params": [
-            "acme",
-            "app",
-            1700000060,
-            1700000060
-          ]
+          "params": ["acme", "app", 1700000060, 1700000060]
         }
       ],
       "release_health": [
         {
           "table": "release_health",
           "sql": "INSERT INTO release_health (product, subject_kind, subject_id, status, checked_at, details_json) VALUES (?,?,?,?,?,?) ON CONFLICT(product, subject_kind, subject_id) DO UPDATE SET status = excluded.status, checked_at = excluded.checked_at, details_json = excluded.details_json",
-          "params": [
-            "acme",
-            "channel",
-            "stable",
-            "unknown",
-            1700000060,
-            null
-          ]
+          "params": ["acme", "channel", "stable", "unknown", 1700000060, null]
         },
         {
           "table": "release_health",
           "sql": "INSERT INTO release_health (product, subject_kind, subject_id, status, checked_at, details_json) VALUES (?,?,?,?,?,?) ON CONFLICT(product, subject_kind, subject_id) DO UPDATE SET status = excluded.status, checked_at = excluded.checked_at, details_json = excluded.details_json",
-          "params": [
-            "acme",
-            "channel",
-            "beta",
-            "unknown",
-            1700000060,
-            null
-          ]
+          "params": ["acme", "channel", "beta", "unknown", 1700000060, null]
         },
         {
           "table": "release_health",
           "sql": "INSERT INTO release_health (product, subject_kind, subject_id, status, checked_at, details_json) VALUES (?,?,?,?,?,?) ON CONFLICT(product, subject_kind, subject_id) DO UPDATE SET status = excluded.status, checked_at = excluded.checked_at, details_json = excluded.details_json",
-          "params": [
-            "acme",
-            "channel",
-            "dev",
-            "unknown",
-            1700000060,
-            null
-          ]
+          "params": ["acme", "channel", "dev", "unknown", 1700000060, null]
         }
       ],
       "tiers": [
         {
           "table": "tiers",
           "sql": "DELETE FROM tiers WHERE product = ? AND id = ? AND source = 'manifest'",
-          "params": [
-            "acme",
-            "free"
-          ]
+          "params": ["acme", "free"]
         },
         {
           "table": "tiers",
@@ -5601,12 +4983,7 @@
         {
           "table": "dist_access",
           "sql": "INSERT INTO dist_access (product, deliverable_id, mode, entitlement, source, modified_at) VALUES (?, ?, ?, NULL, 'manifest', ?) ON CONFLICT (product, deliverable_id) DO UPDATE SET mode = excluded.mode, modified_at = excluded.modified_at WHERE dist_access.source = 'manifest' AND dist_access.mode IS NOT excluded.mode",
-          "params": [
-            "acme",
-            "app",
-            "public",
-            1700000100
-          ]
+          "params": ["acme", "app", "public", 1700000100]
         }
       ],
       "dist_keys": [
@@ -5638,9 +5015,7 @@
         {
           "table": "dist_listing",
           "sql": "DELETE FROM dist_listing WHERE product = ?",
-          "params": [
-            "acme"
-          ]
+          "params": ["acme"]
         }
       ],
       "dist_outlets": [
@@ -5679,22 +5054,14 @@
         {
           "table": "dist_outlets",
           "sql": "UPDATE dist_outlets SET removed_at = ?, modified_at = ? WHERE product = ? AND removed_at IS NULL AND outlet_id NOT IN (?, ?)",
-          "params": [
-            1700000100,
-            1700000100,
-            "acme",
-            "direct",
-            "web"
-          ]
+          "params": [1700000100, 1700000100, "acme", "direct", "web"]
         }
       ],
       "dist_transports": [
         {
           "table": "dist_transports",
           "sql": "DELETE FROM dist_transports WHERE product = ?",
-          "params": [
-            "acme"
-          ]
+          "params": ["acme"]
         },
         {
           "table": "dist_transports",
@@ -5715,22 +5082,14 @@
         {
           "table": "edge_mint_approvals",
           "sql": "DELETE FROM edge_mint_approvals WHERE product = ? AND id NOT IN (SELECT id FROM edge_mint_config WHERE product = ?)",
-          "params": [
-            "acme",
-            "acme"
-          ]
+          "params": ["acme", "acme"]
         }
       ],
       "edge_mint_config": [
         {
           "table": "edge_mint_config",
           "sql": "DELETE FROM edge_mint_config WHERE product = ? AND NOT EXISTS (SELECT 1 FROM product_settings WHERE product = ? AND key = ? AND source = 'console' AND (expires_at IS NULL OR expires_at > ?))",
-          "params": [
-            "acme",
-            "acme",
-            "config.catalog",
-            1700000100
-          ]
+          "params": ["acme", "acme", "config.catalog", 1700000100]
         },
         {
           "table": "edge_mint_config",
@@ -5756,9 +5115,7 @@
         {
           "table": "oidc_config",
           "sql": "DELETE FROM oidc_config WHERE product = ?",
-          "params": [
-            "acme"
-          ]
+          "params": ["acme"]
         },
         {
           "table": "oidc_config",
@@ -5792,20 +5149,12 @@
         {
           "table": "product_settings",
           "sql": "DELETE FROM product_settings WHERE product = ? AND key = ? AND source = 'console' AND expires_at IS NOT NULL AND version = ?",
-          "params": [
-            "acme",
-            "core.web.origins",
-            1
-          ]
+          "params": ["acme", "core.web.origins", 1]
         },
         {
           "table": "product_settings",
           "sql": "DELETE FROM product_settings WHERE product = ? AND key = ? AND source = 'console' AND expires_at IS NOT NULL AND version = ?",
-          "params": [
-            "acme",
-            "license.defaults.deviceLimit",
-            1
-          ]
+          "params": ["acme", "license.defaults.deviceLimit", 1]
         },
         {
           "table": "product_settings",
@@ -5850,11 +5199,7 @@
         {
           "table": "products",
           "sql": "UPDATE products SET compat_min = ?, compat_max = ? WHERE slug = ? AND COALESCE(compat_source, 'manifest') = 'manifest'",
-          "params": [
-            "1.0.0",
-            "9.0.0",
-            "acme"
-          ]
+          "params": ["1.0.0", "9.0.0", "acme"]
         },
         {
           "table": "products",
@@ -5884,85 +5229,43 @@
         {
           "table": "provisioning_config",
           "sql": "DELETE FROM provisioning_config WHERE product = ?",
-          "params": [
-            "acme"
-          ]
+          "params": ["acme"]
         },
         {
           "table": "provisioning_config",
           "sql": "INSERT INTO provisioning_config (product, claim, entitlement_key, entitlement_value_json, secret_key, secret_url_template, allowed_hosts_json) VALUES (?, ?, ?, ?, ?, ?, ?)",
-          "params": [
-            "acme",
-            "plan",
-            "pro",
-            "true",
-            null,
-            null,
-            null
-          ]
+          "params": ["acme", "plan", "pro", "true", null, null, null]
         }
       ],
       "release_builds": [
         {
           "table": "release_builds",
           "sql": "DELETE FROM release_builds WHERE product = ? AND release_id IN (SELECT value FROM json_each(?)) AND release_id NOT IN ( SELECT release_id FROM release_metadata WHERE product = ? AND json_extract(metadata_json, '$.descriptor.status') = 'ingested') AND release_id IN ( SELECT release_id FROM release_metadata WHERE product = ? AND deliverable_id = 'app') AND (release_id || char(0) || build_id) NOT IN (SELECT value FROM json_each(?))",
-          "params": [
-            "acme",
-            "[]",
-            "acme",
-            "acme",
-            "[]"
-          ]
+          "params": ["acme", "[]", "acme", "acme", "[]"]
         }
       ],
       "release_channel_policy": [
         {
           "table": "release_channel_policy",
           "sql": "UPDATE release_channel_policy SET includes_json = NULL, modified_at = ?, modified_by = 'manifest' WHERE product = ? AND deliverable_id = ? AND source = 'manifest' AND includes_json IS NOT NULL AND channel NOT IN (SELECT value FROM json_each(?))",
-          "params": [
-            1700000100,
-            "acme",
-            "app",
-            "[]"
-          ]
+          "params": [1700000100, "acme", "app", "[]"]
         }
       ],
       "release_channels": [
         {
           "table": "release_channels",
           "sql": "INSERT INTO release_channels (product, channel, release_id, policy_json, created_at, modified_at) VALUES (?,?,?,?,?,?) ON CONFLICT(product, channel) DO UPDATE SET release_id = excluded.release_id, policy_json = excluded.policy_json, modified_at = excluded.modified_at",
-          "params": [
-            "acme",
-            "stable",
-            null,
-            null,
-            1700000100,
-            1700000100
-          ]
+          "params": ["acme", "stable", null, null, 1700000100, 1700000100]
         },
         {
           "table": "release_channels",
           "sql": "INSERT INTO release_channels (product, channel, release_id, policy_json, created_at, modified_at) VALUES (?,?,?,?,?,?) ON CONFLICT(product, channel) DO UPDATE SET release_id = excluded.release_id, policy_json = excluded.policy_json, modified_at = excluded.modified_at",
-          "params": [
-            "acme",
-            "beta",
-            null,
-            null,
-            1700000100,
-            1700000100
-          ]
+          "params": ["acme", "beta", null, null, 1700000100, 1700000100]
         },
         {
           "table": "release_channels",
           "sql": "INSERT INTO release_channels (product, channel, release_id, policy_json, created_at, modified_at) VALUES (?,?,?,?,?,?) ON CONFLICT(product, channel) DO UPDATE SET release_id = excluded.release_id, policy_json = excluded.policy_json, modified_at = excluded.modified_at",
-          "params": [
-            "acme",
-            "dev",
-            null,
-            null,
-            1700000100,
-            1700000100
-          ]
+          "params": ["acme", "dev", null, null, 1700000100, 1700000100]
         }
       ],
       "release_config": [
@@ -5993,11 +5296,7 @@
         {
           "table": "release_config",
           "sql": "UPDATE release_config SET metadata_access = ?, artifacts_access = ? WHERE product = ? AND COALESCE(access_source, 'manifest') = 'manifest'",
-          "params": [
-            "public",
-            "public",
-            "acme"
-          ]
+          "params": ["public", "public", "acme"]
         }
       ],
       "release_deliverables": [
@@ -6020,66 +5319,34 @@
         {
           "table": "release_deliverables",
           "sql": "DELETE FROM release_deliverables WHERE product = ? AND kind = 'pack' AND def_source = 'manifest' AND deliverable_id NOT IN (SELECT value FROM json_each(?)) AND NOT EXISTS (SELECT 1 FROM release_channel_policy c WHERE c.product = release_deliverables.product AND c.deliverable_id = release_deliverables.deliverable_id) AND NOT EXISTS (SELECT 1 FROM release_pack_floors f WHERE f.product = release_deliverables.product AND f.deliverable_id = release_deliverables.deliverable_id)",
-          "params": [
-            "acme",
-            "[]"
-          ]
+          "params": ["acme", "[]"]
         },
         {
           "table": "release_deliverables",
           "sql": "DELETE FROM release_deliverables WHERE product = ? AND kind = 'package' AND def_source = 'manifest' AND deliverable_id NOT IN (SELECT value FROM json_each(?)) AND NOT EXISTS (SELECT 1 FROM release_metadata m WHERE m.product = release_deliverables.product AND m.deliverable_id = release_deliverables.deliverable_id) AND NOT EXISTS (SELECT 1 FROM release_channel_policy c WHERE c.product = release_deliverables.product AND c.deliverable_id = release_deliverables.deliverable_id)",
-          "params": [
-            "acme",
-            "[]"
-          ]
+          "params": ["acme", "[]"]
         },
         {
           "table": "release_deliverables",
           "sql": "INSERT INTO release_deliverables (product, deliverable_id, kind, pack_type, def_json, def_source, created_at, modified_at) VALUES (?, ?, 'app', NULL, NULL, 'manifest', ?, ?) ON CONFLICT(product, deliverable_id) DO NOTHING",
-          "params": [
-            "acme",
-            "app",
-            1700000100,
-            1700000100
-          ]
+          "params": ["acme", "app", 1700000100, 1700000100]
         }
       ],
       "release_health": [
         {
           "table": "release_health",
           "sql": "INSERT INTO release_health (product, subject_kind, subject_id, status, checked_at, details_json) VALUES (?,?,?,?,?,?) ON CONFLICT(product, subject_kind, subject_id) DO UPDATE SET status = excluded.status, checked_at = excluded.checked_at, details_json = excluded.details_json",
-          "params": [
-            "acme",
-            "channel",
-            "stable",
-            "unknown",
-            1700000100,
-            null
-          ]
+          "params": ["acme", "channel", "stable", "unknown", 1700000100, null]
         },
         {
           "table": "release_health",
           "sql": "INSERT INTO release_health (product, subject_kind, subject_id, status, checked_at, details_json) VALUES (?,?,?,?,?,?) ON CONFLICT(product, subject_kind, subject_id) DO UPDATE SET status = excluded.status, checked_at = excluded.checked_at, details_json = excluded.details_json",
-          "params": [
-            "acme",
-            "channel",
-            "beta",
-            "unknown",
-            1700000100,
-            null
-          ]
+          "params": ["acme", "channel", "beta", "unknown", 1700000100, null]
         },
         {
           "table": "release_health",
           "sql": "INSERT INTO release_health (product, subject_kind, subject_id, status, checked_at, details_json) VALUES (?,?,?,?,?,?) ON CONFLICT(product, subject_kind, subject_id) DO UPDATE SET status = excluded.status, checked_at = excluded.checked_at, details_json = excluded.details_json",
-          "params": [
-            "acme",
-            "channel",
-            "dev",
-            "unknown",
-            1700000100,
-            null
-          ]
+          "params": ["acme", "channel", "dev", "unknown", 1700000100, null]
         }
       ],
       "tiers": [
@@ -6538,9 +5805,7 @@
         "identity",
         "releases"
       ],
-      "claimed": [
-        "core.name"
-      ],
+      "claimed": ["core.name"],
       "breakGlass": [
         {
           "key": "core.name",
@@ -6594,12 +5859,7 @@
         {
           "table": "dist_access",
           "sql": "INSERT INTO dist_access (product, deliverable_id, mode, entitlement, source, modified_at) VALUES (?, ?, ?, NULL, 'manifest', ?) ON CONFLICT (product, deliverable_id) DO UPDATE SET mode = excluded.mode, modified_at = excluded.modified_at WHERE dist_access.source = 'manifest' AND dist_access.mode IS NOT excluded.mode",
-          "params": [
-            "acme",
-            "app",
-            "public",
-            1700000060
-          ]
+          "params": ["acme", "app", "public", 1700000060]
         }
       ],
       "dist_keys": [
@@ -6631,9 +5891,7 @@
         {
           "table": "dist_listing",
           "sql": "DELETE FROM dist_listing WHERE product = ?",
-          "params": [
-            "acme"
-          ]
+          "params": ["acme"]
         }
       ],
       "dist_outlets": [
@@ -6672,22 +5930,14 @@
         {
           "table": "dist_outlets",
           "sql": "UPDATE dist_outlets SET removed_at = ?, modified_at = ? WHERE product = ? AND removed_at IS NULL AND outlet_id NOT IN (?, ?)",
-          "params": [
-            1700000060,
-            1700000060,
-            "acme",
-            "direct",
-            "web"
-          ]
+          "params": [1700000060, 1700000060, "acme", "direct", "web"]
         }
       ],
       "dist_transports": [
         {
           "table": "dist_transports",
           "sql": "DELETE FROM dist_transports WHERE product = ?",
-          "params": [
-            "acme"
-          ]
+          "params": ["acme"]
         },
         {
           "table": "dist_transports",
@@ -6708,22 +5958,14 @@
         {
           "table": "edge_mint_approvals",
           "sql": "DELETE FROM edge_mint_approvals WHERE product = ? AND id NOT IN (SELECT id FROM edge_mint_config WHERE product = ?)",
-          "params": [
-            "acme",
-            "acme"
-          ]
+          "params": ["acme", "acme"]
         }
       ],
       "edge_mint_config": [
         {
           "table": "edge_mint_config",
           "sql": "DELETE FROM edge_mint_config WHERE product = ? AND NOT EXISTS (SELECT 1 FROM product_settings WHERE product = ? AND key = ? AND source = 'console' AND (expires_at IS NULL OR expires_at > ?))",
-          "params": [
-            "acme",
-            "acme",
-            "config.catalog",
-            1700000060
-          ]
+          "params": ["acme", "acme", "config.catalog", 1700000060]
         },
         {
           "table": "edge_mint_config",
@@ -6749,9 +5991,7 @@
         {
           "table": "oidc_config",
           "sql": "DELETE FROM oidc_config WHERE product = ?",
-          "params": [
-            "acme"
-          ]
+          "params": ["acme"]
         },
         {
           "table": "oidc_config",
@@ -6829,11 +6069,7 @@
         {
           "table": "products",
           "sql": "UPDATE products SET compat_min = ?, compat_max = ? WHERE slug = ? AND COALESCE(compat_source, 'manifest') = 'manifest'",
-          "params": [
-            "1.0.0",
-            "9.0.0",
-            "acme"
-          ]
+          "params": ["1.0.0", "9.0.0", "acme"]
         },
         {
           "table": "products",
@@ -6863,85 +6099,43 @@
         {
           "table": "provisioning_config",
           "sql": "DELETE FROM provisioning_config WHERE product = ?",
-          "params": [
-            "acme"
-          ]
+          "params": ["acme"]
         },
         {
           "table": "provisioning_config",
           "sql": "INSERT INTO provisioning_config (product, claim, entitlement_key, entitlement_value_json, secret_key, secret_url_template, allowed_hosts_json) VALUES (?, ?, ?, ?, ?, ?, ?)",
-          "params": [
-            "acme",
-            "plan",
-            "pro",
-            "true",
-            null,
-            null,
-            null
-          ]
+          "params": ["acme", "plan", "pro", "true", null, null, null]
         }
       ],
       "release_builds": [
         {
           "table": "release_builds",
           "sql": "DELETE FROM release_builds WHERE product = ? AND release_id IN (SELECT value FROM json_each(?)) AND release_id NOT IN ( SELECT release_id FROM release_metadata WHERE product = ? AND json_extract(metadata_json, '$.descriptor.status') = 'ingested') AND release_id IN ( SELECT release_id FROM release_metadata WHERE product = ? AND deliverable_id = 'app') AND (release_id || char(0) || build_id) NOT IN (SELECT value FROM json_each(?))",
-          "params": [
-            "acme",
-            "[]",
-            "acme",
-            "acme",
-            "[]"
-          ]
+          "params": ["acme", "[]", "acme", "acme", "[]"]
         }
       ],
       "release_channel_policy": [
         {
           "table": "release_channel_policy",
           "sql": "UPDATE release_channel_policy SET includes_json = NULL, modified_at = ?, modified_by = 'manifest' WHERE product = ? AND deliverable_id = ? AND source = 'manifest' AND includes_json IS NOT NULL AND channel NOT IN (SELECT value FROM json_each(?))",
-          "params": [
-            1700000060,
-            "acme",
-            "app",
-            "[]"
-          ]
+          "params": [1700000060, "acme", "app", "[]"]
         }
       ],
       "release_channels": [
         {
           "table": "release_channels",
           "sql": "INSERT INTO release_channels (product, channel, release_id, policy_json, created_at, modified_at) VALUES (?,?,?,?,?,?) ON CONFLICT(product, channel) DO UPDATE SET release_id = excluded.release_id, policy_json = excluded.policy_json, modified_at = excluded.modified_at",
-          "params": [
-            "acme",
-            "stable",
-            null,
-            null,
-            1700000060,
-            1700000060
-          ]
+          "params": ["acme", "stable", null, null, 1700000060, 1700000060]
         },
         {
           "table": "release_channels",
           "sql": "INSERT INTO release_channels (product, channel, release_id, policy_json, created_at, modified_at) VALUES (?,?,?,?,?,?) ON CONFLICT(product, channel) DO UPDATE SET release_id = excluded.release_id, policy_json = excluded.policy_json, modified_at = excluded.modified_at",
-          "params": [
-            "acme",
-            "beta",
-            null,
-            null,
-            1700000060,
-            1700000060
-          ]
+          "params": ["acme", "beta", null, null, 1700000060, 1700000060]
         },
         {
           "table": "release_channels",
           "sql": "INSERT INTO release_channels (product, channel, release_id, policy_json, created_at, modified_at) VALUES (?,?,?,?,?,?) ON CONFLICT(product, channel) DO UPDATE SET release_id = excluded.release_id, policy_json = excluded.policy_json, modified_at = excluded.modified_at",
-          "params": [
-            "acme",
-            "dev",
-            null,
-            null,
-            1700000060,
-            1700000060
-          ]
+          "params": ["acme", "dev", null, null, 1700000060, 1700000060]
         }
       ],
       "release_config": [
@@ -6972,11 +6166,7 @@
         {
           "table": "release_config",
           "sql": "UPDATE release_config SET metadata_access = ?, artifacts_access = ? WHERE product = ? AND COALESCE(access_source, 'manifest') = 'manifest'",
-          "params": [
-            "public",
-            "public",
-            "acme"
-          ]
+          "params": ["public", "public", "acme"]
         }
       ],
       "release_deliverables": [
@@ -6999,76 +6189,41 @@
         {
           "table": "release_deliverables",
           "sql": "DELETE FROM release_deliverables WHERE product = ? AND kind = 'pack' AND def_source = 'manifest' AND deliverable_id NOT IN (SELECT value FROM json_each(?)) AND NOT EXISTS (SELECT 1 FROM release_channel_policy c WHERE c.product = release_deliverables.product AND c.deliverable_id = release_deliverables.deliverable_id) AND NOT EXISTS (SELECT 1 FROM release_pack_floors f WHERE f.product = release_deliverables.product AND f.deliverable_id = release_deliverables.deliverable_id)",
-          "params": [
-            "acme",
-            "[]"
-          ]
+          "params": ["acme", "[]"]
         },
         {
           "table": "release_deliverables",
           "sql": "DELETE FROM release_deliverables WHERE product = ? AND kind = 'package' AND def_source = 'manifest' AND deliverable_id NOT IN (SELECT value FROM json_each(?)) AND NOT EXISTS (SELECT 1 FROM release_metadata m WHERE m.product = release_deliverables.product AND m.deliverable_id = release_deliverables.deliverable_id) AND NOT EXISTS (SELECT 1 FROM release_channel_policy c WHERE c.product = release_deliverables.product AND c.deliverable_id = release_deliverables.deliverable_id)",
-          "params": [
-            "acme",
-            "[]"
-          ]
+          "params": ["acme", "[]"]
         },
         {
           "table": "release_deliverables",
           "sql": "INSERT INTO release_deliverables (product, deliverable_id, kind, pack_type, def_json, def_source, created_at, modified_at) VALUES (?, ?, 'app', NULL, NULL, 'manifest', ?, ?) ON CONFLICT(product, deliverable_id) DO NOTHING",
-          "params": [
-            "acme",
-            "app",
-            1700000060,
-            1700000060
-          ]
+          "params": ["acme", "app", 1700000060, 1700000060]
         }
       ],
       "release_health": [
         {
           "table": "release_health",
           "sql": "INSERT INTO release_health (product, subject_kind, subject_id, status, checked_at, details_json) VALUES (?,?,?,?,?,?) ON CONFLICT(product, subject_kind, subject_id) DO UPDATE SET status = excluded.status, checked_at = excluded.checked_at, details_json = excluded.details_json",
-          "params": [
-            "acme",
-            "channel",
-            "stable",
-            "unknown",
-            1700000060,
-            null
-          ]
+          "params": ["acme", "channel", "stable", "unknown", 1700000060, null]
         },
         {
           "table": "release_health",
           "sql": "INSERT INTO release_health (product, subject_kind, subject_id, status, checked_at, details_json) VALUES (?,?,?,?,?,?) ON CONFLICT(product, subject_kind, subject_id) DO UPDATE SET status = excluded.status, checked_at = excluded.checked_at, details_json = excluded.details_json",
-          "params": [
-            "acme",
-            "channel",
-            "beta",
-            "unknown",
-            1700000060,
-            null
-          ]
+          "params": ["acme", "channel", "beta", "unknown", 1700000060, null]
         },
         {
           "table": "release_health",
           "sql": "INSERT INTO release_health (product, subject_kind, subject_id, status, checked_at, details_json) VALUES (?,?,?,?,?,?) ON CONFLICT(product, subject_kind, subject_id) DO UPDATE SET status = excluded.status, checked_at = excluded.checked_at, details_json = excluded.details_json",
-          "params": [
-            "acme",
-            "channel",
-            "dev",
-            "unknown",
-            1700000060,
-            null
-          ]
+          "params": ["acme", "channel", "dev", "unknown", 1700000060, null]
         }
       ],
       "tiers": [
         {
           "table": "tiers",
           "sql": "DELETE FROM tiers WHERE product = ? AND id = ? AND source = 'manifest'",
-          "params": [
-            "acme",
-            "free"
-          ]
+          "params": ["acme", "free"]
         },
         {
           "table": "tiers",
@@ -7511,12 +6666,7 @@
         {
           "table": "dist_access",
           "sql": "INSERT INTO dist_access (product, deliverable_id, mode, entitlement, source, modified_at) VALUES (?, ?, ?, NULL, 'manifest', ?) ON CONFLICT (product, deliverable_id) DO UPDATE SET mode = excluded.mode, modified_at = excluded.modified_at WHERE dist_access.source = 'manifest' AND dist_access.mode IS NOT excluded.mode",
-          "params": [
-            "acme",
-            "app",
-            "public",
-            1700000060
-          ]
+          "params": ["acme", "app", "public", 1700000060]
         }
       ],
       "dist_keys": [
@@ -7548,9 +6698,7 @@
         {
           "table": "dist_listing",
           "sql": "DELETE FROM dist_listing WHERE product = ?",
-          "params": [
-            "acme"
-          ]
+          "params": ["acme"]
         }
       ],
       "dist_outlets": [
@@ -7589,22 +6737,14 @@
         {
           "table": "dist_outlets",
           "sql": "UPDATE dist_outlets SET removed_at = ?, modified_at = ? WHERE product = ? AND removed_at IS NULL AND outlet_id NOT IN (?, ?)",
-          "params": [
-            1700000060,
-            1700000060,
-            "acme",
-            "direct",
-            "web"
-          ]
+          "params": [1700000060, 1700000060, "acme", "direct", "web"]
         }
       ],
       "dist_transports": [
         {
           "table": "dist_transports",
           "sql": "DELETE FROM dist_transports WHERE product = ?",
-          "params": [
-            "acme"
-          ]
+          "params": ["acme"]
         },
         {
           "table": "dist_transports",
@@ -7625,22 +6765,14 @@
         {
           "table": "edge_mint_approvals",
           "sql": "DELETE FROM edge_mint_approvals WHERE product = ? AND id NOT IN (SELECT id FROM edge_mint_config WHERE product = ?)",
-          "params": [
-            "acme",
-            "acme"
-          ]
+          "params": ["acme", "acme"]
         }
       ],
       "edge_mint_config": [
         {
           "table": "edge_mint_config",
           "sql": "DELETE FROM edge_mint_config WHERE product = ? AND NOT EXISTS (SELECT 1 FROM product_settings WHERE product = ? AND key = ? AND source = 'console' AND (expires_at IS NULL OR expires_at > ?))",
-          "params": [
-            "acme",
-            "acme",
-            "config.catalog",
-            1700000060
-          ]
+          "params": ["acme", "acme", "config.catalog", 1700000060]
         },
         {
           "table": "edge_mint_config",
@@ -7666,9 +6798,7 @@
         {
           "table": "oidc_config",
           "sql": "DELETE FROM oidc_config WHERE product = ?",
-          "params": [
-            "acme"
-          ]
+          "params": ["acme"]
         },
         {
           "table": "oidc_config",
@@ -7746,11 +6876,7 @@
         {
           "table": "products",
           "sql": "UPDATE products SET compat_min = ?, compat_max = ? WHERE slug = ? AND COALESCE(compat_source, 'manifest') = 'manifest'",
-          "params": [
-            "1.0.0",
-            "9.0.0",
-            "acme"
-          ]
+          "params": ["1.0.0", "9.0.0", "acme"]
         },
         {
           "table": "products",
@@ -7780,85 +6906,43 @@
         {
           "table": "provisioning_config",
           "sql": "DELETE FROM provisioning_config WHERE product = ?",
-          "params": [
-            "acme"
-          ]
+          "params": ["acme"]
         },
         {
           "table": "provisioning_config",
           "sql": "INSERT INTO provisioning_config (product, claim, entitlement_key, entitlement_value_json, secret_key, secret_url_template, allowed_hosts_json) VALUES (?, ?, ?, ?, ?, ?, ?)",
-          "params": [
-            "acme",
-            "plan",
-            "pro",
-            "true",
-            null,
-            null,
-            null
-          ]
+          "params": ["acme", "plan", "pro", "true", null, null, null]
         }
       ],
       "release_builds": [
         {
           "table": "release_builds",
           "sql": "DELETE FROM release_builds WHERE product = ? AND release_id IN (SELECT value FROM json_each(?)) AND release_id NOT IN ( SELECT release_id FROM release_metadata WHERE product = ? AND json_extract(metadata_json, '$.descriptor.status') = 'ingested') AND release_id IN ( SELECT release_id FROM release_metadata WHERE product = ? AND deliverable_id = 'app') AND (release_id || char(0) || build_id) NOT IN (SELECT value FROM json_each(?))",
-          "params": [
-            "acme",
-            "[]",
-            "acme",
-            "acme",
-            "[]"
-          ]
+          "params": ["acme", "[]", "acme", "acme", "[]"]
         }
       ],
       "release_channel_policy": [
         {
           "table": "release_channel_policy",
           "sql": "UPDATE release_channel_policy SET includes_json = NULL, modified_at = ?, modified_by = 'manifest' WHERE product = ? AND deliverable_id = ? AND source = 'manifest' AND includes_json IS NOT NULL AND channel NOT IN (SELECT value FROM json_each(?))",
-          "params": [
-            1700000060,
-            "acme",
-            "app",
-            "[]"
-          ]
+          "params": [1700000060, "acme", "app", "[]"]
         }
       ],
       "release_channels": [
         {
           "table": "release_channels",
           "sql": "INSERT INTO release_channels (product, channel, release_id, policy_json, created_at, modified_at) VALUES (?,?,?,?,?,?) ON CONFLICT(product, channel) DO UPDATE SET release_id = excluded.release_id, policy_json = excluded.policy_json, modified_at = excluded.modified_at",
-          "params": [
-            "acme",
-            "stable",
-            null,
-            null,
-            1700000060,
-            1700000060
-          ]
+          "params": ["acme", "stable", null, null, 1700000060, 1700000060]
         },
         {
           "table": "release_channels",
           "sql": "INSERT INTO release_channels (product, channel, release_id, policy_json, created_at, modified_at) VALUES (?,?,?,?,?,?) ON CONFLICT(product, channel) DO UPDATE SET release_id = excluded.release_id, policy_json = excluded.policy_json, modified_at = excluded.modified_at",
-          "params": [
-            "acme",
-            "beta",
-            null,
-            null,
-            1700000060,
-            1700000060
-          ]
+          "params": ["acme", "beta", null, null, 1700000060, 1700000060]
         },
         {
           "table": "release_channels",
           "sql": "INSERT INTO release_channels (product, channel, release_id, policy_json, created_at, modified_at) VALUES (?,?,?,?,?,?) ON CONFLICT(product, channel) DO UPDATE SET release_id = excluded.release_id, policy_json = excluded.policy_json, modified_at = excluded.modified_at",
-          "params": [
-            "acme",
-            "dev",
-            null,
-            null,
-            1700000060,
-            1700000060
-          ]
+          "params": ["acme", "dev", null, null, 1700000060, 1700000060]
         }
       ],
       "release_config": [
@@ -7889,11 +6973,7 @@
         {
           "table": "release_config",
           "sql": "UPDATE release_config SET metadata_access = ?, artifacts_access = ? WHERE product = ? AND COALESCE(access_source, 'manifest') = 'manifest'",
-          "params": [
-            "public",
-            "public",
-            "acme"
-          ]
+          "params": ["public", "public", "acme"]
         }
       ],
       "release_deliverables": [
@@ -7916,76 +6996,41 @@
         {
           "table": "release_deliverables",
           "sql": "DELETE FROM release_deliverables WHERE product = ? AND kind = 'pack' AND def_source = 'manifest' AND deliverable_id NOT IN (SELECT value FROM json_each(?)) AND NOT EXISTS (SELECT 1 FROM release_channel_policy c WHERE c.product = release_deliverables.product AND c.deliverable_id = release_deliverables.deliverable_id) AND NOT EXISTS (SELECT 1 FROM release_pack_floors f WHERE f.product = release_deliverables.product AND f.deliverable_id = release_deliverables.deliverable_id)",
-          "params": [
-            "acme",
-            "[]"
-          ]
+          "params": ["acme", "[]"]
         },
         {
           "table": "release_deliverables",
           "sql": "DELETE FROM release_deliverables WHERE product = ? AND kind = 'package' AND def_source = 'manifest' AND deliverable_id NOT IN (SELECT value FROM json_each(?)) AND NOT EXISTS (SELECT 1 FROM release_metadata m WHERE m.product = release_deliverables.product AND m.deliverable_id = release_deliverables.deliverable_id) AND NOT EXISTS (SELECT 1 FROM release_channel_policy c WHERE c.product = release_deliverables.product AND c.deliverable_id = release_deliverables.deliverable_id)",
-          "params": [
-            "acme",
-            "[]"
-          ]
+          "params": ["acme", "[]"]
         },
         {
           "table": "release_deliverables",
           "sql": "INSERT INTO release_deliverables (product, deliverable_id, kind, pack_type, def_json, def_source, created_at, modified_at) VALUES (?, ?, 'app', NULL, NULL, 'manifest', ?, ?) ON CONFLICT(product, deliverable_id) DO NOTHING",
-          "params": [
-            "acme",
-            "app",
-            1700000060,
-            1700000060
-          ]
+          "params": ["acme", "app", 1700000060, 1700000060]
         }
       ],
       "release_health": [
         {
           "table": "release_health",
           "sql": "INSERT INTO release_health (product, subject_kind, subject_id, status, checked_at, details_json) VALUES (?,?,?,?,?,?) ON CONFLICT(product, subject_kind, subject_id) DO UPDATE SET status = excluded.status, checked_at = excluded.checked_at, details_json = excluded.details_json",
-          "params": [
-            "acme",
-            "channel",
-            "stable",
-            "unknown",
-            1700000060,
-            null
-          ]
+          "params": ["acme", "channel", "stable", "unknown", 1700000060, null]
         },
         {
           "table": "release_health",
           "sql": "INSERT INTO release_health (product, subject_kind, subject_id, status, checked_at, details_json) VALUES (?,?,?,?,?,?) ON CONFLICT(product, subject_kind, subject_id) DO UPDATE SET status = excluded.status, checked_at = excluded.checked_at, details_json = excluded.details_json",
-          "params": [
-            "acme",
-            "channel",
-            "beta",
-            "unknown",
-            1700000060,
-            null
-          ]
+          "params": ["acme", "channel", "beta", "unknown", 1700000060, null]
         },
         {
           "table": "release_health",
           "sql": "INSERT INTO release_health (product, subject_kind, subject_id, status, checked_at, details_json) VALUES (?,?,?,?,?,?) ON CONFLICT(product, subject_kind, subject_id) DO UPDATE SET status = excluded.status, checked_at = excluded.checked_at, details_json = excluded.details_json",
-          "params": [
-            "acme",
-            "channel",
-            "dev",
-            "unknown",
-            1700000060,
-            null
-          ]
+          "params": ["acme", "channel", "dev", "unknown", 1700000060, null]
         }
       ],
       "tiers": [
         {
           "table": "tiers",
           "sql": "DELETE FROM tiers WHERE product = ? AND id = ? AND source = 'manifest'",
-          "params": [
-            "acme",
-            "free"
-          ]
+          "params": ["acme", "free"]
         },
         {
           "table": "tiers",
@@ -8428,12 +7473,7 @@
         {
           "table": "dist_access",
           "sql": "INSERT INTO dist_access (product, deliverable_id, mode, entitlement, source, modified_at) VALUES (?, ?, ?, NULL, 'manifest', ?) ON CONFLICT (product, deliverable_id) DO UPDATE SET mode = excluded.mode, modified_at = excluded.modified_at WHERE dist_access.source = 'manifest' AND dist_access.mode IS NOT excluded.mode",
-          "params": [
-            "acme",
-            "app",
-            "public",
-            1700000060
-          ]
+          "params": ["acme", "app", "public", 1700000060]
         }
       ],
       "dist_keys": [
@@ -8465,9 +7505,7 @@
         {
           "table": "dist_listing",
           "sql": "DELETE FROM dist_listing WHERE product = ?",
-          "params": [
-            "acme"
-          ]
+          "params": ["acme"]
         }
       ],
       "dist_outlets": [
@@ -8506,22 +7544,14 @@
         {
           "table": "dist_outlets",
           "sql": "UPDATE dist_outlets SET removed_at = ?, modified_at = ? WHERE product = ? AND removed_at IS NULL AND outlet_id NOT IN (?, ?)",
-          "params": [
-            1700000060,
-            1700000060,
-            "acme",
-            "direct",
-            "web"
-          ]
+          "params": [1700000060, 1700000060, "acme", "direct", "web"]
         }
       ],
       "dist_transports": [
         {
           "table": "dist_transports",
           "sql": "DELETE FROM dist_transports WHERE product = ?",
-          "params": [
-            "acme"
-          ]
+          "params": ["acme"]
         },
         {
           "table": "dist_transports",
@@ -8542,22 +7572,14 @@
         {
           "table": "edge_mint_approvals",
           "sql": "DELETE FROM edge_mint_approvals WHERE product = ? AND id NOT IN (SELECT id FROM edge_mint_config WHERE product = ?)",
-          "params": [
-            "acme",
-            "acme"
-          ]
+          "params": ["acme", "acme"]
         }
       ],
       "edge_mint_config": [
         {
           "table": "edge_mint_config",
           "sql": "DELETE FROM edge_mint_config WHERE product = ? AND NOT EXISTS (SELECT 1 FROM product_settings WHERE product = ? AND key = ? AND source = 'console' AND (expires_at IS NULL OR expires_at > ?))",
-          "params": [
-            "acme",
-            "acme",
-            "config.catalog",
-            1700000060
-          ]
+          "params": ["acme", "acme", "config.catalog", 1700000060]
         },
         {
           "table": "edge_mint_config",
@@ -8583,9 +7605,7 @@
         {
           "table": "oidc_config",
           "sql": "DELETE FROM oidc_config WHERE product = ?",
-          "params": [
-            "acme"
-          ]
+          "params": ["acme"]
         },
         {
           "table": "oidc_config",
@@ -8674,11 +7694,7 @@
         {
           "table": "products",
           "sql": "UPDATE products SET compat_min = ?, compat_max = ? WHERE slug = ? AND COALESCE(compat_source, 'manifest') = 'manifest'",
-          "params": [
-            "1.0.0",
-            "9.0.0",
-            "acme"
-          ]
+          "params": ["1.0.0", "9.0.0", "acme"]
         },
         {
           "table": "products",
@@ -8708,85 +7724,43 @@
         {
           "table": "provisioning_config",
           "sql": "DELETE FROM provisioning_config WHERE product = ?",
-          "params": [
-            "acme"
-          ]
+          "params": ["acme"]
         },
         {
           "table": "provisioning_config",
           "sql": "INSERT INTO provisioning_config (product, claim, entitlement_key, entitlement_value_json, secret_key, secret_url_template, allowed_hosts_json) VALUES (?, ?, ?, ?, ?, ?, ?)",
-          "params": [
-            "acme",
-            "plan",
-            "pro",
-            "true",
-            null,
-            null,
-            null
-          ]
+          "params": ["acme", "plan", "pro", "true", null, null, null]
         }
       ],
       "release_builds": [
         {
           "table": "release_builds",
           "sql": "DELETE FROM release_builds WHERE product = ? AND release_id IN (SELECT value FROM json_each(?)) AND release_id NOT IN ( SELECT release_id FROM release_metadata WHERE product = ? AND json_extract(metadata_json, '$.descriptor.status') = 'ingested') AND release_id IN ( SELECT release_id FROM release_metadata WHERE product = ? AND deliverable_id = 'app') AND (release_id || char(0) || build_id) NOT IN (SELECT value FROM json_each(?))",
-          "params": [
-            "acme",
-            "[]",
-            "acme",
-            "acme",
-            "[]"
-          ]
+          "params": ["acme", "[]", "acme", "acme", "[]"]
         }
       ],
       "release_channel_policy": [
         {
           "table": "release_channel_policy",
           "sql": "UPDATE release_channel_policy SET includes_json = NULL, modified_at = ?, modified_by = 'manifest' WHERE product = ? AND deliverable_id = ? AND source = 'manifest' AND includes_json IS NOT NULL AND channel NOT IN (SELECT value FROM json_each(?))",
-          "params": [
-            1700000060,
-            "acme",
-            "app",
-            "[]"
-          ]
+          "params": [1700000060, "acme", "app", "[]"]
         }
       ],
       "release_channels": [
         {
           "table": "release_channels",
           "sql": "INSERT INTO release_channels (product, channel, release_id, policy_json, created_at, modified_at) VALUES (?,?,?,?,?,?) ON CONFLICT(product, channel) DO UPDATE SET release_id = excluded.release_id, policy_json = excluded.policy_json, modified_at = excluded.modified_at",
-          "params": [
-            "acme",
-            "stable",
-            null,
-            null,
-            1700000060,
-            1700000060
-          ]
+          "params": ["acme", "stable", null, null, 1700000060, 1700000060]
         },
         {
           "table": "release_channels",
           "sql": "INSERT INTO release_channels (product, channel, release_id, policy_json, created_at, modified_at) VALUES (?,?,?,?,?,?) ON CONFLICT(product, channel) DO UPDATE SET release_id = excluded.release_id, policy_json = excluded.policy_json, modified_at = excluded.modified_at",
-          "params": [
-            "acme",
-            "beta",
-            null,
-            null,
-            1700000060,
-            1700000060
-          ]
+          "params": ["acme", "beta", null, null, 1700000060, 1700000060]
         },
         {
           "table": "release_channels",
           "sql": "INSERT INTO release_channels (product, channel, release_id, policy_json, created_at, modified_at) VALUES (?,?,?,?,?,?) ON CONFLICT(product, channel) DO UPDATE SET release_id = excluded.release_id, policy_json = excluded.policy_json, modified_at = excluded.modified_at",
-          "params": [
-            "acme",
-            "dev",
-            null,
-            null,
-            1700000060,
-            1700000060
-          ]
+          "params": ["acme", "dev", null, null, 1700000060, 1700000060]
         }
       ],
       "release_config": [
@@ -8817,11 +7791,7 @@
         {
           "table": "release_config",
           "sql": "UPDATE release_config SET metadata_access = ?, artifacts_access = ? WHERE product = ? AND COALESCE(access_source, 'manifest') = 'manifest'",
-          "params": [
-            "public",
-            "public",
-            "acme"
-          ]
+          "params": ["public", "public", "acme"]
         }
       ],
       "release_deliverables": [
@@ -8844,76 +7814,41 @@
         {
           "table": "release_deliverables",
           "sql": "DELETE FROM release_deliverables WHERE product = ? AND kind = 'pack' AND def_source = 'manifest' AND deliverable_id NOT IN (SELECT value FROM json_each(?)) AND NOT EXISTS (SELECT 1 FROM release_channel_policy c WHERE c.product = release_deliverables.product AND c.deliverable_id = release_deliverables.deliverable_id) AND NOT EXISTS (SELECT 1 FROM release_pack_floors f WHERE f.product = release_deliverables.product AND f.deliverable_id = release_deliverables.deliverable_id)",
-          "params": [
-            "acme",
-            "[]"
-          ]
+          "params": ["acme", "[]"]
         },
         {
           "table": "release_deliverables",
           "sql": "DELETE FROM release_deliverables WHERE product = ? AND kind = 'package' AND def_source = 'manifest' AND deliverable_id NOT IN (SELECT value FROM json_each(?)) AND NOT EXISTS (SELECT 1 FROM release_metadata m WHERE m.product = release_deliverables.product AND m.deliverable_id = release_deliverables.deliverable_id) AND NOT EXISTS (SELECT 1 FROM release_channel_policy c WHERE c.product = release_deliverables.product AND c.deliverable_id = release_deliverables.deliverable_id)",
-          "params": [
-            "acme",
-            "[]"
-          ]
+          "params": ["acme", "[]"]
         },
         {
           "table": "release_deliverables",
           "sql": "INSERT INTO release_deliverables (product, deliverable_id, kind, pack_type, def_json, def_source, created_at, modified_at) VALUES (?, ?, 'app', NULL, NULL, 'manifest', ?, ?) ON CONFLICT(product, deliverable_id) DO NOTHING",
-          "params": [
-            "acme",
-            "app",
-            1700000060,
-            1700000060
-          ]
+          "params": ["acme", "app", 1700000060, 1700000060]
         }
       ],
       "release_health": [
         {
           "table": "release_health",
           "sql": "INSERT INTO release_health (product, subject_kind, subject_id, status, checked_at, details_json) VALUES (?,?,?,?,?,?) ON CONFLICT(product, subject_kind, subject_id) DO UPDATE SET status = excluded.status, checked_at = excluded.checked_at, details_json = excluded.details_json",
-          "params": [
-            "acme",
-            "channel",
-            "stable",
-            "unknown",
-            1700000060,
-            null
-          ]
+          "params": ["acme", "channel", "stable", "unknown", 1700000060, null]
         },
         {
           "table": "release_health",
           "sql": "INSERT INTO release_health (product, subject_kind, subject_id, status, checked_at, details_json) VALUES (?,?,?,?,?,?) ON CONFLICT(product, subject_kind, subject_id) DO UPDATE SET status = excluded.status, checked_at = excluded.checked_at, details_json = excluded.details_json",
-          "params": [
-            "acme",
-            "channel",
-            "beta",
-            "unknown",
-            1700000060,
-            null
-          ]
+          "params": ["acme", "channel", "beta", "unknown", 1700000060, null]
         },
         {
           "table": "release_health",
           "sql": "INSERT INTO release_health (product, subject_kind, subject_id, status, checked_at, details_json) VALUES (?,?,?,?,?,?) ON CONFLICT(product, subject_kind, subject_id) DO UPDATE SET status = excluded.status, checked_at = excluded.checked_at, details_json = excluded.details_json",
-          "params": [
-            "acme",
-            "channel",
-            "dev",
-            "unknown",
-            1700000060,
-            null
-          ]
+          "params": ["acme", "channel", "dev", "unknown", 1700000060, null]
         }
       ],
       "tiers": [
         {
           "table": "tiers",
           "sql": "DELETE FROM tiers WHERE product = ? AND id = ? AND source = 'manifest'",
-          "params": [
-            "acme",
-            "free"
-          ]
+          "params": ["acme", "free"]
         },
         {
           "table": "tiers",
@@ -9345,34 +8280,21 @@
         {
           "table": "dist_access",
           "sql": "INSERT INTO dist_access (product, deliverable_id, mode, entitlement, source, modified_at) VALUES (?, ?, ?, NULL, 'manifest', ?) ON CONFLICT (product, deliverable_id) DO UPDATE SET mode = excluded.mode, modified_at = excluded.modified_at WHERE dist_access.source = 'manifest' AND dist_access.mode IS NOT excluded.mode",
-          "params": [
-            "acme",
-            "app",
-            "public",
-            1700000060
-          ]
+          "params": ["acme", "app", "public", 1700000060]
         }
       ],
       "edge_mint_approvals": [
         {
           "table": "edge_mint_approvals",
           "sql": "DELETE FROM edge_mint_approvals WHERE product = ? AND id NOT IN (SELECT id FROM edge_mint_config WHERE product = ?)",
-          "params": [
-            "acme",
-            "acme"
-          ]
+          "params": ["acme", "acme"]
         }
       ],
       "edge_mint_config": [
         {
           "table": "edge_mint_config",
           "sql": "DELETE FROM edge_mint_config WHERE product = ? AND NOT EXISTS (SELECT 1 FROM product_settings WHERE product = ? AND key = ? AND source = 'console' AND (expires_at IS NULL OR expires_at > ?))",
-          "params": [
-            "acme",
-            "acme",
-            "config.catalog",
-            1700000060
-          ]
+          "params": ["acme", "acme", "config.catalog", 1700000060]
         },
         {
           "table": "edge_mint_config",
@@ -9398,9 +8320,7 @@
         {
           "table": "oidc_config",
           "sql": "DELETE FROM oidc_config WHERE product = ?",
-          "params": [
-            "acme"
-          ]
+          "params": ["acme"]
         },
         {
           "table": "oidc_config",
@@ -9478,11 +8398,7 @@
         {
           "table": "products",
           "sql": "UPDATE products SET compat_min = ?, compat_max = ? WHERE slug = ? AND COALESCE(compat_source, 'manifest') = 'manifest'",
-          "params": [
-            "1.0.0",
-            "9.0.0",
-            "acme"
-          ]
+          "params": ["1.0.0", "9.0.0", "acme"]
         },
         {
           "table": "products",
@@ -9512,85 +8428,43 @@
         {
           "table": "provisioning_config",
           "sql": "DELETE FROM provisioning_config WHERE product = ?",
-          "params": [
-            "acme"
-          ]
+          "params": ["acme"]
         },
         {
           "table": "provisioning_config",
           "sql": "INSERT INTO provisioning_config (product, claim, entitlement_key, entitlement_value_json, secret_key, secret_url_template, allowed_hosts_json) VALUES (?, ?, ?, ?, ?, ?, ?)",
-          "params": [
-            "acme",
-            "plan",
-            "pro",
-            "true",
-            null,
-            null,
-            null
-          ]
+          "params": ["acme", "plan", "pro", "true", null, null, null]
         }
       ],
       "release_builds": [
         {
           "table": "release_builds",
           "sql": "DELETE FROM release_builds WHERE product = ? AND release_id IN (SELECT value FROM json_each(?)) AND release_id NOT IN ( SELECT release_id FROM release_metadata WHERE product = ? AND json_extract(metadata_json, '$.descriptor.status') = 'ingested') AND release_id IN ( SELECT release_id FROM release_metadata WHERE product = ? AND deliverable_id = 'app') AND (release_id || char(0) || build_id) NOT IN (SELECT value FROM json_each(?))",
-          "params": [
-            "acme",
-            "[]",
-            "acme",
-            "acme",
-            "[]"
-          ]
+          "params": ["acme", "[]", "acme", "acme", "[]"]
         }
       ],
       "release_channel_policy": [
         {
           "table": "release_channel_policy",
           "sql": "UPDATE release_channel_policy SET includes_json = NULL, modified_at = ?, modified_by = 'manifest' WHERE product = ? AND deliverable_id = ? AND source = 'manifest' AND includes_json IS NOT NULL AND channel NOT IN (SELECT value FROM json_each(?))",
-          "params": [
-            1700000060,
-            "acme",
-            "app",
-            "[]"
-          ]
+          "params": [1700000060, "acme", "app", "[]"]
         }
       ],
       "release_channels": [
         {
           "table": "release_channels",
           "sql": "INSERT INTO release_channels (product, channel, release_id, policy_json, created_at, modified_at) VALUES (?,?,?,?,?,?) ON CONFLICT(product, channel) DO UPDATE SET release_id = excluded.release_id, policy_json = excluded.policy_json, modified_at = excluded.modified_at",
-          "params": [
-            "acme",
-            "stable",
-            null,
-            null,
-            1700000060,
-            1700000060
-          ]
+          "params": ["acme", "stable", null, null, 1700000060, 1700000060]
         },
         {
           "table": "release_channels",
           "sql": "INSERT INTO release_channels (product, channel, release_id, policy_json, created_at, modified_at) VALUES (?,?,?,?,?,?) ON CONFLICT(product, channel) DO UPDATE SET release_id = excluded.release_id, policy_json = excluded.policy_json, modified_at = excluded.modified_at",
-          "params": [
-            "acme",
-            "beta",
-            null,
-            null,
-            1700000060,
-            1700000060
-          ]
+          "params": ["acme", "beta", null, null, 1700000060, 1700000060]
         },
         {
           "table": "release_channels",
           "sql": "INSERT INTO release_channels (product, channel, release_id, policy_json, created_at, modified_at) VALUES (?,?,?,?,?,?) ON CONFLICT(product, channel) DO UPDATE SET release_id = excluded.release_id, policy_json = excluded.policy_json, modified_at = excluded.modified_at",
-          "params": [
-            "acme",
-            "dev",
-            null,
-            null,
-            1700000060,
-            1700000060
-          ]
+          "params": ["acme", "dev", null, null, 1700000060, 1700000060]
         }
       ],
       "release_config": [
@@ -9621,11 +8495,7 @@
         {
           "table": "release_config",
           "sql": "UPDATE release_config SET metadata_access = ?, artifacts_access = ? WHERE product = ? AND COALESCE(access_source, 'manifest') = 'manifest'",
-          "params": [
-            "public",
-            "public",
-            "acme"
-          ]
+          "params": ["public", "public", "acme"]
         }
       ],
       "release_deliverables": [
@@ -9648,76 +8518,41 @@
         {
           "table": "release_deliverables",
           "sql": "DELETE FROM release_deliverables WHERE product = ? AND kind = 'pack' AND def_source = 'manifest' AND deliverable_id NOT IN (SELECT value FROM json_each(?)) AND NOT EXISTS (SELECT 1 FROM release_channel_policy c WHERE c.product = release_deliverables.product AND c.deliverable_id = release_deliverables.deliverable_id) AND NOT EXISTS (SELECT 1 FROM release_pack_floors f WHERE f.product = release_deliverables.product AND f.deliverable_id = release_deliverables.deliverable_id)",
-          "params": [
-            "acme",
-            "[]"
-          ]
+          "params": ["acme", "[]"]
         },
         {
           "table": "release_deliverables",
           "sql": "DELETE FROM release_deliverables WHERE product = ? AND kind = 'package' AND def_source = 'manifest' AND deliverable_id NOT IN (SELECT value FROM json_each(?)) AND NOT EXISTS (SELECT 1 FROM release_metadata m WHERE m.product = release_deliverables.product AND m.deliverable_id = release_deliverables.deliverable_id) AND NOT EXISTS (SELECT 1 FROM release_channel_policy c WHERE c.product = release_deliverables.product AND c.deliverable_id = release_deliverables.deliverable_id)",
-          "params": [
-            "acme",
-            "[]"
-          ]
+          "params": ["acme", "[]"]
         },
         {
           "table": "release_deliverables",
           "sql": "INSERT INTO release_deliverables (product, deliverable_id, kind, pack_type, def_json, def_source, created_at, modified_at) VALUES (?, ?, 'app', NULL, NULL, 'manifest', ?, ?) ON CONFLICT(product, deliverable_id) DO NOTHING",
-          "params": [
-            "acme",
-            "app",
-            1700000060,
-            1700000060
-          ]
+          "params": ["acme", "app", 1700000060, 1700000060]
         }
       ],
       "release_health": [
         {
           "table": "release_health",
           "sql": "INSERT INTO release_health (product, subject_kind, subject_id, status, checked_at, details_json) VALUES (?,?,?,?,?,?) ON CONFLICT(product, subject_kind, subject_id) DO UPDATE SET status = excluded.status, checked_at = excluded.checked_at, details_json = excluded.details_json",
-          "params": [
-            "acme",
-            "channel",
-            "stable",
-            "unknown",
-            1700000060,
-            null
-          ]
+          "params": ["acme", "channel", "stable", "unknown", 1700000060, null]
         },
         {
           "table": "release_health",
           "sql": "INSERT INTO release_health (product, subject_kind, subject_id, status, checked_at, details_json) VALUES (?,?,?,?,?,?) ON CONFLICT(product, subject_kind, subject_id) DO UPDATE SET status = excluded.status, checked_at = excluded.checked_at, details_json = excluded.details_json",
-          "params": [
-            "acme",
-            "channel",
-            "beta",
-            "unknown",
-            1700000060,
-            null
-          ]
+          "params": ["acme", "channel", "beta", "unknown", 1700000060, null]
         },
         {
           "table": "release_health",
           "sql": "INSERT INTO release_health (product, subject_kind, subject_id, status, checked_at, details_json) VALUES (?,?,?,?,?,?) ON CONFLICT(product, subject_kind, subject_id) DO UPDATE SET status = excluded.status, checked_at = excluded.checked_at, details_json = excluded.details_json",
-          "params": [
-            "acme",
-            "channel",
-            "dev",
-            "unknown",
-            1700000060,
-            null
-          ]
+          "params": ["acme", "channel", "dev", "unknown", 1700000060, null]
         }
       ],
       "tiers": [
         {
           "table": "tiers",
           "sql": "DELETE FROM tiers WHERE product = ? AND id = ? AND source = 'manifest'",
-          "params": [
-            "acme",
-            "free"
-          ]
+          "params": ["acme", "free"]
         },
         {
           "table": "tiers",
@@ -10090,52 +8925,35 @@
         {
           "table": "ci_publishers",
           "sql": "DELETE FROM ci_publishers WHERE product = ? AND source = 'manifest'",
-          "params": [
-            "acme"
-          ]
+          "params": ["acme"]
         }
       ],
       "dist_access": [
         {
           "table": "dist_access",
           "sql": "INSERT INTO dist_access (product, deliverable_id, mode, entitlement, source, modified_at) VALUES (?, ?, ?, NULL, 'manifest', ?) ON CONFLICT (product, deliverable_id) DO UPDATE SET mode = excluded.mode, modified_at = excluded.modified_at WHERE dist_access.source = 'manifest' AND dist_access.mode IS NOT excluded.mode",
-          "params": [
-            "acme",
-            "app",
-            "public",
-            1700000000
-          ]
+          "params": ["acme", "app", "public", 1700000000]
         }
       ],
       "edge_mint_approvals": [
         {
           "table": "edge_mint_approvals",
           "sql": "DELETE FROM edge_mint_approvals WHERE product = ? AND id NOT IN (SELECT id FROM edge_mint_config WHERE product = ?)",
-          "params": [
-            "acme",
-            "acme"
-          ]
+          "params": ["acme", "acme"]
         }
       ],
       "edge_mint_config": [
         {
           "table": "edge_mint_config",
           "sql": "DELETE FROM edge_mint_config WHERE product = ? AND NOT EXISTS (SELECT 1 FROM product_settings WHERE product = ? AND key = ? AND source = 'console' AND (expires_at IS NULL OR expires_at > ?))",
-          "params": [
-            "acme",
-            "acme",
-            "config.catalog",
-            1700000000
-          ]
+          "params": ["acme", "acme", "config.catalog", 1700000000]
         }
       ],
       "oidc_config": [
         {
           "table": "oidc_config",
           "sql": "DELETE FROM oidc_config WHERE product = ?",
-          "params": [
-            "acme"
-          ]
+          "params": ["acme"]
         }
       ],
       "product_manifest_snapshot": [
@@ -10156,12 +8974,7 @@
         {
           "table": "product_schema",
           "sql": "UPDATE product_schema SET active = 0 WHERE product = ? AND NOT EXISTS (SELECT 1 FROM product_settings WHERE product = ? AND key = ? AND source = 'console' AND (expires_at IS NULL OR expires_at > ?))",
-          "params": [
-            "acme",
-            "acme",
-            "config.catalog",
-            1700000000
-          ]
+          "params": ["acme", "acme", "config.catalog", 1700000000]
         },
         {
           "table": "product_schema",
@@ -10211,10 +9024,7 @@
         {
           "table": "products",
           "sql": "UPDATE products SET release_source = 'github', modified_at = ? WHERE slug = ?",
-          "params": [
-            1700000000,
-            "acme"
-          ]
+          "params": [1700000000, "acme"]
         },
         {
           "table": "products",
@@ -10245,11 +9055,7 @@
         {
           "table": "products",
           "sql": "UPDATE products SET compat_min = ?, compat_max = ? WHERE slug = ? AND COALESCE(compat_source, 'manifest') = 'manifest'",
-          "params": [
-            "1.0.0",
-            "9.0.0",
-            "acme"
-          ]
+          "params": ["1.0.0", "9.0.0", "acme"]
         },
         {
           "table": "products",
@@ -10265,72 +9071,38 @@
         {
           "table": "provisioning_config",
           "sql": "DELETE FROM provisioning_config WHERE product = ?",
-          "params": [
-            "acme"
-          ]
+          "params": ["acme"]
         }
       ],
       "release_builds": [
         {
           "table": "release_builds",
           "sql": "DELETE FROM release_builds WHERE product = ? AND release_id IN (SELECT value FROM json_each(?)) AND release_id NOT IN ( SELECT release_id FROM release_metadata WHERE product = ? AND json_extract(metadata_json, '$.descriptor.status') = 'ingested') AND release_id IN ( SELECT release_id FROM release_metadata WHERE product = ? AND deliverable_id = 'app') AND (release_id || char(0) || build_id) NOT IN (SELECT value FROM json_each(?))",
-          "params": [
-            "acme",
-            "[]",
-            "acme",
-            "acme",
-            "[]"
-          ]
+          "params": ["acme", "[]", "acme", "acme", "[]"]
         }
       ],
       "release_channel_policy": [
         {
           "table": "release_channel_policy",
           "sql": "UPDATE release_channel_policy SET includes_json = NULL, modified_at = ?, modified_by = 'manifest' WHERE product = ? AND deliverable_id = ? AND source = 'manifest' AND includes_json IS NOT NULL AND channel NOT IN (SELECT value FROM json_each(?))",
-          "params": [
-            1700000000,
-            "acme",
-            "app",
-            "[]"
-          ]
+          "params": [1700000000, "acme", "app", "[]"]
         }
       ],
       "release_channels": [
         {
           "table": "release_channels",
           "sql": "INSERT INTO release_channels (product, channel, release_id, policy_json, created_at, modified_at) VALUES (?,?,?,?,?,?) ON CONFLICT(product, channel) DO UPDATE SET release_id = excluded.release_id, policy_json = excluded.policy_json, modified_at = excluded.modified_at",
-          "params": [
-            "acme",
-            "stable",
-            null,
-            null,
-            1700000000,
-            1700000000
-          ]
+          "params": ["acme", "stable", null, null, 1700000000, 1700000000]
         },
         {
           "table": "release_channels",
           "sql": "INSERT INTO release_channels (product, channel, release_id, policy_json, created_at, modified_at) VALUES (?,?,?,?,?,?) ON CONFLICT(product, channel) DO UPDATE SET release_id = excluded.release_id, policy_json = excluded.policy_json, modified_at = excluded.modified_at",
-          "params": [
-            "acme",
-            "beta",
-            null,
-            null,
-            1700000000,
-            1700000000
-          ]
+          "params": ["acme", "beta", null, null, 1700000000, 1700000000]
         },
         {
           "table": "release_channels",
           "sql": "INSERT INTO release_channels (product, channel, release_id, policy_json, created_at, modified_at) VALUES (?,?,?,?,?,?) ON CONFLICT(product, channel) DO UPDATE SET release_id = excluded.release_id, policy_json = excluded.policy_json, modified_at = excluded.modified_at",
-          "params": [
-            "acme",
-            "dev",
-            null,
-            null,
-            1700000000,
-            1700000000
-          ]
+          "params": ["acme", "dev", null, null, 1700000000, 1700000000]
         }
       ],
       "release_config": [
@@ -10377,19 +9149,12 @@
         {
           "table": "release_config",
           "sql": "UPDATE release_config SET release_keys_json = ? WHERE product = ?",
-          "params": [
-            null,
-            "acme"
-          ]
+          "params": [null, "acme"]
         },
         {
           "table": "release_config",
           "sql": "UPDATE release_config SET metadata_access = ?, artifacts_access = ? WHERE product = ? AND COALESCE(access_source, 'manifest') = 'manifest'",
-          "params": [
-            "public",
-            "public",
-            "acme"
-          ]
+          "params": ["public", "public", "acme"]
         }
       ],
       "release_deliverables": [
@@ -10412,66 +9177,34 @@
         {
           "table": "release_deliverables",
           "sql": "DELETE FROM release_deliverables WHERE product = ? AND kind = 'pack' AND def_source = 'manifest' AND deliverable_id NOT IN (SELECT value FROM json_each(?)) AND NOT EXISTS (SELECT 1 FROM release_channel_policy c WHERE c.product = release_deliverables.product AND c.deliverable_id = release_deliverables.deliverable_id) AND NOT EXISTS (SELECT 1 FROM release_pack_floors f WHERE f.product = release_deliverables.product AND f.deliverable_id = release_deliverables.deliverable_id)",
-          "params": [
-            "acme",
-            "[]"
-          ]
+          "params": ["acme", "[]"]
         },
         {
           "table": "release_deliverables",
           "sql": "DELETE FROM release_deliverables WHERE product = ? AND kind = 'package' AND def_source = 'manifest' AND deliverable_id NOT IN (SELECT value FROM json_each(?)) AND NOT EXISTS (SELECT 1 FROM release_metadata m WHERE m.product = release_deliverables.product AND m.deliverable_id = release_deliverables.deliverable_id) AND NOT EXISTS (SELECT 1 FROM release_channel_policy c WHERE c.product = release_deliverables.product AND c.deliverable_id = release_deliverables.deliverable_id)",
-          "params": [
-            "acme",
-            "[]"
-          ]
+          "params": ["acme", "[]"]
         },
         {
           "table": "release_deliverables",
           "sql": "INSERT INTO release_deliverables (product, deliverable_id, kind, pack_type, def_json, def_source, created_at, modified_at) VALUES (?, ?, 'app', NULL, NULL, 'manifest', ?, ?) ON CONFLICT(product, deliverable_id) DO NOTHING",
-          "params": [
-            "acme",
-            "app",
-            1700000000,
-            1700000000
-          ]
+          "params": ["acme", "app", 1700000000, 1700000000]
         }
       ],
       "release_health": [
         {
           "table": "release_health",
           "sql": "INSERT INTO release_health (product, subject_kind, subject_id, status, checked_at, details_json) VALUES (?,?,?,?,?,?) ON CONFLICT(product, subject_kind, subject_id) DO UPDATE SET status = excluded.status, checked_at = excluded.checked_at, details_json = excluded.details_json",
-          "params": [
-            "acme",
-            "channel",
-            "stable",
-            "unknown",
-            1700000000,
-            null
-          ]
+          "params": ["acme", "channel", "stable", "unknown", 1700000000, null]
         },
         {
           "table": "release_health",
           "sql": "INSERT INTO release_health (product, subject_kind, subject_id, status, checked_at, details_json) VALUES (?,?,?,?,?,?) ON CONFLICT(product, subject_kind, subject_id) DO UPDATE SET status = excluded.status, checked_at = excluded.checked_at, details_json = excluded.details_json",
-          "params": [
-            "acme",
-            "channel",
-            "beta",
-            "unknown",
-            1700000000,
-            null
-          ]
+          "params": ["acme", "channel", "beta", "unknown", 1700000000, null]
         },
         {
           "table": "release_health",
           "sql": "INSERT INTO release_health (product, subject_kind, subject_id, status, checked_at, details_json) VALUES (?,?,?,?,?,?) ON CONFLICT(product, subject_kind, subject_id) DO UPDATE SET status = excluded.status, checked_at = excluded.checked_at, details_json = excluded.details_json",
-          "params": [
-            "acme",
-            "channel",
-            "dev",
-            "unknown",
-            1700000000,
-            null
-          ]
+          "params": ["acme", "channel", "dev", "unknown", 1700000000, null]
         }
       ],
       "tiers": [
@@ -10947,18 +9680,12 @@
         {
           "table": "products",
           "sql": "UPDATE products SET release_source = 'github', modified_at = ? WHERE slug = ?",
-          "params": [
-            1700000000,
-            "acme"
-          ]
+          "params": [1700000000, "acme"]
         },
         {
           "table": "products",
           "sql": "UPDATE products SET release_source = ? WHERE slug = ?",
-          "params": [
-            null,
-            "acme"
-          ]
+          "params": [null, "acme"]
         }
       ],
       "release_config": [
@@ -10989,9 +9716,7 @@
         {
           "table": "release_config",
           "sql": "DELETE FROM release_config WHERE product = ?",
-          "params": [
-            "acme"
-          ]
+          "params": ["acme"]
         }
       ]
     },
@@ -11059,13 +9784,7 @@
         "status": "available"
       },
       "registeredAs": null,
-      "services": [
-        "license",
-        "config",
-        "release",
-        "distribution",
-        "identity"
-      ],
+      "services": ["license", "config", "release", "distribution", "identity"],
       "catalog": {
         "entries": 2
       },
@@ -11073,10 +9792,7 @@
         "values": [],
         "source": "none"
       },
-      "secrets": [
-        "OIDC_SECRET__ACME",
-        "MINT_KEY__ACME"
-      ],
+      "secrets": ["OIDC_SECRET__ACME", "MINT_KEY__ACME"],
       "problems": [],
       "starterTier": "none"
     },
@@ -11709,41 +10425,28 @@
         {
           "table": "ci_tokens",
           "sql": "UPDATE ci_tokens SET revoked_at = ? WHERE product = ? AND kind = 'static' AND revoked_at IS NULL",
-          "params": [
-            1700000001,
-            "polaris-key"
-          ]
+          "params": [1700000001, "polaris-key"]
         }
       ],
       "ci_upload_tickets": [
         {
           "table": "ci_upload_tickets",
           "sql": "UPDATE ci_upload_tickets SET expires_at = MIN(expires_at, ?) WHERE redeemed_at IS NULL AND token_hash IN (SELECT token_hash FROM ci_tokens WHERE product = ? AND kind = 'static' AND revoked_at IS NULL)",
-          "params": [
-            1700000001,
-            "polaris-key"
-          ]
+          "params": [1700000001, "polaris-key"]
         }
       ],
       "dist_access": [
         {
           "table": "dist_access",
           "sql": "INSERT INTO dist_access (product, deliverable_id, mode, entitlement, source, modified_at) VALUES (?, ?, ?, NULL, 'manifest', ?) ON CONFLICT (product, deliverable_id) DO UPDATE SET mode = excluded.mode, modified_at = excluded.modified_at WHERE dist_access.source = 'manifest' AND dist_access.mode IS NOT excluded.mode",
-          "params": [
-            "polaris-key",
-            "app",
-            "public",
-            1700000001
-          ]
+          "params": ["polaris-key", "app", "public", 1700000001]
         }
       ],
       "dist_listing": [
         {
           "table": "dist_listing",
           "sql": "DELETE FROM dist_listing WHERE product = ?",
-          "params": [
-            "polaris-key"
-          ]
+          "params": ["polaris-key"]
         }
       ],
       "dist_outlets": [
@@ -11765,31 +10468,19 @@
         {
           "table": "dist_outlets",
           "sql": "UPDATE dist_outlets SET removed_at = ?, modified_at = ? WHERE product = ? AND removed_at IS NULL AND outlet_id NOT IN (?)",
-          "params": [
-            1700000001,
-            1700000001,
-            "polaris-key",
-            "direct"
-          ]
+          "params": [1700000001, 1700000001, "polaris-key", "direct"]
         }
       ],
       "dist_transports": [
         {
           "table": "dist_transports",
           "sql": "DELETE FROM dist_transports WHERE product = ?",
-          "params": [
-            "polaris-key"
-          ]
+          "params": ["polaris-key"]
         },
         {
           "table": "dist_transports",
           "sql": "INSERT INTO dist_transports (product, deliverable_id, outlet_id, transport, config_json) VALUES (?, ?, ?, ?, NULL)",
-          "params": [
-            "polaris-key",
-            "app",
-            "direct",
-            "pkey-cdn"
-          ]
+          "params": ["polaris-key", "app", "direct", "pkey-cdn"]
         }
       ],
       "product_manifest_snapshot": [
@@ -11839,23 +10530,14 @@
         {
           "table": "products",
           "sql": "UPDATE products SET release_source = 'github', presentation_json = ?, modified_at = ? WHERE slug = ? AND system = 1",
-          "params": [
-            null,
-            1700000001,
-            "polaris-key"
-          ]
+          "params": [null, 1700000001, "polaris-key"]
         }
       ],
       "release_channel_policy": [
         {
           "table": "release_channel_policy",
           "sql": "UPDATE release_channel_policy SET includes_json = NULL, modified_at = ?, modified_by = 'manifest' WHERE product = ? AND deliverable_id = ? AND source = 'manifest' AND includes_json IS NOT NULL AND channel NOT IN (SELECT value FROM json_each(?))",
-          "params": [
-            1700000001,
-            "polaris-key",
-            "app",
-            "[]"
-          ]
+          "params": [1700000001, "polaris-key", "app", "[]"]
         }
       ],
       "release_config": [
@@ -11904,10 +10586,7 @@
         {
           "table": "release_deliverables",
           "sql": "DELETE FROM release_deliverables WHERE product = ? AND kind = 'pack' AND def_source = 'manifest' AND deliverable_id NOT IN (SELECT value FROM json_each(?)) AND NOT EXISTS (SELECT 1 FROM release_channel_policy c WHERE c.product = release_deliverables.product AND c.deliverable_id = release_deliverables.deliverable_id) AND NOT EXISTS (SELECT 1 FROM release_pack_floors f WHERE f.product = release_deliverables.product AND f.deliverable_id = release_deliverables.deliverable_id)",
-          "params": [
-            "polaris-key",
-            "[]"
-          ]
+          "params": ["polaris-key", "[]"]
         },
         {
           "table": "release_deliverables",
@@ -13201,9 +11880,7 @@
         {
           "table": "ci_publishers",
           "sql": "DELETE FROM ci_publishers WHERE product = ? AND source = 'admin'",
-          "params": [
-            "polaris-key"
-          ]
+          "params": ["polaris-key"]
         },
         {
           "table": "ci_publishers",
@@ -13225,41 +11902,28 @@
         {
           "table": "ci_tokens",
           "sql": "UPDATE ci_tokens SET revoked_at = ? WHERE product = ? AND kind = 'static' AND revoked_at IS NULL",
-          "params": [
-            1700000100,
-            "polaris-key"
-          ]
+          "params": [1700000100, "polaris-key"]
         }
       ],
       "ci_upload_tickets": [
         {
           "table": "ci_upload_tickets",
           "sql": "UPDATE ci_upload_tickets SET expires_at = MIN(expires_at, ?) WHERE redeemed_at IS NULL AND token_hash IN (SELECT token_hash FROM ci_tokens WHERE product = ? AND kind = 'static' AND revoked_at IS NULL)",
-          "params": [
-            1700000100,
-            "polaris-key"
-          ]
+          "params": [1700000100, "polaris-key"]
         }
       ],
       "dist_access": [
         {
           "table": "dist_access",
           "sql": "INSERT INTO dist_access (product, deliverable_id, mode, entitlement, source, modified_at) VALUES (?, ?, ?, NULL, 'manifest', ?) ON CONFLICT (product, deliverable_id) DO UPDATE SET mode = excluded.mode, modified_at = excluded.modified_at WHERE dist_access.source = 'manifest' AND dist_access.mode IS NOT excluded.mode",
-          "params": [
-            "polaris-key",
-            "app",
-            "public",
-            1700000100
-          ]
+          "params": ["polaris-key", "app", "public", 1700000100]
         }
       ],
       "dist_listing": [
         {
           "table": "dist_listing",
           "sql": "DELETE FROM dist_listing WHERE product = ?",
-          "params": [
-            "polaris-key"
-          ]
+          "params": ["polaris-key"]
         }
       ],
       "dist_outlets": [
@@ -13281,31 +11945,19 @@
         {
           "table": "dist_outlets",
           "sql": "UPDATE dist_outlets SET removed_at = ?, modified_at = ? WHERE product = ? AND removed_at IS NULL AND outlet_id NOT IN (?)",
-          "params": [
-            1700000100,
-            1700000100,
-            "polaris-key",
-            "direct"
-          ]
+          "params": [1700000100, 1700000100, "polaris-key", "direct"]
         }
       ],
       "dist_transports": [
         {
           "table": "dist_transports",
           "sql": "DELETE FROM dist_transports WHERE product = ?",
-          "params": [
-            "polaris-key"
-          ]
+          "params": ["polaris-key"]
         },
         {
           "table": "dist_transports",
           "sql": "INSERT INTO dist_transports (product, deliverable_id, outlet_id, transport, config_json) VALUES (?, ?, ?, ?, NULL)",
-          "params": [
-            "polaris-key",
-            "app",
-            "direct",
-            "pkey-cdn"
-          ]
+          "params": ["polaris-key", "app", "direct", "pkey-cdn"]
         }
       ],
       "product_manifest_snapshot": [
@@ -13342,11 +11994,7 @@
         {
           "table": "product_settings",
           "sql": "DELETE FROM product_settings WHERE product = ? AND key = ? AND source = 'console' AND expires_at IS NOT NULL AND version = ?",
-          "params": [
-            "polaris-key",
-            "core.web.origins",
-            1
-          ]
+          "params": ["polaris-key", "core.web.origins", 1]
         }
       ],
       "product_sync_state": [
@@ -13364,11 +12012,7 @@
         {
           "table": "products",
           "sql": "UPDATE products SET release_source = 'github', presentation_json = ?, modified_at = ? WHERE slug = ? AND system = 1",
-          "params": [
-            null,
-            1700000100,
-            "polaris-key"
-          ]
+          "params": [null, 1700000100, "polaris-key"]
         },
         {
           "table": "products",
@@ -13387,12 +12031,7 @@
         {
           "table": "release_channel_policy",
           "sql": "UPDATE release_channel_policy SET includes_json = NULL, modified_at = ?, modified_by = 'manifest' WHERE product = ? AND deliverable_id = ? AND source = 'manifest' AND includes_json IS NOT NULL AND channel NOT IN (SELECT value FROM json_each(?))",
-          "params": [
-            1700000100,
-            "polaris-key",
-            "app",
-            "[]"
-          ]
+          "params": [1700000100, "polaris-key", "app", "[]"]
         }
       ],
       "release_config": [
@@ -13441,10 +12080,7 @@
         {
           "table": "release_deliverables",
           "sql": "DELETE FROM release_deliverables WHERE product = ? AND kind = 'pack' AND def_source = 'manifest' AND deliverable_id NOT IN (SELECT value FROM json_each(?)) AND NOT EXISTS (SELECT 1 FROM release_channel_policy c WHERE c.product = release_deliverables.product AND c.deliverable_id = release_deliverables.deliverable_id) AND NOT EXISTS (SELECT 1 FROM release_pack_floors f WHERE f.product = release_deliverables.product AND f.deliverable_id = release_deliverables.deliverable_id)",
-          "params": [
-            "polaris-key",
-            "[]"
-          ]
+          "params": ["polaris-key", "[]"]
         },
         {
           "table": "release_deliverables",
@@ -14759,11 +13395,7 @@
         "repository": "vladzaharia/polaris-key",
         "workflow": ".github/workflows/other.yml",
         "environment": "elsewhere",
-        "scopes": [
-          "distribution:report",
-          "release:promote",
-          "release:publish"
-        ],
+        "scopes": ["distribution:report", "release:promote", "release:publish"],
         "modifiedBy": "u1"
       },
       "breakGlass": [],

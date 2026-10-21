@@ -84,9 +84,9 @@ describe("DL14: links fail closed", () => {
       open: false,
       qr: true,
     });
-    expect(linkVerdict("https://polaris.locker/device", MAC, "sign-in").open).toBe(
-      true,
-    );
+    expect(
+      linkVerdict("https://polaris.locker/device", MAC, "sign-in").open,
+    ).toBe(true);
     expect(linkVerdict("http://evil.example/", MAC, "sign-in")).toEqual({
       purpose: "sign-in",
       url: null,
