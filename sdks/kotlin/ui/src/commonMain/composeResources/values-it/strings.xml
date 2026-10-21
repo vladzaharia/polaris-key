@@ -230,6 +230,10 @@
     <string name="boot_error_body">Impossibile completare l'avvio di %1$s (%2$s).</string>
     <!-- Welcome screen, the gate's first screen. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="welcome_title">Ti diamo il benvenuto in %1$s</string>
+    <!-- Welcome screen title when no product name is known anywhere (no integrator name, presentation or bundle). Replaces welcome.title, which needs {product}. -->
+    <string name="common_welcomeNoProductTitle">Ti diamo il benvenuto</string>
+    <!-- Welcome screen lede for a sign-in-only product when no product name is known anywhere. Replaces welcome.ledeSignInOnly, which needs {product}. -->
+    <string name="common_signInToContinue">Accedi per continuare.</string>
     <!-- Welcome screen, the gate's first screen. -->
     <string name="welcome_lede">Accedi o usa una chiave di licenza per continuare.</string>
     <!-- Welcome screen, the gate's first screen. Shown when the product only takes license keys. -->

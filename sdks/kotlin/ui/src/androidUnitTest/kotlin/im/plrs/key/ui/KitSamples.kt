@@ -91,7 +91,7 @@ internal val samplePacks = PolarisPackProgressUi(
 internal fun bootUi(stage: BootStage, outcome: BootOutcome = BootOutcome.running, canPlayOffline: Boolean = false) =
     PolarisBootUi(state = initialBootState().copy(stage = stage, outcome = outcome, canPlayOffline = canPlayOffline))
 
-internal const val SAMPLE_MANAGE_URL = "https://key.plrs.im/activate?product=djdl&next=free-device&for=Android%20arm64"
+internal const val SAMPLE_MANAGE_URL = "https://polaris.locker/activate?product=djdl&next=free-device&for=Android%20arm64"
 
 /** PX-W8 on Android TV: a device-limit refusal whose portal link shows as a QR code (TV only). */
 internal val deviceLimitTv: @Composable () -> Unit = {
