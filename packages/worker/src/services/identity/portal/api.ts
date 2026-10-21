@@ -169,6 +169,8 @@ import {
 } from "./dataRoutes.js";
 import { handleProductSupportCode } from "./supportCode.js";
 import { handleProfileApi } from "./profile.js";
+import { accountMayOpenConsole } from "../consoleAccount.js";
+import { consoleOrigin } from "../../../core/hosts.js";
 import { AdminBodyError, readBody } from "../../../core/http/body.js";
 
 export function portalJson(
@@ -776,7 +778,15 @@ export async function requireActionRateLimit(
   return ok ? null : err(429, "rate_limited", "too many attempts");
 }
 
+/** The console's front door as the person's browser should address it, or null when unknown. */
+function consoleEntry(env: Env, req: Request): string | null {
+  const origin = consoleOrigin(env, req);
+  return origin === null ? null : `${origin}/manage/`;
+}
+
 async function handleMe(
+  req: Request,
+  env: Env,
   db: Db,
   session: PortalSession,
   now: number,
@@ -793,6 +803,11 @@ async function handleMe(
       // the small one); null shows initials. `GET /api/me/profile` has the rest.
       avatarUrl: avatarUrl(account.avatar_key ?? null),
       deletion: await accountDeletionSchedule(db, session.accountId),
+      // ST-30: where the account menu's "Open console" goes, for an operator's account only (else
+      // null: no entry). A pointer, not a grant: the console decides on arrival.
+      console: (await accountMayOpenConsole(env, db, session.accountId))
+        ? consoleEntry(env, req)
+        : null,
     },
     csrf: session.csrf,
   });
@@ -1916,7 +1931,7 @@ async function dispatchPortalApi(
     );
   if (head === "me" && rest.length === 0) {
     if (req.method !== "GET") return err(405, "method_not_allowed");
-    return handleMe(db, session, now);
+    return handleMe(req, env, db, session, now);
   }
   if (head === "sessions") {
     return handleSessions(req, env, db, session, sessionIdHash, rest, now);

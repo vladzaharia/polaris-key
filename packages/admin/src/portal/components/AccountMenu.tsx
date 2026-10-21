@@ -4,6 +4,7 @@ import {
   ChevronDown,
   CircleHelp,
   KeyRound,
+  LayoutDashboard,
   LogOut,
   Palette,
   ShieldCheck,
@@ -68,6 +69,8 @@ export function AccountMenu({
   const label = named
     ? name!
     : account.email || name || t("locker.account.title");
+  // Only an operator's account carries the address; anyone else sees no such entry.
+  const consoleUrl = account.console ?? null;
   return (
     <>
       <DropdownMenu>
@@ -167,6 +170,14 @@ export function AccountMenu({
               {t("locker.appearance.title")}
             </a>
           </DropdownMenuItem>
+          {consoleUrl ? (
+            <DropdownMenuItem asChild className="pointer-coarse:min-h-11">
+              <a href={consoleUrl}>
+                <LayoutDashboard aria-hidden />
+                Open console
+              </a>
+            </DropdownMenuItem>
+          ) : null}
           <DropdownMenuSeparator />
           {FOOT_LINKS.map((l) => (
             <DropdownMenuItem

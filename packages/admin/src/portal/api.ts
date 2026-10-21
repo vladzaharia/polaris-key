@@ -30,6 +30,11 @@ export interface PortalAccount {
    * the small one), or null for initials. Absent on an older Worker, which means initials.
    */
   avatarUrl?: string | null;
+  /**
+   * ST-30: the console's address, for an operator's account only (else null or absent). It decides
+   * whether the account menu offers "Open console"; the console checks access itself.
+   */
+  console?: string | null;
 }
 
 export interface PortalMe {

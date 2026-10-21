@@ -357,6 +357,9 @@ const CONSOLE_PAGE_CSS_TAIL = [
   `.ac-body input[type=email]{display:block;width:100%;min-height:3rem;padding:0 .75rem;border:1px solid var(--edge);border-radius:.5rem;background:var(--sunken);color:var(--strong);font:inherit}`,
   `.ac-body input[type=email]::placeholder{color:var(--muted);opacity:1}`,
   `.ac-body .fine{color:var(--muted);font-size:.875rem;line-height:1.25rem;overflow-wrap:anywhere}`,
+  // Under the card: Help and Privacy, quiet and 24 px apart from each other's targets.
+  `.ac-links{display:flex;justify-content:center;gap:1.5rem;max-width:28.5rem;margin:1.25rem auto 0}`,
+  `.ac-links a{display:inline-flex;align-items:center;min-height:1.5rem;padding:.125rem .25rem;font-size:.875rem;line-height:1.25rem}`,
   `.ac-brand .ac-surface{margin-left:.75rem;padding-left:.75rem;border-left:1px solid var(--edge);color:var(--muted);font-size:1rem;line-height:1.5rem}`,
   `@media (forced-colors: active){.ac-brand .ac-surface{color:CanvasText;border-color:CanvasText}}`,
   // On a tall window the card sits near the optical centre (about 40% from the top), not under
@@ -419,6 +422,11 @@ export interface BrandPageOptions {
   focusHeading?: boolean;
   /** Locker only: the card's footer line, plain text beside an icon. */
   footer?: { icon: IconName; text: string };
+  /**
+   * Console only: the links under the card (Help, Privacy). Each `href` is a path on this host,
+   * written by the page, never taken from a request.
+   */
+  links?: readonly { label: string; href: string }[];
   /**
    * Locker only: the hosted passport (identity.device-confirm). At 960 px and wider in landscape
    * the app's art, icon, developer and device sit beside the step; narrower, `header` is the
@@ -708,6 +716,13 @@ export function renderAuthCard(opts: AuthCardOptions): string {
       ? `<footer class="ac-foot">${icon(opts.footer.icon, true)}<span>${escapeHtml(opts.footer.text)}</span></footer>`
       : "",
     `</main>`,
+    consoleCard && opts.links?.length
+      ? `<nav class="ac-links" aria-label="Help and privacy">${opts.links
+          .map(
+            (l) => `<a href="${escapeHtml(l.href)}">${escapeHtml(l.label)}</a>`,
+          )
+          .join("")}</nav>`
+      : "",
     `</body>`,
     `</html>`,
     ``,

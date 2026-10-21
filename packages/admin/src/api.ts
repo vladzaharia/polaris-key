@@ -36,6 +36,10 @@
  * from `./api.js` — this file is still the console's single import surface, it just no longer
  * owns the shapes.
  */
+import {
+  markSessionEnded,
+  waitForSessionBack,
+} from "./console/shell/endedState.js";
 export type {
   ConfigEntry,
   ConfigKind,
@@ -4878,8 +4882,12 @@ export function startStepUp(): void {
 
 /**
  * The 401 sign-in. The Worker marks a session that existed and no longer holds
- * (`X-PKey-Session: expired`); the card then says "Your session ended". Without a session (a first
- * visit) it is the plain sign-in card. `returnTo` brings the person back to the page either way.
+ * (`X-PKey-Session: expired`). With a page open (the session loaded in this tab) the page is NOT
+ * left: the "Your session ended" overlay covers it (`console/shell/endedState.ts`) and unsaved
+ * input survives. Before the session ever loaded in this tab (a bookmark opened after the session
+ * lapsed) there is nothing to keep, and the card says "Your session ended" and brings the person
+ * back. Without the marker (a first visit) it is the plain sign-in card. `returnTo` brings the
+ * person back to the page either way.
  */
 function loginHref(expired: boolean): string {
   const back = `/manage/${window.location.hash}`;
@@ -4927,7 +4935,7 @@ export class ApiError extends Error {
 async function call<T>(
   path: string,
   init: RequestInit = {},
-  opts: { stepUpRedirect?: boolean } = {},
+  opts: { stepUpRedirect?: boolean; hold?: boolean } = {},
 ): Promise<T> {
   const res = await send(path, init, opts);
   // 204/empty bodies are tolerated (returns undefined cast to T).
@@ -4944,7 +4952,7 @@ async function callText(path: string): Promise<string> {
 async function send(
   path: string,
   init: RequestInit = {},
-  opts: { stepUpRedirect?: boolean } = {},
+  opts: { stepUpRedirect?: boolean; hold?: boolean } = {},
 ): Promise<Response> {
   const headers = new Headers(init.headers);
   const mutating = init.method != null && init.method !== "GET";
@@ -4960,7 +4968,17 @@ async function send(
     credentials: "same-origin",
   });
   if (res.status === 401) {
-    redirectToLogin(res.headers.get("X-PKey-Session") === "expired");
+    const expired = res.headers.get("X-PKey-Session") === "expired";
+    // A page that had a session stays where it is under the overlay (`csrf` is set once `/me`
+    // loaded), and the request waits for the sign-in and goes again. `/me` itself is the probe
+    // that learns the session is back, so it never waits on itself.
+    if (expired && csrf !== "") {
+      markSessionEnded();
+      if (opts.hold !== false && (await waitForSessionBack()))
+        return send(path, init, { ...opts, hold: false });
+    } else {
+      redirectToLogin(expired);
+    }
     throw new ApiError(401);
   }
   if (!res.ok) {
@@ -5061,7 +5079,8 @@ const feedPackagePath = (
 
 const rawApi = {
   // ── identity ────────────────────────────────────────────────────────────────
-  me: () => call<Me>("/manage/api/me"),
+  // The probe that learns the session is back: it must not wait for the sign-in it would end.
+  me: () => call<Me>("/manage/api/me", {}, { hold: false }),
   /** Who can give the member access to `area` in `scope` (`platform` or `product:<slug>`). */
   accessAdmins: (scope: string, area: AreaId) =>
     call<AccessAdmins>(

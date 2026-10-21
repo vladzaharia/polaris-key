@@ -1,11 +1,18 @@
 /**
  * The console's sign-in card (SIGN-IN.md §3.12, EXPERIENCE.md §8): `GET /manage/login` serves it
  * and the IdP redirect starts only when the operator presses Continue. Script-free: Continue is a
- * form that GETs the same path with `go=1`. The state flags (`signedOut`, `ended`, `stepUp`) pick
+ * form that POSTs the same path (SIGN-IN.md §3.13), so the typed address is in a body and not in a
+ * URL, and the Worker answers 303. The state flags (`signedOut`, `ended`, `stepUp`) pick
  * static copy and carry nothing else; `returnTo` is re-sanitised before it is written out.
  */
 import { escapeHtml } from "../platform/html.js";
 import { icon, renderAuthCard } from "../core/brandHtml.js";
+
+/** Help and Privacy under the card: pages on the docs host that need no session. */
+export const CONSOLE_CARD_LINKS = [
+  { label: "Help", href: "/docs/help/" },
+  { label: "Privacy", href: "/docs/help/your-data/" },
+] as const;
 
 export type SigninState = "signin" | "signedOut" | "ended" | "stepUp";
 
@@ -50,8 +57,7 @@ export function renderConsoleSignin(opts: {
   const c = COPY[opts.state];
   const body = [
     c.lede ? `<p>${escapeHtml(c.lede)}</p>` : "",
-    `<form method="get" action="/manage/login">`,
-    hidden("go", "1"),
+    `<form method="post" action="/manage/login">`,
     hidden("returnTo", opts.returnTo),
     opts.state === "stepUp" ? hidden("stepUp", "1") : "",
     opts.knownEmail
@@ -68,14 +74,32 @@ export function renderConsoleSignin(opts: {
     heading: c.h1,
     body,
     focusHeading: true,
+    links: CONSOLE_CARD_LINKS,
   });
+}
+
+/** A way forward on a notice: a link, or a POST that carries the context as hidden fields. */
+export type NoticeAction =
+  | { label: string; href: string }
+  | {
+      label: string;
+      post: { action: string; fields: Readonly<Record<string, string>> };
+    };
+
+function renderAction(a: NoticeAction): string {
+  if ("href" in a)
+    return `<p class="actions"><a class="button" href="${escapeHtml(a.href)}">${escapeHtml(a.label)}</a></p>`;
+  const fields = Object.entries(a.post.fields)
+    .map(([k, v]) => hidden(k, v))
+    .join("");
+  return `<form class="actions" method="post" action="${escapeHtml(a.post.action)}">${fields}<button class="button" type="submit">${escapeHtml(a.label)}</button></form>`;
 }
 
 /** A sign-in refusal or failure on the same card: a heading, one line, an optional way forward. */
 export function renderConsoleNotice(opts: {
   heading: string;
   lede?: string;
-  action?: { label: string; href: string };
+  action?: NoticeAction;
 }): string {
   return renderAuthCard({
     brand: "console",
@@ -83,9 +107,8 @@ export function renderConsoleNotice(opts: {
     heading: opts.heading,
     body:
       (opts.lede ? `<p>${escapeHtml(opts.lede)}</p>` : "") +
-      (opts.action
-        ? `<p class="actions"><a class="button" href="${escapeHtml(opts.action.href)}">${escapeHtml(opts.action.label)}</a></p>`
-        : ""),
+      (opts.action ? renderAction(opts.action) : ""),
     focusHeading: true,
+    links: CONSOLE_CARD_LINKS,
   });
 }

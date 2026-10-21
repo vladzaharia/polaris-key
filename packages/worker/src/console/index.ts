@@ -84,7 +84,7 @@ export async function handleAdmin(
   const clean =
     path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path;
 
-  if (clean === "/login") return handleAdminLogin(req, env);
+  if (clean === "/login") return handleAdminLogin(req, env, db);
   if (clean === "/callback")
     return handleAdminCallback(req, env, db, now, verifier);
   if (clean === "/api" || clean.startsWith("/api/")) {

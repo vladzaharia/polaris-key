@@ -24,8 +24,9 @@ import {
   CSRF_HEADER,
   isSteppedUp,
   issueSession,
-  verifySession,
+  sessionFromRequest,
 } from "../src/core/console/session.js";
+import { liveSubjectFor } from "../src/console/consoleSession.js";
 import { STEP_UP_ROUTES } from "../src/console/stepUp.js";
 import { handleDocs } from "../src/docs.js";
 
@@ -41,6 +42,7 @@ function adminEnv(): Env {
 }
 
 async function login(env: Env, opts: { stepUp?: boolean; authTime?: number }) {
+  const db = makeTestDb();
   const start = await handleAdminLogin(
     new Request(
       `https://key.plrs.im/manage/login?go=1${opts.stepUp ? "&stepUp=1" : ""}`,
@@ -63,13 +65,22 @@ async function login(env: Env, opts: { stepUp?: boolean; authTime?: number }) {
       headers: { cookie: await bindAdminFlow(env, state) },
     }) as unknown as Request,
     env,
-    makeTestDb(),
+    db,
     NOW,
     verifier,
   );
   const cookie = res.headers.get("set-cookie")!.split(";")[0]!;
   const token = cookie.slice(cookie.indexOf("=") + 1);
-  return { res, token, session: await verifySession(env, token, NOW) };
+  // The sign-in mints a v2 cookie: resolve it the way the console does, against the session row.
+  const session = await sessionFromRequest(
+    env,
+    new Request("https://key.plrs.im/manage/api/me", {
+      headers: { cookie: `${ADMIN_COOKIE}=${token}` },
+    }),
+    NOW,
+    liveSubjectFor(env, db, NOW),
+  );
+  return { res, token, session };
 }
 
 async function api(

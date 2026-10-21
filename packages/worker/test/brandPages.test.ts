@@ -445,8 +445,14 @@ describe("the console sign-in card (GET /manage/login)", () => {
     const html = await expectBrandedPage(res, "console");
     expect(html).toContain("<h1");
     expect(html).toContain("Sign in to the console");
-    expect(html).toContain('name="go" value="1"');
+    // SIGN-IN.md §3.13: Continue POSTs, so the address is never in a URL.
+    expect(html).toContain('<form method="post" action="/manage/login">');
+    expect(html).not.toContain('name="go"');
     expect(html).toContain('name="returnTo" value="/manage/#/p/alpha"');
+    // Help and Privacy sit under the card, on the docs host, no session needed.
+    expect(html).toContain(
+      '<nav class="ac-links" aria-label="Help and privacy"><a href="/docs/help/">Help</a><a href="/docs/help/your-data/">Privacy</a></nav>',
+    );
     expect(html).toContain("Next: sign in at id.example");
   });
 
@@ -525,6 +531,114 @@ describe("the console sign-in card (GET /manage/login)", () => {
     );
     expect(res.status).toBe(500);
     expect(await res.text()).toContain("Admin sign-in isn’t set up");
+  });
+});
+
+describe("the console sign-in card's POST (SIGN-IN.md §3.13)", () => {
+  const env = () => {
+    const e = makeEnv(new KvMock(), []);
+    e.PLATFORM_OIDC_ISSUER = "https://id.example";
+    e.PLATFORM_OIDC_CLIENT_ID = "polaris-admin";
+    return e;
+  };
+  const post = (
+    body: string,
+    headers: Record<string, string> = {},
+    e = env(),
+  ) =>
+    handleAdminLogin(
+      new Request(`${ORIGIN}/manage/login`, {
+        method: "POST",
+        body,
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          "sec-fetch-site": "same-origin",
+          "cf-connecting-ip": "203.0.113.40",
+          ...headers,
+        },
+      }) as unknown as Request,
+      e,
+    );
+
+  it("answers 303 to the IdP with the typed address as login_hint, set from the body", async () => {
+    const res = await post(
+      "login_hint=vlad%40zaharia.dev&returnTo=%2Fmanage%2F%23%2Fp%2Falpha",
+    );
+    expect(res.status).toBe(303);
+    const to = new URL(res.headers.get("location")!);
+    expect(to.origin).toBe("https://id.example");
+    expect(to.searchParams.get("login_hint")).toBe("vlad@zaharia.dev");
+    expect(res.headers.get("set-cookie")).toContain("__Host-pkey_admin_flow=");
+    expect(res.headers.get("cache-control")).toBe("no-store");
+  });
+
+  it("keeps the step-up and the chooser from the body", async () => {
+    const up = new URL(
+      (await post("stepUp=1&login_hint=a%40b.io")).headers.get("location")!,
+    );
+    expect(up.searchParams.get("prompt")).toBe("login");
+    expect(up.searchParams.get("max_age")).toBe("0");
+    const other = new URL((await post("other=1")).headers.get("location")!);
+    expect(other.searchParams.get("prompt")).toMatch(/select_account|login/);
+  });
+
+  it("drops a malformed address and an unsafe returnTo, as the GET did", async () => {
+    const res = await post(
+      "login_hint=not+an+email&returnTo=https%3A%2F%2Fevil.example%2F",
+    );
+    expect(res.status).toBe(303);
+    expect(
+      new URL(res.headers.get("location")!).searchParams.get("login_hint"),
+    ).toBeNull();
+  });
+
+  it("refuses a cross-site POST, a non-form body and an oversized body", async () => {
+    expect((await post("", { "sec-fetch-site": "cross-site" })).status).toBe(
+      403,
+    );
+    expect(
+      (await post("{}", { "content-type": "application/json" })).status,
+    ).toBe(403);
+    expect((await post("login_hint=" + "a".repeat(10_000))).status).toBe(413);
+  });
+
+  it("a failed discovery offers Try again as a POST that keeps the address out of the URL", async () => {
+    resetConsoleDiscoveryFailures();
+    const real = globalThis.fetch;
+    globalThis.fetch = (async () => {
+      throw new TypeError("fetch failed");
+    }) as typeof fetch;
+    try {
+      const e = env();
+      e.PLATFORM_OIDC_ISSUER = "https://down.example";
+      const res = await post("login_hint=ada%40x.io&stepUp=1", {}, e);
+      expect(res.status).toBe(502);
+      const html = await res.text();
+      expect(html).toContain(
+        '<form class="actions" method="post" action="/manage/login">',
+      );
+      expect(html).toContain('name="login_hint" value="ada@x.io"');
+      expect(html).toContain('name="stepUp" value="1"');
+      expect(html).not.toContain("go=1");
+      expect(html).not.toContain("ada%40x.io");
+      // The retry's redirect is followed under this page's policy, so it names the IdP too.
+      expect(res.headers.get("content-security-policy")).toContain(
+        "form-action 'self' https://down.example",
+      );
+    } finally {
+      globalThis.fetch = real;
+      resetConsoleDiscoveryFailures();
+    }
+  });
+
+  it("the GET go=1 link still works for the error cards' actions", async () => {
+    const res = await handleAdminLogin(
+      new Request(`${ORIGIN}/manage/login?go=1`, {
+        headers: { "cf-connecting-ip": "203.0.113.41" },
+      }) as unknown as Request,
+      env(),
+    );
+    expect(res.status).toBe(302);
   });
 });
 

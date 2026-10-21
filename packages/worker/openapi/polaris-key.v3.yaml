@@ -14054,12 +14054,19 @@ paths:
                 properties:
                   account:
                     type: object
-                    required: [id, name, email, avatarUrl, deletion]
+                    required: [id, name, email, avatarUrl, deletion, console]
                     properties:
                       id: { type: string }
                       name: { type: string }
                       email: { type: string }
                       avatarUrl: { type: [string, "null"] }
+                      console:
+                        type: [string, "null"]
+                        description: >
+                          The console's address when the account holds a link through the console's
+                          identity provider whose last-asserted groups carry the platform-admin
+                          group, else null. It only decides whether the account menu offers "Open
+                          console"; the console checks access itself.
                       deletion:
                         oneOf:
                           - type: "null"

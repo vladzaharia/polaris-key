@@ -42,7 +42,7 @@ export async function revokeAdminSessions(
 /** True when `session` was minted at or before its operator's revocation mark. */
 export async function isAdminSessionRevoked(
   env: Env,
-  session: AdminSession,
+  session: Pick<AdminSession, "sub" | "exp">,
 ): Promise<boolean> {
   const raw = await getArtefact(env, await revocationRef(env, session.sub));
   if (raw === null) return false;
