@@ -174,8 +174,8 @@ const kitCss = readFileSync(KIT, "utf8");
 const FREEZE = `*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}`;
 /** Phone shots (and long pages at any size): the portal's fixed bottom bar and the toasts (portal or console) sit at the page's end, not mid-page. */
 const PHONE_FULL_PAGE = `.portal>.portal-tabbar,.portal>.toasts,.console>.toasts{position:absolute!important}`;
-/** A pinned save bar (.save-bar.pinned, sticky to the window's bottom) is drawn where it rests, at the end of its record, so a full-page shot covers nothing. */
-const REST_PINNED = `.save-bar.pinned,.mk-action-bar,.drawer-foot.sticky-foot{position:static!important}`;
+/** A pinned save bar (.save-bar.pinned, sticky to the window's bottom) and the Library's "Missing a license?" strip (.portal-strip) are drawn where they rest, at the end of their record or page, so a full-page shot covers nothing. */
+const REST_PINNED = `.save-bar.pinned,.mk-action-bar,.drawer-foot.sticky-foot,.portal-strip{position:static!important}`;
 
 const page = (s, theme) =>
   `<!doctype html><html lang="en" data-theme="${theme}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${s.meta?.title ?? s.id}</title><style>${kitCss}</style><style>${FREEZE}${REST_PINNED}</style></head><body data-screen="${s.id}">${s.html}</body></html>`;

@@ -26395,3 +26395,535 @@ tr.chg {
 [data-brand="locker"] .portal-tabbar > a.active {
   box-shadow: inset 0 -3px 0 var(--pk-locker-accent);
 }
+
+/* BEGIN portal-shell-2026-10-20: the Library shell trim (PX-35) and the trimmed Locker lockup
+   (BR-lockups), as built and approved by the owner on 2026-10-20. Appended, so it wins over the
+   blocks above at equal specificity. kit/README.md "Customer portal: the 2026-10-20 shell". */
+
+/* The header's brand is the trimmed outlined Locker lockup (packages/brand LOCKER_TRIM: the kit's
+   460 x 128 canvas cropped to x 8, y 23, 437 x 80), never the mark beside live text: 40 px tall
+   (218 px wide) in the 64 px header, 36 px (197 px) under 761 px, and the mark alone (32 px; the
+   <i> keeps its accessible name) under 384 px, where a 180 px lockup has no room (Locker guide p.7). */
+[data-brand="locker"] .portal-brand > .lk-lockup {
+  width: 218.5px;
+  height: 40px;
+  background-size: 230px 64px;
+  background-position: -4px -11.5px;
+}
+@container screen (max-width: 760px) {
+  [data-brand="locker"] .portal-brand > .lk-lockup {
+    width: 196.65px;
+    height: 36px;
+    background-size: 207px 57.6px;
+    background-position: -3.6px -10.35px;
+  }
+}
+@container screen (max-width: 383px) {
+  [data-brand="locker"] .portal-brand > .lk-lockup {
+    width: 32px;
+    height: 32px;
+    background: var(--lk-mark) center / contain no-repeat;
+  }
+}
+
+/* The account chip: the avatar, the name and the chevron from 1180 px; the avatar alone in its
+   40 px ring below that. It opens the account menu. */
+@container screen (max-width: 1179px) {
+  /* font-size 0 also hides a name written as bare text beside the avatar (older screens). */
+  [data-brand="locker"] .portal-top .account {
+    justify-content: center;
+    gap: 0;
+    width: 40px;
+    padding: 0;
+    border: 1px solid var(--mk-line);
+    font-size: 0;
+  }
+  [data-brand="locker"] .portal-top .account > :not(.avatar) {
+    display: none !important;
+  }
+}
+.portal-top .account.open {
+  background: var(--mk-fill);
+}
+
+/* The account menu, drawn open (PORTAL.md §3.2, PX-35): who is signed in, then Activate a license,
+   Account, Sign-in methods and Appearance; Help and Privacy (the old footer's links); Sign out.
+   <div class="popover-anchor"><span class="account open">…</span>
+     <div class="popover right"><div class="menu account-menu" role="menu">
+       <div class="menu-head"><span class="avatar">PR</span><span class="menu-who"><strong>Priya Raman</strong><span>priya@example.edu</span></span></div>
+       <div class="menu-sep"></div><a class="menu-item" role="menuitem">…</a>…</div></div></div> */
+.menu.account-menu {
+  width: 256px;
+  max-width: calc(100vw - 2 * var(--sp-4));
+}
+.account-menu > .menu-item {
+  height: 40px;
+}
+/* Sign out is a form's button (a state change is never a link), drawn as a menu row. */
+.account-menu > button.menu-item {
+  width: 100%;
+  border: 0;
+  background: none;
+  text-align: start;
+  cursor: pointer;
+}
+.menu-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+  padding: var(--sp-2) var(--sp-3);
+}
+.menu-head > .avatar {
+  width: 40px;
+  height: 40px;
+  font-size: 14px;
+}
+.menu-who {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.menu-who > * {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.menu-who > strong {
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  font-weight: 500;
+  color: var(--pk-text-strong);
+}
+.menu-who > span {
+  font-size: var(--fs-meta);
+  line-height: var(--lh-meta);
+  color: var(--pk-text-muted);
+}
+
+/* Library and Discover tiles, denser (PX-35): the 5:2 art edge to edge, the 40 px icon 16 over its
+   lower edge with the name (16/22, two lines at most) beside it, 12 px inside, one line of facts,
+   the outlined action and More at the foot; a state pill on the art's top-right corner. Two
+   columns on a phone, three from 761 px, four from 1180 px, five from 1700 px; 12 apart, 16 from
+   761 px. <div class="portal-grid dense">…</div> */
+.portal .portal-grid.dense {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-3);
+}
+@container screen (min-width: 761px) {
+  .portal .portal-grid.dense {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--sp-4);
+  }
+}
+@container screen (min-width: 1180px) {
+  .portal .portal-grid.dense {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@container screen (min-width: 1700px) {
+  .portal .portal-grid.dense {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+.portal .portal-grid.dense > .ptile {
+  container: ptile / inline-size;
+  position: relative;
+  border-radius: 12px;
+}
+.portal .portal-grid.dense > .ptile > .art {
+  aspect-ratio: 5 / 2;
+  max-height: none;
+}
+.portal .portal-grid.dense .art > .on-art {
+  top: var(--sp-2);
+  right: var(--sp-2);
+  bottom: auto;
+}
+.portal .portal-grid.dense .ptile-head {
+  align-items: flex-start;
+  gap: var(--sp-3);
+  margin-top: calc(-1 * var(--sp-4));
+  padding: 0 var(--sp-3);
+}
+.portal .portal-grid.dense .ptile-head .logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+}
+.portal .portal-grid.dense .ptile-title {
+  flex: 1 1 auto;
+  padding-top: var(--sp-5);
+}
+.portal .portal-grid.dense .ptile-title > :is(h2, h3) {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: var(--fs-card);
+  line-height: 22px;
+  white-space: normal;
+}
+.portal .portal-grid.dense .ptile-title > :not(h2, h3) {
+  line-height: 22px;
+}
+.portal .portal-grid.dense .ptile-head.plain {
+  margin-top: 0;
+  padding-top: var(--sp-1); /* the name level with its neighbours', which clear their art by 4 */
+}
+.portal .portal-grid.dense .ptile-head.plain > .ptile-title {
+  padding-top: 0;
+}
+.portal .portal-grid.dense .art.noart > .logo.xl {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  font-size: 20px;
+}
+.portal .portal-grid.dense .ptile-body {
+  padding: var(--sp-2) var(--sp-3) 0;
+}
+.portal .portal-grid.dense .ptile-body > .mk-stack-3,
+.portal .portal-grid.dense .ptile-body .mk-stack-3 {
+  gap: var(--sp-2);
+}
+.portal .portal-grid.dense .ptile-body .icon-lines > li {
+  min-height: 20px;
+}
+.portal .portal-grid.dense .ptile-foot {
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+}
+.portal .portal-grid.dense .ptile-foot > .btn {
+  height: 40px;
+}
+.portal .portal-grid.dense .ptile-foot > .btn.icon {
+  width: 40px;
+}
+.portal .portal-grid.dense .ptile-links {
+  min-height: 56px; /* two link lines, so the actions of tiles side by side sit level */
+  padding: 0 var(--sp-3) var(--sp-3);
+}
+.portal .portal-grid.dense .ptile-foot + .ptile-links {
+  margin-top: calc(-1 * var(--sp-1));
+}
+/* A tile under 208 px (two columns on a phone): the icon stacks above the name with More level
+   with it, the pills and the platform glyphs take a line each, and the action spans the tile
+   without its icon (it may take two lines). */
+@container ptile (max-width: 207px) {
+  .portal .portal-grid.dense .ptile-head {
+    flex-direction: column;
+    gap: var(--sp-1);
+  }
+  .portal .portal-grid.dense .ptile-title {
+    width: 100%;
+    padding-top: 0;
+  }
+  .portal .portal-grid.dense .ptile-title > :is(h2, h3) {
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
+  }
+  .portal .portal-grid.dense .ptile-foot {
+    position: static;
+  }
+  .portal .portal-grid.dense .ptile-foot > .btn:not(.icon) {
+    position: relative;
+    z-index: 3;
+    height: auto;
+    min-height: 40px;
+    white-space: normal;
+    text-align: center;
+  }
+  .portal .portal-grid.dense .ptile-foot > .btn:not(.icon) > .ic {
+    display: none;
+  }
+  .portal .portal-grid.dense .ptile-head:not(.plain) ~ .ptile-foot > .btn.icon {
+    position: absolute;
+    z-index: 3;
+    top: calc(40cqi - var(--sp-4));
+    right: var(--sp-3);
+  }
+  .portal .portal-grid.dense .ptile-head.plain ~ .ptile-foot > .btn.icon {
+    position: absolute;
+    z-index: 3;
+    top: calc(40cqi + var(--sp-2));
+    right: var(--sp-3);
+  }
+  .portal .portal-grid.dense .ptile-head.plain > .ptile-title {
+    padding-right: calc(40px + var(--sp-2));
+  }
+  .portal .portal-grid.dense .pill-row {
+    flex-direction: column;
+    gap: var(--sp-2);
+  }
+  .portal .portal-grid.dense .pill-row > .mk-cluster {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .portal .portal-grid.dense .art > .on-art {
+    max-width: calc(100% - 2 * var(--sp-2));
+  }
+}
+
+/* The Library's key tile in the dense grid: it fills the rest of the last row (so the row is
+   always full); in a cell, the 40 px key beside "Have a license key?" with Activate a license at
+   the foot, level with the tiles' actions; with 640 px of its own (a whole row), one line. */
+.portal .portal-grid.dense > .end-tile:nth-child(n) {
+  grid-column: auto;
+}
+@container screen (max-width: 760px) {
+  .portal .portal-grid.dense > .end-tile:nth-child(odd) {
+    grid-column: span 2;
+  }
+}
+@container screen (min-width: 761px) and (max-width: 1179px) {
+  .portal .portal-grid.dense > .end-tile:nth-child(3n + 1) {
+    grid-column: span 3;
+  }
+  .portal .portal-grid.dense > .end-tile:nth-child(3n + 2) {
+    grid-column: span 2;
+  }
+}
+@container screen (min-width: 1180px) and (max-width: 1699px) {
+  .portal .portal-grid.dense > .end-tile:nth-child(4n + 1) {
+    grid-column: span 4;
+  }
+  .portal .portal-grid.dense > .end-tile:nth-child(4n + 2) {
+    grid-column: span 3;
+  }
+  .portal .portal-grid.dense > .end-tile:nth-child(4n + 3) {
+    grid-column: span 2;
+  }
+}
+@container screen (min-width: 1700px) {
+  .portal .portal-grid.dense > .end-tile:nth-child(5n + 1) {
+    grid-column: span 5;
+  }
+  .portal .portal-grid.dense > .end-tile:nth-child(5n + 2) {
+    grid-column: span 4;
+  }
+  .portal .portal-grid.dense > .end-tile:nth-child(5n + 3) {
+    grid-column: span 3;
+  }
+  .portal .portal-grid.dense > .end-tile:nth-child(5n + 4) {
+    grid-column: span 2;
+  }
+}
+.portal .portal-grid.dense > .end-tile.entry-tile {
+  border-radius: 12px;
+}
+.portal .portal-grid.dense .entry-inner {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-content: space-between;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+}
+.portal .portal-grid.dense .entry-art {
+  aspect-ratio: auto;
+  border: 0;
+  background: none;
+}
+.portal .portal-grid.dense .entry-mark {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+}
+.portal .portal-grid.dense .entry-mark > .ic {
+  width: 20px;
+  height: 20px;
+}
+.portal .portal-grid.dense .entry-text {
+  padding: 0;
+}
+.portal .portal-grid.dense .entry-text > :is(h2, h3) {
+  font-size: var(--fs-card);
+  line-height: 22px;
+}
+.portal .portal-grid.dense .entry-inner > .ptile-foot {
+  grid-column: 1 / -1;
+  padding: 0;
+}
+.portal .portal-grid.dense .entry-inner > .ptile-foot > .btn {
+  flex: 1;
+  height: auto;
+  min-height: 40px;
+  white-space: normal;
+}
+@container entry (min-width: 640px) {
+  .portal .portal-grid.dense .entry-inner {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-content: center;
+    column-gap: var(--sp-4);
+    padding: var(--sp-4);
+  }
+  .portal .portal-grid.dense .entry-inner > .ptile-foot {
+    grid-column: auto;
+  }
+}
+
+/* Discover with one or two products: a centred grid at most 768 px wide, one column under 400 px. */
+.portal .portal-grid.dense.pair {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-4);
+  width: 100%;
+  max-width: 768px;
+  margin-inline: auto;
+}
+@container screen (max-width: 399px) {
+  .portal .portal-grid.dense.pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* "Missing a license?" (PX-35): the Library's slim strip, sticky to the window's bottom and resting
+   at the page's end, so it never covers the last row; full bleed, raised, a hairline on top, no
+   shadow. From 1180 px one line: the question, then the ways in as 44 px links in ink with the
+   coral 2 px underline (D9a). Below 1180 px it is a "Missing a license?" disclosure that opens
+   upward (drawn closed); on a phone it sits on the bottom bar. Library only: Discover has none.
+   <section class="portal-strip" aria-label="Missing a license?"><div class="strip-row">
+     <p class="strip-title" aria-hidden="true">Missing a license?</p>
+     <button class="strip-toggle" aria-expanded="false">Missing a license?<i class="ic ic-chevron-up"></i></button>
+     <ul class="strip-ways"><li>Another email? <a class="strip-link" href="#">Add it in Sign-in methods</a></li>…</ul>
+   </div></section> */
+.portal-strip {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  padding: 0 max(var(--sp-6), calc((100% - var(--portal-max)) / 2));
+  border-top: 1px solid var(--mk-line);
+  background: var(--pk-surface-raised);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--pk-text-muted);
+}
+.strip-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--sp-6);
+  min-height: 44px;
+}
+.strip-title {
+  font-weight: 500;
+  color: var(--pk-text-strong);
+}
+.strip-ways {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--sp-6);
+}
+.strip-ways > li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  min-height: 44px;
+}
+.strip-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-weight: 500;
+  color: var(--pk-text-strong);
+  text-decoration: underline 2px var(--pk-locker-accent, var(--pk-accent));
+  text-underline-offset: 4px;
+  cursor: pointer;
+}
+.strip-toggle {
+  display: none;
+}
+@container screen (max-width: 1179px) {
+  .strip-title,
+  .strip-ways {
+    display: none;
+  }
+  .strip-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-2);
+    width: 100%;
+    min-height: 44px;
+    padding: 0;
+    border: 0;
+    background: none;
+    font-weight: 500;
+    color: var(--pk-text-strong);
+    cursor: pointer;
+  }
+  .strip-toggle > .ic {
+    color: var(--pk-text-muted);
+  }
+}
+/* A page that ends in the strip needs less room under its last block. */
+.portal:has(> .portal-strip) > .portal-page {
+  padding-bottom: var(--sp-8);
+}
+
+/* The phone bar, docked (PX-35, as built): full width on the window's bottom edge, 52 px and a
+   hairline, one tab per destination (Library, Discover), the icon over the label; the current tab
+   is strong text at 500 with the coral marker. Activate is in the account menu. The page keeps the bar's height clear
+   at its end, and the strip and any toast sit on top of the bar.
+   <nav class="portal-tabbar docked">… */
+@container screen (max-width: 639px) {
+  [data-brand="locker"] .portal-tabbar.docked,
+  .portal-tabbar.docked {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: grid;
+    grid-auto-columns: minmax(0, 1fr);
+    grid-auto-flow: column;
+    gap: 0;
+    height: 53px;
+    padding: 0 var(--sp-2);
+    border: 0;
+    border-top: 1px solid var(--mk-line);
+    border-radius: 0;
+    background: var(--pk-surface-page);
+    backdrop-filter: none;
+    box-shadow: none;
+    transform: none;
+  }
+  .portal-tabbar.docked > a,
+  [data-brand="locker"] .portal-tabbar.docked > a.active {
+    justify-content: center;
+    gap: var(--sp-0-5);
+    min-width: 0;
+    height: 100%;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    font-size: var(--fs-meta);
+  }
+  /* The current tab: strong text at 500 and the 3 px coral marker on its top edge (D9a; the
+     header's marker sits on its bottom edge, toward the page, and so does this one). */
+  [data-brand="locker"] .portal-tabbar.docked > a.active {
+    box-shadow: inset 0 3px 0 var(--pk-locker-accent);
+    color: var(--pk-text-strong);
+    font-weight: 500;
+  }
+  .portal:has(> .portal-tabbar.docked) {
+    padding-bottom: 53px;
+  }
+  .portal:has(> .portal-tabbar.docked) > .portal-page {
+    padding-bottom: var(--sp-8);
+  }
+  .portal:has(> .portal-tabbar.docked):has(> .toasts) > .portal-page {
+    padding-bottom: calc(var(--sp-16) + var(--sp-10));
+  }
+  .portal:has(> .portal-tabbar.docked) > .portal-strip {
+    bottom: 53px;
+    padding: 0 var(--sp-4);
+  }
+  .portal:has(> .portal-tabbar.docked) > .toasts {
+    bottom: calc(53px + var(--sp-3));
+  }
+}
+/* END portal-shell-2026-10-20 */

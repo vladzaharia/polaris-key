@@ -3,10 +3,11 @@
   "title": "Discover: a product",
   "area": "portal",
   "surface": "portal",
-  "packages": ["PX-32", "PS-05b", "PS-12"],
+  "packages": ["PX-32", "PS-05b", "PS-12", "PX-35", "BR-lockups"],
   "uxRows": [],
   "summary": "Diceroll's storefront page from Discover for Dana: the cover, the name and developer, a short story, and one decision panel beside it with where it runs, what she'd get, why she qualifies (her example.edu email) and every way to get it, with Add to my library as the one primary. The panel moves under the story on narrow screens.",
   "compare": [
+    "2026-10-20 redraw (PX-35, BR-lockups): the shell only. the header's Activate license button is gone (the account menu's first item, 'Activate a license'); the phone bar is Library · Discover, docked full width; the 'Polaris Locker · Help · Privacy' footer is gone (Help and Privacy are in the account menu); the header brand is the trimmed outlined Locker lockup at the guide's size (BR-lockups: 40 px tall in the 64 px header, 36 px under 761 px, the mark alone under 384 px). No 'Missing a license?' strip (the Library's alone). The page's own layout is unchanged.",
     "One decision panel (PX-32, portal-19): developer, platforms, tier, duration, eligibility and every claim path together; it never invents an offer (prominence follows eligibility).",
     "The cover is the product's art, nothing painted over it; the name sits beside the icon once.",
     "'No license needed' replaces the tier line for an open product; a store-only listing has no Add, only its store links (B12).",

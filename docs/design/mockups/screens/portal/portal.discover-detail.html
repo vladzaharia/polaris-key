@@ -1,4 +1,6 @@
 <div class="portal" data-brand="locker">
+  <!-- 2026-10-20 shell (PX-35, BR-lockups): the trimmed lockup, the nav, the account chip (Activate a
+       license, Help and Privacy are in its menu). No footer and no "Missing a license?" strip. -->
   <header class="portal-top">
     <a class="portal-brand" href="#"><i class="lk-lockup" role="img" aria-label="Polaris Locker"></i></a>
     <nav class="portal-nav" aria-label="Polaris Locker">
@@ -6,7 +8,6 @@
       <a class="active" href="#">Discover</a>
     </nav>
     <div class="portal-actions">
-      <button class="btn outline sm"><i class="ic ic-key-round accent"></i>Activate license</button>
       <span class="account"><span class="avatar sm">DO</span><span>Dana Ortiz</span><i class="ic ic-chevron-down"></i></span>
     </div>
   </header>
@@ -41,10 +42,8 @@
     </div>
   </main>
 
-  <footer class="portal-foot">Polaris Locker · Help · Privacy · Terms</footer>
-  <nav class="portal-tabbar" aria-label="Polaris Locker tabs">
+  <nav class="portal-tabbar docked" aria-label="Polaris Locker tabs">
     <a href="#"><i class="ic ic-layout-grid"></i>Library</a>
-    <a class="act" href="#"><i class="ic ic-key-round"></i>Activate</a>
-    <a class="active" href="#"><i class="ic ic-sparkles"></i>Discover</a>
+    <a class="active" href="#" aria-current="page"><i class="ic ic-sparkles"></i>Discover</a>
   </nav>
 </div>

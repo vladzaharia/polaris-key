@@ -3,16 +3,15 @@
   "title": "Library, empty",
   "area": "portal",
   "surface": "portal",
-  "packages": ["PX-27", "LX-38"],
+  "packages": ["PX-27", "LX-38", "PX-35", "BR-lockups"],
   "uxRows": [],
-  "summary": "Dana's Library before she owns anything: the display h1, who she is signed in as, one empty state with the star, one sentence, Activate a license as the primary and See 2 in Discover, and the Missing a license? strip kept.",
+  "summary": "Dana's Library before she owns anything: the display h1, who she is signed in as, one empty state with the Locker mark, one line, Activate a license as the page's one ink primary and See 2 in Discover, and the sticky 'Missing a license?' strip, led by Activate a license (there is no key tile).",
   "compare": [
-    "Owner decisions (2026-10-20, PX-35) supersede the lines below where they differ; the HTML redraw is a follow-up. The header has no Activate license button, so this state's own Activate license is the one ink primary (it no longer repeats the header's label); the account menu's first item opens the same modal. No footer; 'Missing a license?' is the sticky strip.",
-    "One empty state: the Polaris star, one line of what will show here, Activate a license (the one primary) and 'See 2 in Discover' (outlined, with the count of products she can add) (portal-17).",
-    "The Missing a license? strip is at the page's foot, above the footer (the owner, 2026-10-09); the empty state takes the room between the title and it, its content centred.",
-    "The subtitle says who is signed in, once; no count of zero products.",
-    "The display h1 (48/52, 32/36 on a phone); the bottom bar's Library is selected on a phone.",
-    "Round 2 (UX review): One name for the action ('Activate license', as the header); no count on the Library tab when it is zero."
+    "2026-10-20 redraw (PX-35, BR-lockups), to the owner-approved build: the header's Activate license button is gone (the account menu's first item, 'Activate a license'); the phone bar is Library · Discover, docked full width; the 'Polaris Locker · Help · Privacy' footer is gone (Help and Privacy are in the account menu); the header brand is the trimmed outlined Locker lockup at the guide's size (BR-lockups: 40 px tall in the 64 px header, 36 px under 761 px, the mark alone under 384 px); the empty state's button reads 'Activate a license' (the catalog's common.activateLicense) and is the one ink primary, now that the header repeats nothing; 'Missing a license?' is the sticky strip, led by 'Activate a license'.",
+    "One empty state: the Locker mark, 'Nothing here yet', Activate a license (the one primary) and 'See 2 in Discover' (outlined, with the count of products she can add) (portal-17). The two buttons wrap, never squeeze, at 320 px and at 200 % text.",
+    "The 'Missing a license?' strip ends the page (sticky to the window's bottom, so it shows at once): one line from 1180 px ('Activate a license', 'Another email? Add it in Sign-in methods', 'Bought on Steam? Connect Steam', 'Bought in a store? Sign in from the app'); a closed disclosure below 1180 px, on the bottom bar on a phone. The empty state takes the room between the title and it.",
+    "The subtitle says who is signed in, once; no count of zero products, no count on the Library tab.",
+    "The display h1 (48/52, 32/36 on a phone); the bottom bar's Library is the current tab on a phone."
   ],
   "status": "mockup",
   "designReview": null
