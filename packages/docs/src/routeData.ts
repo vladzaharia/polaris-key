@@ -7,7 +7,12 @@ import {
   type TocItem,
 } from "./lib/helpMessages";
 import { doorOf } from "./lib/doors";
-import { CUSTOMER_SITE, helpRoute, scopeSidebar } from "./lib/helpHost";
+import {
+  CUSTOMER_SITE,
+  helpRoute,
+  lockerIcon,
+  scopeSidebar,
+} from "./lib/helpHost";
 import { slugifyHeading } from "./lib/runbook";
 
 /**
@@ -101,6 +106,14 @@ export const onRequest = defineRouteMiddleware(async (context) => {
           /^https:\/\/[^/]+/,
           CUSTOMER_SITE,
         );
+      else if (
+        h.tag === "link" &&
+        (h.attrs?.rel === "icon" ||
+          h.attrs?.rel === "shortcut icon" ||
+          h.attrs?.rel === "apple-touch-icon")
+      )
+        // Polaris Locker's own favicon and touch icon (copy-artifacts.mjs), never the Key's.
+        h.attrs.href = lockerIcon(String(h.attrs.href));
       else if (h.tag === "link" && h.attrs?.rel === "canonical")
         h.attrs.href = String(h.attrs.href).replace(
           /^https:\/\/[^/]+/,
