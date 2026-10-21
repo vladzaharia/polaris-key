@@ -262,8 +262,10 @@ export function DestinationRow({
           </p>
         ) : null}
       </div>
+      {/* The switch ends the row: the menu sits before it, so the control column is flush right. */}
       {canEdit ? (
         <div className="flex shrink-0 items-center gap-2">
+          <ActionMenu label={`Actions for ${name}`} items={items} />
           <Switch
             aria-label={`Send alerts to ${name}`}
             checked={d.enabled}
@@ -278,7 +280,6 @@ export function DestinationRow({
               });
             }}
           />
-          <ActionMenu label={`Actions for ${name}`} items={items} />
         </div>
       ) : (
         <span />
