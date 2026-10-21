@@ -1,5 +1,7 @@
 import * as React from "react";
+import { resolveAccent } from "@polaris-key/brand/accent";
 import type { AttentionItemDto, ProductDetail } from "../../../../api.js";
+import { useTheme } from "../../../../components/theme.js";
 import { cn } from "../../../../lib/cn.js";
 import { ProductLogo } from "../../../../ui/ProductLogo.js";
 import { ServiceGlyph } from "../../../../ui/ServiceBadge.js";
@@ -15,17 +17,43 @@ import {
 } from "../model/home.js";
 
 /**
- * The cover (Cards view only, from `sm`): the product's hosted header art, else a neutral band
- * one step lighter than the card: no second logo, never a generated gradient, never read from
- * canvas pixels. The box is 72 px tall before the image arrives, so nothing shifts when it loads.
+ * The cover (Cards view only, from `sm`). With hosted header art, the art in a 72 px band. Without
+ * it, a solid placeholder (the brand guide: "when absent, use a solid-colour placeholder and
+ * initials"): the product's own tint (`presentation.accent`, the one the initials tile takes)
+ * when it has one, else a quiet neutral surface; either way a slim 32 px strip, never a tall empty
+ * block. In a grid where a neighbour has art the placeholder is the art's 72 px, so the cards'
+ * names and glyph rows line up. No second logo, never a generated gradient, never read from canvas pixels. The box has
+ * its height before the image arrives, so nothing shifts when it loads.
  */
-function Cover({ product: p }: { product: ProductDetail }): React.ReactElement {
+function Cover({
+  product: p,
+  tall,
+}: {
+  product: ProductDetail;
+  tall: boolean;
+}): React.ReactElement {
   const header = p.presentation?.header ?? null;
+  const { theme } = useTheme();
+  const accent =
+    theme === "dark"
+      ? (p.presentation?.accentDark ?? p.presentation?.accent ?? null)
+      : (p.presentation?.accent ?? null);
+  const tint = !header && accent ? resolveAccent(accent, theme) : null;
   return (
     <div
       aria-hidden
-      data-cover={header ? "art" : "flat"}
-      className="h-[72px] shrink-0 overflow-hidden rounded-t-lg border-b border-border bg-hover max-sm:hidden"
+      data-cover={header ? "art" : tint ? "tint" : "flat"}
+      // The tint is set through CSSOM, which the console's `style-src 'self'` allows.
+      style={tint ? { backgroundColor: tint.solid } : undefined}
+      className={cn(
+        "shrink-0 overflow-hidden rounded-t-lg max-sm:hidden",
+        header
+          ? "h-[72px] border-b border-border bg-hover"
+          : tall
+            ? "h-[72px]"
+            : "h-8",
+        !header && !tint && "bg-hover",
+      )}
     >
       {header ? (
         <img
@@ -88,10 +116,13 @@ export function ProductCard({
   product: p,
   attention,
   cover = true,
+  tallCover = false,
 }: {
   product: ProductDetail;
   attention: AttentionItemDto[];
   cover?: boolean;
+  /** Another card in the grid has art: a placeholder cover takes the art's height. */
+  tallCover?: boolean;
 }): React.ReactElement {
   const features = cardFeatures(p, attention);
   const name = p.name || p.slug;
@@ -106,7 +137,7 @@ export function ProductCard({
         "relative flex w-full min-w-0 flex-col rounded-lg border border-border bg-surface-raised hover:border-border-strong light:shadow-elevation-1 has-[a[data-card-link]:focus-visible]:ring-2 has-[a[data-card-link]:focus-visible]:ring-focus has-[a[data-card-link]:focus-visible]:ring-offset-2 has-[a[data-card-link]:focus-visible]:ring-offset-surface-page forced-colors:has-[a[data-card-link]:focus-visible]:outline-2 forced-colors:has-[a[data-card-link]:focus-visible]:outline-offset-2",
       )}
     >
-      {cover ? <Cover product={p} /> : null}
+      {cover ? <Cover product={p} tall={tallCover} /> : null}
       <div className="flex min-w-0 flex-1 flex-col gap-3 p-4 max-sm:py-3">
         <div
           data-card-header=""
@@ -172,6 +203,15 @@ export function ProductCard({
               className="ml-auto"
             >
               {pillLabel(attention)}
+            </StatusPill>
+          ) : p.system ? (
+            <StatusPill
+              tone="neutral"
+              icon={null}
+              size="sm"
+              className="ml-auto"
+            >
+              System
             </StatusPill>
           ) : null}
         </div>
