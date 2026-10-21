@@ -145,6 +145,14 @@ export function Sidebar({
   const tokens = links.filter((p) => p.page !== "home");
   const platformList = [...home, ...platform, ...tokens];
   const swapped = useRailSwap(rail);
+  const listRef = React.useRef<HTMLDivElement>(null);
+  const edges = useScrollEdges(listRef);
+  // The current page is kept in view: on every route change, and when the drawer mounts.
+  React.useEffect(() => {
+    listRef.current
+      ?.querySelector<HTMLElement>("[aria-current=page]")
+      ?.scrollIntoView?.({ block: "nearest" });
+  }, [activePage, slug]);
   const all = sections
     .map((section) => ({
       section,
@@ -174,63 +182,79 @@ export function Sidebar({
       data-context={slug ? "product" : "platform"}
       className="group/nav flex min-h-0 flex-1 flex-col"
     >
-      {/* Nothing to switch to (no product, no Platform area): no card. */}
+      {/* Nothing to switch to (no Platform area, at most the one product): no card. */}
       {switcher &&
-      (switcher.current ||
-        switcher.platform !== false ||
-        switcher.products.length > 0) ? (
+      (switcher.platform !== false || switcher.products.length > 1) ? (
         <div className={cn("shrink-0", rail ? "px-2 pt-3" : "px-3 pt-3")}>
           <ProductSwitcher {...switcher} rail={rail} />
         </div>
       ) : null}
-      <div
-        data-nav-list=""
-        className={cn(
-          "flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto pk-scroll",
-          rail ? "px-2 py-3" : "p-3",
-        )}
-      >
-        {slug === null ? (
-          <ul className="flex flex-col gap-0.5" data-service="core">
-            {platformList.map((p) =>
-              listItem(p, globalPage(p.page as GlobalPageId)),
-            )}
-          </ul>
-        ) : (
-          <>
-            {coreItems.length > 0 ? (
-              <ul className="flex flex-col gap-0.5" data-service="core">
-                {coreItems.map((p) =>
-                  listItem(p, productPage(slug, p.page as ProductPageId)),
-                )}
-              </ul>
-            ) : null}
-            {features_.map(({ section, items }) => (
-              <SidebarGroup
-                key={section.key}
-                groupKey={section.key}
-                label={section.label}
-                accent={section.accent}
-                glyph={section.glyph}
-                items={items.map((p) => ({
-                  page: p,
-                  to: productPage(slug, p.page as ProductPageId),
-                  badge: p.page === "catalog" ? pending : 0,
-                }))}
-                activePage={activePage}
-                active={section.key === activeSection}
-                open={
-                  section.key === activeSection || expanded.has(section.key)
-                }
-                onToggle={() => onToggleSection(section.key)}
-                rail={rail}
-                onNavigate={onNavigate}
-                onPrefetch={() => onPrefetch?.(section.key)}
-                contentId={`${idPrefix}-section-${section.key}`}
-              />
-            ))}
-          </>
-        )}
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        {/* Scroll-edge fades, drawn only while there is more list that way. */}
+        {edges.top ? (
+          <div
+            aria-hidden
+            data-nav-fade="top"
+            className="pointer-events-none absolute inset-x-0 top-0 z-10 h-6 bg-[linear-gradient(to_bottom,var(--color-surface-page),transparent)]"
+          />
+        ) : null}
+        {edges.bottom ? (
+          <div
+            aria-hidden
+            data-nav-fade="bottom"
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-6 bg-[linear-gradient(to_top,var(--color-surface-page),transparent)]"
+          />
+        ) : null}
+        <div
+          ref={listRef}
+          data-nav-list=""
+          className={cn(
+            "flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto pk-scroll",
+            rail ? "px-2 py-3" : "p-3",
+          )}
+        >
+          {slug === null ? (
+            <ul className="flex flex-col gap-0.5" data-service="core">
+              {platformList.map((p) =>
+                listItem(p, globalPage(p.page as GlobalPageId)),
+              )}
+            </ul>
+          ) : (
+            <>
+              {coreItems.length > 0 ? (
+                <ul className="flex flex-col gap-0.5" data-service="core">
+                  {coreItems.map((p) =>
+                    listItem(p, productPage(slug, p.page as ProductPageId)),
+                  )}
+                </ul>
+              ) : null}
+              {features_.map(({ section, items }) => (
+                <SidebarGroup
+                  key={section.key}
+                  groupKey={section.key}
+                  label={section.label}
+                  accent={section.accent}
+                  glyph={section.glyph}
+                  items={items.map((p) => ({
+                    page: p,
+                    to: productPage(slug, p.page as ProductPageId),
+                    badge: p.page === "catalog" ? pending : 0,
+                  }))}
+                  activePage={activePage}
+                  active={section.key === activeSection}
+                  open={
+                    section.key === activeSection || expanded.has(section.key)
+                  }
+                  onToggle={() => onToggleSection(section.key)}
+                  rail={rail}
+                  onNavigate={onNavigate}
+                  onPrefetch={() => onPrefetch?.(section.key)}
+                  contentId={`${idPrefix}-section-${section.key}`}
+                />
+              ))}
+            </>
+          )}
+        </div>
       </div>
       {settings || onToggleRail ? (
         <div
@@ -276,6 +300,40 @@ export function Sidebar({
  * phone drawer draw at once. Token-timed, so under reduced motion it is an instant swap.
  */
 const RAIL_FADE = "group-data-[rail-swap]/nav:animate-pk-fade-in";
+
+/** Is the list scrolled off its top, or does it run past its bottom? */
+function useScrollEdges(ref: React.RefObject<HTMLElement | null>): {
+  top: boolean;
+  bottom: boolean;
+} {
+  const [edges, setEdges] = React.useState({ top: false, bottom: false });
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = (): void => {
+      const next = {
+        top: el.scrollTop > 2,
+        bottom: el.scrollTop + el.clientHeight < el.scrollHeight - 2,
+      };
+      setEdges((p) =>
+        p.top === next.top && p.bottom === next.bottom ? p : next,
+      );
+    };
+    measure();
+    el.addEventListener("scroll", measure, { passive: true });
+    const ro =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(measure);
+    ro?.observe(el);
+    for (const c of Array.from(el.children)) ro?.observe(c);
+    return () => {
+      el.removeEventListener("scroll", measure);
+      ro?.disconnect();
+    };
+  }, [ref]);
+  return edges;
+}
 
 /** True once `rail` has changed since mount. */
 function useRailSwap(rail: boolean): boolean {
@@ -384,7 +442,7 @@ function SidebarGroup({
     const only = links[0]!;
     const current = isActivePage(activePage, only.page.page);
     return (
-      <div data-service={accent} data-section={groupKey} className="pt-3">
+      <div data-service={accent} data-section={groupKey} className="pt-1.5">
         <Link
           to={only.to}
           aria-current={current ? "page" : undefined}
@@ -394,9 +452,11 @@ function SidebarGroup({
           onMouseEnter={onPrefetch}
           onFocus={onPrefetch}
           className={cn(
-            "flex min-h-10 w-full items-center gap-2 rounded-md py-1 pl-2 pr-2 text-sm font-medium text-fg-strong",
+            "relative flex min-h-10 w-full items-center gap-2 overflow-hidden rounded-md py-1 pl-2 pr-2 text-sm font-medium text-fg-strong",
             "hover:bg-accent-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent-fg",
-            current && "bg-accent-subtle",
+            // The selected row: fill and the 3 px inset marker, never the fill alone.
+            current &&
+              "bg-accent-subtle before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-accent forced-colors:before:bg-[Highlight]",
           )}
         >
           <span
@@ -415,7 +475,7 @@ function SidebarGroup({
       onOpenChange={() => onToggle()}
       data-service={accent}
       data-section={groupKey}
-      className="pt-3"
+      className="pt-1.5"
     >
       <Collapsible.Trigger asChild>
         <button
@@ -500,7 +560,7 @@ export function SidebarItem({
         rail && "justify-center px-0",
         // The selected row: a subtle accent fill and a 3 px inset marker, never a solid pill.
         active
-          ? "bg-accent-subtle font-medium text-fg-strong before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-accent"
+          ? "bg-accent-subtle font-medium text-fg-strong before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-accent forced-colors:before:bg-[Highlight]"
           : "text-fg-muted hover:bg-accent-subtle hover:text-fg-strong",
       )}
     >
