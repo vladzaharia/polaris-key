@@ -7,6 +7,7 @@ import { PortalApiError } from "../../api.js";
 import {
   YOUR_DATA_COPY,
   productCopyBody,
+  removeBody,
   supportCodeHint,
 } from "../../copy/yourData.js";
 import {
@@ -44,6 +45,7 @@ export function ProductDataCard({
 }): React.ReactElement {
   const { name } = product;
   const exportData = useExportProductData(product.slug);
+  const services = useProduct(product.slug).data?.services;
   const [removing, setRemoving] = React.useState(false);
   return (
     <SectionCard
@@ -53,7 +55,7 @@ export function ProductDataCard({
       <div className="space-y-5">
         <DownloadData
           title={YOUR_DATA_COPY["yourData.product.copy.title"]}
-          description={productCopyBody(product.licenses.length)}
+          description={productCopyBody(product.licenses.length, services)}
           label={t("locker.productData.download", { product: name })}
           download={exportData}
         />
@@ -62,7 +64,7 @@ export function ProductDataCard({
             danger
             icon={<Trash2 aria-hidden />}
             title={YOUR_DATA_COPY["yourData.product.remove.title"]}
-            description={YOUR_DATA_COPY["yourData.product.remove.body"]}
+            description={removeBody(services)}
           >
             <Button
               variant="outline"

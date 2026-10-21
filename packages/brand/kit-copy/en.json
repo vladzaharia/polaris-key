@@ -4007,7 +4007,7 @@
       "note": "Your data (Account and each product page); moved from the portal's copy tables (P0-36)."
     },
     "yourData.product.remove.body": {
-      "value": "Polaris Locker deletes your settings and activity here. This can't be undone.",
+      "value": "Polaris Locker deletes your {detail} here. This can't be undone.",
       "role": "body",
       "note": "Your data (Account and each product page); moved from the portal's copy tables (P0-36)."
     },
@@ -4907,7 +4907,7 @@
       "note": "Account page (Account sections, Appearance, Delete account); moved from the portal's components (P0-36)."
     },
     "locker.delete.type": {
-      "value": "Type {name} to confirm",
+      "value": "Type your email to confirm",
       "role": "label",
       "note": "Account page (Account sections, Appearance, Delete account); moved from the portal's components (P0-36)."
     },
@@ -7560,6 +7560,131 @@
       "value": "Bought an app but don't see it?",
       "role": "label",
       "note": "Empty Library: links to Help on adding the email a purchase was made with (DOC-06a)."
+    },
+    "yourData.kind.license": {
+      "value": "license",
+      "role": "hint",
+      "note": "Your data (Account and each product page); catalog-ised in BUG-E3 (B-094)."
+    },
+    "yourData.kind.licenses": {
+      "value": "licenses",
+      "role": "hint",
+      "note": "Your data (Account and each product page); catalog-ised in BUG-E3 (B-094)."
+    },
+    "yourData.kind.devices": {
+      "value": "devices",
+      "role": "hint",
+      "note": "Your data (Account and each product page); catalog-ised in BUG-E3 (B-094)."
+    },
+    "yourData.kind.settings": {
+      "value": "settings",
+      "role": "hint",
+      "note": "Your data (Account and each product page); catalog-ised in BUG-E3 (B-094)."
+    },
+    "yourData.kind.synced": {
+      "value": "synced data",
+      "role": "hint",
+      "note": "Your data (Account and each product page); catalog-ised in BUG-E3 (B-094)."
+    },
+    "yourData.kind.activity": {
+      "value": "activity",
+      "role": "hint",
+      "note": "Your data (Account and each product page); catalog-ised in BUG-E3 (B-094)."
+    },
+    "yourData.product.copy.body": {
+      "value": "Your {detail}.",
+      "role": "body",
+      "note": "Your data (Account and each product page); catalog-ised in BUG-E3 (B-094)."
+    },
+    "yourData.support.hint": {
+      "value": "Give this code to {name}'s support.",
+      "role": "hint",
+      "note": "Your data (Account and each product page); catalog-ised in BUG-E3 (B-094)."
+    },
+    "yourData.remove.goes": {
+      "value": "Polaris Locker deletes your {detail} for {product}. This can't be undone.",
+      "role": "body",
+      "note": "Your data (Account and each product page); catalog-ised in BUG-E3 (B-094)."
+    },
+    "yourData.remove.developerTold": {
+      "value": "{developer} is told, so they can delete their own copy.",
+      "role": "body",
+      "note": "Your data (Account and each product page); catalog-ised in BUG-E3 (B-094)."
+    },
+    "yourData.remove.entryStays": {
+      "value": "{product} stays in your library.",
+      "role": "body",
+      "note": "Your data (Account and each product page); catalog-ised in BUG-E3 (B-094)."
+    },
+    "yourData.remove.licenseStaysOne": {
+      "value": "Your license stays in your library. While it does, {developer} can still connect you to your old records through it.",
+      "role": "body",
+      "note": "Your data (Account and each product page); catalog-ised in BUG-E3 (B-094)."
+    },
+    "yourData.remove.licenseStaysMany": {
+      "value": "Your licenses stay in your library. While they do, {developer} can still connect you to your old records through them.",
+      "role": "body",
+      "note": "Your data (Account and each product page); catalog-ised in BUG-E3 (B-094)."
+    },
+    "yourData.remove.alsoLabelOne": {
+      "value": "Also remove my license from my library",
+      "role": "label",
+      "note": "Your data (Account and each product page); catalog-ised in BUG-E3 (B-094)."
+    },
+    "yourData.remove.alsoLabelMany": {
+      "value": "Also remove my {count} licenses from my library",
+      "role": "label",
+      "note": "Your data (Account and each product page); catalog-ised in BUG-E3 (B-094)."
+    },
+    "yourData.remove.alsoNoteOne": {
+      "value": "It won't come back to this account by itself. To add it again, use its key.",
+      "role": "hint",
+      "note": "Your data (Account and each product page); catalog-ised in BUG-E3 (B-094)."
+    },
+    "yourData.remove.alsoNoteMany": {
+      "value": "They won't come back to this account by themselves. To add them again, use their keys.",
+      "role": "hint",
+      "note": "Your data (Account and each product page); catalog-ised in BUG-E3 (B-094)."
+    },
+    "yourData.remove.confirmAlsoOne": {
+      "value": "Remove my data and license",
+      "role": "button",
+      "note": "Your data (Account and each product page); catalog-ised in BUG-E3 (B-094)."
+    },
+    "yourData.remove.confirmAlsoMany": {
+      "value": "Remove my data and licenses",
+      "role": "button",
+      "note": "Your data (Account and each product page); catalog-ised in BUG-E3 (B-094)."
+    },
+    "yourData.remove.refused.title": {
+      "value": "Nothing was removed",
+      "role": "title",
+      "note": "Your data (Account and each product page); catalog-ised in BUG-E3 (B-094)."
+    },
+    "yourData.remove.refused.noKey": {
+      "value": "A license has no active key, so it couldn't be added back later. It stays in your library.",
+      "role": "body",
+      "note": "Your data (Account and each product page); catalog-ised in BUG-E3 (B-094)."
+    },
+    "yourData.remove.refused.keyClaimOff": {
+      "value": "{name} doesn't let you add a license with its key, so it couldn't be added back later. It stays in your library.",
+      "role": "body",
+      "note": "Your data (Account and each product page); catalog-ised in BUG-E3 (B-094)."
+    },
+    "yourData.remove.refused.rest": {
+      "value": "You can still remove your data and keep your license.",
+      "role": "body",
+      "note": "Your data (Account and each product page); catalog-ised in BUG-E3 (B-094)."
+    },
+    "yourData.remove.type": {
+      "value": "Type the app's name to confirm",
+      "role": "label",
+      "note": "Your data (Account and each product page); catalog-ised in BUG-E3 (B-094)."
+    },
+    "yourData.remove.downloadFirst": {
+      "value": "Download my data first",
+      "role": "button",
+      "note": "Your data (Account and each product page); catalog-ised in BUG-E3 (B-094)."
     }
   }
 }

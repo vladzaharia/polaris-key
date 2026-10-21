@@ -717,7 +717,32 @@ export type PortalCopyKey =
   | "locker.help.guide"
   | "locker.help.whatToDo"
   | "locker.devices.help"
-  | "locker.library.empty.missing";
+  | "locker.library.empty.missing"
+  | "yourData.kind.license"
+  | "yourData.kind.licenses"
+  | "yourData.kind.devices"
+  | "yourData.kind.settings"
+  | "yourData.kind.synced"
+  | "yourData.kind.activity"
+  | "yourData.product.copy.body"
+  | "yourData.support.hint"
+  | "yourData.remove.goes"
+  | "yourData.remove.developerTold"
+  | "yourData.remove.entryStays"
+  | "yourData.remove.licenseStaysOne"
+  | "yourData.remove.licenseStaysMany"
+  | "yourData.remove.alsoLabelOne"
+  | "yourData.remove.alsoLabelMany"
+  | "yourData.remove.alsoNoteOne"
+  | "yourData.remove.alsoNoteMany"
+  | "yourData.remove.confirmAlsoOne"
+  | "yourData.remove.confirmAlsoMany"
+  | "yourData.remove.refused.title"
+  | "yourData.remove.refused.noKey"
+  | "yourData.remove.refused.keyClaimOff"
+  | "yourData.remove.refused.rest"
+  | "yourData.remove.type"
+  | "yourData.remove.downloadFirst";
 
 /** One locale's table. */
 export type PortalCopyTable = Readonly<Record<PortalCopyKey, string>>;

@@ -1,4 +1,6 @@
 import * as React from "react";
+import { Download } from "lucide-react";
+import { Button } from "../../../ui/Button.js";
 import { Checkbox } from "../../../ui/Checkbox.js";
 import { ConfirmDialog } from "../../../ui/ConfirmDialog.js";
 import { toast } from "../../../ui/toast.js";
@@ -11,9 +13,12 @@ import {
   notRemovableCopy,
   removeConfirm,
   removeConsequences,
-  removedNote,
 } from "../../copy/yourData.js";
-import { useRemoveProductData } from "../../data.js";
+import {
+  useExportProductData,
+  useProduct,
+  useRemoveProductData,
+} from "../../data.js";
 import { isStepUpRequired, portalErrorCopy } from "../../errors.js";
 import { StepUpInline } from "../account/StepUpInline.js";
 import type { LibraryProduct } from "../../model/library.js";
@@ -60,6 +65,12 @@ export function RemoveProductDataDialog({
   const [refused, setRefused] = React.useState(false);
   // A stale sign-in: the prompt shows in the dialog, and confirming removes the data.
   const [askFirst, setAskFirst] = React.useState(false);
+  // A stale sign-in on the "Download first" link: the prompt shows, confirming runs it again.
+  const [askDownload, setAskDownload] = React.useState(false);
+  // What the retry after a step-up prompt met: shown in the dialog like any other refusal.
+  const [retryError, setRetryError] = React.useState<unknown>(null);
+  const services = useProduct(product.slug, { enabled: open }).data?.services;
+  const exportData = useExportProductData(product.slug);
   const offered =
     licenses > 0 &&
     !refused &&
@@ -70,6 +81,9 @@ export function RemoveProductDataDialog({
     if (open) {
       setAlsoRemove(false);
       setAskFirst(false);
+      setAskDownload(false);
+      setRetryError(null);
+      exportData.reset();
     }
   }, [open]);
 
@@ -85,9 +99,8 @@ export function RemoveProductDataDialog({
       }
       throw err;
     }
-    toast.success(t("locker.productData.removed", { product: name }), {
-      description: removedNote({ name, licenses, alsoRemoveLicense }),
-    });
+    // The dialog said what stays and what goes; the toast only says it is done.
+    toast.success(t("locker.productData.removed", { product: name }));
     onOpenChange(false);
     if (alsoRemoveLicense) onLeftLibrary?.();
   };
@@ -104,7 +117,14 @@ export function RemoveProductDataDialog({
         developer: product.presentation.developer,
         licenses,
         alsoRemoveLicense: also,
+        services,
       })}
+      typedConfirmation={{
+        value: name,
+        label: t("yourData.remove.type"),
+        ignoreCase: true,
+      }}
+      error={retryError}
       cancelLabel={YOUR_DATA_COPY["yourData.remove.keep"]}
       confirmLabel={removeConfirm(also, licenses)}
       closeOnSuccess={false}
@@ -114,6 +134,7 @@ export function RemoveProductDataDialog({
           : portalErrorCopy(err)
       }
       onConfirm={async () => {
+        setRetryError(null);
         try {
           await run(also);
         } catch (err) {
@@ -130,12 +151,20 @@ export function RemoveProductDataDialog({
           verb={t("locker.verb.removeData")}
           onConfirmed={() => {
             setAskFirst(false);
-            // A refusal shows on the next press of the confirm button.
-            void run(also).catch(() => undefined);
+            setRetryError(null);
+            run(also).catch((err: unknown) => {
+              if (isStepUpRequired(err)) setAskFirst(true);
+              else setRetryError(err);
+            });
           }}
           onCancel={() => setAskFirst(false)}
         />
       ) : null}
+      <DownloadFirst
+        download={exportData}
+        ask={askDownload}
+        setAsk={setAskDownload}
+      />
       {offered ? (
         <Checkbox
           checked={alsoRemove}
@@ -152,4 +181,64 @@ export function RemoveProductDataDialog({
 /** `409 not_removable`: a license the key could not bring back, so the Worker wrote nothing. */
 function isNotRemovable(err: unknown): err is PortalApiError {
   return err instanceof PortalApiError && err.code === "not_removable";
+}
+
+/**
+ * **Download my data first** (I-11): the product's file, before the removal that cannot be undone.
+ * The same request as the card's Download; a stale sign-in asks to confirm and runs it again, any
+ * other refusal shows under the link.
+ */
+function DownloadFirst({
+  download,
+  ask,
+  setAsk,
+}: {
+  download: ReturnType<typeof useExportProductData>;
+  ask: boolean;
+  setAsk: (ask: boolean) => void;
+}): React.ReactElement {
+  const start = (): void => {
+    if (download.isPending) return;
+    download.mutate(undefined, {
+      onSuccess: () =>
+        toast.success(YOUR_DATA_COPY["yourData.copy.started"], {
+          description: YOUR_DATA_COPY["yourData.copy.private"],
+        }),
+      onError: (err) => {
+        if (isStepUpRequired(err)) setAsk(true);
+      },
+    });
+  };
+  const failure =
+    download.error && !isStepUpRequired(download.error)
+      ? portalErrorCopy(download.error)
+      : null;
+  return (
+    <div className="space-y-2">
+      <Button
+        variant="link"
+        className="max-sm:min-h-11"
+        iconStart={<Download aria-hidden />}
+        loading={download.isPending}
+        onClick={start}
+      >
+        {t("yourData.remove.downloadFirst")}
+      </Button>
+      {ask ? (
+        <StepUpInline
+          verb={t("locker.verb.downloadData")}
+          onConfirmed={() => {
+            setAsk(false);
+            start();
+          }}
+          onCancel={() => setAsk(false)}
+        />
+      ) : null}
+      {failure ? (
+        <p role="alert" className="text-sm text-danger">
+          {failure.line}
+        </p>
+      ) : null}
+    </div>
+  );
 }
