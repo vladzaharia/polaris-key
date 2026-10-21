@@ -348,7 +348,7 @@ describe("moments show once per product (EXPERIENCE §0.7)", () => {
       floors: [],
     });
     overview();
-    await screen.findByRole("heading", { level: 2, name: "Release" });
+    await screen.findByRole("heading", { level: 2, name: "Releases" });
     await waitFor(() => expect(seen("first-release:djdl")).toBe(true));
     expect(banner("first-release:djdl")).toBeNull();
     // Later releases never bring it back.
@@ -431,7 +431,7 @@ describe("moments show once per product (EXPERIENCE §0.7)", () => {
       floors: [],
     });
     overview();
-    await screen.findByRole("heading", { level: 2, name: "Release" });
+    await screen.findByRole("heading", { level: 2, name: "Releases" });
     await act(async () => undefined);
     expect(banner("first-release:djdl")).toBeNull();
     expect(seen("first-release:djdl")).toBe(false);
@@ -490,7 +490,7 @@ describe("moments with no time of their own count when the console saw the produ
     });
     fns.schema.mockRejectedValue(new ApiError(500));
     overview();
-    await screen.findByRole("heading", { level: 2, name: "Config" });
+    await screen.findByRole("heading", { level: 2, name: "Managed config" });
     await waitFor(() => expect(fns.schema).toHaveBeenCalled());
     await act(async () => undefined);
     expect(

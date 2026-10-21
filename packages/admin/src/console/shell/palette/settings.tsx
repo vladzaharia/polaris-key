@@ -1,8 +1,9 @@
 import * as React from "react";
 import { SlidersHorizontal } from "lucide-react";
 import type { ServiceSlug } from "../../../services.generated.js";
-import { serviceLabel } from "../../../ui/ServiceBadge.js";
-import { SERVICE_TABLE } from "../../../services.generated.js";
+import { FEATURES, SERVICE_TABLE } from "../../../services.generated.js";
+import { pageOf } from "../../nav.js";
+import type { ServiceState } from "../../nav.js";
 import { SETTING_HOMES } from "../../sections/core/model/settingHomes.js";
 import { AREA_NAMES, canIn } from "../../access/can.js";
 import { globalPage, productPage } from "../../routes.js";
@@ -46,13 +47,24 @@ export function settingsItems(
   if (query.trim() === "") return [];
   const icon = <SlidersHorizontal aria-hidden className="size-4" />;
   const rows: PaletteItem[] = [];
+  // On a product, its settings; from Home, every product's (named in the detail), capped below.
+  const scopes: ProductScope[] = ctx.slug
+    ? [{ slug: ctx.slug, name: null, services: ctx.services }]
+    : ctx.products.map((p) => ({
+        slug: p.slug,
+        name: p.name || p.slug,
+        services: "services" in p ? (p.services ?? null) : null,
+      }));
   const namedWords = new Map<string, string>();
   for (const e of SETTINGS_INDEX) {
     if (e.pending !== null || e.deprecated !== null) continue;
-    const row = settingRow(ctx, e, icon);
-    if (!row) continue;
-    rows.push(row);
-    namedWords.set(row.id, [...e.aliases, ...e.keywords].join(" "));
+    const forEntry = e.scope === "product" ? scopes : [null];
+    for (const scope of forEntry) {
+      const row = settingRow(ctx, e, icon, scope);
+      if (!row) continue;
+      rows.push(row);
+      namedWords.set(row.id, [...e.aliases, ...e.keywords].join(" "));
+    }
   }
   // A name, key or keyword match leads; a word found only in the description follows.
   const words = query.trim().toLowerCase().split(/\s+/);
@@ -85,13 +97,41 @@ export function settingsItems(
   return shown;
 }
 
+interface ProductScope {
+  slug: string;
+  /** Set when the row must name its product (the palette opened off a product). */
+  name: string | null;
+  services: ServiceState;
+}
+
+/**
+ * Where a product setting lives, in the console's words: the page that edits it ("Keys &
+ * secrets"), else its feature ("Licensing"), else All settings. Never "Core" or a service slug.
+ */
+function whereWords(e: SettingsIndexEntry): string {
+  const home = SETTING_HOMES[e.key];
+  if (home?.kind === "page") {
+    const label = pageOf(home.page).label;
+    const feature =
+      e.service === "core"
+        ? null
+        : FEATURES.find((f) => f.services.includes(e.service as ServiceSlug));
+    return feature && feature.label !== label
+      ? `${feature.label} · ${label}`
+      : label;
+  }
+  return "All settings";
+}
+
 function settingRow(
   ctx: PaletteContext,
   e: SettingsIndexEntry,
   icon: React.ReactNode,
+  scope: ProductScope | null,
 ): PaletteItem | null {
   const area = e.rbacArea as keyof typeof AREA_NAMES;
   if (e.scope === "platform") {
+    if (scope) return null;
     if (!canIn(ctx.me, area, null)) return null;
     return {
       id: `setting:platform:${e.key}`,
@@ -103,22 +143,25 @@ function settingRow(
       href: globalPage("platform-settings", { setting: e.key }),
     };
   }
-  if (e.scope !== "product" || !ctx.slug) return null;
-  if (!canIn(ctx.me, area, ctx.slug)) return null;
+  if (e.scope !== "product" || !scope) return null;
+  if (!canIn(ctx.me, area, scope.slug)) return null;
   if (
     e.service !== "core" &&
-    ctx.services !== null &&
-    ctx.services[e.service as ServiceSlug]?.enabled !== true
+    scope.services !== null &&
+    scope.services[e.service as ServiceSlug]?.enabled !== true
   )
     return null;
+  const where = whereWords(e);
   return {
-    id: `setting:${ctx.slug}:${e.key}`,
+    id: `setting:${scope.slug}:${e.key}`,
     group: "Settings",
     label: e.label,
-    detail: serviceLabel(e.service as ServiceSlug | "core"),
-    keywords: keywords(e),
+    detail: scope.name ? `${scope.name} · ${where}` : where,
+    keywords: scope.name
+      ? `${keywords(e)} ${scope.slug} ${scope.name}`
+      : keywords(e),
     icon,
-    href: homeHref(ctx.slug, e.key),
+    href: homeHref(scope.slug, e.key),
   };
 }
 

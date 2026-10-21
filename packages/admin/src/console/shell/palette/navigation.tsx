@@ -1,18 +1,75 @@
 import * as React from "react";
 import { Box } from "lucide-react";
 import {
+  featureOfSection,
   navItems,
-  type NavFeatures,
+  pageOf,
   platformItems,
   platformLinks,
+  SETTINGS_HUB_PAGES,
   visibleSections,
   type GlobalPageId,
+  type NavFeatures,
+  type NavSection,
   type ProductPageId,
   type ServiceState,
 } from "../../nav.js";
 import { globalPage, productPage } from "../../routes.js";
 import type { ProductLike } from "../bits.js";
+import { filterItems } from "./rank.js";
 import type { LinkPaletteItem, PaletteSource } from "./types.js";
+
+/** A section as the operator knows it: the feature's name, never "Core" or a service's. */
+export function sectionWords(section: NavSection): string {
+  return featureOfSection(section.key)?.label ?? "Product";
+}
+
+/**
+ * One product's pages as palette rows: every page of its enabled sections, then the settings
+ * hub's tabs (Features, Keys & secrets, Members…), which are not sidebar items but are pages a
+ * person types for. `across` is for a product that is not on screen (the palette opened from
+ * Home): the product leads the detail and its name and slug are searchable.
+ */
+export function productPageRows(
+  slug: string,
+  productName: string | null,
+  services: ServiceState,
+  features: NavFeatures = null,
+  across = false,
+): LinkPaletteItem[] {
+  const name = productName ?? slug;
+  const items: LinkPaletteItem[] = [];
+  const row = (
+    p: ReturnType<typeof pageOf>,
+    words: string,
+    hub: boolean,
+  ): LinkPaletteItem => {
+    const Icon = p.icon;
+    return {
+      id: `nav:${slug}:${p.page}`,
+      group: "Pages",
+      label: p.paletteLabel ?? p.label,
+      detail: across ? `${name} · ${words}` : `${words} · ${name}`,
+      keywords: `${words} ${slug}${across ? ` ${name}` : ""}${hub ? " settings" : ""}${p.paletteLabel ? ` ${p.label}` : ""}${p.keywords ? ` ${p.keywords}` : ""}`,
+      icon: <Icon aria-hidden className="size-4" />,
+      shortcut: !across && p.shortcut ? `g ${p.shortcut}` : undefined,
+      href: productPage(slug, p.page as ProductPageId),
+      // A settings tab is found by typing it, not listed untyped.
+      ...(hub || across ? { matchOnly: true } : {}),
+    };
+  };
+  for (const section of visibleSections(services)) {
+    for (const p of navItems(section, features))
+      items.push(row(p, sectionWords(section), false));
+  }
+  const listed = new Set(items.map((i) => i.id));
+  for (const id of SETTINGS_HUB_PAGES) {
+    const p = pageOf(id);
+    if (!listed.has(`nav:${slug}:${p.page}`))
+      items.push(row(p, "Settings", true));
+  }
+  return items;
+}
 
 /**
  * The navigation source (components.md §1.5, EXPERIENCE.md §0.3 J-1): every built page of the
@@ -26,24 +83,9 @@ export function navigationSource(
   services: ServiceState,
   features: NavFeatures = null,
 ): LinkPaletteItem[] {
-  const items: LinkPaletteItem[] = [];
-  if (slug) {
-    for (const section of visibleSections(services)) {
-      for (const p of navItems(section, features)) {
-        const Icon = p.icon;
-        items.push({
-          id: `nav:${slug}:${p.page}`,
-          group: "Pages",
-          label: p.paletteLabel ?? p.label,
-          detail: `${section.label} · ${productName ?? slug}`,
-          keywords: `${section.label} ${slug}${p.paletteLabel ? ` ${p.label}` : ""}${p.keywords ? ` ${p.keywords}` : ""}`,
-          icon: <Icon aria-hidden className="size-4" />,
-          shortcut: p.shortcut ? `g ${p.shortcut}` : undefined,
-          href: productPage(slug, p.page as ProductPageId),
-        });
-      }
-    }
-  }
+  const items = slug
+    ? productPageRows(slug, productName, services, features)
+    : [];
   const global: LinkPaletteItem[] = platformLinks().map((p) => {
     const Icon = p.icon;
     return {
@@ -86,6 +128,40 @@ export function productSource(products: ProductLike[]): LinkPaletteItem[] {
     product: p,
   }));
 }
+
+/** Rows shown from products that are not on screen: enough to find one, never a wall. */
+export const ACROSS_PRODUCTS_MAX = 8;
+
+/**
+ * From Home (no product on screen) a typed query also finds product pages and settings tabs in
+ * any of the operator's products: "secret" finds Keys & secrets, each row naming its product.
+ * Typed only, best first, capped.
+ */
+export function productPagesAcross(
+  products: ProductLike[],
+  query: string,
+): LinkPaletteItem[] {
+  if (query.trim() === "") return [];
+  const rows = products.flatMap((p) =>
+    productPageRows(
+      p.slug,
+      p.name,
+      "services" in p ? (p.services ?? null) : null,
+      null,
+      true,
+    ),
+  );
+  return filterItems(rows, query).slice(
+    0,
+    ACROSS_PRODUCTS_MAX,
+  ) as LinkPaletteItem[];
+}
+
+export const productPagesAcrossPaletteSource: PaletteSource = {
+  id: "product-pages",
+  useItems: (ctx, query) =>
+    ctx.slug === null ? productPagesAcross(ctx.products, query) : [],
+};
 
 export const navigationPaletteSource: PaletteSource = {
   id: "navigation",

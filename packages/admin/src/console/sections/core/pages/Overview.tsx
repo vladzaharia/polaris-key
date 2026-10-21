@@ -39,7 +39,7 @@ import { Button } from "../../../../ui/Button.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { IdChip } from "../../../../ui/IdChip.js";
-import { ServiceGlyph, serviceLabel } from "../../../../ui/ServiceBadge.js";
+import { ServiceGlyph } from "../../../../ui/ServiceBadge.js";
 import { PageSkeleton, Skeleton } from "../../../../ui/Skeleton.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
 import { Timeline, TimelineItem } from "../../../../ui/Timeline.js";
@@ -72,6 +72,7 @@ import { fetchDeviceSummary } from "./Devices.js";
 import { declaresSaves, noCatalog, userSettings } from "../../sync/data.js";
 import { IntegrationCard } from "../components/IntegrationCard.js";
 import { nextStep } from "../model/integration.js";
+import { runningFeatures } from "../../global/model/home.js";
 import { useSetup } from "../../../wizard/useSetup.js";
 
 const DAY = 86_400;
@@ -140,6 +141,7 @@ function OverviewBody({
   placeholder?: boolean;
 }): React.ReactElement {
   const enabled = SERVICE_ORDER.filter((s) => on(p, s));
+  const features = runningFeatures(p);
   const licenses = useQuery({
     queryKey: qk.licenses(slug),
     queryFn: () => api.licenses(slug),
@@ -188,7 +190,7 @@ function OverviewBody({
     </Button>
   ) : (
     <Button asChild>
-      <Link to={r.services(slug)}>Enable services</Link>
+      <Link to={r.services(slug)}>Enable features</Link>
     </Button>
   );
   // The card's hero carries the next step while it shows; otherwise the header does. Nothing is
@@ -212,8 +214,8 @@ function OverviewBody({
           titleAside={<IdChip value={slug} noun="slug" head={32} />}
           description={
             <>
-              Runs {enabled.length}{" "}
-              {enabled.length === 1 ? "service" : "services"}
+              Runs {features.length}{" "}
+              {features.length === 1 ? "feature" : "features"}
               {p.releaseSource === "github" ? " · linked to a repository" : ""}
               {sync?.lastSyncedAt
                 ? ` · last resync ${formatDate(fromSeconds(sync.lastSyncedAt))}`
@@ -256,11 +258,11 @@ function OverviewBody({
         enabled.length === 0 ? (
           <EmptyState
             kind="first-run"
-            title="This product runs no services yet"
-            description="Core keeps its devices, keys and settings. Turn on the services it needs: License for licenses, Config for signed config, Release and Distribution to ship builds."
+            title="This product runs no features yet"
+            description="Core keeps its devices, keys and settings. Turn on the features it needs: Licensing for licenses, Managed config for signed config, Ship builds to release and distribute."
             primaryAction={
               <Button asChild>
-                <Link to={r.services(slug)}>Enable services</Link>
+                <Link to={r.services(slug)}>Enable features</Link>
               </Button>
             }
           />

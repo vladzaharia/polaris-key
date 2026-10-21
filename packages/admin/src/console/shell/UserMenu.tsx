@@ -68,7 +68,7 @@ export function UserMenu({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" aria-label="Account menu">
-          <span className="flex size-7 items-center justify-center rounded-full bg-accent text-xs font-medium text-accent-on">
+          <span className="flex size-7 items-center justify-center rounded-full border border-border bg-surface-sunken text-xs font-medium text-fg-strong">
             {initials || "PK"}
           </span>
         </Button>

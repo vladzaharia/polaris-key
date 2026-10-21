@@ -4,6 +4,7 @@ import type { FieldValues } from "react-hook-form";
 import { cn } from "../lib/cn.js";
 import { Button } from "./Button.js";
 import type { AdminForm } from "./form.js";
+import { SAVE_BAR_INSET_VAR } from "./toast.js";
 
 export interface SaveBarProps<T extends FieldValues> {
   form: AdminForm<T>;
@@ -98,6 +99,28 @@ export function SaveBar<T extends FieldValues>({
 
   const errorNames = Object.keys(form.errors);
   const show = form.isDirty || errorNames.length > 0 || form.isSubmitting;
+
+  // While the bar is up it reports its height, so a toast (an error stays until dismissed) sits
+  // above it and never covers Save.
+  React.useEffect(() => {
+    const el = barRef.current;
+    if (!show || !el) return;
+    const root = document.documentElement;
+    const report = (): void =>
+      root.style.setProperty(
+        SAVE_BAR_INSET_VAR,
+        `${Math.ceil(el.getBoundingClientRect().height) + 16}px`,
+      );
+    report();
+    const ro =
+      typeof ResizeObserver === "function" ? new ResizeObserver(report) : null;
+    ro?.observe(el);
+    return () => {
+      ro?.disconnect();
+      root.style.removeProperty(SAVE_BAR_INSET_VAR);
+    };
+  }, [show]);
+
   if (!show) return null;
 
   const labels = form.labels.current;

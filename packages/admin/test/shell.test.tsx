@@ -10,7 +10,13 @@ import {
 import userEvent from "@testing-library/user-event";
 import { configureAxe } from "vitest-axe";
 import { SERVICE_ACCENTS } from "@polaris-key/brand";
-import { PRODUCT_PAGES, SECTIONS, navItems } from "../src/console/nav.js";
+import {
+  PRODUCT_PAGES,
+  SECTIONS,
+  SHIP_BUILDS_KEYS,
+  navItems,
+  type NavPage,
+} from "../src/console/nav.js";
 
 type ServiceAccentKey = keyof (typeof SERVICE_ACCENTS)["dark"];
 import { PREF_KEYS } from "../src/console/storage.js";
@@ -52,12 +58,36 @@ function sectionHeaders(): string[] {
   );
 }
 
+/**
+ * The sidebar's feature groups: one per section, but Release, Distribution and Update are one
+ * group, "Ship builds" (B5), holding all of their pages under the first one's key.
+ */
+interface Group {
+  key: string;
+  label: string;
+  accent: string;
+  pages: NavPage[];
+}
+const GROUPS: Group[] = [];
+for (const s of SECTIONS) {
+  if (s.key === "core") continue;
+  const pages = navItems(s, { packageFeeds: false });
+  const ship = SHIP_BUILDS_KEYS.includes(s.key);
+  const held = ship ? GROUPS.find((g) => g.label === "Ship builds") : undefined;
+  if (held) held.pages.push(...pages);
+  else
+    GROUPS.push({
+      key: s.key,
+      label: ship ? "Ship builds" : s.label,
+      accent: s.accent,
+      pages,
+    });
+}
 /** A feature with exactly one page is one row: its label is the link (no disclosure). */
-const isSingle = (s: (typeof SECTIONS)[number]): boolean =>
-  navItems(s, { packageFeeds: false }).length === 1;
-/** The feature groups that fold: every section but Core and the one-page ones. */
-const FOLDING = SECTIONS.filter((s) => s.key !== "core" && !isSingle(s));
-const FEATURES = SECTIONS.filter((s) => s.key !== "core");
+const isSingle = (g: Group): boolean => g.pages.length === 1;
+/** The feature groups that fold: every group but the one-page ones. */
+const FOLDING = GROUPS.filter((g) => !isSingle(g));
+const FEATURES = GROUPS;
 
 const header = (label: string): HTMLElement =>
   within(nav()).getByRole("button", { name: label });
@@ -97,9 +127,7 @@ describe("sections by enablement (D-15)", () => {
       expect(sectionHeaders()).toEqual([
         "Licensing",
         "Managed config",
-        "Release",
-        "Distribution",
-        "Update",
+        "Ship builds",
         "Sign-in",
         "Cloud Sync",
         "Commerce",
@@ -120,7 +148,7 @@ describe("sections by enablement (D-15)", () => {
       expect(sectionHeaders()).toEqual([
         "Licensing",
         "Managed config",
-        "Distribution",
+        "Ship builds",
         "Sign-in",
         "Cloud Sync",
         "Commerce",
@@ -199,10 +227,8 @@ describe("items and headers (owner, 2026-10-03)", () => {
     expect(links.map((a) => a.textContent)).toEqual([
       ...coreItems.map((p) => p.label),
       // The product row says nothing of package feeds, so Distribution → Package feeds is absent.
-      ...FEATURES.flatMap((s) =>
-        isSingle(s)
-          ? [s.label]
-          : navItems(s, { packageFeeds: false }).map((p) => p.label),
+      ...FEATURES.flatMap((g) =>
+        isSingle(g) ? [g.label] : g.pages.map((p) => p.label),
       ),
       "Settings",
     ]);
@@ -373,7 +399,7 @@ describe("collapsible section headers (owner, 2026-10-03)", () => {
     boot("#/p/djdl/license/tiers", { services: ALL_ON });
     await ready();
     await expand("Managed config");
-    await expand("Release");
+    await expand("Ship builds");
 
     // Follow a link inside a peeked section.
     await userEvent.click(
@@ -388,7 +414,7 @@ describe("collapsible section headers (owner, 2026-10-03)", () => {
     );
     expect(expanded("Managed config")).toBe("true");
     expect(expanded("Licensing")).toBe("false");
-    expect(expanded("Release")).toBe("false");
+    expect(expanded("Ship builds")).toBe("false");
     expect(within(nav()).queryByRole("link", { name: "Tiers" })).toBeNull();
     expect(within(nav()).queryByRole("link", { name: "Releases" })).toBeNull();
 
@@ -452,13 +478,13 @@ describe("collapsible section headers (owner, 2026-10-03)", () => {
     const before = { ...window.localStorage };
     const setItem = vi.spyOn(Storage.prototype, "setItem");
     await expand("Managed config");
-    await expand("Release");
-    await userEvent.click(header("Release"));
+    await expand("Ship builds");
+    await userEvent.click(header("Ship builds"));
     act(() => {
       window.location.hash = "#/p/djdl/license/tiers";
     });
     await waitFor(() => expect(expanded("Licensing")).toBe("true"));
-    await expand("Distribution");
+    await expand("Ship builds");
     expect(setItem).not.toHaveBeenCalled();
     expect({ ...window.localStorage }).toEqual(before);
     setItem.mockRestore();
@@ -1183,9 +1209,16 @@ describe("keyboard shortcuts (ADMIN.md §5.5)", () => {
   });
 
   it("does not jump into a section the product does not run", async () => {
-    boot("#/p/djdl", { services: { ...ALL_ON, release: { enabled: false } } });
+    boot("#/p/djdl", {
+      services: {
+        ...ALL_ON,
+        release: { enabled: false },
+        distribution: { enabled: false },
+        update: { enabled: false },
+      },
+    });
     await ready();
-    await waitFor(() => expect(sectionHeaders()).not.toContain("Release"));
+    await waitFor(() => expect(sectionHeaders()).not.toContain("Ship builds"));
     fireEvent.keyDown(window, { key: "g" });
     fireEvent.keyDown(window, { key: "r" });
     await new Promise((r) => setTimeout(r, 50));

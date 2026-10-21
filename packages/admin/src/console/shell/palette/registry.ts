@@ -11,6 +11,7 @@ import { canIn, canOpenHref } from "../../access/can.js";
 import { actionsPaletteSource } from "./actions.js";
 import {
   navigationPaletteSource,
+  productPagesAcrossPaletteSource,
   productsPaletteSource,
 } from "./navigation.js";
 import { settingsPaletteSource } from "./settings.js";
@@ -40,6 +41,7 @@ export const PALETTE_GROUPS: readonly PaletteGroupSpec[] = [
 export const PALETTE_SOURCES: readonly PaletteSource[] = [
   supportCodePaletteSource,
   navigationPaletteSource,
+  productPagesAcrossPaletteSource,
   actionsPaletteSource,
   settingsPaletteSource,
   productsPaletteSource,
@@ -71,6 +73,8 @@ function allowed(ctx: PaletteContext, item: PaletteItem): boolean {
   if (item.href) return canOpenHref(ctx.me, item.href);
   if (item.id.startsWith("action:turn-on:"))
     return canIn(ctx.me, "core", ctx.slug, "edit");
+  if (item.id.startsWith("action:delete-product:"))
+    return canIn(ctx.me, "settings", item.id.split(":")[2] ?? null, "edit");
   if (item.id === "action:create-license")
     return canIn(ctx.me, "license", ctx.slug, "edit");
   return true;

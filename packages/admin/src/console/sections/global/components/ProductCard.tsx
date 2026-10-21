@@ -3,7 +3,7 @@ import { resolveAccent } from "@polaris-key/brand/accent";
 import type { AttentionItemDto, ProductDetail } from "../../../../api.js";
 import { useTheme } from "../../../../components/theme.js";
 import { cn } from "../../../../lib/cn.js";
-import { letterOf } from "../../../../lib/productArt.js";
+import { fallbackTint } from "../../../../lib/productArt.js";
 import { ProductLogo } from "../../../../ui/ProductLogo.js";
 import { ServiceGlyph } from "../../../../ui/ServiceBadge.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
@@ -19,10 +19,9 @@ import {
 
 /**
  * The cover (Cards view only, from `sm`), always 72 px so a row's names and glyph rows line up,
- * and never drawn empty. With hosted header art, the art. Without it, a deliberate solid
- * placeholder (the brand guide: "when absent, use a solid-colour placeholder and initials"): the
- * product's own tint (`presentation.accent`) when it has one; else a raised neutral surface with
- * the product's icon centred at 40 px; else the same surface with its initial, large. No
+ * and never drawn empty. With hosted header art, the art. Without it, a flat colour band and
+ * nothing in it (the header tile below already carries the logo or initial): the product's own
+ * tint (`presentation.accent`) when it has one, else a muted tint picked from the slug. No
  * generated gradient, never read from canvas pixels.
  */
 function Cover({ product: p }: { product: ProductDetail }): React.ReactElement {
@@ -32,19 +31,17 @@ function Cover({ product: p }: { product: ProductDetail }): React.ReactElement {
     theme === "dark"
       ? (p.presentation?.accentDark ?? p.presentation?.accent ?? null)
       : (p.presentation?.accent ?? null);
-  const tint = !header && accent ? resolveAccent(accent, theme) : null;
-  const icon = !header && !tint && p.presentation?.icon;
-  const name = p.name || p.slug;
+  const own = !header && accent ? resolveAccent(accent, theme) : null;
+  const color = header ? null : (own?.solid ?? fallbackTint(p.slug, theme));
   return (
     <div
       aria-hidden
-      data-cover={header ? "art" : tint ? "tint" : icon ? "icon" : "initials"}
+      data-cover={header ? "art" : own ? "tint" : "slug"}
       // The tint is set through CSSOM, which the console's `style-src 'self'` allows.
-      style={tint ? { backgroundColor: tint.solid } : undefined}
+      style={color ? { backgroundColor: color } : undefined}
       className={cn(
-        "grid h-[72px] shrink-0 place-items-center overflow-hidden rounded-t-lg max-sm:hidden",
+        "h-[72px] shrink-0 overflow-hidden rounded-t-lg max-sm:hidden",
         header && "border-b border-border bg-hover",
-        !header && !tint && "border-b border-border bg-hover",
       )}
     >
       {header ? (
@@ -57,16 +54,14 @@ function Cover({ product: p }: { product: ProductDetail }): React.ReactElement {
           height={72}
           className="h-full w-full object-cover"
         />
-      ) : icon ? (
-        <ProductLogo name={name} presentation={p.presentation} size={40} />
-      ) : !tint ? (
-        <span className="select-none text-3xl font-medium leading-none text-fg-muted">
-          {letterOf(name)}
-        </span>
       ) : null}
     </div>
   );
 }
+
+/** At large text a pill grows a line instead of cutting its words short. */
+export const WRAPPING_PILL =
+  "h-auto min-h-5 whitespace-normal py-0.5 [&>span]:overflow-visible [&>span]:whitespace-normal [&>span]:text-clip";
 
 /**
  * One row of glyphs as a single tab stop: Left and Right (and Home, End) move between them, the
@@ -195,7 +190,7 @@ export function ProductCard({
             <StatusPill
               tone={worstTone(attention)}
               size="sm"
-              className="ml-auto"
+              className={cn("ml-auto", WRAPPING_PILL)}
             >
               {pillLabel(attention)}
             </StatusPill>

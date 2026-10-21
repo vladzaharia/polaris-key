@@ -290,6 +290,8 @@ const ZOOM_CASES = [
   "long:overview",
   "dialog:set-secret",
 ];
+/** Home (Cards and Table) and a product's Overview. */
+const HOME_CASES = ["global:home", "home:table", "djdl:overview"];
 /** The console's content column at its widest (BRAND.md §7.6). */
 const CONSOLE_COLUMN_MAX = 1760;
 /** `PK_LAYOUT_VIEWPORTS=1280x720,1920x1080` swaps the gate viewports for others locally. */
@@ -306,6 +308,8 @@ const VIEWPORTS: {
   /** Emulate a Windows contrast theme, or `prefers-contrast: more`. */
   forcedColors?: "active";
   contrast?: "more";
+  /** The root font size in percent (200 = 200 % text, WCAG 1.4.4), the window unchanged. */
+  textScale?: number;
 }[] = process.env.PK_LAYOUT_VIEWPORTS
   ? process.env.PK_LAYOUT_VIEWPORTS.split(",").map((v) => {
       const [width, height] = v.split("x").map(Number) as [number, number];
@@ -332,6 +336,17 @@ const VIEWPORTS: {
         accept: (n) => !n.startsWith("empty:"),
       },
       { label: "phone", width: 390, height: 844 },
+      // Home and Overview at the laptop the owner works on (1512); Home at a phone with the root
+      // text doubled (WCAG 1.4.4; a text-only zoom keeps the window). Overview's own 200 % text
+      // (its masthead sentence, the By platform rows) belongs to the Overview package.
+      { label: "mac", width: 1512, height: 818, only: HOME_CASES },
+      {
+        label: "phone-text200",
+        width: 390,
+        height: 844,
+        textScale: 200,
+        only: ["global:home", "home:table"],
+      },
       // ADMIN.md's narrowest width, for the pages with a product in the top bar: the switcher's
       // chevron once spilled out of its border box here (ADMIN.md §2.2).
       {
@@ -487,6 +502,7 @@ async function open(
     deviceScaleFactor?: number;
     forcedColors?: "active";
     contrast?: "more";
+    textScale?: number;
   },
 ): Promise<{ page: Page; gaps: string[]; errors: string[] }> {
   const ctx = await browser.newContext({
@@ -506,6 +522,13 @@ async function open(
       ),
     );
   }, theme);
+  if (viewport.textScale)
+    await ctx.addInitScript((pct) => {
+      // CSSOM, which the console's `style-src 'self'` allows.
+      document.addEventListener("DOMContentLoaded", () => {
+        document.documentElement.style.fontSize = `${pct}%`;
+      });
+    }, viewport.textScale);
   const gaps: string[] = [];
   const errors: string[] = [];
   await ctx.route("**/*", async (route) => {

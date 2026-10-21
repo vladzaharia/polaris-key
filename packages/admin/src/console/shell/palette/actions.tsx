@@ -6,6 +6,7 @@ import {
   Package,
   Plus,
   ToggleRight,
+  Trash2,
 } from "lucide-react";
 import type { ServiceSlug } from "../../../api.js";
 import { useTheme } from "../../../components/theme.js";
@@ -14,7 +15,10 @@ import {
   SERVICE_TABLE,
 } from "../../../services.generated.js";
 import { docsFor, navItems, SECTIONS, type ServiceState } from "../../nav.js";
+import { navigate } from "../../router.js";
 import { r } from "../../routes.js";
+import { DeleteProductDialog } from "../../components/DeleteProductDialog.js";
+import { filterItems } from "./rank.js";
 import { THEME_OPTIONS } from "../ThemeMenu.js";
 import { SDK_QUICK_START_ID } from "../../sections/core/model/sdkQuickStart.js";
 import { focusWhenReady } from "./focus.js";
@@ -143,6 +147,45 @@ export function createActions(
   return items;
 }
 
+/** Rows of "Delete product" offered across products at most (Home, a typed query). */
+export const DELETE_ACROSS_MAX = 3;
+
+/**
+ * "Delete product…": opens the console's one delete dialog (type the slug) over the page. On a
+ * product it is the one on screen; from Home, with a query, any of the operator's products.
+ * Typed only. The system product is never offered (it is not in `products`).
+ */
+export function deleteProductActions(
+  ctx: Pick<PaletteContext, "slug" | "productName" | "products">,
+  query: string,
+): PaletteItem[] {
+  const targets: { slug: string; name: string }[] = ctx.slug
+    ? [{ slug: ctx.slug, name: ctx.productName ?? ctx.slug }]
+    : ctx.products.map((p) => ({ slug: p.slug, name: p.name || p.slug }));
+  const rows: PaletteItem[] = targets.map((t) => ({
+    id: `action:delete-product:${t.slug}`,
+    group: "Actions",
+    label: "Delete product…",
+    detail: ctx.slug ? t.name : `${t.name} · Settings`,
+    keywords: `delete remove tombstone product ${t.slug} ${t.name}`,
+    icon: <Trash2 aria-hidden className="size-4" />,
+    matchOnly: true,
+    perform: (api) =>
+      api.openPanel(({ open, onOpenChange }) => (
+        <DeleteProductDialog
+          product={t}
+          open={open}
+          onOpenChange={onOpenChange}
+          onDeleted={() => navigate(r.home())}
+        />
+      )),
+  }));
+  if (ctx.slug) return rows;
+  return query.trim() === ""
+    ? []
+    : filterItems(rows, query).slice(0, DELETE_ACROSS_MAX);
+}
+
 /**
  * Connecting an app (UX-59; SETUP.md §3): the SDK quick start, its install from pkg.plrs.im and
  * the trust pins, findable by the words a developer types ("sdk", "install", "pins"). The quick
@@ -234,9 +277,10 @@ function useChromeActions(ctx: PaletteContext): PaletteItem[] {
 
 export const actionsPaletteSource: PaletteSource = {
   id: "actions",
-  useItems: (ctx) => {
+  useItems: (ctx, query) => {
     const chrome = useChromeActions(ctx);
     return [
+      ...deleteProductActions(ctx, query),
       ...createActions(ctx.slug, ctx.services),
       ...turnOnActions(ctx.slug, ctx.services),
       ...sdkActions(ctx.slug),

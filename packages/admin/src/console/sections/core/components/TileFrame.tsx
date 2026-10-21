@@ -2,11 +2,30 @@ import * as React from "react";
 import { ArrowRight } from "lucide-react";
 import type { ServiceSlug } from "../../../../services.generated.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
-import { ServiceGlyph, serviceLabel } from "../../../../ui/ServiceBadge.js";
+import { FEATURES } from "../../../../services.generated.js";
+import { ServiceGlyph } from "../../../../ui/ServiceBadge.js";
 import { Skeleton } from "../../../../ui/Skeleton.js";
 import { Link } from "../../../router.js";
 
 /** The Overview's per-service tile frame and its two text styles (moved out of `Overview.tsx`). */
+
+/**
+ * A tile's title is the feature's name, the one Home and the sidebar use. Ship builds runs three
+ * services, each with its own tile, so those are titled by what the tile shows.
+ */
+const SHIP_BUILDS_TITLES: Partial<Record<ServiceSlug, string>> = {
+  release: "Releases",
+  distribution: "Rollouts",
+  update: "In-app updates",
+};
+
+export function tileTitle(service: ServiceSlug): string {
+  return (
+    SHIP_BUILDS_TITLES[service] ??
+    FEATURES.find((f) => f.services.includes(service))?.label ??
+    service
+  );
+}
 
 export function TileFrame({
   service,
@@ -44,7 +63,7 @@ export function TileFrame({
           className="flex min-w-0 flex-1 items-center gap-2 text-sm font-medium text-fg-strong"
         >
           <ServiceGlyph id={service} />
-          {serviceLabel(service)}
+          <span className="min-w-0 break-words">{tileTitle(service)}</span>
         </h2>
         {badge}
       </div>

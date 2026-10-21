@@ -34,6 +34,7 @@ import { ProductShelf } from "../components/ProductShelf.js";
 import { attentionHref, type HomeRow } from "../model/home.js";
 import { useSetupGuideHidden } from "../model/setupGuide.js";
 import { cn } from "../../../../lib/cn.js";
+import { toast } from "../../../../ui/toast.js";
 
 /** The attention list's rows: the subject is the product, logo and name, linking to Overview. */
 function attentionRows(
@@ -139,6 +140,11 @@ export function Home(): React.ReactElement {
       );
   };
   const items = attentionRows(attention.data ?? [], logoOf);
+  // The grid splits only when attention has rows to show (or is still loading or failed, so its
+  // card holds the slot): a healthy platform's one-line all-clear never leaves a void beside the
+  // guide, which then takes the row under it.
+  const split =
+    readyOpen && (attention.isPending || attention.isError || items.length > 0);
   const attentionSlot = attention.isPending ? (
     <CardSkeleton label="Needs attention" rows={2} />
   ) : attention.isError ? (
@@ -154,6 +160,11 @@ export function Home(): React.ReactElement {
   );
   const dismissGuide = (): void => {
     setGuideHidden(true);
+    toast.info("Platform ready hidden", {
+      id: "platform-ready-hidden",
+      description: "Show it again from Home's menu or Platform settings.",
+      action: { label: "Undo", onClick: restoreGuide },
+    });
     // The card is gone: focus goes on to the Products heading, never to the page.
     requestAnimationFrame(() =>
       document.querySelector<HTMLElement>("[data-products-heading]")?.focus(),
@@ -166,19 +177,23 @@ export function Home(): React.ReactElement {
     );
   };
   const readySlot = !readyShown ? null : ready.isPending ? (
-    <CardSkeleton label="Platform ready" rows={3} className={READY_AREA} />
+    <CardSkeleton
+      label="Platform ready"
+      rows={3}
+      className={split ? READY_AREA : undefined}
+    />
   ) : ready.isError || !Array.isArray(ready.data?.rows) ? (
     <LoadFailedCard
       title="Platform ready"
       message="Platform ready didn't load."
       onRetry={() => retry(ready.refetch, "[data-platform-ready] h2")}
-      className={READY_AREA}
+      className={split ? READY_AREA : undefined}
     />
   ) : (
     <PlatformReady
       ready={ready.data}
       onDismiss={dismissGuide}
-      className={allDone ? READY_LINE : READY_AREA}
+      className={split ? READY_AREA : allDone ? READY_LINE : undefined}
     />
   );
   // A dismissed guide comes back from the header's menu; with nothing hidden there is no menu.
@@ -189,7 +204,7 @@ export function Home(): React.ReactElement {
         size="md"
         items={[
           {
-            label: "Show setup guide",
+            label: "Show Platform ready",
             icon: <Eye />,
             onSelect: restoreGuide,
           },
@@ -293,7 +308,7 @@ export function Home(): React.ReactElement {
         data-top-aligned=""
         className={cn(
           "grid grid-cols-1 items-start gap-6",
-          readyOpen &&
+          split &&
             "@[60rem]:grid-cols-[minmax(0,2fr)_minmax(17.5rem,1fr)] @[80rem]:grid-cols-[minmax(0,1fr)_25rem]",
         )}
       >
@@ -304,7 +319,7 @@ export function Home(): React.ReactElement {
             "min-w-0",
             // Below 80rem the products take the full row under both cards (no well under the
             // shorter one); from 80rem the guide is an aside beside attention and the products.
-            readyOpen &&
+            split &&
               "@[60rem]:col-span-full @[80rem]:col-span-1 @[80rem]:col-start-1 @[80rem]:row-start-2",
           )}
         >

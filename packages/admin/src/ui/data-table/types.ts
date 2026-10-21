@@ -172,6 +172,8 @@ export interface DataTableProps<T> {
   mobile?: "cards" | "scroll";
   /** Extra controls at the end of the filter bar (Export, a date range). */
   toolbarActions?: React.ReactNode;
+  /** The page's own filters, first on the toolbar's row (one band, not a second toolbar). */
+  toolbarLead?: React.ReactNode;
   /** Offer "Export CSV" (client mode only). Default true in client mode. */
   exportCsv?: boolean;
   /**

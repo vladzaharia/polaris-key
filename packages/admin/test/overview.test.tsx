@@ -232,7 +232,7 @@ describe("Core → Overview", () => {
     ).toBe("#/p/djdl/license/licenses?setup=new-license&step=tier");
   });
 
-  it("offers Publish catalog with only Config on, else Enable services", async () => {
+  it("offers Publish catalog with only Config on, else Enable features", async () => {
     fns.integration.mockResolvedValue(
       integrationView({ features: [], verified: false }),
     );
@@ -250,25 +250,25 @@ describe("Core → Overview", () => {
     });
     mount();
     expect(
-      (await screen.findAllByRole("link", { name: "Enable services" })).length,
+      (await screen.findAllByRole("link", { name: "Enable features" })).length,
     ).toBeGreaterThan(0);
-    expect(screen.getByText("This product runs no services yet")).toBeTruthy();
+    expect(screen.getByText("This product runs no features yet")).toBeTruthy();
   });
 
   it("draws a tile only for each enabled service, in that service's accent", async () => {
     mount();
     const license = await screen.findByRole("heading", {
       level: 2,
-      name: "License",
+      name: "Licensing",
     });
     expect(
       license.closest("[data-service]")?.getAttribute("data-service"),
     ).toBe("license");
     expect(
-      screen.getByRole("heading", { level: 2, name: "Config" }),
+      screen.getByRole("heading", { level: 2, name: "Managed config" }),
     ).toBeTruthy();
     expect(
-      screen.queryByRole("heading", { level: 2, name: "Release" }),
+      screen.queryByRole("heading", { level: 2, name: "Releases" }),
     ).toBeNull();
     expect(await screen.findByText("2 keys")).toBeTruthy();
     expect(await screen.findByText("7 devices")).toBeTruthy();
@@ -287,7 +287,7 @@ describe("Core → Overview", () => {
     expect(
       await screen.findByRole("heading", { level: 2, name: "Commerce" }),
     ).toBeTruthy();
-    expect(screen.getByText(/Runs 2 services/)).toBeTruthy();
+    expect(screen.getByText(/Runs 2 features/)).toBeTruthy();
   });
 
   it("replaces the checklist, Trust & SDK and the welcome with the Integration card", async () => {
@@ -434,7 +434,7 @@ describe("Core → Overview", () => {
     mount();
     const config = await screen.findByRole("heading", {
       level: 2,
-      name: "Config",
+      name: "Managed config",
     });
     const tile = config.closest("section")!;
     expect(

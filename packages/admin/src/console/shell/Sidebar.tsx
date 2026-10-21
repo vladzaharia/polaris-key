@@ -11,6 +11,7 @@ import {
   navItems,
   platformItems,
   platformLinks,
+  SHIP_BUILDS_KEYS,
   visibleSections,
   type NavFeatures,
   type NavGroupKey,
@@ -103,6 +104,44 @@ export interface SidebarProps {
   switcher?: SwitcherContext;
 }
 
+/** One sidebar group: a section, or Ship builds' three merged (B5: one identity, one group). */
+interface GroupEntry {
+  section: NavSection;
+  /** Every section key the group holds; the active one is any of them. */
+  keys: SectionKey[];
+  items: NavPage[];
+}
+
+/**
+ * Release, Distribution and Update are one feature, Ship builds (Home's glyph, the switcher's
+ * pip): one group, headed "Ship builds" with the Package glyph once, holding all of their pages.
+ * The sections stay three in the nav model (routes, docs and the services toggles read them).
+ */
+function shipBuildsGrouped(
+  entries: { section: NavSection; items: NavPage[] }[],
+): GroupEntry[] {
+  const out: GroupEntry[] = [];
+  for (const { section, items } of entries) {
+    if (!SHIP_BUILDS_KEYS.includes(section.key)) {
+      out.push({ section, keys: [section.key], items });
+      continue;
+    }
+    const held = out.find((g) =>
+      g.keys.some((k) => SHIP_BUILDS_KEYS.includes(k)),
+    );
+    if (held) {
+      held.keys.push(section.key);
+      held.items = [...held.items, ...items];
+    } else
+      out.push({
+        section: { ...section, label: "Ship builds", accent: "release" },
+        keys: [section.key],
+        items: [...items],
+      });
+  }
+  return out;
+}
+
 /**
  * The console sidebar (ADMIN.md §2.1, components.md §1.4, ST-45): two contexts, never mixed.
  *
@@ -163,7 +202,9 @@ export function Sidebar({
   // Settings sits in the foot, not the list.
   const coreItems = (core?.items ?? []).filter((p) => p.page !== "settings");
   const settings = (core?.items ?? []).find((p) => p.page === "settings");
-  const features_ = all.filter(({ section }) => section.key !== "core");
+  const features_ = shipBuildsGrouped(
+    all.filter(({ section }) => section.key !== "core"),
+  );
   const listItem = (p: NavPage, to: string): React.ReactElement => (
     <li key={p.page}>
       <SidebarItem
@@ -228,7 +269,7 @@ export function Sidebar({
                   )}
                 </ul>
               ) : null}
-              {features_.map(({ section, items }) => (
+              {features_.map(({ section, keys, items }) => (
                 <SidebarGroup
                   key={section.key}
                   groupKey={section.key}
@@ -241,14 +282,14 @@ export function Sidebar({
                     badge: p.page === "catalog" ? pending : 0,
                   }))}
                   activePage={activePage}
-                  active={section.key === activeSection}
-                  open={
-                    section.key === activeSection || expanded.has(section.key)
-                  }
+                  active={keys.some((k) => k === activeSection)}
+                  open={keys.some(
+                    (k) => k === activeSection || expanded.has(k),
+                  )}
                   onToggle={() => onToggleSection(section.key)}
                   rail={rail}
                   onNavigate={onNavigate}
-                  onPrefetch={() => onPrefetch?.(section.key)}
+                  onPrefetch={() => keys.forEach((k) => onPrefetch?.(k))}
                   contentId={`${idPrefix}-section-${section.key}`}
                 />
               ))}

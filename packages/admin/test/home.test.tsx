@@ -274,6 +274,26 @@ describe("Home", () => {
     expect(within(main()).getByText("Nothing needs attention.")).toBeTruthy();
   });
 
+  it("with nothing to attend to, the open guide takes its own row (no split, no void beside the all-clear)", async () => {
+    boot("#/", {
+      extra: {
+        ...registry(),
+        "/manage/api/attention": { items: [] },
+        "/manage/api/platform/ready": READY,
+      },
+    });
+    await home();
+    await waitFor(() => expect(cards()).toHaveLength(2));
+    const guide = await within(main()).findByRole("region", {
+      name: "Platform ready",
+    });
+    expect(within(main()).getByText("Nothing needs attention.")).toBeTruthy();
+    expect(document.querySelector("[data-home-grid]")!.className).not.toContain(
+      "grid-cols-[minmax(0,2fr)",
+    );
+    expect(guide.className).not.toContain("col-start-2");
+  });
+
   it("a failed attention read keeps its card with Try again; it is never an all-clear (B1)", async () => {
     let calls = 0;
     boot("#/", {
@@ -559,20 +579,20 @@ describe("Home", () => {
     ).toBeNull();
   });
 
-  describe("the setup guide can be hidden", () => {
+  describe("Platform ready can be hidden", () => {
     const KEY = "pk-admin-setup-guide-hidden:u1";
     const ready = { "/manage/api/platform/ready": READY };
     const guide = (): HTMLElement | null =>
       within(main()).queryByRole("region", { name: "Platform ready" });
 
-    it("Hide setup guide removes the card, moves focus to Products, remembers it for this operator", async () => {
+    it("Hide Platform ready removes the card, moves focus to Products, remembers it for this operator", async () => {
       boot("#/", { extra: { ...registry(), ...ready } });
       await home();
       const card = await within(main()).findByRole("region", {
         name: "Platform ready",
       });
       const hide = within(card).getByRole("button", {
-        name: "Hide setup guide",
+        name: "Hide Platform ready",
       });
       hide.focus();
       await userEvent.keyboard("{Enter}");
@@ -587,6 +607,23 @@ describe("Home", () => {
       expect(
         document.querySelector("[data-home-grid]")!.className,
       ).not.toContain("grid-cols-[minmax(0,2fr)");
+    });
+
+    it("hiding offers Undo in a toast, which brings the guide back", async () => {
+      boot("#/", { extra: { ...registry(), ...ready } });
+      await home();
+      const card = await within(main()).findByRole("region", {
+        name: "Platform ready",
+      });
+      fireEvent.click(
+        within(card).getByRole("button", { name: "Hide Platform ready" }),
+      );
+      await waitFor(() => expect(guide()).toBeNull());
+      fireEvent.click(await screen.findByRole("button", { name: "Undo" }));
+      expect(
+        await within(main()).findByRole("region", { name: "Platform ready" }),
+      ).toBeTruthy();
+      expect(window.localStorage.getItem(KEY)).toBe("false");
     });
 
     it("stays hidden on the next visit, and is another operator's own choice", async () => {
@@ -606,7 +643,7 @@ describe("Home", () => {
       ).toBeTruthy();
     });
 
-    it("Show setup guide in the header menu brings it back and focuses it", async () => {
+    it("Show Platform ready in the header menu brings it back and focuses it", async () => {
       window.localStorage.setItem(KEY, "true");
       boot("#/", { extra: { ...registry(), ...ready } });
       await home();
@@ -615,7 +652,7 @@ describe("Home", () => {
         within(main()).getByRole("button", { name: "More actions" }),
       );
       await userEvent.click(
-        await screen.findByRole("menuitem", { name: "Show setup guide" }),
+        await screen.findByRole("menuitem", { name: "Show Platform ready" }),
       );
       const card = await within(main()).findByRole("region", {
         name: "Platform ready",
@@ -645,7 +682,7 @@ describe("Home", () => {
         name: "Platform ready",
       });
       fireEvent.click(
-        within(line).getByRole("button", { name: "Hide setup guide" }),
+        within(line).getByRole("button", { name: "Hide Platform ready" }),
       );
       await waitFor(() => expect(guide()).toBeNull());
       expect(window.localStorage.getItem(KEY)).toBe("true");
@@ -706,9 +743,11 @@ describe("Home", () => {
         .querySelector("[data-cover=art] img")
         ?.getAttribute("loading"),
     ).toBe("lazy");
-    // No art, no icon: the initial on a solid surface, as tall as the art beside it.
-    const acme = card("Acme").querySelector("[data-cover=initials]")!;
-    expect(acme.textContent).toBe("A");
+    // No art: a flat colour band from the slug with nothing drawn in it, as tall as the art beside it.
+    const acme = card("Acme").querySelector("[data-cover=slug]")!;
+    expect(acme.textContent).toBe("");
+    expect(acme.children).toHaveLength(0);
+    expect((acme as HTMLElement).style.backgroundColor).not.toBe("");
     expect(acme.className).toContain("h-[72px]");
     fireEvent.click(within(main()).getByRole("radio", { name: /Table/ }));
     const table = await within(main()).findByRole("table");
@@ -866,11 +905,13 @@ describe("ProductCard", () => {
     expect(tint.getAttribute("data-cover")).toBe("tint");
     expect(tint.style.backgroundColor).not.toBe("");
     const withIcon = cover({ icon, header: null });
-    expect(withIcon.getAttribute("data-cover")).toBe("icon");
-    expect(withIcon.querySelector("img, [data-logo]")).not.toBeNull();
-    const initials = cover({ icon: null, header: null });
-    expect(initials.getAttribute("data-cover")).toBe("initials");
-    expect(initials.textContent).toBe("D");
+    // An icon never repeats in the band: the header tile carries it.
+    expect(withIcon.getAttribute("data-cover")).toBe("slug");
+    expect(withIcon.querySelector("img, [data-logo]")).toBeNull();
+    expect(withIcon.style.backgroundColor).not.toBe("");
+    const bare = cover({ icon: null, header: null });
+    expect(bare.getAttribute("data-cover")).toBe("slug");
+    expect(bare.textContent).toBe("");
   });
 
   it("the system product says System, not a status", () => {
