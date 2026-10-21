@@ -16,7 +16,7 @@ export const TIER_PREFIXES: ReadonlyArray<
   readonly [prefix: string, door: DoorId, tier: Tier]
 > = [
   ["index", "landing", "public"],
-  ["access", "landing", "public"],
+  ["access/", "landing", "public"],
   ["help/", "help", "public"],
   ["start/", "developers", "public"],
   ["build/", "developers", "public"],
@@ -108,7 +108,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
         items: [
           leaf("help/index", "Help home"),
           ...leaves(
-            "help/what-is-polaris-key",
+            "help/what-is-polaris-locker",
             "help/activate",
             "help/emails",
             "help/contact",

@@ -1131,9 +1131,9 @@
       "pri": "P1"
     },
     {
-      "path": "help/what-is-polaris-key",
+      "path": "help/what-is-polaris-locker",
       "type": "help",
-      "title": "What is Polaris Key?",
+      "title": "What is Polaris Locker?",
       "description": "The service an app uses for licenses, sign-in and downloads.",
       "nearest": "/docs/help/",
       "package": "DOC-04a",
@@ -1631,6 +1631,7 @@
     }
   ],
   "extraRedirects": {
-    "/build/sdks/kotlin-ui": "/docs/build/ui/frameworks/compose/"
+    "/build/sdks/kotlin-ui": "/docs/build/ui/frameworks/compose/",
+    "/help/what-is-polaris-key": "/docs/help/what-is-polaris-locker/"
   }
 }

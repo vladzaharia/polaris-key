@@ -7,6 +7,7 @@ import {
   type TocItem,
 } from "./lib/helpMessages";
 import { doorOf } from "./lib/doors";
+import { CUSTOMER_SITE, helpRoute, scopeSidebar } from "./lib/helpHost";
 import { slugifyHeading } from "./lib/runbook";
 
 /**
@@ -79,7 +80,34 @@ async function runbookItems(body: string, maxDepth: number) {
 }
 
 export const onRequest = defineRouteMiddleware(async (context) => {
-  const { toc, id, entry, head } = context.locals.starlightRoute;
+  const route = context.locals.starlightRoute;
+  const { toc, id, entry, head } = route;
+  // Each page shows its own door's sidebar only.
+  const door = doorOf(id)?.door;
+  if (route.sidebar && door && door !== "landing")
+    route.sidebar = scopeSidebar(route.sidebar, door);
+  // Help is the customer's site (LK-09, D7): it is served at polaris.locker/docs/help/, so its
+  // name, its address and its home link say so.
+  if (helpRoute(id)) {
+    route.siteTitle = "Polaris Locker";
+    route.siteTitleHref = "/docs/help/";
+    for (const h of head ?? []) {
+      if (h.tag === "title" && typeof h.content === "string")
+        h.content = h.content.replace(/ \| Polaris Key$/, " | Polaris Locker");
+      else if (h.tag === "meta" && h.attrs?.property === "og:site_name")
+        h.attrs.content = "Polaris Locker";
+      else if (h.tag === "meta" && h.attrs?.property === "og:url")
+        h.attrs.content = String(h.attrs.content).replace(
+          /^https:\/\/[^/]+/,
+          CUSTOMER_SITE,
+        );
+      else if (h.tag === "link" && h.attrs?.rel === "canonical")
+        h.attrs.href = String(h.attrs.href).replace(
+          /^https:\/\/[^/]+/,
+          CUSTOMER_SITE,
+        );
+    }
+  }
   // A gated page is never indexed: a crawler that reaches one gets the access page, but a
   // shared link or a cached copy must not put its text in a search result.
   const tier = doorOf(id)?.tier ?? "admin";
