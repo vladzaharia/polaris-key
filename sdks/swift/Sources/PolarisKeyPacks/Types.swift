@@ -421,6 +421,127 @@ public func strictParse(_ bytes: [UInt8]) -> (value: JSONValue, nonWire: NonWire
     return (value, nonWire)
 }
 
+/// One member of a `data.json` object: its name as the document spelled it, in UTF-8 bytes.
+///
+/// `JSONValue.object` is a `[String: JSONValue]`, and Swift's `String` equality is canonical
+/// equivalence, so `"\u00e9"` and `"e\u0301"` (two distinct member names under V4 §1.2) collapse
+/// into one entry. Names here compare byte for byte, in document order.
+public struct DataMember: Sendable, Equatable {
+    public let name: [UInt8]
+    public let value: DataValue
+    public init(name: [UInt8], value: DataValue) {
+        self.name = name
+        self.value = value
+    }
+    /// The name as text (its bytes decoded; scalars are never normalized).
+    public var key: String { String(decoding: name, as: UTF8.self) }
+}
+
+/// A parsed `data.json` value with byte-keyed, ordered objects (see `DataMember`).
+public indirect enum DataValue: Sendable, Equatable {
+    case null
+    case bool(Bool)
+    /// A number, as `JSONValue.int` or `.double`.
+    case number(JSONValue)
+    case string(String)
+    case array([DataValue])
+    case object([DataMember])
+
+    /// The first member named `name` (compared as UTF-8 bytes), for an object.
+    public func member(_ name: String) -> DataValue? {
+        guard case .object(let ms) = self else { return nil }
+        let want = Array(name.utf8)
+        return ms.first { $0.name == want }?.value
+    }
+}
+
+/// Parse already-validated strict JSON (`strictParse` succeeded) keeping every member, byte-keyed
+/// and in order; nil when the text is not well formed.
+public func strictParseOrdered(_ bytes: [UInt8]) -> DataValue? {
+    var p = OrderedJSONParser(b: bytes)
+    guard let v = p.value() else { return nil }
+    p.skipSpace()
+    return p.i == bytes.count ? v : nil
+}
+
+private struct OrderedJSONParser {
+    let b: [UInt8]
+    var i = 0
+
+    mutating func skipSpace() {
+        while i < b.count, b[i] == 0x20 || b[i] == 0x09 || b[i] == 0x0A || b[i] == 0x0D { i += 1 }
+    }
+
+    /// A string token's extent (`i` at the opening quote) decoded through `JSONDecoder`.
+    mutating func string() -> String? {
+        let start = i
+        guard i < b.count, b[i] == 0x22 else { return nil }
+        i += 1
+        while i < b.count, b[i] != 0x22 { i += b[i] == 0x5C ? 2 : 1 }
+        guard i < b.count else { return nil }
+        i += 1
+        return try? JSONDecoder().decode(String.self, from: Data(b[start..<i]))
+    }
+
+    mutating func value() -> DataValue? {
+        skipSpace()
+        guard i < b.count else { return nil }
+        switch b[i] {
+        case 0x7B:
+            i += 1
+            var members: [DataMember] = []
+            skipSpace()
+            if i < b.count, b[i] == 0x7D { i += 1; return .object(members) }
+            while true {
+                skipSpace()
+                guard let name = string() else { return nil }
+                skipSpace()
+                guard i < b.count, b[i] == 0x3A else { return nil }
+                i += 1
+                guard let v = value() else { return nil }
+                members.append(DataMember(name: Array(name.utf8), value: v))
+                skipSpace()
+                guard i < b.count else { return nil }
+                if b[i] == 0x2C { i += 1; continue }
+                if b[i] == 0x7D { i += 1; return .object(members) }
+                return nil
+            }
+        case 0x5B:
+            i += 1
+            var items: [DataValue] = []
+            skipSpace()
+            if i < b.count, b[i] == 0x5D { i += 1; return .array(items) }
+            while true {
+                guard let v = value() else { return nil }
+                items.append(v)
+                skipSpace()
+                guard i < b.count else { return nil }
+                if b[i] == 0x2C { i += 1; continue }
+                if b[i] == 0x5D { i += 1; return .array(items) }
+                return nil
+            }
+        case 0x22:
+            return string().map { .string($0) }
+        default:
+            let start = i
+            while i < b.count, !(b[i] == 0x2C || b[i] == 0x5D || b[i] == 0x7D || b[i] == 0x20
+                || b[i] == 0x09 || b[i] == 0x0A || b[i] == 0x0D) { i += 1 }
+            let token = Data(b[start..<i])
+            switch String(decoding: token, as: UTF8.self) {
+            case "null": return .null
+            case "true": return .bool(true)
+            case "false": return .bool(false)
+            default:
+                guard let n = try? JSONDecoder().decode(JSONValue.self, from: token) else { return nil }
+                switch n {
+                case .int, .double: return .number(n)
+                default: return nil
+                }
+            }
+        }
+    }
+}
+
 /// Canonical JSON text of a value (sorted keys), for comparisons and storage.
 public func canonicalJSON(_ value: JSONValue) -> String {
     let enc = JSONEncoder()

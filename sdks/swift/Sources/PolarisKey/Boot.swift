@@ -54,6 +54,9 @@ public struct BootHooks: Sendable {
     /// nil skips the stage (`ok`, nothing installed).
     public var fetch: BootFetchHook?
     public var packOptions: BootPackOptionsHook?
+    /// Where a `decide` hook leaves the code of the error it turned into `none`. `boot()` reads
+    /// and clears it after the stage, and reports it as `BootRun.decideRefusal`.
+    public let decideRefusal = LockedValue<String?>(nil)
 
     public init(
         decide: BootDecideHook? = nil, fetch: BootFetchHook? = nil,
@@ -75,6 +78,9 @@ public struct BootRun: Sendable, Equatable {
     public let gate: LicenseStatus?
     /// The boot guard's answer.
     public let guardOutcome: BootGuardOutcome?
+    /// The error code of a decide stage that failed rather than answered (a refused update
+    /// configuration, say). The decision then reads `none`, as before; this says why.
+    public var decideRefusal: String? = nil
 
     public var outcome: BootOutcome { state.outcome }
 }
@@ -173,9 +179,15 @@ extension PolarisKeyClient {
 
         // decide
         let decision = await hooks.decide?() ?? BootEvent.Decision.none
+        let refusal = hooks.decideRefusal.with { r -> String? in
+            defer { r = nil }
+            return r
+        }
         state = driver.send(.decideDone(decision))
         guard state.stage == .fetch else {
-            return BootRun(state: state, emits: driver.all, gate: gate, guardOutcome: guardOutcome)
+            return BootRun(
+                state: state, emits: driver.all, gate: gate, guardOutcome: guardOutcome,
+                decideRefusal: refusal)
         }
 
         // fetch
@@ -187,7 +199,9 @@ extension PolarisKeyClient {
             state = driver.send(.fetchDone(.ok, installed: []))
         }
         guard state.stage == .mount else {
-            return BootRun(state: state, emits: driver.all, gate: gate, guardOutcome: guardOutcome)
+            return BootRun(
+                state: state, emits: driver.all, gate: gate, guardOutcome: guardOutcome,
+                decideRefusal: refusal)
         }
         state = driver.send(.mountDone)
 
@@ -200,7 +214,9 @@ extension PolarisKeyClient {
         } else if bootConfirmation(state.outcome) == .now {
             await bootGuard.confirmBoot()
         }
-        return BootRun(state: state, emits: driver.all, gate: gate, guardOutcome: guardOutcome)
+        return BootRun(
+            state: state, emits: driver.all, gate: gate, guardOutcome: guardOutcome,
+            decideRefusal: refusal)
     }
 
     /// Reacquire a credential the product's registration policy allows without a person (an

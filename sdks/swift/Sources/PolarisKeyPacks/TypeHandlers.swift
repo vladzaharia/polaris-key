@@ -36,7 +36,11 @@ private func payloadFiles(_ payload: PackPayloadReader) throws -> [InstalledFile
 /// One parsed `data.json` document.
 public struct DataDocument: Sendable, Equatable {
     public let path: String
+    /// The document as `JSONValue`: object members whose names are canonically equal but
+    /// byte-distinct share one entry here. Read `members` when that matters.
     public let value: JSONValue
+    /// The same document with byte-keyed, ordered objects (`DataValue`): no member is dropped.
+    public let members: DataValue
 }
 
 /// `data.json` (CONTENT §4.2): JSON documents (balance tables, event definitions), hot. Every file
@@ -83,12 +87,13 @@ public final class DataJsonHandler: PackHandler, Sendable {
     public func activate(_ install: PackInstall, payload: PackPayloadReader) async throws {
         var docs: [DataDocument] = []
         for f in try payloadFiles(payload) {
-            guard let v = strictParse(try readAll(f.source))?.value else {
+            let bytes = try readAll(f.source)
+            guard let v = strictParse(bytes)?.value, let ordered = strictParseOrdered(bytes) else {
                 throw PackError(
                     ErrorCode.packTypeCheckFailed, "\(install.packId)'s \(f.path) is not strict JSON.",
                     detail: "json", path: f.path, packId: install.packId)
             }
-            docs.append(DataDocument(path: f.path, value: v))
+            docs.append(DataDocument(path: f.path, value: v, members: ordered))
         }
         active.with { $0[install.packId] = docs }
         await onActivate?(install.packId, docs)

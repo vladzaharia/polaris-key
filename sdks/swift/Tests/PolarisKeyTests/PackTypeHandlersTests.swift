@@ -163,6 +163,27 @@ final class PackTypeHandlersTests: XCTestCase {
         }
     }
 
+    /// B-140: `\u00e9` (NFC) and `e\u0301` (NFD) are two members under V4 §1.2; `value` merges
+    /// them (String equality is canonical), `members` keeps both, byte-keyed and in order.
+    func testDataJsonKeepsCanonicallyEqualButByteDistinctMembers() async throws {
+        let text = #"{"formatVersion":1,"\u00e9":1,"e\u0301":2,"n":[true,null,{"a":-1.5}]}"#
+        let files = [(path: "a.json", bytes: Array(text.utf8))]
+        let h = DataJsonHandler()
+        let r = try await h.check(staged(files, type: "data.json"))
+        XCTAssertNil(r)
+        try await h.activate(probeInstall(), payload: reader(files))
+        let doc = try XCTUnwrap(h.documents("djdl.case")?.first)
+        guard case .object(let ms) = doc.members else { return XCTFail("object") }
+        XCTAssertEqual(ms.count, 4)
+        XCTAssertEqual(ms[1].name, [0xC3, 0xA9])
+        XCTAssertEqual(ms[2].name, [0x65, 0xCC, 0x81])
+        XCTAssertEqual(doc.members.member("\u{e9}"), .number(.int(1)))
+        XCTAssertEqual(doc.members.member("e\u{301}"), .number(.int(2)))
+        XCTAssertEqual(
+            doc.members.member("n"),
+            .array([.bool(true), .null, .object([DataMember(name: [0x61], value: .number(.double(-1.5)))])]))
+    }
+
     func testL10nTableCases() async throws {
         let cases = try XCTUnwrap(try PackTypeCases.load()["l10nTable"]?.arrayValue)
         for c in cases {

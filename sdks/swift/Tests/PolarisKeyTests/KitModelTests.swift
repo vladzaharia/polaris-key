@@ -176,6 +176,27 @@ final class KitModelTests: XCTestCase {
         }
     }
 
+    /// B-138: only the Worker's deny answer reads "declined"; any other error code is a failure.
+    func testSignInErrorsAreDeclinedOnlyForDeny() async throws {
+        let model = PolarisSignInModel(client: try await client())
+        let prompt = SignInPrompt(
+            deviceCode: "dc", userCode: "ABCD-EFGH", verificationUri: "https://key.example/d",
+            verificationUriComplete: "https://key.example/d?user_code=ABCD-EFGH", expiresIn: 600,
+            interval: 5, expiresAt: Int(Date().timeIntervalSince1970) + 600)
+        model.settle(.error(message: "no", code: ErrorCode.signInDenied), prompt: prompt)
+        XCTAssertEqual(
+            model.phase,
+            .failed(code: ErrorCode.signInDenied, message: ErrorCopy.message(ErrorCode.signInDenied)))
+        for code in [ErrorCode.signInFailed, "network-error", nil] as [String?] {
+            model.settle(.error(message: "boom", code: code), prompt: prompt)
+            XCTAssertEqual(
+                model.phase,
+                .failed(
+                    code: ErrorCode.signInFailed, message: ErrorCopy.message(ErrorCode.signInFailed)),
+                "\(code ?? "nil")")
+        }
+    }
+
     func testSignInSurfacesRender() {
         let prompt = SignInPrompt(
             deviceCode: "dc", userCode: "ABCD-EFGH", verificationUri: "https://key.example/d",
