@@ -33,6 +33,9 @@ import im.plrs.key.core.PolarisException
 import im.plrs.key.core.ReleasePin
 import im.plrs.key.core.ServiceSlug
 import im.plrs.key.core.UpdateEvent
+import im.plrs.key.core.Unsupported
+import im.plrs.key.core.UnsupportedException
+import im.plrs.key.core.UnsupportedReason
 import im.plrs.key.core.TrustSet
 import im.plrs.key.core.UpdateCheckContent
 import im.plrs.key.core.UpdateCheckRevocations
@@ -405,6 +408,16 @@ public class PacksClient(
 
     private suspend fun start(): PackEngine {
         engine?.let { return it }
+        // The pack store is java.nio.file (Android API 26+). Below that, the facet answers a typed
+        // unsupported result instead of letting a NoClassDefFoundError escape `catch (e: Exception)`.
+        if (!packsRuntimeHasNioFile()) {
+            throw UnsupportedException(
+                Unsupported(
+                    Feature.packsState, UnsupportedReason.runtime,
+                    "packs need java.nio.file, which Android has from API 26; this runtime is older",
+                ),
+            )
+        }
         return startLock.withLock {
             engine ?: try {
                 boot().also { engine = it }
@@ -566,5 +579,15 @@ public class PacksClient(
         }
         req.ifRange?.let { extra["if-range"] = it }
         return transport.get(url, core.headers(extra), core.requestTimeoutSeconds)
+    }
+}
+
+/** Whether `java.nio.file` exists on this runtime (always on a JVM; Android API 26+). */
+internal var packsRuntimeHasNioFile: () -> Boolean = {
+    try {
+        Class.forName("java.nio.file.Files")
+        true
+    } catch (e: Throwable) {
+        false
     }
 }
