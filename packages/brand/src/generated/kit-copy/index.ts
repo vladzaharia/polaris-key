@@ -742,6 +742,8 @@ export type KitCopyKey =
   | "signin.gate.resent"
   | "signin.gate.joinOtherLede"
   | "signin.gate.nameRequired"
+  | "signin.gate.termsLede"
+  | "signin.code.incomplete"
   | "core.fallback.title"
   | "core.fallback.message"
   | "core.codes.unauthorized.title"

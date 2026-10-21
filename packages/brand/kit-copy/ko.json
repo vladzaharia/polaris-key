@@ -734,6 +734,8 @@
     "signin.gate.uploadFailed": "사진이 저장되지 않았습니다. 계정에서 추가하세요.",
     "signin.gate.resent": "새 코드를 {email}(으)로 보냈습니다.",
     "signin.gate.joinOtherLede": "{email}은(는) 이미 Polaris Locker 계정에 속해 있습니다. 다른 이메일을 사용하거나 먼저 그 계정에 로그인하세요.",
-    "signin.gate.nameRequired": "표시 이름을 입력하세요."
+    "signin.gate.nameRequired": "표시 이름을 입력하세요.",
+    "signin.gate.termsLede": "계속하려면 {app} 약관에 동의하세요.",
+    "signin.code.incomplete": "6자리를 모두 입력하세요."
   }
 }

@@ -51241,6 +51241,66 @@
         }
       }
     },
+    "signin.code.incomplete": {
+      "comment": "Code entry: submitted with fewer than six digits.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter all 6 digits."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geben Sie alle 6 Ziffern ein."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saisissez les 6 chiffres."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escribe los 6 dígitos."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Digite os 6 dígitos."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inserisci tutte le 6 cifre."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "6桁すべてを入力してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "6자리를 모두 입력하세요."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请输入全部 6 位数字。"
+          }
+        }
+      }
+    },
     "signin.code.label": {
       "comment": "Email code step (SIGN-IN.md §3.4).",
       "extractionState": "manual",
@@ -57345,6 +57405,66 @@
           "stringUnit": {
             "state": "translated",
             "value": "已通过 %1$@ 登录"
+          }
+        }
+      }
+    },
+    "signin.gate.termsLede": {
+      "comment": "Finish: lede of the terms-only step. Arguments: {app}. Arguments: 1=app.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agree to %1$@’s terms to keep going."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stimmen Sie den Bedingungen von %1$@ zu, um fortzufahren."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acceptez les conditions de %1$@ pour continuer."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acepta los términos de %1$@ para continuar."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Concorde com os termos de %1$@ para continuar."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accetta i termini di %1$@ per continuare."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "続けるには%1$@の規約に同意してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "계속하려면 %1$@ 약관에 동의하세요."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同意 %1$@ 的条款后继续。"
           }
         }
       }

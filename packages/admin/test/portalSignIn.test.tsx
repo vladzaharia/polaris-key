@@ -162,10 +162,13 @@ describe("LoginCard (SIGN-IN.md §3.1–§3.4, §3.9)", () => {
     const code = screen.getByRole("textbox", { name: "6-digit code" });
     expect(code.getAttribute("autocomplete")).toBe("one-time-code");
     expect(code.getAttribute("inputmode")).toBe("numeric");
-    expect(
-      (screen.getByRole("button", { name: "Continue" }) as HTMLButtonElement)
-        .disabled,
-    ).toBe(true);
+    // Never disabled: fewer than six digits is named at the cells.
+    const cont = screen.getByRole("button", {
+      name: "Continue",
+    }) as HTMLButtonElement;
+    expect(cont.disabled).toBe(false);
+    await userEvent.click(cont);
+    expect(await screen.findByText("Enter all 6 digits.")).toBeTruthy();
     expect(screen.getByText(/Send a new code in \d:\d\d/)).toBeTruthy();
     expect(
       screen.getByText("Or open the link in the email. Keep this tab open."),

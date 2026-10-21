@@ -734,6 +734,8 @@
     "signin.gate.uploadFailed": "No se guardó tu imagen. Añade una en Cuenta.",
     "signin.gate.resent": "Enviamos un código nuevo a {email}.",
     "signin.gate.joinOtherLede": "{email} ya pertenece a una cuenta de Polaris Locker. Usa otro correo o inicia sesión primero en esa cuenta.",
-    "signin.gate.nameRequired": "Escribe un nombre visible."
+    "signin.gate.nameRequired": "Escribe un nombre visible.",
+    "signin.gate.termsLede": "Acepta los términos de {app} para continuar.",
+    "signin.code.incomplete": "Escribe los 6 dígitos."
   }
 }

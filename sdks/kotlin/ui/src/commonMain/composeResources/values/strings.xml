@@ -1626,6 +1626,10 @@
     <string name="signin_gate_joinOtherLede">%1$s already belongs to a Polaris Locker account. Use a different email, or sign in to that account first.</string>
     <!-- Finish: the screen name field left empty. -->
     <string name="signin_gate_nameRequired">Enter a screen name.</string>
+    <!-- Finish: lede of the terms-only step. Arguments: {app}. Arguments: 1=app. -->
+    <string name="signin_gate_termsLede">Agree to %1$s’s terms to keep going.</string>
+    <!-- Code entry: submitted with fewer than six digits. -->
+    <string name="signin_code_incomplete">Enter all 6 digits.</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">Something went wrong</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

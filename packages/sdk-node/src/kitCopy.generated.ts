@@ -868,6 +868,8 @@ export const KIT_COPY: Readonly<
     "signin.gate.joinOtherLede":
       "{email} already belongs to a Polaris Locker account. Use a different email, or sign in to that account first.",
     "signin.gate.nameRequired": "Enter a screen name.",
+    "signin.gate.termsLede": "Agree to {app}’s terms to keep going.",
+    "signin.code.incomplete": "Enter all 6 digits.",
     "core.fallback.title": "Something went wrong",
     "core.fallback.message": "Something went wrong ({code}). Try again.",
     "core.codes.unauthorized.title": "Not signed in",
@@ -2343,6 +2345,9 @@ export const KIT_COPY: Readonly<
     "signin.gate.joinOtherLede":
       "{email} gehört bereits zu einem Polaris Locker-Konto. Verwenden Sie eine andere E-Mail-Adresse oder melden Sie sich zuerst bei diesem Konto an.",
     "signin.gate.nameRequired": "Geben Sie einen Anzeigenamen ein.",
+    "signin.gate.termsLede":
+      "Stimmen Sie den Bedingungen von {app} zu, um fortzufahren.",
+    "signin.code.incomplete": "Geben Sie alle 6 Ziffern ein.",
     "core.fallback.title": "Ein Fehler ist aufgetreten",
     "core.fallback.message":
       "Ein Fehler ist aufgetreten ({code}). Versuchen Sie es erneut.",
@@ -3821,6 +3826,8 @@ export const KIT_COPY: Readonly<
     "signin.gate.joinOtherLede":
       "{email} appartient déjà à un compte Polaris Locker. Utilisez un autre e-mail, ou connectez-vous d’abord à ce compte.",
     "signin.gate.nameRequired": "Saisissez un nom d’affichage.",
+    "signin.gate.termsLede": "Acceptez les conditions de {app} pour continuer.",
+    "signin.code.incomplete": "Saisissez les 6 chiffres.",
     "core.fallback.title": "Something went wrong",
     "core.fallback.message": "Something went wrong ({code}). Try again.",
     "core.codes.unauthorized.title": "Not signed in",
@@ -5269,6 +5276,8 @@ export const KIT_COPY: Readonly<
     "signin.gate.joinOtherLede":
       "{email} ya pertenece a una cuenta de Polaris Locker. Usa otro correo o inicia sesión primero en esa cuenta.",
     "signin.gate.nameRequired": "Escribe un nombre visible.",
+    "signin.gate.termsLede": "Acepta los términos de {app} para continuar.",
+    "signin.code.incomplete": "Escribe los 6 dígitos.",
     "core.fallback.title": "Algo salió mal",
     "core.fallback.message": "Algo salió mal ({code}). Vuelve a intentarlo.",
     "core.codes.unauthorized.title": "Sin sesión iniciada",
@@ -6733,6 +6742,8 @@ export const KIT_COPY: Readonly<
     "signin.gate.joinOtherLede":
       "{email} já pertence a uma conta do Polaris Locker. Use outro e-mail ou entre primeiro nessa conta.",
     "signin.gate.nameRequired": "Digite um nome de exibição.",
+    "signin.gate.termsLede": "Concorde com os termos de {app} para continuar.",
+    "signin.code.incomplete": "Digite os 6 dígitos.",
     "core.fallback.title": "Algo deu errado",
     "core.fallback.message": "Algo deu errado ({code}). Tente novamente.",
     "core.codes.unauthorized.title": "Não conectado",
@@ -8186,6 +8197,8 @@ export const KIT_COPY: Readonly<
     "signin.gate.joinOtherLede":
       "{email} appartiene già a un account Polaris Locker. Usa un’altra email o accedi prima a quell’account.",
     "signin.gate.nameRequired": "Inserisci un nome visualizzato.",
+    "signin.gate.termsLede": "Accetta i termini di {app} per continuare.",
+    "signin.code.incomplete": "Inserisci tutte le 6 cifre.",
     "core.fallback.title": "Si è verificato un problema",
     "core.fallback.message": "Si è verificato un problema ({code}). Riprova.",
     "core.codes.unauthorized.title": "Accesso non effettuato",
@@ -9660,6 +9673,8 @@ export const KIT_COPY: Readonly<
     "signin.gate.joinOtherLede":
       "{email}はすでにPolaris Lockerのアカウントで使われています。別のメールを使うか、先にそのアカウントでログインしてください。",
     "signin.gate.nameRequired": "表示名を入力してください。",
+    "signin.gate.termsLede": "続けるには{app}の規約に同意してください。",
+    "signin.code.incomplete": "6桁すべてを入力してください。",
     "core.fallback.title": "問題が発生しました",
     "core.fallback.message":
       "問題が発生しました（{code}）。もう一度お試しください。",
@@ -11096,6 +11111,8 @@ export const KIT_COPY: Readonly<
     "signin.gate.joinOtherLede":
       "{email}은(는) 이미 Polaris Locker 계정에 속해 있습니다. 다른 이메일을 사용하거나 먼저 그 계정에 로그인하세요.",
     "signin.gate.nameRequired": "표시 이름을 입력하세요.",
+    "signin.gate.termsLede": "계속하려면 {app} 약관에 동의하세요.",
+    "signin.code.incomplete": "6자리를 모두 입력하세요.",
     "core.fallback.title": "문제가 발생했어요",
     "core.fallback.message": "문제가 발생했어요({code}). 다시 시도하세요.",
     "core.codes.unauthorized.title": "로그인되지 않음",
@@ -12450,6 +12467,8 @@ export const KIT_COPY: Readonly<
     "signin.gate.joinOtherLede":
       "{email} 已属于一个 Polaris Locker 账户。请使用其他邮箱，或先登录该账户。",
     "signin.gate.nameRequired": "请输入显示名称。",
+    "signin.gate.termsLede": "同意 {app} 的条款后继续。",
+    "signin.code.incomplete": "请输入全部 6 位数字。",
     "core.fallback.title": "出现问题",
     "core.fallback.message": "出现问题（{code}）。请重试。",
     "core.codes.unauthorized.title": "未登录",

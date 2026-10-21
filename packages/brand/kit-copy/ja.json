@@ -734,6 +734,8 @@
     "signin.gate.uploadFailed": "画像を保存できませんでした。アカウントから追加してください。",
     "signin.gate.resent": "新しいコードを{email}に送信しました。",
     "signin.gate.joinOtherLede": "{email}はすでにPolaris Lockerのアカウントで使われています。別のメールを使うか、先にそのアカウントでログインしてください。",
-    "signin.gate.nameRequired": "表示名を入力してください。"
+    "signin.gate.nameRequired": "表示名を入力してください。",
+    "signin.gate.termsLede": "続けるには{app}の規約に同意してください。",
+    "signin.code.incomplete": "6桁すべてを入力してください。"
   }
 }

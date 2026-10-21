@@ -94,7 +94,7 @@ function TermsLink({
       href={href}
       target="_blank"
       rel="noreferrer noopener"
-      className="underline decoration-2 underline-offset-4"
+      className="-my-3 py-3 underline decoration-2 underline-offset-4"
     >
       {children}
     </a>
@@ -381,6 +381,7 @@ function FinishForm({
   const [passkeyResult, setPasskeyResult] = React.useState<
     "added" | "failed" | null
   >(null);
+  const continueRef = React.useRef<HTMLButtonElement>(null);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<FieldError | null>(null);
   const errorId = React.useId();
@@ -425,6 +426,10 @@ function FinishForm({
   React.useEffect(() => {
     onTitle?.(title);
   }, [title, onTitle]);
+
+  React.useEffect(() => {
+    if (passkeyResult) continueRef.current?.focus();
+  }, [passkeyResult]);
 
   const focusHeading = (): void => {
     requestAnimationFrame(() =>
@@ -490,7 +495,7 @@ function FinishForm({
       out.choice = way;
       if (way === "typed") out.email = typed.trim();
     }
-    if (!termsOnly) {
+    if (isNew) {
       const n = name.trim();
       if (n) out.name = n;
       if (hasPicture)
@@ -608,6 +613,7 @@ function FinishForm({
             </>
           ) : (
             <Button
+              ref={continueRef}
               type="button"
               variant="neutral"
               size="lg"
@@ -636,11 +642,6 @@ function FinishForm({
               ? t("signin.gate.joinLede", { email })
               : t("signin.gate.joinOtherLede", { email })}
           </p>
-          {proven ? null : (
-            <p className="text-sm text-fg-muted">
-              {t("signin.gate.joinProve")}
-            </p>
-          )}
         </div>
         {error ? (
           <p role="alert" className="text-sm text-danger">
@@ -748,7 +749,13 @@ function FinishForm({
       }
     };
     return (
-      <div ref={ref} className="space-y-5">
+      <div
+        ref={ref}
+        className="space-y-5"
+        onKeyDown={(e) => {
+          if (e.key === "Escape") editEmail(to);
+        }}
+      >
         <div className="space-y-2">
           <AuthTitle>{title}</AuthTitle>
           <p className="text-fg-muted [overflow-wrap:anywhere]">
@@ -778,8 +785,10 @@ function FinishForm({
     );
   }
 
-  const primary = termsOnly
-    ? t("signin.continue")
+  const primary = !isNew
+    ? needsCode
+      ? t("signin.gate.sendCode")
+      : t("signin.continue")
     : needsCode
       ? t("signin.gate.sendCode")
       : t("signin.register.submit");
@@ -838,6 +847,7 @@ function FinishForm({
         {platformTerms ? (
           <div>
             <Checkbox
+              className="min-h-11 items-center [&_label]:-my-3 [&_label]:py-3"
               ref={platformRef}
               checked={platformOk}
               onCheckedChange={(v) => {
@@ -870,6 +880,7 @@ function FinishForm({
         {productTerms ? (
           <div>
             <Checkbox
+              className="min-h-11 items-center [&_label]:-my-3 [&_label]:py-3"
               ref={productRef}
               checked={productOk}
               onCheckedChange={(v) => {
@@ -906,7 +917,14 @@ function FinishForm({
 
   return (
     <div ref={ref} className="space-y-5">
-      <AuthTitle>{title}</AuthTitle>
+      <div className="space-y-2">
+        <AuthTitle>{title}</AuthTitle>
+        {termsOnly ? (
+          <p className="text-fg-muted">
+            {t("signin.gate.termsLede", { app: gate.product?.name ?? "" })}
+          </p>
+        ) : null}
+      </div>
       <form
         noValidate
         className="space-y-5"
@@ -918,7 +936,7 @@ function FinishForm({
             !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(typed.trim())
           )
             return fail("email", t("signin.email.invalid"));
-          if (!termsOnly && !name.trim()) {
+          if (isNew && !name.trim()) {
             setNameError(true);
             return void requestAnimationFrame(() => nameRef.current?.focus());
           }
@@ -1024,7 +1042,7 @@ function FinishForm({
           )
         ) : null}
 
-        {termsOnly ? null : (
+        {!isNew ? null : (
           <>
             <div className="space-y-2">
               <label
@@ -1111,7 +1129,14 @@ function FinishForm({
               <legend className="text-sm font-medium text-fg-strong">
                 {t("signin.gate.picture")}
               </legend>
-              <div className="grid grid-cols-[repeat(auto-fit,minmax(6.5rem,1fr))] gap-2">
+              <div
+                className={cn(
+                  "grid gap-2",
+                  (hasPicture ? 1 : 0) + (uploadUrl ? 1 : 0) + 2 === 4
+                    ? "grid-cols-2 sm:grid-cols-4"
+                    : "grid-cols-[repeat(auto-fit,minmax(5.5rem,1fr))]",
+                )}
+              >
                 {hasPicture ? (
                   <label className={tile}>
                     <input
@@ -1208,6 +1233,7 @@ function FinishForm({
 
             {gate.profile.birthdate ? (
               <Checkbox
+                className="min-h-11 items-center [&_label]:-my-3 [&_label]:py-3"
                 checked={birth}
                 onCheckedChange={setBirth}
                 label={t("signin.gate.birthdate", {
@@ -1223,6 +1249,7 @@ function FinishForm({
 
         {passkeyOffer && isNew ? (
           <Checkbox
+            className="min-h-11 items-center [&_label]:-my-3 [&_label]:py-3"
             checked={passkey}
             onCheckedChange={setPasskey}
             label={

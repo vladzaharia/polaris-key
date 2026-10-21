@@ -1616,6 +1616,10 @@
     <string name="signin_gate_joinOtherLede">%1$s은(는) 이미 Polaris Locker 계정에 속해 있습니다. 다른 이메일을 사용하거나 먼저 그 계정에 로그인하세요.</string>
     <!-- Finish: the screen name field left empty. -->
     <string name="signin_gate_nameRequired">표시 이름을 입력하세요.</string>
+    <!-- Finish: lede of the terms-only step. Arguments: {app}. Arguments: 1=app. -->
+    <string name="signin_gate_termsLede">계속하려면 %1$s 약관에 동의하세요.</string>
+    <!-- Code entry: submitted with fewer than six digits. -->
+    <string name="signin_code_incomplete">6자리를 모두 입력하세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">문제가 발생했어요</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

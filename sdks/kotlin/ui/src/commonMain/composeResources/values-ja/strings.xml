@@ -1616,6 +1616,10 @@
     <string name="signin_gate_joinOtherLede">%1$sはすでにPolaris Lockerのアカウントで使われています。別のメールを使うか、先にそのアカウントでログインしてください。</string>
     <!-- Finish: the screen name field left empty. -->
     <string name="signin_gate_nameRequired">表示名を入力してください。</string>
+    <!-- Finish: lede of the terms-only step. Arguments: {app}. Arguments: 1=app. -->
+    <string name="signin_gate_termsLede">続けるには%1$sの規約に同意してください。</string>
+    <!-- Code entry: submitted with fewer than six digits. -->
+    <string name="signin_code_incomplete">6桁すべてを入力してください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">問題が発生しました</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

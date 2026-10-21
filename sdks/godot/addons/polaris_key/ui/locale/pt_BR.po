@@ -4332,6 +4332,16 @@ msgstr "{email} já pertence a uma conta do Polaris Locker. Use outro e-mail ou 
 msgid "signin.gate.nameRequired"
 msgstr "Digite um nome de exibição."
 
+#. Agree to {app}’s terms to keep going.
+#. Finish: lede of the terms-only step. Arguments: {app}.
+msgid "signin.gate.termsLede"
+msgstr "Concorde com os termos de {app} para continuar."
+
+#. Enter all 6 digits.
+#. Code entry: submitted with fewer than six digits.
+msgid "signin.code.incomplete"
+msgstr "Digite os 6 dígitos."
+
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).
 msgid "core.fallback.title"

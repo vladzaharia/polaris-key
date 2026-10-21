@@ -3660,6 +3660,16 @@
       "value": "Enter a screen name.",
       "role": "body",
       "note": "Finish: the screen name field left empty."
+    },
+    "signin.gate.termsLede": {
+      "value": "Agree to {app}’s terms to keep going.",
+      "role": "body",
+      "note": "Finish: lede of the terms-only step. Arguments: {app}."
+    },
+    "signin.code.incomplete": {
+      "value": "Enter all 6 digits.",
+      "role": "body",
+      "note": "Code entry: submitted with fewer than six digits."
     }
   }
 }

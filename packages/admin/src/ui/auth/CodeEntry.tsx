@@ -64,7 +64,11 @@ export function CodeEntry({
   }, [wait]);
 
   const submit = async (value: string): Promise<void> => {
-    if (value.length !== CODE_LENGTH || verifying) return;
+    if (verifying) return;
+    if (value.length !== CODE_LENGTH) {
+      setError(t("signin.code.incomplete"));
+      return;
+    }
     setVerifying(true);
     setError(null);
     setStatus(null);
@@ -147,7 +151,6 @@ export function CodeEntry({
           variant="neutral"
           size="lg"
           className="h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-semibold"
-          disabled={code.length !== CODE_LENGTH}
           loading={verifying}
         >
           {submitLabel}

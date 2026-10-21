@@ -728,6 +728,8 @@
   "signin.gate.resent": "Abbiamo inviato un nuovo codice a {email}.",
   "signin.gate.joinOtherLede": "{email} appartiene già a un account Polaris Locker. Usa un’altra email o accedi prima a quell’account.",
   "signin.gate.nameRequired": "Inserisci un nome visualizzato.",
+  "signin.gate.termsLede": "Accetta i termini di {app} per continuare.",
+  "signin.code.incomplete": "Inserisci tutte le 6 cifre.",
   "core.fallback.title": "Si è verificato un problema",
   "core.fallback.message": "Si è verificato un problema ({code}). Riprova.",
   "core.codes.unauthorized.title": "Accesso non effettuato",

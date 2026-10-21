@@ -728,6 +728,8 @@
   "signin.gate.resent": "We sent a new code to {email}.",
   "signin.gate.joinOtherLede": "{email} already belongs to a Polaris Locker account. Use a different email, or sign in to that account first.",
   "signin.gate.nameRequired": "Enter a screen name.",
+  "signin.gate.termsLede": "Agree to {app}’s terms to keep going.",
+  "signin.code.incomplete": "Enter all 6 digits.",
   "core.fallback.title": "Something went wrong",
   "core.fallback.message": "Something went wrong ({code}). Try again.",
   "core.codes.unauthorized.title": "Not signed in",

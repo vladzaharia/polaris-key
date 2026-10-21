@@ -728,6 +728,8 @@
   "signin.gate.resent": "我们已向 {email} 发送新的验证码。",
   "signin.gate.joinOtherLede": "{email} 已属于一个 Polaris Locker 账户。请使用其他邮箱，或先登录该账户。",
   "signin.gate.nameRequired": "请输入显示名称。",
+  "signin.gate.termsLede": "同意 {app} 的条款后继续。",
+  "signin.code.incomplete": "请输入全部 6 位数字。",
   "core.fallback.title": "出现问题",
   "core.fallback.message": "出现问题（{code}）。请重试。",
   "core.codes.unauthorized.title": "未登录",

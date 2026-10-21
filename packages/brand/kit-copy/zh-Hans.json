@@ -734,6 +734,8 @@
     "signin.gate.uploadFailed": "图片未保存。请在账户中添加。",
     "signin.gate.resent": "我们已向 {email} 发送新的验证码。",
     "signin.gate.joinOtherLede": "{email} 已属于一个 Polaris Locker 账户。请使用其他邮箱，或先登录该账户。",
-    "signin.gate.nameRequired": "请输入显示名称。"
+    "signin.gate.nameRequired": "请输入显示名称。",
+    "signin.gate.termsLede": "同意 {app} 的条款后继续。",
+    "signin.code.incomplete": "请输入全部 6 位数字。"
   }
 }

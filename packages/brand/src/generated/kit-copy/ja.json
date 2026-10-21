@@ -728,6 +728,8 @@
   "signin.gate.resent": "新しいコードを{email}に送信しました。",
   "signin.gate.joinOtherLede": "{email}はすでにPolaris Lockerのアカウントで使われています。別のメールを使うか、先にそのアカウントでログインしてください。",
   "signin.gate.nameRequired": "表示名を入力してください。",
+  "signin.gate.termsLede": "続けるには{app}の規約に同意してください。",
+  "signin.code.incomplete": "6桁すべてを入力してください。",
   "core.fallback.title": "問題が発生しました",
   "core.fallback.message": "問題が発生しました（{code}）。もう一度お試しください。",
   "core.codes.unauthorized.title": "サインインしていません",

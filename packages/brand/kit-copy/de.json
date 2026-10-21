@@ -734,6 +734,8 @@
     "signin.gate.uploadFailed": "Ihr Bild wurde nicht gespeichert. Fügen Sie eines im Konto hinzu.",
     "signin.gate.resent": "Wir haben einen neuen Code an {email} gesendet.",
     "signin.gate.joinOtherLede": "{email} gehört bereits zu einem Polaris Locker-Konto. Verwenden Sie eine andere E-Mail-Adresse oder melden Sie sich zuerst bei diesem Konto an.",
-    "signin.gate.nameRequired": "Geben Sie einen Anzeigenamen ein."
+    "signin.gate.nameRequired": "Geben Sie einen Anzeigenamen ein.",
+    "signin.gate.termsLede": "Stimmen Sie den Bedingungen von {app} zu, um fortzufahren.",
+    "signin.code.incomplete": "Geben Sie alle 6 Ziffern ein."
   }
 }

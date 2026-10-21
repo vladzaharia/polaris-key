@@ -4312,6 +4312,16 @@ msgstr "{email} 已属于一个 Polaris Locker 账户。请使用其他邮箱，
 msgid "signin.gate.nameRequired"
 msgstr "请输入显示名称。"
 
+#. Agree to {app}’s terms to keep going.
+#. Finish: lede of the terms-only step. Arguments: {app}.
+msgid "signin.gate.termsLede"
+msgstr "同意 {app} 的条款后继续。"
+
+#. Enter all 6 digits.
+#. Code entry: submitted with fewer than six digits.
+msgid "signin.code.incomplete"
+msgstr "请输入全部 6 位数字。"
+
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).
 msgid "core.fallback.title"

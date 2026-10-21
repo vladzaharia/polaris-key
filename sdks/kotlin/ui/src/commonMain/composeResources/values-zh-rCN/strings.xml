@@ -1616,6 +1616,10 @@
     <string name="signin_gate_joinOtherLede">%1$s 已属于一个 Polaris Locker 账户。请使用其他邮箱，或先登录该账户。</string>
     <!-- Finish: the screen name field left empty. -->
     <string name="signin_gate_nameRequired">请输入显示名称。</string>
+    <!-- Finish: lede of the terms-only step. Arguments: {app}. Arguments: 1=app. -->
+    <string name="signin_gate_termsLede">同意 %1$s 的条款后继续。</string>
+    <!-- Code entry: submitted with fewer than six digits. -->
+    <string name="signin_code_incomplete">请输入全部 6 位数字。</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">出现问题</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->
