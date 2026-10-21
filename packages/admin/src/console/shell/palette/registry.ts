@@ -13,6 +13,7 @@ import {
   navigationPaletteSource,
   productsPaletteSource,
 } from "./navigation.js";
+import { settingsPaletteSource } from "./settings.js";
 import { supportCodePaletteSource } from "./supportCode.js";
 import { dedupe, type PaletteGroupSpec } from "./rank.js";
 import type { PaletteContext, PaletteItem, PaletteSource } from "./types.js";
@@ -29,6 +30,8 @@ export const PALETTE_GROUPS: readonly PaletteGroupSpec[] = [
   { heading: "Support code", order: 10 },
   { heading: "Pages", order: 20 },
   { heading: "Actions", order: 40 },
+  // ST-10: the generated settings index, shown for typed text only.
+  { heading: "Settings", order: 50 },
   { heading: "Products", order: 60 },
   { heading: "Platform", order: 80, matchOnly: true },
 ];
@@ -38,6 +41,7 @@ export const PALETTE_SOURCES: readonly PaletteSource[] = [
   supportCodePaletteSource,
   navigationPaletteSource,
   actionsPaletteSource,
+  settingsPaletteSource,
   productsPaletteSource,
 ];
 

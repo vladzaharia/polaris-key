@@ -28,6 +28,7 @@ import { useMe, useProduct } from "../../../data/hooks.js";
 import { qk } from "../../../data/queries.js";
 import { pageOf, sectionOf, type ProductPageId } from "../../../nav.js";
 import { Link } from "../../../router.js";
+import { useSettingTarget } from "../../../useSettingTarget.js";
 import { productPage } from "../../../routes.js";
 import {
   SETTINGS_INDEX,
@@ -130,6 +131,7 @@ export function SettingsAllPage({
     queryFn: () => api.productSettings(slug),
   });
   useLoadingAnnouncement("all settings", values.isPending);
+  useSettingTarget(!values.isPending, (k) => `all-setting-${k}`);
   const [text, setText] = React.useState("");
   const find = React.useRef<HTMLInputElement>(null);
   const [service, setService] = React.useState<string>(ALL);
@@ -261,7 +263,12 @@ export function SettingsAllPage({
                 const live = byKey.get(e.key);
                 const home = SETTING_HOMES[e.key];
                 return (
-                  <tr key={e.key}>
+                  <tr
+                    key={e.key}
+                    id={`all-setting-${e.key}`}
+                    tabIndex={-1}
+                    className="scroll-mt-24 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
+                  >
                     <th scope="row" className="px-5 py-3 font-normal">
                       <span className="block font-medium text-fg-strong">
                         {e.label}
